@@ -10,6 +10,7 @@ import (
 
 const (
 	CaPath      = "/usr/share/coreos-ca-certificates/"
+	DbusTimeout = time.Second * 20
 	CmdTimeout  = time.Second * 3
 	PortTimeout = time.Second * 3
 	UpdateUrl   = "https://api.core-os.net/v1/update/"
@@ -23,8 +24,11 @@ func TestPortSsh(t *testing.T) {
 	}
 }
 
-func TestUpdateEngine(t *testing.T) {
-
+func TestDbusUpdateEngine(t *testing.T) {
+	err := CheckDbusInterface("org.chromium.UpdateEngineInterface", DbusTimeout)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDockerEcho(t *testing.T) {
