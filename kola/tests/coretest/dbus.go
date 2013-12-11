@@ -1,8 +1,8 @@
 package coretest
 
 import (
-	"github.com/guelfey/go.dbus"
 	"fmt"
+	"github.com/guelfey/go.dbus"
 	"time"
 )
 

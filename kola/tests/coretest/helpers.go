@@ -8,7 +8,7 @@ import (
 )
 
 func CheckPort(network, address string, timeout time.Duration) error {
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		_, err := net.Dial(network, address)
 		errc <- err

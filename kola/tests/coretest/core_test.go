@@ -33,7 +33,7 @@ func TestDbusUpdateEngine(t *testing.T) {
 
 func TestDockerEcho(t *testing.T) {
 	t.Parallel()
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		c := exec.Command("docker", "run", "busybox", "echo")
 		err := c.Run()
