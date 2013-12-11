@@ -18,11 +18,8 @@ func CheckPort(network, address string, timeout time.Duration) error {
 		return fmt.Errorf("%s:%s timed out after %s seconds.",
 			network, address, timeout)
 	case err := <-errc:
-		if err != nil {
-			return err
-		}
+		return err
 	}
-	return nil
 }
 
 func IsLink(f os.FileInfo) bool {
