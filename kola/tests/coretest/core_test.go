@@ -1,8 +1,6 @@
-package main
+package coretest
 
 import (
-	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -14,29 +12,8 @@ const (
 	CaPath      = "/usr/share/coreos-ca-certificates/"
 	CmdTimeout  = time.Second * 3
 	PortTimeout = time.Second * 3
+	UpdateUrl   = "https://api.core-os.net/v1/update/"
 )
-
-func IsLink(f os.FileInfo) bool {
-	return f.Mode()&os.ModeSymlink != 0
-}
-
-func CheckPort(network, address string, timeout time.Duration) error {
-	errc := make(chan error)
-	go func() {
-		_, err := net.Dial(network, address)
-		errc <- err
-	}()
-	select {
-	case <-time.After(timeout):
-		return fmt.Errorf("%s:%s timed out after %s seconds.",
-			network, address, timeout)
-	case err := <-errc:
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func TestPortSsh(t *testing.T) {
 	t.Parallel()
