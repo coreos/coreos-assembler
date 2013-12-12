@@ -10,8 +10,9 @@ import (
 
 const (
 	CaPath      = "/usr/share/coreos-ca-certificates/"
-	DbusTimeout = time.Second * 20
 	CmdTimeout  = time.Second * 3
+	DbusTimeout = time.Second * 3
+	HttpTimeout = time.Second * 3
 	PortTimeout = time.Second * 3
 	UpdateUrl   = "https://api.core-os.net/v1/update/"
 )
@@ -50,7 +51,11 @@ func TestDockerEcho(t *testing.T) {
 }
 
 func TestUpdateServiceHttp(t *testing.T) {
-
+	t.Parallel()
+	err := CheckHttpStatus("http://api.core-os.net/v1/c10n/group", HttpTimeout)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestSymlinkResolvConf(t *testing.T) {
