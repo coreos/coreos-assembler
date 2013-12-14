@@ -1,10 +1,12 @@
 package coretest
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -59,4 +61,33 @@ func CheckHttpStatus(url string, timeout time.Duration) error {
 	case err := <-errc:
 		return err
 	}
+}
+
+type MountTable struct {
+	Device     string
+	MountPoint string
+	FsType     string
+	Options    []string
+}
+
+func GetMountTable() (mounts []MountTable, err error) {
+	f, err := os.Open("/proc/mounts")
+	if err != nil {
+		return
+	}
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.Split(scanner.Text(), " ")
+		if len(line) < 6 {
+			continue
+		}
+		mounts = append(mounts, MountTable{
+			Device:     line[0],
+			MountPoint: line[1],
+			FsType:     line[2],
+			Options:    strings.Split(line[3], ","),
+		})
+	}
+	return
 }

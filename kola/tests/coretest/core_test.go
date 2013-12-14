@@ -87,3 +87,18 @@ func TestInstalledCACerts(t *testing.T) {
 func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 
 }
+
+func TestReadOnlyFs(t *testing.T) {
+	mounts, err := GetMountTable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range mounts {
+		if m.Device == "rootfs" && m.Options[0] == "r" {
+			return
+		} else {
+			t.Fatalf("%s is not mounted ro.", m.MountPoint)
+		}
+	}
+	t.Fatal("could not find rootfs.")
+}
