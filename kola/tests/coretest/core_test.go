@@ -117,6 +117,22 @@ func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 	}
 }
 
+func TestServicesActive(t *testing.T) {
+	t.Parallel()
+	units := []string{
+		"update-engine.service",
+		"docker.service",
+		"default.target",
+	}
+	for _, unit := range units {
+		c := exec.Command("systemctl", "is-active", unit)
+		err := c.Run()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func TestReadOnlyFs(t *testing.T) {
 	mountModes := make(map[string]bool)
 	mounts, err := GetMountTable()
