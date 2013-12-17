@@ -11,7 +11,7 @@ import (
 const (
 	CaPath      = "/usr/share/coreos-ca-certificates/"
 	CmdTimeout  = time.Second * 3
-	DbusTimeout = time.Second * 3
+	DbusTimeout = time.Second * 20
 	HttpTimeout = time.Second * 3
 	PortTimeout = time.Second * 3
 	UpdateUrl   = "https://api.core-os.net/v1/update/"
@@ -25,7 +25,25 @@ func TestPortSsh(t *testing.T) {
 	}
 }
 
-func TestDbusUpdateEngine(t *testing.T) {
+func TestUpdateEngine(t *testing.T) {
+	t.Parallel()
+
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("update_engine_client", "-omaha_url", UpdateUrl)
+		err := c.Run()
+		errc <- err
+	}()
+
+	select {
+	case <-time.After(CmdTimeout):
+		t.Fatalf("update_engine_client timed out after %s.", CmdTimeout)
+	case err := <-errc:
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
 	err := CheckDbusInterface("org.chromium.UpdateEngineInterface", DbusTimeout)
 	if err != nil {
 		t.Fatal(err)
@@ -89,15 +107,19 @@ func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 }
 
 func TestReadOnlyFs(t *testing.T) {
+	mountModes := make(map[string]bool)
 	mounts, err := GetMountTable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range mounts {
-		if m.Device == "rootfs" && m.Options[0] == "r" {
+		mountModes[m.MountPoint] = m.Options[0] == "ro"
+	}
+	if mp, ok := mountModes["/"]; ok {
+		if mp {
 			return
 		} else {
-			t.Fatalf("%s is not mounted ro.", m.MountPoint)
+			t.Fatalf("/ is not mounted ro.")
 		}
 	}
 	t.Fatal("could not find rootfs.")
