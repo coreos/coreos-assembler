@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	CaPath      = "/usr/share/coreos-ca-certificates/"
-	CmdTimeout  = time.Second * 3
-	DbusTimeout = time.Second * 20
-	HttpTimeout = time.Second * 3
-	PortTimeout = time.Second * 3
-	UpdateUrl   = "https://api.core-os.net/v1/update/"
+	CaPath                   = "/usr/share/coreos-ca-certificates/"
+	CmdTimeout               = time.Second * 3
+	DbusTimeout              = time.Second * 20
+	HttpTimeout              = time.Second * 3
+	PortTimeout              = time.Second * 3
+	UpdateEnginePubKey       = "/usr/share/update_engine/update-payload-key.pub.pem"
+	UpdateEnginePubKeySha256 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
+	UpdateUrl                = "https://api.core-os.net/v1/update/"
 )
 
 func TestPortSsh(t *testing.T) {
@@ -103,7 +105,16 @@ func TestInstalledCACerts(t *testing.T) {
 }
 
 func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
+	t.Parallel()
+	fileHash, err := Sha256File(UpdateEnginePubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 
+	if string(fileHash) != UpdateEnginePubKeySha256 {
+		t.Fatalf("%s:%s does not match hash %s.", UpdateEnginePubKey, fileHash,
+			UpdateEnginePubKeySha256)
+	}
 }
 
 func TestReadOnlyFs(t *testing.T) {

@@ -2,7 +2,10 @@ package coretest
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -90,4 +93,20 @@ func GetMountTable() (mounts []MountTable, err error) {
 		})
 	}
 	return
+}
+
+func Sha256File(fileName string) (hash string, err error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return
+	}
+
+	bytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		return
+	}
+
+	fileHasher := sha256.New()
+	fileHasher.Write(bytes)
+	return hex.EncodeToString(fileHasher.Sum(nil)), nil
 }
