@@ -10,7 +10,7 @@ import (
 
 const (
 	CaPath                   = "/usr/share/coreos-ca-certificates/"
-	CmdTimeout               = time.Second * 3
+	CmdTimeout               = time.Second * 20
 	DbusTimeout              = time.Second * 20
 	HttpTimeout              = time.Second * 3
 	PortTimeout              = time.Second * 3
