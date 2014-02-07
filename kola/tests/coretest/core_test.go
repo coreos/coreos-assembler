@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"testing"
 	"time"
 )
@@ -85,6 +86,42 @@ func TestTlsDate(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+	}
+}
+
+// This execs gdbus, because we need to change uses to test perms.
+func TestDbusPerms(t *testing.T) {
+	c := exec.Command(
+		"sudo", "-u", "core",
+		"gdbus", "call", "--system",
+		"--dest", "org.freedesktop.systemd1",
+		"--object-path", "/org/freedesktop/systemd1",
+		"--method", "org.freedesktop.systemd1.Manager.RestartUnit",
+		"tlsdate.service", "replace",
+	)
+	out, err := c.CombinedOutput()
+
+	if err != nil {
+		if !strings.Contains(string(out), "org.freedesktop.DBus.Error.AccessDenied") {
+			t.Error(err)
+		}
+	} else {
+		t.Error("We were able to call RestartUnit as a non-root user.")
+	}
+
+	c = exec.Command(
+		"sudo", "-u", "core",
+		"gdbus", "call", "--system",
+		"--dest", "org.freedesktop.systemd1",
+		"--object-path", "/org/freedesktop/systemd1/unit/tlsdate_2eservice",
+		"--method", "org.freedesktop.DBus.Properties.GetAll",
+		"org.freedesktop.systemd1.Unit",
+	)
+
+	out, err = c.CombinedOutput()
+	if err != nil {
+		t.Error(string(out))
+		t.Error(err)
 	}
 }
 
