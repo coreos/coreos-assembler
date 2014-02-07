@@ -70,6 +70,24 @@ func TestDockerEcho(t *testing.T) {
 	}
 }
 
+func TestTlsDate(t *testing.T) {
+	t.Parallel()
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("tlsdate")
+		err := c.Run()
+		errc <- err
+	}()
+	select {
+	case <-time.After(CmdTimeout):
+		t.Fatalf("tlsdate timed out after %s.", CmdTimeout)
+	case err := <-errc:
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func TestUpdateServiceHttp(t *testing.T) {
 	t.Parallel()
 	err := CheckHttpStatus("http://api.core-os.net/v1/c10n/group", HttpTimeout)
@@ -120,9 +138,10 @@ func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 func TestServicesActive(t *testing.T) {
 	t.Parallel()
 	units := []string{
-		"update-engine.service",
-		"docker.service",
 		"default.target",
+		"docker.service",
+		"tlsdate.service",
+		"update-engine.service",
 	}
 	for _, unit := range units {
 		c := exec.Command("systemctl", "is-active", unit)
