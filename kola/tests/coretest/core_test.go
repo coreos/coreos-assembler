@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"testing"
 	"time"
 )
@@ -70,6 +71,60 @@ func TestDockerEcho(t *testing.T) {
 	}
 }
 
+func TestTlsDate(t *testing.T) {
+	t.Parallel()
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("tlsdate")
+		err := c.Run()
+		errc <- err
+	}()
+	select {
+	case <-time.After(CmdTimeout):
+		t.Fatalf("tlsdate timed out after %s.", CmdTimeout)
+	case err := <-errc:
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+// This execs gdbus, because we need to change uses to test perms.
+func TestDbusPerms(t *testing.T) {
+	c := exec.Command(
+		"sudo", "-u", "core",
+		"gdbus", "call", "--system",
+		"--dest", "org.freedesktop.systemd1",
+		"--object-path", "/org/freedesktop/systemd1",
+		"--method", "org.freedesktop.systemd1.Manager.RestartUnit",
+		"tlsdate.service", "replace",
+	)
+	out, err := c.CombinedOutput()
+
+	if err != nil {
+		if !strings.Contains(string(out), "org.freedesktop.DBus.Error.AccessDenied") {
+			t.Error(err)
+		}
+	} else {
+		t.Error("We were able to call RestartUnit as a non-root user.")
+	}
+
+	c = exec.Command(
+		"sudo", "-u", "core",
+		"gdbus", "call", "--system",
+		"--dest", "org.freedesktop.systemd1",
+		"--object-path", "/org/freedesktop/systemd1/unit/tlsdate_2eservice",
+		"--method", "org.freedesktop.DBus.Properties.GetAll",
+		"org.freedesktop.systemd1.Unit",
+	)
+
+	out, err = c.CombinedOutput()
+	if err != nil {
+		t.Error(string(out))
+		t.Error(err)
+	}
+}
+
 func TestUpdateServiceHttp(t *testing.T) {
 	t.Parallel()
 	err := CheckHttpStatus("http://api.core-os.net/v1/c10n/group", HttpTimeout)
@@ -120,9 +175,10 @@ func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 func TestServicesActive(t *testing.T) {
 	t.Parallel()
 	units := []string{
-		"update-engine.service",
-		"docker.service",
 		"default.target",
+		"docker.service",
+		"tlsdate.service",
+		"update-engine.service",
 	}
 	for _, unit := range units {
 		c := exec.Command("systemctl", "is-active", unit)

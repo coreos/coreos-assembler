@@ -2,8 +2,9 @@ package coretest
 
 import (
 	"fmt"
-	"github.com/guelfey/go.dbus"
 	"time"
+
+	"github.com/guelfey/go.dbus"
 )
 
 func CheckDbusInterface(iFace string, timeout time.Duration) error {
