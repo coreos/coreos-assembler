@@ -76,7 +76,7 @@ func TestTlsDate(t *testing.T) {
 	t.Parallel()
 	errc := make(chan error, 1)
 	go func() {
-		c := exec.Command("tlsdate")
+		c := exec.Command("tlsdate", "--dont-set-clock")
 		err := c.Run()
 		errc <- err
 	}()
@@ -177,7 +177,7 @@ func TestServicesActive(t *testing.T) {
 	t.Parallel()
 	units := []string{
 		"default.target",
-		"docker.service",
+		"docker.socket",
 		"tlsdate.service",
 		"update-engine.service",
 	}
