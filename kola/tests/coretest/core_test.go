@@ -76,7 +76,7 @@ func TestTlsDate(t *testing.T) {
 	t.Parallel()
 	errc := make(chan error, 1)
 	go func() {
-		c := exec.Command("tlsdate")
+		c := exec.Command("tlsdate", "--dont-set-clock")
 		err := c.Run()
 		errc <- err
 	}()
