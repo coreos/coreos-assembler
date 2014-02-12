@@ -13,6 +13,7 @@ const (
 	CaPath                   = "/usr/share/coreos-ca-certificates/"
 	CmdTimeout               = time.Second * 20
 	DbusTimeout              = time.Second * 20
+	DockerTimeout            = time.Second * 60
 	HttpTimeout              = time.Second * 3
 	PortTimeout              = time.Second * 3
 	UpdateEnginePubKey       = "/usr/share/update_engine/update-payload-key.pub.pem"
@@ -62,8 +63,8 @@ func TestDockerEcho(t *testing.T) {
 		errc <- err
 	}()
 	select {
-	case <-time.After(CmdTimeout):
-		t.Fatalf("DockerEcho timed out after %s.", CmdTimeout)
+	case <-time.After(DockerTimeout):
+		t.Fatalf("DockerEcho timed out after %s.", DockerTimeout)
 	case err := <-errc:
 		if err != nil {
 			t.Error(err)
