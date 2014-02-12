@@ -177,7 +177,7 @@ func TestServicesActive(t *testing.T) {
 	t.Parallel()
 	units := []string{
 		"default.target",
-		"docker.service",
+		"docker.socket",
 		"tlsdate.service",
 		"update-engine.service",
 	}
