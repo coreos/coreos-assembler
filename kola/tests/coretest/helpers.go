@@ -122,6 +122,7 @@ func Run(command string, args ...string) (string, string, error) {
 	return stdoutBytes.String(), stderrBytes.String(), err
 }
 
+// This function may be partly removed after coreos/fleet#208 is merged.
 func Retry(f func() bool, times int, interval time.Duration) bool {
 	for i := 0; i < times; i++ {
 		if f() {
