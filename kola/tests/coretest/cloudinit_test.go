@@ -1,7 +1,6 @@
 package coretest
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,15 +13,6 @@ import (
 )
 
 const cloudinitBinPath = "/usr/bin/coreos-cloudinit"
-
-func run(command string, args ...string) (string, string, error) {
-	var stdoutBytes, stderrBytes bytes.Buffer
-	cmd := exec.Command(command, args...)
-	cmd.Stdout = &stdoutBytes
-	cmd.Stderr = &stderrBytes
-	err := cmd.Run()
-	return stdoutBytes.String(), stderrBytes.String(), err
-}
 
 func read(filename string) (string, error) {
 	bytes, err := ioutil.ReadFile(filename)
@@ -63,7 +53,7 @@ ssh_authorized_keys:
 		t.Fatalf("Failed writing %s: %v", configFile.Name(), err)
 	}
 
-	if stdout, stderr, err := run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name(), "--ssh-key-name", "coretest"); err != nil {
+	if stdout, stderr, err := Run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name(), "--ssh-key-name", "coretest"); err != nil {
 		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
@@ -75,7 +65,7 @@ ssh_authorized_keys:
 	}
 
 	// Attempt to clean up after ourselves
-	defer run("update-ssh-keys", "-d", "coretest")
+	defer Run("update-ssh-keys", "-d", "coretest")
 
 	authorized_keys, err := read("/home/core/.ssh/authorized_keys")
 	if err != nil {
@@ -111,7 +101,7 @@ func TestCloudinitScript(t *testing.T) {
 		t.Fatalf("Failed writing %s: %v", configFile.Name(), err)
 	}
 
-	if stdout, stderr, err := run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name()); err != nil {
+	if stdout, stderr, err := Run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name()); err != nil {
 		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
@@ -119,9 +109,9 @@ func TestCloudinitScript(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to read unit name from cloudinit workspace: %v", err)
 	}
-	defer run("systemctl", "stop", unitName)
+	defer Run("systemctl", "stop", unitName)
 
-	stdout, stderr, err := run("systemctl", "status", unitName)
+	stdout, stderr, err := Run("systemctl", "status", unitName)
 	if err != nil {
 		t.Fatalf("Unable to determine if user-data was executed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
