@@ -14,7 +14,6 @@ import (
 )
 
 const cloudinitBinPath = "/usr/bin/coreos-cloudinit"
-const cloudinitWorkspace = "/var/lib/coreos-cloudinit"
 
 func run(command string, args ...string) (string, string, error) {
 	var stdoutBytes, stderrBytes bytes.Buffer
@@ -30,7 +29,18 @@ func read(filename string) (string, error) {
 	return string(bytes), err
 }
 
+func rmdir(path string) error {
+	cmd := exec.Command("sudo", "rm", "-rf", path)
+	return cmd.Run()
+}
+
 func TestCloudinitCloudConfig(t *testing.T) {
+	workspace, err := ioutil.TempDir("", "coretest-cloudinit-")
+	if err != nil {
+		t.Fatalf("Failed creating workspace: %v", err)
+	}
+	defer rmdir(workspace)
+
 	keyOne := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5LaGMGRqZEEvOhHlIEiQgdMJIQ9Qe8L/XSz06GqzcESbEnYLIXar2nou4eW4AGMVC1V0BrcWWnSTxM1/dWeCLOUt5NulKAjtdBUZGhCT83nbimSzbmx3/q2y5bCiS4Zr8ZjYFbi1eLvye2jKPE4xo7cvIfDKc0ztQ9kU7JknUdKNZo3RKXr5EPhJ5UZ8Ff15CI9+hDSvdPwer+HNnEt/psRVC+s29EwNGwUXD4IYqrk3X4ew0YAl/oULHM4cctoBW9GM+kAl40rOuIARlKfe4UdCgDMHYA/whi7Us+cPNgPit9IVJVBU4eo/cF5molD2l+PMSntypuv79obu8sA1H cloudinit-test-key-one"
 	keyTwo := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCZw5Ljtt9wlEfyDvmUwu/BeMcIhVarbcM4ajZolxRy9G8vvCa7ODcSjzSyhfG1mLSBB2KfaFFI6zGHBjFX0Gzy9i8m3u7PnZBPX30bb1n0hJCrUhpqUGQUe8OFdoBstf1HIwJU/KoTBL0Ap1WEn0quRT4kNgBLbPrMjYCPbS1q4wJKdIE5rRm/EfTUrmIb0i91gujEGw5oUHDXf0X+/cxwwIVZh1z16YhOgvJBzXhsJ9a0w7kcy/6wPRv03yyMg/r2Ada6ci68LulKz5GLn+xInT0bvIcra/PZ7WE+jyZhZKly239VZyT/1dHkBbTw+kgnGobLMbjOOg5bKaT8NZJ3 cloudinit-test-key-two"
 
@@ -53,7 +63,7 @@ ssh_authorized_keys:
 		t.Fatalf("Failed writing %s: %v", configFile.Name(), err)
 	}
 
-	if stdout, stderr, err := run(cloudinitBinPath, "--from-file", configFile.Name(), "--ssh-key-name", "coretest"); err != nil {
+	if stdout, stderr, err := run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name(), "--ssh-key-name", "coretest"); err != nil {
 		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
@@ -82,6 +92,12 @@ ssh_authorized_keys:
 }
 
 func TestCloudinitScript(t *testing.T) {
+	workspace, err := ioutil.TempDir("", "coretest-cloudinit-")
+	if err != nil {
+		t.Fatalf("Failed creating workspace: %v", err)
+	}
+	defer rmdir(workspace)
+
 	configData := `#!/bin/bash
 /bin/sleep 10
 `
@@ -95,11 +111,11 @@ func TestCloudinitScript(t *testing.T) {
 		t.Fatalf("Failed writing %s: %v", configFile.Name(), err)
 	}
 
-	if stdout, stderr, err := run(cloudinitBinPath, "--from-file", configFile.Name()); err != nil {
+	if stdout, stderr, err := run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name()); err != nil {
 		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	unitName, err := read(path.Join(cloudinitWorkspace, "scripts", "unit-name"))
+	unitName, err := read(path.Join(workspace, "scripts", "unit-name"))
 	if err != nil {
 		t.Fatalf("Unable to read unit name from cloudinit workspace: %v", err)
 	}
