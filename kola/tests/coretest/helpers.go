@@ -2,6 +2,7 @@ package coretest
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -109,4 +111,24 @@ func Sha256File(fileName string) (hash string, err error) {
 	fileHasher := sha256.New()
 	fileHasher.Write(bytes)
 	return hex.EncodeToString(fileHasher.Sum(nil)), nil
+}
+
+func Run(command string, args ...string) (string, string, error) {
+	var stdoutBytes, stderrBytes bytes.Buffer
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = &stdoutBytes
+	cmd.Stderr = &stderrBytes
+	err := cmd.Run()
+	return stdoutBytes.String(), stderrBytes.String(), err
+}
+
+// This function may be partly removed after coreos/fleet#208 is merged.
+func Retry(f func() bool, times int, interval time.Duration) bool {
+	for i := 0; i < times; i++ {
+		if f() {
+			return true
+		}
+		time.Sleep(interval)
+	}
+	return false
 }
