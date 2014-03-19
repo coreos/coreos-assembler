@@ -37,7 +37,7 @@ func TestCloudinitCloudConfig(t *testing.T) {
 	configTmpl := `#cloud-config
 coreos:
     etcd:
-        discovery_url: https://discovery.etcd.io/827c73219eeb2fa5530027c37bf18877
+        discovery: https://discovery.etcd.io/827c73219eeb2fa5530027c37bf18877
 ssh_authorized_keys:
     - %s
     - %s
@@ -57,11 +57,11 @@ ssh_authorized_keys:
 		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	contents, err := read("/var/run/etcd/bootstrap.disco")
+	contents, err := read("/run/systemd/system/etcd.service.d/20-cloudinit.conf")
 	if err != nil {
 		t.Errorf("Unable to read etcd bootstrap file: %v", err)
-	} else if contents != "https://discovery.etcd.io/827c73219eeb2fa5530027c37bf18877" {
-		t.Errorf("Incorrect data written to /var/run/etcd/bootstrap.disco: %s", contents)
+	} else if !strings.Contains(contents, "Environment=\"ETCD_DISCOVERY=https://discovery.etcd.io/827c73219eeb2fa5530027c37bf18877\"") {
+		t.Errorf("Incorrect data written to etcd.service.d/20-cloudinit.conf: %s", contents)
 	}
 
 	// Attempt to clean up after ourselves
