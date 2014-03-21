@@ -71,6 +71,8 @@ func TestFleetctlRunService(t *testing.T) {
 		t.Fatalf("Failed writing %v: %v", serviceFile.Name(), err)
 	}
 
+	defer Run(fleetctlBinPath, "destroy", serviceFile.Name())
+
 	stdout, stderr, err := Run(fleetctlBinPath, "start", serviceFile.Name())
 	if err != nil {
 		t.Fatalf("fleetctl start failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
