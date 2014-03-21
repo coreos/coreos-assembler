@@ -199,12 +199,18 @@ func TestReadOnlyFs(t *testing.T) {
 	for _, m := range mounts {
 		mountModes[m.MountPoint] = m.Options[0] == "ro"
 	}
-	if mp, ok := mountModes["/"]; ok {
+	if mp, ok := mountModes["/usr"]; ok {
 		if mp {
 			return
 		} else {
-			t.Fatalf("/ is not mounted ro.")
+			t.Fatal("/usr is not mounted read-only.")
+		}
+	} else if mp, ok := mountModes["/"]; ok {
+		if mp {
+			return
+		} else {
+			t.Fatal("/ is not mounted read-only.")
 		}
 	}
-	t.Fatal("could not find rootfs.")
+	t.Fatal("could not find /usr or / mount points.")
 }
