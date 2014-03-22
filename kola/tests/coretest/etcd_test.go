@@ -1,22 +1,38 @@
 package coretest
 
 import (
+	"encoding/hex"
 	"fmt"
+	"crypto/rand"
 	"strings"
 	"testing"
 )
 
 const (
-	targetAddress = "http://127.0.0.1:4001/v2/keys/message"
-	helloStr = "Hello world"
-	newHelloStr = "Hello etcd"
-	keyNotFound = "Key not found"
+	targetAddress = "http://127.0.0.1:4001/v2/keys/"
+	helloStr      = "Hello world"
+	newHelloStr   = "Hello etcd"
+	keyNotFound   = "Key not found"
 )
+
+// generateKey generate's a 16 byte random string.
+func generateKey() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return ""
+	}
+
+	return hex.EncodeToString(b)
+}
 
 // TestEtcdUpdateValue tests to update value of a key.
 // The test coverage includes setting, getting, updating, deleting.
 func TestEtcdUpdateValue(t *testing.T) {
-	stdout, stderr, err := Run("curl", "-L", targetAddress, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", helloStr))
+	// Use a random key name so members of a cluster don't step on each other.
+	target := targetAddress + generateKey()
+
+	stdout, stderr, err := Run("curl", "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", helloStr))
 	if err != nil {
 		t.Fatalf("curl set failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -24,12 +40,12 @@ func TestEtcdUpdateValue(t *testing.T) {
 		t.Fatalf("Failed getting value %v\nstdout: %v", helloStr, stdout)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", targetAddress, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", newHelloStr))
+	stdout, stderr, err = Run("curl", "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", newHelloStr))
 	if err != nil {
 		t.Fatalf("curl update failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", targetAddress)
+	stdout, stderr, err = Run("curl", "-L", target)
 	if err != nil {
 		t.Fatalf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -37,12 +53,12 @@ func TestEtcdUpdateValue(t *testing.T) {
 		t.Fatalf("Failed getting value %v\nstdout: %v", newHelloStr, stdout)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", targetAddress, "-XDELETE")
+	stdout, stderr, err = Run("curl", "-L", target, "-XDELETE")
 	if err != nil {
 		t.Fatalf("curl delete failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", targetAddress)
+	stdout, stderr, err = Run("curl", "-L", target)
 	if err != nil {
 		t.Fatalf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
