@@ -15,6 +15,11 @@ const (
 	keyNotFound   = "Key not found"
 )
 
+var (
+	// retry is used to avoid getting server error when leader election
+	retry = []string{"--retry", "5", "--retry-delay", "2", "--silent"}
+)
+
 // generateKey generate's a 16 byte random string.
 func generateKey() string {
 	b := make([]byte, 16)
@@ -32,7 +37,7 @@ func TestEtcdUpdateValue(t *testing.T) {
 	// Use a random key name so members of a cluster don't step on each other.
 	target := targetAddress + generateKey()
 
-	stdout, stderr, err := Run("curl", "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", helloStr))
+	stdout, stderr, err := Run("curl", append(retry, "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", helloStr))...)
 	if err != nil {
 		t.Fatalf("curl set failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -40,12 +45,12 @@ func TestEtcdUpdateValue(t *testing.T) {
 		t.Fatalf("Failed getting value %v\nstdout: %v", helloStr, stdout)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", newHelloStr))
+	stdout, stderr, err = Run("curl", append(retry, "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", newHelloStr))...)
 	if err != nil {
 		t.Fatalf("curl update failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", target)
+	stdout, stderr, err = Run("curl", append(retry, "-L", target)...)
 	if err != nil {
 		t.Fatalf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -53,12 +58,12 @@ func TestEtcdUpdateValue(t *testing.T) {
 		t.Fatalf("Failed getting value %v\nstdout: %v", newHelloStr, stdout)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", target, "-XDELETE")
+	stdout, stderr, err = Run("curl", append(retry, "-L", target, "-XDELETE")...)
 	if err != nil {
 		t.Fatalf("curl delete failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	stdout, stderr, err = Run("curl", "-L", target)
+	stdout, stderr, err = Run("curl", append(retry, "-L", target)...)
 	if err != nil {
 		t.Fatalf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
