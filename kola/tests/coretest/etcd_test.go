@@ -35,7 +35,7 @@ func generateKey() string {
 // The test coverage includes setting, getting, updating, deleting.
 func TestEtcdUpdateValue(t *testing.T) {
 	// Use a random key name so members of a cluster don't step on each other.
-	target := targetAddress + generateKey()
+	target := targetAddress + generateKey() + "?consistent=true"
 
 	stdout, stderr, err := Run("curl", append(retry, "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", helloStr))...)
 	if err != nil {
