@@ -3,22 +3,18 @@ package coretest
 import (
 	"os"
 	"os/exec"
-	"path"
 	"strings"
 	"testing"
 	"time"
 )
 
 const (
-	CaPath                   = "/usr/share/coreos-ca-certificates/"
 	CmdTimeout               = time.Second * 20
 	DbusTimeout              = time.Second * 20
 	DockerTimeout            = time.Second * 60
-	HttpTimeout              = time.Second * 3
 	PortTimeout              = time.Second * 3
 	UpdateEnginePubKey       = "/usr/share/update_engine/update-payload-key.pub.pem"
 	UpdateEnginePubKeySha256 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
-	UpdateUrl                = "https://api.core-os.net/v1/update/"
 )
 
 func TestPortSsh(t *testing.T) {
@@ -34,7 +30,7 @@ func TestUpdateEngine(t *testing.T) {
 
 	errc := make(chan error, 1)
 	go func() {
-		c := exec.Command("update_engine_client", "-omaha_url", UpdateUrl)
+		c := exec.Command("update_engine_client", "-status")
 		err := c.Run()
 		errc <- err
 	}()
@@ -48,10 +44,7 @@ func TestUpdateEngine(t *testing.T) {
 		}
 	}
 
-	err := CheckDbusInterface("org.chromium.UpdateEngineInterface", DbusTimeout)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// FIXME(marineam): Test DBus directly
 }
 
 func TestDockerEcho(t *testing.T) {
@@ -126,14 +119,6 @@ func TestDbusPerms(t *testing.T) {
 	}
 }
 
-func TestUpdateServiceHttp(t *testing.T) {
-	t.Parallel()
-	err := CheckHttpStatus("http://api.core-os.net/v1/c10n/group", HttpTimeout)
-	if err != nil {
-		t.Error(err)
-	}
-}
-
 func TestSymlinkResolvConf(t *testing.T) {
 	t.Parallel()
 	f, err := os.Lstat("/etc/resolv.conf")
@@ -143,20 +128,6 @@ func TestSymlinkResolvConf(t *testing.T) {
 	if !IsLink(f) {
 		t.Fatal("/etc/resolv.conf is not a symlink.")
 
-	}
-}
-
-func TestInstalledCACerts(t *testing.T) {
-	t.Parallel()
-	caCerts := []string{
-		"CoreOS_Internet_Authority.pem",
-		"CoreOS_Network_Authority.pem",
-	}
-	for _, fileName := range caCerts {
-		_, err := os.Stat(path.Join(CaPath, fileName))
-		if err != nil {
-			t.Error(err)
-		}
 	}
 }
 
