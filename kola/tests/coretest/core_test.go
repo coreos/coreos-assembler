@@ -12,7 +12,6 @@ const (
 	CmdTimeout               = time.Second * 20
 	DbusTimeout              = time.Second * 20
 	DockerTimeout            = time.Second * 60
-	HttpTimeout              = time.Second * 3
 	PortTimeout              = time.Second * 3
 	UpdateEnginePubKey       = "/usr/share/update_engine/update-payload-key.pub.pem"
 	UpdateEnginePubKeySha256 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
@@ -116,14 +115,6 @@ func TestDbusPerms(t *testing.T) {
 	out, err = c.CombinedOutput()
 	if err != nil {
 		t.Error(string(out))
-		t.Error(err)
-	}
-}
-
-func TestUpdateServiceHttp(t *testing.T) {
-	t.Parallel()
-	err := CheckHttpStatus("http://api.core-os.net/v1/c10n/group", HttpTimeout)
-	if err != nil {
 		t.Error(err)
 	}
 }
