@@ -16,7 +16,6 @@ const (
 	PortTimeout              = time.Second * 3
 	UpdateEnginePubKey       = "/usr/share/update_engine/update-payload-key.pub.pem"
 	UpdateEnginePubKeySha256 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
-	UpdateUrl                = "https://api.core-os.net/v1/update/"
 )
 
 func TestPortSsh(t *testing.T) {
@@ -32,7 +31,7 @@ func TestUpdateEngine(t *testing.T) {
 
 	errc := make(chan error, 1)
 	go func() {
-		c := exec.Command("update_engine_client", "-omaha_url", UpdateUrl)
+		c := exec.Command("update_engine_client", "-status")
 		err := c.Run()
 		errc <- err
 	}()
@@ -46,10 +45,7 @@ func TestUpdateEngine(t *testing.T) {
 		}
 	}
 
-	err := CheckDbusInterface("org.chromium.UpdateEngineInterface", DbusTimeout)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// FIXME(marineam): Test DBus directly
 }
 
 func TestDockerEcho(t *testing.T) {
