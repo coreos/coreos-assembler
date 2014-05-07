@@ -47,7 +47,7 @@ func checkServiceState(name string, t *testing.T) (exist bool, active bool) {
 			continue
 		}
 		exist = true
-		if strings.Contains(line, "active") {
+		if strings.Contains(line, "running") {
 			active = true
 			return
 		}
