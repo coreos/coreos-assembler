@@ -56,7 +56,7 @@ func checkServiceState(name string, t *testing.T) (exist bool, active bool) {
 	return
 }
 
-// TestFleetctlRunService tests that fleetctl could start, stop and destroy
+// TestFleetctlRunService tests that fleetctl could start, unload and destroy
 // unit file.
 func TestFleetctlRunService(t *testing.T) {
 	serviceName := "hello.service"
@@ -84,9 +84,9 @@ func TestFleetctlRunService(t *testing.T) {
 		t.Fatalf("Failed checking %v is active", serviceName)
 	}
 
-	stdout, stderr, err = Run(fleetctlBinPath, "stop", serviceName)
+	stdout, stderr, err = Run(fleetctlBinPath, "unload", serviceName)
 	if err != nil {
-		t.Fatalf("fleetctl stop failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		t.Fatalf("fleetctl unload failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	checkServiceInactive := func() bool {
