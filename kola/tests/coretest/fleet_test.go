@@ -13,7 +13,7 @@ import (
 const (
 	fleetctlBinPath = "/usr/bin/fleetctl"
 	tryTimes = 5
-	tryInterval = 500 * time.Millisecond
+	tryInterval = time.Second
 	serviceData = `[Unit]
 Description=Hello World
 [Service]
@@ -73,7 +73,7 @@ func TestFleetctlRunService(t *testing.T) {
 
 	defer Run(fleetctlBinPath, "destroy", serviceFile.Name())
 
-	stdout, stderr, err := Run(fleetctlBinPath, "start", serviceFile.Name())
+	stdout, stderr, err := Run(fleetctlBinPath, "start", "--no-block", serviceFile.Name())
 	if err != nil {
 		t.Fatalf("fleetctl start failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -86,7 +86,7 @@ func TestFleetctlRunService(t *testing.T) {
 		t.Fatalf("Failed checking %v is active", serviceName)
 	}
 
-	stdout, stderr, err = Run(fleetctlBinPath, "unload", serviceName)
+	stdout, stderr, err = Run(fleetctlBinPath, "unload", "--no-block", serviceName)
 	if err != nil {
 		t.Fatalf("fleetctl unload failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
