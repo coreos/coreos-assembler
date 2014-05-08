@@ -13,7 +13,7 @@ import (
 const (
 	fleetctlBinPath = "/usr/bin/fleetctl"
 	tryTimes = 5
-	tryInterval = 500 * time.Millisecond
+	tryInterval = time.Second
 	serviceData = `[Unit]
 Description=Hello World
 [Service]
