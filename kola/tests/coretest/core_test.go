@@ -65,7 +65,7 @@ func TestDockerEcho(t *testing.T) {
 	}
 }
 
-func TestNtpDate(t *testing.T) {
+func TestNTPDate(t *testing.T) {
 	t.Parallel()
 	errc := make(chan error, 1)
 	go func() {
