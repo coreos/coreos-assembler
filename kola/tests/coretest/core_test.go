@@ -65,17 +65,17 @@ func TestDockerEcho(t *testing.T) {
 	}
 }
 
-func TestTlsDate(t *testing.T) {
+func TestNTPDate(t *testing.T) {
 	t.Parallel()
 	errc := make(chan error, 1)
 	go func() {
-		c := exec.Command("tlsdate", "--dont-set-clock")
+		c := exec.Command("ntpdate", "-d", "-s", "-u", "pool.ntp.org")
 		err := c.Run()
 		errc <- err
 	}()
 	select {
 	case <-time.After(CmdTimeout):
-		t.Fatalf("tlsdate timed out after %s.", CmdTimeout)
+		t.Fatalf("ntpdate timed out after %s.", CmdTimeout)
 	case err := <-errc:
 		if err != nil {
 			t.Error(err)
@@ -91,7 +91,7 @@ func TestDbusPerms(t *testing.T) {
 		"--dest", "org.freedesktop.systemd1",
 		"--object-path", "/org/freedesktop/systemd1",
 		"--method", "org.freedesktop.systemd1.Manager.RestartUnit",
-		"tlsdate.service", "replace",
+		"ntpd.service", "replace",
 	)
 	out, err := c.CombinedOutput()
 
@@ -107,7 +107,7 @@ func TestDbusPerms(t *testing.T) {
 		"sudo", "-u", "core",
 		"gdbus", "call", "--system",
 		"--dest", "org.freedesktop.systemd1",
-		"--object-path", "/org/freedesktop/systemd1/unit/tlsdate_2eservice",
+		"--object-path", "/org/freedesktop/systemd1/unit/ntpd_2eservice",
 		"--method", "org.freedesktop.DBus.Properties.GetAll",
 		"org.freedesktop.systemd1.Unit",
 	)
@@ -149,7 +149,7 @@ func TestServicesActive(t *testing.T) {
 	units := []string{
 		"default.target",
 		"docker.socket",
-		"tlsdate.service",
+		"ntpd.service",
 		"update-engine.service",
 	}
 	for _, unit := range units {
