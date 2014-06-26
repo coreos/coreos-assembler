@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	CmdTimeout               = time.Second * 20
-	DbusTimeout              = time.Second * 20
-	DockerTimeout            = time.Second * 60
-	PortTimeout              = time.Second * 3
-	UpdateEnginePubKey       = "/usr/share/update_engine/update-payload-key.pub.pem"
-	UpdateEnginePubKeySha256 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
+	CmdTimeout           = time.Second * 20
+	DbusTimeout          = time.Second * 20
+	DockerTimeout        = time.Second * 60
+	PortTimeout          = time.Second * 3
+	UpdateEnginePubKey   = "/usr/share/update_engine/update-payload-key.pub.pem"
+	UpdateEnginePubKeyV1 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
+	UpdateEnginePubKeyV2 = "a76a22e6afcdfbc55dd2953aa950c7ec93b254774fca02d13ec52c59672e5982"
 )
 
 func TestPortSsh(t *testing.T) {
@@ -138,9 +139,11 @@ func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(fileHash) != UpdateEnginePubKeySha256 {
-		t.Fatalf("%s:%s does not match hash %s.", UpdateEnginePubKey, fileHash,
-			UpdateEnginePubKeySha256)
+	switch string(fileHash) {
+	case UpdateEnginePubKeyV1, UpdateEnginePubKeyV2:
+		return
+	default:
+		t.Fatalf("%s:%s unexpected hash.", UpdateEnginePubKey, fileHash)
 	}
 }
 
