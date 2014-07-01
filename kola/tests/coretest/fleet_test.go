@@ -11,15 +11,26 @@ import (
 )
 
 const (
-	fleetctlBinPath = "/usr/bin/fleetctl"
-	tryTimes = 5
-	tryInterval = time.Second
-	serviceData = `[Unit]
+	defaultFleetctlBinPath = "/usr/bin/fleetctl"
+	tryTimes               = 5
+	tryInterval            = time.Second
+	serviceData            = `[Unit]
 Description=Hello World
 [Service]
 ExecStart=/bin/bash -c "while true; do echo \"Hello, world\"; sleep 1; done"
 `
 )
+
+var (
+	fleetctlBinPath string
+)
+
+func init() {
+	fleetctlBinPath = strings.TrimSpace(os.Getenv("FLEETCTL_BIN_PATH"))
+	if fleetctlBinPath == "" {
+		fleetctlBinPath = defaultFleetctlBinPath
+	}
+}
 
 // TestFleetctlListMachines tests that 'fleetctl list-machines' works
 // and print itself out at least.
