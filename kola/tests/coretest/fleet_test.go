@@ -1,6 +1,7 @@
 package coretest
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -11,15 +12,38 @@ import (
 )
 
 const (
-	fleetctlBinPath = "/usr/bin/fleetctl"
-	tryTimes = 5
-	tryInterval = time.Second
-	serviceData = `[Unit]
+	defaultFleetctlBinPath = "/usr/bin/fleetctl"
+	defaultFleetctlTimeout = 10 * time.Second
+	serviceData            = `[Unit]
 Description=Hello World
 [Service]
 ExecStart=/bin/bash -c "while true; do echo \"Hello, world\"; sleep 1; done"
 `
 )
+
+var (
+	fleetctlBinPath string
+	fleetctlTimeout time.Duration
+)
+
+func init() {
+	fleetctlBinPath = strings.TrimSpace(os.Getenv("FLEETCTL_BIN_PATH"))
+	if fleetctlBinPath == "" {
+		fleetctlBinPath = defaultFleetctlBinPath
+	}
+
+	timeout := strings.TrimSpace(os.Getenv("FLEETCTL_TIMEOUT"))
+	if timeout != "" {
+		var err error
+		fleetctlTimeout, err = time.ParseDuration(timeout)
+		if err != nil {
+			fmt.Printf("Failed parsing FLEETCTL_TIMEOUT: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		fleetctlTimeout = defaultFleetctlTimeout
+	}
+}
 
 // TestFleetctlListMachines tests that 'fleetctl list-machines' works
 // and print itself out at least.
@@ -33,27 +57,6 @@ func TestFleetctlListMachines(t *testing.T) {
 	if len(strings.Split(stdout, "\n")) == 0 {
 		t.Fatalf("Failed listing out at least one machine\nstdout: %s", stdout)
 	}
-}
-
-func checkServiceState(name string, t *testing.T) (exist bool, active bool) {
-	stdout, stderr, err := Run(fleetctlBinPath, "list-units", "--no-legend")
-	if err != nil {
-		t.Fatalf("fleetctl list-units failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
-	}
-
-	lines := strings.Split(stdout, "\n")
-	for _, line := range lines {
-		if !strings.Contains(line, name) {
-			continue
-		}
-		exist = true
-		if strings.Contains(line, "running") {
-			active = true
-			return
-		}
-		return
-	}
-	return
 }
 
 // TestFleetctlRunService tests that fleetctl could start, unload and destroy
@@ -71,44 +74,36 @@ func TestFleetctlRunService(t *testing.T) {
 		t.Fatalf("Failed writing %v: %v", serviceFile.Name(), err)
 	}
 
-	defer Run(fleetctlBinPath, "destroy", serviceFile.Name())
+	defer timeoutFleetctl("destroy", serviceFile.Name())
 
-	stdout, stderr, err := Run(fleetctlBinPath, "start", "--no-block", serviceFile.Name())
+	stdout, stderr, err := timeoutFleetctl("start", serviceFile.Name())
 	if err != nil {
 		t.Fatalf("fleetctl start failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	checkServiceActive := func() bool {
-		exist, active := checkServiceState(serviceName, t)
-		return exist && active
-	}
-	if !Retry(checkServiceActive, tryTimes, tryInterval) {
-		t.Fatalf("Failed checking %v is active", serviceName)
-	}
-
-	stdout, stderr, err = Run(fleetctlBinPath, "unload", "--no-block", serviceName)
+	stdout, stderr, err = timeoutFleetctl("unload", serviceName)
 	if err != nil {
 		t.Fatalf("fleetctl unload failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	checkServiceInactive := func() bool {
-		exist, active := checkServiceState(serviceName, t)
-		return exist && !active
-	}
-	if !Retry(checkServiceInactive, tryTimes, tryInterval) {
-		t.Fatalf("Failed checking %v is inactive", serviceName)
-	}
-
-	stdout, stderr, err = Run(fleetctlBinPath, "destroy", serviceName)
+	stdout, stderr, err = timeoutFleetctl("destroy", serviceName)
 	if err != nil {
 		t.Fatalf("fleetctl destroy failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
+}
 
-	checkServiceNonexist := func() bool {
-		exist, _ := checkServiceState(serviceName, t)
-		return !exist
-	}
-	if !Retry(checkServiceNonexist, tryTimes, tryInterval) {
-		t.Fatalf("Failed checking %v is nonexist", serviceName)
+func timeoutFleetctl(action string, unitName string) (stdout string, stderr string, err error) {
+	done := make(chan struct{})
+
+	go func() {
+		stdout, stderr, err = Run(fleetctlBinPath, action, unitName)
+		close(done)
+	}()
+
+	select {
+	case <-time.After(fleetctlTimeout):
+		return "", "", fmt.Errorf("timed out waiting for command \"%s %s\" to finish", action, unitName)
+	case <-done:
+		return
 	}
 }
