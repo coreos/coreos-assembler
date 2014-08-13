@@ -21,8 +21,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	dir.PrintTree("")
-
 	if err = dir.Fetch(client); err != nil {
 		fmt.Fprintf(os.Stderr, "Fetching object list failed: %v\n", err)
 		os.Exit(1)
