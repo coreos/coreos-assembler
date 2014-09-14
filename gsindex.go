@@ -19,4 +19,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Updating indexes failed: %v\n", err)
 		os.Exit(1)
 	}
+
+	fmt.Printf("Update successful!\n")
 }
