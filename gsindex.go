@@ -15,19 +15,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	dir, err := index.NewDirectory(os.Args[1])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err = dir.Fetch(client); err != nil {
-		fmt.Fprintf(os.Stderr, "Fetching object list failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err = dir.WriteIndex(client); err != nil {
-		fmt.Fprintf(os.Stderr, "Writing directory indexs failed: %v\n", err)
+	if err := index.Update(client, os.Args[1]); err != nil {
+		fmt.Fprintf(os.Stderr, "Updating indexes failed: %v\n", err)
 		os.Exit(1)
 	}
 }

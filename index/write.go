@@ -33,12 +33,6 @@ func init() {
 }
 
 func (d *Directory) WriteIndex(client *http.Client) error {
-	for _, sub := range d.SubDirs {
-		if err := sub.WriteIndex(client); err != nil {
-			return err
-		}
-	}
-
 	service, err := storage.New(client)
 	if err != nil {
 		return err

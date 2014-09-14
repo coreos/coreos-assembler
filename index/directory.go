@@ -42,8 +42,11 @@ func NewDirectory(rawURL string) (*Directory, error) {
 	}, nil
 }
 
-func (d *Directory) AddObject(name string, obj *storage.Object) {
+func (d *Directory) AddObject(obj *storage.Object) {
+	name := strings.TrimPrefix(obj.Name, d.Prefix)
 	split := strings.SplitAfterN(name, "/", 2)
+
+	// Save object locally if it has no slash or only ends in slash
 	if len(split) == 1 || len(split[1]) == 0 {
 		d.Objects[name] = obj
 		return
@@ -60,5 +63,5 @@ func (d *Directory) AddObject(name string, obj *storage.Object) {
 		d.SubDirs[split[0]] = sub
 	}
 
-	sub.AddObject(split[1], obj)
+	sub.AddObject(obj)
 }
