@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	storage "code.google.com/p/google-api-go-client/storage/v1"
 )
@@ -13,6 +14,7 @@ type Directory struct {
 	Prefix  string
 	SubDirs map[string]*Directory
 	Objects map[string]*storage.Object
+	Updated time.Time
 }
 
 func NewDirectory(rawURL string) (*Directory, error) {
@@ -42,14 +44,26 @@ func NewDirectory(rawURL string) (*Directory, error) {
 	}, nil
 }
 
-func (d *Directory) AddObject(obj *storage.Object) {
+func (d *Directory) AddObject(obj *storage.Object) error {
 	name := strings.TrimPrefix(obj.Name, d.Prefix)
 	split := strings.SplitAfterN(name, "/", 2)
+
+	// Propagate update time to parent directories, excluding indexes.
+	// Used to detect when indexes should be regenerated.
+	if split[len(split)-1] != "index.html" {
+		objUpdated, err := time.Parse(time.RFC3339, obj.Updated)
+		if err != nil {
+			return err
+		}
+		if d.Updated.Before(objUpdated) {
+			objUpdated = objUpdated
+		}
+	}
 
 	// Save object locally if it has no slash or only ends in slash
 	if len(split) == 1 || len(split[1]) == 0 {
 		d.Objects[name] = obj
-		return
+		return nil
 	}
 
 	sub, ok := d.SubDirs[split[0]]
@@ -63,5 +77,13 @@ func (d *Directory) AddObject(obj *storage.Object) {
 		d.SubDirs[split[0]] = sub
 	}
 
-	sub.AddObject(obj)
+	return sub.AddObject(obj)
+}
+
+func (d *Directory) NeedsIndex() bool {
+	if index, ok := d.Objects["index.html"]; ok {
+		indexUpdated, err := time.Parse(time.RFC3339, index.Updated)
+		return err != nil || d.Updated.After(indexUpdated)
+	}
+	return true
 }

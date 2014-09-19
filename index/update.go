@@ -39,7 +39,9 @@ func fetch(client *http.Client, url string) (<-chan *Directory, error) {
 			objCount, root.Bucket, root.Prefix)
 
 		for _, obj := range objs.Items {
-			root.AddObject(obj)
+			if err := root.AddObject(obj); err != nil {
+				return nil, err
+			}
 		}
 
 		if objs.NextPageToken != "" {
@@ -72,6 +74,9 @@ func writer(client *http.Client, done <-chan struct{}, dirs <-chan *Directory, e
 			if !ok {
 				errc <- nil
 				return
+			}
+			if !d.NeedsIndex() {
+				continue
 			}
 			if err := d.WriteIndex(client); err != nil {
 				errc <- err
