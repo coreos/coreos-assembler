@@ -56,7 +56,7 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 			return err
 		}
 		if d.Updated.Before(objUpdated) {
-			objUpdated = objUpdated
+			d.Updated = objUpdated
 		}
 	}
 
