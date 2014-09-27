@@ -51,7 +51,7 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 	// Propagate update time to parent directories, excluding indexes.
 	// Used to detect when indexes should be regenerated.
 	if split[len(split)-1] != "index.html" {
-		objUpdated, err := time.Parse(time.RFC3339, obj.Updated)
+		objUpdated, err := time.Parse(time.RFC3339Nano, obj.Updated)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 
 func (d *Directory) NeedsIndex() bool {
 	if index, ok := d.Objects["index.html"]; ok {
-		indexUpdated, err := time.Parse(time.RFC3339, index.Updated)
+		indexUpdated, err := time.Parse(time.RFC3339Nano, index.Updated)
 		return err != nil || d.Updated.After(indexUpdated)
 	}
 	return true
