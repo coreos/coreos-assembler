@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	client, err := auth.GoogleClient()
+	client, err := auth.GoogleClient(false)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
 		os.Exit(1)

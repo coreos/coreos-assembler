@@ -19,7 +19,7 @@ var config = oauth.Config{
 	RedirectURL:  "urn:ietf:wg:oauth:2.0:oob",
 }
 
-func GoogleClient() (*http.Client, error) {
+func GoogleClient(debug bool) (*http.Client, error) {
 	userInfo, err := user.Current()
 	if err != nil {
 		return nil, err
@@ -28,6 +28,9 @@ func GoogleClient() (*http.Client, error) {
 	cachePath := filepath.Join(userInfo.HomeDir, ".gsextra-google.json")
 	transport := oauth.Transport{Config: &config}
 	transport.TokenCache = oauth.CacheFile(cachePath)
+	if debug {
+		transport.Transport = &logTransport{http.DefaultTransport}
+	}
 	token, _ := transport.TokenCache.Token()
 	if token == nil {
 		var code string
