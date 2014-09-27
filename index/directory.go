@@ -81,6 +81,9 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 }
 
 func (d *Directory) NeedsIndex() bool {
+	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
+		return false
+	}
 	if index, ok := d.Objects["index.html"]; ok {
 		indexUpdated, err := time.Parse(time.RFC3339Nano, index.Updated)
 		return err != nil || d.Updated.After(indexUpdated)
