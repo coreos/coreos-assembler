@@ -22,8 +22,10 @@ var (
 	indexTemplate *template.Template
 )
 
-func init() {
-	indexText := `<html>
+const (
+	// TODO: The version will be used to regenerate existing indexes.
+	INDEX_VERSION = `2014-08-12`
+	INDEX_TEXT    = `<html>
     <head>
 	<title>{{.Bucket}}/{{.Prefix}}</title>
     </head>
@@ -40,7 +42,10 @@ func init() {
     </body>
 </html>
 `
-	indexTemplate = template.Must(template.New("index").Parse(indexText))
+)
+
+func init() {
+	indexTemplate = template.Must(template.New("index").Parse(INDEX_TEXT))
 }
 
 func expBackoff(interval time.Duration) time.Duration {

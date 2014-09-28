@@ -2,11 +2,12 @@ package index
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	storage "code.google.com/p/google-api-go-client/storage/v1"
+	"code.google.com/p/google-api-go-client/storage/v1"
 )
 
 type Directory struct {
@@ -42,6 +43,44 @@ func NewDirectory(rawURL string) (*Directory, error) {
 		SubDirs: make(map[string]*Directory),
 		Objects: make(map[string]*storage.Object),
 	}, nil
+}
+
+func (d *Directory) Fetch(client *http.Client) error {
+	service, err := storage.New(client)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Fetching gs://%s/%s\n", d.Bucket, d.Prefix)
+	objCount := 0
+	listReq := service.Objects.List(d.Bucket)
+	if d.Prefix != "" {
+		listReq.Prefix(d.Prefix)
+	}
+
+	for {
+		listRes, err := listReq.Do()
+		if err != nil {
+			return err
+		}
+
+		objCount += len(listRes.Items)
+		fmt.Printf("Found %d objects under gs://%s/%s\n",
+			objCount, d.Bucket, d.Prefix)
+		for _, obj := range listRes.Items {
+			if err := d.AddObject(obj); err != nil {
+				return err
+			}
+		}
+
+		if listRes.NextPageToken != "" {
+			listReq.PageToken(listRes.NextPageToken)
+		} else {
+			break
+		}
+	}
+
+	return nil
 }
 
 func (d *Directory) AddObject(obj *storage.Object) error {
@@ -89,4 +128,11 @@ func (d *Directory) NeedsIndex() bool {
 		return err != nil || d.Updated.After(indexUpdated)
 	}
 	return true
+}
+
+func (d *Directory) Walk(dirs chan<- *Directory) {
+	dirs <- d
+	for _, subdir := range d.SubDirs {
+		subdir.Walk(dirs)
+	}
 }
