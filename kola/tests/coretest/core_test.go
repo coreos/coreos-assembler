@@ -97,7 +97,8 @@ func TestDbusPerms(t *testing.T) {
 	out, err := c.CombinedOutput()
 
 	if err != nil {
-		if !strings.Contains(string(out), "org.freedesktop.DBus.Error.AccessDenied") {
+		if !strings.Contains(string(out), "org.freedesktop.DBus.Error.AccessDenied") &&
+			!strings.Contains(string(out), "org.freedesktop.DBus.Error.InteractiveAuthorizationRequired") {
 			t.Error(err)
 		}
 	} else {
