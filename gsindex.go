@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/marineam/gsextra/auth"
-	"github.com/marineam/gsextra/index"
+	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/index"
 )
 
 func main() {
