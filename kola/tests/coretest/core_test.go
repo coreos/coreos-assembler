@@ -151,7 +151,7 @@ func TestInstalledUpdateEngineRsaKeys(t *testing.T) {
 func TestServicesActive(t *testing.T) {
 	t.Parallel()
 	units := []string{
-		"default.target",
+		"multi-user.target",
 		"docker.socket",
 		"ntpd.service",
 		"update-engine.service",
