@@ -21,20 +21,41 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/index"
 )
 
-func main() {
+var cmdIndex = &cli.Command{
+	Name:        "index",
+	Description: "Update HTML indexes for Google Storage buckets",
+	Summary:     "Update HTML indexes",
+	Usage:       "gs://bucket/prefix/ [gs://...]",
+	Run:         runIndex,
+}
+
+func init() {
+	cli.Register(cmdIndex)
+}
+
+func runIndex(args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "No URLs specified\n")
+		return 2
+	}
+
 	client, err := auth.GoogleClient(false)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
-	if err := index.Update(client, os.Args[1]); err != nil {
-		fmt.Fprintf(os.Stderr, "Updating indexes failed: %v\n", err)
-		os.Exit(1)
+	for _, url := range args {
+		if err := index.Update(client, url); err != nil {
+			fmt.Fprintf(os.Stderr, "Updating indexes for %s failed: %v\n", url, err)
+			return 1
+		}
 	}
 
 	fmt.Printf("Update successful!\n")
+	return 0
 }
