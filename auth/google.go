@@ -22,7 +22,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"code.google.com/p/goauth2/oauth"
+	"github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/goauth2/oauth"
 )
 
 // client registered under 'marineam-tools'
