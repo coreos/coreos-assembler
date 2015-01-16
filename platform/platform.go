@@ -17,12 +17,15 @@
 package platform
 
 import (
+	"golang.org/x/crypto/ssh"
+
 	"github.com/coreos/mantle/util"
 )
 
 type Machine interface {
 	ID() string
 	IP() string
+	SSHSession() (*ssh.Session, error)
 	SSH(cmd string) ([]byte, error)
 	Destroy() error
 }
