@@ -81,7 +81,10 @@ func NewLocalCluster() (*LocalCluster, error) {
 }
 
 func (lc *LocalCluster) NewCommand(name string, arg ...string) util.Cmd {
-	return NewNsCommand(lc.nshandle, name, arg...)
+	cmd := NewNsCommand(lc.nshandle, name, arg...)
+	sshEnv := fmt.Sprintf("SSH_AUTH_SOCK=%s", lc.SSHAgent.Socket)
+	cmd.Env = append(cmd.Env, sshEnv)
+	return cmd
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
@@ -115,7 +118,15 @@ func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
 }
 
 func (lc *LocalCluster) Destroy() error {
-	lc.Dnsmasq.Destroy()
-	lc.nshandle.Close()
-	return nil
+	var err error
+	firstErr := func(e error) {
+		if e != nil && err == nil {
+			err = e
+		}
+	}
+
+	firstErr(lc.Dnsmasq.Destroy())
+	firstErr(lc.SSHAgent.Close())
+	firstErr(lc.nshandle.Close())
+	return err
 }

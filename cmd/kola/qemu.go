@@ -68,6 +68,22 @@ func runQemu(args []string) int {
 		fmt.Fprintf(os.Stdout, "SSH: %s\n", out)
 	}
 
+	ssh := cluster.NewCommand("ssh",
+		"-l", "core",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "BatchMode=yes",
+		m.IP(),
+		"uptime")
+
+	out, err = ssh.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "SSH command failed: %v\n", err)
+	}
+	if len(out) != 0 {
+		fmt.Fprintf(os.Stdout, "SSH command: %s\n", out)
+	}
+
 	fmt.Printf("QEMU successful!\n")
 	return 0
 }
