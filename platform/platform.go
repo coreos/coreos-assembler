@@ -34,5 +34,8 @@ type Cluster interface {
 	NewCommand(name string, arg ...string) util.Cmd
 	NewMachine(config string) (Machine, error)
 	Machines() []Machine
+	// Points to an embedded etcd for QEMU, not sure what this
+	// is going to look like for other platforms yet.
+	EtcdEndpoint() string
 	Destroy() error
 }
