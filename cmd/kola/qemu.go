@@ -53,7 +53,7 @@ func runQemu(args []string) int {
 	}
 	defer cluster.Destroy()
 
-	m, err := cluster.NewMachine()
+	m, err := cluster.NewMachine("")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Machine failed: %v\n", err)
 		return 1

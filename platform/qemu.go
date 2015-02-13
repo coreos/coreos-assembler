@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
+	"github.com/coreos/coreos-cloudinit/config"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform/local"
@@ -44,11 +45,12 @@ type qemuCluster struct {
 }
 
 type qemuMachine struct {
-	qc        *qemuCluster
-	id        string
-	qemu      util.Cmd
-	netif     *local.Interface
-	sshClient *ssh.Client
+	qc          *qemuCluster
+	id          string
+	qemu        util.Cmd
+	configDrive *local.ConfigDrive
+	netif       *local.Interface
+	sshClient   *ssh.Client
 }
 
 func NewQemuCluster() (Cluster, error) {
@@ -76,11 +78,32 @@ func (qc *qemuCluster) Destroy() error {
 	return qc.LocalCluster.Destroy()
 }
 
-func (qc *qemuCluster) NewMachine() (Machine, error) {
+func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
+	id := uuid.New()
+
+	cloudConfig, err := config.NewCloudConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = qc.SSHAgent.UpdateConfig(cloudConfig); err != nil {
+		return nil, err
+	}
+
+	if cloudConfig.Hostname == "" {
+		cloudConfig.Hostname = id[:8]
+	}
+
+	configDrive, err := local.NewConfigDrive(cloudConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	qm := &qemuMachine{
-		qc:    qc,
-		id:    uuid.New(),
-		netif: qc.Dnsmasq.GetInterface("br0"),
+		qc:          qc,
+		id:          id,
+		configDrive: configDrive,
+		netif:       qc.Dnsmasq.GetInterface("br0"),
 	}
 
 	disk, err := setupDisk()
@@ -96,7 +119,7 @@ func (qc *qemuCluster) NewMachine() (Machine, error) {
 	defer tap.Close()
 
 	qmMac := qm.netif.HardwareAddr.String()
-	qmCfg := qm.qc.ConfigDrive.Directory
+	qmCfg := qm.configDrive.Directory
 	qm.qemu = qm.qc.NewCommand(
 		"qemu-system-x86_64",
 		"-machine", "accel=kvm",
@@ -207,5 +230,13 @@ func (qm *qemuMachine) Destroy() error {
 	if qm.sshClient != nil {
 		qm.sshClient.Close()
 	}
-	return qm.qemu.Kill()
+	err := qm.qemu.Kill()
+
+	if qm.configDrive != nil {
+		err2 := qm.configDrive.Destroy()
+		if err == nil && err2 != nil {
+			err = err2
+		}
+	}
+	return err
 }

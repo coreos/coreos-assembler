@@ -32,7 +32,7 @@ type Machine interface {
 
 type Cluster interface {
 	NewCommand(name string, arg ...string) util.Cmd
-	NewMachine() (Machine, error)
+	NewMachine(config string) (Machine, error)
 	Machines() []Machine
 	Destroy() error
 }

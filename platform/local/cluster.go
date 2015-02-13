@@ -19,7 +19,6 @@ package local
 import (
 	"fmt"
 
-	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
@@ -28,10 +27,9 @@ import (
 )
 
 type LocalCluster struct {
-	SSHAgent    *network.SSHAgent
-	Dnsmasq     *Dnsmasq
-	ConfigDrive *ConfigDrive
-	nshandle    netns.NsHandle
+	SSHAgent *network.SSHAgent
+	Dnsmasq  *Dnsmasq
+	nshandle netns.NsHandle
 }
 
 func NewLocalCluster() (*LocalCluster, error) {
@@ -50,20 +48,7 @@ func NewLocalCluster() (*LocalCluster, error) {
 		return nil, err
 	}
 
-	cfgData := config.CloudConfig{}
-	err = lc.SSHAgent.UpdateConfig(&cfgData)
-	if err != nil {
-		lc.nshandle.Close()
-		return nil, err
-	}
-
-	lc.ConfigDrive, err = NewConfigDrive(&cfgData)
-	if err != nil {
-		lc.nshandle.Close()
-		return nil, err
-	}
-
-	// dnsmasq much be lunched in the new namespace
+	// dnsmasq must be lunched in the new namespace
 	nsExit, err := NsEnter(lc.nshandle)
 	if err != nil {
 		return nil, err
@@ -73,7 +58,6 @@ func NewLocalCluster() (*LocalCluster, error) {
 	lc.Dnsmasq, err = NewDnsmasq()
 	if err != nil {
 		lc.nshandle.Close()
-		lc.ConfigDrive.Destroy()
 		return nil, err
 	}
 
