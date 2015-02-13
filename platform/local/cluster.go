@@ -19,7 +19,6 @@ package local
 import (
 	"fmt"
 	"os/exec"
-	"runtime"
 
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/vishvananda/netlink"
@@ -36,19 +35,10 @@ type LocalCluster struct {
 }
 
 func NewLocalCluster() (*LocalCluster, error) {
-	// Before creating a new namespace lock to a thread and restore the
-	// original namespace on return to avoid confusing other goroutines.
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	origns, err := netns.Get()
-	if err != nil {
-		return nil, err
-	}
-	defer netns.Set(origns)
-
 	lc := &LocalCluster{}
-	lc.nshandle, err = netns.New()
+
+	var err error
+	lc.nshandle, err = NsCreate()
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +63,13 @@ func NewLocalCluster() (*LocalCluster, error) {
 		return nil, err
 	}
 
+	// dnsmasq much be lunched in the new namespace
+	nsExit, err := NsEnter(lc.nshandle)
+	if err != nil {
+		return nil, err
+	}
+	defer nsExit()
+
 	lc.Dnsmasq, err = NewDnsmasq()
 	if err != nil {
 		lc.nshandle.Close()
@@ -84,37 +81,21 @@ func NewLocalCluster() (*LocalCluster, error) {
 }
 
 func (lc *LocalCluster) CommandStart(cmd *exec.Cmd) error {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	origns, err := netns.Get()
+	nsExit, err := NsEnter(lc.nshandle)
 	if err != nil {
 		return err
 	}
-	defer netns.Set(origns)
-
-	err = netns.Set(lc.nshandle)
-	if err != nil {
-		return err
-	}
+	defer nsExit()
 
 	return cmd.Start()
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	origns, err := netns.Get()
+	nsExit, err := NsEnter(lc.nshandle)
 	if err != nil {
 		return nil, err
 	}
-	defer netns.Set(origns)
-
-	err = netns.Set(lc.nshandle)
-	if err != nil {
-		return nil, err
-	}
+	defer nsExit()
 
 	tap, err := AddLinkTap("")
 	if err != nil {
