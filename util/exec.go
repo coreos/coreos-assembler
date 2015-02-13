@@ -41,7 +41,7 @@ type ExecCmd struct {
 	*exec.Cmd
 }
 
-func NewCommand(name string, arg ...string) Cmd {
+func NewCommand(name string, arg ...string) *ExecCmd {
 	return &ExecCmd{exec.Command(name, arg...)}
 }
 

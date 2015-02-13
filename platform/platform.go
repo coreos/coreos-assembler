@@ -16,6 +16,10 @@
 
 package platform
 
+import (
+	"github.com/coreos/mantle/util"
+)
+
 type Machine interface {
 	ID() string
 	IP() string
@@ -24,6 +28,7 @@ type Machine interface {
 }
 
 type Cluster interface {
+	NewCommand(name string, arg ...string) util.Cmd
 	NewMachine() (Machine, error)
 	Machines() []Machine
 	Destroy() error

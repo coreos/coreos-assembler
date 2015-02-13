@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 
 	"code.google.com/p/go-uuid/uuid"
 
@@ -40,7 +39,7 @@ type qemuCluster struct {
 type qemuMachine struct {
 	qc    *qemuCluster
 	id    string
-	qemu  *exec.Cmd
+	qemu  util.Cmd
 	netif *local.Interface
 }
 
@@ -90,7 +89,7 @@ func (qc *qemuCluster) NewMachine() (Machine, error) {
 
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCfg := qm.qc.ConfigDrive.Directory
-	qm.qemu = exec.Command(
+	qm.qemu = qm.qc.NewCommand(
 		"qemu-system-x86_64",
 		"-machine", "accel=kvm",
 		"-cpu", "host",
@@ -105,11 +104,12 @@ func (qc *qemuCluster) NewMachine() (Machine, error) {
 		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
 		"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
 
-	qm.qemu.Stderr = os.Stderr
-	qm.qemu.ExtraFiles = append(qm.qemu.ExtraFiles, disk)     // fd=3
-	qm.qemu.ExtraFiles = append(qm.qemu.ExtraFiles, tap.File) // fd=4
+	cmd := qm.qemu.(*local.NsCmd)
+	cmd.Stderr = os.Stderr
+	cmd.ExtraFiles = append(cmd.ExtraFiles, disk)     // fd=3
+	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=4
 
-	if err = qm.qc.CommandStart(qm.qemu); err != nil {
+	if err = qm.qemu.Start(); err != nil {
 		return nil, err
 	}
 
@@ -178,7 +178,5 @@ func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
 }
 
 func (qm *qemuMachine) Destroy() error {
-	qm.qemu.Process.Kill()
-	qm.qemu.Wait()
-	return nil
+	return qm.qemu.Kill()
 }

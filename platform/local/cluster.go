@@ -18,13 +18,13 @@ package local
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/util"
 )
 
 type LocalCluster struct {
@@ -80,14 +80,8 @@ func NewLocalCluster() (*LocalCluster, error) {
 	return lc, nil
 }
 
-func (lc *LocalCluster) CommandStart(cmd *exec.Cmd) error {
-	nsExit, err := NsEnter(lc.nshandle)
-	if err != nil {
-		return err
-	}
-	defer nsExit()
-
-	return cmd.Start()
+func (lc *LocalCluster) NewCommand(name string, arg ...string) util.Cmd {
+	return NewNsCommand(lc.nshandle, name, arg...)
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
