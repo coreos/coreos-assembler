@@ -16,7 +16,6 @@ package local
 
 import (
 	"net"
-	"runtime"
 
 	"github.com/vishvananda/netns"
 
@@ -43,19 +42,11 @@ func NewNsDialer(ns netns.NsHandle) *NsDialer {
 }
 
 func (d *NsDialer) Dial(network, address string) (net.Conn, error) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	origns, err := netns.Get()
+	nsExit, err := NsEnter(d.NsHandle)
 	if err != nil {
 		return nil, err
 	}
-	defer netns.Set(origns)
-
-	err = netns.Set(d.NsHandle)
-	if err != nil {
-		return nil, err
-	}
+	defer nsExit()
 
 	return d.RetryDialer.Dial(network, address)
 }
