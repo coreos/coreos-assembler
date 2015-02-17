@@ -25,9 +25,10 @@ import (
 )
 
 type LocalCluster struct {
-	SSHAgent *network.SSHAgent
-	Dnsmasq  *Dnsmasq
-	nshandle netns.NsHandle
+	SSHAgent   *network.SSHAgent
+	Dnsmasq    *Dnsmasq
+	SimpleEtcd *SimpleEtcd
+	nshandle   netns.NsHandle
 }
 
 func NewLocalCluster() (*LocalCluster, error) {
@@ -46,7 +47,7 @@ func NewLocalCluster() (*LocalCluster, error) {
 		return nil, err
 	}
 
-	// dnsmasq must be lunched in the new namespace
+	// dnsmasq and etcd much be lunched in the new namespace
 	nsExit, err := NsEnter(lc.nshandle)
 	if err != nil {
 		return nil, err
@@ -59,6 +60,13 @@ func NewLocalCluster() (*LocalCluster, error) {
 		return nil, err
 	}
 
+	lc.SimpleEtcd, err = NewSimpleEtcd()
+	if err != nil {
+		lc.Dnsmasq.Destroy()
+		lc.nshandle.Close()
+		return nil, err
+	}
+
 	return lc, nil
 }
 
@@ -67,6 +75,17 @@ func (lc *LocalCluster) NewCommand(name string, arg ...string) util.Cmd {
 	sshEnv := fmt.Sprintf("SSH_AUTH_SOCK=%s", lc.SSHAgent.Socket)
 	cmd.Env = append(cmd.Env, sshEnv)
 	return cmd
+}
+
+func (lc *LocalCluster) EtcdEndpoint() string {
+	// hackydoo
+	bridge := "br0"
+	for _, seg := range lc.Dnsmasq.Segments {
+		if bridge == seg.BridgeName {
+			return fmt.Sprintf("http://%s:%d", seg.BridgeIf.DHCPv4[0].IP, lc.SimpleEtcd.Port)
+		}
+	}
+	panic("Not a valid bridge!")
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
@@ -107,6 +126,7 @@ func (lc *LocalCluster) Destroy() error {
 		}
 	}
 
+	firstErr(lc.SimpleEtcd.Destroy())
 	firstErr(lc.Dnsmasq.Destroy())
 	firstErr(lc.SSHAgent.Close())
 	firstErr(lc.nshandle.Close())
