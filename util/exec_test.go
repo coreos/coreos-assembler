@@ -1,4 +1,4 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2015 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package platform
+package util
 
 import (
-	"github.com/coreos/mantle/util"
+	"syscall"
+	"testing"
 )
 
-type Machine interface {
-	ID() string
-	IP() string
-	SSH(cmd string) ([]byte, error)
-	Destroy() error
-}
+func TestExecCmdKill(t *testing.T) {
+	cmd := Command("sleep", "3600")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
 
-type Cluster interface {
-	NewCommand(name string, arg ...string) util.Cmd
-	NewMachine() (Machine, error)
-	Machines() []Machine
-	Destroy() error
+	if err := cmd.Kill(); err != nil {
+		t.Errorf("Kill failed: %v", err)
+	}
+
+	state := cmd.(*ExecCmd).ProcessState
+	if state == nil {
+		t.Fatalf("ProcessState is nil")
+	}
+
+	status := state.Sys().(syscall.WaitStatus)
+	if status.Signal() != syscall.SIGKILL {
+		t.Errorf("Unexpected state: %s", state)
+	}
 }
