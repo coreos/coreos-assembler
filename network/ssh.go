@@ -18,7 +18,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/coreos/coreos-cloudinit/config"
@@ -42,7 +44,10 @@ type Dialer interface {
 type SSHAgent struct {
 	agent.Agent
 	Dialer
-	User string
+	User     string
+	Socket   string
+	sockDir  string
+	listener *net.UnixListener
 }
 
 func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
@@ -57,11 +62,45 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 		return nil, err
 	}
 
-	return &SSHAgent{
-		Agent:  keyring,
-		Dialer: dialer,
-		User:   defaultUser,
-	}, nil
+	sockDir, err := ioutil.TempDir("", "mantle-ssh-")
+	if err != nil {
+		return nil, err
+	}
+
+	// Use a similar naming scheme to ssh-agent
+	sockPath := fmt.Sprintf("%s/agent.%d", sockDir, os.Getpid())
+	sockAddr := &net.UnixAddr{Name: sockPath, Net: "unix"}
+	listener, err := net.ListenUnix("unix", sockAddr)
+	if err != nil {
+		os.RemoveAll(sockDir)
+		return nil, err
+	}
+
+	a := &SSHAgent{
+		Agent:    keyring,
+		Dialer:   dialer,
+		User:     defaultUser,
+		Socket:   sockPath,
+		sockDir:  sockDir,
+		listener: listener,
+	}
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go agent.ServeAgent(a, conn)
+		}
+	}()
+
+	return a, nil
+}
+
+func (a *SSHAgent) Close() error {
+	a.listener.Close()
+	return os.RemoveAll(a.sockDir)
 }
 
 // Add all ssh keys to the given cloud config's default authorized_keys list.

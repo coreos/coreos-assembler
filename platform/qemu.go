@@ -20,11 +20,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"code.google.com/p/go-uuid/uuid"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/util"
+)
+
+const (
+	sshRetries    = 7
+	sshRetryDelay = time.Second
 )
 
 var qemuImage = flag.String("qemu.image", "", "Base disk image")
@@ -35,10 +42,11 @@ type qemuCluster struct {
 }
 
 type qemuMachine struct {
-	qc    *qemuCluster
-	id    string
-	qemu  util.Cmd
-	netif *local.Interface
+	qc        *qemuCluster
+	id        string
+	qemu      util.Cmd
+	netif     *local.Interface
+	sshClient *ssh.Client
 }
 
 func NewQemuCluster() (Cluster, error) {
@@ -111,6 +119,21 @@ func (qc *qemuCluster) NewMachine() (Machine, error) {
 		return nil, err
 	}
 
+	// Allow a few authentication failures in case setup is slow.
+	for i := 0; i < sshRetries; i++ {
+		qm.sshClient, err = qm.qc.SSHAgent.NewClient(qm.IP())
+		if err != nil {
+			fmt.Printf("ssh error: %v\n", err)
+			time.Sleep(sshRetryDelay)
+		} else {
+			break
+		}
+	}
+	if err != nil {
+		qm.Destroy()
+		return nil, err
+	}
+
 	out, err := qm.SSH("grep ^ID= /etc/os-release")
 	if err != nil {
 		qm.Destroy()
@@ -156,14 +179,17 @@ func (m *qemuMachine) IP() string {
 	return m.netif.DHCPv4[0].IP.String()
 }
 
-func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
-	client, err := qm.qc.SSHAgent.NewClient(qm.IP())
+func (qm *qemuMachine) SSHSession() (*ssh.Session, error) {
+	session, err := qm.sshClient.NewSession()
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
-	defer client.Close()
 
-	session, err := client.NewSession()
+	return session, nil
+}
+
+func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
+	session, err := qm.SSHSession()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -176,5 +202,8 @@ func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
 }
 
 func (qm *qemuMachine) Destroy() error {
+	if qm.sshClient != nil {
+		qm.sshClient.Close()
+	}
 	return qm.qemu.Kill()
 }
