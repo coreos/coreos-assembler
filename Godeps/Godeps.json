@@ -2,14 +2,7 @@
 	"ImportPath": "github.com/coreos/mantle",
 	"GoVersion": "go1.4.1",
 	"Packages": [
-		"./auth",
-		"./cli",
-		"./index",
-		"./network",
-		"./platform",
-		"./platform/local",
-		"./util",
-		"./version"
+		"./..."
 	],
 	"Deps": [
 		{
@@ -24,7 +17,7 @@
 		},
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "5c5c9e5ec21508be656c201ec53c68cd882d36fb"
+			"Rev": "7fd1620f09261338b6b1ca1289ace83aee0ec946"
 		},
 		{
 			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",

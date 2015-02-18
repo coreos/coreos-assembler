@@ -237,20 +237,11 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 						return err
 					}
 				}
-				v := fv.Index(j)
-				if v.Kind() == reflect.Ptr && v.IsNil() {
-					// A nil message in a repeated field is not valid,
-					// but we can handle that more gracefully than panicking.
-					if _, err := w.Write([]byte("<nil>\n")); err != nil {
-						return err
-					}
-					continue
-				}
 				if len(props.Enum) > 0 {
-					if err := writeEnum(w, v, props); err != nil {
+					if err := writeEnum(w, fv.Index(j), props); err != nil {
 						return err
 					}
-				} else if err := writeAny(w, v, props); err != nil {
+				} else if err := writeAny(w, fv.Index(j), props); err != nil {
 					return err
 				}
 				if err := w.WriteByte('\n'); err != nil {

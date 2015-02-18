@@ -43,6 +43,11 @@ import (
 	"reflect"
 )
 
+// ErrWrongType occurs when the wire encoding for the field disagrees with
+// that specified in the type being decoded.  This is usually caused by attempting
+// to convert an encoded protocol buffer into a struct of the wrong type.
+var ErrWrongType = errors.New("proto: field/encoding mismatch: wrong type for field")
+
 // errOverflow is returned when an integer is too large to be represented.
 var errOverflow = errors.New("proto: integer overflow")
 
@@ -358,11 +363,11 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 			if is_group {
 				return nil // input is satisfied
 			}
-			return fmt.Errorf("proto: %s: wiretype end group for non-group", st)
+			return ErrWrongType
 		}
 		tag := int(u >> 3)
 		if tag <= 0 {
-			return fmt.Errorf("proto: %s: illegal tag %d", st, tag)
+			return fmt.Errorf("proto: illegal tag %d", tag)
 		}
 		fieldnum, ok := prop.decoderTags.get(tag)
 		if !ok {
@@ -397,7 +402,7 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 				// a packable field
 				dec = p.packedDec
 			} else {
-				err = fmt.Errorf("proto: bad wiretype for field %s.%s: got wiretype %d, want %d", st, st.Field(fieldnum).Name, wire, p.WireType)
+				err = ErrWrongType
 				continue
 			}
 		}
