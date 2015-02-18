@@ -15,8 +15,7 @@
 package platform
 
 import (
-	"golang.org/x/crypto/ssh"
-
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/util"
 )
 
