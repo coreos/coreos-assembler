@@ -384,24 +384,3 @@ func TestFloats(t *testing.T) {
 		}
 	}
 }
-
-func TestRepeatedNilText(t *testing.T) {
-	m := &pb.MessageList{
-		Message: []*pb.MessageList_Message{
-			nil,
-			{
-				Name: proto.String("Horse"),
-			},
-			nil,
-		},
-	}
-	want := `Message <nil>
-Message {
-  name: "Horse"
-}
-Message <nil>
-`
-	if s := proto.MarshalTextString(m); s != want {
-		t.Errorf(" got: %s\nwant: %s", s, want)
-	}
-}

@@ -37,10 +37,12 @@ It has these top-level messages:
 package testdata
 
 import proto "github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
+import json "encoding/json"
 import math "math"
 
-// Reference imports to suppress errors if they are not otherwise used.
+// Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
+var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type FOO int32

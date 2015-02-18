@@ -655,7 +655,6 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) *ParseError {
 			fv.SetInt(x)
 			return nil
 		}
-
 		if len(props.Enum) == 0 {
 			break
 		}
@@ -674,7 +673,6 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) *ParseError {
 			fv.SetInt(x)
 			return nil
 		}
-
 	case reflect.Ptr:
 		// A basic field (indirected through pointer), or a repeated message/group
 		p.back()
