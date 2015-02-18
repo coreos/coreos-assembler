@@ -4,7 +4,7 @@
 //
 // Usage example:
 //
-//   import "code.google.com/p/google-api-go-client/storage/v1"
+//   import "google.golang.org/api/storage/v1"
 //   ...
 //   storageService, err := storage.New(oauthHttpClient)
 package storage
@@ -14,7 +14,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
 	"io"
 	"net/http"
 	"net/url"
@@ -33,6 +34,7 @@ var _ = url.Parse
 var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
+var _ = context.Background
 
 const apiId = "storage:v1"
 const apiName = "storage"
@@ -1443,6 +1445,14 @@ func (c *BucketsInsertCall) PredefinedAcl(predefinedAcl string) *BucketsInsertCa
 	return c
 }
 
+// PredefinedDefaultObjectAcl sets the optional parameter
+// "predefinedDefaultObjectAcl": Apply a predefined set of default
+// object access controls to this bucket.
+func (c *BucketsInsertCall) PredefinedDefaultObjectAcl(predefinedDefaultObjectAcl string) *BucketsInsertCall {
+	c.opt_["predefinedDefaultObjectAcl"] = predefinedDefaultObjectAcl
+	return c
+}
+
 // Projection sets the optional parameter "projection": Set of
 // properties to return. Defaults to noAcl, unless the bucket resource
 // specifies acl or defaultObjectAcl properties, when it defaults to
@@ -1472,6 +1482,9 @@ func (c *BucketsInsertCall) Do() (*Bucket, error) {
 	params.Set("project", fmt.Sprintf("%v", c.projectid))
 	if v, ok := c.opt_["predefinedAcl"]; ok {
 		params.Set("predefinedAcl", fmt.Sprintf("%v", v))
+	}
+	if v, ok := c.opt_["predefinedDefaultObjectAcl"]; ok {
+		params.Set("predefinedDefaultObjectAcl", fmt.Sprintf("%v", v))
 	}
 	if v, ok := c.opt_["projection"]; ok {
 		params.Set("projection", fmt.Sprintf("%v", v))
@@ -1521,6 +1534,27 @@ func (c *BucketsInsertCall) Do() (*Bucket, error) {
 	//         "Project team members get access according to their roles.",
 	//         "Project team owners get OWNER access, and allUsers get READER access.",
 	//         "Project team owners get OWNER access, and allUsers get WRITER access."
+	//       ],
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "predefinedDefaultObjectAcl": {
+	//       "description": "Apply a predefined set of default object access controls to this bucket.",
+	//       "enum": [
+	//         "authenticatedRead",
+	//         "bucketOwnerFullControl",
+	//         "bucketOwnerRead",
+	//         "private",
+	//         "projectPrivate",
+	//         "publicRead"
+	//       ],
+	//       "enumDescriptions": [
+	//         "Object owner gets OWNER access, and allAuthenticatedUsers get READER access.",
+	//         "Object owner gets OWNER access, and project team owners get OWNER access.",
+	//         "Object owner gets OWNER access, and project team owners get READER access.",
+	//         "Object owner gets OWNER access.",
+	//         "Object owner gets OWNER access, and project team members get access according to their roles.",
+	//         "Object owner gets OWNER access, and allUsers get READER access."
 	//       ],
 	//       "location": "query",
 	//       "type": "string"
@@ -1591,6 +1625,13 @@ func (c *BucketsListCall) PageToken(pageToken string) *BucketsListCall {
 	return c
 }
 
+// Prefix sets the optional parameter "prefix": Filter results to
+// buckets whose names begin with this prefix.
+func (c *BucketsListCall) Prefix(prefix string) *BucketsListCall {
+	c.opt_["prefix"] = prefix
+	return c
+}
+
 // Projection sets the optional parameter "projection": Set of
 // properties to return. Defaults to noAcl.
 func (c *BucketsListCall) Projection(projection string) *BucketsListCall {
@@ -1616,6 +1657,9 @@ func (c *BucketsListCall) Do() (*Buckets, error) {
 	}
 	if v, ok := c.opt_["pageToken"]; ok {
 		params.Set("pageToken", fmt.Sprintf("%v", v))
+	}
+	if v, ok := c.opt_["prefix"]; ok {
+		params.Set("prefix", fmt.Sprintf("%v", v))
 	}
 	if v, ok := c.opt_["projection"]; ok {
 		params.Set("projection", fmt.Sprintf("%v", v))
@@ -1658,6 +1702,11 @@ func (c *BucketsListCall) Do() (*Buckets, error) {
 	//     },
 	//     "pageToken": {
 	//       "description": "A previously-returned page token representing part of the larger set of results to view.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "prefix": {
+	//       "description": "Filter results to buckets whose names begin with this prefix.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -1737,6 +1786,14 @@ func (c *BucketsPatchCall) PredefinedAcl(predefinedAcl string) *BucketsPatchCall
 	return c
 }
 
+// PredefinedDefaultObjectAcl sets the optional parameter
+// "predefinedDefaultObjectAcl": Apply a predefined set of default
+// object access controls to this bucket.
+func (c *BucketsPatchCall) PredefinedDefaultObjectAcl(predefinedDefaultObjectAcl string) *BucketsPatchCall {
+	c.opt_["predefinedDefaultObjectAcl"] = predefinedDefaultObjectAcl
+	return c
+}
+
 // Projection sets the optional parameter "projection": Set of
 // properties to return. Defaults to full.
 func (c *BucketsPatchCall) Projection(projection string) *BucketsPatchCall {
@@ -1769,6 +1826,9 @@ func (c *BucketsPatchCall) Do() (*Bucket, error) {
 	}
 	if v, ok := c.opt_["predefinedAcl"]; ok {
 		params.Set("predefinedAcl", fmt.Sprintf("%v", v))
+	}
+	if v, ok := c.opt_["predefinedDefaultObjectAcl"]; ok {
+		params.Set("predefinedDefaultObjectAcl", fmt.Sprintf("%v", v))
 	}
 	if v, ok := c.opt_["projection"]; ok {
 		params.Set("projection", fmt.Sprintf("%v", v))
@@ -1838,6 +1898,27 @@ func (c *BucketsPatchCall) Do() (*Bucket, error) {
 	//         "Project team members get access according to their roles.",
 	//         "Project team owners get OWNER access, and allUsers get READER access.",
 	//         "Project team owners get OWNER access, and allUsers get WRITER access."
+	//       ],
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "predefinedDefaultObjectAcl": {
+	//       "description": "Apply a predefined set of default object access controls to this bucket.",
+	//       "enum": [
+	//         "authenticatedRead",
+	//         "bucketOwnerFullControl",
+	//         "bucketOwnerRead",
+	//         "private",
+	//         "projectPrivate",
+	//         "publicRead"
+	//       ],
+	//       "enumDescriptions": [
+	//         "Object owner gets OWNER access, and allAuthenticatedUsers get READER access.",
+	//         "Object owner gets OWNER access, and project team owners get OWNER access.",
+	//         "Object owner gets OWNER access, and project team owners get READER access.",
+	//         "Object owner gets OWNER access.",
+	//         "Object owner gets OWNER access, and project team members get access according to their roles.",
+	//         "Object owner gets OWNER access, and allUsers get READER access."
 	//       ],
 	//       "location": "query",
 	//       "type": "string"
@@ -1914,6 +1995,14 @@ func (c *BucketsUpdateCall) PredefinedAcl(predefinedAcl string) *BucketsUpdateCa
 	return c
 }
 
+// PredefinedDefaultObjectAcl sets the optional parameter
+// "predefinedDefaultObjectAcl": Apply a predefined set of default
+// object access controls to this bucket.
+func (c *BucketsUpdateCall) PredefinedDefaultObjectAcl(predefinedDefaultObjectAcl string) *BucketsUpdateCall {
+	c.opt_["predefinedDefaultObjectAcl"] = predefinedDefaultObjectAcl
+	return c
+}
+
 // Projection sets the optional parameter "projection": Set of
 // properties to return. Defaults to full.
 func (c *BucketsUpdateCall) Projection(projection string) *BucketsUpdateCall {
@@ -1946,6 +2035,9 @@ func (c *BucketsUpdateCall) Do() (*Bucket, error) {
 	}
 	if v, ok := c.opt_["predefinedAcl"]; ok {
 		params.Set("predefinedAcl", fmt.Sprintf("%v", v))
+	}
+	if v, ok := c.opt_["predefinedDefaultObjectAcl"]; ok {
+		params.Set("predefinedDefaultObjectAcl", fmt.Sprintf("%v", v))
 	}
 	if v, ok := c.opt_["projection"]; ok {
 		params.Set("projection", fmt.Sprintf("%v", v))
@@ -2015,6 +2107,27 @@ func (c *BucketsUpdateCall) Do() (*Bucket, error) {
 	//         "Project team members get access according to their roles.",
 	//         "Project team owners get OWNER access, and allUsers get READER access.",
 	//         "Project team owners get OWNER access, and allUsers get WRITER access."
+	//       ],
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "predefinedDefaultObjectAcl": {
+	//       "description": "Apply a predefined set of default object access controls to this bucket.",
+	//       "enum": [
+	//         "authenticatedRead",
+	//         "bucketOwnerFullControl",
+	//         "bucketOwnerRead",
+	//         "private",
+	//         "projectPrivate",
+	//         "publicRead"
+	//       ],
+	//       "enumDescriptions": [
+	//         "Object owner gets OWNER access, and allAuthenticatedUsers get READER access.",
+	//         "Object owner gets OWNER access, and project team owners get OWNER access.",
+	//         "Object owner gets OWNER access, and project team owners get READER access.",
+	//         "Object owner gets OWNER access.",
+	//         "Object owner gets OWNER access, and project team members get access according to their roles.",
+	//         "Object owner gets OWNER access, and allUsers get READER access."
 	//       ],
 	//       "location": "query",
 	//       "type": "string"
@@ -4240,11 +4353,15 @@ func (c *ObjectsGetCall) Do() (*Object, error) {
 // method id "storage.objects.insert":
 
 type ObjectsInsertCall struct {
-	s      *Service
-	bucket string
-	object *Object
-	opt_   map[string]interface{}
-	media_ io.Reader
+	s          *Service
+	bucket     string
+	object     *Object
+	opt_       map[string]interface{}
+	media_     io.Reader
+	resumable_ googleapi.SizeReaderAt
+	mediaType_ string
+	ctx_       context.Context
+	protocol_  string
 }
 
 // Insert: Stores a new object and metadata.
@@ -4321,8 +4438,32 @@ func (c *ObjectsInsertCall) Projection(projection string) *ObjectsInsertCall {
 	c.opt_["projection"] = projection
 	return c
 }
+
+// Media specifies the media to upload in a single chunk.
+// At most one of Media and ResumableMedia may be set.
 func (c *ObjectsInsertCall) Media(r io.Reader) *ObjectsInsertCall {
 	c.media_ = r
+	c.protocol_ = "multipart"
+	return c
+}
+
+// ResumableMedia specifies the media to upload in chunks and can be cancelled with ctx.
+// At most one of Media and ResumableMedia may be set.
+// mediaType identifies the MIME media type of the upload, such as "image/png".
+// If mediaType is "", it will be auto-detected.
+func (c *ObjectsInsertCall) ResumableMedia(ctx context.Context, r io.ReaderAt, size int64, mediaType string) *ObjectsInsertCall {
+	c.ctx_ = ctx
+	c.resumable_ = io.NewSectionReader(r, 0, size)
+	c.mediaType_ = mediaType
+	c.protocol_ = "resumable"
+	return c
+}
+
+// ProgressUpdater provides a callback function that will be called after every chunk.
+// It should be a low-latency function in order to not slow down the upload operation.
+// This should only be called when using ResumableMedia (as opposed to Media).
+func (c *ObjectsInsertCall) ProgressUpdater(pu googleapi.ProgressUpdater) *ObjectsInsertCall {
+	c.opt_["progressUpdater"] = pu
 	return c
 }
 
@@ -4371,20 +4512,41 @@ func (c *ObjectsInsertCall) Do() (*Object, error) {
 		params.Set("fields", fmt.Sprintf("%v", v))
 	}
 	urls := googleapi.ResolveRelative(c.s.BasePath, "b/{bucket}/o")
-	if c.media_ != nil {
+	var progressUpdater_ googleapi.ProgressUpdater
+	if v, ok := c.opt_["progressUpdater"]; ok {
+		if pu, ok := v.(googleapi.ProgressUpdater); ok {
+			progressUpdater_ = pu
+		}
+	}
+	if c.media_ != nil || c.resumable_ != nil {
 		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
-		params.Set("uploadType", "multipart")
+		params.Set("uploadType", c.protocol_)
 	}
 	urls += "?" + params.Encode()
-	contentLength_, hasMedia_ := googleapi.ConditionallyIncludeMedia(c.media_, &body, &ctype)
+	if c.protocol_ != "resumable" {
+		var cancel func()
+		cancel, _ = googleapi.ConditionallyIncludeMedia(c.media_, &body, &ctype)
+		if cancel != nil {
+			defer cancel()
+		}
+	}
 	req, _ := http.NewRequest("POST", urls, body)
 	googleapi.Expand(req.URL, map[string]string{
 		"bucket": c.bucket,
 	})
-	if hasMedia_ {
-		req.ContentLength = contentLength_
+	if c.protocol_ == "resumable" {
+		req.ContentLength = 0
+		if c.mediaType_ == "" {
+			c.mediaType_ = googleapi.DetectMediaType(c.resumable_)
+		}
+		req.Header.Set("X-Upload-Content-Type", c.mediaType_)
+		req.Body = nil
+		if params.Get("name") == "" {
+			return nil, fmt.Errorf("resumable uploads must set the Name parameter.")
+		}
+	} else {
+		req.Header.Set("Content-Type", ctype)
 	}
-	req.Header.Set("Content-Type", ctype)
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
 	res, err := c.s.client.Do(req)
 	if err != nil {
@@ -4393,6 +4555,22 @@ func (c *ObjectsInsertCall) Do() (*Object, error) {
 	defer googleapi.CloseBody(res)
 	if err := googleapi.CheckResponse(res); err != nil {
 		return nil, err
+	}
+	if c.protocol_ == "resumable" {
+		loc := res.Header.Get("Location")
+		rx := &googleapi.ResumableUpload{
+			Client:        c.s.client,
+			URI:           loc,
+			Media:         c.resumable_,
+			MediaType:     c.mediaType_,
+			ContentLength: c.resumable_.Size(),
+			Callback:      progressUpdater_,
+		}
+		res, err = rx.Upload(c.ctx_)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
 	}
 	var ret *Object
 	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {

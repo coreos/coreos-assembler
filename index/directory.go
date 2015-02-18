@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/google-api-go-client/storage/v1"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 )
 
 type Directory struct {
