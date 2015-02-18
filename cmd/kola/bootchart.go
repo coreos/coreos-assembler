@@ -22,23 +22,26 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-var cmdQemu = &cli.Command{
-	Run:     runQemu,
-	Name:    "qemu",
-	Summary: "Run and kill QEMU (requires root)",
-	Description: `Run and kill QEMU
+var cmdBootchart = &cli.Command{
+	Run:     runBootchart,
+	Name:    "bootchart",
+	Summary: "Boot performance graphing tool",
+	Usage:   "> bootchart.svg",
+	Description: `
+Boot a single instance and plot how the time was spent.
 
-Work in progress: the code this exercises will eventually be the basis
-for running automated tests on CoreOS images.
+Note that this actually uses systemd-analyze plot rather than
+systemd-bootchart since the latter requires setting a different
+init process.
 
 This must run as root!
 `}
 
 func init() {
-	cli.Register(cmdQemu)
+	cli.Register(cmdBootchart)
 }
 
-func runQemu(args []string) int {
+func runBootchart(args []string) int {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "No args accepted\n")
 		return 2
@@ -58,30 +61,18 @@ func runQemu(args []string) int {
 	}
 	defer m.Destroy()
 
-	out, err := m.SSH("uname -a")
+	ssh, err := m.SSHSession()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "SSH failed: %v\n", err)
-	}
-	if len(out) != 0 {
-		fmt.Fprintf(os.Stdout, "SSH: %s\n", out)
+		return 1
 	}
 
-	ssh := cluster.NewCommand("ssh",
-		"-l", "core",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "BatchMode=yes",
-		m.IP(),
-		"uptime")
-
-	out, err = ssh.Output()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "SSH command failed: %v\n", err)
-	}
-	if len(out) != 0 {
-		fmt.Fprintf(os.Stdout, "SSH command: %s\n", out)
+	ssh.Stdout = os.Stdout
+	ssh.Stderr = os.Stderr
+	if err = ssh.Run("systemd-analyze plot"); err != nil {
+		fmt.Fprintf(os.Stderr, "SSH failed: %v\n", err)
+		return 1
 	}
 
-	fmt.Printf("QEMU successful!\n")
 	return 0
 }
