@@ -20,16 +20,6 @@
 			"Rev": "7fd1620f09261338b6b1ca1289ace83aee0ec946"
 		},
 		{
-			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",
-			"Comment": "release-107",
-			"Rev": "6ddfebb10ece847f1ae09c701834f1b15abbd8b2"
-		},
-		{
-			"ImportPath": "code.google.com/p/google-api-go-client/storage/v1",
-			"Comment": "release-107",
-			"Rev": "6ddfebb10ece847f1ae09c701834f1b15abbd8b2"
-		},
-		{
 			"ImportPath": "github.com/coreos/coreos-cloudinit/config",
 			"Comment": "v1.3.1-4-g78b0f82",
 			"Rev": "78b0f82918260438dc188ac4fafa60cef76308bb"
@@ -172,6 +162,14 @@
 		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "59b0df9b1f7abda5aab0495ee54f408daf182ce7"
+		},
+		{
+			"ImportPath": "google.golang.org/api/googleapi",
+			"Rev": "149f916bc9ab542b191337a11829e0d13f5c9de6"
+		},
+		{
+			"ImportPath": "google.golang.org/api/storage/v1",
+			"Rev": "149f916bc9ab542b191337a11829e0d13f5c9de6"
 		}
 	]
 }
