@@ -17,8 +17,7 @@ package local
 import (
 	"net"
 
-	"github.com/vishvananda/netns"
-
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
 	"github.com/coreos/mantle/network"
 )
 

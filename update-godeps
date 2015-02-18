@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+find_pkgs() {
+    find . -name '*.go' ! -wholename './Godeps/*' \
+        -exec egrep -L '^\s*package\s+main\s*$' {} + | \
+        sed -e 's%/[^/]*.go$%%' | sort -u
+}
+
+godep save -r $(find_pkgs)

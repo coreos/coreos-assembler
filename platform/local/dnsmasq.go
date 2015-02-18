@@ -21,7 +21,7 @@ import (
 	"os/exec"
 	"text/template"
 
-	"github.com/vishvananda/netlink"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
 )
 
 type Interface struct {

@@ -17,9 +17,8 @@ package local
 import (
 	"fmt"
 
-	"github.com/vishvananda/netlink"
-	"github.com/vishvananda/netns"
-
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
 	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/util"
 )

@@ -22,10 +22,9 @@ import (
 	"os"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
-	"github.com/coreos/coreos-cloudinit/config"
-	"golang.org/x/crypto/ssh"
-
+	"github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/util"
 )

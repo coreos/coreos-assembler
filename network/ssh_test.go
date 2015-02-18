@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/coreos-cloudinit/config"
-	"golang.org/x/crypto/ssh"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
 var (

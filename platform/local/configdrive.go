@@ -19,7 +19,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 )
 
 type ConfigDrive struct {

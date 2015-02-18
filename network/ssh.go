@@ -23,9 +23,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/coreos-cloudinit/config"
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
 )
 
 const (
