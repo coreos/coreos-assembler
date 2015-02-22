@@ -34,7 +34,9 @@ const (
 	sshRetryDelay = time.Second
 )
 
-var qemuImage = flag.String("qemu.image", "", "Base disk image")
+var qemuImage = flag.String("qemu.image",
+	"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_image.bin",
+	"Base disk image for QEMU based tests.")
 
 type qemuCluster struct {
 	*local.LocalCluster
