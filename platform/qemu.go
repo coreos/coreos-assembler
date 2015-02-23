@@ -41,7 +41,7 @@ var qemuImage = flag.String("qemu.image",
 
 type qemuCluster struct {
 	*local.LocalCluster
-	machines []*qemuMachine
+	machines map[string]*qemuMachine
 }
 
 type qemuMachine struct {
@@ -59,14 +59,17 @@ func NewQemuCluster() (Cluster, error) {
 		return nil, err
 	}
 
-	qc := &qemuCluster{LocalCluster: lc}
+	qc := &qemuCluster{
+		LocalCluster: lc,
+		machines:     make(map[string]*qemuMachine),
+	}
 	return Cluster(qc), nil
 }
 
 func (qc *qemuCluster) Machines() []Machine {
-	machines := make([]Machine, len(qc.machines))
-	for i, m := range qc.machines {
-		machines[i] = m
+	machines := make([]Machine, 0, len(qc.machines))
+	for _, m := range qc.machines {
+		machines = append(machines, m)
 	}
 	return machines
 }
@@ -170,7 +173,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, fmt.Errorf("Unexpected SSH output: %s", out)
 	}
 
-	qc.machines = append(qc.machines, qm)
+	qc.machines[qm.ID()] = qm
 
 	return Machine(qm), nil
 }
@@ -241,5 +244,7 @@ func (qm *qemuMachine) Destroy() error {
 			err = err2
 		}
 	}
+
+	delete(qm.qc.machines, qm.ID())
 	return err
 }
