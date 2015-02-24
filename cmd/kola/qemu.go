@@ -56,7 +56,6 @@ func runQemu(args []string) int {
 		fmt.Fprintf(os.Stderr, "Machine failed: %v\n", err)
 		return 1
 	}
-	defer m.Destroy()
 
 	out, err := m.SSH("uname -a")
 	if err != nil {
@@ -77,9 +76,24 @@ func runQemu(args []string) int {
 	out, err = ssh.Output()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "SSH command failed: %v\n", err)
+		return 1
 	}
 	if len(out) != 0 {
 		fmt.Fprintf(os.Stdout, "SSH command: %s\n", out)
+	} else {
+		fmt.Fprintf(os.Stderr, "SSH command produced no output.\n")
+		return 1
+	}
+
+	err = m.Destroy()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Destroy failed: %v\n", err)
+		return 1
+	}
+
+	if len(cluster.Machines()) != 0 {
+		fmt.Fprintf(os.Stderr, "Cluster not empty.\n")
+		return 1
 	}
 
 	fmt.Printf("QEMU successful!\n")
