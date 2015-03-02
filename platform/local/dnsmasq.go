@@ -144,6 +144,16 @@ func NewDnsmasq() (*Dnsmasq, error) {
 		dm.Segments = append(dm.Segments, seg)
 	}
 
+	// setup lo
+	lo, err := netlink.LinkByName("lo")
+	if err != nil {
+		return nil, fmt.Errorf("Network loopback setup failed: %v", err)
+	}
+	err = netlink.LinkSetUp(lo)
+	if err != nil {
+		return nil, fmt.Errorf("Network loopback setup failed: %v", err)
+	}
+
 	dm.dnsmasq = exec.Command("dnsmasq", "--conf-file=-")
 	dm.dnsmasq.Stderr = os.Stderr
 	cfg, err := dm.dnsmasq.StdinPipe()
