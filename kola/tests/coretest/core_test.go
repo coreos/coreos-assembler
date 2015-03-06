@@ -66,6 +66,24 @@ func TestDockerEcho(t *testing.T) {
 	}
 }
 
+func TestDockerPing(t *testing.T) {
+	t.Parallel()
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("docker", "run", "busybox", "ping", "-c4", "coreos.com")
+		err := c.Run()
+		errc <- err
+	}()
+	select {
+	case <-time.After(DockerTimeout):
+		t.Fatalf("DockerPing timed out after %s.", DockerTimeout)
+	case err := <-errc:
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func TestNTPDate(t *testing.T) {
 	t.Parallel()
 	errc := make(chan error, 1)
