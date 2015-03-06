@@ -85,6 +85,13 @@ func (qc *qemuCluster) Destroy() error {
 func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 	id := uuid.New()
 
+	// hacky solution for cloud config ip substitution
+	// NOTE: escaping is not supported
+	netif := qc.Dnsmasq.GetInterface("br0")
+	ip := strings.Split(netif.DHCPv4[0].String(), "/")[0]
+	cfg = strings.Replace(cfg, "$public_ipv4", ip, -1)
+	cfg = strings.Replace(cfg, "$private_ipv4", ip, -1)
+
 	cloudConfig, err := config.NewCloudConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -107,7 +114,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		qc:          qc,
 		id:          id,
 		configDrive: configDrive,
-		netif:       qc.Dnsmasq.GetInterface("br0"),
+		netif:       netif,
 	}
 
 	disk, err := setupDisk()
