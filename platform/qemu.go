@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
@@ -230,6 +231,22 @@ func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
 	out, err := session.Output(cmd)
 	out = bytes.TrimSpace(out)
 	return out, err
+}
+
+func (qm *qemuMachine) StartJournal() error {
+	s, err := qm.SSHSession()
+	if err != nil {
+		return fmt.Errorf("SSH session failed: %v", err)
+	}
+
+	s.Stdout = os.Stdout
+	s.Stderr = os.Stderr
+	go func() {
+		s.Run("journalctl -f")
+		s.Close()
+	}()
+
+	return nil
 }
 
 func (qm *qemuMachine) Destroy() error {

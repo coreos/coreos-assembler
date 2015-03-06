@@ -25,6 +25,7 @@ type Machine interface {
 	SSHSession() (*ssh.Session, error)
 	SSH(cmd string) ([]byte, error)
 	Destroy() error
+	StartJournal() error
 }
 
 type Cluster interface {
