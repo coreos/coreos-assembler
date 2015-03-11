@@ -25,6 +25,7 @@ type Machine interface {
 	SSHSession() (*ssh.Session, error)
 	SSH(cmd string) ([]byte, error)
 	Destroy() error
+	StartJournal() error
 }
 
 type Cluster interface {
@@ -34,5 +35,6 @@ type Cluster interface {
 	// Points to an embedded etcd for QEMU, not sure what this
 	// is going to look like for other platforms yet.
 	EtcdEndpoint() string
+	GetDiscoveryURL(size int) (string, error)
 	Destroy() error
 }

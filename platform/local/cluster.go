@@ -16,6 +16,11 @@ package local
 
 import (
 	"fmt"
+	"math/rand"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
@@ -85,6 +90,31 @@ func (lc *LocalCluster) EtcdEndpoint() string {
 		}
 	}
 	panic("Not a valid bridge!")
+}
+
+func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
+	URL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.EtcdEndpoint(), rand.Int())
+
+	nsDialer := NewNsDialer(lc.nshandle)
+	tr := &http.Transport{
+		Dial: nsDialer.Dial,
+	}
+	client := &http.Client{Transport: tr}
+
+	body := strings.NewReader(url.Values{"value": {strconv.Itoa(size)}}.Encode())
+	req, err := http.NewRequest("PUT", URL+"_config/size", body)
+	if err != nil {
+		return "", fmt.Errorf("setting discovery url failed: %v\n", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("setting discovery url failed: %v\n", err)
+	}
+	defer resp.Body.Close()
+
+	return URL, nil
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
