@@ -19,19 +19,74 @@ import "github.com/coreos/mantle/platform"
 //register new tests here
 // "$name" and "$discovery" are substituted in the cloud config during cluster creation
 var Tests = []Test{
+	// test etcd discovery with 0.4.7
 	Test{
 		Run:         etcdDiscovery,
 		Discovery:   true,
 		ClusterSize: 3,
-		Name:        "etcdDiscovery",
+		Name:        "etcdDiscovery--version1",
 		CloudConfig: `#cloud-config
+write_files:
+  - path: /run/systemd/system/etcd.service.d/30-exec.conf
+    permissions: 0644
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/libexec/etcd/internal_versions/1
 
 coreos:
   etcd:
-      name: $name
-      discovery: $discovery
-      addr: $public_ipv4:4001
-      peer-addr: $private_ipv4:7001`,
+    name: $name
+    discovery: $discovery
+    addr: $public_ipv4:4001
+    peer-addr: $private_ipv4:7001`,
+	},
+
+	// test etcd discovery with 2.0 with new cloud config
+	Test{
+		Run:         etcdDiscovery,
+		Discovery:   true,
+		ClusterSize: 3,
+		Name:        "etcdDiscovery--version2--oldconfig",
+		CloudConfig: `#cloud-config
+write_files:
+  - path: /run/systemd/system/etcd.service.d/30-exec.conf
+    permissions: 0644
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/libexec/etcd/internal_versions/2
+
+coreos:
+  etcd:
+    name: $name
+    discovery: $discovery
+    addr: $public_ipv4:4001
+    peer-addr: $private_ipv4:7001`,
+	},
+
+	// test etcd discovery with 2.0 but with old cloud config
+	Test{
+		Run:         etcdDiscovery,
+		Discovery:   true,
+		ClusterSize: 3,
+		Name:        "etcdDiscovery--version2",
+		CloudConfig: `#cloud-config
+write_files:
+  - path: /run/systemd/system/etcd.service.d/30-exec.conf
+    permissions: 0644
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/libexec/etcd/internal_versions/2
+coreos:
+  etcd:
+    name: $name
+    discovery: $discovery
+    listen-client-urls: http://0.0.0.0:4001,http://0.0.0.0:2379
+    advertise-client-urls: http://0.0.0.0:4001,http://0.0.0.0:2379
+    initial-advertise-peer-urls: http://$public_ipv4:2380
+    listen-peer-urls: http://$private_ipv4:2380`,
 	},
 }
 
