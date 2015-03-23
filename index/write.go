@@ -42,6 +42,7 @@ const (
 	INDEX_TEXT    = `<html>
     <head>
 	<title>{{.Bucket}}/{{.Prefix}}</title>
+	<meta http-equiv="X-Clacks-Overhead" content="GNU Terry Pratchett" />
     </head>
     <body>
     <h1>{{.Bucket}}/{{.Prefix}}</h1>
