@@ -56,6 +56,10 @@ no-resolv
 no-hosts
 enable-ra
 
+# point NTP at this host (0.0.0.0 and :: are special)
+dhcp-option=option:ntp-server,0.0.0.0
+dhcp-option=option6:ntp-server,[::]
+
 {{range .Segments}}
 domain={{.BridgeName}}.local
 
