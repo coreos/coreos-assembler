@@ -93,7 +93,7 @@ func (lc *LocalCluster) EtcdEndpoint() string {
 }
 
 func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
-	URL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.EtcdEndpoint(), rand.Int())
+	baseURL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.EtcdEndpoint(), rand.Int())
 
 	nsDialer := NewNsDialer(lc.nshandle)
 	tr := &http.Transport{
@@ -102,7 +102,7 @@ func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
 	client := &http.Client{Transport: tr}
 
 	body := strings.NewReader(url.Values{"value": {strconv.Itoa(size)}}.Encode())
-	req, err := http.NewRequest("PUT", URL+"_config/size", body)
+	req, err := http.NewRequest("PUT", baseURL+"/_config/size", body)
 	if err != nil {
 		return "", fmt.Errorf("setting discovery url failed: %v\n", err)
 	}
@@ -114,7 +114,7 @@ func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	return URL, nil
+	return baseURL, nil
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {

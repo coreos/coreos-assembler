@@ -33,7 +33,8 @@ var cmdEtcd = &cli.Command{
 
 Work in progress: the code sets up an etcd cluster and then calls
 integration tests to see how etcd interacts with new CoreOS images.
-Currently discovery using another etcd cluster is supported for 0.4.7
+Currently, a local discovery service is available through an embedded
+etcd server.
 
 This must run as root!
 `}
@@ -48,51 +49,48 @@ func runEtcd(args []string) int {
 		fmt.Fprintf(os.Stderr, "No args accepted\n")
 		return 2
 	}
+
 	for _, t := range etcdtests.Tests {
-		cluster, err := platform.NewQemuCluster()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
-			return 1
-		}
-
-		url, err := cluster.GetDiscoveryURL(t.ClusterSize)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create discovery endpoint: %v\n", err)
-			return 1
-		}
-
-		cfgs := makeConfigs(url, t.CloudConfig, t.ClusterSize)
-
-		for i := 0; i < t.ClusterSize; i++ {
-			_, err := cluster.NewMachine(cfgs[i])
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Cluster failed starting machine: %v\n", err)
-				return 1
-			} else {
-				fmt.Fprintf(os.Stderr, "qemu instance up\n")
-			}
-		}
-
-		// run test
-		err = t.Run(cluster)
+		err := runTest(t)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v failed: %v\n", t.Name, err)
 			return 1
 		}
-
-		for _, m := range cluster.Machines() {
-			err = m.Destroy()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Destroy failed: %v\n", err)
-				return 1
-			}
-		}
-		cluster.Destroy()
 		fmt.Printf("Test %v ran successfully\n", t.Name)
 	}
-
-	fmt.Println("Etcd tests ran successfully!\n")
+	fmt.Fprintf(os.Stderr, "etcd tests ran successfully!\n")
 	return 0
+}
+
+func runTest(t etcdtests.Test) error {
+	cluster, err := platform.NewQemuCluster()
+	if err != nil {
+		return fmt.Errorf("Cluster failed: %v", err)
+	}
+	defer func() {
+		if err := cluster.Destroy(); err != nil {
+			fmt.Fprintf(os.Stderr, "cluster.Destroy(): %v\n", err)
+		}
+	}()
+
+	url, err := cluster.GetDiscoveryURL(t.ClusterSize)
+	if err != nil {
+		return fmt.Errorf("Failed to create discovery endpoint: %v", err)
+	}
+
+	cfgs := makeConfigs(url, t.CloudConfig, t.ClusterSize)
+
+	for i := 0; i < t.ClusterSize; i++ {
+		_, err := cluster.NewMachine(cfgs[i])
+		if err != nil {
+			return fmt.Errorf("Cluster failed starting machine: %v", err)
+		}
+		fmt.Fprintf(os.Stderr, "qemu instance up\n")
+	}
+
+	// run test
+	err = t.Run(cluster)
+	return err
 }
 
 // replaces $discovery with discover url in etcd cloud config and

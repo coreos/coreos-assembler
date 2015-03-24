@@ -29,23 +29,41 @@ func etcdDiscovery(cluster platform.Cluster) error {
 		fmt.Fprintf(os.Stderr, "etcd instance%d started\n", i)
 	}
 
-	fmt.Fprintf(os.Stderr, "Waiting for discovery to finish...\n")
-	time.Sleep(1 * time.Second)
-
-	// get status of etcd instances
-	cmd := cluster.NewCommand("curl", "-L", "http://10.0.0.2:4001/v2/machines")
-	b, err := cmd.Output()
+	err = getClusterHealth(cluster.Machines()[0], csize)
 	if err != nil {
-		return fmt.Errorf("Error requesting cluster members: %v", err)
-	}
-	members := strings.Split(string(b), ",")
-	if len(members) != csize {
-		return fmt.Errorf("Etcd members doesn't match cluster size: %v", len(members))
-	}
-	fmt.Fprintf(os.Stderr, "Etcd running with the following members:\n")
-	for _, m := range members {
-		fmt.Fprintf(os.Stderr, "	%v\n", m)
+		return fmt.Errorf("Discovery failed health check: %v", err)
 	}
 
+	fmt.Fprintf(os.Stderr, "etcd Discovery succeeeded!\n")
 	return nil
+}
+
+// poll cluster-health until result
+func getClusterHealth(m platform.Machine, csize int) error {
+	const (
+		retries   = 5
+		retryWait = 3 * time.Second
+	)
+	var err error
+	var b []byte
+
+	for i := 0; i < retries; i++ {
+		fmt.Fprintf(os.Stderr, "polling cluster health...\n")
+		b, err = m.SSH("etcdctl cluster-health")
+		if err == nil {
+			break
+		}
+		time.Sleep(retryWait)
+	}
+	if err != nil {
+		return fmt.Errorf("health polling failed: %s", b)
+	}
+
+	// repsonse should include "healthy" for each machine and for cluster
+	if strings.Count(string(b), "healthy") == csize+1 {
+		fmt.Fprintf(os.Stderr, "%s\n", b)
+		return nil
+	} else {
+		return fmt.Errorf("Status unhealthy or incomplete: %s", b)
+	}
 }
