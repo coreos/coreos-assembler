@@ -12,10 +12,11 @@ import (
 func etcdDiscovery(cluster platform.Cluster) error {
 	csize := len(cluster.Machines())
 
-	// get journalctl -f from only one machine
-	err := cluster.Machines()[0].StartJournal()
-	if err != nil {
-		return fmt.Errorf("Failed to start journal: %v", err)
+	// get journalctl -f from all machines before starting
+	for _, m := range cluster.Machines() {
+		if err := m.StartJournal(); err != nil {
+			return fmt.Errorf("Failed to start journal: %v", err)
+		}
 	}
 
 	// point etcd on each machine to discovery
@@ -29,7 +30,7 @@ func etcdDiscovery(cluster platform.Cluster) error {
 		fmt.Fprintf(os.Stderr, "etcd instance%d started\n", i)
 	}
 
-	err = getClusterHealth(cluster.Machines()[0], csize)
+	err := getClusterHealth(cluster.Machines()[0], csize)
 	if err != nil {
 		return fmt.Errorf("Discovery failed health check: %v", err)
 	}
