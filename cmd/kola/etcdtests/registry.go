@@ -32,7 +32,7 @@ write_files:
     content: |
       [Service]
       ExecStart=
-      ExecStart=/usr/libexec/etcd/internal_versions/1
+      ExecStart=/usr/libexec/etcd/internal_versions/1/etcd
 
 coreos:
   etcd:
@@ -55,7 +55,7 @@ write_files:
     content: |
       [Service]
       ExecStart=
-      ExecStart=/usr/libexec/etcd/internal_versions/2
+      ExecStart=/usr/libexec/etcd/internal_versions/2/etcd
 
 coreos:
   etcd:
@@ -78,7 +78,7 @@ write_files:
     content: |
       [Service]
       ExecStart=
-      ExecStart=/usr/libexec/etcd/internal_versions/2
+      ExecStart=/usr/libexec/etcd/internal_versions/2/etcd
 coreos:
   etcd:
     name: $name
