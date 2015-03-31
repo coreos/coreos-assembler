@@ -87,7 +87,7 @@ func runUpload(args []string) int {
 		return 1
 	}
 	bucket = gsURL.Host
-	imageName += gsURL.Path
+	imageName = strings.TrimPrefix(gsURL.Path+"/"+imageName, "/")
 
 	client, err := auth.GoogleClient(false)
 	if err != nil {
