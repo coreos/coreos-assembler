@@ -25,10 +25,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
-	"google.golang.org/cloud"
-	"google.golang.org/cloud/storage"
 )
 
 var (
@@ -89,7 +89,7 @@ func runUpload(args []string) int {
 	bucket = gsURL.Host
 	imageName = strings.TrimPrefix(gsURL.Path+"/"+imageName, "/")
 
-	client, err := auth.GoogleClient(false)
+	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
 		return 1

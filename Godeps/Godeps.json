@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
-	"GoVersion": "go1.4.1",
+	"GoVersion": "go1.3.3",
 	"Packages": [
 		"./..."
 	],
@@ -9,11 +9,6 @@
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
 			"Comment": "null-15",
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
-		},
-		{
-			"ImportPath": "code.google.com/p/goauth2/oauth",
-			"Comment": "weekly-56",
-			"Rev": "afe77d958c701557ec5dc56f6936fcc194d15520"
 		},
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
@@ -164,12 +159,20 @@
 			"Rev": "59b0df9b1f7abda5aab0495ee54f408daf182ce7"
 		},
 		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "3046bc76d6dfd7d3707f6640f85e42d9c4050f50"
+		},
+		{
 			"ImportPath": "google.golang.org/api/googleapi",
 			"Rev": "149f916bc9ab542b191337a11829e0d13f5c9de6"
 		},
 		{
 			"ImportPath": "google.golang.org/api/storage/v1",
 			"Rev": "149f916bc9ab542b191337a11829e0d13f5c9de6"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud",
+			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
 		}
 	]
 }
