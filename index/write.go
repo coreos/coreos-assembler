@@ -42,6 +42,7 @@ const (
 	INDEX_TEXT    = `<html>
     <head>
 	<title>{{.Bucket}}/{{.Prefix}}</title>
+	<meta http-equiv="X-Clacks-Overhead" content="GNU Terry Pratchett" />
     </head>
     <body>
     <h1>{{.Bucket}}/{{.Prefix}}</h1>
@@ -93,8 +94,9 @@ func (d *Directory) WriteIndex(client *http.Client) error {
 	}
 
 	writeObj := storage.Object{
-		Name:        d.Prefix + "index.html",
-		ContentType: "text/html",
+		Name:         d.Prefix + "index.html",
+		ContentType:  "text/html",
+		CacheControl: "public, max-age=60",
 	}
 	writeReq := service.Objects.Insert(d.Bucket, &writeObj)
 	writeReq.Media(&buf)
