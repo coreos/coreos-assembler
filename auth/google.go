@@ -23,7 +23,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"golang.org/x/oauth2"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
 )
 
 // client registered under 'marineam-tools'
