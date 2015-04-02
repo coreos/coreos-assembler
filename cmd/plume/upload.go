@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	cmdIndex = &cli.Command{
+	cmdUpload = &cli.Command{
 
 		Name:        "upload",
 		Summary:     "Upload os image",
@@ -48,13 +48,13 @@ var (
 )
 
 func init() {
-	cmdIndex.Flags.StringVar(&bucket, "bucket", "gs://coreos-plume", "gs://bucket/prefix/")
-	cmdIndex.Flags.StringVar(&projectID, "projectID", "coreos-gce-testing", "found in developers console")
-	cmdIndex.Flags.StringVar(&imageName, "name", "", "filename for uploaded image, defaults to COREOS_VERSION")
-	cmdIndex.Flags.StringVar(&image, "image",
+	cmdUpload.Flags.StringVar(&bucket, "bucket", "gs://coreos-plume", "gs://bucket/prefix/")
+	cmdUpload.Flags.StringVar(&projectID, "projectID", "coreos-gce-testing", "found in developers console")
+	cmdUpload.Flags.StringVar(&imageName, "name", "", "filename for uploaded image, defaults to COREOS_VERSION")
+	cmdUpload.Flags.StringVar(&image, "image",
 		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
-	cli.Register(cmdIndex)
+	cli.Register(cmdUpload)
 }
 
 func runUpload(args []string) int {
