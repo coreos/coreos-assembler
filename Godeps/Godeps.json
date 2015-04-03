@@ -163,6 +163,10 @@
 			"Rev": "3046bc76d6dfd7d3707f6640f85e42d9c4050f50"
 		},
 		{
+			"ImportPath": "google.golang.org/api/compute/v1",
+			"Rev": "149f916bc9ab542b191337a11829e0d13f5c9de6"
+		},
+		{
 			"ImportPath": "google.golang.org/api/googleapi",
 			"Rev": "149f916bc9ab542b191337a11829e0d13f5c9de6"
 		},

@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
-	"google.golang.org/api/compute/v1"
 )
 
 var (
