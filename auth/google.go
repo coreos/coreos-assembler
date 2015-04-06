@@ -35,7 +35,8 @@ var conf = oauth2.Config{
 		TokenURL: "https://accounts.google.com/o/oauth2/token",
 	},
 	RedirectURL: "urn:ietf:wg:oauth:2.0:oob",
-	Scopes:      []string{"https://www.googleapis.com/auth/devstorage.full_control"},
+	Scopes: []string{"https://www.googleapis.com/auth/devstorage.full_control",
+		"https://www.googleapis.com/auth/compute"},
 }
 
 func writeCache(cachePath string, tok *oauth2.Token) error {
@@ -76,9 +77,10 @@ func getToken() (*oauth2.Token, error) {
 	if err != nil {
 		log.Printf("Error reading google token cache file: %v", err)
 	}
-	if tok == nil {
+	if tok == nil || !tok.Valid() {
 		url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline)
 		fmt.Printf("Visit the URL for the auth dialog: %v\n", url)
+		fmt.Print("Enter token: ")
 
 		var code string
 		if _, err := fmt.Scan(&code); err != nil {
