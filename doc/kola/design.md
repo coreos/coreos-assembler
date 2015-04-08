@@ -15,10 +15,6 @@ functionality into Kola platform, but generally, Kola does not aim to
 envelope existing test functionality. 
 
 # Roadmap
- * etcd migration test - It would be useful to test the various migration behavior
-that exists in the real world as etcd moves from 0.4.7 to 2.0+. This
-includes both seeing that etcd 2.0+ calls 0.4.7 when an existing cluster
-exists and testing the migration process itself.
 
  * core-update testing - To test the update process an embedded Omaha
  server that serves an update payload needs to be embedded into Kola
