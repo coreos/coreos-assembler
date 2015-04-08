@@ -24,4 +24,4 @@ exists and testing the migration process itself.
  server that serves an update payload needs to be embedded into Kola
  to replace the python code that exists currently.
 
- * rocket test suite
+ * rkt test suite
