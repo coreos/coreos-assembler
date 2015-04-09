@@ -63,6 +63,16 @@ func readCache(cachePath string) (*oauth2.Token, error) {
 	if err := json.NewDecoder(file).Decode(tok); err != nil {
 		return nil, err
 	}
+
+	// make sure token is refreshable
+	if tok != nil && !tok.Valid() {
+		ts := conf.TokenSource(oauth2.NoContext, tok)
+		tok, err = ts.Token()
+		if err != nil || !tok.Valid() {
+			fmt.Printf("Could not refresh cached token: %v\n", err)
+			return nil, nil
+		}
+	}
 	return tok, nil
 }
 
@@ -77,7 +87,7 @@ func getToken() (*oauth2.Token, error) {
 	if err != nil {
 		log.Printf("Error reading google token cache file: %v", err)
 	}
-	if tok == nil || !tok.Valid() {
+	if tok == nil {
 		url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline)
 		fmt.Printf("Visit the URL for the auth dialog: %v\n", url)
 		fmt.Print("Enter token: ")
