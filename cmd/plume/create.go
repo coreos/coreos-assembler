@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -85,25 +86,31 @@ func runCreate(args []string) int {
 		return 1
 	}
 
-	var vms []*gceVM
+	opts := &platform.GCEOpts{
+		Client:      client,
+		CloudConfig: cloudConfig,
+		Project:     createProject,
+		Zone:        createZone,
+		MachineType: createMachine,
+		BaseName:    createBaseName,
+		Image:       createImageName,
+	}
+
+	var vms []platform.Machine
 	for i := 0; i < createNumInstances; i++ {
-		name, err := nextName(client, createProject, createZone, createBaseName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed creating name for vm: %v\n", err)
-			return 1
-		}
-		vm, err := createVM(client, createProject, createZone, createMachine, name, createImageName, cloudConfig)
+		vm, err := platform.GCECreateVM(opts)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating vm: %v\n", err)
 			return 1
 		}
 		vms = append(vms, vm)
-		fmt.Printf("Instance %v created\n", name)
+		fmt.Println("Instance created")
 	}
+
 	fmt.Printf("All instances created, add your ssh keys here: https://console.developers.google.com/project/%v/compute/metadata/sshKeys\n", createProject)
 	for _, vm := range vms {
-		fmt.Printf("To access %v use cmd:\n", vm.name)
-		fmt.Printf("ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no core@%v\n", vm.extIP)
+		fmt.Printf("To access %v use cmd:\n", vm.ID())
+		fmt.Printf("ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no core@%v\n", vm.IP())
 	}
 
 	return 0

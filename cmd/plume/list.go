@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -57,13 +58,14 @@ func runList(args []string) int {
 		return 1
 	}
 
-	vms, err := listVMs(client, listProject, listZone, listPrefix)
+	vms, err := platform.GCEListVMs(client, listProject, listZone, listPrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
 		return 1
 	}
 	for _, vm := range vms {
-		fmt.Printf("%v\n", vm)
+		fmt.Printf("%v:\n", vm.ID())
+		fmt.Printf(" extIP: %v\n", vm.IP())
 	}
 	return 0
 

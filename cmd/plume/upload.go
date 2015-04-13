@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -120,7 +121,7 @@ func runUpload(args []string) int {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	err = createImage(client, uploadProject, imageNameGCE, storageSrc)
+	err = platform.GCECreateImage(client, uploadProject, imageNameGCE, storageSrc)
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
@@ -133,7 +134,7 @@ func runUpload(args []string) int {
 		switch ans {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing image...")
-			err = forceCreateImage(client, uploadProject, imageNameGCE, storageSrc)
+			err = platform.GCEForceCreateImage(client, uploadProject, imageNameGCE, storageSrc)
 		default:
 			fmt.Println("Skipped GCE image creation")
 			return 0

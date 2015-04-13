@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -63,14 +64,14 @@ func runDestroy(args []string) int {
 		return 1
 	}
 
-	vms, err := listVMs(client, destroyProject, destroyZone, destroyPrefix)
+	vms, err := platform.GCEListVMs(client, destroyProject, destroyZone, destroyPrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
 		return 1
 	}
 	var count int
 	for _, vm := range vms {
-		err := destroyVM(client, destroyProject, destroyZone, vm.name)
+		err := platform.GCEDestroyVM(client, destroyProject, destroyZone, vm.ID())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed destroying vm: %v\n", err)
 			return 1
