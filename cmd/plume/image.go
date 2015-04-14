@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -55,7 +56,7 @@ func runImage(args []string) int {
 		return 1
 	}
 
-	images, err := listImages(client, imageProject, imagePrefix)
+	images, err := platform.GCEListImages(client, imageProject, imagePrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing images: %v\n", err)
 		return 1
