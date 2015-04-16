@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -27,7 +29,8 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform/local"
+	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/util"
 	"google.golang.org/api/compute/v1"
 )
 
@@ -42,7 +45,7 @@ var (
 )
 
 type gceCluster struct {
-	*local.LocalCluster
+	sshAgent *network.SSHAgent
 	machines map[string]*gceMachine
 }
 
@@ -101,7 +104,21 @@ func NewGCECluster() (Cluster, error) {
 	gc := &gceCluster{
 		machines: make(map[string]*gceMachine),
 	}
-	return Cluster(gc), nil
+
+	var err error
+	gc.sshAgent, err = network.NewSSHAgent(&net.Dialer{})
+	if err != nil {
+		return nil, err
+	}
+	return gc, nil
+}
+
+func (gc *gceCluster) NewCommand(name string, arg ...string) util.Cmd {
+	return util.NewCommand(name, arg...)
+}
+
+func (gc *gceCluster) EtcdEndpoint() string {
+	return ""
 }
 
 func (gc *gceCluster) Machines() []Machine {
@@ -116,6 +133,7 @@ func (gc *gceCluster) Destroy() error {
 	for _, gm := range gc.machines {
 		gm.Destroy()
 	}
+	gc.sshAgent.Close()
 	return nil
 }
 
@@ -130,7 +148,7 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = gc.SSHAgent.UpdateConfig(cconfig); err != nil {
+	if err = gc.sshAgent.UpdateConfig(cconfig); err != nil {
 		return nil, err
 	}
 	cloudConfig = cconfig.String()
@@ -142,6 +160,7 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 	if err != nil {
 		return nil, err
 	}
+	gm.gc = gc
 
 	err = sshCheck(gm)
 	if err != nil {
@@ -151,6 +170,20 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 
 	gc.machines[gm.ID()] = gm
 	return Machine(gm), nil
+}
+
+func (gce *gceCluster) GetDiscoveryURL(size int) (string, error) {
+	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%v", size))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
 
 func (gm *gceMachine) ID() string {
@@ -491,7 +524,7 @@ func sshCheck(gm *gceMachine) error {
 	// Allow a few authentication failures in case setup is slow.
 	var err error
 	for i := 0; i < sshRetries; i++ {
-		gm.sshClient, err = gm.gc.SSHAgent.NewClient(gm.IP())
+		gm.sshClient, err = gm.gc.sshAgent.NewClient(gm.IP())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ssh error: %v\n", err)
 			time.Sleep(sshRetryDelay)
