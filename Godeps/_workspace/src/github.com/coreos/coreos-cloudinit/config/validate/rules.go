@@ -57,9 +57,9 @@ func checkEncoding(cfg node, report *Report) {
 			continue
 		}
 
-		c := f.Child("contents")
+		c := f.Child("content")
 		if _, err := config.DecodeContent(c.String(), e.String()); err != nil {
-			report.Error(c.line, fmt.Sprintf("contents cannot be decoded as %q", e.String()))
+			report.Error(c.line, fmt.Sprintf("content cannot be decoded as %q", e.String()))
 		}
 	}
 }
@@ -82,6 +82,9 @@ func checkNodeStructure(n, g node, r *Report) {
 	case reflect.Struct:
 		for _, cn := range n.children {
 			if cg := g.Child(cn.name); cg.IsValid() {
+				if msg := cg.field.Tag.Get("deprecated"); msg != "" {
+					r.Warning(cn.line, fmt.Sprintf("deprecated key %q (%s)", cn.name, msg))
+				}
 				checkNodeStructure(cn, cg, r)
 			} else {
 				r.Warning(cn.line, fmt.Sprintf("unrecognized key %q", cn.name))
