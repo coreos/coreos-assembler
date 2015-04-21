@@ -24,16 +24,9 @@ var Tests = []Test{
 		Run:         etcdDiscovery,
 		Discovery:   true,
 		ClusterSize: 3,
-		Name:        "etcdDiscovery--version1",
+		Name:        "etcd1 discovery",
+		EtcdVersion: 1,
 		CloudConfig: `#cloud-config
-write_files:
-  - path: /run/systemd/system/etcd.service.d/30-exec.conf
-    permissions: 0644
-    content: |
-      [Service]
-      ExecStart=
-      ExecStart=/usr/libexec/etcd/internal_versions/1/etcd
-
 coreos:
   etcd:
     name: $name
@@ -47,53 +40,26 @@ coreos:
 		Run:         etcdDiscovery,
 		Discovery:   true,
 		ClusterSize: 3,
-		Name:        "etcdDiscovery--version2--oldconfig",
+		Name:        "etcd2 discovery",
+		EtcdVersion: 2,
 		CloudConfig: `#cloud-config
-write_files:
-  - path: /run/systemd/system/etcd.service.d/30-exec.conf
-    permissions: 0644
-    content: |
-      [Service]
-      ExecStart=
-      ExecStart=/usr/libexec/etcd/internal_versions/2/etcd
 
 coreos:
-  etcd:
+  etcd2:
     name: $name
     discovery: $discovery
-    addr: $public_ipv4:4001
-    peer-addr: $private_ipv4:7001`,
-	},
-
-	// test etcd discovery with 2.0 but with old cloud config
-	Test{
-		Run:         etcdDiscovery,
-		Discovery:   true,
-		ClusterSize: 3,
-		Name:        "etcdDiscovery--version2",
-		CloudConfig: `#cloud-config
-write_files:
-  - path: /run/systemd/system/etcd.service.d/30-exec.conf
-    permissions: 0644
-    content: |
-      [Service]
-      ExecStart=
-      ExecStart=/usr/libexec/etcd/internal_versions/2/etcd
-coreos:
-  etcd:
-    name: $name
-    discovery: $discovery
-    listen-client-urls: http://0.0.0.0:4001,http://0.0.0.0:2379
-    advertise-client-urls: http://0.0.0.0:4001,http://0.0.0.0:2379
-    initial-advertise-peer-urls: http://$public_ipv4:2380
-    listen-peer-urls: http://$private_ipv4:2380`,
+    advertise-client-urls: http://$public_ipv4:2379
+    initial-advertise-peer-urls: http://$private_ipv4:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
 	},
 }
 
 type Test struct {
-	Run         func(platform.Cluster) error
+	Run         func(platform.Cluster, int) error
 	Discovery   bool // set true to setup discovery endpoint
 	ClusterSize int
 	Name        string
 	CloudConfig string
+	EtcdVersion int
 }

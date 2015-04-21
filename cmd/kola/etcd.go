@@ -56,14 +56,20 @@ func runEtcd(args []string) int {
 			fmt.Fprintf(os.Stderr, "%v failed: %v\n", t.Name, err)
 			return 1
 		}
-		fmt.Printf("Test %v ran successfully\n", t.Name)
+		fmt.Printf("test %v ran successfully\n", t.Name)
 	}
-	fmt.Fprintf(os.Stderr, "etcd tests ran successfully!\n")
+	fmt.Fprintf(os.Stderr, "All etcd tests ran successfully!\n")
 	return 0
 }
 
-func runTest(t etcdtests.Test) error {
-	cluster, err := platform.NewQemuCluster()
+func runTest(t etcdtests.Test) (err error) {
+	var cluster platform.Cluster
+	if *kolaPlatform == "qemu" {
+		cluster, err = platform.NewQemuCluster()
+	} else if *kolaPlatform == "gce" {
+		cluster, err = platform.NewGCECluster()
+	}
+
 	if err != nil {
 		return fmt.Errorf("Cluster failed: %v", err)
 	}
@@ -85,11 +91,11 @@ func runTest(t etcdtests.Test) error {
 		if err != nil {
 			return fmt.Errorf("Cluster failed starting machine: %v", err)
 		}
-		fmt.Fprintf(os.Stderr, "qemu instance up\n")
+		fmt.Fprintf(os.Stderr, "%v instance up\n", *kolaPlatform)
 	}
 
 	// run test
-	err = t.Run(cluster)
+	err = t.Run(cluster, t.EtcdVersion)
 	return err
 }
 

@@ -9,20 +9,28 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-func etcdDiscovery(cluster platform.Cluster) error {
+func etcdDiscovery(cluster platform.Cluster, version int) error {
 	csize := len(cluster.Machines())
 
 	// get journalctl -f from all machines before starting
 	for _, m := range cluster.Machines() {
 		if err := m.StartJournal(); err != nil {
-			return fmt.Errorf("Failed to start journal: %v", err)
+			return fmt.Errorf("failed to start journal: %v", err)
 		}
 	}
 
 	// point etcd on each machine to discovery
 	for i, m := range cluster.Machines() {
 		// start etcd instance
-		etcdStart := "sudo systemctl start etcd.service"
+		var etcdStart string
+		if version == 1 {
+			etcdStart = "sudo systemctl start etcd.service"
+		} else if version == 2 {
+			etcdStart = "sudo systemctl start etcd2.service"
+		} else {
+			return fmt.Errorf("etcd version unspecified")
+		}
+
 		_, err := m.SSH(etcdStart)
 		if err != nil {
 			return fmt.Errorf("SSH cmd to %v failed: %s", m.IP(), err)
@@ -32,10 +40,10 @@ func etcdDiscovery(cluster platform.Cluster) error {
 
 	err := getClusterHealth(cluster.Machines()[0], csize)
 	if err != nil {
-		return fmt.Errorf("Discovery failed health check: %v", err)
+		return fmt.Errorf("discovery failed health check: %v", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "etcd Discovery succeeeded!\n")
+	fmt.Fprintf(os.Stderr, "etcd discovery succeeeded!\n")
 	return nil
 }
 
@@ -65,6 +73,6 @@ func getClusterHealth(m platform.Machine, csize int) error {
 		fmt.Fprintf(os.Stderr, "%s\n", b)
 		return nil
 	} else {
-		return fmt.Errorf("Status unhealthy or incomplete: %s", b)
+		return fmt.Errorf("status unhealthy or incomplete: %s", b)
 	}
 }

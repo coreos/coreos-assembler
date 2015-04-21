@@ -15,6 +15,8 @@
 package main
 
 import (
+	"flag"
+
 	"github.com/coreos/mantle/cli"
 )
 
@@ -23,6 +25,8 @@ const (
 	cliDescription = "The CoreOS Superdeep Borehole"
 	// http://en.wikipedia.org/wiki/Kola_Superdeep_Borehole
 )
+
+var kolaPlatform = flag.String("platform", "qemu", "compute platform to run kola tests on")
 
 func main() {
 	cli.Run(cliName, cliDescription)
