@@ -65,9 +65,11 @@ func runEtcd(args []string) int {
 func runTest(t etcdtests.Test) (err error) {
 	var cluster platform.Cluster
 	if *kolaPlatform == "qemu" {
-		cluster, err = platform.NewQemuCluster()
+		cluster, err = platform.NewQemuCluster(*qemuImage)
 	} else if *kolaPlatform == "gce" {
-		cluster, err = platform.NewGCECluster()
+		cluster, err = platform.NewGCECluster(gceOpts())
+	} else {
+		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
 	}
 
 	if err != nil {

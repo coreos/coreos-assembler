@@ -17,7 +17,6 @@ package platform
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -34,18 +33,9 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-var (
-	gceImage       = flag.String("gce.image", "", "GCE image")
-	gceProject     = flag.String("gce.project", "coreos-gce-testing", "GCE project")
-	gceZone        = flag.String("gce.zone", "us-central1-a", "GCE zone")
-	gceMachineType = flag.String("gce.machine", "n1-standard-1", "GCE machine type")
-	gceDisk        = flag.String("gce.disk", "pd-ssd", "GCE disk type")
-	gceBaseName    = flag.String("gce.basename", "kola", "GCE instance names will be generated from this")
-	gceNetwork     = flag.String("gce.network", "default", "GCE network")
-)
-
 type gceCluster struct {
 	sshAgent *network.SSHAgent
+	opts     *GCEOpts
 	machines map[string]*gceMachine
 }
 
@@ -80,28 +70,29 @@ func (opts *GCEOpts) setDefaults() error {
 		return fmt.Errorf("Image not specified")
 	}
 	if opts.Project == "" {
-		opts.Project = *gceProject
+		opts.Project = "coreos-gce-testing"
 	}
 	if opts.Zone == "" {
-		opts.Zone = *gceZone
+		opts.Zone = "us-central1-a"
 	}
 	if opts.MachineType == "" {
-		opts.MachineType = *gceMachineType
+		opts.MachineType = "n1-standard-1"
 	}
 	if opts.DiskType == "" {
-		opts.DiskType = *gceDisk
+		opts.DiskType = "pd-ssd"
 	}
 	if opts.BaseName == "" {
-		opts.BaseName = *gceBaseName
+		opts.BaseName = "mantle"
 	}
 	if opts.Network == "" {
-		opts.Network = *gceNetwork
+		opts.Network = "default"
 	}
 	return nil
 }
 
-func NewGCECluster() (Cluster, error) {
+func NewGCECluster(opts *GCEOpts) (Cluster, error) {
 	gc := &gceCluster{
+		opts:     opts,
 		machines: make(map[string]*gceMachine),
 	}
 
@@ -110,6 +101,7 @@ func NewGCECluster() (Cluster, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return gc, nil
 }
 
@@ -153,10 +145,11 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 	}
 	cloudConfig = cconfig.String()
 
-	opts := &GCEOpts{CloudConfig: cloudConfig, Client: client, Image: *gceImage}
+	gc.opts.CloudConfig = cloudConfig
+	gc.opts.Client = client
 
 	// Create gce VM and wait for creation to succeed.
-	gm, err := GCECreateVM(opts)
+	gm, err := GCECreateVM(gc.opts)
 	if err != nil {
 		return nil, err
 	}

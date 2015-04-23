@@ -16,7 +16,6 @@ package platform
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -36,13 +35,10 @@ const (
 	sshRetryDelay = time.Second
 )
 
-var qemuImage = flag.String("qemu.image",
-	"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_image.bin",
-	"Base disk image for QEMU based tests.")
-
 type qemuCluster struct {
 	*local.LocalCluster
 	machines map[string]*qemuMachine
+	image    string
 }
 
 type qemuMachine struct {
@@ -54,7 +50,7 @@ type qemuMachine struct {
 	sshClient   *ssh.Client
 }
 
-func NewQemuCluster() (Cluster, error) {
+func NewQemuCluster(image string) (Cluster, error) {
 	lc, err := local.NewLocalCluster()
 	if err != nil {
 		return nil, err
@@ -63,6 +59,7 @@ func NewQemuCluster() (Cluster, error) {
 	qc := &qemuCluster{
 		LocalCluster: lc,
 		machines:     make(map[string]*qemuMachine),
+		image:        image,
 	}
 	return Cluster(qc), nil
 }
@@ -117,7 +114,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		netif:       netif,
 	}
 
-	disk, err := setupDisk()
+	disk, err := setupDisk(qc.image)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +185,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 
 // Copy the base image to a new nameless temporary file.
 // cp is used since it supports sparse and reflink.
-func setupDisk() (*os.File, error) {
+func setupDisk(imageFile string) (*os.File, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
 		return nil, err
@@ -199,7 +196,7 @@ func setupDisk() (*os.File, error) {
 
 	cp := exec.Command("cp", "--force",
 		"--sparse=always", "--reflink=auto",
-		*qemuImage, dstFileName)
+		imageFile, dstFileName)
 	cp.Stdout = os.Stdout
 	cp.Stderr = os.Stderr
 

@@ -44,7 +44,7 @@ func runQemu(args []string) int {
 		return 2
 	}
 
-	cluster, err := platform.NewQemuCluster()
+	cluster, err := platform.NewQemuCluster(*qemuImage)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		return 1
