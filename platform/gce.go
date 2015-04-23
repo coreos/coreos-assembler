@@ -282,8 +282,8 @@ func GCECreateVM(opts *GCEOpts) (*gceMachine, error) {
 		return nil, fmt.Errorf("Failed to create new VM: %v\n", err)
 	}
 
-	fmt.Printf("Instance %v requested\n", name)
-	fmt.Printf("Waiting for creation to finish...\n")
+	fmt.Fprintf(os.Stderr, "Instance %v requested\n", name)
+	fmt.Fprintf(os.Stderr, "Waiting for creation to finish...\n")
 
 	// wait for creation to finish
 	err = gceWaitVM(computeService, opts.Project, opts.Zone, op.Name)
