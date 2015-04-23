@@ -108,15 +108,35 @@ func runUpload(args []string) int {
 		return 1
 	}
 
-	fmt.Printf("Writing %v to gs://%v ...\n", imageNameGS, uploadBucket)
-	fmt.Printf("(Sometimes this takes a few mintues)\n")
-
-	if err := writeFile(client, uploadBucket, uploadFile, imageNameGS); err != nil {
+	// check if this file is already uploaded and give option to skip
+	alreadyExists, err := fileQuery(client, uploadBucket, imageNameGS)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Uploading image failed: %v\n", err)
 		return 1
 	}
 
-	fmt.Printf("Upload successful!\n")
+	if alreadyExists {
+		var ans string
+		fmt.Printf("File %v already exists on Google Storage. Overwrite? (y/n):", imageNameGS)
+		if _, err = fmt.Scan(&ans); err != nil {
+			fmt.Fprintf(os.Stderr, "Scanning overwrite input: %v", err)
+			return 1
+		}
+		switch ans {
+		case "y", "Y", "yes":
+			fmt.Println("Overriding existing file...")
+			err = writeFile(client, uploadBucket, uploadFile, imageNameGS)
+		default:
+			fmt.Println("Skipped file upload")
+		}
+	} else {
+		err = writeFile(client, uploadBucket, uploadFile, imageNameGS)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Uploading image failed: %v\n", err)
+		return 1
+	}
+
 	fmt.Printf("Creating image in GCE: %v...\n", imageNameGCE)
 
 	// create image on gce
@@ -198,6 +218,9 @@ func getImageVersion(path string) string {
 
 // Write file to Google Storage
 func writeFile(client *http.Client, bucket, filename, destname string) error {
+	fmt.Printf("Writing %v to gs://%v ...\n", filename, bucket)
+	fmt.Printf("(Sometimes this takes a few mintues)\n")
+
 	// dummy value is used since a project name isn't necessary unless
 	// we are creating new buckets
 	ctx := cloud.NewContext("dummy", client)
@@ -219,5 +242,23 @@ func writeFile(client *http.Client, bucket, filename, destname string) error {
 		return err
 	}
 
+	fmt.Printf("Upload successful!\n")
 	return nil
+}
+
+// Test if file exists in Google Storage
+func fileQuery(client *http.Client, bucket, name string) (bool, error) {
+	ctx := cloud.NewContext("dummy", client)
+	query := &storage.Query{Prefix: name}
+
+	objects, err := storage.ListObjects(ctx, bucket, query)
+	if err != nil {
+		return false, err
+	}
+
+	if len(objects.Results) == 1 {
+		return true, nil
+	}
+
+	return false, nil
 }
