@@ -53,5 +53,17 @@ used to tear down the cluster. Common usage:
 
 ## kola
 
-Test framework for CoreOS integration testing. Launch groups of related
-tests using the latest SDK image on specified platforms (qemu, gce ...)
+Kola is a framework for testing software integration in CoreOS instances
+across multiple platforms. It is primarily designed to operate and
+within the CoreOS SDK and test software that has landed in the OS image.
+Ideally, all software needed for a test should be included by building
+it into the image from the SDK.
+
+Kola supports running tests on multiple platforms, currently QEMU and
+GCE. In the future systemd-nspawn and EC2 are likely the next to be
+added. All local platforms cannot rely on access to the Internet.
+
+The goal is to focus on platform integration testing and not reproduce
+tests accomplished with unit tests. It is possible to move existing test
+functionality into Kola platform, but generally, Kola does not aim to
+envelope existing test functionality.
