@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"time"
 
@@ -46,7 +47,18 @@ func runNfs(args []string) int {
 		return 2
 	}
 
-	c, err := platform.NewQemuCluster()
+	var (
+		c   platform.Cluster
+		err error
+	)
+	if *kolaPlatform == "qemu" {
+		c, err = platform.NewQemuCluster(*qemuImage)
+	} else if *kolaPlatform == "gce" {
+		c, err = platform.NewGCECluster(gceOpts())
+	} else {
+		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
+	}
+
 	if err != nil {
 		log.Printf("NewQemuCluster: %s", err)
 		return 2
