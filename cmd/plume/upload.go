@@ -155,16 +155,39 @@ func runUpload(args []string) int {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing image...")
 			err = platform.GCEForceCreateImage(client, uploadProject, imageNameGCE, storageSrc)
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
+				return 1
+			}
+			fmt.Printf("Image %v sucessfully created in GCE\n", imageNameGCE)
 		default:
 			fmt.Println("Skipped GCE image creation")
-			return 0
 		}
 	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 		return 1
 	}
-	fmt.Printf("Image %v sucessfully created in GCE\n", imageNameGCE)
+
+	// ask to additionally update the "latest" image
+	var ans string
+	fmt.Printf("Would you also like to update the image 'latest'? (y/n):")
+	if _, err = fmt.Scan(&ans); err != nil {
+		fmt.Fprintf(os.Stderr, "Scanning latest update ans: %v", err)
+		return 1
+	}
+	switch ans {
+	case "y", "Y", "yes":
+		fmt.Println("Updating 'latest' image...")
+		err = platform.GCEForceCreateImage(client, uploadProject, "latest", storageSrc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Updating 'latest' image failed: %v\n", err)
+		}
+	default:
+		fmt.Println("Skipped updating 'latest' image")
+	}
 
 	return 0
 }

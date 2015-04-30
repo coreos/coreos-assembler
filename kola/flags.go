@@ -27,7 +27,7 @@ var (
 		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_image.bin",
 		"Base disk image for QEMU based tests.")
 
-	gceImage       = flag.String("gce.image", "", "GCE image")
+	gceImage       = flag.String("gce.image", "latest", "GCE image")
 	gceProject     = flag.String("gce.project", "coreos-gce-testing", "GCE project")
 	gceZone        = flag.String("gce.zone", "us-central1-a", "GCE zone")
 	gceMachineType = flag.String("gce.machine", "n1-standard-1", "GCE machine type")
