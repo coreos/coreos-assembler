@@ -21,8 +21,6 @@ import (
 )
 
 var (
-	kolaPlatform = flag.String("platform", "qemu", "compute platform to run kola tests on")
-
 	qemuImage = flag.String("qemu.image",
 		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_image.bin",
 		"Base disk image for QEMU based tests.")

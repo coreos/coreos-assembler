@@ -32,6 +32,7 @@ type Test struct {
 	Name        string //Should be uppercase and unique
 	CloudConfig string
 	ClusterSize int
+	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 }
 
 // runs and sets up environment for tests specified in etcdtests pkg
@@ -56,12 +57,19 @@ func RunTests(args []string) int {
 			continue
 		}
 
-		err := runTest(t, "gce")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v failed: %v\n", t.Name, err)
-			return 1
+		// run all platforms if whitelist is nil
+		if t.Platforms == nil {
+			t.Platforms = []string{"qemu", "gce"}
 		}
-		fmt.Printf("test %v ran successfully\n", t.Name)
+
+		for _, pltfrm := range t.Platforms {
+			err := runTest(t, pltfrm)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v failed on %v: %v\n", t.Name, pltfrm, err)
+				return 1
+			}
+			fmt.Printf("test %v ran successfully on %v\n", t.Name, pltfrm)
+		}
 	}
 	fmt.Fprintf(os.Stderr, "All %v tests ran successfully!\n", len(Tests))
 	return 0
