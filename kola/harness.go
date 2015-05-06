@@ -12,64 +12,78 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package kola
 
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/cmd/kola/etcdtests"
 	"github.com/coreos/mantle/platform"
 )
 
-var cmdEtcd = &cli.Command{
-	Run:     runEtcd,
-	Name:    "etcd",
-	Summary: "Run etcd cluster under QEMU (requires root)",
-	Description: `Run and kill etcd cluster
+// tests should register by adding init() functions to this package
+var Tests []Test
 
-Work in progress: the code sets up an etcd cluster and then calls
-integration tests to see how etcd interacts with new CoreOS images.
-Currently, a local discovery service is available through an embedded
-etcd server.
-
-This must run as root!
-`}
-
-func init() {
-	cli.Register(cmdEtcd)
+type Test struct {
+	Run         func(platform.Cluster) error
+	Name        string //Should be uppercase and unique
+	CloudConfig string
+	ClusterSize int
+	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 }
 
 // runs and sets up environment for tests specified in etcdtests pkg
-func runEtcd(args []string) int {
-	if len(args) != 0 {
-		fmt.Fprintf(os.Stderr, "No args accepted\n")
+func RunTests(args []string) int {
+	if len(args) > 1 {
+		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
 		return 2
 	}
-
-	for _, t := range etcdtests.Tests {
-		err := runTest(t)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v failed: %v\n", t.Name, err)
-			return 1
-		}
-		fmt.Printf("test %v ran successfully\n", t.Name)
+	var pattern string
+	if len(args) == 1 {
+		pattern = args[0]
+	} else {
+		pattern = "*" // run all tests by default
 	}
-	fmt.Fprintf(os.Stderr, "All etcd tests ran successfully!\n")
+
+	for _, t := range Tests {
+		match, err := filepath.Match(pattern, t.Name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		}
+		if !match {
+			continue
+		}
+
+		// run all platforms if whitelist is nil
+		if t.Platforms == nil {
+			t.Platforms = []string{"qemu", "gce"}
+		}
+
+		for _, pltfrm := range t.Platforms {
+			err := runTest(t, pltfrm)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v failed on %v: %v\n", t.Name, pltfrm, err)
+				return 1
+			}
+			fmt.Printf("test %v ran successfully on %v\n", t.Name, pltfrm)
+		}
+	}
+	fmt.Fprintf(os.Stderr, "All %v tests ran successfully!\n", len(Tests))
 	return 0
 }
 
-func runTest(t etcdtests.Test) (err error) {
+// starts a cluster and runs the test
+func runTest(t Test, pltfrm string) (err error) {
 	var cluster platform.Cluster
-	if *kolaPlatform == "qemu" {
+	if pltfrm == "qemu" {
 		cluster, err = platform.NewQemuCluster(*qemuImage)
-	} else if *kolaPlatform == "gce" {
+	} else if pltfrm == "gce" {
 		cluster, err = platform.NewGCECluster(gceOpts())
 	} else {
-		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
+		fmt.Fprintf(os.Stderr, "Invalid platform: %v", pltfrm)
 	}
 
 	if err != nil {
@@ -93,11 +107,11 @@ func runTest(t etcdtests.Test) (err error) {
 		if err != nil {
 			return fmt.Errorf("Cluster failed starting machine: %v", err)
 		}
-		fmt.Fprintf(os.Stderr, "%v instance up\n", *kolaPlatform)
+		fmt.Fprintf(os.Stderr, "%v instance up\n", pltfrm)
 	}
 
 	// run test
-	err = t.Run(cluster, t.EtcdVersion)
+	err = t.Run(cluster)
 	return err
 }
 

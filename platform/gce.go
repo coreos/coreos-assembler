@@ -348,7 +348,9 @@ func GCEForceCreateImage(client *http.Client, proj, name, source string) error {
 		return fmt.Errorf("deleting image: %v", err)
 	}
 	_, err = computeService.Images.Delete(proj, name).Do()
-	if err != nil {
+
+	// don't return error when delete fails because image doesn't exist
+	if err != nil && !strings.HasSuffix(err.Error(), "notFound") {
 		return fmt.Errorf("deleting image: %v", err)
 	}
 

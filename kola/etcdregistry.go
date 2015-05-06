@@ -12,37 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdtests
+package kola
 
-import "github.com/coreos/mantle/platform"
+import "github.com/coreos/mantle/kola/tests/etcd"
 
 //register new tests here
 // "$name" and "$discovery" are substituted in the cloud config during cluster creation
-var Tests = []Test{
-	// test etcd discovery with 0.4.7
-	Test{
-		Run:         etcdDiscovery,
-		Discovery:   true,
-		ClusterSize: 3,
-		Name:        "etcd1 discovery",
-		EtcdVersion: 1,
-		CloudConfig: `#cloud-config
+func init() {
+	Tests = append(Tests, []Test{
+		// test etcd discovery with 0.4.7
+		Test{
+			Run:         etcd.DiscoveryV1,
+			ClusterSize: 3,
+			Name:        "Etcd1Discovery",
+			CloudConfig: `#cloud-config
 coreos:
   etcd:
     name: $name
     discovery: $discovery
     addr: $public_ipv4:4001
     peer-addr: $private_ipv4:7001`,
-	},
+		},
 
-	// test etcd discovery with 2.0 with new cloud config
-	Test{
-		Run:         etcdDiscovery,
-		Discovery:   true,
-		ClusterSize: 3,
-		Name:        "etcd2 discovery",
-		EtcdVersion: 2,
-		CloudConfig: `#cloud-config
+		// test etcd discovery with 2.0 with new cloud config
+		Test{
+			Run:         etcd.DiscoveryV2,
+			ClusterSize: 3,
+			Name:        "Etcd2Discovery",
+			CloudConfig: `#cloud-config
 
 coreos:
   etcd2:
@@ -52,14 +49,6 @@ coreos:
     initial-advertise-peer-urls: http://$private_ipv4:2380
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
-	},
-}
-
-type Test struct {
-	Run         func(platform.Cluster, int) error
-	Discovery   bool // set true to setup discovery endpoint
-	ClusterSize int
-	Name        string
-	CloudConfig string
-	EtcdVersion int
+		},
+	}...)
 }
