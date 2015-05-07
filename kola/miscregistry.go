@@ -12,33 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package kola
 
-import (
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
-)
+import "github.com/coreos/mantle/kola/tests/misc"
 
-const (
-	cliName        = "kola"
-	cliDescription = "The CoreOS Superdeep Borehole"
-	// http://en.wikipedia.org/wiki/Kola_Superdeep_Borehole
-)
-
-// main test harness
-var cmdRun = &cli.Command{
-	Name:        "run",
-	Summary:     "Run run kola tests by category",
-	Description: "run all kola tests (default) or related groups",
-	Run:         kola.RunTests,
-}
-
-var kolaPlatform = flag.String("platform", "qemu", "compute platform for bootchart")
-
+//register new tests here
+// "$name" and "$discovery" are substituted in the cloud config during cluster creation
 func init() {
-	cli.Register(cmdRun)
-}
-
-func main() {
-	cli.Run(cliName, cliDescription)
+	Tests = append(Tests, []Test{
+		// test etcd discovery with 0.4.7
+		Test{
+			Run:         misc.NFS,
+			ClusterSize: 0,
+			Name:        "NFS",
+			Platforms:   []string{"qemu"},
+		},
+	}...)
 }

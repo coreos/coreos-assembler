@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -44,7 +45,7 @@ func runQemu(args []string) int {
 		return 2
 	}
 
-	cluster, err := platform.NewQemuCluster(*qemuImage)
+	cluster, err := platform.NewQemuCluster(*kola.QemuImage)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		return 1

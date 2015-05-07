@@ -15,10 +15,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -52,9 +54,9 @@ func runBootchart(args []string) int {
 		err     error
 	)
 	if *kolaPlatform == "qemu" {
-		cluster, err = platform.NewQemuCluster(*qemuImage)
+		cluster, err = platform.NewQemuCluster(*kola.QemuImage)
 	} else if *kolaPlatform == "gce" {
-		cluster, err = platform.NewGCECluster(gceOpts())
+		cluster, err = platform.NewGCECluster(kola.GCEOpts())
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
 	}

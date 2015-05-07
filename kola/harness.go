@@ -48,6 +48,7 @@ func RunTests(args []string) int {
 		pattern = "*" // run all tests by default
 	}
 
+	var ranTests int //count sucessful tests
 	for _, t := range Tests {
 		match, err := filepath.Match(pattern, t.Name)
 		if err != nil {
@@ -69,9 +70,10 @@ func RunTests(args []string) int {
 				return 1
 			}
 			fmt.Printf("test %v ran successfully on %v\n", t.Name, pltfrm)
+			ranTests++
 		}
 	}
-	fmt.Fprintf(os.Stderr, "All %v tests ran successfully!\n", len(Tests))
+	fmt.Fprintf(os.Stderr, "All %v test(s) ran successfully!\n", ranTests)
 	return 0
 }
 
@@ -79,9 +81,9 @@ func RunTests(args []string) int {
 func runTest(t Test, pltfrm string) (err error) {
 	var cluster platform.Cluster
 	if pltfrm == "qemu" {
-		cluster, err = platform.NewQemuCluster(*qemuImage)
+		cluster, err = platform.NewQemuCluster(*QemuImage)
 	} else if pltfrm == "gce" {
-		cluster, err = platform.NewGCECluster(gceOpts())
+		cluster, err = platform.NewGCECluster(GCEOpts())
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", pltfrm)
 	}

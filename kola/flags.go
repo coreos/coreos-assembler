@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	qemuImage = flag.String("qemu.image",
+	QemuImage = flag.String("qemu.image",
 		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_image.bin",
 		"Base disk image for QEMU based tests.")
 
@@ -34,7 +34,7 @@ var (
 	gceNetwork     = flag.String("gce.network", "default", "GCE network")
 )
 
-func gceOpts() *platform.GCEOpts {
+func GCEOpts() *platform.GCEOpts {
 	return &platform.GCEOpts{
 		Image:       *gceImage,
 		Project:     *gceProject,
