@@ -12,66 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package misc
 
 import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"path"
 	"time"
 
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 )
 
-func init() {
-	cli.Register(cmdNfs)
-}
-
-var cmdNfs = &cli.Command{
-	Run:     runNfs,
-	Name:    "nfs",
-	Summary: "nfs client/server test (requires root)",
-	Usage:   "",
-	Description: `
-Test that the kernel NFS server and client work within CoreOS.
-`}
-
-func runNfs(args []string) int {
-	if len(args) != 0 {
-		log.Printf("No args accepted")
-		return 2
-	}
-
-	var (
-		c   platform.Cluster
-		err error
-	)
-	if *kolaPlatform == "qemu" {
-		c, err = platform.NewQemuCluster(*kola.QemuImage)
-	} else if *kolaPlatform == "gce" {
-		c, err = platform.NewGCECluster(kola.GCEOpts())
-	} else {
-		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
-	}
-
-	if err != nil {
-		log.Printf("NewQemuCluster: %s", err)
-		return 2
-	}
-
-	defer func() {
-		if err := c.Destroy(); err != nil {
-			log.Printf("Cluster.Destroy: %s", err)
-			return
-		}
-	}()
-
+// Test that the kernel NFS server and client work within CoreOS.
+func NFS(c platform.Cluster) error {
 	/* server machine */
 	c1 := config.CloudConfig{
 		CoreOS: config.CoreOS{
@@ -105,24 +61,17 @@ func runNfs(args []string) int {
 
 	m1, err := c.NewMachine(c1.String())
 	if err != nil {
-		log.Printf("Cluster.NewMachine: %s", err)
-		return 2
+		return fmt.Errorf("Cluster.NewMachine: %s", err)
 	}
 
-	defer func() {
-		if err := m1.Destroy(); err != nil {
-			log.Printf("Machine.Destroy: %s", err)
-			return
-		}
-	}()
+	defer m1.Destroy()
 
 	log.Printf("NFS server booted.")
 
 	/* poke a file in /tmp */
 	tmp, err := m1.SSH("mktemp")
 	if err != nil {
-		log.Printf("Machine.SSH: %s", err)
-		return 2
+		return fmt.Errorf("Machine.SSH: %s", err)
 	}
 
 	log.Printf("Test file %q created on server.", tmp)
@@ -162,16 +111,10 @@ Options=defaults,noexec
 
 	m2, err := c.NewMachine(c2.String())
 	if err != nil {
-		log.Printf("Cluster.NewMachine: %s", err)
-		return 2
+		return fmt.Errorf("Cluster.NewMachine: %s", err)
 	}
 
-	defer func() {
-		if err := m2.Destroy(); err != nil {
-			log.Printf("Machine.Destroy: %s", err)
-			return
-		}
-	}()
+	defer m2.Destroy()
 
 	log.Printf("NFS client booted.")
 
@@ -192,17 +135,14 @@ Options=defaults,noexec
 	}
 
 	if len(lsmnt) == 0 {
-		log.Printf("Client /mnt is empty.")
-		return 2
+		return fmt.Errorf("Client /mnt is empty.")
 	}
 
 	if bytes.Contains(lsmnt, []byte(path.Base(string(tmp)))) != true {
-		log.Printf("Client /mnt did not contain file %q from server /tmp", tmp)
-		log.Printf("/mnt: %s", lsmnt)
-		return 2
+		return fmt.Errorf("Client /mnt did not contain file %q from server /tmp -- /mnt: %s", tmp, lsmnt)
 	}
 
 	log.Printf("NFS test passed.")
 
-	return 0
+	return nil
 }
