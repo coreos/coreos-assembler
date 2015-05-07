@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
@@ -52,9 +53,9 @@ func runNfs(args []string) int {
 		err error
 	)
 	if *kolaPlatform == "qemu" {
-		c, err = platform.NewQemuCluster(*qemuImage)
+		c, err = platform.NewQemuCluster(*kola.QemuImage)
 	} else if *kolaPlatform == "gce" {
-		c, err = platform.NewGCECluster(gceOpts())
+		c, err = platform.NewGCECluster(kola.GCEOpts())
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
 	}

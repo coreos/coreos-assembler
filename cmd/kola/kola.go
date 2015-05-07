@@ -33,6 +33,8 @@ var cmdRun = &cli.Command{
 	Run:         kola.RunTests,
 }
 
+var kolaPlatform = flag.String("platform", "qemu", "compute platform for bootchart")
+
 func init() {
 	cli.Register(cmdRun)
 }

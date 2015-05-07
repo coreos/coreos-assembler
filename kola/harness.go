@@ -79,9 +79,9 @@ func RunTests(args []string) int {
 func runTest(t Test, pltfrm string) (err error) {
 	var cluster platform.Cluster
 	if pltfrm == "qemu" {
-		cluster, err = platform.NewQemuCluster(*qemuImage)
+		cluster, err = platform.NewQemuCluster(*QemuImage)
 	} else if pltfrm == "gce" {
-		cluster, err = platform.NewGCECluster(gceOpts())
+		cluster, err = platform.NewGCECluster(GCEOpts())
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", pltfrm)
 	}
