@@ -20,7 +20,7 @@ import (
 )
 
 func TestExecCmdKill(t *testing.T) {
-	cmd := Command("sleep", "3600")
+	cmd := NewCommand("sleep", "3600")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -29,13 +29,12 @@ func TestExecCmdKill(t *testing.T) {
 		t.Errorf("Kill failed: %v", err)
 	}
 
-	state := cmd.(*ExecCmd).ProcessState
-	if state == nil {
+	if cmd.ProcessState == nil {
 		t.Fatalf("ProcessState is nil")
 	}
 
-	status := state.Sys().(syscall.WaitStatus)
+	status := cmd.ProcessState.Sys().(syscall.WaitStatus)
 	if status.Signal() != syscall.SIGKILL {
-		t.Errorf("Unexpected state: %s", state)
+		t.Errorf("Unexpected state: %s", cmd.ProcessState)
 	}
 }
