@@ -15,6 +15,8 @@
 package main
 
 import (
+	"flag"
+
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
 )
