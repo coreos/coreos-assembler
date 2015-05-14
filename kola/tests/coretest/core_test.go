@@ -171,7 +171,7 @@ func TestServicesActive(t *testing.T) {
 	units := []string{
 		"multi-user.target",
 		"docker.socket",
-		"ntpd.service",
+		"systemd-timesyncd.service",
 		"update-engine.service",
 	}
 	for _, unit := range units {
