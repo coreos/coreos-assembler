@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/guelfey/go.dbus"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/godbus/dbus"
 )
 
 func CheckDbusInterface(iFace string, timeout time.Duration) error {

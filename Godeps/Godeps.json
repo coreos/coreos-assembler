@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -137,6 +137,11 @@
 		{
 			"ImportPath": "github.com/coreos/yaml",
 			"Rev": "6b16a5714269b2f70720a45406b1babd947a17ef"
+		},
+		{
+			"ImportPath": "github.com/godbus/dbus",
+			"Comment": "v2-6-ga5942de",
+			"Rev": "a5942dec6340eb0d57f43f2003c190ce06e43dea"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
