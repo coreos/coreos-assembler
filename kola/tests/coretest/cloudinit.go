@@ -9,7 +9,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-	"testing"
 )
 
 const cloudinitBinPath = "/usr/bin/coreos-cloudinit"
@@ -24,10 +23,10 @@ func rmdir(path string) error {
 	return cmd.Run()
 }
 
-func TestCloudinitCloudConfig(t *testing.T) {
+func TestCloudinitCloudConfig() error {
 	workspace, err := ioutil.TempDir("", "coretest-cloudinit-")
 	if err != nil {
-		t.Fatalf("Failed creating workspace: %v", err)
+		return fmt.Errorf("Failed creating workspace: %v", err)
 	}
 	defer rmdir(workspace)
 
@@ -45,23 +44,23 @@ ssh_authorized_keys:
 	configData := fmt.Sprintf(configTmpl, keyOne, keyTwo)
 	configFile, err := ioutil.TempFile(os.TempDir(), "coretest-")
 	if err != nil {
-		t.Fatalf("Failed creating tempfile: %v", err)
+		return fmt.Errorf("Failed creating tempfile: %v", err)
 	}
 	defer syscall.Unlink(configFile.Name())
 
 	if _, err := io.WriteString(configFile, configData); err != nil {
-		t.Fatalf("Failed writing %s: %v", configFile.Name(), err)
+		return fmt.Errorf("Failed writing %s: %v", configFile.Name(), err)
 	}
 
 	if stdout, stderr, err := Run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name(), "--ssh-key-name", "coretest"); err != nil {
-		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	contents, err := read("/run/systemd/system/etcd.service.d/20-cloudinit.conf")
 	if err != nil {
-		t.Errorf("Unable to read etcd bootstrap file: %v", err)
+		return fmt.Errorf("Unable to read etcd bootstrap file: %v", err)
 	} else if !strings.Contains(contents, "Environment=\"ETCD_DISCOVERY=https://discovery.etcd.io/827c73219eeb2fa5530027c37bf18877\"") {
-		t.Errorf("Incorrect data written to etcd.service.d/20-cloudinit.conf: %s", contents)
+		return fmt.Errorf("Incorrect data written to etcd.service.d/20-cloudinit.conf: %s", contents)
 	}
 
 	// Attempt to clean up after ourselves
@@ -69,22 +68,24 @@ ssh_authorized_keys:
 
 	authorized_keys, err := read("/home/core/.ssh/authorized_keys")
 	if err != nil {
-		t.Fatalf("Unable to read authorized_keys file: %v", err)
+		return fmt.Errorf("Unable to read authorized_keys file: %v", err)
 	}
 
 	if !strings.Contains(authorized_keys, keyOne) {
-		t.Errorf("Could not find first key in authorized_keys")
+		return fmt.Errorf("Could not find first key in authorized_keys")
 	}
 
 	if !strings.Contains(authorized_keys, keyTwo) {
-		t.Errorf("Could not find second key in authorized_keys")
+		return fmt.Errorf("Could not find second key in authorized_keys")
 	}
+
+	return nil
 }
 
-func TestCloudinitScript(t *testing.T) {
+func TestCloudinitScript() error {
 	workspace, err := ioutil.TempDir("", "coretest-cloudinit-")
 	if err != nil {
-		t.Fatalf("Failed creating workspace: %v", err)
+		return fmt.Errorf("Failed creating workspace: %v", err)
 	}
 	defer rmdir(workspace)
 
@@ -93,30 +94,32 @@ func TestCloudinitScript(t *testing.T) {
 `
 	configFile, err := ioutil.TempFile(os.TempDir(), "coretest-")
 	if err != nil {
-		t.Fatalf("Failed creating tempfile: %v", err)
+		return fmt.Errorf("Failed creating tempfile: %v", err)
 	}
 	defer syscall.Unlink(configFile.Name())
 
 	if _, err := io.WriteString(configFile, configData); err != nil {
-		t.Fatalf("Failed writing %s: %v", configFile.Name(), err)
+		return fmt.Errorf("Failed writing %s: %v", configFile.Name(), err)
 	}
 
 	if stdout, stderr, err := Run("sudo", cloudinitBinPath, "--workspace", workspace, "--from-file", configFile.Name()); err != nil {
-		t.Fatalf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("coreos-cloudinit failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	unitName, err := read(path.Join(workspace, "scripts", "unit-name"))
 	if err != nil {
-		t.Fatalf("Unable to read unit name from cloudinit workspace: %v", err)
+		return fmt.Errorf("Unable to read unit name from cloudinit workspace: %v", err)
 	}
 	defer Run("systemctl", "stop", unitName)
 
 	stdout, stderr, err := Run("systemctl", "status", unitName)
 	if err != nil {
-		t.Fatalf("Unable to determine if user-data was executed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("Unable to determine if user-data was executed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	if !strings.Contains(stdout, "Active: active") {
-		t.Errorf("User-data unit is not active")
+		return fmt.Errorf("User-data unit is not active")
 	}
+
+	return nil
 }

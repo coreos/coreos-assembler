@@ -1,11 +1,10 @@
 package coretest
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"crypto/rand"
 	"strings"
-	"testing"
 )
 
 const (
@@ -33,41 +32,42 @@ func generateKey() string {
 
 // TestEtcdUpdateValue tests to update value of a key.
 // The test coverage includes setting, getting, updating, deleting.
-func TestEtcdUpdateValue(t *testing.T) {
+func TestEtcdUpdateValue() error {
 	// Use a random key name so members of a cluster don't step on each other.
 	target := targetAddress + generateKey() + "?consistent=true"
 
 	stdout, stderr, err := Run("curl", append(retry, "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", helloStr))...)
 	if err != nil {
-		t.Fatalf("curl set failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("curl set failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	if !strings.Contains(stdout, helloStr) {
-		t.Fatalf("Failed getting value %v\nstdout: %v", helloStr, stdout)
+		return fmt.Errorf("Failed getting value %v\nstdout: %v", helloStr, stdout)
 	}
 
 	stdout, stderr, err = Run("curl", append(retry, "-L", target, "-XPUT", "-d", fmt.Sprintf("value=\"%s\"", newHelloStr))...)
 	if err != nil {
-		t.Fatalf("curl update failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("curl update failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	stdout, stderr, err = Run("curl", append(retry, "-L", target)...)
 	if err != nil {
-		t.Fatalf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	if !strings.Contains(stdout, newHelloStr) {
-		t.Fatalf("Failed getting value %v\nstdout: %v", newHelloStr, stdout)
+		return fmt.Errorf("Failed getting value %v\nstdout: %v", newHelloStr, stdout)
 	}
 
 	stdout, stderr, err = Run("curl", append(retry, "-L", target, "-XDELETE")...)
 	if err != nil {
-		t.Fatalf("curl delete failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("curl delete failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	stdout, stderr, err = Run("curl", append(retry, "-L", target)...)
 	if err != nil {
-		t.Fatalf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("curl get failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	if !strings.Contains(stdout, keyNotFound) {
-		t.Fatalf("Failed getting value %v\nstdout: %v", keyNotFound, stdout)
+		return fmt.Errorf("Failed getting value %v\nstdout: %v", keyNotFound, stdout)
 	}
+	return nil
 }
