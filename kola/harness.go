@@ -24,9 +24,6 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-// tests should register by adding init() functions to this package
-var Tests []Test
-
 type Test struct {
 	Run         func(platform.Cluster) error
 	Name        string //Should be uppercase and unique
@@ -35,7 +32,19 @@ type Test struct {
 	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 }
 
-// runs and sets up environment for tests specified in etcdtests pkg
+// maps names to tests
+var Tests map[string]*Test
+
+// panic if existing name is registered
+func Register(t *Test) {
+	_, ok := Tests[t.Name]
+	if ok {
+		panic("test already registered with same name")
+	}
+	Tests[t.Name] = t
+}
+
+// test runner
 func RunTests(args []string) int {
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
@@ -48,7 +57,7 @@ func RunTests(args []string) int {
 		pattern = "*" // run all tests by default
 	}
 
-	var ranTests int //count sucessful tests
+	var ranTests int //count successful tests
 	for _, t := range Tests {
 		match, err := filepath.Match(pattern, t.Name)
 		if err != nil {
@@ -78,7 +87,7 @@ func RunTests(args []string) int {
 }
 
 // starts a cluster and runs the test
-func runTest(t Test, pltfrm string) (err error) {
+func runTest(t *Test, pltfrm string) (err error) {
 	var cluster platform.Cluster
 	if pltfrm == "qemu" {
 		cluster, err = platform.NewQemuCluster(*QemuImage)
