@@ -27,7 +27,7 @@ import (
 )
 
 // Test that the kernel NFS server and client work within CoreOS.
-func NFS(c platform.Cluster) error {
+func NFS(c platform.TestCluster) error {
 	/* server machine */
 	c1 := config.CloudConfig{
 		CoreOS: config.CoreOS{

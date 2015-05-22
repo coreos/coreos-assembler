@@ -24,16 +24,22 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
+// NativeRunner is a closure passed to all kola test functions and used
+// to run native go functions directly on kola machines. It is necessary
+// glue until kola does introspection.
+type NativeRunner func(funcName string, m platform.Machine) error
+
 type Test struct {
-	Run         func(platform.Cluster) error
-	Name        string //Should be uppercase and unique
+	Name        string // should be uppercase and unique
+	Run         func(platform.TestCluster) error
+	NativeFuncs map[string]func() error
 	CloudConfig string
 	ClusterSize int
 	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 }
 
 // maps names to tests
-var Tests map[string]*Test
+var Tests = map[string]*Test{}
 
 // panic if existing name is registered
 func Register(t *Test) {
@@ -44,7 +50,7 @@ func Register(t *Test) {
 	Tests[t.Name] = t
 }
 
-// test runner
+// test runner and kola entry point
 func RunTests(args []string) int {
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
@@ -86,9 +92,11 @@ func RunTests(args []string) int {
 	return 0
 }
 
-// starts a cluster and runs the test
-func runTest(t *Test, pltfrm string) (err error) {
+// create a cluster and run test
+func runTest(t *Test, pltfrm string) error {
+	var err error
 	var cluster platform.Cluster
+
 	if pltfrm == "qemu" {
 		cluster, err = platform.NewQemuCluster(*QemuImage)
 	} else if pltfrm == "gce" {
@@ -121,9 +129,47 @@ func runTest(t *Test, pltfrm string) (err error) {
 		fmt.Fprintf(os.Stderr, "%v instance up\n", pltfrm)
 	}
 
+	// drop kolet binary on machines
+	if t.NativeFuncs != nil {
+		for _, m := range cluster.Machines() {
+			err = scpFile(m, "./kolet") //TODO pb: locate local binary path with `which` once kolet is in overlay
+			if err != nil {
+				return fmt.Errorf("dropping kolet binary: %v", err)
+			}
+		}
+	}
+	// Cluster -> TestCluster
+	tcluster := platform.TestCluster{t.Name, cluster}
+
 	// run test
-	err = t.Run(cluster)
+	err = t.Run(tcluster)
 	return err
+}
+
+// scpFile copies file from src path to ~/ on machine
+func scpFile(m platform.Machine, src string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	session, err := m.SSHSession()
+	if err != nil {
+		return fmt.Errorf("Error establishing ssh session: %v", err)
+	}
+	defer session.Close()
+
+	// machine reads file from stdin
+	session.Stdin = in
+
+	// cat file to fs
+	_, filename := filepath.Split(src)
+	_, err = session.CombinedOutput(fmt.Sprintf("install -m 0755 /dev/stdin ./%s", filename))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // replaces $discovery with discover url in etcd cloud config and
