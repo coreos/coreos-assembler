@@ -15,6 +15,8 @@
 package platform
 
 import (
+	"fmt"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/util"
 )
@@ -37,4 +39,21 @@ type Cluster interface {
 	EtcdEndpoint() string
 	GetDiscoveryURL(size int) (string, error)
 	Destroy() error
+}
+
+// TestCluster embedds a Cluster to provide platform independant helper
+// methods.
+type TestCluster struct {
+	Name string
+	Cluster
+}
+
+// run a registered NativeFunc on a remote machine
+func (t *TestCluster) RunNative(funcName string, m Machine) error {
+	// scp and execute kolet on remote machine
+	b, err := m.SSH(fmt.Sprintf("./kolet run %q %q", t.Name, funcName))
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, b)
+	}
+	return nil
 }

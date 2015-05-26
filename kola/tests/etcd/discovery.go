@@ -23,12 +23,12 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-func DiscoveryV2(cluster platform.Cluster) error {
-	return discovery(cluster, 2)
+func DiscoveryV2(c platform.TestCluster) error {
+	return discovery(c, 2)
 }
 
-func DiscoveryV1(cluster platform.Cluster) error {
-	return discovery(cluster, 1)
+func DiscoveryV1(c platform.TestCluster) error {
+	return discovery(c, 1)
 }
 
 func discovery(cluster platform.Cluster, version int) error {
