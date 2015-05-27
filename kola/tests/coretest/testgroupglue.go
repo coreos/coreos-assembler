@@ -8,17 +8,9 @@ import (
 
 // run various native functions that only require a single machine
 func LocalTests(c platform.TestCluster) error {
-	tests := []string{
-		"CloudConfig",
-		"Script",
-		"PortSSH",
-		"DbusPerms",
-		"Symlink",
-		"UpdateEngineKeys",
-		"ServicesActive",
-		"ReadOnly",
-	}
+	tests := c.ListNativeFunctions()
 	for _, name := range tests {
+
 		fmt.Printf("running %v...\n", name)
 		err := c.RunNative(name, c.Machines()[0])
 		if err != nil {
@@ -30,11 +22,7 @@ func LocalTests(c platform.TestCluster) error {
 
 // run clustering based tests
 func ClusterTests(c platform.TestCluster) error {
-	tests := []string{
-		"EtcdUpdateValue",
-		"FleetctlListMachines",
-		"FleetctlRunService",
-	}
+	tests := c.ListNativeFunctions()
 	for _, name := range tests {
 		fmt.Printf("running %v...\n", name)
 		err := c.RunNative(name, c.Machines()[0])
@@ -48,12 +36,7 @@ func ClusterTests(c platform.TestCluster) error {
 
 // run internet based tests
 func InternetTests(c platform.TestCluster) error {
-	tests := []string{
-		"UpdateEngine",
-		"DockerPing",
-		"DockerEcho",
-		"NTPDate",
-	}
+	tests := c.ListNativeFunctions()
 	for _, name := range tests {
 		fmt.Printf("running %v...\n", name)
 		err := c.RunNative(name, c.Machines()[0])

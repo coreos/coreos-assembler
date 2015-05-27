@@ -44,7 +44,8 @@ type Cluster interface {
 // TestCluster embedds a Cluster to provide platform independant helper
 // methods.
 type TestCluster struct {
-	Name string
+	Name        string
+	NativeFuncs []string
 	Cluster
 }
 
@@ -60,4 +61,8 @@ func (t *TestCluster) RunNative(funcName string, m Machine) error {
 		return fmt.Errorf("%s", b) // return function std output, not the exit status
 	}
 	return nil
+}
+
+func (t *TestCluster) ListNativeFunctions() []string {
+	return t.NativeFuncs
 }
