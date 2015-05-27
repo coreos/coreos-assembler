@@ -51,9 +51,13 @@ type TestCluster struct {
 // run a registered NativeFunc on a remote machine
 func (t *TestCluster) RunNative(funcName string, m Machine) error {
 	// scp and execute kolet on remote machine
-	b, err := m.SSH(fmt.Sprintf("./kolet run %q %q", t.Name, funcName))
+	ssh, err := m.SSHSession()
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, b)
+		return fmt.Errorf("kolet SSH session: %v", err)
+	}
+	b, err := ssh.CombinedOutput(fmt.Sprintf("./kolet run %q %q", t.Name, funcName))
+	if err != nil {
+		return fmt.Errorf("%s", b) // return function std output, not the exit status
 	}
 	return nil
 }
