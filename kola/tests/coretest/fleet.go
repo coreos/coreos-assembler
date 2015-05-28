@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-	"testing"
 	"time"
 )
 
@@ -47,49 +46,51 @@ func init() {
 
 // TestFleetctlListMachines tests that 'fleetctl list-machines' works
 // and print itself out at least.
-func TestFleetctlListMachines(t *testing.T) {
+func TestFleetctlListMachines() error {
 	stdout, stderr, err := Run(fleetctlBinPath, "list-machines", "--no-legend")
 	if err != nil {
-		t.Fatalf("fleetctl list-machines failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("fleetctl list-machines failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	stdout = strings.TrimSpace(stdout)
 	if len(strings.Split(stdout, "\n")) == 0 {
-		t.Fatalf("Failed listing out at least one machine\nstdout: %s", stdout)
+		return fmt.Errorf("Failed listing out at least one machine\nstdout: %s", stdout)
 	}
+	return nil
 }
 
 // TestFleetctlRunService tests that fleetctl could start, unload and destroy
 // unit file.
-func TestFleetctlRunService(t *testing.T) {
+func TestFleetctlRunService() error {
 	serviceName := "hello.service"
 
 	serviceFile, err := os.Create(path.Join(os.TempDir(), serviceName))
 	if err != nil {
-		t.Fatalf("Failed creating %v: %v", serviceName, err)
+		return fmt.Errorf("Failed creating %v: %v", serviceName, err)
 	}
 	defer syscall.Unlink(serviceFile.Name())
 
 	if _, err := io.WriteString(serviceFile, serviceData); err != nil {
-		t.Fatalf("Failed writing %v: %v", serviceFile.Name(), err)
+		return fmt.Errorf("Failed writing %v: %v", serviceFile.Name(), err)
 	}
 
 	defer timeoutFleetctl("destroy", serviceFile.Name())
 
 	stdout, stderr, err := timeoutFleetctl("start", serviceFile.Name())
 	if err != nil {
-		t.Fatalf("fleetctl start failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("fleetctl start failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	stdout, stderr, err = timeoutFleetctl("unload", serviceName)
 	if err != nil {
-		t.Fatalf("fleetctl unload failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("fleetctl unload failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	stdout, stderr, err = timeoutFleetctl("destroy", serviceName)
 	if err != nil {
-		t.Fatalf("fleetctl destroy failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("fleetctl destroy failed with error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
+	return nil
 }
 
 func timeoutFleetctl(action string, unitName string) (stdout string, stderr string, err error) {

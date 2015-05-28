@@ -45,7 +45,7 @@ func main() {
 // test runner
 func Run(args []string) int {
 	if len(args) != 2 {
-		fmt.Fprintf(os.Stderr, "FAIL: Extra arguements specified. Usage: 'kolet run <test name> <func name>'\n")
+		fmt.Fprintf(os.Stderr, "kolet: Extra arguements specified. Usage: 'kolet run <test name> <func name>'\n")
 		return 2
 	}
 	testname, funcname := args[0], args[1]
@@ -53,18 +53,18 @@ func Run(args []string) int {
 	// find test with matching name
 	test, ok := kola.Tests[testname]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "FAIL: test group not found\n")
+		fmt.Fprintf(os.Stderr, "kolet: test group not found\n")
 		return 1
 	}
 	// find native function in test
 	f, ok := test.NativeFuncs[funcname]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "FAIL: native function not found\n")
+		fmt.Fprintf(os.Stderr, "kolet: native function not found\n")
 		return 1
 	}
 	err := f()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: on native test %v: %v", funcname, err)
+		fmt.Fprintf(os.Stderr, "kolet: on native test %v: %v", funcname, err)
 		return 1
 	}
 	return 0

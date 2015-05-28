@@ -138,8 +138,13 @@ func runTest(t *Test, pltfrm string) error {
 			}
 		}
 	}
+	// pass along all registered native functions
+	var names []string
+	for k := range t.NativeFuncs {
+		names = append(names, k)
+	}
 	// Cluster -> TestCluster
-	tcluster := platform.TestCluster{t.Name, cluster}
+	tcluster := platform.TestCluster{t.Name, names, cluster}
 
 	// run test
 	err = t.Run(tcluster)
