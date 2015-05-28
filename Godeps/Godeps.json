@@ -148,6 +148,14 @@
 			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
 		},
 		{
+			"ImportPath": "github.com/kylelemons/godebug/diff",
+			"Rev": "21cb3784d9bda523911b96719efba02b7e983256"
+		},
+		{
+			"ImportPath": "github.com/kylelemons/godebug/pretty",
+			"Rev": "21cb3784d9bda523911b96719efba02b7e983256"
+		},
+		{
 			"ImportPath": "github.com/vishvananda/netlink",
 			"Rev": "2e9d285a7160e1c65e1eab8238faf2d6a0dc9a4a"
 		},
