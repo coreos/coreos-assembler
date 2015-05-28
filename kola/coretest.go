@@ -37,9 +37,10 @@ func init() {
 		Run:         coretest.ClusterTests,
 		ClusterSize: 3,
 		NativeFuncs: map[string]func() error{
-			"EtcdUpdateValue":      coretest.TestEtcdUpdateValue,
-			"FleetctlListMachines": coretest.TestFleetctlListMachines,
-			"FleetctlRunService":   coretest.TestFleetctlRunService,
+			"EtcdUpdateValue": coretest.TestEtcdUpdateValue,
+			// until stability improves comment out fleet tests
+			//"FleetctlListMachines": coretest.TestFleetctlListMachines,
+			//"FleetctlRunService":   coretest.TestFleetctlRunService,
 		},
 		CloudConfig: `#cloud-config
 
