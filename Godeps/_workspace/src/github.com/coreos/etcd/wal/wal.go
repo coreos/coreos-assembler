@@ -273,30 +273,28 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 }
 
 // Cut closes current file written and creates a new one ready to append.
+// cut first creates a temp wal file and writes necessary headers into it.
+// Then cut atomtically rename temp wal file to a wal file.
 func (w *WAL) Cut() error {
-	// create a new wal file with name sequence + 1
+	// close old wal file
+	if err := w.sync(); err != nil {
+		return err
+	}
+	if err := w.f.Close(); err != nil {
+		return err
+	}
+
 	fpath := path.Join(w.dir, walName(w.seq+1, w.enti+1))
-	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	ftpath := fpath + ".tmp"
+
+	// create a temp wal file with name sequence + 1, or tuncate the existing one
+	ft, err := os.OpenFile(ftpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
-	l, err := fileutil.NewLock(f.Name())
-	if err != nil {
-		return err
-	}
-	err = l.Lock()
-	if err != nil {
-		return err
-	}
-	w.locks = append(w.locks, l)
-	if err = w.sync(); err != nil {
-		return err
-	}
-	w.f.Close()
 
 	// update writer and save the previous crc
-	w.f = f
-	w.seq++
+	w.f = ft
 	prevCrc := w.encoder.crc.Sum32()
 	w.encoder = newEncoder(w.f, prevCrc)
 	if err := w.saveCrc(prevCrc); err != nil {
@@ -308,7 +306,45 @@ func (w *WAL) Cut() error {
 	if err := w.saveState(&w.state); err != nil {
 		return err
 	}
-	return w.sync()
+	// close temp wal file
+	if err := w.sync(); err != nil {
+		return err
+	}
+	if err := w.f.Close(); err != nil {
+		return err
+	}
+
+	// atomically move temp wal file to wal file
+	if err := os.Rename(ftpath, fpath); err != nil {
+		return err
+	}
+
+	// open the wal file and update writer again
+	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		return err
+	}
+	w.f = f
+	prevCrc = w.encoder.crc.Sum32()
+	w.encoder = newEncoder(w.f, prevCrc)
+
+	// lock the new wal file
+	l, err := fileutil.NewLock(f.Name())
+	if err != nil {
+		return err
+	}
+	err = l.Lock()
+	if err != nil {
+		return err
+	}
+	w.locks = append(w.locks, l)
+
+	// increase the wal seq
+	w.seq++
+
+	log.Printf("wal: segmented wal file %v is created", fpath)
+
+	return nil
 }
 
 func (w *WAL) sync() error {
@@ -320,27 +356,42 @@ func (w *WAL) sync() error {
 	return w.f.Sync()
 }
 
-// ReleaseLockTo releases the locks w is holding, which
-// have index smaller or equal to the given index.
+// ReleaseLockTo releases the locks, which has smaller index than the given index
+// except the largest one among them.
+// For example, if WAL is holding lock 1,2,3,4,5,6, ReleaseLockTo(4) will release
+// lock 1,2 but keep 3. ReleaseLockTo(5) will release 1,2,3 but keep 4.
 func (w *WAL) ReleaseLockTo(index uint64) error {
-	for _, l := range w.locks {
-		_, i, err := parseWalName(path.Base(l.Name()))
+	var smaller int
+	found := false
+
+	for i, l := range w.locks {
+		_, lockIndex, err := parseWalName(path.Base(l.Name()))
 		if err != nil {
 			return err
 		}
-		if i > index {
-			return nil
+		if lockIndex >= index {
+			smaller = i - 1
+			found = true
+			break
 		}
-		err = l.Unlock()
-		if err != nil {
-			return err
-		}
-		err = l.Destroy()
-		if err != nil {
-			return err
-		}
-		w.locks = w.locks[1:]
 	}
+
+	// if no lock index is greater than the release index, we can
+	// release lock upto the last one(excluding).
+	if !found && len(w.locks) != 0 {
+		smaller = len(w.locks) - 1
+	}
+
+	if smaller <= 0 {
+		return nil
+	}
+
+	for i := 0; i < smaller; i++ {
+		w.locks[i].Unlock()
+		w.locks[i].Destroy()
+	}
+	w.locks = w.locks[smaller:]
+
 	return nil
 }
 
