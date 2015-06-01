@@ -126,7 +126,7 @@ func runTest(t *Test, pltfrm string) error {
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
 		for _, m := range cluster.Machines() {
-			err = scpFile(m, "./kolet") //TODO pb: locate local binary path with `which` once kolet is in overlay
+			err = scpKolet(m)
 			if err != nil {
 				return fmt.Errorf("dropping kolet binary: %v", err)
 			}
@@ -143,6 +143,23 @@ func runTest(t *Test, pltfrm string) error {
 	// run test
 	err = t.Run(tcluster)
 	return err
+}
+
+// scpKolet searches for a kolet binary and copies it to the machine.
+func scpKolet(m platform.Machine) error {
+	// TODO: determine the GOARCH for the remote machine
+	mArch := "amd64"
+	for _, d := range []string{
+		".",
+		filepath.Dir(os.Args[0]),
+		filepath.Join("/usr/lib/kola", mArch),
+	} {
+		kolet := filepath.Join(d, "kolet")
+		if _, err := os.Stat(kolet); err == nil {
+			return scpFile(m, kolet)
+		}
+	}
+	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
 }
 
 // scpFile copies file from src path to ~/ on machine
