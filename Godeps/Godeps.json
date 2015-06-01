@@ -21,118 +21,118 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/discovery",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/error",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/etcdserver",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/migrate",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/crc",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/fileutil",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/flags",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/idutil",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/ioutil",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/metrics",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/netutil",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pbutil",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/timeutil",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/transport",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/wait",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/raft",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/rafthttp",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/snap",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/store",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/version",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/wal",
-			"Comment": "v2.0.3-17-g7c65857",
-			"Rev": "7c65857283cd1035a89231a03bb78a8a6e99c8eb"
+			"Comment": "v2.0.11",
+			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
 			"ImportPath": "github.com/coreos/yaml",
@@ -145,7 +145,7 @@
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
-			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
+			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
 		},
 		{
 			"ImportPath": "github.com/kylelemons/godebug/diff",

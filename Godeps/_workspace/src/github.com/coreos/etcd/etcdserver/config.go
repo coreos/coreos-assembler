@@ -46,9 +46,43 @@ type ServerConfig struct {
 	ElectionTicks int
 }
 
-// VerifyBootstrapConfig sanity-checks the initial config and returns an error
-// for things that should never happen.
-func (c *ServerConfig) VerifyBootstrapConfig() error {
+// VerifyBootstrapConfig sanity-checks the initial config for bootstrap case
+// and returns an error for things that should never happen.
+func (c *ServerConfig) VerifyBootstrap() error {
+	if err := c.verifyLocalMember(true); err != nil {
+		return err
+	}
+	if err := c.Cluster.Validate(); err != nil {
+		return err
+	}
+	if c.Cluster.String() == "" && c.DiscoveryURL == "" {
+		return fmt.Errorf("initial cluster unset and no discovery URL found")
+	}
+	return nil
+}
+
+// VerifyJoinExisting sanity-checks the initial config for join existing cluster
+// case and returns an error for things that should never happen.
+func (c *ServerConfig) VerifyJoinExisting() error {
+	// no need for strict checking since the member have announced its
+	// peer urls to the cluster before starting and do not have to set
+	// it in the configuration again.
+	if err := c.verifyLocalMember(false); err != nil {
+		return err
+	}
+	if err := c.Cluster.Validate(); err != nil {
+		return err
+	}
+	if c.DiscoveryURL != "" {
+		return fmt.Errorf("discovery URL should not be set when joining existing initial cluster")
+	}
+	return nil
+}
+
+// verifyLocalMember verifies the configured member is in configured
+// cluster. If strict is set, it also verifies the configured member
+// has the same peer urls as configured advertised peer urls.
+func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	m := c.Cluster.MemberByName(c.Name)
 	// Make sure the cluster at least contains the local server.
 	if m == nil {
@@ -58,20 +92,14 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 		return fmt.Errorf("cannot use %x as member id", raft.None)
 	}
 
-	if c.DiscoveryURL == "" && !c.NewCluster {
-		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
-	}
-
-	if err := c.Cluster.Validate(); err != nil {
-		return err
-	}
-
 	// Advertised peer URLs must match those in the cluster peer list
 	// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 	apurls := c.PeerURLs.StringSlice()
 	sort.Strings(apurls)
-	if !netutil.URLStringsEqual(apurls, m.PeerURLs) {
-		return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
+	if strict {
+		if !netutil.URLStringsEqual(apurls, m.PeerURLs) {
+			return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
+		}
 	}
 	return nil
 }

@@ -42,6 +42,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/snap"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/store"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/version"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -144,18 +145,24 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var s *raft.MemoryStorage
 	var id types.ID
 
-	walVersion, err := wal.DetectVersion(cfg.DataDir)
+	// Run the migrations.
+	dataVer, err := version.DetectDataDir(cfg.DataDir)
 	if err != nil {
 		return nil, err
 	}
-	if walVersion == wal.WALUnknown {
-		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
+	if err := upgradeDataDir(cfg.DataDir, cfg.Name, dataVer); err != nil {
+		return nil, err
 	}
-	haveWAL := walVersion != wal.WALNotExist
+
+	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
+	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
+		if err := cfg.VerifyJoinExisting(); err != nil {
+			return nil, err
+		}
 		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cfg.Cluster, cfg.Name), cfg.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
@@ -163,12 +170,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
+		remotes = existingCluster.Members()
 		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
 		id, n, s, w = startNode(cfg, nil)
 	case !haveWAL && cfg.NewCluster:
-		if err := cfg.VerifyBootstrapConfig(); err != nil {
+		if err := cfg.VerifyBootstrap(); err != nil {
 			return nil, err
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)
@@ -191,11 +199,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
-		// Run the migrations.
-		if err := upgradeWAL(cfg.DataDir, cfg.Name, walVersion); err != nil {
-			return nil, err
-		}
-
 		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
 			return nil, fmt.Errorf("cannot write to data directory: %v", err)
 		}
@@ -235,6 +238,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		Name: cfg.Name,
 		ID:   id.String(),
 	}
+	sstats.Initialize()
 	lstats := stats.NewLeaderStats(id.String())
 
 	srv := &EtcdServer{
@@ -257,8 +261,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		reqIDGen:   idutil.NewGenerator(uint8(id), time.Now()),
 	}
 
+	// TODO: move transport initialization near the definition of remote
 	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
-	// add all the remote members into sendhub
+	// add all remotes into transport
+	for _, m := range remotes {
+		if m.ID != id {
+			tr.AddRemote(m.ID, m.PeerURLs)
+		}
+	}
 	for _, m := range cfg.Cluster.Members() {
 		if m.ID != id {
 			tr.AddPeer(m.ID, m.PeerURLs)
@@ -289,7 +299,6 @@ func (s *EtcdServer) start() {
 	s.w = wait.New()
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
-	s.stats.Initialize()
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
@@ -664,9 +673,9 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 }
 
 func (s *EtcdServer) send(ms []raftpb.Message) {
-	for _, m := range ms {
-		if !s.Cluster.IsIDRemoved(types.ID(m.To)) {
-			m.To = 0
+	for i, _ := range ms {
+		if s.Cluster.IsIDRemoved(types.ID(ms[i].To)) {
+			ms[i].To = 0
 		}
 	}
 	s.r.transport.Send(ms)
@@ -716,7 +725,11 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		switch {
 		case existsSet:
 			if exists {
-				return f(s.store.Update(r.Path, r.Val, expr))
+				if r.PrevIndex == 0 && r.PrevValue == "" {
+					return f(s.store.Update(r.Path, r.Val, expr))
+				} else {
+					return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
+				}
 			}
 			return f(s.store.Create(r.Path, r.Dir, r.Val, false, expr))
 		case r.PrevIndex > 0 || r.PrevValue != "":
