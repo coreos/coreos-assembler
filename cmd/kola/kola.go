@@ -16,6 +16,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
@@ -32,10 +34,10 @@ var cmdRun = &cli.Command{
 	Name:        "run",
 	Summary:     "Run run kola tests by category",
 	Description: "run all kola tests (default) or related groups",
-	Run:         kola.RunTests,
+	Run:         runRun,
 }
 
-var kolaPlatform = flag.String("platform", "qemu", "compute platform for bootchart")
+var kolaPlatform = flag.String("platform", "qemu", "VM platform: qemu or gce")
 
 func init() {
 	cli.Register(cmdRun)
@@ -43,4 +45,24 @@ func init() {
 
 func main() {
 	cli.Run(cliName, cliDescription)
+}
+
+func runRun(args []string) int {
+	if len(args) > 1 {
+		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
+		return 2
+	}
+	var pattern string
+	if len(args) == 1 {
+		pattern = args[0]
+	} else {
+		pattern = "*" // run all tests by default
+	}
+
+	err := kola.RunTests(pattern, *kolaPlatform)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
+	return 0
 }

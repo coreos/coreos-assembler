@@ -135,6 +135,10 @@
 			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
+			"ImportPath": "github.com/coreos/pkg/capnslog",
+			"Rev": "84b359ff90d62d7b5a5b9dfb96400c08f0cc6642"
+		},
+		{
 			"ImportPath": "github.com/coreos/yaml",
 			"Rev": "6b16a5714269b2f70720a45406b1babd947a17ef"
 		},

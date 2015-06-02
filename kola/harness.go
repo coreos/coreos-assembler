@@ -51,18 +51,7 @@ func Register(t *Test) {
 }
 
 // test runner and kola entry point
-func RunTests(args []string) int {
-	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
-		return 2
-	}
-	var pattern string
-	if len(args) == 1 {
-		pattern = args[0]
-	} else {
-		pattern = "*" // run all tests by default
-	}
-
+func RunTests(pattern, pltfrm string) error {
 	var ranTests int //count successful tests
 	for _, t := range Tests {
 		match, err := filepath.Match(pattern, t.Name)
@@ -73,23 +62,28 @@ func RunTests(args []string) int {
 			continue
 		}
 
-		// run all platforms if whitelist is nil
-		if t.Platforms == nil {
-			t.Platforms = []string{"qemu", "gce"}
+		allowed := true
+		for _, p := range t.Platforms {
+			if p == pltfrm {
+				allowed = true
+				break
+			} else {
+				allowed = false
+			}
+		}
+		if !allowed {
+			continue
 		}
 
-		for _, pltfrm := range t.Platforms {
-			err := runTest(t, pltfrm)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v failed on %v: %v\n", t.Name, pltfrm, err)
-				return 1
-			}
-			fmt.Printf("test %v ran successfully on %v\n", t.Name, pltfrm)
-			ranTests++
+		err = runTest(t, pltfrm)
+		if err != nil {
+			return fmt.Errorf("%v failed on %v: %v\n", t.Name, pltfrm, err)
 		}
+		fmt.Printf("test %v ran successfully on %v\n", t.Name, pltfrm)
+		ranTests++
 	}
-	fmt.Fprintf(os.Stderr, "All %v test(s) ran successfully!\n", ranTests)
-	return 0
+	fmt.Printf("All %v test(s) ran successfully!\n", ranTests)
+	return nil
 }
 
 // create a cluster and run test
@@ -132,7 +126,7 @@ func runTest(t *Test, pltfrm string) error {
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
 		for _, m := range cluster.Machines() {
-			err = scpFile(m, "./kolet") //TODO pb: locate local binary path with `which` once kolet is in overlay
+			err = scpKolet(m)
 			if err != nil {
 				return fmt.Errorf("dropping kolet binary: %v", err)
 			}
@@ -149,6 +143,23 @@ func runTest(t *Test, pltfrm string) error {
 	// run test
 	err = t.Run(tcluster)
 	return err
+}
+
+// scpKolet searches for a kolet binary and copies it to the machine.
+func scpKolet(m platform.Machine) error {
+	// TODO: determine the GOARCH for the remote machine
+	mArch := "amd64"
+	for _, d := range []string{
+		".",
+		filepath.Dir(os.Args[0]),
+		filepath.Join("/usr/lib/kola", mArch),
+	} {
+		kolet := filepath.Join(d, "kolet")
+		if _, err := os.Stat(kolet); err == nil {
+			return scpFile(m, kolet)
+		}
+	}
+	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
 }
 
 // scpFile copies file from src path to ~/ on machine

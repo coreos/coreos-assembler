@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 var (
@@ -27,12 +29,20 @@ var (
 	out            *tabwriter.Writer
 	commands       []*Command // Commands must add themselves via Register()
 	help           bool
+	logDebug       bool
+	logVerbose     bool
+	logLevel       capnslog.LogLevel = capnslog.NOTICE
+	plog           *capnslog.PackageLogger
 )
 
 func init() {
-	flag.BoolVar(&help, "help", false, "Print usage information and exit")
+	flag.BoolVar(&help, "help", false, "Print usage information and exit. (-h)")
 	flag.BoolVar(&help, "h", false, "")
+	flag.BoolVar(&logDebug, "d", false, "Alias for --log-level=DEBUG")
+	flag.BoolVar(&logVerbose, "v", false, "Alias for --log-level=INFO")
+	flag.Var(&logLevel, "log-level", "Set global log level.")
 
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "cli")
 	out = new(tabwriter.Writer)
 	out.Init(os.Stdout, 0, 8, 1, '\t', 0)
 }
@@ -61,10 +71,30 @@ func Description() string {
 }
 
 func Run(name, desc string) {
-	var cmd *Command
-
 	cliName = name
 	cliDescription = desc
+
+	cmd, args := parseCommand()
+	startLogging()
+
+	os.Exit(cmd.Run(args))
+}
+
+func startLogging() {
+	switch {
+	case logDebug:
+		logLevel = capnslog.DEBUG
+	case logVerbose:
+		logLevel = capnslog.INFO
+	}
+
+	capnslog.SetFormatter(capnslog.NewStringFormatter(os.Stderr))
+	capnslog.SetGlobalLogLevel(logLevel)
+	plog.Infof("Started %s logging on stderr", logLevel)
+}
+
+func parseCommand() (*Command, []string) {
+	var cmd *Command
 
 	// Parse global arguments that precede the command.
 	flag.Parse()
@@ -86,7 +116,7 @@ func Run(name, desc string) {
 		cmd = findCommand("help")
 	}
 
-	os.Exit(cmd.Run(args))
+	return cmd, args
 }
 
 func findCommand(name string) *Command {
