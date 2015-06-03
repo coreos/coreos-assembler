@@ -20,9 +20,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/platform"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -52,11 +56,12 @@ func Register(t *Test) {
 
 // test runner and kola entry point
 func RunTests(pattern, pltfrm string) error {
-	var ranTests int //count successful tests
+	var passed, failed int
+
 	for _, t := range Tests {
 		match, err := filepath.Match(pattern, t.Name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			plog.Error(err)
 		}
 		if !match {
 			continue
@@ -75,14 +80,24 @@ func RunTests(pattern, pltfrm string) error {
 			continue
 		}
 
+		start := time.Now()
+		plog.Noticef("=== RUN %s on %s", t.Name, pltfrm)
 		err = runTest(t, pltfrm)
+		seconds := time.Since(start).Seconds()
 		if err != nil {
-			return fmt.Errorf("%v failed on %v: %v\n", t.Name, pltfrm, err)
+			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
+			plog.Errorf("        %v", err)
+			failed++
+		} else {
+			plog.Noticef("--- PASS: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
+			passed++
 		}
-		fmt.Printf("test %v ran successfully on %v\n", t.Name, pltfrm)
-		ranTests++
 	}
-	fmt.Printf("All %v test(s) ran successfully!\n", ranTests)
+
+	plog.Noticef("%d passed %d failed out of %d total", passed, failed, passed+failed)
+	if failed > 0 {
+		return fmt.Errorf("%d tests failed", failed)
+	}
 	return nil
 }
 
@@ -96,7 +111,7 @@ func runTest(t *Test, pltfrm string) error {
 	} else if pltfrm == "gce" {
 		cluster, err = platform.NewGCECluster(GCEOpts())
 	} else {
-		fmt.Fprintf(os.Stderr, "Invalid platform: %v", pltfrm)
+		plog.Errorf("Invalid platform: %v", pltfrm)
 	}
 
 	if err != nil {
@@ -104,7 +119,7 @@ func runTest(t *Test, pltfrm string) error {
 	}
 	defer func() {
 		if err := cluster.Destroy(); err != nil {
-			fmt.Fprintf(os.Stderr, "cluster.Destroy(): %v\n", err)
+			plog.Errorf("cluster.Destroy(): %v", err)
 		}
 	}()
 
@@ -120,7 +135,7 @@ func runTest(t *Test, pltfrm string) error {
 		if err != nil {
 			return fmt.Errorf("Cluster failed starting machine: %v", err)
 		}
-		fmt.Fprintf(os.Stderr, "%v instance up\n", pltfrm)
+		plog.Infof("%v instance up", pltfrm)
 	}
 
 	// drop kolet binary on machines

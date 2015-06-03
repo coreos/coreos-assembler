@@ -16,12 +16,14 @@ package etcd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/platform"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
 
 func DiscoveryV2(c platform.TestCluster) error {
 	return discovery(c, 2)
@@ -34,10 +36,12 @@ func DiscoveryV1(c platform.TestCluster) error {
 func discovery(cluster platform.Cluster, version int) error {
 	csize := len(cluster.Machines())
 
-	// get journalctl -f from all machines before starting
-	for _, m := range cluster.Machines() {
-		if err := m.StartJournal(); err != nil {
-			return fmt.Errorf("failed to start journal: %v", err)
+	if plog.LevelAt(capnslog.DEBUG) {
+		// get journalctl -f from all machines before starting
+		for _, m := range cluster.Machines() {
+			if err := m.StartJournal(); err != nil {
+				return fmt.Errorf("failed to start journal: %v", err)
+			}
 		}
 	}
 
@@ -57,7 +61,7 @@ func discovery(cluster platform.Cluster, version int) error {
 		if err != nil {
 			return fmt.Errorf("SSH cmd to %v failed: %s", m.IP(), err)
 		}
-		fmt.Fprintf(os.Stderr, "etcd instance%d started\n", i)
+		plog.Infof("etcd instance%d started", i)
 	}
 
 	err := getClusterHealth(cluster.Machines()[0], csize)
@@ -65,7 +69,6 @@ func discovery(cluster platform.Cluster, version int) error {
 		return fmt.Errorf("discovery failed health check: %v", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "etcd discovery succeeeded!\n")
 	return nil
 }
 
@@ -79,7 +82,7 @@ func getClusterHealth(m platform.Machine, csize int) error {
 	var b []byte
 
 	for i := 0; i < retries; i++ {
-		fmt.Fprintf(os.Stderr, "polling cluster health...\n")
+		plog.Info("polling cluster health...")
 		b, err = m.SSH("etcdctl cluster-health")
 		if err == nil {
 			break
@@ -92,7 +95,7 @@ func getClusterHealth(m platform.Machine, csize int) error {
 
 	// repsonse should include "healthy" for each machine and for cluster
 	if strings.Count(string(b), "healthy") == csize+1 {
-		fmt.Fprintf(os.Stderr, "%s\n", b)
+		plog.Debug(b)
 		return nil
 	} else {
 		return fmt.Errorf("status unhealthy or incomplete: %s", b)

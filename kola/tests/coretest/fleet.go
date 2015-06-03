@@ -36,8 +36,7 @@ func init() {
 		var err error
 		fleetctlTimeout, err = time.ParseDuration(timeout)
 		if err != nil {
-			fmt.Printf("Failed parsing FLEETCTL_TIMEOUT: %v\n", err)
-			os.Exit(1)
+			plog.Fatalf("Failed parsing FLEETCTL_TIMEOUT: %v", err)
 		}
 	} else {
 		fleetctlTimeout = defaultFleetctlTimeout

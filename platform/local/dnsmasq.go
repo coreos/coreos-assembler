@@ -17,11 +17,12 @@ package local
 import (
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
 	"text/template"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
+	"github.com/coreos/mantle/util"
 )
 
 type Interface struct {
@@ -159,11 +160,16 @@ func NewDnsmasq() (*Dnsmasq, error) {
 	}
 
 	dm.dnsmasq = exec.Command("dnsmasq", "--conf-file=-")
-	dm.dnsmasq.Stderr = os.Stderr
 	cfg, err := dm.dnsmasq.StdinPipe()
 	if err != nil {
 		return nil, err
 	}
+	out, err := dm.dnsmasq.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	dm.dnsmasq.Stderr = dm.dnsmasq.Stdout
+	go util.LogFrom(capnslog.INFO, out)
 
 	if err = dm.dnsmasq.Start(); err != nil {
 		cfg.Close()
