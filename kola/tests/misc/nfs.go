@@ -17,14 +17,16 @@ package misc
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"path"
 	"time"
 
 	"github.com/coreos/mantle/platform"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "util")
 
 // Test that the kernel NFS server and client work within CoreOS.
 func NFS(c platform.TestCluster) error {
@@ -66,7 +68,7 @@ func NFS(c platform.TestCluster) error {
 
 	defer m1.Destroy()
 
-	log.Printf("NFS server booted.")
+	plog.Info("NFS server booted.")
 
 	/* poke a file in /tmp */
 	tmp, err := m1.SSH("mktemp")
@@ -74,7 +76,7 @@ func NFS(c platform.TestCluster) error {
 		return fmt.Errorf("Machine.SSH: %s", err)
 	}
 
-	log.Printf("Test file %q created on server.", tmp)
+	plog.Infof("Test file %q created on server.", tmp)
 
 	/* client machine */
 
@@ -116,18 +118,18 @@ Options=defaults,noexec
 
 	defer m2.Destroy()
 
-	log.Printf("NFS client booted.")
+	plog.Info("NFS client booted.")
 
 	var lsmnt []byte
 
-	log.Printf("Waiting for NFS mount on client...")
+	plog.Info("Waiting for NFS mount on client...")
 
 	/* there's probably a better wait to check the mount */
 	for i := 0; i < 5; i++ {
 		lsmnt, _ = m2.SSH("ls /mnt")
 
 		if len(lsmnt) != 0 {
-			log.Printf("Got NFS mount.")
+			plog.Info("Got NFS mount.")
 			break
 		}
 
@@ -141,8 +143,6 @@ Options=defaults,noexec
 	if bytes.Contains(lsmnt, []byte(path.Base(string(tmp)))) != true {
 		return fmt.Errorf("Client /mnt did not contain file %q from server /tmp -- /mnt: %s", tmp, lsmnt)
 	}
-
-	log.Printf("NFS test passed.")
 
 	return nil
 }
