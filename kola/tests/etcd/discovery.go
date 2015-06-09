@@ -84,19 +84,20 @@ func getClusterHealth(m platform.Machine, csize int) error {
 	for i := 0; i < retries; i++ {
 		plog.Info("polling cluster health...")
 		b, err = m.SSH("etcdctl cluster-health")
-		if err == nil {
-			break
+		if err != nil {
+			time.Sleep(retryWait)
+			continue
 		}
-		time.Sleep(retryWait)
-	}
-	if err != nil {
-		return fmt.Errorf("health polling failed: %s", b)
+
+		// repsonse should include "healthy" for each machine and for cluster
+		if strings.Count(string(b), "healthy") == csize+1 {
+			plog.Debug(string(b))
+			return nil
+		}
 	}
 
-	// repsonse should include "healthy" for each machine and for cluster
-	if strings.Count(string(b), "healthy") == csize+1 {
-		plog.Debug(b)
-		return nil
+	if err != nil {
+		return fmt.Errorf("health polling failed: %v: %s", err, b)
 	} else {
 		return fmt.Errorf("status unhealthy or incomplete: %s", b)
 	}
