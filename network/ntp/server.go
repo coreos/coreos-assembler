@@ -32,11 +32,23 @@ type ServerReq struct {
 	Packet   []byte
 }
 
-func (s Server) Serve() error {
+func NewServer(addr string) (*Server, error) {
+	l, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{l}, nil
+}
+
+func (s Server) Serve() {
+	plog.Infof("Started NTP server on %s", s.LocalAddr())
+
 	for {
 		req, err := s.Accept()
 		if err != nil {
-			return err
+			plog.Errorf("NTP server failed: %v", err)
+			return
 		}
 		go s.Respond(req)
 	}
@@ -76,6 +88,8 @@ func (s Server) Respond(r *ServerReq) {
 		plog.Errorf("Invalid NTP mode from %s: %d", r.Client, recv.Mode)
 		return
 	}
+
+	plog.Infof("Recieved NTP request from %s", r.Client)
 
 	now := Now()
 	resp := Header{
