@@ -15,9 +15,12 @@
 package ntp
 
 import (
-	"log"
 	"net"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "network/ntp")
 
 type Server struct {
 	net.PacketConn
@@ -54,23 +57,23 @@ func (s Server) Accept() (*ServerReq, error) {
 
 func (s Server) Respond(r *ServerReq) {
 	if len(r.Packet) == cap(r.Packet) {
-		log.Printf("Ignoring huge NTP packet from %s", r.Client)
+		plog.Errorf("Ignoring huge NTP packet from %s", r.Client)
 		return
 	}
 
 	recv := Header{}
 	if err := recv.UnmarshalBinary(r.Packet); err != nil {
-		log.Printf("Invalid NTP packet from %s: %v", r.Client, err)
+		plog.Errorf("Invalid NTP packet from %s: %v", r.Client, err)
 		return
 	}
 
 	if recv.VersionNumber != NTPv4 {
-		log.Printf("Invalid NTP version from %s: %d", r.Client, recv.VersionNumber)
+		plog.Errorf("Invalid NTP version from %s: %d", r.Client, recv.VersionNumber)
 		return
 	}
 
 	if recv.Mode != MODE_CLIENT {
-		log.Printf("Invalid NTP mode from %s: %d", r.Client, recv.Mode)
+		plog.Errorf("Invalid NTP mode from %s: %d", r.Client, recv.Mode)
 		return
 	}
 
@@ -90,13 +93,13 @@ func (s Server) Respond(r *ServerReq) {
 
 	pkt, err := resp.MarshalBinary()
 	if err != nil {
-		log.Printf("Creating NTP packet failed: %v", err)
+		plog.Errorf("Creating NTP packet failed: %v", err)
 		return
 	}
 
 	_, err = s.WriteTo(pkt, r.Client)
 	if err != nil {
-		log.Printf("Error sending NTP packet to %s: %v", r.Client, err)
+		plog.Errorf("Error sending NTP packet to %s: %v", r.Client, err)
 		return
 	}
 }
