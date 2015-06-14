@@ -19,11 +19,16 @@ import "github.com/coreos/mantle/kola/tests/misc"
 //register new tests here
 // "$name" and "$discovery" are substituted in the cloud config during cluster creation
 func init() {
-	// test etcd discovery with 0.4.7
 	Register(&Test{
 		Run:         misc.NFS,
 		ClusterSize: 0,
 		Name:        "NFS",
+		Platforms:   []string{"qemu"},
+	})
+	Register(&Test{
+		Run:         misc.NTP,
+		ClusterSize: 0,
+		Name:        "NTP",
 		Platforms:   []string{"qemu"},
 	})
 }

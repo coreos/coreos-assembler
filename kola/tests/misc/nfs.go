@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "util")
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/misc")
 
 // Test that the kernel NFS server and client work within CoreOS.
 func NFS(c platform.TestCluster) error {
