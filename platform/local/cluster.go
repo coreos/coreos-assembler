@@ -25,12 +25,14 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
 	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/network/ntp"
 	"github.com/coreos/mantle/util"
 )
 
 type LocalCluster struct {
-	SSHAgent   *network.SSHAgent
 	Dnsmasq    *Dnsmasq
+	NTPServer  *ntp.Server
+	SSHAgent   *network.SSHAgent
 	SimpleEtcd *SimpleEtcd
 	nshandle   netns.NsHandle
 }
@@ -70,6 +72,15 @@ func NewLocalCluster() (*LocalCluster, error) {
 		lc.nshandle.Close()
 		return nil, err
 	}
+
+	lc.NTPServer, err = ntp.NewServer(":123")
+	if err != nil {
+		lc.Dnsmasq.Destroy()
+		lc.SimpleEtcd.Destroy()
+		lc.nshandle.Close()
+		return nil, err
+	}
+	go lc.NTPServer.Serve()
 
 	return lc, nil
 }

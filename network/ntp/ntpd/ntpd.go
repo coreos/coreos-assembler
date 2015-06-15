@@ -15,19 +15,23 @@
 package main
 
 import (
+	"os"
+
 	"github.com/coreos/mantle/network/ntp"
-	"log"
-	"net"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "main")
+
 func main() {
-	l, err := net.ListenPacket("udp", ":123")
+	capnslog.SetFormatter(capnslog.NewStringFormatter(os.Stderr))
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
+
+	s, err := ntp.NewServer(":123")
 	if err != nil {
-		log.Fatalf("Listen failed: %v", err)
+		plog.Fatalf("Listen failed: %v", err)
 	}
 
-	err = ntp.Server{l}.Serve()
-	if err != nil {
-		log.Fatalf("Serve failed: %v", err)
-	}
+	s.Serve()
 }
