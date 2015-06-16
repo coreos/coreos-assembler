@@ -48,7 +48,7 @@ func init() {
 
 func runDestroy(args []string) int {
 	if len(args) != 0 {
-		fmt.Fprintf(os.Stderr, "Unrecognized args in plume list cmd: %v\n", args)
+		fmt.Fprintf(os.Stderr, "Unrecognized args in ore list cmd: %v\n", args)
 		return 2
 	}
 

@@ -57,7 +57,7 @@ func init() {
 
 func runCreate(args []string) int {
 	if len(args) != 0 {
-		fmt.Fprintf(os.Stderr, "Unrecognized args in plume create-instances: %v\n", args)
+		fmt.Fprintf(os.Stderr, "Unrecognized args in ore create-instances: %v\n", args)
 		return 2
 	}
 

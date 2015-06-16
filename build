@@ -19,3 +19,5 @@ go build -o bin/kola ${REPO_PATH}/cmd/kola
 go build -o bin/kolet ${REPO_PATH}/cmd/kolet
 echo "Building plume..."
 go build -o bin/plume ${REPO_PATH}/cmd/plume
+echo "Building ore..."
+go build -o bin/ore ${REPO_PATH}/cmd/ore
