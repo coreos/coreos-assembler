@@ -42,6 +42,7 @@ var (
 		Run:         runGCEUpload,
 	}
 	gceUploadForce     bool
+	gceUploadRetries   int
 	gceUploadBucket    string
 	gceUploadImageName string
 	gceUploadBoard     string
@@ -50,6 +51,7 @@ var (
 
 func init() {
 	cmdGCEUpload.Flags.BoolVar(&gceUploadForce, "force", false, "set true to overwrite existing image with same name")
+	cmdGCEUpload.Flags.IntVar(&gceUploadRetries, "set-retries", 0, "set how many times to retry on failure")
 	cmdGCEUpload.Flags.StringVar(&gceUploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
 	cmdGCEUpload.Flags.StringVar(&gceUploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdGCEUpload.Flags.StringVar(&gceUploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
@@ -98,6 +100,28 @@ func runGCEUpload(args []string) int {
 	uploadBucket := gsURL.Host
 	imageNameGS := strings.TrimPrefix(gsURL.Path+"/"+gceUploadImageName, "/") + ".tar.gz"
 
+	var retries int
+	if gceUploadRetries > 0 {
+		retries = gceUploadRetries
+	} else {
+		retries = 1
+	}
+
+	var returnVal int
+	for i := 0; i < retries; i++ {
+		if i > 0 {
+			log.Printf("trying again...")
+		}
+
+		returnVal = tryGCEUpload(uploadBucket, imageNameGS)
+		if returnVal == 0 {
+			return 0
+		}
+	}
+	return returnVal
+}
+
+func tryGCEUpload(uploadBucket, imageNameGS string) int {
 	client, err := auth.GoogleClient()
 	if err != nil {
 		log.Printf("Authentication failed: %v\n", err)
@@ -113,7 +137,7 @@ func runGCEUpload(args []string) int {
 
 	if alreadyExists {
 		if !gceUploadForce {
-			log.Printf("skipping upload, file %v already exists on Google Storage.", imageNameGS)
+			log.Printf("skipping upload, gs://%v/%v already exists on Google Storage.", uploadBucket, imageNameGS)
 			return 0
 		} else {
 			log.Println("forcing image upload...")
@@ -125,6 +149,7 @@ func runGCEUpload(args []string) int {
 		log.Printf("Uploading image failed: %v\n", err)
 		return 1
 	}
+	log.Printf("wrote gs://%v/%v", uploadBucket, imageNameGS)
 
 	return 0
 }

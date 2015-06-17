@@ -37,6 +37,7 @@ var (
 		Run:         runGCECreate,
 	}
 	gceCreateForce     bool
+	gceCreateRetries   int
 	gceCreateFile      string
 	gceCreateProject   string
 	gceCreateImageName string
@@ -44,6 +45,7 @@ var (
 
 func init() {
 	cmdGCECreate.Flags.BoolVar(&gceCreateForce, "force", false, "set true to overwrite existing image with same name")
+	cmdGCECreate.Flags.IntVar(&gceCreateRetries, "set-retries", 0, "set how many times to retry on failure")
 	cmdGCECreate.Flags.StringVar(&gceCreateFile, "from-storage", "", "file from a google storage bucket <gs://bucket/prefix/name>")
 	cmdGCECreate.Flags.StringVar(&gceCreateProject, "project", "coreos-gce-testing", "Google Compute project ID")
 	cmdGCECreate.Flags.StringVar(&gceCreateImageName, "name", "", "name for uploaded image, defaults to translating the filename in the bucket")
@@ -88,9 +90,31 @@ func runGCECreate(args []string) int {
 	bucketPath := strings.TrimPrefix(gsURL.Path, "/")
 	imageName := gceCreateImageName
 
+	var retries int
+	if gceCreateRetries > 0 {
+		retries = gceCreateRetries
+	} else {
+		retries = 1
+	}
+
+	var returnVal int
+	for i := 0; i < retries; i++ {
+		if i > 0 {
+			log.Printf("trying again...")
+		}
+
+		returnVal = tryGCECreate(bucket, bucketPath, imageName)
+		if returnVal == 0 {
+			return 0
+		}
+	}
+	return returnVal
+}
+
+func tryGCECreate(bucket, bucketPath, imageName string) int {
 	client, err := auth.GoogleClient()
 	if err != nil {
-		log.Printf("Authentication failed: %v", err)
+		log.Printf("authentication failed: %v", err)
 		return 1
 	}
 
