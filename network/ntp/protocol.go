@@ -16,6 +16,8 @@
 // http://tools.ietf.org/html/rfc5905
 package ntp
 
+//go:generate stringer -type=LeapIndicator,Mode,VersionNumber -output=protocol_string.go protocol.go
+
 import (
 	"encoding/binary"
 	"fmt"
