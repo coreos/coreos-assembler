@@ -137,16 +137,6 @@ func runTest(t *Test, pltfrm string) error {
 		}
 		plog.Infof("%v instance up", pltfrm)
 	}
-
-	// drop kolet binary on machines
-	if t.NativeFuncs != nil {
-		for _, m := range cluster.Machines() {
-			err = scpKolet(m)
-			if err != nil {
-				return fmt.Errorf("dropping kolet binary: %v", err)
-			}
-		}
-	}
 	// pass along all registered native functions
 	var names []string
 	for k := range t.NativeFuncs {
@@ -155,13 +145,21 @@ func runTest(t *Test, pltfrm string) error {
 	// Cluster -> TestCluster
 	tcluster := platform.TestCluster{t.Name, names, cluster}
 
+	// drop kolet binary on machines
+	if t.NativeFuncs != nil {
+		err = scpKolet(tcluster)
+		if err != nil {
+			return fmt.Errorf("dropping kolet binary: %v", err)
+		}
+	}
+
 	// run test
 	err = t.Run(tcluster)
 	return err
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(m platform.Machine) error {
+func scpKolet(t platform.TestCluster) error {
 	// TODO: determine the GOARCH for the remote machine
 	mArch := "amd64"
 	for _, d := range []string{
@@ -171,36 +169,10 @@ func scpKolet(m platform.Machine) error {
 	} {
 		kolet := filepath.Join(d, "kolet")
 		if _, err := os.Stat(kolet); err == nil {
-			return scpFile(m, kolet)
+			return t.DropFile(kolet)
 		}
 	}
 	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
-}
-
-// scpFile copies file from src path to ~/ on machine
-func scpFile(m platform.Machine, src string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	session, err := m.SSHSession()
-	if err != nil {
-		return fmt.Errorf("Error establishing ssh session: %v", err)
-	}
-	defer session.Close()
-
-	// machine reads file from stdin
-	session.Stdin = in
-
-	// cat file to fs
-	_, filename := filepath.Split(src)
-	_, err = session.CombinedOutput(fmt.Sprintf("install -m 0755 /dev/stdin ./%s", filename))
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // replaces $discovery with discover url in etcd cloud config and

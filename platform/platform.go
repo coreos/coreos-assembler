@@ -16,6 +16,9 @@ package platform
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/util"
@@ -65,4 +68,42 @@ func (t *TestCluster) RunNative(funcName string, m Machine) error {
 
 func (t *TestCluster) ListNativeFunctions() []string {
 	return t.NativeFuncs
+}
+
+// DropFile places file from localPath to ~/ on every machine in cluster
+func (t *TestCluster) DropFile(localPath string) error {
+	in, err := os.Open(localPath)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	for _, m := range t.Machines() {
+		if _, err := in.Seek(0, 0); err != nil {
+			return err
+		}
+		if err := transfer(in, m, localPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func transfer(in io.Reader, m Machine, localPath string) error {
+	session, err := m.SSHSession()
+	if err != nil {
+		return fmt.Errorf("Error establishing ssh session: %v", err)
+	}
+	defer session.Close()
+
+	session.Stdin = in
+
+	// write file to fs from stdin
+	_, filename := filepath.Split(localPath)
+	err = session.Run(fmt.Sprintf("install -m 0755 /dev/stdin ./%s", filename))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
