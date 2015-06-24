@@ -16,6 +16,8 @@
 // http://tools.ietf.org/html/rfc5905
 package ntp
 
+//go:generate stringer -type=LeapIndicator,Mode,VersionNumber -output=protocol_string.go protocol.go
+
 import (
 	"encoding/binary"
 	"fmt"
@@ -68,10 +70,14 @@ type Timestamp struct {
 
 // Now gets the current NTP time in the 64-bit Timestamp format.
 func Now() Timestamp {
-	now := time.Now()
-	secs := now.Unix() + JAN_1970
+	return NewTimestamp(time.Now())
+}
+
+// NewTimestamp converts from Go's Time to NTP's 64-bit Timestamp format.
+func NewTimestamp(t time.Time) Timestamp {
+	secs := t.Unix() + JAN_1970
 	// Convert from range [0,999999999] to [0,UINT32_MAX]
-	frac := (uint64(now.Nanosecond()) << 32) / 1000000000
+	frac := (uint64(t.Nanosecond()) << 32) / 1000000000
 	return Timestamp{Seconds: uint32(secs), Fraction: uint32(frac)}
 }
 
