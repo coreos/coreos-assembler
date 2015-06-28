@@ -18,11 +18,12 @@ import (
 	"flag"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/sdk"
 )
 
 var (
 	QemuImage = flag.String("qemu.image",
-		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_image.bin",
+		sdk.BuildRoot()+"/images/amd64-usr/latest/coreos_production_image.bin",
 		"Base disk image for QEMU based tests.")
 
 	gceImage       = flag.String("gce.image", "latest", "GCE image")

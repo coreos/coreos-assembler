@@ -25,12 +25,19 @@ func isDir(dir string) bool {
 	return err == nil && stat.IsDir()
 }
 
+func envDir(env string) string {
+	dir := os.Getenv(env)
+	if dir == "" {
+		return ""
+	}
+	if !filepath.IsAbs(dir) {
+		log.Fatalf("%s is not an absolute path: %q", env, dir)
+	}
+	return dir
+}
+
 func RepoRoot() string {
-	if dir := os.Getenv("REPO_ROOT"); dir != "" {
-		dir, err := filepath.Abs(dir)
-		if err != nil {
-			log.Fatalf("Invalid REPO_ROOT: %v", err)
-		}
+	if dir := envDir("REPO_ROOT"); dir != "" {
 		return dir
 	}
 
@@ -56,4 +63,11 @@ func RepoRoot() string {
 
 func RepoCache() string {
 	return filepath.Join(RepoRoot(), ".cache")
+}
+
+func BuildRoot() string {
+	if dir := envDir("BUILD_ROOT"); dir != "" {
+		return dir
+	}
+	return filepath.Join(RepoRoot(), "src", "build")
 }
