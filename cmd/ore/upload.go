@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/sdk"
 )
 
 var (
@@ -50,12 +51,13 @@ var (
 )
 
 func init() {
+	build := sdk.BuildRoot()
 	cmdUpload.Flags.StringVar(&uploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
 	cmdUpload.Flags.StringVar(&uploadProject, "project", "coreos-gce-testing", "Google Compute project ID")
 	cmdUpload.Flags.StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdUpload.Flags.StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags.StringVar(&uploadFile, "file",
-		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_gce.tar.gz",
+		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
 	cli.Register(cmdUpload)
 }

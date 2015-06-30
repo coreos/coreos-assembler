@@ -168,8 +168,16 @@
 			"Rev": "008d17ae001344769b031375bdb38a86219154c6"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/cast5",
+			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp",
+			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "f7445b17d61953e333441674c2d11e91ae4559d3"
+			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",

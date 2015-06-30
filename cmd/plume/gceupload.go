@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/sdk"
 )
 
 var (
@@ -50,13 +51,14 @@ var (
 )
 
 func init() {
+	build := sdk.BuildRoot()
 	cmdGCEUpload.Flags.BoolVar(&gceUploadForce, "force", false, "set true to overwrite existing image with same name")
 	cmdGCEUpload.Flags.IntVar(&gceUploadRetries, "set-retries", 0, "set how many times to retry on failure")
 	cmdGCEUpload.Flags.StringVar(&gceUploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
 	cmdGCEUpload.Flags.StringVar(&gceUploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdGCEUpload.Flags.StringVar(&gceUploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdGCEUpload.Flags.StringVar(&gceUploadFile, "file",
-		"/mnt/host/source/src/build/images/amd64-usr/latest/coreos_production_gce.tar.gz",
+		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
 	cli.Register(cmdGCEUpload)
 }
