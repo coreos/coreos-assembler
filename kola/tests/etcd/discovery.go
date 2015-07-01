@@ -16,8 +16,6 @@ package etcd
 
 import (
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/platform"
@@ -70,35 +68,4 @@ func discovery(cluster platform.Cluster, version int) error {
 	}
 
 	return nil
-}
-
-// poll cluster-health until result
-func getClusterHealth(m platform.Machine, csize int) error {
-	const (
-		retries   = 5
-		retryWait = 3 * time.Second
-	)
-	var err error
-	var b []byte
-
-	for i := 0; i < retries; i++ {
-		plog.Info("polling cluster health...")
-		b, err = m.SSH("etcdctl cluster-health")
-		if err != nil {
-			time.Sleep(retryWait)
-			continue
-		}
-
-		// repsonse should include "healthy" for each machine and for cluster
-		if strings.Count(string(b), "healthy") == csize+1 {
-			plog.Debug(string(b))
-			return nil
-		}
-	}
-
-	if err != nil {
-		return fmt.Errorf("health polling failed: %v: %s", err, b)
-	} else {
-		return fmt.Errorf("status unhealthy or incomplete: %s", b)
-	}
 }

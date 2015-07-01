@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/kola/options"
 )
 
 const (
@@ -37,7 +38,14 @@ var cmdRun = &cli.Command{
 	Run:         runRun,
 }
 
-var kolaPlatform = flag.String("platform", "qemu", "VM platform: qemu or gce")
+var (
+	kolaPlatform           = flag.String("platform", "qemu", "VM platform: qemu or gce")
+	EtcdRollingVersion     = flag.String("EtcdRollingVersion", "", "")
+	EtcdRollingVersion2    = flag.String("EtcdRollingVersion2", "", "")
+	EtcdRollingBin         = flag.String("EtcdRollingBin", "", "")
+	EtcdRollingBin2        = flag.String("EtcdRollingBin2", "", "")
+	EtcdRollingSkipVersion = flag.Bool("EtcdRollingSkipVersion", false, "")
+)
 
 func init() {
 	cli.Register(cmdRun)
@@ -48,6 +56,14 @@ func main() {
 }
 
 func runRun(args []string) int {
+	options.Opts = options.TestOptions{
+		EtcdRollingVersion:     *EtcdRollingVersion,
+		EtcdRollingVersion2:    *EtcdRollingVersion2,
+		EtcdRollingBin:         *EtcdRollingBin,
+		EtcdRollingBin2:        *EtcdRollingBin2,
+		EtcdRollingSkipVersion: *EtcdRollingSkipVersion,
+	}
+
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
 		return 2
