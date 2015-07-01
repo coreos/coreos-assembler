@@ -18,35 +18,34 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
 )
 
-const (
-	cliName        = "kolet"
-	cliDescription = "Native code runner for kola"
+var (
+	root = &cobra.Command{
+		Use:   "kolet [command]",
+		Short: "Native code runner for kola",
+	}
+
+	cmdRun = &cobra.Command{
+		Use:   "run <test name> <func name>",
+		Short: "Run native tests a group at a time",
+		Run:   Run,
+	}
 )
 
-// main test harness
-var cmdRun = &cli.Command{
-	Name:    "run",
-	Summary: "Run native tests a group at a time",
-	Run:     Run,
-}
-
-func init() {
-	cli.Register(cmdRun)
-}
-
 func main() {
-	cli.Run(cliName, cliDescription)
+	root.AddCommand(cmdRun)
+	cli.Execute(root)
 }
 
 // test runner
-func Run(args []string) int {
+func Run(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		fmt.Fprintf(os.Stderr, "kolet: Extra arguements specified. Usage: 'kolet run <test name> <func name>'\n")
-		return 2
+		os.Exit(2)
 	}
 	testname, funcname := args[0], args[1]
 
@@ -54,18 +53,17 @@ func Run(args []string) int {
 	test, ok := kola.Tests[testname]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "kolet: test group not found\n")
-		return 1
+		os.Exit(1)
 	}
 	// find native function in test
 	f, ok := test.NativeFuncs[funcname]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "kolet: native function not found\n")
-		return 1
+		os.Exit(1)
 	}
 	err := f()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "kolet: on native test %v: %v", funcname, err)
-		return 1
+		os.Exit(1)
 	}
-	return 0
 }

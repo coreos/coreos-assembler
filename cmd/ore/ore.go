@@ -15,14 +15,15 @@
 package main
 
 import (
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 )
 
-const (
-	cliName        = "ore"
-	cliDescription = "gce image creation and upload tools"
-)
+var root = &cobra.Command{
+	Use:   "ore [command]",
+	Short: "gce image creation and upload tools",
+}
 
 func main() {
-	cli.Run(cliName, cliDescription)
+	cli.Execute(root)
 }

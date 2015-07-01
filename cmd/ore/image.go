@@ -15,54 +15,48 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
 )
 
 var (
-	cmdImage = &cli.Command{
-
-		Name:        "list-images",
-		Summary:     "List images in GCE",
-		Usage:       " -prefix=<prefix>",
-		Description: "List images in GCE",
-		Flags:       *flag.NewFlagSet("image", flag.ExitOnError),
-		Run:         runImage,
+	cmdImage = &cobra.Command{
+		Use:   "list-images -prefix=<prefix>",
+		Short: "List images in GCE",
+		Run:   runImage,
 	}
 	imageProject string
 	imagePrefix  string
 )
 
 func init() {
-	cmdImage.Flags.StringVar(&imageProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdImage.Flags.StringVar(&imagePrefix, "prefix", "", "prefix to filter list by")
-	cli.Register(cmdImage)
+	cmdImage.Flags().StringVar(&imageProject, "project", "coreos-gce-testing", "found in developers console")
+	cmdImage.Flags().StringVar(&imagePrefix, "prefix", "", "prefix to filter list by")
+	root.AddCommand(cmdImage)
 }
 
-func runImage(args []string) int {
+func runImage(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in plume list cmd: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	images, err := platform.GCEListImages(client, imageProject, imagePrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing images: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	for _, image := range images {
 		fmt.Printf("%v\n", image)
 	}
-	return 0
 }

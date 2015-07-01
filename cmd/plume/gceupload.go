@@ -15,7 +15,6 @@
 package main
 
 import (
-	"flag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -25,22 +24,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/sdk"
 )
 
 var (
-	cmdGCEUpload = &cli.Command{
-
-		Name:        "gce-upload",
-		Summary:     "Upload gce image",
-		Usage:       "",
-		Description: "Upload os image to Google Storage bucket and create image in GCE. Intended for use in SDK.",
-		Flags:       *flag.NewFlagSet("gceUpload", flag.ExitOnError),
-		Run:         runGCEUpload,
+	cmdGCEUpload = &cobra.Command{
+		Use:   "gce-upload",
+		Short: "Upload gce image",
+		Long:  "Upload os image to Google Storage bucket and create image in GCE. Intended for use in SDK.",
+		Run:   runGCEUpload,
 	}
 	gceUploadForce     bool
 	gceUploadRetries   int
@@ -52,21 +48,21 @@ var (
 
 func init() {
 	build := sdk.BuildRoot()
-	cmdGCEUpload.Flags.BoolVar(&gceUploadForce, "force", false, "set true to overwrite existing image with same name")
-	cmdGCEUpload.Flags.IntVar(&gceUploadRetries, "set-retries", 0, "set how many times to retry on failure")
-	cmdGCEUpload.Flags.StringVar(&gceUploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
-	cmdGCEUpload.Flags.StringVar(&gceUploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
-	cmdGCEUpload.Flags.StringVar(&gceUploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
-	cmdGCEUpload.Flags.StringVar(&gceUploadFile, "file",
+	cmdGCEUpload.Flags().BoolVar(&gceUploadForce, "force", false, "set true to overwrite existing image with same name")
+	cmdGCEUpload.Flags().IntVar(&gceUploadRetries, "set-retries", 0, "set how many times to retry on failure")
+	cmdGCEUpload.Flags().StringVar(&gceUploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
+	cmdGCEUpload.Flags().StringVar(&gceUploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
+	cmdGCEUpload.Flags().StringVar(&gceUploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
+	cmdGCEUpload.Flags().StringVar(&gceUploadFile, "file",
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
-	cli.Register(cmdGCEUpload)
+	root.AddCommand(cmdGCEUpload)
 }
 
-func runGCEUpload(args []string) int {
+func runGCEUpload(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		log.Printf("Unrecognized args in gce-upload cmd: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	// if an image name is unspecified try to use version.txt
@@ -74,22 +70,22 @@ func runGCEUpload(args []string) int {
 		gceUploadImageName = getImageVersion(gceUploadFile)
 		if gceUploadImageName == "" {
 			log.Printf("Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory\n")
-			return 1
+			os.Exit(1)
 		}
 	}
 
 	gsURL, err := url.Parse(gceUploadBucket)
 	if err != nil {
 		log.Printf("%v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Scheme != "gs" {
 		log.Printf("URL missing gs:// scheme prefix: %v\n", gceUploadBucket)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Host == "" {
 		log.Printf("URL missing bucket name %v\n", gceUploadBucket)
-		return 1
+		os.Exit(1)
 	}
 	// if prefix not specified default name to gs://bucket/$USER/$BOARD/$VERSION
 	if gsURL.Path == "" {
@@ -117,17 +113,17 @@ func runGCEUpload(args []string) int {
 
 		returnVal = tryGCEUpload(uploadBucket, imageNameGS)
 		if returnVal == 0 {
-			return 0
+			os.Exit(0)
 		}
 	}
-	return returnVal
+	os.Exit(returnVal)
 }
 
 func tryGCEUpload(uploadBucket, imageNameGS string) int {
 	client, err := auth.GoogleClient()
 	if err != nil {
 		log.Printf("Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	// check if this file is already uploaded

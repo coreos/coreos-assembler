@@ -18,42 +18,40 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/index"
 )
 
-var cmdIndex = &cli.Command{
-	Name:        "index",
-	Description: "Update HTML indexes for Google Storage buckets",
-	Summary:     "Update HTML indexes",
-	Usage:       "gs://bucket/prefix/ [gs://...]",
-	Run:         runIndex,
+var cmdIndex = &cobra.Command{
+	Use:   "index gs://bucket/prefix/ [gs://...]",
+	Short: "Update HTML indexes",
+	Long:  "Update HTML indexes for Google Storage buckets",
+	Run:   runIndex,
 }
 
 func init() {
-	cli.Register(cmdIndex)
+	root.AddCommand(cmdIndex)
 }
 
-func runIndex(args []string) int {
+func runIndex(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
 		fmt.Fprintf(os.Stderr, "No URLs specified\n")
-		return 2
+		os.Exit(2)
 	}
 
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	for _, url := range args {
 		if err := index.Update(client, url); err != nil {
 			fmt.Fprintf(os.Stderr, "Updating indexes for %s failed: %v\n", url, err)
-			return 1
+			os.Exit(1)
 		}
 	}
 
 	fmt.Printf("Update successful!\n")
-	return 0
 }

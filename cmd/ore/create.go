@@ -15,25 +15,20 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
 )
 
 var (
-	cmdCreate = &cli.Command{
-
-		Name:        "create-instances",
-		Summary:     "Create cluster on GCE",
-		Usage:       "-image <gce image name> -n <number of instances>",
-		Description: "Upload os image to Google Storage bucket and create image in GCE",
-		Flags:       *flag.NewFlagSet("create", flag.ExitOnError),
-		Run:         runCreate,
+	cmdCreate = &cobra.Command{
+		Use:   "create-instances -image <gce image name> -n <number of instances>",
+		Short: "Create cluster on GCE",
+		Run:   runCreate,
 	}
 	createProject      string
 	createZone         string
@@ -45,25 +40,25 @@ var (
 )
 
 func init() {
-	cmdCreate.Flags.StringVar(&createProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdCreate.Flags.StringVar(&createZone, "zone", "us-central1-a", "gce zone")
-	cmdCreate.Flags.StringVar(&createMachine, "machine", "n1-standard-1", "gce machine type")
-	cmdCreate.Flags.StringVar(&createBaseName, "name", "", "prefix for instances")
-	cmdCreate.Flags.StringVar(&createImageName, "image", "", "GCE image name")
-	cmdCreate.Flags.StringVar(&createConfig, "config", "", "path to cloud config file")
-	cmdCreate.Flags.IntVar(&createNumInstances, "n", 1, "number of instances")
-	cli.Register(cmdCreate)
+	cmdCreate.Flags().StringVar(&createProject, "project", "coreos-gce-testing", "found in developers console")
+	cmdCreate.Flags().StringVar(&createZone, "zone", "us-central1-a", "gce zone")
+	cmdCreate.Flags().StringVar(&createMachine, "machine", "n1-standard-1", "gce machine type")
+	cmdCreate.Flags().StringVar(&createBaseName, "name", "", "prefix for instances")
+	cmdCreate.Flags().StringVar(&createImageName, "image", "", "GCE image name")
+	cmdCreate.Flags().StringVar(&createConfig, "config", "", "path to cloud config file")
+	cmdCreate.Flags().IntVar(&createNumInstances, "n", 1, "number of instances")
+	root.AddCommand(cmdCreate)
 }
 
-func runCreate(args []string) int {
+func runCreate(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in ore create-instances: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	if createImageName == "" {
 		fmt.Fprintf(os.Stderr, "Must specifcy GCE image with '-image' flag\n")
-		return 2
+		os.Exit(2)
 	}
 	// if base name is unspecified use image name
 	if createBaseName == "" {
@@ -75,7 +70,7 @@ func runCreate(args []string) int {
 		b, err := ioutil.ReadFile(createConfig)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not read cloud config file: %v\n", err)
-			return 1
+			os.Exit(1)
 		}
 		cloudConfig = string(b)
 	}
@@ -83,7 +78,7 @@ func runCreate(args []string) int {
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	opts := &platform.GCEOpts{
@@ -101,7 +96,7 @@ func runCreate(args []string) int {
 		vm, err := platform.GCECreateVM(opts)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating vm: %v\n", err)
-			return 1
+			os.Exit(1)
 		}
 		vms = append(vms, vm)
 		fmt.Println("Instance created")
@@ -112,6 +107,4 @@ func runCreate(args []string) int {
 		fmt.Printf("To access %v use cmd:\n", vm.ID())
 		fmt.Printf("ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no core@%v\n", vm.IP())
 	}
-
-	return 0
 }

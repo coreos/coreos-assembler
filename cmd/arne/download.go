@@ -15,31 +15,27 @@
 package main
 
 import (
-	"flag"
-
-	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/sdk"
 )
 
 var (
-	cmdDownload = &cli.Command{
-		Name:        "download",
-		Summary:     "Download the SDK tarball",
-		Description: "Download the current SDK tarball to a local cache.",
-		Flags:       *flag.NewFlagSet("download", flag.ExitOnError),
-		Run:         runDownload,
+	downloadCmd = &cobra.Command{
+		Use:   "download",
+		Short: "Download the SDK tarball",
+		Long:  "Download the current SDK tarball to a local cache.",
+		Run:   runDownload,
 	}
 	downloadVersion string
 )
 
 func init() {
-	cmdDownload.Flags.StringVar(&downloadVersion,
+	downloadCmd.Flags().StringVar(&downloadVersion,
 		"sdk-version", "", "SDK version")
-
-	cli.Register(cmdDownload)
+	root.AddCommand(downloadCmd)
 }
 
-func runDownload(args []string) int {
+func runDownload(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		plog.Fatal("No args accepted")
 	}
@@ -52,6 +48,4 @@ func runDownload(args []string) int {
 	if err := sdk.Download(downloadVersion); err != nil {
 		plog.Fatalf("Download failed: %v", err)
 	}
-
-	return 0
 }
