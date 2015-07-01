@@ -19,19 +19,44 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/kola/options"
 	"github.com/coreos/mantle/platform"
 )
 
-const (
-	etcdVersion  = "etcd 2.0.12"
-	etcdVersion2 = `{"etcdserver":"2.1.0-alpha.1","etcdcluster":"2.1.0"}`
-	etcdBin      = "./etcd"
-	etcdBin2     = "./etcd2"
-	dropPath     = "/home/core"
-	settingSize  = 20 // number of random keys set and checked per node multiple times
+var (
+	// this block can be overridden with options flags
+	etcdVersion      = "etcd 2.0.12"
+	etcdVersion2     = `{"etcdserver":"2.1.0-alpha.1","etcdcluster":"2.1.0"}`
+	etcdBin          = "./etcd"
+	etcdBin2         = "./etcd2"
+	skipVersionCheck = false
+
+	dropPath    = "/home/core"
+	settingSize = 15 // number of random keys set and checked per node multiple times
 )
 
+func replaceDefaultsWithFlags(opts options.TestOptions) {
+	if opts.EtcdRollingVersion != "" {
+		etcdVersion = opts.EtcdRollingVersion
+	}
+	if opts.EtcdRollingVersion2 != "" {
+		etcdVersion2 = opts.EtcdRollingVersion2
+	}
+	if opts.EtcdRollingBin != "" {
+		etcdBin = opts.EtcdRollingBin
+	}
+	if opts.EtcdRollingBin2 != "" {
+		etcdBin2 = opts.EtcdRollingBin2
+	}
+	if opts.EtcdRollingSkipVersion {
+		skipVersionCheck = true
+	}
+
+}
+
 func RollingUpgrade(cluster platform.TestCluster) error {
+	replaceDefaultsWithFlags(options.Opts)
+
 	csize := len(cluster.Machines())
 
 	if plog.LevelAt(capnslog.DEBUG) {
@@ -77,9 +102,11 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 			return err
 		}
 	}
-	for _, m := range cluster.Machines() {
-		if err := checkEtcdVersion(cluster, m, etcdVersion); err != nil {
-			return err
+	if !skipVersionCheck {
+		for _, m := range cluster.Machines() {
+			if err := checkEtcdVersion(cluster, m, etcdVersion); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -140,9 +167,11 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 	}
 
 	// check version is now 2.1
-	for _, m := range cluster.Machines() {
-		if err := checkEtcdVersion(cluster, m, etcdVersion2); err != nil {
-			return err
+	if !skipVersionCheck {
+		for _, m := range cluster.Machines() {
+			if err := checkEtcdVersion(cluster, m, etcdVersion2); err != nil {
+				return err
+			}
 		}
 	}
 
