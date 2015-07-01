@@ -32,7 +32,7 @@ func TestServerSetTime(t *testing.T) {
 	s := &Server{}
 	s.SetTime(start)
 	offset := time.Now().Add(s.offset).Sub(start)
-	if offset < time.Duration(0) || offset > time.Microsecond {
+	if offset < time.Duration(0) || offset > time.Second {
 		t.Errorf("Server time off by %s, internal offest %s",
 			offset, s.offset)
 	}
