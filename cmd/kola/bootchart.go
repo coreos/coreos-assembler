@@ -18,17 +18,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 )
 
-var cmdBootchart = &cli.Command{
-	Run:     runBootchart,
-	Name:    "bootchart",
-	Summary: "Boot performance graphing tool",
-	Usage:   "> bootchart.svg",
-	Description: `
+var cmdBootchart = &cobra.Command{
+	Run:   runBootchart,
+	Use:   "bootchart > bootchart.svg",
+	Short: "Boot performance graphing tool",
+	Long: `
 Boot a single instance and plot how the time was spent.
 
 Note that this actually uses systemd-analyze plot rather than
@@ -39,52 +38,52 @@ This must run as root!
 `}
 
 func init() {
-	cli.Register(cmdBootchart)
+	cmdBootchart.Flags().StringVar(&kolaPlatform,
+		"platform", "qemu", "VM platform: qemu or gce")
+	root.AddCommand(cmdBootchart)
 }
 
-func runBootchart(args []string) int {
+func runBootchart(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "No args accepted\n")
-		return 2
+		os.Exit(2)
 	}
 
 	var (
 		cluster platform.Cluster
 		err     error
 	)
-	if *kolaPlatform == "qemu" {
+	if kolaPlatform == "qemu" {
 		cluster, err = platform.NewQemuCluster(*kola.QemuImage)
-	} else if *kolaPlatform == "gce" {
+	} else if kolaPlatform == "gce" {
 		cluster, err = platform.NewGCECluster(kola.GCEOpts())
 	} else {
-		fmt.Fprintf(os.Stderr, "Invalid platform: %v", *kolaPlatform)
+		fmt.Fprintf(os.Stderr, "Invalid platform: %v", kolaPlatform)
 	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	defer cluster.Destroy()
 
 	m, err := cluster.NewMachine("")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Machine failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	defer m.Destroy()
 
 	ssh, err := m.SSHSession()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "SSH failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	ssh.Stdout = os.Stdout
 	ssh.Stderr = os.Stderr
 	if err = ssh.Run("systemd-analyze plot"); err != nil {
 		fmt.Fprintf(os.Stderr, "SSH failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
-
-	return 0
 }

@@ -15,24 +15,20 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
 )
 
 var (
-	cmdDestroy = &cli.Command{
-
-		Name:        "destroy-instances",
-		Summary:     "destroy cluster on GCE",
-		Usage:       "-prefix=<prefix> ",
-		Description: "Destroy GCE instances based on name prefix.",
-		Flags:       *flag.NewFlagSet("upload", flag.ExitOnError),
-		Run:         runDestroy,
+	cmdDestroy = &cobra.Command{
+		Use:   "destroy-instances -prefix=<prefix> ",
+		Short: "destroy cluster on GCE",
+		Long:  "Destroy GCE instances based on name prefix.",
+		Run:   runDestroy,
 	}
 	destroyProject string
 	destroyZone    string
@@ -40,44 +36,43 @@ var (
 )
 
 func init() {
-	cmdDestroy.Flags.StringVar(&destroyProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdDestroy.Flags.StringVar(&destroyZone, "zone", "us-central1-a", "gce zone")
-	cmdDestroy.Flags.StringVar(&destroyPrefix, "prefix", "", "prefix of name for instances to destroy")
-	cli.Register(cmdDestroy)
+	cmdDestroy.Flags().StringVar(&destroyProject, "project", "coreos-gce-testing", "found in developers console")
+	cmdDestroy.Flags().StringVar(&destroyZone, "zone", "us-central1-a", "gce zone")
+	cmdDestroy.Flags().StringVar(&destroyPrefix, "prefix", "", "prefix of name for instances to destroy")
+	root.AddCommand(cmdDestroy)
 }
 
-func runDestroy(args []string) int {
+func runDestroy(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in ore list cmd: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	// avoid wiping out all instances in project or mishaps with short destroyPrefixes
 	if destroyPrefix == "" || len(destroyPrefix) < 2 {
 		fmt.Fprintf(os.Stderr, "Please specify a prefix of length 2 or greater with -prefix\n")
-		return 1
+		os.Exit(1)
 	}
 
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	vms, err := platform.GCEListVMs(client, destroyProject, destroyZone, destroyPrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	var count int
 	for _, vm := range vms {
 		err := platform.GCEDestroyVM(client, destroyProject, destroyZone, vm.ID())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed destroying vm: %v\n", err)
-			return 1
+			os.Exit(1)
 		}
 		count++
 	}
 	fmt.Printf("%v instance(s) scheduled for deletion\n", count)
-	return 0
 }

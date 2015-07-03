@@ -15,58 +15,69 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/options"
 )
 
-const (
-	cliName        = "kola"
-	cliDescription = "The CoreOS Superdeep Borehole"
-	// http://en.wikipedia.org/wiki/Kola_Superdeep_Borehole
-)
-
-// main test harness
-var cmdRun = &cli.Command{
-	Name:        "run",
-	Summary:     "Run run kola tests by category",
-	Description: "run all kola tests (default) or related groups",
-	Run:         runRun,
-}
-
 var (
-	kolaPlatform           = flag.String("platform", "qemu", "VM platform: qemu or gce")
-	EtcdRollingVersion     = flag.String("EtcdRollingVersion", "", "")
-	EtcdRollingVersion2    = flag.String("EtcdRollingVersion2", "", "")
-	EtcdRollingBin         = flag.String("EtcdRollingBin", "", "")
-	EtcdRollingBin2        = flag.String("EtcdRollingBin2", "", "")
-	EtcdRollingSkipVersion = flag.Bool("EtcdRollingSkipVersion", false, "")
+	root = &cobra.Command{
+		Use:   "kola [command]",
+		Short: "The CoreOS Superdeep Borehole",
+		// http://en.wikipedia.org/wiki/Kola_Superdeep_Borehole
+	}
+
+	cmdRun = &cobra.Command{
+		Use:   "run [glob pattern]",
+		Short: "Run run kola tests by category",
+		Long:  "run all kola tests (default) or related groups",
+		Run:   runRun,
+	}
+
+	kolaPlatform           string
+	EtcdRollingVersion     string
+	EtcdRollingVersion2    string
+	EtcdRollingBin         string
+	EtcdRollingBin2        string
+	EtcdRollingSkipVersion bool
 )
 
 func init() {
-	cli.Register(cmdRun)
+	cmdRun.Flags().StringVar(&kolaPlatform,
+		"platform", "qemu", "VM platform: qemu or gce")
+	cmdRun.Flags().StringVar(&EtcdRollingVersion,
+		"EtcdRollingVersion", "", "")
+	cmdRun.Flags().StringVar(&EtcdRollingVersion2,
+		"EtcdRollingVersion2", "", "")
+	cmdRun.Flags().StringVar(&EtcdRollingBin,
+		"EtcdRollingBin", "", "")
+	cmdRun.Flags().StringVar(&EtcdRollingBin2,
+		"EtcdRollingBin2", "", "")
+	cmdRun.Flags().BoolVar(&EtcdRollingSkipVersion,
+		"EtcdRollingSkipVersion", false, "")
+	root.AddCommand(cmdRun)
 }
 
 func main() {
-	cli.Run(cliName, cliDescription)
+	cli.Execute(root)
 }
 
-func runRun(args []string) int {
+func runRun(cmd *cobra.Command, args []string) {
 	options.Opts = options.TestOptions{
-		EtcdRollingVersion:     *EtcdRollingVersion,
-		EtcdRollingVersion2:    *EtcdRollingVersion2,
-		EtcdRollingBin:         *EtcdRollingBin,
-		EtcdRollingBin2:        *EtcdRollingBin2,
-		EtcdRollingSkipVersion: *EtcdRollingSkipVersion,
+		EtcdRollingVersion:     EtcdRollingVersion,
+		EtcdRollingVersion2:    EtcdRollingVersion2,
+		EtcdRollingBin:         EtcdRollingBin,
+		EtcdRollingBin2:        EtcdRollingBin2,
+		EtcdRollingSkipVersion: EtcdRollingSkipVersion,
 	}
 
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
-		return 2
+		os.Exit(2)
 	}
 	var pattern string
 	if len(args) == 1 {
@@ -75,10 +86,9 @@ func runRun(args []string) int {
 		pattern = "*" // run all tests by default
 	}
 
-	err := kola.RunTests(pattern, *kolaPlatform)
+	err := kola.RunTests(pattern, kolaPlatform)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
+		os.Exit(1)
 	}
-	return 0
 }

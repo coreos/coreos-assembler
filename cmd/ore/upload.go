@@ -15,7 +15,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,23 +24,21 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
 )
 
 var (
-	cmdUpload = &cli.Command{
+	cmdUpload = &cobra.Command{
 
-		Name:        "upload",
-		Summary:     "Upload os image",
-		Usage:       "",
-		Description: "Upload os image to Google Storage bucket and create image in GCE. Intended for use in SDK.",
-		Flags:       *flag.NewFlagSet("upload", flag.ExitOnError),
-		Run:         runUpload,
+		Use:   "upload",
+		Short: "Upload os image",
+		Long:  "Upload os image to Google Storage bucket and create image in GCE. Intended for use in SDK.",
+		Run:   runUpload,
 	}
 	uploadBucket    string
 	uploadProject   string
@@ -52,20 +49,20 @@ var (
 
 func init() {
 	build := sdk.BuildRoot()
-	cmdUpload.Flags.StringVar(&uploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
-	cmdUpload.Flags.StringVar(&uploadProject, "project", "coreos-gce-testing", "Google Compute project ID")
-	cmdUpload.Flags.StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
-	cmdUpload.Flags.StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
-	cmdUpload.Flags.StringVar(&uploadFile, "file",
+	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
+	cmdUpload.Flags().StringVar(&uploadProject, "project", "coreos-gce-testing", "Google Compute project ID")
+	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
+	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
+	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
-	cli.Register(cmdUpload)
+	root.AddCommand(cmdUpload)
 }
 
-func runUpload(args []string) int {
+func runUpload(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in plume upload cmd: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	// if an image name is unspecified try to use version.txt
@@ -73,22 +70,22 @@ func runUpload(args []string) int {
 		uploadImageName = getImageVersion(uploadFile)
 		if uploadImageName == "" {
 			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory\n")
-			return 1
+			os.Exit(1)
 		}
 	}
 
 	gsURL, err := url.Parse(uploadBucket)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Scheme != "gs" {
 		fmt.Fprintf(os.Stderr, "URL missing gs:// scheme prefix: %v\n", uploadBucket)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Host == "" {
 		fmt.Fprintf(os.Stderr, "URL missing bucket name %v\n", uploadBucket)
-		return 1
+		os.Exit(1)
 	}
 	// if prefix not specified default name to gs://bucket/$USER/$BOARD/$VERSION
 	if gsURL.Path == "" {
@@ -107,14 +104,14 @@ func runUpload(args []string) int {
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	// check if this file is already uploaded and give option to skip
 	alreadyExists, err := fileQuery(client, uploadBucket, imageNameGS)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Uploading image failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	if alreadyExists {
@@ -122,7 +119,7 @@ func runUpload(args []string) int {
 		fmt.Printf("File %v already exists on Google Storage. Overwrite? (y/n):", imageNameGS)
 		if _, err = fmt.Scan(&ans); err != nil {
 			fmt.Fprintf(os.Stderr, "Scanning overwrite input: %v", err)
-			return 1
+			os.Exit(1)
 		}
 		switch ans {
 		case "y", "Y", "yes":
@@ -136,7 +133,7 @@ func runUpload(args []string) int {
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Uploading image failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	fmt.Printf("Creating image in GCE: %v...\n", imageNameGCE)
@@ -151,7 +148,7 @@ func runUpload(args []string) int {
 		fmt.Printf("Image %v already exists on GCE. Overwrite? (y/n):", imageNameGCE)
 		if _, err = fmt.Scan(&ans); err != nil {
 			fmt.Fprintf(os.Stderr, "Scanning overwrite input: %v", err)
-			return 1
+			os.Exit(1)
 		}
 		switch ans {
 		case "y", "Y", "yes":
@@ -160,7 +157,7 @@ func runUpload(args []string) int {
 
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
-				return 1
+				os.Exit(1)
 			}
 			fmt.Printf("Image %v sucessfully created in GCE\n", imageNameGCE)
 		default:
@@ -170,7 +167,7 @@ func runUpload(args []string) int {
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	// ask to additionally update the "latest" image
@@ -178,7 +175,7 @@ func runUpload(args []string) int {
 	fmt.Printf("Would you also like to update the image 'latest'? (y/n):")
 	if _, err = fmt.Scan(&ans); err != nil {
 		fmt.Fprintf(os.Stderr, "Scanning latest update ans: %v", err)
-		return 1
+		os.Exit(1)
 	}
 	switch ans {
 	case "y", "Y", "yes":
@@ -190,8 +187,6 @@ func runUpload(args []string) int {
 	default:
 		fmt.Println("Skipped updating 'latest' image")
 	}
-
-	return 0
 }
 
 // Converts an image name from Google Storage to an equivalent GCE image

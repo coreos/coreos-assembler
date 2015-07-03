@@ -15,24 +15,19 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
 )
 
 var (
-	cmdList = &cli.Command{
-
-		Name:        "list-instances",
-		Summary:     "List instances on GCE",
-		Usage:       "-prefix=<prefix>",
-		Description: " os image to Google Storage bucket and create image in GCE",
-		Flags:       *flag.NewFlagSet("list", flag.ExitOnError),
-		Run:         runList,
+	cmdList = &cobra.Command{
+		Use:   "list-instances -prefix=<prefix>",
+		Short: "List instances on GCE",
+		Run:   runList,
 	}
 	listProject string
 	listZone    string
@@ -40,33 +35,32 @@ var (
 )
 
 func init() {
-	cmdList.Flags.StringVar(&listProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdList.Flags.StringVar(&listZone, "zone", "us-central1-a", "gce zone")
-	cmdList.Flags.StringVar(&listPrefix, "prefix", "", "prefix to filter list by")
-	cli.Register(cmdList)
+	cmdList.Flags().StringVar(&listProject, "project", "coreos-gce-testing", "found in developers console")
+	cmdList.Flags().StringVar(&listZone, "zone", "us-central1-a", "gce zone")
+	cmdList.Flags().StringVar(&listPrefix, "prefix", "", "prefix to filter list by")
+	root.AddCommand(cmdList)
 }
 
-func runList(args []string) int {
+func runList(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in plume list cmd: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	vms, err := platform.GCEListVMs(client, listProject, listZone, listPrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	for _, vm := range vms {
 		fmt.Printf("%v:\n", vm.ID())
 		fmt.Printf(" extIP: %v\n", vm.IP())
 	}
-	return 0
 
 }

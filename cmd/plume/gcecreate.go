@@ -15,26 +15,23 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
 )
 
 var (
-	cmdGCECreate = &cli.Command{
-
-		Name:        "gce-create",
-		Summary:     "Create gce image",
-		Usage:       "",
-		Description: "Create GCE image from os image in Google Storage bucket.",
-		Flags:       *flag.NewFlagSet("gceCreate", flag.ExitOnError),
-		Run:         runGCECreate,
+	cmdGCECreate = &cobra.Command{
+		Use:   "gce-create",
+		Short: "Create gce image",
+		Long:  "Create GCE image from os image in Google Storage bucket.",
+		Run:   runGCECreate,
 	}
 	gceCreateForce     bool
 	gceCreateRetries   int
@@ -44,19 +41,19 @@ var (
 )
 
 func init() {
-	cmdGCECreate.Flags.BoolVar(&gceCreateForce, "force", false, "set true to overwrite existing image with same name")
-	cmdGCECreate.Flags.IntVar(&gceCreateRetries, "set-retries", 0, "set how many times to retry on failure")
-	cmdGCECreate.Flags.StringVar(&gceCreateFile, "from-storage", "", "file from a google storage bucket <gs://bucket/prefix/name>")
-	cmdGCECreate.Flags.StringVar(&gceCreateProject, "project", "coreos-gce-testing", "Google Compute project ID")
-	cmdGCECreate.Flags.StringVar(&gceCreateImageName, "name", "", "name for uploaded image, defaults to translating the filename in the bucket")
+	cmdGCECreate.Flags().BoolVar(&gceCreateForce, "force", false, "set true to overwrite existing image with same name")
+	cmdGCECreate.Flags().IntVar(&gceCreateRetries, "set-retries", 0, "set how many times to retry on failure")
+	cmdGCECreate.Flags().StringVar(&gceCreateFile, "from-storage", "", "file from a google storage bucket <gs://bucket/prefix/name>")
+	cmdGCECreate.Flags().StringVar(&gceCreateProject, "project", "coreos-gce-testing", "Google Compute project ID")
+	cmdGCECreate.Flags().StringVar(&gceCreateImageName, "name", "", "name for uploaded image, defaults to translating the filename in the bucket")
 
-	cli.Register(cmdGCECreate)
+	root.AddCommand(cmdGCECreate)
 }
 
-func runGCECreate(args []string) int {
+func runGCECreate(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		log.Printf("Unrecognized args in gce-create cmd: %v\n", args)
-		return 2
+		os.Exit(2)
 	}
 
 	if gceCreateFile == "" {
@@ -66,19 +63,19 @@ func runGCECreate(args []string) int {
 	gsURL, err := url.Parse(gceCreateFile)
 	if err != nil {
 		log.Printf("%v", err)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Scheme != "gs" {
 		log.Printf("URL missing gs:// scheme prefix: %v\n", gceCreateFile)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Host == "" {
 		log.Printf("URL missing bucket name %v\n", gceCreateFile)
-		return 1
+		os.Exit(1)
 	}
 	if gsURL.Path == "" {
 		log.Printf("URL missing filepath: %v", gceCreateFile)
-		return 1
+		os.Exit(1)
 	}
 
 	if gceCreateImageName == "" {
@@ -105,10 +102,10 @@ func runGCECreate(args []string) int {
 
 		returnVal = tryGCECreate(bucket, bucketPath, imageName)
 		if returnVal == 0 {
-			return 0
+			os.Exit(0)
 		}
 	}
-	return returnVal
+	os.Exit(returnVal)
 }
 
 func tryGCECreate(bucket, bucketPath, imageName string) int {

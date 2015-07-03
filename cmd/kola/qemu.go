@@ -18,16 +18,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 )
 
-var cmdQemu = &cli.Command{
-	Run:     runQemu,
-	Name:    "qemu",
-	Summary: "Run and kill QEMU (requires root)",
-	Description: `Run and kill QEMU
+var cmdQemu = &cobra.Command{
+	Run:   runQemu,
+	Use:   "qemu",
+	Short: "Run and kill QEMU (requires root)",
+	Long: `Run and kill QEMU
 
 Work in progress: the code this exercises will eventually be the basis
 for running automated tests on CoreOS images.
@@ -36,31 +36,32 @@ This must run as root!
 `}
 
 func init() {
-	cli.Register(cmdQemu)
+	root.AddCommand(cmdQemu)
 }
 
-func runQemu(args []string) int {
+func runQemu(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "No args accepted\n")
-		return 2
+		os.Exit(2)
 	}
 
 	cluster, err := platform.NewQemuCluster(*kola.QemuImage)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	defer cluster.Destroy()
 
 	m, err := cluster.NewMachine("")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Machine failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	out, err := m.SSH("uname -a")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "SSH failed: %v\n", err)
+		os.Exit(1)
 	}
 	if len(out) != 0 {
 		fmt.Fprintf(os.Stdout, "SSH: %s\n", out)
@@ -77,26 +78,25 @@ func runQemu(args []string) int {
 	out, err = ssh.Output()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "SSH command failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	if len(out) != 0 {
 		fmt.Fprintf(os.Stdout, "SSH command: %s\n", out)
 	} else {
 		fmt.Fprintf(os.Stderr, "SSH command produced no output.\n")
-		return 1
+		os.Exit(1)
 	}
 
 	err = m.Destroy()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Destroy failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	if len(cluster.Machines()) != 0 {
 		fmt.Fprintf(os.Stderr, "Cluster not empty.\n")
-		return 1
+		os.Exit(1)
 	}
 
 	fmt.Printf("QEMU successful!\n")
-	return 0
 }
