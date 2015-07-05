@@ -54,4 +54,8 @@ func runCreate(cmd *cobra.Command, args []string) {
 	if err := sdk.Unpack(chrootVersion, chrootName); err != nil {
 		plog.Fatalf("Create failed: %v", err)
 	}
+
+	if err := sdk.Setup(chrootName); err != nil {
+		plog.Fatalf("Create failed: %v", err)
+	}
 }
