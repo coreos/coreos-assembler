@@ -1,10 +1,25 @@
-/*
-   Implements the Google omaha protocol.
+// Copyright 2013-2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Omaha is a request/response protocol using XML. Requests are made by
-   clients and responses are given by the Omaha server.
-   http://code.google.com/p/omaha/wiki/ServerProtocol
-*/
+// Google's Omaha application update protocol, version 3.
+//
+// Omaha is a poll based protocol using XML. Requests are made by clients to
+// check for updates or report events of an update process. Responses are given
+// by the server to provide update information, if any, or to simply
+// acknowledge the receipt of event status.
+//
+// http://code.google.com/p/omaha/wiki/ServerProtocol
 package omaha
 
 import (
@@ -40,8 +55,6 @@ func (r *Request) AddApp(id string, version string) *App {
 	return a
 }
 
-/* Response
- */
 type Response struct {
 	XMLName  xml.Name `xml:"response" datastore:"-" json:"-"`
 	DayStart DayStart `xml:"daystart"`
