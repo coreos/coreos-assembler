@@ -24,11 +24,13 @@ package omaha
 
 import (
 	"encoding/xml"
+
+	"github.com/coreos/mantle/version"
 )
 
 type Request struct {
 	XMLName        xml.Name `xml:"request" json:"-"`
-	Os             Os       `xml:"os"`
+	OS             *OS      `xml:"os"`
 	Apps           []*App   `xml:"app"`
 	Protocol       string   `xml:"protocol,attr"`
 	Version        string   `xml:"version,attr,omitempty"`
@@ -41,16 +43,20 @@ type Request struct {
 	UpdaterVersion string   `xml:"updaterversion,attr,omitempty"`
 }
 
-func NewRequest(version string, platform string, sp string, arch string) *Request {
-	r := new(Request)
-	r.Protocol = "3.0"
-	r.Os = Os{Version: version, Platform: platform, Sp: sp, Arch: arch}
-	return r
+func NewRequest() *Request {
+	return &Request{
+		Protocol: "3.0",
+		Version:  version.Version,
+		OS: &OS{
+			Platform: LocalPlatform(),
+			Arch:     LocalArch(),
+			// TODO(marineam): Version and ServicePack
+		},
+	}
 }
 
-func (r *Request) AddApp(id string, version string) *App {
-	a := NewApp(id)
-	a.Version = version
+func (r *Request) AddApp(id, version string) *App {
+	a := &App{Id: id, Version: version}
 	r.Apps = append(r.Apps, a)
 	return a
 }
@@ -63,18 +69,20 @@ type Response struct {
 	Server   string   `xml:"server,attr"`
 }
 
-func NewResponse(server string) *Response {
-	r := &Response{Server: server, Protocol: "3.0"}
-	r.DayStart.ElapsedSeconds = "0"
-	return r
+func NewResponse() *Response {
+	return &Response{
+		Protocol: "3.0",
+		Server:   "mantle",
+		DayStart: DayStart{ElapsedSeconds: "0"},
+	}
 }
 
 type DayStart struct {
 	ElapsedSeconds string `xml:"elapsed_seconds,attr"`
 }
 
-func (r *Response) AddApp(id string) *App {
-	a := NewApp(id)
+func (r *Response) AddApp(id string, status AppStatus) *App {
+	a := &App{Id: id, Status: status}
 	r.Apps = append(r.Apps, a)
 	return a
 }
@@ -89,7 +97,7 @@ type App struct {
 	Lang        string       `xml:"lang,attr,omitempty"`
 	Client      string       `xml:"client,attr,omitempty"`
 	InstallAge  string       `xml:"installage,attr,omitempty"`
-	Status      string       `xml:"status,attr,omitempty"`
+	Status      AppStatus    `xml:"status,attr,omitempty"`
 
 	// update engine extensions
 	Track     string `xml:"track,attr,omitempty"`
@@ -99,11 +107,6 @@ type App struct {
 	BootId    string `xml:"bootid,attr,omitempty"`
 	MachineID string `xml:"machineid,attr,omitempty"`
 	OEM       string `xml:"oem,attr,omitempty"`
-}
-
-func NewApp(id string) *App {
-	a := &App{Id: id}
-	return a
 }
 
 func (a *App) AddUpdateCheck() *UpdateCheck {
@@ -123,19 +126,20 @@ func (a *App) AddEvent() *Event {
 }
 
 type UpdateCheck struct {
-	Urls                *Urls     `xml:"urls"`
-	Manifest            *Manifest `xml:"manifest"`
-	TargetVersionPrefix string    `xml:"targetversionprefix,attr,omitempty"`
-	Status              string    `xml:"status,attr,omitempty"`
+	URLs                *URLs        `xml:"urls"`
+	Manifest            *Manifest    `xml:"manifest"`
+	TargetVersionPrefix string       `xml:"targetversionprefix,attr,omitempty"`
+	Status              UpdateStatus `xml:"status,attr,omitempty"`
 }
 
-func (u *UpdateCheck) AddUrl(codebase string) *Url {
-	if u.Urls == nil {
-		u.Urls = new(Urls)
+func (u *UpdateCheck) AddURL(codebase string) *URL {
+	// An intermediate struct is used instead of a "urls>url" tag simply
+	// to keep Go from generating <urls></urls> if the list is empty.
+	if u.URLs == nil {
+		u.URLs = new(URLs)
 	}
-	url := new(Url)
-	url.CodeBase = codebase
-	u.Urls.Urls = append(u.Urls.Urls, *url)
+	url := &URL{CodeBase: codebase}
+	u.URLs.URLs = append(u.URLs.URLs, url)
 	return url
 }
 
@@ -149,58 +153,52 @@ type Ping struct {
 	Status         string `xml:"status,attr,omitempty"`
 }
 
-type Os struct {
-	Platform string `xml:"platform,attr,omitempty"`
-	Version  string `xml:"version,attr,omitempty"`
-	Sp       string `xml:"sp,attr,omitempty"`
-	Arch     string `xml:"arch,attr,omitempty"`
-}
-
-func NewOs(platform string, version string, sp string, arch string) *Os {
-	o := &Os{Version: version, Platform: platform, Sp: sp, Arch: arch}
-	return o
+type OS struct {
+	Platform    string `xml:"platform,attr,omitempty"`
+	Version     string `xml:"version,attr,omitempty"`
+	ServicePack string `xml:"sp,attr,omitempty"`
+	Arch        string `xml:"arch,attr,omitempty"`
 }
 
 type Event struct {
-	Type            string `xml:"eventtype,attr,omitempty"`
-	Result          string `xml:"eventresult,attr,omitempty"`
-	PreviousVersion string `xml:"previousversion,attr,omitempty"`
-	ErrorCode       string `xml:"errorcode,attr,omitempty"`
+	Type            EventType   `xml:"eventtype,attr"`
+	Result          EventResult `xml:"eventresult,attr"`
+	PreviousVersion string      `xml:"previousversion,attr,omitempty"`
+	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
+	Status          string      `xml:"status,attr,omitempty"`
 }
 
-type Urls struct {
-	Urls []Url `xml:"url" json:",omitempty"`
+type URLs struct {
+	URLs []*URL `xml:"url" json:",omitempty"`
 }
 
-type Url struct {
+type URL struct {
 	CodeBase string `xml:"codebase,attr"`
 }
 
 type Manifest struct {
-	Packages Packages `xml:"packages"`
-	Actions  Actions  `xml:"actions"`
-	Version  string   `xml:"version,attr"`
-}
-
-type Packages struct {
-	Packages []Package `xml:"package" json:",omitempty"`
+	Packages []*Package `xml:"packages>package"`
+	Actions  []*Action  `xml:"actions>action"`
+	Version  string     `xml:"version,attr"`
 }
 
 type Package struct {
 	Hash     string `xml:"hash,attr"`
 	Name     string `xml:"name,attr"`
-	Size     string `xml:"size,attr"`
+	Size     uint64 `xml:"size,attr"`
 	Required bool   `xml:"required,attr"`
 }
 
-func (m *Manifest) AddPackage(hash string, name string, size string, required bool) *Package {
-	p := &Package{Hash: hash, Name: name, Size: size, Required: required}
-	m.Packages.Packages = append(m.Packages.Packages, *p)
+func (m *Manifest) AddPackage() *Package {
+	p := new(Package)
+	m.Packages = append(m.Packages, p)
 	return p
 }
 
-type Actions struct {
-	Actions []*Action `xml:"action" json:",omitempty"`
+func (m *Manifest) AddAction(event string) *Action {
+	a := &Action{Event: event}
+	m.Actions = append(m.Actions, a)
+	return a
 }
 
 type Action struct {
@@ -215,51 +213,4 @@ type Action struct {
 	MetadataSignatureRsa  string `xml:"MetadataSignatureRsa,attr,omitempty"`
 	MetadataSize          string `xml:"MetadataSize,attr,omitempty"`
 	Deadline              string `xml:"deadline,attr,omitempty"`
-}
-
-func (m *Manifest) AddAction(event string) *Action {
-	a := &Action{Event: event}
-	m.Actions.Actions = append(m.Actions.Actions, a)
-	return a
-}
-
-var EventTypes = map[int]string{
-	0:   "unknown",
-	1:   "download complete",
-	2:   "install complete",
-	3:   "update complete",
-	4:   "uninstall",
-	5:   "download started",
-	6:   "install started",
-	9:   "new application install started",
-	10:  "setup started",
-	11:  "setup finished",
-	12:  "update application started",
-	13:  "update download started",
-	14:  "update download finished",
-	15:  "update installer started",
-	16:  "setup update begin",
-	17:  "setup update complete",
-	20:  "register product complete",
-	30:  "OEM install first check",
-	40:  "app-specific command started",
-	41:  "app-specific command ended",
-	100: "setup failure",
-	102: "COM server failure",
-	103: "setup update failure",
-	800: "ping",
-}
-
-var EventResults = map[int]string{
-	0:  "error",
-	1:  "success",
-	2:  "success reboot",
-	3:  "success restart browser",
-	4:  "cancelled",
-	5:  "error installer MSI",
-	6:  "error installer other",
-	7:  "noupdate",
-	8:  "error installer system",
-	9:  "update deferred",
-	10: "handoff error",
 }

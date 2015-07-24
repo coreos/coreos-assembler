@@ -35,8 +35,8 @@ func TestOmahaRequestUpdateCheck(t *testing.T) {
 	v := Request{}
 	xml.Unmarshal([]byte(SampleRequest), &v)
 
-	if v.Os.Version != "Indy" {
-		t.Error("Unexpected version", v.Os.Version)
+	if v.OS.Version != "Indy" {
+		t.Error("Unexpected version", v.OS.Version)
 	}
 
 	if v.Apps[0].Id != "{87efface-864d-49a5-9bb3-4b050a7c227a}" {
@@ -71,22 +71,29 @@ func TestOmahaRequestUpdateCheck(t *testing.T) {
 		t.Error("dev-channel")
 	}
 
-	if v.Apps[0].Events[0].Type != "3" {
-		t.Error("developer-build")
+	if v.Apps[0].Events[0].Type != EventTypeUpdateComplete {
+		t.Error("Expected EventTypeUpdateComplete")
+	}
+
+	if v.Apps[0].Events[0].Result != EventResultSuccessReboot {
+		t.Error("Expected EventResultSuccessReboot")
 	}
 }
 
 func ExampleOmaha_NewResponse() {
-	response := NewResponse("unit-test")
-	app := response.AddApp("{52F1B9BC-D31A-4D86-9276-CBC256AADF9A}")
-	app.Status = "ok"
+	response := NewResponse()
+	app := response.AddApp("{52F1B9BC-D31A-4D86-9276-CBC256AADF9A}", "ok")
 	p := app.AddPing()
 	p.Status = "ok"
 	u := app.AddUpdateCheck()
 	u.Status = "ok"
-	u.AddUrl("http://localhost/updates")
+	u.AddURL("http://localhost/updates")
 	m := u.AddManifest("9999.0.0")
-	m.AddPackage("+LXvjiaPkeYDLHoNKlf9qbJwvnk=", "update.gz", "67546213", true)
+	k := m.AddPackage()
+	k.Hash = "+LXvjiaPkeYDLHoNKlf9qbJwvnk="
+	k.Name = "update.gz"
+	k.Size = 67546213
+	k.Required = true
 	a := m.AddAction("postinstall")
 	a.ChromeOSVersion = "9999.0.0"
 	a.Sha256 = "0VAlQW3RE99SGtSB5R4m08antAHO8XDoBMKDyxQT/Mg="
@@ -103,7 +110,7 @@ func ExampleOmaha_NewResponse() {
 
 	// Output:
 	// <?xml version="1.0" encoding="UTF-8"?>
-	// <response protocol="3.0" server="unit-test">
+	// <response protocol="3.0" server="mantle">
 	//  <daystart elapsed_seconds="0"></daystart>
 	//  <app appid="{52F1B9BC-D31A-4D86-9276-CBC256AADF9A}" status="ok">
 	//   <ping status="ok"></ping>
@@ -125,13 +132,19 @@ func ExampleOmaha_NewResponse() {
 }
 
 func ExampleOmaha_NewRequest() {
-	request := NewRequest("Indy", "Chrome OS", "ForcedUpdate_x86_64", "")
+	request := NewRequest()
+	request.Version = ""
+	request.OS = &OS{
+		Platform:    "Chrome OS",
+		Version:     "Indy",
+		ServicePack: "ForcedUpdate_x86_64",
+	}
 	app := request.AddApp("{27BD862E-8AE8-4886-A055-F7F1A6460627}", "1.0.0.0")
 	app.AddUpdateCheck()
 
 	event := app.AddEvent()
-	event.Type = "1"
-	event.Result = "0"
+	event.Type = EventTypeDownloadComplete
+	event.Result = EventResultError
 
 	if raw, err := xml.MarshalIndent(request, "", " "); err != nil {
 		fmt.Println(err)
