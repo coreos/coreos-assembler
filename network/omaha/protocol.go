@@ -28,19 +28,20 @@ import (
 	"github.com/coreos/mantle/version"
 )
 
+// Request sent by the Omaha client
 type Request struct {
-	XMLName        xml.Name `xml:"request" json:"-"`
-	OS             *OS      `xml:"os"`
-	Apps           []*App   `xml:"app"`
-	Protocol       string   `xml:"protocol,attr"`
-	Version        string   `xml:"version,attr,omitempty"`
-	IsMachine      string   `xml:"ismachine,attr,omitempty"`
-	SessionId      string   `xml:"sessionid,attr,omitempty"`
-	UserId         string   `xml:"userid,attr,omitempty"`
-	InstallSource  string   `xml:"installsource,attr,omitempty"`
-	TestSource     string   `xml:"testsource,attr,omitempty"`
-	RequestId      string   `xml:"requestid,attr,omitempty"`
-	UpdaterVersion string   `xml:"updaterversion,attr,omitempty"`
+	XMLName        xml.Name      `xml:"request" json:"-"`
+	OS             *OS           `xml:"os"`
+	Apps           []*AppRequest `xml:"app"`
+	Protocol       string        `xml:"protocol,attr"`
+	Version        string        `xml:"version,attr,omitempty"`
+	IsMachine      string        `xml:"ismachine,attr,omitempty"`
+	RequestId      string        `xml:"requestid,attr,omitempty"`
+	SessionId      string        `xml:"sessionid,attr,omitempty"`
+	UserId         string        `xml:"userid,attr,omitempty"`
+	InstallSource  string        `xml:"installsource,attr,omitempty"`
+	TestSource     string        `xml:"testsource,attr,omitempty"`
+	UpdaterVersion string        `xml:"updaterversion,attr,omitempty"`
 }
 
 func NewRequest() *Request {
@@ -55,18 +56,71 @@ func NewRequest() *Request {
 	}
 }
 
-func (r *Request) AddApp(id, version string) *App {
-	a := &App{Id: id, Version: version}
+func (r *Request) AddApp(id, version string) *AppRequest {
+	a := &AppRequest{Id: id, Version: version}
 	r.Apps = append(r.Apps, a)
 	return a
 }
 
+type AppRequest struct {
+	Ping        *PingRequest    `xml:"ping"`
+	UpdateCheck *UpdateRequest  `xml:"updatecheck"`
+	Events      []*EventRequest `xml:"event" json:",omitempty"`
+	Id          string          `xml:"appid,attr,omitempty"`
+	Version     string          `xml:"version,attr,omitempty"`
+	NextVersion string          `xml:"nextversion,attr,omitempty"`
+	Lang        string          `xml:"lang,attr,omitempty"`
+	Client      string          `xml:"client,attr,omitempty"`
+	InstallAge  string          `xml:"installage,attr,omitempty"`
+
+	// update engine extensions
+	Track     string `xml:"track,attr,omitempty"`
+	FromTrack string `xml:"from_track,attr,omitempty"`
+
+	// coreos update engine extensions
+	BootId    string `xml:"bootid,attr,omitempty"`
+	MachineID string `xml:"machineid,attr,omitempty"`
+	OEM       string `xml:"oem,attr,omitempty"`
+}
+
+func (a *AppRequest) AddUpdateCheck() *UpdateRequest {
+	a.UpdateCheck = new(UpdateRequest)
+	return a.UpdateCheck
+}
+
+func (a *AppRequest) AddPing() *PingRequest {
+	a.Ping = new(PingRequest)
+	return a.Ping
+}
+
+func (a *AppRequest) AddEvent() *EventRequest {
+	event := new(EventRequest)
+	a.Events = append(a.Events, event)
+	return event
+}
+
+type UpdateRequest struct {
+	TargetVersionPrefix string `xml:"targetversionprefix,attr,omitempty"`
+}
+
+type PingRequest struct {
+	LastReportDays string `xml:"r,attr,omitempty"`
+}
+
+type EventRequest struct {
+	Type            EventType   `xml:"eventtype,attr"`
+	Result          EventResult `xml:"eventresult,attr"`
+	PreviousVersion string      `xml:"previousversion,attr,omitempty"`
+	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
+}
+
+// Response sent by the Omaha server
 type Response struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	DayStart DayStart `xml:"daystart"`
-	Apps     []*App   `xml:"app"`
-	Protocol string   `xml:"protocol,attr"`
-	Server   string   `xml:"server,attr"`
+	XMLName  xml.Name       `xml:"response" json:"-"`
+	DayStart DayStart       `xml:"daystart"`
+	Apps     []*AppResponse `xml:"app"`
+	Protocol string         `xml:"protocol,attr"`
+	Server   string         `xml:"server,attr"`
 }
 
 func NewResponse() *Response {
@@ -81,58 +135,43 @@ type DayStart struct {
 	ElapsedSeconds string `xml:"elapsed_seconds,attr"`
 }
 
-func (r *Response) AddApp(id string, status AppStatus) *App {
-	a := &App{Id: id, Status: status}
+func (r *Response) AddApp(id string, status AppStatus) *AppResponse {
+	a := &AppResponse{Id: id, Status: status}
 	r.Apps = append(r.Apps, a)
 	return a
 }
 
-type App struct {
-	Ping        *Ping        `xml:"ping"`
-	UpdateCheck *UpdateCheck `xml:"updatecheck"`
-	Events      []*Event     `xml:"event" json:",omitempty"`
-	Id          string       `xml:"appid,attr,omitempty"`
-	Version     string       `xml:"version,attr,omitempty"`
-	NextVersion string       `xml:"nextversion,attr,omitempty"`
-	Lang        string       `xml:"lang,attr,omitempty"`
-	Client      string       `xml:"client,attr,omitempty"`
-	InstallAge  string       `xml:"installage,attr,omitempty"`
-	Status      AppStatus    `xml:"status,attr,omitempty"`
-
-	// update engine extensions
-	Track     string `xml:"track,attr,omitempty"`
-	FromTrack string `xml:"from_track,attr,omitempty"`
-
-	// coreos update engine extensions
-	BootId    string `xml:"bootid,attr,omitempty"`
-	MachineID string `xml:"machineid,attr,omitempty"`
-	OEM       string `xml:"oem,attr,omitempty"`
+type AppResponse struct {
+	Ping        *PingResponse    `xml:"ping"`
+	UpdateCheck *UpdateResponse  `xml:"updatecheck"`
+	Events      []*EventResponse `xml:"event" json:",omitempty"`
+	Id          string           `xml:"appid,attr,omitempty"`
+	Status      AppStatus        `xml:"status,attr,omitempty"`
 }
 
-func (a *App) AddUpdateCheck() *UpdateCheck {
-	a.UpdateCheck = new(UpdateCheck)
+func (a *AppResponse) AddUpdateCheck() *UpdateResponse {
+	a.UpdateCheck = new(UpdateResponse)
 	return a.UpdateCheck
 }
 
-func (a *App) AddPing() *Ping {
-	a.Ping = new(Ping)
+func (a *AppResponse) AddPing() *PingResponse {
+	a.Ping = &PingResponse{"ok"}
 	return a.Ping
 }
 
-func (a *App) AddEvent() *Event {
-	event := new(Event)
+func (a *AppResponse) AddEvent() *EventResponse {
+	event := &EventResponse{"ok"}
 	a.Events = append(a.Events, event)
 	return event
 }
 
-type UpdateCheck struct {
-	URLs                *URLs        `xml:"urls"`
-	Manifest            *Manifest    `xml:"manifest"`
-	TargetVersionPrefix string       `xml:"targetversionprefix,attr,omitempty"`
-	Status              UpdateStatus `xml:"status,attr,omitempty"`
+type UpdateResponse struct {
+	URLs     *URLs        `xml:"urls"`
+	Manifest *Manifest    `xml:"manifest"`
+	Status   UpdateStatus `xml:"status,attr,omitempty"`
 }
 
-func (u *UpdateCheck) AddURL(codebase string) *URL {
+func (u *UpdateResponse) AddURL(codebase string) *URL {
 	// An intermediate struct is used instead of a "urls>url" tag simply
 	// to keep Go from generating <urls></urls> if the list is empty.
 	if u.URLs == nil {
@@ -143,14 +182,17 @@ func (u *UpdateCheck) AddURL(codebase string) *URL {
 	return url
 }
 
-func (u *UpdateCheck) AddManifest(version string) *Manifest {
+func (u *UpdateResponse) AddManifest(version string) *Manifest {
 	u.Manifest = &Manifest{Version: version}
 	return u.Manifest
 }
 
-type Ping struct {
-	LastReportDays string `xml:"r,attr,omitempty"`
-	Status         string `xml:"status,attr,omitempty"`
+type PingResponse struct {
+	Status string `xml:"status,attr"` // Always "ok".
+}
+
+type EventResponse struct {
+	Status string `xml:"status,attr"` // Always "ok".
 }
 
 type OS struct {
