@@ -15,7 +15,9 @@
 package sdk
 
 import (
+	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/openpgp"
@@ -143,9 +145,24 @@ func Verify(signed, signature io.Reader) error {
 	}
 
 	_, err = openpgp.CheckDetachedSignature(keyring, signed, signature)
+	return err
+}
+
+func VerifyFile(file string) error {
+	signed, err := os.Open(file)
 	if err != nil {
 		return err
 	}
+	defer signed.Close()
 
+	signature, err := os.Open(file + ".sig")
+	if err != nil {
+		return err
+	}
+	defer signature.Close()
+
+	if err := Verify(signed, signature); err != nil {
+		return fmt.Errorf("%v: %s", err, file)
+	}
 	return nil
 }

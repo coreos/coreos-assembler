@@ -45,7 +45,7 @@ func runDownload(cmd *cobra.Command, args []string) {
 	}
 
 	plog.Noticef("Downloading SDK version %s", downloadVersion)
-	if err := sdk.Download(downloadVersion); err != nil {
+	if err := sdk.DownloadSDK(downloadVersion); err != nil {
 		plog.Fatalf("Download failed: %v", err)
 	}
 }

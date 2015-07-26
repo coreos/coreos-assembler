@@ -33,17 +33,6 @@ const (
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "sdk")
 
-func get(url string) (resp *http.Response, err error) {
-	plog.Infof("Fetching %s", url)
-	resp, err = http.Get(url)
-	if err == nil && resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		resp.Body = nil
-		err = fmt.Errorf("%s: %s", resp.Status, resp.Request.URL)
-	}
-	return
-}
-
 func TarballName(version string) string {
 	return fmt.Sprintf("coreos-sdk-%s-%s.tar.bz2", LocalArch(), version)
 }
@@ -54,39 +43,111 @@ func TarballURL(version string) string {
 	return u.String()
 }
 
-func Download(version string) error {
-	sdk := filepath.Join(RepoCache(), "sdk")
-	if err := os.MkdirAll(sdk, 0777); err != nil {
+func DownloadFile(file, url string) error {
+	plog.Infof("Downloading %s to %s", url, file)
+
+	if err := os.MkdirAll(filepath.Dir(file), 0777); err != nil {
 		return err
 	}
 
-	tar, err := os.OpenFile(filepath.Join(sdk, TarballName(version)),
-		os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	dst, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
-	defer tar.Close()
+	defer dst.Close()
 
-	respTar, err := get(TarballURL(version))
+	pos, err := dst.Seek(0, os.SEEK_END)
 	if err != nil {
 		return err
 	}
-	defer respTar.Body.Close()
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	if pos != 0 {
+		req.Header.Add("Range", fmt.Sprintf("bytes=%d-", pos))
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var length int64
+	switch resp.StatusCode {
+	case http.StatusOK:
+		if pos != 0 {
+			if _, err := dst.Seek(0, os.SEEK_SET); err != nil {
+				return err
+			}
+			if err := dst.Truncate(0); err != nil {
+				return err
+			}
+			pos = 0
+		}
+		length = resp.ContentLength
+	case http.StatusPartialContent:
+		var end int64
+		n, _ := fmt.Sscanf(resp.Header.Get("Content-Range"),
+			"bytes %d-%d/%d", &pos, &end, &length)
+		if n != 3 {
+			return fmt.Errorf("Bad Content-Range for %s", resp.Request.URL)
+		}
+
+		if _, err := dst.Seek(pos, os.SEEK_SET); err != nil {
+			return err
+		}
+		plog.Infof("Resuming from byte %d", pos)
+	case http.StatusRequestedRangeNotSatisfiable:
+		plog.Infof("Download already complete")
+		return nil
+	default:
+
+		return fmt.Errorf("%s: %s", resp.Status, resp.Request.URL)
+	}
 
 	// TODO(marineam): log download progress
-	if _, err := io.Copy(tar, respTar.Body); err != nil {
+	if n, err := io.Copy(dst, resp.Body); err != nil {
+		return err
+	} else if n != length-pos {
+		// unsure if this is worth caring about
+		plog.Infof("Downloaded %d bytes, expected %d", n, length-pos)
+		return nil
+	} else {
+		plog.Infof("Downloaded %d bytes", n)
+		return nil
+	}
+}
+
+func DownloadSignedFile(file, url string) error {
+	if _, err := os.Stat(file + ".sig"); err == nil {
+		if e := VerifyFile(file); e == nil {
+			plog.Infof("Verified existing file: %s", file)
+			return nil
+		}
+	}
+
+	if err := DownloadFile(file, url); err != nil {
 		return err
 	}
 
-	if _, err := tar.Seek(0, os.SEEK_SET); err != nil {
+	if err := DownloadFile(file+".sig", url+".sig"); err != nil {
 		return err
 	}
 
-	respSig, err := get(TarballURL(version) + ".sig")
-	if err != nil {
+	if err := VerifyFile(file); err != nil {
 		return err
 	}
-	defer respSig.Body.Close()
 
-	return Verify(tar, respSig.Body)
+	plog.Infof("Verified file: %s", file)
+	return nil
+}
+
+func DownloadSDK(version string) error {
+	tarFile := filepath.Join(RepoCache(), "sdk", TarballName(version))
+	tarURL := TarballURL(version)
+	return DownloadSignedFile(tarFile, tarURL)
 }
