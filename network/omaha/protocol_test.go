@@ -95,10 +95,10 @@ func ExampleOmaha_NewResponse() {
 	k.Size = 67546213
 	k.Required = true
 	a := m.AddAction("postinstall")
-	a.ChromeOSVersion = "9999.0.0"
+	a.DisplayVersion = "9999.0.0"
 	a.Sha256 = "0VAlQW3RE99SGtSB5R4m08antAHO8XDoBMKDyxQT/Mg="
 	a.NeedsAdmin = false
-	a.IsDelta = true
+	a.IsDeltaPayload = true
 	a.DisablePayloadBackoff = true
 
 	if raw, err := xml.MarshalIndent(response, "", " "); err != nil {
@@ -123,7 +123,7 @@ func ExampleOmaha_NewResponse() {
 	//      <package hash="+LXvjiaPkeYDLHoNKlf9qbJwvnk=" name="update.gz" size="67546213" required="true"></package>
 	//     </packages>
 	//     <actions>
-	//      <action event="postinstall" ChromeOSVersion="9999.0.0" sha256="0VAlQW3RE99SGtSB5R4m08antAHO8XDoBMKDyxQT/Mg=" needsadmin="false" IsDelta="true" DisablePayloadBackoff="true"></action>
+	//      <action event="postinstall" DisplayVersion="9999.0.0" sha256="0VAlQW3RE99SGtSB5R4m08antAHO8XDoBMKDyxQT/Mg=" IsDeltaPayload="true" DisablePayloadBackoff="true"></action>
 	//     </actions>
 	//    </manifest>
 	//   </updatecheck>

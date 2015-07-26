@@ -30,18 +30,20 @@ import (
 
 // Request sent by the Omaha client
 type Request struct {
-	XMLName        xml.Name      `xml:"request" json:"-"`
-	OS             *OS           `xml:"os"`
-	Apps           []*AppRequest `xml:"app"`
-	Protocol       string        `xml:"protocol,attr"`
-	Version        string        `xml:"version,attr,omitempty"`
-	IsMachine      string        `xml:"ismachine,attr,omitempty"`
-	RequestId      string        `xml:"requestid,attr,omitempty"`
-	SessionId      string        `xml:"sessionid,attr,omitempty"`
-	UserId         string        `xml:"userid,attr,omitempty"`
-	InstallSource  string        `xml:"installsource,attr,omitempty"`
-	TestSource     string        `xml:"testsource,attr,omitempty"`
-	UpdaterVersion string        `xml:"updaterversion,attr,omitempty"`
+	XMLName       xml.Name      `xml:"request" json:"-"`
+	OS            *OS           `xml:"os"`
+	Apps          []*AppRequest `xml:"app"`
+	Protocol      string        `xml:"protocol,attr"`
+	Version       string        `xml:"version,attr,omitempty"`
+	IsMachine     string        `xml:"ismachine,attr,omitempty"`
+	RequestId     string        `xml:"requestid,attr,omitempty"`
+	SessionId     string        `xml:"sessionid,attr,omitempty"`
+	UserId        string        `xml:"userid,attr,omitempty"`
+	InstallSource string        `xml:"installsource,attr,omitempty"`
+	TestSource    string        `xml:"testsource,attr,omitempty"`
+
+	// update engine extension, duplicates the version attribute.
+	UpdaterVersion string `xml:"updaterversion,attr,omitempty"`
 }
 
 func NewRequest() *Request {
@@ -76,11 +78,15 @@ type AppRequest struct {
 	// update engine extensions
 	Track     string `xml:"track,attr,omitempty"`
 	FromTrack string `xml:"from_track,attr,omitempty"`
+	Board     string `xml:"board,attr,omitempty"`
+	DeltaOK   bool   `xml:"delta_okay,attr,omitempty"`
 
 	// coreos update engine extensions
-	BootId    string `xml:"bootid,attr,omitempty"`
-	MachineID string `xml:"machineid,attr,omitempty"`
-	OEM       string `xml:"oem,attr,omitempty"`
+	BootId       string `xml:"bootid,attr,omitempty"`
+	MachineID    string `xml:"machineid,attr,omitempty"`
+	OEM          string `xml:"oem,attr,omitempty"`
+	OEMVersion   string `xml:"oemversion,attr,omitempty"`
+	AlephVersion string `xml:"alephversion,attr,omitempty"`
 }
 
 func (a *AppRequest) AddUpdateCheck() *UpdateRequest {
@@ -89,7 +95,7 @@ func (a *AppRequest) AddUpdateCheck() *UpdateRequest {
 }
 
 func (a *AppRequest) AddPing() *PingRequest {
-	a.Ping = new(PingRequest)
+	a.Ping = &PingRequest{Active: 1}
 	return a.Ping
 }
 
@@ -104,12 +110,15 @@ type UpdateRequest struct {
 }
 
 type PingRequest struct {
-	LastReportDays string `xml:"r,attr,omitempty"`
+	Active               int `xml:"active,attr,omitempty"`
+	LastActiveReportDays int `xml:"a,attr,omitempty"`
+	LastReportDays       int `xml:"r,attr,omitempty"`
 }
 
 type EventRequest struct {
 	Type            EventType   `xml:"eventtype,attr"`
 	Result          EventResult `xml:"eventresult,attr"`
+	NextVersion     string      `xml:"nextversion,attr,omitempty"`
 	PreviousVersion string      `xml:"previousversion,attr,omitempty"`
 	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
 }
@@ -246,13 +255,16 @@ func (m *Manifest) AddAction(event string) *Action {
 type Action struct {
 	Event string `xml:"event,attr"`
 
-	// Extensions added by update_engine
-	ChromeOSVersion       string `xml:"ChromeOSVersion,attr"`
-	Sha256                string `xml:"sha256,attr"`
-	NeedsAdmin            bool   `xml:"needsadmin,attr"`
-	IsDelta               bool   `xml:"IsDelta,attr"`
+	// update engine extensions for event="postinstall"
+	DisplayVersion        string `xml:"DisplayVersion,attr,omitempty"`
+	Sha256                string `xml:"sha256,attr,omitempty"`
+	NeedsAdmin            bool   `xml:"needsadmin,attr,omitempty"`
+	IsDeltaPayload        bool   `xml:"IsDeltaPayload,attr,omitempty"`
 	DisablePayloadBackoff bool   `xml:"DisablePayloadBackoff,attr,omitempty"`
+	MaxFailureCountPerURL uint   `xml:"MaxFailureCountPerUrl,attr,omitempty"`
 	MetadataSignatureRsa  string `xml:"MetadataSignatureRsa,attr,omitempty"`
 	MetadataSize          string `xml:"MetadataSize,attr,omitempty"`
 	Deadline              string `xml:"deadline,attr,omitempty"`
+	MoreInfo              string `xml:"MoreInfo,attr,omitempty"`
+	Prompt                bool   `xml:"Prompt,attr,omitempty"`
 }
