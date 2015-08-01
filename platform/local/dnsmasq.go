@@ -115,25 +115,25 @@ func newSegment(s byte) (*Segment, error) {
 	}
 
 	if err := netlink.LinkAdd(&br); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("LinkAdd() failed: %v", err)
 	}
 
 	for _, addr := range seg.BridgeIf.DHCPv4 {
 		nladdr := netlink.Addr{IPNet: &addr}
 		if err := netlink.AddrAdd(&br, &nladdr); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("DHCPv4 AddrAdd() failed: %v", err)
 		}
 	}
 
 	for _, addr := range seg.BridgeIf.DHCPv6 {
 		nladdr := netlink.Addr{IPNet: &addr}
 		if err := netlink.AddrAdd(&br, &nladdr); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("DHCPv6 AddrAdd() failed: %v", err)
 		}
 	}
 
 	if err := netlink.LinkSetUp(&br); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("LinkSetUp() failed: %v", err)
 	}
 
 	return seg, nil
