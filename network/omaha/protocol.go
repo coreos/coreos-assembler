@@ -175,19 +175,14 @@ func (a *AppResponse) AddEvent() *EventResponse {
 }
 
 type UpdateResponse struct {
-	URLs     *URLs        `xml:"urls"`
+	URLs     []*URL       `xml:"urls>url" json:",omitempty"`
 	Manifest *Manifest    `xml:"manifest"`
 	Status   UpdateStatus `xml:"status,attr,omitempty"`
 }
 
 func (u *UpdateResponse) AddURL(codebase string) *URL {
-	// An intermediate struct is used instead of a "urls>url" tag simply
-	// to keep Go from generating <urls></urls> if the list is empty.
-	if u.URLs == nil {
-		u.URLs = new(URLs)
-	}
 	url := &URL{CodeBase: codebase}
-	u.URLs.URLs = append(u.URLs.URLs, url)
+	u.URLs = append(u.URLs, url)
 	return url
 }
 
@@ -217,10 +212,6 @@ type Event struct {
 	PreviousVersion string      `xml:"previousversion,attr,omitempty"`
 	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
 	Status          string      `xml:"status,attr,omitempty"`
-}
-
-type URLs struct {
-	URLs []*URL `xml:"url" json:",omitempty"`
 }
 
 type URL struct {
