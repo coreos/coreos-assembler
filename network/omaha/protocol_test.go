@@ -90,7 +90,7 @@ func ExampleOmaha_NewResponse() {
 	u.AddURL("http://localhost/updates")
 	m := u.AddManifest("9999.0.0")
 	k := m.AddPackage()
-	k.Hash = "+LXvjiaPkeYDLHoNKlf9qbJwvnk="
+	k.Sha1 = "+LXvjiaPkeYDLHoNKlf9qbJwvnk="
 	k.Name = "update.gz"
 	k.Size = 67546213
 	k.Required = true
@@ -120,7 +120,7 @@ func ExampleOmaha_NewResponse() {
 	//    </urls>
 	//    <manifest version="9999.0.0">
 	//     <packages>
-	//      <package hash="+LXvjiaPkeYDLHoNKlf9qbJwvnk=" name="update.gz" size="67546213" required="true"></package>
+	//      <package name="update.gz" hash="+LXvjiaPkeYDLHoNKlf9qbJwvnk=" size="67546213" required="true"></package>
 	//     </packages>
 	//     <actions>
 	//      <action event="postinstall" DisplayVersion="9999.0.0" sha256="0VAlQW3RE99SGtSB5R4m08antAHO8XDoBMKDyxQT/Mg=" IsDeltaPayload="true" DisablePayloadBackoff="true"></action>

@@ -224,17 +224,20 @@ type Manifest struct {
 	Version  string     `xml:"version,attr"`
 }
 
-type Package struct {
-	Hash     string `xml:"hash,attr"`
-	Name     string `xml:"name,attr"`
-	Size     uint64 `xml:"size,attr"`
-	Required bool   `xml:"required,attr"`
-}
-
 func (m *Manifest) AddPackage() *Package {
 	p := new(Package)
 	m.Packages = append(m.Packages, p)
 	return p
+}
+
+func (m *Manifest) AddPackageFromPath(path string) (*Package, error) {
+	p := new(Package)
+	if err := p.FromPath(path); err != nil {
+		return nil, err
+	}
+
+	m.Packages = append(m.Packages, p)
+	return p, nil
 }
 
 func (m *Manifest) AddAction(event string) *Action {
