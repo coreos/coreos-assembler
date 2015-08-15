@@ -135,8 +135,13 @@
 			"Rev": "0678329cd64a64d7478eae6c35ed0bea0346da86"
 		},
 		{
+			"ImportPath": "github.com/coreos/go-systemd/journal",
+			"Comment": "v3-9-gcba1623",
+			"Rev": "cba16237846b83be98d25d8392b1520b7bc40b5a"
+		},
+		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "84b359ff90d62d7b5a5b9dfb96400c08f0cc6642"
+			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
 		},
 		{
 			"ImportPath": "github.com/coreos/yaml",
