@@ -15,9 +15,24 @@
 package sdk
 
 import (
+	"bytes"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+)
+
+const (
+	defaultBoard = "amd64-usr"
+	defaultGroup = "developer"
+
+	// In the SDK chroot the repo is always at this location
+	chrootRepoRoot = "/mnt/host/source"
+
+	// Assorted paths under the repo root
+	defaultCacheDir = ".cache"
+	defaultBuildDir = "src/build"
+	defaultBoardCfg = "src/scripts/.default_board"
 )
 
 func isDir(dir string) bool {
@@ -41,8 +56,8 @@ func RepoRoot() string {
 		return dir
 	}
 
-	if isDir("/mnt/host/source") {
-		return "/mnt/host/source"
+	if isDir(chrootRepoRoot) {
+		return chrootRepoRoot
 	}
 
 	wd, err := os.Getwd()
@@ -62,12 +77,37 @@ func RepoRoot() string {
 }
 
 func RepoCache() string {
-	return filepath.Join(RepoRoot(), ".cache")
+	return filepath.Join(RepoRoot(), defaultCacheDir)
+}
+
+func DefaultBoard() string {
+	cfg := filepath.Join(RepoRoot(), defaultBoardCfg)
+	board, err := ioutil.ReadFile(cfg)
+	if err != nil {
+		return defaultBoard
+	}
+
+	board = bytes.TrimSpace(board)
+	if len(board) == 0 {
+		return defaultBoard
+	}
+
+	return string(board)
 }
 
 func BuildRoot() string {
 	if dir := envDir("BUILD_ROOT"); dir != "" {
 		return dir
 	}
-	return filepath.Join(RepoRoot(), "src", "build")
+	return filepath.Join(RepoRoot(), defaultBuildDir)
+}
+
+// version may be "latest" or a full version like "752.1.0+2015-07-27-1656"
+func BuildImageDir(version string) string {
+	if version != "latest" {
+		// Assume all builds are "attempt" #1
+		version += "-a1"
+	}
+	dir := defaultGroup + "-" + version
+	return filepath.Join(BuildRoot(), "images", DefaultBoard(), dir)
 }
