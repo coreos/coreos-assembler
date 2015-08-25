@@ -137,7 +137,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		"-uuid", qm.id,
 		"-display", "none",
 		"-add-fd", "fd=3,set=1",
-		"-drive", "file=/dev/fdset/1,media=disk,if=virtio",
+		"-drive", "file=/dev/fdset/1,media=disk,if=virtio,format=raw",
 		"-netdev", "tap,id=tap,fd=4",
 		"-device", "virtio-net,netdev=tap,mac="+qmMac,
 		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
