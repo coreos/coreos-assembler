@@ -104,7 +104,7 @@ Options=defaults,noexec
 				config.Unit{
 					Name:    "mnt.mount",
 					Command: "start",
-					Content: fmt.Sprintf(nfstmpl, m1.IP()),
+					Content: fmt.Sprintf(nfstmpl, m1.PrivateIP()),
 				},
 			},
 		},
