@@ -106,12 +106,15 @@ func runTest(t *Test, pltfrm string) error {
 	var err error
 	var cluster platform.Cluster
 
-	if pltfrm == "qemu" {
+	switch pltfrm {
+	case "qemu":
 		cluster, err = platform.NewQemuCluster(*QemuImage)
-	} else if pltfrm == "gce" {
+	case "gce":
 		cluster, err = platform.NewGCECluster(GCEOpts())
-	} else {
-		plog.Errorf("Invalid platform: %v", pltfrm)
+	case "aws":
+		cluster, err = platform.NewAWSCluster()
+	default:
+		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
 
 	if err != nil {

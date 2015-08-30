@@ -64,7 +64,7 @@ coreos:
 		Name:        "coretestsInternetLocal",
 		Run:         coretest.InternetTests,
 		ClusterSize: 1,
-		Platforms:   []string{"gce"},
+		Platforms:   []string{"gce", "aws"},
 		NativeFuncs: map[string]func() error{
 			"UpdateEngine": coretest.TestUpdateEngine,
 			"DockerPing":   coretest.TestDockerPing,
