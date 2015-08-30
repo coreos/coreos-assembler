@@ -27,6 +27,7 @@ import (
 type Machine interface {
 	ID() string
 	IP() string
+	PrivateIP() string
 	SSHSession() (*ssh.Session, error)
 	SSH(cmd string) ([]byte, error)
 	Destroy() error

@@ -29,7 +29,7 @@ coreos:
   etcd:
     name: $name
     discovery: $discovery
-    addr: $public_ipv4:4001
+    addr: $private_ipv4:4001
     peer-addr: $private_ipv4:7001`,
 	})
 
@@ -44,7 +44,7 @@ coreos:
   etcd2:
     name: $name
     discovery: $discovery
-    advertise-client-urls: http://$public_ipv4:2379
+    advertise-client-urls: http://$private_ipv4:2379
     initial-advertise-peer-urls: http://$private_ipv4:2380
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
@@ -62,7 +62,7 @@ coreos:
   etcd2:
     name: $name
     discovery: $discovery
-    advertise-client-urls: http://$public_ipv4:2379
+    advertise-client-urls: http://$private_ipv4:2379
     initial-advertise-peer-urls: http://$private_ipv4:2380
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,

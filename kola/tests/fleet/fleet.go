@@ -33,7 +33,7 @@ var (
 	masterconf = config.CloudConfig{
 		CoreOS: config.CoreOS{
 			Etcd2: config.Etcd2{
-				AdvertiseClientURLs:      "http://$public_ipv4:2379",
+				AdvertiseClientURLs:      "http://$private_ipv4:2379",
 				InitialAdvertisePeerURLs: "http://$private_ipv4:2380",
 				ListenClientURLs:         "http://0.0.0.0:2379,http://0.0.0.0:4001",
 				ListenPeerURLs:           "http://$private_ipv4:2380,http://$private_ipv4:7001",

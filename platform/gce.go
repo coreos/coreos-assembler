@@ -187,6 +187,10 @@ func (gm *gceMachine) IP() string {
 	return gm.extIP
 }
 
+func (gm *gceMachine) PrivateIP() string {
+	return gm.intIP
+}
+
 func (gm *gceMachine) SSHSession() (*ssh.Session, error) {
 	session, err := gm.sshClient.NewSession()
 	if err != nil {
