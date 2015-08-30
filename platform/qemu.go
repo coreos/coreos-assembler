@@ -215,6 +215,10 @@ func (m *qemuMachine) IP() string {
 	return m.netif.DHCPv4[0].IP.String()
 }
 
+func (m *qemuMachine) PrivateIP() string {
+	return m.netif.DHCPv4[0].IP.String()
+}
+
 func (qm *qemuMachine) SSHSession() (*ssh.Session, error) {
 	session, err := qm.sshClient.NewSession()
 	if err != nil {
