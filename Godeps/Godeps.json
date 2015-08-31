@@ -11,6 +11,46 @@
 			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/endpoints",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/ec2query",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/query/queryutil",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/rest",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/xml/xmlutil",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/signer/v4",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
+			"Comment": "v0.9.3rc4",
+			"Rev": "8e2b65e861d9dece1929689b10ae8cabf4227601"
+		},
+		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
 			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
@@ -219,6 +259,10 @@
 		{
 			"ImportPath": "github.com/spf13/pflag",
 			"Rev": "67cbc198fd11dab704b214c1e629a97af392c085"
+		},
+		{
+			"ImportPath": "github.com/vaughan0/go-ini",
+			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
 		},
 		{
 			"ImportPath": "github.com/vishvananda/netlink",

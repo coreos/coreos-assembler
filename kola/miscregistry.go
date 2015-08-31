@@ -23,7 +23,7 @@ func init() {
 		Run:         misc.NFS,
 		ClusterSize: 0,
 		Name:        "NFS",
-		Platforms:   []string{"qemu"},
+		Platforms:   []string{"qemu", "aws"},
 	})
 	Register(&Test{
 		Run:         misc.NTP,
