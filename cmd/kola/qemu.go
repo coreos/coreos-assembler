@@ -45,7 +45,7 @@ func runQemu(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	cluster, err := platform.NewQemuCluster(*kola.QemuImage)
+	cluster, err := platform.NewQemuCluster(kola.QEMUOptions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		os.Exit(1)

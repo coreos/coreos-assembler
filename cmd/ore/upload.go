@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"github.com/coreos/mantle/auth"
@@ -34,14 +35,13 @@ import (
 
 var (
 	cmdUpload = &cobra.Command{
-
 		Use:   "upload",
 		Short: "Upload os image",
 		Long:  "Upload os image to Google Storage bucket and create image in GCE. Intended for use in SDK.",
 		Run:   runUpload,
 	}
+
 	uploadBucket    string
-	uploadProject   string
 	uploadImageName string
 	uploadBoard     string
 	uploadFile      string
@@ -50,7 +50,6 @@ var (
 func init() {
 	build := sdk.BuildRoot()
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
-	cmdUpload.Flags().StringVar(&uploadProject, "project", "coreos-gce-testing", "Google Compute project ID")
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
@@ -107,6 +106,12 @@ func runUpload(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	api, err := compute.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	// check if this file is already uploaded and give option to skip
 	alreadyExists, err := fileQuery(client, uploadBucket, imageNameGS)
 	if err != nil {
@@ -140,7 +145,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	err = platform.GCECreateImage(client, uploadProject, imageNameGCE, storageSrc)
+	err = platform.GCECreateImage(api, opts.Project, imageNameGCE, storageSrc)
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
@@ -153,7 +158,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		switch ans {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing image...")
-			err = platform.GCEForceCreateImage(client, uploadProject, imageNameGCE, storageSrc)
+			err = platform.GCEForceCreateImage(api, opts.Project, imageNameGCE, storageSrc)
 
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
@@ -180,7 +185,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 	switch ans {
 	case "y", "Y", "yes":
 		fmt.Println("Updating 'latest' image...")
-		err = platform.GCEForceCreateImage(client, uploadProject, "latest", storageSrc)
+		err = platform.GCEForceCreateImage(api, opts.Project, "latest", storageSrc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Updating 'latest' image failed: %v\n", err)
 		}

@@ -39,7 +39,7 @@ func TestAWSMachine(t *testing.T) {
 		t.Skip(err)
 	}
 
-	c, err := NewAWSCluster()
+	c, err := NewAWSCluster(AWSOptions{})
 	if err != nil {
 		t.Error(err)
 		return

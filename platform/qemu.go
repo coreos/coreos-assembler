@@ -35,10 +35,14 @@ const (
 	sshRetryDelay = time.Second
 )
 
+type QEMUOptions struct {
+	DiskImage string
+}
+
 type qemuCluster struct {
 	*local.LocalCluster
 	machines map[string]*qemuMachine
-	image    string
+	conf     QEMUOptions
 }
 
 type qemuMachine struct {
@@ -50,7 +54,7 @@ type qemuMachine struct {
 	sshClient   *ssh.Client
 }
 
-func NewQemuCluster(image string) (Cluster, error) {
+func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 	lc, err := local.NewLocalCluster()
 	if err != nil {
 		return nil, err
@@ -59,7 +63,7 @@ func NewQemuCluster(image string) (Cluster, error) {
 	qc := &qemuCluster{
 		LocalCluster: lc,
 		machines:     make(map[string]*qemuMachine),
-		image:        image,
+		conf:         conf,
 	}
 	return Cluster(qc), nil
 }
@@ -114,7 +118,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		netif:       netif,
 	}
 
-	disk, err := setupDisk(qc.image)
+	disk, err := setupDisk(qc.conf.DiskImage)
 	if err != nil {
 		return nil, err
 	}

@@ -33,25 +33,7 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-type gceCluster struct {
-	sshAgent *network.SSHAgent
-	opts     *GCEOpts
-	machines map[string]*gceMachine
-}
-
-type gceMachine struct {
-	gc          *gceCluster
-	name        string
-	intIP       string
-	extIP       string
-	cloudConfig string
-	sshClient   *ssh.Client
-	opts        *GCEOpts
-}
-
-type GCEOpts struct {
-	Client      *http.Client
-	CloudConfig string
+type GCEOptions struct {
 	Image       string
 	Project     string
 	Zone        string
@@ -61,42 +43,38 @@ type GCEOpts struct {
 	Network     string
 }
 
-// fills in defaults for unset fields and error for required fields
-func (opts *GCEOpts) setDefaults() error {
-	if opts.Client == nil {
-		return fmt.Errorf("Client is nil")
-	}
-	if opts.Image == "" {
-		return fmt.Errorf("Image not specified")
-	}
-	if opts.Project == "" {
-		opts.Project = "coreos-gce-testing"
-	}
-	if opts.Zone == "" {
-		opts.Zone = "us-central1-a"
-	}
-	if opts.MachineType == "" {
-		opts.MachineType = "n1-standard-1"
-	}
-	if opts.DiskType == "" {
-		opts.DiskType = "pd-ssd"
-	}
-	if opts.BaseName == "" {
-		opts.BaseName = "mantle"
-	}
-	if opts.Network == "" {
-		opts.Network = "default"
-	}
-	return nil
+type gceCluster struct {
+	api      *compute.Service
+	sshAgent *network.SSHAgent
+	conf     *GCEOptions
+	machines map[string]*gceMachine
 }
 
-func NewGCECluster(opts *GCEOpts) (Cluster, error) {
+type gceMachine struct {
+	gc        *gceCluster
+	name      string
+	intIP     string
+	extIP     string
+	sshClient *ssh.Client
+}
+
+func NewGCECluster(conf GCEOptions) (Cluster, error) {
+	client, err := auth.GoogleClient()
+	if err != nil {
+		return nil, err
+	}
+
+	api, err := compute.New(client)
+	if err != nil {
+		return nil, err
+	}
+
 	gc := &gceCluster{
-		opts:     opts,
+		api:      api,
+		conf:     &conf,
 		machines: make(map[string]*gceMachine),
 	}
 
-	var err error
 	gc.sshAgent, err = network.NewSSHAgent(&net.Dialer{})
 	if err != nil {
 		return nil, err
@@ -130,12 +108,6 @@ func (gc *gceCluster) Destroy() error {
 }
 
 func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
-	client, err := auth.GoogleClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		return nil, err
-	}
-
 	cconfig, err := config.NewCloudConfig(cloudConfig)
 	if err != nil {
 		return nil, err
@@ -145,11 +117,8 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 	}
 	cloudConfig = cconfig.String()
 
-	gc.opts.CloudConfig = cloudConfig
-	gc.opts.Client = client
-
 	// Create gce VM and wait for creation to succeed.
-	gm, err := GCECreateVM(gc.opts)
+	gm, err := GCECreateVM(gc.api, gc.conf, cloudConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -233,15 +202,8 @@ func (gm *gceMachine) Destroy() error {
 	if gm.sshClient != nil {
 		gm.sshClient.Close()
 	}
-	if gm.opts.Client == nil {
-		return fmt.Errorf("gce Machine has nil client, cannot destroy")
-	}
 
-	computeService, err := compute.New(gm.opts.Client)
-	if err != nil {
-		return err
-	}
-	_, err = computeService.Instances.Delete(gm.opts.Project, gm.opts.Zone, gm.name).Do()
+	_, err := gm.gc.api.Instances.Delete(gm.gc.conf.Project, gm.gc.conf.Zone, gm.name).Do()
 	if err != nil {
 		return err
 	}
@@ -250,38 +212,27 @@ func (gm *gceMachine) Destroy() error {
 	return nil
 }
 
-func GCECreateVM(opts *GCEOpts) (*gceMachine, error) {
-	err := opts.setDefaults()
-	if err != nil {
-		return nil, err
-	}
-
-	// check cloud config
-	if opts.CloudConfig != "" {
-		_, err := config.NewCloudConfig(opts.CloudConfig)
+func GCECreateVM(api *compute.Service, opts *GCEOptions, userdata string) (*gceMachine, error) {
+	if userdata != "" {
+		_, err := config.NewCloudConfig(userdata)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// generate name
-	name, err := nextName(opts.Client, opts.Project, opts.Zone, opts.BaseName)
+	name, err := nextName(api, opts)
 	if err != nil {
 		return nil, fmt.Errorf("Failed allocating unique name for vm: %v\n", err)
 	}
 
-	instance, err := gceMakeInstance(opts, name)
-	if err != nil {
-		return nil, err
-	}
-
-	computeService, err := compute.New(opts.Client)
+	instance, err := gceMakeInstance(opts, userdata, name)
 	if err != nil {
 		return nil, err
 	}
 
 	// request instance
-	op, err := computeService.Instances.Insert(opts.Project, opts.Zone, instance).Do()
+	op, err := api.Instances.Insert(opts.Project, opts.Zone, instance).Do()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new VM: %v\n", err)
 	}
@@ -290,34 +241,28 @@ func GCECreateVM(opts *GCEOpts) (*gceMachine, error) {
 	fmt.Fprintf(os.Stderr, "Waiting for creation to finish...\n")
 
 	// wait for creation to finish
-	err = gceWaitVM(computeService, opts.Project, opts.Zone, op.Name)
+	err = gceWaitVM(api, opts.Project, opts.Zone, op.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	inst, err := computeService.Instances.Get(opts.Project, opts.Zone, name).Do()
+	inst, err := api.Instances.Get(opts.Project, opts.Zone, name).Do()
 	if err != nil {
 		return nil, fmt.Errorf("Error getting instance %s details after creation: %v", name, err)
 	}
 	intIP, extIP := instanceIPs(inst)
 
 	gm := &gceMachine{
-		name:        name,
-		extIP:       extIP,
-		intIP:       intIP,
-		cloudConfig: opts.CloudConfig,
-		opts:        opts,
+		name:  name,
+		extIP: extIP,
+		intIP: intIP,
 	}
 
 	return gm, nil
 }
 
-func GCEDestroyVM(client *http.Client, proj, zone, name string) error {
-	computeService, err := compute.New(client)
-	if err != nil {
-		return err
-	}
-	_, err = computeService.Instances.Delete(proj, zone, name).Do()
+func GCEDestroyVM(api *compute.Service, proj, zone, name string) error {
+	_, err := api.Instances.Delete(proj, zone, name).Do()
 	if err != nil {
 		return err
 	}
@@ -325,19 +270,14 @@ func GCEDestroyVM(client *http.Client, proj, zone, name string) error {
 }
 
 // Create image on GCE and return. Will not overwrite existing image.
-func GCECreateImage(client *http.Client, proj, name, source string) error {
-	computeService, err := compute.New(client)
-	if err != nil {
-		return err
-	}
-
+func GCECreateImage(api *compute.Service, proj, name, source string) error {
 	image := &compute.Image{
 		Name: name,
 		RawDisk: &compute.ImageRawDisk{
 			Source: source,
 		},
 	}
-	_, err = computeService.Images.Insert(proj, image).Do()
+	_, err := api.Images.Insert(proj, image).Do()
 	if err != nil {
 		return err
 	}
@@ -345,13 +285,8 @@ func GCECreateImage(client *http.Client, proj, name, source string) error {
 }
 
 // Delete image on GCE and then recreate it.
-func GCEForceCreateImage(client *http.Client, proj, name, source string) error {
-	// delete
-	computeService, err := compute.New(client)
-	if err != nil {
-		return fmt.Errorf("deleting image: %v", err)
-	}
-	_, err = computeService.Images.Delete(proj, name).Do()
+func GCEForceCreateImage(api *compute.Service, proj, name, source string) error {
+	_, err := api.Images.Delete(proj, name).Do()
 
 	// don't return error when delete fails because image doesn't exist
 	if err != nil && !strings.HasSuffix(err.Error(), "notFound") {
@@ -359,18 +294,13 @@ func GCEForceCreateImage(client *http.Client, proj, name, source string) error {
 	}
 
 	// create
-	return GCECreateImage(client, proj, name, source)
+	return GCECreateImage(api, proj, name, source)
 }
 
-func GCEListVMs(client *http.Client, proj, zone, prefix string) ([]Machine, error) {
+func GCEListVMs(api *compute.Service, opts *GCEOptions, prefix string) ([]Machine, error) {
 	var vms []Machine
 
-	computeService, err := compute.New(client)
-	if err != nil {
-		return nil, err
-	}
-
-	list, err := computeService.Instances.List(proj, zone).Do()
+	list, err := api.Instances.List(opts.Project, opts.Zone).Do()
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +339,7 @@ func GCEListImages(client *http.Client, proj, prefix string) ([]string, error) {
 }
 
 //Some code taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
-func gceMakeInstance(opts *GCEOpts, name string) (*compute.Instance, error) {
+func gceMakeInstance(opts *GCEOptions, userdata string, name string) (*compute.Instance, error) {
 	prefix := "https://www.googleapis.com/compute/v1/projects/" + opts.Project
 	instance := &compute.Instance{
 		Name:        name,
@@ -440,10 +370,10 @@ func gceMakeInstance(opts *GCEOpts, name string) (*compute.Instance, error) {
 		},
 	}
 	// add cloud config
-	if opts.CloudConfig != "" {
+	if userdata != "" {
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
 			Key:   "user-data",
-			Value: opts.CloudConfig,
+			Value: userdata,
 		})
 	}
 
@@ -482,8 +412,9 @@ OpLoop:
 // nextName returns the next available numbered name or the given base
 // name. Code originally from:
 // https://github.com/golang/build/blob/master/cmd/gomote/list.go
-func nextName(client *http.Client, proj, zone, base string) (string, error) {
-	vms, err := GCEListVMs(client, proj, zone, base)
+func nextName(api *compute.Service, opts *GCEOptions) (string, error) {
+	base := opts.BaseName
+	vms, err := GCEListVMs(api, opts, base)
 	if err != nil {
 		return "", fmt.Errorf("error listing VMs: %v", err)
 	}

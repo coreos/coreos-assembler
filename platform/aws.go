@@ -111,18 +111,21 @@ func (am *awsMachine) StartJournal() error {
 	return nil
 }
 
+type AWSOptions struct {
+	AMI           string
+	KeyName       string
+	InstanceType  string
+	SecurityGroup string
+}
 type awsCluster struct {
-	mu            sync.Mutex
-	api           *ec2.EC2
-	ami           string
-	keyName       string
-	instanceType  string
-	securityGroup string
-	agent         *network.SSHAgent
-	machs         map[string]*awsMachine
+	mu    sync.Mutex
+	api   *ec2.EC2
+	conf  AWSOptions
+	agent *network.SSHAgent
+	machs map[string]*awsMachine
 }
 
-func NewAWSCluster() (Cluster, error) {
+func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	api := ec2.New(aws.NewConfig().WithCredentials(credentials.NewEnvCredentials()))
 
 	agent, err := network.NewSSHAgent(&net.Dialer{})
@@ -131,13 +134,10 @@ func NewAWSCluster() (Cluster, error) {
 	}
 
 	ac := &awsCluster{
-		api:           api,
-		ami:           "ami-4345bd07", // CoreOS-alpha-789.0.0 on us-west-1
-		keyName:       "mischief",
-		instanceType:  "t1.micro",
-		securityGroup: "kola",
-		agent:         agent,
-		machs:         make(map[string]*awsMachine),
+		api:   api,
+		conf:  conf,
+		agent: agent,
+		machs: make(map[string]*awsMachine),
 	}
 
 	return ac, nil
@@ -179,12 +179,12 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 	cnt := int64(1)
 
 	inst := ec2.RunInstancesInput{
-		ImageId:        &ac.ami,
+		ImageId:        &ac.conf.AMI,
 		MinCount:       &cnt,
 		MaxCount:       &cnt,
-		KeyName:        &ac.keyName, // this is only useful if you wish to ssh in for debugging
-		InstanceType:   &ac.instanceType,
-		SecurityGroups: []*string{&ac.securityGroup},
+		KeyName:        &ac.conf.KeyName, // this is only useful if you wish to ssh in for debugging
+		InstanceType:   &ac.conf.InstanceType,
+		SecurityGroups: []*string{&ac.conf.SecurityGroup},
 		UserData:       &ud,
 	}
 

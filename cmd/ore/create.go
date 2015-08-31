@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 )
@@ -30,21 +31,12 @@ var (
 		Short: "Create cluster on GCE",
 		Run:   runCreate,
 	}
-	createProject      string
-	createZone         string
-	createMachine      string
-	createBaseName     string
-	createImageName    string
+
 	createConfig       string
 	createNumInstances int
 )
 
 func init() {
-	cmdCreate.Flags().StringVar(&createProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdCreate.Flags().StringVar(&createZone, "zone", "us-central1-a", "gce zone")
-	cmdCreate.Flags().StringVar(&createMachine, "machine", "n1-standard-1", "gce machine type")
-	cmdCreate.Flags().StringVar(&createBaseName, "name", "", "prefix for instances")
-	cmdCreate.Flags().StringVar(&createImageName, "image", "", "GCE image name")
 	cmdCreate.Flags().StringVar(&createConfig, "config", "", "path to cloud config file")
 	cmdCreate.Flags().IntVar(&createNumInstances, "n", 1, "number of instances")
 	root.AddCommand(cmdCreate)
@@ -54,15 +46,6 @@ func runCreate(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in ore create-instances: %v\n", args)
 		os.Exit(2)
-	}
-
-	if createImageName == "" {
-		fmt.Fprintf(os.Stderr, "Must specifcy GCE image with '-image' flag\n")
-		os.Exit(2)
-	}
-	// if base name is unspecified use image name
-	if createBaseName == "" {
-		createBaseName = createImageName
 	}
 
 	var cloudConfig string
@@ -81,19 +64,15 @@ func runCreate(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	opts := &platform.GCEOpts{
-		Client:      client,
-		CloudConfig: cloudConfig,
-		Project:     createProject,
-		Zone:        createZone,
-		MachineType: createMachine,
-		BaseName:    createBaseName,
-		Image:       createImageName,
+	api, err := compute.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		os.Exit(1)
 	}
 
 	var vms []platform.Machine
 	for i := 0; i < createNumInstances; i++ {
-		vm, err := platform.GCECreateVM(opts)
+		vm, err := platform.GCECreateVM(api, &opts, cloudConfig)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating vm: %v\n", err)
 			os.Exit(1)
@@ -102,7 +81,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		fmt.Println("Instance created")
 	}
 
-	fmt.Printf("All instances created, add your ssh keys here: https://console.developers.google.com/project/%v/compute/metadata/sshKeys\n", createProject)
+	fmt.Printf("All instances created, add your ssh keys here: https://console.developers.google.com/project/%v/compute/metadata/sshKeys\n", opts.Project)
 	for _, vm := range vms {
 		fmt.Printf("To access %v use cmd:\n", vm.ID())
 		fmt.Printf("ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no core@%v\n", vm.IP())

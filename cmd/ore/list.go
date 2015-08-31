@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 )
@@ -29,15 +30,9 @@ var (
 		Short: "List instances on GCE",
 		Run:   runList,
 	}
-	listProject string
-	listZone    string
-	listPrefix  string
 )
 
 func init() {
-	cmdList.Flags().StringVar(&listProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdList.Flags().StringVar(&listZone, "zone", "us-central1-a", "gce zone")
-	cmdList.Flags().StringVar(&listPrefix, "prefix", "", "prefix to filter list by")
 	root.AddCommand(cmdList)
 }
 
@@ -53,7 +48,12 @@ func runList(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	vms, err := platform.GCEListVMs(client, listProject, listZone, listPrefix)
+	api, err := compute.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		os.Exit(1)
+	}
+	vms, err := platform.GCEListVMs(api, &opts, opts.BaseName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
 		os.Exit(1)
@@ -62,5 +62,4 @@ func runList(cmd *cobra.Command, args []string) {
 		fmt.Printf("%v:\n", vm.ID())
 		fmt.Printf(" extIP: %v\n", vm.IP())
 	}
-
 }

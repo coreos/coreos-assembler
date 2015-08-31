@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 )
@@ -33,10 +34,12 @@ var (
 		Long:  "Create GCE image from os image in Google Storage bucket.",
 		Run:   runGCECreate,
 	}
+
+	opts platform.GCEOptions
+
 	gceCreateForce     bool
 	gceCreateRetries   int
 	gceCreateFile      string
-	gceCreateProject   string
 	gceCreateImageName string
 )
 
@@ -44,8 +47,17 @@ func init() {
 	cmdGCECreate.Flags().BoolVar(&gceCreateForce, "force", false, "set true to overwrite existing image with same name")
 	cmdGCECreate.Flags().IntVar(&gceCreateRetries, "set-retries", 0, "set how many times to retry on failure")
 	cmdGCECreate.Flags().StringVar(&gceCreateFile, "from-storage", "", "file from a google storage bucket <gs://bucket/prefix/name>")
-	cmdGCECreate.Flags().StringVar(&gceCreateProject, "project", "coreos-gce-testing", "Google Compute project ID")
 	cmdGCECreate.Flags().StringVar(&gceCreateImageName, "name", "", "name for uploaded image, defaults to translating the filename in the bucket")
+
+	sv := cmdGCECreate.Flags().StringVar
+
+	sv(&opts.Image, "image", "", "image name")
+	sv(&opts.Project, "project", "coreos-gce-testing", "project")
+	sv(&opts.Zone, "zone", "us-central1-a", "zone")
+	sv(&opts.MachineType, "machinetype", "n1-standard-1", "machine type")
+	sv(&opts.DiskType, "disktype", "pd-sdd", "disk type")
+	sv(&opts.BaseName, "basename", "kola", "instance name prefix")
+	sv(&opts.Network, "network", "default", "network name")
 
 	root.AddCommand(cmdGCECreate)
 }
@@ -115,6 +127,12 @@ func tryGCECreate(bucket, bucketPath, imageName string) int {
 		return 1
 	}
 
+	api, err := compute.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	// make sure file exists
 	exists, err := fileQuery(client, bucket, bucketPath)
 	if err != nil || !exists {
@@ -126,13 +144,13 @@ func tryGCECreate(bucket, bucketPath, imageName string) int {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", bucket, bucketPath)
-	err = platform.GCECreateImage(client, gceCreateProject, imageName, storageSrc)
+	err = platform.GCECreateImage(api, opts.Project, imageName, storageSrc)
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
 		if gceCreateForce {
 			log.Println("forcing overwrite of existing image...")
-			err = platform.GCEForceCreateImage(client, gceCreateProject, imageName, storageSrc)
+			err = platform.GCEForceCreateImage(api, opts.Project, imageName, storageSrc)
 		} else {
 			log.Printf("skipping upload, image %v already exists", imageName)
 			return 0

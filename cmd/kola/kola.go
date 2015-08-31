@@ -38,7 +38,6 @@ var (
 		Run:   runRun,
 	}
 
-	kolaPlatform           string
 	EtcdRollingVersion     string
 	EtcdRollingVersion2    string
 	EtcdRollingBin         string
@@ -47,18 +46,14 @@ var (
 )
 
 func init() {
-	cmdRun.Flags().StringVar(&kolaPlatform,
-		"platform", "qemu", "VM platform: qemu or gce")
-	cmdRun.Flags().StringVar(&EtcdRollingVersion,
-		"EtcdRollingVersion", "", "")
-	cmdRun.Flags().StringVar(&EtcdRollingVersion2,
-		"EtcdRollingVersion2", "", "")
-	cmdRun.Flags().StringVar(&EtcdRollingBin,
-		"EtcdRollingBin", "", "")
-	cmdRun.Flags().StringVar(&EtcdRollingBin2,
-		"EtcdRollingBin2", "", "")
-	cmdRun.Flags().BoolVar(&EtcdRollingSkipVersion,
-		"EtcdRollingSkipVersion", false, "")
+	sv := cmdRun.Flags().StringVar
+
+	sv(&EtcdRollingVersion, "EtcdRollingVersion", "", "")
+	sv(&EtcdRollingVersion2, "EtcdRollingVersion2", "", "")
+	sv(&EtcdRollingBin, "EtcdRollingBin", "", "")
+	sv(&EtcdRollingBin2, "EtcdRollingBin2", "", "")
+	cmdRun.Flags().BoolVar(&EtcdRollingSkipVersion, "EtcdRollingSkipVersion", false, "")
+
 	root.AddCommand(cmdRun)
 }
 

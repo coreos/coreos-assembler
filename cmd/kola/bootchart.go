@@ -38,8 +38,6 @@ This must run as root!
 `}
 
 func init() {
-	cmdBootchart.Flags().StringVar(&kolaPlatform,
-		"platform", "qemu", "VM platform: qemu or gce")
 	root.AddCommand(cmdBootchart)
 }
 
@@ -54,9 +52,11 @@ func runBootchart(cmd *cobra.Command, args []string) {
 		err     error
 	)
 	if kolaPlatform == "qemu" {
-		cluster, err = platform.NewQemuCluster(*kola.QemuImage)
+		cluster, err = platform.NewQemuCluster(kola.QEMUOptions)
 	} else if kolaPlatform == "gce" {
-		cluster, err = platform.NewGCECluster(kola.GCEOpts())
+		cluster, err = platform.NewGCECluster(kola.GCEOptions)
+	} else if kolaPlatform == "aws" {
+		cluster, err = platform.NewAWSCluster(kola.AWSOptions)
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", kolaPlatform)
 	}

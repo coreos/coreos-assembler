@@ -26,7 +26,13 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
+
+	QEMUOptions platform.QEMUOptions
+	GCEOptions  platform.GCEOptions
+	AWSOptions  platform.AWSOptions
+)
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -108,11 +114,11 @@ func runTest(t *Test, pltfrm string) error {
 
 	switch pltfrm {
 	case "qemu":
-		cluster, err = platform.NewQemuCluster(*QemuImage)
+		cluster, err = platform.NewQemuCluster(QEMUOptions)
 	case "gce":
-		cluster, err = platform.NewGCECluster(GCEOpts())
+		cluster, err = platform.NewGCECluster(GCEOptions)
 	case "aws":
-		cluster, err = platform.NewAWSCluster()
+		cluster, err = platform.NewAWSCluster(AWSOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}

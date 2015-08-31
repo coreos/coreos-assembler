@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 )
@@ -30,15 +31,9 @@ var (
 		Long:  "Destroy GCE instances based on name prefix.",
 		Run:   runDestroy,
 	}
-	destroyProject string
-	destroyZone    string
-	destroyPrefix  string
 )
 
 func init() {
-	cmdDestroy.Flags().StringVar(&destroyProject, "project", "coreos-gce-testing", "found in developers console")
-	cmdDestroy.Flags().StringVar(&destroyZone, "zone", "us-central1-a", "gce zone")
-	cmdDestroy.Flags().StringVar(&destroyPrefix, "prefix", "", "prefix of name for instances to destroy")
 	root.AddCommand(cmdDestroy)
 }
 
@@ -49,7 +44,7 @@ func runDestroy(cmd *cobra.Command, args []string) {
 	}
 
 	// avoid wiping out all instances in project or mishaps with short destroyPrefixes
-	if destroyPrefix == "" || len(destroyPrefix) < 2 {
+	if opts.BaseName == "" || len(opts.BaseName) < 2 {
 		fmt.Fprintf(os.Stderr, "Please specify a prefix of length 2 or greater with -prefix\n")
 		os.Exit(1)
 	}
@@ -60,14 +55,20 @@ func runDestroy(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	vms, err := platform.GCEListVMs(client, destroyProject, destroyZone, destroyPrefix)
+	api, err := compute.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	vms, err := platform.GCEListVMs(api, &opts, opts.BaseName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
 		os.Exit(1)
 	}
 	var count int
 	for _, vm := range vms {
-		err := platform.GCEDestroyVM(client, destroyProject, destroyZone, vm.ID())
+		err := platform.GCEDestroyVM(api, opts.Project, opts.Zone, vm.ID())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed destroying vm: %v\n", err)
 			os.Exit(1)
