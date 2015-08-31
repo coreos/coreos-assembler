@@ -23,10 +23,10 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto" // ContextKey represents a context key specific to the datastore
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal"
 	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal/datastore"
-	"github.com/golang/protobuf/proto" // ContextKey represents a context key specific to the datastore
 )
 
 type ContextKey string

@@ -22,9 +22,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
 	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal/datastore"
-	"github.com/golang/protobuf/proto"
 )
 
 var (
