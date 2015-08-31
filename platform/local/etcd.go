@@ -72,18 +72,11 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 		return nil, err
 	}
 
-	cluster, err := etcdserver.NewClusterFromString(clusterName, clusterCfg)
-	if err != nil {
-		se.Destroy()
-		return nil, err
-	}
-
 	cfg := &etcdserver.ServerConfig{
 		Name:          memberName,
 		ClientURLs:    clientURLs,
 		PeerURLs:      peerURLs,
 		DataDir:       se.dataDir,
-		Cluster:       cluster,
 		NewCluster:    true,
 		Transport:     &http.Transport{},
 		TickMs:        100,

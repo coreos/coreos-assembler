@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/util"
@@ -80,7 +80,7 @@ func (qc *qemuCluster) Destroy() error {
 }
 
 func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
-	id := uuid.New()
+	id := uuid.NewV4()
 
 	// hacky solution for cloud config ip substitution
 	// NOTE: escaping is not supported
@@ -99,7 +99,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 	}
 
 	if cloudConfig.Hostname == "" {
-		cloudConfig.Hostname = id[:8]
+		cloudConfig.Hostname = id.String()[:8]
 	}
 
 	configDrive, err := local.NewConfigDrive(cloudConfig)
@@ -109,7 +109,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 
 	qm := &qemuMachine{
 		qc:          qc,
-		id:          id,
+		id:          id.String(),
 		configDrive: configDrive,
 		netif:       netif,
 	}
