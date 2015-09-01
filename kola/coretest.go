@@ -30,6 +30,7 @@ func init() {
 			"UpdateEngineKeys": coretest.TestInstalledUpdateEngineRsaKeys,
 			"ServicesActive":   coretest.TestServicesActive,
 			"ReadOnly":         coretest.TestReadOnlyFs,
+			"Useradd":          coretest.TestUseradd,
 		},
 	})
 	Register(&Test{
