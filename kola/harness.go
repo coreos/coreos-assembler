@@ -32,7 +32,20 @@ var (
 	QEMUOptions platform.QEMUOptions
 	GCEOptions  platform.GCEOptions
 	AWSOptions  platform.AWSOptions
+
+	testOptions map[string]string
 )
+
+// Registers any options that need visibility inside a Test. Panics if
+// existing option is already registered. Each test has global view of
+// options.
+func RegisterTestOption(name, option string) {
+	_, ok := testOptions[name]
+	if ok {
+		panic("test option already registered with same name")
+	}
+	testOptions[name] = option
+}
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -88,7 +101,7 @@ func RunTests(pattern, pltfrm string) error {
 
 		start := time.Now()
 		plog.Noticef("=== RUN %s on %s", t.Name, pltfrm)
-		err = runTest(t, pltfrm)
+		err = RunTest(t, pltfrm)
 		seconds := time.Since(start).Seconds()
 		if err != nil {
 			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
@@ -108,7 +121,7 @@ func RunTests(pattern, pltfrm string) error {
 }
 
 // create a cluster and run test
-func runTest(t *Test, pltfrm string) error {
+func RunTest(t *Test, pltfrm string) error {
 	var err error
 	var cluster platform.Cluster
 
@@ -151,8 +164,20 @@ func runTest(t *Test, pltfrm string) error {
 	for k := range t.NativeFuncs {
 		names = append(names, k)
 	}
+
+	// prevent unsafe access if tests ever become parallel and access
+	tempTestOptions := make(map[string]string, 0)
+	for k, v := range testOptions {
+		tempTestOptions[k] = v
+	}
+
 	// Cluster -> TestCluster
-	tcluster := platform.TestCluster{t.Name, names, cluster}
+	tcluster := platform.TestCluster{
+		Name:        t.Name,
+		NativeFuncs: names,
+		Options:     tempTestOptions,
+		Cluster:     cluster,
+	}
 
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
