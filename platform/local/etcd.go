@@ -73,10 +73,13 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 	}
 
 	cfg := &etcdserver.ServerConfig{
-		Name:          memberName,
-		ClientURLs:    clientURLs,
-		PeerURLs:      peerURLs,
-		DataDir:       se.dataDir,
+		Name:       memberName,
+		ClientURLs: clientURLs,
+		PeerURLs:   peerURLs,
+		DataDir:    se.dataDir,
+		InitialPeerURLsMap: types.URLsMap{
+			memberName: peerURLs,
+		},
 		NewCluster:    true,
 		Transport:     &http.Transport{},
 		TickMs:        100,
