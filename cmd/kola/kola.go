@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/options"
 )
 
 var (
@@ -37,23 +36,9 @@ var (
 		Long:  "run all kola tests (default) or related groups",
 		Run:   runRun,
 	}
-
-	EtcdRollingVersion     string
-	EtcdRollingVersion2    string
-	EtcdRollingBin         string
-	EtcdRollingBin2        string
-	EtcdRollingSkipVersion bool
 )
 
 func init() {
-	sv := cmdRun.Flags().StringVar
-
-	sv(&EtcdRollingVersion, "EtcdRollingVersion", "", "")
-	sv(&EtcdRollingVersion2, "EtcdRollingVersion2", "", "")
-	sv(&EtcdRollingBin, "EtcdRollingBin", "", "")
-	sv(&EtcdRollingBin2, "EtcdRollingBin2", "", "")
-	cmdRun.Flags().BoolVar(&EtcdRollingSkipVersion, "EtcdRollingSkipVersion", false, "")
-
 	root.AddCommand(cmdRun)
 }
 
@@ -62,14 +47,6 @@ func main() {
 }
 
 func runRun(cmd *cobra.Command, args []string) {
-	options.Opts = options.TestOptions{
-		EtcdRollingVersion:     EtcdRollingVersion,
-		EtcdRollingVersion2:    EtcdRollingVersion2,
-		EtcdRollingBin:         EtcdRollingBin,
-		EtcdRollingBin2:        EtcdRollingBin2,
-		EtcdRollingSkipVersion: EtcdRollingSkipVersion,
-	}
-
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
 		os.Exit(2)

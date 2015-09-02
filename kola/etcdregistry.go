@@ -49,23 +49,4 @@ coreos:
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
 	})
-
-	// Test rolling upgrade of etcd 2.0.10 to 2.1.0-alpha.1.  3 node
-	// cluster, 4th node tests availability during upgrade processs.
-	Register(&Test{
-		Run:         etcd.RollingUpgrade,
-		ClusterSize: 3,
-		Name:        "EtcdRollingUpgrade",
-		CloudConfig: `#cloud-config
-
-coreos:
-  etcd2:
-    name: $name
-    discovery: $discovery
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
-	})
-
 }

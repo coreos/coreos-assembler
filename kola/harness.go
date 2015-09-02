@@ -33,7 +33,7 @@ var (
 	GCEOptions  platform.GCEOptions
 	AWSOptions  platform.AWSOptions
 
-	testOptions map[string]string
+	testOptions = make(map[string]string, 0)
 )
 
 // Registers any options that need visibility inside a Test. Panics if
