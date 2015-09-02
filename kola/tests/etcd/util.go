@@ -196,7 +196,7 @@ func getClusterHealth(m platform.Machine, csize int) error {
 		}
 
 		// repsonse should include "healthy" for each machine and for cluster
-		if strings.Count(string(b), "healthy") == csize+1 {
+		if strings.Count(string(b), "healthy") == (csize*2)+1 {
 			plog.Infof("cluster healthy")
 			return nil
 		}
