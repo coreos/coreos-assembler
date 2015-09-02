@@ -81,8 +81,8 @@ func TestEtcdUpdateValue() error {
 // poll cluster-health until result
 func getClusterHealth(csize int) error {
 	const (
-		retries   = 5
-		retryWait = 3 * time.Second
+		retries   = 15
+		retryWait = 10 * time.Second
 	)
 	var err error
 	var stdout, stderr string

@@ -150,8 +150,8 @@ func replaceEtcd2Bin(m platform.Machine, newPath string) error {
 
 func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected string) error {
 	const (
-		retries   = 5
-		retryWait = 3 * time.Second
+		retries   = 15
+		retryWait = 10 * time.Second
 	)
 	var err error
 	var b []byte
@@ -181,8 +181,8 @@ func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected str
 // poll cluster-health until result
 func getClusterHealth(m platform.Machine, csize int) error {
 	const (
-		retries   = 5
-		retryWait = 3 * time.Second
+		retries   = 15
+		retryWait = 10 * time.Second
 	)
 	var err error
 	var b []byte
