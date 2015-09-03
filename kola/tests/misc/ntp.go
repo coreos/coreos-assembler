@@ -45,7 +45,7 @@ func NTP(c platform.TestCluster) error {
 			return fmt.Errorf("systemctl: %v", err)
 		}
 
-		if bytes.Contains(out, []byte(`Status: "Using Time Server 10.0.0.1:123 (10.0.0.1)."`)) {
+		if bytes.Contains(out, []byte(`Status: "Synchronized to time server 10.0.0.1:123 (10.0.0.1)."`)) {
 			plog.Info("systemd-timesyncd.service is working!")
 			return nil
 		}
