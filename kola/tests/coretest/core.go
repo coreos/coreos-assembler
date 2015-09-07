@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 	"time"
 )
@@ -217,16 +216,18 @@ func TestReadOnlyFs() error {
 
 // Test "Add User Manually", from https://coreos.com/os/docs/latest/adding-users.html
 func TestUseradd() error {
-	c := exec.Command("sudo", "useradd", "-p", "*", "-U", "-m", "user1", "-G", "sudo")
+	u := "user1"
+	c := exec.Command("sudo", "useradd", "-p", "*", "-U", "-m", u, "-G", "sudo")
 	err := c.Run()
 	if err != nil {
 		return fmt.Errorf("useradd: %v", err)
 	}
 
 	// verify
-	_, err = user.Lookup("user1")
+	c = exec.Command("id", u)
+	err = c.Run()
 	if err != nil {
-		return fmt.Errorf("user.Lookup: %v", err)
+		return fmt.Errorf("id %s: %v", u, err)
 	}
 
 	return nil
