@@ -81,8 +81,8 @@ func TestEtcdUpdateValue() error {
 // poll cluster-health until result
 func getClusterHealth(csize int) error {
 	const (
-		retries   = 5
-		retryWait = 3 * time.Second
+		retries   = 15
+		retryWait = 10 * time.Second
 	)
 	var err error
 	var stdout, stderr string
@@ -100,9 +100,9 @@ func getClusterHealth(csize int) error {
 	}
 
 	// repsonse should include "healthy" for each machine and for cluster
-	if strings.Count(stderr, "healthy") == csize+1 {
+	if strings.Count(stdout, "healthy") == (csize*2)+1 {
 		return nil
 	} else {
-		return fmt.Errorf("status unhealthy or incomplete: stdout: %s\nstderr: %s", err, stdout, stderr)
+		return fmt.Errorf("status unhealthy or incomplete: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 }
