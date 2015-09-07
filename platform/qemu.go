@@ -160,7 +160,6 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 	for i := 0; i < sshRetries; i++ {
 		qm.sshClient, err = qm.qc.SSHAgent.NewClient(qm.IP())
 		if err != nil {
-			fmt.Printf("ssh error: %v\n", err)
 			time.Sleep(sshRetryDelay)
 		} else {
 			break

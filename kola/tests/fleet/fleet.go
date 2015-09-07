@@ -128,7 +128,7 @@ func Proxy(c platform.TestCluster) error {
 		return fmt.Errorf("copyFile: %s", err)
 	}
 
-	_, err = proxy.SSH("fleetctl --debug start /home/core/hello.service")
+	_, err = proxy.SSH("fleetctl start /home/core/hello.service")
 	if err != nil {
 		return fmt.Errorf("fleetctl start: %s", err)
 	}
