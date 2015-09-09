@@ -50,6 +50,7 @@ type Cluster interface {
 type TestCluster struct {
 	Name        string
 	NativeFuncs []string
+	Options     map[string]string
 	Cluster
 }
 

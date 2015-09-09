@@ -19,43 +19,21 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/mantle/kola/options"
 	"github.com/coreos/mantle/platform"
 )
 
-var (
-	// this block can be overridden with options flags
-	etcdVersion      = "etcd 2.0.12"
-	etcdVersion2     = `{"etcdserver":"2.1.0-alpha.1","etcdcluster":"2.1.0"}`
-	etcdBin          = "./etcd"
-	etcdBin2         = "./etcd2"
-	skipVersionCheck = false
-
+const (
 	dropPath    = "/home/core"
 	settingSize = 15 // number of random keys set and checked per node multiple times
 )
 
-func replaceDefaultsWithFlags(opts options.TestOptions) {
-	if opts.EtcdRollingVersion != "" {
-		etcdVersion = opts.EtcdRollingVersion
-	}
-	if opts.EtcdRollingVersion2 != "" {
-		etcdVersion2 = opts.EtcdRollingVersion2
-	}
-	if opts.EtcdRollingBin != "" {
-		etcdBin = opts.EtcdRollingBin
-	}
-	if opts.EtcdRollingBin2 != "" {
-		etcdBin2 = opts.EtcdRollingBin2
-	}
-	if opts.EtcdRollingSkipVersion {
-		skipVersionCheck = true
-	}
-
-}
-
 func RollingUpgrade(cluster platform.TestCluster) error {
-	replaceDefaultsWithFlags(options.Opts)
+	var (
+		firstVersion  = cluster.Options["EtcdUpgradeVersion"]
+		secondVersion = cluster.Options["EtcdUpgradeVersion2"]
+		firstBin      = cluster.Options["EtcdUpgradeBin"]
+		secondBin     = cluster.Options["EtcdUpgradeBin2"]
+	)
 
 	csize := len(cluster.Machines())
 
@@ -70,22 +48,20 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 
 	// drop in starting etcd binary
 	plog.Debug("adding files to cluster")
-	if err := cluster.DropFile(etcdBin); err != nil {
+	if err := cluster.DropFile(firstBin); err != nil {
 		return err
 	}
-	// TODO(pb): skip this test if binaries aren't available once we
-	// have meaninful way to do so.
 
 	// drop in etcd binary to upgrade to
-	if err := cluster.DropFile(etcdBin2); err != nil {
+	if err := cluster.DropFile(secondBin); err != nil {
 		return err
 	}
 
 	// replace existing etcd2 binary with 2.0.12
 	plog.Info("replacing etcd with 2.0.12")
-	etcdPath := filepath.Join(dropPath, filepath.Base(etcdBin))
+	firstPath := filepath.Join(dropPath, filepath.Base(firstBin))
 	for _, m := range cluster.Machines() {
-		if err := replaceEtcd2Bin(m, etcdPath); err != nil {
+		if err := replaceEtcd2Bin(m, firstPath); err != nil {
 			return err
 		}
 	}
@@ -102,9 +78,9 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 			return err
 		}
 	}
-	if !skipVersionCheck {
+	if firstVersion != "" {
 		for _, m := range cluster.Machines() {
-			if err := checkEtcdVersion(cluster, m, etcdVersion); err != nil {
+			if err := checkEtcdVersion(cluster, m, firstVersion); err != nil {
 				return err
 			}
 		}
@@ -119,7 +95,7 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 	// rolling replacement checking cluster health, and
 	// version after each replaced binary. Also test
 	plog.Info("rolling upgrade to 2.1")
-	etcdPath2 := filepath.Join(dropPath, filepath.Base(etcdBin2))
+	secondPath := filepath.Join(dropPath, filepath.Base(secondBin))
 	for i, m := range cluster.Machines() {
 
 		// check current value set
@@ -131,7 +107,7 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 		if err := stopEtcd2(m); err != nil {
 			return err
 		}
-		if err := replaceEtcd2Bin(m, etcdPath2); err != nil {
+		if err := replaceEtcd2Bin(m, secondPath); err != nil {
 			return err
 		}
 
@@ -167,9 +143,9 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 	}
 
 	// check version is now 2.1
-	if !skipVersionCheck {
+	if secondVersion != "" {
 		for _, m := range cluster.Machines() {
-			if err := checkEtcdVersion(cluster, m, etcdVersion2); err != nil {
+			if err := checkEtcdVersion(cluster, m, secondVersion); err != nil {
 				return err
 			}
 		}
