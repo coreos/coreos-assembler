@@ -15,7 +15,6 @@
 package misc
 
 import (
-	"bytes"
 	"fmt"
 	"path"
 	"time"
@@ -121,31 +120,25 @@ Options=defaults,noexec
 
 	plog.Info("NFS client booted.")
 
-	var lsmnt []byte
-
 	plog.Info("Waiting for NFS mount on client...")
 
-	/* there's probably a better wait to check the mount */
-	checker := func() error {
-		lsmnt, _ = m2.SSH("ls /mnt")
-		if len(lsmnt) == 0 {
-			return fmt.Errorf("client /mnt is empty")
+	checkmount := func() error {
+		status, err := m2.SSH("systemctl is-active mnt.mount")
+		if err != nil || string(status) != "active" {
+			return fmt.Errorf("mnt.mount status is %q: %v", status, err)
 		}
 
 		plog.Info("Got NFS mount.")
 		return nil
 	}
 
-	if err = util.Retry(5, 1*time.Second, checker); err != nil {
+	if err = util.Retry(10, 3*time.Second, checkmount); err != nil {
 		return err
 	}
 
-	if len(lsmnt) == 0 {
-		return fmt.Errorf("Client /mnt is empty.")
-	}
-
-	if bytes.Contains(lsmnt, []byte(path.Base(string(tmp)))) != true {
-		return fmt.Errorf("Client /mnt did not contain file %q from server /tmp -- /mnt: %s", tmp, lsmnt)
+	_, err = m2.SSH(fmt.Sprintf("stat /mnt/%s", path.Base(string(tmp))))
+	if err != nil {
+		return fmt.Errorf("file %q does not exist", tmp)
 	}
 
 	return nil
