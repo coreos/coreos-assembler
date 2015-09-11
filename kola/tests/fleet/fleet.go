@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
@@ -135,20 +136,21 @@ func Proxy(c platform.TestCluster) error {
 
 	var status []byte
 
-	// 5 seconds seems like a reasonable amount of time to make this happen.
-	for i := 0; i < 5; i++ {
+	checker := func() error {
 		status, err = proxy.SSH("fleetctl list-units -l -fields active -no-legend")
 		if err != nil {
 			return fmt.Errorf("fleetctl list-units: %s", err)
 		}
-		if bytes.Equal(status, []byte("active")) {
-			break
+
+		if !bytes.Equal(status, []byte("active")) {
+			return fmt.Errorf("unit not active")
 		}
-		time.Sleep(1 * time.Second)
+
+		return nil
 	}
 
-	if !bytes.Equal(status, []byte("active")) {
-		return fmt.Errorf("fleetctl start failed")
+	if err := util.Retry(5, 1*time.Second, checker); err != nil {
+		return fmt.Errorf("fleetctl start failed: %v", err)
 	}
 
 	return nil

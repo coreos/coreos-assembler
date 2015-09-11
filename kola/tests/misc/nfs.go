@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
@@ -125,15 +126,18 @@ Options=defaults,noexec
 	plog.Info("Waiting for NFS mount on client...")
 
 	/* there's probably a better wait to check the mount */
-	for i := 0; i < 5; i++ {
+	checker := func() error {
 		lsmnt, _ = m2.SSH("ls /mnt")
-
-		if len(lsmnt) != 0 {
-			plog.Info("Got NFS mount.")
-			break
+		if len(lsmnt) == 0 {
+			return fmt.Errorf("client /mnt is empty")
 		}
 
-		time.Sleep(1 * time.Second)
+		plog.Info("Got NFS mount.")
+		return nil
+	}
+
+	if err = util.Retry(5, 1*time.Second, checker); err != nil {
+		return err
 	}
 
 	if len(lsmnt) == 0 {

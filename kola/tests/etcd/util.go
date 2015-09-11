@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 // run etcd on each cluster machine
@@ -149,25 +150,21 @@ func replaceEtcd2Bin(m platform.Machine, newPath string) error {
 }
 
 func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected string) error {
-	const (
-		retries   = 15
-		retryWait = 10 * time.Second
-	)
-	var err error
 	var b []byte
+	var err error
 
-	for i := 0; i < retries; i++ {
+	checker := func() error {
 		cmd := cluster.NewCommand("curl", "-L", fmt.Sprintf("http://%v:2379/version", m.IP()))
 		b, err = cmd.Output()
 		if err != nil {
-			plog.Infof("retrying version check, hit failure %v", err)
-			time.Sleep(retryWait)
-			continue
+			return fmt.Errorf("curl failed: %v", err)
 		}
-		break
+
+		return nil
 	}
-	if err != nil {
-		return fmt.Errorf("curling version: %v", err)
+
+	if err := util.Retry(15, 10*time.Second, checker); err != nil {
+		return err
 	}
 
 	plog.Infof("got version: %s", b)
@@ -175,36 +172,34 @@ func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected str
 	if string(b) != expected {
 		return fmt.Errorf("expected %v, got %s", expected, b)
 	}
+
 	return nil
 }
 
 // poll cluster-health until result
 func getClusterHealth(m platform.Machine, csize int) error {
-	const (
-		retries   = 15
-		retryWait = 10 * time.Second
-	)
 	var err error
 	var b []byte
 
-	for i := 0; i < retries; i++ {
-		b, err = m.SSH("etcdctl cluster-health")
+	checker := func() error {
+		b, err := m.SSH("etcdctl cluster-health")
 		if err != nil {
-			plog.Debugf("retrying health check, hit failure %v", err)
-			time.Sleep(retryWait)
-			continue
+			return err
 		}
 
 		// repsonse should include "healthy" for each machine and for cluster
-		if strings.Count(string(b), "healthy") == (csize*2)+1 {
-			plog.Infof("cluster healthy")
-			return nil
+		if strings.Count(string(b), "healthy") != (csize*2)+1 {
+			return fmt.Errorf("unexpected etcdctl output")
 		}
+
+		plog.Infof("cluster healthy")
+		return nil
 	}
 
+	err = util.Retry(15, 10*time.Second, checker)
 	if err != nil {
 		return fmt.Errorf("health polling failed: %v: %s", err, b)
-	} else {
-		return fmt.Errorf("status unhealthy or incomplete: %s", b)
 	}
+
+	return nil
 }
