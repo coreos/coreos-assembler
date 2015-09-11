@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 // Test that timesyncd starts using the local NTP server
@@ -39,19 +40,25 @@ func NTP(c platform.TestCluster) error {
 	}
 
 	plog.Info("Waiting for systemd-timesyncd.service")
-	for i := 0; i < 60; i++ {
+
+	checker := func() error {
 		out, err = m.SSH("systemctl status systemd-timesyncd.service")
 		if err != nil {
 			return fmt.Errorf("systemctl: %v", err)
 		}
 
-		if bytes.Contains(out, []byte(`Status: "Synchronized to time server 10.0.0.1:123 (10.0.0.1)."`)) {
-			plog.Info("systemd-timesyncd.service is working!")
-			return nil
+		if !bytes.Contains(out, []byte(`Status: "Synchronized to time server 10.0.0.1:123 (10.0.0.1)."`)) {
+			return fmt.Errorf("unexpected systemd-timesyncd status: %v", out)
 		}
 
-		time.Sleep(time.Second)
+		plog.Info("systemd-timesyncd.service is working!")
+		return nil
 	}
 
-	return fmt.Errorf("Bad status:\n%s", out)
+	err = util.Retry(60, 1*time.Second, checker)
+	if err != nil {
+		return nil
+	}
+
+	return nil
 }
