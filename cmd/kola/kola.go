@@ -36,10 +36,17 @@ var (
 		Long:  "run all kola tests (default) or related groups",
 		Run:   runRun,
 	}
+
+	cmdList = &cobra.Command{
+		Use:   "list",
+		Short: "List kola test names",
+		Run:   runList,
+	}
 )
 
 func init() {
 	root.AddCommand(cmdRun)
+	root.AddCommand(cmdList)
 }
 
 func main() {
@@ -62,5 +69,11 @@ func runRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
+	}
+}
+
+func runList(cmd *cobra.Command, args []string) {
+	for tname, _ := range kola.Tests {
+		fmt.Println(tname)
 	}
 }
