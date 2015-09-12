@@ -214,16 +214,15 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 	}
 
 	// Allow a few authentication failures in case setup is slow.
-	for i := 0; i < sshRetries; i++ {
-		mach.sshClient, err = ac.agent.NewClient(mach.IP())
+	sshchecker := func() error {
+		mach.sshClient, err = mach.cluster.agent.NewClient(mach.IP())
 		if err != nil {
-			time.Sleep(sshRetryDelay)
-		} else {
-			break
+			return err
 		}
+		return nil
 	}
 
-	if err != nil {
+	if err := util.Retry(sshRetries, sshTimeout, sshchecker); err != nil {
 		mach.Destroy()
 		return nil, err
 	}
