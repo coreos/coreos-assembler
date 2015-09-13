@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"path/filepath"
+	"sync"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/util"
@@ -115,4 +116,51 @@ func transfer(in io.Reader, m Machine, localPath string) error {
 	}
 
 	return nil
+}
+
+func NewMachines(c Cluster, userdatas []string) ([]Machine, error) {
+	var wg sync.WaitGroup
+
+	n := len(userdatas)
+
+	if n <= 0 {
+		return nil, fmt.Errorf("must provide one or more userdatas")
+	}
+
+	mchan := make(chan Machine, n)
+	errchan := make(chan error, n)
+
+	for i := 0; i < n; i++ {
+		ud := userdatas[i]
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m, err := c.NewMachine(ud)
+			if err != nil {
+				errchan <- err
+			}
+			if m != nil {
+				mchan <- m
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(mchan)
+	close(errchan)
+
+	machs := []Machine{}
+
+	for m := range mchan {
+		machs = append(machs, m)
+	}
+
+	if firsterr, ok := <-errchan; ok {
+		for _, m := range machs {
+			m.Destroy()
+		}
+		return nil, firsterr
+	}
+
+	return machs, nil
 }
