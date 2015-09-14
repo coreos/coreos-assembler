@@ -152,13 +152,13 @@ func RunTest(t *Test, pltfrm string) error {
 
 	cfgs := makeConfigs(url, t.CloudConfig, t.ClusterSize)
 
-	for i := 0; i < t.ClusterSize; i++ {
-		_, err := cluster.NewMachine(cfgs[i])
+	if t.ClusterSize > 0 {
+		_, err := platform.NewMachines(cluster, cfgs)
 		if err != nil {
-			return fmt.Errorf("Cluster failed starting machine: %v", err)
+			return fmt.Errorf("Cluster failed starting machines: %v", err)
 		}
-		plog.Infof("%v instance up", pltfrm)
 	}
+
 	// pass along all registered native functions
 	var names []string
 	for k := range t.NativeFuncs {
