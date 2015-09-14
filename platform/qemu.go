@@ -21,18 +21,12 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/util"
-)
-
-const (
-	sshRetries    = 7
-	sshRetryDelay = time.Second
 )
 
 type QEMUOptions struct {
@@ -157,14 +151,18 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 	}
 
 	// Allow a few authentication failures in case setup is slow.
-	for i := 0; i < sshRetries; i++ {
+	sshchecker := func() error {
 		qm.sshClient, err = qm.qc.SSHAgent.NewClient(qm.IP())
 		if err != nil {
-			time.Sleep(sshRetryDelay)
-		} else {
-			break
+			return err
 		}
+		return nil
 	}
+
+	if err := util.Retry(sshRetries, sshTimeout, sshchecker); err != nil {
+		return nil, err
+	}
+
 	if err != nil {
 		qm.Destroy()
 		return nil, err

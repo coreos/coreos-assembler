@@ -18,10 +18,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
+
 	"path/filepath"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/util"
+)
+
+const (
+	sshRetries = 7
+	sshTimeout = 1 * time.Second
 )
 
 type Machine interface {

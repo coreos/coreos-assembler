@@ -451,18 +451,18 @@ func instanceIPs(inst *compute.Instance) (intIP, extIP string) {
 }
 
 func sshCheck(gm *gceMachine) error {
-	// Allow a few authentication failures in case setup is slow.
 	var err error
-	for i := 0; i < sshRetries; i++ {
+
+	// Allow a few authentication failures in case setup is slow.
+	sshchecker := func() error {
 		gm.sshClient, err = gm.gc.sshAgent.NewClient(gm.IP())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ssh error: %v\n", err)
-			time.Sleep(sshRetryDelay)
-		} else {
-			break
+			return err
 		}
+		return nil
 	}
-	if err != nil {
+
+	if err := util.Retry(sshRetries, sshTimeout, sshchecker); err != nil {
 		return err
 	}
 
