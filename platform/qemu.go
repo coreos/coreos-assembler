@@ -78,7 +78,7 @@ func (qc *qemuCluster) Destroy() error {
 	qc.mu.Lock()
 	defer qc.mu.Unlock()
 	for _, qm := range qc.machines {
-		qm.Destroy()
+		qm.destroy(true)
 	}
 	return qc.LocalCluster.Destroy()
 }
@@ -279,7 +279,7 @@ func (qm *qemuMachine) StartJournal() error {
 	return nil
 }
 
-func (qm *qemuMachine) Destroy() error {
+func (qm *qemuMachine) destroy(locked bool) error {
 	if qm.sshClient != nil {
 		qm.sshClient.Close()
 	}
@@ -293,8 +293,16 @@ func (qm *qemuMachine) Destroy() error {
 	}
 
 	// ugh.
-	qm.qc.mu.Lock()
-	defer qm.qc.mu.Unlock()
+	if !locked {
+		qm.qc.mu.Lock()
+		defer qm.qc.mu.Unlock()
+	}
+
 	delete(qm.qc.machines, qm.ID())
+
 	return err
+}
+
+func (qm *qemuMachine) Destroy() error {
+	return qm.destroy(false)
 }
