@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
@@ -34,6 +35,7 @@ type QEMUOptions struct {
 }
 
 type qemuCluster struct {
+	mu sync.Mutex
 	*local.LocalCluster
 	machines map[string]*qemuMachine
 	conf     QEMUOptions
@@ -64,6 +66,8 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 
 func (qc *qemuCluster) Machines() []Machine {
 	machines := make([]Machine, 0, len(qc.machines))
+	qc.mu.Lock()
+	defer qc.mu.Unlock()
 	for _, m := range qc.machines {
 		machines = append(machines, m)
 	}
@@ -71,6 +75,8 @@ func (qc *qemuCluster) Machines() []Machine {
 }
 
 func (qc *qemuCluster) Destroy() error {
+	qc.mu.Lock()
+	defer qc.mu.Unlock()
 	for _, qm := range qc.machines {
 		qm.Destroy()
 	}
@@ -82,23 +88,29 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 
 	// hacky solution for cloud config ip substitution
 	// NOTE: escaping is not supported
+	qc.mu.Lock()
 	netif := qc.Dnsmasq.GetInterface("br0")
 	ip := strings.Split(netif.DHCPv4[0].String(), "/")[0]
+
 	cfg = strings.Replace(cfg, "$public_ipv4", ip, -1)
 	cfg = strings.Replace(cfg, "$private_ipv4", ip, -1)
 
 	cloudConfig, err := config.NewCloudConfig(cfg)
 	if err != nil {
+		qc.mu.Unlock()
 		return nil, err
 	}
 
 	if err = qc.SSHAgent.UpdateConfig(cloudConfig); err != nil {
+		qc.mu.Unlock()
 		return nil, err
 	}
 
 	if cloudConfig.Hostname == "" {
 		cloudConfig.Hostname = id.String()[:8]
 	}
+
+	qc.mu.Unlock()
 
 	configDrive, err := local.NewConfigDrive(cloudConfig)
 	if err != nil {
@@ -118,8 +130,11 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 	}
 	defer disk.Close()
 
+	qc.mu.Lock()
+
 	tap, err := qc.NewTap("br0")
 	if err != nil {
+		qc.mu.Unlock()
 		return nil, err
 	}
 	defer tap.Close()
@@ -141,6 +156,8 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
 		"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
 
+	qc.mu.Unlock()
+
 	cmd := qm.qemu.(*local.NsCmd)
 	cmd.Stderr = os.Stderr
 	cmd.ExtraFiles = append(cmd.ExtraFiles, disk)     // fd=3
@@ -152,6 +169,8 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 
 	// Allow a few authentication failures in case setup is slow.
 	sshchecker := func() error {
+		qm.qc.mu.Lock()
+		defer qm.qc.mu.Unlock()
 		qm.sshClient, err = qm.qc.SSHAgent.NewClient(qm.IP())
 		if err != nil {
 			return err
@@ -179,7 +198,9 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, fmt.Errorf("Unexpected SSH output: %s", out)
 	}
 
+	qc.mu.Lock()
 	qc.machines[qm.ID()] = qm
+	qc.mu.Unlock()
 
 	return Machine(qm), nil
 }
@@ -271,6 +292,9 @@ func (qm *qemuMachine) Destroy() error {
 		}
 	}
 
+	// ugh.
+	qm.qc.mu.Lock()
+	defer qm.qc.mu.Unlock()
 	delete(qm.qc.machines, qm.ID())
 	return err
 }
