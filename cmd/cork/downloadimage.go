@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
@@ -40,7 +41,7 @@ func init() {
 	downloadImageCmd.Flags().StringVar(&downloadImageRoot,
 		"root", "http://storage.core-os.net/coreos/amd64-usr/master/", "base URL of images")
 	downloadImageCmd.Flags().StringVar(&downloadImageCacheDir,
-		"cache-dir", "", "local dir for image cache")
+		"cache-dir", filepath.Join(sdk.RepoCache(), "images"), "local dir for image cache")
 	downloadImageCmd.Flags().StringVar(&downloadImagePrefix,
 		"image-prefix", "coreos_production", "image filename prefix")
 	downloadImageCmd.Flags().BoolVar(&downloadImageVerify,
@@ -87,7 +88,7 @@ func (platforms *platformList) Set(value string) error {
 
 func runDownloadImage(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		plog.Fatalf("Unrecognized arguements: %v", args)
+		plog.Fatalf("Unrecognized arguments: %v", args)
 	}
 
 	if downloadImageCacheDir == "" {
@@ -100,17 +101,24 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 		plog.Notice("Warning: image verification turned off")
 	}
 
-	// download signed digest
 	for _, suffix := range downloadImagePlatformList {
-		file := downloadImagePrefix + suffix
-		url := downloadImageRoot + file
+		fileName := downloadImagePrefix + suffix
+		filePath := filepath.Join(downloadImageCacheDir, fileName)
+
+		// path.Join doesn't work with urls
+		url := strings.TrimRight(downloadImageRoot, "/") + "/" + fileName
 
 		if downloadImageVerify {
-			plog.Noticef("Verifying and updating to latest image %v", file)
-			sdk.DownloadSignedFile(file, url)
+			plog.Noticef("Verifying and updating to latest image %v", fileName)
+			err := sdk.UpdateSignedFile(filePath, url)
+			if err != nil {
+				plog.Fatalf("updating signed file: %v", err)
+			}
 		} else {
-			plog.Noticef("Forcing non-verified download of image %v", file)
-			sdk.DownloadFile(file, downloadImageRoot)
+			plog.Noticef("Starting non-verified image update %v", fileName)
+			if err := sdk.UpdateFile(filePath, url); err != nil {
+				plog.Fatalf("downloading image: %v", err)
+			}
 		}
 	}
 }
