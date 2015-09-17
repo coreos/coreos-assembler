@@ -26,18 +26,12 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/misc")
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/misc")
 
-// Test that the kernel NFS server and client work within CoreOS.
-func NFS(c platform.TestCluster) error {
-	/* server machine */
-	c1 := config.CloudConfig{
+	nfsserverconf = config.CloudConfig{
 		CoreOS: config.CoreOS{
 			Units: []config.Unit{
-				config.Unit{
-					Name:    "rpcbind.service",
-					Command: "start",
-				},
 				config.Unit{
 					Name:    "rpc-statd.service",
 					Command: "start",
@@ -61,7 +55,23 @@ func NFS(c platform.TestCluster) error {
 		Hostname: "nfs1",
 	}
 
-	m1, err := c.NewMachine(c1.String())
+	mounttmpl = `[Unit]
+Description=NFS Client
+After=network-online.target
+Requires=network-online.target
+After=rpc-statd.service
+Requires=rpc-statd.service
+
+[Mount]
+What=%s:/tmp
+Where=/mnt
+Type=nfs
+Options=defaults,noexec,nfsvers=%d
+`
+)
+
+func testNFS(c platform.TestCluster, nfsversion int) error {
+	m1, err := c.NewMachine(nfsserverconf.String())
 	if err != nil {
 		return fmt.Errorf("Cluster.NewMachine: %s", err)
 	}
@@ -78,33 +88,13 @@ func NFS(c platform.TestCluster) error {
 
 	plog.Infof("Test file %q created on server.", tmp)
 
-	/* client machine */
-
-	nfstmpl := `[Unit]
-Description=NFS Client
-After=network-online.target
-Requires=network-online.target
-After=rpc-statd.service
-Requires=rpc-statd.service
-
-[Mount]
-What=%s:/tmp
-Where=/mnt
-Type=nfs
-Options=defaults,noexec
-`
-
 	c2 := config.CloudConfig{
 		CoreOS: config.CoreOS{
 			Units: []config.Unit{
 				config.Unit{
-					Name:    "rpc-statd.service",
-					Command: "start",
-				},
-				config.Unit{
 					Name:    "mnt.mount",
 					Command: "start",
-					Content: fmt.Sprintf(nfstmpl, m1.PrivateIP()),
+					Content: fmt.Sprintf(mounttmpl, m1.IP(), nfsversion),
 				},
 			},
 		},
@@ -142,4 +132,14 @@ Options=defaults,noexec
 	}
 
 	return nil
+}
+
+// Test that the kernel NFS server and client work within CoreOS.
+func NFSv3(c platform.TestCluster) error {
+	return testNFS(c, 3)
+}
+
+// Test that NFSv4 without security works on CoreOS.
+func NFSv4(c platform.TestCluster) error {
+	return testNFS(c, 4)
 }

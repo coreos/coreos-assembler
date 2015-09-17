@@ -20,9 +20,15 @@ import "github.com/coreos/mantle/kola/tests/misc"
 // "$name" and "$discovery" are substituted in the cloud config during cluster creation
 func init() {
 	Register(&Test{
-		Run:         misc.NFS,
+		Run:         misc.NFSv3,
 		ClusterSize: 0,
-		Name:        "NFS",
+		Name:        "NFSv3",
+		Platforms:   []string{"qemu", "aws"},
+	})
+	Register(&Test{
+		Run:         misc.NFSv4,
+		ClusterSize: 0,
+		Name:        "NFSv4",
 		Platforms:   []string{"qemu", "aws"},
 	})
 	Register(&Test{
