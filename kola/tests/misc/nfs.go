@@ -94,7 +94,7 @@ func testNFS(c platform.TestCluster, nfsversion int) error {
 				config.Unit{
 					Name:    "mnt.mount",
 					Command: "start",
-					Content: fmt.Sprintf(mounttmpl, m1.IP(), nfsversion),
+					Content: fmt.Sprintf(mounttmpl, m1.PrivateIP(), nfsversion),
 				},
 			},
 		},
