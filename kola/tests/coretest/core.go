@@ -1,11 +1,14 @@
 package coretest
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 )
 
 const (
@@ -212,6 +215,30 @@ func TestReadOnlyFs() error {
 		}
 	}
 	return fmt.Errorf("could not find /usr or / mount points.")
+}
+
+// Test that the root disk's GUID was set to a random one on first boot.
+func TestFsRandomUUID() error {
+	c := exec.Command("sh", "-ec", "sudo blkid -o value -s PTUUID /dev/$(lsblk -no PKNAME $(findmnt -vno SOURCE /))")
+	out, err := c.Output()
+	if err != nil {
+		return fmt.Errorf("findmnt: %v", err)
+	}
+
+	got := bytes.TrimSpace(out)
+
+	var id uuid.UUID
+
+	if err := id.UnmarshalText(got); err != nil {
+		return fmt.Errorf("malformed GUID: %v", err)
+	}
+
+	defaultGUID := []byte("00000000-0000-0000-0000-000000000001")
+	if bytes.Equal(defaultGUID, got) {
+		return fmt.Errorf("unexpected default GUID found")
+	}
+
+	return nil
 }
 
 // Test "Add User Manually", from https://coreos.com/os/docs/latest/adding-users.html
