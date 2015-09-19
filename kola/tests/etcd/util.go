@@ -87,10 +87,15 @@ func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 
 // checkKeys tests that each node in the cluster has the full provided
 // key set in keyMap. Quorum get must be used.
-func checkKeys(cluster platform.Cluster, keyMap map[string]string) error {
+func checkKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
 	for i, m := range cluster.Machines() {
 		for k, v := range keyMap {
-			cmd := cluster.NewCommand("curl", fmt.Sprintf("http://%v:2379/v2/keys/%v?quorum=true", m.IP(), k))
+			var cmd util.Cmd
+			if quorum {
+				cmd = cluster.NewCommand("curl", fmt.Sprintf("http://%v:2379/v2/keys/%v?quorum=true", m.IP(), k))
+			} else {
+				cmd = cluster.NewCommand("curl", fmt.Sprintf("http://%v:2379/v2/keys/%v", m.IP(), k))
+			}
 			b, err := cmd.Output()
 			if err != nil {
 				return fmt.Errorf("error curling key: %v", err)

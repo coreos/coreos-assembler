@@ -16,9 +16,11 @@ package etcd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
@@ -62,9 +64,39 @@ func discovery(cluster platform.Cluster, version int) error {
 		plog.Infof("etcd instance%d started", i)
 	}
 
-	err := getClusterHealth(cluster.Machines()[0], csize)
-	if err != nil {
-		return fmt.Errorf("discovery failed health check: %v", err)
+	if version == 2 {
+		err := getClusterHealth(cluster.Machines()[0], csize)
+		if err != nil {
+			return fmt.Errorf("discovery failed health check: %v", err)
+		}
+	} else if version == 1 {
+		var keyMap map[string]string
+		var retryFuncs []func() error
+
+		retryFuncs = append(retryFuncs, func() error {
+			var err error
+			keyMap, err = setKeys(cluster, 5)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		retryFuncs = append(retryFuncs, func() error {
+			if err := checkKeys(cluster, keyMap, false); err != nil {
+				return err
+			}
+			return nil
+		})
+		for _, retry := range retryFuncs {
+			if err := util.Retry(5, 5*time.Second, retry); err != nil {
+				return fmt.Errorf("discovery failed health check: %v", err)
+			}
+			//NOTE(pb): etcd1 seems to fail in odd ways when I quorum
+			//read, instead just sleep between setting and getting.
+			time.Sleep(2 * time.Second)
+		}
+	} else {
+		return fmt.Errorf("etcd version unspecified")
 	}
 
 	return nil
