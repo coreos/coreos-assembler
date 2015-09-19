@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
@@ -32,6 +33,8 @@ var (
 	QEMUOptions platform.QEMUOptions
 	GCEOptions  platform.GCEOptions
 	AWSOptions  platform.AWSOptions
+
+	TestParallelism int
 
 	testOptions = make(map[string]string, 0)
 )
@@ -73,14 +76,33 @@ func Register(t *Test) {
 	Tests[t.Name] = t
 }
 
-// test runner and kola entry point
-func RunTests(pattern, pltfrm string) error {
-	var passed, failed int
+type Result struct {
+	Test     *Test
+	Result   error
+	Duration time.Duration
+}
 
-	for _, t := range Tests {
+func testRunner(platform string, done <-chan struct{}, tests chan *Test, results chan *Result) {
+	for test := range tests {
+		start := time.Now()
+		err := RunTest(test, platform)
+		duration := time.Since(start)
+
+		select {
+		case results <- &Result{test, err, duration}:
+		case <-done:
+			return
+		}
+	}
+}
+
+func filterTests(tests map[string]*Test, pattern, platform string) (map[string]*Test, error) {
+	r := make(map[string]*Test)
+
+	for name, t := range tests {
 		match, err := filepath.Match(pattern, t.Name)
 		if err != nil {
-			plog.Error(err)
+			return nil, err
 		}
 		if !match {
 			continue
@@ -88,7 +110,7 @@ func RunTests(pattern, pltfrm string) error {
 
 		allowed := true
 		for _, p := range t.Platforms {
-			if p == pltfrm {
+			if p == platform {
 				allowed = true
 				break
 			} else {
@@ -99,10 +121,56 @@ func RunTests(pattern, pltfrm string) error {
 			continue
 		}
 
-		start := time.Now()
-		plog.Noticef("=== RUN %s on %s", t.Name, pltfrm)
-		err = RunTest(t, pltfrm)
-		seconds := time.Since(start).Seconds()
+		r[name] = t
+	}
+
+	return r, nil
+}
+
+// test runner and kola entry point
+func RunTests(pattern, pltfrm string) error {
+	var passed, failed int
+	var wg sync.WaitGroup
+
+	tests, err := filterTests(Tests, pattern, pltfrm)
+	if err != nil {
+		plog.Fatal(err)
+	}
+
+	done := make(chan struct{})
+	defer close(done)
+	testc := make(chan *Test)
+	resc := make(chan *Result)
+
+	wg.Add(TestParallelism)
+
+	for i := 0; i < TestParallelism; i++ {
+		go func() {
+			testRunner(pltfrm, done, testc, resc)
+			wg.Done()
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(resc)
+	}()
+
+	// feed pipeline
+	go func() {
+		for _, t := range tests {
+			plog.Noticef("=== RUN %s on %s", t.Name, pltfrm)
+			testc <- t
+
+			// don't go too fast, in case we're talking to a rate limiting api like AWS EC2.
+			time.Sleep(2 * time.Second)
+		}
+		close(testc)
+	}()
+
+	for r := range resc {
+		t := r.Test
+		err := r.Result
+		seconds := r.Duration.Seconds()
 		if err != nil {
 			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 			plog.Errorf("        %v", err)

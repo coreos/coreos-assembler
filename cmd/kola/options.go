@@ -27,10 +27,13 @@ func init() {
 	sv := root.PersistentFlags().StringVar
 	bv := root.PersistentFlags().BoolVar
 
+	// general options
 	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
+	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
 
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", sdk.BuildRoot()+"/images/amd64-usr/latest/coreos_production_image.bin", "path to CoreOS disk image")
 
+	// gce specific options
 	sv(&kola.GCEOptions.Image, "gce-image", "latest", "GCE image")
 	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
 	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
@@ -40,6 +43,7 @@ func init() {
 	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
 	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 
+	// aws specific options
 	// CoreOS-alpha-789.0.0 on us-west-1
 	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-4345bd07", "AWS AMI ID")
 	sv(&kola.AWSOptions.KeyName, "aws-key", "", "AWS SSH key name")
