@@ -215,9 +215,13 @@ func cmpFileBytes(file1, file2 string) (bool, error) {
 // UpdateFile downloads a file to temp dir and replaces the file only if
 // contents have changed. If tempDir is "" default will be os.TempDir().
 func UpdateFile(file, url string) error {
+	if err := os.MkdirAll(filepath.Dir(file), 0777); err != nil {
+		return err
+	}
+
 	t, err := ioutil.TempFile(filepath.Dir(file), "sdkUpdateCheck")
 	if err != nil {
-		return nil
+		return err
 	}
 	t.Close()
 	tempFile := t.Name()
@@ -237,9 +241,6 @@ func UpdateFile(file, url string) error {
 	}
 
 	// not equal so delete any existing file and rename tempFile to file
-	if err := os.MkdirAll(filepath.Dir(file), 0777); err != nil {
-		return err
-	}
 	if err := os.Rename(tempFile, file); err != nil {
 		return err
 	}
