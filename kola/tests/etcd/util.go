@@ -63,8 +63,14 @@ func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 			key := strconv.Itoa(rand.Int())[0:3]
 			value := strconv.Itoa(rand.Int())[0:3]
 
-			cmd := cluster.NewCommand("curl", "-w", "%{http_code}", "-s", fmt.Sprintf("http://%v:2379/v2/keys/%v", m.IP(), key), "-XPUT", "-d", "value="+value)
-			b, err := cmd.Output()
+			cmd := fmt.Sprintf("curl -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value)
+			s, err := m.SSHSession()
+			if err != nil {
+				return nil, err
+			}
+			defer s.Close()
+
+			b, err := s.Output(cmd)
 			if err != nil {
 				continue
 			}
@@ -87,11 +93,22 @@ func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 
 // checkKeys tests that each node in the cluster has the full provided
 // key set in keyMap. Quorum get must be used.
-func checkKeys(cluster platform.Cluster, keyMap map[string]string) error {
+func checkKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
 	for i, m := range cluster.Machines() {
 		for k, v := range keyMap {
-			cmd := cluster.NewCommand("curl", fmt.Sprintf("http://%v:2379/v2/keys/%v?quorum=true", m.IP(), k))
-			b, err := cmd.Output()
+			var cmd string
+			if quorum {
+				cmd = fmt.Sprintf("curl http://127.0.0.1:2379/v2/keys/%v?quorum=true", k)
+			} else {
+				cmd = fmt.Sprintf("curl http://127.0.0.1:2379/v2/keys/%v", k)
+			}
+			s, err := m.SSHSession()
+			if err != nil {
+				return err
+			}
+			defer s.Close()
+
+			b, err := s.Output(cmd)
 			if err != nil {
 				return fmt.Errorf("error curling key: %v", err)
 			}

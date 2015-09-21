@@ -29,8 +29,8 @@ coreos:
   etcd:
     name: $name
     discovery: $discovery
-    addr: $private_ipv4:4001
-    peer-addr: $private_ipv4:7001`,
+    addr: $private_ipv4:2379
+    peer-addr: $private_ipv4:2380`,
 	})
 
 	// test etcd discovery with 2.0 with new cloud config
