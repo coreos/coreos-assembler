@@ -16,7 +16,6 @@ package sdk
 
 import (
 	"bytes"
-	"crypto/sha512"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -155,31 +154,62 @@ func DownloadSDK(version string) error {
 	return DownloadSignedFile(tarFile, tarURL)
 }
 
-func fileSum(file string) ([]byte, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	hash := sha512.New()
-	if _, err := io.Copy(hash, f); err != nil {
-		return nil, err
-	}
-
-	return hash.Sum(nil), nil
-}
-
-func compareFileBytes(fileName1, fileName2 string) (bool, error) {
-	sum1, err := fileSum(fileName1)
+// false if both files do not exist
+func cmpFileBytes(file1, file2 string) (bool, error) {
+	info1, err := os.Stat(file1)
 	if err != nil {
 		return false, err
 	}
-	sum2, err := fileSum(fileName2)
+	info2, err := os.Stat(file2)
 	if err != nil {
 		return false, err
 	}
-	return bytes.Equal(sum1, sum2), nil
+	if info1.Size() != info2.Size() {
+		return false, nil
+	}
+
+	f1, err := os.Open(file1)
+	if err != nil {
+		return false, err
+	}
+	defer f1.Close()
+	f2, err := os.Open(file2)
+	if err != nil {
+		return false, err
+	}
+	defer f2.Close()
+
+	const defaultBufSize = 4096 // same as bufio
+	buf1 := make([]byte, defaultBufSize)
+	buf2 := make([]byte, defaultBufSize)
+
+	for {
+		n1, err1 := io.ReadFull(f1, buf1)
+		n2, err2 := io.ReadFull(f2, buf2)
+
+		if err1 == io.EOF && err2 == io.EOF {
+			return true, nil
+		} else if err1 == io.EOF || err2 == io.EOF {
+			return false, nil
+		}
+
+		if err1 == io.ErrUnexpectedEOF && err2 == io.ErrUnexpectedEOF {
+			return bytes.Equal(buf1[:n1], buf2[:n2]), nil
+		} else if err1 == io.ErrUnexpectedEOF || err2 == io.ErrUnexpectedEOF {
+			return false, nil
+		}
+
+		if err1 != nil {
+			return false, err1
+		}
+		if err2 != nil {
+			return false, err2
+		}
+
+		if !bytes.Equal(buf1, buf2) {
+			return false, nil
+		}
+	}
 }
 
 // UpdateFile downloads a file to temp dir and replaces the file only if
@@ -193,14 +223,11 @@ func UpdateFile(file, url string) error {
 	tempFile := t.Name()
 	defer os.Remove(tempFile)
 
-	// NOTE: It'd be nice to have a Download(dst io.Writer, url) error
-	// function so you can just io.Multiwriter() the hasher and file
-	// before passing it to Download().
 	if err := DownloadFile(tempFile, url); err != nil {
 		return err
 	}
 
-	equal, err := compareFileBytes(file, tempFile)
+	equal, err := cmpFileBytes(file, tempFile)
 	if os.IsExist(err) { // file may not exist, that is ok
 		return err
 	}
