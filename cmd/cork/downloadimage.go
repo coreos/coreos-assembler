@@ -101,6 +101,12 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 		plog.Notice("Warning: image verification turned off")
 	}
 
+	versionFile := filepath.Join(downloadImageCacheDir, "version.txt")
+	versionURL := strings.TrimRight(downloadImageRoot, "/") + "/" + "version.txt"
+	if err := sdk.UpdateFile(versionFile, versionURL); err != nil {
+		plog.Fatalf("downloading version.txt: %v", err)
+	}
+
 	for _, suffix := range downloadImagePlatformList {
 		fileName := downloadImagePrefix + suffix
 		filePath := filepath.Join(downloadImageCacheDir, fileName)
