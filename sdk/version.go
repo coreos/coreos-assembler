@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -59,4 +60,13 @@ func GetLatestVersion() (string, error) {
 func GetDefaultAppId() string {
 	// This is a function in case the id needs to be configurable.
 	return coreosId
+}
+
+const (
+	CoreOSEpoch = 1372636800
+)
+
+// GetCoreOSAge returns the number of days since the CoreOS epoch.
+func GetCoreOSAge() int64 {
+	return int64(time.Since(time.Unix(CoreOSEpoch, 0)).Seconds()) / 86400
 }
