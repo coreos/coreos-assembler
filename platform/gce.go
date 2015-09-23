@@ -17,12 +17,14 @@ package platform
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
@@ -48,6 +50,7 @@ type gceCluster struct {
 	sshAgent *network.SSHAgent
 	conf     *GCEOptions
 	machines map[string]*gceMachine
+	mu       sync.Mutex // protects concurrent access to machines
 }
 
 type gceMachine struct {
@@ -93,9 +96,13 @@ func (gc *gceCluster) EtcdEndpoint() string {
 
 func (gc *gceCluster) Machines() []Machine {
 	machines := make([]Machine, 0, len(gc.machines))
+
+	gc.mu.Lock()
 	for _, m := range gc.machines {
 		machines = append(machines, m)
 	}
+	gc.mu.Unlock()
+
 	return machines
 }
 
@@ -107,6 +114,7 @@ func (gc *gceCluster) Destroy() error {
 	return nil
 }
 
+// Calling in parallel is ok
 func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 	cconfig, err := config.NewCloudConfig(cloudConfig)
 	if err != nil {
@@ -130,7 +138,10 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 		return nil, err
 	}
 
+	gc.mu.Lock()
 	gc.machines[gm.ID()] = gm
+	gc.mu.Unlock()
+
 	return Machine(gm), nil
 }
 
@@ -208,7 +219,10 @@ func (gm *gceMachine) Destroy() error {
 		return err
 	}
 
+	gm.gc.mu.Lock()
 	delete(gm.gc.machines, gm.ID())
+	gm.gc.mu.Unlock()
+
 	return nil
 }
 
@@ -221,7 +235,7 @@ func GCECreateVM(api *compute.Service, opts *GCEOptions, userdata string) (*gceM
 	}
 
 	// generate name
-	name, err := nextName(api, opts)
+	name, err := newName(opts)
 	if err != nil {
 		return nil, fmt.Errorf("Failed allocating unique name for vm: %v\n", err)
 	}
@@ -409,30 +423,17 @@ OpLoop:
 	return nil
 }
 
-// nextName returns the next available numbered name or the given base
-// name. Code originally from:
-// https://github.com/golang/build/blob/master/cmd/gomote/list.go
-func nextName(api *compute.Service, opts *GCEOptions) (string, error) {
+// newName returns a random name prefixed by BaseName
+func newName(opts *GCEOptions) (string, error) {
 	base := opts.BaseName
-	vms, err := GCEListVMs(api, opts, base)
+
+	randBytes := make([]byte, 16) //128 bits of entropy
+	_, err := rand.Read(randBytes)
 	if err != nil {
-		return "", fmt.Errorf("error listing VMs: %v", err)
+		return "", err
 	}
-	matches := map[string]bool{}
-	for _, vm := range vms {
-		if strings.HasPrefix(vm.ID(), base) {
-			matches[vm.ID()] = true
-		}
-	}
-	if len(matches) == 0 || !matches[base] {
-		return base, nil
-	}
-	for i := 1; ; i++ {
-		next := fmt.Sprintf("%v-%v", base, i)
-		if !matches[next] {
-			return next, nil
-		}
-	}
+
+	return fmt.Sprintf("%v-%x", base, randBytes), nil
 }
 
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go#L323
