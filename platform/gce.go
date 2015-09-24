@@ -43,6 +43,7 @@ type GCEOptions struct {
 	DiskType    string
 	BaseName    string
 	Network     string
+	ServiceAuth bool
 }
 
 type gceCluster struct {
