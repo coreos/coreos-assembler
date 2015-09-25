@@ -25,6 +25,7 @@ var (
 
 func init() {
 	sv := root.PersistentFlags().StringVar
+	bv := root.PersistentFlags().BoolVar
 
 	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
 
@@ -37,6 +38,7 @@ func init() {
 	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
 	sv(&kola.GCEOptions.BaseName, "gce-basename", "kola", "GCE instance name prefix")
 	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
+	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 
 	// CoreOS-alpha-789.0.0 on us-west-1
 	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-4345bd07", "AWS AMI ID")

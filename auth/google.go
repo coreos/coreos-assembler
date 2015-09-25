@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2/google"
 )
 
 // client registered under 'marineam-tools'
@@ -122,4 +123,18 @@ func GoogleTokenSource() (oauth2.TokenSource, error) {
 		return nil, err
 	}
 	return conf.TokenSource(oauth2.NoContext, tok), nil
+}
+
+// Fetch from Google Compute Engine's metadata server to retrieve
+// an access token for the provided account.
+func GoogleServiceClient() *http.Client {
+	return &http.Client{
+		Transport: &oauth2.Transport{
+			Source: google.ComputeTokenSource(""),
+		},
+	}
+}
+
+func GoogleServiceTokenSource() oauth2.TokenSource {
+	return google.ComputeTokenSource("")
 }

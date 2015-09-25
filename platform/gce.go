@@ -43,6 +43,7 @@ type GCEOptions struct {
 	DiskType    string
 	BaseName    string
 	Network     string
+	ServiceAuth bool
 }
 
 type gceCluster struct {
@@ -62,7 +63,13 @@ type gceMachine struct {
 }
 
 func NewGCECluster(conf GCEOptions) (Cluster, error) {
-	client, err := auth.GoogleClient()
+	var client *http.Client
+	var err error
+	if conf.ServiceAuth {
+		client = auth.GoogleServiceClient()
+	} else {
+		client, err = auth.GoogleClient()
+	}
 	if err != nil {
 		return nil, err
 	}
