@@ -45,6 +45,7 @@ var (
 	uploadBoard       string
 	uploadFile        string
 	uploadServiceAuth bool
+	uploadForce       bool
 )
 
 func init() {
@@ -57,6 +58,7 @@ func init() {
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
 
 	cmdUpload.Flags().BoolVar(&uploadServiceAuth, "service-auth", false, "use non-interactive auth when running within GCE")
+	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	root.AddCommand(cmdUpload)
 }
 
@@ -128,7 +130,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	if alreadyExists {
+	if alreadyExists && !uploadForce {
 		var ans string
 		fmt.Printf("File %v already exists on Google Storage. Overwrite? (y/n):", imageNameGS)
 		if _, err = fmt.Scan(&ans); err != nil {
@@ -154,7 +156,11 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	err = platform.GCECreateImage(api, opts.Project, imageNameGCE, storageSrc)
+	if uploadForce {
+		err = platform.GCEForceCreateImage(api, opts.Project, imageNameGCE, storageSrc)
+	} else {
+		err = platform.GCECreateImage(api, opts.Project, imageNameGCE, storageSrc)
+	}
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
@@ -182,24 +188,6 @@ func runUpload(cmd *cobra.Command, args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 		os.Exit(1)
-	}
-
-	// ask to additionally update the "latest" image
-	var ans string
-	fmt.Printf("Would you also like to update the image 'latest'? (y/n):")
-	if _, err = fmt.Scan(&ans); err != nil {
-		fmt.Fprintf(os.Stderr, "Scanning latest update ans: %v", err)
-		os.Exit(1)
-	}
-	switch ans {
-	case "y", "Y", "yes":
-		fmt.Println("Updating 'latest' image...")
-		err = platform.GCEForceCreateImage(api, opts.Project, "latest", storageSrc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Updating 'latest' image failed: %v\n", err)
-		}
-	default:
-		fmt.Println("Skipped updating 'latest' image")
 	}
 }
 
