@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,10 +40,12 @@ var (
 		Run:   runUpload,
 	}
 
-	uploadBucket    string
-	uploadImageName string
-	uploadBoard     string
-	uploadFile      string
+	uploadBucket      string
+	uploadImageName   string
+	uploadBoard       string
+	uploadFile        string
+	uploadServiceAuth bool
+	uploadForce       bool
 )
 
 func init() {
@@ -55,6 +56,9 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
+
+	cmdUpload.Flags().BoolVar(&uploadServiceAuth, "service-auth", false, "use non-interactive auth when running within GCE")
+	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	root.AddCommand(cmdUpload)
 }
 
@@ -66,9 +70,10 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// if an image name is unspecified try to use version.txt
 	if uploadImageName == "" {
-		uploadImageName = getImageVersion(uploadFile)
-		if uploadImageName == "" {
-			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory\n")
+		var err error
+		uploadImageName, err = sdk.GetVersion(filepath.Dir(uploadFile))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -100,7 +105,13 @@ func runUpload(cmd *cobra.Command, args []string) {
 	imageNameGCE := gceSanitize(uploadImageName)
 	imageNameGS := uploadImageName + ".tar.gz"
 
-	client, err := auth.GoogleClient()
+	var client *http.Client
+	if uploadServiceAuth {
+		client = auth.GoogleServiceClient()
+		err = nil
+	} else {
+		client, err = auth.GoogleClient()
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
 		os.Exit(1)
@@ -119,7 +130,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	if alreadyExists {
+	if alreadyExists && !uploadForce {
 		var ans string
 		fmt.Printf("File %v already exists on Google Storage. Overwrite? (y/n):", imageNameGS)
 		if _, err = fmt.Scan(&ans); err != nil {
@@ -145,7 +156,11 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	err = platform.GCECreateImage(api, opts.Project, imageNameGCE, storageSrc)
+	if uploadForce {
+		err = platform.GCEForceCreateImage(api, opts.Project, imageNameGCE, storageSrc)
+	} else {
+		err = platform.GCECreateImage(api, opts.Project, imageNameGCE, storageSrc)
+	}
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
@@ -174,24 +189,6 @@ func runUpload(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 		os.Exit(1)
 	}
-
-	// ask to additionally update the "latest" image
-	var ans string
-	fmt.Printf("Would you also like to update the image 'latest'? (y/n):")
-	if _, err = fmt.Scan(&ans); err != nil {
-		fmt.Fprintf(os.Stderr, "Scanning latest update ans: %v", err)
-		os.Exit(1)
-	}
-	switch ans {
-	case "y", "Y", "yes":
-		fmt.Println("Updating 'latest' image...")
-		err = platform.GCEForceCreateImage(api, opts.Project, "latest", storageSrc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Updating 'latest' image failed: %v\n", err)
-		}
-	default:
-		fmt.Println("Skipped updating 'latest' image")
-	}
 }
 
 // Converts an image name from Google Storage to an equivalent GCE image
@@ -219,26 +216,6 @@ func gceSanitize(name string) string {
 		return strings.ToLower(name[:1]) + name[1:]
 	}
 	return "v" + name
-}
-
-// Attempt to get version.txt from image build directory. Return "" if
-// unable to retrieve version.txt from directory.
-func getImageVersion(path string) string {
-	imageDir := filepath.Dir(path)
-	b, err := ioutil.ReadFile(filepath.Join(imageDir, "version.txt"))
-	if err != nil {
-		return ""
-	}
-
-	lines := strings.Split(string(b), "\n")
-	var version string
-	for _, str := range lines {
-		if strings.Contains(str, "COREOS_VERSION=") {
-			version = strings.TrimPrefix(str, "COREOS_VERSION=")
-			break
-		}
-	}
-	return version
 }
 
 // Write file to Google Storage
