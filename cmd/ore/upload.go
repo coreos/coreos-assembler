@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -69,9 +68,10 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// if an image name is unspecified try to use version.txt
 	if uploadImageName == "" {
-		uploadImageName = getImageVersion(uploadFile)
-		if uploadImageName == "" {
-			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory\n")
+		var err error
+		uploadImageName, err = sdk.GetVersion(filepath.Dir(uploadFile))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -228,26 +228,6 @@ func gceSanitize(name string) string {
 		return strings.ToLower(name[:1]) + name[1:]
 	}
 	return "v" + name
-}
-
-// Attempt to get version.txt from image build directory. Return "" if
-// unable to retrieve version.txt from directory.
-func getImageVersion(path string) string {
-	imageDir := filepath.Dir(path)
-	b, err := ioutil.ReadFile(filepath.Join(imageDir, "version.txt"))
-	if err != nil {
-		return ""
-	}
-
-	lines := strings.Split(string(b), "\n")
-	var version string
-	for _, str := range lines {
-		if strings.Contains(str, "COREOS_VERSION=") {
-			version = strings.TrimPrefix(str, "COREOS_VERSION=")
-			break
-		}
-	}
-	return version
 }
 
 // Write file to Google Storage
