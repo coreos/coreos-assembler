@@ -41,10 +41,11 @@ var (
 		Run:   runUpload,
 	}
 
-	uploadBucket    string
-	uploadImageName string
-	uploadBoard     string
-	uploadFile      string
+	uploadBucket      string
+	uploadImageName   string
+	uploadBoard       string
+	uploadFile        string
+	uploadServiceAuth bool
 )
 
 func init() {
@@ -55,6 +56,8 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
+
+	cmdUpload.Flags().BoolVar(&uploadServiceAuth, "service-auth", false, "use non-interactive auth when running within GCE")
 	root.AddCommand(cmdUpload)
 }
 
@@ -100,7 +103,13 @@ func runUpload(cmd *cobra.Command, args []string) {
 	imageNameGCE := gceSanitize(uploadImageName)
 	imageNameGS := uploadImageName + ".tar.gz"
 
-	client, err := auth.GoogleClient()
+	var client *http.Client
+	if uploadServiceAuth {
+		client = auth.GoogleServiceClient()
+		err = nil
+	} else {
+		client, err = auth.GoogleClient()
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
 		os.Exit(1)
