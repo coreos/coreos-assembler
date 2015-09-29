@@ -290,7 +290,8 @@ func GCEDestroyVM(api *compute.Service, proj, zone, name string) error {
 	return nil
 }
 
-// Create image on GCE and return. Will not overwrite existing image.
+// Create image on GCE and and wait for completion. Will not overwrite
+// existing image.
 func GCECreateImage(api *compute.Service, proj, name, source string) error {
 	image := &compute.Image{
 		Name: name,
@@ -298,7 +299,16 @@ func GCECreateImage(api *compute.Service, proj, name, source string) error {
 			Source: source,
 		},
 	}
-	_, err := api.Images.Insert(proj, image).Do()
+
+	fmt.Fprintf(os.Stderr, "Image %v requested\n", name)
+	fmt.Fprintf(os.Stderr, "Waiting for image creation to finish...\n")
+
+	op, err := api.Images.Insert(proj, image).Do()
+	if err != nil {
+		return err
+	}
+
+	err = gceWaitOp(api, proj, op.Name)
 	if err != nil {
 		return err
 	}
@@ -402,12 +412,12 @@ func gceMakeInstance(opts *GCEOptions, userdata string, name string) (*compute.I
 }
 
 //Some code taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
-func gceWaitVM(service *compute.Service, proj, zone, opname string) error {
+func gceWaitVM(api *compute.Service, proj, zone, opname string) error {
 OpLoop:
 	for {
 		time.Sleep(2 * time.Second)
 
-		op, err := service.ZoneOperations.Get(proj, zone, opname).Do()
+		op, err := api.ZoneOperations.Get(proj, zone, opname).Do()
 		if err != nil {
 			return fmt.Errorf("Failed to get op %s: %v", opname, err)
 		}
@@ -428,6 +438,35 @@ OpLoop:
 	}
 
 	return nil
+}
+
+func gceWaitOp(api *compute.Service, proj, opname string) error {
+OpLoop:
+	for {
+		time.Sleep(2 * time.Second)
+
+		op, err := api.GlobalOperations.Get(proj, opname).Do()
+		if err != nil {
+			return fmt.Errorf("Failed to get op %s: %v", opname, err)
+		}
+		switch op.Status {
+		case "PENDING", "RUNNING":
+			continue
+		case "DONE":
+			if op.Error != nil {
+				for _, operr := range op.Error.Errors {
+					return fmt.Errorf("Error creating instance: %+v", operr)
+				}
+				return fmt.Errorf("Failed to start.")
+			}
+			break OpLoop
+		default:
+			return fmt.Errorf("Unknown create status %q: %+v", op.Status, op)
+		}
+	}
+
+	return nil
+
 }
 
 // newName returns a random name prefixed by BaseName
