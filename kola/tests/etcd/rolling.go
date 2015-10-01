@@ -87,7 +87,7 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 	}
 
 	// set some values on all nodes
-	mapSet, err := setKeys(cluster, settingSize)
+	mapSet, err := SetKeys(cluster, settingSize)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 	for i, m := range cluster.Machines() {
 
 		// check current value set
-		if err := checkKeys(cluster, mapSet, true); err != nil {
+		if err := CheckKeys(cluster, mapSet, true); err != nil {
 			return err
 		}
 
@@ -112,7 +112,7 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 		}
 
 		// set some values while running down a node and update set
-		tempSet, err := setKeys(cluster, settingSize)
+		tempSet, err := SetKeys(cluster, settingSize)
 		if err != nil {
 			return err
 		}
@@ -131,14 +131,14 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 
 	}
 	// set some more values
-	tempSet, err := setKeys(cluster, settingSize)
+	tempSet, err := SetKeys(cluster, settingSize)
 	if err != nil {
 		return err
 	}
 	mapCopy(mapSet, tempSet)
 
 	// final check all values written correctly
-	if err := checkKeys(cluster, mapSet, true); err != nil {
+	if err := CheckKeys(cluster, mapSet, true); err != nil {
 		return err
 	}
 

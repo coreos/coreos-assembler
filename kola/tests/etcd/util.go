@@ -54,7 +54,7 @@ func stopEtcd2(m platform.Machine) error {
 // If all the values don't get set due to a machine that is down and
 // error is NOT returned. An error is returned if no keys are able to be
 // set.
-func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
+func SetKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 	var written = map[string]string{}
 	for _, m := range cluster.Machines() {
 		for i := 0; i < n; i++ {
@@ -93,7 +93,7 @@ func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 
 // checkKeys tests that each node in the cluster has the full provided
 // key set in keyMap. Quorum get must be used.
-func checkKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
+func CheckKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
 	for i, m := range cluster.Machines() {
 		for k, v := range keyMap {
 			var cmd string
