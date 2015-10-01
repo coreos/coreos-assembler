@@ -1,8 +1,13 @@
 package coretest
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/coretest")
@@ -22,6 +27,30 @@ func LocalTests(c platform.TestCluster) error {
 
 // run clustering based tests
 func ClusterTests(c platform.TestCluster) error {
+	// make sure etcd is up and running
+	var keyMap map[string]string
+	var retryFuncs []func() error
+
+	retryFuncs = append(retryFuncs, func() error {
+		var err error
+		keyMap, err = etcd.SetKeys(c, 3)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	retryFuncs = append(retryFuncs, func() error {
+		if err := etcd.CheckKeys(c, keyMap, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	for _, retry := range retryFuncs {
+		if err := util.Retry(5, 5*time.Second, retry); err != nil {
+			return fmt.Errorf("etcd failed health check: %v", err)
+		}
+	}
+
 	tests := c.ListNativeFunctions()
 	for _, name := range tests {
 		plog.Noticef("running %v...", name)

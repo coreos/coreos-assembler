@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"time"
 )
 
 const (
@@ -34,10 +33,13 @@ func generateKey() string {
 // TestEtcdUpdateValue tests to update value of a key.
 // The test coverage includes setting, getting, updating, deleting.
 func TestEtcdUpdateValue() error {
-	// Do not start until etcd is up, 3 is defined in kola/coretest.go
-	if err := getClusterHealth(3); err != nil {
-		return err
-	}
+	// TODO(pb): once etcdctl is fixed we should depend on that to
+	// determine when etcd is ready -- this way we aren't preparing to
+	// test writing keys by writing keys
+
+	// Do not start until etcd is up
+	// NOTE(pb): etcd is checked for setup in the main kola test and not
+	// here in the native code
 
 	// Use a random key name so members of a cluster don't step on each other.
 	target := targetAddress + generateKey() + "?consistent=true"
@@ -76,33 +78,4 @@ func TestEtcdUpdateValue() error {
 		return fmt.Errorf("Failed getting value %v\nstdout: %v", keyNotFound, stdout)
 	}
 	return nil
-}
-
-// poll cluster-health until result
-func getClusterHealth(csize int) error {
-	const (
-		retries   = 15
-		retryWait = 10 * time.Second
-	)
-	var err error
-	var stdout, stderr string
-
-	for i := 0; i < retries; i++ {
-		plog.Info("polling cluster health...")
-		stdout, stderr, err = Run("etcdctl", "cluster-health")
-		if err == nil {
-			break
-		}
-		time.Sleep(retryWait)
-	}
-	if err != nil {
-		return fmt.Errorf("health polling failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
-	}
-
-	// repsonse should include "healthy" for each machine and for cluster
-	if strings.Count(stdout, "healthy") == (csize*2)+1 {
-		return nil
-	} else {
-		return fmt.Errorf("status unhealthy or incomplete: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
-	}
 }

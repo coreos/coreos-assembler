@@ -67,7 +67,7 @@ func discovery(cluster platform.Cluster, version int) error {
 
 	retryFuncs = append(retryFuncs, func() error {
 		var err error
-		keyMap, err = setKeys(cluster, 5)
+		keyMap, err = SetKeys(cluster, 5)
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func discovery(cluster platform.Cluster, version int) error {
 		if version == 2 {
 			quorumRead = true
 		}
-		if err := checkKeys(cluster, keyMap, quorumRead); err != nil {
+		if err := CheckKeys(cluster, keyMap, quorumRead); err != nil {
 			return err
 		}
 		return nil
