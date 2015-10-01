@@ -27,6 +27,15 @@ func LocalTests(c platform.TestCluster) error {
 
 // run clustering based tests
 func ClusterTests(c platform.TestCluster) error {
+	if plog.LevelAt(capnslog.DEBUG) {
+		// get journalctl -f from all machines before starting
+		for _, m := range c.Machines() {
+			if err := m.StartJournal(); err != nil {
+				return fmt.Errorf("failed to start journal: %v", err)
+			}
+		}
+	}
+
 	// make sure etcd is up and running
 	var keyMap map[string]string
 	var retryFuncs []func() error
