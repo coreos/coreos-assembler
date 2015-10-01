@@ -189,6 +189,13 @@ func RunTest(t *Test, pltfrm string) error {
 
 	// run test
 	err = t.Run(tcluster)
+
+	// give some time for the remote journal to be flushed so it can be read
+	// before we run the deferred machine destruction
+	if err != nil {
+		time.Sleep(10 * time.Second)
+	}
+
 	return err
 }
 
