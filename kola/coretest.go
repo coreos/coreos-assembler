@@ -39,9 +39,8 @@ func init() {
 		Run:         coretest.ClusterTests,
 		ClusterSize: 3,
 		NativeFuncs: map[string]func() error{
-			"EtcdUpdateValue":      coretest.TestEtcdUpdateValue,
-			"FleetctlListMachines": coretest.TestFleetctlListMachines,
-			"FleetctlRunService":   coretest.TestFleetctlRunService,
+			"EtcdUpdateValue":    coretest.TestEtcdUpdateValue,
+			"FleetctlRunService": coretest.TestFleetctlRunService,
 		},
 		CloudConfig: `#cloud-config
 
@@ -53,6 +52,8 @@ coreos:
     initial-advertise-peer-urls: http://$private_ipv4:2380
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
+  fleet:
+    etcd-request-timeout: 2.5
   units:
     - name: etcd2.service
       command: start

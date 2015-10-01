@@ -121,3 +121,20 @@ func Run(command string, args ...string) (string, string, error) {
 	err := cmd.Run()
 	return stdoutBytes.String(), stderrBytes.String(), err
 }
+
+// MachineID returns the content of /etc/machine-id. It panics on any error.
+func MachineID() string {
+	f, err := os.Open("/etc/machine-id")
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.TrimSpace(string(buf))
+}
