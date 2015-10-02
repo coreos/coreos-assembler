@@ -36,7 +36,7 @@ func main() {
 	sv(&opts.Project, "project", "coreos-gce-testing", "project")
 	sv(&opts.Zone, "zone", "us-central1-a", "zone")
 	sv(&opts.MachineType, "machinetype", "n1-standard-1", "machine type")
-	sv(&opts.DiskType, "disktype", "pd-sdd", "disk type")
+	sv(&opts.DiskType, "disktype", "pd-ssd", "disk type")
 	sv(&opts.BaseName, "basename", "kola", "instance name prefix")
 	sv(&opts.Network, "network", "default", "network name")
 
