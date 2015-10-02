@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	sshRetries = 7
-	sshTimeout = 1 * time.Second
+	sshRetries = 10
+	sshTimeout = 2 * time.Second
 )
 
 type Machine interface {
