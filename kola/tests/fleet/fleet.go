@@ -39,6 +39,9 @@ var (
 				ListenClientURLs:         "http://0.0.0.0:2379,http://0.0.0.0:4001",
 				ListenPeerURLs:           "http://$private_ipv4:2380,http://$private_ipv4:7001",
 			},
+			Fleet: config.Fleet{
+				EtcdRequestTimeout: 15,
+			},
 			Units: []config.Unit{
 				config.Unit{
 					Name:    "etcd2.service",
