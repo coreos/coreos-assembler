@@ -33,6 +33,29 @@ func DiscoveryV1(c platform.TestCluster) error {
 	return discovery(c, 1)
 }
 
+func doStart(m platform.Machine, version int, block bool) error {
+	// start etcd instance
+	var etcdStart string
+	if version == 1 {
+		etcdStart = "sudo systemctl start etcd.service"
+	} else if version == 2 {
+		etcdStart = "sudo systemctl start etcd2.service"
+	} else {
+		return fmt.Errorf("etcd version unspecified")
+	}
+
+	if !block {
+		etcdStart += " --no-block"
+	}
+
+	_, err := m.SSH(etcdStart)
+	if err != nil {
+		return fmt.Errorf("SSH cmd to %v failed: %s", m.IP(), err)
+	}
+
+	return nil
+}
+
 func discovery(cluster platform.Cluster, version int) error {
 	if plog.LevelAt(capnslog.DEBUG) {
 		// get journalctl -f from all machines before starting
@@ -43,21 +66,17 @@ func discovery(cluster platform.Cluster, version int) error {
 		}
 	}
 
-	// point etcd on each machine to discovery
-	for i, m := range cluster.Machines() {
-		// start etcd instance
-		var etcdStart string
-		if version == 1 {
-			etcdStart = "sudo systemctl start etcd.service"
-		} else if version == 2 {
-			etcdStart = "sudo systemctl start etcd2.service"
-		} else {
-			return fmt.Errorf("etcd version unspecified")
+	// start etcd on each machine asynchronously.
+	for _, m := range cluster.Machines() {
+		if err := doStart(m, version, false); err != nil {
+			return err
 		}
+	}
 
-		_, err := m.SSH(etcdStart)
-		if err != nil {
-			return fmt.Errorf("SSH cmd to %v failed: %s", m.IP(), err)
+	// block until each instance is reported as started.
+	for i, m := range cluster.Machines() {
+		if err := doStart(m, version, true); err != nil {
+			return err
 		}
 		plog.Infof("etcd instance%d started", i)
 	}
