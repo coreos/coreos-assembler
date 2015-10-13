@@ -124,22 +124,26 @@ func Proxy(c platform.TestCluster) error {
 	}
 	defer proxy.Destroy()
 
-	// settling...
-	time.Sleep(5 * time.Second)
-
 	err = copyFile(proxy, strings.NewReader(fleetunit), "/home/core/hello.service")
 	if err != nil {
 		return fmt.Errorf("copyFile: %s", err)
 	}
 
-	_, err = proxy.SSH("fleetctl start /home/core/hello.service")
-	if err != nil {
-		return fmt.Errorf("fleetctl start: %s", err)
+	// settling...
+	fleetStart := func() error {
+		_, err = proxy.SSH("fleetctl start /home/core/hello.service")
+		if err != nil {
+			return fmt.Errorf("fleetctl start: %s", err)
+		}
+		return nil
+	}
+	if err := util.Retry(5, 5*time.Second, fleetStart); err != nil {
+		return fmt.Errorf("fleetctl start failed: %v", err)
 	}
 
 	var status []byte
 
-	checker := func() error {
+	fleetList := func() error {
 		status, err = proxy.SSH("fleetctl list-units -l -fields active -no-legend")
 		if err != nil {
 			return fmt.Errorf("fleetctl list-units: %s", err)
@@ -152,8 +156,8 @@ func Proxy(c platform.TestCluster) error {
 		return nil
 	}
 
-	if err := util.Retry(5, 1*time.Second, checker); err != nil {
-		return fmt.Errorf("fleetctl start failed: %v", err)
+	if err := util.Retry(5, 1*time.Second, fleetList); err != nil {
+		return fmt.Errorf("fleetctl list-units failed: %v", err)
 	}
 
 	return nil
