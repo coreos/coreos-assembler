@@ -24,8 +24,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -52,6 +54,16 @@ func DownloadFile(file, url string) error {
 		return err
 	}
 
+	download := func() error {
+		return downloadFile(file, url)
+	}
+	if err := util.Retry(5, 1*time.Second, download); err != nil {
+		return err
+	}
+	return nil
+}
+
+func downloadFile(file, url string) error {
 	dst, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
@@ -107,7 +119,6 @@ func DownloadFile(file, url string) error {
 		plog.Infof("Download already complete")
 		return nil
 	default:
-
 		return fmt.Errorf("%s: %s", resp.Status, resp.Request.URL)
 	}
 
