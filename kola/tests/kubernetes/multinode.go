@@ -17,8 +17,6 @@ package kubernetes
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -114,7 +112,7 @@ func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
 
 func nginxCheck(master platform.Machine, nodes []platform.Machine) error {
 	pod := strings.NewReader(nginxPodYAML)
-	if err := installFile(pod, master, "./nginx-pod.yaml"); err != nil {
+	if err := platform.InstallFile(pod, master, "./nginx-pod.yaml"); err != nil {
 		return err
 	}
 	if _, err := master.SSH("./kubectl create -f nginx-pod.yaml"); err != nil {
@@ -148,10 +146,10 @@ func secretCheck(master platform.Machine, nodes []platform.Machine) error {
 	// create yaml files
 	secret := strings.NewReader(secretYAML)
 	pod := strings.NewReader(secretPodYAML)
-	if err := installFile(secret, master, "./secret.yaml"); err != nil {
+	if err := platform.InstallFile(secret, master, "./secret.yaml"); err != nil {
 		return err
 	}
-	if err := installFile(pod, master, "./secret-pod.yaml"); err != nil {
+	if err := platform.InstallFile(pod, master, "./secret-pod.yaml"); err != nil {
 		return err
 	}
 
@@ -172,27 +170,6 @@ func secretCheck(master platform.Machine, nodes []platform.Machine) error {
 		return fmt.Errorf("error detecting secret pod")
 	}
 
-	return nil
-}
-
-func installFile(in io.Reader, m platform.Machine, to string) error {
-	_, err := m.SSH(fmt.Sprintf("sudo mkdir -p %s", filepath.Dir(to)))
-	if err != nil {
-		return err
-	}
-
-	session, err := m.SSHSession()
-	if err != nil {
-		return fmt.Errorf("Error establishing ssh session: %v", err)
-	}
-	defer session.Close()
-
-	// write file to fs from stdin
-	session.Stdin = in
-	err = session.Run(fmt.Sprintf("install -m 0755 /dev/stdin %s", to))
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
