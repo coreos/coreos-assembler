@@ -84,6 +84,7 @@ type Result struct {
 
 func testRunner(platform string, done <-chan struct{}, tests chan *Test, results chan *Result) {
 	for test := range tests {
+		plog.Noticef("=== RUN %s on %s", test.Name, platform)
 		start := time.Now()
 		err := RunTest(test, platform)
 		duration := time.Since(start)
@@ -158,7 +159,6 @@ func RunTests(pattern, pltfrm string) error {
 	// feed pipeline
 	go func() {
 		for _, t := range tests {
-			plog.Noticef("=== RUN %s on %s", t.Name, pltfrm)
 			testc <- t
 
 			// don't go too fast, in case we're talking to a rate limiting api like AWS EC2.
