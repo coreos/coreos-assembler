@@ -17,7 +17,6 @@ package fleet
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -84,30 +83,6 @@ ExecStart=/bin/sh -c "while sleep 1; do echo hello world; done"
 `
 )
 
-func copyFile(mach platform.Machine, r io.Reader, path string) error {
-	sess, err := mach.SSHSession()
-	if err != nil {
-		return err
-	}
-	defer sess.Close()
-
-	wr, err := sess.StdinPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := sess.Start(fmt.Sprintf("tee %s", path)); err != nil {
-		return err
-	}
-
-	go func() {
-		io.Copy(wr, r)
-		wr.Close()
-	}()
-
-	return sess.Wait()
-}
-
 // Test fleet running through an etcd2 proxy.
 func Proxy(c platform.TestCluster) error {
 	masterconf.CoreOS.Etcd2.Discovery, _ = c.GetDiscoveryURL(1)
@@ -124,9 +99,9 @@ func Proxy(c platform.TestCluster) error {
 	}
 	defer proxy.Destroy()
 
-	err = copyFile(proxy, strings.NewReader(fleetunit), "/home/core/hello.service")
+	err = platform.InstallFile(strings.NewReader(fleetunit), proxy, "/home/core/hello.service")
 	if err != nil {
-		return fmt.Errorf("copyFile: %s", err)
+		return fmt.Errorf("InstallFile: %s", err)
 	}
 
 	// settling...
