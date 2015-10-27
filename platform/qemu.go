@@ -16,7 +16,6 @@ package platform
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -47,7 +46,6 @@ type qemuMachine struct {
 	qemu        util.Cmd
 	configDrive *local.ConfigDrive
 	netif       *local.Interface
-	sshClient   *ssh.Client
 }
 
 func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
@@ -167,35 +165,9 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	// Allow a few authentication failures in case setup is slow.
-	sshchecker := func() error {
-		qm.qc.mu.Lock()
-		defer qm.qc.mu.Unlock()
-		qm.sshClient, err = qm.qc.SSHAgent.NewClient(qm.IP())
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if err := util.Retry(sshRetries, sshTimeout, sshchecker); err != nil {
-		return nil, err
-	}
-
-	if err != nil {
+	if err := commonMachineChecks(qm); err != nil {
 		qm.Destroy()
 		return nil, err
-	}
-
-	out, err := qm.SSH("grep ^ID= /etc/os-release")
-	if err != nil {
-		qm.Destroy()
-		return nil, err
-	}
-
-	if !bytes.Equal(out, []byte("ID=coreos")) {
-		qm.Destroy()
-		return nil, fmt.Errorf("Unexpected SSH output: %s", out)
 	}
 
 	qc.mu.Lock()
@@ -241,20 +213,28 @@ func (m *qemuMachine) PrivateIP() string {
 	return m.netif.DHCPv4[0].IP.String()
 }
 
-func (qm *qemuMachine) SSHSession() (*ssh.Session, error) {
-	session, err := qm.sshClient.NewSession()
+func (qm *qemuMachine) SSHClient() (*ssh.Client, error) {
+	sshClient, err := qm.qc.SSHAgent.NewClient(qm.IP())
 	if err != nil {
 		return nil, err
 	}
 
-	return session, nil
+	return sshClient, nil
 }
 
 func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
-	session, err := qm.SSHSession()
+	client, err := qm.SSHClient()
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
+
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+
 	defer session.Close()
 
 	session.Stderr = os.Stderr
@@ -263,26 +243,7 @@ func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
 	return out, err
 }
 
-func (qm *qemuMachine) StartJournal() error {
-	s, err := qm.SSHSession()
-	if err != nil {
-		return fmt.Errorf("SSH session failed: %v", err)
-	}
-
-	s.Stdout = os.Stdout
-	s.Stderr = os.Stderr
-	go func() {
-		s.Run("journalctl -f")
-		s.Close()
-	}()
-
-	return nil
-}
-
 func (qm *qemuMachine) destroy(locked bool) error {
-	if qm.sshClient != nil {
-		qm.sshClient.Close()
-	}
 	err := qm.qemu.Kill()
 
 	if qm.configDrive != nil {

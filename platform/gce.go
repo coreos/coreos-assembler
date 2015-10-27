@@ -55,11 +55,10 @@ type gceCluster struct {
 }
 
 type gceMachine struct {
-	gc        *gceCluster
-	name      string
-	intIP     string
-	extIP     string
-	sshClient *ssh.Client
+	gc    *gceCluster
+	name  string
+	intIP string
+	extIP string
 }
 
 func NewGCECluster(conf GCEOptions) (Cluster, error) {
@@ -91,10 +90,6 @@ func NewGCECluster(conf GCEOptions) (Cluster, error) {
 	}
 
 	return gc, nil
-}
-
-func (gc *gceCluster) NewCommand(name string, arg ...string) util.Cmd {
-	return util.NewCommand(name, arg...)
 }
 
 func (gc *gceCluster) EtcdEndpoint() string {
@@ -139,8 +134,7 @@ func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
 	}
 	gm.gc = gc
 
-	err = sshCheck(gm)
-	if err != nil {
+	if err := commonMachineChecks(gm); err != nil {
 		gm.Destroy()
 		return nil, err
 	}
@@ -178,17 +172,24 @@ func (gm *gceMachine) PrivateIP() string {
 	return gm.intIP
 }
 
-func (gm *gceMachine) SSHSession() (*ssh.Session, error) {
-	session, err := gm.sshClient.NewSession()
+func (gm *gceMachine) SSHClient() (*ssh.Client, error) {
+	sshClient, err := gm.gc.sshAgent.NewClient(gm.IP())
 	if err != nil {
 		return nil, err
 	}
 
-	return session, nil
+	return sshClient, nil
 }
 
 func (gm *gceMachine) SSH(cmd string) ([]byte, error) {
-	session, err := gm.SSHSession()
+	client, err := gm.SSHClient()
+	if err != nil {
+		return nil, err
+	}
+
+	defer client.Close()
+
+	session, err := client.NewSession()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -200,27 +201,7 @@ func (gm *gceMachine) SSH(cmd string) ([]byte, error) {
 	return out, err
 }
 
-func (gm *gceMachine) StartJournal() error {
-	s, err := gm.SSHSession()
-	if err != nil {
-		return fmt.Errorf("SSH session failed: %v", err)
-	}
-
-	s.Stdout = os.Stdout
-	s.Stderr = os.Stderr
-	go func() {
-		s.Run("journalctl -f")
-		s.Close()
-	}()
-
-	return nil
-}
-
 func (gm *gceMachine) Destroy() error {
-	if gm.sshClient != nil {
-		gm.sshClient.Close()
-	}
-
 	_, err := gm.gc.api.Instances.Delete(gm.gc.conf.Project, gm.gc.conf.Zone, gm.name).Do()
 	if err != nil {
 		return err
@@ -502,10 +483,6 @@ func sshCheck(gm *gceMachine) error {
 
 	// Allow a few authentication failures in case setup is slow.
 	sshchecker := func() error {
-		gm.sshClient, err = gm.gc.sshAgent.NewClient(gm.IP())
-		if err != nil {
-			return err
-		}
 		return nil
 	}
 
