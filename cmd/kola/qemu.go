@@ -67,26 +67,6 @@ func runQemu(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stdout, "SSH: %s\n", out)
 	}
 
-	ssh := cluster.NewCommand("ssh",
-		"-l", "core",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "BatchMode=yes",
-		m.IP(),
-		"uptime")
-
-	out, err = ssh.Output()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "SSH command failed: %v\n", err)
-		os.Exit(1)
-	}
-	if len(out) != 0 {
-		fmt.Fprintf(os.Stdout, "SSH command: %s\n", out)
-	} else {
-		fmt.Fprintf(os.Stderr, "SSH command produced no output.\n")
-		os.Exit(1)
-	}
-
 	err = m.Destroy()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Destroy failed: %v\n", err)
