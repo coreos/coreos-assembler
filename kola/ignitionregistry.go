@@ -18,7 +18,7 @@ import "github.com/coreos/mantle/kola/tests/ignition"
 
 func init() {
 	Register(&Test{
-		Name:        "ignitionSetHostname",
+		Name:        "coreos/ignition/sethostname",
 		Run:         ignition.SetHostname,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},

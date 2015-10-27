@@ -22,6 +22,6 @@ func init() {
 	Register(&Test{
 		Run:         systemd.JournalRemote,
 		ClusterSize: 0,
-		Name:        "SystemdJournalRemote",
+		Name:        "systemd/journal/remote",
 	})
 }

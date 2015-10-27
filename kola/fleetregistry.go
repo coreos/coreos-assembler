@@ -22,6 +22,6 @@ func init() {
 	Register(&Test{
 		Run:         fleet.Proxy,
 		ClusterSize: 0,
-		Name:        "FleetProxy",
+		Name:        "coreos/fleet/etcdproxy",
 	})
 }

@@ -18,7 +18,7 @@ import "github.com/coreos/mantle/kola/tests/coretest"
 
 func init() {
 	Register(&Test{
-		Name:        "coretestsLocal",
+		Name:        "coreos/basic",
 		Run:         coretest.LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{
@@ -35,7 +35,7 @@ func init() {
 		},
 	})
 	Register(&Test{
-		Name:        "coretestsCluster",
+		Name:        "coreos/cluster",
 		Run:         coretest.ClusterTests,
 		ClusterSize: 3,
 		NativeFuncs: map[string]func() error{
@@ -63,7 +63,7 @@ coreos:
 
 	// tests requiring network connection to internet
 	Register(&Test{
-		Name:        "coretestsInternetLocal",
+		Name:        "coreos/internet",
 		Run:         coretest.InternetTests,
 		ClusterSize: 1,
 		Platforms:   []string{"gce", "aws"},
