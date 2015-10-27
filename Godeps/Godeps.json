@@ -183,6 +183,16 @@
 			"Rev": "cba16237846b83be98d25d8392b1520b7bc40b5a"
 		},
 		{
+			"ImportPath": "github.com/coreos/ignition/src/config",
+			"Comment": "v0.2.2",
+			"Rev": "5baf8f8bcab7c51bef7b8b1b6b7e07ec69602272"
+		},
+		{
+			"ImportPath": "github.com/coreos/ignition/third_party/github.com/alecthomas/units",
+			"Comment": "v0.2.2",
+			"Rev": "5baf8f8bcab7c51bef7b8b1b6b7e07ec69602272"
+		},
+		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
 			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
 		},
