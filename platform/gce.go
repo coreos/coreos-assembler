@@ -477,28 +477,3 @@ func instanceIPs(inst *compute.Instance) (intIP, extIP string) {
 	}
 	return
 }
-
-func sshCheck(gm *gceMachine) error {
-	var err error
-
-	// Allow a few authentication failures in case setup is slow.
-	sshchecker := func() error {
-		return nil
-	}
-
-	if err := util.Retry(sshRetries, sshTimeout, sshchecker); err != nil {
-		return err
-	}
-
-	// sanity check
-	out, err := gm.SSH("grep ^ID= /etc/os-release")
-	if err != nil {
-		return err
-	}
-
-	if !bytes.Equal(out, []byte("ID=coreos")) {
-		return fmt.Errorf("Unexpected SSH output: %s", out)
-	}
-
-	return nil
-}
