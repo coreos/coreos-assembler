@@ -27,7 +27,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/auth"
@@ -122,18 +121,21 @@ func (gc *gceCluster) Destroy() error {
 }
 
 // Calling in parallel is ok
-func (gc *gceCluster) NewMachine(cloudConfig string) (Machine, error) {
-	cconfig, err := config.NewCloudConfig(cloudConfig)
+func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
+	conf, err := NewConf(userdata)
 	if err != nil {
 		return nil, err
 	}
-	if err = gc.sshAgent.UpdateConfig(cconfig); err != nil {
+
+	keys, err := gc.sshAgent.List()
+	if err != nil {
 		return nil, err
 	}
-	cloudConfig = cconfig.String()
+
+	conf.CopyKeys(keys)
 
 	// Create gce VM and wait for creation to succeed.
-	gm, err := GCECreateVM(gc.api, gc.conf, cloudConfig)
+	gm, err := GCECreateVM(gc.api, gc.conf, conf.String())
 	if err != nil {
 		return nil, err
 	}
@@ -234,13 +236,6 @@ func (gm *gceMachine) Destroy() error {
 }
 
 func GCECreateVM(api *compute.Service, opts *GCEOptions, userdata string) (*gceMachine, error) {
-	if userdata != "" {
-		_, err := config.NewCloudConfig(userdata)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// generate name
 	name, err := newName(opts)
 	if err != nil {

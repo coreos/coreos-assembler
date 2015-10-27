@@ -23,7 +23,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/platform/local"
@@ -95,24 +94,23 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 	cfg = strings.Replace(cfg, "$public_ipv4", ip, -1)
 	cfg = strings.Replace(cfg, "$private_ipv4", ip, -1)
 
-	cloudConfig, err := config.NewCloudConfig(cfg)
+	conf, err := NewConf(cfg)
 	if err != nil {
 		qc.mu.Unlock()
 		return nil, err
 	}
 
-	if err = qc.SSHAgent.UpdateConfig(cloudConfig); err != nil {
+	keys, err := qc.SSHAgent.List()
+	if err != nil {
 		qc.mu.Unlock()
 		return nil, err
 	}
 
-	if cloudConfig.Hostname == "" {
-		cloudConfig.Hostname = id.String()[:8]
-	}
+	conf.CopyKeys(keys)
 
 	qc.mu.Unlock()
 
-	configDrive, err := local.NewConfigDrive(cloudConfig)
+	configDrive, err := local.NewConfigDrive(conf.String())
 	if err != nil {
 		return nil, err
 	}

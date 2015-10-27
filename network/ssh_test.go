@@ -18,10 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"strings"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
@@ -37,28 +35,6 @@ rrxx26itVhJmcvoUhOjwuzSlP2bE5VHAvkGB352YBg==
 -----END RSA PRIVATE KEY-----
 `)
 )
-
-func TestSSHUpdateConfig(t *testing.T) {
-	m, err := NewSSHAgent(&net.Dialer{})
-	if err != nil {
-		t.Fatalf("NewSSHAgent failed: %v", err)
-	}
-
-	cfg := config.CloudConfig{}
-	err = m.UpdateConfig(&cfg)
-	if err != nil {
-		t.Fatalf("UpdateConfig failed: %v", err)
-	}
-
-	if len(cfg.SSHAuthorizedKeys) != 1 {
-		t.Fatalf("Unexpected ssh_authorized_keys list: %v", cfg.SSHAuthorizedKeys)
-	}
-
-	key := cfg.SSHAuthorizedKeys[0]
-	if !strings.HasPrefix(key, "ssh-rsa ") || !strings.HasSuffix(key, " core@default") {
-		t.Fatalf("Unexpected ssh key: %q", key)
-	}
-}
 
 func TestEnsurePortSuffix(t *testing.T) {
 	tests := map[string]string{
