@@ -44,8 +44,8 @@ func init() {
 	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 
 	// aws specific options
-	// CoreOS-alpha-789.0.0 on us-west-1
-	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-4345bd07", "AWS AMI ID")
+	// CoreOS-alpha-845.0.0 on us-west-1
+	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-55438011", "AWS AMI ID")
 	sv(&kola.AWSOptions.KeyName, "aws-key", "", "AWS SSH key name")
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t1.micro", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
