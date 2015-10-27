@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
@@ -73,7 +74,15 @@ func runRun(cmd *cobra.Command, args []string) {
 }
 
 func runList(cmd *cobra.Command, args []string) {
+	var testnames []string
+
 	for tname, _ := range kola.Tests {
+		testnames = append(testnames, tname)
+	}
+
+	sort.Strings(testnames)
+
+	for _, tname := range testnames {
 		fmt.Println(tname)
 	}
 }
