@@ -35,9 +35,8 @@ import (
 )
 
 type awsMachine struct {
-	cluster   *awsCluster
-	mach      *ec2.Instance
-	sshClient *ssh.Client
+	cluster *awsCluster
+	mach    *ec2.Instance
 }
 
 func (am *awsMachine) ID() string {
@@ -52,20 +51,28 @@ func (am *awsMachine) PrivateIP() string {
 	return *am.mach.PrivateIpAddress
 }
 
-func (am *awsMachine) SSHSession() (*ssh.Session, error) {
-	session, err := am.sshClient.NewSession()
+func (am *awsMachine) SSHClient() (*ssh.Client, error) {
+	sshClient, err := am.cluster.agent.NewClient(am.IP())
 	if err != nil {
 		return nil, err
 	}
 
-	return session, nil
+	return sshClient, nil
 }
 
 func (am *awsMachine) SSH(cmd string) ([]byte, error) {
-	session, err := am.SSHSession()
+	client, err := am.SSHClient()
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
+
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+
 	defer session.Close()
 
 	session.Stderr = os.Stderr
@@ -75,10 +82,6 @@ func (am *awsMachine) SSH(cmd string) ([]byte, error) {
 }
 
 func (am *awsMachine) Destroy() error {
-	if am.sshClient != nil {
-		am.sshClient.Close()
-	}
-
 	id := am.ID()
 
 	input := &ec2.TerminateInstancesInput{
@@ -93,28 +96,13 @@ func (am *awsMachine) Destroy() error {
 	return nil
 }
 
-func (am *awsMachine) StartJournal() error {
-	s, err := am.SSHSession()
-	if err != nil {
-		return fmt.Errorf("SSH session failed: %v", err)
-	}
-
-	s.Stdout = os.Stdout
-	s.Stderr = os.Stderr
-	go func() {
-		s.Run("journalctl -f")
-		s.Close()
-	}()
-
-	return nil
-}
-
 type AWSOptions struct {
 	AMI           string
 	KeyName       string
 	InstanceType  string
 	SecurityGroup string
 }
+
 type awsCluster struct {
 	mu    sync.Mutex
 	api   *ec2.EC2
@@ -208,18 +196,8 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		mach:    insts.Reservations[0].Instances[0],
 	}
 
-	// Allow a few authentication failures in case setup is slow.
-	sshchecker := func() error {
-		mach.sshClient, err = mach.cluster.agent.NewClient(mach.IP())
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if err := util.Retry(sshRetries, sshTimeout, sshchecker); err != nil {
-		mach.Destroy()
-		return nil, err
+	if err := commonMachineChecks(mach); err != nil {
+		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
 	}
 
 	ac.addMach(mach)

@@ -35,9 +35,16 @@ func Manhole(m Machine) error {
 	tstate, _ := terminal.MakeRaw(fd)
 	defer terminal.Restore(fd, tstate)
 
-	session, err := m.SSHSession()
+	client, err := m.SSHClient()
 	if err != nil {
-		return err
+		return fmt.Errorf("SSH client failed: %v", err)
+	}
+
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("SSH session failed: %v", err)
 	}
 
 	defer session.Close()
@@ -67,6 +74,29 @@ func Manhole(m Machine) error {
 	if err := session.Wait(); err != nil {
 		return fmt.Errorf("failed to wait for session: %s", err)
 	}
+
+	return nil
+}
+
+// StreamJournal streams the remote system's journal to stdout.
+func StreamJournal(m Machine) error {
+	c, err := m.SSHClient()
+	if err != nil {
+		return fmt.Errorf("SSH client failed: %v", err)
+	}
+
+	s, err := c.NewSession()
+	if err != nil {
+		return fmt.Errorf("SSH session failed: %v", err)
+	}
+
+	s.Stdout = os.Stdout
+	s.Stderr = os.Stderr
+	go func() {
+		defer c.Close()
+		defer s.Close()
+		s.Run("journalctl -f")
+	}()
 
 	return nil
 }

@@ -40,7 +40,7 @@ func RollingUpgrade(cluster platform.TestCluster) error {
 	if plog.LevelAt(capnslog.DEBUG) {
 		// get journalctl -f from all machines before starting
 		for _, m := range cluster.Machines() {
-			if err := m.StartJournal(); err != nil {
+			if err := platform.StreamJournal(m); err != nil {
 				return fmt.Errorf("failed to start journal: %v", err)
 			}
 		}

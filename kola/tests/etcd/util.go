@@ -63,16 +63,9 @@ func SetKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 			key := strconv.Itoa(rand.Int())[0:3]
 			value := strconv.Itoa(rand.Int())[0:3]
 
-			cmd := fmt.Sprintf("curl -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value)
-			s, err := m.SSHSession()
+			b, err := m.SSH(fmt.Sprintf("curl -s -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value))
 			if err != nil {
 				return nil, err
-			}
-			defer s.Close()
-
-			b, err := s.Output(cmd)
-			if err != nil {
-				continue
 			}
 
 			// check for 201 or 200 resp header
@@ -98,17 +91,12 @@ func CheckKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) 
 		for k, v := range keyMap {
 			var cmd string
 			if quorum {
-				cmd = fmt.Sprintf("curl http://127.0.0.1:2379/v2/keys/%v?quorum=true", k)
+				cmd = fmt.Sprintf("curl -s http://127.0.0.1:2379/v2/keys/%v?quorum=true", k)
 			} else {
-				cmd = fmt.Sprintf("curl http://127.0.0.1:2379/v2/keys/%v", k)
+				cmd = fmt.Sprintf("curl -s http://127.0.0.1:2379/v2/keys/%v", k)
 			}
-			s, err := m.SSHSession()
-			if err != nil {
-				return err
-			}
-			defer s.Close()
 
-			b, err := s.Output(cmd)
+			b, err := m.SSH(cmd)
 			if err != nil {
 				return fmt.Errorf("error curling key: %v", err)
 			}
@@ -168,14 +156,14 @@ func replaceEtcd2Bin(m platform.Machine, newPath string) error {
 
 func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected string) error {
 	var b []byte
-	var err error
 
 	checker := func() error {
-		cmd := cluster.NewCommand("curl", "-L", fmt.Sprintf("http://%v:2379/version", m.IP()))
-		b, err = cmd.Output()
+		out, err := m.SSH(fmt.Sprintf("curl -s -L http://%s:2379/version", m.IP()))
 		if err != nil {
-			return fmt.Errorf("curl failed: %v", err)
+			return fmt.Errorf("curl failed: %v", out)
 		}
+
+		b = out
 
 		return nil
 	}
