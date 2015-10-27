@@ -23,7 +23,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
 )
@@ -101,20 +100,6 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 func (a *SSHAgent) Close() error {
 	a.listener.Close()
 	return os.RemoveAll(a.sockDir)
-}
-
-// Add all ssh keys to the given cloud config's default authorized_keys list.
-func (a *SSHAgent) UpdateConfig(cfg *config.CloudConfig) error {
-	keys, err := a.List()
-	if err != nil {
-		return err
-	}
-
-	for _, key := range keys {
-		cfg.SSHAuthorizedKeys = append(cfg.SSHAuthorizedKeys, key.String())
-	}
-
-	return nil
 }
 
 // Add port to host if not already set.

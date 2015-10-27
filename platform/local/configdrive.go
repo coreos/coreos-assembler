@@ -18,15 +18,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 )
 
 type ConfigDrive struct {
 	Directory string
 }
 
-func NewConfigDrive(cfg *config.CloudConfig) (*ConfigDrive, error) {
+func NewConfigDrive(userdata string) (*ConfigDrive, error) {
 	drivePath, err := ioutil.TempDir("", "mantle-config-drive")
 	if err != nil {
 		return nil, err
@@ -46,7 +44,7 @@ func NewConfigDrive(cfg *config.CloudConfig) (*ConfigDrive, error) {
 	}
 	defer userData.Close()
 
-	_, err = userData.WriteString(cfg.String())
+	_, err = userData.WriteString(userdata)
 	if err != nil {
 		os.RemoveAll(drivePath)
 		return nil, err

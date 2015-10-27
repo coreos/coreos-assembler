@@ -16,7 +16,6 @@ package platform
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -29,7 +28,6 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/network"
@@ -160,22 +158,19 @@ func (ac *awsCluster) NewCommand(name string, arg ...string) util.Cmd {
 }
 
 func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
-	cloudConfig, err := config.NewCloudConfig(userdata)
+	conf, err := NewConf(userdata)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = ac.agent.UpdateConfig(cloudConfig); err != nil {
+	keys, err := ac.agent.List()
+	if err != nil {
 		return nil, err
 	}
 
-	if cloudConfig.Hostname == "" {
-		id := make([]byte, 4)
-		_, _ = rand.Read(id)
-		cloudConfig.Hostname = fmt.Sprintf("%x", id)
-	}
+	conf.CopyKeys(keys)
 
-	ud := base64.StdEncoding.EncodeToString([]byte(cloudConfig.String()))
+	ud := base64.StdEncoding.EncodeToString([]byte(conf.String()))
 	cnt := int64(1)
 
 	inst := ec2.RunInstancesInput{
