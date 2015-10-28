@@ -31,7 +31,6 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/util"
 )
 
 type GCEOptions struct {
