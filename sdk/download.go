@@ -122,8 +122,8 @@ func downloadFile(file, url string) error {
 		return fmt.Errorf("%s: %s", resp.Status, resp.Request.URL)
 	}
 
-	// TODO(marineam): log download progress
-	if n, err := io.Copy(dst, resp.Body); err != nil {
+	prefix := filepath.Base(file)
+	if n, err := util.CopyProgress(capnslog.INFO, prefix, dst, resp.Body, resp.ContentLength); err != nil {
 		return err
 	} else if n != length-pos {
 		// unsure if this is worth caring about
