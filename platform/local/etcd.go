@@ -92,7 +92,8 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 	}
 
 	se.server.Start()
-	go http.Serve(se.listener, etcdhttp.NewClientHandler(se.server))
+	go http.Serve(se.listener,
+		etcdhttp.NewClientHandler(se.server, cfg.ReqTimeout()))
 
 	return se, nil
 }

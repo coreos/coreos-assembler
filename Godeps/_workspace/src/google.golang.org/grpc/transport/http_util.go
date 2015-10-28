@@ -39,7 +39,6 @@ import (
 	"io"
 	"net"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -51,8 +50,6 @@ import (
 )
 
 const (
-	// The primary user agent
-	primaryUA = "grpc-go/0.7"
 	// http2MaxFrameLen specifies the max length of a HTTP2 frame.
 	http2MaxFrameLen = 16384 // 16KB frame
 	// http://http2.github.io/http2-spec/#SettingValues
@@ -62,29 +59,31 @@ const (
 )
 
 var (
-	clientPreface      = []byte(http2.ClientPreface)
-	http2RSTErrConvTab = map[http2.ErrCode]codes.Code{
-		http2.ErrCodeNo:                 codes.Internal,
-		http2.ErrCodeProtocol:           codes.Internal,
-		http2.ErrCodeInternal:           codes.Internal,
-		http2.ErrCodeFlowControl:        codes.ResourceExhausted,
-		http2.ErrCodeSettingsTimeout:    codes.Internal,
-		http2.ErrCodeFrameSize:          codes.Internal,
-		http2.ErrCodeRefusedStream:      codes.Unavailable,
-		http2.ErrCodeCancel:             codes.Canceled,
-		http2.ErrCodeCompression:        codes.Internal,
-		http2.ErrCodeConnect:            codes.Internal,
-		http2.ErrCodeEnhanceYourCalm:    codes.ResourceExhausted,
-		http2.ErrCodeInadequateSecurity: codes.PermissionDenied,
-	}
-	statusCodeConvTab = map[codes.Code]http2.ErrCode{
-		codes.Internal:          http2.ErrCodeInternal,
-		codes.Canceled:          http2.ErrCodeCancel,
-		codes.Unavailable:       http2.ErrCodeRefusedStream,
-		codes.ResourceExhausted: http2.ErrCodeEnhanceYourCalm,
-		codes.PermissionDenied:  http2.ErrCodeInadequateSecurity,
-	}
+	clientPreface = []byte(http2.ClientPreface)
 )
+
+var http2RSTErrConvTab = map[http2.ErrCode]codes.Code{
+	http2.ErrCodeNo:                 codes.Internal,
+	http2.ErrCodeProtocol:           codes.Internal,
+	http2.ErrCodeInternal:           codes.Internal,
+	http2.ErrCodeFlowControl:        codes.Internal,
+	http2.ErrCodeSettingsTimeout:    codes.Internal,
+	http2.ErrCodeFrameSize:          codes.Internal,
+	http2.ErrCodeRefusedStream:      codes.Unavailable,
+	http2.ErrCodeCancel:             codes.Canceled,
+	http2.ErrCodeCompression:        codes.Internal,
+	http2.ErrCodeConnect:            codes.Internal,
+	http2.ErrCodeEnhanceYourCalm:    codes.ResourceExhausted,
+	http2.ErrCodeInadequateSecurity: codes.PermissionDenied,
+}
+
+var statusCodeConvTab = map[codes.Code]http2.ErrCode{
+	codes.Internal:          http2.ErrCodeInternal, // pick an arbitrary one which is matched.
+	codes.Canceled:          http2.ErrCodeCancel,
+	codes.Unavailable:       http2.ErrCodeRefusedStream,
+	codes.ResourceExhausted: http2.ErrCodeEnhanceYourCalm,
+	codes.PermissionDenied:  http2.ErrCodeInadequateSecurity,
+}
 
 // Records the states during HPACK decoding. Must be reset once the
 // decoding of the entire headers are finished.
@@ -98,7 +97,7 @@ type decodeState struct {
 	timeout    time.Duration
 	method     string
 	// key-value metadata map from the peer.
-	mdata map[string][]string
+	mdata map[string]string
 }
 
 // An hpackDecoder decodes HTTP2 headers which may span multiple frames.
@@ -129,7 +128,8 @@ func isReservedHeader(hdr string) bool {
 		"grpc-message",
 		"grpc-status",
 		"grpc-timeout",
-		"te":
+		"te",
+		"user-agent":
 		return true
 	default:
 		return false
@@ -161,24 +161,15 @@ func newHPACKDecoder() *hpackDecoder {
 			d.state.method = f.Value
 		default:
 			if !isReservedHeader(f.Name) {
-				if f.Name == "user-agent" {
-					i := strings.LastIndex(f.Value, " ")
-					if i == -1 {
-						// There is no application user agent string being set.
-						return
-					}
-					// Extract the application user agent string.
-					f.Value = f.Value[:i]
-				}
 				if d.state.mdata == nil {
-					d.state.mdata = make(map[string][]string)
+					d.state.mdata = make(map[string]string)
 				}
 				k, v, err := metadata.DecodeKeyValue(f.Name, f.Value)
 				if err != nil {
 					grpclog.Printf("Failed to decode (%q, %q): %v", f.Name, f.Value, err)
 					return
 				}
-				d.state.mdata[k] = append(d.state.mdata[k], v)
+				d.state.mdata[k] = v
 			}
 		}
 	})

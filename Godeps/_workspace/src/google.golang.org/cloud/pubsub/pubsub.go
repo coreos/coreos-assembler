@@ -26,9 +26,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal"
 	raw "google.golang.org/api/pubsub/v1beta1"
 )
 

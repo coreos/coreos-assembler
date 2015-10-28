@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/yaml"
 )
 
