@@ -41,6 +41,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -245,7 +246,7 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 		}
 		if fv.Kind() == reflect.Map {
 			// Map fields are rendered as a repeated struct with key/value fields.
-			keys := fv.MapKeys()
+			keys := fv.MapKeys() // TODO: should we sort these for deterministic output?
 			sort.Sort(mapKeys(keys))
 			for _, key := range keys {
 				val := fv.MapIndex(key)
@@ -282,23 +283,20 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 				if err := w.WriteByte('\n'); err != nil {
 					return err
 				}
-				// nil values aren't legal, but we can avoid panicking because of them.
-				if val.Kind() != reflect.Ptr || !val.IsNil() {
-					// value
-					if _, err := w.WriteString("value:"); err != nil {
+				// value
+				if _, err := w.WriteString("value:"); err != nil {
+					return err
+				}
+				if !w.compact {
+					if err := w.WriteByte(' '); err != nil {
 						return err
 					}
-					if !w.compact {
-						if err := w.WriteByte(' '); err != nil {
-							return err
-						}
-					}
-					if err := writeAny(w, val, props.mvalprop); err != nil {
-						return err
-					}
-					if err := w.WriteByte('\n'); err != nil {
-						return err
-					}
+				}
+				if err := writeAny(w, val, props.mvalprop); err != nil {
+					return err
+				}
+				if err := w.WriteByte('\n'); err != nil {
+					return err
 				}
 				// close struct
 				w.unindent()
@@ -317,25 +315,27 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 		}
 		if fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
 			// proto3 non-repeated scalar field; skip if zero value
-			if isProto3Zero(fv) {
-				continue
-			}
-		}
-
-		if fv.Kind() == reflect.Interface {
-			// Check if it is a oneof.
-			if st.Field(i).Tag.Get("protobuf_oneof") != "" {
-				// fv is nil, or holds a pointer to generated struct.
-				// That generated struct has exactly one field,
-				// which has a protobuf struct tag.
-				if fv.IsNil() {
+			switch fv.Kind() {
+			case reflect.Bool:
+				if !fv.Bool() {
 					continue
 				}
-				inner := fv.Elem().Elem() // interface -> *T -> T
-				tag := inner.Type().Field(0).Tag.Get("protobuf")
-				props.Parse(tag) // Overwrite the outer props.
-				// Write the value in the oneof, not the oneof itself.
-				fv = inner.Field(0)
+			case reflect.Int32, reflect.Int64:
+				if fv.Int() == 0 {
+					continue
+				}
+			case reflect.Uint32, reflect.Uint64:
+				if fv.Uint() == 0 {
+					continue
+				}
+			case reflect.Float32, reflect.Float64:
+				if fv.Float() == 0 {
+					continue
+				}
+			case reflect.String:
+				if fv.String() == "" {
+					continue
+				}
 			}
 		}
 
@@ -666,7 +666,10 @@ func writeExtensions(w *textWriter, pv reflect.Value) error {
 
 		pb, err := GetExtension(ep, desc)
 		if err != nil {
-			return fmt.Errorf("failed getting extension: %v", err)
+			if _, err := fmt.Fprintln(os.Stderr, "proto: failed getting extension: ", err); err != nil {
+				return err
+			}
+			continue
 		}
 
 		// Repeated extensions will appear as a slice.

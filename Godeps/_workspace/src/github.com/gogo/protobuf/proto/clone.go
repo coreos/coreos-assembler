@@ -75,13 +75,12 @@ func Merge(dst, src Message) {
 }
 
 func mergeStruct(out, in reflect.Value) {
-	sprop := GetProperties(in.Type())
 	for i := 0; i < in.NumField(); i++ {
 		f := in.Type().Field(i)
 		if strings.HasPrefix(f.Name, "XXX_") {
 			continue
 		}
-		mergeAny(out.Field(i), in.Field(i), false, sprop.Prop[i])
+		mergeAny(out.Field(i), in.Field(i))
 	}
 
 	if emIn, ok := in.Addr().Interface().(extensionsMap); ok {
@@ -104,10 +103,7 @@ func mergeStruct(out, in reflect.Value) {
 	}
 }
 
-// mergeAny performs a merge between two values of the same type.
-// viaPtr indicates whether the values were indirected through a pointer (implying proto2).
-// prop is set if this is a struct field (it may be nil).
-func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
+func mergeAny(out, in reflect.Value) {
 	if in.Type() == protoMessageType {
 		if !in.IsNil() {
 			if out.IsNil() {
@@ -121,9 +117,6 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 	switch in.Kind() {
 	case reflect.Bool, reflect.Float32, reflect.Float64, reflect.Int32, reflect.Int64,
 		reflect.String, reflect.Uint32, reflect.Uint64:
-		if !viaPtr && isProto3Zero(in) {
-			return
-		}
 		out.Set(in)
 	case reflect.Map:
 		if in.Len() == 0 {
@@ -139,7 +132,7 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 			switch elemKind {
 			case reflect.Ptr:
 				val = reflect.New(in.Type().Elem().Elem())
-				mergeAny(val, in.MapIndex(key), false, nil)
+				mergeAny(val, in.MapIndex(key))
 			case reflect.Slice:
 				val = in.MapIndex(key)
 				val = reflect.ValueOf(append([]byte{}, val.Bytes()...))
@@ -155,21 +148,13 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 		if out.IsNil() {
 			out.Set(reflect.New(in.Elem().Type()))
 		}
-		mergeAny(out.Elem(), in.Elem(), true, nil)
+		mergeAny(out.Elem(), in.Elem())
 	case reflect.Slice:
 		if in.IsNil() {
 			return
 		}
 		if in.Type().Elem().Kind() == reflect.Uint8 {
 			// []byte is a scalar bytes field, not a repeated field.
-
-			// Edge case: if this is in a proto3 message, a zero length
-			// bytes field is considered the zero value, and should not
-			// be merged.
-			if prop != nil && prop.proto3 && in.Len() == 0 {
-				return
-			}
-
 			// Make a deep copy.
 			// Append to []byte{} instead of []byte(nil) so that we never end up
 			// with a nil result.
@@ -187,7 +172,7 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 		default:
 			for i := 0; i < n; i++ {
 				x := reflect.Indirect(reflect.New(in.Type().Elem()))
-				mergeAny(x, in.Index(i), false, nil)
+				mergeAny(x, in.Index(i))
 				out.Set(reflect.Append(out, x))
 			}
 		}
@@ -204,7 +189,7 @@ func mergeExtension(out, in map[int32]Extension) {
 		eOut := Extension{desc: eIn.desc}
 		if eIn.value != nil {
 			v := reflect.New(reflect.TypeOf(eIn.value)).Elem()
-			mergeAny(v, reflect.ValueOf(eIn.value), false, nil)
+			mergeAny(v, reflect.ValueOf(eIn.value))
 			eOut.value = v.Interface()
 		}
 		if eIn.enc != nil {

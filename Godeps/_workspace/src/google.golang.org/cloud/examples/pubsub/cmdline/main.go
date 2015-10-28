@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2/google"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"

@@ -84,12 +84,6 @@ type decoder func(p *Buffer, prop *Properties, base structPointer) error
 // A valueDecoder decodes a single integer in a particular encoding.
 type valueDecoder func(o *Buffer) (x uint64, err error)
 
-// A oneofMarshaler does the marshaling for all oneof fields in a message.
-type oneofMarshaler func(Message, *Buffer) error
-
-// A oneofUnmarshaler does the unmarshaling for a oneof field in a message.
-type oneofUnmarshaler func(Message, int, int, *Buffer) (bool, error)
-
 // tagMap is an optimization over map[int]int for typical protocol buffer
 // use-cases. Encoded protocol buffers are often in tag order with small tag
 // numbers.
@@ -138,11 +132,6 @@ type StructProperties struct {
 	order            []int          // list of struct field numbers in tag order
 	unrecField       field          // field id of the XXX_unrecognized []byte field
 	extendable       bool           // is this an extendable proto
-
-	oneofMarshaler   oneofMarshaler
-	oneofUnmarshaler oneofUnmarshaler
-	stype            reflect.Type
-	oneofTypes       []interface{}
 }
 
 // Implement the sorting interface so we can sort the fields in tag order, as recommended by the spec.
@@ -451,12 +440,7 @@ func (p *Properties) setEncAndDec(typ reflect.Type, f *reflect.StructField, lock
 			p.enc = (*Buffer).enc_slice_byte
 			p.dec = (*Buffer).dec_slice_byte
 			p.size = size_slice_byte
-			// This is a []byte, which is either a bytes field,
-			// or the value of a map field. In the latter case,
-			// we always encode an empty []byte, so we should not
-			// use the proto3 enc/size funcs.
-			// f == nil iff this is the key/value of a map field.
-			if p.proto3 && f != nil {
+			if p.proto3 {
 				p.enc = (*Buffer).enc_proto3_slice_byte
 				p.size = size_proto3_slice_byte
 			}
@@ -611,7 +595,7 @@ func (p *Properties) init(typ reflect.Type, name, tag string, f *reflect.StructF
 }
 
 var (
-	propertiesMu  sync.RWMutex
+	mutex         sync.Mutex
 	propertiesMap = make(map[reflect.Type]*StructProperties)
 )
 
@@ -621,26 +605,13 @@ func GetProperties(t reflect.Type) *StructProperties {
 	if t.Kind() != reflect.Struct {
 		panic("proto: type must have kind struct")
 	}
-
-	// Most calls to GetProperties in a long-running program will be
-	// retrieving details for types we have seen before.
-	propertiesMu.RLock()
-	sprop, ok := propertiesMap[t]
-	propertiesMu.RUnlock()
-	if ok {
-		if collectStats {
-			stats.Chit++
-		}
-		return sprop
-	}
-
-	propertiesMu.Lock()
-	sprop = getPropertiesLocked(t)
-	propertiesMu.Unlock()
+	mutex.Lock()
+	sprop := getPropertiesLocked(t)
+	mutex.Unlock()
 	return sprop
 }
 
-// getPropertiesLocked requires that propertiesMu is held.
+// getPropertiesLocked requires that mutex is held.
 func getPropertiesLocked(t reflect.Type) *StructProperties {
 	if prop, ok := propertiesMap[t]; ok {
 		if collectStats {
@@ -676,7 +647,6 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 		if f.Name == "XXX_unrecognized" { // special case
 			prop.unrecField = toField(&f)
 		}
-		oneof := f.Tag.Get("protobuf_oneof") != "" // special case
 		prop.Prop[i] = p
 		prop.order[i] = i
 		if debug {
@@ -686,21 +656,13 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 			}
 			print("\n")
 		}
-		if p.enc == nil && !strings.HasPrefix(f.Name, "XXX_") && !oneof {
+		if p.enc == nil && !strings.HasPrefix(f.Name, "XXX_") {
 			fmt.Fprintln(os.Stderr, "proto: no encoder for", f.Name, f.Type.String(), "[GetProperties]")
 		}
 	}
 
 	// Re-order prop.order.
 	sort.Sort(prop)
-
-	type oneofMessage interface {
-		XXX_OneofFuncs() (func(Message, *Buffer) error, func(Message, int, int, *Buffer) (bool, error), []interface{})
-	}
-	if om, ok := reflect.Zero(reflect.PtrTo(t)).Interface().(oneofMessage); ok {
-		prop.oneofMarshaler, prop.oneofUnmarshaler, prop.oneofTypes = om.XXX_OneofFuncs()
-		prop.stype = t
-	}
 
 	// build required counts
 	// build tags

@@ -27,13 +27,14 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2/google"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage" // bucket is a local cache of the app's default bucket name.
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/file"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
 )
 
+// bucket is a local cache of the app's default bucket name.
 var bucket string // or: var bucket = "<your-app-id>.appspot.com"
 
 func init() {

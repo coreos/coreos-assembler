@@ -53,7 +53,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	proto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 
 	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/examples/route_guide/proto"
 )

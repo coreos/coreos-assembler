@@ -21,9 +21,10 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal/datastore" // saveEntity saves an EntityProto into a PropertyLoadSaver or struct pointer.
+	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal/datastore"
 )
 
+// saveEntity saves an EntityProto into a PropertyLoadSaver or struct pointer.
 func saveEntity(key *Key, src interface{}) (*pb.Entity, error) {
 	var err error
 	var props []Property
