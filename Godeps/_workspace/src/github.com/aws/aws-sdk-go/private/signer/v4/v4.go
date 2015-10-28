@@ -17,7 +17,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/request"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/internal/protocol/rest"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/private/protocol/rest"
 )
 
 const (

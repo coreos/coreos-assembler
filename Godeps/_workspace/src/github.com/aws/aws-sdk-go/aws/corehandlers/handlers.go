@@ -20,7 +20,7 @@ type lener interface {
 	Len() int
 }
 
-// BuildContentLength builds the content length of a request based on the body,
+// BuildContentLengthHandler builds the content length of a request based on the body,
 // or will use the HTTPRequest.Header's "Content-Length" if defined. If unable
 // to determine request body length and no "Content-Length" was specified it will panic.
 var BuildContentLengthHandler = request.NamedHandler{"core.BuildContentLengthHandler", func(r *request.Request) {
@@ -110,7 +110,6 @@ var AfterRetryHandler = request.NamedHandler{"core.AfterRetryHandler", func(r *r
 
 	if r.WillRetry() {
 		r.RetryDelay = r.RetryRules(r)
-		fmt.Println(r.Service.Config.SleepDelay)
 		r.Service.Config.SleepDelay(r.RetryDelay)
 
 		// when the expired token exception occurs the credentials
