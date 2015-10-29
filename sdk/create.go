@@ -241,3 +241,24 @@ func Unpack(version, name string) error {
 
 	return nil
 }
+
+func Delete(name string) error {
+	chroot := filepath.Join(RepoRoot(), name)
+	if _, err := os.Stat(chroot); err != nil {
+		if os.IsNotExist(err) {
+			plog.Infof("Path does not exist: %s", chroot)
+			return nil
+		}
+		return err
+	}
+
+	plog.Noticef("Removing SDK at %s", chroot)
+	rm := exec.Command("sudo", sudoPrompt, "rm", "-rf", chroot)
+	rm.Stderr = os.Stderr
+	if err := rm.Run(); err != nil {
+		return err
+	}
+	plog.Notice("Removed")
+
+	return nil
+}

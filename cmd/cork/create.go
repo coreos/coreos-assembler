@@ -22,10 +22,16 @@ import (
 var (
 	chrootVersion string
 	chrootName    string
+	allowReplace  bool
 	createCmd     = &cobra.Command{
 		Use:   "create",
 		Short: "Download and unpack the SDK",
 		Run:   runCreate,
+	}
+	deleteCmd = &cobra.Command{
+		Use:   "delete",
+		Short: "Delete the SDK chroot",
+		Run:   runDelete,
 	}
 )
 
@@ -34,7 +40,12 @@ func init() {
 		"sdk-version", "", "SDK version")
 	createCmd.Flags().StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
+	createCmd.Flags().BoolVar(&allowReplace,
+		"replace", false, "Replace an existing SDK chroot")
+	deleteCmd.Flags().StringVar(&chrootName,
+		"chroot", "chroot", "SDK chroot directory name")
 	root.AddCommand(createCmd)
+	root.AddCommand(deleteCmd)
 }
 
 func runCreate(cmd *cobra.Command, args []string) {
@@ -51,11 +62,27 @@ func runCreate(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Download failed: %v", err)
 	}
 
+	if allowReplace {
+		if err := sdk.Delete(chrootName); err != nil {
+			plog.Fatalf("Replace failed: %v", err)
+		}
+	}
+
 	if err := sdk.Unpack(chrootVersion, chrootName); err != nil {
 		plog.Fatalf("Create failed: %v", err)
 	}
 
 	if err := sdk.Setup(chrootName); err != nil {
 		plog.Fatalf("Create failed: %v", err)
+	}
+}
+
+func runDelete(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		plog.Fatal("No args accepted")
+	}
+
+	if err := sdk.Delete(chrootName); err != nil {
+		plog.Fatalf("Delete failed: %v", err)
 	}
 }
