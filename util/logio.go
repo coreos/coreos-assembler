@@ -20,7 +20,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/coreos/ioprogress"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ioprogress"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 

@@ -203,6 +203,10 @@
 			"Rev": "5baf8f8bcab7c51bef7b8b1b6b7e07ec69602272"
 		},
 		{
+			"ImportPath": "github.com/coreos/ioprogress",
+			"Rev": "4637e494fd9b23c5565ee193e89f91fdc1639bc0"
+		},
+		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
 			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
 		},
