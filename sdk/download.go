@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
 
@@ -38,11 +39,13 @@ const (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "sdk")
 
 func TarballName(version string) string {
-	return fmt.Sprintf("coreos-sdk-%s-%s.tar.bz2", LocalArch(), version)
+	arch := system.PortageArch()
+	return fmt.Sprintf("coreos-sdk-%s-%s.tar.bz2", arch, version)
 }
 
 func TarballURL(version string) string {
-	p := path.Join(urlPath, LocalArch(), version, TarballName(version))
+	arch := system.PortageArch()
+	p := path.Join(urlPath, arch, version, TarballName(version))
 	u := url.URL{Scheme: "https", Host: urlHost, Path: p}
 	return u.String()
 }
