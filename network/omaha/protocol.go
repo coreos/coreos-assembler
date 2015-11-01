@@ -19,7 +19,7 @@
 // by the server to provide update information, if any, or to simply
 // acknowledge the receipt of event status.
 //
-// http://code.google.com/p/omaha/wiki/ServerProtocol
+// https://github.com/google/omaha/blob/wiki/ServerProtocol.md
 package omaha
 
 import (
