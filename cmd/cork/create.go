@@ -33,6 +33,11 @@ var (
 		Short: "Download and unpack the SDK",
 		Run:   runCreate,
 	}
+	enterCmd = &cobra.Command{
+		Use:   "enter [-- command]",
+		Short: "Enter the SDK chroot, optionally running a command",
+		Run:   runEnter,
+	}
 	deleteCmd = &cobra.Command{
 		Use:   "delete",
 		Short: "Delete the SDK chroot",
@@ -49,9 +54,12 @@ func init() {
 		"manifest-url", coreosManifestURL, "Manifest git repo location")
 	createCmd.Flags().BoolVar(&allowReplace,
 		"replace", false, "Replace an existing SDK chroot")
+	enterCmd.Flags().StringVar(&chrootName,
+		"chroot", "chroot", "SDK chroot directory name")
 	deleteCmd.Flags().StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
 	root.AddCommand(createCmd)
+	root.AddCommand(enterCmd)
 	root.AddCommand(deleteCmd)
 }
 
@@ -85,6 +93,12 @@ func runCreate(cmd *cobra.Command, args []string) {
 
 	if err := sdk.RepoInit(chrootName, manifestURL); err != nil {
 		plog.Fatalf("repo init and sync failed: %v", err)
+	}
+}
+
+func runEnter(cmd *cobra.Command, args []string) {
+	if err := sdk.Enter(chrootName, args...); err != nil && len(args) != 0 {
+		plog.Fatalf("Running %v failed: %v", args, err)
 	}
 }
 

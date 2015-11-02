@@ -36,6 +36,7 @@ const (
 		"exec chroot {{.Chroot}} " +
 		"/usr/bin/sudo -u {{.Username}} sh -c " +
 		"'cd /mnt/host/source && repo {{.RepoArgs}}'"
+	enterChroot = "src/scripts/sdk_lib/enter_chroot.sh"
 )
 
 var repoTemplate = template.Must(template.New("script").Parse(repoScript))
@@ -47,6 +48,7 @@ type repoParams struct {
 	RepoArgs string
 }
 
+// Set an environment variable if it isn't already defined.
 func setDefault(environ []string, key, value string) []string {
 	prefix := key + "="
 	for _, env := range environ {
@@ -55,6 +57,17 @@ func setDefault(environ []string, key, value string) []string {
 		}
 	}
 	return append(environ, prefix+value)
+}
+
+// Set a default email address so repo doesn't explode on 'u@h.(none)'
+func setDefaultEmail(environ []string) []string {
+	username := "nobody"
+	if u, err := user.Current(); err == nil {
+		username = u.Username
+	}
+	domain := system.FullHostname()
+	email := fmt.Sprintf("%s@%s", username, domain)
+	return setDefault(environ, "EMAIL", email)
 }
 
 func repo(name, args string) error {
@@ -79,17 +92,32 @@ func repo(name, args string) error {
 	sh := exec.Command("sudo", sudoPrompt, "-E",
 		"unshare", "--mount",
 		"sh", "-e", "-c", sc.String())
-	sh.Env = os.Environ()
+	sh.Env = setDefaultEmail(os.Environ())
 	sh.Stdin = os.Stdin
 	sh.Stdout = os.Stdout
 	sh.Stderr = os.Stderr
 
-	// Set a default email address so repo doesn't explode on 'u@(none)'
-	domain := system.FullHostname()
-	email := fmt.Sprintf("%s@%s", u.Username, domain)
-	sh.Env = setDefault(sh.Env, "EMAIL", email)
-
 	return sh.Run()
+}
+
+func Enter(name string, args ...string) error {
+	chroot := filepath.Join(RepoRoot(), name)
+
+	// TODO(marineam): the original cros_sdk uses a white list to
+	// selectively pass through environment variables instead of the
+	// catch-all -E which is probably a better way to do it.
+	enterCmd := exec.Command(
+		"sudo", sudoPrompt, "-E",
+		"unshare", "--mount", "--",
+		filepath.Join(RepoRoot(), enterChroot),
+		"--chroot", chroot, "--cache_dir", RepoCache(), "--")
+	enterCmd.Args = append(enterCmd.Args, args...)
+	enterCmd.Env = setDefaultEmail(os.Environ())
+	enterCmd.Stdin = os.Stdin
+	enterCmd.Stdout = os.Stdout
+	enterCmd.Stderr = os.Stderr
+
+	return enterCmd.Run()
 }
 
 func RepoInit(name, manifest string) error {
