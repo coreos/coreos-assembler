@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sdk
+package system
 
 import (
 	"runtime"
 )
 
-func LocalArch() string {
+func PortageArch() string {
 	arch := runtime.GOARCH
 	switch arch {
 	case "386":

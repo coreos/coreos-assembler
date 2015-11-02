@@ -19,9 +19,14 @@ import (
 	"github.com/coreos/mantle/sdk"
 )
 
+const (
+	coreosManifestURL = "https://github.com/coreos/manifest.git"
+)
+
 var (
 	chrootVersion string
 	chrootName    string
+	manifestURL   string
 	allowReplace  bool
 	createCmd     = &cobra.Command{
 		Use:   "create",
@@ -40,6 +45,8 @@ func init() {
 		"sdk-version", "", "SDK version")
 	createCmd.Flags().StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
+	createCmd.Flags().StringVar(&manifestURL,
+		"manifest-url", coreosManifestURL, "Manifest git repo location")
 	createCmd.Flags().BoolVar(&allowReplace,
 		"replace", false, "Replace an existing SDK chroot")
 	deleteCmd.Flags().StringVar(&chrootName,
@@ -74,6 +81,10 @@ func runCreate(cmd *cobra.Command, args []string) {
 
 	if err := sdk.Setup(chrootName); err != nil {
 		plog.Fatalf("Create failed: %v", err)
+	}
+
+	if err := sdk.RepoInit(chrootName, manifestURL); err != nil {
+		plog.Fatalf("repo init and sync failed: %v", err)
 	}
 }
 
