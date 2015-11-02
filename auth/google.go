@@ -138,3 +138,29 @@ func GoogleServiceClient() *http.Client {
 func GoogleServiceTokenSource() oauth2.TokenSource {
 	return google.ComputeTokenSource("")
 }
+
+// Requires a Google Developers service account JSON key file
+func GoogleClientFromJSONKey(jsonKey []byte, scope ...string) (*http.Client, error) {
+	if scope == nil {
+		scope = conf.Scopes
+	}
+	jwtConf, err := google.JWTConfigFromJSON(jsonKey, scope...)
+	if err != nil {
+		return nil, err
+	}
+
+	return jwtConf.Client(oauth2.NoContext), nil
+
+}
+func GoogleTokenSourceFromJSONKey(jsonKey []byte, scope ...string) (oauth2.TokenSource, error) {
+	if scope == nil {
+		scope = conf.Scopes
+	}
+
+	jwtConf, err := google.JWTConfigFromJSON(jsonKey, scope...)
+	if err != nil {
+		return nil, err
+	}
+
+	return jwtConf.TokenSource(oauth2.NoContext), nil
+}
