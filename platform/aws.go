@@ -31,7 +31,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/mantle/system/exec"
 )
 
 type awsMachine struct {
@@ -141,8 +141,8 @@ func (ac *awsCluster) delMach(m *awsMachine) {
 	delete(ac.machs, *m.mach.InstanceId)
 }
 
-func (ac *awsCluster) NewCommand(name string, arg ...string) util.Cmd {
-	return util.NewCommand(name, arg...)
+func (ac *awsCluster) NewCommand(name string, arg ...string) exec.Cmd {
+	return exec.Command(name, arg...)
 }
 
 func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {

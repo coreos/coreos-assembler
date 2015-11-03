@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
 	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/network/ntp"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/mantle/system/exec"
 )
 
 type LocalCluster struct {
@@ -85,7 +85,7 @@ func NewLocalCluster() (*LocalCluster, error) {
 	return lc, nil
 }
 
-func (lc *LocalCluster) NewCommand(name string, arg ...string) util.Cmd {
+func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
 	cmd := NewNsCommand(lc.nshandle, name, arg...)
 	sshEnv := fmt.Sprintf("SSH_AUTH_SOCK=%s", lc.SSHAgent.Socket)
 	cmd.Env = append(cmd.Env, sshEnv)

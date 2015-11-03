@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package exec
 
 import (
 	"syscall"
@@ -20,7 +20,7 @@ import (
 )
 
 func TestExecCmdKill(t *testing.T) {
-	cmd := NewCommand("sleep", "3600")
+	cmd := Command("sleep", "3600")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}

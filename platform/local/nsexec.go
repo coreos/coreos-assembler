@@ -15,20 +15,19 @@
 package local
 
 import (
-	"os/exec"
-
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
-	"github.com/coreos/mantle/util"
+
+	"github.com/coreos/mantle/system/exec"
 )
 
 type NsCmd struct {
-	util.ExecCmd
+	*exec.ExecCmd
 	NsHandle netns.NsHandle
 }
 
 func NewNsCommand(ns netns.NsHandle, name string, arg ...string) *NsCmd {
 	return &NsCmd{
-		ExecCmd:  util.ExecCmd{exec.Command(name, arg...)},
+		ExecCmd:  exec.Command(name, arg...),
 		NsHandle: ns,
 	}
 }

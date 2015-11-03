@@ -17,11 +17,11 @@ package local
 import (
 	"fmt"
 	"net"
-	"os/exec"
 	"text/template"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
+	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 )
 
@@ -41,7 +41,7 @@ type Segment struct {
 
 type Dnsmasq struct {
 	Segments []*Segment
-	dnsmasq  *exec.Cmd
+	dnsmasq  *exec.ExecCmd
 }
 
 var configTemplate = template.Must(template.New("dnsmasq").Parse(`
@@ -201,7 +201,5 @@ func (dm *Dnsmasq) GetInterface(bridge string) (in *Interface) {
 }
 
 func (dm *Dnsmasq) Destroy() error {
-	dm.dnsmasq.Process.Kill()
-	dm.dnsmasq.Wait()
-	return nil
+	return dm.dnsmasq.Kill()
 }
