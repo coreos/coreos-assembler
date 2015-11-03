@@ -19,11 +19,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"text/template"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/user"
 	"github.com/coreos/mantle/util"
 )
@@ -31,7 +31,7 @@ import (
 // Must run inside the SDK chroot, easiest to just assemble a script to do it
 const (
 	safePath   = "PATH=/usr/sbin:/usr/bin:/sbin:/bin"
-	sudoPrompt = "--prompt=Sudo password for %p: "
+	sudoPrompt = "--prompt=sudo password for %p: "
 	script     = `#!/bin/bash
 set -e
 
@@ -49,7 +49,7 @@ echo Adding user {{printf "%q" .Username}}
 useradd -o -g {{.Gid}} -u {{.Uid}} -s /bin/bash -m \
 	-c {{printf "%q" .Name}} {{printf "%q" .Username}}
 
-for g in kvm portage; do
+for g in kvm portage sudo; do
 	# copy system group from /usr to /etc if needed
 	if getent -s usrfiles group "$g" >/dev/null && \
 	   ! getent -s files group "$g" >/dev/null; then
@@ -59,7 +59,7 @@ for g in kvm portage; do
 done
 
 echo Setting up sudoers
-cat >/etc/sudoers.d/90_cros <<EOF
+cat >/etc/sudoers.d/90_env_keep <<EOF
 Defaults env_keep += "\
 EMAIL GIT_AUTHOR_EMAIL GIT_AUTHOR_NAME \
 GIT_COMMITTER_EMAIL GIT_COMMITTER_NAME \
@@ -67,10 +67,63 @@ GIT_PROXY_COMMAND GIT_SSH RSYNC_PROXY \
 GPG_AGENT_INFO SSH_AGENT_PID SSH_AUTH_SOCK \
 USE FEATURES PORTAGE_USERNAME \
 all_proxy ftp_proxy http_proxy https_proxy no_proxy"
-
-{{.Username}} ALL=NOPASSWD: ALL
 EOF
-chmod 0440 /etc/sudoers.d/90_cros
+chmod 0440 /etc/sudoers.d/90_env_keep
+
+echo Setting default enviornment variables
+cat >/etc/env.d/90portage_username <<EOF
+PORTAGE_USERNAME={{printf "%q" .Username}}
+EOF
+# needlessly noisy since portage isn't set up yet
+env-update &>/dev/null
+
+echo Setting up home directory
+HOME=/home/{{printf "%q" .Username}}
+
+# Create ~/trunk symlink
+ln -sfT /mnt/host/source "$HOME"/trunk
+
+rm -f "$HOME"/.bash{_logout,_profile,rc}
+cat >"$HOME"/.bash_logout <<EOF
+# .bash_logout
+
+# This file is sourced when a login shell terminates.
+EOF
+
+cat >"$HOME"/.bash_profile <<EOF
+# .bash_profile
+
+# This file is sourced by bash for login shells.  The following line
+# runs your .bashrc and is recommended by the bash info pages.
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
+# Automatically change to scripts directory.
+cd ${CHROOT_CWD:-~/trunk/src/scripts}
+EOF
+
+cat >"$HOME"/.bashrc <<EOF
+# .bashrc
+
+# This file is sourced by all *interactive* bash shells on startup,
+# including some apparently interactive shells such as scp and rcp
+# that can't tolerate any output.  So make sure this doesn't display
+# anything or bad things will happen !
+
+# Test for an interactive shell.  There is no need to set anything
+# past this point for scp and rcp, and it's important to refrain from
+# outputting anything in those cases.
+if [[ $- != *i* ]] ; then
+	# Shell is non-interactive.  Be done now!
+	return
+fi
+
+# Enable bash completion for build scripts.
+source ~/trunk/src/scripts/bash_completion
+
+# Put your fun stuff here.
+EOF
+
+chown -R {{.Uid}}:{{.Gid}} "$HOME"
 `
 )
 
