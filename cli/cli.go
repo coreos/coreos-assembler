@@ -19,6 +19,8 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+
+	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/version"
 )
 
@@ -42,6 +44,10 @@ var (
 // Execute sets up common features that all mantle commands should share
 // and then executes the command. It does not return.
 func Execute(main *cobra.Command) {
+	// If we were invoked via a multicall entrypoint run it instead.
+	// TODO(marineam): should we figure out a way to initialize logging?
+	exec.MaybeExec()
+
 	main.AddCommand(versionCmd)
 
 	// TODO(marineam): pflags defines the Value interface differently,
