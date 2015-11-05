@@ -292,7 +292,15 @@ func GCECreateImage(api *compute.Service, proj, name, source string) error {
 
 // Delete image on GCE and then recreate it.
 func GCEForceCreateImage(api *compute.Service, proj, name, source string) error {
-	_, err := api.Images.Delete(proj, name).Do()
+	// op xor err = nil
+	op, err := api.Images.Delete(proj, name).Do()
+
+	if op != nil {
+		err = gceWaitOp(api, proj, op.Name)
+		if err != nil {
+			return err
+		}
+	}
 
 	// don't return error when delete fails because image doesn't exist
 	if err != nil && !strings.HasSuffix(err.Error(), "notFound") {
