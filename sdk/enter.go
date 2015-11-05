@@ -15,38 +15,76 @@
 package sdk
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"text/template"
+	"syscall"
 
 	"github.com/coreos/mantle/system"
+	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/user"
 )
 
-const (
-	// This command is the absolute bare minimum to enter the SDK
-	// and run repo. It *must* be run in a new mount namespace.
-	repoScript = "mkdir -p {{.Chroot}}/mnt/host/source && " +
-		"mount --make-rslave / && " +
-		"mount --bind {{.RepoRoot}} {{.Chroot}}/mnt/host/source && " +
-		"exec chroot {{.Chroot}} " +
-		"/usr/bin/sudo -u {{.Username}} sh -c " +
-		"'cd /mnt/host/source && repo {{.RepoArgs}}'"
-)
+const enterChroot = "src/scripts/sdk_lib/enter_chroot.sh"
 
-var repoTemplate = template.Must(template.New("script").Parse(repoScript))
+var simpleChroot exec.Entrypoint
 
-type repoParams struct {
-	*user.User
-	Chroot   string
-	RepoRoot string
-	RepoArgs string
+func init() {
+	simpleChroot = exec.NewEntrypoint("simpleChroot", simpleChrootHelper)
 }
 
+// bind mount the repo source tree into the chroot and run a command
+func simpleChrootHelper(args []string) error {
+	if len(args) < 3 {
+		return fmt.Errorf("got %d args, need at least 3", len(args))
+	}
+	hostRepoRoot := args[0]
+	chroot := args[1]
+	chrootCmd := args[2:]
+	username := os.Getenv("SUDO_USER")
+	if username == "" {
+		return fmt.Errorf("SUDO_USER environment variable is not set.")
+	}
+
+	newRepoRoot := filepath.Join(chroot, chrootRepoRoot)
+	if err := os.MkdirAll(newRepoRoot, 0755); err != nil {
+		return err
+	}
+
+	// namespaces are per-thread attributes
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	if err := syscall.Unshare(syscall.CLONE_NEWNS); err != nil {
+		return fmt.Errorf("Unsharing mount namespace failed: %v", err)
+	}
+
+	if err := syscall.Mount(
+		"none", "/", "none", syscall.MS_REC|syscall.MS_SLAVE, ""); err != nil {
+		return fmt.Errorf("Unsharing mount points failed: %v", err)
+	}
+
+	if err := syscall.Mount(
+		hostRepoRoot, newRepoRoot, "none", syscall.MS_BIND, ""); err != nil {
+		return fmt.Errorf("Mounting %q failed: %v", newRepoRoot, err)
+	}
+
+	if err := syscall.Chroot(chroot); err != nil {
+		return fmt.Errorf("Chrooting to %q failed: %v", chroot, err)
+	}
+
+	if err := os.Chdir(chrootRepoRoot); err != nil {
+		return err
+	}
+
+	sudo := "/usr/bin/sudo"
+	sudoArgs := append([]string{sudo, "-u", username, "--"}, chrootCmd...)
+	return syscall.Exec(sudo, sudoArgs, os.Environ())
+}
+
+// Set an environment variable if it isn't already defined.
 func setDefault(environ []string, key, value string) []string {
 	prefix := key + "="
 	for _, env := range environ {
@@ -57,45 +95,55 @@ func setDefault(environ []string, key, value string) []string {
 	return append(environ, prefix+value)
 }
 
-func repo(name, args string) error {
-	chroot := filepath.Join(RepoRoot(), name)
-	u, err := user.Current()
-	if err != nil {
-		return err
+// Set a default email address so repo doesn't explode on 'u@h.(none)'
+func setDefaultEmail(environ []string) []string {
+	username := "nobody"
+	if u, err := user.Current(); err == nil {
+		username = u.Username
 	}
-
-	params := repoParams{
-		User:     u,
-		Chroot:   chroot,
-		RepoRoot: RepoRoot(),
-		RepoArgs: args,
-	}
-
-	var sc bytes.Buffer
-	if err := repoTemplate.Execute(&sc, &params); err != nil {
-		return err
-	}
-
-	sh := exec.Command("sudo", sudoPrompt, "-E",
-		"unshare", "--mount",
-		"sh", "-e", "-c", sc.String())
-	sh.Env = os.Environ()
-	sh.Stdin = os.Stdin
-	sh.Stdout = os.Stdout
-	sh.Stderr = os.Stderr
-
-	// Set a default email address so repo doesn't explode on 'u@(none)'
 	domain := system.FullHostname()
-	email := fmt.Sprintf("%s@%s", u.Username, domain)
-	sh.Env = setDefault(sh.Env, "EMAIL", email)
+	email := fmt.Sprintf("%s@%s", username, domain)
+	return setDefault(environ, "EMAIL", email)
+}
 
-	return sh.Run()
+func SimpleEnter(name string, args ...string) error {
+	reroot := RepoRoot()
+	chroot := filepath.Join(reroot, name)
+	args = append([]string{reroot, chroot}, args...)
+
+	sudo := simpleChroot.Sudo(args...)
+	sudo.Env = setDefaultEmail(os.Environ())
+	sudo.Stdin = os.Stdin
+	sudo.Stdout = os.Stdout
+	sudo.Stderr = os.Stderr
+
+	return sudo.Run()
+}
+
+func Enter(name string, args ...string) error {
+	chroot := filepath.Join(RepoRoot(), name)
+
+	// TODO(marineam): the original cros_sdk uses a white list to
+	// selectively pass through environment variables instead of the
+	// catch-all -E which is probably a better way to do it.
+	enterCmd := exec.Command(
+		"sudo", sudoPrompt, "-E",
+		"unshare", "--mount", "--",
+		filepath.Join(RepoRoot(), enterChroot),
+		"--chroot", chroot, "--cache_dir", RepoCache(), "--")
+	enterCmd.Args = append(enterCmd.Args, args...)
+	enterCmd.Env = setDefaultEmail(os.Environ())
+	enterCmd.Stdin = os.Stdin
+	enterCmd.Stdout = os.Stdout
+	enterCmd.Stderr = os.Stderr
+
+	return enterCmd.Run()
 }
 
 func RepoInit(name, manifest string) error {
-	if err := repo(name, "init -u "+manifest); err != nil {
+	if err := SimpleEnter(name, "repo", "init", "-u", manifest); err != nil {
 		return err
 	}
 
-	return repo(name, "sync")
+	return SimpleEnter(name, "repo", "sync")
 }

@@ -12,12 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+// exec is extension of the standard os.exec package.
+// Adds a handy dandy interface and assorted other features.
+package exec
 
 import (
 	"io"
 	"os/exec"
 	"syscall"
+)
+
+var (
+	// for equivalence with os/exec
+	ErrNotFound = exec.ErrNotFound
+	LookPath    = exec.LookPath
 )
 
 // An exec.Cmd compatible interface.
@@ -41,7 +49,7 @@ type ExecCmd struct {
 	*exec.Cmd
 }
 
-func NewCommand(name string, arg ...string) *ExecCmd {
+func Command(name string, arg ...string) *ExecCmd {
 	return &ExecCmd{exec.Command(name, arg...)}
 }
 

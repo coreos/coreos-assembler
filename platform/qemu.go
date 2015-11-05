@@ -18,14 +18,14 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+
 	"github.com/coreos/mantle/platform/local"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/mantle/system/exec"
 )
 
 type QEMUOptions struct {
@@ -42,7 +42,7 @@ type qemuCluster struct {
 type qemuMachine struct {
 	qc          *qemuCluster
 	id          string
-	qemu        util.Cmd
+	qemu        exec.Cmd
 	configDrive *local.ConfigDrive
 	netif       *local.Interface
 }
