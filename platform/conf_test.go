@@ -44,7 +44,7 @@ func TestConfCopyKey(t *testing.T) {
 	for i, tt := range tests {
 		conf, err := NewConf(tt.conf)
 		if err != nil {
-			t.Errorf("failed to parse config %i: %v", i, err)
+			t.Errorf("failed to parse config %d: %v", i, err)
 			continue
 		}
 
@@ -53,7 +53,7 @@ func TestConfCopyKey(t *testing.T) {
 		str := conf.String()
 
 		if !strings.Contains(str, "ssh-rsa ") || !strings.Contains(str, " core@default") {
-			t.Errorf("ssh public key not found in config %i: ", i)
+			t.Errorf("ssh public key not found in config %d: %s", i, str)
 			continue
 		}
 	}

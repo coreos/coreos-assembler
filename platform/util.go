@@ -64,7 +64,7 @@ func Manhole(m Machine) error {
 	}
 
 	if err = session.RequestPty(os.Getenv("TERM"), lines, cols, modes); err != nil {
-		fmt.Errorf("failed to request pseudo terminal: %s", err)
+		return fmt.Errorf("failed to request pseudo terminal: %s", err)
 	}
 
 	if err := session.Shell(); err != nil {
