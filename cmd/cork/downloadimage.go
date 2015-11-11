@@ -16,10 +16,14 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/sdk"
 )
 
@@ -33,6 +37,7 @@ var (
 	downloadImageRoot         string
 	downloadImageCacheDir     string
 	downloadImagePrefix       string
+	downloadImageJSONKeyFile  string
 	downloadImageVerify       bool
 	downloadImagePlatformList platformList
 )
@@ -44,6 +49,8 @@ func init() {
 		"cache-dir", filepath.Join(sdk.RepoCache(), "images"), "local dir for image cache")
 	downloadImageCmd.Flags().StringVar(&downloadImagePrefix,
 		"image-prefix", "coreos_production", "image filename prefix")
+	downloadImageCmd.Flags().StringVar(&downloadImageJSONKeyFile,
+		"json-key", "", "Google service account key for use with private buckets")
 	downloadImageCmd.Flags().BoolVar(&downloadImageVerify,
 		"verify", true, "verify")
 	downloadImageCmd.Flags().Var(&downloadImagePlatformList,
@@ -101,9 +108,31 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 		plog.Notice("Warning: image verification turned off")
 	}
 
+	imageURL, err := url.Parse(downloadImageRoot)
+	if err != nil {
+		plog.Fatalf("Failed parsing image root as url: %v", err)
+	}
+
+	// support Google storage buckets URLs
+	var client *http.Client
+	if imageURL.Scheme == "gs" {
+		if downloadImageJSONKeyFile != "" {
+			b, err := ioutil.ReadFile(downloadImageJSONKeyFile)
+			if err != nil {
+				plog.Fatal(err)
+			}
+			client, err = auth.GoogleClientFromJSONKey(b, "https://www.googleapis.com/auth/devstorage.read_only")
+		} else {
+			client, err = auth.GoogleClient()
+		}
+		if err != nil {
+			plog.Fatal(err)
+		}
+	}
+
 	versionFile := filepath.Join(downloadImageCacheDir, "version.txt")
 	versionURL := strings.TrimRight(downloadImageRoot, "/") + "/" + "version.txt"
-	if err := sdk.UpdateFile(versionFile, versionURL); err != nil {
+	if err := sdk.UpdateFile(versionFile, versionURL, client); err != nil {
 		plog.Fatalf("downloading version.txt: %v", err)
 	}
 
@@ -116,13 +145,13 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 
 		if downloadImageVerify {
 			plog.Noticef("Verifying and updating to latest image %v", fileName)
-			err := sdk.UpdateSignedFile(filePath, url)
+			err := sdk.UpdateSignedFile(filePath, url, client)
 			if err != nil {
 				plog.Fatalf("updating signed file: %v", err)
 			}
 		} else {
 			plog.Noticef("Starting non-verified image update %v", fileName)
-			if err := sdk.UpdateFile(filePath, url); err != nil {
+			if err := sdk.UpdateFile(filePath, url, client); err != nil {
 				plog.Fatalf("downloading image: %v", err)
 			}
 		}
