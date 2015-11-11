@@ -59,7 +59,7 @@ func init() {
 		ClusterSize: 3,
 		Name:        "FlannelUDP",
 		Platforms:   []string{"aws", "gce"},
-		CloudConfig: udpConf.String(),
+		UserData:    udpConf.String(),
 	})
 
 	vxlanConf := new(bytes.Buffer)
@@ -72,6 +72,6 @@ func init() {
 		ClusterSize: 3,
 		Name:        "FlannelVXLAN",
 		Platforms:   []string{"aws", "gce"},
-		CloudConfig: vxlanConf.String(),
+		UserData:    vxlanConf.String(),
 	})
 }

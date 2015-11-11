@@ -22,7 +22,7 @@ func init() {
 		Run:         ignition.SetHostname,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
-		CloudConfig: `{
+		UserData: `{
         "ignitionVersion": 1,
         "storage": {
                 "filesystems": [

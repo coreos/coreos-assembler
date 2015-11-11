@@ -59,7 +59,7 @@ type Test struct {
 	Name        string // should be uppercase and unique
 	Run         func(platform.TestCluster) error
 	NativeFuncs map[string]func() error
-	CloudConfig string
+	UserData    string
 	ClusterSize int
 	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 }
@@ -218,7 +218,7 @@ func RunTest(t *Test, pltfrm string) error {
 		return fmt.Errorf("Failed to create discovery endpoint: %v", err)
 	}
 
-	cfgs := makeConfigs(url, t.CloudConfig, t.ClusterSize)
+	cfgs := makeConfigs(url, t.UserData, t.ClusterSize)
 
 	if t.ClusterSize > 0 {
 		_, err := platform.NewMachines(cluster, cfgs)

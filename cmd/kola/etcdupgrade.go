@@ -71,7 +71,7 @@ func runEtcdUpgrade(cmd *cobra.Command, args []string) {
 		Run:         etcd.RollingUpgrade,
 		ClusterSize: 3,
 		Name:        "EtcdUpgrade",
-		CloudConfig: `#cloud-config
+		UserData: `#cloud-config
 
 coreos:
   etcd2:
