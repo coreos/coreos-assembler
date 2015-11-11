@@ -155,7 +155,13 @@ const (
 
 	// Extra error values
 	AppInvalidVersion AppStatus = "error-invalidVersion"
+	AppInternalError  AppStatus = "error-internal"
 )
+
+// Make AppStatus easy to use as an error
+func (a AppStatus) Error() string {
+	return string(a)
+}
 
 type UpdateStatus string
 
@@ -168,3 +174,8 @@ const (
 	UpdateHashError            UpdateStatus = "error-hash"
 	UpdateInternalError        UpdateStatus = "error-internal"
 )
+
+// Make UpdateStatus easy to use as an error
+func (u UpdateStatus) Error() string {
+	return string(u)
+}
