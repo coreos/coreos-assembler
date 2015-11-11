@@ -22,6 +22,6 @@ func init() {
 	Register(&Test{
 		Run:         rkt.Install,
 		ClusterSize: 0,
-		Name:        "RktInstall",
+		Name:        "coreos/rkt/install",
 	})
 }

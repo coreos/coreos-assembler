@@ -23,7 +23,7 @@ func init() {
 	Register(&Test{
 		Run:         etcd.DiscoveryV1,
 		ClusterSize: 3,
-		Name:        "Etcd1Discovery",
+		Name:        "coreos/etcd0/discovery",
 		UserData: `#cloud-config
 coreos:
   etcd:
@@ -37,7 +37,7 @@ coreos:
 	Register(&Test{
 		Run:         etcd.DiscoveryV2,
 		ClusterSize: 3,
-		Name:        "Etcd2Discovery",
+		Name:        "coreos/etcd2/discovery",
 		UserData: `#cloud-config
 
 coreos:
