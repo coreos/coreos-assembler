@@ -18,7 +18,7 @@ import "github.com/coreos/mantle/kola/tests/kubernetes"
 
 func init() {
 	Register(&Test{
-		Name:        "google/kubernetes/multinodesmoke",
+		Name:        "google.kubernetes.multinodesmoke",
 		Run:         kubernetes.MultiNodeSmoke,
 		ClusterSize: 0,
 		Platforms:   []string{"gce", "aws"},
