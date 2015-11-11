@@ -1,5 +1,7 @@
+// +build linux,arm
+
 package netns
 
 const (
-	SYS_SETNS = 374
+	SYS_SETNS = 375
 )
