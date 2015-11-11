@@ -28,12 +28,14 @@ func NsEnter(ns netns.NsHandle) (func() error, error) {
 
 	origns, err := netns.Get()
 	if err != nil {
+		runtime.UnlockOSThread()
 		return nil, err
 	}
 
 	err = netns.Set(ns)
 	if err != nil {
 		origns.Close()
+		runtime.UnlockOSThread()
 		return nil, err
 	}
 
