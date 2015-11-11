@@ -17,8 +17,17 @@ package rkt
 import (
 	"fmt"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 )
+
+func init() {
+	register.Register(&register.Test{
+		Run:         Install,
+		ClusterSize: 0,
+		Name:        "coreos.rkt.install",
+	})
+}
 
 // Test to make sure rkt install works.
 func Install(c platform.TestCluster) error {

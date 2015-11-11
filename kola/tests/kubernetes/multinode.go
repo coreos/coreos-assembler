@@ -20,12 +20,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kubernetes")
+
+func init() {
+	register.Register(&register.Test{
+		Name:        "google.kubernetes.multinodesmoke",
+		Run:         MultiNodeSmoke,
+		ClusterSize: 0,
+		Platforms:   []string{"gce", "aws"},
+	})
+}
 
 // Start a multi-node cluster from offcial kubernetes 1.0 guides. Once
 // up, do a couple basic smoke checks. See:

@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/kola/register"
 )
 
 var (
@@ -50,7 +50,7 @@ func Run(cmd *cobra.Command, args []string) {
 	testname, funcname := args[0], args[1]
 
 	// find test with matching name
-	test, ok := kola.Tests[testname]
+	test, ok := register.Tests[testname]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "kolet: test group not found\n")
 		os.Exit(1)

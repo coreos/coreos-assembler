@@ -12,16 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kola
+package register
 
-import "github.com/coreos/mantle/kola/tests/rkt"
+import "github.com/coreos/mantle/platform"
 
-//register new tests here
-// "$name" and "$discovery" are substituted in the cloud config during cluster creation
-func init() {
-	Register(&Test{
-		Run:         rkt.Install,
-		ClusterSize: 0,
-		Name:        "coreos.rkt.install",
-	})
+type Test struct {
+	Name        string // should be uppercase and unique
+	Run         func(platform.TestCluster) error
+	NativeFuncs map[string]func() error
+	UserData    string
+	ClusterSize int
+	Platforms   []string // whitelist of platforms to run test against -- defaults to all
+}
+
+// maps names to tests
+var Tests = map[string]*Test{}
+
+// panic if existing name is registered
+func Register(t *Test) {
+	_, ok := Tests[t.Name]
+	if ok {
+		panic("test already registered with same name")
+	}
+	Tests[t.Name] = t
 }

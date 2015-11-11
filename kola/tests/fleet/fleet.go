@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 
@@ -82,6 +83,14 @@ Description=simple fleet test
 ExecStart=/bin/sh -c "while sleep 1; do echo hello world; done"
 `
 )
+
+func init() {
+	register.Register(&register.Test{
+		Run:         Proxy,
+		ClusterSize: 0,
+		Name:        "coreos.fleet.etcdproxy",
+	})
+}
 
 // Test fleet running through an etcd2 proxy.
 func Proxy(c platform.TestCluster) error {

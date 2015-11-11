@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 
@@ -41,6 +42,14 @@ var (
 		Hostname: "gateway",
 	}
 )
+
+func init() {
+	register.Register(&register.Test{
+		Run:         JournalRemote,
+		ClusterSize: 0,
+		Name:        "systemd.journal.remote",
+	})
+}
 
 // JournalRemote tests that systemd-journal-remote can read log entries from
 // a systemd-journal-gatewayd server.

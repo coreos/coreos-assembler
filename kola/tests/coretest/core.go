@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 )
 
@@ -20,6 +22,66 @@ const (
 	UpdateEnginePubKeyV1 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
 	UpdateEnginePubKeyV2 = "a76a22e6afcdfbc55dd2953aa950c7ec93b254774fca02d13ec52c59672e5982"
 )
+
+func init() {
+	register.Register(&register.Test{
+		Name:        "coreos.basic",
+		Run:         LocalTests,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"CloudConfig":      TestCloudinitCloudConfig,
+			"Script":           TestCloudinitScript,
+			"PortSSH":          TestPortSsh,
+			"DbusPerms":        TestDbusPerms,
+			"Symlink":          TestSymlinkResolvConf,
+			"UpdateEngineKeys": TestInstalledUpdateEngineRsaKeys,
+			"ServicesActive":   TestServicesActive,
+			"ReadOnly":         TestReadOnlyFs,
+			"RandomUUID":       TestFsRandomUUID,
+			"Useradd":          TestUseradd,
+		},
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.cluster",
+		Run:         ClusterTests,
+		ClusterSize: 3,
+		NativeFuncs: map[string]func() error{
+			"EtcdUpdateValue":    TestEtcdUpdateValue,
+			"FleetctlRunService": TestFleetctlRunService,
+		},
+		UserData: `#cloud-config
+
+coreos:
+  etcd2:
+    name: $name
+    discovery: $discovery
+    advertise-client-urls: http://$private_ipv4:2379
+    initial-advertise-peer-urls: http://$private_ipv4:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
+  fleet:
+    etcd-request-timeout: 15 
+  units:
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start`,
+	})
+
+	// tests requiring network connection to internet
+	register.Register(&register.Test{
+		Name:        "coreos.internet",
+		Run:         InternetTests,
+		ClusterSize: 1,
+		Platforms:   []string{"gce", "aws"},
+		NativeFuncs: map[string]func() error{
+			"UpdateEngine": TestUpdateEngine,
+			"DockerPing":   TestDockerPing,
+			"DockerEcho":   TestDockerEcho,
+			"NTPDate":      TestNTPDate,
+		},
+	})
+}
 
 func TestPortSsh() error {
 	//t.Parallel()

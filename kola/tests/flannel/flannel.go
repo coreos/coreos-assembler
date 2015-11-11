@@ -12,13 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// flannel tests. tests assume flannel is using the 10.254.0.0/16 network.
+// these tests should really assert no units failed during boot (such as flanneld)
+// it is also unfortunate that we must retry, but starting
+// early-docker -> flanneld -> docker ->docker0 may not be ready by the time we ssh in.
 package flannel
 
 import (
+	"bytes"
 	"fmt"
 	"net"
+	"text/template"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 
@@ -26,13 +33,58 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/flannel")
+	plog        = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/flannel")
+	flannelConf = template.Must(template.New("flannel-userdata").Parse(`#cloud-config
+coreos:
+  etcd2:
+    name: $name
+    discovery: $discovery
+    advertise-client-urls: http://$private_ipv4:2379
+    initial-advertise-peer-urls: http://$private_ipv4:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
+  units:
+    - name: etcd2.service
+      command: start
+    - name: flanneld.service
+      drop-ins:
+        - name: 50-network-config.conf
+          content: |
+            [Service]
+            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network":"10.254.0.0/16", "Backend":{"Type": "{{.}}"} }'
+      command: start
+    - name: docker.service
+      command: start
+`))
 )
 
-// flannel tests. tests assume flannel is using the 10.254.0.0/16 network.
-// these tests should really assert no units failed during boot (such as flanneld)
-// it is also unfortunate that we must retry, but starting
-// early-docker -> flanneld -> docker ->docker0 may not be ready by the time we ssh in.
+func init() {
+	udpConf := new(bytes.Buffer)
+	if err := flannelConf.Execute(udpConf, "udp"); err != nil {
+		panic(err)
+	}
+
+	register.Register(&register.Test{
+		Run:         udp,
+		ClusterSize: 3,
+		Name:        "coreos.flannel.udp",
+		Platforms:   []string{"aws", "gce"},
+		UserData:    udpConf.String(),
+	})
+
+	vxlanConf := new(bytes.Buffer)
+	if err := flannelConf.Execute(vxlanConf, "vxlan"); err != nil {
+		panic(err)
+	}
+
+	register.Register(&register.Test{
+		Run:         vxlan,
+		ClusterSize: 3,
+		Name:        "coreos.flannel.vxlan",
+		Platforms:   []string{"aws", "gce"},
+		UserData:    vxlanConf.String(),
+	})
+}
 
 // get docker bridge ip from a machine
 func mach2bip(m platform.Machine, ifname string) (string, error) {
@@ -80,13 +132,13 @@ func ping(a, b platform.Machine, ifname string) error {
 }
 
 // UDP tests that flannel can send packets using the udp backend.
-func UDP(c platform.TestCluster) error {
+func udp(c platform.TestCluster) error {
 	machs := c.Machines()
 	return util.Retry(12, 10*time.Second, func() error { return ping(machs[0], machs[2], "flannel0") })
 }
 
 // VXLAN tests that flannel can send packets using the vxlan backend.
-func VXLAN(c platform.TestCluster) error {
+func vxlan(c platform.TestCluster) error {
 	machs := c.Machines()
 	return util.Retry(12, 10*time.Second, func() error { return ping(machs[0], machs[2], "flannel.1") })
 }

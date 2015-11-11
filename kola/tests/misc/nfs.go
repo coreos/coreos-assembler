@@ -19,6 +19,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 
@@ -69,6 +70,21 @@ Type=nfs
 Options=defaults,noexec,nfsvers=%d
 `
 )
+
+func init() {
+	register.Register(&register.Test{
+		Run:         NFSv3,
+		ClusterSize: 0,
+		Name:        "linux.nfs.v3",
+		Platforms:   []string{"qemu", "aws"},
+	})
+	register.Register(&register.Test{
+		Run:         NFSv4,
+		ClusterSize: 0,
+		Name:        "linux.nfs.v4",
+		Platforms:   []string{"qemu", "aws"},
+	})
+}
 
 func testNFS(c platform.TestCluster, nfsversion int) error {
 	m1, err := c.NewMachine(nfsserverconf.String())
