@@ -42,7 +42,7 @@ func init() {
 			"EtcdUpdateValue":    coretest.TestEtcdUpdateValue,
 			"FleetctlRunService": coretest.TestFleetctlRunService,
 		},
-		CloudConfig: `#cloud-config
+		UserData: `#cloud-config
 
 coreos:
   etcd2:

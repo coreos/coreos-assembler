@@ -24,7 +24,7 @@ func init() {
 		Run:         etcd.DiscoveryV1,
 		ClusterSize: 3,
 		Name:        "Etcd1Discovery",
-		CloudConfig: `#cloud-config
+		UserData: `#cloud-config
 coreos:
   etcd:
     name: $name
@@ -38,7 +38,7 @@ coreos:
 		Run:         etcd.DiscoveryV2,
 		ClusterSize: 3,
 		Name:        "Etcd2Discovery",
-		CloudConfig: `#cloud-config
+		UserData: `#cloud-config
 
 coreos:
   etcd2:
