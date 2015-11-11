@@ -108,8 +108,7 @@ func (s *Server) UpdateHandler(rw http.ResponseWriter, r *http.Request) {
 
 	resp := NewResponse()
 	app := resp.AddApp("e96281a6-d1af-4bde-9a0a-97b76e56dc57", "ok")
-	update := app.AddUpdateCheck()
-	update.Status = "noupdate"
+	app.AddUpdateCheck(NoUpdate)
 
 	enc := xml.NewEncoder(rw)
 	enc.Indent("", "\t")
