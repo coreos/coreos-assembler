@@ -22,19 +22,19 @@ func init() {
 	Register(&Test{
 		Run:         misc.NFSv3,
 		ClusterSize: 0,
-		Name:        "linux/nfs/v3",
+		Name:        "linux.nfs.v3",
 		Platforms:   []string{"qemu", "aws"},
 	})
 	Register(&Test{
 		Run:         misc.NFSv4,
 		ClusterSize: 0,
-		Name:        "linux/nfs/v4",
+		Name:        "linux.nfs.v4",
 		Platforms:   []string{"qemu", "aws"},
 	})
 	Register(&Test{
 		Run:         misc.NTP,
 		ClusterSize: 0,
-		Name:        "linux/ntp",
+		Name:        "linux.ntp",
 		Platforms:   []string{"qemu"},
 	})
 }

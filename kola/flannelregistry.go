@@ -57,7 +57,7 @@ func init() {
 	Register(&Test{
 		Run:         flannel.UDP,
 		ClusterSize: 3,
-		Name:        "coreos/flannel/udp",
+		Name:        "coreos.flannel.udp",
 		Platforms:   []string{"aws", "gce"},
 		UserData:    udpConf.String(),
 	})
@@ -70,7 +70,7 @@ func init() {
 	Register(&Test{
 		Run:         flannel.VXLAN,
 		ClusterSize: 3,
-		Name:        "coreos/flannel/vxlan",
+		Name:        "coreos.flannel.vxlan",
 		Platforms:   []string{"aws", "gce"},
 		UserData:    vxlanConf.String(),
 	})
