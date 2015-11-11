@@ -93,6 +93,19 @@ func (platforms *platformList) Set(value string) error {
 	return nil
 }
 
+func convertSpecialPaths(root string) string {
+	specialPaths := map[string]string{
+		"stable": "gs://stable.release.core-os.net/amd64-usr/current/",
+		"beta":   "gs://beta.release.core-os.net/amd64-usr/current/",
+		"alpha":  "gs://alpha.release.core-os.net/amd64-usr/current/",
+	}
+	path, ok := specialPaths[root]
+	if ok {
+		return path
+	}
+	return root
+}
+
 func runDownloadImage(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		plog.Fatalf("Unrecognized arguments: %v", args)
@@ -107,6 +120,9 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 	if downloadImageVerify == false {
 		plog.Notice("Warning: image verification turned off")
 	}
+
+	// check for shorthand names of image roots
+	downloadImageRoot = convertSpecialPaths(downloadImageRoot)
 
 	imageURL, err := url.Parse(downloadImageRoot)
 	if err != nil {
