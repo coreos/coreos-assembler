@@ -93,7 +93,4 @@ coreos:
         --healthz-bind-address=0.0.0.0 \
         --healthz-port=10248
         Restart=always
-        RestartSec=10
-  update:
-    group: alpha
-    reboot-strategy: off`
+        RestartSec=10`
