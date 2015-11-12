@@ -132,7 +132,4 @@ coreos:
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-scheduler
         ExecStart=/opt/bin/kube-scheduler --master=127.0.0.1:8080
         Restart=always
-        RestartSec=10
-  update:
-    group: alpha
-    reboot-strategy: off`
+        RestartSec=10`
