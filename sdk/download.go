@@ -24,9 +24,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	storage "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
@@ -50,15 +52,36 @@ func TarballURL(version string) string {
 	return u.String()
 }
 
-func DownloadFile(file, url string) error {
-	plog.Infof("Downloading %s to %s", url, file)
+func DownloadFile(file, fileURL string, client *http.Client) error {
+	plog.Infof("Downloading %s to %s", fileURL, file)
+
+	// handle bucket urls by using api to get media link
+	parseURL, err := url.Parse(fileURL)
+	if err != nil {
+		return err
+	}
+	if parseURL.Scheme == "gs" {
+		if client == nil {
+			client = http.DefaultClient
+		}
+		api, err := storage.New(client)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		path := strings.TrimLeft(parseURL.Path, "/")
+		obj, err := api.Objects.Get(parseURL.Host, path).Do()
+		if err != nil {
+			plog.Fatal(err)
+		}
+		fileURL = obj.MediaLink
+	}
 
 	if err := os.MkdirAll(filepath.Dir(file), 0777); err != nil {
 		return err
 	}
 
 	download := func() error {
-		return downloadFile(file, url)
+		return downloadFile(file, fileURL, client)
 	}
 	if err := util.Retry(5, 1*time.Second, download); err != nil {
 		return err
@@ -66,7 +89,11 @@ func DownloadFile(file, url string) error {
 	return nil
 }
 
-func downloadFile(file, url string) error {
+func downloadFile(file, url string, client *http.Client) error {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
 	dst, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
@@ -87,7 +114,7 @@ func downloadFile(file, url string) error {
 		req.Header.Add("Range", fmt.Sprintf("bytes=%d-", pos))
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -138,7 +165,7 @@ func downloadFile(file, url string) error {
 	}
 }
 
-func DownloadSignedFile(file, url string) error {
+func DownloadSignedFile(file, url string, client *http.Client) error {
 	if _, err := os.Stat(file + ".sig"); err == nil {
 		if e := VerifyFile(file); e == nil {
 			plog.Infof("Verified existing file: %s", file)
@@ -146,11 +173,11 @@ func DownloadSignedFile(file, url string) error {
 		}
 	}
 
-	if err := DownloadFile(file, url); err != nil {
+	if err := DownloadFile(file, url, client); err != nil {
 		return err
 	}
 
-	if err := DownloadFile(file+".sig", url+".sig"); err != nil {
+	if err := DownloadFile(file+".sig", url+".sig", client); err != nil {
 		return err
 	}
 
@@ -165,7 +192,7 @@ func DownloadSignedFile(file, url string) error {
 func DownloadSDK(version string) error {
 	tarFile := filepath.Join(RepoCache(), "sdk", TarballName(version))
 	tarURL := TarballURL(version)
-	return DownloadSignedFile(tarFile, tarURL)
+	return DownloadSignedFile(tarFile, tarURL, nil)
 }
 
 // false if both files do not exist
@@ -228,7 +255,8 @@ func cmpFileBytes(file1, file2 string) (bool, error) {
 
 // UpdateFile downloads a file to temp dir and replaces the file only if
 // contents have changed. If tempDir is "" default will be os.TempDir().
-func UpdateFile(file, url string) error {
+// Leave client nil to use default.
+func UpdateFile(file, url string, client *http.Client) error {
 	if err := os.MkdirAll(filepath.Dir(file), 0777); err != nil {
 		return err
 	}
@@ -241,7 +269,7 @@ func UpdateFile(file, url string) error {
 	tempFile := t.Name()
 	defer os.Remove(tempFile)
 
-	if err := DownloadFile(tempFile, url); err != nil {
+	if err := DownloadFile(tempFile, url, client); err != nil {
 		return err
 	}
 
@@ -262,13 +290,14 @@ func UpdateFile(file, url string) error {
 }
 
 // UpdateSignedFile will download and replace the local file if the
-// published signature doesn't match the local copy
-func UpdateSignedFile(file, url string) error {
+// published signature doesn't match the local copy. Leave client nil to
+// use default.
+func UpdateSignedFile(file, url string, client *http.Client) error {
 	sigFile := file + ".sig"
 	sigURL := url + ".sig"
 
 	// update local sig to latest
-	if err := UpdateFile(sigFile, sigURL); err != nil {
+	if err := UpdateFile(sigFile, sigURL, client); err != nil {
 		return err
 	}
 
@@ -279,7 +308,7 @@ func UpdateSignedFile(file, url string) error {
 	}
 
 	// download image and try to verify again
-	if err := UpdateFile(file, url); err != nil {
+	if err := UpdateFile(file, url, client); err != nil {
 		return err
 	}
 	if err := VerifyFile(file); err != nil {
