@@ -4,6 +4,8 @@ PROJ="mantle"
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/${PROJ}"
 
+cd $(dirname $0)
+
 if [ ! -h gopath/src/${REPO_PATH} ]; then
 	mkdir -p gopath/src/${ORG_PATH}
 	ln -s ../../../.. gopath/src/${REPO_PATH} || exit 255
@@ -15,10 +17,10 @@ export GOPATH=${PWD}/gopath
 eval $(go env)
 
 if [[ $# -eq 0 ]]; then
-    set -- "$(dirname "$0")"/cmd/*
+	set -- cmd/*
 fi
 for cmd in "$@"; do
-    cmd=$(basename "${cmd}")
-    echo "Building ${cmd}..."
-    go build -o "bin/${cmd}" "${REPO_PATH}/cmd/${cmd}"
+	cmd=$(basename "${cmd}")
+	echo "Building ${cmd}..."
+	go build -o "bin/${cmd}" "${REPO_PATH}/cmd/${cmd}"
 done
