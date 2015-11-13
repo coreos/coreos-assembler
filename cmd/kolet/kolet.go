@@ -52,13 +52,13 @@ func Run(cmd *cobra.Command, args []string) {
 	// find test with matching name
 	test, ok := register.Tests[testname]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "kolet: test group not found\n")
+		fmt.Fprintf(os.Stderr, "kolet: test group %q not found\n", testname)
 		os.Exit(1)
 	}
 	// find native function in test
 	f, ok := test.NativeFuncs[funcname]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "kolet: native function not found\n")
+		fmt.Fprintf(os.Stderr, "kolet: native function %q not found\n", funcname)
 		os.Exit(1)
 	}
 	err := f()
