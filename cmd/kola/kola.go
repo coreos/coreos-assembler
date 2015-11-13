@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"text/tabwriter"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
@@ -75,15 +76,37 @@ func runRun(cmd *cobra.Command, args []string) {
 }
 
 func runList(cmd *cobra.Command, args []string) {
-	var testnames []string
+	var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
+	var list List
 
-	for tname, _ := range register.Tests {
-		testnames = append(testnames, tname)
+	for name, test := range register.Tests {
+		list = append(list, Item{name, test.Platforms})
 	}
 
-	sort.Strings(testnames)
+	sort.Sort(list)
 
-	for _, tname := range testnames {
-		fmt.Println(tname)
+	fmt.Fprintln(w, "Test Name\tPlatforms Available")
+	fmt.Fprintln(w, "\t")
+	for _, item := range list {
+		fmt.Fprintf(w, "%v\n", item)
 	}
+	w.Flush()
 }
+
+type Item struct {
+	Name      string
+	Platforms []string
+}
+
+func (i Item) String() string {
+	if len(i.Platforms) == 0 {
+		i.Platforms = []string{"all"}
+	}
+	return fmt.Sprintf("%v\t%v", i.Name, i.Platforms)
+}
+
+type List []Item
+
+func (s List) Len() int           { return len(s) }
+func (s List) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s List) Less(i, j int) bool { return s[i].Name < s[j].Name }
