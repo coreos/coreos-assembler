@@ -19,9 +19,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
+
+func init() {
+	register.Register(&register.Test{
+		Run:         NTP,
+		ClusterSize: 0,
+		Name:        "linux.ntp",
+		Platforms:   []string{"qemu"},
+	})
+}
 
 // Test that timesyncd starts using the local NTP server
 func NTP(c platform.TestCluster) error {

@@ -23,8 +23,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+
+	// Tests imported for registration side effects.
+	_ "github.com/coreos/mantle/kola/tests/coretest"
+	_ "github.com/coreos/mantle/kola/tests/etcd"
+	_ "github.com/coreos/mantle/kola/tests/flannel"
+	_ "github.com/coreos/mantle/kola/tests/fleet"
+	_ "github.com/coreos/mantle/kola/tests/ignition"
+	_ "github.com/coreos/mantle/kola/tests/kubernetes"
+	_ "github.com/coreos/mantle/kola/tests/misc"
+	_ "github.com/coreos/mantle/kola/tests/rkt"
+	_ "github.com/coreos/mantle/kola/tests/systemd"
 )
 
 var (
@@ -55,34 +68,13 @@ func RegisterTestOption(name, option string) {
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
 
-type Test struct {
-	Name        string // should be uppercase and unique
-	Run         func(platform.TestCluster) error
-	NativeFuncs map[string]func() error
-	UserData    string
-	ClusterSize int
-	Platforms   []string // whitelist of platforms to run test against -- defaults to all
-}
-
-// maps names to tests
-var Tests = map[string]*Test{}
-
-// panic if existing name is registered
-func Register(t *Test) {
-	_, ok := Tests[t.Name]
-	if ok {
-		panic("test already registered with same name")
-	}
-	Tests[t.Name] = t
-}
-
 type Result struct {
-	Test     *Test
+	Test     *register.Test
 	Result   error
 	Duration time.Duration
 }
 
-func testRunner(platform string, done <-chan struct{}, tests chan *Test, results chan *Result) {
+func testRunner(platform string, done <-chan struct{}, tests chan *register.Test, results chan *Result) {
 	for test := range tests {
 		plog.Noticef("=== RUN %s on %s", test.Name, platform)
 		start := time.Now()
@@ -97,8 +89,8 @@ func testRunner(platform string, done <-chan struct{}, tests chan *Test, results
 	}
 }
 
-func filterTests(tests map[string]*Test, pattern, platform string) (map[string]*Test, error) {
-	r := make(map[string]*Test)
+func filterTests(tests map[string]*register.Test, pattern, platform string) (map[string]*register.Test, error) {
+	r := make(map[string]*register.Test)
 
 	for name, t := range tests {
 		match, err := filepath.Match(pattern, t.Name)
@@ -133,14 +125,14 @@ func RunTests(pattern, pltfrm string) error {
 	var passed, failed int
 	var wg sync.WaitGroup
 
-	tests, err := filterTests(Tests, pattern, pltfrm)
+	tests, err := filterTests(register.Tests, pattern, pltfrm)
 	if err != nil {
 		plog.Fatal(err)
 	}
 
 	done := make(chan struct{})
 	defer close(done)
-	testc := make(chan *Test)
+	testc := make(chan *register.Test)
 	resc := make(chan *Result)
 
 	wg.Add(TestParallelism)
@@ -189,7 +181,7 @@ func RunTests(pattern, pltfrm string) error {
 }
 
 // create a cluster and run test
-func RunTest(t *Test, pltfrm string) error {
+func RunTest(t *register.Test, pltfrm string) error {
 	var err error
 	var cluster platform.Cluster
 

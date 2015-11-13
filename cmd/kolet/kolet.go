@@ -20,7 +20,10 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/kola/register"
+
+	// Register any tests that we may wish to execute in kolet.
+	_ "github.com/coreos/mantle/kola"
 )
 
 var (
@@ -50,15 +53,15 @@ func Run(cmd *cobra.Command, args []string) {
 	testname, funcname := args[0], args[1]
 
 	// find test with matching name
-	test, ok := kola.Tests[testname]
+	test, ok := register.Tests[testname]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "kolet: test group not found\n")
+		fmt.Fprintf(os.Stderr, "kolet: test group %q not found\n", testname)
 		os.Exit(1)
 	}
 	// find native function in test
 	f, ok := test.NativeFuncs[funcname]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "kolet: native function not found\n")
+		fmt.Fprintf(os.Stderr, "kolet: native function %q not found\n", funcname)
 		os.Exit(1)
 	}
 	err := f()

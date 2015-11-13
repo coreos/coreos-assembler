@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/kola/register"
 )
 
 var (
@@ -76,7 +77,7 @@ func runRun(cmd *cobra.Command, args []string) {
 func runList(cmd *cobra.Command, args []string) {
 	var testnames []string
 
-	for tname, _ := range kola.Tests {
+	for tname, _ := range register.Tests {
 		testnames = append(testnames, tname)
 	}
 

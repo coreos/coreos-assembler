@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
 )
 
@@ -67,7 +68,7 @@ func runEtcdUpgrade(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	var t = &kola.Test{
+	var t = &register.Test{
 		Run:         etcd.RollingUpgrade,
 		ClusterSize: 3,
 		Name:        "EtcdUpgrade",
