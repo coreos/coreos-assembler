@@ -21,6 +21,9 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola/register"
+
+	// Register any tests that we may wish to execute in kolet.
+	_ "github.com/coreos/mantle/kola"
 )
 
 var (
