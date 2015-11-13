@@ -29,33 +29,34 @@ var (
 )
 
 func init() {
+	// Set the hostname
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.sethostname",
-		Run:         SetHostname,
+		Run:         setHostname,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
 		UserData: `{
-        "ignitionVersion": 1,
-        "storage": {
-                "filesystems": [
-                        {
-                                "device": "/dev/disk/by-partlabel/ROOT",
-                                "format": "ext4",
-                                "files": [
-                                        {
-                                                "path": "/etc/hostname",
-                                                "mode": 420,
-                                                "contents": "core1"
-                                        }
-                                ]
-                        }
-                ]
-        }
-}
-`,
+		               "ignitionVersion": 1,
+		               "storage": {
+		                   "filesystems": [
+		                       {
+		                           "device": "/dev/disk/by-partlabel/ROOT",
+		                           "format": "ext4",
+		                           "files": [
+		                               {
+		                                   "path": "/etc/hostname",
+		                                   "mode": 420,
+		                                   "contents": "core1"
+		                               }
+		                           ]
+		                       }
+		                   ]
+		               }
+		           }`,
 	})
 }
-func SetHostname(c platform.TestCluster) error {
+
+func setHostname(c platform.TestCluster) error {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("hostnamectl")
