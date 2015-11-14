@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+// Retry calls function f until it has been called attemps times, or succeeds.
+// Retry delays for delay between calls of f. If f does not succeed after
+// attempts calls, the error from the last call is returned.
 func Retry(attempts int, delay time.Duration, f func() error) error {
 	var err error
 
