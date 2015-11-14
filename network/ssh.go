@@ -33,7 +33,7 @@ const (
 	rsaKeySize  = 2048
 )
 
-// An interface for anything compatible with net.Dialer
+// Dialer is an interface for anything compatible with net.Dialer
 type Dialer interface {
 	Dial(network, address string) (net.Conn, error)
 }
@@ -49,6 +49,8 @@ type SSHAgent struct {
 	listener *net.UnixListener
 }
 
+// NewSSHAgent constructs a new SSHAgent using dialer to create ssh
+// connections.
 func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	key, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
@@ -97,6 +99,7 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	return a, nil
 }
 
+// Close closes the unix socket of the agent.
 func (a *SSHAgent) Close() error {
 	a.listener.Close()
 	return os.RemoveAll(a.sockDir)
@@ -118,7 +121,7 @@ func ensurePortSuffix(host string, port int) string {
 	}
 }
 
-// Connect to the given host via SSH, the client will support
+// NewClient connects to the given host via SSH, the client will support
 // agent forwarding but it must also be enabled per-session.
 func (a *SSHAgent) NewClient(host string) (*ssh.Client, error) {
 	sshcfg := ssh.ClientConfig{
