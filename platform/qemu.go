@@ -28,7 +28,9 @@ import (
 	"github.com/coreos/mantle/system/exec"
 )
 
+// QEMUOptions contains QEMU-specific options for the cluster.
 type QEMUOptions struct {
+	// DiskImage is the full path to the disk image to boot in QEMU.
 	DiskImage string
 }
 
@@ -47,6 +49,8 @@ type qemuMachine struct {
 	netif       *local.Interface
 }
 
+// NewQemuCluster creates a Cluster instance, suitable for running virtual
+// machines in QEMU.
 func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 	lc, err := local.NewLocalCluster()
 	if err != nil {
@@ -211,8 +215,8 @@ func (m *qemuMachine) PrivateIP() string {
 	return m.netif.DHCPv4[0].IP.String()
 }
 
-func (qm *qemuMachine) SSHClient() (*ssh.Client, error) {
-	sshClient, err := qm.qc.SSHAgent.NewClient(qm.IP())
+func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
+	sshClient, err := m.qc.SSHAgent.NewClient(m.IP())
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +224,8 @@ func (qm *qemuMachine) SSHClient() (*ssh.Client, error) {
 	return sshClient, nil
 }
 
-func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
-	client, err := qm.SSHClient()
+func (m *qemuMachine) SSH(cmd string) ([]byte, error) {
+	client, err := m.SSHClient()
 	if err != nil {
 		return nil, err
 	}
@@ -241,11 +245,11 @@ func (qm *qemuMachine) SSH(cmd string) ([]byte, error) {
 	return out, err
 }
 
-func (qm *qemuMachine) destroy(locked bool) error {
-	err := qm.qemu.Kill()
+func (m *qemuMachine) destroy(locked bool) error {
+	err := m.qemu.Kill()
 
-	if qm.configDrive != nil {
-		err2 := qm.configDrive.Destroy()
+	if m.configDrive != nil {
+		err2 := m.configDrive.Destroy()
 		if err == nil && err2 != nil {
 			err = err2
 		}
@@ -253,15 +257,15 @@ func (qm *qemuMachine) destroy(locked bool) error {
 
 	// ugh.
 	if !locked {
-		qm.qc.mu.Lock()
-		defer qm.qc.mu.Unlock()
+		m.qc.mu.Lock()
+		defer m.qc.mu.Unlock()
 	}
 
-	delete(qm.qc.machines, qm.ID())
+	delete(m.qc.machines, m.ID())
 
 	return err
 }
 
-func (qm *qemuMachine) Destroy() error {
-	return qm.destroy(false)
+func (m *qemuMachine) Destroy() error {
+	return m.destroy(false)
 }

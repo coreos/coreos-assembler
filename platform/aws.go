@@ -96,6 +96,7 @@ func (am *awsMachine) Destroy() error {
 	return nil
 }
 
+// AWSOptions contains AWS-specific instance options.
 type AWSOptions struct {
 	AMI           string
 	KeyName       string
@@ -111,6 +112,12 @@ type awsCluster struct {
 	machs map[string]*awsMachine
 }
 
+// NewAWSCluster creates an instance of a Cluster suitable for spawning
+// instances on Amazon Web Services' Elastic Compute platform.
+//
+// NewAWSCluster will consume the environment variables $AWS_REGION,
+// $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
+// spawn instances in and the credentials to use to authenticate.
 func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	api := ec2.New(aws.NewConfig().WithCredentials(credentials.NewEnvCredentials()))
 

@@ -34,6 +34,8 @@ var (
 	defConfig = cci.CloudConfig{}
 )
 
+// NewConf parses userdata and returns a new Conf. It returns an error if the
+// userdata can't be parsed as a coreos-cloudinit or ignition configuration.
 func NewConf(userdata string) (*Conf, error) {
 	c := &Conf{}
 
@@ -60,6 +62,7 @@ func NewConf(userdata string) (*Conf, error) {
 	return c, nil
 }
 
+// String returns the string representation of the userdata in Conf.
 func (c *Conf) String() string {
 	if c.ignition != nil {
 		var buf bytes.Buffer

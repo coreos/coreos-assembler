@@ -83,7 +83,7 @@ type TestCluster struct {
 	Cluster
 }
 
-// run a registered NativeFunc on a remote machine
+// RunNative runs a registered NativeFunc on a remote machine
 func (t *TestCluster) RunNative(funcName string, m Machine) error {
 	// scp and execute kolet on remote machine
 	client, err := m.SSHClient()
@@ -107,6 +107,8 @@ func (t *TestCluster) RunNative(funcName string, m Machine) error {
 	return nil
 }
 
+// ListNativeFunctions returns a slice of function names that can be executed
+// directly on machines in the cluster.
 func (t *TestCluster) ListNativeFunctions() []string {
 	return t.NativeFuncs
 }
@@ -130,6 +132,7 @@ func (t *TestCluster) DropFile(localPath string) error {
 	return nil
 }
 
+// InstallFile copies data from in to the path to on m.
 func InstallFile(in io.Reader, m Machine, to string) error {
 	dir := filepath.Dir(to)
 	out, err := m.SSH(fmt.Sprintf("sudo mkdir -p %s", dir))
@@ -161,6 +164,8 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 	return nil
 }
 
+// NewMachines spawns len(userdatas) instances in cluster c, with
+// each instance passed the respective userdata.
 func NewMachines(c Cluster, userdatas []string) ([]Machine, error) {
 	var wg sync.WaitGroup
 
