@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package auth provides Google oauth2 bindings for mantle.
 package auth
 
 import (
@@ -109,6 +110,11 @@ func getToken() (*oauth2.Token, error) {
 	return tok, nil
 }
 
+// GoogleClient provides an http.Client authorized with an oauth2 token
+// that is automatically cached and refreshed from a file named
+// '.mantle-cache-google.json'. This uses interactive oauth2
+// authorization and requires a user follow to follow a web link and
+// paste in an authorization token.
 func GoogleClient() (*http.Client, error) {
 	tok, err := getToken()
 	if err != nil {
@@ -117,6 +123,8 @@ func GoogleClient() (*http.Client, error) {
 	return conf.Client(oauth2.NoContext, tok), nil
 }
 
+// GoogleTokenSource provides an outh2.TokenSource authorized in the
+// same manner as GoogleClient.
 func GoogleTokenSource() (oauth2.TokenSource, error) {
 	tok, err := getToken()
 	if err != nil {
@@ -125,8 +133,9 @@ func GoogleTokenSource() (oauth2.TokenSource, error) {
 	return conf.TokenSource(oauth2.NoContext, tok), nil
 }
 
-// Fetch from Google Compute Engine's metadata server to retrieve
-// an access token for the provided account.
+// GoogleServiceClient fetchs a token from Google Compute Engine's
+// metadata service. This should be used on GCE vms. The Default account
+// is used.
 func GoogleServiceClient() *http.Client {
 	return &http.Client{
 		Transport: &oauth2.Transport{
@@ -135,11 +144,15 @@ func GoogleServiceClient() *http.Client {
 	}
 }
 
+// GoogleServiceTokenSource provides an oauth2.TokenSource authorized in
+// the same manner as GoogleServiceClient().
 func GoogleServiceTokenSource() oauth2.TokenSource {
 	return google.ComputeTokenSource("")
 }
 
-// Requires a Google Developers service account JSON key file
+// GoogleClientFromJSONKey  provides an http.Client authorized with an
+// oauth2 token retrieved using a Google Developers service account's
+// private JSON key file.
 func GoogleClientFromJSONKey(jsonKey []byte, scope ...string) (*http.Client, error) {
 	if scope == nil {
 		scope = conf.Scopes
@@ -152,6 +165,9 @@ func GoogleClientFromJSONKey(jsonKey []byte, scope ...string) (*http.Client, err
 	return jwtConf.Client(oauth2.NoContext), nil
 
 }
+
+// GoogleTokenSourceFromJSONKey provides an oauth2.TokenSource
+// authorized in the same manner as GoogleClientFromJSONKey.
 func GoogleTokenSourceFromJSONKey(jsonKey []byte, scope ...string) (oauth2.TokenSource, error) {
 	if scope == nil {
 		scope = conf.Scopes
