@@ -26,6 +26,7 @@ import (
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "util")
 
+// LogFrom reads lines from reader r and sends them to logger l.
 func LogFrom(l capnslog.LogLevel, r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -36,6 +37,7 @@ func LogFrom(l capnslog.LogLevel, r io.Reader) {
 	}
 }
 
+// CopyProgress copies data from reader into writter, logging progress through level.
 func CopyProgress(level capnslog.LogLevel, prefix string, writer io.Writer, reader io.Reader, total int64) (int64, error) {
 	// TODO(marineam): would be nice to support this natively in
 	// capnslog so the right output stream and formatter are used.
