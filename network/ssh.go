@@ -151,9 +151,3 @@ func (a *SSHAgent) NewClient(host string) (*ssh.Client, error) {
 
 	return client, nil
 }
-
-// Enable SSH Agent forwarding for the given session.
-// This is just for convenience.
-func (a *SSHAgent) RequestAgentForwarding(session *ssh.Session) error {
-	return agent.RequestAgentForwarding(session)
-}
