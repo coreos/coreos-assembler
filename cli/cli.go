@@ -36,7 +36,7 @@ var (
 
 	logDebug   bool
 	logVerbose bool
-	logLevel   capnslog.LogLevel = capnslog.NOTICE
+	logLevel   = capnslog.NOTICE
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "cli")
 )
