@@ -40,17 +40,17 @@ independant of the OS release process.
 This must run as root!
 `}
 var (
-	EtcdUpgradeVersion  string
-	EtcdUpgradeVersion2 string
-	EtcdUpgradeBin      string
-	EtcdUpgradeBin2     string
+	etcdUpgradeVersion  string
+	etcdUpgradeVersion2 string
+	etcdUpgradeBin      string
+	etcdUpgradeBin2     string
 )
 
 func init() {
-	cmdEtcdUpgrade.Flags().StringVar(&EtcdUpgradeVersion, "firstEtcdVersion", "", "")
-	cmdEtcdUpgrade.Flags().StringVar(&EtcdUpgradeVersion2, "secondEtcdVersion", "", "")
-	cmdEtcdUpgrade.Flags().StringVar(&EtcdUpgradeBin, "firstBinaryPath", "", "")
-	cmdEtcdUpgrade.Flags().StringVar(&EtcdUpgradeBin2, "secondBinaryPath", "", "")
+	cmdEtcdUpgrade.Flags().StringVar(&etcdUpgradeVersion, "firstEtcdVersion", "", "")
+	cmdEtcdUpgrade.Flags().StringVar(&etcdUpgradeVersion2, "secondEtcdVersion", "", "")
+	cmdEtcdUpgrade.Flags().StringVar(&etcdUpgradeBin, "firstBinaryPath", "", "")
+	cmdEtcdUpgrade.Flags().StringVar(&etcdUpgradeBin2, "secondBinaryPath", "", "")
 
 	root.AddCommand(cmdEtcdUpgrade)
 }
@@ -63,7 +63,7 @@ func runEtcdUpgrade(cmd *cobra.Command, args []string) {
 	}
 
 	// require flags specifiy location of etcd binaries
-	if EtcdUpgradeBin == "" || EtcdUpgradeBin2 == "" {
+	if etcdUpgradeBin == "" || etcdUpgradeBin2 == "" {
 		fmt.Fprintln(os.Stderr, "Must provide paths to pre-compiled etcd binaries")
 		os.Exit(1)
 	}
@@ -84,10 +84,10 @@ coreos:
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
 	}
 
-	kola.RegisterTestOption("EtcdUpgradeVersion", EtcdUpgradeVersion)
-	kola.RegisterTestOption("EtcdUpgradeVersion2", EtcdUpgradeVersion2)
-	kola.RegisterTestOption("EtcdUpgradeBin", EtcdUpgradeBin)
-	kola.RegisterTestOption("EtcdUpgradeBin2", EtcdUpgradeBin2)
+	kola.RegisterTestOption("EtcdUpgradeVersion", etcdUpgradeVersion)
+	kola.RegisterTestOption("EtcdUpgradeVersion2", etcdUpgradeVersion2)
+	kola.RegisterTestOption("EtcdUpgradeBin", etcdUpgradeBin)
+	kola.RegisterTestOption("EtcdUpgradeBin2", etcdUpgradeBin2)
 
 	if err := kola.RunTest(t, "gce"); err != nil {
 		fmt.Fprintf(os.Stderr, "--- FAIL: %v", err)

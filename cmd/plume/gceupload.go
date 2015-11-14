@@ -137,9 +137,9 @@ func tryGCEUpload(uploadBucket, imageNameGS string) int {
 		if !gceUploadForce {
 			log.Printf("skipping upload, gs://%v/%v already exists on Google Storage.", uploadBucket, imageNameGS)
 			return 0
-		} else {
-			log.Println("forcing image upload...")
 		}
+
+		log.Println("forcing image upload...")
 	}
 
 	err = writeFile(client, uploadBucket, gceUploadFile, imageNameGS)
