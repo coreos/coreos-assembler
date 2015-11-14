@@ -43,18 +43,18 @@ import (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
-	QEMUOptions platform.QEMUOptions
-	GCEOptions  platform.GCEOptions
-	AWSOptions  platform.AWSOptions
+	QEMUOptions platform.QEMUOptions // glue to set platform options from main
+	GCEOptions  platform.GCEOptions  // glue to set platform options from main
+	AWSOptions  platform.AWSOptions  // glue to set platform options from main
 
-	TestParallelism int
+	TestParallelism int //glue var to set test parallelism from main
 
 	testOptions = make(map[string]string, 0)
 )
 
-// Registers any options that need visibility inside a Test. Panics if
-// existing option is already registered. Each test has global view of
-// options.
+// RegisterTestOption registers any options that need visibility inside
+// a Test. Panics if existing option is already registered. Each test
+// has global view of options.
 func RegisterTestOption(name, option string) {
 	_, ok := testOptions[name]
 	if ok {
@@ -68,13 +68,13 @@ func RegisterTestOption(name, option string) {
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
 
-type Result struct {
-	Test     *register.Test
-	Result   error
-	Duration time.Duration
+type result struct {
+	test     *register.Test
+	result   error
+	duration time.Duration
 }
 
-func testRunner(platform string, done <-chan struct{}, tests chan *register.Test, results chan *Result) {
+func testRunner(platform string, done <-chan struct{}, tests chan *register.Test, results chan *result) {
 	for test := range tests {
 		plog.Noticef("=== RUN %s on %s", test.Name, platform)
 		start := time.Now()
@@ -82,7 +82,7 @@ func testRunner(platform string, done <-chan struct{}, tests chan *register.Test
 		duration := time.Since(start)
 
 		select {
-		case results <- &Result{test, err, duration}:
+		case results <- &result{test, err, duration}:
 		case <-done:
 			return
 		}
@@ -120,7 +120,10 @@ func filterTests(tests map[string]*register.Test, pattern, platform string) (map
 	return r, nil
 }
 
-// test runner and kola entry point
+// RunTests is a harness for running multiple tests in parallel. Filters
+// tests based on a glob pattern and by platform. Has access to all
+// tests either registered in this package or by imported packages that
+// register tests in their init() function.
 func RunTests(pattern, pltfrm string) error {
 	var passed, failed int
 	var wg sync.WaitGroup
@@ -133,7 +136,7 @@ func RunTests(pattern, pltfrm string) error {
 	done := make(chan struct{})
 	defer close(done)
 	testc := make(chan *register.Test)
-	resc := make(chan *Result)
+	resc := make(chan *result)
 
 	wg.Add(TestParallelism)
 
@@ -160,9 +163,9 @@ func RunTests(pattern, pltfrm string) error {
 	}()
 
 	for r := range resc {
-		t := r.Test
-		err := r.Result
-		seconds := r.Duration.Seconds()
+		t := r.test
+		err := r.result
+		seconds := r.duration.Seconds()
 		if err != nil {
 			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 			plog.Errorf("        %v", err)
@@ -180,7 +183,9 @@ func RunTests(pattern, pltfrm string) error {
 	return nil
 }
 
-// create a cluster and run test
+// RunTest is a harness for running a single test. It is used by
+// RunTests but can also be used directly by binaries that aim to run a
+// single test.
 func RunTest(t *register.Test, pltfrm string) error {
 	var err error
 	var cluster platform.Cluster

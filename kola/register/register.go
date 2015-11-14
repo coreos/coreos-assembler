@@ -16,6 +16,10 @@ package register
 
 import "github.com/coreos/mantle/platform"
 
+// Test provides the main test abstraction for kola. The run function is
+// the actual testing function while the other fields provide ways to
+// statically declare state of the platform.TestCluster before the test
+// function is run.
 type Test struct {
 	Name        string // should be uppercase and unique
 	Run         func(platform.TestCluster) error
@@ -25,10 +29,12 @@ type Test struct {
 	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 }
 
-// maps names to tests
+// Registered tests live here. Mapping of names to tests.
 var Tests = map[string]*Test{}
 
-// panic if existing name is registered
+// Register is usually called in init() functions and is how kola test
+// harnesses knows which tests it can choose from. Panic if existing
+// name is registered
 func Register(t *Test) {
 	_, ok := Tests[t.Name]
 	if ok {
