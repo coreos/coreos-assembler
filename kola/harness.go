@@ -35,6 +35,7 @@ import (
 	_ "github.com/coreos/mantle/kola/tests/fleet"
 	_ "github.com/coreos/mantle/kola/tests/ignition"
 	_ "github.com/coreos/mantle/kola/tests/kubernetes"
+	_ "github.com/coreos/mantle/kola/tests/metadata"
 	_ "github.com/coreos/mantle/kola/tests/misc"
 	_ "github.com/coreos/mantle/kola/tests/rkt"
 	_ "github.com/coreos/mantle/kola/tests/systemd"
