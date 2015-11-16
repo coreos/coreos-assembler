@@ -1,5 +1,12 @@
 language: go
 sudo: false
+matrix:
+  include:
+    - go: 1.4.3
+      install:
+        - go get golang.org/x/tools/cmd/cover
+        - go get golang.org/x/tools/cmd/vet
+    - go: 1.5.1
 
 # Gracefully handle developer forks
 install: |
@@ -10,3 +17,8 @@ install: |
         export TRAVIS_BUILD_DIR="${MANTLE_DIR}"
         cd "${TRAVIS_BUILD_DIR}"
     fi
+
+script:
+  - ./build
+  - ./test
+
