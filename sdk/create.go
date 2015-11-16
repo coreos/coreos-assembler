@@ -193,18 +193,16 @@ func extract(tar, dir string) error {
 	}
 
 	if err := untar.Start(); err != nil {
-		unzip.Process.Kill()
-		unzip.Wait()
-		return err
-	}
-
-	if err := unzip.Wait(); err != nil {
-		untar.Process.Kill()
-		untar.Wait()
+		unzip.Kill()
 		return err
 	}
 
 	if err := untar.Wait(); err != nil {
+		unzip.Kill()
+		return err
+	}
+
+	if err := unzip.Wait(); err != nil {
 		return err
 	}
 
