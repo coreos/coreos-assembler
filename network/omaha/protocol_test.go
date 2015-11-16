@@ -80,7 +80,7 @@ func TestOmahaRequestUpdateCheck(t *testing.T) {
 	}
 }
 
-func ExampleOmaha_NewResponse() {
+func ExampleNewResponse() {
 	response := NewResponse()
 	app := response.AddApp("{52F1B9BC-D31A-4D86-9276-CBC256AADF9A}", "ok")
 	p := app.AddPing()
@@ -131,7 +131,7 @@ func ExampleOmaha_NewResponse() {
 	// </response>
 }
 
-func ExampleOmaha_NewRequest() {
+func ExampleNewRequest() {
 	request := NewRequest()
 	request.Version = ""
 	request.OS = &OS{
