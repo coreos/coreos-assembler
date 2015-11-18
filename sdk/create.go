@@ -124,6 +124,9 @@ source ~/trunk/src/scripts/bash_completion
 EOF
 
 chown -R {{.Uid}}:{{.Gid}} "$HOME"
+
+# Checked in src/scripts/common.sh
+touch /etc/debian_chroot
 `
 )
 
