@@ -53,6 +53,15 @@ func simpleChrootHelper(args []string) error {
 		return err
 	}
 
+	// Only copy if resolv.conf exists, if missing resolver uses localhost
+	resolv := "/etc/resolv.conf"
+	if _, err := os.Stat(resolv); err == nil {
+		chrootResolv := filepath.Join(chroot, resolv)
+		if err := system.InstallRegularFile(resolv, chrootResolv); err != nil {
+			return err
+		}
+	}
+
 	// namespaces are per-thread attributes
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
