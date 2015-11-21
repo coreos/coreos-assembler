@@ -16,21 +16,17 @@
 package platform
 
 import (
-	"bytes"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/coreos/mantle/auth"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/network"
 )
 
 type GCEOptions struct {
@@ -45,11 +41,9 @@ type GCEOptions struct {
 }
 
 type gceCluster struct {
-	api      *compute.Service
-	sshAgent *network.SSHAgent
-	conf     *GCEOptions
-	machines map[string]*gceMachine
-	mu       sync.Mutex // protects concurrent access to machines
+	*baseCluster
+	conf *GCEOptions
+	api  *compute.Service
 }
 
 type gceMachine struct {
@@ -76,41 +70,25 @@ func NewGCECluster(conf GCEOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	gc := &gceCluster{
-		api:      api,
-		conf:     &conf,
-		machines: make(map[string]*gceMachine),
-	}
-
-	gc.sshAgent, err = network.NewSSHAgent(&net.Dialer{})
+	bc, err := newBaseCluster()
 	if err != nil {
 		return nil, err
+	}
+
+	gc := &gceCluster{
+		baseCluster: bc,
+		api:         api,
+		conf:        &conf,
 	}
 
 	return gc, nil
 }
 
-func (gc *gceCluster) EtcdEndpoint() string {
-	return ""
-}
-
-func (gc *gceCluster) Machines() []Machine {
-	machines := make([]Machine, 0, len(gc.machines))
-
-	gc.mu.Lock()
-	for _, m := range gc.machines {
-		machines = append(machines, m)
-	}
-	gc.mu.Unlock()
-
-	return machines
-}
-
 func (gc *gceCluster) Destroy() error {
-	for _, gm := range gc.machines {
+	for _, gm := range gc.Machines() {
 		gm.Destroy()
 	}
-	gc.sshAgent.Close()
+	gc.agent.Close()
 	return nil
 }
 
@@ -121,7 +99,7 @@ func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
 		return nil, err
 	}
 
-	keys, err := gc.sshAgent.List()
+	keys, err := gc.agent.List()
 	if err != nil {
 		return nil, err
 	}
@@ -140,25 +118,9 @@ func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
 		return nil, err
 	}
 
-	gc.mu.Lock()
-	gc.machines[gm.ID()] = gm
-	gc.mu.Unlock()
+	gc.addMach(gm)
 
 	return Machine(gm), nil
-}
-
-func (gce *gceCluster) GetDiscoveryURL(size int) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%v", size))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
 }
 
 func (gm *gceMachine) ID() string {
@@ -174,32 +136,11 @@ func (gm *gceMachine) PrivateIP() string {
 }
 
 func (gm *gceMachine) SSHClient() (*ssh.Client, error) {
-	sshClient, err := gm.gc.sshAgent.NewClient(gm.IP())
-	if err != nil {
-		return nil, err
-	}
-
-	return sshClient, nil
+	return gm.gc.SSHClient(gm.IP())
 }
 
 func (gm *gceMachine) SSH(cmd string) ([]byte, error) {
-	client, err := gm.SSHClient()
-	if err != nil {
-		return nil, err
-	}
-
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return []byte{}, err
-	}
-	defer session.Close()
-
-	session.Stderr = os.Stderr
-	out, err := session.Output(cmd)
-	out = bytes.TrimSpace(out)
-	return out, err
+	return gm.gc.SSH(gm, cmd)
 }
 
 func (gm *gceMachine) Destroy() error {
@@ -208,9 +149,7 @@ func (gm *gceMachine) Destroy() error {
 		return err
 	}
 
-	gm.gc.mu.Lock()
-	delete(gm.gc.machines, gm.ID())
-	gm.gc.mu.Unlock()
+	gm.gc.delMach(gm)
 
 	return nil
 }

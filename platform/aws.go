@@ -15,23 +15,15 @@
 package platform
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
-	"os"
-	"sync"
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
-
-	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/system/exec"
 )
 
 type awsMachine struct {
@@ -52,33 +44,11 @@ func (am *awsMachine) PrivateIP() string {
 }
 
 func (am *awsMachine) SSHClient() (*ssh.Client, error) {
-	sshClient, err := am.cluster.agent.NewClient(am.IP())
-	if err != nil {
-		return nil, err
-	}
-
-	return sshClient, nil
+	return am.cluster.SSHClient(am.IP())
 }
 
 func (am *awsMachine) SSH(cmd string) ([]byte, error) {
-	client, err := am.SSHClient()
-	if err != nil {
-		return nil, err
-	}
-
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	defer session.Close()
-
-	session.Stderr = os.Stderr
-	out, err := session.Output(cmd)
-	out = bytes.TrimSpace(out)
-	return out, err
+	return am.cluster.SSH(am, cmd)
 }
 
 func (am *awsMachine) Destroy() error {
@@ -105,11 +75,9 @@ type AWSOptions struct {
 }
 
 type awsCluster struct {
-	mu    sync.Mutex
-	api   *ec2.EC2
-	conf  AWSOptions
-	agent *network.SSHAgent
-	machs map[string]*awsMachine
+	*baseCluster
+	api  *ec2.EC2
+	conf AWSOptions
 }
 
 // NewAWSCluster creates an instance of a Cluster suitable for spawning
@@ -121,35 +89,18 @@ type awsCluster struct {
 func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	api := ec2.New(aws.NewConfig().WithCredentials(credentials.NewEnvCredentials()))
 
-	agent, err := network.NewSSHAgent(&net.Dialer{})
+	bc, err := newBaseCluster()
 	if err != nil {
 		return nil, err
 	}
 
 	ac := &awsCluster{
-		api:   api,
-		conf:  conf,
-		agent: agent,
-		machs: make(map[string]*awsMachine),
+		baseCluster: bc,
+		api:         api,
+		conf:        conf,
 	}
 
 	return ac, nil
-}
-
-func (ac *awsCluster) addMach(m *awsMachine) {
-	ac.mu.Lock()
-	defer ac.mu.Unlock()
-	ac.machs[*m.mach.InstanceId] = m
-}
-
-func (ac *awsCluster) delMach(m *awsMachine) {
-	ac.mu.Lock()
-	defer ac.mu.Unlock()
-	delete(ac.machs, *m.mach.InstanceId)
-}
-
-func (ac *awsCluster) NewCommand(name string, arg ...string) exec.Cmd {
-	return exec.Command(name, arg...)
 }
 
 func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
@@ -210,34 +161,6 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 	ac.addMach(mach)
 
 	return mach, nil
-}
-
-func (ac *awsCluster) Machines() []Machine {
-	ac.mu.Lock()
-	defer ac.mu.Unlock()
-	machs := make([]Machine, 0, len(ac.machs))
-	for _, m := range ac.machs {
-		machs = append(machs, m)
-	}
-	return machs
-}
-
-func (ac *awsCluster) EtcdEndpoint() string {
-	return ""
-}
-
-func (ac *awsCluster) GetDiscoveryURL(size int) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
 }
 
 func (ac *awsCluster) Destroy() error {
