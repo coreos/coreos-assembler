@@ -62,10 +62,6 @@ type Cluster interface {
 	// Machines returns a slice of the active machines in the Cluster.
 	Machines() []Machine
 
-	// EtcdEndpoint points to an embedded etcd for QEMU, not sure what this
-	// is going to look like for other platforms yet.
-	EtcdEndpoint() string
-
 	// GetDiscoveryURL returns a new etcd discovery URL.
 	GetDiscoveryURL(size int) (string, error)
 

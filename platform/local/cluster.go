@@ -92,7 +92,7 @@ func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
 	return cmd
 }
 
-func (lc *LocalCluster) EtcdEndpoint() string {
+func (lc *LocalCluster) etcdEndpoint() string {
 	// hackydoo
 	bridge := "br0"
 	for _, seg := range lc.Dnsmasq.Segments {
@@ -104,7 +104,7 @@ func (lc *LocalCluster) EtcdEndpoint() string {
 }
 
 func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
-	baseURL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.EtcdEndpoint(), rand.Int())
+	baseURL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.etcdEndpoint(), rand.Int())
 
 	nsDialer := NewNsDialer(lc.nshandle)
 	tr := &http.Transport{

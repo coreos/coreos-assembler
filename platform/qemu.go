@@ -35,10 +35,11 @@ type QEMUOptions struct {
 }
 
 type qemuCluster struct {
+	*baseCluster
+	conf QEMUOptions
+
 	mu sync.Mutex
 	*local.LocalCluster
-	machines map[string]*qemuMachine
-	conf     QEMUOptions
 }
 
 type qemuMachine struct {
@@ -57,29 +58,23 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	qc := &qemuCluster{
-		LocalCluster: lc,
-		machines:     make(map[string]*qemuMachine),
-		conf:         conf,
+	bc, err := newBaseCluster()
+	if err != nil {
+		return nil, err
 	}
+
+	qc := &qemuCluster{
+		baseCluster:  bc,
+		conf:         conf,
+		LocalCluster: lc,
+	}
+
 	return Cluster(qc), nil
 }
 
-func (qc *qemuCluster) Machines() []Machine {
-	machines := make([]Machine, 0, len(qc.machines))
-	qc.mu.Lock()
-	defer qc.mu.Unlock()
-	for _, m := range qc.machines {
-		machines = append(machines, m)
-	}
-	return machines
-}
-
 func (qc *qemuCluster) Destroy() error {
-	qc.mu.Lock()
-	defer qc.mu.Unlock()
-	for _, qm := range qc.machines {
-		qm.destroy(true)
+	for _, qm := range qc.Machines() {
+		qm.Destroy()
 	}
 	return qc.LocalCluster.Destroy()
 }
@@ -172,11 +167,14 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	qc.mu.Lock()
-	qc.machines[qm.ID()] = qm
-	qc.mu.Unlock()
+	qc.addMach(qm)
 
 	return Machine(qm), nil
+}
+
+// overrides baseCluster.GetDiscoveryURL
+func (qc *qemuCluster) GetDiscoveryURL(size int) (string, error) {
+	return qc.LocalCluster.GetDiscoveryURL(size)
 }
 
 // Copy the base image to a new nameless temporary file.
@@ -245,7 +243,7 @@ func (m *qemuMachine) SSH(cmd string) ([]byte, error) {
 	return out, err
 }
 
-func (m *qemuMachine) destroy(locked bool) error {
+func (m *qemuMachine) Destroy() error {
 	err := m.qemu.Kill()
 
 	if m.configDrive != nil {
@@ -255,17 +253,7 @@ func (m *qemuMachine) destroy(locked bool) error {
 		}
 	}
 
-	// ugh.
-	if !locked {
-		m.qc.mu.Lock()
-		defer m.qc.mu.Unlock()
-	}
-
-	delete(m.qc.machines, m.ID())
+	m.qc.delMach(m)
 
 	return err
-}
-
-func (m *qemuMachine) Destroy() error {
-	return m.destroy(false)
 }
