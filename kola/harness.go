@@ -102,6 +102,11 @@ func filterTests(tests map[string]*register.Test, pattern, platform string) (map
 			continue
 		}
 
+		// Skip the test if Manual is set and the name doesn't fully match.
+		if t.Manual && t.Name != pattern {
+			continue
+		}
+
 		allowed := true
 		for _, p := range t.Platforms {
 			if p == platform {
