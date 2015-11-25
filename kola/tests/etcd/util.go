@@ -33,6 +33,7 @@ func init() {
 	// test etcd discovery with 0.4.7
 	register.Register(&register.Test{
 		Run:         DiscoveryV1,
+		Manual:      true,
 		ClusterSize: 3,
 		Name:        "coreos.etcd0.discovery",
 		UserData: `#cloud-config
