@@ -63,7 +63,7 @@ func init() {
 		                           "create": {
 		                               "force": true,
 		                               "options": [
-		                                   "-L ROOT"
+		                                   "-L", "ROOT"
 		                               ]
 		                           }
 		                       }
