@@ -20,6 +20,8 @@ import (
 
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
 func init() {
@@ -71,11 +73,28 @@ func init() {
 }
 
 func verifyAWS(c platform.TestCluster) error {
-	return verify(c, "COREOS_IPV4_LOCAL", "COREOS_IPV4_PUBLIC", "COREOS_HOSTNAME")
+	m := c.Machines()[0]
+
+	out, err := m.SSH("coreos-metadata --version")
+	if err != nil {
+		return fmt.Errorf("failed to cat /run/metadata/coreos: %s: %v", out, err)
+	}
+
+	versionStr := strings.TrimPrefix(string(out), "coreos-metadata v")
+	version, err := semver.NewVersion(versionStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse coreos-metadata version: %v", err)
+	}
+
+	if version.LessThan(semver.Version{Minor: 3}) {
+		return verify(c, "COREOS_IPV4_LOCAL", "COREOS_IPV4_PUBLIC", "COREOS_HOSTNAME")
+	} else {
+		return verify(c, "COREOS_EC2_IPV4_LOCAL", "COREOS_EC2_IPV4_PUBLIC", "COREOS_EC2_HOSTNAME")
+	}
 }
 
 func verifyAzure(c platform.TestCluster) error {
-	return verify(c, "COREOS_IPV4_LOCAL", "COREOS_IPV4_PUBLIC")
+	return verify(c, "COREOS_AZURE_IPV4_DYNAMIC", "COREOS_AZURE_IPV4_VIRTUAL")
 }
 
 func verify(c platform.TestCluster, keys ...string) error {
