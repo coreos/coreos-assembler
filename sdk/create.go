@@ -61,6 +61,7 @@ done
 echo Setting up sudoers
 cat >/etc/sudoers.d/90_env_keep <<EOF
 Defaults env_keep += "\
+COREOS_BUILD_ID COREOS_OFFICIAL \
 EMAIL GIT_AUTHOR_EMAIL GIT_AUTHOR_NAME \
 GIT_COMMITTER_EMAIL GIT_COMMITTER_NAME \
 GIT_PROXY_COMMAND GIT_SSH RSYNC_PROXY \
