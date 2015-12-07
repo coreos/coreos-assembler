@@ -63,6 +63,36 @@ coreos:
 	})
 }
 
+// GetClusterHealth polls etcdctl cluster-health command until success
+// or maximum retries have been reached. Can be effectively used to
+// block a test until the etcd cluster is up and running.
+func GetClusterHealth(m platform.Machine, csize int) error {
+	var err error
+	var b []byte
+
+	checker := func() error {
+		b, err := m.SSH("etcdctl cluster-health")
+		if err != nil {
+			return err
+		}
+
+		// repsonse should include "healthy" for each machine and for cluster
+		if strings.Count(string(b), "healthy") != (csize*2)+1 {
+			return fmt.Errorf("unexpected etcdctl output")
+		}
+
+		plog.Infof("cluster healthy")
+		return nil
+	}
+
+	err = util.Retry(15, 10*time.Second, checker)
+	if err != nil {
+		return fmt.Errorf("health polling failed: %v: %s", err, b)
+	}
+
+	return nil
+}
+
 // run etcd on each cluster machine
 func startEtcd2(m platform.Machine) error {
 	etcdStart := "sudo systemctl start etcd2.service"
@@ -89,7 +119,7 @@ func stopEtcd2(m platform.Machine) error {
 // If all the values don't get set due to a machine that is down and
 // error is NOT returned. An error is returned if no keys are able to be
 // set.
-func SetKeys(cluster platform.Cluster, n int) (map[string]string, error) {
+func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 	var written = map[string]string{}
 	for _, m := range cluster.Machines() {
 		for i := 0; i < n; i++ {
@@ -121,7 +151,7 @@ func SetKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 
 // checkKeys tests that each node in the cluster has the full provided
 // key set in keyMap. Quorum get must be used.
-func CheckKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
+func checkKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
 	for i, m := range cluster.Machines() {
 		for k, v := range keyMap {
 			var cmd string
@@ -211,34 +241,6 @@ func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected str
 
 	if string(b) != expected {
 		return fmt.Errorf("expected %v, got %s", expected, b)
-	}
-
-	return nil
-}
-
-// poll cluster-health until result
-func getClusterHealth(m platform.Machine, csize int) error {
-	var err error
-	var b []byte
-
-	checker := func() error {
-		b, err := m.SSH("etcdctl cluster-health")
-		if err != nil {
-			return err
-		}
-
-		// repsonse should include "healthy" for each machine and for cluster
-		if strings.Count(string(b), "healthy") != (csize*2)+1 {
-			return fmt.Errorf("unexpected etcdctl output")
-		}
-
-		plog.Infof("cluster healthy")
-		return nil
-	}
-
-	err = util.Retry(15, 10*time.Second, checker)
-	if err != nil {
-		return fmt.Errorf("health polling failed: %v: %s", err, b)
 	}
 
 	return nil

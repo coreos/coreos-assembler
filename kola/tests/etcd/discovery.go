@@ -81,12 +81,17 @@ func discovery(cluster platform.Cluster, version int) error {
 		plog.Infof("etcd instance%d started", i)
 	}
 
+	// NOTE(pb): this check makes the next code somewhat redundant
+	if err := GetClusterHealth(cluster.Machines()[0], len(cluster.Machines())); err != nil {
+		return fmt.Errorf("discovery failed cluster-health check: %v", err)
+	}
+
 	var keyMap map[string]string
 	var retryFuncs []func() error
 
 	retryFuncs = append(retryFuncs, func() error {
 		var err error
-		keyMap, err = SetKeys(cluster, 5)
+		keyMap, err = setKeys(cluster, 5)
 		if err != nil {
 			return err
 		}
@@ -97,14 +102,14 @@ func discovery(cluster platform.Cluster, version int) error {
 		if version == 2 {
 			quorumRead = true
 		}
-		if err := CheckKeys(cluster, keyMap, quorumRead); err != nil {
+		if err := checkKeys(cluster, keyMap, quorumRead); err != nil {
 			return err
 		}
 		return nil
 	})
 	for _, retry := range retryFuncs {
 		if err := util.Retry(5, 5*time.Second, retry); err != nil {
-			return fmt.Errorf("discovery failed health check: %v", err)
+			return fmt.Errorf("discovery failed set/get check: %v", err)
 		}
 		// NOTE(pb): etcd1 seems to fail in an odd way when I try quorum
 		// read, instead just sleep between setting and getting.
