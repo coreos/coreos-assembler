@@ -256,8 +256,10 @@ func Enter(name string, args ...string) error {
 	return enterCmd.Run()
 }
 
-func RepoInit(name, manifest string) error {
-	if err := SimpleEnter(name, "repo", "init", "-u", manifest); err != nil {
+func RepoInit(name, manifest, manifestName, branch string) error {
+	if err := SimpleEnter(
+		name, "repo", "init", "-u", manifest,
+		"-b", branch, "-m", manifestName); err != nil {
 		return err
 	}
 
