@@ -16,9 +16,11 @@ package sdk
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -80,6 +82,61 @@ func simpleChrootHelper(args []string) error {
 		return fmt.Errorf("Mounting %q failed: %v", newRepoRoot, err)
 	}
 
+	// mount the /run directory and setup the permissions
+	runMountDir := filepath.Join(chroot, "run")
+	if err := syscall.Mount(
+		"tmpfs", runMountDir, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, "mode=755"); err != nil {
+		return fmt.Errorf("Mounting %q failed: %v", runMountDir, err)
+	}
+
+	userInfo, err := user.Lookup(username)
+	if err != nil {
+		return err
+	}
+
+	rundir := filepath.Join(runMountDir, "user", userInfo.Uid)
+
+	err = os.MkdirAll(rundir, 0755)
+	if err != nil {
+		return err
+	}
+
+	uid, err := strconv.Atoi(userInfo.Uid)
+	if err != nil {
+		return err
+	}
+
+	gid, err := strconv.Atoi(userInfo.Gid)
+	if err != nil {
+		return err
+	}
+
+	err = os.Chown(rundir, uid, gid)
+	if err != nil {
+		return err
+	}
+
+	// mount the directory containing the ssh-agent socket in order
+	// to support a private repos during repo sync
+	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
+	if sshAuthSock != "" {
+		sshSourceDir, sshSocketFile := filepath.Split(sshAuthSock)
+		if _, err := os.Stat(sshSourceDir); err == nil {
+			sshTargetdir, err := ioutil.TempDir(rundir, "ssh-")
+			if err != nil {
+				return err
+			}
+
+			if err := syscall.Mount(
+				sshSourceDir, sshTargetdir, "none", syscall.MS_BIND, ""); err != nil {
+				return fmt.Errorf("Mounting %q failed: %v", sshSourceDir, err)
+			}
+
+			os.Setenv("SSH_AUTH_SOCK",
+				filepath.Join(strings.TrimPrefix(sshTargetdir, chroot), sshSocketFile))
+		}
+	}
+
 	if err := syscall.Chroot(chroot); err != nil {
 		return fmt.Errorf("Chrooting to %q failed: %v", chroot, err)
 	}
@@ -104,6 +161,52 @@ func setDefault(environ []string, key, value string) []string {
 	return append(environ, prefix+value)
 }
 
+// copies a user's config file from user's home directory to the equivalent
+// location in the chroot
+func copyUserConfigFile(source, chroot string) error {
+	userInfo, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	sourcepath := filepath.Join(userInfo.HomeDir, source)
+	if _, err := os.Stat(sourcepath); err != nil {
+		return nil
+	}
+
+	chrootHome := filepath.Join(chroot, "home", userInfo.Username)
+	sourceDir := filepath.Dir(source)
+	if sourceDir != "." {
+		if err := os.MkdirAll(
+			filepath.Join(chrootHome, sourceDir), 0700); err != nil {
+			return err
+		}
+	}
+
+	tartgetpath := filepath.Join(chrootHome, source)
+	if err := system.CopyRegularFile(sourcepath, tartgetpath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func copyUserConfig(chroot string) error {
+	if err := copyUserConfigFile(".ssh/config", chroot); err != nil {
+		return err
+	}
+
+	if err := copyUserConfigFile(".ssh/known_hosts", chroot); err != nil {
+		return err
+	}
+
+	if err := copyUserConfigFile(".gitconfig", chroot); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Set a default email address so repo doesn't explode on 'u@h.(none)'
 func setDefaultEmail(environ []string) []string {
 	username := "nobody"
@@ -125,6 +228,10 @@ func SimpleEnter(name string, args ...string) error {
 	sudo.Stdin = os.Stdin
 	sudo.Stdout = os.Stdout
 	sudo.Stderr = os.Stderr
+
+	if err := copyUserConfig(chroot); err != nil {
+		return err
+	}
 
 	return sudo.Run()
 }
@@ -149,8 +256,10 @@ func Enter(name string, args ...string) error {
 	return enterCmd.Run()
 }
 
-func RepoInit(name, manifest string) error {
-	if err := SimpleEnter(name, "repo", "init", "-u", manifest); err != nil {
+func RepoInit(name, manifest, manifestName, branch string) error {
+	if err := SimpleEnter(
+		name, "repo", "init", "-u", manifest,
+		"-b", branch, "-m", manifestName); err != nil {
 		return err
 	}
 

@@ -24,11 +24,13 @@ const (
 )
 
 var (
-	chrootVersion string
-	chrootName    string
-	manifestURL   string
-	allowReplace  bool
-	createCmd     = &cobra.Command{
+	chrootVersion  string
+	chrootName     string
+	manifestURL    string
+	manifestName   string
+	manifestBranch string
+	allowReplace   bool
+	createCmd      = &cobra.Command{
 		Use:   "create",
 		Short: "Download and unpack the SDK",
 		Run:   runCreate,
@@ -52,6 +54,10 @@ func init() {
 		"chroot", "chroot", "SDK chroot directory name")
 	createCmd.Flags().StringVar(&manifestURL,
 		"manifest-url", coreosManifestURL, "Manifest git repo location")
+	createCmd.Flags().StringVar(&manifestBranch,
+		"manifest-branch", "master", "Manifest git repo branch")
+	createCmd.Flags().StringVar(&manifestName,
+		"manifest-name", "default.xml", "Manifest file name")
 	createCmd.Flags().BoolVar(&allowReplace,
 		"replace", false, "Replace an existing SDK chroot")
 	enterCmd.Flags().StringVar(&chrootName,
@@ -91,7 +97,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Create failed: %v", err)
 	}
 
-	if err := sdk.RepoInit(chrootName, manifestURL); err != nil {
+	if err := sdk.RepoInit(chrootName, manifestURL, manifestName, manifestBranch); err != nil {
 		plog.Fatalf("repo init and sync failed: %v", err)
 	}
 }
