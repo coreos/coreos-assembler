@@ -24,43 +24,38 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
 
-func init() {
-	// test etcd discovery with 0.4.7
-	register.Register(&register.Test{
-		Run:         DiscoveryV1,
-		Manual:      true,
-		ClusterSize: 3,
-		Name:        "coreos.etcd0.discovery",
-		UserData: `#cloud-config
-coreos:
-  etcd:
-    name: $name
-    discovery: $discovery
-    addr: $private_ipv4:2379
-    peer-addr: $private_ipv4:2380`,
-	})
+// GetClusterHealth polls etcdctl cluster-health command until success
+// or maximum retries have been reached. Can be effectively used to
+// block a test until the etcd cluster is up and running.
+func GetClusterHealth(m platform.Machine, csize int) error {
+	var err error
+	var b []byte
 
-	// test etcd discovery with 2.0 with new cloud config
-	register.Register(&register.Test{
-		Run:         DiscoveryV2,
-		ClusterSize: 3,
-		Name:        "coreos.etcd2.discovery",
-		UserData: `#cloud-config
+	checker := func() error {
+		b, err := m.SSH("etcdctl cluster-health")
+		if err != nil {
+			return err
+		}
 
-coreos:
-  etcd2:
-    name: $name
-    discovery: $discovery
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001`,
-	})
+		// repsonse should include "healthy" for each machine and for cluster
+		if strings.Count(string(b), "healthy") != (csize*2)+1 {
+			return fmt.Errorf("unexpected etcdctl output")
+		}
+
+		plog.Infof("cluster healthy")
+		return nil
+	}
+
+	err = util.Retry(15, 10*time.Second, checker)
+	if err != nil {
+		return fmt.Errorf("health polling failed: %v: %s", err, b)
+	}
+
+	return nil
 }
 
 // run etcd on each cluster machine
@@ -89,7 +84,7 @@ func stopEtcd2(m platform.Machine) error {
 // If all the values don't get set due to a machine that is down and
 // error is NOT returned. An error is returned if no keys are able to be
 // set.
-func SetKeys(cluster platform.Cluster, n int) (map[string]string, error) {
+func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 	var written = map[string]string{}
 	for _, m := range cluster.Machines() {
 		for i := 0; i < n; i++ {
@@ -121,7 +116,7 @@ func SetKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 
 // checkKeys tests that each node in the cluster has the full provided
 // key set in keyMap. Quorum get must be used.
-func CheckKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
+func checkKeys(cluster platform.Cluster, keyMap map[string]string, quorum bool) error {
 	for i, m := range cluster.Machines() {
 		for k, v := range keyMap {
 			var cmd string
@@ -211,34 +206,6 @@ func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected str
 
 	if string(b) != expected {
 		return fmt.Errorf("expected %v, got %s", expected, b)
-	}
-
-	return nil
-}
-
-// poll cluster-health until result
-func getClusterHealth(m platform.Machine, csize int) error {
-	var err error
-	var b []byte
-
-	checker := func() error {
-		b, err := m.SSH("etcdctl cluster-health")
-		if err != nil {
-			return err
-		}
-
-		// repsonse should include "healthy" for each machine and for cluster
-		if strings.Count(string(b), "healthy") != (csize*2)+1 {
-			return fmt.Errorf("unexpected etcdctl output")
-		}
-
-		plog.Infof("cluster healthy")
-		return nil
-	}
-
-	err = util.Retry(15, 10*time.Second, checker)
-	if err != nil {
-		return fmt.Errorf("health polling failed: %v: %s", err, b)
 	}
 
 	return nil

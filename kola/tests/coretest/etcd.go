@@ -33,14 +33,6 @@ func generateKey() string {
 // TestEtcdUpdateValue tests to update value of a key.
 // The test coverage includes setting, getting, updating, deleting.
 func TestEtcdUpdateValue() error {
-	// TODO(pb): once etcdctl is fixed we should depend on that to
-	// determine when etcd is ready -- this way we aren't preparing to
-	// test writing keys by writing keys
-
-	// Do not start until etcd is up
-	// NOTE(pb): etcd is checked for setup in the main kola test and not
-	// here in the native code
-
 	// Use a random key name so members of a cluster don't step on each other.
 	target := targetAddress + generateKey() + "?consistent=true"
 
