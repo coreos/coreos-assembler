@@ -16,6 +16,7 @@ package kola
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -140,14 +141,39 @@ func RunTests(pattern, pltfrm string) error {
 	var passed, failed, skipped int
 	var wg sync.WaitGroup
 
-	semver, err := getClusterSemver(pltfrm)
+	// Avoid incurring cost of starting machine in getClusterSemver when
+	// either:
+	// 1) we already know 0 tests will run
+	// 2) glob is an exact match which means minVersion will be ignored
+	//    either way
+	maxVersion := &semver.Version{Major: math.MaxInt64}
+	tests, err := filterTests(register.Tests, pattern, pltfrm, maxVersion)
 	if err != nil {
 		plog.Fatal(err)
 	}
 
-	tests, err := filterTests(register.Tests, pattern, pltfrm, semver)
-	if err != nil {
-		plog.Fatal(err)
+	var skipGetVersion bool
+	if len(tests) == 0 {
+		skipGetVersion = true
+	} else if len(tests) == 1 {
+		for name := range tests {
+			if name == pattern {
+				skipGetVersion = true
+			}
+		}
+	}
+
+	if !skipGetVersion {
+		version, err := getClusterSemver(pltfrm)
+		if err != nil {
+			plog.Fatal(err)
+		}
+
+		// one more filter pass now that we know real version
+		tests, err = filterTests(tests, pattern, pltfrm, version)
+		if err != nil {
+			plog.Fatal(err)
+		}
 	}
 
 	done := make(chan struct{})
