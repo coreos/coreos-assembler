@@ -29,16 +29,16 @@ import (
 	"github.com/coreos/mantle/system/user"
 )
 
-const enterChroot = "src/scripts/sdk_lib/enter_chroot.sh"
+const enterChrootSh = "src/scripts/sdk_lib/enter_chroot.sh"
 
-var simpleChroot exec.Entrypoint
+var enterChroot exec.Entrypoint
 
 func init() {
-	simpleChroot = exec.NewEntrypoint("simpleChroot", simpleChrootHelper)
+	enterChroot = exec.NewEntrypoint("enterChroot", enterChrootHelper)
 }
 
 // bind mount the repo source tree into the chroot and run a command
-func simpleChrootHelper(args []string) error {
+func enterChrootHelper(args []string) error {
 	if len(args) < 3 {
 		return fmt.Errorf("got %d args, need at least 3", len(args))
 	}
@@ -218,12 +218,12 @@ func setDefaultEmail(environ []string) []string {
 	return setDefault(environ, "EMAIL", email)
 }
 
-func SimpleEnter(name string, args ...string) error {
+func Enter(name string, args ...string) error {
 	reroot := RepoRoot()
 	chroot := filepath.Join(reroot, name)
 	args = append([]string{reroot, chroot}, args...)
 
-	sudo := simpleChroot.Sudo(args...)
+	sudo := enterChroot.Sudo(args...)
 	sudo.Env = setDefaultEmail(os.Environ())
 	sudo.Stdin = os.Stdin
 	sudo.Stdout = os.Stdout
@@ -236,7 +236,7 @@ func SimpleEnter(name string, args ...string) error {
 	return sudo.Run()
 }
 
-func Enter(name string, args ...string) error {
+func OldEnter(name string, args ...string) error {
 	chroot := filepath.Join(RepoRoot(), name)
 
 	// TODO(marineam): the original cros_sdk uses a white list to
@@ -245,7 +245,7 @@ func Enter(name string, args ...string) error {
 	enterCmd := exec.Command(
 		"sudo", sudoPrompt, "-E",
 		"unshare", "--mount", "--",
-		filepath.Join(RepoRoot(), enterChroot),
+		filepath.Join(RepoRoot(), enterChrootSh),
 		"--chroot", chroot, "--cache_dir", RepoCache(), "--")
 	enterCmd.Args = append(enterCmd.Args, args...)
 	enterCmd.Env = setDefaultEmail(os.Environ())
@@ -257,11 +257,11 @@ func Enter(name string, args ...string) error {
 }
 
 func RepoInit(name, manifest, manifestName, branch string) error {
-	if err := SimpleEnter(
+	if err := Enter(
 		name, "repo", "init", "-u", manifest,
 		"-b", branch, "-m", manifestName); err != nil {
 		return err
 	}
 
-	return SimpleEnter(name, "repo", "sync")
+	return Enter(name, "repo", "sync")
 }
