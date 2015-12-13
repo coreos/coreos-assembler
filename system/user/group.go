@@ -38,6 +38,10 @@ import "C"
 
 // Based on Go's src/os/user/lookup_unix.go
 func lookupGroup(u *user.User) (*User, error) {
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return nil, err
+	}
 	gid, err := strconv.Atoi(u.Gid)
 	if err != nil {
 		return nil, err
@@ -66,5 +70,7 @@ func lookupGroup(u *user.User) (*User, error) {
 	return &User{
 		User:      u,
 		Groupname: C.GoString(grp.gr_name),
+		UidNo:     uid,
+		GidNo:     gid,
 	}, nil
 }

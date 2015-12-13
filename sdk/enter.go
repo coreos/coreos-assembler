@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -101,17 +100,7 @@ func enterChrootHelper(args []string) error {
 		return err
 	}
 
-	uid, err := strconv.Atoi(userInfo.Uid)
-	if err != nil {
-		return err
-	}
-
-	gid, err := strconv.Atoi(userInfo.Gid)
-	if err != nil {
-		return err
-	}
-
-	err = os.Chown(rundir, uid, gid)
+	err = os.Chown(rundir, userInfo.UidNo, userInfo.GidNo)
 	if err != nil {
 		return err
 	}

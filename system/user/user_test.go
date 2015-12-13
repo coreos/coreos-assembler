@@ -16,6 +16,7 @@
 package user
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -32,6 +33,12 @@ func TestCurrent(t *testing.T) {
 	}
 	if u.Groupname == "" {
 		t.Errorf("didn't get a groupname")
+	}
+	if u.Uid != fmt.Sprintf("%d", u.UidNo) {
+		t.Errorf("Uid %q and %d do not match", u.Uid, u.UidNo)
+	}
+	if u.Gid != fmt.Sprintf("%d", u.GidNo) {
+		t.Errorf("Gid %q and %d do not match", u.Gid, u.GidNo)
 	}
 }
 
@@ -53,6 +60,12 @@ func compare(t *testing.T, want, got *User) {
 	}
 	if want.HomeDir != got.HomeDir {
 		t.Errorf("got HomeDir=%q; want %q", got.HomeDir, want.HomeDir)
+	}
+	if want.UidNo != got.UidNo {
+		t.Errorf("got UidNo=%d; want %d", got.UidNo, want.UidNo)
+	}
+	if want.GidNo != got.GidNo {
+		t.Errorf("got GidNo=%d; want %d", got.GidNo, want.GidNo)
 	}
 }
 

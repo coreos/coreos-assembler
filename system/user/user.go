@@ -24,6 +24,9 @@ import (
 type User struct {
 	*user.User
 	Groupname string
+	// For convenience so users don't need to strconv themselves.
+	UidNo int
+	GidNo int
 }
 
 // Current returns the current user.
