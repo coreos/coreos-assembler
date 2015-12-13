@@ -36,20 +36,37 @@ func init() {
 	enterChroot = exec.NewEntrypoint("enterChroot", enterChrootHelper)
 }
 
+// Information on the chroot, paths are relative to the host system.
+type enter struct {
+	RepoRoot   string
+	Chroot     string
+	Cmd        []string
+	User       *user.User
+	UserRunDir string
+}
+
 // bind mount the repo source tree into the chroot and run a command
-func enterChrootHelper(args []string) error {
+func enterChrootHelper(args []string) (err error) {
 	if len(args) < 3 {
 		return fmt.Errorf("got %d args, need at least 3", len(args))
 	}
-	hostRepoRoot := args[0]
-	chroot := args[1]
-	chrootCmd := args[2:]
+
+	e := enter{
+		RepoRoot: args[0],
+		Chroot:   args[1],
+		Cmd:      args[2:],
+	}
+
 	username := os.Getenv("SUDO_USER")
 	if username == "" {
 		return fmt.Errorf("SUDO_USER environment variable is not set.")
 	}
+	if e.User, err = user.Lookup(username); err != nil {
+		return err
+	}
+	e.UserRunDir = filepath.Join(e.Chroot, "run", "user", e.User.Uid)
 
-	newRepoRoot := filepath.Join(chroot, chrootRepoRoot)
+	newRepoRoot := filepath.Join(e.Chroot, chrootRepoRoot)
 	if err := os.MkdirAll(newRepoRoot, 0755); err != nil {
 		return err
 	}
@@ -57,7 +74,7 @@ func enterChrootHelper(args []string) error {
 	// Only copy if resolv.conf exists, if missing resolver uses localhost
 	resolv := "/etc/resolv.conf"
 	if _, err := os.Stat(resolv); err == nil {
-		chrootResolv := filepath.Join(chroot, resolv)
+		chrootResolv := filepath.Join(e.Chroot, resolv)
 		if err := system.InstallRegularFile(resolv, chrootResolv); err != nil {
 			return err
 		}
@@ -77,31 +94,22 @@ func enterChrootHelper(args []string) error {
 	}
 
 	if err := syscall.Mount(
-		hostRepoRoot, newRepoRoot, "none", syscall.MS_BIND, ""); err != nil {
+		e.RepoRoot, newRepoRoot, "none", syscall.MS_BIND, ""); err != nil {
 		return fmt.Errorf("Mounting %q failed: %v", newRepoRoot, err)
 	}
 
 	// mount the /run directory and setup the permissions
-	runMountDir := filepath.Join(chroot, "run")
+	runMountDir := filepath.Join(e.Chroot, "run")
 	if err := syscall.Mount(
 		"tmpfs", runMountDir, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, "mode=755"); err != nil {
 		return fmt.Errorf("Mounting %q failed: %v", runMountDir, err)
 	}
 
-	userInfo, err := user.Lookup(username)
-	if err != nil {
+	if err = os.MkdirAll(e.UserRunDir, 0755); err != nil {
 		return err
 	}
 
-	rundir := filepath.Join(runMountDir, "user", userInfo.Uid)
-
-	err = os.MkdirAll(rundir, 0755)
-	if err != nil {
-		return err
-	}
-
-	err = os.Chown(rundir, userInfo.UidNo, userInfo.GidNo)
-	if err != nil {
+	if err = os.Chown(e.UserRunDir, e.User.UidNo, e.User.GidNo); err != nil {
 		return err
 	}
 
@@ -111,7 +119,7 @@ func enterChrootHelper(args []string) error {
 	if sshAuthSock != "" {
 		sshSourceDir, sshSocketFile := filepath.Split(sshAuthSock)
 		if _, err := os.Stat(sshSourceDir); err == nil {
-			sshTargetdir, err := ioutil.TempDir(rundir, "ssh-")
+			sshTargetdir, err := ioutil.TempDir(e.UserRunDir, "ssh-")
 			if err != nil {
 				return err
 			}
@@ -122,12 +130,12 @@ func enterChrootHelper(args []string) error {
 			}
 
 			os.Setenv("SSH_AUTH_SOCK",
-				filepath.Join(strings.TrimPrefix(sshTargetdir, chroot), sshSocketFile))
+				filepath.Join(strings.TrimPrefix(sshTargetdir, e.Chroot), sshSocketFile))
 		}
 	}
 
-	if err := syscall.Chroot(chroot); err != nil {
-		return fmt.Errorf("Chrooting to %q failed: %v", chroot, err)
+	if err := syscall.Chroot(e.Chroot); err != nil {
+		return fmt.Errorf("Chrooting to %q failed: %v", e.Chroot, err)
 	}
 
 	if err := os.Chdir(chrootRepoRoot); err != nil {
@@ -135,7 +143,7 @@ func enterChrootHelper(args []string) error {
 	}
 
 	sudo := "/usr/bin/sudo"
-	sudoArgs := append([]string{sudo, "-u", username, "--"}, chrootCmd...)
+	sudoArgs := append([]string{sudo, "-u", username, "--"}, e.Cmd...)
 	return syscall.Exec(sudo, sudoArgs, os.Environ())
 }
 
