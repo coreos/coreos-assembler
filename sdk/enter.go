@@ -81,6 +81,36 @@ func (e *enter) MountAgent(env string) error {
 	return os.Setenv(env, chrootPath)
 }
 
+// MountGnupg bind mounts $GNUPGHOME or ~/.gnupg and the agent socket
+// if available. The agent is ignored if the home dir isn't available.
+func (e *enter) MountGnupg() error {
+	origHome := os.Getenv("GNUPGHOME")
+	if origHome == "" {
+		origHome = filepath.Join(e.User.HomeDir, ".gnupg")
+	}
+
+	if _, err := os.Stat(origHome); err != nil {
+		// Skip but do not pass along $GNUPGHOME
+		return os.Unsetenv("GNUPGHOME")
+	}
+
+	newHome, err := ioutil.TempDir(e.UserRunDir, "gnupg-")
+	if err != nil {
+		return err
+	}
+
+	if err := bind(origHome, newHome); err != nil {
+		return err
+	}
+
+	chrootHome := strings.TrimPrefix(newHome, e.Chroot)
+	if err := os.Setenv("GNUPGHOME", chrootHome); err != nil {
+		return err
+	}
+
+	return e.MountAgent("GPG_AGENT_INFO")
+}
+
 // bind mount the repo source tree into the chroot and run a command
 func enterChrootHelper(args []string) (err error) {
 	if len(args) < 3 {
@@ -149,6 +179,10 @@ func enterChrootHelper(args []string) (err error) {
 	}
 
 	if err := e.MountAgent("SSH_AUTH_SOCK"); err != nil {
+		return err
+	}
+
+	if err := e.MountGnupg(); err != nil {
 		return err
 	}
 
