@@ -45,6 +45,42 @@ type enter struct {
 	UserRunDir string
 }
 
+// wrapper for bind mounts to report errors consistently
+func bind(src, dst string) error {
+	err := syscall.Mount(src, dst, "none", syscall.MS_BIND, "")
+	if err != nil {
+		return fmt.Errorf("Binding %q to %q failed: %v", src, dst, err)
+	}
+	return nil
+}
+
+// MountAgent bind mounts a SSH or GnuPG agent socket into the chroot
+func (e *enter) MountAgent(env string) error {
+	origPath := os.Getenv(env)
+	if origPath == "" {
+		return nil
+	}
+
+	origDir, origFile := filepath.Split(origPath)
+	if _, err := os.Stat(origDir); err != nil {
+		// Just skip if the agent has gone missing.
+		return nil
+	}
+
+	newDir, err := ioutil.TempDir(e.UserRunDir, "agent-")
+	if err != nil {
+		return err
+	}
+
+	if err := bind(origDir, newDir); err != nil {
+		return err
+	}
+
+	newPath := filepath.Join(newDir, origFile)
+	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
+	return os.Setenv(env, chrootPath)
+}
+
 // bind mount the repo source tree into the chroot and run a command
 func enterChrootHelper(args []string) (err error) {
 	if len(args) < 3 {
@@ -93,9 +129,8 @@ func enterChrootHelper(args []string) (err error) {
 		return fmt.Errorf("Unsharing mount points failed: %v", err)
 	}
 
-	if err := syscall.Mount(
-		e.RepoRoot, newRepoRoot, "none", syscall.MS_BIND, ""); err != nil {
-		return fmt.Errorf("Mounting %q failed: %v", newRepoRoot, err)
+	if err := bind(e.RepoRoot, newRepoRoot); err != nil {
+		return err
 	}
 
 	// mount the /run directory and setup the permissions
@@ -113,25 +148,8 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	// mount the directory containing the ssh-agent socket in order
-	// to support a private repos during repo sync
-	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
-	if sshAuthSock != "" {
-		sshSourceDir, sshSocketFile := filepath.Split(sshAuthSock)
-		if _, err := os.Stat(sshSourceDir); err == nil {
-			sshTargetdir, err := ioutil.TempDir(e.UserRunDir, "ssh-")
-			if err != nil {
-				return err
-			}
-
-			if err := syscall.Mount(
-				sshSourceDir, sshTargetdir, "none", syscall.MS_BIND, ""); err != nil {
-				return fmt.Errorf("Mounting %q failed: %v", sshSourceDir, err)
-			}
-
-			os.Setenv("SSH_AUTH_SOCK",
-				filepath.Join(strings.TrimPrefix(sshTargetdir, e.Chroot), sshSocketFile))
-		}
+	if err := e.MountAgent("SSH_AUTH_SOCK"); err != nil {
+		return err
 	}
 
 	if err := syscall.Chroot(e.Chroot); err != nil {
