@@ -54,6 +54,17 @@ func bind(src, dst string) error {
 	return nil
 }
 
+// bind and remount read-only for safety
+func bindro(src, dst string) error {
+	if err := bind(src, dst); err != nil {
+		return err
+	}
+	if err := syscall.Mount(src, dst, "none", syscall.MS_REMOUNT|syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
+		return fmt.Errorf("Read-only bind %q to %q failed: %v", src, dst, err)
+	}
+	return nil
+}
+
 // wrapper for plain mounts to report errors consistently
 func mount(src, dst, fs string, flags uintptr, extra string) error {
 	if err := syscall.Mount(src, dst, fs, flags, extra); err != nil {
@@ -79,6 +90,41 @@ func (e *enter) MountAPI() error {
 	for _, fs := range apis {
 		target := filepath.Join(e.Chroot, fs.Path)
 		if err := mount(fs.Type, target, fs.Type, fs.Flags, fs.Extra); err != nil {
+			return err
+		}
+	}
+
+	// Since loop devices are dynamic we need the host's managed /dev
+	if err := bindro("/dev", filepath.Join(e.Chroot, "dev")); err != nil {
+		return err
+	}
+	// /dev/pts must be read-write because emerge chowns tty devices.
+	if err := bind("/dev/pts", filepath.Join(e.Chroot, "dev/pts")); err != nil {
+		return err
+	}
+
+	// Unfortunately using the host's /dev complicates /dev/shm which may
+	// be a directory or a symlink into /run depending on the distro. :(
+	// XXX: catalyst does not work on systems with a /dev/shm symlink!
+	if system.IsSymlink("/dev/shm") {
+		shmPath, err := filepath.EvalSymlinks("/dev/shm")
+		if err != nil {
+			return err
+		}
+		// Only accept known values to avoid surprises.
+		if shmPath != "/run/shm" {
+			return fmt.Errorf("Unexpected shm path: %s", shmPath)
+		}
+		newPath := filepath.Join(e.Chroot, shmPath)
+		if err := os.Mkdir(newPath, 01777); err != nil {
+			return err
+		}
+		if err := os.Chmod(newPath, 01777); err != nil {
+			return err
+		}
+	} else {
+		shmPath := filepath.Join(e.Chroot, "dev/shm")
+		if err := mount("tmpfs", shmPath, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
 			return err
 		}
 	}
