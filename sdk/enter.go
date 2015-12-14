@@ -54,6 +54,38 @@ func bind(src, dst string) error {
 	return nil
 }
 
+// wrapper for plain mounts to report errors consistently
+func mount(src, dst, fs string, flags uintptr, extra string) error {
+	if err := syscall.Mount(src, dst, fs, flags, extra); err != nil {
+		return fmt.Errorf("Mounting %q to %q failed: %v", src, dst, err)
+	}
+	return nil
+}
+
+// MountAPI mounts standard Linux API filesystems.
+// When possible the filesystems are mounted read-only.
+func (e *enter) MountAPI() error {
+	var apis = []struct {
+		Path  string
+		Type  string
+		Flags uintptr
+		Extra string
+	}{
+		{"/proc", "proc", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RDONLY, ""},
+		{"/sys", "sysfs", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RDONLY, ""},
+		{"/run", "tmpfs", syscall.MS_NOSUID | syscall.MS_NODEV, "mode=755"},
+	}
+
+	for _, fs := range apis {
+		target := filepath.Join(e.Chroot, fs.Path)
+		if err := mount(fs.Type, target, fs.Type, fs.Flags, fs.Extra); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // MountAgent bind mounts a SSH or GnuPG agent socket into the chroot
 func (e *enter) MountAgent(env string) error {
 	origPath := os.Getenv(env)
@@ -163,11 +195,8 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	// mount the /run directory and setup the permissions
-	runMountDir := filepath.Join(e.Chroot, "run")
-	if err := syscall.Mount(
-		"tmpfs", runMountDir, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, "mode=755"); err != nil {
-		return fmt.Errorf("Mounting %q failed: %v", runMountDir, err)
+	if err := e.MountAPI(); err != nil {
+		return err
 	}
 
 	if err = os.MkdirAll(e.UserRunDir, 0755); err != nil {
