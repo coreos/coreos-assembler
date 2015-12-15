@@ -30,6 +30,7 @@ var (
 	manifestName   string
 	manifestBranch string
 	allowReplace   bool
+	experimental   bool
 	createCmd      = &cobra.Command{
 		Use:   "create",
 		Short: "Download and unpack the SDK",
@@ -62,6 +63,8 @@ func init() {
 		"replace", false, "Replace an existing SDK chroot")
 	enterCmd.Flags().StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
+	enterCmd.Flags().BoolVar(&experimental,
+		"experimental", false, "Use new enter implementation")
 	deleteCmd.Flags().StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
 	root.AddCommand(createCmd)
@@ -103,7 +106,12 @@ func runCreate(cmd *cobra.Command, args []string) {
 }
 
 func runEnter(cmd *cobra.Command, args []string) {
-	if err := sdk.Enter(chrootName, args...); err != nil && len(args) != 0 {
+	enter := sdk.OldEnter
+	if experimental {
+		enter = sdk.Enter
+	}
+
+	if err := enter(chrootName, args...); err != nil && len(args) != 0 {
 		plog.Fatalf("Running %v failed: %v", args, err)
 	}
 }

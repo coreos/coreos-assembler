@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -29,28 +28,189 @@ import (
 	"github.com/coreos/mantle/system/user"
 )
 
-const enterChroot = "src/scripts/sdk_lib/enter_chroot.sh"
+const enterChrootSh = "src/scripts/sdk_lib/enter_chroot.sh"
 
-var simpleChroot exec.Entrypoint
+var enterChroot exec.Entrypoint
 
 func init() {
-	simpleChroot = exec.NewEntrypoint("simpleChroot", simpleChrootHelper)
+	enterChroot = exec.NewEntrypoint("enterChroot", enterChrootHelper)
+}
+
+// Information on the chroot, paths are relative to the host system.
+type enter struct {
+	RepoRoot   string
+	Chroot     string
+	Cmd        []string
+	User       *user.User
+	UserRunDir string
+}
+
+// wrapper for bind mounts to report errors consistently
+func bind(src, dst string) error {
+	err := syscall.Mount(src, dst, "none", syscall.MS_BIND, "")
+	if err != nil {
+		return fmt.Errorf("Binding %q to %q failed: %v", src, dst, err)
+	}
+	return nil
+}
+
+// bind and remount read-only for safety
+func bindro(src, dst string) error {
+	if err := bind(src, dst); err != nil {
+		return err
+	}
+	if err := syscall.Mount(src, dst, "none", syscall.MS_REMOUNT|syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
+		return fmt.Errorf("Read-only bind %q to %q failed: %v", src, dst, err)
+	}
+	return nil
+}
+
+// wrapper for plain mounts to report errors consistently
+func mount(src, dst, fs string, flags uintptr, extra string) error {
+	if err := syscall.Mount(src, dst, fs, flags, extra); err != nil {
+		return fmt.Errorf("Mounting %q to %q failed: %v", src, dst, err)
+	}
+	return nil
+}
+
+// MountAPI mounts standard Linux API filesystems.
+// When possible the filesystems are mounted read-only.
+func (e *enter) MountAPI() error {
+	var apis = []struct {
+		Path  string
+		Type  string
+		Flags uintptr
+		Extra string
+	}{
+		{"/proc", "proc", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RDONLY, ""},
+		{"/sys", "sysfs", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RDONLY, ""},
+		{"/run", "tmpfs", syscall.MS_NOSUID | syscall.MS_NODEV, "mode=755"},
+	}
+
+	for _, fs := range apis {
+		target := filepath.Join(e.Chroot, fs.Path)
+		if err := mount(fs.Type, target, fs.Type, fs.Flags, fs.Extra); err != nil {
+			return err
+		}
+	}
+
+	// Since loop devices are dynamic we need the host's managed /dev
+	if err := bindro("/dev", filepath.Join(e.Chroot, "dev")); err != nil {
+		return err
+	}
+	// /dev/pts must be read-write because emerge chowns tty devices.
+	if err := bind("/dev/pts", filepath.Join(e.Chroot, "dev/pts")); err != nil {
+		return err
+	}
+
+	// Unfortunately using the host's /dev complicates /dev/shm which may
+	// be a directory or a symlink into /run depending on the distro. :(
+	// XXX: catalyst does not work on systems with a /dev/shm symlink!
+	if system.IsSymlink("/dev/shm") {
+		shmPath, err := filepath.EvalSymlinks("/dev/shm")
+		if err != nil {
+			return err
+		}
+		// Only accept known values to avoid surprises.
+		if shmPath != "/run/shm" {
+			return fmt.Errorf("Unexpected shm path: %s", shmPath)
+		}
+		newPath := filepath.Join(e.Chroot, shmPath)
+		if err := os.Mkdir(newPath, 01777); err != nil {
+			return err
+		}
+		if err := os.Chmod(newPath, 01777); err != nil {
+			return err
+		}
+	} else {
+		shmPath := filepath.Join(e.Chroot, "dev/shm")
+		if err := mount("tmpfs", shmPath, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// MountAgent bind mounts a SSH or GnuPG agent socket into the chroot
+func (e *enter) MountAgent(env string) error {
+	origPath := os.Getenv(env)
+	if origPath == "" {
+		return nil
+	}
+
+	origDir, origFile := filepath.Split(origPath)
+	if _, err := os.Stat(origDir); err != nil {
+		// Just skip if the agent has gone missing.
+		return nil
+	}
+
+	newDir, err := ioutil.TempDir(e.UserRunDir, "agent-")
+	if err != nil {
+		return err
+	}
+
+	if err := bind(origDir, newDir); err != nil {
+		return err
+	}
+
+	newPath := filepath.Join(newDir, origFile)
+	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
+	return os.Setenv(env, chrootPath)
+}
+
+// MountGnupg bind mounts $GNUPGHOME or ~/.gnupg and the agent socket
+// if available. The agent is ignored if the home dir isn't available.
+func (e *enter) MountGnupg() error {
+	origHome := os.Getenv("GNUPGHOME")
+	if origHome == "" {
+		origHome = filepath.Join(e.User.HomeDir, ".gnupg")
+	}
+
+	if _, err := os.Stat(origHome); err != nil {
+		// Skip but do not pass along $GNUPGHOME
+		return os.Unsetenv("GNUPGHOME")
+	}
+
+	newHome, err := ioutil.TempDir(e.UserRunDir, "gnupg-")
+	if err != nil {
+		return err
+	}
+
+	if err := bind(origHome, newHome); err != nil {
+		return err
+	}
+
+	chrootHome := strings.TrimPrefix(newHome, e.Chroot)
+	if err := os.Setenv("GNUPGHOME", chrootHome); err != nil {
+		return err
+	}
+
+	return e.MountAgent("GPG_AGENT_INFO")
 }
 
 // bind mount the repo source tree into the chroot and run a command
-func simpleChrootHelper(args []string) error {
+func enterChrootHelper(args []string) (err error) {
 	if len(args) < 3 {
 		return fmt.Errorf("got %d args, need at least 3", len(args))
 	}
-	hostRepoRoot := args[0]
-	chroot := args[1]
-	chrootCmd := args[2:]
+
+	e := enter{
+		RepoRoot: args[0],
+		Chroot:   args[1],
+		Cmd:      args[2:],
+	}
+
 	username := os.Getenv("SUDO_USER")
 	if username == "" {
 		return fmt.Errorf("SUDO_USER environment variable is not set.")
 	}
+	if e.User, err = user.Lookup(username); err != nil {
+		return err
+	}
+	e.UserRunDir = filepath.Join(e.Chroot, "run", "user", e.User.Uid)
 
-	newRepoRoot := filepath.Join(chroot, chrootRepoRoot)
+	newRepoRoot := filepath.Join(e.Chroot, chrootRepoRoot)
 	if err := os.MkdirAll(newRepoRoot, 0755); err != nil {
 		return err
 	}
@@ -58,7 +218,7 @@ func simpleChrootHelper(args []string) error {
 	// Only copy if resolv.conf exists, if missing resolver uses localhost
 	resolv := "/etc/resolv.conf"
 	if _, err := os.Stat(resolv); err == nil {
-		chrootResolv := filepath.Join(chroot, resolv)
+		chrootResolv := filepath.Join(e.Chroot, resolv)
 		if err := system.InstallRegularFile(resolv, chrootResolv); err != nil {
 			return err
 		}
@@ -77,68 +237,32 @@ func simpleChrootHelper(args []string) error {
 		return fmt.Errorf("Unsharing mount points failed: %v", err)
 	}
 
-	if err := syscall.Mount(
-		hostRepoRoot, newRepoRoot, "none", syscall.MS_BIND, ""); err != nil {
-		return fmt.Errorf("Mounting %q failed: %v", newRepoRoot, err)
-	}
-
-	// mount the /run directory and setup the permissions
-	runMountDir := filepath.Join(chroot, "run")
-	if err := syscall.Mount(
-		"tmpfs", runMountDir, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, "mode=755"); err != nil {
-		return fmt.Errorf("Mounting %q failed: %v", runMountDir, err)
-	}
-
-	userInfo, err := user.Lookup(username)
-	if err != nil {
+	if err := bind(e.RepoRoot, newRepoRoot); err != nil {
 		return err
 	}
 
-	rundir := filepath.Join(runMountDir, "user", userInfo.Uid)
-
-	err = os.MkdirAll(rundir, 0755)
-	if err != nil {
+	if err := e.MountAPI(); err != nil {
 		return err
 	}
 
-	uid, err := strconv.Atoi(userInfo.Uid)
-	if err != nil {
+	if err = os.MkdirAll(e.UserRunDir, 0755); err != nil {
 		return err
 	}
 
-	gid, err := strconv.Atoi(userInfo.Gid)
-	if err != nil {
+	if err = os.Chown(e.UserRunDir, e.User.UidNo, e.User.GidNo); err != nil {
 		return err
 	}
 
-	err = os.Chown(rundir, uid, gid)
-	if err != nil {
+	if err := e.MountAgent("SSH_AUTH_SOCK"); err != nil {
 		return err
 	}
 
-	// mount the directory containing the ssh-agent socket in order
-	// to support a private repos during repo sync
-	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
-	if sshAuthSock != "" {
-		sshSourceDir, sshSocketFile := filepath.Split(sshAuthSock)
-		if _, err := os.Stat(sshSourceDir); err == nil {
-			sshTargetdir, err := ioutil.TempDir(rundir, "ssh-")
-			if err != nil {
-				return err
-			}
-
-			if err := syscall.Mount(
-				sshSourceDir, sshTargetdir, "none", syscall.MS_BIND, ""); err != nil {
-				return fmt.Errorf("Mounting %q failed: %v", sshSourceDir, err)
-			}
-
-			os.Setenv("SSH_AUTH_SOCK",
-				filepath.Join(strings.TrimPrefix(sshTargetdir, chroot), sshSocketFile))
-		}
+	if err := e.MountGnupg(); err != nil {
+		return err
 	}
 
-	if err := syscall.Chroot(chroot); err != nil {
-		return fmt.Errorf("Chrooting to %q failed: %v", chroot, err)
+	if err := syscall.Chroot(e.Chroot); err != nil {
+		return fmt.Errorf("Chrooting to %q failed: %v", e.Chroot, err)
 	}
 
 	if err := os.Chdir(chrootRepoRoot); err != nil {
@@ -146,7 +270,7 @@ func simpleChrootHelper(args []string) error {
 	}
 
 	sudo := "/usr/bin/sudo"
-	sudoArgs := append([]string{sudo, "-u", username, "--"}, chrootCmd...)
+	sudoArgs := append([]string{sudo, "-u", username, "--"}, e.Cmd...)
 	return syscall.Exec(sudo, sudoArgs, os.Environ())
 }
 
@@ -218,12 +342,12 @@ func setDefaultEmail(environ []string) []string {
 	return setDefault(environ, "EMAIL", email)
 }
 
-func SimpleEnter(name string, args ...string) error {
+func Enter(name string, args ...string) error {
 	reroot := RepoRoot()
 	chroot := filepath.Join(reroot, name)
 	args = append([]string{reroot, chroot}, args...)
 
-	sudo := simpleChroot.Sudo(args...)
+	sudo := enterChroot.Sudo(args...)
 	sudo.Env = setDefaultEmail(os.Environ())
 	sudo.Stdin = os.Stdin
 	sudo.Stdout = os.Stdout
@@ -236,7 +360,7 @@ func SimpleEnter(name string, args ...string) error {
 	return sudo.Run()
 }
 
-func Enter(name string, args ...string) error {
+func OldEnter(name string, args ...string) error {
 	chroot := filepath.Join(RepoRoot(), name)
 
 	// TODO(marineam): the original cros_sdk uses a white list to
@@ -245,7 +369,7 @@ func Enter(name string, args ...string) error {
 	enterCmd := exec.Command(
 		"sudo", sudoPrompt, "-E",
 		"unshare", "--mount", "--",
-		filepath.Join(RepoRoot(), enterChroot),
+		filepath.Join(RepoRoot(), enterChrootSh),
 		"--chroot", chroot, "--cache_dir", RepoCache(), "--")
 	enterCmd.Args = append(enterCmd.Args, args...)
 	enterCmd.Env = setDefaultEmail(os.Environ())
@@ -257,11 +381,11 @@ func Enter(name string, args ...string) error {
 }
 
 func RepoInit(name, manifest, manifestName, branch string) error {
-	if err := SimpleEnter(
+	if err := Enter(
 		name, "repo", "init", "-u", manifest,
 		"-b", branch, "-m", manifestName); err != nil {
 		return err
 	}
 
-	return SimpleEnter(name, "repo", "sync")
+	return Enter(name, "repo", "sync")
 }
