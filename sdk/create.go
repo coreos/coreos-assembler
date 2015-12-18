@@ -227,7 +227,7 @@ func Unpack(version, name string) error {
 		return err
 	}
 
-	tar := filepath.Join(RepoCache(), "sdk", TarballName(version))
+	tar := filepath.Join(RepoCache(), "sdks", TarballName(version))
 	plog.Infof("Using %s", tar)
 	if err := extract(tar, chroot); err != nil {
 		plog.Errorf("Extracting %s to %s failed: %v", tar, chroot, err)
