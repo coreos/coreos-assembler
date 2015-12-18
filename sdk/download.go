@@ -190,7 +190,7 @@ func DownloadSignedFile(file, url string, client *http.Client) error {
 }
 
 func DownloadSDK(version string) error {
-	tarFile := filepath.Join(RepoCache(), "sdk", TarballName(version))
+	tarFile := filepath.Join(RepoCache(), "sdks", TarballName(version))
 	tarURL := TarballURL(version)
 	return DownloadSignedFile(tarFile, tarURL, nil)
 }
