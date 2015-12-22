@@ -34,7 +34,11 @@ type QEMUOptions struct {
 	DiskImage string
 }
 
-type qemuCluster struct {
+// QEMUCluster is a local cluster of QEMU-based virtual machines.
+//
+// XXX: must be exported so that certain QEMU tests can access struct members
+// through type assertions.
+type QEMUCluster struct {
 	*baseCluster
 	conf QEMUOptions
 
@@ -43,7 +47,7 @@ type qemuCluster struct {
 }
 
 type qemuMachine struct {
-	qc          *qemuCluster
+	qc          *QEMUCluster
 	id          string
 	qemu        exec.Cmd
 	configDrive *local.ConfigDrive
@@ -63,7 +67,7 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	qc := &qemuCluster{
+	qc := &QEMUCluster{
 		baseCluster:  bc,
 		conf:         conf,
 		LocalCluster: lc,
@@ -72,14 +76,14 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 	return Cluster(qc), nil
 }
 
-func (qc *qemuCluster) Destroy() error {
+func (qc *QEMUCluster) Destroy() error {
 	for _, qm := range qc.Machines() {
 		qm.Destroy()
 	}
 	return qc.LocalCluster.Destroy()
 }
 
-func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
+func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 	id := uuid.NewV4()
 
 	// hacky solution for cloud config ip substitution
@@ -173,7 +177,7 @@ func (qc *qemuCluster) NewMachine(cfg string) (Machine, error) {
 }
 
 // overrides baseCluster.GetDiscoveryURL
-func (qc *qemuCluster) GetDiscoveryURL(size int) (string, error) {
+func (qc *QEMUCluster) GetDiscoveryURL(size int) (string, error) {
 	return qc.LocalCluster.GetDiscoveryURL(size)
 }
 
