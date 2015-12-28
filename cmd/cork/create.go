@@ -50,7 +50,7 @@ var (
 
 func init() {
 	createCmd.Flags().StringVar(&chrootVersion,
-		"sdk-version", "", "SDK version")
+		"sdk-version", "", "SDK version. Defaults to the SDK version in version.txt")
 	createCmd.Flags().StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
 	createCmd.Flags().StringVar(&manifestURL,
@@ -78,7 +78,20 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if chrootVersion == "" {
-		plog.Fatal("Missing --sdk-version=VERSION")
+		plog.Noticef("Detecting SDK version")
+
+		var err error
+		chrootVersion, err = sdk.GetSDKVersion()
+		if err != nil {
+			chrootVersion, err = sdk.GetSDKVersionFromRemoteRepo(manifestURL, manifestBranch)
+			if err != nil {
+				plog.Fatalf("GetSDKVersionFromRemoteRepo failed: %v", err)
+			} else {
+				plog.Noticef("Found SDK version %s from remote repo", chrootVersion)
+			}
+		} else {
+			plog.Noticef("Found SDK version %s from local repo", chrootVersion)
+		}
 	}
 
 	plog.Noticef("Downloading SDK version %s", chrootVersion)
