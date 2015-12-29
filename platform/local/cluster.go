@@ -168,6 +168,7 @@ func (lc *LocalCluster) Destroy() error {
 
 	firstErr(lc.SimpleEtcd.Destroy())
 	firstErr(lc.Dnsmasq.Destroy())
+	firstErr(lc.NTPServer.Close())
 	firstErr(lc.SSHAgent.Close())
 	firstErr(lc.nshandle.Close())
 	return err
