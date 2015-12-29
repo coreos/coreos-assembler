@@ -112,7 +112,7 @@ func GenerateFullUpdate(version string) error {
 	postinstall := update.AddAction("postinstall")
 	postinstall.Sha256 = pkg.Sha256
 
-	update.Version, err = sdk.GetVersion(dir)
+	update.Version, err = sdk.GetVersionFromDir(dir)
 	if err != nil {
 		return err
 	}

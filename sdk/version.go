@@ -17,7 +17,9 @@ package sdk
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -27,9 +29,7 @@ const (
 	coreosId = "{E96281A6-D1AF-4BDE-9A0A-97B76E56DC57}"
 )
 
-func GetVersion(dir string) (ver string, err error) {
-	const key = "COREOS_VERSION="
-
+func getVersion(dir, key string) (ver string, err error) {
 	f, err := os.Open(filepath.Join(dir, "version.txt"))
 	if err != nil {
 		return
@@ -53,8 +53,36 @@ func GetVersion(dir string) (ver string, err error) {
 	return
 }
 
+func GetVersionFromDir(dir string) (string, error) {
+	return getVersion(dir, "COREOS_VERSION=")
+}
+
 func GetLatestVersion() (string, error) {
-	return GetVersion(BuildImageDir("latest"))
+	return getVersion(BuildImageDir("latest"), "COREOS_VERSION=")
+}
+
+func GetSDKVersion() (string, error) {
+	return getVersion(filepath.Join(RepoRoot(), ".repo", "manifests"), "COREOS_SDK_VERSION=")
+}
+
+func GetSDKVersionFromDir(dir string) (string, error) {
+	return getVersion(dir, "COREOS_SDK_VERSION=")
+}
+
+func GetSDKVersionFromRemoteRepo(url, branch string) (string, error) {
+	tmp, err := ioutil.TempDir("", "")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmp)
+
+	clone := exec.Command("git", "clone", "-q", "--depth=1", "--single-branch", "-b", branch, url, tmp)
+	clone.Stderr = os.Stderr
+	if err := clone.Run(); err != nil {
+		return "", err
+	}
+
+	return GetSDKVersionFromDir(tmp)
 }
 
 func GetDefaultAppId() string {
