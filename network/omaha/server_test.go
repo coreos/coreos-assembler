@@ -41,7 +41,7 @@ func TestServerRequestResponse(t *testing.T) {
 		}
 	}()
 
-	defer s.Stop()
+	defer s.Destroy()
 
 	buf := new(bytes.Buffer)
 	enc := xml.NewEncoder(buf)

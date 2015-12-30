@@ -69,7 +69,7 @@ func (s *Server) Serve() error {
 	return nil
 }
 
-func (s *Server) Stop() {
+func (s *Server) Destroy() error {
 	s.l.Close()
 
 	s.reqChanLock.Lock()
@@ -78,6 +78,7 @@ func (s *Server) Stop() {
 		s.reqChan = nil
 	}
 	s.reqChanLock.Unlock()
+	return nil
 }
 
 // RequestChan returns a channel that will receive decoded omaha requests.
