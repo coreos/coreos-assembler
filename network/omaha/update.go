@@ -45,6 +45,29 @@ func (u *Update) URLs(prefixes []string) []*URL {
 	return urls
 }
 
+// Updater provides a common interface for any backend that can respond to
+// update requests made to an Omaha server.
 type Updater interface {
-	Update(os *OS, app *AppRequest) (*Update, error)
+	CheckApp(req *Request, app *AppRequest) error
+	CheckUpdate(req *Request, app *AppRequest) (*Update, error)
+	Event(req *Request, app *AppRequest, event *EventRequest)
+	Ping(req *Request, app *AppRequest)
+}
+
+type UpdaterStub struct{}
+
+func (u UpdaterStub) CheckApp(req *Request, app *AppRequest) error {
+	return nil
+}
+
+func (u UpdaterStub) CheckUpdate(req *Request, app *AppRequest) (*Update, error) {
+	return nil, NoUpdate
+}
+
+func (u UpdaterStub) Event(req *Request, app *AppRequest, event *EventRequest) {
+	return
+}
+
+func (u UpdaterStub) Ping(req *Request, app *AppRequest) {
+	return
 }

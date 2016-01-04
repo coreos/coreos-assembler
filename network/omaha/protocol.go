@@ -158,8 +158,8 @@ type AppResponse struct {
 	Status      AppStatus        `xml:"status,attr,omitempty"`
 }
 
-func (a *AppResponse) AddUpdateCheck() *UpdateResponse {
-	a.UpdateCheck = new(UpdateResponse)
+func (a *AppResponse) AddUpdateCheck(status UpdateStatus) *UpdateResponse {
+	a.UpdateCheck = &UpdateResponse{Status: status}
 	return a.UpdateCheck
 }
 

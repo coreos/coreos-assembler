@@ -83,10 +83,8 @@ func TestOmahaRequestUpdateCheck(t *testing.T) {
 func ExampleNewResponse() {
 	response := NewResponse()
 	app := response.AddApp("{52F1B9BC-D31A-4D86-9276-CBC256AADF9A}", "ok")
-	p := app.AddPing()
-	p.Status = "ok"
-	u := app.AddUpdateCheck()
-	u.Status = "ok"
+	app.AddPing()
+	u := app.AddUpdateCheck(UpdateOK)
 	u.AddURL("http://localhost/updates")
 	m := u.AddManifest("9999.0.0")
 	k := m.AddPackage()

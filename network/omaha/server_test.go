@@ -18,12 +18,9 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"sync"
 	"testing"
-
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/kylelemons/godebug/pretty"
 )
 
 func TestServerRequestResponse(t *testing.T) {
@@ -46,19 +43,10 @@ func TestServerRequestResponse(t *testing.T) {
 
 	defer s.Stop()
 
-	// make an omaha request
-	request := NewRequest()
-
-	// ensures the struct is the same as what appears out of the Decoder in
-	// Server's handler
-	request.XMLName.Local = "request"
-
-	request.OS.Platform = "CoreOS"
-
 	buf := new(bytes.Buffer)
 	enc := xml.NewEncoder(buf)
 	enc.Indent("", "\t")
-	err = enc.Encode(request)
+	err = enc.Encode(nilRequest)
 	if err != nil {
 		t.Errorf("failed to marshal request: %v", err)
 		return
@@ -75,14 +63,13 @@ func TestServerRequestResponse(t *testing.T) {
 			return
 		}
 
-		if diff := pretty.Compare(request, sreq); diff != "" {
-			t.Errorf("client request differs from what server got: %v", diff)
+		if err := compareXML(nilRequest, sreq); err != nil {
+			t.Error(err)
 		}
 	}()
 
 	// send omaha request
 	endpoint := fmt.Sprintf("http://%s/v1/update/", s.Addr())
-	t.Logf("sending request to %q:\n%s\n", endpoint, buf)
 	res, err := http.Post(endpoint, "text/xml", buf)
 	if err != nil {
 		t.Errorf("failed to post: %v", err)
@@ -96,8 +83,12 @@ func TestServerRequestResponse(t *testing.T) {
 		return
 	}
 
-	body, _ := ioutil.ReadAll(res.Body)
-
-	t.Logf("got response:\n%s\n", body)
-
+	dec := xml.NewDecoder(res.Body)
+	sresp := &Response{}
+	if err := dec.Decode(sresp); err != nil {
+		t.Fatalf("failed to parse body: %v", err)
+	}
+	if err := compareXML(nilResponse, sresp); err != nil {
+		t.Error(err)
+	}
 }
