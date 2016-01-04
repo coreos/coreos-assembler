@@ -26,17 +26,19 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
 	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/network/ntp"
+	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 )
 
 type LocalCluster struct {
 	util.MultiDestructor
-	Dnsmasq    *Dnsmasq
-	NTPServer  *ntp.Server
-	SSHAgent   *network.SSHAgent
-	SimpleEtcd *SimpleEtcd
-	nshandle   netns.NsHandle
+	Dnsmasq     *Dnsmasq
+	NTPServer   *ntp.Server
+	OmahaServer *omaha.Server
+	SSHAgent    *network.SSHAgent
+	SimpleEtcd  *SimpleEtcd
+	nshandle    netns.NsHandle
 }
 
 func NewLocalCluster() (*LocalCluster, error) {
@@ -57,7 +59,7 @@ func NewLocalCluster() (*LocalCluster, error) {
 	}
 	lc.AddCloser(lc.SSHAgent)
 
-	// dnsmasq and etcd much be lunched in the new namespace
+	// dnsmasq and etcd much be launched in the new namespace
 	nsExit, err := NsEnter(lc.nshandle)
 	if err != nil {
 		return nil, err
@@ -85,6 +87,14 @@ func NewLocalCluster() (*LocalCluster, error) {
 	}
 	lc.AddCloser(lc.NTPServer)
 	go lc.NTPServer.Serve()
+
+	lc.OmahaServer, err = omaha.NewServer(":34567")
+	if err != nil {
+		lc.Destroy()
+		return nil, err
+	}
+	lc.AddDestructor(lc.OmahaServer)
+	go lc.OmahaServer.Serve()
 
 	return lc, nil
 }
