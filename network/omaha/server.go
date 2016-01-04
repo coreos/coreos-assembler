@@ -15,7 +15,6 @@
 package omaha
 
 import (
-	"encoding/xml"
 	"net"
 	"net/http"
 	"sync"
@@ -37,7 +36,7 @@ func NewServer(addr string) (*Server, error) {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/update/", s.UpdateHandler)
+	mux.Handle("/v1/update/", &OmahaHandler{s})
 
 	s.srv.Handler = mux
 
@@ -45,6 +44,8 @@ func NewServer(addr string) (*Server, error) {
 }
 
 type Server struct {
+	UpdaterStub
+
 	l   net.Listener
 	srv *http.Server
 
@@ -92,32 +93,13 @@ func (s *Server) RequestChan() <-chan *Request {
 	return s.reqChan
 }
 
-func (s *Server) UpdateHandler(rw http.ResponseWriter, r *http.Request) {
-	req := Request{}
-	err := xml.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(rw, "malformed omaha request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
+func (s *Server) CheckApp(req *Request, app *AppRequest) error {
 	s.reqChanLock.Lock()
 	if s.reqChan != nil {
-		s.reqChan <- &req
+		s.reqChan <- req
 	}
 	s.reqChanLock.Unlock()
-
-	resp := NewResponse()
-	app := resp.AddApp("e96281a6-d1af-4bde-9a0a-97b76e56dc57", "ok")
-	app.AddUpdateCheck(NoUpdate)
-
-	enc := xml.NewEncoder(rw)
-	enc.Indent("", "\t")
-
-	err = enc.Encode(resp)
-	if err != nil {
-		http.Error(rw, "failed to marshal omaha request: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return nil
 }
 
 func (s *Server) Addr() net.Addr {
