@@ -25,26 +25,29 @@ func NewServer(addr string, updater Updater) (*Server, error) {
 		return nil, err
 	}
 
+	mux := http.NewServeMux()
+
 	srv := &http.Server{
-		Addr: addr,
+		Addr:    addr,
+		Handler: mux,
 	}
 
 	s := &Server{
 		Updater: updater,
+		Mux:     mux,
 		l:       l,
 		srv:     srv,
 	}
 
-	mux := http.NewServeMux()
 	mux.Handle("/v1/update/", &OmahaHandler{s})
-
-	s.srv.Handler = mux
 
 	return s, nil
 }
 
 type Server struct {
 	Updater
+
+	Mux *http.ServeMux
 
 	l   net.Listener
 	srv *http.Server
