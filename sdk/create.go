@@ -45,9 +45,12 @@ if ! getent group {{printf "%q" .Groupname}} >/dev/null; then
 	groupadd -o -g {{.Gid}} {{printf "%q" .Groupname}}
 fi
 
-echo Adding user {{printf "%q" .Username}}
-useradd -o -g {{.Gid}} -u {{.Uid}} -s /bin/bash -m \
-	-c {{printf "%q" .Name}} {{printf "%q" .Username}}
+# add user if it doesn't exist already
+if ! getent passwd {{printf "%q" .Username}} >/dev/null; then
+	echo Adding user {{printf "%q" .Username}}
+	useradd -o -g {{.Gid}} -u {{.Uid}} -s /bin/bash -m \
+		-c {{printf "%q" .Name}} {{printf "%q" .Username}}
+fi
 
 for g in kvm portage sudo; do
 	# copy system group from /usr to /etc if needed
