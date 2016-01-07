@@ -119,3 +119,64 @@ used to tear down the cluster. Common usage:
 
 `ore destroy-instances -prefix=$USER`
 
+## cork
+
+Cork is a tool that helps working with CoreOS images and the SDK.
+
+### cork create
+
+Download and unpack the CoreOS SDK.
+
+`cork create`
+
+### cork enter
+
+Enter the SDK chroot, and optionally run a command. The command and its
+arguments can be given after `--`.
+
+`cork enter -- repo sync`
+
+### cork download-image
+
+Download a CoreOS image into `$PWD/.cache/images`.
+
+`cork download-image --platform=qemu`
+
+## building CoreOS on CoreOS
+
+Here is an example script that will download and build a CoreOS image using
+cork and the SDK. It is assumed that it is run on an existing CoreOS instance.
+
+The resulting QEMU images will be in
+`$HOME/coreos/src/build/images/amd64-usr/latest/`.
+
+```sh
+# setup env vars
+export PATH=$HOME/bin:$PATH
+export V=master
+export S=/mnt/host/source/src/scripts
+export B=amd64-usr
+
+# build mantle commands, including cork
+cd $HOME
+git clone https://github.com/coreos/mantle.git
+cd mantle
+docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang ./build
+cp bin/* $HOME/bin/
+
+mkdir $HOME/coreos
+cd $HOME/coreos
+
+# download CoreOS SDK, build packages and image
+cork create --replace --sdk-version=${V} --verbose
+cork enter -- ${S}/build_packages --board=${B}
+cork enter -- ${S}/build_image --board=${B} dev prod
+
+# optionally you can run the kola tests on the built image
+cork enter -- sudo kola run -v
+
+# build dev and prod QEMU images
+cork enter -- ${S}/image_to_vm.sh --board=${B}
+cork enter -- ${S}/image_to_vm.sh --board=${B} --prod_image
+```
+
