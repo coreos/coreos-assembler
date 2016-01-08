@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -38,6 +39,16 @@ coreos:
 	})
 }
 
+type pingServer struct {
+	omaha.UpdaterStub
+
+	ping chan struct{}
+}
+
+func (ps *pingServer) Ping(req *omaha.Request, app *omaha.AppRequest) {
+	ps.ping <- struct{}{}
+}
+
 func OmahaPing(c platform.TestCluster) error {
 	qc, ok := c.Cluster.(*platform.QEMUCluster)
 	if !ok {
@@ -46,7 +57,11 @@ func OmahaPing(c platform.TestCluster) error {
 
 	omahaserver := qc.LocalCluster.OmahaServer
 
-	ochan := omahaserver.RequestChan()
+	svc := &pingServer{
+		ping: make(chan struct{}),
+	}
+
+	omahaserver.Updater = svc
 
 	m := c.Machines()[0]
 
@@ -59,8 +74,9 @@ func OmahaPing(c platform.TestCluster) error {
 
 	select {
 	case <-tc:
+		platform.Manhole(m)
 		return errors.New("timed out waiting for omaha ping")
-	case <-ochan:
+	case <-svc.ping:
 	}
 
 	return nil

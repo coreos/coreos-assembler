@@ -23,12 +23,27 @@ import (
 	"testing"
 )
 
+type mockServer struct {
+	UpdaterStub
+
+	reqChan chan *Request
+}
+
+func (m *mockServer) CheckApp(req *Request, app *AppRequest) error {
+	m.reqChan <- req
+	return nil
+}
+
 func TestServerRequestResponse(t *testing.T) {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
 	// make an omaha server
-	s, err := NewServer(":0")
+	svc := &mockServer{
+		reqChan: make(chan *Request),
+	}
+
+	s, err := NewServer(":0", svc)
 	if err != nil {
 		t.Fatalf("failed to create omaha server: %v", err)
 	}
@@ -53,11 +68,10 @@ func TestServerRequestResponse(t *testing.T) {
 	}
 
 	// check that server gets the same thing we sent
-	rch := s.RequestChan()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sreq, ok := <-rch
+		sreq, ok := <-svc.reqChan
 		if !ok {
 			t.Errorf("failed to get notification from server")
 			return
