@@ -100,3 +100,16 @@ func StreamJournal(m Machine) error {
 
 	return nil
 }
+
+// Reboots a machine and blocks until the system to be accessible by SSH again.
+// It will return an error if the machine is not accessible after a timeout.
+func Reboot(m Machine) error {
+	// stop sshd so that commonMachineChecks will only work if the machine
+	// actually rebooted
+	out, err := m.SSH("sudo systemctl stop sshd.socket; sudo systemd-run --no-block systemctl reboot")
+	if err != nil {
+		return fmt.Errorf("issuing reboot command failed: %v", out)
+	}
+
+	return commonMachineChecks(m)
+}
