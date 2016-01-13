@@ -45,61 +45,32 @@ type enter struct {
 	UserRunDir string
 }
 
-// wrapper for bind mounts to report errors consistently
-func bind(src, dst string) error {
-	err := syscall.Mount(src, dst, "none", syscall.MS_BIND, "")
-	if err != nil {
-		return fmt.Errorf("Binding %q to %q failed: %v", src, dst, err)
-	}
-	return nil
-}
-
-// bind and remount read-only for safety
-func bindro(src, dst string) error {
-	if err := bind(src, dst); err != nil {
-		return err
-	}
-	if err := syscall.Mount(src, dst, "none", syscall.MS_REMOUNT|syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
-		return fmt.Errorf("Read-only bind %q to %q failed: %v", src, dst, err)
-	}
-	return nil
-}
-
-// wrapper for plain mounts to report errors consistently
-func mount(src, dst, fs string, flags uintptr, extra string) error {
-	if err := syscall.Mount(src, dst, fs, flags, extra); err != nil {
-		return fmt.Errorf("Mounting %q to %q failed: %v", src, dst, err)
-	}
-	return nil
-}
-
 // MountAPI mounts standard Linux API filesystems.
 // When possible the filesystems are mounted read-only.
 func (e *enter) MountAPI() error {
 	var apis = []struct {
-		Path  string
-		Type  string
-		Flags uintptr
-		Extra string
+		Path string
+		Type string
+		Opts string
 	}{
-		{"/proc", "proc", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RDONLY, ""},
-		{"/sys", "sysfs", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RDONLY, ""},
-		{"/run", "tmpfs", syscall.MS_NOSUID | syscall.MS_NODEV, "mode=755"},
+		{"/proc", "proc", "ro,nosuid,nodev,noexec"},
+		{"/sys", "sysfs", "ro,nosuid,nodev,noexec"},
+		{"/run", "tmpfs", "nosuid,nodev,mode=755"},
 	}
 
 	for _, fs := range apis {
 		target := filepath.Join(e.Chroot, fs.Path)
-		if err := mount(fs.Type, target, fs.Type, fs.Flags, fs.Extra); err != nil {
+		if err := system.Mount("", target, fs.Type, fs.Opts); err != nil {
 			return err
 		}
 	}
 
 	// Since loop devices are dynamic we need the host's managed /dev
-	if err := bindro("/dev", filepath.Join(e.Chroot, "dev")); err != nil {
+	if err := system.ReadOnlyBind("/dev", filepath.Join(e.Chroot, "dev")); err != nil {
 		return err
 	}
 	// /dev/pts must be read-write because emerge chowns tty devices.
-	if err := bind("/dev/pts", filepath.Join(e.Chroot, "dev/pts")); err != nil {
+	if err := system.Bind("/dev/pts", filepath.Join(e.Chroot, "dev/pts")); err != nil {
 		return err
 	}
 
@@ -124,7 +95,7 @@ func (e *enter) MountAPI() error {
 		}
 	} else {
 		shmPath := filepath.Join(e.Chroot, "dev/shm")
-		if err := mount("tmpfs", shmPath, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
+		if err := system.Mount("", shmPath, "tmpfs", "nosuid,nodev"); err != nil {
 			return err
 		}
 	}
@@ -150,7 +121,7 @@ func (e *enter) MountAgent(env string) error {
 		return err
 	}
 
-	if err := bind(origDir, newDir); err != nil {
+	if err := system.Bind(origDir, newDir); err != nil {
 		return err
 	}
 
@@ -177,7 +148,7 @@ func (e *enter) MountGnupg() error {
 		return err
 	}
 
-	if err := bind(origHome, newHome); err != nil {
+	if err := system.Bind(origHome, newHome); err != nil {
 		return err
 	}
 
@@ -232,12 +203,11 @@ func enterChrootHelper(args []string) (err error) {
 		return fmt.Errorf("Unsharing mount namespace failed: %v", err)
 	}
 
-	if err := syscall.Mount(
-		"none", "/", "none", syscall.MS_REC|syscall.MS_SLAVE, ""); err != nil {
-		return fmt.Errorf("Unsharing mount points failed: %v", err)
+	if err := system.RecursiveSlave("/"); err != nil {
+		return err
 	}
 
-	if err := bind(e.RepoRoot, newRepoRoot); err != nil {
+	if err := system.Bind(e.RepoRoot, newRepoRoot); err != nil {
 		return err
 	}
 
