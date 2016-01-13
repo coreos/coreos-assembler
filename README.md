@@ -162,6 +162,7 @@ cd $HOME
 git clone https://github.com/coreos/mantle.git
 cd mantle
 docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang ./build
+mkdir -p $HOME/bin/
 cp bin/* $HOME/bin/
 
 mkdir $HOME/coreos
