@@ -81,11 +81,17 @@ func checkUpdate(dir, update_xml string) error {
 	return u.Packages[0].Verify(pkgdir)
 }
 
-func GenerateFullUpdate(version string) error {
-	// TODO: support prod images too, for now just match dev_server.
+func GenerateFullUpdate(version string, prod bool) error {
+	var variant string
+	if prod {
+		variant = "production"
+	} else {
+		variant = "developer"
+	}
+
 	var (
 		dir           = sdk.BuildImageDir(version)
-		update_prefix = filepath.Join(dir, "coreos_developer_update")
+		update_prefix = filepath.Join(dir, "coreos_"+variant+"_update")
 		update_bin    = update_prefix + ".bin"
 		update_gz     = update_prefix + ".gz"
 		update_xml    = update_prefix + ".xml"

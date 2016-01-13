@@ -17,40 +17,40 @@ package omaha
 import (
 	"net"
 	"net/http"
-	"sync"
 )
 
-func NewServer(addr string) (*Server, error) {
+func NewServer(addr string, updater Updater) (*Server, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
+	mux := http.NewServeMux()
+
 	srv := &http.Server{
-		Addr: addr,
+		Addr:    addr,
+		Handler: mux,
 	}
 
 	s := &Server{
-		l:   l,
-		srv: srv,
+		Updater: updater,
+		Mux:     mux,
+		l:       l,
+		srv:     srv,
 	}
 
-	mux := http.NewServeMux()
 	mux.Handle("/v1/update/", &OmahaHandler{s})
-
-	s.srv.Handler = mux
 
 	return s, nil
 }
 
 type Server struct {
-	UpdaterStub
+	Updater
+
+	Mux *http.ServeMux
 
 	l   net.Listener
 	srv *http.Server
-
-	reqChanLock sync.Mutex
-	reqChan     chan *Request
 }
 
 func (s *Server) Serve() error {
@@ -71,35 +71,6 @@ func (s *Server) Serve() error {
 
 func (s *Server) Destroy() error {
 	s.l.Close()
-
-	s.reqChanLock.Lock()
-	if s.reqChan != nil {
-		close(s.reqChan)
-		s.reqChan = nil
-	}
-	s.reqChanLock.Unlock()
-	return nil
-}
-
-// RequestChan returns a channel that will receive decoded omaha requests.
-//
-// XXX: if called more than once per Server instance, the receivers will miss
-// requests.
-func (s *Server) RequestChan() <-chan *Request {
-	s.reqChanLock.Lock()
-	if s.reqChan == nil {
-		s.reqChan = make(chan *Request)
-	}
-	s.reqChanLock.Unlock()
-	return s.reqChan
-}
-
-func (s *Server) CheckApp(req *Request, app *AppRequest) error {
-	s.reqChanLock.Lock()
-	if s.reqChan != nil {
-		s.reqChan <- req
-	}
-	s.reqChanLock.Unlock()
 	return nil
 }
 

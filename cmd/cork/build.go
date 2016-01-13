@@ -26,13 +26,16 @@ var (
 	}
 	buildUpdateCmd = &cobra.Command{
 		Use:   "update",
-		Short: "Build a dev image update payload",
+		Short: "Build an image update payload",
 		Run:   runBuildUpdate,
 	}
+
+	doProd = false
 )
 
 func init() {
 	buildCmd.AddCommand(buildUpdateCmd)
+	buildUpdateCmd.Flags().BoolVar(&doProd, "prod", false, "create a production image instead of developer")
 	root.AddCommand(buildCmd)
 }
 
@@ -41,7 +44,7 @@ func runBuildUpdate(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Unrecognized arguments: %v", args)
 	}
 
-	err := omaha.GenerateFullUpdate("latest")
+	err := omaha.GenerateFullUpdate("latest", doProd)
 	if err != nil {
 		plog.Fatalf("Building full update failed: %v", err)
 	}

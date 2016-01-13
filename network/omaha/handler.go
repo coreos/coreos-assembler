@@ -99,6 +99,7 @@ func (o *OmahaHandler) ServeHTTP(w http.ResponseWriter, httpReq *http.Request) {
 	}
 
 	encoder := xml.NewEncoder(writer)
+	encoder.Indent("", "\t")
 	if err := encoder.Encode(omahaResp); err != nil {
 		plog.Errorf("Failed encoding response: %v", err)
 	}

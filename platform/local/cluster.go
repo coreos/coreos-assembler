@@ -88,7 +88,7 @@ func NewLocalCluster() (*LocalCluster, error) {
 	lc.AddCloser(lc.NTPServer)
 	go lc.NTPServer.Serve()
 
-	lc.OmahaServer, err = omaha.NewServer(":34567")
+	lc.OmahaServer, err = omaha.NewServer(":34567", &omaha.UpdaterStub{})
 	if err != nil {
 		lc.Destroy()
 		return nil, err
