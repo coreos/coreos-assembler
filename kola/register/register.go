@@ -14,7 +14,15 @@
 
 package register
 
-import "github.com/coreos/mantle/platform"
+import (
+	"errors"
+
+	"github.com/coreos/mantle/platform"
+)
+
+// Skip is a sentinel value that can be returned by tests that are skipped
+// rather than passing or failing.
+var Skip = errors.New("test skipped")
 
 // Test provides the main test abstraction for kola. The run function is
 // the actual testing function while the other fields provide ways to

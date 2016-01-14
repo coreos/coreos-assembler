@@ -15,7 +15,6 @@
 package kola
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,8 +51,6 @@ var (
 	TestParallelism int //glue var to set test parallelism from main
 
 	testOptions = make(map[string]string, 0)
-
-	Skip = errors.New("test skipped")
 )
 
 // RegisterTestOption registers any options that need visibility inside
@@ -175,7 +172,7 @@ func RunTests(pattern, pltfrm string) error {
 		t := r.test
 		err := r.result
 		seconds := r.duration.Seconds()
-		if err != nil && err == Skip {
+		if err != nil && err == register.Skip {
 			plog.Errorf("--- SKIP: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 			skipped++
 		} else if err != nil {
