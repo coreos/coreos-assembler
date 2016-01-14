@@ -57,8 +57,13 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 		return nil, err
 	}
 
+	addedkey := agent.AddedKey{
+		PrivateKey: key,
+		Comment:    "core@default",
+	}
+
 	keyring := agent.NewKeyring()
-	err = keyring.Add(key, nil, "core@default")
+	err = keyring.Add(addedkey)
 	if err != nil {
 		return nil, err
 	}

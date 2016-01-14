@@ -326,23 +326,27 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/cast5",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",

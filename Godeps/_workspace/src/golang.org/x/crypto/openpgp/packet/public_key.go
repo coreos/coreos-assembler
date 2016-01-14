@@ -193,7 +193,7 @@ func NewRSAPublicKey(creationTime time.Time, pub *rsa.PublicKey) *PublicKey {
 	return pk
 }
 
-// NewDSAPublicKey returns a PublicKey that wraps the given rsa.PublicKey.
+// NewDSAPublicKey returns a PublicKey that wraps the given dsa.PublicKey.
 func NewDSAPublicKey(creationTime time.Time, pub *dsa.PublicKey) *PublicKey {
 	pk := &PublicKey{
 		CreationTime: creationTime,
@@ -201,6 +201,21 @@ func NewDSAPublicKey(creationTime time.Time, pub *dsa.PublicKey) *PublicKey {
 		PublicKey:    pub,
 		p:            fromBig(pub.P),
 		q:            fromBig(pub.Q),
+		g:            fromBig(pub.G),
+		y:            fromBig(pub.Y),
+	}
+
+	pk.setFingerPrintAndKeyId()
+	return pk
+}
+
+// NewElGamalPublicKey returns a PublicKey that wraps the given elgamal.PublicKey.
+func NewElGamalPublicKey(creationTime time.Time, pub *elgamal.PublicKey) *PublicKey {
+	pk := &PublicKey{
+		CreationTime: creationTime,
+		PubKeyAlgo:   PubKeyAlgoElGamal,
+		PublicKey:    pub,
+		p:            fromBig(pub.P),
 		g:            fromBig(pub.G),
 		y:            fromBig(pub.Y),
 	}
