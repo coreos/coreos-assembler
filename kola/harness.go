@@ -15,6 +15,7 @@
 package kola
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,6 +52,8 @@ var (
 	TestParallelism int //glue var to set test parallelism from main
 
 	testOptions = make(map[string]string, 0)
+
+	Skip = errors.New("test skipped")
 )
 
 // RegisterTestOption registers any options that need visibility inside
@@ -131,7 +134,7 @@ func filterTests(tests map[string]*register.Test, pattern, platform string) (map
 // tests either registered in this package or by imported packages that
 // register tests in their init() function.
 func RunTests(pattern, pltfrm string) error {
-	var passed, failed int
+	var passed, failed, skipped int
 	var wg sync.WaitGroup
 
 	tests, err := filterTests(register.Tests, pattern, pltfrm)
@@ -172,7 +175,10 @@ func RunTests(pattern, pltfrm string) error {
 		t := r.test
 		err := r.result
 		seconds := r.duration.Seconds()
-		if err != nil {
+		if err != nil && err == Skip {
+			plog.Errorf("--- SKIP: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
+			skipped++
+		} else if err != nil {
 			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 			plog.Errorf("        %v", err)
 			failed++
@@ -182,7 +188,7 @@ func RunTests(pattern, pltfrm string) error {
 		}
 	}
 
-	plog.Noticef("%d passed %d failed out of %d total", passed, failed, passed+failed)
+	plog.Noticef("%d passed %d failed %d skipped out of %d total", passed, failed, skipped, passed+failed+skipped)
 	if failed > 0 {
 		return fmt.Errorf("%d tests failed", failed)
 	}
