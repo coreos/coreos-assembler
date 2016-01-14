@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/session"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
@@ -87,7 +88,8 @@ type awsCluster struct {
 // $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
 // spawn instances in and the credentials to use to authenticate.
 func NewAWSCluster(conf AWSOptions) (Cluster, error) {
-	api := ec2.New(aws.NewConfig().WithCredentials(credentials.NewEnvCredentials()))
+	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
+	api := ec2.New(session.New(cfg))
 
 	bc, err := newBaseCluster()
 	if err != nil {
