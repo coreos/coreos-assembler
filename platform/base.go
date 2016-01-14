@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/coreos/mantle/network"
 
@@ -36,7 +37,13 @@ type baseCluster struct {
 }
 
 func newBaseCluster() (*baseCluster, error) {
-	agent, err := network.NewSSHAgent(&net.Dialer{})
+	// set reasonable timeout and keepalive interval
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+
+	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
 	}
