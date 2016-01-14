@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.4.3",
 	"Packages": [
 		"./..."
 	],
@@ -12,43 +12,48 @@
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/endpoints",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/ec2query",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query/queryutil",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/rest",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/signer/v4",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/waiter",
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
-			"Comment": "v0.9.17",
-			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+			"Comment": "v1.0.8",
+			"Rev": "c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc"
 		},
 		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
@@ -219,6 +224,11 @@
 			"Rev": "6b16a5714269b2f70720a45406b1babd947a17ef"
 		},
 		{
+			"ImportPath": "github.com/go-ini/ini",
+			"Comment": "v1.8.6",
+			"Rev": "afbd495e5aaea13597b5e14fe514ddeaa4d76fc3"
+		},
+		{
 			"ImportPath": "github.com/godbus/dbus",
 			"Comment": "v2-6-ga5942de",
 			"Rev": "a5942dec6340eb0d57f43f2003c190ce06e43dea"
@@ -242,6 +252,11 @@
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/jmespath/go-jmespath",
+			"Comment": "0.2.2-2-gc01cf91",
+			"Rev": "c01cf91b011868172fdcd9f41838e80c9d716264"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
@@ -298,10 +313,6 @@
 			"Rev": "45ce7596ace4534e47b69051a92aef7b64ec7b3f"
 		},
 		{
-			"ImportPath": "github.com/vaughan0/go-ini",
-			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
-		},
-		{
 			"ImportPath": "github.com/vishvananda/netlink",
 			"Rev": "2e9d285a7160e1c65e1eab8238faf2d6a0dc9a4a"
 		},
@@ -315,23 +326,27 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/cast5",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
