@@ -35,7 +35,7 @@ var (
 	cmdRun = &cobra.Command{
 		Use:   "run <test name> <func name>",
 		Short: "Run native tests a group at a time",
-		Run:   Run,
+		Run:   run,
 	}
 )
 
@@ -45,7 +45,7 @@ func main() {
 }
 
 // test runner
-func Run(cmd *cobra.Command, args []string) {
+func run(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		fmt.Fprintf(os.Stderr, "kolet: Extra arguements specified. Usage: 'kolet run <test name> <func name>'\n")
 		os.Exit(2)

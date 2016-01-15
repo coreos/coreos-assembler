@@ -81,36 +81,36 @@ func runRun(cmd *cobra.Command, args []string) {
 
 func runList(cmd *cobra.Command, args []string) {
 	var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
-	var list List
+	var testlist list
 
 	for name, test := range register.Tests {
-		list = append(list, Item{name, test.Platforms})
+		testlist = append(testlist, item{name, test.Platforms})
 	}
 
-	sort.Sort(list)
+	sort.Sort(testlist)
 
 	fmt.Fprintln(w, "Test Name\tPlatforms Available")
 	fmt.Fprintln(w, "\t")
-	for _, item := range list {
+	for _, item := range testlist {
 		fmt.Fprintf(w, "%v\n", item)
 	}
 	w.Flush()
 }
 
-type Item struct {
+type item struct {
 	Name      string
 	Platforms []string
 }
 
-func (i Item) String() string {
+func (i item) String() string {
 	if len(i.Platforms) == 0 {
 		i.Platforms = []string{"all"}
 	}
 	return fmt.Sprintf("%v\t%v", i.Name, i.Platforms)
 }
 
-type List []Item
+type list []item
 
-func (s List) Len() int           { return len(s) }
-func (s List) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s List) Less(i, j int) bool { return s[i].Name < s[j].Name }
+func (s list) Len() int           { return len(s) }
+func (s list) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s list) Less(i, j int) bool { return s[i].Name < s[j].Name }
