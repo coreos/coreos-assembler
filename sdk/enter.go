@@ -15,6 +15,7 @@
 package sdk
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
@@ -30,7 +32,21 @@ import (
 
 const enterChrootSh = "src/scripts/sdk_lib/enter_chroot.sh"
 
-var enterChroot exec.Entrypoint
+var (
+	enterChroot  exec.Entrypoint
+	botoTemplate = template.Must(template.New("boto").Parse(`
+{{if eq .Type "authorized_user"}}
+[Credentials]
+gs_oauth2_refresh_token = {{.RefreshToken}}
+[OAuth2]
+client_id = {{.ClientID}}
+client_secret = {{.ClientSecret}}
+{{else}}{{if eq .Type "service_account"}}
+[Credentials]
+gs_service_key_file = {{.Path}}
+{{end}}{{end}}
+`))
+)
 
 func init() {
 	enterChroot = exec.NewEntrypoint("enterChroot", enterChrootHelper)
@@ -43,6 +59,24 @@ type enter struct {
 	Cmd        []string
 	User       *user.User
 	UserRunDir string
+}
+
+type googleCreds struct {
+	// Path to JSON file (for template above)
+	Path string
+
+	// Common fields
+	Type     string
+	ClientID string `json:"client_id"`
+
+	// User Credential fields
+	ClientSecret string `json:"client_secret"`
+	RefreshToken string `json:"refresh_token"`
+
+	// Service Account fields
+	ClientEmail  string `json:"client_email"`
+	PrivateKeyID string `json:"private_key_id"`
+	PrivateKey   string `json:"private_key"`
 }
 
 // MountAPI mounts standard Linux API filesystems.
@@ -160,6 +194,81 @@ func (e *enter) MountGnupg() error {
 	return e.MountAgent("GPG_AGENT_INFO")
 }
 
+// CopyGoogleCreds copies a Google credentials JSON file if one exists.
+// Unfortunately gsutil only partially supports these JSON files and does not
+// respect GOOGLE_APPLICATION_CREDENTIALS at all so a boto file is created.
+// TODO(marineam): integrate with mantle/auth package to migrate towards
+// consistent handling of credentials across all of mantle and the SDK.
+func (e *enter) CopyGoogleCreds() error {
+	const (
+		name = "application_default_credentials.json"
+		env  = "GOOGLE_APPLICATION_CREDENTIALS"
+	)
+
+	path := os.Getenv(env)
+	if path == "" {
+		path = filepath.Join(e.User.HomeDir, ".config", "gcloud", name)
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		// Skip but do not pass along the invalid env var
+		os.Unsetenv("BOTO_PATH")
+		return os.Unsetenv(env)
+	}
+
+	newDir, err := ioutil.TempDir(e.UserRunDir, "google-")
+	if err != nil {
+		return err
+	}
+	if err := os.Chown(newDir, e.User.UidNo, e.User.GidNo); err != nil {
+		return err
+	}
+	newPath := filepath.Join(newDir, name)
+	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
+
+	credsRaw, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var creds googleCreds
+	if err := json.Unmarshal(credsRaw, &creds); err != nil {
+		return err
+	}
+	creds.Path = chrootPath
+
+	botoPath := filepath.Join(newDir, "boto")
+	boto, err := os.OpenFile(botoPath, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer boto.Close()
+
+	if err := botoTemplate.Execute(boto, &creds); err != nil {
+		return err
+	}
+
+	if err := boto.Chown(e.User.UidNo, e.User.GidNo); err != nil {
+		return err
+	}
+
+	// Include the default boto path as well for user customization.
+	chrootBoto := fmt.Sprintf("%s:/home/%s/.boto",
+		strings.TrimPrefix(botoPath, e.Chroot), e.User.Username)
+	if err := os.Setenv("BOTO_PATH", chrootBoto); err != nil {
+		return err
+	}
+
+	if err := system.CopyRegularFile(path, newPath); err != nil {
+		return err
+	}
+
+	if err := os.Chown(newPath, e.User.UidNo, e.User.GidNo); err != nil {
+		return err
+	}
+
+	return os.Setenv(env, chrootPath)
+}
+
 // bind mount the repo source tree into the chroot and run a command
 func enterChrootHelper(args []string) (err error) {
 	if len(args) < 3 {
@@ -228,6 +337,10 @@ func enterChrootHelper(args []string) (err error) {
 	}
 
 	if err := e.MountGnupg(); err != nil {
+		return err
+	}
+
+	if err := e.CopyGoogleCreds(); err != nil {
 		return err
 	}
 
