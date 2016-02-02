@@ -15,4 +15,4 @@
 package version
 
 // Version is the current version of mantle.
-const Version = "0"
+var Version = "0.0.0"
