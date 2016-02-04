@@ -128,6 +128,80 @@ func (t *TestCluster) DropFile(localPath string) error {
 	return nil
 }
 
+// Copy a file between two machines in a cluster.
+func TransferFile(src Machine, srcPath string, dst Machine, dstPath string) error {
+	// create dst dir
+	dir := filepath.Dir(dstPath)
+	out, err := dst.SSH(fmt.Sprintf("sudo mkdir -p %s", dir))
+	if err != nil {
+		return fmt.Errorf("failed creating directory %s: %s", dir, out)
+	}
+
+	// get src permissions
+	srcPerm, err := src.SSH(`stat -c "0%a" ` + srcPath)
+	if err != nil {
+		return fmt.Errorf("failed stating src file: %v", err)
+	}
+
+	// create ssh sessions
+	srcClient, err := src.SSHClient()
+	if err != nil {
+		return fmt.Errorf("failed creating SSH client: %v", err)
+	}
+	defer srcClient.Close()
+
+	dstClient, err := dst.SSHClient()
+	if err != nil {
+		return fmt.Errorf("failed creating SSH client: %v", err)
+	}
+	defer dstClient.Close()
+
+	srcSession, err := srcClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed creating SSH session: %v", err)
+	}
+	defer srcSession.Close()
+
+	dstSession, err := dstClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed creating SSH session: %v", err)
+	}
+	defer dstSession.Close()
+
+	// connect stdout on src to stdin on dst
+	srcPipe, err := srcSession.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	dstSession.Stdin = srcPipe
+
+	// collect stderr
+	srcErr := bytes.NewBuffer(nil)
+	dstErr := bytes.NewBuffer(nil)
+	srcSession.Stderr = srcErr
+	dstSession.Stderr = dstErr
+
+	// transfer file via: cat file | install file
+	err = srcSession.Start(fmt.Sprintf("sudo cat %s", srcPath))
+	if err != nil {
+		return err
+	}
+	err = dstSession.Start(fmt.Sprintf("sudo install -m %s /dev/stdin %s", srcPerm, dstPath))
+	if err != nil {
+		return err
+	}
+
+	// wait on sessions to finish
+	if err := srcSession.Wait(); err != nil {
+		return fmt.Errorf(srcErr.String())
+	}
+	if err := dstSession.Wait(); err != nil {
+		return fmt.Errorf(dstErr.String())
+	}
+
+	return nil
+}
+
 // InstallFile copies data from in to the path to on m.
 func InstallFile(in io.Reader, m Machine, to string) error {
 	dir := filepath.Dir(to)
