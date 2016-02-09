@@ -20,83 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
-
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
-
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kubernetes")
-
-func init() {
-	register.Register(&register.Test{
-		Name:        "google.kubernetes.multinodesmoke",
-		Run:         MultiNodeSmoke,
-		ClusterSize: 0,
-		Platforms:   []string{"gce", "aws"},
-	})
-}
-
-// Start a multi-node cluster from offcial kubernetes 1.0 guides. Once
-// up, do a couple basic smoke checks. See:
-// http://kubernetes.io/v1.0/docs/getting-started-guides/coreos/coreos_multinode_cluster.html
-func MultiNodeSmoke(c platform.TestCluster) error {
-	const clusterSize = 3
-
-	// spawn master
-	master, err := c.NewMachine(masterConfig)
-	if err != nil {
-		return err
-	}
-
-	// get master private IP and place into nodeConfig
-	nodeConfig = strings.Replace(nodeConfig, "<master-private-ip>", master.PrivateIP(), -1)
-	var nodeConfigs []string
-	for i := 0; i < clusterSize-1; i++ {
-		nodeConfigs = append(nodeConfigs, nodeConfig)
-	}
-
-	// spawn nodes
-	nodes, err := platform.NewMachines(c, nodeConfigs)
-	if err != nil {
-		return err
-	}
-
-	// get kubectl in master
-	_, err = master.SSH("wget -q https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubectl")
-	if err != nil {
-		return err
-	}
-	_, err = master.SSH("chmod +x kubectl")
-	if err != nil {
-		return err
-	}
-
-	// check that all nodes appear in kubectl
-	f := func() error {
-		if err = nodeCheck(master, nodes); err != nil {
-			return err
-		}
-		return nil
-	}
-	if err := util.Retry(10, 5*time.Second, f); err != nil {
-		return err
-	}
-
-	// start nginx pod and curl endpoint
-	if err = nginxCheck(master, nodes); err != nil {
-		return err
-	}
-
-	// http://kubernetes.io/v1.0/docs/user-guide/secrets/ Also, ensures
-	// https://github.com/coreos/bugs/issues/447 does not re-occur.
-	if err = secretCheck(master, nodes); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
 	b, err := master.SSH("./kubectl get nodes")

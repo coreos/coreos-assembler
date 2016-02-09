@@ -26,9 +26,11 @@ import (
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
-//var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kubernetes")
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kubernetes")
 
 // register a separate test for each version tag
 var tags = []string{
