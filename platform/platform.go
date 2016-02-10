@@ -128,78 +128,75 @@ func (t *TestCluster) DropFile(localPath string) error {
 	return nil
 }
 
+// Wrap a StdoutPipe as a io.ReadCloser
+type sshPipe struct {
+	s   *ssh.Session
+	c   *ssh.Client
+	err *bytes.Buffer
+	io.Reader
+}
+
+func (p *sshPipe) Close() error {
+	if err := p.s.Wait(); err != nil {
+		return fmt.Errorf("%s: %s", err, p.err)
+	}
+	if err := p.s.Close(); err != nil {
+		return err
+	}
+	return p.c.Close()
+}
+
 // Copy a file between two machines in a cluster.
 func TransferFile(src Machine, srcPath string, dst Machine, dstPath string) error {
-	// create dst dir
-	dir := filepath.Dir(dstPath)
-	out, err := dst.SSH(fmt.Sprintf("sudo mkdir -p %s", dir))
-	if err != nil {
-		return fmt.Errorf("failed creating directory %s: %s", dir, out)
-	}
-
-	// get src permissions
-	srcPerm, err := src.SSH(`stat -c "0%a" ` + srcPath)
-	if err != nil {
-		return fmt.Errorf("failed stating src file: %v", err)
-	}
-
-	// create ssh sessions
-	srcClient, err := src.SSHClient()
-	if err != nil {
-		return fmt.Errorf("failed creating SSH client: %v", err)
-	}
-	defer srcClient.Close()
-
-	dstClient, err := dst.SSHClient()
-	if err != nil {
-		return fmt.Errorf("failed creating SSH client: %v", err)
-	}
-	defer dstClient.Close()
-
-	srcSession, err := srcClient.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed creating SSH session: %v", err)
-	}
-	defer srcSession.Close()
-
-	dstSession, err := dstClient.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed creating SSH session: %v", err)
-	}
-	defer dstSession.Close()
-
-	// connect stdout on src to stdin on dst
-	srcPipe, err := srcSession.StdoutPipe()
+	srcPipe, err := ReadFile(src, srcPath)
 	if err != nil {
 		return err
 	}
-	dstSession.Stdin = srcPipe
+	defer srcPipe.Close()
+
+	if err := InstallFile(srcPipe, dst, dstPath); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ReadFile returns a io.ReadCloser that streams the requested file. The
+// caller should close the reader when finished.
+func ReadFile(m Machine, path string) (io.ReadCloser, error) {
+	client, err := m.SSHClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed creating SSH client: %v", err)
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		client.Close()
+		return nil, fmt.Errorf("failed creating SSH session: %v", err)
+	}
+
+	// connect session stdout
+	stdoutPipe, err := session.StdoutPipe()
+	if err != nil {
+		session.Close()
+		client.Close()
+		return nil, err
+	}
 
 	// collect stderr
-	srcErr := bytes.NewBuffer(nil)
-	dstErr := bytes.NewBuffer(nil)
-	srcSession.Stderr = srcErr
-	dstSession.Stderr = dstErr
+	errBuf := bytes.NewBuffer(nil)
+	session.Stderr = errBuf
 
-	// transfer file via: cat file | install file
-	err = srcSession.Start(fmt.Sprintf("sudo cat %s", srcPath))
+	// stream file to stdout
+	err = session.Start(fmt.Sprintf("sudo cat %s", path))
 	if err != nil {
-		return err
-	}
-	err = dstSession.Start(fmt.Sprintf("sudo install -m %s /dev/stdin %s", srcPerm, dstPath))
-	if err != nil {
-		return err
+		session.Close()
+		client.Close()
+		return nil, err
 	}
 
-	// wait on sessions to finish
-	if err := srcSession.Wait(); err != nil {
-		return fmt.Errorf(srcErr.String())
-	}
-	if err := dstSession.Wait(); err != nil {
-		return fmt.Errorf(dstErr.String())
-	}
-
-	return nil
+	// pass stdoutPipe as a io.ReadCloser that cleans up the ssh session
+	// on when closed.
+	return &sshPipe{session, client, errBuf, stdoutPipe}, nil
 }
 
 // InstallFile copies data from in to the path to on m.
