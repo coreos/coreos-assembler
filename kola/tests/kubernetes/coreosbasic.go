@@ -80,6 +80,7 @@ func CoreOSBasic(c platform.TestCluster, version string) error {
 		"CONTROLLER_ENDPOINT": fmt.Sprintf("https://%v:443", master.PrivateIP()),
 		"K8S_SERVICE_IP":      "10.3.0.1",
 		"K8S_VER":             version,
+		"KUBELET_PATH":        "/usr/lib/coreos/kubelet-wrapper",
 	}
 
 	// generate TLS assets on master
@@ -269,6 +270,13 @@ func configureKubectl(m platform.Machine, server string, version string) error {
 
 // Run and configure the coreos-kubernetes generic install scripts.
 func runInstallScript(m platform.Machine, script string, options map[string]string) error {
+	// use built-in kubelet-wrapper if on-disk file does not exist
+	// on-disk wrapper should exist as of release 960.0.0
+	if _, err := m.SSH("sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
+		plog.Errorf("on-disk kubelet-wrapper not found, using test's built-in version")
+		options["KUBELET_PATH"] = "/home/core/rktkube.sh"
+	}
+
 	var buffer = new(bytes.Buffer)
 
 	tmpl, err := template.New("installScript").Parse(script)
@@ -283,6 +291,7 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 		return err
 	}
 
+	// only used if kubelet-wrapper doesn't exist
 	in := strings.NewReader(rktkube)
 	if err := platform.InstallFile(in, m, "/home/core/rktkube.sh"); err != nil {
 		return err

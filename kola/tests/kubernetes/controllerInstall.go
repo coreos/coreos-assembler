@@ -84,8 +84,9 @@ function init_templates {
         cat << EOF > $TEMPLATE
 [Service]
 Environment=KUBELET_VERSION={{.K8S_VER}}
+Environment=KUBELET_ACI={{.HYPERKUBE_ACI}}
 ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
-ExecStart=/home/core/rktkube.sh \
+ExecStart={{.KUBELET_PATH}} \
   --api_servers=http://127.0.0.1:8080 \
   --register-node=false \
   --allow-privileged=true \

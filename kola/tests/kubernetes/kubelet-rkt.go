@@ -10,7 +10,7 @@ if [ -z "${KUBELET_VERSION}" ]; then
     exit 1
 fi
 
-KUBELET_ACI="${KUBELET_ACI:-quay.io/aaron_levy/hyperkube}"
+KUBELET_ACI="${KUBELET_ACI:-quay.io/coreos/hyperkube}"
 
 mkdir --parents /etc/kubernetes
 mkdir --parents /var/lib/docker
