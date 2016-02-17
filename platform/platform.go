@@ -128,6 +128,77 @@ func (t *TestCluster) DropFile(localPath string) error {
 	return nil
 }
 
+// Wrap a StdoutPipe as a io.ReadCloser
+type sshPipe struct {
+	s   *ssh.Session
+	c   *ssh.Client
+	err *bytes.Buffer
+	io.Reader
+}
+
+func (p *sshPipe) Close() error {
+	if err := p.s.Wait(); err != nil {
+		return fmt.Errorf("%s: %s", err, p.err)
+	}
+	if err := p.s.Close(); err != nil {
+		return err
+	}
+	return p.c.Close()
+}
+
+// Copy a file between two machines in a cluster.
+func TransferFile(src Machine, srcPath string, dst Machine, dstPath string) error {
+	srcPipe, err := ReadFile(src, srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcPipe.Close()
+
+	if err := InstallFile(srcPipe, dst, dstPath); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ReadFile returns a io.ReadCloser that streams the requested file. The
+// caller should close the reader when finished.
+func ReadFile(m Machine, path string) (io.ReadCloser, error) {
+	client, err := m.SSHClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed creating SSH client: %v", err)
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		client.Close()
+		return nil, fmt.Errorf("failed creating SSH session: %v", err)
+	}
+
+	// connect session stdout
+	stdoutPipe, err := session.StdoutPipe()
+	if err != nil {
+		session.Close()
+		client.Close()
+		return nil, err
+	}
+
+	// collect stderr
+	errBuf := bytes.NewBuffer(nil)
+	session.Stderr = errBuf
+
+	// stream file to stdout
+	err = session.Start(fmt.Sprintf("sudo cat %s", path))
+	if err != nil {
+		session.Close()
+		client.Close()
+		return nil, err
+	}
+
+	// pass stdoutPipe as a io.ReadCloser that cleans up the ssh session
+	// on when closed.
+	return &sshPipe{session, client, errBuf, stdoutPipe}, nil
+}
+
 // InstallFile copies data from in to the path to on m.
 func InstallFile(in io.Reader, m Machine, to string) error {
 	dir := filepath.Dir(to)
