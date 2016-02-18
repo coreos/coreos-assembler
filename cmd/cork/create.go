@@ -113,8 +113,12 @@ func runCreate(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Create failed: %v", err)
 	}
 
-	if err := sdk.RepoInit(chrootName, manifestURL, manifestName, manifestBranch); err != nil {
-		plog.Fatalf("repo init and sync failed: %v", err)
+	if err := sdk.RepoInit(chrootName, manifestURL, manifestBranch, manifestName); err != nil {
+		plog.Fatalf("repo init failed: %v", err)
+	}
+
+	if err := sdk.RepoSync(chrootName); err != nil {
+		plog.Fatalf("repo sync failed: %v", err)
 	}
 }
 

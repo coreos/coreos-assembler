@@ -111,3 +111,15 @@ func BuildImageDir(version string) string {
 	dir := defaultGroup + "-" + version
 	return filepath.Join(BuildRoot(), "images", DefaultBoard(), dir)
 }
+
+func RepoInit(chroot, url, branch, name string) error {
+	return Enter(chroot,
+		"repo", "init",
+		"--manifest-url", url,
+		"--manifest-branch", branch,
+		"--manifest-name", name)
+}
+
+func RepoSync(chroot string) error {
+	return Enter(chroot, "repo", "sync", "--no-clone-bundle")
+}

@@ -462,13 +462,3 @@ func OldEnter(name string, args ...string) error {
 
 	return enterCmd.Run()
 }
-
-func RepoInit(name, manifest, manifestName, branch string) error {
-	if err := Enter(
-		name, "repo", "init", "-u", manifest,
-		"-b", branch, "-m", manifestName); err != nil {
-		return err
-	}
-
-	return Enter(name, "repo", "sync")
-}
