@@ -70,6 +70,18 @@ func GetSDKVersionFromDir(dir string) (string, error) {
 }
 
 func GetSDKVersionFromRemoteRepo(url, branch string) (string, error) {
+	// git clone cannot be given a full ref path, instead it explicitly checks
+	// under both refs/heads/<name> and refs/tags/<name>, in that order.
+	if strings.HasPrefix(branch, "refs/") {
+		if strings.HasPrefix(branch, "refs/heads/") {
+			branch = strings.TrimPrefix(branch, "refs/heads/")
+		} else if strings.HasPrefix(branch, "refs/tags/") {
+			branch = strings.TrimPrefix(branch, "refs/tags/")
+		} else {
+			return "", fmt.Errorf("SDK version cannot be detected for %q", branch)
+		}
+	}
+
 	tmp, err := ioutil.TempDir("", "")
 	if err != nil {
 		return "", err
