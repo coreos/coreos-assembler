@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/pflag"
 	"github.com/coreos/mantle/sdk"
 )
 
@@ -24,14 +25,24 @@ const (
 )
 
 var (
+	// everything uses this flag
+	chrootFlags *pflag.FlagSet
+	chrootName  string
+
+	// creation flags
+	creationFlags  *pflag.FlagSet
 	chrootVersion  string
-	chrootName     string
 	manifestURL    string
 	manifestName   string
 	manifestBranch string
-	allowReplace   bool
-	experimental   bool
-	createCmd      = &cobra.Command{
+
+	// only for `create` command
+	allowReplace bool
+
+	// only for `enter` command
+	experimental bool
+
+	createCmd = &cobra.Command{
 		Use:   "create",
 		Short: "Download and unpack the SDK",
 		Run:   runCreate,
@@ -49,26 +60,34 @@ var (
 )
 
 func init() {
-	createCmd.Flags().StringVar(&chrootVersion,
-		"sdk-version", "", "SDK version. Defaults to the SDK version in version.txt")
-	createCmd.Flags().StringVar(&chrootName,
+	// the names and error handling of these flag sets are meaningless,
+	// the flag sets are only used to group common options together.
+	chrootFlags = pflag.NewFlagSet("chroot", pflag.ExitOnError)
+	chrootFlags.StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
-	createCmd.Flags().StringVar(&manifestURL,
+
+	creationFlags = pflag.NewFlagSet("creation", pflag.ExitOnError)
+	creationFlags.StringVar(&chrootVersion,
+		"sdk-version", "", "SDK version. Defaults to the SDK version in version.txt")
+	creationFlags.StringVar(&manifestURL,
 		"manifest-url", coreosManifestURL, "Manifest git repo location")
-	createCmd.Flags().StringVar(&manifestBranch,
+	creationFlags.StringVar(&manifestBranch,
 		"manifest-branch", "master", "Manifest git repo branch")
-	createCmd.Flags().StringVar(&manifestName,
+	creationFlags.StringVar(&manifestName,
 		"manifest-name", "default.xml", "Manifest file name")
+
+	createCmd.Flags().AddFlagSet(chrootFlags)
+	createCmd.Flags().AddFlagSet(creationFlags)
 	createCmd.Flags().BoolVar(&allowReplace,
 		"replace", false, "Replace an existing SDK chroot")
-	enterCmd.Flags().StringVar(&chrootName,
-		"chroot", "chroot", "SDK chroot directory name")
+	root.AddCommand(createCmd)
+
+	enterCmd.Flags().AddFlagSet(chrootFlags)
 	enterCmd.Flags().BoolVar(&experimental,
 		"experimental", false, "Use new enter implementation")
-	deleteCmd.Flags().StringVar(&chrootName,
-		"chroot", "chroot", "SDK chroot directory name")
-	root.AddCommand(createCmd)
 	root.AddCommand(enterCmd)
+
+	deleteCmd.Flags().AddFlagSet(chrootFlags)
 	root.AddCommand(deleteCmd)
 }
 
