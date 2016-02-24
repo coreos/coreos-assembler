@@ -33,7 +33,8 @@ import (
 const enterChrootSh = "src/scripts/sdk_lib/enter_chroot.sh"
 
 var (
-	enterChroot  exec.Entrypoint
+	enterChrootCmd exec.Entrypoint
+
 	botoTemplate = template.Must(template.New("boto").Parse(`
 {{if eq .Type "authorized_user"}}
 [Credentials]
@@ -49,14 +50,16 @@ gs_service_key_file = {{.Path}}
 )
 
 func init() {
-	enterChroot = exec.NewEntrypoint("enterChroot", enterChrootHelper)
+	enterChrootCmd = exec.NewEntrypoint("enterChroot", enterChrootHelper)
 }
 
-// Information on the chroot, paths are relative to the host system.
+// Information on the chroot. Except for Cmd and CmdDir paths
+// are relative to the host system.
 type enter struct {
 	RepoRoot   string
 	Chroot     string
 	Cmd        []string
+	CmdDir     string
 	User       *user.User
 	UserRunDir string
 }
@@ -278,7 +281,8 @@ func enterChrootHelper(args []string) (err error) {
 	e := enter{
 		RepoRoot: args[0],
 		Chroot:   args[1],
-		Cmd:      args[2:],
+		CmdDir:   args[2],
+		Cmd:      args[3:],
 	}
 
 	username := os.Getenv("SUDO_USER")
@@ -348,12 +352,12 @@ func enterChrootHelper(args []string) (err error) {
 		return fmt.Errorf("Chrooting to %q failed: %v", e.Chroot, err)
 	}
 
-	if err := os.Chdir(chrootRepoRoot); err != nil {
+	if err := os.Chdir(e.CmdDir); err != nil {
 		return err
 	}
 
 	sudo := "/usr/bin/sudo"
-	sudoArgs := append([]string{sudo, "-u", username, "--"}, e.Cmd...)
+	sudoArgs := append([]string{sudo, "-u", username}, e.Cmd...)
 	return syscall.Exec(sudo, sudoArgs, os.Environ())
 }
 
@@ -425,12 +429,14 @@ func setDefaultEmail(environ []string) []string {
 	return setDefault(environ, "EMAIL", email)
 }
 
-func Enter(name string, args ...string) error {
+// Enter the chroot and run a command in the given dir. The args get passed
+// directly to sudo so things like -i for a login shell are allowed.
+func enterChroot(name, dir string, args ...string) error {
 	reroot := RepoRoot()
 	chroot := filepath.Join(reroot, name)
-	args = append([]string{reroot, chroot}, args...)
+	args = append([]string{reroot, chroot, dir}, args...)
 
-	sudo := enterChroot.Sudo(args...)
+	sudo := enterChrootCmd.Sudo(args...)
 	sudo.Env = setDefaultEmail(os.Environ())
 	sudo.Stdin = os.Stdin
 	sudo.Stdout = os.Stdout
@@ -441,6 +447,19 @@ func Enter(name string, args ...string) error {
 	}
 
 	return sudo.Run()
+}
+
+// Enter the chroot with a login shell, optionally invoking a command.
+// The command may be prefixed by environment variable assignments.
+func Enter(name string, args ...string) error {
+	// pass -i to sudo to invoke a login shell
+	cmd := []string{"-i", "--"}
+	if len(args) > 0 {
+		cmd = append(cmd, "env", "--")
+		cmd = append(cmd, args...)
+	}
+	// the directory doesn't matter here, sudo -i will chdir to $HOME
+	return enterChroot(name, "/", args...)
 }
 
 func OldEnter(name string, args ...string) error {

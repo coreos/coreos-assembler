@@ -113,7 +113,8 @@ func BuildImageDir(version string) string {
 }
 
 func RepoInit(chroot, url, branch, name string) error {
-	return Enter(chroot,
+	return enterChroot(
+		chroot, chrootRepoRoot, "--",
 		"repo", "init",
 		"--manifest-url", url,
 		"--manifest-branch", branch,
@@ -121,5 +122,7 @@ func RepoInit(chroot, url, branch, name string) error {
 }
 
 func RepoSync(chroot string) error {
-	return Enter(chroot, "repo", "sync", "--no-clone-bundle")
+	return enterChroot(
+		chroot, chrootRepoRoot, "--",
+		"repo", "sync", "--no-clone-bundle")
 }
