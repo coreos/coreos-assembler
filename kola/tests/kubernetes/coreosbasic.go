@@ -317,8 +317,18 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 		return err
 	}
 
-	if err := session.Wait(); err != nil {
-		return fmt.Errorf("%s", stderr)
+	// timeout script to prevent it looping forever
+	errc := make(chan error)
+	go func() {
+		errc <- session.Wait()
+	}()
+	select {
+	case err := <-errc:
+		if err != nil {
+			return fmt.Errorf("%s", stderr)
+		}
+	case <-time.After(time.Minute * 5):
+		return fmt.Errorf("Timed out waiting for install script to finish.")
 	}
 
 	return nil
