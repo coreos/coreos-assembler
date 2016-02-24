@@ -121,9 +121,10 @@ func GenerateFullUpdate(version string, prod bool) error {
 	postinstall := update.AddAction("postinstall")
 	postinstall.Sha256 = pkg.Sha256
 
-	update.Version, err = sdk.GetVersionFromDir(dir)
-	if err != nil {
+	if ver, err := sdk.VersionsFromDir(dir); err != nil {
 		return err
+	} else {
+		update.Version = ver.Version
 	}
 
 	return xmlMarshalFile(update_xml, &update)

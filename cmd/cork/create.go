@@ -80,17 +80,14 @@ func runCreate(cmd *cobra.Command, args []string) {
 	if chrootVersion == "" {
 		plog.Noticef("Detecting SDK version")
 
-		var err error
-		chrootVersion, err = sdk.GetSDKVersion()
-		if err != nil {
-			chrootVersion, err = sdk.GetSDKVersionFromRemoteRepo(manifestURL, manifestBranch)
-			if err != nil {
-				plog.Fatalf("GetSDKVersionFromRemoteRepo failed: %v", err)
-			} else {
-				plog.Noticef("Found SDK version %s from remote repo", chrootVersion)
-			}
-		} else {
+		if ver, err := sdk.VersionsFromManifest(); err == nil {
+			chrootVersion = ver.SDKVersion
 			plog.Noticef("Found SDK version %s from local repo", chrootVersion)
+		} else if ver, err := sdk.VersionsFromRemoteRepo(manifestURL, manifestBranch); err == nil {
+			chrootVersion = ver.SDKVersion
+			plog.Noticef("Found SDK version %s from remote repo", chrootVersion)
+		} else {
+			plog.Fatalf("Reading from remote repo failed: %v", err)
 		}
 	}
 

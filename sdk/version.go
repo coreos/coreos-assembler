@@ -29,47 +29,86 @@ const (
 	coreosId = "{E96281A6-D1AF-4BDE-9A0A-97B76E56DC57}"
 )
 
-func getVersion(dir, key string) (ver string, err error) {
+type Versions struct {
+	Version    string
+	VersionID  string
+	BuildID    string
+	SDKVersion string
+}
+
+func unquote(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	for _, q := range []byte{'\'', '"'} {
+		if s[0] == q && s[len(s)-1] == q {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
+func parseVersions(f *os.File, prefix string) (ver Versions, err error) {
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.SplitN(scanner.Text(), "=", 2)
+		if len(line) != 2 {
+			continue
+		}
+		switch line[0] {
+		case prefix + "VERSION":
+			ver.Version = unquote(line[1])
+		case prefix + "VERSION_ID":
+			ver.VersionID = unquote(line[1])
+		case prefix + "BUILD_ID":
+			ver.BuildID = unquote(line[1])
+		case prefix + "SDK_VERSION":
+			ver.SDKVersion = unquote(line[1])
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		return
+	}
+
+	if ver.VersionID == "" {
+		err = fmt.Errorf("Missing %sVERSION_ID in %s", prefix, f.Name())
+	} else if !strings.HasPrefix(ver.Version, ver.VersionID) {
+		err = fmt.Errorf("Invalid %sVERSION in %s", prefix, f.Name())
+	}
+
+	return
+}
+
+func OSRelease(root string) (ver Versions, err error) {
+	f, err := os.Open(filepath.Join(root, "usr/lib/os-release"))
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	return parseVersions(f, "")
+}
+
+func VersionsFromDir(dir string) (ver Versions, err error) {
 	f, err := os.Open(filepath.Join(dir, "version.txt"))
 	if err != nil {
 		return
 	}
 	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, key) {
-			ver = line[len(key):]
-			break
-		}
-	}
-	err = scanner.Err()
-
-	if err == nil && ver == "" {
-		err = fmt.Errorf("Missing %s value in %s", key, f.Name())
+	ver, err = parseVersions(f, "COREOS_")
+	if ver.SDKVersion == "" {
+		err = fmt.Errorf("Missing COREOS_SDK_VERSION in %s", f.Name())
 	}
 
 	return
 }
 
-func GetVersionFromDir(dir string) (string, error) {
-	return getVersion(dir, "COREOS_VERSION=")
+func VersionsFromManifest() (Versions, error) {
+	return VersionsFromDir(filepath.Join(RepoRoot(), ".repo", "manifests"))
 }
 
-func GetLatestVersion() (string, error) {
-	return getVersion(BuildImageDir("latest"), "COREOS_VERSION=")
-}
-
-func GetSDKVersion() (string, error) {
-	return getVersion(filepath.Join(RepoRoot(), ".repo", "manifests"), "COREOS_SDK_VERSION=")
-}
-
-func GetSDKVersionFromDir(dir string) (string, error) {
-	return getVersion(dir, "COREOS_SDK_VERSION=")
-}
-
-func GetSDKVersionFromRemoteRepo(url, branch string) (string, error) {
+func VersionsFromRemoteRepo(url, branch string) (ver Versions, err error) {
 	// git clone cannot be given a full ref path, instead it explicitly checks
 	// under both refs/heads/<name> and refs/tags/<name>, in that order.
 	if strings.HasPrefix(branch, "refs/") {
@@ -78,23 +117,24 @@ func GetSDKVersionFromRemoteRepo(url, branch string) (string, error) {
 		} else if strings.HasPrefix(branch, "refs/tags/") {
 			branch = strings.TrimPrefix(branch, "refs/tags/")
 		} else {
-			return "", fmt.Errorf("SDK version cannot be detected for %q", branch)
+			err = fmt.Errorf("SDK version cannot be detected for %q", branch)
+			return
 		}
 	}
 
 	tmp, err := ioutil.TempDir("", "")
 	if err != nil {
-		return "", err
+		return
 	}
 	defer os.RemoveAll(tmp)
 
 	clone := exec.Command("git", "clone", "-q", "--depth=1", "--single-branch", "-b", branch, url, tmp)
 	clone.Stderr = os.Stderr
-	if err := clone.Run(); err != nil {
-		return "", err
+	if err = clone.Run(); err != nil {
+		return
 	}
 
-	return GetSDKVersionFromDir(tmp)
+	return VersionsFromDir(tmp)
 }
 
 func GetDefaultAppId() string {

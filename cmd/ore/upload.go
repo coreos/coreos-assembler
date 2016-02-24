@@ -70,12 +70,12 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// if an image name is unspecified try to use version.txt
 	if uploadImageName == "" {
-		var err error
-		uploadImageName, err = sdk.GetVersionFromDir(filepath.Dir(uploadFile))
+		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
 			os.Exit(1)
 		}
+		uploadImageName = ver.Version
 	}
 
 	gsURL, err := url.Parse(uploadBucket)
