@@ -270,11 +270,11 @@ func configureKubectl(m platform.Machine, server string, version string) error {
 
 // Run and configure the coreos-kubernetes generic install scripts.
 func runInstallScript(m platform.Machine, script string, options map[string]string) error {
-	// use built-in kubelet-wrapper if on-disk file does not exist
-	// on-disk wrapper should exist as of release 960.0.0
+	// attempt to directly use kubelet if kubelet-wrapper not on disk
+	// on-disk wrapper should exist as of release 962.0.0
 	if _, err := m.SSH("sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
-		plog.Errorf("on-disk kubelet-wrapper not found, using test's built-in version")
-		options["KUBELET_PATH"] = "/home/core/rktkube.sh"
+		plog.Errorf("on-disk kubelet-wrapper not found, using CoreOS built-in kubelet")
+		options["KUBELET_PATH"] = "/usr/bin/kubelet"
 	}
 
 	var buffer = new(bytes.Buffer)
@@ -288,12 +288,6 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 	}
 
 	if err := platform.InstallFile(buffer, m, "/home/core/install.sh"); err != nil {
-		return err
-	}
-
-	// only used if kubelet-wrapper doesn't exist
-	in := strings.NewReader(rktkube)
-	if err := platform.InstallFile(in, m, "/home/core/rktkube.sh"); err != nil {
 		return err
 	}
 
