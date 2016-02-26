@@ -113,14 +113,18 @@ func GenerateFullUpdate(version string, prod bool) error {
 	plog.Infof("Writing update manifest: %s", update_xml)
 	update := omaha.Update{Id: sdk.GetDefaultAppId()}
 	pkg, err := update.AddPackageFromPath(update_gz)
+	if err != nil {
+		return err
+	}
 
 	// update engine needs the payload hash here in the action element
 	postinstall := update.AddAction("postinstall")
 	postinstall.Sha256 = pkg.Sha256
 
-	update.Version, err = sdk.GetVersionFromDir(dir)
-	if err != nil {
+	if ver, err := sdk.VersionsFromDir(dir); err != nil {
 		return err
+	} else {
+		update.Version = ver.Version
 	}
 
 	return xmlMarshalFile(update_xml, &update)
