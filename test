@@ -15,8 +15,12 @@ COVER=${COVER:-"-cover"}
 source ./env
 
 TESTABLE="auth cli index kola kola/register network network/ntp network/omaha
-	platform platform/local sdk sdk/omaha system system/exec system/user
-	util version"
+	platform platform/local
+	sdk sdk/omaha
+	system system/exec system/targen system/user
+	util
+	version"
+
 FORMATTABLE="$TESTABLE cmd/cork cmd/kola cmd/kolet cmd/ore cmd/plume"
 
 # user has not provided PKG override
