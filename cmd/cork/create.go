@@ -50,6 +50,7 @@ var (
 	allowCreate      bool
 	downgradeInPlace bool
 	downgradeReplace bool
+	newVersion       string
 
 	createCmd = &cobra.Command{
 		Use:   "create",
@@ -114,6 +115,8 @@ func init() {
 	updateCmd.Flags().BoolVar(&downgradeReplace,
 		"downgrade-replace", false,
 		"Replace SDK chroot instead of downgrading")
+	updateCmd.Flags().StringVar(&newVersion,
+		"new-version", "", "Hint at the new version. Defaults to the version in version.txt")
 	root.AddCommand(updateCmd)
 }
 
@@ -213,17 +216,26 @@ func runUpdate(cmd *cobra.Command, args []string) {
 		plog.Fatal("Conflicting downgrade options")
 	}
 
-	plog.Notice("Detecting remote and local versions.")
-	ver, err := sdk.VersionsFromRemoteRepo(manifestURL, manifestBranch)
-	if err != nil {
-		plog.Fatalf("Reading from remote repo failed: %v", err)
-	}
-	plog.Infof("Target version %s", ver.Version)
+	if sdkVersion == "" || newVersion == "" {
+		plog.Notice("Detecting versions in remote repo")
+		ver, err := sdk.VersionsFromRemoteRepo(manifestURL, manifestBranch)
+		if err != nil {
+			plog.Fatalf("Reading from remote repo failed: %v", err)
+		}
 
-	if sdkVersion == "" {
-		sdkVersion = ver.SDKVersion
+		if newVersion == "" {
+			newVersion = ver.Version
+		}
+
+		if sdkVersion == "" {
+			sdkVersion = ver.SDKVersion
+		}
 	}
 
+	plog.Infof("New version %s", newVersion)
+	plog.Infof("SDK version %s", sdkVersion)
+
+	plog.Info("Checking version of local chroot")
 	chroot := filepath.Join(sdk.RepoRoot(), chrootName)
 	old, err := sdk.OSRelease(chroot)
 	if err != nil {
@@ -232,9 +244,9 @@ func runUpdate(cmd *cobra.Command, args []string) {
 		} else {
 			plog.Fatal(err)
 		}
-	} else if verLessThan(ver.Version, old.Version) {
-		plog.Noticef("Downgrade from %s to target version %s required!",
-			old.Version, ver.Version)
+	} else if verLessThan(newVersion, old.Version) {
+		plog.Noticef("Downgrade from %s to %s required!",
+			old.Version, newVersion)
 		if downgradeReplace {
 			unpackChroot(true)
 		} else if downgradeInPlace {
