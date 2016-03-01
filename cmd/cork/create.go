@@ -35,7 +35,7 @@ var (
 
 	// creation flags
 	creationFlags  *pflag.FlagSet
-	chrootVersion  string
+	sdkVersion     string
 	manifestURL    string
 	manifestName   string
 	manifestBranch string
@@ -81,7 +81,7 @@ func init() {
 		"chroot", "chroot", "SDK chroot directory name")
 
 	creationFlags = pflag.NewFlagSet("creation", pflag.ExitOnError)
-	creationFlags.StringVar(&chrootVersion,
+	creationFlags.StringVar(&sdkVersion,
 		"sdk-version", "", "SDK version. Defaults to the SDK version in version.txt")
 	creationFlags.StringVar(&manifestURL,
 		"manifest-url", coreosManifestURL, "Manifest git repo location")
@@ -122,15 +122,15 @@ func runCreate(cmd *cobra.Command, args []string) {
 		plog.Fatal("No args accepted")
 	}
 
-	if chrootVersion == "" {
+	if sdkVersion == "" {
 		plog.Noticef("Detecting SDK version")
 
 		if ver, err := sdk.VersionsFromManifest(); err == nil {
-			chrootVersion = ver.SDKVersion
-			plog.Noticef("Found SDK version %s from local repo", chrootVersion)
+			sdkVersion = ver.SDKVersion
+			plog.Noticef("Found SDK version %s from local repo", sdkVersion)
 		} else if ver, err := sdk.VersionsFromRemoteRepo(manifestURL, manifestBranch); err == nil {
-			chrootVersion = ver.SDKVersion
-			plog.Noticef("Found SDK version %s from remote repo", chrootVersion)
+			sdkVersion = ver.SDKVersion
+			plog.Noticef("Found SDK version %s from remote repo", sdkVersion)
 		} else {
 			plog.Fatalf("Reading from remote repo failed: %v", err)
 		}
@@ -141,8 +141,8 @@ func runCreate(cmd *cobra.Command, args []string) {
 }
 
 func unpackChroot(replace bool) {
-	plog.Noticef("Downloading SDK version %s", chrootVersion)
-	if err := sdk.DownloadSDK(chrootVersion); err != nil {
+	plog.Noticef("Downloading SDK version %s", sdkVersion)
+	if err := sdk.DownloadSDK(sdkVersion); err != nil {
 		plog.Fatalf("Download failed: %v", err)
 	}
 
@@ -152,7 +152,7 @@ func unpackChroot(replace bool) {
 		}
 	}
 
-	if err := sdk.Unpack(chrootVersion, chrootName); err != nil {
+	if err := sdk.Unpack(sdkVersion, chrootName); err != nil {
 		plog.Fatalf("Create failed: %v", err)
 	}
 
@@ -220,8 +220,8 @@ func runUpdate(cmd *cobra.Command, args []string) {
 	}
 	plog.Infof("Target version %s", ver.Version)
 
-	if chrootVersion == "" {
-		chrootVersion = ver.SDKVersion
+	if sdkVersion == "" {
+		sdkVersion = ver.SDKVersion
 	}
 
 	chroot := filepath.Join(sdk.RepoRoot(), chrootName)
