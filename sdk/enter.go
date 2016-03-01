@@ -459,7 +459,7 @@ func Enter(name string, args ...string) error {
 		cmd = append(cmd, args...)
 	}
 	// the directory doesn't matter here, sudo -i will chdir to $HOME
-	return enterChroot(name, "/", args...)
+	return enterChroot(name, "/", cmd...)
 }
 
 func OldEnter(name string, args ...string) error {
