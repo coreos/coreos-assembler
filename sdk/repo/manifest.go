@@ -73,7 +73,8 @@ import (
 
 // Manifest is the root element of the file.
 //
-//    <!ELEMENT manifest (notice?,
+//    <!ELEMENT manifest (include*,
+//                        notice?,
 //                        remote*,
 //                        default?,
 //                        manifest-server?,
@@ -86,6 +87,7 @@ import (
 //
 type Manifest struct {
 	XMLName        xml.Name        `xml:"manifest"`
+	Includes       []Include       `xml:"include"`
 	Notice         string          `xml:"notice"`
 	Remotes        []Remote        `xml:"remote"`
 	Default        *Default        `xml:"default"`
