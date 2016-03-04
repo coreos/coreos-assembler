@@ -151,6 +151,14 @@ func (r *repo) projectHEAD(p Project) (string, error) {
 	return rev, nil
 }
 
+func (r *repo) projectIsClean(p Project) error {
+	git := exec.Command("git", "diff", "--quiet")
+	git.Dir = filepath.Join(r.root, p.Path)
+	git.Stdout = os.Stdout
+	git.Stderr = os.Stderr
+	return git.Run()
+}
+
 // VerifySync takes a manifest name and asserts the current repo checkout
 // matches it exactly. Currently only supports manifests flattened by the
 // "repo manifest -r" command. A blank name means to use the default.
@@ -181,6 +189,12 @@ func VerifySync(name string) error {
 		if rev != project.Revision {
 			plog.Errorf("Project dir %s at %s, expected %s",
 				project.Path, rev, project.Revision)
+			result = VerifyError
+		}
+
+		if err := manifest.projectIsClean(project); err != nil {
+			plog.Errorf("Project dir %s is not clean, git diff %v",
+				project.Path, err)
 			result = VerifyError
 		}
 	}
