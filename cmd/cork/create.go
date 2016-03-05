@@ -21,7 +21,9 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/pflag"
+
 	"github.com/coreos/mantle/sdk"
+	"github.com/coreos/mantle/sdk/repo"
 )
 
 const (
@@ -39,6 +41,7 @@ var (
 	manifestURL    string
 	manifestName   string
 	manifestBranch string
+	repoVerify     bool
 
 	// only for `create` command
 	allowReplace bool
@@ -72,6 +75,11 @@ var (
 		Short: "Update the SDK chroot and source tree",
 		Run:   runUpdate,
 	}
+	verifyCmd = &cobra.Command{
+		Use:   "verify",
+		Short: "Check repo tree and release manifest match",
+		Run:   runVerify,
+	}
 )
 
 func init() {
@@ -90,6 +98,8 @@ func init() {
 		"manifest-branch", "master", "Manifest git repo branch")
 	creationFlags.StringVar(&manifestName,
 		"manifest-name", "default.xml", "Manifest file name")
+	creationFlags.BoolVar(&repoVerify,
+		"verify", false, "Check repo tree and release manifest match")
 
 	createCmd.Flags().AddFlagSet(chrootFlags)
 	createCmd.Flags().AddFlagSet(creationFlags)
@@ -118,6 +128,8 @@ func init() {
 	updateCmd.Flags().StringVar(&newVersion,
 		"new-version", "", "Hint at the new version. Defaults to the version in version.txt")
 	root.AddCommand(updateCmd)
+
+	root.AddCommand(verifyCmd)
 }
 
 func runCreate(cmd *cobra.Command, args []string) {
@@ -171,6 +183,12 @@ func updateRepo() {
 
 	if err := sdk.RepoSync(chrootName); err != nil {
 		plog.Fatalf("repo sync failed: %v", err)
+	}
+
+	if repoVerify {
+		if err := repo.VerifySync(manifestName); err != nil {
+			plog.Fatalf("Verify failed: %v", err)
+		}
 	}
 }
 
@@ -260,5 +278,15 @@ func runUpdate(cmd *cobra.Command, args []string) {
 
 	if err := sdk.Enter(chrootName, updateCommand...); err != nil {
 		plog.Fatalf("update_chroot failed: %v", err)
+	}
+}
+
+func runVerify(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		plog.Fatal("No args accepted")
+	}
+
+	if err := repo.VerifySync(""); err != nil {
+		plog.Fatalf("Verify failed: %v", err)
 	}
 }
