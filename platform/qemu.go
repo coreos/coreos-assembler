@@ -123,11 +123,11 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		netif:       netif,
 	}
 
-	disk, err := setupDisk(qc.conf.DiskImage)
+	imageFile, err := setupDisk(qc.conf.DiskImage)
 	if err != nil {
 		return nil, err
 	}
-	defer disk.Close()
+	defer os.Remove(imageFile)
 
 	qc.mu.Lock()
 
@@ -148,9 +148,9 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		"-m", "1024",
 		"-uuid", qm.id,
 		"-display", "none",
-		"-add-fd", "fd=3,set=1",
-		"-drive", "file=/dev/fdset/1,media=disk,if=virtio,format=raw",
-		"-netdev", "tap,id=tap,fd=4",
+		"-drive", "if=none,id=blk,format=raw,file="+imageFile,
+		"-device", "virtio-blk-pci,drive=blk",
+		"-netdev", "tap,id=tap,fd=3",
 		"-device", "virtio-net,netdev=tap,mac="+qmMac,
 		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
 		"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
@@ -159,8 +159,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 
 	cmd := qm.qemu.(*local.NsCmd)
 	cmd.Stderr = os.Stderr
-	cmd.ExtraFiles = append(cmd.ExtraFiles, disk)     // fd=3
-	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=4
+	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=3
 
 	if err = qm.qemu.Start(); err != nil {
 		return nil, err
@@ -183,13 +182,12 @@ func (qc *QEMUCluster) GetDiscoveryURL(size int) (string, error) {
 
 // Copy the base image to a new nameless temporary file.
 // cp is used since it supports sparse and reflink.
-func setupDisk(imageFile string) (*os.File, error) {
+func setupDisk(imageFile string) (string, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
-		return nil, err
+		return "Error: fail to create the destination file", err
 	}
 	dstFileName := dstFile.Name()
-	defer os.Remove(dstFileName)
 	dstFile.Close()
 
 	cp := exec.Command("cp", "--force",
@@ -199,10 +197,10 @@ func setupDisk(imageFile string) (*os.File, error) {
 	cp.Stderr = os.Stderr
 
 	if err := cp.Run(); err != nil {
-		return nil, err
+		return "Error: fail to copy the image file", err
 	}
 
-	return os.OpenFile(dstFileName, os.O_RDWR, 0)
+	return dstFileName, err
 }
 
 func (m *qemuMachine) ID() string {
