@@ -38,10 +38,11 @@ var (
 	}
 
 	cmdRun = &cobra.Command{
-		Use:   "run [glob pattern]",
-		Short: "Run run kola tests by category",
-		Long:  "run all kola tests (default) or related groups",
-		Run:   runRun,
+		Use:    "run [glob pattern]",
+		Short:  "Run run kola tests by category",
+		Long:   "run all kola tests (default) or related groups",
+		Run:    runRun,
+		PreRun: preRun,
 	}
 
 	cmdList = &cobra.Command{
@@ -58,6 +59,14 @@ func init() {
 
 func main() {
 	cli.Execute(root)
+}
+
+func preRun(cmd *cobra.Command, args []string) {
+	err := syncOptions()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(3)
+	}
 }
 
 func runRun(cmd *cobra.Command, args []string) {

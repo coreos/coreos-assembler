@@ -15,12 +15,18 @@
 package main
 
 import (
+	"fmt"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/sdk"
 )
 
 var (
-	kolaPlatform string
+	kolaPlatform       string
+	defaultTargetBoard = sdk.DefaultBoard()
+	kolaDefaultImages  = map[string]string{
+		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
+		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_developer_image.bin",
+	}
 )
 
 func init() {
@@ -31,7 +37,8 @@ func init() {
 	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
 	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
 
-	sv(&kola.QEMUOptions.DiskImage, "qemu-image", sdk.BuildRoot()+"/images/amd64-usr/latest/coreos_production_image.bin", "path to CoreOS disk image")
+	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
+	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
 
 	// gce specific options
 	sv(&kola.GCEOptions.Image, "gce-image", "latest", "GCE image")
@@ -49,4 +56,18 @@ func init() {
 	sv(&kola.AWSOptions.KeyName, "aws-key", "", "AWS SSH key name")
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t1.micro", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
+}
+
+// Sync up the command line options if there is dependency
+func syncOptions() error {
+	image, ok := kolaDefaultImages[kola.QEMUOptions.Board]
+	if !ok {
+		return fmt.Errorf("unsupport board %q", kola.QEMUOptions.Board)
+	}
+
+	if kola.QEMUOptions.DiskImage == "" {
+		kola.QEMUOptions.DiskImage = image
+	}
+
+	return nil
 }

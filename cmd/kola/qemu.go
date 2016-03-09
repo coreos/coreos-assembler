@@ -24,9 +24,10 @@ import (
 )
 
 var cmdQemu = &cobra.Command{
-	Run:   runQemu,
-	Use:   "qemu",
-	Short: "Run and kill QEMU (requires root)",
+	Run:    runQemu,
+	PreRun: preRun,
+	Use:    "qemu",
+	Short:  "Run and kill QEMU (requires root)",
 	Long: `Run and kill QEMU
 
 Work in progress: the code this exercises will eventually be the basis

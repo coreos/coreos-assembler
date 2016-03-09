@@ -32,6 +32,7 @@ import (
 type QEMUOptions struct {
 	// DiskImage is the full path to the disk image to boot in QEMU.
 	DiskImage string
+	Board     string
 }
 
 // QEMUCluster is a local cluster of QEMU-based virtual machines.
@@ -140,20 +141,38 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCfg := qm.configDrive.Directory
-	qm.qemu = qm.qc.NewCommand(
-		"qemu-system-x86_64",
-		"-machine", "accel=kvm",
-		"-cpu", "host",
-		"-smp", "2",
-		"-m", "1024",
-		"-uuid", qm.id,
-		"-display", "none",
-		"-drive", "if=none,id=blk,format=raw,file="+imageFile,
-		"-device", "virtio-blk-pci,drive=blk",
-		"-netdev", "tap,id=tap,fd=3",
-		"-device", "virtio-net,netdev=tap,mac="+qmMac,
-		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
-		"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
+	if qc.conf.Board == "arm64-usr" {
+		qm.qemu = qm.qc.NewCommand(
+			"qemu-system-aarch64",
+			"-machine", "virt",
+			"-cpu", "cortex-a57",
+			"-bios", "QEMU_EFI.fd",
+			"-smp", "1",
+			"-m", "1024",
+			"-uuid", qm.id,
+			"-display", "none",
+			"-drive", "if=none,id=blk,format=raw,file="+imageFile,
+			"-device", "virtio-blk-device,drive=blk",
+			"-netdev", "tap,id=tap,fd=3",
+			"-device", "virtio-net-device,netdev=tap,mac="+qmMac,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+			"-device", "virtio-9p-device,fsdev=cfg,mount_tag=config-2")
+	} else {
+		qm.qemu = qm.qc.NewCommand(
+			"qemu-system-x86_64",
+			"-machine", "accel=kvm",
+			"-cpu", "host",
+			"-smp", "1",
+			"-m", "1024",
+			"-uuid", qm.id,
+			"-display", "none",
+			"-drive", "if=none,id=blk,format=raw,file="+imageFile,
+			"-device", "virtio-blk-pci,drive=blk",
+			"-netdev", "tap,id=tap,fd=3",
+			"-device", "virtio-net,netdev=tap,mac="+qmMac,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+			"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
+	}
 
 	qc.mu.Unlock()
 
@@ -185,7 +204,7 @@ func (qc *QEMUCluster) GetDiscoveryURL(size int) (string, error) {
 func setupDisk(imageFile string) (string, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
-		return "Error: fail to create the destination file", err
+		return "", err
 	}
 	dstFileName := dstFile.Name()
 	dstFile.Close()
@@ -197,10 +216,10 @@ func setupDisk(imageFile string) (string, error) {
 	cp.Stderr = os.Stderr
 
 	if err := cp.Run(); err != nil {
-		return "Error: fail to copy the image file", err
+		return "", err
 	}
 
-	return dstFileName, err
+	return dstFileName, nil
 }
 
 func (m *qemuMachine) ID() string {
