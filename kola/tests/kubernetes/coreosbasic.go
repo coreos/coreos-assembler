@@ -34,7 +34,8 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kub
 
 // register a separate test for each version tag
 var tags = []string{
-	"v1.1.7-coreos.1",
+	"v1.1.7_coreos.2",
+	"v1.1.8_coreos.0",
 }
 
 func init() {
