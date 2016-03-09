@@ -57,7 +57,7 @@ func nginxCheck(master platform.Machine, nodes []platform.Machine) error {
 	}
 	// wait for pod status to be 'Running'
 	podIsRunning := func() error {
-		b, err := master.SSH("./kubectl get pod nginx -o=template -t={{.status.phase}}")
+		b, err := master.SSH("./kubectl get pod nginx --template={{.status.phase}}")
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func nginxCheck(master platform.Machine, nodes []platform.Machine) error {
 		}
 		return nil
 	}
-	if err := util.Retry(10, 5*time.Second, podIsRunning); err != nil {
+	if err := util.Retry(10, 10*time.Second, podIsRunning); err != nil {
 		return err
 	}
 
