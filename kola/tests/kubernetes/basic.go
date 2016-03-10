@@ -20,9 +20,55 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
+
+// register a separate test for each version tag
+var basicTags = []string{
+	"v1.1.7_coreos.2",
+	"v1.1.8_coreos.0",
+}
+
+func init() {
+	for i := range basicTags {
+		// use closure to store a version tag in a Test
+		t := basicTags[i]
+		f := func(c platform.TestCluster) error {
+			return CoreOSBasic(c, t)
+		}
+
+		register.Register(&register.Test{
+			Name:        "google.kubernetes.basic." + t,
+			Run:         f,
+			ClusterSize: 0,
+			Platforms:   []string{"gce", "aws"},
+		})
+	}
+}
+
+// Run basic smoke tests on cluster. Assumes master is machine index 1,
+// workers make up the rest.
+func CoreOSBasic(c platform.TestCluster, version string) error {
+	k, err := setupCluster(c, 2, version)
+	if err != nil {
+		return err
+	}
+
+	// start nginx pod and curl endpoint
+	if err := nginxCheck(k.master, k.workers); err != nil {
+		return err
+	}
+
+	// http://kubernetes.io/v1.0/docs/user-guide/secrets/ Also, ensures
+	// https://github.com/coreos/bugs/issues/447 does not re-occur.
+	if err := secretCheck(k.master, k.workers); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
 	b, err := master.SSH("./kubectl get nodes")
