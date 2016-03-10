@@ -42,6 +42,9 @@ func NewDirectory(rawURL string) (*Directory, error) {
 	if gsURL.Host == "" {
 		return nil, fmt.Errorf("URL missing bucket name: %q", rawURL)
 	}
+	if strings.Contains(gsURL.Path, "//") {
+		return nil, fmt.Errorf("URL contains '//' in path: %q", rawURL)
+	}
 
 	// Object name prefix must never start with / but always end with /
 	gsURL.Path = strings.TrimLeft(gsURL.Path, "/")
@@ -80,6 +83,10 @@ func (d *Directory) Fetch(client *http.Client) error {
 		fmt.Printf("Found %d objects under gs://%s/%s\n",
 			objCount, d.Bucket, d.Prefix)
 		for _, obj := range listRes.Items {
+			if strings.Contains(obj.Name, "//") {
+				// TODO(marineam): log a warning
+				continue
+			}
 			if err := d.AddObject(obj); err != nil {
 				return err
 			}
