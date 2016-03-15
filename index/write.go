@@ -39,7 +39,7 @@ const (
     <body>
     <h1>{{.Bucket}}/{{.Prefix}}</h1>
     {{range $name, $sub := .SubDirs}}
-	[dir] <a href="{{$name}}">{{$name}}</a> </br>
+	[dir] <a href="{{$name}}/">{{$name}}</a> </br>
     {{end}}
     {{range $name, $obj := .Objects}}
 	{{if ne $name "index.html"}}
