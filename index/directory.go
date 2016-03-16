@@ -106,8 +106,8 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 	name := strings.TrimPrefix(obj.Name, d.Prefix)
 	split := strings.SplitN(name, "/", 2)
 
-	// Save object locally if it has no slash or only ends in slash
-	if len(split) == 1 || len(split[1]) == 0 {
+	// Save object locally if it has no slash
+	if len(split) == 1 {
 		d.Objects[name] = obj
 		return nil
 	}
