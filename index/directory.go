@@ -24,11 +24,12 @@ import (
 )
 
 type Directory struct {
-	Bucket  string
-	Prefix  string
-	SubDirs map[string]*Directory
-	Objects map[string]*storage.Object
-	Indexes map[string]*storage.Object
+	Bucket   string
+	Prefix   string
+	SubDirs  map[string]*Directory
+	Objects  map[string]*storage.Object
+	Indexes  map[string]*storage.Object
+	Redirect *storage.Object
 }
 
 func NewDirectory(rawURL string) (*Directory, error) {
@@ -108,10 +109,12 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 	name := strings.TrimPrefix(obj.Name, d.Prefix)
 	split := strings.SplitN(name, "/", 2)
 
-	// Save object locally if it has no slash
+	// No slash so this is either a leaf or directory redirect.
 	if len(split) == 1 {
 		if name == "index.html" || name == "" {
 			d.Indexes[name] = obj
+		} else if sub, ok := d.SubDirs[name]; ok {
+			sub.Redirect = obj
 		} else {
 			d.Objects[name] = obj
 		}
@@ -128,6 +131,12 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 			Indexes: make(map[string]*storage.Object),
 		}
 		d.SubDirs[split[0]] = sub
+
+		// move conflicting object if it already exists
+		if redir, ok := d.Objects[split[0]]; ok {
+			sub.Redirect = redir
+			delete(d.Objects, split[0])
+		}
 	}
 
 	return sub.AddObject(obj)
