@@ -28,6 +28,7 @@ type Directory struct {
 	Prefix  string
 	SubDirs map[string]*Directory
 	Objects map[string]*storage.Object
+	Indexes map[string]*storage.Object
 }
 
 func NewDirectory(rawURL string) (*Directory, error) {
@@ -57,6 +58,7 @@ func NewDirectory(rawURL string) (*Directory, error) {
 		Prefix:  gsURL.Path,
 		SubDirs: make(map[string]*Directory),
 		Objects: make(map[string]*storage.Object),
+		Indexes: make(map[string]*storage.Object),
 	}, nil
 }
 
@@ -108,7 +110,11 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 
 	// Save object locally if it has no slash
 	if len(split) == 1 {
-		d.Objects[name] = obj
+		if name == "index.html" || name == "" {
+			d.Indexes[name] = obj
+		} else {
+			d.Objects[name] = obj
+		}
 		return nil
 	}
 
@@ -119,6 +125,7 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 			Prefix:  d.Prefix + split[0] + "/",
 			SubDirs: make(map[string]*Directory),
 			Objects: make(map[string]*storage.Object),
+			Indexes: make(map[string]*storage.Object),
 		}
 		d.SubDirs[split[0]] = sub
 	}

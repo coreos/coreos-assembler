@@ -42,9 +42,7 @@ const (
 	[dir] <a href="{{$name}}/">{{$name}}</a> </br>
     {{end}}
     {{range $name, $obj := .Objects}}
-	{{if ne $name "index.html"}}
-	    [file] <a href="{{$name}}">{{$name}}</a> </br>
-	{{end}}
+	[file] <a href="{{$name}}">{{$name}}</a> </br>
     {{end}}
     </body>
 </html>
@@ -98,7 +96,7 @@ func (d *Directory) UpdateIndex(client *http.Client) error {
 		return err
 	}
 
-	if old, ok := d.Objects["index.html"]; ok && crcEq(old, obj) {
+	if old, ok := d.Indexes["index.html"]; ok && crcEq(old, obj) {
 		return nil // up to date!
 	}
 
