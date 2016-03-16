@@ -31,6 +31,10 @@ func Update(client *http.Client, url string) error {
 		return err
 	}
 
+	indexers := []Indexer{
+		NewHtmlIndexer(client),
+		NewDirIndexer(client),
+	}
 	dirs := make(chan *Directory)
 	done := make(chan struct{})
 	errc := make(chan error)
@@ -49,9 +53,11 @@ func Update(client *http.Client, url string) error {
 					errc <- nil
 					return
 				}
-				if err := d.UpdateIndex(client); err != nil {
-					errc <- err
-					return
+				for _, ix := range indexers {
+					if err := ix.Index(d); err != nil {
+						errc <- err
+						return
+					}
 				}
 			case <-done:
 				errc <- nil

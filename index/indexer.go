@@ -53,6 +53,32 @@ func init() {
 	indexTemplate = template.Must(template.New("index").Parse(INDEX_TEXT))
 }
 
+// Indexer takes a single Directory and updates a single index page.
+type Indexer interface {
+	Index(d *Directory) error
+}
+
+type basicIndexer struct {
+	client *http.Client
+	name   string
+}
+
+// NewHtmlIndexer generates "directory/index.html" pages.
+func NewHtmlIndexer(client *http.Client) Indexer {
+	return &basicIndexer{
+		client: client,
+		name:   "index.html",
+	}
+}
+
+// NewIndexDirer "directory/" pages.
+func NewDirIndexer(client *http.Client) Indexer {
+	return &basicIndexer{
+		client: client,
+		name:   "",
+	}
+}
+
 // crcSum returns the base64 encoded CRC32c sum of the given data
 func crcSum(b []byte) string {
 	c := crc32.New(crc32.MakeTable(crc32.Castagnoli))
@@ -65,14 +91,14 @@ func crcEq(a, b *storage.Object) bool {
 	return a.Size == b.Size && a.Crc32c == b.Crc32c
 }
 
-func (d *Directory) buildIndex() (*storage.Object, io.Reader, error) {
+func buildIndex(d *Directory, name string) (*storage.Object, io.Reader, error) {
 	buf := bytes.Buffer{}
 	if err := indexTemplate.Execute(&buf, d); err != nil {
 		return nil, nil, err
 	}
 
 	obj := storage.Object{
-		Name:         d.Prefix + "index.html",
+		Name:         d.Prefix + name,
 		ContentType:  "text/html",
 		CacheControl: "public, max-age=60",
 		Crc32c:       crcSum(buf.Bytes()),
@@ -81,22 +107,27 @@ func (d *Directory) buildIndex() (*storage.Object, io.Reader, error) {
 	return &obj, &buf, nil
 }
 
-func (d *Directory) UpdateIndex(client *http.Client) error {
-	service, err := storage.New(client)
+func (b *basicIndexer) Index(d *Directory) error {
+	service, err := storage.New(b.client)
 	if err != nil {
 		return err
+	}
+
+	// cannot write an object to the bucket root, just skip
+	if b.name == "" && d.Prefix == "" {
+		return nil
 	}
 
 	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
 		return nil
 	}
 
-	obj, buf, err := d.buildIndex()
+	obj, buf, err := buildIndex(d, b.name)
 	if err != nil {
 		return err
 	}
 
-	if old, ok := d.Indexes["index.html"]; ok && crcEq(old, obj) {
+	if old, ok := d.Indexes[b.name]; ok && crcEq(old, obj) {
 		return nil // up to date!
 	}
 
