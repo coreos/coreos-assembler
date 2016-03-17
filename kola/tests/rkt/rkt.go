@@ -14,34 +14,7 @@
 
 package rkt
 
-import (
-	"fmt"
-
-	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
-)
+import ()
 
 func init() {
-	register.Register(&register.Test{
-		Run:         Install,
-		ClusterSize: 0,
-		Name:        "coreos.rkt.install",
-	})
-}
-
-// Test to make sure rkt install works.
-func Install(c platform.TestCluster) error {
-	mach, err := c.NewMachine("")
-	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
-	}
-	defer mach.Destroy()
-
-	cmd := "sudo rkt install"
-	output, err := mach.SSH(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to run %q: %s: %s", cmd, err, output)
-	}
-
-	return nil
 }
