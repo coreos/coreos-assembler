@@ -49,10 +49,7 @@ func Update(client *http.Client, url string) error {
 					errc <- nil
 					return
 				}
-				if !d.NeedsIndex() {
-					continue
-				}
-				if err := d.WriteIndex(client); err != nil {
+				if err := d.UpdateIndex(client); err != nil {
 					errc <- err
 					return
 				}

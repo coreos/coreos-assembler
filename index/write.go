@@ -16,7 +16,9 @@ package index
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"hash/crc32"
 	"html/template"
 	"net/http"
 
@@ -28,9 +30,7 @@ var (
 )
 
 const (
-	// TODO: The version will be used to regenerate existing indexes.
-	INDEX_VERSION = `2014-08-12`
-	INDEX_TEXT    = `<html>
+	INDEX_TEXT = `<html>
     <head>
 	<title>{{.Bucket}}/{{.Prefix}}</title>
 	<meta http-equiv="X-Clacks-Overhead" content="GNU Terry Pratchett" />
@@ -54,10 +54,26 @@ func init() {
 	indexTemplate = template.Must(template.New("index").Parse(INDEX_TEXT))
 }
 
-func (d *Directory) WriteIndex(client *http.Client) error {
+// crcSum returns the base64 encoded CRC32c sum of the given data
+func crcSum(b []byte) string {
+	c := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	c.Write(b)
+	return base64.StdEncoding.EncodeToString(c.Sum(nil))
+}
+
+// Judges whether two Objects are equal based on size and CRC
+func crcEq(a, b *storage.Object) bool {
+	return a.Size == b.Size && a.Crc32c == b.Crc32c
+}
+
+func (d *Directory) UpdateIndex(client *http.Client) error {
 	service, err := storage.New(client)
 	if err != nil {
 		return err
+	}
+
+	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
+		return nil
 	}
 
 	buf := bytes.Buffer{}
@@ -66,15 +82,22 @@ func (d *Directory) WriteIndex(client *http.Client) error {
 		return err
 	}
 
-	writeObj := storage.Object{
+	obj := &storage.Object{
 		Name:         d.Prefix + "index.html",
 		ContentType:  "text/html",
 		CacheControl: "public, max-age=60",
+		Crc32c:       crcSum(buf.Bytes()),
+		Size:         uint64(buf.Len()), // used by crcEq but not API
 	}
-	writeReq := service.Objects.Insert(d.Bucket, &writeObj)
+
+	if old, ok := d.Objects["index.html"]; ok && crcEq(old, obj) {
+		return nil // up to date!
+	}
+
+	writeReq := service.Objects.Insert(d.Bucket, obj)
 	writeReq.Media(&buf)
 
-	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, writeObj.Name)
+	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, obj.Name)
 	_, err = writeReq.Do()
 	return err
 }
