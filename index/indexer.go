@@ -58,23 +58,34 @@ type Indexer interface {
 	Index(d *Directory) error
 }
 
+type WriteMode int
+
+const (
+	WriteNever WriteMode = iota
+	WriteUpdate
+	WriteAlways
+)
+
 type basicIndexer struct {
 	client *http.Client
+	mode   WriteMode
 	name   string
 }
 
 // NewHtmlIndexer generates "directory/index.html" pages.
-func NewHtmlIndexer(client *http.Client) Indexer {
+func NewHtmlIndexer(client *http.Client, mode WriteMode) Indexer {
 	return &basicIndexer{
 		client: client,
+		mode:   mode,
 		name:   "index.html",
 	}
 }
 
 // NewIndexDirer "directory/" pages.
-func NewDirIndexer(client *http.Client) Indexer {
+func NewDirIndexer(client *http.Client, mode WriteMode) Indexer {
 	return &basicIndexer{
 		client: client,
+		mode:   mode,
 		name:   "",
 	}
 }
@@ -127,13 +138,17 @@ func (b *basicIndexer) Index(d *Directory) error {
 		return err
 	}
 
-	if old, ok := d.Indexes[b.name]; ok && crcEq(old, obj) {
+	if old, ok := d.Indexes[b.name]; ok && b.mode != WriteAlways && crcEq(old, obj) {
 		return nil // up to date!
 	}
 
 	writeReq := service.Objects.Insert(d.Bucket, obj)
 	writeReq.Media(buf)
 
+	if b.mode == WriteNever {
+		fmt.Printf("Would write gs://%s/%s\n", d.Bucket, obj.Name)
+		return nil
+	}
 	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, obj.Name)
 	_, err = writeReq.Do()
 	return err

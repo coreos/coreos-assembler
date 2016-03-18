@@ -21,7 +21,7 @@ import (
 // Arbitrary limit on the number of concurrent calls to WriteIndex
 const MAX_WRITERS = 12
 
-func Update(client *http.Client, url string) error {
+func Update(client *http.Client, url string, mode WriteMode) error {
 	root, err := NewDirectory(url)
 	if err != nil {
 		return err
@@ -32,8 +32,8 @@ func Update(client *http.Client, url string) error {
 	}
 
 	indexers := []Indexer{
-		NewHtmlIndexer(client),
-		NewDirIndexer(client),
+		NewHtmlIndexer(client, mode),
+		NewDirIndexer(client, mode),
 	}
 	dirs := make(chan *Directory)
 	done := make(chan struct{})

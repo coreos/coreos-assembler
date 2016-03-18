@@ -23,14 +23,24 @@ import (
 	"github.com/coreos/mantle/index"
 )
 
-var cmdIndex = &cobra.Command{
-	Use:   "index gs://bucket/prefix/ [gs://...]",
-	Short: "Update HTML indexes",
-	Long:  "Update HTML indexes for Google Storage buckets",
-	Run:   runIndex,
-}
+var (
+	indexDryRun bool
+	indexForce  bool
+	cmdIndex    = &cobra.Command{
+		Use:   "index gs://bucket/prefix/ [gs://...]",
+		Short: "Update HTML indexes",
+		Long:  "Update HTML indexes for Google Storage buckets",
+		Run:   runIndex,
+	}
+)
 
 func init() {
+	cmdIndex.Flags().BoolVarP(&indexDryRun,
+		"dry-run", "n", false,
+		"perform a trial run with no changes")
+	cmdIndex.Flags().BoolVarP(&indexForce,
+		"force", "f", false,
+		"overwrite objects even if they appear up to date")
 	root.AddCommand(cmdIndex)
 }
 
@@ -40,6 +50,13 @@ func runIndex(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
+	mode := index.WriteUpdate
+	if indexDryRun {
+		mode = index.WriteNever
+	} else if indexForce {
+		mode = index.WriteAlways
+	}
+
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
@@ -47,11 +64,15 @@ func runIndex(cmd *cobra.Command, args []string) {
 	}
 
 	for _, url := range args {
-		if err := index.Update(client, url); err != nil {
+		if err := index.Update(client, url, mode); err != nil {
 			fmt.Fprintf(os.Stderr, "Updating indexes for %s failed: %v\n", url, err)
 			os.Exit(1)
 		}
 	}
 
-	fmt.Printf("Update successful!\n")
+	if mode == index.WriteNever {
+		fmt.Printf("Dry-run successful!\n")
+	} else {
+		fmt.Printf("Update successful!\n")
+	}
 }
