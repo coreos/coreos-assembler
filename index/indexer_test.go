@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"net/url"
 	"testing"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
@@ -136,9 +135,4 @@ func rawBuildIndex(d *Directory, name string) (*storage.Object, io.Reader) {
 		Crc32c:       crcSum(buf.Bytes()),
 		Size:         uint64(buf.Len()), // used by crcEq but not API
 	}, buf
-}
-
-func escapePath(path string) string {
-	u := url.URL{Path: path}
-	return u.EscapedPath()
 }

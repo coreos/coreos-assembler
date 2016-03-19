@@ -34,6 +34,7 @@ func Update(client *http.Client, url string, mode WriteMode) error {
 	indexers := []Indexer{
 		NewHtmlIndexer(client, mode),
 		NewDirIndexer(client, mode),
+		NewRedirector(client, mode),
 	}
 	dirs := make(chan *Directory)
 	done := make(chan struct{})

@@ -99,6 +99,9 @@ func crcSum(b []byte) string {
 
 // Judges whether two Objects are equal based on size and CRC
 func crcEq(a, b *storage.Object) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
 	return a.Size == b.Size && a.Crc32c == b.Crc32c
 }
 
