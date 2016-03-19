@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"errors"
+	"fmt"
 
 	etcdErr "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/error"
 )
@@ -31,9 +32,21 @@ var (
 	ErrTimeout                    = errors.New("etcdserver: request timed out")
 	ErrTimeoutDueToLeaderFail     = errors.New("etcdserver: request timed out, possibly due to previous leader failure")
 	ErrTimeoutDueToConnectionLost = errors.New("etcdserver: request timed out, possibly due to connection lost")
+	ErrNotEnoughStartedMembers    = errors.New("etcdserver: re-configuration failed due to not enough started members")
+	ErrNoLeader                   = errors.New("etcdserver: no leader")
+	ErrRequestTooLarge            = errors.New("etcdserver: request is too large")
 )
 
 func isKeyNotFound(err error) bool {
 	e, ok := err.(*etcdErr.Error)
 	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
+}
+
+type DiscoveryError struct {
+	Op  string
+	Err error
+}
+
+func (e DiscoveryError) Error() string {
+	return fmt.Sprintf("failed to %s discovery cluster (%v)", e.Op, e.Err)
 }

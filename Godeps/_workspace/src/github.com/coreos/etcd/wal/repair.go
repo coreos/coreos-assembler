@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal/walpb"
 )
 
-// Repair tries to repair the unexpectedEOF error in the
+// Repair tries to repair ErrUnexpectedEOF in the
 // last wal file by truncating.
 func Repair(dirpath string) bool {
 	f, err := openLast(dirpath)
