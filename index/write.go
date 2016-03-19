@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"html/template"
+	"io"
 	"net/http"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
@@ -66,6 +67,22 @@ func crcEq(a, b *storage.Object) bool {
 	return a.Size == b.Size && a.Crc32c == b.Crc32c
 }
 
+func (d *Directory) buildIndex() (*storage.Object, io.Reader, error) {
+	buf := bytes.Buffer{}
+	if err := indexTemplate.Execute(&buf, d); err != nil {
+		return nil, nil, err
+	}
+
+	obj := storage.Object{
+		Name:         d.Prefix + "index.html",
+		ContentType:  "text/html",
+		CacheControl: "public, max-age=60",
+		Crc32c:       crcSum(buf.Bytes()),
+		Size:         uint64(buf.Len()), // used by crcEq but not API
+	}
+	return &obj, &buf, nil
+}
+
 func (d *Directory) UpdateIndex(client *http.Client) error {
 	service, err := storage.New(client)
 	if err != nil {
@@ -76,18 +93,9 @@ func (d *Directory) UpdateIndex(client *http.Client) error {
 		return nil
 	}
 
-	buf := bytes.Buffer{}
-	err = indexTemplate.Execute(&buf, d)
+	obj, buf, err := d.buildIndex()
 	if err != nil {
 		return err
-	}
-
-	obj := &storage.Object{
-		Name:         d.Prefix + "index.html",
-		ContentType:  "text/html",
-		CacheControl: "public, max-age=60",
-		Crc32c:       crcSum(buf.Bytes()),
-		Size:         uint64(buf.Len()), // used by crcEq but not API
 	}
 
 	if old, ok := d.Objects["index.html"]; ok && crcEq(old, obj) {
@@ -95,7 +103,7 @@ func (d *Directory) UpdateIndex(client *http.Client) error {
 	}
 
 	writeReq := service.Objects.Insert(d.Bucket, obj)
-	writeReq.Media(&buf)
+	writeReq.Media(buf)
 
 	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, obj.Name)
 	_, err = writeReq.Do()
