@@ -326,7 +326,7 @@ func gceMakeInstance(opts *GCEOptions, userdata string, name string) (*compute.I
 	if userdata != "" {
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
 			Key:   "user-data",
-			Value: userdata,
+			Value: &userdata,
 		})
 	}
 
