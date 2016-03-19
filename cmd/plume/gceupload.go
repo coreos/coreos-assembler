@@ -37,7 +37,6 @@ var (
 		Run:   runGCEUpload,
 	}
 	gceUploadForce     bool
-	gceUploadRetries   int
 	gceUploadBucket    string
 	gceUploadImageName string
 	gceUploadBoard     string
@@ -47,7 +46,6 @@ var (
 func init() {
 	build := sdk.BuildRoot()
 	cmdGCEUpload.Flags().BoolVar(&gceUploadForce, "force", false, "set true to overwrite existing image with same name")
-	cmdGCEUpload.Flags().IntVar(&gceUploadRetries, "set-retries", 0, "set how many times to retry on failure")
 	cmdGCEUpload.Flags().StringVar(&gceUploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
 	cmdGCEUpload.Flags().StringVar(&gceUploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdGCEUpload.Flags().StringVar(&gceUploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
@@ -96,28 +94,6 @@ func runGCEUpload(cmd *cobra.Command, args []string) {
 	uploadBucket := gsURL.Host
 	imageNameGS := strings.TrimPrefix(gsURL.Path+"/"+gceUploadImageName, "/") + ".tar.gz"
 
-	var retries int
-	if gceUploadRetries > 0 {
-		retries = gceUploadRetries
-	} else {
-		retries = 1
-	}
-
-	var returnVal int
-	for i := 0; i < retries; i++ {
-		if i > 0 {
-			log.Printf("trying again...")
-		}
-
-		returnVal = tryGCEUpload(uploadBucket, imageNameGS)
-		if returnVal == 0 {
-			os.Exit(0)
-		}
-	}
-	os.Exit(returnVal)
-}
-
-func tryGCEUpload(uploadBucket, imageNameGS string) int {
 	client, err := auth.GoogleClient()
 	if err != nil {
 		log.Printf("Authentication failed: %v\n", err)
@@ -134,13 +110,13 @@ func tryGCEUpload(uploadBucket, imageNameGS string) int {
 	alreadyExists, err := fileQuery(storageAPI, uploadBucket, imageNameGS)
 	if err != nil {
 		log.Printf("Uploading image failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 
 	if alreadyExists {
 		if !gceUploadForce {
 			log.Printf("skipping upload, gs://%v/%v already exists on Google Storage.", uploadBucket, imageNameGS)
-			return 0
+			os.Exit(0)
 		}
 
 		log.Println("forcing image upload...")
@@ -149,11 +125,9 @@ func tryGCEUpload(uploadBucket, imageNameGS string) int {
 	err = writeFile(storageAPI, uploadBucket, gceUploadFile, imageNameGS)
 	if err != nil {
 		log.Printf("Uploading image failed: %v\n", err)
-		return 1
+		os.Exit(1)
 	}
 	log.Printf("wrote gs://%v/%v", uploadBucket, imageNameGS)
-
-	return 0
 }
 
 // Attempt to get version.txt from image build directory. Return "" if
