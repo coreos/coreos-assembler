@@ -73,7 +73,7 @@ func checkUpdate(dir, update_xml string) error {
 	}
 
 	if len(u.Packages) != 1 {
-		return fmt.Errorf("%s contains %s packages, expected 1",
+		return fmt.Errorf("%s contains %d packages, expected 1",
 			update_xml, len(u.Packages))
 	}
 

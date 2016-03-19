@@ -16,7 +16,7 @@ ldflags="-X ${REPO_PATH}/version.Version=${version}"
 for cmd in "$@"; do
 	cmd=$(basename "${cmd}")
 	echo "Building ${cmd}..."
-	go build -ldflags "${ldflags}" \
+	go build -i -ldflags "${ldflags}" \
             -o "bin/${cmd}" "${REPO_PATH}/cmd/${cmd}"
 done
 
