@@ -597,10 +597,6 @@
 			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
 		},
 		{
-			"ImportPath": "google.golang.org/cloud/storage",
-			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
-		},
-		{
 			"ImportPath": "google.golang.org/grpc",
 			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
 		},
