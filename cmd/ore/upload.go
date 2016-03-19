@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,8 +24,8 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
@@ -117,14 +116,20 @@ func runUpload(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	api, err := compute.New(client)
+	computeAPI, err := compute.New(client)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Compute client failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	storageAPI, err := storage.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
 	}
 
 	// check if this file is already uploaded and give option to skip
-	alreadyExists, err := fileQuery(client, uploadBucket, imageNameGS)
+	alreadyExists, err := fileQuery(storageAPI, uploadBucket, imageNameGS)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Uploading image failed: %v\n", err)
 		os.Exit(1)
@@ -140,12 +145,12 @@ func runUpload(cmd *cobra.Command, args []string) {
 		switch ans {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing file...")
-			err = writeFile(client, uploadBucket, uploadFile, imageNameGS)
+			err = writeFile(storageAPI, uploadBucket, uploadFile, imageNameGS)
 		default:
 			fmt.Println("Skipped file upload")
 		}
 	} else {
-		err = writeFile(client, uploadBucket, uploadFile, imageNameGS)
+		err = writeFile(storageAPI, uploadBucket, uploadFile, imageNameGS)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Uploading image failed: %v\n", err)
@@ -157,9 +162,9 @@ func runUpload(cmd *cobra.Command, args []string) {
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
 	if uploadForce {
-		err = platform.GCEForceCreateImage(api, opts.Project, imageNameGCE, storageSrc)
+		err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
 	} else {
-		err = platform.GCECreateImage(api, opts.Project, imageNameGCE, storageSrc)
+		err = platform.GCECreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
 	}
 
 	// if image already exists ask to delete and try again
@@ -173,7 +178,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		switch ans {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing image...")
-			err = platform.GCEForceCreateImage(api, opts.Project, imageNameGCE, storageSrc)
+			err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
 
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
@@ -219,16 +224,9 @@ func gceSanitize(name string) string {
 }
 
 // Write file to Google Storage
-func writeFile(client *http.Client, bucket, filename, destname string) error {
+func writeFile(api *storage.Service, bucket, filename, destname string) error {
 	fmt.Printf("Writing %v to gs://%v ...\n", filename, bucket)
 	fmt.Printf("(Sometimes this takes a few mintues)\n")
-
-	// dummy value is used since a project name isn't necessary unless
-	// we are creating new buckets
-	ctx := cloud.NewContext("dummy", client)
-	wc := storage.NewWriter(ctx, bucket, destname)
-	wc.ContentType = "application/x-gzip"
-	wc.ACL = []storage.ACLRule{{storage.AllAuthenticatedUsers, storage.RoleReader}}
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -236,11 +234,14 @@ func writeFile(client *http.Client, bucket, filename, destname string) error {
 	}
 	defer file.Close()
 
-	_, err = io.Copy(wc, file)
-	if err != nil {
-		return err
-	}
-	if err := wc.Close(); err != nil {
+	req := api.Objects.Insert(bucket, &storage.Object{
+		Name:        destname,
+		ContentType: "application/x-gzip",
+	})
+	req.PredefinedAcl("authenticatedRead")
+	req.Media(file)
+
+	if _, err := req.Do(); err != nil {
 		return err
 	}
 
@@ -249,18 +250,13 @@ func writeFile(client *http.Client, bucket, filename, destname string) error {
 }
 
 // Test if file exists in Google Storage
-func fileQuery(client *http.Client, bucket, name string) (bool, error) {
-	ctx := cloud.NewContext("dummy", client)
-	query := &storage.Query{Prefix: name}
-
-	objects, err := storage.ListObjects(ctx, bucket, query)
-	if err != nil {
+func fileQuery(api *storage.Service, bucket, name string) (bool, error) {
+	req := api.Objects.Get(bucket, name)
+	if _, err := req.Do(); err != nil {
+		if e, ok := err.(*googleapi.Error); ok && e.Code == 404 {
+			return false, nil
+		}
 		return false, err
 	}
-
-	if len(objects.Results) == 1 {
-		return true, nil
-	}
-
-	return false, nil
+	return true, nil
 }

@@ -15,18 +15,16 @@
 package main
 
 import (
-	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/storage"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/sdk"
 )
@@ -126,8 +124,14 @@ func tryGCEUpload(uploadBucket, imageNameGS string) int {
 		os.Exit(1)
 	}
 
+	storageAPI, err := storage.New(client)
+	if err != nil {
+		log.Printf("Storage client failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	// check if this file is already uploaded
-	alreadyExists, err := fileQuery(client, uploadBucket, imageNameGS)
+	alreadyExists, err := fileQuery(storageAPI, uploadBucket, imageNameGS)
 	if err != nil {
 		log.Printf("Uploading image failed: %v\n", err)
 		return 1
@@ -142,7 +146,7 @@ func tryGCEUpload(uploadBucket, imageNameGS string) int {
 		log.Println("forcing image upload...")
 	}
 
-	err = writeFile(client, uploadBucket, gceUploadFile, imageNameGS)
+	err = writeFile(storageAPI, uploadBucket, gceUploadFile, imageNameGS)
 	if err != nil {
 		log.Printf("Uploading image failed: %v\n", err)
 		return 1
@@ -173,16 +177,9 @@ func getImageVersion(path string) string {
 }
 
 // Write file to Google Storage
-func writeFile(client *http.Client, bucket, filename, destname string) error {
+func writeFile(api *storage.Service, bucket, filename, destname string) error {
 	log.Printf("Writing %v to gs://%v ...\n", filename, bucket)
 	log.Printf("(Sometimes this takes a few mintues)\n")
-
-	// dummy value is used since a project name isn't necessary unless
-	// we are creating new buckets
-	ctx := cloud.NewContext("dummy", client)
-	wc := storage.NewWriter(ctx, bucket, destname)
-	wc.ContentType = "application/x-gzip"
-	wc.ACL = []storage.ACLRule{{storage.AllAuthenticatedUsers, storage.RoleReader}}
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -190,11 +187,14 @@ func writeFile(client *http.Client, bucket, filename, destname string) error {
 	}
 	defer file.Close()
 
-	_, err = io.Copy(wc, file)
-	if err != nil {
-		return err
-	}
-	if err := wc.Close(); err != nil {
+	req := api.Objects.Insert(bucket, &storage.Object{
+		Name:        destname,
+		ContentType: "application/x-gzip",
+	})
+	req.PredefinedAcl("authenticatedRead")
+	req.Media(file)
+
+	if _, err := req.Do(); err != nil {
 		return err
 	}
 
@@ -203,18 +203,13 @@ func writeFile(client *http.Client, bucket, filename, destname string) error {
 }
 
 // Test if file exists in Google Storage
-func fileQuery(client *http.Client, bucket, name string) (bool, error) {
-	ctx := cloud.NewContext("dummy", client)
-	query := &storage.Query{Prefix: name}
-
-	objects, err := storage.ListObjects(ctx, bucket, query)
-	if err != nil {
+func fileQuery(api *storage.Service, bucket, name string) (bool, error) {
+	req := api.Objects.Get(bucket, name)
+	if _, err := req.Do(); err != nil {
+		if e, ok := err.(*googleapi.Error); ok && e.Code == 404 {
+			return false, nil
+		}
 		return false, err
 	}
-
-	if len(objects.Results) == 1 {
-		return true, nil
-	}
-
-	return false, nil
+	return true, nil
 }

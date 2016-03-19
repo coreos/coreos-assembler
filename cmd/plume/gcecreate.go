@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 )
@@ -127,14 +128,20 @@ func tryGCECreate(bucket, bucketPath, imageName string) int {
 		return 1
 	}
 
-	api, err := compute.New(client)
+	computeAPI, err := compute.New(client)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Compute client failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	storageAPI, err := storage.New(client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
 	}
 
 	// make sure file exists
-	exists, err := fileQuery(client, bucket, bucketPath)
+	exists, err := fileQuery(storageAPI, bucket, bucketPath)
 	if err != nil || !exists {
 		log.Printf("failed to find existance of storage image: %v", err)
 		return 1
@@ -144,13 +151,13 @@ func tryGCECreate(bucket, bucketPath, imageName string) int {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", bucket, bucketPath)
-	err = platform.GCECreateImage(api, opts.Project, imageName, storageSrc)
+	err = platform.GCECreateImage(computeAPI, opts.Project, imageName, storageSrc)
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
 		if gceCreateForce {
 			log.Println("forcing overwrite of existing image...")
-			err = platform.GCEForceCreateImage(api, opts.Project, imageName, storageSrc)
+			err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageName, storageSrc)
 		} else {
 			log.Printf("skipping upload, image %v already exists", imageName)
 			return 0
