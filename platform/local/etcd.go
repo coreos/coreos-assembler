@@ -81,7 +81,6 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 			memberName: peerURLs,
 		},
 		NewCluster:    true,
-		Transport:     &http.Transport{},
 		TickMs:        100,
 		ElectionTicks: 10,
 	}
