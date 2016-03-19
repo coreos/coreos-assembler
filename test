@@ -44,6 +44,9 @@ fi
 split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
 
+echo "Building tests..."
+go test -i ${COVER} ${TEST}
+
 echo "Running tests..."
 go test ${COVER} ${TEST}
 
