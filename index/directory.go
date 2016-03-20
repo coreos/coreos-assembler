@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 )
@@ -29,7 +28,6 @@ type Directory struct {
 	Prefix  string
 	SubDirs map[string]*Directory
 	Objects map[string]*storage.Object
-	Updated time.Time
 }
 
 func NewDirectory(rawURL string) (*Directory, error) {
@@ -101,18 +99,6 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 	name := strings.TrimPrefix(obj.Name, d.Prefix)
 	split := strings.SplitAfterN(name, "/", 2)
 
-	// Propagate update time to parent directories, excluding indexes.
-	// Used to detect when indexes should be regenerated.
-	if split[len(split)-1] != "index.html" {
-		objUpdated, err := time.Parse(time.RFC3339Nano, obj.Updated)
-		if err != nil {
-			return err
-		}
-		if d.Updated.Before(objUpdated) {
-			d.Updated = objUpdated
-		}
-	}
-
 	// Save object locally if it has no slash or only ends in slash
 	if len(split) == 1 || len(split[1]) == 0 {
 		d.Objects[name] = obj
@@ -131,17 +117,6 @@ func (d *Directory) AddObject(obj *storage.Object) error {
 	}
 
 	return sub.AddObject(obj)
-}
-
-func (d *Directory) NeedsIndex() bool {
-	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
-		return false
-	}
-	if index, ok := d.Objects["index.html"]; ok {
-		indexUpdated, err := time.Parse(time.RFC3339Nano, index.Updated)
-		return err != nil || d.Updated.After(indexUpdated)
-	}
-	return true
 }
 
 func (d *Directory) Walk(dirs chan<- *Directory) {
