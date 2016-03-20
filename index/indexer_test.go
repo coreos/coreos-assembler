@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"net/url"
 	"testing"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
@@ -35,7 +34,7 @@ func TestBuildIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ix1, _, err := root.buildIndex()
+	ix1, _, err := buildIndex(root, "index.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +43,7 @@ func TestBuildIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ix2, _, err := root.buildIndex()
+	ix2, _, err := buildIndex(root, "index.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +83,7 @@ func BenchmarkBuildIndex(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, _, err = root.buildIndex(); err != nil {
+		if _, _, err = buildIndex(root, "index.html"); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -101,11 +100,11 @@ func BenchmarkRawBuildIndex(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		rawBuildIndex(root)
+		rawBuildIndex(root, "index.html")
 	}
 }
 
-func rawBuildIndex(d *Directory) (*storage.Object, io.Reader) {
+func rawBuildIndex(d *Directory, name string) (*storage.Object, io.Reader) {
 	title := html.EscapeString(d.Bucket + "/" + d.Prefix)
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	buf.WriteString("<html><head><title>")
@@ -130,15 +129,10 @@ func rawBuildIndex(d *Directory) (*storage.Object, io.Reader) {
 	buf.WriteString("\n</body></html>\n")
 
 	return &storage.Object{
-		Name:         d.Prefix + "index.html",
+		Name:         d.Prefix + name,
 		ContentType:  "text/html",
 		CacheControl: "public, max-age=60",
 		Crc32c:       crcSum(buf.Bytes()),
 		Size:         uint64(buf.Len()), // used by crcEq but not API
 	}, buf
-}
-
-func escapePath(path string) string {
-	u := url.URL{Path: path}
-	return u.EscapedPath()
 }
