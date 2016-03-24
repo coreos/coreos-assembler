@@ -76,12 +76,7 @@ func (d *Directory) Fetch(client *http.Client) error {
 		listReq.Prefix(d.Prefix)
 	}
 
-	for {
-		listRes, err := listReq.Do()
-		if err != nil {
-			return err
-		}
-
+	addObjs := func(listRes *storage.Objects) error {
 		objCount += len(listRes.Items)
 		fmt.Printf("Found %d objects under gs://%s/%s\n",
 			objCount, d.Bucket, d.Prefix)
@@ -94,15 +89,9 @@ func (d *Directory) Fetch(client *http.Client) error {
 				return err
 			}
 		}
-
-		if listRes.NextPageToken != "" {
-			listReq.PageToken(listRes.NextPageToken)
-		} else {
-			break
-		}
+		return nil
 	}
-
-	return nil
+	return listReq.Pages(nil, addObjs)
 }
 
 func (d *Directory) AddObject(obj *storage.Object) error {
