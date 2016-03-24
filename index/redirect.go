@@ -90,5 +90,5 @@ func (r *redirector) Index(d *Directory) error {
 	}
 	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, obj.Name)
 	_, err = writeReq.Do()
-	return err
+	return wrapError("storage.objects.insert", d.Bucket, obj.Name, err)
 }

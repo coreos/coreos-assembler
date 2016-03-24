@@ -79,7 +79,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 
 	for _, url := range args {
 		if err := updateTree(client, url); err != nil {
-			fmt.Fprintf(os.Stderr, "Updating indexes for %s failed: %v\n", url, err)
+			fmt.Fprintf(os.Stderr, "Failed: %v\n", err)
 			os.Exit(1)
 		}
 	}

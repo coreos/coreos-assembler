@@ -91,7 +91,8 @@ func (d *Directory) Fetch(client *http.Client) error {
 		}
 		return nil
 	}
-	return listReq.Pages(nil, addObjs)
+	err = listReq.Pages(nil, addObjs)
+	return wrapError("storage.objects.list", d.Bucket, d.Prefix, err)
 }
 
 func (d *Directory) AddObject(obj *storage.Object) error {
