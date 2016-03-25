@@ -38,9 +38,9 @@ const (
     </head>
     <body>
     <h1>{{.Bucket}}/{{.Prefix}}</h1>
-    {{range $name, $sub := .SubDirs}}
+    {{range $name, $sub := .SubDirs}}{{if not $sub.Empty}}
 	[dir] <a href="{{$name}}/">{{$name}}</a> </br>
-    {{end}}
+    {{end}}{{end}}
     {{range $name, $obj := .Objects}}
 	[file] <a href="{{$name}}">{{$name}}</a> </br>
     {{end}}
@@ -132,7 +132,7 @@ func (b *basicIndexer) Index(d *Directory) error {
 		return nil
 	}
 
-	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
+	if d.Empty() {
 		return nil
 	}
 

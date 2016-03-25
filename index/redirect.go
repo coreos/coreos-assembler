@@ -67,7 +67,7 @@ func (r *redirector) Index(d *Directory) error {
 		return nil
 	}
 
-	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
+	if d.Empty() {
 		return nil
 	}
 

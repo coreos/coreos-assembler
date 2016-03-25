@@ -63,6 +63,10 @@ func NewDirectory(rawURL string) (*Directory, error) {
 	}, nil
 }
 
+func (d *Directory) Empty() bool {
+	return len(d.SubDirs) == 0 && len(d.Objects) == 0
+}
+
 func (d *Directory) Fetch(client *http.Client) error {
 	service, err := storage.New(client)
 	if err != nil {
