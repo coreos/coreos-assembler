@@ -68,7 +68,7 @@ func (r *redirector) Index(d *Directory) error {
 	}
 
 	if d.Empty() {
-		return nil
+		return r.Clean(d)
 	}
 
 	obj, buf := buildRedirect(d)
@@ -91,4 +91,31 @@ func (r *redirector) Index(d *Directory) error {
 	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, obj.Name)
 	_, err = writeReq.Do()
 	return wrapError("storage.objects.insert", d.Bucket, obj.Name, err)
+}
+
+func (r *redirector) Clean(d *Directory) error {
+	// not applicable for the bucket root
+	if d.Prefix == "" {
+		return nil
+	}
+
+	if d.Redirect == nil {
+		return nil
+	}
+
+	service, err := storage.New(r.client)
+	if err != nil {
+		return err
+	}
+
+	name := strings.TrimSuffix(d.Prefix, "/")
+	if r.mode == WriteNever {
+		fmt.Printf("Would delete gs://%s/%s\n", d.Bucket, name)
+		return nil
+	}
+	fmt.Printf("Deleting gs://%s/%s\n", d.Bucket, name)
+
+	delReq := service.Objects.Delete(d.Bucket, name)
+	err = delReq.Do()
+	return wrapError("storage.objects.delete", d.Bucket, name, err)
 }
