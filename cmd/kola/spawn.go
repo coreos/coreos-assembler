@@ -26,9 +26,10 @@ import (
 
 var (
 	cmdSpawn = &cobra.Command{
-		Run:   runSpawn,
-		Use:   "spawn",
-		Short: "spawn a CoreOS instance",
+		Run:    runSpawn,
+		PreRun: preRun,
+		Use:    "spawn",
+		Short:  "spawn a CoreOS instance",
 	}
 
 	spawnUserData string

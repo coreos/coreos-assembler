@@ -41,9 +41,10 @@ func init() {
 }
 
 var cmdUpdatePayload = &cobra.Command{
-	Run:   runUpdatePayload,
-	Use:   "updatepayload",
-	Short: "test serving a update_engine payload",
+	Run:    runUpdatePayload,
+	PreRun: preRun,
+	Use:    "updatepayload",
+	Short:  "test serving a update_engine payload",
 	Long: `
 Boot a CoreOS instance and serve an update payload to its update_engine.
 

@@ -32,6 +32,7 @@ import (
 type QEMUOptions struct {
 	// DiskImage is the full path to the disk image to boot in QEMU.
 	DiskImage string
+	Board     string
 }
 
 // QEMUCluster is a local cluster of QEMU-based virtual machines.
@@ -123,11 +124,11 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		netif:       netif,
 	}
 
-	disk, err := setupDisk(qc.conf.DiskImage)
+	imageFile, err := setupDisk(qc.conf.DiskImage)
 	if err != nil {
 		return nil, err
 	}
-	defer disk.Close()
+	defer os.Remove(imageFile)
 
 	qc.mu.Lock()
 
@@ -140,27 +141,44 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCfg := qm.configDrive.Directory
-	qm.qemu = qm.qc.NewCommand(
-		"qemu-system-x86_64",
-		"-machine", "accel=kvm",
-		"-cpu", "host",
-		"-smp", "2",
-		"-m", "1024",
-		"-uuid", qm.id,
-		"-display", "none",
-		"-add-fd", "fd=3,set=1",
-		"-drive", "file=/dev/fdset/1,media=disk,if=virtio,format=raw",
-		"-netdev", "tap,id=tap,fd=4",
-		"-device", "virtio-net,netdev=tap,mac="+qmMac,
-		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
-		"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
+	if qc.conf.Board == "arm64-usr" {
+		qm.qemu = qm.qc.NewCommand(
+			"qemu-system-aarch64",
+			"-machine", "virt",
+			"-cpu", "cortex-a57",
+			"-bios", "QEMU_EFI.fd",
+			"-smp", "1",
+			"-m", "1024",
+			"-uuid", qm.id,
+			"-display", "none",
+			"-drive", "if=none,id=blk,format=raw,file="+imageFile,
+			"-device", "virtio-blk-device,drive=blk",
+			"-netdev", "tap,id=tap,fd=3",
+			"-device", "virtio-net-device,netdev=tap,mac="+qmMac,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+			"-device", "virtio-9p-device,fsdev=cfg,mount_tag=config-2")
+	} else {
+		qm.qemu = qm.qc.NewCommand(
+			"qemu-system-x86_64",
+			"-machine", "accel=kvm",
+			"-cpu", "host",
+			"-smp", "1",
+			"-m", "1024",
+			"-uuid", qm.id,
+			"-display", "none",
+			"-drive", "if=none,id=blk,format=raw,file="+imageFile,
+			"-device", "virtio-blk-pci,drive=blk",
+			"-netdev", "tap,id=tap,fd=3",
+			"-device", "virtio-net,netdev=tap,mac="+qmMac,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+			"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
+	}
 
 	qc.mu.Unlock()
 
 	cmd := qm.qemu.(*local.NsCmd)
 	cmd.Stderr = os.Stderr
-	cmd.ExtraFiles = append(cmd.ExtraFiles, disk)     // fd=3
-	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=4
+	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=3
 
 	if err = qm.qemu.Start(); err != nil {
 		return nil, err
@@ -183,13 +201,12 @@ func (qc *QEMUCluster) GetDiscoveryURL(size int) (string, error) {
 
 // Copy the base image to a new nameless temporary file.
 // cp is used since it supports sparse and reflink.
-func setupDisk(imageFile string) (*os.File, error) {
+func setupDisk(imageFile string) (string, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	dstFileName := dstFile.Name()
-	defer os.Remove(dstFileName)
 	dstFile.Close()
 
 	cp := exec.Command("cp", "--force",
@@ -199,10 +216,10 @@ func setupDisk(imageFile string) (*os.File, error) {
 	cp.Stderr = os.Stderr
 
 	if err := cp.Run(); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return os.OpenFile(dstFileName, os.O_RDWR, 0)
+	return dstFileName, nil
 }
 
 func (m *qemuMachine) ID() string {
