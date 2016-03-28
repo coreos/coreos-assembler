@@ -89,6 +89,7 @@ func init() {
 		Run:         Proxy,
 		ClusterSize: 0,
 		Name:        "coreos.fleet.etcdproxy",
+		UserData:    `#cloud-config`,
 	})
 }
 

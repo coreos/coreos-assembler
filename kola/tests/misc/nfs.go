@@ -77,12 +77,14 @@ func init() {
 		ClusterSize: 0,
 		Name:        "linux.nfs.v3",
 		Platforms:   []string{"qemu", "aws"},
+		UserData:    `#cloud-config`,
 	})
 	register.Register(&register.Test{
 		Run:         NFSv4,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v4",
 		Platforms:   []string{"qemu", "aws"},
+		UserData:    `#cloud-config`,
 	})
 }
 

@@ -118,7 +118,11 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 
 	conf.CopyKeys(keys)
 
-	ud := base64.StdEncoding.EncodeToString([]byte(conf.String()))
+	var ud *string
+	if cfStr := conf.String(); len(cfStr) > 0 {
+		tud := base64.StdEncoding.EncodeToString([]byte(cfStr))
+		ud = &tud
+	}
 	cnt := int64(1)
 
 	inst := ec2.RunInstancesInput{
@@ -128,7 +132,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		KeyName:        &ac.conf.KeyName, // this is only useful if you wish to ssh in for debugging
 		InstanceType:   &ac.conf.InstanceType,
 		SecurityGroups: []*string{&ac.conf.SecurityGroup},
-		UserData:       &ud,
+		UserData:       ud,
 	}
 
 	resp, err := ac.api.RunInstances(&inst)

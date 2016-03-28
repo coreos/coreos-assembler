@@ -30,10 +30,6 @@ type Conf struct {
 	cloudconfig *cci.CloudConfig
 }
 
-var (
-	defConfig = cci.CloudConfig{}
-)
-
 // NewConf parses userdata and returns a new Conf. It returns an error if the
 // userdata can't be parsed as a coreos-cloudinit or ignition configuration.
 func NewConf(userdata string) (*Conf, error) {
@@ -43,9 +39,6 @@ func NewConf(userdata string) (*Conf, error) {
 	switch err {
 	case ign.ErrEmpty:
 		// empty, noop
-		// XXX(mischief): i would use ignition as the default config,
-		// but there's no way to load it in qemu yet.
-		c.cloudconfig = &defConfig
 	case ign.ErrCloudConfig:
 		// fall back to cloud-config
 		c.cloudconfig, err = cci.NewCloudConfig(userdata)
