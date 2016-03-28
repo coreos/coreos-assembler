@@ -63,6 +63,15 @@ func NewDirectory(rawURL string) (*Directory, error) {
 	}, nil
 }
 
+func (d *Directory) Empty() bool {
+	for _, sub := range d.SubDirs {
+		if !sub.Empty() {
+			return false
+		}
+	}
+	return len(d.Objects) == 0
+}
+
 func (d *Directory) Fetch(client *http.Client) error {
 	service, err := storage.New(client)
 	if err != nil {
@@ -91,7 +100,8 @@ func (d *Directory) Fetch(client *http.Client) error {
 		}
 		return nil
 	}
-	return listReq.Pages(nil, addObjs)
+	err = listReq.Pages(nil, addObjs)
+	return wrapError("storage.objects.list", d.Bucket, d.Prefix, err)
 }
 
 func (d *Directory) AddObject(obj *storage.Object) error {

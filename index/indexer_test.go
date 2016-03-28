@@ -51,6 +51,32 @@ func TestBuildIndex(t *testing.T) {
 	if ix1.Size >= ix2.Size || ix1.Crc32c == ix2.Crc32c {
 		t.Errorf("index didn't change after adding bar")
 	}
+
+	if err := root.AddObject(&storage.Object{Name: "empty/index.html"}); err != nil {
+		t.Fatal(err)
+	}
+
+	ix3, _, err := buildIndex(root, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ix3.Size != ix2.Size || ix3.Crc32c != ix2.Crc32c {
+		t.Errorf("index changed after adding empty directory")
+	}
+
+	if err := root.AddObject(&storage.Object{Name: "empty/sub/index.html"}); err != nil {
+		t.Fatal(err)
+	}
+
+	ix4, _, err := buildIndex(root, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ix4.Size != ix2.Size || ix4.Crc32c != ix2.Crc32c {
+		t.Errorf("index changed after adding empty subdirectory")
+	}
 }
 
 func newTestDirectory() (root *Directory, err error) {

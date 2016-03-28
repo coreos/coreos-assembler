@@ -38,9 +38,9 @@ const (
     </head>
     <body>
     <h1>{{.Bucket}}/{{.Prefix}}</h1>
-    {{range $name, $sub := .SubDirs}}
+    {{range $name, $sub := .SubDirs}}{{if not $sub.Empty}}
 	[dir] <a href="{{$name}}/">{{$name}}</a> </br>
-    {{end}}
+    {{end}}{{end}}
     {{range $name, $obj := .Objects}}
 	[file] <a href="{{$name}}">{{$name}}</a> </br>
     {{end}}
@@ -56,6 +56,7 @@ func init() {
 // Indexer takes a single Directory and updates a single index page.
 type Indexer interface {
 	Index(d *Directory) error
+	Clean(d *Directory) error
 }
 
 type WriteMode int
@@ -122,18 +123,13 @@ func buildIndex(d *Directory, name string) (*storage.Object, io.Reader, error) {
 }
 
 func (b *basicIndexer) Index(d *Directory) error {
-	service, err := storage.New(b.client)
-	if err != nil {
-		return err
-	}
-
 	// cannot write an object to the bucket root, just skip
 	if b.name == "" && d.Prefix == "" {
 		return nil
 	}
 
-	if len(d.SubDirs) == 0 && len(d.Objects) == 0 {
-		return nil
+	if d.Empty() {
+		return b.Clean(d)
 	}
 
 	obj, buf, err := buildIndex(d, b.name)
@@ -145,6 +141,11 @@ func (b *basicIndexer) Index(d *Directory) error {
 		return nil // up to date!
 	}
 
+	service, err := storage.New(b.client)
+	if err != nil {
+		return err
+	}
+
 	writeReq := service.Objects.Insert(d.Bucket, obj)
 	writeReq.Media(buf)
 
@@ -154,5 +155,32 @@ func (b *basicIndexer) Index(d *Directory) error {
 	}
 	fmt.Printf("Writing gs://%s/%s\n", d.Bucket, obj.Name)
 	_, err = writeReq.Do()
-	return err
+	return wrapError("storage.objects.insert", d.Bucket, obj.Name, err)
+}
+
+func (b *basicIndexer) Clean(d *Directory) error {
+	// cannot write an object to the bucket root, just skip
+	if b.name == "" && d.Prefix == "" {
+		return nil
+	}
+
+	if _, exists := d.Indexes[b.name]; !exists {
+		return nil
+	}
+
+	service, err := storage.New(b.client)
+	if err != nil {
+		return err
+	}
+
+	name := d.Prefix + b.name
+	if b.mode == WriteNever {
+		fmt.Printf("Would delete gs://%s/%s\n", d.Bucket, name)
+		return nil
+	}
+	fmt.Printf("Deleting gs://%s/%s\n", d.Bucket, name)
+
+	delReq := service.Objects.Delete(d.Bucket, name)
+	err = delReq.Do()
+	return wrapError("storage.objects.delete", d.Bucket, name, err)
 }

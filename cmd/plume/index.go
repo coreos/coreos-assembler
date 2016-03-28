@@ -30,6 +30,7 @@ const maxWriters = 12
 var (
 	indexDryRun bool
 	indexForce  bool
+	indexDelete bool
 	indexDirs   bool
 	cmdIndex    = &cobra.Command{
 		Use:   "index [options] gs://bucket/prefix/ [gs://...]",
@@ -59,9 +60,11 @@ func init() {
 	cmdIndex.Flags().BoolVarP(&indexForce,
 		"force", "f", false,
 		"overwrite objects even if they appear up to date")
+	cmdIndex.Flags().BoolVar(&indexDelete,
+		"delete", false, "delete index objects")
 	cmdIndex.Flags().BoolVarP(&indexDirs,
 		"directories", "D", false,
-		"generate objects to mimic a directory tree")
+		"use objects to mimic a directory tree")
 	root.AddCommand(cmdIndex)
 }
 
@@ -79,7 +82,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 
 	for _, url := range args {
 		if err := updateTree(client, url); err != nil {
-			fmt.Fprintf(os.Stderr, "Updating indexes for %s failed: %v\n", url, err)
+			fmt.Fprintf(os.Stderr, "Failed: %v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -134,7 +137,13 @@ func updateTree(client *http.Client, url string) error {
 					return
 				}
 				for _, ix := range indexers {
-					if err := ix.Index(d); err != nil {
+					var err error
+					if indexDelete {
+						err = ix.Clean(d)
+					} else {
+						err = ix.Index(d)
+					}
+					if err != nil {
 						errc <- err
 						return
 					}
