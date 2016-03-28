@@ -92,7 +92,7 @@ func testRunner(platform string, done <-chan struct{}, tests chan *register.Test
 	}
 }
 
-func filterTests(tests map[string]*register.Test, pattern, platform string, version *semver.Version) (map[string]*register.Test, error) {
+func filterTests(tests map[string]*register.Test, pattern, platform string, version semver.Version) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
 	for name, t := range tests {
@@ -146,7 +146,7 @@ func RunTests(pattern, pltfrm string) error {
 	// 1) we already know 0 tests will run
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
-	maxVersion := &semver.Version{Major: math.MaxInt64}
+	maxVersion := semver.Version{Major: math.MaxInt64}
 	tests, err := filterTests(register.Tests, pattern, pltfrm, maxVersion)
 	if err != nil {
 		plog.Fatal(err)
@@ -170,7 +170,7 @@ func RunTests(pattern, pltfrm string) error {
 		}
 
 		// one more filter pass now that we know real version
-		tests, err = filterTests(tests, pattern, pltfrm, version)
+		tests, err = filterTests(tests, pattern, pltfrm, *version)
 		if err != nil {
 			plog.Fatal(err)
 		}
