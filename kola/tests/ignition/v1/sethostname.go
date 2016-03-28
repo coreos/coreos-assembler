@@ -31,7 +31,7 @@ var (
 func init() {
 	// Set the hostname
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.sethostname",
+		Name:        "coreos.ignition.v1.sethostname",
 		Run:         setHostname,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},

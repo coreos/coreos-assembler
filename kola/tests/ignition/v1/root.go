@@ -24,7 +24,7 @@ import (
 func init() {
 	// Reformat the root as btrfs
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.btrfsroot",
+		Name:        "coreos.ignition.v1.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
@@ -49,7 +49,7 @@ func init() {
 
 	// Reformat the root as xfs
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.xfsroot",
+		Name:        "coreos.ignition.v1.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},

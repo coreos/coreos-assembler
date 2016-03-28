@@ -24,7 +24,7 @@ import (
 // metadata since it will not be injected into the config.
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.empty",
+		Name:        "coreos.ignition.v1.empty",
 		Run:         empty,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
