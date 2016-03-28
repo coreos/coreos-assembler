@@ -45,6 +45,11 @@ type Test struct {
 	// less than MinVersion. This will be ignored if the name fully
 	// matches without globbing.
 	MinVersion semver.Version
+
+	// EndVersion prevents the test from executing on CoreOS machines
+	// greater than or equal to EndVersion. This will be ignored if
+	// the name fully matches without globbing.
+	EndVersion semver.Version
 }
 
 // Registered tests live here. Mapping of names to tests.
@@ -57,6 +62,10 @@ func Register(t *Test) {
 	_, ok := Tests[t.Name]
 	if ok {
 		panic(fmt.Sprintf("test %v already registered", t.Name))
+	}
+
+	if (t.EndVersion != semver.Version{}) && !t.MinVersion.LessThan(t.EndVersion) {
+		panic(fmt.Sprintf("test %v has an invalid version range", t.Name))
 	}
 
 	Tests[t.Name] = t

@@ -16,7 +16,6 @@ package kola
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -109,8 +108,8 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 			continue
 		}
 
-		// Check the test's minVersion when running more then one test
-		if version.LessThan(t.MinVersion) && t.Name != pattern {
+		// Check the test's min and end versions when running more then one test
+		if t.Name != pattern && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
 			continue
 		}
 
@@ -133,6 +132,20 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 	return r, nil
 }
 
+// versionOutsideRange checks to see if version is outside [min, end). If end
+// is a zero value, it is ignored and there is no upper bound.
+func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
+	if version.LessThan(minVersion) {
+		return false
+	}
+
+	if (endVersion != semver.Version{}) && !version.LessThan(endVersion) {
+		return false
+	}
+
+	return true
+}
+
 // RunTests is a harness for running multiple tests in parallel. Filters
 // tests based on a glob pattern and by platform. Has access to all
 // tests either registered in this package or by imported packages that
@@ -146,8 +159,7 @@ func RunTests(pattern, pltfrm string) error {
 	// 1) we already know 0 tests will run
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
-	maxVersion := semver.Version{Major: math.MaxInt64}
-	tests, err := filterTests(register.Tests, pattern, pltfrm, maxVersion)
+	tests, err := filterTests(register.Tests, pattern, pltfrm, semver.Version{})
 	if err != nil {
 		plog.Fatal(err)
 	}
