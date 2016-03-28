@@ -16,7 +16,9 @@ package register
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -38,18 +40,24 @@ type Test struct {
 
 	// If manual is set, the test will only execute if the name fully matches without globbing.
 	Manual bool
+
+	// MinVersion prevents the test from executing on CoreOS machines
+	// less than MinVersion. This will be ignored if the name fully
+	// matches without globbing.
+	MinVersion semver.Version
 }
 
 // Registered tests live here. Mapping of names to tests.
 var Tests = map[string]*Test{}
 
 // Register is usually called in init() functions and is how kola test
-// harnesses knows which tests it can choose from. Panic if existing
+// harnesses knows which tests it can choose from. Panics if existing
 // name is registered
 func Register(t *Test) {
 	_, ok := Tests[t.Name]
 	if ok {
-		panic("test already registered with same name")
+		panic(fmt.Sprintf("test %v already registered", t.Name))
 	}
+
 	Tests[t.Name] = t
 }

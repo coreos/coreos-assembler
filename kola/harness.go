@@ -16,6 +16,7 @@ package kola
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -26,6 +27,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 
 	// Tests imported for registration side effects.
@@ -90,7 +92,7 @@ func testRunner(platform string, done <-chan struct{}, tests chan *register.Test
 	}
 }
 
-func filterTests(tests map[string]*register.Test, pattern, platform string) (map[string]*register.Test, error) {
+func filterTests(tests map[string]*register.Test, pattern, platform string, version *semver.Version) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
 	for name, t := range tests {
@@ -104,6 +106,11 @@ func filterTests(tests map[string]*register.Test, pattern, platform string) (map
 
 		// Skip the test if Manual is set and the name doesn't fully match.
 		if t.Manual && t.Name != pattern {
+			continue
+		}
+
+		// Check the test's minVersion when running more then one test
+		if version.LessThan(t.MinVersion) && t.Name != pattern {
 			continue
 		}
 
@@ -134,9 +141,39 @@ func RunTests(pattern, pltfrm string) error {
 	var passed, failed, skipped int
 	var wg sync.WaitGroup
 
-	tests, err := filterTests(register.Tests, pattern, pltfrm)
+	// Avoid incurring cost of starting machine in getClusterSemver when
+	// either:
+	// 1) we already know 0 tests will run
+	// 2) glob is an exact match which means minVersion will be ignored
+	//    either way
+	maxVersion := &semver.Version{Major: math.MaxInt64}
+	tests, err := filterTests(register.Tests, pattern, pltfrm, maxVersion)
 	if err != nil {
 		plog.Fatal(err)
+	}
+
+	var skipGetVersion bool
+	if len(tests) == 0 {
+		skipGetVersion = true
+	} else if len(tests) == 1 {
+		for name := range tests {
+			if name == pattern {
+				skipGetVersion = true
+			}
+		}
+	}
+
+	if !skipGetVersion {
+		version, err := getClusterSemver(pltfrm)
+		if err != nil {
+			plog.Fatal(err)
+		}
+
+		// one more filter pass now that we know real version
+		tests, err = filterTests(tests, pattern, pltfrm, version)
+		if err != nil {
+			plog.Fatal(err)
+		}
 	}
 
 	done := make(chan struct{})
@@ -192,9 +229,55 @@ func RunTests(pattern, pltfrm string) error {
 	return nil
 }
 
+// getClusterSemVer returns the CoreOS semantic version via starting a
+// machine and checking
+func getClusterSemver(pltfrm string) (*semver.Version, error) {
+	var err error
+	var cluster platform.Cluster
+
+	switch pltfrm {
+	case "qemu":
+		cluster, err = platform.NewQemuCluster(QEMUOptions)
+	case "gce":
+		cluster, err = platform.NewGCECluster(GCEOptions)
+	case "aws":
+		cluster, err = platform.NewAWSCluster(AWSOptions)
+	default:
+		err = fmt.Errorf("invalid platform %q", pltfrm)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("creating cluster for semver check: %v", err)
+	}
+	defer func() {
+		if err := cluster.Destroy(); err != nil {
+			plog.Errorf("cluster.Destroy(): %v", err)
+		}
+	}()
+
+	m, err := cluster.NewMachine("")
+	if err != nil {
+		return nil, fmt.Errorf("creating new machine for semver check: %v", err)
+	}
+
+	out, err := m.SSH("grep ^VERSION_ID= /etc/os-release")
+	if err != nil {
+		return nil, fmt.Errorf("parsing /etc/os-release: %v", err)
+	}
+
+	version, err := semver.NewVersion(strings.Split(string(out), "=")[1])
+	if err != nil {
+		return nil, fmt.Errorf("parsing os-release semver: %v", err)
+	}
+
+	return version, nil
+}
+
 // RunTest is a harness for running a single test. It is used by
 // RunTests but can also be used directly by binaries that aim to run a
-// single test.
+// single test. Using RunTest directly means that TestCluster flags used
+// to filter out tests such as 'Platforms', 'Manual', or 'MinVersion'
+// are not respected.
 func RunTest(t *register.Test, pltfrm string) error {
 	var err error
 	var cluster platform.Cluster
