@@ -48,6 +48,7 @@ func init() {
 		Run:         JournalRemote,
 		ClusterSize: 0,
 		Name:        "systemd.journal.remote",
+		UserData:    `#cloud-config`,
 	})
 }
 
@@ -69,7 +70,7 @@ func JournalRemote(c platform.TestCluster) error {
 	}
 
 	// spawn a machine to read from gatewayd
-	collector, err := c.NewMachine("")
+	collector, err := c.NewMachine("#cloud-config")
 	if err != nil {
 		return fmt.Errorf("Cluster.NewMachine: %s", err)
 	}

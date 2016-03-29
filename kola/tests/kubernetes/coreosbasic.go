@@ -51,6 +51,7 @@ func init() {
 			Run:         f,
 			ClusterSize: 0,
 			Platforms:   []string{"gce", "aws"},
+			UserData:    `#cloud-config`,
 		})
 	}
 }

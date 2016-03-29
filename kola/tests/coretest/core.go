@@ -40,6 +40,7 @@ func init() {
 			"RandomUUID":       TestFsRandomUUID,
 			"Useradd":          TestUseradd,
 		},
+		UserData: `#cloud-config`,
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.cluster",
@@ -80,6 +81,7 @@ coreos:
 			"DockerEcho":   TestDockerEcho,
 			"NTPDate":      TestNTPDate,
 		},
+		UserData: `#cloud-config`,
 	})
 }
 
