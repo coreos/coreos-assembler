@@ -15,18 +15,18 @@
 package platform
 
 import (
-	"bytes"
 	"encoding/json"
 
 	cci "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
-	ign "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/src/config"
+	v1 "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1"
+	v1types "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1/types"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
 )
 
 // Conf is a configuration for a CoreOS machine. It may be either a
 // coreos-cloudconfig or an ignition configuration.
 type Conf struct {
-	ignition    *ign.Config
+	ignitionV1  *v1types.Config
 	cloudconfig *cci.CloudConfig
 }
 
@@ -35,21 +35,21 @@ type Conf struct {
 func NewConf(userdata string) (*Conf, error) {
 	c := &Conf{}
 
-	ignc, err := ign.Parse([]byte(userdata))
+	ignc, err := v1.Parse([]byte(userdata))
 	switch err {
-	case ign.ErrEmpty:
+	case v1.ErrEmpty:
 		// empty, noop
-	case ign.ErrCloudConfig:
+	case v1.ErrCloudConfig:
 		// fall back to cloud-config
 		c.cloudconfig, err = cci.NewCloudConfig(userdata)
 		if err != nil {
 			return nil, err
 		}
+	case nil:
+		c.ignitionV1 = &ignc
 	default:
 		// some other error (invalid json, script)
 		return nil, err
-	case nil:
-		c.ignition = &ignc
 	}
 
 	return c, nil
@@ -57,15 +57,9 @@ func NewConf(userdata string) (*Conf, error) {
 
 // String returns the string representation of the userdata in Conf.
 func (c *Conf) String() string {
-	if c.ignition != nil {
-		var buf bytes.Buffer
-
-		err := json.NewEncoder(&buf).Encode(c.ignition)
-		if err != nil {
-			return ""
-		}
-
-		return buf.String()
+	if c.ignitionV1 != nil {
+		buf, _ := json.Marshal(c.ignitionV1)
+		return string(buf)
 	} else if c.cloudconfig != nil {
 		return c.cloudconfig.String()
 	}
@@ -73,43 +67,30 @@ func (c *Conf) String() string {
 	return ""
 }
 
-func (c *Conf) copyKeysIgnition(keys []*agent.Key) {
-	// lookup core user entry
-	var usr *ign.User
-
-	users := c.ignition.Passwd.Users
-
-	for i, u := range users {
-		if u.Name == "core" {
-			usr = &users[i]
-		}
-	}
-
-	// doesn't exist yet - create it
-	if usr == nil {
-		u := ign.User{Name: "core"}
-		users = append(users, u)
-		c.ignition.Passwd.Users = users
-		usr = &users[len(users)-1]
-	}
-
-	for _, key := range keys {
-		usr.SSHAuthorizedKeys = append(usr.SSHAuthorizedKeys, key.String())
-	}
+func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
+	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
+		Name:              "core",
+		SSHAuthorizedKeys: keysToStrings(keys),
+	})
 }
 
 func (c *Conf) copyKeysCloudConfig(keys []*agent.Key) {
-	for _, key := range keys {
-		c.cloudconfig.SSHAuthorizedKeys = append(c.cloudconfig.SSHAuthorizedKeys, key.String())
-	}
+	c.cloudconfig.SSHAuthorizedKeys = append(c.cloudconfig.SSHAuthorizedKeys, keysToStrings(keys)...)
 }
 
 // CopyKeys copies public keys from agent ag into the configuration to the
 // appropriate configuration section for the core user.
 func (c *Conf) CopyKeys(keys []*agent.Key) {
-	if c.ignition != nil {
-		c.copyKeysIgnition(keys)
+	if c.ignitionV1 != nil {
+		c.copyKeysIgnitionV1(keys)
 	} else if c.cloudconfig != nil {
 		c.copyKeysCloudConfig(keys)
 	}
+}
+
+func keysToStrings(keys []*agent.Key) (keyStrs []string) {
+	for _, key := range keys {
+		keyStrs = append(keyStrs, key.String())
+	}
+	return
 }
