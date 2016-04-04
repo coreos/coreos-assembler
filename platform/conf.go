@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 
 	cci "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
+	v2 "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config"
+	v2types "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/types"
 	v1 "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1/types"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
@@ -27,6 +29,7 @@ import (
 // coreos-cloudconfig or an ignition configuration.
 type Conf struct {
 	ignitionV1  *v1types.Config
+	ignitionV2  *v2types.Config
 	cloudconfig *cci.CloudConfig
 }
 
@@ -35,18 +38,24 @@ type Conf struct {
 func NewConf(userdata string) (*Conf, error) {
 	c := &Conf{}
 
-	ignc, err := v1.Parse([]byte(userdata))
+	ignc, err := v2.Parse([]byte(userdata))
 	switch err {
-	case v1.ErrEmpty:
+	case v2.ErrEmpty:
 		// empty, noop
-	case v1.ErrCloudConfig:
+	case v2.ErrCloudConfig:
 		// fall back to cloud-config
 		c.cloudconfig, err = cci.NewCloudConfig(userdata)
 		if err != nil {
 			return nil, err
 		}
+	case v2.ErrDeprecated:
+		if ignc, err := v1.Parse([]byte(userdata)); err == nil {
+			c.ignitionV1 = &ignc
+		} else {
+			return nil, err
+		}
 	case nil:
-		c.ignitionV1 = &ignc
+		c.ignitionV2 = &ignc
 	default:
 		// some other error (invalid json, script)
 		return nil, err
@@ -59,6 +68,9 @@ func NewConf(userdata string) (*Conf, error) {
 func (c *Conf) String() string {
 	if c.ignitionV1 != nil {
 		buf, _ := json.Marshal(c.ignitionV1)
+		return string(buf)
+	} else if c.ignitionV2 != nil {
+		buf, _ := json.Marshal(c.ignitionV2)
 		return string(buf)
 	} else if c.cloudconfig != nil {
 		return c.cloudconfig.String()
@@ -74,6 +86,13 @@ func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
 	})
 }
 
+func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
+	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.User{
+		Name:              "core",
+		SSHAuthorizedKeys: keysToStrings(keys),
+	})
+}
+
 func (c *Conf) copyKeysCloudConfig(keys []*agent.Key) {
 	c.cloudconfig.SSHAuthorizedKeys = append(c.cloudconfig.SSHAuthorizedKeys, keysToStrings(keys)...)
 }
@@ -83,6 +102,8 @@ func (c *Conf) copyKeysCloudConfig(keys []*agent.Key) {
 func (c *Conf) CopyKeys(keys []*agent.Key) {
 	if c.ignitionV1 != nil {
 		c.copyKeysIgnitionV1(keys)
+	} else if c.ignitionV2 != nil {
+		c.copyKeysIgnitionV2(keys)
 	} else if c.cloudconfig != nil {
 		c.copyKeysCloudConfig(keys)
 	}
