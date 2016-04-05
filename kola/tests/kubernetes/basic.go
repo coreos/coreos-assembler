@@ -27,8 +27,7 @@ import (
 
 // register a separate test for each version tag
 var basicTags = []string{
-	"v1.1.7_coreos.2",
-	"v1.1.8_coreos.0",
+	"v1.2.0_coreos.1",
 }
 
 func init() {
