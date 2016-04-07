@@ -47,7 +47,7 @@ func TestAWSMachine(t *testing.T) {
 
 	defer c.Destroy()
 
-	m, err := c.NewMachine("")
+	m, err := c.NewMachine("#cloud-config")
 	if err != nil {
 		t.Error(err)
 		return

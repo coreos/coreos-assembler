@@ -70,7 +70,7 @@ func CoreOSBasic(c platform.TestCluster, version string) error {
 		return err
 	}
 
-	master, err := c.NewMachine("")
+	master, err := c.NewMachine("#cloud-config")
 	if err != nil {
 		return err
 	}
