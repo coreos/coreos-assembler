@@ -136,14 +136,14 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 // is a zero value, it is ignored and there is no upper bound.
 func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 	if version.LessThan(minVersion) {
-		return false
+		return true
 	}
 
 	if (endVersion != semver.Version{}) && !version.LessThan(endVersion) {
-		return false
+		return true
 	}
 
-	return true
+	return false
 }
 
 // RunTests is a harness for running multiple tests in parallel. Filters
