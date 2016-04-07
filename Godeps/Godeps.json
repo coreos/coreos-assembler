@@ -345,14 +345,8 @@
 			"Rev": "cba16237846b83be98d25d8392b1520b7bc40b5a"
 		},
 		{
-			"ImportPath": "github.com/coreos/ignition/src/config",
-			"Comment": "v0.2.2",
-			"Rev": "5baf8f8bcab7c51bef7b8b1b6b7e07ec69602272"
-		},
-		{
-			"ImportPath": "github.com/coreos/ignition/third_party/github.com/alecthomas/units",
-			"Comment": "v0.2.2",
-			"Rev": "5baf8f8bcab7c51bef7b8b1b6b7e07ec69602272"
+			"ImportPath": "github.com/coreos/ignition/config",
+			"Rev": "4c22a2c309d0bdf4f2c3e7075e4363732773d1cd"
 		},
 		{
 			"ImportPath": "github.com/coreos/ioprogress",
