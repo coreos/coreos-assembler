@@ -97,6 +97,19 @@ func (b *Bucket) WriteDryRun(dryrun bool) {
 	b.writeDryRun = dryrun
 }
 
+// TrimPrefix removes the Bucket's path prefix from an Object name.
+func (b *Bucket) TrimPrefix(objName string) string {
+	if !strings.HasPrefix(objName, b.prefix) {
+		panic(fmt.Errorf("%q missing prefix %q", objName, b.prefix))
+	}
+	return objName[len(b.prefix):]
+}
+
+// AddPrefix joins the Bucket's path prefix with a relative Object name.
+func (b *Bucket) AddPrefix(objName string) string {
+	return b.prefix + objName
+}
+
 func (b *Bucket) Object(objName string) *storage.Object {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
