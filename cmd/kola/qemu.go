@@ -53,7 +53,7 @@ func runQemu(cmd *cobra.Command, args []string) {
 	}
 	defer cluster.Destroy()
 
-	m, err := cluster.NewMachine("")
+	m, err := cluster.NewMachine("#cloud-config")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Machine failed: %v\n", err)
 		os.Exit(1)

@@ -267,7 +267,7 @@ func getClusterSemver(pltfrm string) (*semver.Version, error) {
 		}
 	}()
 
-	m, err := cluster.NewMachine("")
+	m, err := cluster.NewMachine("#cloud-config")
 	if err != nil {
 		return nil, fmt.Errorf("creating new machine for semver check: %v", err)
 	}
