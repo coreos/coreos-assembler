@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/storage"
+	"github.com/coreos/mantle/storage/index"
 )
 
 var (
@@ -79,7 +80,7 @@ func runSync(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	if err := storage.Sync(ctx, src, dst); err != nil {
+	if err := index.Sync(ctx, src, dst); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
