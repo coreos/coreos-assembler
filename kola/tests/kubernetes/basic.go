@@ -81,6 +81,10 @@ func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
 		addrMap[strings.SplitN(line, " ", 2)[0]] = struct{}{}
 	}
 
+	// add master to node list because it is now normal to register
+	// master nodes but have it set as unschedulable in kubernetes v1.2+
+	nodes = append(nodes, master)
+
 	if len(addrMap) != len(nodes) {
 		return fmt.Errorf("cannot detect all nodes in kubectl output \n%v\n%v", addrMap, nodes)
 	}
