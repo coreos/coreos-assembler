@@ -19,6 +19,7 @@ TESTABLE="auth cli index kola kola/register
 	network network/ntp network/omaha
 	platform platform/local
 	sdk sdk/omaha sdk/repo
+        storage storage/index
 	system system/exec system/targen system/user
 	util
 	version"

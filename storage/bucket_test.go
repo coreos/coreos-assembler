@@ -73,9 +73,3 @@ func TestBucketURL(t *testing.T) {
 	}
 
 }
-
-func BenchmarkMatchPrefix(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		matchPrefix("some/path/prefix/objectname.foo", "some/path/prefix/")
-	}
-}
