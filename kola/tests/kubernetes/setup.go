@@ -22,7 +22,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
@@ -32,47 +31,31 @@ import (
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kubernetes")
 
-// register a separate test for each version tag
-var tags = []string{
-	"v1.1.7_coreos.2",
-	"v1.1.8_coreos.0",
+// kCluster just keeps track of which machines are which in a
+// platform.TestCluster with kubernetes running.
+type kCluster struct {
+	etcd    platform.Machine
+	master  platform.Machine
+	workers []platform.Machine
 }
 
-func init() {
-	for i := range tags {
-		// use closure to store a version tag in a Test
-		t := tags[i]
-		f := func(c platform.TestCluster) error {
-			return CoreOSBasic(c, t)
-		}
-
-		register.Register(&register.Test{
-			Name:        "google.kubernetes.coreosbasic." + tags[i],
-			Run:         f,
-			ClusterSize: 0,
-			Platforms:   []string{"gce", "aws"},
-			UserData:    `#cloud-config`,
-		})
-	}
-}
-
-// Start a multi-node cluster from offcial coreos guides on manual
-// installation. Once up, do a couple basic smoke checks. See:
+// Setup a multi-node cluster based on official coreos guides for manual
+// installation.
 // https://coreos.com/kubernetes/docs/latest/getting-started.html
-func CoreOSBasic(c platform.TestCluster, version string) error {
+func setupCluster(c platform.TestCluster, nodes int, version string) (*kCluster, error) {
 	// start single-node etcd
 	etcdNode, err := c.NewMachine(etcdConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := etcd.GetClusterHealth(etcdNode, 1); err != nil {
-		return err
+		return nil, err
 	}
 
 	master, err := c.NewMachine("#cloud-config")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	options := map[string]string{
@@ -87,35 +70,38 @@ func CoreOSBasic(c platform.TestCluster, version string) error {
 
 	// generate TLS assets on master
 	if err := generateMasterTLSAssets(master, options); err != nil {
-		return err
+		return nil, err
 	}
 
-	// create 3 worker nodes
-	workerConfigs := []string{"", "", ""}
+	// create worker nodes
+	workerConfigs := make([]string, nodes)
+	for i := range workerConfigs {
+		workerConfigs[i] = "#cloud-config" // want default rather then blank
+	}
 	workers, err := platform.NewMachines(c, workerConfigs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// generate tls assets on workers by transfering ca from master
 	if err := generateWorkerTLSAssets(master, workers); err != nil {
-		return err
+		return nil, err
 	}
 
 	// configure nodes via generic install scripts
 	if err := runInstallScript(master, controllerInstallScript, options); err != nil {
-		return fmt.Errorf("Installing controller: %v", err)
+		return nil, fmt.Errorf("Installing controller: %v", err)
 	}
 
 	for _, worker := range workers {
 		if err := runInstallScript(worker, workerInstallScript, options); err != nil {
-			return fmt.Errorf("Installing worker: %v", err)
+			return nil, fmt.Errorf("Installing worker: %v", err)
 		}
 	}
 
 	// configure kubectl
 	if err := configureKubectl(master, master.PrivateIP(), version); err != nil {
-		return err
+		return nil, err
 	}
 
 	// check that all nodes appear in kubectl
@@ -123,21 +109,15 @@ func CoreOSBasic(c platform.TestCluster, version string) error {
 		return nodeCheck(master, workers)
 	}
 	if err := util.Retry(15, 10*time.Second, f); err != nil {
-		return err
+		return nil, err
 	}
 
-	// start nginx pod and curl endpoint
-	if err = nginxCheck(master, workers); err != nil {
-		return err
+	cluster := &kCluster{
+		etcd:    etcdNode,
+		master:  master,
+		workers: workers,
 	}
-
-	// http://kubernetes.io/v1.0/docs/user-guide/secrets/ Also, ensures
-	// https://github.com/coreos/bugs/issues/447 does not re-occur.
-	if err = secretCheck(master, workers); err != nil {
-		return err
-	}
-
-	return nil
+	return cluster, nil
 }
 
 func generateMasterTLSAssets(master platform.Machine, options map[string]string) error {
@@ -233,11 +213,10 @@ func generateWorkerTLSAssets(master platform.Machine, workers []platform.Machine
 
 // https://coreos.com/kubernetes/docs/latest/configure-kubectl.html
 func configureKubectl(m platform.Machine, server string, version string) error {
-	// ignore suffix like '-coreos.1' on version to grab upstream
-	semverPrefix := regexp.MustCompile(`^v[\d]+\.[\d]+\.[\d]+`)
-	version = semverPrefix.FindString(version)
-	if version == "" {
-		return fmt.Errorf("Failure to parse kubectl version")
+	// ignore suffix like '-coreos.1' to grab upstream kubelet
+	version, err := stripSemverSuffix(version)
+	if err != nil {
+		return err
 	}
 
 	var (
@@ -268,6 +247,19 @@ func configureKubectl(m platform.Machine, server string, version string) error {
 		}
 	}
 	return nil
+}
+
+var semverPrefix = regexp.MustCompile(`^v[\d]+\.[\d]+\.[\d]+`)
+
+// Strip semver suffix -- e.g., v1.1.8_coreos.1 --> v1.1.8. If no match
+// found, return error.
+func stripSemverSuffix(v string) (string, error) {
+	v = semverPrefix.FindString(v)
+	if v == "" {
+		return "", fmt.Errorf("error stripping semver suffix")
+	}
+
+	return v, nil
 }
 
 // Run and configure the coreos-kubernetes generic install scripts.
