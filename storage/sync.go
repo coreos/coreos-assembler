@@ -24,16 +24,37 @@ import (
 const maxWorkers = 12
 
 func Sync(ctx context.Context, src, dst *Bucket) error {
+	// Assemble a set of existing objects which may be deleted.
+	oldNames := make(map[string]struct{})
+	for _, oldObj := range dst.Objects() {
+		oldNames[oldObj.Name] = struct{}{}
+	}
+
 	wg := worker.NewWorkerGroup(ctx, maxWorkers)
 	for _, srcObj := range src.Objects() {
 		obj := srcObj // for the sake of the closure
+		name := dst.AddPrefix(src.TrimPrefix(obj.Name))
+
 		worker := func(c context.Context) error {
-			name := dst.AddPrefix(src.TrimPrefix(obj.Name))
 			return dst.Copy(c, obj, name)
 		}
 		if err := wg.Start(worker); err != nil {
 			return wg.WaitError(err)
 		}
+
+		// Drop from set of deletion candidates.
+		delete(oldNames, name)
 	}
+
+	for oldName := range oldNames {
+		name := oldName // for the sake of the closure
+		worker := func(c context.Context) error {
+			return dst.Delete(c, name)
+		}
+		if err := wg.Start(worker); err != nil {
+			return wg.WaitError(err)
+		}
+	}
+
 	return wg.Wait()
 }
