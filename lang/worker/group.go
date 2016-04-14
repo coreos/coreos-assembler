@@ -92,3 +92,16 @@ func (wg *WorkerGroup) Wait() error {
 	}
 	return wg.getErr()
 }
+
+// Wait with a default error value that will be returned if no worker failed.
+//
+//	if err := wg.Start(worker); err != nil {
+//		return wg.WaitError(err)
+//	}
+//
+func (wg *WorkerGroup) WaitError(err error) error {
+	if werr := wg.Wait(); werr != nil {
+		return werr
+	}
+	return err
+}

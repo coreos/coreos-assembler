@@ -32,8 +32,7 @@ func Sync(ctx context.Context, src, dst *Bucket) error {
 			return dst.Copy(c, obj, name)
 		}
 		if err := wg.Start(worker); err != nil {
-			plog.Error(err)
-			break
+			return wg.WaitError(err)
 		}
 	}
 	return wg.Wait()

@@ -28,7 +28,7 @@ const maxWorkers = 12
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "storage/index")
 
-func Sync(ctx context.Context, src, dst *storage.Bucket) (err error) {
+func Sync(ctx context.Context, src, dst *storage.Bucket) error {
 	wg := worker.NewWorkerGroup(ctx, maxWorkers)
 	for _, srcObj := range FilteredObjects(src) {
 		obj := srcObj // for the sake of the closure
@@ -36,17 +36,12 @@ func Sync(ctx context.Context, src, dst *storage.Bucket) (err error) {
 			name := dst.AddPrefix(src.TrimPrefix(obj.Name))
 			return dst.Copy(c, obj, name)
 		}
-		if err = wg.Start(worker); err != nil {
-			break
+		if err := wg.Start(worker); err != nil {
+			return wg.WaitError(err)
 		}
 	}
 
-	if werr := wg.Wait(); werr != nil {
-		return werr
-	}
-	if err != nil {
-		// Start failed but Wait did not, only likely to happen
-		// if the context was dead before we even started.
+	if err := wg.Wait(); err != nil {
 		return err
 	}
 
@@ -72,9 +67,6 @@ func Sync(ctx context.Context, src, dst *storage.Bucket) (err error) {
 		return nil
 	}
 
-	err = doDir(dst.Prefix())
-	if werr := wg.Wait(); werr != nil {
-		return werr
-	}
-	return err
+	err := doDir(dst.Prefix())
+	return wg.WaitError(err)
 }
