@@ -67,6 +67,18 @@ func Sync(ctx context.Context, src, dst *storage.Bucket) error {
 		return nil
 	}
 
-	err := doDir(dst.Prefix())
-	return wg.WaitError(err)
+	if err := doDir(dst.Prefix()); err != nil {
+		return wg.WaitError(err)
+	}
+
+	for _, index := range tree.EmptyIndexes(bucket.Prefix()) {
+		objName := index
+		if err := wg.Start(func(ctx context.Context) error {
+			return dst.Delete(ctx, objName)
+		}); err != nil {
+			return wg.WaitError(err)
+		}
+	}
+
+	return wg.Wait()
 }
