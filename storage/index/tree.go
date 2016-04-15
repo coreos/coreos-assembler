@@ -15,6 +15,7 @@
 package index
 
 import (
+	"path"
 	"strings"
 
 	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
@@ -23,23 +24,74 @@ import (
 )
 
 type IndexTree struct {
-	bucket  *storage.Bucket
-	objects map[string][]*gs.Object
+	bucket   *storage.Bucket
+	indexes  map[string]*gs.Object
+	objcount map[string]uint
+	objects  map[string][]*gs.Object
 }
 
 func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	t := &IndexTree{
-		bucket:  bucket,
-		objects: make(map[string][]*gs.Object),
+		bucket:   bucket,
+		indexes:  make(map[string]*gs.Object),
+		objcount: make(map[string]uint),
+		objects:  make(map[string][]*gs.Object),
 	}
 
-	for _, obj := range FilteredObjects(bucket) {
-		i := strings.LastIndexByte(obj.Name, '/')
-		dir := obj.Name[:i+1]
-		t.objects[dir] = append(t.objects[dir], obj)
+	for _, prefix := range bucket.Prefixes() {
+		t.addDir(prefix)
+	}
+
+	for _, obj := range bucket.Objects() {
+		if t.IsIndex(obj) {
+			t.indexes[obj.Name] = obj
+		} else {
+			t.addObj(obj)
+		}
 	}
 
 	return t
+}
+
+func dirIndexes(dir string) []string {
+	indexes := []string{dir + "index.html"}
+	if dir != "" {
+		indexes = append(indexes, dir, strings.TrimSuffix(dir, "/"))
+	}
+	return indexes
+}
+
+func (t *IndexTree) addDir(dir string) {
+	for _, index := range dirIndexes(dir) {
+		t.indexes[index] = nil
+	}
+	t.objcount[dir] = 0
+}
+
+func nextPrefix(name string) string {
+	prefix, _ := path.Split(strings.TrimSuffix(name, "/"))
+	return prefix
+}
+
+func (t *IndexTree) addObj(obj *gs.Object) {
+	prefix := nextPrefix(obj.Name)
+	t.objects[prefix] = append(t.objects[prefix], obj)
+	for {
+		t.objcount[prefix]++
+		if prefix == "" {
+			return
+		}
+		prefix = nextPrefix(prefix)
+	}
+}
+
+func (t *IndexTree) IsIndex(obj *gs.Object) bool {
+	_, isIndex := t.indexes[obj.Name]
+	return isIndex
+}
+
+func (t *IndexTree) IsNotIndex(obj *gs.Object) bool {
+	return !t.IsIndex(obj)
 }
 
 func (t *IndexTree) Objects(dir string) map[string]*gs.Object {
@@ -52,20 +104,30 @@ func (t *IndexTree) Objects(dir string) map[string]*gs.Object {
 
 func (t *IndexTree) SubDirs(dir string) map[string]string {
 	subdirs := make(map[string]string)
-	for prefix := range t.objects {
-		if strings.HasPrefix(prefix, dir) {
-			name := prefix[len(dir):]
-			if name == "" {
+	for prefix, sum := range t.objcount {
+		if sum > 0 && strings.HasPrefix(prefix, dir) {
+			name := strings.TrimSuffix(prefix[len(dir):], "/")
+			if name == "" || strings.Contains(name, "/") {
 				continue
-			}
-			if i := strings.IndexByte(name, '/'); i >= 0 {
-				name = name[:i]
-				prefix = prefix[:len(dir)+i+1]
 			}
 			subdirs[name] = prefix
 		}
 	}
 	return subdirs
+}
+
+func (t *IndexTree) EmptyIndexes(dir string) []string {
+	indexes := make([]string, 0)
+	for prefix, sum := range t.objcount {
+		if sum == 0 && strings.HasPrefix(prefix, dir) {
+			for _, index := range dirIndexes(prefix) {
+				if obj := t.indexes[index]; obj != nil {
+					indexes = append(indexes, index)
+				}
+			}
+		}
+	}
+	return indexes
 }
 
 func FilteredObjects(bucket *storage.Bucket) []*gs.Object {
