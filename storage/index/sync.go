@@ -45,40 +45,5 @@ func Sync(ctx context.Context, src, dst *storage.Bucket) error {
 		return err
 	}
 
-	wg = worker.NewWorkerGroup(ctx, maxWorkers)
-	tree := NewIndexTree(dst)
-	var doDir func(string) error
-	doDir = func(dir string) error {
-		ix := tree.Indexer(dir)
-		if err := wg.Start(ix.UpdateRedirect); err != nil {
-			return err
-		}
-		if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
-			return err
-		}
-		if err := wg.Start(ix.UpdateIndexHTML); err != nil {
-			return err
-		}
-		for _, subdir := range ix.SubDirs {
-			if err := doDir(subdir); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	if err := doDir(dst.Prefix()); err != nil {
-		return wg.WaitError(err)
-	}
-
-	for _, index := range tree.EmptyIndexes(bucket.Prefix()) {
-		objName := index
-		if err := wg.Start(func(ctx context.Context) error {
-			return dst.Delete(ctx, objName)
-		}); err != nil {
-			return wg.WaitError(err)
-		}
-	}
-
-	return wg.Wait()
+	return Index(ctx, dst)
 }
