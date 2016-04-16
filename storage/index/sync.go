@@ -17,33 +17,57 @@ package index
 import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
-	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/storage"
 )
 
-// Arbitrary limit on the number of concurrent jobs
-const maxWorkers = 12
+type SyncIndexJob struct {
+	storage.SyncJob
+	IndexJob
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "storage/index")
+	srcTree *IndexTree
+	dstTree *IndexTree
+}
+
+func NewSyncIndexJob(src, dst *storage.Bucket) *SyncIndexJob {
+	si := &SyncIndexJob{
+		SyncJob: storage.SyncJob{
+			Source:      src,
+			Destination: dst,
+		},
+		IndexJob: IndexJob{
+			Bucket: dst,
+		},
+		srcTree: NewIndexTree(src),
+		dstTree: NewIndexTree(dst),
+	}
+	si.SyncJob.SourceFilter(si.srcTree.IsNotIndex)
+	si.SyncJob.DeleteFilter(si.dstTree.IsNotIndex)
+	return si
+}
 
 func Sync(ctx context.Context, src, dst *storage.Bucket) error {
-	wg := worker.NewWorkerGroup(ctx, maxWorkers)
-	for _, srcObj := range FilteredObjects(src) {
-		obj := srcObj // for the sake of the closure
-		worker := func(c context.Context) error {
-			name := dst.AddPrefix(src.TrimPrefix(obj.Name))
-			return dst.Copy(c, obj, name)
-		}
-		if err := wg.Start(worker); err != nil {
-			return wg.WaitError(err)
-		}
-	}
+	return NewSyncIndexJob(src, dst).Do(ctx)
+}
 
-	if err := wg.Wait(); err != nil {
+// SourceFilter selects which objects to copy from Source.
+func (si *SyncIndexJob) SourceFilter(f storage.Filter) {
+	si.SyncJob.SourceFilter(func(obj *gs.Object) bool {
+		return f(obj) && si.srcTree.IsNotIndex(obj)
+	})
+}
+
+// DeleteFilter selects which objects may be pruned from Destination.
+func (si *SyncIndexJob) DeleteFilter(f storage.Filter) {
+	si.SyncJob.DeleteFilter(func(obj *gs.Object) bool {
+		return f(obj) && si.dstTree.IsNotIndex(obj)
+	})
+}
+
+func (sj *SyncIndexJob) Do(ctx context.Context) error {
+	if err := sj.SyncJob.Do(ctx); err != nil {
 		return err
 	}
-
-	return Index(ctx, dst)
+	return sj.IndexJob.Do(ctx)
 }

@@ -129,21 +129,3 @@ func (t *IndexTree) EmptyIndexes(dir string) []string {
 	}
 	return indexes
 }
-
-func FilteredObjects(bucket *storage.Bucket) []*gs.Object {
-	indexes := make(map[string]struct{})
-	for _, prefix := range bucket.Prefixes() {
-		indexes[prefix] = struct{}{}
-		indexes[strings.TrimSuffix(prefix, "/")] = struct{}{}
-		indexes[prefix+"index.html"] = struct{}{}
-	}
-
-	allobjs := bucket.Objects()
-	filtered := make([]*gs.Object, 0, len(allobjs))
-	for _, obj := range allobjs {
-		if _, ok := indexes[obj.Name]; !ok {
-			filtered = append(filtered, obj)
-		}
-	}
-	return filtered
-}
