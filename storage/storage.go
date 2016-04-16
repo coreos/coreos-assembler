@@ -19,4 +19,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
+// Arbitrary limit on the number of concurrent remote API requests.
+const MaxConcurrentRequests = 12
+
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "storage")

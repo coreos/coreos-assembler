@@ -16,27 +16,35 @@ package storage
 
 import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/lang/worker"
 )
 
-// Arbitrary limit on the number of concurrent jobs
-const maxWorkers = 12
+type SyncJob struct {
+	Source      *Bucket
+	Destination *Bucket
+}
 
 func Sync(ctx context.Context, src, dst *Bucket) error {
+	job := SyncJob{Source: src, Destination: dst}
+	return job.Do(ctx)
+}
+
+func (sj *SyncJob) Do(ctx context.Context) error {
 	// Assemble a set of existing objects which may be deleted.
 	oldNames := make(map[string]struct{})
-	for _, oldObj := range dst.Objects() {
+	for _, oldObj := range sj.Destination.Objects() {
 		oldNames[oldObj.Name] = struct{}{}
 	}
 
-	wg := worker.NewWorkerGroup(ctx, maxWorkers)
-	for _, srcObj := range src.Objects() {
+	wg := worker.NewWorkerGroup(ctx, MaxConcurrentRequests)
+	for _, srcObj := range sj.Source.Objects() {
 		obj := srcObj // for the sake of the closure
-		name := dst.AddPrefix(src.TrimPrefix(obj.Name))
+		name := sj.newName(srcObj)
 
 		worker := func(c context.Context) error {
-			return dst.Copy(c, obj, name)
+			return sj.Destination.Copy(c, obj, name)
 		}
 		if err := wg.Start(worker); err != nil {
 			return wg.WaitError(err)
@@ -49,7 +57,7 @@ func Sync(ctx context.Context, src, dst *Bucket) error {
 	for oldName := range oldNames {
 		name := oldName // for the sake of the closure
 		worker := func(c context.Context) error {
-			return dst.Delete(c, name)
+			return sj.Destination.Delete(c, name)
 		}
 		if err := wg.Start(worker); err != nil {
 			return wg.WaitError(err)
@@ -57,4 +65,9 @@ func Sync(ctx context.Context, src, dst *Bucket) error {
 	}
 
 	return wg.Wait()
+}
+
+func (sj *SyncJob) newName(srcObj *gs.Object) string {
+	return sj.Destination.AddPrefix(
+		sj.Source.TrimPrefix(srcObj.Name))
 }

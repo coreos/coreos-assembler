@@ -21,9 +21,18 @@ import (
 	"github.com/coreos/mantle/storage"
 )
 
+type IndexJob struct {
+	Bucket *storage.Bucket
+}
+
 func Index(ctx context.Context, bucket *storage.Bucket) error {
-	wg := worker.NewWorkerGroup(ctx, maxWorkers)
-	tree := NewIndexTree(bucket)
+	ij := IndexJob{Bucket: bucket}
+	return ij.Do(ctx)
+}
+
+func (ij *IndexJob) Do(ctx context.Context) error {
+	wg := worker.NewWorkerGroup(ctx, storage.MaxConcurrentRequests)
+	tree := NewIndexTree(ij.Bucket)
 	var doDir func(string) error
 	doDir = func(dir string) error {
 		ix := tree.Indexer(dir)
@@ -44,14 +53,14 @@ func Index(ctx context.Context, bucket *storage.Bucket) error {
 		return nil
 	}
 
-	if err := doDir(bucket.Prefix()); err != nil {
+	if err := doDir(ij.Bucket.Prefix()); err != nil {
 		return wg.WaitError(err)
 	}
 
-	for _, index := range tree.EmptyIndexes(bucket.Prefix()) {
+	for _, index := range tree.EmptyIndexes(ij.Bucket.Prefix()) {
 		objName := index
 		if err := wg.Start(func(ctx context.Context) error {
-			return bucket.Delete(ctx, objName)
+			return ij.Bucket.Delete(ctx, objName)
 		}); err != nil {
 			return wg.WaitError(err)
 		}
