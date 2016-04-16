@@ -222,8 +222,6 @@ func (b *Bucket) Fetch(ctx context.Context) error {
 		return nil
 	}
 
-	startRequest()
-	defer stopRequest()
 	plog.Noticef("Fetching %s", b.URL())
 
 	return b.apiErr("storage.objects.list", nil, req.Pages(nil, add))
@@ -256,8 +254,6 @@ func (b *Bucket) Upload(ctx context.Context, obj *storage.Object, media io.ReadS
 		req.IfGenerationMatch(old.Generation)
 	}
 
-	startRequest()
-	defer stopRequest()
 	plog.Noticef("Writing %s", b.mkURL(obj))
 
 	inserted, err := req.Do()
@@ -304,8 +300,6 @@ func (b *Bucket) Copy(ctx context.Context, src *storage.Object, dstName string) 
 		req.IfSourceGenerationMatch(src.Generation)
 	}
 
-	startRequest()
-	defer stopRequest()
 	plog.Noticef("Copying %s to %s", b.mkURL(src), b.mkURL(dst))
 
 	for {
@@ -336,8 +330,6 @@ func (b *Bucket) Delete(ctx context.Context, objName string) error {
 		req.IfMetagenerationMatch(old.Metageneration)
 	}
 
-	startRequest()
-	defer stopRequest()
 	plog.Noticef("Deleting %s", b.mkURL(objName))
 
 	if err := req.Do(); err != nil {
