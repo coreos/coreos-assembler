@@ -20,8 +20,11 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/index"
+	"github.com/coreos/mantle/storage"
+	"github.com/coreos/mantle/storage/index"
 )
 
 // Arbitrary limit on the number of concurrent jobs
@@ -74,6 +77,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
+	ctx := context.Background()
 	client, err := auth.GoogleClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
@@ -81,7 +85,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 	}
 
 	for _, url := range args {
-		if err := updateTree(client, url); err != nil {
+		if err := updateTree(ctx, client, url); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -94,86 +98,21 @@ func runIndex(cmd *cobra.Command, args []string) {
 	}
 }
 
-func updateTree(client *http.Client, url string) error {
-	root, err := index.NewDirectory(url)
+func updateTree(ctx context.Context, client *http.Client, url string) error {
+	root, err := storage.NewBucket(client, url)
 	if err != nil {
 		return err
 	}
+	root.WriteDryRun(indexDryRun)
+	root.WriteAlways(indexForce)
 
-	if err = root.Fetch(client); err != nil {
+	if err = root.Fetch(ctx); err != nil {
 		return err
 	}
 
-	mode := index.WriteUpdate
-	if indexDryRun {
-		mode = index.WriteNever
-	} else if indexForce {
-		mode = index.WriteAlways
-	}
-
-	indexers := []index.Indexer{index.NewHtmlIndexer(client, mode)}
-	if indexDirs {
-		indexers = append(indexers,
-			index.NewDirIndexer(client, mode),
-			index.NewRedirector(client, mode))
-	}
-
-	dirs := make(chan *index.Directory)
-	done := make(chan struct{})
-	errc := make(chan error)
-
-	// Feed the directory tree into the writers.
-	go func() {
-		root.Walk(dirs)
-		close(dirs)
-	}()
-
-	writer := func() {
-		for {
-			select {
-			case d, ok := <-dirs:
-				if !ok {
-					errc <- nil
-					return
-				}
-				for _, ix := range indexers {
-					var err error
-					if indexDelete {
-						err = ix.Clean(d)
-					} else {
-						err = ix.Index(d)
-					}
-					if err != nil {
-						errc <- err
-						return
-					}
-				}
-			case <-done:
-				errc <- nil
-				return
-			}
-		}
-	}
-
-	for i := 0; i < maxWriters; i++ {
-		go writer()
-	}
-
-	// Wait for writers to finish, aborting and returning the first error.
-	var ret error
-	for i := 0; i < maxWriters; i++ {
-		err := <-errc
-		if err == nil {
-			continue
-		}
-		if done != nil {
-			close(done)
-			done = nil
-		}
-		if ret == nil {
-			ret = err
-		}
-	}
-
-	return ret
+	job := index.IndexJob{Bucket: root}
+	job.DirectoryHTML(indexDirs)
+	job.IndexHTML(true)
+	job.Delete(indexDelete)
+	return job.Do(ctx)
 }
