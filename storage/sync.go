@@ -21,9 +21,16 @@ import (
 	"github.com/coreos/mantle/lang/worker"
 )
 
+// Filter is a type of function that returns true if an object should be
+// included in a given operation or false if it should be excluded/ignored.
+type Filter func(*gs.Object) bool
+
 type SyncJob struct {
 	Source      *Bucket
 	Destination *Bucket
+
+	sourceFilter Filter
+	deleteFilter Filter
 }
 
 func Sync(ctx context.Context, src, dst *Bucket) error {
@@ -31,15 +38,32 @@ func Sync(ctx context.Context, src, dst *Bucket) error {
 	return job.Do(ctx)
 }
 
+// SourceFilter selects which objects to copy from Source.
+func (sj *SyncJob) SourceFilter(f Filter) {
+	sj.sourceFilter = f
+}
+
+// DeleteFilter selects which objects may be pruned from Destination.
+func (sj *SyncJob) DeleteFilter(f Filter) {
+	sj.deleteFilter = f
+}
+
 func (sj *SyncJob) Do(ctx context.Context) error {
 	// Assemble a set of existing objects which may be deleted.
 	oldNames := make(map[string]struct{})
 	for _, oldObj := range sj.Destination.Objects() {
+		if sj.deleteFilter != nil && !sj.deleteFilter(oldObj) {
+			continue
+		}
 		oldNames[oldObj.Name] = struct{}{}
 	}
 
 	wg := worker.NewWorkerGroup(ctx, MaxConcurrentRequests)
 	for _, srcObj := range sj.Source.Objects() {
+		if sj.sourceFilter != nil && !sj.sourceFilter(srcObj) {
+			continue
+		}
+
 		obj := srcObj // for the sake of the closure
 		name := sj.newName(srcObj)
 
