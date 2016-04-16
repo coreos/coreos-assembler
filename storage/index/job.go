@@ -23,11 +23,25 @@ import (
 
 type IndexJob struct {
 	Bucket *storage.Bucket
+
+	enableDirectoryHTML bool
+	enableIndexHTML     bool
+	enableDelete        bool
 }
 
-func Index(ctx context.Context, bucket *storage.Bucket) error {
-	ij := IndexJob{Bucket: bucket}
-	return ij.Do(ctx)
+// DirectoryHTML enables generation of HTML pages to mimic directories.
+func (ij *IndexJob) DirectoryHTML(enable bool) {
+	ij.enableDirectoryHTML = enable
+}
+
+// IndexHTML enables generation of index.html pages for each directory.
+func (ij *IndexJob) IndexHTML(enable bool) {
+	ij.enableIndexHTML = enable
+}
+
+// Delete enables deletion of stale indexes for now empty directories.
+func (ij *IndexJob) Delete(enable bool) {
+	ij.enableDelete = enable
 }
 
 func (ij *IndexJob) Do(ctx context.Context) error {
@@ -36,14 +50,18 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 	var doDir func(string) error
 	doDir = func(dir string) error {
 		ix := tree.Indexer(dir)
-		if err := wg.Start(ix.UpdateRedirect); err != nil {
-			return err
+		if ij.enableDirectoryHTML {
+			if err := wg.Start(ix.UpdateRedirect); err != nil {
+				return err
+			}
+			if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
+				return err
+			}
 		}
-		if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
-			return err
-		}
-		if err := wg.Start(ix.UpdateIndexHTML); err != nil {
-			return err
+		if ij.enableIndexHTML {
+			if err := wg.Start(ix.UpdateIndexHTML); err != nil {
+				return err
+			}
 		}
 		for _, subdir := range ix.SubDirs {
 			if err := doDir(subdir); err != nil {
@@ -57,12 +75,15 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 		return wg.WaitError(err)
 	}
 
-	for _, index := range tree.EmptyIndexes(ij.Bucket.Prefix()) {
-		objName := index
-		if err := wg.Start(func(ctx context.Context) error {
-			return ij.Bucket.Delete(ctx, objName)
-		}); err != nil {
-			return wg.WaitError(err)
+	if ij.enableDelete {
+		// TODO(marineam): delete based on enabled index types
+		for _, index := range tree.EmptyIndexes(ij.Bucket.Prefix()) {
+			objName := index
+			if err := wg.Start(func(ctx context.Context) error {
+				return ij.Bucket.Delete(ctx, objName)
+			}); err != nil {
+				return wg.WaitError(err)
+			}
 		}
 	}
 

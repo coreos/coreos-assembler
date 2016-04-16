@@ -31,6 +31,7 @@ type SyncJob struct {
 
 	sourceFilter Filter
 	deleteFilter Filter
+	enableDelete bool
 }
 
 func Sync(ctx context.Context, src, dst *Bucket) error {
@@ -46,6 +47,11 @@ func (sj *SyncJob) SourceFilter(f Filter) {
 // DeleteFilter selects which objects may be pruned from Destination.
 func (sj *SyncJob) DeleteFilter(f Filter) {
 	sj.deleteFilter = f
+}
+
+// Delete enables deletion of extra objects from Destination.
+func (sj *SyncJob) Delete(enable bool) {
+	sj.enableDelete = enable
 }
 
 func (sj *SyncJob) Do(ctx context.Context) error {

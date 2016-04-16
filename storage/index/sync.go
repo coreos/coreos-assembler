@@ -47,10 +47,6 @@ func NewSyncIndexJob(src, dst *storage.Bucket) *SyncIndexJob {
 	return si
 }
 
-func Sync(ctx context.Context, src, dst *storage.Bucket) error {
-	return NewSyncIndexJob(src, dst).Do(ctx)
-}
-
 // SourceFilter selects which objects to copy from Source.
 func (si *SyncIndexJob) SourceFilter(f storage.Filter) {
 	si.SyncJob.SourceFilter(func(obj *gs.Object) bool {
@@ -63,6 +59,12 @@ func (si *SyncIndexJob) DeleteFilter(f storage.Filter) {
 	si.SyncJob.DeleteFilter(func(obj *gs.Object) bool {
 		return f(obj) && si.dstTree.IsNotIndex(obj)
 	})
+}
+
+// Delete enables deletion of extra objects and indexes from Destination.
+func (si *SyncIndexJob) Delete(enable bool) {
+	si.SyncJob.Delete(enable)
+	si.IndexJob.Delete(enable)
 }
 
 func (sj *SyncIndexJob) Do(ctx context.Context) error {
