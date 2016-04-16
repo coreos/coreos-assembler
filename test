@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./env
 
-TESTABLE="auth cli index kola kola/register
+TESTABLE="auth cli kola kola/register
 	lang lang/destructor lang/maps
 	network network/ntp network/omaha
 	platform platform/local
