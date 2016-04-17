@@ -17,9 +17,12 @@ package maps
 import (
 	"reflect"
 	"sort"
+
+	"github.com/coreos/mantle/lang/natsort"
 )
 
-func SortedKeys(m interface{}) []string {
+// Keys returns a map's keys as an unordered slice of strings.
+func Keys(m interface{}) []string {
 	mapValue := reflect.ValueOf(m)
 
 	// Value.String() isn't sufficient to assert the keys are strings.
@@ -33,6 +36,20 @@ func SortedKeys(m interface{}) []string {
 		keys[i] = k.String()
 	}
 
+	return keys
+}
+
+// SortedKeys returns a map's keys as a sorted slice of strings.
+func SortedKeys(m interface{}) []string {
+	keys := Keys(m)
 	sort.Strings(keys)
+	return keys
+}
+
+// NaturalKeys returns a map's keys as a natural sorted slice of strings.
+// See github.com/coreos/mantle/lang/natsort
+func NaturalKeys(m interface{}) []string {
+	keys := Keys(m)
+	natsort.Strings(keys)
 	return keys
 }
