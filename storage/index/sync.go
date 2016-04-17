@@ -17,64 +17,59 @@ package index
 import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
-	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/storage"
 )
 
-// Arbitrary limit on the number of concurrent jobs
-const maxWorkers = 12
+type SyncIndexJob struct {
+	storage.SyncJob
+	IndexJob
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "storage/index")
+	srcTree *IndexTree
+	dstTree *IndexTree
+}
 
-func Sync(ctx context.Context, src, dst *storage.Bucket) (err error) {
-	wg := worker.NewWorkerGroup(ctx, maxWorkers)
-	for _, srcObj := range FilteredObjects(src) {
-		obj := srcObj // for the sake of the closure
-		worker := func(c context.Context) error {
-			name := dst.AddPrefix(src.TrimPrefix(obj.Name))
-			return dst.Copy(c, obj, name)
-		}
-		if err = wg.Start(worker); err != nil {
-			break
-		}
+func NewSyncIndexJob(src, dst *storage.Bucket) *SyncIndexJob {
+	si := &SyncIndexJob{
+		SyncJob: storage.SyncJob{
+			Source:      src,
+			Destination: dst,
+		},
+		IndexJob: IndexJob{
+			Bucket: dst,
+		},
+		srcTree: NewIndexTree(src),
+		dstTree: NewIndexTree(dst),
 	}
+	si.SyncJob.SourceFilter(si.srcTree.IsNotIndex)
+	si.SyncJob.DeleteFilter(si.dstTree.IsNotIndex)
+	return si
+}
 
-	if werr := wg.Wait(); werr != nil {
-		return werr
-	}
-	if err != nil {
-		// Start failed but Wait did not, only likely to happen
-		// if the context was dead before we even started.
+// SourceFilter selects which objects to copy from Source.
+func (si *SyncIndexJob) SourceFilter(f storage.Filter) {
+	si.SyncJob.SourceFilter(func(obj *gs.Object) bool {
+		return f(obj) && si.srcTree.IsNotIndex(obj)
+	})
+}
+
+// DeleteFilter selects which objects may be pruned from Destination.
+func (si *SyncIndexJob) DeleteFilter(f storage.Filter) {
+	si.SyncJob.DeleteFilter(func(obj *gs.Object) bool {
+		return f(obj) && si.dstTree.IsNotIndex(obj)
+	})
+}
+
+// Delete enables deletion of extra objects and indexes from Destination.
+func (si *SyncIndexJob) Delete(enable bool) {
+	si.SyncJob.Delete(enable)
+	si.IndexJob.Delete(enable)
+}
+
+func (sj *SyncIndexJob) Do(ctx context.Context) error {
+	if err := sj.SyncJob.Do(ctx); err != nil {
 		return err
 	}
-
-	wg = worker.NewWorkerGroup(ctx, maxWorkers)
-	tree := NewIndexTree(dst)
-	var doDir func(string) error
-	doDir = func(dir string) error {
-		ix := tree.Indexer(dir)
-		if err := wg.Start(ix.UpdateRedirect); err != nil {
-			return err
-		}
-		if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
-			return err
-		}
-		if err := wg.Start(ix.UpdateIndexHTML); err != nil {
-			return err
-		}
-		for _, subdir := range ix.SubDirs {
-			if err := doDir(subdir); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	err = doDir(dst.Prefix())
-	if werr := wg.Wait(); werr != nil {
-		return werr
-	}
-	return err
+	return sj.IndexJob.Do(ctx)
 }

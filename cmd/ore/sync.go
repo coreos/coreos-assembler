@@ -27,9 +27,12 @@ import (
 )
 
 var (
-	syncDryRun bool
-	syncForce  bool
-	cmdSync    = &cobra.Command{
+	syncDryRun     bool
+	syncForce      bool
+	syncDelete     bool
+	syncIndexDirs  bool
+	syncIndexPages bool
+	cmdSync        = &cobra.Command{
 		Use:   "sync gs://src/foo gs://dst/bar",
 		Short: "Copy objects in the cloud!",
 		Run:   runSync,
@@ -41,6 +44,12 @@ func init() {
 		"perform a trial run, do not make changes")
 	cmdSync.Flags().BoolVarP(&syncForce, "force", "f", false,
 		"write everything, even when already up-to-date")
+	cmdSync.Flags().BoolVar(&syncDelete, "delete", false,
+		"delete extra objects and indexes")
+	cmdSync.Flags().BoolVarP(&syncIndexDirs, "index-dirs", "D", false,
+		"generate HTML pages to mimic a directory tree")
+	cmdSync.Flags().BoolVarP(&syncIndexPages, "index-html", "I", false,
+		"generate index.html pages for each directory")
 	root.AddCommand(cmdSync)
 }
 
@@ -80,7 +89,12 @@ func runSync(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	if err := index.Sync(ctx, src, dst); err != nil {
+
+	job := index.NewSyncIndexJob(src, dst)
+	job.DirectoryHTML(syncIndexDirs)
+	job.IndexHTML(syncIndexPages)
+	job.Delete(syncDelete)
+	if err := job.Do(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
