@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
+	"github.com/coreos/mantle/lang/maps"
 	"github.com/coreos/mantle/storage"
 )
 
@@ -39,11 +40,11 @@ const (
     </head>
     <body>
     <h1>{{.Title}}</h1>
-    {{range $shortname, $longname := .SubDirs}}
-	[dir] <a href="{{$shortname}}/">{{$shortname}}</a> </br>
+    {{range .SubDirs}}
+	[dir] <a href="{{.Link}}/">{{.Title}}</a> </br>
     {{end}}
-    {{range $name, $obj := .Objects}}
-	[file] <a href="{{$name}}">{{$name}}</a> </br>
+    {{range .Objects}}
+	[file] <a href="{{.Link}}">{{.Title}}</a> </br>
     {{end}}
     </body>
 </html>
@@ -52,6 +53,17 @@ const (
 
 func init() {
 	indexTemplate = template.Must(template.New("index").Parse(indexText))
+}
+
+type linkParams struct {
+	Title string
+	Link  string
+}
+
+type indexParams struct {
+	Title   string
+	SubDirs []linkParams
+	Objects []linkParams
 }
 
 type Indexer struct {
@@ -66,7 +78,6 @@ func (t *IndexTree) Indexer(dir string) *Indexer {
 	return &Indexer{
 		bucket:  t.bucket,
 		prefix:  dir,
-		Title:   t.bucket.Name() + "/" + dir,
 		SubDirs: t.SubDirs(dir),
 		Objects: t.Objects(dir),
 	}
@@ -115,6 +126,12 @@ func (i *Indexer) UpdateRedirect(ctx context.Context) error {
 }
 
 func (i *Indexer) updateHTML(ctx context.Context, suffix string) error {
+	title := template.HTMLEscapeString(i.bucket.Name() + "/" + i.prefix)
+	params := indexParams{
+		Title:   title,
+		SubDirs: sortedLinks(i.SubDirs),
+		Objects: sortedLinks(i.Objects),
+	}
 	obj := gs.Object{
 		Name:         i.prefix + suffix,
 		ContentType:  "text/html",
@@ -122,7 +139,7 @@ func (i *Indexer) updateHTML(ctx context.Context, suffix string) error {
 	}
 
 	buf := bytes.Buffer{}
-	if err := indexTemplate.Execute(&buf, i); err != nil {
+	if err := indexTemplate.Execute(&buf, &params); err != nil {
 		return err
 	}
 
@@ -139,6 +156,16 @@ func (i *Indexer) UpdateDirectoryHTML(ctx context.Context) error {
 
 func (i *Indexer) UpdateIndexHTML(ctx context.Context) error {
 	return i.updateHTML(ctx, "index.html")
+}
+
+func sortedLinks(m interface{}) (links []linkParams) {
+	for _, name := range maps.NaturalKeys(m) {
+		links = append(links, linkParams{
+			Title: template.HTMLEscapeString(name),
+			Link:  escapePath(name),
+		})
+	}
+	return
 }
 
 func escapePath(path string) string {
