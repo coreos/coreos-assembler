@@ -1,69 +1,45 @@
 #!/bin/bash -e
 #
-# Run all tests (not including functional)
+# Run all tests
 #   ./test
 #   ./test -v
 #
 # Run tests for one package
 #   PKG=./foo ./test
-#   PKG=bar ./test
 #
 
-# Invoke ./cover for HTML output
-COVER=${COVER:-"-cover"}
+# A replacement for `go fmt` that calls gofmt without -w
+gofmt-l() {
+    set -- $(go list "$@")
+    pushd "${GOPATH}/src" >/dev/null
+    c=$(gofmt -l "$@" | tee /dev/stderr | wc -c)
+    popd >/dev/null
+    if [[ $c -ne 0 ]]; then
+        echo "gofmt check failed" >&2
+        return 1
+    fi
+}
 
 source ./env
+# Use an alternate bin to avoid clobbering output from ./build
+export GOBIN="${GOPATH}/_testbin"
+# cd via the symlink so ./... and so on resolves correctly.
+cd gopath/src/${REPO_PATH}
 
-TESTABLE="auth cli kola kola/register
-	lang lang/destructor lang/maps
-	network network/ntp network/omaha
-	platform platform/local
-	sdk sdk/omaha sdk/repo
-        storage storage/index
-	system system/exec system/targen system/user
-	util
-	version"
-
-FORMATTABLE="$TESTABLE cmd/cork cmd/kola cmd/kolet cmd/ore cmd/plume"
-
-# user has not provided PKG override
-if [ -z "$PKG" ]; then
-	TEST=$TESTABLE
-	FMT=$FORMATTABLE
-
-# user has provided PKG override
-else
-	# strip out slashes and dots from PKG=./foo/
-	TEST=${PKG//\//}
-	TEST=${TEST//./}
-
-	# only run gofmt on packages provided by user
-	FMT="$TEST"
-fi
-
-# split TEST into an array and prepend REPO_PATH to each local package
-split=(${TEST// / })
-TEST=${split[@]/#/${REPO_PATH}/}
+# PKG may be passed in from ./cover
+[[ -z "$PKG" ]] && PKG="./..."
 
 echo "Building tests..."
-go test -i ${COVER} ${TEST}
+go test -i "$@" $PKG
+go install $PKG
 
 echo "Running tests..."
-go test ${COVER} ${TEST}
+go test -cover "$@" $PKG
 
 echo "Checking gofmt..."
-fmtRes=$(gofmt -l $FMT)
-if [ -n "${fmtRes}" ]; then
-	echo -e "gofmt checking failed:\n${fmtRes}"
-	exit 255
-fi
+gofmt-l $PKG
 
 echo "Checking govet..."
-vetRes=$(go vet $TEST)
-if [ -n "${vetRes}" ]; then
-	echo -e "govet checking failed:\n${vetRes}"
-	exit 255
-fi
+go vet $PKG
 
 echo "Success"
-
