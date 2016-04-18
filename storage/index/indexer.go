@@ -83,22 +83,23 @@ func (t *IndexTree) Indexer(dir string) *Indexer {
 	}
 }
 
-func (i *Indexer) DeleteRedirect(ctx context.Context) error {
-	if i.prefix == "" {
+func (i *Indexer) maybeDelete(ctx context.Context, name string) error {
+	if name == "" || i.bucket.Object(name) == nil {
 		return nil
 	}
-	return i.bucket.Delete(ctx, strings.TrimSuffix(i.prefix, "/"))
+	return i.bucket.Delete(ctx, name)
+}
+
+func (i *Indexer) DeleteRedirect(ctx context.Context) error {
+	return i.maybeDelete(ctx, strings.TrimSuffix(i.prefix, "/"))
 }
 
 func (i *Indexer) DeleteDirectory(ctx context.Context) error {
-	if i.prefix == "" {
-		return nil
-	}
-	return i.bucket.Delete(ctx, i.prefix)
+	return i.maybeDelete(ctx, i.prefix)
 }
 
 func (i *Indexer) DeleteIndexHTML(ctx context.Context) error {
-	return i.bucket.Delete(ctx, i.prefix+"index.html")
+	return i.maybeDelete(ctx, i.prefix+"index.html")
 }
 
 func (i *Indexer) UpdateRedirect(ctx context.Context) error {
