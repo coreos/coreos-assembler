@@ -57,9 +57,20 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 			if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
 				return err
 			}
+		} else if ij.enableDelete {
+			if err := wg.Start(ix.DeleteRedirect); err != nil {
+				return err
+			}
+			if err := wg.Start(ix.DeleteDirectory); err != nil {
+				return err
+			}
 		}
 		if ij.enableIndexHTML {
 			if err := wg.Start(ix.UpdateIndexHTML); err != nil {
+				return err
+			}
+		} else if ij.enableDelete {
+			if err := wg.Start(ix.DeleteIndexHTML); err != nil {
 				return err
 			}
 		}
@@ -76,7 +87,6 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 	}
 
 	if ij.enableDelete {
-		// TODO(marineam): delete based on enabled index types
 		for _, index := range tree.EmptyIndexes(ij.Bucket.Prefix()) {
 			objName := index
 			if err := wg.Start(func(ctx context.Context) error {
