@@ -50,7 +50,7 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 	var doDir func(string) error
 	doDir = func(dir string) error {
 		ix := tree.Indexer(dir)
-		if ij.enableDirectoryHTML {
+		if ij.enableDirectoryHTML && !ix.Empty() {
 			if err := wg.Start(ix.UpdateRedirect); err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 				return err
 			}
 		}
-		if ij.enableIndexHTML {
+		if ij.enableIndexHTML && !ix.Empty() {
 			if err := wg.Start(ix.UpdateIndexHTML); err != nil {
 				return err
 			}
@@ -74,26 +74,12 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 				return err
 			}
 		}
-		for _, subdir := range ix.SubDirs {
-			if err := doDir(subdir); err != nil {
-				return err
-			}
-		}
 		return nil
 	}
 
-	if err := doDir(ij.Bucket.Prefix()); err != nil {
-		return wg.WaitError(err)
-	}
-
-	if ij.enableDelete {
-		for _, index := range tree.EmptyIndexes(ij.Bucket.Prefix()) {
-			objName := index
-			if err := wg.Start(func(ctx context.Context) error {
-				return ij.Bucket.Delete(ctx, objName)
-			}); err != nil {
-				return wg.WaitError(err)
-			}
+	for _, prefix := range tree.Prefixes(ij.Bucket.Prefix()) {
+		if err := doDir(prefix); err != nil {
+			return wg.WaitError(err)
 		}
 	}
 

@@ -69,6 +69,7 @@ type indexParams struct {
 type Indexer struct {
 	bucket  *storage.Bucket
 	prefix  string
+	empty   bool
 	Title   string
 	SubDirs map[string]string
 	Objects map[string]*gs.Object
@@ -78,9 +79,14 @@ func (t *IndexTree) Indexer(dir string) *Indexer {
 	return &Indexer{
 		bucket:  t.bucket,
 		prefix:  dir,
+		empty:   t.objcount[dir] == 0,
 		SubDirs: t.SubDirs(dir),
 		Objects: t.Objects(dir),
 	}
+}
+
+func (i *Indexer) Empty() bool {
+	return i.empty
 }
 
 func (i *Indexer) maybeDelete(ctx context.Context, name string) error {

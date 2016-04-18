@@ -116,16 +116,12 @@ func (t *IndexTree) SubDirs(dir string) map[string]string {
 	return subdirs
 }
 
-func (t *IndexTree) EmptyIndexes(dir string) []string {
-	indexes := make([]string, 0)
-	for prefix, sum := range t.objcount {
-		if sum == 0 && strings.HasPrefix(prefix, dir) {
-			for _, index := range dirIndexes(prefix) {
-				if obj := t.indexes[index]; obj != nil {
-					indexes = append(indexes, index)
-				}
-			}
+func (t *IndexTree) Prefixes(dir string) []string {
+	prefixes := make([]string, 0, len(t.objcount))
+	for prefix, _ := range t.objcount {
+		if strings.HasPrefix(prefix, dir) {
+			prefixes = append(prefixes, prefix)
 		}
 	}
-	return indexes
+	return prefixes
 }
