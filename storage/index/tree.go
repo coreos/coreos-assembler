@@ -15,7 +15,6 @@
 package index
 
 import (
-	"path"
 	"strings"
 
 	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
@@ -66,20 +65,15 @@ func (t *IndexTree) addDir(dir string) {
 	t.objcount[dir] = 0
 }
 
-func nextPrefix(name string) string {
-	prefix, _ := path.Split(strings.TrimSuffix(name, "/"))
-	return prefix
-}
-
 func (t *IndexTree) addObj(obj *gs.Object) {
-	prefix := nextPrefix(obj.Name)
+	prefix := storage.NextPrefix(obj.Name)
 	t.objects[prefix] = append(t.objects[prefix], obj)
 	for {
 		t.objcount[prefix]++
 		if prefix == "" {
 			return
 		}
-		prefix = nextPrefix(prefix)
+		prefix = storage.NextPrefix(prefix)
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 
@@ -132,18 +133,15 @@ func (b *Bucket) Prefixes() []string {
 
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	for path := range b.objects {
-		for strings.HasPrefix(path, b.prefix) {
-			i := strings.LastIndexByte(path, '/')
-			if i < 0 {
+	for objName := range b.objects {
+		prefix := NextPrefix(objName)
+		for {
+			if _, ok := prefixmap[prefix]; ok {
 				break
 			}
-			path = path[:i+1]
-			if _, ok := prefixmap[path]; ok {
-				break
-			}
-			prefixmap[path] = struct{}{}
-			prefixlist = append(prefixlist, path)
+			prefixmap[prefix] = struct{}{}
+			prefixlist = append(prefixlist, prefix)
+			prefix = NextPrefix(prefix)
 		}
 	}
 	return prefixlist
@@ -338,4 +336,10 @@ func (b *Bucket) Delete(ctx context.Context, objName string) error {
 
 	b.delObject(objName)
 	return nil
+}
+
+// NextPrefix chops off the final component of an object name or prefix.
+func NextPrefix(name string) string {
+	prefix, _ := path.Split(strings.TrimSuffix(name, "/"))
+	return prefix
 }

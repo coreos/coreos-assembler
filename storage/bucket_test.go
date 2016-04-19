@@ -73,3 +73,18 @@ func TestBucketURL(t *testing.T) {
 	}
 
 }
+
+func ExampleNextPrefix() {
+	fmt.Println(NextPrefix("foo/bar/baz"))
+	fmt.Println(NextPrefix("foo/bar/"))
+	fmt.Println(NextPrefix("foo/bar"))
+	fmt.Println(NextPrefix("foo/"))
+	fmt.Println(NextPrefix("foo"))
+	fmt.Println(NextPrefix(""))
+	// Output:
+	// foo/bar/
+	// foo/
+	// foo/
+	//
+	//
+}
