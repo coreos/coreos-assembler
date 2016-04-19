@@ -44,41 +44,43 @@ func (ij *IndexJob) Delete(enable bool) {
 	ij.enableDelete = enable
 }
 
-func (ij *IndexJob) Do(ctx context.Context) error {
-	wg := worker.NewWorkerGroup(ctx, storage.MaxConcurrentRequests)
-	tree := NewIndexTree(ij.Bucket)
-	var doDir func(string) error
-	doDir = func(dir string) error {
-		ix := tree.Indexer(dir)
-		if ij.enableDirectoryHTML && !ix.Empty() {
-			if err := wg.Start(ix.UpdateRedirect); err != nil {
-				return err
-			}
-			if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
-				return err
-			}
-		} else if ij.enableDelete {
-			if err := wg.Start(ix.DeleteRedirect); err != nil {
-				return err
-			}
-			if err := wg.Start(ix.DeleteDirectory); err != nil {
-				return err
-			}
+func (ij *IndexJob) doDir(wg *worker.WorkerGroup, ix *Indexer) error {
+	if ij.enableDirectoryHTML && !ix.Empty() {
+		if err := wg.Start(ix.UpdateRedirect); err != nil {
+			return err
 		}
-		if ij.enableIndexHTML && !ix.Empty() {
-			if err := wg.Start(ix.UpdateIndexHTML); err != nil {
-				return err
-			}
-		} else if ij.enableDelete {
-			if err := wg.Start(ix.DeleteIndexHTML); err != nil {
-				return err
-			}
+		if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
+			return err
 		}
-		return nil
+	} else if ij.enableDelete {
+		if err := wg.Start(ix.DeleteRedirect); err != nil {
+			return err
+		}
+		if err := wg.Start(ix.DeleteDirectory); err != nil {
+			return err
+		}
 	}
 
+	if ij.enableIndexHTML && !ix.Empty() {
+		if err := wg.Start(ix.UpdateIndexHTML); err != nil {
+			return err
+		}
+	} else if ij.enableDelete {
+		if err := wg.Start(ix.DeleteIndexHTML); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ij *IndexJob) Do(ctx context.Context) error {
+	tree := NewIndexTree(ij.Bucket)
+	wg := worker.NewWorkerGroup(ctx, storage.MaxConcurrentRequests)
+
 	for _, prefix := range tree.Prefixes(ij.Bucket.Prefix()) {
-		if err := doDir(prefix); err != nil {
+		ix := tree.Indexer(prefix)
+		if err := ij.doDir(wg, ix); err != nil {
 			return wg.WaitError(err)
 		}
 	}
