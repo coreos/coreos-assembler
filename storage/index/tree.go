@@ -24,19 +24,19 @@ import (
 
 type IndexTree struct {
 	bucket   *storage.Bucket
-	objcount map[string]uint
+	prefixes map[string]bool
 	objects  map[string][]*gs.Object
 }
 
 func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	t := &IndexTree{
 		bucket:   bucket,
-		objcount: make(map[string]uint),
+		prefixes: make(map[string]bool),
 		objects:  make(map[string][]*gs.Object),
 	}
 
 	for _, prefix := range bucket.Prefixes() {
-		t.objcount[prefix] = 0
+		t.prefixes[prefix] = false // initialize as empty
 	}
 
 	indexes := NewIndexSet(bucket)
@@ -52,8 +52,8 @@ func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 func (t *IndexTree) addObj(obj *gs.Object) {
 	prefix := storage.NextPrefix(obj.Name)
 	t.objects[prefix] = append(t.objects[prefix], obj)
-	for {
-		t.objcount[prefix]++
+	for !t.prefixes[prefix] {
+		t.prefixes[prefix] = true // mark as not empty
 		if prefix == "" {
 			return
 		}
@@ -71,8 +71,8 @@ func (t *IndexTree) Objects(dir string) map[string]*gs.Object {
 
 func (t *IndexTree) SubDirs(dir string) map[string]string {
 	subdirs := make(map[string]string)
-	for prefix, sum := range t.objcount {
-		if sum > 0 && strings.HasPrefix(prefix, dir) {
+	for prefix, notEmpty := range t.prefixes {
+		if notEmpty && strings.HasPrefix(prefix, dir) {
 			name := strings.TrimSuffix(prefix[len(dir):], "/")
 			if name == "" || strings.Contains(name, "/") {
 				continue
@@ -84,8 +84,8 @@ func (t *IndexTree) SubDirs(dir string) map[string]string {
 }
 
 func (t *IndexTree) Prefixes(dir string) []string {
-	prefixes := make([]string, 0, len(t.objcount))
-	for prefix, _ := range t.objcount {
+	prefixes := make([]string, 0, len(t.prefixes))
+	for prefix := range t.prefixes {
 		if strings.HasPrefix(prefix, dir) {
 			prefixes = append(prefixes, prefix)
 		}

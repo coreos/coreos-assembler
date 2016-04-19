@@ -79,7 +79,7 @@ func (t *IndexTree) Indexer(dir string) *Indexer {
 	return &Indexer{
 		bucket:  t.bucket,
 		prefix:  dir,
-		empty:   t.objcount[dir] == 0,
+		empty:   !t.prefixes[dir],
 		SubDirs: t.SubDirs(dir),
 		Objects: t.Objects(dir),
 	}
