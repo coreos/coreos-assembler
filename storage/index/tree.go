@@ -19,12 +19,14 @@ import (
 
 	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
+	"github.com/coreos/mantle/lang/natsort"
 	"github.com/coreos/mantle/storage"
 )
 
 type IndexTree struct {
 	bucket   *storage.Bucket
 	prefixes map[string]bool
+	subdirs  map[string][]string
 	objects  map[string][]*gs.Object
 }
 
@@ -32,6 +34,7 @@ func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	t := &IndexTree{
 		bucket:   bucket,
 		prefixes: make(map[string]bool),
+		subdirs:  make(map[string][]string),
 		objects:  make(map[string][]*gs.Object),
 	}
 
@@ -46,6 +49,14 @@ func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 		}
 	}
 
+	for _, dirs := range t.subdirs {
+		natsort.Strings(dirs)
+	}
+
+	for _, objs := range t.objects {
+		storage.SortObjects(objs)
+	}
+
 	return t
 }
 
@@ -57,30 +68,10 @@ func (t *IndexTree) addObj(obj *gs.Object) {
 		if prefix == "" {
 			return
 		}
+		parent := storage.NextPrefix(prefix)
+		t.subdirs[parent] = append(t.subdirs[parent], prefix)
 		prefix = storage.NextPrefix(prefix)
 	}
-}
-
-func (t *IndexTree) Objects(dir string) map[string]*gs.Object {
-	files := make(map[string]*gs.Object)
-	for _, obj := range t.objects[dir] {
-		files[strings.TrimPrefix(obj.Name, dir)] = obj
-	}
-	return files
-}
-
-func (t *IndexTree) SubDirs(dir string) map[string]string {
-	subdirs := make(map[string]string)
-	for prefix, notEmpty := range t.prefixes {
-		if notEmpty && strings.HasPrefix(prefix, dir) {
-			name := strings.TrimSuffix(prefix[len(dir):], "/")
-			if name == "" || strings.Contains(name, "/") {
-				continue
-			}
-			subdirs[name] = prefix
-		}
-	}
-	return subdirs
 }
 
 func (t *IndexTree) Prefixes(dir string) []string {
