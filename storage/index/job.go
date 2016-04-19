@@ -24,9 +24,15 @@ import (
 type IndexJob struct {
 	Bucket *storage.Bucket
 
+	name                *string
 	enableDirectoryHTML bool
 	enableIndexHTML     bool
 	enableDelete        bool
+}
+
+// Name overrides Bucket's name in page titles.
+func (ij *IndexJob) Name(name string) {
+	ij.name = &name
 }
 
 // DirectoryHTML enables generation of HTML pages to mimic directories.
@@ -75,11 +81,16 @@ func (ij *IndexJob) doDir(wg *worker.WorkerGroup, ix *Indexer) error {
 }
 
 func (ij *IndexJob) Do(ctx context.Context) error {
+	if ij.name == nil {
+		name := ij.Bucket.Name()
+		ij.name = &name
+	}
+
 	tree := NewIndexTree(ij.Bucket)
 	wg := worker.NewWorkerGroup(ctx, storage.MaxConcurrentRequests)
 
 	for _, prefix := range tree.Prefixes(ij.Bucket.Prefix()) {
-		ix := tree.Indexer(prefix)
+		ix := tree.Indexer(*ij.name, prefix)
 		if err := ij.doDir(wg, ix); err != nil {
 			return wg.WaitError(err)
 		}

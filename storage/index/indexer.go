@@ -65,12 +65,12 @@ type Indexer struct {
 	Objects []*gs.Object
 }
 
-func (t *IndexTree) Indexer(prefix string) *Indexer {
+func (t *IndexTree) Indexer(name, prefix string) *Indexer {
 	return &Indexer{
 		bucket:  t.bucket,
 		prefix:  prefix,
 		empty:   !t.prefixes[prefix],
-		Title:   t.bucket.Name() + "/" + prefix,
+		Title:   name + "/" + prefix,
 		SubDirs: t.subdirs[prefix],
 		Objects: t.objects[prefix],
 	}
