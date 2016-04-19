@@ -25,7 +25,7 @@ import (
 
 type IndexTree struct {
 	bucket   *storage.Bucket
-	indexes  map[string]*gs.Object
+	indexes  map[string]struct{}
 	objcount map[string]uint
 	objects  map[string][]*gs.Object
 }
@@ -33,7 +33,7 @@ type IndexTree struct {
 func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	t := &IndexTree{
 		bucket:   bucket,
-		indexes:  make(map[string]*gs.Object),
+		indexes:  make(map[string]struct{}),
 		objcount: make(map[string]uint),
 		objects:  make(map[string][]*gs.Object),
 	}
@@ -43,9 +43,7 @@ func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	}
 
 	for _, obj := range bucket.Objects() {
-		if t.IsIndex(obj) {
-			t.indexes[obj.Name] = obj
-		} else {
+		if t.IsNotIndex(obj) {
 			t.addObj(obj)
 		}
 	}
@@ -63,7 +61,7 @@ func dirIndexes(dir string) []string {
 
 func (t *IndexTree) addDir(dir string) {
 	for _, index := range dirIndexes(dir) {
-		t.indexes[index] = nil
+		t.indexes[index] = struct{}{}
 	}
 	t.objcount[dir] = 0
 }
