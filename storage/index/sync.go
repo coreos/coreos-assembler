@@ -26,8 +26,8 @@ type SyncIndexJob struct {
 	storage.SyncJob
 	IndexJob
 
-	srcTree *IndexTree
-	dstTree *IndexTree
+	srcIndexes IndexSet
+	dstIndexes IndexSet
 }
 
 func NewSyncIndexJob(src, dst *storage.Bucket) *SyncIndexJob {
@@ -39,25 +39,25 @@ func NewSyncIndexJob(src, dst *storage.Bucket) *SyncIndexJob {
 		IndexJob: IndexJob{
 			Bucket: dst,
 		},
-		srcTree: NewIndexTree(src),
-		dstTree: NewIndexTree(dst),
+		srcIndexes: NewIndexSet(src),
+		dstIndexes: NewIndexSet(dst),
 	}
-	si.SyncJob.SourceFilter(si.srcTree.IsNotIndex)
-	si.SyncJob.DeleteFilter(si.dstTree.IsNotIndex)
+	si.SyncJob.SourceFilter(si.srcIndexes.NotIndex)
+	si.SyncJob.DeleteFilter(si.dstIndexes.NotIndex)
 	return si
 }
 
 // SourceFilter selects which objects to copy from Source.
 func (si *SyncIndexJob) SourceFilter(f storage.Filter) {
 	si.SyncJob.SourceFilter(func(obj *gs.Object) bool {
-		return f(obj) && si.srcTree.IsNotIndex(obj)
+		return f(obj) && si.srcIndexes.NotIndex(obj)
 	})
 }
 
 // DeleteFilter selects which objects may be pruned from Destination.
 func (si *SyncIndexJob) DeleteFilter(f storage.Filter) {
 	si.SyncJob.DeleteFilter(func(obj *gs.Object) bool {
-		return f(obj) && si.dstTree.IsNotIndex(obj)
+		return f(obj) && si.dstIndexes.NotIndex(obj)
 	})
 }
 

@@ -24,7 +24,6 @@ import (
 
 type IndexTree struct {
 	bucket   *storage.Bucket
-	indexes  map[string]struct{}
 	objcount map[string]uint
 	objects  map[string][]*gs.Object
 }
@@ -32,37 +31,22 @@ type IndexTree struct {
 func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	t := &IndexTree{
 		bucket:   bucket,
-		indexes:  make(map[string]struct{}),
 		objcount: make(map[string]uint),
 		objects:  make(map[string][]*gs.Object),
 	}
 
 	for _, prefix := range bucket.Prefixes() {
-		t.addDir(prefix)
+		t.objcount[prefix] = 0
 	}
 
+	indexes := NewIndexSet(bucket)
 	for _, obj := range bucket.Objects() {
-		if t.IsNotIndex(obj) {
+		if indexes.NotIndex(obj) {
 			t.addObj(obj)
 		}
 	}
 
 	return t
-}
-
-func dirIndexes(dir string) []string {
-	indexes := []string{dir + "index.html"}
-	if dir != "" {
-		indexes = append(indexes, dir, strings.TrimSuffix(dir, "/"))
-	}
-	return indexes
-}
-
-func (t *IndexTree) addDir(dir string) {
-	for _, index := range dirIndexes(dir) {
-		t.indexes[index] = struct{}{}
-	}
-	t.objcount[dir] = 0
 }
 
 func (t *IndexTree) addObj(obj *gs.Object) {
@@ -75,15 +59,6 @@ func (t *IndexTree) addObj(obj *gs.Object) {
 		}
 		prefix = storage.NextPrefix(prefix)
 	}
-}
-
-func (t *IndexTree) IsIndex(obj *gs.Object) bool {
-	_, isIndex := t.indexes[obj.Name]
-	return isIndex
-}
-
-func (t *IndexTree) IsNotIndex(obj *gs.Object) bool {
-	return !t.IsIndex(obj)
 }
 
 func (t *IndexTree) Objects(dir string) map[string]*gs.Object {
