@@ -65,15 +65,10 @@ func NewBucket(client *http.Client, bucketURL string) (*Bucket, error) {
 		return nil, UnknownBucket
 	}
 
-	// unsure if this is behavior is what we want or not
-	if parsedURL.Path != "" && !strings.HasSuffix(parsedURL.Path, "/") {
-		parsedURL.Path += "/"
-	}
-
 	return &Bucket{
 		service: service,
 		name:    parsedURL.Host,
-		prefix:  strings.TrimPrefix(parsedURL.Path, "/"),
+		prefix:  FixPrefix(parsedURL.Path),
 		objects: make(map[string]*storage.Object),
 	}, nil
 }
@@ -96,19 +91,6 @@ func (b *Bucket) WriteAlways(always bool) {
 
 func (b *Bucket) WriteDryRun(dryrun bool) {
 	b.writeDryRun = dryrun
-}
-
-// TrimPrefix removes the Bucket's path prefix from an Object name.
-func (b *Bucket) TrimPrefix(objName string) string {
-	if !strings.HasPrefix(objName, b.prefix) {
-		panic(fmt.Errorf("%q missing prefix %q", objName, b.prefix))
-	}
-	return objName[len(b.prefix):]
-}
-
-// AddPrefix joins the Bucket's path prefix with a relative Object name.
-func (b *Bucket) AddPrefix(objName string) string {
-	return b.prefix + objName
 }
 
 func (b *Bucket) Object(objName string) *storage.Object {
@@ -336,6 +318,14 @@ func (b *Bucket) Delete(ctx context.Context, objName string) error {
 
 	b.delObject(objName)
 	return nil
+}
+
+// FixPrefix ensures non-empty paths end in a slash but never start with one.
+func FixPrefix(p string) string {
+	if p != "" && !strings.HasSuffix(p, "/") {
+		p += "/"
+	}
+	return strings.TrimPrefix(p, "/")
 }
 
 // NextPrefix chops off the final component of an object name or prefix.

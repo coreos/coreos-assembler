@@ -47,6 +47,17 @@ func NewSyncIndexJob(src, dst *storage.Bucket) *SyncIndexJob {
 	return si
 }
 
+// DestinationPrefix overrides the Destination bucket's default prefix.
+func (si *SyncIndexJob) DestinationPrefix(p string) {
+	si.SyncJob.DestinationPrefix(p)
+	si.IndexJob.Prefix(p)
+}
+
+// Prefix is an alias for DestinationPrefix()
+func (si *SyncIndexJob) Prefix(p string) {
+	si.DestinationPrefix(p)
+}
+
 // SourceFilter selects which objects to copy from Source.
 func (si *SyncIndexJob) SourceFilter(f storage.Filter) {
 	si.SyncJob.SourceFilter(func(obj *gs.Object) bool {
