@@ -36,6 +36,7 @@ type SyncJob struct {
 	sourceFilter      Filter
 	deleteFilter      Filter
 	enableDelete      bool
+	notRecursive      bool // inverted because recursive is default
 }
 
 func Sync(ctx context.Context, src, dst *Bucket) error {
@@ -65,9 +66,14 @@ func (sj *SyncJob) DeleteFilter(f Filter) {
 	sj.deleteFilter = f
 }
 
-// Delete enables deletion of extra objects from Destination.
+// Delete toggles deletion of extra objects from Destination.
 func (sj *SyncJob) Delete(enable bool) {
 	sj.enableDelete = enable
+}
+
+// Recursive toggles copying subdirectories from Source (the default).
+func (sj *SyncJob) Recursive(enable bool) {
+	sj.notRecursive = !enable
 }
 
 func (sj *SyncJob) Do(ctx context.Context) error {
@@ -83,7 +89,7 @@ func (sj *SyncJob) Do(ctx context.Context) error {
 	// Assemble a set of existing objects which may be deleted.
 	oldNames := make(map[string]struct{})
 	for _, oldObj := range sj.Destination.Objects() {
-		if !strings.HasPrefix(oldObj.Name, *sj.destinationPrefix) {
+		if !sj.hasPrefix(oldObj.Name, *sj.destinationPrefix) {
 			continue
 		}
 		if sj.deleteFilter != nil && !sj.deleteFilter(oldObj) {
@@ -94,7 +100,7 @@ func (sj *SyncJob) Do(ctx context.Context) error {
 
 	wg := worker.NewWorkerGroup(ctx, MaxConcurrentRequests)
 	for _, srcObj := range sj.Source.Objects() {
-		if !strings.HasPrefix(srcObj.Name, *sj.sourcePrefix) {
+		if !sj.hasPrefix(srcObj.Name, *sj.sourcePrefix) {
 			continue
 		}
 		if sj.sourceFilter != nil && !sj.sourceFilter(srcObj) {
@@ -126,6 +132,19 @@ func (sj *SyncJob) Do(ctx context.Context) error {
 	}
 
 	return wg.Wait()
+}
+
+func (sj *SyncJob) hasPrefix(name, prefix string) bool {
+	if !strings.HasPrefix(name, prefix) {
+		return false
+	}
+	if sj.notRecursive {
+		suffix := name[len(prefix):]
+		if strings.Contains(suffix, "/") {
+			return false
+		}
+	}
+	return true
 }
 
 func (sj *SyncJob) newName(srcObj *gs.Object) string {

@@ -29,6 +29,7 @@ type IndexJob struct {
 	enableDirectoryHTML bool
 	enableIndexHTML     bool
 	enableDelete        bool
+	notRecursive        bool // inverted because recursive is default
 }
 
 // Name overrides Bucket's name in page titles.
@@ -42,19 +43,24 @@ func (ij *IndexJob) Prefix(p string) {
 	ij.prefix = &p
 }
 
-// DirectoryHTML enables generation of HTML pages to mimic directories.
+// DirectoryHTML toggles generation of HTML pages to mimic directories.
 func (ij *IndexJob) DirectoryHTML(enable bool) {
 	ij.enableDirectoryHTML = enable
 }
 
-// IndexHTML enables generation of index.html pages for each directory.
+// IndexHTML toggles generation of index.html pages for each directory.
 func (ij *IndexJob) IndexHTML(enable bool) {
 	ij.enableIndexHTML = enable
 }
 
-// Delete enables deletion of stale indexes for now empty directories.
+// Delete toggles deletion of stale indexes for now empty directories.
 func (ij *IndexJob) Delete(enable bool) {
 	ij.enableDelete = enable
+}
+
+// Recursive toggles generation of indexes for subdirectories (the default).
+func (sj *IndexJob) Recursive(enable bool) {
+	sj.notRecursive = !enable
 }
 
 func (ij *IndexJob) doDir(wg *worker.WorkerGroup, ix *Indexer) error {
@@ -97,8 +103,13 @@ func (ij *IndexJob) Do(ctx context.Context) error {
 		ij.prefix = &prefix
 	}
 
-	tree := NewIndexTree(ij.Bucket)
+	tree := NewIndexTree(ij.Bucket, ij.notRecursive)
 	wg := worker.NewWorkerGroup(ctx, storage.MaxConcurrentRequests)
+
+	if ij.notRecursive {
+		ix := tree.Indexer(*ij.name, *ij.prefix)
+		return wg.WaitError(ij.doDir(wg, ix))
+	}
 
 	for _, prefix := range tree.Prefixes(*ij.prefix) {
 		ix := tree.Indexer(*ij.name, prefix)

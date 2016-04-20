@@ -30,7 +30,7 @@ type IndexTree struct {
 	objects  map[string][]*gs.Object
 }
 
-func NewIndexTree(bucket *storage.Bucket) *IndexTree {
+func NewIndexTree(bucket *storage.Bucket, includeEmpty bool) *IndexTree {
 	t := &IndexTree{
 		bucket:   bucket,
 		prefixes: make(map[string]bool),
@@ -39,7 +39,7 @@ func NewIndexTree(bucket *storage.Bucket) *IndexTree {
 	}
 
 	for _, prefix := range bucket.Prefixes() {
-		t.prefixes[prefix] = false // initialize as empty
+		t.prefixes[prefix] = includeEmpty
 	}
 
 	indexes := NewIndexSet(bucket)

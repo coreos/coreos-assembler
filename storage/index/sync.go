@@ -78,6 +78,12 @@ func (si *SyncIndexJob) Delete(enable bool) {
 	si.IndexJob.Delete(enable)
 }
 
+// Recursive toggles copying/indexing subdirectories (the default).
+func (si *SyncIndexJob) Recursive(enable bool) {
+	si.SyncJob.Recursive(enable)
+	si.IndexJob.Recursive(enable)
+}
+
 func (sj *SyncIndexJob) Do(ctx context.Context) error {
 	if err := sj.SyncJob.Do(ctx); err != nil {
 		return err
