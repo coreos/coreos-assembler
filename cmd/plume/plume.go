@@ -15,14 +15,18 @@
 package main
 
 import (
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/cli"
 )
 
-var root = &cobra.Command{
-	Use:   "plume [command]",
-	Short: "The CoreOS release utility",
-}
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "plume")
+	root = &cobra.Command{
+		Use:   "plume [command]",
+		Short: "The CoreOS release utility",
+	}
+)
 
 func main() {
 	cli.Execute(root)
