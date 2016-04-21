@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 
@@ -38,8 +39,9 @@ type Bucket struct {
 	name    string
 	prefix  string
 
-	mu      sync.RWMutex
-	objects map[string]*storage.Object
+	mu       sync.RWMutex
+	prefixes map[string]struct{}
+	objects  map[string]*storage.Object
 
 	// writeAlways enables overwriting of objects that appear up-to-date
 	writeAlways bool
@@ -64,16 +66,12 @@ func NewBucket(client *http.Client, bucketURL string) (*Bucket, error) {
 		return nil, UnknownBucket
 	}
 
-	// unsure if this is behavior is what we want or not
-	if parsedURL.Path != "" && !strings.HasSuffix(parsedURL.Path, "/") {
-		parsedURL.Path += "/"
-	}
-
 	return &Bucket{
-		service: service,
-		name:    parsedURL.Host,
-		prefix:  strings.TrimPrefix(parsedURL.Path, "/"),
-		objects: make(map[string]*storage.Object),
+		service:  service,
+		name:     parsedURL.Host,
+		prefix:   FixPrefix(parsedURL.Path),
+		prefixes: make(map[string]struct{}),
+		objects:  make(map[string]*storage.Object),
 	}, nil
 }
 
@@ -97,19 +95,6 @@ func (b *Bucket) WriteDryRun(dryrun bool) {
 	b.writeDryRun = dryrun
 }
 
-// TrimPrefix removes the Bucket's path prefix from an Object name.
-func (b *Bucket) TrimPrefix(objName string) string {
-	if !strings.HasPrefix(objName, b.prefix) {
-		panic(fmt.Errorf("%q missing prefix %q", objName, b.prefix))
-	}
-	return objName[len(b.prefix):]
-}
-
-// AddPrefix joins the Bucket's path prefix with a relative Object name.
-func (b *Bucket) AddPrefix(objName string) string {
-	return b.prefix + objName
-}
-
 func (b *Bucket) Object(objName string) *storage.Object {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -127,26 +112,26 @@ func (b *Bucket) Objects() []*storage.Object {
 }
 
 func (b *Bucket) Prefixes() []string {
-	prefixmap := make(map[string]struct{})
-	prefixlist := make([]string, 0)
+	seen := make(map[string]bool)
+	list := make([]string, 0)
+	add := func(prefix string) {
+		for !seen[prefix] {
+			seen[prefix] = true
+			list = append(list, prefix)
+			prefix = NextPrefix(prefix)
+		}
+	}
 
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	for path := range b.objects {
-		for strings.HasPrefix(path, b.prefix) {
-			i := strings.LastIndexByte(path, '/')
-			if i < 0 {
-				break
-			}
-			path = path[:i+1]
-			if _, ok := prefixmap[path]; ok {
-				break
-			}
-			prefixmap[path] = struct{}{}
-			prefixlist = append(prefixlist, path)
-		}
+	for prefix := range b.prefixes {
+		add(prefix)
 	}
-	return prefixlist
+	for objName := range b.objects {
+		add(NextPrefix(objName))
+	}
+
+	return list
 }
 
 func (b *Bucket) Len() int {
@@ -172,6 +157,9 @@ func (b *Bucket) addObjects(objs *storage.Objects) {
 			panic(fmt.Errorf("adding gs://%s/%s to bucket %s", obj.Bucket, obj.Name, b.name))
 		}
 		b.objects[obj.Name] = obj
+	}
+	for _, pfx := range objs.Prefixes {
+		b.prefixes[pfx] = struct{}{}
 	}
 }
 
@@ -211,18 +199,30 @@ func (b *Bucket) apiErr(op string, obj interface{}, e error) error {
 }
 
 func (b *Bucket) Fetch(ctx context.Context) error {
+	return b.FetchPrefix(ctx, b.prefix, true)
+}
+
+func (b *Bucket) FetchPrefix(ctx context.Context, prefix string, recursive bool) error {
+	prefix = FixPrefix(prefix)
 	req := b.service.Objects.List(b.name)
-	if b.prefix != "" {
-		req.Prefix(b.prefix)
+	if prefix != "" {
+		req.Prefix(prefix)
+	}
+	if !recursive {
+		req.Delimiter("/")
 	}
 
+	n := 0
+	u := b.URL()
+	u.Path = prefix
 	add := func(objs *storage.Objects) error {
 		b.addObjects(objs)
-		plog.Infof("Found %d objects under %s", b.Len(), b.URL())
+		n += len(objs.Items)
+		plog.Infof("Found %d objects under %s", n, u)
 		return nil
 	}
 
-	plog.Noticef("Fetching %s", b.URL())
+	plog.Noticef("Fetching %s", u)
 
 	return b.apiErr("storage.objects.list", nil, req.Pages(nil, add))
 }
@@ -338,4 +338,18 @@ func (b *Bucket) Delete(ctx context.Context, objName string) error {
 
 	b.delObject(objName)
 	return nil
+}
+
+// FixPrefix ensures non-empty paths end in a slash but never start with one.
+func FixPrefix(p string) string {
+	if p != "" && !strings.HasSuffix(p, "/") {
+		p += "/"
+	}
+	return strings.TrimPrefix(p, "/")
+}
+
+// NextPrefix chops off the final component of an object name or prefix.
+func NextPrefix(name string) string {
+	prefix, _ := path.Split(strings.TrimSuffix(name, "/"))
+	return prefix
 }

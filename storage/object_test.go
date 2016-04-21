@@ -31,6 +31,20 @@ const (
 	testPageSize = 83
 )
 
+func TestSortObjects(t *testing.T) {
+	slice := []*storage.Object{
+		&storage.Object{Name: "a2"},
+		&storage.Object{Name: "a10"},
+		&storage.Object{Name: "a1"},
+	}
+	SortObjects(slice)
+	if slice[0].Name != "a1" ||
+		slice[1].Name != "a2" ||
+		slice[2].Name != "a10" {
+		t.Errorf("Undexpected order: %#v", slice)
+	}
+}
+
 func TestCRCSum(t *testing.T) {
 	obj := storage.Object{}
 	if err := crcSum(&obj, strings.NewReader(testPage)); err != nil {

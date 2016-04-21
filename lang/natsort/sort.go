@@ -18,6 +18,17 @@ import (
 	"sort"
 )
 
+// Less determines if a naturally comes before b. Unlike Compare it will
+// fall back to a normal string comparison which considers spaces if the
+// two would otherwise be equal. That helps ensure the stability of sorts.
+func Less(a, b string) bool {
+	if r := Compare(a, b); r == 0 {
+		return a < b
+	} else {
+		return r < 0
+	}
+}
+
 // Strings natural sorts a slice of strings.
 func Strings(s []string) {
 	sort.Sort(StringSlice(s))
@@ -36,13 +47,7 @@ func (ss StringSlice) Len() int {
 }
 
 func (ss StringSlice) Less(i, j int) bool {
-	if r := Compare(ss[i], ss[j]); r == 0 {
-		// If the strings compare the same ignoring spaces try again
-		// with a full comparison to help ensure stable sorts.
-		return ss[i] < ss[j]
-	} else {
-		return r < 0
-	}
+	return Less(ss[i], ss[j])
 }
 
 func (ss StringSlice) Swap(i, j int) {

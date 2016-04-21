@@ -24,66 +24,97 @@ import (
 type IndexJob struct {
 	Bucket *storage.Bucket
 
+	name                *string
+	prefix              *string
 	enableDirectoryHTML bool
 	enableIndexHTML     bool
 	enableDelete        bool
+	notRecursive        bool // inverted because recursive is default
 }
 
-// DirectoryHTML enables generation of HTML pages to mimic directories.
+// Name overrides Bucket's name in page titles.
+func (ij *IndexJob) Name(name string) {
+	ij.name = &name
+}
+
+// Prefix overrides Bucket's default prefix.
+func (ij *IndexJob) Prefix(p string) {
+	p = storage.FixPrefix(p)
+	ij.prefix = &p
+}
+
+// DirectoryHTML toggles generation of HTML pages to mimic directories.
 func (ij *IndexJob) DirectoryHTML(enable bool) {
 	ij.enableDirectoryHTML = enable
 }
 
-// IndexHTML enables generation of index.html pages for each directory.
+// IndexHTML toggles generation of index.html pages for each directory.
 func (ij *IndexJob) IndexHTML(enable bool) {
 	ij.enableIndexHTML = enable
 }
 
-// Delete enables deletion of stale indexes for now empty directories.
+// Delete toggles deletion of stale indexes for now empty directories.
 func (ij *IndexJob) Delete(enable bool) {
 	ij.enableDelete = enable
 }
 
+// Recursive toggles generation of indexes for subdirectories (the default).
+func (sj *IndexJob) Recursive(enable bool) {
+	sj.notRecursive = !enable
+}
+
+func (ij *IndexJob) doDir(wg *worker.WorkerGroup, ix *Indexer) error {
+	if ij.enableDirectoryHTML && !ix.Empty() {
+		if err := wg.Start(ix.UpdateRedirect); err != nil {
+			return err
+		}
+		if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
+			return err
+		}
+	} else if ij.enableDelete {
+		if err := wg.Start(ix.DeleteRedirect); err != nil {
+			return err
+		}
+		if err := wg.Start(ix.DeleteDirectory); err != nil {
+			return err
+		}
+	}
+
+	if ij.enableIndexHTML && !ix.Empty() {
+		if err := wg.Start(ix.UpdateIndexHTML); err != nil {
+			return err
+		}
+	} else if ij.enableDelete {
+		if err := wg.Start(ix.DeleteIndexHTML); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (ij *IndexJob) Do(ctx context.Context) error {
+	if ij.name == nil {
+		name := ij.Bucket.Name()
+		ij.name = &name
+	}
+	if ij.prefix == nil {
+		prefix := ij.Bucket.Prefix()
+		ij.prefix = &prefix
+	}
+
+	tree := NewIndexTree(ij.Bucket, ij.notRecursive)
 	wg := worker.NewWorkerGroup(ctx, storage.MaxConcurrentRequests)
-	tree := NewIndexTree(ij.Bucket)
-	var doDir func(string) error
-	doDir = func(dir string) error {
-		ix := tree.Indexer(dir)
-		if ij.enableDirectoryHTML {
-			if err := wg.Start(ix.UpdateRedirect); err != nil {
-				return err
-			}
-			if err := wg.Start(ix.UpdateDirectoryHTML); err != nil {
-				return err
-			}
-		}
-		if ij.enableIndexHTML {
-			if err := wg.Start(ix.UpdateIndexHTML); err != nil {
-				return err
-			}
-		}
-		for _, subdir := range ix.SubDirs {
-			if err := doDir(subdir); err != nil {
-				return err
-			}
-		}
-		return nil
+
+	if ij.notRecursive {
+		ix := tree.Indexer(*ij.name, *ij.prefix)
+		return wg.WaitError(ij.doDir(wg, ix))
 	}
 
-	if err := doDir(ij.Bucket.Prefix()); err != nil {
-		return wg.WaitError(err)
-	}
-
-	if ij.enableDelete {
-		// TODO(marineam): delete based on enabled index types
-		for _, index := range tree.EmptyIndexes(ij.Bucket.Prefix()) {
-			objName := index
-			if err := wg.Start(func(ctx context.Context) error {
-				return ij.Bucket.Delete(ctx, objName)
-			}); err != nil {
-				return wg.WaitError(err)
-			}
+	for _, prefix := range tree.Prefixes(*ij.prefix) {
+		ix := tree.Indexer(*ij.name, prefix)
+		if err := ij.doDir(wg, ix); err != nil {
+			return wg.WaitError(err)
 		}
 	}
 

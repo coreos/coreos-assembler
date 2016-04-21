@@ -15,6 +15,8 @@
 package storage
 
 import (
+	"strings"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
@@ -29,14 +31,29 @@ type SyncJob struct {
 	Source      *Bucket
 	Destination *Bucket
 
-	sourceFilter Filter
-	deleteFilter Filter
-	enableDelete bool
+	sourcePrefix      *string
+	destinationPrefix *string
+	sourceFilter      Filter
+	deleteFilter      Filter
+	enableDelete      bool
+	notRecursive      bool // inverted because recursive is default
 }
 
 func Sync(ctx context.Context, src, dst *Bucket) error {
 	job := SyncJob{Source: src, Destination: dst}
 	return job.Do(ctx)
+}
+
+// SourcePrefix overrides the Source bucket's default prefix.
+func (sj *SyncJob) SourcePrefix(p string) {
+	p = FixPrefix(p)
+	sj.sourcePrefix = &p
+}
+
+// DestinationPrefix overrides the Destination bucket's default prefix.
+func (sj *SyncJob) DestinationPrefix(p string) {
+	p = FixPrefix(p)
+	sj.destinationPrefix = &p
 }
 
 // SourceFilter selects which objects to copy from Source.
@@ -49,15 +66,32 @@ func (sj *SyncJob) DeleteFilter(f Filter) {
 	sj.deleteFilter = f
 }
 
-// Delete enables deletion of extra objects from Destination.
+// Delete toggles deletion of extra objects from Destination.
 func (sj *SyncJob) Delete(enable bool) {
 	sj.enableDelete = enable
 }
 
+// Recursive toggles copying subdirectories from Source (the default).
+func (sj *SyncJob) Recursive(enable bool) {
+	sj.notRecursive = !enable
+}
+
 func (sj *SyncJob) Do(ctx context.Context) error {
+	if sj.sourcePrefix == nil {
+		prefix := sj.Source.Prefix()
+		sj.sourcePrefix = &prefix
+	}
+	if sj.destinationPrefix == nil {
+		prefix := sj.Destination.Prefix()
+		sj.destinationPrefix = &prefix
+	}
+
 	// Assemble a set of existing objects which may be deleted.
 	oldNames := make(map[string]struct{})
 	for _, oldObj := range sj.Destination.Objects() {
+		if !sj.hasPrefix(oldObj.Name, *sj.destinationPrefix) {
+			continue
+		}
 		if sj.deleteFilter != nil && !sj.deleteFilter(oldObj) {
 			continue
 		}
@@ -66,6 +100,9 @@ func (sj *SyncJob) Do(ctx context.Context) error {
 
 	wg := worker.NewWorkerGroup(ctx, MaxConcurrentRequests)
 	for _, srcObj := range sj.Source.Objects() {
+		if !sj.hasPrefix(srcObj.Name, *sj.sourcePrefix) {
+			continue
+		}
 		if sj.sourceFilter != nil && !sj.sourceFilter(srcObj) {
 			continue
 		}
@@ -97,7 +134,19 @@ func (sj *SyncJob) Do(ctx context.Context) error {
 	return wg.Wait()
 }
 
+func (sj *SyncJob) hasPrefix(name, prefix string) bool {
+	if !strings.HasPrefix(name, prefix) {
+		return false
+	}
+	if sj.notRecursive {
+		suffix := name[len(prefix):]
+		if strings.Contains(suffix, "/") {
+			return false
+		}
+	}
+	return true
+}
+
 func (sj *SyncJob) newName(srcObj *gs.Object) string {
-	return sj.Destination.AddPrefix(
-		sj.Source.TrimPrefix(srcObj.Name))
+	return *sj.destinationPrefix + srcObj.Name[len(*sj.sourcePrefix):]
 }

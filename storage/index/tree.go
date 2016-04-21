@@ -15,117 +15,71 @@
 package index
 
 import (
-	"path"
 	"strings"
 
 	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
+	"github.com/coreos/mantle/lang/natsort"
 	"github.com/coreos/mantle/storage"
 )
 
 type IndexTree struct {
 	bucket   *storage.Bucket
-	indexes  map[string]*gs.Object
-	objcount map[string]uint
+	prefixes map[string]bool
+	subdirs  map[string][]string
 	objects  map[string][]*gs.Object
 }
 
-func NewIndexTree(bucket *storage.Bucket) *IndexTree {
+func NewIndexTree(bucket *storage.Bucket, includeEmpty bool) *IndexTree {
 	t := &IndexTree{
 		bucket:   bucket,
-		indexes:  make(map[string]*gs.Object),
-		objcount: make(map[string]uint),
+		prefixes: make(map[string]bool),
+		subdirs:  make(map[string][]string),
 		objects:  make(map[string][]*gs.Object),
 	}
 
 	for _, prefix := range bucket.Prefixes() {
-		t.addDir(prefix)
+		t.prefixes[prefix] = includeEmpty
 	}
 
+	indexes := NewIndexSet(bucket)
 	for _, obj := range bucket.Objects() {
-		if t.IsIndex(obj) {
-			t.indexes[obj.Name] = obj
-		} else {
+		if indexes.NotIndex(obj) {
 			t.addObj(obj)
 		}
+	}
+
+	for _, dirs := range t.subdirs {
+		natsort.Strings(dirs)
+	}
+
+	for _, objs := range t.objects {
+		storage.SortObjects(objs)
 	}
 
 	return t
 }
 
-func dirIndexes(dir string) []string {
-	indexes := []string{dir + "index.html"}
-	if dir != "" {
-		indexes = append(indexes, dir, strings.TrimSuffix(dir, "/"))
-	}
-	return indexes
-}
-
-func (t *IndexTree) addDir(dir string) {
-	for _, index := range dirIndexes(dir) {
-		t.indexes[index] = nil
-	}
-	t.objcount[dir] = 0
-}
-
-func nextPrefix(name string) string {
-	prefix, _ := path.Split(strings.TrimSuffix(name, "/"))
-	return prefix
-}
-
 func (t *IndexTree) addObj(obj *gs.Object) {
-	prefix := nextPrefix(obj.Name)
+	prefix := storage.NextPrefix(obj.Name)
 	t.objects[prefix] = append(t.objects[prefix], obj)
-	for {
-		t.objcount[prefix]++
+	for !t.prefixes[prefix] {
+		t.prefixes[prefix] = true // mark as not empty
 		if prefix == "" {
 			return
 		}
-		prefix = nextPrefix(prefix)
+		parent := storage.NextPrefix(prefix)
+		t.subdirs[parent] = append(t.subdirs[parent], prefix)
+		prefix = storage.NextPrefix(prefix)
 	}
 }
 
-func (t *IndexTree) IsIndex(obj *gs.Object) bool {
-	_, isIndex := t.indexes[obj.Name]
-	return isIndex
-}
-
-func (t *IndexTree) IsNotIndex(obj *gs.Object) bool {
-	return !t.IsIndex(obj)
-}
-
-func (t *IndexTree) Objects(dir string) map[string]*gs.Object {
-	files := make(map[string]*gs.Object)
-	for _, obj := range t.objects[dir] {
-		files[strings.TrimPrefix(obj.Name, dir)] = obj
-	}
-	return files
-}
-
-func (t *IndexTree) SubDirs(dir string) map[string]string {
-	subdirs := make(map[string]string)
-	for prefix, sum := range t.objcount {
-		if sum > 0 && strings.HasPrefix(prefix, dir) {
-			name := strings.TrimSuffix(prefix[len(dir):], "/")
-			if name == "" || strings.Contains(name, "/") {
-				continue
-			}
-			subdirs[name] = prefix
+func (t *IndexTree) Prefixes(dir string) []string {
+	prefixes := make([]string, 0, len(t.prefixes))
+	for prefix := range t.prefixes {
+		if strings.HasPrefix(prefix, dir) {
+			prefixes = append(prefixes, prefix)
 		}
 	}
-	return subdirs
-}
-
-func (t *IndexTree) EmptyIndexes(dir string) []string {
-	indexes := make([]string, 0)
-	for prefix, sum := range t.objcount {
-		if sum == 0 && strings.HasPrefix(prefix, dir) {
-			for _, index := range dirIndexes(prefix) {
-				if obj := t.indexes[index]; obj != nil {
-					indexes = append(indexes, index)
-				}
-			}
-		}
-	}
-	return indexes
+	return prefixes
 }
