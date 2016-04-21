@@ -15,8 +15,15 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
+	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/storage"
@@ -71,7 +78,8 @@ func runRelease(cmd *cobra.Command, args []string) {
 		plog.Fatalf("File not found: %s", verurl)
 	}
 
-	// GCE
+	// Register GCE image if needed.
+	doGCE(ctx, client, src, &spec)
 
 	for _, dSpec := range spec.Destinations {
 		dst, err := storage.NewBucket(client, dSpec.ParentURL())
@@ -109,6 +117,200 @@ func runRelease(cmd *cobra.Command, args []string) {
 		parent.Delete(true)
 		if err := parent.Do(ctx); err != nil {
 			plog.Fatal(err)
+		}
+	}
+}
+
+func sanitizeVersion() string {
+	v := strings.Replace(specVersion, ".", "-", -1)
+	return strings.Replace(v, "+", "-", -1)
+}
+
+func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
+	if spec.GCE.Project == "" || spec.GCE.Image == "" {
+		plog.Notice("GCE image creation disabled.")
+		return
+	}
+
+	api, err := compute.New(client)
+	if err != nil {
+		plog.Fatalf("GCE client failed: %v", err)
+	}
+
+	publishImage := func(image string) {
+		if spec.GCE.Publish == "" {
+			plog.Notice("GCE image name publishing disabled.")
+			return
+		}
+		obj := gs.Object{
+			Name:        src.Prefix() + spec.GCE.Publish,
+			ContentType: "text/plain",
+		}
+		media := strings.NewReader(
+			fmt.Sprintf("projects/%s/global/images/%s\n",
+				spec.GCE.Project, image))
+		if err := src.Upload(ctx, &obj, media); err != nil {
+			plog.Fatal(err)
+		}
+	}
+
+	namePfx := fmt.Sprintf("coreos-%s-", specChannel)
+	nameVer := fmt.Sprintf("%s%s-v", namePfx, sanitizeVersion())
+	date := time.Now().UTC()
+	name := nameVer + date.Format("20060102")
+	desc := fmt.Sprintf("CoreOS, CoreOS %s, %s, %s published on %s",
+		specChannel, specVersion, specBoard, date.Format("2006-01-02"))
+
+	var images []*compute.Image
+	listReq := api.Images.List(spec.GCE.Project)
+	listReq.Filter(fmt.Sprintf("name eq ^%s.*", namePfx))
+	if err := listReq.Pages(ctx, func(i *compute.ImageList) error {
+		images = append(images, i.Items...)
+		return nil
+	}); err != nil {
+		plog.Fatalf("Listing GCE images failed: %v", err)
+	}
+
+	var conflicting []string
+	for _, image := range images {
+		if strings.HasPrefix(image.Name, nameVer) {
+			conflicting = append(conflicting, image.Name)
+		}
+	}
+
+	// Check for any with the same version but possibly different dates.
+	if len(conflicting) > 1 {
+		plog.Fatalf("Duplicate GCE images found: %v", conflicting)
+	} else if len(conflicting) == 1 {
+		plog.Noticef("GCE image already exists: %s", conflicting[0])
+		publishImage(conflicting[0])
+		return
+	}
+
+	if spec.GCE.Limit > 0 && len(images) > spec.GCE.Limit {
+		plog.Noticef("Pruning %d GCE images.", len(images)-spec.GCE.Limit)
+		plog.Notice("NOPE! JUST KIDDING, TODO")
+	}
+
+	obj := src.Object(src.Prefix() + spec.GCE.Image)
+	if obj == nil {
+		plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
+	}
+
+	image := &compute.Image{
+		Name:             name,
+		Description:      desc,
+		ArchiveSizeBytes: int64(obj.Size),
+		RawDisk: &compute.ImageRawDisk{
+			Source: obj.MediaLink,
+			// TODO: include sha1
+		},
+	}
+
+	if releaseDryRun {
+		plog.Noticef("Would create GCE image %s", name)
+		return
+	}
+
+	plog.Noticef("Creating GCE image %s", image.Name)
+	insReq := api.Images.Insert(spec.GCE.Project, image)
+	insReq.Context(ctx)
+	op, err := insReq.Do()
+	if err != nil {
+		plog.Fatalf("GCE image creation failed: %v", err)
+	}
+
+	plog.Infof("Waiting for image creation to finish...")
+	failures := 0
+	for op == nil || op.Status != "DONE" {
+		if op != nil {
+			status := strings.ToLower(op.Status)
+			if op.Progress != 0 {
+				plog.Infof("Image creation is %s: %s % 2d%%",
+					status, op.StatusMessage, op.Progress)
+			} else {
+				plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
+			}
+		}
+
+		time.Sleep(3 * time.Second)
+		opReq := api.GlobalOperations.Get(spec.GCE.Project, op.Name)
+		opReq.Context(ctx)
+		op, err = opReq.Do()
+		if err != nil {
+			plog.Errorf("Fetching status failed: %v", err)
+			failures++
+			if failures > 5 {
+				plog.Fatalf("Giving up after %d failures.", failures)
+			}
+		}
+	}
+
+	if op.Error != nil {
+		plog.Fatalf("Image creation failed: %+v", op.Error.Errors)
+	}
+
+	plog.Info("Success!")
+
+	publishImage(name)
+
+	var pending map[string]*compute.Operation
+	addPending := func(op *compute.Operation) {
+		if op.Status == "DONE" {
+			delete(pending, op.Name)
+			if op.Error != nil {
+				plog.Fatalf("Operation failed: %+v", op.Error.Errors)
+			}
+			return
+		}
+		pending[op.Name] = op
+		status := strings.ToLower(op.Status)
+		if op.Progress != 0 {
+			plog.Infof("Operation is %s: %s % 2d%%",
+				status, op.StatusMessage, op.Progress)
+		} else {
+			plog.Infof("Operation is %s. %s", status, op.StatusMessage)
+		}
+	}
+
+	for _, old := range images {
+		if old.Deprecated != nil && old.Deprecated.State != "" {
+			continue
+		}
+		plog.Noticef("Deprecating old image %s", old.Name)
+		status := &compute.DeprecationStatus{
+			State:       "DEPRECATED",
+			Replacement: op.TargetLink,
+		}
+		req := api.Images.Deprecate(spec.GCE.Project, old.Name, status)
+		req.Context(ctx)
+		op, err := req.Do()
+		if err != nil {
+			plog.Fatalf("Deprecating %s failed: %v", old.Name, err)
+		}
+		addPending(op)
+	}
+
+	updatePending := func(ops *compute.OperationList) error {
+		for _, op := range ops.Items {
+			if _, ok := pending[op.Name]; ok {
+				addPending(op)
+			}
+		}
+		return nil
+	}
+
+	failures = 0
+	for len(pending) > 0 {
+		plog.Infof("Waiting on %s operations.", len(pending))
+		time.Sleep(1 * time.Second)
+		opReq := api.GlobalOperations.List(spec.GCE.Project)
+		if err := opReq.Pages(ctx, updatePending); err != nil {
+			plog.Errorf("Fetching status failed: %v", err)
+			failures++
+			if failures > 5 {
+				plog.Fatalf("Giving up after %d failures.", failures)
+			}
 		}
 	}
 }

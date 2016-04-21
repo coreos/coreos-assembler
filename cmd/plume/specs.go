@@ -33,9 +33,17 @@ type storageSpec struct {
 	IndexHTML     bool
 }
 
+type gceSpec struct {
+	Project string // GCE project name
+	Image   string // File name of image source
+	Publish string // Write published image name to given file
+	Limit   int    // Limit on # of old images to keep
+}
+
 type channelSpec struct {
 	BaseURL      string // Copy from $BaseURL/$Board/$Version
 	Destinations []storageSpec
+	GCE          gceSpec
 }
 
 var (
@@ -69,6 +77,12 @@ var (
 				DirectoryHTML: true,
 				IndexHTML:     true,
 			}},
+			GCE: gceSpec{
+				Project: "coreos-cloud",
+				Image:   "coreos_production_gce.tar.gz",
+				Publish: "coreos_production_gce.txt",
+				Limit:   25,
+			},
 		},
 		"beta": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/beta/boards",
@@ -93,6 +107,12 @@ var (
 				DirectoryHTML: true,
 				IndexHTML:     true,
 			}},
+			GCE: gceSpec{
+				Project: "coreos-cloud",
+				Image:   "coreos_production_gce.tar.gz",
+				Publish: "coreos_production_gce.txt",
+				Limit:   25,
+			},
 		},
 		"stable": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/stable/boards",
@@ -108,6 +128,12 @@ var (
 				DirectoryHTML: true,
 				IndexHTML:     true,
 			}},
+			GCE: gceSpec{
+				Project: "coreos-cloud",
+				Image:   "coreos_production_gce.tar.gz",
+				Publish: "coreos_production_gce.txt",
+				Limit:   25,
+			},
 		},
 	}
 )
