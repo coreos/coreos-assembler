@@ -50,7 +50,7 @@ func init() {
 		ClusterSize: 0,
 		Name:        "systemd.journal.remote.225",
 		UserData:    `#cloud-config`,
-		EndVersion:  semver.Version{Major: 1026},
+		EndVersion:  semver.Version{Major: 1024},
 	})
 
 	register.Register(&register.Test{
@@ -58,7 +58,7 @@ func init() {
 		ClusterSize: 0,
 		Name:        "systemd.journal.remote.229",
 		UserData:    `#cloud-config`,
-		MinVersion:  semver.Version{Major: 1026},
+		MinVersion:  semver.Version{Major: 1024},
 	})
 }
 
