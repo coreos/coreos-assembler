@@ -32,6 +32,10 @@ type IndexJob struct {
 	notRecursive        bool // inverted because recursive is default
 }
 
+func NewIndexJob(bucket *storage.Bucket) *IndexJob {
+	return &IndexJob{Bucket: bucket}
+}
+
 // Name overrides Bucket's name in page titles.
 func (ij *IndexJob) Name(name string) {
 	ij.name = &name
