@@ -95,6 +95,13 @@ func DefaultBoard() string {
 	return string(board)
 }
 
+func BoardRoot(board string) string {
+	if board == "" {
+		board = DefaultBoard()
+	}
+	return filepath.Join("/build", board)
+}
+
 func BuildRoot() string {
 	if dir := envDir("BUILD_ROOT"); dir != "" {
 		return dir
