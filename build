@@ -13,10 +13,27 @@ version="${version#v}"
 version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 
+host_build() {
+	echo "Building $1"
+	go build -i -ldflags "${ldflags}" -o "bin/$1" "${REPO_PATH}/cmd/$1"
+}
+
+cross_build() {
+	local a
+	for a in amd64 arm64; do
+		echo "Building $a/$1"
+		mkdir -p "bin/$a"
+		CGO_ENABLED=0 GOARCH=$a \
+			go build -ldflags "${ldflags}" \
+			-o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
+	done
+}
+
 for cmd in "$@"; do
 	cmd=$(basename "${cmd}")
-	echo "Building ${cmd}..."
-	go build -i -ldflags "${ldflags}" \
-            -o "bin/${cmd}" "${REPO_PATH}/cmd/${cmd}"
+	if [[ "${cmd}" == kolet ]]; then
+		cross_build kolet
+	else
+		host_build "${cmd}"
+	fi
 done
-
