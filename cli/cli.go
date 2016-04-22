@@ -73,6 +73,14 @@ func Execute(main *cobra.Command) {
 	os.Exit(0)
 }
 
+func setRepoLogLevel(repo string, l capnslog.LogLevel) {
+	r, err := capnslog.GetRepoLogger(repo)
+	if err != nil {
+		return // don't care if it isn't linked in
+	}
+	r.SetRepoLogLevel(l)
+}
+
 func startLogging(cmd *cobra.Command) {
 	switch {
 	case logDebug:
@@ -83,5 +91,16 @@ func startLogging(cmd *cobra.Command) {
 
 	capnslog.SetFormatter(capnslog.NewStringFormatter(cmd.Out()))
 	capnslog.SetGlobalLogLevel(logLevel)
+
+	// In the context of the internally linked etcd, the NOTICE messages
+	// aren't really interesting, so translate NOTICE to WARNING instead.
+	if logLevel == capnslog.NOTICE {
+		// etcd sure has a lot of repos in its repo
+		setRepoLogLevel("github.com/coreos/etcd", capnslog.WARNING)
+		setRepoLogLevel("github.com/coreos/etcd/etcdserver", capnslog.WARNING)
+		setRepoLogLevel("github.com/coreos/etcd/etcdserver/etcdhttp", capnslog.WARNING)
+		setRepoLogLevel("github.com/coreos/etcd/pkg", capnslog.WARNING)
+	}
+
 	plog.Infof("Started logging at level %s", logLevel)
 }
