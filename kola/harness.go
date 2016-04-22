@@ -351,7 +351,12 @@ func RunTest(t *register.Test, pltfrm string) error {
 
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
-		err = scpKolet(tcluster)
+		nativeArch := "amd64"
+		if pltfrm == "qemu" && QEMUOptions.Board != "" {
+			nativeArch = strings.SplitN(QEMUOptions.Board, "-", 2)[0]
+		}
+
+		err = scpKolet(tcluster, nativeArch)
 		if err != nil {
 			return fmt.Errorf("dropping kolet binary: %v", err)
 		}
@@ -370,12 +375,11 @@ func RunTest(t *register.Test, pltfrm string) error {
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(t platform.TestCluster) error {
-	// TODO: determine the GOARCH for the remote machine
-	mArch := "amd64"
+func scpKolet(t platform.TestCluster, mArch string) error {
 	for _, d := range []string{
 		".",
 		filepath.Dir(os.Args[0]),
+		filepath.Join(filepath.Dir(os.Args[0]), mArch),
 		filepath.Join("/usr/lib/kola", mArch),
 	} {
 		kolet := filepath.Join(d, "kolet")
