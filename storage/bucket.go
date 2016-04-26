@@ -213,12 +213,17 @@ func (b *Bucket) FetchPrefix(ctx context.Context, prefix string, recursive bool)
 	}
 
 	n := 0
+	p := 0
 	u := b.URL()
 	u.Path = prefix
 	add := func(objs *storage.Objects) error {
 		b.addObjects(objs)
 		n += len(objs.Items)
 		plog.Infof("Found %d objects under %s", n, u)
+		if len(objs.Prefixes) > 0 {
+			p += len(objs.Prefixes)
+			plog.Infof("Found %d directories under %s", p, u)
+		}
 		return nil
 	}
 
