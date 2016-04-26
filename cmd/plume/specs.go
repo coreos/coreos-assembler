@@ -189,16 +189,15 @@ func (cs channelSpec) SourceURL() string {
 	return u.String()
 }
 
-func (ss storageSpec) ParentURL() string {
+func (ss storageSpec) ParentPrefixes() []string {
 	u, err := url.Parse(ss.BaseURL)
 	if err != nil {
 		panic(err)
 	}
-	u.Path = path.Join(u.Path, specBoard)
-	return u.String()
+	return []string{u.Path, path.Join(u.Path, specBoard)}
 }
 
-func (ss storageSpec) Prefixes() []string {
+func (ss storageSpec) FinalPrefixes() []string {
 	u, err := url.Parse(ss.BaseURL)
 	if err != nil {
 		plog.Panic(err)
