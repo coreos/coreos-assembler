@@ -27,9 +27,6 @@ import (
 	"github.com/coreos/mantle/storage/index"
 )
 
-// Arbitrary limit on the number of concurrent jobs
-const maxWriters = 12
-
 var (
 	indexDryRun bool
 	indexForce  bool
