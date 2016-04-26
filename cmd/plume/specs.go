@@ -47,10 +47,10 @@ type channelSpec struct {
 }
 
 var (
-	specFlags   *pflag.FlagSet
 	specBoard   string
 	specChannel string
 	specVersion string
+	boards      = []string{"amd64-usr", "arm64-usr"}
 	specs       = map[string]channelSpec{
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
@@ -164,6 +164,17 @@ func ChannelSpec() channelSpec {
 	spec, ok := specs[specChannel]
 	if !ok {
 		plog.Fatalf("Unknown channel: %s", specChannel)
+	}
+
+	boardOk := false
+	for _, board := range boards {
+		if specBoard == board {
+			boardOk = true
+			break
+		}
+	}
+	if !boardOk {
+		plog.Fatalf("Unknown board: %s", specBoard)
 	}
 
 	return spec
