@@ -229,7 +229,33 @@ func (b *Bucket) FetchPrefix(ctx context.Context, prefix string, recursive bool)
 
 	plog.Noticef("Fetching %s", u)
 
-	return b.apiErr("storage.objects.list", nil, req.Pages(nil, add))
+	if err := req.Pages(ctx, add); err != nil {
+		return b.apiErr("storage.objects.list", nil, err)
+	}
+
+	if prefix == "" {
+		return nil
+	}
+
+	// In order to pair well with HTML indexing we need to check for
+	// a redirect object (prefix minus trailing slash). The list
+	// request needs the slash get foo/bar/* but not foo/barbaz.
+	redirName := strings.TrimSuffix(prefix, "/")
+	if b.Object(redirName) != nil {
+		return nil
+	}
+
+	redirReq := b.service.Objects.Get(b.name, redirName)
+	redirReq.Context(ctx)
+	redirObj, err := redirReq.Do()
+	if e, ok := err.(*googleapi.Error); ok && e.Code == 404 {
+		return nil // missing is perfectly valid
+	} else if err != nil {
+		return b.apiErr("storage.objects.get", redirName, err)
+	}
+
+	b.addObject(redirObj)
+	return nil
 }
 
 func (b *Bucket) Upload(ctx context.Context, obj *storage.Object, media io.ReadSeeker) error {
