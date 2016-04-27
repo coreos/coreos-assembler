@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/storage/index"
 )
@@ -81,11 +82,7 @@ func runSync(cmd *cobra.Command, args []string) {
 	dst.WriteDryRun(syncDryRun)
 	dst.WriteAlways(syncForce)
 
-	if err := src.Fetch(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	if err := dst.Fetch(ctx); err != nil {
+	if err := worker.Parallel(ctx, src.Fetch, dst.Fetch); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
