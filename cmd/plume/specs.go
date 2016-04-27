@@ -47,10 +47,10 @@ type channelSpec struct {
 }
 
 var (
-	specFlags   *pflag.FlagSet
 	specBoard   string
 	specChannel string
 	specVersion string
+	boards      = []string{"amd64-usr", "arm64-usr"}
 	specs       = map[string]channelSpec{
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
@@ -166,6 +166,17 @@ func ChannelSpec() channelSpec {
 		plog.Fatalf("Unknown channel: %s", specChannel)
 	}
 
+	boardOk := false
+	for _, board := range boards {
+		if specBoard == board {
+			boardOk = true
+			break
+		}
+	}
+	if !boardOk {
+		plog.Fatalf("Unknown board: %s", specBoard)
+	}
+
 	return spec
 }
 
@@ -178,16 +189,15 @@ func (cs channelSpec) SourceURL() string {
 	return u.String()
 }
 
-func (ss storageSpec) ParentURL() string {
+func (ss storageSpec) ParentPrefixes() []string {
 	u, err := url.Parse(ss.BaseURL)
 	if err != nil {
 		panic(err)
 	}
-	u.Path = path.Join(u.Path, specBoard)
-	return u.String()
+	return []string{u.Path, path.Join(u.Path, specBoard)}
 }
 
-func (ss storageSpec) Prefixes() []string {
+func (ss storageSpec) FinalPrefixes() []string {
 	u, err := url.Parse(ss.BaseURL)
 	if err != nil {
 		plog.Panic(err)

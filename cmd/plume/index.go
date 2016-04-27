@@ -1,4 +1,4 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"os"
+	"path"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
@@ -27,92 +25,126 @@ import (
 	"github.com/coreos/mantle/storage/index"
 )
 
-// Arbitrary limit on the number of concurrent jobs
-const maxWriters = 12
-
 var (
 	indexDryRun bool
-	indexForce  bool
-	indexDelete bool
-	indexDirs   bool
 	cmdIndex    = &cobra.Command{
-		Use:   "index [options] gs://bucket/prefix/ [gs://...]",
-		Short: "Update HTML indexes",
+		Use:   "index [options]",
+		Short: "Update HTML indexes for download sites.",
 		Run:   runIndex,
-		Long: `Update HTML indexes for Google Storage.
+		Long: `Update some or all HTML indexes for download sites.
 
-Scan a given Google Storage location and generate "index.html" under
-every directory prefix. If the --directories option is given then
-objects matching the directory prefixes are also created. For example,
-the pages generated for a bucket containing only "dir/obj":
+By default only a single release is updated but specifying the
+special board, channel, and/or version 'all' will work too.
 
-    index.html     - a HTML index page listing dir
-    dir/index.html - a HTML index page listing obj
-    dir/           - an identical HTML index page
-    dir            - a redirect page to dir/
+To update everything all at once:
 
-Do not enable --directories if you expect to be able to copy the tree to
-a local filesystem, the fake directories will conflict with the real ones!`,
+    plume index --channel=all --board=all --version=all
+    
+If more flexibility is required use ore index instead.`,
 	}
 )
 
 func init() {
-	cmdIndex.Flags().BoolVarP(&indexDryRun,
-		"dry-run", "n", false,
-		"perform a trial run with no changes")
-	cmdIndex.Flags().BoolVarP(&indexForce,
-		"force", "f", false,
-		"overwrite objects even if they appear up to date")
-	cmdIndex.Flags().BoolVar(&indexDelete,
-		"delete", false, "delete index objects")
-	cmdIndex.Flags().BoolVarP(&indexDirs,
-		"directories", "D", false,
-		"use objects to mimic a directory tree")
+	cmdIndex.Flags().BoolVarP(&indexDryRun, "dry-run", "n", false,
+		"perform a trial run, do not make changes")
+	AddSpecFlags(cmdIndex.Flags())
 	root.AddCommand(cmdIndex)
 }
 
 func runIndex(cmd *cobra.Command, args []string) {
-	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "No URLs specified\n")
-		os.Exit(2)
+	if len(args) > 0 {
+		plog.Fatal("No args accepted")
+	}
+
+	if specChannel == "all" {
+		specChannel = ""
+	}
+	if specBoard == "all" {
+		specBoard = ""
+	}
+	if specVersion == "all" {
+		specVersion = ""
+	}
+
+	if specChannel != "" {
+		if _, ok := specs[specChannel]; !ok && specChannel != "" {
+			plog.Fatalf("Unknown channel: %s", specChannel)
+		}
+	}
+
+	if specBoard != "" {
+		boardOk := false
+		for _, board := range boards {
+			if specBoard == board {
+				boardOk = true
+				break
+			}
+		}
+		if !boardOk {
+			plog.Fatalf("Unknown board: %s", specBoard)
+		}
 	}
 
 	ctx := context.Background()
 	client, err := auth.GoogleClient()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
+		plog.Fatalf("Authentication failed: %v", err)
 	}
 
-	for _, url := range args {
-		if err := updateTree(ctx, client, url); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed: %v\n", err)
-			os.Exit(1)
+	for channel, spec := range specs {
+		if specChannel != "" && specChannel != channel {
+			continue
+		}
+
+		for _, dSpec := range spec.Destinations {
+			if specVersion != "" &&
+				!dSpec.VersionPath &&
+				specVersion != dSpec.NamedPath {
+				continue
+			}
+
+			bkt, err := storage.NewBucket(client, dSpec.BaseURL)
+			if err != nil {
+				plog.Fatal(err)
+			}
+			bkt.WriteDryRun(indexDryRun)
+
+			doIndex := func(prefix string, recursive bool) {
+				if err := bkt.FetchPrefix(ctx, prefix, recursive); err != nil {
+					plog.Fatal(err)
+				}
+
+				job := index.NewIndexJob(bkt)
+				job.DirectoryHTML(dSpec.DirectoryHTML)
+				job.IndexHTML(dSpec.IndexHTML)
+				job.Recursive(recursive)
+				job.Prefix(prefix)
+				job.Delete(true)
+				if err := job.Do(ctx); err != nil {
+					plog.Fatal(err)
+				}
+			}
+
+			if specBoard == "" && specVersion == "" {
+				doIndex(bkt.Prefix(), true)
+				continue
+			}
+
+			doIndex(bkt.Prefix(), false)
+			for _, board := range boards {
+				if specBoard != "" && specBoard != board {
+					continue
+				}
+
+				prefix := path.Join(bkt.Prefix(), board)
+				if specVersion == "" {
+					doIndex(prefix, true)
+					continue
+				}
+
+				doIndex(prefix, false)
+				doIndex(path.Join(prefix, specVersion), true)
+			}
 		}
 	}
-
-	if indexDryRun {
-		fmt.Printf("Dry-run successful!\n")
-	} else {
-		fmt.Printf("Update successful!\n")
-	}
-}
-
-func updateTree(ctx context.Context, client *http.Client, url string) error {
-	root, err := storage.NewBucket(client, url)
-	if err != nil {
-		return err
-	}
-	root.WriteDryRun(indexDryRun)
-	root.WriteAlways(indexForce)
-
-	if err = root.Fetch(ctx); err != nil {
-		return err
-	}
-
-	job := index.IndexJob{Bucket: root}
-	job.DirectoryHTML(indexDirs)
-	job.IndexHTML(true)
-	job.Delete(indexDelete)
-	return job.Do(ctx)
 }

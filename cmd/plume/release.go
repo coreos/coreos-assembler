@@ -82,19 +82,21 @@ func runRelease(cmd *cobra.Command, args []string) {
 	doGCE(ctx, client, src, &spec)
 
 	for _, dSpec := range spec.Destinations {
-		dst, err := storage.NewBucket(client, dSpec.ParentURL())
+		dst, err := storage.NewBucket(client, dSpec.BaseURL)
 		if err != nil {
 			plog.Fatal(err)
 		}
 		dst.WriteDryRun(releaseDryRun)
 
-		// Fetch parent directory non-recursively to re-index it later.
-		if err := dst.FetchPrefix(ctx, dst.Prefix(), false); err != nil {
-			plog.Fatal(err)
+		// Fetch parent directories non-recursively to re-index it later.
+		for _, prefix := range dSpec.ParentPrefixes() {
+			if err := dst.FetchPrefix(ctx, prefix, false); err != nil {
+				plog.Fatal(err)
+			}
 		}
 
 		// Fetch and sync each destination directory.
-		for _, prefix := range dSpec.Prefixes() {
+		for _, prefix := range dSpec.FinalPrefixes() {
 			if err := dst.FetchPrefix(ctx, prefix, true); err != nil {
 				plog.Fatal(err)
 			}
@@ -109,14 +111,17 @@ func runRelease(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		// Now refresh the parent directory index.
-		parent := index.NewIndexJob(dst)
-		parent.DirectoryHTML(dSpec.DirectoryHTML)
-		parent.IndexHTML(dSpec.IndexHTML)
-		parent.Recursive(false)
-		parent.Delete(true)
-		if err := parent.Do(ctx); err != nil {
-			plog.Fatal(err)
+		// Now refresh the parent directory indexes.
+		for _, prefix := range dSpec.ParentPrefixes() {
+			parent := index.NewIndexJob(dst)
+			parent.Prefix(prefix)
+			parent.DirectoryHTML(dSpec.DirectoryHTML)
+			parent.IndexHTML(dSpec.IndexHTML)
+			parent.Recursive(false)
+			parent.Delete(true)
+			if err := parent.Do(ctx); err != nil {
+				plog.Fatal(err)
+			}
 		}
 	}
 }
