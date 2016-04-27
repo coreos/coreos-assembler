@@ -120,6 +120,9 @@ func runIndex(cmd *cobra.Command, args []string) {
 				job.Recursive(recursive)
 				job.Prefix(prefix)
 				job.Delete(true)
+				if dSpec.Title != "" {
+					job.Name(dSpec.Title)
+				}
 				if err := job.Do(ctx); err != nil {
 					plog.Fatal(err)
 				}

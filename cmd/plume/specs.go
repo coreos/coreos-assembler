@@ -27,6 +27,7 @@ import (
 
 type storageSpec struct {
 	BaseURL       string
+	Title         string // Replace the bucket name in index page titles
 	NamedPath     string // Copy to $BaseURL/$Board/$NamedPath
 	VersionPath   bool   // Copy to $BaseURL/$Board/$Version
 	DirectoryHTML bool
@@ -61,6 +62,7 @@ var (
 				IndexHTML:   true,
 			}, storageSpec{
 				BaseURL:       "gs://coreos-alpha",
+				Title:         "alpha.release.core-os.net",
 				NamedPath:     "current",
 				VersionPath:   true,
 				DirectoryHTML: true,
@@ -72,6 +74,7 @@ var (
 				IndexHTML:   true,
 			}, storageSpec{
 				BaseURL:       "gs://coreos-net-storage/coreos",
+				Title:         "storage.core-os.net",
 				NamedPath:     "alpha",
 				VersionPath:   true,
 				DirectoryHTML: true,
@@ -93,6 +96,7 @@ var (
 				IndexHTML:   true,
 			}, storageSpec{
 				BaseURL:       "gs://coreos-beta",
+				Title:         "beta.release.core-os.net",
 				NamedPath:     "current",
 				VersionPath:   true,
 				DirectoryHTML: true,
@@ -103,6 +107,7 @@ var (
 				IndexHTML: true,
 			}, storageSpec{
 				BaseURL:       "gs://coreos-net-storage/coreos",
+				Title:         "storage.core-os.net",
 				NamedPath:     "beta",
 				DirectoryHTML: true,
 				IndexHTML:     true,
@@ -123,6 +128,7 @@ var (
 				IndexHTML:   true,
 			}, storageSpec{
 				BaseURL:       "gs://coreos-stable",
+				Title:         "stable.release.core-os.net",
 				NamedPath:     "current",
 				VersionPath:   true,
 				DirectoryHTML: true,
