@@ -106,6 +106,9 @@ func runRelease(cmd *cobra.Command, args []string) {
 			sync.DirectoryHTML(dSpec.DirectoryHTML)
 			sync.IndexHTML(dSpec.IndexHTML)
 			sync.Delete(true)
+			if dSpec.Title != "" {
+				sync.Name(dSpec.Title)
+			}
 			if err := sync.Do(ctx); err != nil {
 				plog.Fatal(err)
 			}
@@ -119,6 +122,9 @@ func runRelease(cmd *cobra.Command, args []string) {
 			parent.IndexHTML(dSpec.IndexHTML)
 			parent.Recursive(false)
 			parent.Delete(true)
+			if dSpec.Title != "" {
+				parent.Name(dSpec.Title)
+			}
 			if err := parent.Do(ctx); err != nil {
 				plog.Fatal(err)
 			}
