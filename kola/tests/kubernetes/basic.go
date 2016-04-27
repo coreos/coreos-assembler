@@ -42,7 +42,7 @@ func init() {
 			Name:        "google.kubernetes.basic." + t,
 			Run:         f,
 			ClusterSize: 0,
-			Platforms:   []string{"gce", "aws"},
+			Platforms:   []string{"gce"},
 		})
 	}
 }
