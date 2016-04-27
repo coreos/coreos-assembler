@@ -28,11 +28,13 @@ import (
 )
 
 var (
-	indexDryRun bool
-	indexForce  bool
-	indexDelete bool
-	indexDirs   bool
-	cmdIndex    = &cobra.Command{
+	indexDryRun    bool
+	indexForce     bool
+	indexDelete    bool
+	indexDirs      bool
+	indexRecursive bool
+	indexTitle     string
+	cmdIndex       = &cobra.Command{
 		Use:   "index [options] gs://bucket/prefix/ [gs://...]",
 		Short: "Update HTML indexes",
 		Run:   runIndex,
@@ -62,9 +64,13 @@ func init() {
 		"overwrite objects even if they appear up to date")
 	cmdIndex.Flags().BoolVar(&indexDelete,
 		"delete", false, "delete index objects")
+	cmdIndex.Flags().BoolVarP(&indexRecursive, "recursive", "r", false,
+		"update nested prefixes")
 	cmdIndex.Flags().BoolVarP(&indexDirs,
 		"directories", "D", false,
 		"use objects to mimic a directory tree")
+	cmdIndex.Flags().StringVarP(&indexTitle, "html-title", "T", "",
+		"use the given title instead of bucket name in index pages")
 	root.AddCommand(cmdIndex)
 }
 
@@ -103,7 +109,7 @@ func updateTree(ctx context.Context, client *http.Client, url string) error {
 	root.WriteDryRun(indexDryRun)
 	root.WriteAlways(indexForce)
 
-	if err = root.Fetch(ctx); err != nil {
+	if err = root.FetchPrefix(ctx, root.Prefix(), indexRecursive); err != nil {
 		return err
 	}
 
@@ -111,5 +117,9 @@ func updateTree(ctx context.Context, client *http.Client, url string) error {
 	job.DirectoryHTML(indexDirs)
 	job.IndexHTML(true)
 	job.Delete(indexDelete)
+	job.Recursive(indexRecursive)
+	if indexTitle != "" {
+		job.Name(indexTitle)
+	}
 	return job.Do(ctx)
 }
