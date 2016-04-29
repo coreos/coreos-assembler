@@ -22,7 +22,7 @@ import (
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1/types"
 
-	"github.com/camlistore/camlistore/pkg/errorutil"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/camlistore/camlistore/pkg/errorutil"
 )
 
 var (

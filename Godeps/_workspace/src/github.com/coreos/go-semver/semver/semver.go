@@ -80,7 +80,7 @@ func Must(v *Version, err error) *Version {
 	return v
 }
 
-func (v *Version) String() string {
+func (v Version) String() string {
 	var buffer bytes.Buffer
 
 	fmt.Fprintf(&buffer, "%d.%d.%d", v.Major, v.Minor, v.Patch)
@@ -96,7 +96,7 @@ func (v *Version) String() string {
 	return buffer.String()
 }
 
-func (v *Version) MarshalJSON() ([]byte, error) {
+func (v Version) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + v.String() + `"`), nil
 }
 
@@ -116,8 +116,8 @@ func (v *Version) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (v *Version) LessThan(versionB Version) bool {
-	versionA := *v
+func (v Version) LessThan(versionB Version) bool {
+	versionA := v
 	cmp := recursiveCompare(versionA.Slice(), versionB.Slice())
 
 	if cmp == 0 {
@@ -132,12 +132,12 @@ func (v *Version) LessThan(versionB Version) bool {
 }
 
 /* Slice converts the comparable parts of the semver into a slice of strings */
-func (v *Version) Slice() []int64 {
+func (v Version) Slice() []int64 {
 	return []int64{v.Major, v.Minor, v.Patch}
 }
 
-func (p *PreRelease) Slice() []string {
-	preRelease := string(*p)
+func (p PreRelease) Slice() []string {
+	preRelease := string(p)
 	return strings.Split(preRelease, ".")
 }
 

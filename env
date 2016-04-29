@@ -6,7 +6,6 @@ REPO_PATH="${ORG_PATH}/${PROJ}"
 
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}/gopath
-export GO15VENDOREXPERIMENT=1
 
 eval $(go env)
 

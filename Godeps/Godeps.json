@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
 	"GoVersion": "go1.5",
-	"GodepVersion": "v60",
+	"GodepVersion": "v62",
 	"Packages": [
 		"./..."
 	],
@@ -10,6 +10,10 @@
 			"ImportPath": "bitbucket.org/ww/goautoneg",
 			"Comment": "null-5",
 			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
+		},
+		{
+			"ImportPath": "github.com/alecthomas/units",
+			"Rev": "6b4e7dc5e3143b85ea77909c72caf89416fc2915"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
@@ -119,6 +123,10 @@
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.1.0-81-g0fd4c05",
 			"Rev": "0fd4c0547d204c7b1cad6db6f3adad5f2cf453e5"
+		},
+		{
+			"ImportPath": "github.com/camlistore/camlistore/pkg/errorutil",
+			"Rev": "9106ce829629773474c689b34aacd7d3aaa99426"
 		},
 		{
 			"ImportPath": "github.com/coreos/coreos-cloudinit/config",
@@ -337,7 +345,7 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
-			"Rev": "d043ae190b3202550d026daf009359bb5d761672"
+			"Rev": "37bb68f88c4418889f0a9bfea4a5333d36bd15d5"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",
@@ -346,6 +354,22 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/ignition/config",
+			"Comment": "v0.3.3-83-g4c22a2c",
+			"Rev": "4c22a2c309d0bdf4f2c3e7075e4363732773d1cd"
+		},
+		{
+			"ImportPath": "github.com/coreos/ignition/config/types",
+			"Comment": "v0.3.3-83-g4c22a2c",
+			"Rev": "4c22a2c309d0bdf4f2c3e7075e4363732773d1cd"
+		},
+		{
+			"ImportPath": "github.com/coreos/ignition/config/v1",
+			"Comment": "v0.3.3-83-g4c22a2c",
+			"Rev": "4c22a2c309d0bdf4f2c3e7075e4363732773d1cd"
+		},
+		{
+			"ImportPath": "github.com/coreos/ignition/config/v1/types",
+			"Comment": "v0.3.3-83-g4c22a2c",
 			"Rev": "4c22a2c309d0bdf4f2c3e7075e4363732773d1cd"
 		},
 		{
@@ -449,6 +473,10 @@
 		{
 			"ImportPath": "github.com/ugorji/go/codec",
 			"Rev": "f1f1a805ed361a0e078bb537e4ea78cd37dcf065"
+		},
+		{
+			"ImportPath": "github.com/vincent-petithory/dataurl",
+			"Rev": "9a301d65acbb728fcc3ace14f45f511a4cfeea9c"
 		},
 		{
 			"ImportPath": "github.com/vishvananda/netlink",
