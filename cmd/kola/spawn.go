@@ -54,6 +54,9 @@ func runSpawn(cmd *cobra.Command, args []string) {
 		if err != nil {
 			die("Reading userdata failed: %v", err)
 		}
+	} else {
+		// ensure a key is injected
+		userdata = []byte("#cloud-config")
 	}
 
 	switch kolaPlatform {
