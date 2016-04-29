@@ -35,10 +35,13 @@ type storageSpec struct {
 }
 
 type gceSpec struct {
-	Project string // GCE project name
-	Image   string // File name of image source
-	Publish string // Write published image name to given file
-	Limit   int    // Limit on # of old images to keep
+	Project     string   // GCE project name
+	Family      string   // A group name, also used as name prefix
+	Description string   // Human readable-ish description
+	Licenses    []string // Identifiers for tracking usage
+	Image       string   // File name of image source
+	Publish     string   // Write published image name to given file
+	Limit       int      // Limit on # of old images to keep
 }
 
 type channelSpec struct {
@@ -81,10 +84,13 @@ var (
 				IndexHTML:     true,
 			}},
 			GCE: gceSpec{
-				Project: "coreos-cloud",
-				Image:   "coreos_production_gce.tar.gz",
-				Publish: "coreos_production_gce.txt",
-				Limit:   25,
+				Project:     "coreos-cloud",
+				Family:      "coreos-alpha",
+				Description: "CoreOS, CoreOS alpha",
+				Licenses:    []string{"coreos-alpha"},
+				Image:       "coreos_production_gce.tar.gz",
+				Publish:     "coreos_production_gce.txt",
+				Limit:       25,
 			},
 		},
 		"beta": channelSpec{
@@ -113,10 +119,13 @@ var (
 				IndexHTML:     true,
 			}},
 			GCE: gceSpec{
-				Project: "coreos-cloud",
-				Image:   "coreos_production_gce.tar.gz",
-				Publish: "coreos_production_gce.txt",
-				Limit:   25,
+				Project:     "coreos-cloud",
+				Family:      "coreos-beta",
+				Description: "CoreOS, CoreOS beta",
+				Licenses:    []string{"coreos-beta"},
+				Image:       "coreos_production_gce.tar.gz",
+				Publish:     "coreos_production_gce.txt",
+				Limit:       25,
 			},
 		},
 		"stable": channelSpec{
@@ -135,10 +144,13 @@ var (
 				IndexHTML:     true,
 			}},
 			GCE: gceSpec{
-				Project: "coreos-cloud",
-				Image:   "coreos_production_gce.tar.gz",
-				Publish: "coreos_production_gce.txt",
-				Limit:   25,
+				Project:     "coreos-cloud",
+				Family:      "coreos-stable",
+				Description: "CoreOS, CoreOS stable",
+				Licenses:    []string{"coreos-stable"},
+				Image:       "coreos_production_gce.tar.gz",
+				Publish:     "coreos_production_gce.txt",
+				Limit:       25,
 			},
 		},
 	}
