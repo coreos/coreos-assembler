@@ -165,16 +165,15 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		}
 	}
 
-	namePfx := fmt.Sprintf("coreos-%s-", specChannel)
-	nameVer := fmt.Sprintf("%s%s-v", namePfx, sanitizeVersion())
+	nameVer := fmt.Sprintf("%s-%s-v", spec.GCE.Family, sanitizeVersion())
 	date := time.Now().UTC()
 	name := nameVer + date.Format("20060102")
-	desc := fmt.Sprintf("CoreOS, CoreOS %s, %s, %s published on %s",
-		specChannel, specVersion, specBoard, date.Format("2006-01-02"))
+	desc := fmt.Sprintf("%s, %s, %s published on %s", spec.GCE.Description,
+		specVersion, specBoard, date.Format("2006-01-02"))
 
 	var images []*compute.Image
 	listReq := api.Images.List(spec.GCE.Project)
-	listReq.Filter(fmt.Sprintf("name eq ^%s.*", namePfx))
+	listReq.Filter(fmt.Sprintf("name eq ^%s-.*", spec.GCE.Family))
 	if err := listReq.Pages(ctx, func(i *compute.ImageList) error {
 		images = append(images, i.Items...)
 		return nil
@@ -208,9 +207,22 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
 	}
 
+	licenses := make([]string, len(spec.GCE.Licenses))
+	for i, l := range spec.GCE.Licenses {
+		req := api.Licenses.Get(spec.GCE.Project, l)
+		req.Context(ctx)
+		license, err := req.Do()
+		if err != nil {
+			plog.Fatalf("Invalid GCE license %s: %v", l, err)
+		}
+		licenses[i] = license.SelfLink
+	}
+
 	image := &compute.Image{
+		// TODO Family: spec.GCE.Family,
 		Name:             name,
 		Description:      desc,
+		Licenses:         licenses,
 		ArchiveSizeBytes: int64(obj.Size),
 		RawDisk: &compute.ImageRawDisk{
 			Source: obj.MediaLink,
