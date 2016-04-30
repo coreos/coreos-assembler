@@ -31,6 +31,7 @@ import (
 
 	// Tests imported for registration side effects.
 	_ "github.com/coreos/mantle/kola/tests/coretest"
+	_ "github.com/coreos/mantle/kola/tests/docker"
 	_ "github.com/coreos/mantle/kola/tests/etcd"
 	_ "github.com/coreos/mantle/kola/tests/flannel"
 	_ "github.com/coreos/mantle/kola/tests/fleet"
