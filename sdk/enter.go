@@ -95,6 +95,12 @@ func (e *enter) MountAPI() error {
 		{"/run", "tmpfs", "nosuid,nodev,mode=755"},
 	}
 
+	// Make sure the new root directory itself is a mount point.
+	// `unshare` assumes that `mount --make-rprivate /` works.
+	if err := system.RecursiveBind(e.Chroot, e.Chroot); err != nil {
+		return err
+	}
+
 	for _, fs := range apis {
 		target := filepath.Join(e.Chroot, fs.Path)
 		if err := system.Mount("", target, fs.Type, fs.Opts); err != nil {
