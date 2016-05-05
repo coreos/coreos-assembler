@@ -16,6 +16,7 @@ package kola
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -51,7 +52,8 @@ var (
 	GCEOptions  platform.GCEOptions  // glue to set platform options from main
 	AWSOptions  platform.AWSOptions  // glue to set platform options from main
 
-	TestParallelism int //glue var to set test parallelism from main
+	TestParallelism int    //glue var to set test parallelism from main
+	TAPFile         string // if not "", write TAP results here
 
 	testOptions = make(map[string]string, 0)
 )
@@ -76,6 +78,37 @@ type result struct {
 	test     *register.Test
 	result   error
 	duration time.Duration
+}
+
+type resultSlice []*result
+
+// emit tap results.
+// https://testanything.org/tap-version-13-specification.html
+func (res resultSlice) ToTAP(w io.Writer) error {
+	if _, err := fmt.Fprintf(w, "TAP version 13\n1..%d\n", len(res)); err != nil {
+		return err
+	}
+
+	var werr error
+
+	for i, r := range res {
+		t := r.test
+		err := r.result
+		if err != nil && err == register.Skip {
+			// TODO: print why it was skipped
+			_, werr = fmt.Fprintf(w, "ok %d - %s # SKIP\n", i+1, t.Name)
+		} else if err != nil {
+			_, werr = fmt.Fprintf(w, "not ok %d - %s # %s\n", i+1, t.Name, err)
+		} else {
+			_, werr = fmt.Fprintf(w, "ok %d - %s\n", i+1, t.Name)
+		}
+
+		if werr != nil {
+			return werr
+		}
+	}
+
+	return nil
 }
 
 func testRunner(platform string, done <-chan struct{}, tests chan *register.Test, results chan *result) {
@@ -155,6 +188,7 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 func RunTests(pattern, pltfrm string) error {
 	var passed, failed, skipped int
 	var wg sync.WaitGroup
+	var results resultSlice
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
 	// either:
@@ -233,6 +267,20 @@ func RunTests(pattern, pltfrm string) error {
 		} else {
 			plog.Noticef("--- PASS: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 			passed++
+		}
+
+		results = append(results, r)
+	}
+
+	if TAPFile != "" {
+		f, err := os.Create(TAPFile)
+		if err != nil {
+			plog.Errorf("failed to create TAP file: %v", err)
+		} else {
+			if err := results.ToTAP(f); err != nil {
+				plog.Errorf("failed write TAP results: %v", err)
+			}
+			f.Close()
 		}
 	}
 

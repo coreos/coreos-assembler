@@ -43,6 +43,7 @@ func init() {
 	// general options
 	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
 	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
+	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 
 	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
