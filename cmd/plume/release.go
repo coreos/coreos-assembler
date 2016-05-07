@@ -219,7 +219,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	}
 
 	image := &compute.Image{
-		// TODO Family: spec.GCE.Family,
+		Family:           spec.GCE.Family,
 		Name:             name,
 		Description:      desc,
 		Licenses:         licenses,
