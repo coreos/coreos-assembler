@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/lang/natsort"
+	"github.com/coreos/mantle/lang/reader"
 )
 
 // ObjectSlice provides sort.Interface for natural sorting Objects by Name.
@@ -46,17 +47,15 @@ func SortObjects(objs []*storage.Object) {
 }
 
 // Update CRC32c and Size in the given Object
-// Assumes media is at offset 0, seeks back to offset 0 after reading.
-func crcSum(obj *storage.Object, media io.ReadSeeker) error {
+func crcSum(obj *storage.Object, media io.ReaderAt) error {
 	c := crc32.New(crc32.MakeTable(crc32.Castagnoli))
-	n, err := io.Copy(c, media)
+	n, err := io.Copy(c, reader.AtReader(media))
 	if err != nil {
 		return err
 	}
 	obj.Size = uint64(n)
 	obj.Crc32c = base64.StdEncoding.EncodeToString(c.Sum(nil))
-	_, err = media.Seek(0, 0)
-	return err
+	return nil
 }
 
 // Judges whether two Objects are equal based on size and CRC. To guard against

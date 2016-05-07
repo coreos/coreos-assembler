@@ -86,6 +86,7 @@ func TestCRCSumAndEq(t *testing.T) {
 	if err := crcSum(&a, r); err != nil {
 		t.Fatal(err)
 	}
+	r.Seek(0, 0)
 	if err := crcSum(&b, r); err != nil {
 		t.Fatal(err)
 	}
