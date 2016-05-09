@@ -258,7 +258,7 @@ func (b *Bucket) FetchPrefix(ctx context.Context, prefix string, recursive bool)
 	return nil
 }
 
-func (b *Bucket) Upload(ctx context.Context, obj *storage.Object, media io.ReadSeeker) error {
+func (b *Bucket) Upload(ctx context.Context, obj *storage.Object, media io.ReaderAt) error {
 	// Calculate the checksum to enable upload integrity checking.
 	if obj.Crc32c == "" {
 		obj = dupObj(obj) // avoid editing the original
@@ -277,8 +277,10 @@ func (b *Bucket) Upload(ctx context.Context, obj *storage.Object, media io.ReadS
 	}
 
 	req := b.service.Objects.Insert(b.name, obj)
-	req.Context(ctx)
-	req.Media(media)
+	// ResumableMedia is documented as deprecated in favor of Media
+	// but Media's retry support was bad and got temporarily removed.
+	// https://github.com/google/google-api-go-client/commit/9737cc9e103c00d06a8f3993361dec083df3d252
+	req.ResumableMedia(ctx, media, int64(obj.Size), obj.ContentType)
 
 	// Watch out for unexpected conflicting updates.
 	if old != nil {
