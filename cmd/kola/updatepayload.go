@@ -33,6 +33,7 @@ import (
 	sdkomaha "github.com/coreos/mantle/sdk/omaha"
 	"github.com/coreos/mantle/util"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
@@ -127,6 +128,12 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	if err != nil {
 		plog.Errorf("Machine failed: %v", err)
 		return
+	}
+
+	if plog.LevelAt(capnslog.DEBUG) {
+		if err := platform.StreamJournal(m); err != nil {
+			plog.Fatalf("Failed to start journal: %v", err)
+		}
 	}
 
 	plog.Info("Checking for boot from USR-A partition")
