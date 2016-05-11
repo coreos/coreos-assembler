@@ -55,6 +55,7 @@ var (
 	specChannel string
 	specVersion string
 	boards      = []string{"amd64-usr", "arm64-usr"}
+	gceBoards   = []string{"amd64-usr"}
 	specs       = map[string]channelSpec{
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
@@ -193,6 +194,17 @@ func ChannelSpec() channelSpec {
 	}
 	if !boardOk {
 		plog.Fatalf("Unknown board: %s", specBoard)
+	}
+
+	gceOk := false
+	for _, board := range gceBoards {
+		if specBoard == board {
+			gceOk = true
+			break
+		}
+	}
+	if !gceOk {
+		spec.GCE = gceSpec{}
 	}
 
 	return spec
