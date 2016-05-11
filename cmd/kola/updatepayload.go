@@ -86,11 +86,11 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	plog.Info("Bringing up test harness cluster")
 
 	cluster, err := platform.NewQemuCluster(kola.QEMUOptions)
-	qc := cluster.(*platform.QEMUCluster)
 	if err != nil {
 		plog.Fatalf("Cluster failed: %v", err)
 	}
 	defer cluster.Destroy()
+	qc := cluster.(*platform.QEMUCluster)
 
 	svc := &updateServer{
 		updatePath: dir,
