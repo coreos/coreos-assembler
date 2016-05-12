@@ -32,5 +32,7 @@ func init() {
 }
 
 func empty(_ platform.TestCluster) error {
-	return nil
+	// Requires environment configuration that doesn't exist in
+	// our current CI. Disabled until that gets sorted out...
+	return register.Skip
 }
