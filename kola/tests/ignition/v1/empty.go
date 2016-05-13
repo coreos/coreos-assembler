@@ -17,6 +17,8 @@ package ignition
 import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
 // Tests for https://github.com/coreos/bugs/issues/1184
@@ -24,10 +26,17 @@ import (
 // metadata since it will not be injected into the config.
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.empty",
+		Name:        "coreos.ignition.v1.empty.aws",
 		Run:         empty,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.empty.gce",
+		Run:         empty,
+		ClusterSize: 1,
+		Platforms:   []string{"gce"},
+		MinVersion:  semver.Version{Major: 1045},
 	})
 }
 
