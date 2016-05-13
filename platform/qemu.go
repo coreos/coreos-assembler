@@ -37,6 +37,8 @@ type QEMUOptions struct {
 	// BIOSImage is name of the BIOS file to pass to QEMU.
 	// It can be a plain name, or a full path.
 	BIOSImage string
+
+	*Options
 }
 
 // QEMUCluster is a local cluster of QEMU-based virtual machines.
@@ -67,7 +69,7 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	bc, err := newBaseCluster()
+	bc, err := newBaseCluster(conf.BaseName)
 	if err != nil {
 		return nil, err
 	}

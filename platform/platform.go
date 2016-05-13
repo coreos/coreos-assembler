@@ -79,6 +79,11 @@ type TestCluster struct {
 	Cluster
 }
 
+// Options contains the base options for all clusters.
+type Options struct {
+	BaseName string
+}
+
 // RunNative runs a registered NativeFunc on a remote machine
 func (t *TestCluster) RunNative(funcName string, m Machine) error {
 	// scp and execute kolet on remote machine

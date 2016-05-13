@@ -48,9 +48,10 @@ import (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
-	QEMUOptions platform.QEMUOptions // glue to set platform options from main
-	GCEOptions  platform.GCEOptions  // glue to set platform options from main
-	AWSOptions  platform.AWSOptions  // glue to set platform options from main
+	Options     = platform.Options{}
+	QEMUOptions = platform.QEMUOptions{Options: &Options} // glue to set platform options from main
+	GCEOptions  = platform.GCEOptions{Options: &Options}  // glue to set platform options from main
+	AWSOptions  = platform.AWSOptions{Options: &Options}  // glue to set platform options from main
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here

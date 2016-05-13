@@ -73,6 +73,7 @@ type AWSOptions struct {
 	KeyName       string
 	InstanceType  string
 	SecurityGroup string
+	*Options
 }
 
 type awsCluster struct {
@@ -91,7 +92,7 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
 	api := ec2.New(session.New(cfg))
 
-	bc, err := newBaseCluster()
+	bc, err := newBaseCluster(conf.BaseName)
 	if err != nil {
 		return nil, err
 	}

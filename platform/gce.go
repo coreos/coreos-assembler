@@ -35,9 +35,9 @@ type GCEOptions struct {
 	Zone        string
 	MachineType string
 	DiskType    string
-	BaseName    string
 	Network     string
 	ServiceAuth bool
+	*Options
 }
 
 type gceCluster struct {
@@ -70,7 +70,7 @@ func NewGCECluster(conf GCEOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	bc, err := newBaseCluster()
+	bc, err := newBaseCluster(conf.BaseName)
 	if err != nil {
 		return nil, err
 	}
