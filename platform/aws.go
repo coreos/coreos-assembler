@@ -70,7 +70,6 @@ func (am *awsMachine) Destroy() error {
 // AWSOptions contains AWS-specific instance options.
 type AWSOptions struct {
 	AMI           string
-	KeyName       string
 	InstanceType  string
 	SecurityGroup string
 	*Options
@@ -93,6 +92,19 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	api := ec2.New(session.New(cfg))
 
 	bc, err := newBaseCluster(conf.BaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := bc.agent.List()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = api.ImportKeyPair(&ec2.ImportKeyPairInput{
+		KeyName:           &bc.name,
+		PublicKeyMaterial: []byte(keys[0].String()),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +142,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		ImageId:        &ac.conf.AMI,
 		MinCount:       &cnt,
 		MaxCount:       &cnt,
-		KeyName:        &ac.conf.KeyName, // this is only useful if you wish to ssh in for debugging
+		KeyName:        &ac.name,
 		InstanceType:   &ac.conf.InstanceType,
 		SecurityGroups: []*string{&ac.conf.SecurityGroup},
 		UserData:       ud,
@@ -171,11 +183,19 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 }
 
 func (ac *awsCluster) Destroy() error {
+	_, err := ac.api.DeleteKeyPair(&ec2.DeleteKeyPairInput{
+		KeyName: &ac.name,
+	})
+	if err != nil {
+		return err
+	}
+
 	machs := ac.Machines()
 	for _, am := range machs {
 		am.Destroy()
 	}
 	ac.agent.Close()
+
 	return nil
 }
 
