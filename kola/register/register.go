@@ -15,7 +15,6 @@
 package register
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
@@ -24,7 +23,11 @@ import (
 
 // Skip is a sentinel value that can be returned by tests that are skipped
 // rather than passing or failing.
-var Skip = errors.New("test skipped")
+type Skip string
+
+func (s Skip) Error() string {
+	return string(s)
+}
 
 // Test provides the main test abstraction for kola. The run function is
 // the actual testing function while the other fields provide ways to
