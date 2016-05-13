@@ -94,11 +94,13 @@ func (res resultSlice) ToTAP(w io.Writer) error {
 	for i, r := range res {
 		t := r.test
 		err := r.result
-		if err != nil && err == register.Skip {
-			// TODO: print why it was skipped
-			_, werr = fmt.Fprintf(w, "ok %d - %s # SKIP\n", i+1, t.Name)
-		} else if err != nil {
-			_, werr = fmt.Fprintf(w, "not ok %d - %s # %s\n", i+1, t.Name, err)
+		if err != nil {
+			switch err.(type) {
+			case register.Skip:
+				_, werr = fmt.Fprintf(w, "ok %d - %s # SKIP: %s\n", i+1, t.Name, err)
+			default:
+				_, werr = fmt.Fprintf(w, "not ok %d - %s # %s\n", i+1, t.Name, err)
+			}
 		} else {
 			_, werr = fmt.Fprintf(w, "ok %d - %s\n", i+1, t.Name)
 		}
@@ -257,13 +259,17 @@ func RunTests(pattern, pltfrm string) error {
 		t := r.test
 		err := r.result
 		seconds := r.duration.Seconds()
-		if err != nil && err == register.Skip {
-			plog.Errorf("--- SKIP: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
-			skipped++
-		} else if err != nil {
-			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
-			plog.Errorf("        %v", err)
-			failed++
+		if err != nil {
+			switch err.(type) {
+			case register.Skip:
+				plog.Errorf("--- SKIP: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
+				plog.Errorf("        %v", err)
+				skipped++
+			default:
+				plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
+				plog.Errorf("        %v", err)
+				failed++
+			}
 		} else {
 			plog.Noticef("--- PASS: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 			passed++

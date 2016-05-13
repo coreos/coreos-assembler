@@ -94,7 +94,7 @@ func VerityCorruption(c platform.TestCluster) error {
 	out, err := m.SSH("sudo veritysetup status usr")
 	if err != nil && bytes.Equal(out, []byte("/dev/mapper/usr is inactive.")) {
 		// verity not in use, so skip.
-		return register.Skip
+		return register.Skip("verity is not enabled")
 	} else if err != nil {
 		return fmt.Errorf("failed checking verity status: %s: %v", out, err)
 	}
