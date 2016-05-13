@@ -8,6 +8,8 @@
 #   PKG=./foo ./test
 #
 
+cd $(dirname $0)
+
 # A replacement for `go fmt` that calls gofmt without -w
 gofmt-l() {
     set -- $(go list "$@")
@@ -41,5 +43,11 @@ gofmt-l $PKG
 
 echo "Checking govet..."
 go vet $PKG
+
+echo "Running commands..."
+for cmd in ${GOBIN}/*; do
+	echo " Running $(basename ${cmd})..."
+	${cmd} --help > /dev/null
+done
 
 echo "Success"
