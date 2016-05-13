@@ -171,8 +171,13 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 }
 
 // versionOutsideRange checks to see if version is outside [min, end). If end
-// is a zero value, it is ignored and there is no upper bound.
+// is a zero value, it is ignored and there is no upper bound. If version is a
+// zero value, the bounds are ignored.
 func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
+	if version == (semver.Version{}) {
+		return false
+	}
+
 	if version.LessThan(minVersion) {
 		return true
 	}
