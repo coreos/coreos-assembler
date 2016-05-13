@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/mantle/network"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
@@ -34,9 +35,11 @@ type baseCluster struct {
 
 	machlock sync.Mutex
 	machmap  map[string]Machine
+
+	name string
 }
 
-func newBaseCluster() (*baseCluster, error) {
+func newBaseCluster(basename string) (*baseCluster, error) {
 	// set reasonable timeout and keepalive interval
 	dialer := &net.Dialer{
 		Timeout:   30 * time.Second,
@@ -51,6 +54,7 @@ func newBaseCluster() (*baseCluster, error) {
 	bc := &baseCluster{
 		agent:   agent,
 		machmap: make(map[string]Machine),
+		name:    fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
 	}
 
 	return bc, nil
