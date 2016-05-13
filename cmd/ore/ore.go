@@ -26,7 +26,7 @@ var (
 		Short: "gce image creation and upload tools",
 	}
 
-	opts platform.GCEOptions
+	opts = platform.GCEOptions{Options: &platform.Options{}}
 )
 
 func main() {
