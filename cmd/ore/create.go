@@ -72,7 +72,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 
 	var vms []platform.Machine
 	for i := 0; i < createNumInstances; i++ {
-		vm, err := platform.GCECreateVM(api, &opts, cloudConfig)
+		vm, err := platform.GCECreateVM(api, &opts, cloudConfig, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating vm: %v\n", err)
 			os.Exit(1)
