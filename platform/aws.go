@@ -48,6 +48,10 @@ func (am *awsMachine) SSHClient() (*ssh.Client, error) {
 	return am.cluster.SSHClient(am.IP())
 }
 
+func (am *awsMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
+	return am.cluster.PasswordSSHClient(am.IP(), user, password)
+}
+
 func (am *awsMachine) SSH(cmd string) ([]byte, error) {
 	return am.cluster.SSH(am, cmd)
 }

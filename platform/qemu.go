@@ -250,6 +250,15 @@ func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
 	return sshClient, nil
 }
 
+func (m *qemuMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
+	client, err := m.qc.SSHAgent.NewPasswordClient(m.IP(), user, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 func (m *qemuMachine) SSH(cmd string) ([]byte, error) {
 	client, err := m.SSHClient()
 	if err != nil {

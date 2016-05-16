@@ -69,6 +69,15 @@ func (bc *baseCluster) SSHClient(ip string) (*ssh.Client, error) {
 	return sshClient, nil
 }
 
+func (bc *baseCluster) PasswordSSHClient(ip string, user string, password string) (*ssh.Client, error) {
+	sshClient, err := bc.agent.NewPasswordClient(ip, user, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return sshClient, nil
+}
+
 func (bc *baseCluster) SSH(m Machine, cmd string) ([]byte, error) {
 	client, err := bc.SSHClient(m.IP())
 	if err != nil {

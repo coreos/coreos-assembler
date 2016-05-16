@@ -126,16 +126,11 @@ func ensurePortSuffix(host string, port int) string {
 	}
 }
 
-// NewClient connects to the given host via SSH, the client will support
-// agent forwarding but it must also be enabled per-session.
-func (a *SSHAgent) NewClient(host string) (*ssh.Client, error) {
+func (a *SSHAgent) newClient(host string, user string, auth []ssh.AuthMethod) (*ssh.Client, error) {
 	sshcfg := ssh.ClientConfig{
-		User: a.User,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeysCallback(a.Signers),
-		},
+		User: user,
+		Auth: auth,
 	}
-
 	addr := ensurePortSuffix(host, defaultPort)
 	tcpconn, err := a.Dial("tcp", addr)
 	if err != nil {
@@ -154,5 +149,25 @@ func (a *SSHAgent) NewClient(host string) (*ssh.Client, error) {
 		return nil, err
 	}
 
+	return client, nil
+}
+
+// NewClient connects to the given host via SSH, the client will support
+// agent forwarding but it must also be enabled per-session.
+func (a *SSHAgent) NewClient(host string) (*ssh.Client, error) {
+	client, err := a.newClient(host, a.User, []ssh.AuthMethod{ssh.PublicKeysCallback(a.Signers)})
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+// NewPasswordClient connects to the given host via SSH using the
+// provided username and password
+func (a *SSHAgent) NewPasswordClient(host string, user string, password string) (*ssh.Client, error) {
+	client, err := a.newClient(host, user, []ssh.AuthMethod{ssh.Password(password)})
+	if err != nil {
+		return nil, err
+	}
 	return client, nil
 }
