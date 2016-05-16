@@ -139,6 +139,10 @@ func (gm *gceMachine) SSHClient() (*ssh.Client, error) {
 	return gm.gc.SSHClient(gm.IP())
 }
 
+func (gm *gceMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
+	return gm.gc.PasswordSSHClient(gm.IP(), user, password)
+}
+
 func (gm *gceMachine) SSH(cmd string) ([]byte, error) {
 	return gm.gc.SSH(gm, cmd)
 }

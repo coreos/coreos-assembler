@@ -47,6 +47,9 @@ type Machine interface {
 	// SSHClient establishes a new SSH connection to the machine.
 	SSHClient() (*ssh.Client, error)
 
+	// PasswordSSHClient establishes a new SSH connection using the provided credentials.
+	PasswordSSHClient(user string, password string) (*ssh.Client, error)
+
 	// SSH runs a single command over a new SSH connection.
 	SSH(cmd string) ([]byte, error)
 
