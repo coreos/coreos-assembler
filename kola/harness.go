@@ -348,8 +348,7 @@ func getClusterSemver(pltfrm string) (*semver.Version, error) {
 // single test. Using RunTest directly means that TestCluster flags used
 // to filter out tests such as 'Platforms', 'Manual', or 'MinVersion'
 // are not respected.
-func RunTest(t *register.Test, pltfrm string) error {
-	var err error
+func RunTest(t *register.Test, pltfrm string) (err error) {
 	var cluster platform.Cluster
 
 	switch pltfrm {
@@ -419,16 +418,26 @@ func RunTest(t *register.Test, pltfrm string) error {
 		}
 	}
 
+	defer func() {
+		r := recover()
+		switch r := r.(type) {
+		case nil:
+			// no-op
+		case error:
+			err = r
+		default:
+			err = fmt.Errorf("test panicked: %v", r)
+		}
+
+		// give some time for the remote journal to be flushed so it can be read
+		// before we run the deferred machine destruction
+		if err != nil {
+			time.Sleep(2 * time.Second)
+		}
+	}()
+
 	// run test
-	err = t.Run(tcluster)
-
-	// give some time for the remote journal to be flushed so it can be read
-	// before we run the deferred machine destruction
-	if err != nil {
-		time.Sleep(10 * time.Second)
-	}
-
-	return err
+	return t.Run(tcluster)
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
