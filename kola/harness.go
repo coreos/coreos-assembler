@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/platform"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
@@ -97,7 +98,7 @@ func (res resultSlice) ToTAP(w io.Writer) error {
 		err := r.result
 		if err != nil {
 			switch err.(type) {
-			case register.Skip:
+			case skip.Skip:
 				_, werr = fmt.Fprintf(w, "ok %d - %s # SKIP: %s\n", i+1, t.Name, err)
 			default:
 				_, werr = fmt.Fprintf(w, "not ok %d - %s # %s\n", i+1, t.Name, err)
@@ -262,7 +263,7 @@ func RunTests(pattern, pltfrm string) error {
 		seconds := r.duration.Seconds()
 		if err != nil {
 			switch err.(type) {
-			case register.Skip:
+			case skip.Skip:
 				plog.Errorf("--- SKIP: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
 				plog.Errorf("        %v", err)
 				skipped++
