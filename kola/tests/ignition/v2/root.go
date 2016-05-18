@@ -25,13 +25,7 @@ import (
 
 func init() {
 	// Reformat the root as btrfs
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.btrfsroot",
-		Run:         btrfsRoot,
-		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1010},
-		UserData: `{
+	btrfsConfig := `{
 		               "ignition": {
 		                   "version": "2.0.0"
 		               },
@@ -51,37 +45,61 @@ func init() {
 		                       }
 		                   ]
 		               }
-		           }`,
+		           }`
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2.btrfsroot.aws",
+		Run:         btrfsRoot,
+		ClusterSize: 1,
+		Platforms:   []string{"aws"},
+		MinVersion:  semver.Version{Major: 1010},
+		UserData:    btrfsConfig,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2.btrfsroot.gce",
+		Run:         btrfsRoot,
+		ClusterSize: 1,
+		Platforms:   []string{"gce"},
+		MinVersion:  semver.Version{Major: 1045},
+		UserData:    btrfsConfig,
 	})
 
 	// Reformat the root as xfs
+	xfsConfig := `{
+		             "ignition": {
+		                 "version": "2.0.0"
+		             },
+		             "storage": {
+		                 "filesystems": [
+		                     {
+		                         "mount": {
+		                             "device": "/dev/disk/by-label/ROOT",
+		                             "format": "xfs",
+		                             "create": {
+		                                 "force": true,
+		                                 "options": [
+		                                     "-L", "ROOT"
+		                                 ]
+		                             }
+		                         }
+		                     }
+		                 ]
+		             }
+		         }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.xfsroot",
+		Name:        "coreos.ignition.v2.xfsroot.aws",
 		Run:         xfsRoot,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
 		MinVersion:  semver.Version{Major: 1010},
-		UserData: `{
-		               "ignition": {
-		                   "version": "2.0.0"
-		               },
-		               "storage": {
-		                   "filesystems": [
-		                       {
-		                           "mount": {
-		                               "device": "/dev/disk/by-label/ROOT",
-		                               "format": "xfs",
-		                               "create": {
-		                                   "force": true,
-		                                   "options": [
-		                                       "-L", "ROOT"
-		                                   ]
-		                               }
-		                           }
-		                       }
-		                   ]
-		               }
-		           }`,
+		UserData:    xfsConfig,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2.xfsroot.gce",
+		Run:         xfsRoot,
+		ClusterSize: 1,
+		Platforms:   []string{"gce"},
+		MinVersion:  semver.Version{Major: 1045},
+		UserData:    xfsConfig,
 	})
 }
 

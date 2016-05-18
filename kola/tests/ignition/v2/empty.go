@@ -23,11 +23,18 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.empty",
+		Name:        "coreos.ignition.v2.empty.aws",
 		Run:         empty,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
 		MinVersion:  semver.Version{Major: 1010},
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2.empty.gce",
+		Run:         empty,
+		ClusterSize: 1,
+		Platforms:   []string{"gce"},
+		MinVersion:  semver.Version{Major: 1045},
 	})
 }
 

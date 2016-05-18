@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
@@ -30,29 +31,38 @@ var (
 
 func init() {
 	// Set the hostname
+	config := `{
+		          "ignitionVersion": 1,
+		          "storage": {
+		              "filesystems": [
+		                  {
+		                      "device": "/dev/disk/by-partlabel/ROOT",
+		                      "format": "ext4",
+		                      "files": [
+		                          {
+		                              "path": "/etc/hostname",
+		                              "mode": 420,
+		                              "contents": "core1"
+		                          }
+		                      ]
+		                  }
+		              ]
+		          }
+		      }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.sethostname",
+		Name:        "coreos.ignition.v1.sethostname.aws",
 		Run:         setHostname,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
-		UserData: `{
-		               "ignitionVersion": 1,
-		               "storage": {
-		                   "filesystems": [
-		                       {
-		                           "device": "/dev/disk/by-partlabel/ROOT",
-		                           "format": "ext4",
-		                           "files": [
-		                               {
-		                                   "path": "/etc/hostname",
-		                                   "mode": 420,
-		                                   "contents": "core1"
-		                               }
-		                           ]
-		                       }
-		                   ]
-		               }
-		           }`,
+		UserData:    config,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.sethostname.gce",
+		Run:         setHostname,
+		ClusterSize: 1,
+		Platforms:   []string{"gce"},
+		MinVersion:  semver.Version{Major: 1045},
+		UserData:    config,
 	})
 }
 

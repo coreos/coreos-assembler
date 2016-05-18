@@ -31,29 +31,38 @@ var (
 
 func init() {
 	// Set the hostname
+	config := `{
+		          "ignition": {
+		              "version": "2.0.0"
+		          },
+		          "storage": {
+		              "files": [
+		                  {
+		                      "filesystem": "root",
+		                      "path": "/etc/hostname",
+		                      "mode": 420,
+		                      "contents": {
+		                          "source": "data:,core1"
+		                      }
+		                  }
+		              ]
+		          }
+		      }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.sethostname",
+		Name:        "coreos.ignition.v2.sethostname.aws",
 		Run:         setHostname,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
 		MinVersion:  semver.Version{Major: 1010},
-		UserData: `{
-		               "ignition": {
-		                   "version": "2.0.0"
-		               },
-		               "storage": {
-		                   "files": [
-		                       {
-		                           "filesystem": "root",
-		                           "path": "/etc/hostname",
-		                           "mode": 420,
-		                           "contents": {
-		                               "source": "data:,core1"
-		                           }
-		                       }
-		                   ]
-		               }
-		           }`,
+		UserData:    config,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2.sethostname.gce",
+		Run:         setHostname,
+		ClusterSize: 1,
+		Platforms:   []string{"gce"},
+		MinVersion:  semver.Version{Major: 1045},
+		UserData:    config,
 	})
 }
 
