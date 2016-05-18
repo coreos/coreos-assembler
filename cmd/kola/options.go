@@ -27,7 +27,7 @@ var (
 	defaultTargetBoard = sdk.DefaultBoard()
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
-		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_developer_image.bin",
+		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
 	}
 
 	kolaDefaultBIOS = map[string]string{

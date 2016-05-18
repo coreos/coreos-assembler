@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/sdk/omaha"
 )
 
@@ -29,13 +30,10 @@ var (
 		Short: "Build an image update payload",
 		Run:   runBuildUpdate,
 	}
-
-	doProd = false
 )
 
 func init() {
 	buildCmd.AddCommand(buildUpdateCmd)
-	buildUpdateCmd.Flags().BoolVar(&doProd, "prod", false, "create a production image instead of developer")
 	root.AddCommand(buildCmd)
 }
 
@@ -44,7 +42,7 @@ func runBuildUpdate(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Unrecognized arguments: %v", args)
 	}
 
-	err := omaha.GenerateFullUpdate("latest", doProd)
+	err := omaha.GenerateFullUpdate(sdk.BuildImageDir("", ""))
 	if err != nil {
 		plog.Fatalf("Building full update failed: %v", err)
 	}

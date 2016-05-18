@@ -81,17 +81,9 @@ func checkUpdate(dir, update_xml string) error {
 	return u.Packages[0].Verify(pkgdir)
 }
 
-func GenerateFullUpdate(version string, prod bool) error {
-	var variant string
-	if prod {
-		variant = "production"
-	} else {
-		variant = "developer"
-	}
-
+func GenerateFullUpdate(dir string) error {
 	var (
-		dir           = sdk.BuildImageDir(version)
-		update_prefix = filepath.Join(dir, "coreos_"+variant+"_update")
+		update_prefix = filepath.Join(dir, "coreos_production_update")
 		update_bin    = update_prefix + ".bin"
 		update_gz     = update_prefix + ".gz"
 		update_xml    = update_prefix + ".xml"

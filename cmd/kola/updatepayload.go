@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -31,31 +30,28 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
 	sdkomaha "github.com/coreos/mantle/sdk/omaha"
-	"github.com/coreos/mantle/util"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
-func init() {
-	root.AddCommand(cmdUpdatePayload)
-}
-
-var cmdUpdatePayload = &cobra.Command{
-	Run:    runUpdatePayload,
-	PreRun: preRun,
-	Use:    "updatepayload",
-	Short:  "test serving a update_engine payload",
-	Long: `
+var (
+	updateTimeout    time.Duration
+	cmdUpdatePayload = &cobra.Command{
+		Run:    runUpdatePayload,
+		PreRun: preRun,
+		Use:    "updatepayload",
+		Short:  "test serving a update_engine payload",
+		Long: `
 Boot a CoreOS instance and serve an update payload to its update_engine.
 
 This command must run inside of the SDK as root, e.g.
 
 sudo kola updatepayload
 `,
-}
+	}
 
-var userdata = `#cloud-config
+	userdata = `#cloud-config
 
 coreos:
   update:
@@ -63,6 +59,14 @@ coreos:
     # we disable reboot so we have explicit control
     reboot-strategy: "off"
 `
+)
+
+func init() {
+	cmdUpdatePayload.Flags().DurationVar(
+		&updateTimeout, "timeout", 120*time.Second,
+		"maximum time to wait for update")
+	root.AddCommand(cmdUpdatePayload)
+}
 
 func runUpdatePayload(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
@@ -72,16 +76,9 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	plog.Info("Generating update payload")
 
 	// check for update file, generate if it doesn't exist
-	version := "latest"
-	dir := sdk.BuildImageDir(version)
-	payload := "coreos_production_update.gz"
-
-	_, err := os.Stat(filepath.Join(dir, payload))
-	if err != nil {
-		err = sdkomaha.GenerateFullUpdate("latest", true)
-		if err != nil {
-			plog.Fatalf("Building full update failed: %v", err)
-		}
+	dir := sdk.BuildImageDir(kola.QEMUOptions.Board, "latest")
+	if err := sdkomaha.GenerateFullUpdate(dir); err != nil {
+		plog.Fatalf("Building full update failed: %v", err)
 	}
 
 	plog.Info("Bringing up test harness cluster")
@@ -95,7 +92,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 	svc := &updateServer{
 		updatePath: dir,
-		payload:    payload,
+		payload:    "coreos_production_update.gz",
 	}
 
 	qc.OmahaServer.Updater = svc
@@ -153,24 +150,22 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	checker := func() error {
+	start := time.Now()
+	status := "unknown"
+	for status != "UPDATE_STATUS_UPDATED_NEED_REBOOT" && time.Since(start) < updateTimeout {
+		time.Sleep(10 * time.Second)
+
 		envs, err := m.SSH("update_engine_client -status 2>/dev/null")
 		if err != nil {
-			return err
+			plog.Fatalf("Checking update status failed: %v", err)
 		}
 
 		em := splitNewlineEnv(string(envs))
-
-		if em["CURRENT_OP"] != "UPDATE_STATUS_UPDATED_NEED_REBOOT" {
-			return fmt.Errorf("have not arrived in reboot state: currently at %s", em["CURRENT_OP"])
-		}
-
-		return nil
+		status = em["CURRENT_OP"]
 	}
 
-	if err := util.Retry(12, 10*time.Second, checker); err != nil {
-		plog.Errorf("Applying update payload failed: %v", err)
-		return
+	if status != "UPDATE_STATUS_UPDATED_NEED_REBOOT" {
+		plog.Fatalf("Update failed to complete within %s, current status %s", updateTimeout, status)
 	}
 
 	plog.Info("Rebooting test machine")
