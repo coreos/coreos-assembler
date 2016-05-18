@@ -24,8 +24,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/util"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
 const (
@@ -134,6 +136,31 @@ func (t *TestCluster) DropFile(localPath string) error {
 		}
 	}
 	return nil
+}
+
+// Error, Errorf, Skip, and Skipf partially implement testing.TB.
+
+func (t *TestCluster) err(e error) {
+	panic(e)
+}
+
+func (t *TestCluster) Error(e error) {
+	t.err(e)
+}
+
+func (t *TestCluster) Errorf(format string, args ...interface{}) {
+	t.err(fmt.Errorf(format, args...))
+}
+func (t *TestCluster) skip(why string) {
+	panic(skip.Skip(why))
+}
+
+func (t *TestCluster) Skip(args ...interface{}) {
+	t.skip(fmt.Sprint(args...))
+}
+
+func (t *TestCluster) Skipf(format string, args ...interface{}) {
+	t.skip(fmt.Sprintf(format, args...))
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser

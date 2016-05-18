@@ -21,14 +21,6 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-// Skip is a sentinel value that can be returned by tests that are skipped
-// rather than passing or failing.
-type Skip string
-
-func (s Skip) Error() string {
-	return string(s)
-}
-
 // Test provides the main test abstraction for kola. The run function is
 // the actual testing function while the other fields provide ways to
 // statically declare state of the platform.TestCluster before the test
