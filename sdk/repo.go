@@ -110,13 +110,18 @@ func BuildRoot() string {
 }
 
 // version may be "latest" or a full version like "752.1.0+2015-07-27-1656"
-func BuildImageDir(version string) string {
-	if version != "latest" {
+func BuildImageDir(board, version string) string {
+	if board == "" {
+		board = DefaultBoard()
+	}
+	if version == "" {
+		version = "latest"
+	} else if version != "latest" {
 		// Assume all builds are "attempt" #1
 		version += "-a1"
 	}
 	dir := defaultGroup + "-" + version
-	return filepath.Join(BuildRoot(), "images", DefaultBoard(), dir)
+	return filepath.Join(BuildRoot(), "images", board, dir)
 }
 
 func RepoInit(chroot, url, branch, name string) error {

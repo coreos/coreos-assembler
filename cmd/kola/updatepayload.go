@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -77,16 +76,9 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	plog.Info("Generating update payload")
 
 	// check for update file, generate if it doesn't exist
-	version := "latest"
-	dir := sdk.BuildImageDir(version)
-	payload := "coreos_production_update.gz"
-
-	_, err := os.Stat(filepath.Join(dir, payload))
-	if err != nil {
-		err = sdkomaha.GenerateFullUpdate("latest", true)
-		if err != nil {
-			plog.Fatalf("Building full update failed: %v", err)
-		}
+	dir := sdk.BuildImageDir(kola.QEMUOptions.Board, "latest")
+	if err := sdkomaha.GenerateFullUpdate(dir); err != nil {
+		plog.Fatalf("Building full update failed: %v", err)
 	}
 
 	plog.Info("Bringing up test harness cluster")
@@ -100,7 +92,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 	svc := &updateServer{
 		updatePath: dir,
-		payload:    payload,
+		payload:    "coreos_production_update.gz",
 	}
 
 	qc.OmahaServer.Updater = svc
