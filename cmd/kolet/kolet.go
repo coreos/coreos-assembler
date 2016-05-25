@@ -15,10 +15,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola/register"
 
@@ -27,46 +28,54 @@ import (
 )
 
 var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kolet")
+
 	root = &cobra.Command{
-		Use:   "kolet [command]",
+		Use:   "kolet",
 		Short: "Native code runner for kola",
 	}
 
 	cmdRun = &cobra.Command{
-		Use:   "run <test name> <func name>",
-		Short: "Run native tests a group at a time",
-		Run:   run,
+		Use:   "run",
+		Short: "Run a given test's native function",
 	}
 )
 
 func main() {
+	for testName, testObj := range register.Tests {
+		if len(testObj.NativeFuncs) == 0 {
+			continue
+		}
+		testCmd := &cobra.Command{
+			Use: testName,
+		}
+		for nativeName := range testObj.NativeFuncs {
+			nativeFunc := testObj.NativeFuncs[nativeName]
+			nativeRun := func(cmd *cobra.Command, args []string) {
+				if len(args) != 0 {
+					cmd.Usage()
+					os.Exit(2)
+				}
+				if err := nativeFunc(); err != nil {
+					plog.Fatal(err)
+				}
+				// Explicitly exit successfully.
+				os.Exit(0)
+			}
+			nativeCmd := &cobra.Command{
+				Use: nativeName,
+				Run: nativeRun,
+			}
+			testCmd.AddCommand(nativeCmd)
+		}
+		cmdRun.AddCommand(testCmd)
+	}
 	root.AddCommand(cmdRun)
+
 	cli.Execute(root)
-}
 
-// test runner
-func run(cmd *cobra.Command, args []string) {
-	if len(args) != 2 {
-		fmt.Fprintf(os.Stderr, "kolet: Extra arguements specified. Usage: 'kolet run <test name> <func name>'\n")
-		os.Exit(2)
-	}
-	testname, funcname := args[0], args[1]
-
-	// find test with matching name
-	test, ok := register.Tests[testname]
-	if !ok {
-		fmt.Fprintf(os.Stderr, "kolet: test group %q not found\n", testname)
-		os.Exit(1)
-	}
-	// find native function in test
-	f, ok := test.NativeFuncs[funcname]
-	if !ok {
-		fmt.Fprintf(os.Stderr, "kolet: native function %q not found\n", funcname)
-		os.Exit(1)
-	}
-	err := f()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "kolet: on native test %v: %v", funcname, err)
-		os.Exit(1)
-	}
+	// nativeRun always exits so if we are here it we probably just
+	// dumped usage/help info and stopped. Must exit with non-zero
+	// to prevent bugs from creating false-positives in kola.
+	os.Exit(2)
 }
