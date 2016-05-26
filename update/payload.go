@@ -15,8 +15,6 @@
 package update
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -174,8 +172,12 @@ func (p *Payload) Procedures() []*metadata.InstallProcedure {
 	return append(procs, p.Manifest.Procedures...)
 }
 
-func (p *Payload) Operations(proc *metadata.InstallProcedure) []*metadata.InstallOperation {
-	return proc.Operations
+func (p *Payload) Operations(proc *metadata.InstallProcedure) []*Operation {
+	ops := make([]*Operation, len(proc.Operations))
+	for i, op := range proc.Operations {
+		ops[i] = NewOperation(p, proc, op)
+	}
+	return ops
 }
 
 // Verify reads the entire payload and checks it for errors.
@@ -184,37 +186,13 @@ func (p *Payload) Verify() error {
 	for _, proc := range p.Procedures() {
 		for _, op := range p.Operations(proc) {
 			progress++
-			if err := p.verifyOp(op); err != nil {
+			if err := op.Verify(); err != nil {
 				return fmt.Errorf("operation %d: %v\n%s",
 					progress, err,
-					proto.MarshalTextString(op))
+					proto.MarshalTextString(op.Operation))
 			}
 		}
 	}
 
 	return p.VerifySignature()
-}
-
-func (p *Payload) verifyOp(op *metadata.InstallOperation) error {
-	if int64(op.GetDataOffset()) != p.Offset {
-		return fmt.Errorf("expected payload offset %d not %d",
-			op.DataOffset, p.Offset)
-	}
-
-	if len(op.DataSha256Hash) == 0 {
-		return fmt.Errorf("missing payload data hash")
-	}
-
-	hashOp := sha256.New()
-	if _, err := io.CopyN(hashOp, p, int64(op.GetDataLength())); err != nil {
-		return err
-	}
-	sum := hashOp.Sum(nil)
-
-	if !bytes.Equal(op.DataSha256Hash, sum) {
-		return fmt.Errorf("expected payload data hash %x not %x",
-			op.DataSha256Hash, sum)
-	}
-
-	return nil
 }
