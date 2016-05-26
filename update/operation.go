@@ -113,7 +113,53 @@ func (op *Operation) Apply(dst, src *os.File) error {
 }
 
 func (op *Operation) replace(dst *os.File, src io.Reader) error {
-	return fmt.Errorf("REPLACE")
+	if err := op.verifyOffset(); err != nil {
+		return err
+	}
+	if len(op.Operation.SrcExtents) != 0 {
+		return fmt.Errorf("replace contains source extents")
+	}
+
+	bs := int64(op.Payload.Manifest.GetBlockSize())
+	maxSize := int64(op.Procedure.NewInfo.GetSize())
+	for _, extent := range op.Operation.DstExtents {
+		offset := int64(extent.GetStartBlock()) * bs
+		length := int64(extent.GetNumBlocks()) * bs
+
+		// BUG: update_engine only writes as much of an extent as it
+		// has data for, allowing extents to be defined larger than
+		// they actually should be. So far this only appears to happen
+		// to the very last destination extent in a full update.
+		if offset+length > maxSize {
+			excess := (offset + length) - maxSize
+			plog.Warningf("extent excedes destination bounds by %d bytes!", excess)
+			length -= excess
+		}
+
+		if _, err := dst.Seek(offset, os.SEEK_SET); err != nil {
+			return err
+		}
+		if _, err := io.CopyN(dst, src, length); err != nil {
+			return err
+		}
+	}
+
+	// BUG: On rare occasions (once so far) 4 bytes will get left behind in
+	// a bzip2 compressed stream. Unclear what the bytes are and if they
+	// are there due to a difference in implementation of bzip2 itself or
+	// simply due to the algorithm being driven by reads instead of writes.
+	if op.N != 0 {
+		if op.Operation.GetType() == metadata.InstallOperation_REPLACE_BZ {
+			plog.Warningf("Go's bzip2 left %d bytes unread!", op.N)
+			if _, err := io.Copy(ioutil.Discard, op); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("replace left %d trailing bytes", op.N)
+		}
+	}
+
+	return op.verifyHash()
 }
 
 func (op *Operation) move(dst, src *os.File) error {
