@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -30,6 +31,15 @@ func TestAnonymousFile(t *testing.T) {
 
 	anon, err := AnonymousFile(tmp)
 	if err != nil {
+		// Travis is an unfun stick in the mud and gives us
+		// an ancient system lacking O_TMPFILE support.
+		if oserr, ok := err.(*os.PathError); ok {
+			if errno, ok := oserr.Err.(syscall.Errno); ok {
+				if errno == syscall.EOPNOTSUPP {
+					t.Skip("O_TMPFILE not supported")
+				}
+			}
+		}
 		t.Fatal(err)
 	}
 	defer anon.Close()
