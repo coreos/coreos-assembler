@@ -49,20 +49,35 @@ func LinkFile(file *os.File, name string) error {
 // name, the file's Name method does not return a real path. The file may
 // be later linked into the filesystem for safe keeping using LinkFile.
 func AnonymousFile(dir string) (*os.File, error) {
+	return tmpFile(dir, false)
+}
+
+// PrivateFile creates an unlinked temporary file in the given directory
+// or the default temporary directory if unspecified. Unlike AnonymousFile,
+// the opened file cannot be linked into the filesystem later.
+func PrivateFile(dir string) (*os.File, error) {
+	return tmpFile(dir, true)
+}
+
+func tmpFile(dir string, private bool) (*os.File, error) {
 	if dir == "" {
 		dir = os.TempDir()
 	}
 
-	anonPath := filepath.Join(dir, "(unlinked)")
-	anonFd, err := unix.Open(
-		dir, unix.O_RDWR|unix.O_TMPFILE|unix.O_CLOEXEC, 0600)
+	flags := unix.O_RDWR | unix.O_TMPFILE | unix.O_CLOEXEC
+	if private {
+		flags |= unix.O_EXCL
+	}
+
+	tmpPath := filepath.Join(dir, "(unlinked)")
+	tmpFd, err := unix.Open(dir, flags, 0600)
 	if err != nil {
 		return nil, &os.PathError{
 			Op:   "openat",
-			Path: anonPath,
+			Path: tmpPath,
 			Err:  err,
 		}
 	}
 
-	return os.NewFile(uintptr(anonFd), anonPath), nil
+	return os.NewFile(uintptr(tmpFd), tmpPath), nil
 }
