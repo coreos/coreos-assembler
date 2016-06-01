@@ -53,7 +53,7 @@ func TestAnonymousFile(t *testing.T) {
 	}
 
 	name := filepath.Join(tmp, "name")
-	if err := anon.Link(name); err != nil {
+	if err := LinkFile(anon, name); err != nil {
 		t.Errorf("Link failed: %v", err)
 	}
 

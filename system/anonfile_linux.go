@@ -22,24 +22,21 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/sys/unix"
 )
 
-type AnonFile struct {
-	os.File
-}
-
-// Link the anonymous file into the filesystem. The caller should ensure the
-// new path is on the same filesystem as the directory passed to AnonymousFile.
-// This may be called multiple times and does not influence the output of Name.
-func (a *AnonFile) Link(name string) error {
+// LinkFile creates a new link to an open File instead of an existing
+// name as os.Link and friends do. Particularly useful for making a file
+// created by AnonymousFile accessible in the filesystem. As with Link the
+// caller should ensure the new name is on the same filesystem.
+func LinkFile(file *os.File, name string) error {
 	// The AT_EMPTY_PATH version needs CAP_DAC_READ_SEARCH but using
 	// /proc and AT_SYMLINK_FOLLOW does not and is the "normal" way.
 	//Linkat(int(a.Fd()), "", AT_FDCWD, name, AT_EMPTY_PATH)
 	err := unix.Linkat(
-		unix.AT_FDCWD, fmt.Sprintf("/proc/self/fd/%d", a.Fd()),
+		unix.AT_FDCWD, fmt.Sprintf("/proc/self/fd/%d", file.Fd()),
 		unix.AT_FDCWD, name, unix.AT_SYMLINK_FOLLOW)
 	if err != nil {
 		return &os.LinkError{
 			Op:  "linkat",
-			Old: a.Name(),
+			Old: file.Name(),
 			New: name,
 			Err: err,
 		}
@@ -49,8 +46,9 @@ func (a *AnonFile) Link(name string) error {
 
 // AnonymousFile creates an unlinked temporary file in the given directory
 // or the default temporary directory if unspecified. Since the file has no
-// name, the file's Name method does not return a real path.
-func AnonymousFile(dir string) (*AnonFile, error) {
+// name, the file's Name method does not return a real path. The file may
+// be later linked into the filesystem for safe keeping using LinkFile.
+func AnonymousFile(dir string) (*os.File, error) {
 	if dir == "" {
 		dir = os.TempDir()
 	}
@@ -66,5 +64,5 @@ func AnonymousFile(dir string) (*AnonFile, error) {
 		}
 	}
 
-	return &AnonFile{*os.NewFile(uintptr(anonFd), anonPath)}, nil
+	return os.NewFile(uintptr(anonFd), anonPath), nil
 }
