@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
 	"GoVersion": "go1.5",
-	"GodepVersion": "v62",
+	"GodepVersion": "v72",
 	"Packages": [
 		"./..."
 	],
@@ -592,7 +592,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",
-			"Rev": "2bacc619e34d59719d9ed86f0e04e8261aed3409"
+			"Rev": "d4feaf1a7e61e1d9e79e6c4e76c6349e9cab0a03"
 		},
 		{
 			"ImportPath": "google.golang.org/api/compute/v1",
