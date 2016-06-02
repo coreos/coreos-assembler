@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package update
+package signature
 
 import (
 	"crypto"
@@ -44,7 +44,7 @@ EFkZphrGjiqiCdp9AAbAvE7a5rFcJf86YR73QX08K8BX7OMzkn3DsqdnWvLB3l3W
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "update")
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "update/signature")
 )
 
 func NewSignatureHash() hash.Hash {
