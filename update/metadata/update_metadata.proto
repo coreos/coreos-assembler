@@ -1,0 +1,193 @@
+// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+package chromeos_update_engine;
+
+// Update file format: A delta update file contains all the deltas needed
+// to update a system from one specific version to another specific
+// version. The update format is represented by this struct pseudocode:
+// struct delta_update_file {
+//   char magic[4] = "CrAU";
+//   uint64 file_format_version = 1;
+//   uint64 manifest_size;  // Size of protobuf DeltaArchiveManifest
+//   // The Bzip2 compressed DeltaArchiveManifest
+//   char manifest[];
+//
+//   // Data blobs for files, no specific format. The specific offset
+//   // and length of each data blob is recorded in the DeltaArchiveManifest.
+//   struct {
+//     char data[];
+//   } blobs[];
+//
+//   // These two are not signed:
+//   uint64 signatures_message_size;
+//   char signatures_message[];
+//
+// };
+
+// The DeltaArchiveManifest protobuf is an ordered list of InstallOperation
+// objects. These objects are stored in a linear array in the
+// DeltaArchiveManifest. Each operation is applied in order by the client.
+
+// The DeltaArchiveManifest also contains the initial and final
+// checksums for the device.
+
+// The client will perform each InstallOperation in order, beginning even
+// before the entire delta file is downloaded (but after at least the
+// protobuf is downloaded). The types of operations are explained:
+// - REPLACE: Replace the dst_extents on the drive with the attached data,
+//   zero padding out to block size.
+// - REPLACE_BZ: bzip2-uncompress the attached data and write it into
+//   dst_extents on the drive, zero padding to block size.
+// - MOVE: Copy the data in src_extents to dst_extents. Extents may overlap,
+//   so it may be desirable to read all src_extents data into memory before
+//   writing it out.
+// - BSDIFF: Read src_length bytes from src_extents into memory, perform
+//   bspatch with attached data, write new data to dst_extents, zero padding
+//   to block size.
+message InstallOperation {
+  enum Type {
+    REPLACE = 0;  // Replace destination extents w/ attached data
+    REPLACE_BZ = 1;  // Replace destination extents w/ attached bzipped data
+    MOVE = 2;  // Move source extents to destination extents
+    BSDIFF = 3;  // The data is a bsdiff binary diff
+  }
+  required Type type = 1;
+  // The offset into the delta file (after the protobuf)
+  // where the data (if any) is stored
+  optional uint32 data_offset = 2;
+  // The length of the data in the delta file
+  optional uint32 data_length = 3;
+
+  // Ordered list of extents that are read from (if any) and written to.
+  repeated Extent src_extents = 4;
+  // Byte length of src, not necessarily block aligned. It's only used for
+  // BSDIFF, because we need to pass that external program the number
+  // of bytes to read from the blocks we pass it.
+  optional uint64 src_length = 5;
+
+  repeated Extent dst_extents = 6;
+  // byte length of dst, not necessarily block aligned. It's only used for
+  // BSDIFF, because we need to fill in the rest of the last block
+  // that bsdiff writes with '\0' bytes.
+  optional uint64 dst_length = 7;
+
+  // Optional SHA 256 hash of the blob associated with this operation.
+  // This is used as a primary validation for http-based downloads and
+  // as a defense-in-depth validation for https-based downloads. If
+  // the operation doesn't refer to any blob, this field will have
+  // zero bytes.
+  optional bytes data_sha256_hash = 8;
+}
+
+// Data is packed into blocks on disk, always starting from the beginning
+// of the block. If a file's data is too large for one block, it overflows
+// into another block, which may or may not be the following block on the
+// physical partition. An ordered list of extents is another
+// representation of an ordered list of blocks. For example, a file stored
+// in blocks 9, 10, 11, 2, 18, 12 (in that order) would be stored in
+// extents { {9, 3}, {2, 1}, {18, 1}, {12, 1} } (in that order).
+// In general, files are stored sequentially on disk, so it's more efficient
+// to use extents to encode the block lists (this is effectively
+// run-length encoding).
+// A sentinel value (UINT64_MAX) as the start block denotes a sparse-hole
+// in a file whose block-length is specified by num_blocks.
+message Extent {
+  optional uint64 start_block = 1;
+  optional uint64 num_blocks = 2;
+}
+
+// Signatures: Updates may be signed by the OS vendor. The client verifies
+// an update's signature by hashing the entire download. The section of the
+// download that contains the signature is at the end of the file, so when
+// signing a file, only the part up to the signature part is signed.
+// Then, the client looks inside the download's Signatures message for a
+// Signature message that it knows how to handle. Generally, a client will
+// only know how to handle one type of signature, but an update may contain
+// many signatures to support many different types of client. Then client
+// selects a Signature message and uses that, along with a known public key,
+// to verify the download. The public key is expected to be part of the
+// client.
+message Signatures {
+  message Signature {
+    optional uint32 version = 1;
+    optional bytes data = 2;
+  }
+  repeated Signature signatures = 1;
+}
+
+// Info is used to validate the source prior to the update or
+// the destination after the list of InstallOperations has run.
+
+message InstallInfo {
+  optional uint64 size = 1;
+  optional bytes hash = 2;
+}
+
+// InstallProcedure defines the update procedure for a single file or block
+// device (except for /usr which is in DeltaArchiveManifest).
+message InstallProcedure {
+  enum Type {
+    KERNEL = 0;  // A kernel image to install to the boot partition.
+  }
+  required Type type = 1;
+
+  repeated InstallOperation operations = 2;
+
+  optional InstallInfo old_info = 3;
+  optional InstallInfo new_info = 4;
+}
+
+message DeltaArchiveManifest {
+  // The update procedure for the main partition (USR-A or USR-B). Once
+  // complete it should match the hash specified in new_partition_info.
+  repeated InstallOperation partition_operations = 1;
+
+  // This field is maintained for compatibility with older update_engine
+  // clients. In the ChromeOS days it covered the kernel partition but in
+  // CoreOS it has only been used to insert a dummy operation to account for
+  // the signatures tacked onto the end of the payload. The code was not smart
+  // enough to stop passing data to the filesystem writer code after the
+  // signatures_offset had been reached, instead using the magic punch-hole
+  // value to skip over the extra data. Since CoreOS versions of update_engine
+  // only partially removed support kernel partitions passing anything other
+  // than dummy operations will trigger broken code paths but omitting the
+  // dummy operations will fail when the filesystem writer receives unexpected
+  // data. Therefore to work with old versions it strictly *must* look like:
+  //
+  //   noop_operations: {
+  //     type: REPLACE
+  //     data_offset: signatures_offset
+  //     data_length: signatures_size
+  //     dst_extents: {
+  //       start_block: UINT64_MAX
+  //       num_blocks: (signature_size + block_size - 1) / block_size
+  //     }
+  //   }
+  //
+  repeated InstallOperation noop_operations = 2;
+
+  // (At time of writing) usually 4096
+  optional uint32 block_size = 3 [default = 4096];
+
+  // If signatures are present, the offset into the blobs, generally
+  // tacked onto the end of the file, and the length. We use an offset
+  // rather than a bool to allow for more flexibility in future file formats.
+  // If either is absent, it means signatures aren't supported in this
+  // file.
+  optional uint64 signatures_offset = 4;
+  optional uint64 signatures_size = 5;
+
+  // Deprecated IDs 6 and 7, do not reuse.
+
+  // Partition data that can be used to validate the update.
+  optional InstallInfo old_partition_info = 8;
+  optional InstallInfo new_partition_info = 9;
+
+  // In addition to the partition update, process updates for additional
+  // files, such as kernels. Versions of update_engine that can interpret
+  // this list *MUST* ignore noop_operations and properly account for the
+  // signature data at the end of the payload.
+  repeated InstallProcedure procedures = 10;
+}
