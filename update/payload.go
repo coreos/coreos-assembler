@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 
 	"github.com/coreos/mantle/update/metadata"
+	"github.com/coreos/mantle/update/signature"
 )
 
 var (
@@ -54,7 +55,7 @@ type Payload struct {
 }
 
 func NewPayloadFrom(r io.Reader) (*Payload, error) {
-	h := NewSignatureHash()
+	h := signature.NewSignatureHash()
 	p := &Payload{h: h, r: r}
 
 	if err := p.readHeader(); err != nil {
@@ -146,7 +147,7 @@ func (p *Payload) VerifySignature() error {
 		return err
 	}
 
-	if err := VerifySignature(sum, &p.Signatures); err != nil {
+	if err := signature.VerifySignature(sum, &p.Signatures); err != nil {
 		return err
 	}
 
