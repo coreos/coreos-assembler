@@ -20,20 +20,25 @@ import (
 )
 
 const (
-	testEmptyHashStr = `47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=`
-	testOnesHashStr  = `9HqOw+mv8jGNiWlCKCrU/jfWORyCkU9UpdqKN94TAMY=`
+	testEmptyHashStr     = `47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=`
+	testOnesHashStr      = `9HqOw+mv8jGNiWlCKCrU/jfWORyCkU9UpdqKN94TAMY=`
+	testUnalignedHashStr = `6pwJcxe6bTOSepRIAED1jRKLlIMd+xhzoxv1CzBayrE=`
 )
 
 var (
-	testEmptyHash []byte
-	testOnes      []byte
-	testOnesHash  []byte
+	testEmptyHash     []byte
+	testOnes          []byte
+	testOnesHash      []byte
+	testUnaligned     []byte
+	testUnalignedHash []byte
 )
 
 func init() {
 	testEmptyHash = mustBase64(testEmptyHashStr)
 	testOnes = bytes.Repeat([]byte{0xff}, BlockSize)
 	testOnesHash = mustBase64(testOnesHashStr)
+	testUnaligned = append(testOnes, 0xff)
+	testUnalignedHash = mustBase64(testUnalignedHashStr)
 }
 
 func mustBase64(s string) []byte {
