@@ -16,6 +16,7 @@ package generator
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"os"
 
@@ -27,8 +28,17 @@ import (
 	"github.com/coreos/mantle/update/signature"
 )
 
+const (
+	// Default block size to use for all generated payloads.
+	BlockSize = 4096
+)
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "update/generator")
+
+	// ErrProcedureExists indicates that a given procedure type has
+	// already been added to the Generator.
+	ErrProcedureExists = errors.New("generator: procedure already exists")
 )
 
 // Generator assembles an update payload from a number of sources. Each of
@@ -37,6 +47,27 @@ type Generator struct {
 	destructor.MultiDestructor
 	manifest metadata.DeltaArchiveManifest
 	payloads []io.Reader
+}
+
+// Procedure represent independent update within a payload.
+type Procedure struct {
+	metadata.InstallProcedure
+	io.ReadCloser
+}
+
+// Partition adds the given /usr update Procedure to the payload.
+// It must always be the first procedure added to the Generator.
+func (g *Generator) Partition(proc *Procedure) error {
+	if len(g.payloads) != 0 {
+		return ErrProcedureExists
+	}
+
+	g.AddCloser(proc)
+	g.manifest.PartitionOperations = proc.Operations
+	g.manifest.OldPartitionInfo = proc.OldInfo
+	g.manifest.NewPartitionInfo = proc.NewInfo
+	g.payloads = append(g.payloads, proc)
+	return nil
 }
 
 // Write finalizes the payload, writing it out to the given file path.
@@ -81,8 +112,25 @@ func (g *Generator) Write(path string) (err error) {
 }
 
 func (g *Generator) updateOffsets() error {
+	var offset uint32
+	updateOps := func(ops []*metadata.InstallOperation) {
+		for _, op := range ops {
+			if op.DataLength == nil {
+				op.DataOffset = nil
+			} else {
+				op.DataOffset = proto.Uint32(offset)
+				offset += *op.DataLength
+			}
+		}
+	}
+
+	updateOps(g.manifest.PartitionOperations)
+	for _, proc := range g.manifest.Procedures {
+		updateOps(proc.Operations)
+	}
+
 	sigSize, err := signature.SignaturesSize()
-	g.manifest.SignaturesOffset = proto.Uint64(0)
+	g.manifest.SignaturesOffset = proto.Uint64(uint64(offset))
 	g.manifest.SignaturesSize = proto.Uint64(uint64(sigSize))
 	return err
 }
