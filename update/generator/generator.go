@@ -31,6 +31,9 @@ import (
 const (
 	// Default block size to use for all generated payloads.
 	BlockSize = 4096
+
+	// Default data size limit to process in a single operation.
+	ChunkSize = BlockSize * 256
 )
 
 var (
