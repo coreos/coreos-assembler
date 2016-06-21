@@ -75,6 +75,34 @@ func checkReplace(t *testing.T, ops []*metadata.InstallOperation, source, source
 	}
 }
 
+func checkReplaceBZ(t *testing.T, ops []*metadata.InstallOperation, source, sourceHash, payload []byte) {
+	if len(ops) != 1 {
+		t.Fatalf("unexpected operations: %v", ops)
+	}
+
+	op := ops[0]
+	if op.GetType() != metadata.InstallOperation_REPLACE_BZ {
+		t.Errorf("unexpected operation type: %s", op.GetType())
+	}
+
+	if len(op.DstExtents) != 1 {
+		t.Fatalf("unexpected extents: %d", op.GetDstExtents())
+	}
+
+	ext := op.DstExtents[0]
+	if ext.GetStartBlock() != 0 || ext.GetNumBlocks() != 1 {
+		t.Fatalf("unexpected extent: %v", ext)
+	}
+
+	if op.GetDataLength() == 0 && op.GetDataLength() >= BlockSize {
+		t.Errorf("unexpected payload size %d", op.GetDataLength())
+	}
+
+	if !bytes.Equal(bunzip2(t, payload), source) {
+		t.Errorf("source not properly compressed in payload")
+	}
+}
+
 func checkFullScan(t *testing.T, source []byte) ([]*metadata.InstallOperation, []byte) {
 	var payload bytes.Buffer
 	scanner := fullScanner{
@@ -100,8 +128,13 @@ func checkFullScan(t *testing.T, source []byte) ([]*metadata.InstallOperation, [
 func TestFullUpdateScanOnes(t *testing.T) {
 	ops, payload := checkFullScan(t, testOnes)
 
-	// TODO: will become a REPLACE_BZ operation
-	checkReplace(t, ops, testOnes, testOnesHash, payload)
+	checkReplaceBZ(t, ops, testOnes, testOnesHash, payload)
+}
+
+func TestFullUpdateScanRand(t *testing.T) {
+	ops, payload := checkFullScan(t, testRand)
+
+	checkReplace(t, ops, testRand, testRandHash, payload)
 }
 
 func TestFullUpdateScanUnaligned(t *testing.T) {
@@ -152,6 +185,17 @@ func TestFullUpdateOnes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO: will become a REPLACE_BZ operation
-	checkReplace(t, proc.Operations, testOnes, testOnesHash, payload)
+	checkReplaceBZ(t, proc.Operations, testOnes, testOnesHash, payload)
+}
+
+func TestFullUpdateRand(t *testing.T) {
+	proc := checkFullProc(t, testRand, testRandHash)
+	defer proc.Close()
+
+	payload, err := ioutil.ReadAll(proc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checkReplace(t, proc.Operations, testRand, testRandHash, payload)
 }

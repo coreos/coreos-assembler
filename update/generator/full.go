@@ -105,19 +105,32 @@ func (f *fullScanner) Scan() error {
 	numBlocks := uint64(len(chunk)) / BlockSize
 	f.offset += uint64(len(chunk))
 
-	if _, err := f.payload.Write(chunk); err != nil {
+	// Try bzip2 compressing the data, hopefully it will shrink!
+	opType := metadata.InstallOperation_REPLACE_BZ
+	opData, err := Bzip2(chunk)
+	if err != nil {
+		return err
+	}
+
+	if len(opData) >= len(chunk) {
+		// That was disappointing, use the uncompressed data instead.
+		opType = metadata.InstallOperation_REPLACE
+		opData = chunk
+	}
+
+	if _, err := f.payload.Write(opData); err != nil {
 		return err
 	}
 
 	// Operation.DataOffset is filled in by Generator.updateOffsets
-	sum := sha256.Sum256(chunk)
+	sum := sha256.Sum256(opData)
 	op := &metadata.InstallOperation{
-		Type: metadata.InstallOperation_REPLACE.Enum(),
+		Type: opType.Enum(),
 		DstExtents: []*metadata.Extent{&metadata.Extent{
 			StartBlock: proto.Uint64(startBlock),
 			NumBlocks:  proto.Uint64(numBlocks),
 		}},
-		DataLength:     proto.Uint32(uint32(len(chunk))),
+		DataLength:     proto.Uint32(uint32(len(opData))),
 		DataSha256Hash: sum[:],
 	}
 
