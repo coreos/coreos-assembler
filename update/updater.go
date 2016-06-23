@@ -46,12 +46,12 @@ func (u *Updater) OpenPayload(file string) error {
 		return err
 	}
 
-	u.payload, err = NewPayloadFrom(f)
-	if err != nil {
-		return err
-	}
+	return u.UsePayload(f)
+}
 
-	return nil
+func (u *Updater) UsePayload(r io.Reader) (err error) {
+	u.payload, err = NewPayloadFrom(r)
+	return err
 }
 
 func (u *Updater) Update() error {
