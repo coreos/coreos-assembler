@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/sys/unix"
 )
@@ -80,4 +81,17 @@ func tmpFile(dir string, private bool) (*os.File, error) {
 	}
 
 	return os.NewFile(uintptr(tmpFd), tmpPath), nil
+}
+
+// IsOpNotSupported reports true if the underlying error was EOPNOTSUPP.
+// Useful for checking if the host or filesystem lacks O_TMPFILE support.
+func IsOpNotSupported(err error) bool {
+	if oserr, ok := err.(*os.PathError); ok {
+		if errno, ok := oserr.Err.(syscall.Errno); ok {
+			if errno == syscall.EOPNOTSUPP {
+				return true
+			}
+		}
+	}
+	return false
 }

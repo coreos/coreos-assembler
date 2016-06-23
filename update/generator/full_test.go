@@ -21,6 +21,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/update/metadata"
 )
 
@@ -161,7 +162,9 @@ func checkFullProc(t *testing.T, source, sourceHash []byte) *Procedure {
 	}
 
 	proc, err := FullUpdate(f.Name())
-	if err != nil {
+	if system.IsOpNotSupported(err) {
+		t.Skip("O_TMPFILE not supported")
+	} else if err != nil {
 		t.Fatal(err)
 	}
 
