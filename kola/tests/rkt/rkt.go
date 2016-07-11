@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,56 @@
 
 package rkt
 
-import ()
+import (
+	"fmt"
+	"time"
+
+	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
+
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+)
+
+var conf = `{
+	"ignition": {
+		"version": "2.0.0"
+	},
+	"systemd": {
+		"units": [{
+			"name": "etcd3-wrapper.service",
+			"enable": true,
+		}]
+	}
+}`
 
 func init() {
+	register.Register(&register.Test{
+		Run:         rktEtcd,
+		ClusterSize: 1,
+		Platforms:   []string{"aws", "gce"},
+		Name:        "coreos.rkt.etcd3",
+		UserData:    conf,
+		MinVersion:  semver.Version{Major: 1106},
+	})
+}
+
+func rktEtcd(t platform.TestCluster) error {
+	m := t.Machines()[0]
+
+	etcdCmd := "etcdctl cluster-health"
+	etcdCheck := func() error {
+		output, err := m.SSH(etcdCmd)
+		if err != nil {
+			return fmt.Errorf("failed to run %q: output: %q status: %q", etcdCmd, output, err)
+		}
+
+		return nil
+	}
+
+	if err := util.Retry(60, 3*time.Second, etcdCheck); err != nil {
+		t.Errorf("etcd in rkt failed health check: %v", err)
+	}
+
+	return nil
 }
