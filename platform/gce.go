@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
+	"google.golang.org/api/compute/v1"
 
 	"github.com/coreos/mantle/auth"
 )

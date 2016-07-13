@@ -24,9 +24,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+	"golang.org/x/net/context"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/storage/v1"
 )
 
 var (

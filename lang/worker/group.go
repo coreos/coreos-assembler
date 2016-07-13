@@ -17,8 +17,8 @@ package worker
 import (
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/multierror"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/pkg/multierror"
+	"golang.org/x/net/context"
 )
 
 // Worker is a function that WorkerGroup will run in a new goroutine.

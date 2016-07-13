@@ -21,8 +21,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/coreos/mantle/update/metadata"
 )

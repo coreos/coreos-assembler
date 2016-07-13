@@ -17,7 +17,7 @@ package destructor
 import (
 	"io"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/multierror"
+	"github.com/coreos/pkg/multierror"
 )
 
 // Destructor is a common interface for objects that need to be cleaned up.

@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
+	"github.com/vishvananda/netlink"
 )
 
 const (

@@ -25,8 +25,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/network/omaha"

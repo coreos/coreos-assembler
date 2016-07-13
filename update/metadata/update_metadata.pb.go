@@ -18,7 +18,7 @@ It has these top-level messages:
 */
 package metadata
 
-import proto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
 

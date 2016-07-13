@@ -18,9 +18,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/pflag"
+	"github.com/coreos/go-semver/semver"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/sdk/repo"

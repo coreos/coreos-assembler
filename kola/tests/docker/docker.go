@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/go-semver/semver"
+	"github.com/coreos/pkg/capnslog"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"

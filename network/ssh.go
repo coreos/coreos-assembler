@@ -23,8 +23,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 const (

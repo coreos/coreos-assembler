@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/coreos/mantle/update"
 	"github.com/coreos/mantle/update/metadata"

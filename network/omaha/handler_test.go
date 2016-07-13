@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/kylelemons/godebug/diff"
+	"github.com/kylelemons/godebug/diff"
 )
 
 const (

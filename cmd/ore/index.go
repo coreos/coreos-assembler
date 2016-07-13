@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/storage"

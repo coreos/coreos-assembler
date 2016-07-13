@@ -19,8 +19,8 @@ import (
 	"net"
 	"text/template"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/vishvananda/netlink"
 
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
