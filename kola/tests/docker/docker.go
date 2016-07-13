@@ -18,15 +18,15 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/targen"
-
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 var (

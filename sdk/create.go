@@ -23,6 +23,7 @@ import (
 	"text/template"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/user"
 	"github.com/coreos/mantle/util"

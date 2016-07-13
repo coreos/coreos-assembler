@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 )

@@ -28,7 +28,8 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	storage "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )

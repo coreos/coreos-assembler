@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 )
