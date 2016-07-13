@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
+
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/sdk"
 )

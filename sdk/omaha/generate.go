@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/sdk"
 )

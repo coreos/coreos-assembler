@@ -22,11 +22,11 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
-
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/kubernetes")

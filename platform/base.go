@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/network"
-
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+
+	"github.com/coreos/mantle/network"
 )
 
 type baseCluster struct {

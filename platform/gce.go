@@ -23,11 +23,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/auth"
-
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
 	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
+
+	"github.com/coreos/mantle/auth"
 )
 
 type GCEOptions struct {
