@@ -12,7 +12,6 @@ cd $(dirname $0)
 
 # A replacement for `go fmt` that calls gofmt without -w
 gofmt-l() {
-    set -- $(go list "$@")
     pushd "${GOPATH}/src" >/dev/null
     c=$(gofmt -l "$@" | tee /dev/stderr | wc -c)
     popd >/dev/null
@@ -31,18 +30,21 @@ cd gopath/src/${REPO_PATH}
 # PKG may be passed in from ./cover
 [[ -z "$PKG" ]] && PKG="./..."
 
+# Expand PKG, excluding the vendor directory.
+pkgs=$(go list $PKG | grep -v /vendor/)
+
 echo "Building tests..."
-go test -i "$@" $PKG
-go install $PKG
+go test -i "$@" $pkgs
+go install $pkgs
 
 echo "Running tests..."
-go test -cover "$@" $PKG
+go test -cover "$@" $pkgs
 
 echo "Checking gofmt..."
-gofmt-l $PKG
+gofmt-l $pkgs
 
 echo "Checking govet..."
-go vet $PKG
+go vet $pkgs
 
 echo "Running commands..."
 for cmd in ${GOBIN}/*; do
