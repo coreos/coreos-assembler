@@ -130,8 +130,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/coreos-cloudinit/config",
-			"Comment": "v1.4.0-3-g4042920",
-			"Rev": "40429204ba955b0e7e8fb3c308d0067c84dd6cfb"
+			"Comment": "v1.11.0",
+			"Rev": "4c333e657bfbaa8f6594298b48324f45e6bf5961"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/alarm",
