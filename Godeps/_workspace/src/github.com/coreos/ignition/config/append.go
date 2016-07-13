@@ -17,7 +17,7 @@ package config
 import (
 	"reflect"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/config/types"
 )
 
 // Append appends newConfig to oldConfig and returns the result. Appending one

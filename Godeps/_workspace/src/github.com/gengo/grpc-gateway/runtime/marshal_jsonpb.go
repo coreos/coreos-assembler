@@ -7,8 +7,8 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/jsonpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 )
 
 // JSONPb is a Marshaler which marshals/unmarshals into/from JSON

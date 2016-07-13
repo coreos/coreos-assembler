@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/kylelemons/godebug/pretty"
+	"github.com/kylelemons/godebug/pretty"
 )
 
 func TestPackageFromPath(t *testing.T) {

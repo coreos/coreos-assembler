@@ -19,12 +19,12 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/lease"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/lease/leasehttp"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/metadata"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/lease/leasehttp"
+	"github.com/coreos/etcd/mvcc"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 const (

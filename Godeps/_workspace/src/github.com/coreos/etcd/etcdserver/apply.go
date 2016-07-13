@@ -20,13 +20,13 @@ import (
 	"sort"
 	"time"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/lease"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/gogo/protobuf/proto"
+	"golang.org/x/net/context"
 )
 
 const (

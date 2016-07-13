@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 // StringP returns a pointer to a string whose pointee is same as the given string value.

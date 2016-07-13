@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal/walpb"
+	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal/walpb"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/pkg/capnslog"
 )
 
 const (

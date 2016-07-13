@@ -19,8 +19,8 @@ package cloud
 import (
 	"net/http"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal"
+	"golang.org/x/net/context"
+	"google.golang.org/cloud/internal"
 )
 
 // NewContext returns a new context that uses the provided http.Client.

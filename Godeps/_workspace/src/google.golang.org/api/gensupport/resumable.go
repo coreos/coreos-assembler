@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context/ctxhttp"
+	"golang.org/x/net/context"
+	"golang.org/x/net/context/ctxhttp"
 )
 
 const (

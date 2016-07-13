@@ -6,7 +6,7 @@
 
 package google
 
-import "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine"
+import "google.golang.org/appengine"
 
 func init() {
 	appengineVM = true

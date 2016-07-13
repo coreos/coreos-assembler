@@ -15,7 +15,7 @@
 package store
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Set of raw Prometheus metrics.

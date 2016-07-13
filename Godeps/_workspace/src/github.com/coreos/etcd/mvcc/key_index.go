@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/google/btree"
+	"github.com/google/btree"
 )
 
 var (

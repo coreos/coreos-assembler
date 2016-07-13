@@ -15,7 +15,7 @@
 package index
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/storage"

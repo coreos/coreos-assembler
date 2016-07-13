@@ -25,8 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/boltdb/bolt"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/boltdb/bolt"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (

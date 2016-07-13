@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc --go_out=import_path=$GOPACKAGE,import_prefix=github.com/coreos/mantle/Godeps/_workspace/src/:. update_metadata.proto
+//go:generate protoc --go_out=import_path=$GOPACKAGE:. update_metadata.proto
 
 package metadata
 

@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft/raftpb"
+	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
 // None is a placeholder node ID used when there is no leader.

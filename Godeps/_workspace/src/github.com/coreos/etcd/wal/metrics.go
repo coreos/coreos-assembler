@@ -14,7 +14,7 @@
 
 package wal
 
-import "github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	syncDurations = prometheus.NewHistogram(prometheus.HistogramOpts{

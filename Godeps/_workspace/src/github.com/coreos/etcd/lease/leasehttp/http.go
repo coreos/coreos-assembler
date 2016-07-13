@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"time"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/lease"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 )
 
 // NewHandler returns an http Handler for lease renewals

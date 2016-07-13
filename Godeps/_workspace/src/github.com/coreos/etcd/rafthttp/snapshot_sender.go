@@ -21,11 +21,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/httputil"
-	pioutil "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/ioutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/pkg/httputil"
+	pioutil "github.com/coreos/etcd/pkg/ioutil"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/snap"
 )
 
 var (

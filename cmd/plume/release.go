@@ -20,10 +20,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/compute/v1"
-	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
+	"google.golang.org/api/compute/v1"
+	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/storage"

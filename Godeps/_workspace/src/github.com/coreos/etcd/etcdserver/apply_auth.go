@@ -17,8 +17,8 @@ package etcdserver
 import (
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/auth"
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/auth"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 type authApplierV3 struct {

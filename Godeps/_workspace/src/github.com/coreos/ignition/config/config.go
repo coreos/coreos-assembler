@@ -20,10 +20,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1"
+	"github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/config/v1"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/camlistore/camlistore/pkg/errorutil"
+	"github.com/camlistore/camlistore/pkg/errorutil"
 )
 
 var (

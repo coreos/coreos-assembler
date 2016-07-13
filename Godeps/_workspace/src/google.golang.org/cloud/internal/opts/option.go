@@ -8,8 +8,8 @@ package opts
 import (
 	"net/http"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc"
+	"golang.org/x/oauth2"
+	"google.golang.org/grpc"
 )
 
 type DialOpt struct {

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/alecthomas/units"
+	"github.com/alecthomas/units"
 )
 
 type Partition struct {

@@ -22,17 +22,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/contention"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal/walpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/pkg/contention"
+	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
+	"github.com/coreos/pkg/capnslog"
 )
 
 const (

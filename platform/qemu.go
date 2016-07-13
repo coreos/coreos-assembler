@@ -21,8 +21,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"github.com/satori/go.uuid"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"

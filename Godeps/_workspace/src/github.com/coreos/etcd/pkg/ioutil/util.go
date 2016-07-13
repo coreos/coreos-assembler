@@ -18,7 +18,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/pkg/fileutil"
 )
 
 // WriteAndSyncFile behaves just like ioutil.WriteFile in the standard library,

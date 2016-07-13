@@ -20,13 +20,13 @@ import (
 	"strings"
 	"time"
 
-	etcdErr "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/error"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/auth"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/logutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/etcdserver/auth"
+	"github.com/coreos/etcd/pkg/logutil"
+	"github.com/coreos/pkg/capnslog"
 )
 
 const (

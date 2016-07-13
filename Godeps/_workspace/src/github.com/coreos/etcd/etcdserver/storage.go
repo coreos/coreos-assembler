@@ -19,15 +19,15 @@ import (
 	"os"
 	"path"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/snap"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/version"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal/walpb"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/version"
+	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 type Storage interface {

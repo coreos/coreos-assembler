@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft"
 )
 
 // ServerStats encapsulates various statistics about an EtcdServer and its

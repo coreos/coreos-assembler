@@ -17,7 +17,7 @@ package local
 import (
 	"runtime"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
+	"github.com/vishvananda/netns"
 )
 
 // NsEnter locks the current goroutine the OS thread and switches to a

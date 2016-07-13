@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
-	dto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+	dto "github.com/prometheus/client_model/go"
 )
 
 var (

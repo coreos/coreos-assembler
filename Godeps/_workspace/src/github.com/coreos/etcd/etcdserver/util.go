@@ -17,9 +17,9 @@ package etcdserver
 import (
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/rafthttp"
 )
 
 // isConnectedToQuorumSince checks whether the local member is connected to the

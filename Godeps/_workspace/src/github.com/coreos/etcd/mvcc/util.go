@@ -17,8 +17,8 @@ package mvcc
 import (
 	"encoding/binary"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 func UpdateConsistentIndex(be backend.Backend, index uint64) {

@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal"
+	"google.golang.org/cloud/internal"
 )
 
 type cachedValue struct {

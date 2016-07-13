@@ -19,8 +19,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/wal/walpb"
+	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 // Repair tries to repair ErrUnexpectedEOF in the

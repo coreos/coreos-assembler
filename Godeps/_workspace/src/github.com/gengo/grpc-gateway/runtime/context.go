@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/codes"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/metadata"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/metadata"
 )
 
 const metadataHeaderPrefix = "Grpc-Metadata-"

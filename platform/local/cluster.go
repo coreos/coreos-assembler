@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netns"
+	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/lang/destructor"
 	"github.com/coreos/mantle/network"

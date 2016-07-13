@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"google.golang.org/api/googleapi"
 )
 
 // ResumableBuffer buffers data from an io.Reader to support uploading media in retryable chunks.

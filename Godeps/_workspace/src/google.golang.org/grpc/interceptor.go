@@ -34,7 +34,7 @@
 package grpc
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 // UnaryServerInfo consists of various information about a unary RPC on

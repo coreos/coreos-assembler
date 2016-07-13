@@ -19,11 +19,11 @@ import (
 	"path"
 	"time"
 
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/store"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-semver/semver"
 )
 
 // ApplierV2 is the interface for processing V2 raft messages

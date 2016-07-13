@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/openpgp/armor"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/openpgp/errors"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/openpgp/packet"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/openpgp/s2k"
+	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/errors"
+	"golang.org/x/crypto/openpgp/packet"
+	"golang.org/x/crypto/openpgp/s2k"
 )
 
 // DetachSign signs message with the private key from signer (which must

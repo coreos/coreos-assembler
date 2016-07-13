@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"syscall"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vishvananda/netlink/nl"
+	"github.com/vishvananda/netlink/nl"
 )
 
 type Protinfo struct {

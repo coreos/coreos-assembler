@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"net/textproto"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"google.golang.org/api/googleapi"
 )
 
 const sniffBuffSize = 512

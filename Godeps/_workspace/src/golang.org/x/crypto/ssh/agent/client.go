@@ -24,7 +24,7 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 // Agent represents the capabilities of an ssh-agent.

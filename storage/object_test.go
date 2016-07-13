@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+	"google.golang.org/api/storage/v1"
 )
 
 const (

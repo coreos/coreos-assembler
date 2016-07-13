@@ -7,9 +7,9 @@
 package appengine
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal"
+	"google.golang.org/appengine/internal"
 )
 
 // The comment below must not be changed.

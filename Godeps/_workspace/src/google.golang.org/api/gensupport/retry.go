@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 // Retry invokes the given function, retrying it multiple times if the connection failed or

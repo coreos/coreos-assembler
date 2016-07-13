@@ -18,7 +18,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 var (

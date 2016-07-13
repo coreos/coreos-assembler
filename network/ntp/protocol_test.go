@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/kylelemons/godebug/pretty"
+	"github.com/kylelemons/godebug/pretty"
 )
 
 type testHeader struct {

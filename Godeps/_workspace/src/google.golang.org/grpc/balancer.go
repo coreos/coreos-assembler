@@ -37,10 +37,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/naming"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/transport"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/naming"
+	"google.golang.org/grpc/transport"
 )
 
 // Address represents a server the client connects to.

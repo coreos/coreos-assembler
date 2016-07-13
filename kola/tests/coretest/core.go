@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/kola/register"
 )

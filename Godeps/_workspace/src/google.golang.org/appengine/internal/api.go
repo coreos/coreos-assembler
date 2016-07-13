@@ -23,12 +23,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	netcontext "github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/golang/protobuf/proto"
+	netcontext "golang.org/x/net/context"
 
-	basepb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/base"
-	logpb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/log"
-	remotepb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/remote_api"
+	basepb "google.golang.org/appengine/internal/base"
+	logpb "google.golang.org/appengine/internal/log"
+	remotepb "google.golang.org/appengine/internal/remote_api"
 )
 
 const (

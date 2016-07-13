@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Manhole connects os.Stdin, os.Stdout, and os.Stderr to an interactive shell

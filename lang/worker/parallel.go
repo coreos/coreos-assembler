@@ -15,7 +15,7 @@
 package worker
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 // Parallel executes a set of Workers and waits for them to finish.

@@ -17,8 +17,8 @@ package storage
 import (
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+	"golang.org/x/net/context"
+	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/lang/worker"
 )

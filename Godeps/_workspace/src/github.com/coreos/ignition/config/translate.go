@@ -17,10 +17,10 @@ package config
 import (
 	"fmt"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/types"
-	v1 "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1/types"
+	"github.com/coreos/ignition/config/types"
+	v1 "github.com/coreos/ignition/config/v1/types"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/vincent-petithory/dataurl"
+	"github.com/vincent-petithory/dataurl"
 )
 
 func TranslateFromV1(old v1.Config) (types.Config, error) {

@@ -17,7 +17,7 @@ package membership
 import (
 	"errors"
 
-	etcdErr "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/error"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 var (

@@ -17,9 +17,9 @@ package cloud
 import (
 	"net/http"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/cloud/internal/opts"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc"
+	"golang.org/x/oauth2"
+	"google.golang.org/cloud/internal/opts"
+	"google.golang.org/grpc"
 )
 
 // ClientOption is used when construct clients for each cloud service.

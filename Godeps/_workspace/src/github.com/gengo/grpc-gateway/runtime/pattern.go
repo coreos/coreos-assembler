@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/gengo/grpc-gateway/utilities"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
+	"github.com/gengo/grpc-gateway/utilities"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (

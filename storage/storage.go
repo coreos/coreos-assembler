@@ -16,7 +16,7 @@
 package storage
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/pkg/capnslog"
 )
 
 // Arbitrary limit on the number of concurrent remote API requests.

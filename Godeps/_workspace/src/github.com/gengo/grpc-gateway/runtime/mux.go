@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 // A HandlerFunc handles a specific pair of path pattern and HTTP method.

@@ -16,7 +16,7 @@ package prometheus
 import (
 	"strings"
 
-	dto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+	dto "github.com/prometheus/client_model/go"
 )
 
 const separatorByte byte = 255

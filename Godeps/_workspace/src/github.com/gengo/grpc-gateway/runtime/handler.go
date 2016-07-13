@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"net/textproto"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/gengo/grpc-gateway/runtime/internal"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
+	"github.com/gengo/grpc-gateway/runtime/internal"
+	"github.com/golang/protobuf/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 // ForwardResponseStream forwards the stream from gRPC server to REST client.

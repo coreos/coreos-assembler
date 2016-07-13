@@ -19,7 +19,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 
 	"github.com/coreos/mantle/lang/maps"
 	"github.com/coreos/mantle/sdk"

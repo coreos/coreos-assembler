@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/sys/unix"
+	"golang.org/x/sys/unix"
 )
 
 // LinkFile creates a new link to an open File instead of an existing

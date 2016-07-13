@@ -17,7 +17,7 @@ package index
 import (
 	"strings"
 
-	gs "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/storage/v1"
+	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/lang/natsort"
 	"github.com/coreos/mantle/storage"

@@ -20,8 +20,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ioprogress"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/ioprogress"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "util")

@@ -7,20 +7,20 @@ package etcdserverpb
 import (
 	"fmt"
 
-	proto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+	proto "github.com/gogo/protobuf/proto"
 
 	math "math"
 
-	authpb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/auth/authpb"
+	authpb "github.com/coreos/etcd/auth/authpb"
 
 	io "io"
 )
 
-import mvccpb "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/mvccpb"
+import mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 
 import (
-	context "github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	grpc "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc"
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

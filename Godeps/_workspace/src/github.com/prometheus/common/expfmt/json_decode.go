@@ -19,10 +19,10 @@ import (
 	"io"
 	"sort"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	dto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+	"github.com/golang/protobuf/proto"
+	dto "github.com/prometheus/client_model/go"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/common/model"
+	"github.com/prometheus/common/model"
 )
 
 type json2Decoder struct {

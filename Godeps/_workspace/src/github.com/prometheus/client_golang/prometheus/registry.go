@@ -33,10 +33,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/common/expfmt"
+	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/common/expfmt"
 
-	dto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+	dto "github.com/prometheus/client_model/go"
 )
 
 var (

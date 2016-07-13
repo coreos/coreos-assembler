@@ -10,11 +10,11 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	netcontext "github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/golang/protobuf/proto"
+	netcontext "golang.org/x/net/context"
 
-	basepb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/base"
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/datastore"
+	basepb "google.golang.org/appengine/internal/base"
+	pb "google.golang.org/appengine/internal/datastore"
 )
 
 var transactionSetters = make(map[reflect.Type]reflect.Value)

@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/google/btree"
+	"github.com/google/btree"
 	"github.com/petar/GoLLRB/llrb"
 )
 

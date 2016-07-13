@@ -21,7 +21,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/pkg/fileutil"
 )
 
 // SaveDBFrom saves snapshot of the database from the given reader. It

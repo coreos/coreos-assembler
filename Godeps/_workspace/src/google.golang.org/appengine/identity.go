@@ -7,11 +7,11 @@ package appengine
 import (
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal"
-	pb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/app_identity"
-	modpb "github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal/modules"
+	"google.golang.org/appengine/internal"
+	pb "google.golang.org/appengine/internal/app_identity"
+	modpb "google.golang.org/appengine/internal/modules"
 )
 
 // AppID returns the application ID for the current application.

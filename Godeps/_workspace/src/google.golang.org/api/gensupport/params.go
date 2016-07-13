@@ -7,7 +7,7 @@ package gensupport
 import (
 	"net/url"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"google.golang.org/api/googleapi"
 )
 
 // URLParams is a simplified replacement for url.Values

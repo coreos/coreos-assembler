@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2/internal"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/internal"
 )
 
 type sdkCredentials struct {

@@ -4,11 +4,11 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/codes"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
+	"github.com/golang/protobuf/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/grpclog"
 )
 
 // HTTPStatusFromCode converts a gRPC error code into the corresponding HTTP response status.

@@ -11,10 +11,10 @@ package appengine
 import (
 	"net/http"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/golang/protobuf/proto"
+	"golang.org/x/net/context"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/internal"
+	"google.golang.org/appengine/internal"
 )
 
 // IsDevAppServer reports whether the App Engine app is running in the

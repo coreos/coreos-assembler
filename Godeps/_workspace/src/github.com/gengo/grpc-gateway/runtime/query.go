@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/gengo/grpc-gateway/utilities"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
+	"github.com/gengo/grpc-gateway/utilities"
+	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/grpclog"
 )
 
 // PopulateQueryParameters populates "values" into "msg".

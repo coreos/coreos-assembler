@@ -18,10 +18,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/version"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/version"
+	"github.com/coreos/go-semver/semver"
+	"github.com/coreos/pkg/capnslog"
 )
 
 type Capability string

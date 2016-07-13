@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/lease/leasepb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/lease/leasepb"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 const (

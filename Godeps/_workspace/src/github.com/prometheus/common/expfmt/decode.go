@@ -20,10 +20,10 @@ import (
 	"mime"
 	"net/http"
 
-	dto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+	dto "github.com/prometheus/client_model/go"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/matttproud/golang_protobuf_extensions/pbutil"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/prometheus/common/model"
+	"github.com/matttproud/golang_protobuf_extensions/pbutil"
+	"github.com/prometheus/common/model"
 )
 
 // Decoder types decode an input stream into metric families.

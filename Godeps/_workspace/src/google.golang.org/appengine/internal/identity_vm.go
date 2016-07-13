@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 
-	netcontext "github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+	netcontext "golang.org/x/net/context"
 )
 
 // These functions are implementations of the wrapper functions

@@ -11,9 +11,9 @@ package oauth2
 import (
 	"net/http"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/oauth2/internal"
-	"github.com/coreos/mantle/Godeps/_workspace/src/google.golang.org/appengine/urlfetch"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2/internal"
+	"google.golang.org/appengine/urlfetch"
 )
 
 func init() {

@@ -4,7 +4,7 @@
 
 package appengine
 
-import "github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/net/context"
+import "golang.org/x/net/context"
 
 // IsTimeoutError reports whether err is a timeout error.
 func IsTimeoutError(err error) bool {

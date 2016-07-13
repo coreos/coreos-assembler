@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/auth/authpb"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 // isSubset returns true if a is a subset of b

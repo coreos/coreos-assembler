@@ -17,12 +17,12 @@ package platform
 import (
 	"encoding/json"
 
-	cci "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/coreos-cloudinit/config"
-	v2 "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config"
-	v2types "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/types"
-	v1 "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1"
-	v1types "github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/ignition/config/v1/types"
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
+	cci "github.com/coreos/coreos-cloudinit/config"
+	v2 "github.com/coreos/ignition/config"
+	v2types "github.com/coreos/ignition/config/types"
+	v1 "github.com/coreos/ignition/config/v1"
+	v1types "github.com/coreos/ignition/config/v1/types"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 // Conf is a configuration for a CoreOS machine. It may be either a

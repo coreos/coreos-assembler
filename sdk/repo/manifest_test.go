@@ -18,7 +18,7 @@ import (
 	"encoding/xml"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/kylelemons/godebug/diff"
+	"github.com/kylelemons/godebug/diff"
 )
 
 // Test manifest document, this is mostly identical to the output of

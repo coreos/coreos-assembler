@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp"
 )
 
 // CoreOS image signing key https://coreos.com/security/image-signing-key/

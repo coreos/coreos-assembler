@@ -15,9 +15,9 @@
 package mvcc
 
 import (
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/lease"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 type RangeOptions struct {

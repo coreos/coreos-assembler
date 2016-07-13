@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/kylelemons/godebug/pretty"
+	"github.com/kylelemons/godebug/pretty"
 )
 
 var versionTestData = []struct {

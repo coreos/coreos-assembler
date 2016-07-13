@@ -18,7 +18,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/google/btree"
+	"github.com/google/btree"
 )
 
 type index interface {

@@ -18,7 +18,7 @@ package authpb
 import (
 	"fmt"
 
-	proto "github.com/coreos/mantle/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+	proto "github.com/gogo/protobuf/proto"
 
 	math "math"
 )
