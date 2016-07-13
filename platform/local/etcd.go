@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/mantle/Godeps/_workspace/src/github.com/coreos/etcd/pkg/types"
 )
 
@@ -92,7 +92,7 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 
 	se.server.Start()
 	go http.Serve(se.listener,
-		etcdhttp.NewClientHandler(se.server, cfg.ReqTimeout()))
+		v2http.NewClientHandler(se.server, cfg.ReqTimeout()))
 
 	return se, nil
 }
