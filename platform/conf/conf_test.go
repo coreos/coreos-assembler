@@ -36,6 +36,7 @@ func TestConfCopyKey(t *testing.T) {
 	tests := []struct {
 		conf string
 	}{
+		{`{ "ignition": { "version": "2.0.0" } }`},
 		{`{ "ignitionVersion": 1 }`},
 		{"#cloud-config"},
 	}
