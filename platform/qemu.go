@@ -24,6 +24,7 @@ import (
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
 )
@@ -102,7 +103,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 	cfg = strings.Replace(cfg, "$public_ipv4", ip, -1)
 	cfg = strings.Replace(cfg, "$private_ipv4", ip, -1)
 
-	conf, err := NewConf(cfg)
+	conf, err := conf.New(cfg)
 	if err != nil {
 		qc.mu.Unlock()
 		return nil, err

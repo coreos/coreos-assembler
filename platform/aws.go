@@ -25,6 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type awsMachine struct {
@@ -123,7 +125,7 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 }
 
 func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
-	conf, err := NewConf(userdata)
+	conf, err := conf.New(userdata)
 	if err != nil {
 		return nil, err
 	}
