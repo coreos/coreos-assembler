@@ -28,6 +28,7 @@ import (
 	"google.golang.org/api/compute/v1"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type GCEOptions struct {
@@ -95,7 +96,7 @@ func (gc *gceCluster) Destroy() error {
 
 // Calling in parallel is ok
 func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
-	conf, err := NewConf(userdata)
+	conf, err := conf.New(userdata)
 	if err != nil {
 		return nil, err
 	}

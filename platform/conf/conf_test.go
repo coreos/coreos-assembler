@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package platform
+package conf
 
 import (
 	"net"
@@ -36,12 +36,13 @@ func TestConfCopyKey(t *testing.T) {
 	tests := []struct {
 		conf string
 	}{
+		{`{ "ignition": { "version": "2.0.0" } }`},
 		{`{ "ignitionVersion": 1 }`},
 		{"#cloud-config"},
 	}
 
 	for i, tt := range tests {
-		conf, err := NewConf(tt.conf)
+		conf, err := New(tt.conf)
 		if err != nil {
 			t.Errorf("failed to parse config %d: %v", i, err)
 			continue
