@@ -20,8 +20,8 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -72,7 +72,7 @@ func init() {
 	})
 }
 
-func verifyAWS(c platform.TestCluster) error {
+func verifyAWS(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("coreos-metadata --version")
@@ -93,11 +93,11 @@ func verifyAWS(c platform.TestCluster) error {
 	}
 }
 
-func verifyAzure(c platform.TestCluster) error {
+func verifyAzure(c cluster.TestCluster) error {
 	return verify(c, "COREOS_AZURE_IPV4_DYNAMIC", "COREOS_AZURE_IPV4_VIRTUAL")
 }
 
-func verify(c platform.TestCluster, keys ...string) error {
+func verify(c cluster.TestCluster, keys ...string) error {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("cat /run/metadata/coreos")

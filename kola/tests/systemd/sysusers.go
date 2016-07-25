@@ -19,8 +19,8 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -46,7 +46,7 @@ func init() {
 // causing segfaults when those pointers are dereferenced.
 //
 // Tests: https://github.com/coreos/bugs/issues/1394
-func gshadowParser(c platform.TestCluster) error {
+func gshadowParser(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	for _, cmd := range []string{

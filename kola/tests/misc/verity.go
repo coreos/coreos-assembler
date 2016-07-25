@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -45,7 +45,7 @@ func init() {
 
 // VerityVerify asserts that the filesystem mounted on /usr matches the
 // dm-verity hash that is embedded in the CoreOS kernel.
-func VerityVerify(c platform.TestCluster) error {
+func VerityVerify(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	// extract verity hash from kernel
@@ -88,7 +88,7 @@ func VerityVerify(c platform.TestCluster) error {
 
 // VerityCorruption asserts that a machine will fail to read a file from a
 // verify filesystem whose blocks have been modified.
-func VerityCorruption(c platform.TestCluster) error {
+func VerityCorruption(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 	// figure out if we are actually using verity
 	out, err := m.SSH("sudo veritysetup status usr")

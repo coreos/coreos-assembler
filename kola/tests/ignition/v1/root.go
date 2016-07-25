@@ -19,8 +19,8 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -93,15 +93,15 @@ func init() {
 	})
 }
 
-func btrfsRoot(c platform.TestCluster) error {
+func btrfsRoot(c cluster.TestCluster) error {
 	return testRoot(c, "btrfs")
 }
 
-func xfsRoot(c platform.TestCluster) error {
+func xfsRoot(c cluster.TestCluster) error {
 	return testRoot(c, "xfs")
 }
 
-func testRoot(c platform.TestCluster, fs string) error {
+func testRoot(c cluster.TestCluster, fs string) error {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")

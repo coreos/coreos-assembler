@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
@@ -94,7 +95,7 @@ func init() {
 }
 
 // Test fleet running through an etcd2 proxy.
-func Proxy(c platform.TestCluster) error {
+func Proxy(c cluster.TestCluster) error {
 	masterconf.CoreOS.Etcd2.Discovery, _ = c.GetDiscoveryURL(1)
 	master, err := c.NewMachine(masterconf.String())
 	if err != nil {

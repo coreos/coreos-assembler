@@ -19,7 +19,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/kola/cluster"
 )
 
 // Test provides the main test abstraction for kola. The run function is
@@ -28,7 +28,7 @@ import (
 // function is run.
 type Test struct {
 	Name        string // should be uppercase and unique
-	Run         func(platform.TestCluster) error
+	Run         func(cluster.TestCluster) error
 	NativeFuncs map[string]func() error
 	UserData    string
 	ClusterSize int

@@ -22,8 +22,8 @@ import (
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
 
@@ -88,7 +88,7 @@ func init() {
 	})
 }
 
-func testNFS(c platform.TestCluster, nfsversion int) error {
+func testNFS(c cluster.TestCluster, nfsversion int) error {
 	m1, err := c.NewMachine(nfsserverconf.String())
 	if err != nil {
 		return fmt.Errorf("Cluster.NewMachine: %s", err)
@@ -153,11 +153,11 @@ func testNFS(c platform.TestCluster, nfsversion int) error {
 }
 
 // Test that the kernel NFS server and client work within CoreOS.
-func NFSv3(c platform.TestCluster) error {
+func NFSv3(c cluster.TestCluster) error {
 	return testNFS(c, 3)
 }
 
 // Test that NFSv4 without security works on CoreOS.
-func NFSv4(c platform.TestCluster) error {
+func NFSv4(c cluster.TestCluster) error {
 	return testNFS(c, 4)
 }

@@ -20,8 +20,8 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
 
@@ -48,7 +48,7 @@ func init() {
 	})
 }
 
-func rktEtcd(t platform.TestCluster) error {
+func rktEtcd(t cluster.TestCluster) error {
 	m := t.Machines()[0]
 
 	etcdCmd := "etcdctl cluster-health"

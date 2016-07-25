@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -32,7 +32,7 @@ func init() {
 	})
 }
 
-func CheckUserShells(c platform.TestCluster) error {
+func CheckUserShells(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 	var badusers []string
 

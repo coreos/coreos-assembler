@@ -20,8 +20,8 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -159,15 +159,15 @@ func init() {
 	})
 }
 
-func btrfsRoot(c platform.TestCluster) error {
+func btrfsRoot(c cluster.TestCluster) error {
 	return testRoot(c, "btrfs")
 }
 
-func xfsRoot(c platform.TestCluster) error {
+func xfsRoot(c cluster.TestCluster) error {
 	return testRoot(c, "xfs")
 }
 
-func ext4Root(c platform.TestCluster) error {
+func ext4Root(c cluster.TestCluster) error {
 	// Since the image's root partition is formatted to ext4 by default,
 	// this test wont be able to differentiate between the original filesystem
 	// and a newly created one. If mkfs.ext4 never ran, it would still pass.
@@ -175,7 +175,7 @@ func ext4Root(c platform.TestCluster) error {
 	return testRoot(c, "ext4")
 }
 
-func testRoot(c platform.TestCluster, fs string) error {
+func testRoot(c cluster.TestCluster, fs string) error {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
@@ -190,7 +190,7 @@ func testRoot(c platform.TestCluster, fs string) error {
 	return nil
 }
 
-func ext4CheckExisting(c platform.TestCluster) error {
+func ext4CheckExisting(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	// Redirect /dev/null to stdin so isatty(stdin) fails and the -p flag can be

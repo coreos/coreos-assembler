@@ -5,6 +5,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 )
@@ -12,7 +13,7 @@ import (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/coretest")
 
 // run various native functions that only require a single machine
-func LocalTests(c platform.TestCluster) error {
+func LocalTests(c cluster.TestCluster) error {
 	tests := c.ListNativeFunctions()
 	for _, name := range tests {
 		plog.Noticef("running %v...", name)
@@ -25,7 +26,7 @@ func LocalTests(c platform.TestCluster) error {
 }
 
 // run clustering based tests
-func ClusterTests(c platform.TestCluster) error {
+func ClusterTests(c cluster.TestCluster) error {
 	if plog.LevelAt(capnslog.DEBUG) {
 		// get journalctl -f from all machines before starting
 		for _, m := range c.Machines() {
@@ -53,7 +54,7 @@ func ClusterTests(c platform.TestCluster) error {
 }
 
 // run internet based tests
-func InternetTests(c platform.TestCluster) error {
+func InternetTests(c cluster.TestCluster) error {
 	tests := c.ListNativeFunctions()
 	for _, name := range tests {
 		plog.Noticef("running %v...", name)

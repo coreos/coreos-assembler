@@ -17,8 +17,8 @@ package misc
 import (
 	"fmt"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -34,7 +34,7 @@ func init() {
 // Basic authentication tests.
 
 // AuthVerify asserts that invalid passwords do not grant access to the system
-func AuthVerify(c platform.TestCluster) error {
+func AuthVerify(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	client, err := m.PasswordSSHClient("core", "asdf")
