@@ -23,8 +23,8 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
 
@@ -63,20 +63,20 @@ func init() {
 }
 
 // systemd v225 includes the port in the journal file
-func journalRemote225(c platform.TestCluster) error {
+func journalRemote225(c cluster.TestCluster) error {
 	format := "/var/log/journal/remote/remote-%s:19531.journal"
 	return journalRemote(c, format)
 }
 
 // systemd v229 has no port in the journal file
-func journalRemote229(c platform.TestCluster) error {
+func journalRemote229(c cluster.TestCluster) error {
 	format := "/var/log/journal/remote/remote-%s.journal"
 	return journalRemote(c, format)
 }
 
 // JournalRemote tests that systemd-journal-remote can read log entries from
 // a systemd-journal-gatewayd server.
-func journalRemote(c platform.TestCluster, journalFmt string) error {
+func journalRemote(c cluster.TestCluster, journalFmt string) error {
 	// start gatewayd and log a message
 	gateway, err := c.NewMachine(gatewayconf.String())
 	if err != nil {

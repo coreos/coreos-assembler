@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/platform"
@@ -349,15 +350,15 @@ func getClusterSemver(pltfrm string) (*semver.Version, error) {
 // to filter out tests such as 'Platforms', 'Manual', or 'MinVersion'
 // are not respected.
 func RunTest(t *register.Test, pltfrm string) (err error) {
-	var cluster platform.Cluster
+	var c platform.Cluster
 
 	switch pltfrm {
 	case "qemu":
-		cluster, err = platform.NewQemuCluster(QEMUOptions)
+		c, err = platform.NewQemuCluster(QEMUOptions)
 	case "gce":
-		cluster, err = platform.NewGCECluster(GCEOptions)
+		c, err = platform.NewGCECluster(GCEOptions)
 	case "aws":
-		cluster, err = platform.NewAWSCluster(AWSOptions)
+		c, err = platform.NewAWSCluster(AWSOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
@@ -366,12 +367,12 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 		return fmt.Errorf("Cluster failed: %v", err)
 	}
 	defer func() {
-		if err := cluster.Destroy(); err != nil {
+		if err := c.Destroy(); err != nil {
 			plog.Errorf("cluster.Destroy(): %v", err)
 		}
 	}()
 
-	url, err := cluster.GetDiscoveryURL(t.ClusterSize)
+	url, err := c.GetDiscoveryURL(t.ClusterSize)
 	if err != nil {
 		return fmt.Errorf("Failed to create discovery endpoint: %v", err)
 	}
@@ -379,7 +380,7 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 	cfgs := makeConfigs(url, t.UserData, t.ClusterSize)
 
 	if t.ClusterSize > 0 {
-		_, err := platform.NewMachines(cluster, cfgs)
+		_, err := platform.NewMachines(c, cfgs)
 		if err != nil {
 			return fmt.Errorf("Cluster failed starting machines: %v", err)
 		}
@@ -398,11 +399,11 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 	}
 
 	// Cluster -> TestCluster
-	tcluster := platform.TestCluster{
+	tcluster := cluster.TestCluster{
 		Name:        t.Name,
 		NativeFuncs: names,
 		Options:     tempTestOptions,
-		Cluster:     cluster,
+		Cluster:     c,
 	}
 
 	// drop kolet binary on machines
@@ -441,7 +442,7 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(t platform.TestCluster, mArch string) error {
+func scpKolet(t cluster.TestCluster, mArch string) error {
 	for _, d := range []string{
 		".",
 		filepath.Dir(os.Args[0]),

@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
@@ -61,11 +62,11 @@ coreos:
 	})
 }
 
-func DiscoveryV2(c platform.TestCluster) error {
+func DiscoveryV2(c cluster.TestCluster) error {
 	return discovery(c, 2)
 }
 
-func DiscoveryV1(c platform.TestCluster) error {
+func DiscoveryV1(c cluster.TestCluster) error {
 	return discovery(c, 1)
 }
 

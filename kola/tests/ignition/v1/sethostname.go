@@ -21,8 +21,8 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -66,7 +66,7 @@ func init() {
 	})
 }
 
-func setHostname(c platform.TestCluster) error {
+func setHostname(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("hostnamectl")

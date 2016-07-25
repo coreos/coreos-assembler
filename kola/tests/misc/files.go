@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 )
@@ -84,7 +85,7 @@ func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 	return nil
 }
 
-func SUIDFiles(c platform.TestCluster) error {
+func SUIDFiles(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	validfiles := []string{
@@ -112,7 +113,7 @@ func SUIDFiles(c platform.TestCluster) error {
 	return sugidFiles(m, validfiles, "4000")
 }
 
-func SGIDFiles(c platform.TestCluster) error {
+func SGIDFiles(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	validfiles := []string{}
@@ -120,7 +121,7 @@ func SGIDFiles(c platform.TestCluster) error {
 	return sugidFiles(m, validfiles, "2000")
 }
 
-func WritableFiles(c platform.TestCluster) error {
+func WritableFiles(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	output, err := m.SSH("sudo find / -regextype posix-extended -regex \"/(sys|proc)\" -prune -o -type f -perm -0002 -print")
@@ -135,7 +136,7 @@ func WritableFiles(c platform.TestCluster) error {
 	return nil
 }
 
-func WritableDirs(c platform.TestCluster) error {
+func WritableDirs(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	output, err := m.SSH("sudo find / -regextype posix-extended -regex \"/(sys|proc)\" -prune -o -type d -perm -0002 -a ! -perm -1000 -print")

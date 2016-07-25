@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
@@ -132,13 +133,13 @@ func ping(a, b platform.Machine, ifname string) error {
 }
 
 // UDP tests that flannel can send packets using the udp backend.
-func udp(c platform.TestCluster) error {
+func udp(c cluster.TestCluster) error {
 	machs := c.Machines()
 	return util.Retry(12, 10*time.Second, func() error { return ping(machs[0], machs[2], "flannel0") })
 }
 
 // VXLAN tests that flannel can send packets using the vxlan backend.
-func vxlan(c platform.TestCluster) error {
+func vxlan(c cluster.TestCluster) error {
 	machs := c.Machines()
 	return util.Retry(12, 10*time.Second, func() error { return ping(machs[0], machs[2], "flannel.1") })
 }

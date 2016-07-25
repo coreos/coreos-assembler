@@ -22,9 +22,9 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/net/context"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/targen"
 )
@@ -88,7 +88,7 @@ func genDockerContainer(name string, binnames []string) error {
 // using a simple container, exercise various docker options that set resource
 // limits. also acts as a regression test for
 // https://github.com/coreos/bugs/issues/1246.
-func dockerResources(c platform.TestCluster) error {
+func dockerResources(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	plog.Debug("creating sleep container")

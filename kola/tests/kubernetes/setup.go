@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
@@ -42,7 +43,7 @@ type kCluster struct {
 // Setup a multi-node cluster based on official coreos guides for manual
 // installation.
 // https://coreos.com/kubernetes/docs/latest/getting-started.html
-func setupCluster(c platform.TestCluster, nodes int, version string) (*kCluster, error) {
+func setupCluster(c cluster.TestCluster, nodes int, version string) (*kCluster, error) {
 	// start single-node etcd
 	etcdNode, err := c.NewMachine(etcdConfig)
 	if err != nil {

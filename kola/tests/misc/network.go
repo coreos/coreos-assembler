@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 )
@@ -72,7 +73,7 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 	return nil
 }
 
-func NetworkListeners(c platform.TestCluster) error {
+func NetworkListeners(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	TCPListeners := []listener{

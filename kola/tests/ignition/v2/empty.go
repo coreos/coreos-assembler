@@ -17,8 +17,8 @@ package ignition
 import (
 	"github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -38,6 +38,6 @@ func init() {
 	})
 }
 
-func empty(_ platform.TestCluster) error {
+func empty(_ cluster.TestCluster) error {
 	return nil
 }

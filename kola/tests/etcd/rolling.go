@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -28,7 +29,7 @@ const (
 	settingSize = 15 // number of random keys set and checked per node multiple times
 )
 
-func RollingUpgrade(cluster platform.TestCluster) error {
+func RollingUpgrade(cluster cluster.TestCluster) error {
 	var (
 		firstVersion  = cluster.Options["EtcdUpgradeVersion"]
 		secondVersion = cluster.Options["EtcdUpgradeVersion2"]

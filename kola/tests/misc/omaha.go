@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/platform"
@@ -49,7 +50,7 @@ func (ps *pingServer) Ping(req *omaha.Request, app *omaha.AppRequest) {
 	ps.ping <- struct{}{}
 }
 
-func OmahaPing(c platform.TestCluster) error {
+func OmahaPing(c cluster.TestCluster) error {
 	qc, ok := c.Cluster.(*platform.QEMUCluster)
 	if !ok {
 		return errors.New("test only works in qemu")

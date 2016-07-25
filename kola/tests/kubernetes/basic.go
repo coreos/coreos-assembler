@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
@@ -34,7 +35,7 @@ func init() {
 	for i := range basicTags {
 		// use closure to store a version tag in a Test
 		t := basicTags[i]
-		f := func(c platform.TestCluster) error {
+		f := func(c cluster.TestCluster) error {
 			return CoreOSBasic(c, t)
 		}
 
@@ -49,7 +50,7 @@ func init() {
 
 // Run basic smoke tests on cluster. Assumes master is machine index 1,
 // workers make up the rest.
-func CoreOSBasic(c platform.TestCluster, version string) error {
+func CoreOSBasic(c cluster.TestCluster, version string) error {
 	k, err := setupCluster(c, 2, version)
 	if err != nil {
 		return err

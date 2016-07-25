@@ -17,8 +17,8 @@ package misc
 import (
 	"fmt"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 }
 
 // SelinuxEnforce checks that some basic things work after `setenforce 1`
-func SelinuxEnforce(c platform.TestCluster) error {
+func SelinuxEnforce(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	for _, cmd := range []struct {
