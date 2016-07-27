@@ -15,17 +15,12 @@
 package platform
 
 import (
-	"encoding/base64"
 	"fmt"
-	"net"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/conf"
 )
 
@@ -59,13 +54,7 @@ func (am *awsMachine) SSH(cmd string) ([]byte, error) {
 }
 
 func (am *awsMachine) Destroy() error {
-	id := am.ID()
-
-	input := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{&id},
-	}
-
-	if _, err := am.cluster.api.TerminateInstances(input); err != nil {
+	if err := am.cluster.api.TerminateInstance(am.ID()); err != nil {
 		return err
 	}
 
@@ -83,7 +72,7 @@ type AWSOptions struct {
 
 type awsCluster struct {
 	*BaseCluster
-	api  *ec2.EC2
+	api  *aws.API
 	conf AWSOptions
 }
 
@@ -94,8 +83,10 @@ type awsCluster struct {
 // $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
 // spawn instances in and the credentials to use to authenticate.
 func NewAWSCluster(conf AWSOptions) (Cluster, error) {
-	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
-	api := ec2.New(session.New(cfg))
+	api, err := aws.New()
+	if err != nil {
+		return nil, err
+	}
 
 	bc, err := NewBaseCluster(conf.BaseName)
 	if err != nil {
@@ -113,12 +104,8 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	_, err = api.ImportKeyPair(&ec2.ImportKeyPairInput{
-		KeyName:           aws.String(ac.Name()),
-		PublicKeyMaterial: []byte(keys[0].String()),
-	})
-	if err != nil {
-		return nil, err
+	if err := api.AddKey(ac.name, keys[0].String()); err != nil {
+		return nil, fmt.Errorf("failed to add SSH key: %v", err)
 	}
 
 	return ac, nil
@@ -137,46 +124,14 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 
 	conf.CopyKeys(keys)
 
-	var ud *string
-	if cfStr := conf.String(); len(cfStr) > 0 {
-		tud := base64.StdEncoding.EncodeToString([]byte(cfStr))
-		ud = &tud
-	}
-	cnt := int64(1)
-
-	inst := ec2.RunInstancesInput{
-		ImageId:        &ac.conf.AMI,
-		MinCount:       &cnt,
-		MaxCount:       &cnt,
-		KeyName:        aws.String(ac.Name()),
-		InstanceType:   &ac.conf.InstanceType,
-		SecurityGroups: []*string{&ac.conf.SecurityGroup},
-		UserData:       ud,
-	}
-
-	resp, err := ac.api.RunInstances(&inst)
+	insts, err := ac.api.CreateInstances(ac.conf.AMI, ac.name, conf.String(), ac.conf.InstanceType, ac.conf.SecurityGroup, 1, true)
 	if err != nil {
-		return nil, err
-	}
-
-	ids := []*string{resp.Instances[0].InstanceId}
-
-	if err := waitForAWSInstances(ac.api, ids, 5*time.Minute); err != nil {
-		return nil, err
-	}
-
-	getinst := &ec2.DescribeInstancesInput{
-		InstanceIds: ids,
-	}
-
-	insts, err := ac.api.DescribeInstances(getinst)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create EC2 instances: %v", err)
 	}
 
 	mach := &awsMachine{
 		cluster: ac,
-		mach:    insts.Reservations[0].Instances[0],
+		mach:    insts[0],
 	}
 
 	if err := CheckMachine(mach); err != nil {
@@ -189,63 +144,9 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 }
 
 func (ac *awsCluster) Destroy() error {
-	_, err := ac.api.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-		KeyName: aws.String(ac.Name()),
-	})
-	if err != nil {
+	if err := ac.api.DeleteKey(ac.name); err != nil {
 		return err
 	}
 
 	return ac.BaseCluster.Destroy()
-}
-
-// waitForAWSInstance waits until a set of aws ec2 instance is accessible by ssh.
-func waitForAWSInstances(api *ec2.EC2, ids []*string, d time.Duration) error {
-	after := time.After(d)
-
-	online := make(map[string]bool)
-
-	for len(ids) != len(online) {
-		select {
-		case <-after:
-			return fmt.Errorf("timed out waiting for instances to run")
-		default:
-		}
-
-		// don't make api calls too quickly, or we will hit the rate limit
-
-		time.Sleep(10 * time.Second)
-
-		getinst := &ec2.DescribeInstancesInput{
-			InstanceIds: ids,
-		}
-
-		insts, err := api.DescribeInstances(getinst)
-		if err != nil {
-			return err
-		}
-
-		for _, r := range insts.Reservations {
-			for _, i := range r.Instances {
-				// skip instances known to be up
-				if online[*i.InstanceId] {
-					continue
-				}
-
-				// "running"
-				if *i.State.Code == int64(16) {
-					// XXX: ssh is a terrible way to check this, but it is all we have.
-					c, err := net.DialTimeout("tcp", *i.PublicIpAddress+":22", 10*time.Second)
-					if err != nil {
-						continue
-					}
-					c.Close()
-
-					online[*i.InstanceId] = true
-				}
-			}
-		}
-	}
-
-	return nil
 }
