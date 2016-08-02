@@ -70,3 +70,11 @@ func (cmd *ExecCmd) Kill() error {
 
 	return err
 }
+
+// IsCmdNotFound reports true if the underlying error was exec.ErrNotFound.
+func IsCmdNotFound(err error) bool {
+	if eerr, ok := err.(*exec.Error); ok && eerr.Err == ErrNotFound {
+		return true
+	}
+	return false
+}

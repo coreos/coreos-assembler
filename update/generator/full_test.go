@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/coreos/mantle/system"
+	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/update/metadata"
 )
 
@@ -112,6 +113,10 @@ func checkFullScan(t *testing.T, source []byte) ([]*metadata.InstallOperation, [
 	}
 
 	if err := scanner.Scan(); err != nil {
+		if exec.IsCmdNotFound(err) {
+			t.Skip(err)
+		}
+
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -164,6 +169,8 @@ func checkFullProc(t *testing.T, source, sourceHash []byte) *Procedure {
 	proc, err := FullUpdate(f.Name())
 	if system.IsOpNotSupported(err) {
 		t.Skip("O_TMPFILE not supported")
+	} else if exec.IsCmdNotFound(err) {
+		t.Skip(err)
 	} else if err != nil {
 		t.Fatal(err)
 	}

@@ -19,6 +19,8 @@ import (
 	"compress/bzip2"
 	"io/ioutil"
 	"testing"
+
+	"github.com/coreos/mantle/system/exec"
 )
 
 func bunzip2(t *testing.T, z []byte) []byte {
@@ -32,6 +34,10 @@ func bunzip2(t *testing.T, z []byte) []byte {
 func TestBzip2(t *testing.T) {
 	smallOnes, err := Bzip2(testOnes)
 	if err != nil {
+		if exec.IsCmdNotFound(err) {
+			t.Skip(err)
+		}
+
 		t.Fatal(err)
 	}
 
