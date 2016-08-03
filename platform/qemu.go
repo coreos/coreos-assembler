@@ -24,6 +24,7 @@ import (
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
@@ -71,7 +72,8 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	bc, err := NewBaseCluster(conf.BaseName)
+	nsdialer := network.NewNsDialer(lc.GetNsHandle())
+	bc, err := NewBaseClusterWithDialer(conf.BaseName, nsdialer)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +113,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	keys, err := qc.SSHAgent.List()
+	keys, err := qc.Keys()
 	if err != nil {
 		qc.mu.Unlock()
 		return nil, err
@@ -245,7 +247,7 @@ func (m *qemuMachine) PrivateIP() string {
 }
 
 func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
-	sshClient, err := m.qc.SSHAgent.NewClient(m.IP())
+	sshClient, err := m.qc.agent.NewClient(m.IP())
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +256,7 @@ func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
 }
 
 func (m *qemuMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
-	client, err := m.qc.SSHAgent.NewPasswordClient(m.IP(), user, password)
+	client, err := m.qc.agent.NewPasswordClient(m.IP(), user, password)
 	if err != nil {
 		return nil, err
 	}

@@ -18,11 +18,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/coreos/pkg/multierror"
 	"github.com/satori/go.uuid"
@@ -42,12 +40,10 @@ type BaseCluster struct {
 }
 
 func NewBaseCluster(basename string) (*BaseCluster, error) {
-	// set reasonable timeout and keepalive interval
-	dialer := &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}
+	return NewBaseClusterWithDialer(basename, network.NewRetryDialer())
+}
 
+func NewBaseClusterWithDialer(basename string, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
