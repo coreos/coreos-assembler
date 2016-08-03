@@ -115,7 +115,7 @@ func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
 	}
 	gm.gc = gc
 
-	if err := commonMachineChecks(gm); err != nil {
+	if err := CheckMachine(gm); err != nil {
 		gm.Destroy()
 		return nil, err
 	}

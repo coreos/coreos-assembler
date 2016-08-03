@@ -179,7 +179,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		mach:    insts.Reservations[0].Instances[0],
 	}
 
-	if err := commonMachineChecks(mach); err != nil {
+	if err := CheckMachine(mach); err != nil {
 		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
 	}
 
