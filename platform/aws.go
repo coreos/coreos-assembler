@@ -196,13 +196,7 @@ func (ac *awsCluster) Destroy() error {
 		return err
 	}
 
-	machs := ac.Machines()
-	for _, am := range machs {
-		am.Destroy()
-	}
-	ac.agent.Close()
-
-	return nil
+	return ac.BaseCluster.Destroy()
 }
 
 // waitForAWSInstance waits until a set of aws ec2 instance is accessible by ssh.

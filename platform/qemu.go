@@ -86,9 +86,10 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 }
 
 func (qc *QEMUCluster) Destroy() error {
-	for _, qm := range qc.Machines() {
-		qm.Destroy()
+	if err := qc.BaseCluster.Destroy(); err != nil {
+		return err
 	}
+
 	return qc.LocalCluster.Destroy()
 }
 

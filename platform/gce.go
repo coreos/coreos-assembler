@@ -86,14 +86,6 @@ func NewGCECluster(conf GCEOptions) (Cluster, error) {
 	return gc, nil
 }
 
-func (gc *gceCluster) Destroy() error {
-	for _, gm := range gc.Machines() {
-		gm.Destroy()
-	}
-	gc.agent.Close()
-	return nil
-}
-
 // Calling in parallel is ok
 func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
 	conf, err := conf.New(userdata)

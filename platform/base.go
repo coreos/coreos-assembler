@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/pkg/multierror"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -124,6 +125,23 @@ func (bc *BaseCluster) DelMach(m Machine) {
 
 func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 	return bc.agent.List()
+}
+
+// Destroy destroys each machine in the cluster and closes the SSH agent.
+func (bc *BaseCluster) Destroy() error {
+	var err multierror.Error
+
+	for _, m := range bc.Machines() {
+		if e := m.Destroy(); e != nil {
+			err = append(err, e)
+		}
+	}
+
+	if e := bc.agent.Close(); e != nil {
+		err = append(err, e)
+	}
+
+	return err.AsError()
 }
 
 // XXX(mischief): i don't really think this belongs here, but it completes the
