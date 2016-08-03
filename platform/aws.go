@@ -114,7 +114,7 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	}
 
 	_, err = api.ImportKeyPair(&ec2.ImportKeyPairInput{
-		KeyName:           &ac.name,
+		KeyName:           aws.String(ac.Name()),
 		PublicKeyMaterial: []byte(keys[0].String()),
 	})
 	if err != nil {
@@ -148,7 +148,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		ImageId:        &ac.conf.AMI,
 		MinCount:       &cnt,
 		MaxCount:       &cnt,
-		KeyName:        &ac.name,
+		KeyName:        aws.String(ac.Name()),
 		InstanceType:   &ac.conf.InstanceType,
 		SecurityGroups: []*string{&ac.conf.SecurityGroup},
 		UserData:       ud,
@@ -190,7 +190,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 
 func (ac *awsCluster) Destroy() error {
 	_, err := ac.api.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-		KeyName: &ac.name,
+		KeyName: aws.String(ac.Name()),
 	})
 	if err != nil {
 		return err

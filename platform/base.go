@@ -155,3 +155,7 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 	}
 	return string(body), nil
 }
+
+func (bc *BaseCluster) Name() string {
+	return bc.name
+}
