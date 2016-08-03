@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package ns
 
 import (
 	"github.com/vishvananda/netns"
@@ -20,20 +20,20 @@ import (
 	"github.com/coreos/mantle/system/exec"
 )
 
-type NsCmd struct {
+type Cmd struct {
 	*exec.ExecCmd
 	NsHandle netns.NsHandle
 }
 
-func NewNsCommand(ns netns.NsHandle, name string, arg ...string) *NsCmd {
-	return &NsCmd{
+func Command(ns netns.NsHandle, name string, arg ...string) *Cmd {
+	return &Cmd{
 		ExecCmd:  exec.Command(name, arg...),
 		NsHandle: ns,
 	}
 }
 
-func (cmd *NsCmd) CombinedOutput() ([]byte, error) {
-	nsExit, err := NsEnter(cmd.NsHandle)
+func (cmd *Cmd) CombinedOutput() ([]byte, error) {
+	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +42,8 @@ func (cmd *NsCmd) CombinedOutput() ([]byte, error) {
 	return cmd.ExecCmd.CombinedOutput()
 }
 
-func (cmd *NsCmd) Output() ([]byte, error) {
-	nsExit, err := NsEnter(cmd.NsHandle)
+func (cmd *Cmd) Output() ([]byte, error) {
+	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +52,8 @@ func (cmd *NsCmd) Output() ([]byte, error) {
 	return cmd.ExecCmd.Output()
 }
 
-func (cmd *NsCmd) Run() error {
-	nsExit, err := NsEnter(cmd.NsHandle)
+func (cmd *Cmd) Run() error {
+	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return err
 	}
@@ -62,8 +62,8 @@ func (cmd *NsCmd) Run() error {
 	return cmd.ExecCmd.Run()
 }
 
-func (cmd *NsCmd) Start() error {
-	nsExit, err := NsEnter(cmd.NsHandle)
+func (cmd *Cmd) Start() error {
+	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return err
 	}
