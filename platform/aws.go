@@ -69,7 +69,7 @@ func (am *awsMachine) Destroy() error {
 		return err
 	}
 
-	am.cluster.delMach(am)
+	am.cluster.DelMach(am)
 	return nil
 }
 
@@ -82,7 +82,7 @@ type AWSOptions struct {
 }
 
 type awsCluster struct {
-	*baseCluster
+	*BaseCluster
 	api  *ec2.EC2
 	conf AWSOptions
 }
@@ -97,7 +97,7 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
 	api := ec2.New(session.New(cfg))
 
-	bc, err := newBaseCluster(conf.BaseName)
+	bc, err := NewBaseCluster(conf.BaseName)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 	}
 
 	ac := &awsCluster{
-		baseCluster: bc,
+		BaseCluster: bc,
 		api:         api,
 		conf:        conf,
 	}
@@ -183,7 +183,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
 	}
 
-	ac.addMach(mach)
+	ac.AddMach(mach)
 
 	return mach, nil
 }

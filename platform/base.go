@@ -30,7 +30,7 @@ import (
 	"github.com/coreos/mantle/network"
 )
 
-type baseCluster struct {
+type BaseCluster struct {
 	agent *network.SSHAgent
 
 	machlock sync.Mutex
@@ -39,7 +39,7 @@ type baseCluster struct {
 	name string
 }
 
-func newBaseCluster(basename string) (*baseCluster, error) {
+func NewBaseCluster(basename string) (*BaseCluster, error) {
 	// set reasonable timeout and keepalive interval
 	dialer := &net.Dialer{
 		Timeout:   30 * time.Second,
@@ -51,7 +51,7 @@ func newBaseCluster(basename string) (*baseCluster, error) {
 		return nil, err
 	}
 
-	bc := &baseCluster{
+	bc := &BaseCluster{
 		agent:   agent,
 		machmap: make(map[string]Machine),
 		name:    fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
@@ -60,7 +60,7 @@ func newBaseCluster(basename string) (*baseCluster, error) {
 	return bc, nil
 }
 
-func (bc *baseCluster) SSHClient(ip string) (*ssh.Client, error) {
+func (bc *BaseCluster) SSHClient(ip string) (*ssh.Client, error) {
 	sshClient, err := bc.agent.NewClient(ip)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (bc *baseCluster) SSHClient(ip string) (*ssh.Client, error) {
 	return sshClient, nil
 }
 
-func (bc *baseCluster) PasswordSSHClient(ip string, user string, password string) (*ssh.Client, error) {
+func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string) (*ssh.Client, error) {
 	sshClient, err := bc.agent.NewPasswordClient(ip, user, password)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (bc *baseCluster) PasswordSSHClient(ip string, user string, password string
 	return sshClient, nil
 }
 
-func (bc *baseCluster) SSH(m Machine, cmd string) ([]byte, error) {
+func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, error) {
 	client, err := bc.SSHClient(m.IP())
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (bc *baseCluster) SSH(m Machine, cmd string) ([]byte, error) {
 	return out, err
 }
 
-func (bc *baseCluster) Machines() []Machine {
+func (bc *BaseCluster) Machines() []Machine {
 	bc.machlock.Lock()
 	defer bc.machlock.Unlock()
 	machs := make([]Machine, 0, len(bc.machmap))
@@ -109,13 +109,13 @@ func (bc *baseCluster) Machines() []Machine {
 	return machs
 }
 
-func (bc *baseCluster) addMach(m Machine) {
+func (bc *BaseCluster) AddMach(m Machine) {
 	bc.machlock.Lock()
 	defer bc.machlock.Unlock()
 	bc.machmap[m.ID()] = m
 }
 
-func (bc *baseCluster) delMach(m Machine) {
+func (bc *BaseCluster) DelMach(m Machine) {
 	bc.machlock.Lock()
 	defer bc.machlock.Unlock()
 	delete(bc.machmap, m.ID())
@@ -123,7 +123,7 @@ func (bc *baseCluster) delMach(m Machine) {
 
 // XXX(mischief): i don't really think this belongs here, but it completes the
 // interface we've established.
-func (bc *baseCluster) GetDiscoveryURL(size int) (string, error) {
+func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
 	if err != nil {
 		return "", err
