@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/mantle/system/ns"
 )
 
 // QEMUOptions contains QEMU-specific options for the cluster.
@@ -184,7 +185,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 
 	qc.mu.Unlock()
 
-	cmd := qm.qemu.(*local.NsCmd)
+	cmd := qm.qemu.(*ns.Cmd)
 	cmd.Stderr = os.Stderr
 	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=3
 

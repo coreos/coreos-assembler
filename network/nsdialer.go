@@ -12,37 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package network
 
 import (
 	"net"
 
 	"github.com/vishvananda/netns"
 
-	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/system/ns"
 )
 
 // NsDialer is a RetryDialer that can enter any network namespace.
 type NsDialer struct {
-	network.RetryDialer
+	RetryDialer
 	NsHandle netns.NsHandle
 }
 
 func NewNsDialer(ns netns.NsHandle) *NsDialer {
 	return &NsDialer{
-		RetryDialer: network.RetryDialer{
+		RetryDialer: RetryDialer{
 			Dialer: net.Dialer{
-				Timeout:   network.DefaultTimeout,
-				KeepAlive: network.DefaultKeepAlive,
+				Timeout:   DefaultTimeout,
+				KeepAlive: DefaultKeepAlive,
 			},
-			Retries: network.DefaultRetries,
+			Retries: DefaultRetries,
 		},
 		NsHandle: ns,
 	}
 }
 
 func (d *NsDialer) Dial(network, address string) (net.Conn, error) {
-	nsExit, err := NsEnter(d.NsHandle)
+	nsExit, err := ns.Enter(d.NsHandle)
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package ns
 
 import (
 	"runtime"
@@ -23,7 +23,7 @@ import (
 // NsEnter locks the current goroutine the OS thread and switches to a
 // new network namespace. The returned function must be called in order
 // to restore the previous state and unlock the thread.
-func NsEnter(ns netns.NsHandle) (func() error, error) {
+func Enter(ns netns.NsHandle) (func() error, error) {
 	runtime.LockOSThread()
 
 	origns, err := netns.Get()
@@ -51,7 +51,7 @@ func NsEnter(ns netns.NsHandle) (func() error, error) {
 
 // NsCreate returns a handle to a new network namespace.
 // NsEnter must be used to safely enter and exit the new namespace.
-func NsCreate() (netns.NsHandle, error) {
+func Create() (netns.NsHandle, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
