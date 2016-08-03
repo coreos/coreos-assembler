@@ -15,7 +15,6 @@
 package platform
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -247,42 +246,15 @@ func (m *qemuMachine) PrivateIP() string {
 }
 
 func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
-	sshClient, err := m.qc.agent.NewClient(m.IP())
-	if err != nil {
-		return nil, err
-	}
-
-	return sshClient, nil
+	return m.qc.SSHClient(m.IP())
 }
 
 func (m *qemuMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
-	client, err := m.qc.agent.NewPasswordClient(m.IP(), user, password)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
+	return m.qc.PasswordSSHClient(m.IP(), user, password)
 }
 
 func (m *qemuMachine) SSH(cmd string) ([]byte, error) {
-	client, err := m.SSHClient()
-	if err != nil {
-		return nil, err
-	}
-
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	defer session.Close()
-
-	session.Stderr = os.Stderr
-	out, err := session.Output(cmd)
-	out = bytes.TrimSpace(out)
-	return out, err
+	return m.qc.SSH(m, cmd)
 }
 
 func (m *qemuMachine) Destroy() error {
