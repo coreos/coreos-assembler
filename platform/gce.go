@@ -101,7 +101,7 @@ func (gc *gceCluster) NewMachine(userdata string) (Machine, error) {
 		return nil, err
 	}
 
-	keys, err := gc.agent.List()
+	keys, err := gc.Keys()
 	if err != nil {
 		return nil, err
 	}

@@ -102,23 +102,23 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	keys, err := bc.agent.List()
+	ac := &awsCluster{
+		BaseCluster: bc,
+		api:         api,
+		conf:        conf,
+	}
+
+	keys, err := ac.Keys()
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = api.ImportKeyPair(&ec2.ImportKeyPairInput{
-		KeyName:           &bc.name,
+		KeyName:           &ac.name,
 		PublicKeyMaterial: []byte(keys[0].String()),
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	ac := &awsCluster{
-		BaseCluster: bc,
-		api:         api,
-		conf:        conf,
 	}
 
 	return ac, nil
@@ -130,7 +130,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		return nil, err
 	}
 
-	keys, err := ac.agent.List()
+	keys, err := ac.Keys()
 	if err != nil {
 		return nil, err
 	}

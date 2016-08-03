@@ -26,6 +26,7 @@ import (
 
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/network"
 )
@@ -119,6 +120,10 @@ func (bc *BaseCluster) DelMach(m Machine) {
 	bc.machlock.Lock()
 	defer bc.machlock.Unlock()
 	delete(bc.machmap, m.ID())
+}
+
+func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
+	return bc.agent.List()
 }
 
 // XXX(mischief): i don't really think this belongs here, but it completes the
