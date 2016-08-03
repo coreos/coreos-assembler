@@ -230,12 +230,12 @@ func NewMachines(c Cluster, userdatas []string) ([]Machine, error) {
 	return machs, nil
 }
 
-// commonMachineChecks tests a machine for various error conditions such as ssh
+// CheckMachine tests a machine for various error conditions such as ssh
 // being available and no systemd units failing at the time ssh is reachable.
 // It also ensures the remote system is running CoreOS.
 //
 // TODO(mischief): better error messages.
-func commonMachineChecks(m Machine) error {
+func CheckMachine(m Machine) error {
 	// ensure ssh works
 	sshChecker := func() error {
 		_, err := m.SSH("true")

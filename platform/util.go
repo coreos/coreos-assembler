@@ -111,5 +111,5 @@ func Reboot(m Machine) error {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
 	}
 
-	return commonMachineChecks(m)
+	return CheckMachine(m)
 }

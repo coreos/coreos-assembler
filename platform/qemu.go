@@ -192,7 +192,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	if err := commonMachineChecks(qm); err != nil {
+	if err := CheckMachine(qm); err != nil {
 		qm.Destroy()
 		return nil, err
 	}
