@@ -102,23 +102,23 @@ func NewAWSCluster(conf AWSOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	keys, err := bc.agent.List()
+	ac := &awsCluster{
+		BaseCluster: bc,
+		api:         api,
+		conf:        conf,
+	}
+
+	keys, err := ac.Keys()
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = api.ImportKeyPair(&ec2.ImportKeyPairInput{
-		KeyName:           &bc.name,
+		KeyName:           aws.String(ac.Name()),
 		PublicKeyMaterial: []byte(keys[0].String()),
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	ac := &awsCluster{
-		BaseCluster: bc,
-		api:         api,
-		conf:        conf,
 	}
 
 	return ac, nil
@@ -130,7 +130,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		return nil, err
 	}
 
-	keys, err := ac.agent.List()
+	keys, err := ac.Keys()
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 		ImageId:        &ac.conf.AMI,
 		MinCount:       &cnt,
 		MaxCount:       &cnt,
-		KeyName:        &ac.name,
+		KeyName:        aws.String(ac.Name()),
 		InstanceType:   &ac.conf.InstanceType,
 		SecurityGroups: []*string{&ac.conf.SecurityGroup},
 		UserData:       ud,
@@ -190,19 +190,13 @@ func (ac *awsCluster) NewMachine(userdata string) (Machine, error) {
 
 func (ac *awsCluster) Destroy() error {
 	_, err := ac.api.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-		KeyName: &ac.name,
+		KeyName: aws.String(ac.Name()),
 	})
 	if err != nil {
 		return err
 	}
 
-	machs := ac.Machines()
-	for _, am := range machs {
-		am.Destroy()
-	}
-	ac.agent.Close()
-
-	return nil
+	return ac.BaseCluster.Destroy()
 }
 
 // waitForAWSInstance waits until a set of aws ec2 instance is accessible by ssh.

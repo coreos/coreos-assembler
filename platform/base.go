@@ -18,14 +18,14 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
+	"github.com/coreos/pkg/multierror"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/network"
 )
@@ -40,12 +40,10 @@ type BaseCluster struct {
 }
 
 func NewBaseCluster(basename string) (*BaseCluster, error) {
-	// set reasonable timeout and keepalive interval
-	dialer := &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}
+	return NewBaseClusterWithDialer(basename, network.NewRetryDialer())
+}
 
+func NewBaseClusterWithDialer(basename string, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -121,6 +119,27 @@ func (bc *BaseCluster) DelMach(m Machine) {
 	delete(bc.machmap, m.ID())
 }
 
+func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
+	return bc.agent.List()
+}
+
+// Destroy destroys each machine in the cluster and closes the SSH agent.
+func (bc *BaseCluster) Destroy() error {
+	var err multierror.Error
+
+	for _, m := range bc.Machines() {
+		if e := m.Destroy(); e != nil {
+			err = append(err, e)
+		}
+	}
+
+	if e := bc.agent.Close(); e != nil {
+		err = append(err, e)
+	}
+
+	return err.AsError()
+}
+
 // XXX(mischief): i don't really think this belongs here, but it completes the
 // interface we've established.
 func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
@@ -135,4 +154,8 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 		return "", err
 	}
 	return string(body), nil
+}
+
+func (bc *BaseCluster) Name() string {
+	return bc.name
 }

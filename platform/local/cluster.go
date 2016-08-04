@@ -38,7 +38,6 @@ type LocalCluster struct {
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
 	OmahaServer *omaha.Server
-	SSHAgent    *network.SSHAgent
 	SimpleEtcd  *SimpleEtcd
 	nshandle    netns.NsHandle
 }
@@ -52,14 +51,6 @@ func NewLocalCluster() (*LocalCluster, error) {
 		return nil, err
 	}
 	lc.AddCloser(&lc.nshandle)
-
-	dialer := network.NewNsDialer(lc.nshandle)
-	lc.SSHAgent, err = network.NewSSHAgent(dialer)
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddCloser(lc.SSHAgent)
 
 	// dnsmasq and etcd much be launched in the new namespace
 	nsExit, err := ns.Enter(lc.nshandle)
@@ -103,8 +94,6 @@ func NewLocalCluster() (*LocalCluster, error) {
 
 func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
 	cmd := ns.Command(lc.nshandle, name, arg...)
-	sshEnv := fmt.Sprintf("SSH_AUTH_SOCK=%s", lc.SSHAgent.Socket)
-	cmd.Env = append(cmd.Env, sshEnv)
 	return cmd
 }
 
@@ -172,4 +161,8 @@ func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
 	}
 
 	return tap, nil
+}
+
+func (lc *LocalCluster) GetNsHandle() netns.NsHandle {
+	return lc.nshandle
 }

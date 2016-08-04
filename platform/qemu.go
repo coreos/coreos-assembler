@@ -15,7 +15,6 @@
 package platform
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -24,6 +23,7 @@ import (
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
@@ -71,7 +71,8 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 		return nil, err
 	}
 
-	bc, err := NewBaseCluster(conf.BaseName)
+	nsdialer := network.NewNsDialer(lc.GetNsHandle())
+	bc, err := NewBaseClusterWithDialer(conf.BaseName, nsdialer)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +87,10 @@ func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
 }
 
 func (qc *QEMUCluster) Destroy() error {
-	for _, qm := range qc.Machines() {
-		qm.Destroy()
+	if err := qc.BaseCluster.Destroy(); err != nil {
+		return err
 	}
+
 	return qc.LocalCluster.Destroy()
 }
 
@@ -110,7 +112,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	keys, err := qc.SSHAgent.List()
+	keys, err := qc.Keys()
 	if err != nil {
 		qc.mu.Unlock()
 		return nil, err
@@ -244,42 +246,15 @@ func (m *qemuMachine) PrivateIP() string {
 }
 
 func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
-	sshClient, err := m.qc.SSHAgent.NewClient(m.IP())
-	if err != nil {
-		return nil, err
-	}
-
-	return sshClient, nil
+	return m.qc.SSHClient(m.IP())
 }
 
 func (m *qemuMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
-	client, err := m.qc.SSHAgent.NewPasswordClient(m.IP(), user, password)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
+	return m.qc.PasswordSSHClient(m.IP(), user, password)
 }
 
 func (m *qemuMachine) SSH(cmd string) ([]byte, error) {
-	client, err := m.SSHClient()
-	if err != nil {
-		return nil, err
-	}
-
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	defer session.Close()
-
-	session.Stderr = os.Stderr
-	out, err := session.Output(cmd)
-	out = bytes.TrimSpace(out)
-	return out, err
+	return m.qc.SSH(m, cmd)
 }
 
 func (m *qemuMachine) Destroy() error {
