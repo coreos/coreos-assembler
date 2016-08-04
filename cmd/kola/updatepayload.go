@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/sdk"
 	sdkomaha "github.com/coreos/mantle/sdk/omaha"
 )
@@ -83,12 +84,12 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 	plog.Info("Bringing up test harness cluster")
 
-	cluster, err := platform.NewQemuCluster(kola.QEMUOptions)
+	cluster, err := qemu.NewCluster(&kola.QEMUOptions)
 	if err != nil {
 		plog.Fatalf("Cluster failed: %v", err)
 	}
 	defer cluster.Destroy()
-	qc := cluster.(*platform.QEMUCluster)
+	qc := cluster.(*qemu.Cluster)
 
 	svc := &updateServer{
 		updatePath: dir,

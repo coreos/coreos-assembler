@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/aws"
+	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 var (
@@ -63,7 +64,7 @@ func runSpawn(cmd *cobra.Command, args []string) {
 
 	switch kolaPlatform {
 	case "qemu":
-		cluster, err = platform.NewQemuCluster(kola.QEMUOptions)
+		cluster, err = qemu.NewCluster(&kola.QEMUOptions)
 	case "gce":
 		cluster, err = platform.NewGCECluster(kola.GCEOptions)
 	case "aws":
