@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/machine/aws"
 )
 
 var (
@@ -66,7 +67,7 @@ func runSpawn(cmd *cobra.Command, args []string) {
 	case "gce":
 		cluster, err = platform.NewGCECluster(kola.GCEOptions)
 	case "aws":
-		cluster, err = platform.NewAWSCluster(kola.AWSOptions)
+		cluster, err = aws.NewCluster(&kola.AWSOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", kolaPlatform)
 	}

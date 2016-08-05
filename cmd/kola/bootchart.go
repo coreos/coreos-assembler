@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/machine/aws"
 )
 
 var cmdBootchart = &cobra.Command{
@@ -58,7 +59,7 @@ func runBootchart(cmd *cobra.Command, args []string) {
 	} else if kolaPlatform == "gce" {
 		cluster, err = platform.NewGCECluster(kola.GCEOptions)
 	} else if kolaPlatform == "aws" {
-		cluster, err = platform.NewAWSCluster(kola.AWSOptions)
+		cluster, err = aws.NewCluster(&kola.AWSOptions)
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", kolaPlatform)
 	}

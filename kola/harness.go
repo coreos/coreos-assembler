@@ -31,6 +31,8 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/platform"
+	awsapi "github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/mantle/platform/machine/aws"
 
 	// Tests imported for registration side effects.
 	_ "github.com/coreos/mantle/kola/tests/coretest"
@@ -53,7 +55,7 @@ var (
 	Options     = platform.Options{}
 	QEMUOptions = platform.QEMUOptions{Options: &Options} // glue to set platform options from main
 	GCEOptions  = platform.GCEOptions{Options: &Options}  // glue to set platform options from main
-	AWSOptions  = platform.AWSOptions{Options: &Options}  // glue to set platform options from main
+	AWSOptions  = awsapi.Options{Options: &Options}       // glue to set platform options from main
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
@@ -312,7 +314,7 @@ func getClusterSemver(pltfrm string) (*semver.Version, error) {
 	case "gce":
 		cluster, err = platform.NewGCECluster(GCEOptions)
 	case "aws":
-		cluster, err = platform.NewAWSCluster(AWSOptions)
+		cluster, err = aws.NewCluster(&AWSOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
@@ -358,7 +360,7 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 	case "gce":
 		c, err = platform.NewGCECluster(GCEOptions)
 	case "aws":
-		c, err = platform.NewAWSCluster(AWSOptions)
+		c, err = aws.NewCluster(&AWSOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
