@@ -19,18 +19,35 @@ import (
 
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/api/gcloud"
 )
 
 var (
 	root = &cobra.Command{
-		Use:   "ore [command]",
-		Short: "gce image creation and upload tools",
+		Use:     "ore [command]",
+		Short:   "gce image creation and upload tools",
+		PreRunE: preauth,
 	}
 
-	opts = platform.GCEOptions{Options: &platform.Options{}}
+	opts = gcloud.Options{Options: &platform.Options{}}
+
+	api *gcloud.API
 )
 
+func preauth(cmd *cobra.Command, args []string) error {
+	a, err := gcloud.New(&opts)
+	if err != nil {
+		return err
+	}
+
+	api = a
+
+	return nil
+}
+
 func main() {
+	root.PersistentFlags().BoolVar(&opts.ServiceAuth, "service-auth", false, "use non-interactive auth when running within GCE")
+
 	sv := root.PersistentFlags().StringVar
 
 	sv(&opts.Image, "image", "", "image name")

@@ -32,7 +32,9 @@ import (
 	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
+	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/platform/machine/aws"
+	"github.com/coreos/mantle/platform/machine/gcloud"
 	"github.com/coreos/mantle/platform/machine/qemu"
 
 	// Tests imported for registration side effects.
@@ -54,9 +56,9 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
 	Options     = platform.Options{}
-	QEMUOptions = qemu.Options{Options: &Options}        // glue to set platform options from main
-	GCEOptions  = platform.GCEOptions{Options: &Options} // glue to set platform options from main
-	AWSOptions  = awsapi.Options{Options: &Options}      // glue to set platform options from main
+	QEMUOptions = qemu.Options{Options: &Options}      // glue to set platform options from main
+	GCEOptions  = gcloudapi.Options{Options: &Options} // glue to set platform options from main
+	AWSOptions  = awsapi.Options{Options: &Options}    // glue to set platform options from main
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
@@ -313,7 +315,7 @@ func getClusterSemver(pltfrm string) (*semver.Version, error) {
 	case "qemu":
 		cluster, err = qemu.NewCluster(&QEMUOptions)
 	case "gce":
-		cluster, err = platform.NewGCECluster(GCEOptions)
+		cluster, err = gcloud.NewCluster(&GCEOptions)
 	case "aws":
 		cluster, err = aws.NewCluster(&AWSOptions)
 	default:
@@ -359,7 +361,7 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 	case "qemu":
 		c, err = qemu.NewCluster(&QEMUOptions)
 	case "gce":
-		c, err = platform.NewGCECluster(GCEOptions)
+		c, err = gcloud.NewCluster(&GCEOptions)
 	case "aws":
 		c, err = aws.NewCluster(&AWSOptions)
 	default:

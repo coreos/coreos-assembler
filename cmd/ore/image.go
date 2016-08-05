@@ -19,9 +19,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -30,12 +27,11 @@ var (
 		Short: "List images in GCE",
 		Run:   runImage,
 	}
-	imageProject string
-	imagePrefix  string
+
+	imagePrefix string
 )
 
 func init() {
-	cmdImage.Flags().StringVar(&imageProject, "project", "coreos-gce-testing", "found in developers console")
 	cmdImage.Flags().StringVar(&imagePrefix, "prefix", "", "prefix to filter list by")
 	root.AddCommand(cmdImage)
 }
@@ -46,17 +42,12 @@ func runImage(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	client, err := auth.GoogleClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	images, err := platform.GCEListImages(client, imageProject, imagePrefix)
+	images, err := api.ListImages(imagePrefix)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing images: %v\n", err)
 		os.Exit(1)
 	}
+
 	for _, image := range images {
 		fmt.Printf("%v\n", image)
 	}

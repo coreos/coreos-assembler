@@ -19,10 +19,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/api/compute/v1"
-
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -50,31 +46,20 @@ func runDestroy(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	client, err := auth.GoogleClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	api, err := compute.New(client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	vms, err := platform.GCEListVMs(api, &opts, opts.BaseName)
+	vms, err := api.ListInstances(opts.BaseName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
 		os.Exit(1)
 	}
+
 	var count int
 	for _, vm := range vms {
-		err := platform.GCEDestroyVM(api, opts.Project, opts.Zone, vm.ID())
-		if err != nil {
+		if err := api.TerminateInstance(vm.Name); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed destroying vm: %v\n", err)
 			os.Exit(1)
 		}
 		count++
 	}
+
 	fmt.Printf("%v instance(s) scheduled for deletion\n", count)
 }

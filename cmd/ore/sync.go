@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 
-	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/storage/index"
@@ -67,20 +66,14 @@ func runSync(cmd *cobra.Command, args []string) {
 	}
 
 	ctx := context.Background()
-	client, err := auth.GoogleClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	src, err := storage.NewBucket(client, args[0])
+	src, err := storage.NewBucket(api.Client(), args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 	src.WriteDryRun(true) // do not write to src
 
-	dst, err := storage.NewBucket(client, args[1])
+	dst, err := storage.NewBucket(api.Client(), args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

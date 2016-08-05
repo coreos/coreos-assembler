@@ -19,10 +19,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/api/compute/v1"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/api/gcloud"
 )
 
 var (
@@ -43,24 +41,15 @@ func runList(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	client, err := auth.GoogleClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	api, err := compute.New(client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
-		os.Exit(1)
-	}
-	vms, err := platform.GCEListVMs(api, &opts, opts.BaseName)
+	vms, err := api.ListInstances(opts.BaseName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed listing vms: %v\n", err)
 		os.Exit(1)
 	}
+
 	for _, vm := range vms {
-		fmt.Printf("%v:\n", vm.ID())
-		fmt.Printf(" extIP: %v\n", vm.IP())
+		_, extIP := gcloud.InstanceIPs(vm)
+		fmt.Printf("%v:\n", vm.Name)
+		fmt.Printf(" extIP: %v\n", extIP)
 	}
 }

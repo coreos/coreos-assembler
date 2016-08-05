@@ -22,8 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/api/compute/v1"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/api/gcloud"
 )
 
 var (
@@ -59,21 +58,9 @@ func runCreate(cmd *cobra.Command, args []string) {
 		cloudConfig = string(b)
 	}
 
-	client, err := auth.GoogleClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	api, err := compute.New(client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Api Client creation failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	var vms []platform.Machine
+	var vms []*compute.Instance
 	for i := 0; i < createNumInstances; i++ {
-		vm, err := platform.GCECreateVM(api, &opts, cloudConfig, nil)
+		vm, err := api.CreateInstance(cloudConfig, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating vm: %v\n", err)
 			os.Exit(1)
@@ -84,7 +71,8 @@ func runCreate(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("All instances created, add your ssh keys here: https://console.developers.google.com/project/%v/compute/metadata/sshKeys\n", opts.Project)
 	for _, vm := range vms {
-		fmt.Printf("To access %v use cmd:\n", vm.ID())
-		fmt.Printf("ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no core@%v\n", vm.IP())
+		_, extIP := gcloud.InstanceIPs(vm)
+		fmt.Printf("To access %v use cmd:\n", vm.Name)
+		fmt.Printf("ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no core@%v\n", extIP)
 	}
 }

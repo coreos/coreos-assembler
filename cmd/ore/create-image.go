@@ -16,18 +16,13 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/storage/v1"
-
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -38,13 +33,12 @@ var (
 		Run:   runCreateImage,
 	}
 
-	createImageFamily      string
-	createImageBoard       string
-	createImageVersion     string
-	createImageRoot        string
-	createImageName        string
-	createImageServiceAuth bool
-	createImageForce       bool
+	createImageFamily  string
+	createImageBoard   string
+	createImageVersion string
+	createImageRoot    string
+	createImageName    string
+	createImageForce   bool
 )
 
 func init() {
@@ -61,8 +55,6 @@ func init() {
 	cmdCreateImage.Flags().StringVar(&createImageName, "source-name",
 		"coreos_production_gce.tar.gz",
 		"Storage image name")
-	cmdCreateImage.Flags().BoolVar(&createImageServiceAuth, "service-auth",
-		false, "use non-interactive auth when running within GCE")
 	cmdCreateImage.Flags().BoolVar(&createImageForce, "force",
 		false, "overwrite existing GCE images without prompt")
 	root.AddCommand(cmdCreateImage)
@@ -98,25 +90,7 @@ func runCreateImage(cmd *cobra.Command, args []string) {
 		createImageBoard, createImageVersion, createImageName), "/")
 	imageNameGCE := gceSanitize(createImageFamily + "-" + createImageVersion)
 
-	var client *http.Client
-	if createImageServiceAuth {
-		client = auth.GoogleServiceClient()
-		err = nil
-	} else {
-		client, err = auth.GoogleClient()
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	computeAPI, err := compute.New(client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Compute client failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	storageAPI, err := storage.New(client)
+	storageAPI, err := storage.New(api.Client())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
@@ -137,36 +111,7 @@ func runCreateImage(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", bucket, imageNameGS)
-	if createImageForce {
-		err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
-	} else {
-		err = platform.GCECreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
-	}
-
-	// if image already exists ask to delete and try again
-	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
-		var ans string
-		fmt.Printf("Image %v already exists on GCE. Overwrite? (y/n):", imageNameGCE)
-		if _, err = fmt.Scan(&ans); err != nil {
-			fmt.Fprintf(os.Stderr, "Scanning overwrite input: %v", err)
-			os.Exit(1)
-		}
-		switch ans {
-		case "y", "Y", "yes":
-			fmt.Println("Overriding existing image...")
-			err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
-
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
-				os.Exit(1)
-			}
-			fmt.Printf("Image %v sucessfully created in GCE\n", imageNameGCE)
-		default:
-			fmt.Println("Skipped GCE image creation")
-		}
-	}
-
-	if err != nil {
+	if err := api.CreateImage(imageNameGCE, storageSrc, createImageForce); err != nil {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 		os.Exit(1)
 	}
