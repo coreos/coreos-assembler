@@ -22,17 +22,9 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
-type Options struct {
-	*platform.Options
-	AMI           string
-	InstanceType  string
-	SecurityGroup string
-}
-
 type cluster struct {
 	*platform.BaseCluster
-	api     *aws.API
-	options *Options
+	api *aws.API
 }
 
 // NewCluster creates an instance of a Cluster suitable for spawning
@@ -41,8 +33,8 @@ type cluster struct {
 // NewCluster will consume the environment variables $AWS_REGION,
 // $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
 // spawn instances in and the credentials to use to authenticate.
-func NewCluster(opts *Options) (platform.Cluster, error) {
-	api, err := aws.New()
+func NewCluster(opts *aws.Options) (platform.Cluster, error) {
+	api, err := aws.New(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +47,6 @@ func NewCluster(opts *Options) (platform.Cluster, error) {
 	ac := &cluster{
 		BaseCluster: bc,
 		api:         api,
-		options:     opts,
 	}
 
 	keys, err := ac.Keys()
@@ -83,7 +74,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 
 	conf.CopyKeys(keys)
 
-	instances, err := ac.api.CreateInstances(ac.options.AMI, ac.Name(), conf.String(), ac.options.InstanceType, ac.options.SecurityGroup, 1, true)
+	instances, err := ac.api.CreateInstances(ac.Name(), conf.String(), 1, true)
 
 	mach := &machine{
 		cluster: ac,

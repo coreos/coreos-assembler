@@ -91,8 +91,8 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 	return nil
 }
 
-// CreateInstances creates EC2 instances with a given image ID, ssh key name, user data, instance type, and security group. If wait is true, CreateInstances will block until all instances are reachable by SSH.
-func (a *API) CreateInstances(imageid, keyname, userdata, instancetype, securitygroup string, count uint64, wait bool) ([]*ec2.Instance, error) {
+// CreateInstances creates EC2 instances with a given ssh key name, user data. The image ID, instance type, and security group set in the API will be used. If wait is true, CreateInstances will block until all instances are reachable by SSH.
+func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -102,12 +102,12 @@ func (a *API) CreateInstances(imageid, keyname, userdata, instancetype, security
 	}
 
 	inst := ec2.RunInstancesInput{
-		ImageId:        &imageid,
+		ImageId:        &a.opts.AMI,
 		MinCount:       &cnt,
 		MaxCount:       &cnt,
 		KeyName:        &keyname,
-		InstanceType:   &instancetype,
-		SecurityGroups: []*string{&securitygroup},
+		InstanceType:   &a.opts.InstanceType,
+		SecurityGroups: []*string{&a.opts.SecurityGroup},
 		UserData:       ud,
 	}
 

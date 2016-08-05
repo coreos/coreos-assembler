@@ -22,19 +22,29 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/coreos/pkg/capnslog"
+
+	"github.com/coreos/mantle/platform"
 )
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/aws")
 )
 
+type Options struct {
+	*platform.Options
+	AMI           string
+	InstanceType  string
+	SecurityGroup string
+}
+
 type API struct {
 	session *session.Session
 	ec2     *ec2.EC2
+	opts    *Options
 }
 
 // New creates a new AWS API wrapper. It uses credentials from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.
-func New() (*API, error) {
+func New(opts *Options) (*API, error) {
 	creds := credentials.NewEnvCredentials()
 	if _, err := creds.Get(); err != nil {
 		return nil, fmt.Errorf("no AWS credentials provided: %v", err)
@@ -47,6 +57,7 @@ func New() (*API, error) {
 	api := &API{
 		session: sess,
 		ec2:     ec2.New(sess),
+		opts:    opts,
 	}
 
 	return api, nil
