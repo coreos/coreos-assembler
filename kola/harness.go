@@ -33,6 +33,7 @@ import (
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/machine/aws"
+	"github.com/coreos/mantle/platform/machine/qemu"
 
 	// Tests imported for registration side effects.
 	_ "github.com/coreos/mantle/kola/tests/coretest"
@@ -53,9 +54,9 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
 	Options     = platform.Options{}
-	QEMUOptions = platform.QEMUOptions{Options: &Options} // glue to set platform options from main
-	GCEOptions  = platform.GCEOptions{Options: &Options}  // glue to set platform options from main
-	AWSOptions  = awsapi.Options{Options: &Options}       // glue to set platform options from main
+	QEMUOptions = qemu.Options{Options: &Options}        // glue to set platform options from main
+	GCEOptions  = platform.GCEOptions{Options: &Options} // glue to set platform options from main
+	AWSOptions  = awsapi.Options{Options: &Options}      // glue to set platform options from main
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
@@ -310,7 +311,7 @@ func getClusterSemver(pltfrm string) (*semver.Version, error) {
 
 	switch pltfrm {
 	case "qemu":
-		cluster, err = platform.NewQemuCluster(QEMUOptions)
+		cluster, err = qemu.NewCluster(&QEMUOptions)
 	case "gce":
 		cluster, err = platform.NewGCECluster(GCEOptions)
 	case "aws":
@@ -356,7 +357,7 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 
 	switch pltfrm {
 	case "qemu":
-		c, err = platform.NewQemuCluster(QEMUOptions)
+		c, err = qemu.NewCluster(&QEMUOptions)
 	case "gce":
 		c, err = platform.NewGCECluster(GCEOptions)
 	case "aws":

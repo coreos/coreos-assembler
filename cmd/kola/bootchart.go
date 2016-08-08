@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/aws"
+	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 var cmdBootchart = &cobra.Command{
@@ -55,7 +56,7 @@ func runBootchart(cmd *cobra.Command, args []string) {
 		err     error
 	)
 	if kolaPlatform == "qemu" {
-		cluster, err = platform.NewQemuCluster(kola.QEMUOptions)
+		cluster, err = qemu.NewCluster(&kola.QEMUOptions)
 	} else if kolaPlatform == "gce" {
 		cluster, err = platform.NewGCECluster(kola.GCEOptions)
 	} else if kolaPlatform == "aws" {

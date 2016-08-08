@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package platform
+package qemu
 
 import (
 	"io/ioutil"
@@ -21,17 +21,17 @@ import (
 	"sync"
 
 	"github.com/satori/go.uuid"
-	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
 )
 
-// QEMUOptions contains QEMU-specific options for the cluster.
-type QEMUOptions struct {
+// Options contains QEMU-specific options for the cluster.
+type Options struct {
 	// DiskImage is the full path to the disk image to boot in QEMU.
 	DiskImage string
 	Board     string
@@ -40,53 +40,45 @@ type QEMUOptions struct {
 	// It can be a plain name, or a full path.
 	BIOSImage string
 
-	*Options
+	*platform.Options
 }
 
-// QEMUCluster is a local cluster of QEMU-based virtual machines.
+// Cluster is a local cluster of QEMU-based virtual machines.
 //
 // XXX: must be exported so that certain QEMU tests can access struct members
 // through type assertions.
-type QEMUCluster struct {
-	*BaseCluster
-	conf QEMUOptions
+type Cluster struct {
+	*platform.BaseCluster
+	conf *Options
 
 	mu sync.Mutex
 	*local.LocalCluster
 }
 
-type qemuMachine struct {
-	qc          *QEMUCluster
-	id          string
-	qemu        exec.Cmd
-	configDrive *local.ConfigDrive
-	netif       *local.Interface
-}
-
-// NewQemuCluster creates a Cluster instance, suitable for running virtual
+// NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
-func NewQemuCluster(conf QEMUOptions) (Cluster, error) {
+func NewCluster(conf *Options) (platform.Cluster, error) {
 	lc, err := local.NewLocalCluster()
 	if err != nil {
 		return nil, err
 	}
 
 	nsdialer := network.NewNsDialer(lc.GetNsHandle())
-	bc, err := NewBaseClusterWithDialer(conf.BaseName, nsdialer)
+	bc, err := platform.NewBaseClusterWithDialer(conf.BaseName, nsdialer)
 	if err != nil {
 		return nil, err
 	}
 
-	qc := &QEMUCluster{
+	qc := &Cluster{
 		BaseCluster:  bc,
 		conf:         conf,
 		LocalCluster: lc,
 	}
 
-	return Cluster(qc), nil
+	return qc, nil
 }
 
-func (qc *QEMUCluster) Destroy() error {
+func (qc *Cluster) Destroy() error {
 	if err := qc.BaseCluster.Destroy(); err != nil {
 		return err
 	}
@@ -94,7 +86,7 @@ func (qc *QEMUCluster) Destroy() error {
 	return qc.LocalCluster.Destroy()
 }
 
-func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
+func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	id := uuid.NewV4()
 
 	// hacky solution for cloud config ip substitution
@@ -127,7 +119,7 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	qm := &qemuMachine{
+	qm := &machine{
 		qc:          qc,
 		id:          id.String(),
 		configDrive: configDrive,
@@ -195,18 +187,18 @@ func (qc *QEMUCluster) NewMachine(cfg string) (Machine, error) {
 		return nil, err
 	}
 
-	if err := CheckMachine(qm); err != nil {
+	if err := platform.CheckMachine(qm); err != nil {
 		qm.Destroy()
 		return nil, err
 	}
 
 	qc.AddMach(qm)
 
-	return Machine(qm), nil
+	return qm, nil
 }
 
 // overrides BaseCluster.GetDiscoveryURL
-func (qc *QEMUCluster) GetDiscoveryURL(size int) (string, error) {
+func (qc *Cluster) GetDiscoveryURL(size int) (string, error) {
 	return qc.LocalCluster.GetDiscoveryURL(size)
 }
 
@@ -231,43 +223,4 @@ func setupDisk(imageFile string) (string, error) {
 	}
 
 	return dstFileName, nil
-}
-
-func (m *qemuMachine) ID() string {
-	return m.id
-}
-
-func (m *qemuMachine) IP() string {
-	return m.netif.DHCPv4[0].IP.String()
-}
-
-func (m *qemuMachine) PrivateIP() string {
-	return m.netif.DHCPv4[0].IP.String()
-}
-
-func (m *qemuMachine) SSHClient() (*ssh.Client, error) {
-	return m.qc.SSHClient(m.IP())
-}
-
-func (m *qemuMachine) PasswordSSHClient(user string, password string) (*ssh.Client, error) {
-	return m.qc.PasswordSSHClient(m.IP(), user, password)
-}
-
-func (m *qemuMachine) SSH(cmd string) ([]byte, error) {
-	return m.qc.SSH(m, cmd)
-}
-
-func (m *qemuMachine) Destroy() error {
-	err := m.qemu.Kill()
-
-	if m.configDrive != nil {
-		err2 := m.configDrive.Destroy()
-		if err == nil && err2 != nil {
-			err = err2
-		}
-	}
-
-	m.qc.DelMach(m)
-
-	return err
 }
