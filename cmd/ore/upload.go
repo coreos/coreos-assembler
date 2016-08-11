@@ -16,19 +16,15 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
 )
 
@@ -40,12 +36,11 @@ var (
 		Run:   runUpload,
 	}
 
-	uploadBucket      string
-	uploadImageName   string
-	uploadBoard       string
-	uploadFile        string
-	uploadServiceAuth bool
-	uploadForce       bool
+	uploadBucket    string
+	uploadImageName string
+	uploadBoard     string
+	uploadFile      string
+	uploadForce     bool
 )
 
 func init() {
@@ -56,8 +51,6 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
-
-	cmdUpload.Flags().BoolVar(&uploadServiceAuth, "service-auth", false, "use non-interactive auth when running within GCE")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	root.AddCommand(cmdUpload)
 }
@@ -105,25 +98,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 	imageNameGCE := gceSanitize(uploadImageName)
 	imageNameGS := uploadImageName + ".tar.gz"
 
-	var client *http.Client
-	if uploadServiceAuth {
-		client = auth.GoogleServiceClient()
-		err = nil
-	} else {
-		client, err = auth.GoogleClient()
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	computeAPI, err := compute.New(client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Compute client failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	storageAPI, err := storage.New(client)
+	storageAPI, err := storage.New(api.Client())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
@@ -162,11 +137,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	if uploadForce {
-		err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
-	} else {
-		err = platform.GCECreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
-	}
+	err = api.CreateImage(imageNameGCE, storageSrc, uploadForce)
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
@@ -179,7 +150,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		switch ans {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing image...")
-			err = platform.GCEForceCreateImage(computeAPI, opts.Project, imageNameGCE, storageSrc)
+			err = api.CreateImage(imageNameGCE, storageSrc, true)
 
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
