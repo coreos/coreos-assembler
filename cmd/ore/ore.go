@@ -24,9 +24,9 @@ import (
 
 var (
 	root = &cobra.Command{
-		Use:     "ore [command]",
-		Short:   "gce image creation and upload tools",
-		PreRunE: preauth,
+		Use:               "ore [command]",
+		Short:             "gce image creation and upload tools",
+		PersistentPreRunE: preauth,
 	}
 
 	opts = gcloud.Options{Options: &platform.Options{}}
