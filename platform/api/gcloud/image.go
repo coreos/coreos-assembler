@@ -30,7 +30,8 @@ func (a *API) CreateImage(name, source string, overwrite bool) error {
 		op, err := a.compute.Images.Delete(a.options.Project, name).Do()
 
 		if op != nil {
-			if err := a.waitop(op.Name); err != nil {
+			doable := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
+			if err := a.waitop(op.Name, doable); err != nil {
 				return err
 			}
 		}
@@ -55,7 +56,8 @@ func (a *API) CreateImage(name, source string, overwrite bool) error {
 		return err
 	}
 
-	if err := a.waitop(op.Name); err != nil {
+	doable := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
+	if err := a.waitop(op.Name, doable); err != nil {
 		return err
 	}
 
