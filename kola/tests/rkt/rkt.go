@@ -32,7 +32,7 @@ var conf = `{
 	"systemd": {
 		"units": [{
 			"name": "etcd3-wrapper.service",
-			"enable": true,
+			"enable": true
 		}]
 	}
 }`
