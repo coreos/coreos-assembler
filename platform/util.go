@@ -101,6 +101,15 @@ func StreamJournal(m Machine) error {
 	return nil
 }
 
+// Enable SELinux on a machine
+func EnableSelinux(m Machine) error {
+	err, output := m.SSH("sudo setenforce 1")
+	if err != nil {
+		return fmt.Errorf("Unable to enable SELinux: %v: %s", err, output)
+	}
+	return nil
+}
+
 // Reboots a machine and blocks until the system to be accessible by SSH again.
 // It will return an error if the machine is not accessible after a timeout.
 func Reboot(m Machine) error {
@@ -111,5 +120,14 @@ func Reboot(m Machine) error {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
 	}
 
-	return CheckMachine(m)
+	err = CheckMachine(m)
+	if err != nil {
+		return err
+	}
+
+	err = EnableSelinux(m)
+	if err != nil {
+		return err
+	}
+	return nil
 }
