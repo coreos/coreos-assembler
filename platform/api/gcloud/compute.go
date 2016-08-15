@@ -22,6 +22,7 @@ import (
 
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 
 	"github.com/coreos/mantle/util"
 )
@@ -88,9 +89,13 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 
 }
 
-func (a *API) waitop(operation string) error {
+type doable interface {
+	Do(opts ...googleapi.CallOption) (*compute.Operation, error)
+}
+
+func (a *API) waitop(operation string, do doable) error {
 	retry := func() error {
-		op, err := a.compute.ZoneOperations.Get(a.options.Project, a.options.Zone, operation).Do()
+		op, err := do.Do()
 		if err != nil {
 			return err
 		}
@@ -132,7 +137,8 @@ func (a *API) CreateInstance(userdata string, keys []*agent.Key) (*compute.Insta
 		return nil, fmt.Errorf("failed to request new GCE instance: %v\n", err)
 	}
 
-	if err := a.waitop(op.Name); err != nil {
+	doable := a.compute.ZoneOperations.Get(a.options.Project, a.options.Zone, op.Name)
+	if err := a.waitop(op.Name, doable); err != nil {
 		return nil, err
 	}
 
