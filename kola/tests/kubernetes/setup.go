@@ -66,7 +66,6 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 		"K8S_SERVICE_IP":       "10.3.0.1",
 		"K8S_VER":              version,
 		"CONTAINER_RUNTIME":    runtime,
-		"KUBELET_PATH":         "/usr/lib/coreos/kubelet-wrapper",
 	}
 
 	// generate TLS assets on master
@@ -265,11 +264,8 @@ func stripSemverSuffix(v string) (string, error) {
 
 // Run and configure the coreos-kubernetes generic install scripts.
 func runInstallScript(m platform.Machine, script string, options map[string]string) error {
-	// attempt to directly use kubelet if kubelet-wrapper not on disk
-	// on-disk wrapper should exist as of release 962.0.0
 	if _, err := m.SSH("sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
-		plog.Errorf("on-disk kubelet-wrapper not found, using CoreOS built-in kubelet")
-		options["KUBELET_PATH"] = "/usr/bin/kubelet"
+		return fmt.Errorf("kubelet-wrapper not found on disk")
 	}
 
 	var buffer = new(bytes.Buffer)
