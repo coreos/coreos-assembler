@@ -46,6 +46,7 @@ import (
 	_ "github.com/coreos/mantle/kola/tests/ignition/v1"
 	_ "github.com/coreos/mantle/kola/tests/ignition/v2"
 	_ "github.com/coreos/mantle/kola/tests/kubernetes"
+	_ "github.com/coreos/mantle/kola/tests/locksmith"
 	_ "github.com/coreos/mantle/kola/tests/metadata"
 	_ "github.com/coreos/mantle/kola/tests/misc"
 	_ "github.com/coreos/mantle/kola/tests/rkt"
