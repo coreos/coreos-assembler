@@ -30,7 +30,7 @@ import (
 
 const (
 	sshRetries = 10
-	sshTimeout = 2 * time.Second
+	sshTimeout = 5 * time.Second
 )
 
 // Machine represents a CoreOS instance.
@@ -173,9 +173,9 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 
 	// write file to fs from stdin
 	session.Stdin = in
-	err = session.Run(fmt.Sprintf("install -m 0755 /dev/stdin %s", to))
+	out, err = session.CombinedOutput(fmt.Sprintf("sudo install -m 0755 /dev/stdin %s", to))
 	if err != nil {
-		return fmt.Errorf("failed executing install: %v", err)
+		return fmt.Errorf("failed executing install: %q: %v", out, err)
 	}
 
 	return nil
