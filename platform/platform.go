@@ -30,7 +30,7 @@ import (
 
 const (
 	sshRetries = 10
-	sshTimeout = 2 * time.Second
+	sshTimeout = 5 * time.Second
 )
 
 // Machine represents a CoreOS instance.
