@@ -192,6 +192,10 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		return nil, err
 	}
 
+	if err := platform.EnableSelinux(qm); err != nil {
+		qm.Destroy()
+		return nil, err
+	}
 	qc.AddMach(qm)
 
 	return qm, nil

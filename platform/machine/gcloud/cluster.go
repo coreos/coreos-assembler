@@ -78,6 +78,10 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		return nil, err
 	}
 
+	if err := platform.EnableSelinux(gm); err != nil {
+		gm.Destroy()
+		return nil, err
+	}
 	gc.AddMach(gm)
 
 	return gm, nil

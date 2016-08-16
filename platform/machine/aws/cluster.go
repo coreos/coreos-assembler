@@ -85,6 +85,11 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
 	}
 
+	if err := platform.EnableSelinux(mach); err != nil {
+		mach.Destroy()
+		return nil, err
+	}
+
 	ac.AddMach(mach)
 
 	return mach, nil
