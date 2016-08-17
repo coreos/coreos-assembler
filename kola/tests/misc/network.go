@@ -59,6 +59,7 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 		}
 		data := strings.Fields(process)
 		processname := data[0]
+		pid := data[1]
 		portdata := strings.Split(data[8], ":")
 		port := portdata[len(portdata)-1]
 		for _, listener := range listeners {
@@ -67,7 +68,7 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 			}
 		}
 		if valid != true {
-			return fmt.Errorf("Unexpected listening process: %v on %v", processname, port)
+			return fmt.Errorf("Unexpected %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
 		}
 	}
 	return nil
@@ -78,6 +79,7 @@ func NetworkListeners(c cluster.TestCluster) error {
 
 	TCPListeners := []listener{
 		{"systemd", "ssh"},
+		{"systemd-r", "domain"},
 	}
 	UDPListeners := []listener{
 		{"systemd-n", "dhcpv6-client"},
