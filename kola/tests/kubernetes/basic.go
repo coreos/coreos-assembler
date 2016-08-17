@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -28,30 +29,44 @@ import (
 
 // register a separate test for each version tag
 var basicTags = []string{
-	"v1.2.0_coreos.1",
+	"v1.3.4_coreos.0",
+}
+
+// regester each tag once per runtime
+var runtimes = []string{
+	"docker",
+	"rkt",
 }
 
 func init() {
 	for i := range basicTags {
-		// use closure to store a version tag in a Test
-		t := basicTags[i]
-		f := func(c cluster.TestCluster) error {
-			return CoreOSBasic(c, t)
-		}
+		for j := range runtimes {
+			// use closure to store version and runtime in a Test
+			t, r := basicTags[i], runtimes[j]
+			f := func(c cluster.TestCluster) error {
+				return CoreOSBasic(c, t, r)
+			}
 
-		register.Register(&register.Test{
-			Name:        "google.kubernetes.basic." + t,
-			Run:         f,
-			ClusterSize: 0,
-			Platforms:   []string{"gce"},
-		})
+			var min semver.Version
+			if r == "rkt" {
+				min = semver.Version{Major: 1122}
+			}
+
+			register.Register(&register.Test{
+				Name:        "google.kubernetes.basic." + r + "." + t,
+				Run:         f,
+				ClusterSize: 0,
+				MinVersion:  min,
+				Platforms:   []string{"gce"},
+			})
+		}
 	}
 }
 
 // Run basic smoke tests on cluster. Assumes master is machine index 1,
 // workers make up the rest.
-func CoreOSBasic(c cluster.TestCluster, version string) error {
-	k, err := setupCluster(c, 2, version)
+func CoreOSBasic(c cluster.TestCluster, version, runtime string) error {
+	k, err := setupCluster(c, 2, version, runtime)
 	if err != nil {
 		return err
 	}
