@@ -30,7 +30,7 @@ func init() {
 		               "storage": {
 		                   "filesystems": [
 		                       {
-		                           "device": "/dev/disk/by-label/ROOT",
+		                           "device": "/dev/disk/by-partlabel/ROOT",
 		                           "format": "btrfs",
 		                           "create": {
 		                               "force": true,
@@ -64,7 +64,7 @@ func init() {
 		             "storage": {
 		                 "filesystems": [
 		                     {
-		                         "device": "/dev/disk/by-label/ROOT",
+		                         "device": "/dev/disk/by-partlabel/ROOT",
 		                         "format": "xfs",
 		                         "create": {
 		                             "force": true,

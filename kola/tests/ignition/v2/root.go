@@ -73,7 +73,7 @@ func init() {
 		                 "filesystems": [
 		                     {
 		                         "mount": {
-		                             "device": "/dev/disk/by-label/ROOT",
+		                             "device": "/dev/disk/by-partlabel/ROOT",
 		                             "format": "xfs",
 		                             "create": {
 		                                 "force": true,
@@ -112,7 +112,7 @@ func init() {
 		                 "filesystems": [
 		                     {
 		                         "mount": {
-		                             "device": "/dev/disk/by-label/ROOT",
+		                             "device": "/dev/disk/by-partlabel/ROOT",
 		                             "format": "ext4",
 		                             "create": {
 		                                 "force": true,
@@ -195,12 +195,12 @@ func ext4CheckExisting(c cluster.TestCluster) error {
 
 	// Redirect /dev/null to stdin so isatty(stdin) fails and the -p flag can be
 	// checked
-	out, err := m.SSH("sudo mkfs.ext4 -p /dev/disk/by-label/ROOT < /dev/null")
+	out, err := m.SSH("sudo mkfs.ext4 -p /dev/disk/by-partlabel/ROOT < /dev/null")
 	if err == nil {
 		return fmt.Errorf("mkfs.ext4 returned sucessfully when it should have failed")
 	}
 
-	if !strings.HasPrefix(string(out), "/dev/disk/by-label/ROOT contains a ext4 file system labelled 'ROOT'") {
+	if !strings.HasPrefix(string(out), "/dev/disk/by-partlabel/ROOT contains a ext4 file system labelled 'ROOT'") {
 		return fmt.Errorf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
 	}
 
