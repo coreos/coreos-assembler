@@ -146,7 +146,7 @@ func init() {
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1010},
+		MinVersion:  semver.Version{Major: 1081},
 		UserData:    ext4Config,
 	})
 	register.Register(&register.Test{
@@ -154,7 +154,7 @@ func init() {
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
 		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
+		MinVersion:  semver.Version{Major: 1081},
 		UserData:    ext4Config,
 	})
 }
