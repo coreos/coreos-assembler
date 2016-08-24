@@ -89,7 +89,7 @@ func locksmithCluster(c cluster.TestCluster) error {
 		worker := func(c context.Context) error {
 			// XXX: stop sshd so checkmachine verifies correctly if reboot worked
 			// XXX: run locksmithctl under systemd-run so our current connection doesn't drop suddenly
-			cmd := "sudo systemctl stop sshd.socket; sudo systemd-run --on-active=2 --no-block locksmithctl reboot"
+			cmd := "sudo systemctl stop sshd.socket; sudo systemd-run --quiet --on-active=2 --no-block locksmithctl send-need-reboot"
 			output, err := m.SSH(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
