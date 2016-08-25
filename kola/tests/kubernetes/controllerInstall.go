@@ -889,8 +889,17 @@ EOF
 Requires=flanneld.service
 After=flanneld.service
 [Service]
-ExecStart=
-ExecStart=/usr/lib/coreos/dockerd daemon --host=fd:// \$DOCKER_OPTS \$DOCKER_CGROUPS \$DOCKER_OPT_MTU
+EnvironmentFile=/etc/kubernetes/cni/docker_opts_cni.env
+EOF
+    fi
+
+    local TEMPLATE=/etc/kubernetes/cni/docker_opts_cni.env
+    if [ ! -f $TEMPLATE ]; then
+        echo "TEMPLATE: $TEMPLATE"
+        mkdir -p $(dirname $TEMPLATE)
+        cat << EOF > $TEMPLATE
+DOCKER_OPT_BIP=""
+DOCKER_OPT_IPMASQ=""
 EOF
     fi
 
@@ -917,7 +926,7 @@ EOF
 EOF
     fi
 
-    local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
+    local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf 
     if [ "${USE_CALICO}" = "false" ] && [ ! -f "${TEMPLATE}" ]; then
         echo "TEMPLATE: $TEMPLATE"
         mkdir -p $(dirname $TEMPLATE)
