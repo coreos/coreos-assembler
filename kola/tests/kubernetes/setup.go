@@ -108,7 +108,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 	f := func() error {
 		return nodeCheck(master, workers)
 	}
-	if err := util.Retry(15, 10*time.Second, f); err != nil {
+	if err := util.Retry(15, 15*time.Second, f); err != nil {
 		return nil, err
 	}
 
