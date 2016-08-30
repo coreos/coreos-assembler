@@ -12,38 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build go1.7
+// +build !go1.7
 
 package azure
 
 import (
-	"fmt"
-
-	"github.com/Azure/azure-sdk-for-go/management"
-	"github.com/coreos/pkg/capnslog"
+	"errors"
 )
 
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/azure")
-)
+var noGo17 = errors.New("azure api only works with go 1.7 or higher")
 
 type API struct {
-	client management.Client
-	opts   *Options
 }
 
 // New creates a new Azure client. If no publish settings file is provided or
 // can't be parsed, an anonymous client is created.
 func New(opts *Options) (*API, error) {
-	client, err := management.ClientFromPublishSettingsFile(opts.PublishSettingsFile, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create azure client: %v", err)
-	}
-
-	api := &API{
-		client: client,
-		opts:   opts,
-	}
-
-	return api, nil
+	return nil, noGo17
 }
