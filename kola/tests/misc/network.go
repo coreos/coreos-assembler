@@ -84,7 +84,6 @@ func NetworkListeners(c cluster.TestCluster) error {
 	UDPListeners := []listener{
 		{"systemd-n", "dhcpv6-client"},
 		{"systemd-n", "bootpc"},
-		{"systemd-r", "domain"},
 	}
 	err := checkListeners(m, "TCP", "TCP:LISTEN", TCPListeners)
 	if err != nil {
