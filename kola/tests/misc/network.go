@@ -79,7 +79,6 @@ func NetworkListeners(c cluster.TestCluster) error {
 
 	TCPListeners := []listener{
 		{"systemd", "ssh"},
-		{"systemd-r", "domain"},
 	}
 	UDPListeners := []listener{
 		{"systemd-n", "dhcpv6-client"},
