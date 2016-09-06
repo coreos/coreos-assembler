@@ -12,6 +12,89 @@
 			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 		},
 		{
+			"ImportPath": "github.com/Azure/azure-sdk-for-go/management",
+			"Comment": "v3.2.0-beta-10-gf8b0607",
+			"Rev": "f8b0607613f19ae9509b5ed6fbfda56caf06d59d"
+		},
+		{
+			"ImportPath": "github.com/Azure/azure-sdk-for-go/management/storageservice",
+			"Comment": "v3.2.0-beta-10-gf8b0607",
+			"Rev": "f8b0607613f19ae9509b5ed6fbfda56caf06d59d"
+		},
+		{
+			"ImportPath": "github.com/Azure/azure-sdk-for-go/storage",
+			"Comment": "v3.2.0-beta-10-gf8b0607",
+			"Rev": "f8b0607613f19ae9509b5ed6fbfda56caf06d59d"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/upload",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/upload/concurrent",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/upload/metadata",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/upload/progress",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/bat",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/block",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/block/bitmap",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/common",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/diskstream",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/footer",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/header",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/header/parentlocator",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/reader",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/validator",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/vhdfile",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
+			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/writer",
+			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
+		},
+		{
 			"ImportPath": "github.com/alecthomas/units",
 			"Rev": "6b4e7dc5e3143b85ea77909c72caf89416fc2915"
 		},
@@ -593,6 +676,14 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/s2k",
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/pkcs12",
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/pkcs12/internal/rc2",
 			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
 		},
 		{
