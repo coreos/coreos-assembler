@@ -22,7 +22,8 @@ import (
 )
 
 var (
-	azureImageReplicateURL = "services/images/%s/replicate"
+	azureImageReplicateURL   = "services/images/%s/replicate"
+	azureImageUnreplicateURL = "services/images/%s/unreplicate"
 )
 
 type ReplicationInput struct {
@@ -49,6 +50,16 @@ func (a *API) ReplicateImage(image, offer, sku, version string, regions ...strin
 	url := fmt.Sprintf(azureImageReplicateURL, image)
 
 	op, err := a.client.SendAzurePutRequest(url, "", data)
+	if err != nil {
+		return err
+	}
+
+	return a.client.WaitForOperation(op, nil)
+}
+
+func (a *API) UnreplicateImage(image string) error {
+	url := fmt.Sprintf(azureImageUnreplicateURL, image)
+	op, err := a.client.SendAzurePutRequest(url, "", []byte{})
 	if err != nil {
 		return err
 	}
