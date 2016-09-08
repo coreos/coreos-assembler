@@ -18,6 +18,7 @@ package azure
 
 import (
 	"encoding/xml"
+	"fmt"
 )
 
 type OSImage struct {
@@ -42,4 +43,16 @@ type OSImage struct {
 	IconURI           string   `xml:"IconUri,omitempty"`      // Specifies the Uri to the icon that is displayed for the image in the Management Portal.
 	SmallIconURI      string   `xml:"SmallIconUri,omitempty"` // Specifies the URI to the small icon that is displayed when the image is presented in the Microsoft Azure Management Portal.
 	Language          string   `xml:",omitempty"`             // Specifies the language of the image.
+}
+
+var azureImageShareURL = "services/images/%s/share?permission=%s"
+
+func (a *API) ShareImage(image, permission string) error {
+	url := fmt.Sprintf(azureImageShareURL, image, permission)
+	op, err := a.client.SendAzurePutRequest(url, "", nil)
+	if err != nil {
+		return err
+	}
+
+	return a.client.WaitForOperation(op, nil)
 }
