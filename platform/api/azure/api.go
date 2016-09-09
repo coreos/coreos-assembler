@@ -35,7 +35,9 @@ type API struct {
 // New creates a new Azure client. If no publish settings file is provided or
 // can't be parsed, an anonymous client is created.
 func New(opts *Options) (*API, error) {
-	client, err := management.ClientFromPublishSettingsFile(opts.PublishSettingsFile, "")
+	conf := management.DefaultConfig()
+	conf.APIVersion = "2015-04-01"
+	client, err := management.ClientFromPublishSettingsFileWithConfig(opts.PublishSettingsFile, "", conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create azure client: %v", err)
 	}
