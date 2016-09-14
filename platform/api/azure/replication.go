@@ -19,6 +19,8 @@ package azure
 import (
 	"encoding/xml"
 	"fmt"
+
+	"github.com/Azure/azure-sdk-for-go/management/location"
 )
 
 var (
@@ -32,6 +34,24 @@ type ReplicationInput struct {
 	Offer           string   `xml:"ComputeImageAttributes>Offer"`
 	Sku             string   `xml:"ComputeImageAttributes>Sku"`
 	Version         string   `xml:"ComputeImageAttributes>Version"`
+}
+
+// Locations returns a slice of Azure Locations, useful for replicating to all Locations.
+func (a *API) Locations() ([]string, error) {
+	lc := location.NewClient(a.client)
+
+	llr, err := lc.ListLocations()
+	if err != nil {
+		return nil, err
+	}
+
+	var locations []string
+
+	for _, l := range llr.Locations {
+		locations = append(locations, l.Name)
+	}
+
+	return locations, nil
 }
 
 func (a *API) ReplicateImage(image, offer, sku, version string, regions ...string) error {
