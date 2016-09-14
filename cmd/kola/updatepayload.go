@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
@@ -50,21 +51,64 @@ This command must run inside of the SDK as root, e.g.
 sudo kola updatepayload
 `,
 	}
-
-	userdata = `#cloud-config
-
-coreos:
-  update:
-    server: "http://{{.Server}}/v1/update/"
-    # we disable reboot so we have explicit control
-    reboot-strategy: "off"
-`
 )
+
+type userdataParams struct {
+	Port int
+	Keys []*agent.Key
+}
+
+// The user data is a bash script executed by cloudinit to ensure
+// compatibility with all versions of CoreOS.
+const userdataTmpl = `#!/bin/bash -ex
+
+# add ssh key on exit to avoid racing w/ test harness
+do_ssh_keys() {
+	update-ssh-keys -u core -a updatepayload <<-EOF
+		{{range .Keys}}{{.}}
+		{{end}}
+	EOF
+}
+trap do_ssh_keys EXIT
+
+# update atomicly so nothing reading update.conf fails
+cat >/etc/coreos/update.conf.new <<EOF
+GROUP=developer
+SERVER=http://10.0.0.1:{{printf "%d" .Port}}/v1/update/
+EOF
+mv /etc/coreos/update.conf{.new,}
+
+# inject the dev key so official images can be used for testing
+cat >/etc/coreos/update-payload-key.pub.pem <<EOF
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzFS5uVJ+pgibcFLD3kbY
+k02Edj0HXq31ZT/Bva1sLp3Ysv+QTv/ezjf0gGFfASdgpz6G+zTipS9AIrQr0yFR
++tdp1ZsHLGxVwvUoXFftdapqlyj8uQcWjjbN7qJsZu0Ett/qo93hQ5nHW7Sv5dRm
+/ZsDFqk2Uvyaoef4bF9r03wYpZq7K3oALZ2smETv+A5600mj1Xg5M52QFU67UHls
+EFkZphrGjiqiCdp9AAbAvE7a5rFcJf86YR73QX08K8BX7OMzkn3DsqdnWvLB3l3W
+6kvIuP+75SrMNeYAcU8PI1+bzLcAG3VN3jA78zeKALgynUNH50mxuiiU3DO4DZ+p
+5QIDAQAB
+-----END PUBLIC KEY-----
+EOF
+mount --bind /etc/coreos/update-payload-key.pub.pem \
+	/usr/share/update_engine/update-payload-key.pub.pem
+
+# disable reboot so we have explicit control
+systemctl mask locksmithd.service
+systemctl stop locksmithd.service
+systemctl reset-failed locksmithd.service
+
+# off we go!
+systemctl restart update-engine.service
+`
 
 func init() {
 	cmdUpdatePayload.Flags().DurationVar(
 		&updateTimeout, "timeout", 120*time.Second,
 		"maximum time to wait for update")
+	cmdUpdatePayload.Flags().StringVar(
+		&updatePayload, "payload", "",
+		"update payload")
 	root.AddCommand(cmdUpdatePayload)
 }
 
@@ -86,29 +130,18 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	defer cluster.Destroy()
 	qc := cluster.(*qemu.Cluster)
 
-	payload := filepath.Join(dir, "coreos_production_update.gz")
-	if err := qc.OmahaServer.SetPackage(payload); err != nil {
+	if err := qc.OmahaServer.SetPackage(updatePayload); err != nil {
 		plog.Fatalf("SetPackage failed: %v", err)
 	}
 
-	// swap [::] for a specific address.
-	serverAddr := qc.OmahaServer.Addr().(*net.TCPAddr)
-	serverAddr.IP = net.IPv4(10, 0, 0, 1)
-	tmplVals := map[string]string{
-		"Server": serverAddr.String(),
-	}
-
-	tmpl := template.Must(template.New("userdata").Parse(userdata))
-	buf := new(bytes.Buffer)
-
-	err = tmpl.Execute(buf, tmplVals)
+	cfg, err := newUserdata(qc)
 	if err != nil {
-		plog.Fatalf("Template execution failed: %v", err)
+		plog.Fatalf("Generating config failed: %v", err)
 	}
 
 	plog.Infof("Spawning test machine")
 
-	m, err := cluster.NewMachine(buf.String())
+	m, err := cluster.NewMachine(cfg)
 	if err != nil {
 		plog.Fatalf("Machine failed: %v", err)
 	}
@@ -181,6 +214,29 @@ func newPayload() string {
 	return filepath.Join(dir, "coreos_production_update.gz")
 }
 
+func newUserdata(qc *qemu.Cluster) (string, error) {
+	keys, err := qc.Keys()
+	if err != nil {
+		return "", err
+	}
+
+	params := userdataParams{
+		Port: qc.OmahaServer.Addr().(*net.TCPAddr).Port,
+		Keys: keys,
+	}
+	tmpl, err := template.New("userdata").Parse(userdataTmpl)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, &params); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 // checkUsrPartition inspects /proc/cmdline of the machine, looking for the
 // expected partition mounted at /usr.
 func checkUsrPartition(m platform.Machine, accept []string) error {
@@ -188,10 +244,14 @@ func checkUsrPartition(m platform.Machine, accept []string) error {
 	if err != nil {
 		return fmt.Errorf("cat /proc/cmdline: %v: %v", out, err)
 	}
+	plog.Debugf("Kernel cmdline: %s", out)
 
 	vars := splitSpaceEnv(string(out))
 	for _, a := range accept {
 		if vars["mount.usr"] == a {
+			return nil
+		}
+		if vars["usr"] == a {
 			return nil
 		}
 	}
