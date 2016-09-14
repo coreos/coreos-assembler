@@ -37,7 +37,7 @@ type LocalCluster struct {
 	destructor.MultiDestructor
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
-	OmahaServer *omaha.Server
+	OmahaServer *omaha.TrivialServer
 	SimpleEtcd  *SimpleEtcd
 	nshandle    netns.NsHandle
 }
@@ -81,7 +81,7 @@ func NewLocalCluster() (*LocalCluster, error) {
 	lc.AddCloser(lc.NTPServer)
 	go lc.NTPServer.Serve()
 
-	lc.OmahaServer, err = omaha.NewServer(":34567", &omaha.UpdaterStub{})
+	lc.OmahaServer, err = omaha.NewTrivialServer(":34567")
 	if err != nil {
 		lc.Destroy()
 		return nil, err
