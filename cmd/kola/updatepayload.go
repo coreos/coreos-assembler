@@ -36,6 +36,7 @@ import (
 
 var (
 	updateTimeout    time.Duration
+	updatePayload    string
 	cmdUpdatePayload = &cobra.Command{
 		Run:    runUpdatePayload,
 		PreRun: preRun,
@@ -72,12 +73,8 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 		plog.Fatal("No args accepted")
 	}
 
-	plog.Info("Generating update payload")
-
-	// check for update file, generate if it doesn't exist
-	dir := sdk.BuildImageDir(kola.QEMUOptions.Board, "latest")
-	if err := sdkomaha.GenerateFullUpdate(dir); err != nil {
-		plog.Fatalf("Building full update failed: %v", err)
+	if updatePayload == "" {
+		updatePayload = newPayload()
 	}
 
 	plog.Info("Bringing up test harness cluster")
@@ -170,6 +167,18 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	}
 
 	plog.Info("Update complete!")
+}
+
+func newPayload() string {
+	plog.Info("Generating update payload")
+
+	// check for update file, generate if it doesn't exist
+	dir := sdk.BuildImageDir(kola.QEMUOptions.Board, "latest")
+	if err := sdkomaha.GenerateFullUpdate(dir); err != nil {
+		plog.Fatalf("Building full update failed: %v", err)
+	}
+
+	return filepath.Join(dir, "coreos_production_update.gz")
 }
 
 // checkUsrPartition inspects /proc/cmdline of the machine, looking for the
