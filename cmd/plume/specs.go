@@ -44,10 +44,24 @@ type gceSpec struct {
 	Limit       int      // Limit on # of old images to keep
 }
 
+type azureSpec struct {
+	Image          string   // File name of image source
+	StorageAccount string   // Storage account to use for image uploads
+	Containers     []string // Containers to upload images to
+
+	// Fields for azure.OSImage
+	Label             string
+	Description       string // Description of an image in this channel
+	RecommendedVMSize string
+	IconURI           string
+	SmallIconURI      string
+}
+
 type channelSpec struct {
 	BaseURL      string // Copy from $BaseURL/$Board/$Version
 	Destinations []storageSpec
 	GCE          gceSpec
+	Azure        azureSpec
 }
 
 var (
@@ -56,6 +70,7 @@ var (
 	specVersion string
 	boards      = []string{"amd64-usr", "arm64-usr"}
 	gceBoards   = []string{"amd64-usr"}
+	azureBoards = []string{"amd64-usr"}
 	specs       = map[string]channelSpec{
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
@@ -93,6 +108,16 @@ var (
 				Publish:     "coreos_production_gce.txt",
 				Limit:       25,
 			},
+			Azure: azureSpec{
+				Image:             "coreos_production_azure_image.vhd.bz2",
+				StorageAccount:    "coreos",
+				Containers:        []string{"publish", "pre-publish"},
+				Label:             "CoreOS Alpha",
+				Description:       "The Alpha channel closely tracks current development work and is released frequently. The newest versions of docker, etcd and fleet will be available for testing.",
+				RecommendedVMSize: "Medium",
+				IconURI:           "coreos-globe-color-lg-100px.png",
+				SmallIconURI:      "coreos-globe-color-lg-45px.png",
+			},
 		},
 		"beta": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/beta/boards",
@@ -128,6 +153,16 @@ var (
 				Publish:     "coreos_production_gce.txt",
 				Limit:       25,
 			},
+			Azure: azureSpec{
+				Image:             "coreos_production_azure_image.vhd.bz2",
+				StorageAccount:    "coreos",
+				Containers:        []string{"publish", "pre-publish"},
+				Label:             "CoreOS Beta",
+				Description:       "The Beta channel consists of promoted Alpha releases. Mix a few Beta machines into your production clusters to catch any bugs specific to your hardware or configuration.",
+				RecommendedVMSize: "Medium",
+				IconURI:           "coreos-globe-color-lg-100px.png",
+				SmallIconURI:      "coreos-globe-color-lg-45px.png",
+			},
 		},
 		"stable": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/stable/boards",
@@ -152,6 +187,16 @@ var (
 				Image:       "coreos_production_gce.tar.gz",
 				Publish:     "coreos_production_gce.txt",
 				Limit:       25,
+			},
+			Azure: azureSpec{
+				Image:             "coreos_production_azure_image.vhd.bz2",
+				StorageAccount:    "coreos",
+				Containers:        []string{"publish", "pre-publish"},
+				Label:             "CoreOS Stable",
+				Description:       "The Stable channel should be used by production clusters. Versions of CoreOS are battle-tested within the Beta and Alpha channels before being promoted.",
+				RecommendedVMSize: "Medium",
+				IconURI:           "coreos-globe-color-lg-100px.png",
+				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 		},
 	}
@@ -205,6 +250,17 @@ func ChannelSpec() channelSpec {
 	}
 	if !gceOk {
 		spec.GCE = gceSpec{}
+	}
+
+	azureOk := false
+	for _, board := range azureBoards {
+		if specBoard == board {
+			azureOk = true
+			break
+		}
+	}
+	if !azureOk {
+		spec.Azure = azureSpec{}
 	}
 
 	return spec
