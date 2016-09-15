@@ -31,6 +31,7 @@ type Conf struct {
 	ignitionV1  *v1types.Config
 	ignitionV2  *v2types.Config
 	cloudconfig *cci.CloudConfig
+	script      string
 }
 
 // New parses userdata and returns a new Conf. It returns an error if the
@@ -48,6 +49,9 @@ func New(userdata string) (*Conf, error) {
 		if err != nil {
 			return nil, err
 		}
+	case v2.ErrScript:
+		// pass through scripts unmodified, you are on your own.
+		c.script = userdata
 	case v2.ErrDeprecated:
 		if ignc, err := v1.Parse([]byte(userdata)); err == nil {
 			c.ignitionV1 = &ignc
@@ -74,6 +78,8 @@ func (c *Conf) String() string {
 		return string(buf)
 	} else if c.cloudconfig != nil {
 		return c.cloudconfig.String()
+	} else if c.script != "" {
+		return c.script
 	}
 
 	return ""
