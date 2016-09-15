@@ -196,7 +196,9 @@ func splitSpaceEnv(envs string) map[string]string {
 	pairs := strings.Fields(envs)
 	for _, p := range pairs {
 		spl := strings.SplitN(p, "=", 2)
-		m[spl[0]] = spl[1]
+		if len(spl) == 2 {
+			m[spl[0]] = spl[1]
+		}
 	}
 	return m
 }
