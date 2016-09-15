@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"net/http"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -29,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/sdk"
@@ -91,24 +89,16 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	defer cluster.Destroy()
 	qc := cluster.(*qemu.Cluster)
 
-	svc := &updateServer{
-		updatePath: dir,
-		payload:    "coreos_production_update.gz",
+	payload := filepath.Join(dir, "coreos_production_update.gz")
+	if err := qc.OmahaServer.SetPackage(payload); err != nil {
+		plog.Fatalf("SetPackage failed: %v", err)
 	}
 
-	qc.OmahaServer.Updater = svc
-
-	// tell omaha server to handle file requests for the images dir
-	qc.OmahaServer.Mux.Handle(dir+"/", http.StripPrefix(dir+"/", http.FileServer(http.Dir(dir))))
-
-	_, port, err := net.SplitHostPort(qc.OmahaServer.Addr().String())
-	if err != nil {
-		plog.Errorf("SplitHostPort failed: %v", err)
-		return
-	}
-
+	// swap [::] for a specific address.
+	serverAddr := qc.OmahaServer.Addr().(*net.TCPAddr)
+	serverAddr.IP = net.IPv4(10, 0, 0, 1)
 	tmplVals := map[string]string{
-		"Server": fmt.Sprintf("10.0.0.1:%s", port),
+		"Server": serverAddr.String(),
 	}
 
 	tmpl := template.Must(template.New("userdata").Parse(userdata))
@@ -226,35 +216,4 @@ func splitNewlineEnv(envs string) map[string]string {
 		m[spl[0]] = spl[1]
 	}
 	return m
-}
-
-type updateServer struct {
-	omaha.UpdaterStub
-
-	updatePath string
-	payload    string
-}
-
-func (u *updateServer) CheckUpdate(req *omaha.Request, app *omaha.AppRequest) (*omaha.Update, error) {
-	m := omaha.Manifest{}
-
-	pkgpath := filepath.Join(u.updatePath, u.payload)
-	pkg, err := m.AddPackageFromPath(pkgpath)
-	if err != nil {
-		plog.Errorf("Loading package %q failed: %v", pkgpath, err)
-		return nil, omaha.UpdateInternalError
-	}
-
-	act := m.AddAction("postinstall")
-	act.Sha256 = pkg.Sha256
-
-	update := &omaha.Update{
-		Id: sdk.GetDefaultAppId(),
-		URL: omaha.URL{
-			CodeBase: u.updatePath + "/",
-		},
-		Manifest: m,
-	}
-
-	return update, nil
 }
