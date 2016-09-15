@@ -115,7 +115,11 @@ func EnableSelinux(m Machine) error {
 func Reboot(m Machine) error {
 	// stop sshd so that commonMachineChecks will only work if the machine
 	// actually rebooted
-	out, err := m.SSH("sudo systemctl stop sshd.socket; sudo systemd-run --no-block systemctl reboot")
+	out, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
+	if _, ok := err.(*ssh.ExitMissingError); ok {
+		// A terminated session is perfectly normal during reboot.
+		err = nil
+	}
 	if err != nil {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
 	}
