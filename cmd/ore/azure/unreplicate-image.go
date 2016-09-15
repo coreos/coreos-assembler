@@ -17,30 +17,27 @@
 package azure
 
 import (
-	"encoding/xml"
+	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/management/storageservice"
+	"github.com/spf13/cobra"
 )
 
 var (
-	azureImageURL = "services/images"
+	cmdUnreplicateImage = &cobra.Command{
+		Use:   "unreplicate-image image",
+		Short: "Unreplicate an OS image in Azure",
+		RunE:  runUnreplicateImage,
+	}
 )
 
-func (a *API) GetStorageServiceKeys(account string) (storageservice.GetStorageServiceKeysResponse, error) {
-	return storageservice.NewClient(a.client).GetStorageServiceKeys(account)
+func init() {
+	Azure.AddCommand(cmdUnreplicateImage)
 }
 
-// https://msdn.microsoft.com/en-us/library/azure/jj157192.aspx
-func (a *API) AddOSImage(md *OSImage) error {
-	data, err := xml.Marshal(md)
-	if err != nil {
-		return err
+func runUnreplicateImage(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expecting 1 argument")
 	}
 
-	op, err := a.client.SendAzurePostRequest(azureImageURL, data)
-	if err != nil {
-		return err
-	}
-
-	return a.client.WaitForOperation(op, nil)
+	return api.UnreplicateImage(args[0])
 }

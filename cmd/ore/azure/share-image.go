@@ -17,30 +17,37 @@
 package azure
 
 import (
-	"encoding/xml"
+	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/management/storageservice"
+	"github.com/spf13/cobra"
 )
 
 var (
-	azureImageURL = "services/images"
+	cmdShareImage = &cobra.Command{
+		Use:   "share-image image-name",
+		Short: "Set permissions on an azure OS image",
+		RunE:  runShareImage,
+	}
+
+	sharePermission string
 )
 
-func (a *API) GetStorageServiceKeys(account string) (storageservice.GetStorageServiceKeysResponse, error) {
-	return storageservice.NewClient(a.client).GetStorageServiceKeys(account)
+func init() {
+	sv := cmdShareImage.Flags().StringVar
+
+	sv(&sharePermission, "permission", "public", "Image permission (one of: public, msdn, private)")
+
+	Azure.AddCommand(cmdShareImage)
 }
 
-// https://msdn.microsoft.com/en-us/library/azure/jj157192.aspx
-func (a *API) AddOSImage(md *OSImage) error {
-	data, err := xml.Marshal(md)
-	if err != nil {
-		return err
+func runShareImage(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expecting 1 argument, got %d", len(args))
 	}
 
-	op, err := a.client.SendAzurePostRequest(azureImageURL, data)
-	if err != nil {
-		return err
+	if sharePermission == "" {
+		return fmt.Errorf("permission is required")
 	}
 
-	return a.client.WaitForOperation(op, nil)
+	return api.ShareImage(args[0], sharePermission)
 }
