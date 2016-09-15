@@ -640,63 +640,63 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/cast5",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/curve25519",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/armor",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/elgamal",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/errors",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/packet",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/s2k",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/pkcs12",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/pkcs12/internal/rc2",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh/agent",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh/terminal",
-			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
@@ -858,6 +858,14 @@
 			"ImportPath": "google.golang.org/grpc/transport",
 			"Comment": "v1.0.0-6-g02fca89",
 			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ed25519",
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		}
 	]
 }
