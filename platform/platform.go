@@ -18,19 +18,23 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"time"
-
 	"path/filepath"
 	"sync"
+	"time"
+
+	"github.com/coreos/pkg/capnslog"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/util"
-
-	"golang.org/x/crypto/ssh"
 )
 
 const (
 	sshRetries = 10
 	sshTimeout = 5 * time.Second
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform")
 )
 
 // Machine represents a CoreOS instance.
@@ -266,6 +270,15 @@ func CheckMachine(m Machine) error {
 	}
 
 	if len(out) > 0 {
+		if plog.LevelAt(capnslog.DEBUG) {
+			log, err := m.SSH("journalctl -b")
+			if err != nil {
+				plog.Errorf("Failed to read journal: %v", err)
+			} else {
+				plog.Debugf("Journal:\n%s", log)
+			}
+		}
+
 		return fmt.Errorf("some systemd units failed:\n%s", out)
 	}
 
