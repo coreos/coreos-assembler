@@ -106,16 +106,14 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 	err = tmpl.Execute(buf, tmplVals)
 	if err != nil {
-		plog.Errorf("Template execution failed: %v", err)
-		return
+		plog.Fatalf("Template execution failed: %v", err)
 	}
 
 	plog.Infof("Spawning test machine")
 
 	m, err := cluster.NewMachine(buf.String())
 	if err != nil {
-		plog.Errorf("Machine failed: %v", err)
-		return
+		plog.Fatalf("Machine failed: %v", err)
 	}
 
 	if plog.LevelAt(capnslog.DEBUG) {
@@ -128,8 +126,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 	/* check that we are on USR-A. */
 	if err := checkUsrPartition(m, []string{"PARTUUID=" + sdk.USRAUUID.String(), "PARTLABEL=USR-A"}); err != nil {
-		plog.Errorf("Did not find USR-A partition: %v", err)
-		return
+		plog.Fatalf("Did not find USR-A partition: %v", err)
 	}
 
 	plog.Infof("Triggering update_engine")
@@ -137,8 +134,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	/* trigger update, monitor the progress. */
 	out, err := m.SSH("update_engine_client -check_for_update")
 	if err != nil {
-		plog.Errorf("Executing update_engine_client failed: %v: %v", out, err)
-		return
+		plog.Fatalf("Executing update_engine_client failed: %v: %v", out, err)
 	}
 
 	start := time.Now()
@@ -163,16 +159,14 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 	/* reboot it */
 	if err := platform.Reboot(m); err != nil {
-		plog.Errorf("Rebooting machine failed: %v", err)
-		return
+		plog.Fatalf("Rebooting machine failed: %v", err)
 	}
 
 	plog.Info("Checking for boot from USR-B partition")
 
 	/* check that we are on USR-B now. */
 	if err := checkUsrPartition(m, []string{"PARTUUID=" + sdk.USRBUUID.String(), "PARTLABEL=USR-B"}); err != nil {
-		plog.Errorf("Did not find USR-B partition: %v", err)
-		return
+		plog.Fatalf("Did not find USR-B partition: %v", err)
 	}
 
 	plog.Info("Update complete!")
