@@ -66,6 +66,7 @@ func (ts *TrivialServer) SetPackage(path string) error {
 	}
 	pkg.Name = "update.gz"
 	act := tu.Manifest.AddAction("postinstall")
+	act.DisablePayloadBackoff = true
 	act.Sha256 = pkg.Sha256
 
 	ts.th.Path = path
