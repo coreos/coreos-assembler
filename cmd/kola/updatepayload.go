@@ -121,50 +121,89 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 		updatePayload = newPayload()
 	}
 
-	plog.Info("Bringing up test harness cluster")
+	start := time.Now()
+	plog.Notice("=== Running CoreOS upgrade test")
+	if err := runUpdateTest(); err != nil {
+		plog.Fatalf("--- FAIL: %v (%s)", err, time.Since(start))
+	}
+	plog.Noticef("--- PASS: CoreOS upgrade test (%s)", time.Since(start))
+}
 
+func runUpdateTest() error {
 	cluster, err := qemu.NewCluster(&kola.QEMUOptions)
 	if err != nil {
-		plog.Fatalf("Cluster failed: %v", err)
+		return fmt.Errorf("new cluster: %v", err)
 	}
 	defer cluster.Destroy()
 	qc := cluster.(*qemu.Cluster)
 
 	if err := qc.OmahaServer.SetPackage(updatePayload); err != nil {
-		plog.Fatalf("SetPackage failed: %v", err)
+		return fmt.Errorf("bad payload: %v", err)
 	}
 
 	cfg, err := newUserdata(qc)
 	if err != nil {
-		plog.Fatalf("Generating config failed: %v", err)
+		return fmt.Errorf("bad userdata: %v", err)
 	}
 
 	plog.Infof("Spawning test machine")
 
 	m, err := cluster.NewMachine(cfg)
 	if err != nil {
-		plog.Fatalf("Machine failed: %v", err)
+		return fmt.Errorf("new machine: %v", err)
 	}
 
-	if plog.LevelAt(capnslog.DEBUG) {
-		if err := platform.StreamJournal(m); err != nil {
-			plog.Fatalf("Failed to start journal: %v", err)
-		}
+	// initial boot
+	if err := startJournal(m); err != nil {
+		return fmt.Errorf("initial boot: %v", err)
 	}
 
-	plog.Info("Checking for boot from USR-A partition")
-
-	/* check that we are on USR-A. */
-	if err := checkUsrPartition(m, []string{"PARTUUID=" + sdk.USRAUUID.String(), "PARTLABEL=USR-A"}); err != nil {
-		plog.Fatalf("Did not find USR-A partition: %v", err)
+	if err := checkUsrA(m); err != nil {
+		return fmt.Errorf("initial boot: %v", err)
 	}
 
+	if err := tryUpdate(m); err != nil {
+		return fmt.Errorf("first update: %v", err)
+	}
+
+	// second boot
+	if err := startJournal(m); err != nil {
+		return fmt.Errorf("second boot: %v", err)
+	}
+
+	if err := checkUsrB(m); err != nil {
+		return fmt.Errorf("second boot: %v", err)
+	}
+
+	// Invalidate USR-A to ensure the update is legit.
+	if out, err := m.SSH("sudo coreos-setgoodroot && " +
+		"sudo wipefs /dev/disk/by-partlabel/USR-A"); err != nil {
+		return fmt.Errorf("invalidating USR-A failed: %v: %v", out, err)
+	}
+
+	if err := tryUpdate(m); err != nil {
+		return fmt.Errorf("second update: %v", err)
+	}
+
+	// third boot
+	if err := startJournal(m); err != nil {
+		return fmt.Errorf("third boot: %v", err)
+	}
+
+	if err := checkUsrA(m); err != nil {
+		return fmt.Errorf("third boot: %v", err)
+	}
+
+	return nil
+}
+
+func tryUpdate(m platform.Machine) error {
 	plog.Infof("Triggering update_engine")
 
 	/* trigger update, monitor the progress. */
 	out, err := m.SSH("update_engine_client -check_for_update")
 	if err != nil {
-		plog.Fatalf("Executing update_engine_client failed: %v: %v", out, err)
+		return fmt.Errorf("Executing update_engine_client failed: %v: %v", out, err)
 	}
 
 	start := time.Now()
@@ -174,7 +213,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 
 		envs, err := m.SSH("update_engine_client -status 2>/dev/null")
 		if err != nil {
-			plog.Fatalf("Checking update status failed: %v", err)
+			return fmt.Errorf("checking status failed: %v", err)
 		}
 
 		em := splitNewlineEnv(string(envs))
@@ -182,24 +221,17 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 	}
 
 	if status != "UPDATE_STATUS_UPDATED_NEED_REBOOT" {
-		plog.Fatalf("Update failed to complete within %s, current status %s", updateTimeout, status)
+		return fmt.Errorf("failed to complete within %s, current status %s", updateTimeout, status)
 	}
 
 	plog.Info("Rebooting test machine")
 
 	/* reboot it */
 	if err := platform.Reboot(m); err != nil {
-		plog.Fatalf("Rebooting machine failed: %v", err)
+		return fmt.Errorf("reboot failed: %v", err)
 	}
 
-	plog.Info("Checking for boot from USR-B partition")
-
-	/* check that we are on USR-B now. */
-	if err := checkUsrPartition(m, []string{"PARTUUID=" + sdk.USRBUUID.String(), "PARTLABEL=USR-B"}); err != nil {
-		plog.Fatalf("Did not find USR-B partition: %v", err)
-	}
-
-	plog.Info("Update complete!")
+	return nil
 }
 
 func newPayload() string {
@@ -235,6 +267,29 @@ func newUserdata(qc *qemu.Cluster) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func startJournal(m platform.Machine) error {
+	if plog.LevelAt(capnslog.DEBUG) {
+		if err := platform.StreamJournal(m); err != nil {
+			return fmt.Errorf("start journal: %v", err)
+		}
+	}
+	return nil
+}
+
+func checkUsrA(m platform.Machine) error {
+	plog.Info("Checking for boot from USR-A partition")
+	return checkUsrPartition(m, []string{
+		"PARTUUID=" + sdk.USRAUUID.String(),
+		"PARTLABEL=USR-A"})
+}
+
+func checkUsrB(m platform.Machine) error {
+	plog.Info("Checking for boot from USR-B partition")
+	return checkUsrPartition(m, []string{
+		"PARTUUID=" + sdk.USRBUUID.String(),
+		"PARTLABEL=USR-B"})
 }
 
 // checkUsrPartition inspects /proc/cmdline of the machine, looking for the
