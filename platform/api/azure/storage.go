@@ -16,6 +16,7 @@ package azure
 
 import (
 	"encoding/xml"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 )
@@ -41,4 +42,24 @@ func (a *API) AddOSImage(md *OSImage) error {
 	}
 
 	return a.client.WaitForOperation(op, nil)
+}
+
+func (a *API) OSImageExists(name string) (bool, error) {
+	url := fmt.Sprintf("%s/%s", azureImageURL, name)
+	response, err := a.client.SendAzureGetRequest(url)
+	if err != nil {
+		return false, err
+	}
+
+	var image OSImage
+
+	if err := xml.Unmarshal(response, &image); err != nil {
+		return false, err
+	}
+
+	if image.Name == name {
+		return true, nil
+	}
+
+	return false, nil
 }

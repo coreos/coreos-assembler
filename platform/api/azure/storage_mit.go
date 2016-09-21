@@ -40,7 +40,15 @@ import (
 
 const pageBlobPageSize int64 = 2 * 1024 * 1024
 
-// UploadBlob
+type BlobExistsError string
+
+func (be BlobExistsError) Error() string {
+	return fmt.Sprintf("blob %q already exists", string(be))
+}
+
+// UploadBlob uploads vhd to the given storage account, container, and blob name.
+//
+// It returns BlobExistsError if the blob exists and overwrite is not true.
 func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string, overwrite bool) error {
 	ds, err := diskstream.CreateNewDiskStream(vhd)
 	if err != nil {
@@ -134,7 +142,7 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 func getBlobMetaData(client storage.BlobStorageClient, containerName, blobName string) (*metadata.MetaData, error) {
 	md5Hash, err := getBlobMD5Hash(client, containerName, blobName)
 	if md5Hash != "" {
-		return nil, fmt.Errorf("VHD exists in blob storage with name '%s'. If you want to upload again, use the --overwrite option.", blobName)
+		return nil, BlobExistsError(blobName)
 	}
 
 	blobMetaData, err := metadata.NewMetadataFromBlob(client, containerName, blobName)
