@@ -25,8 +25,6 @@
 //
 // derived from https://github.com/Microsoft/azure-vhd-utils/blob/8fcb4e03cb4c0f928aa835c21708182dbb23fc83/vhdUploadCmdHandler.go
 
-// +build go1.7
-
 package azure
 
 import (
