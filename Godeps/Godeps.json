@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
