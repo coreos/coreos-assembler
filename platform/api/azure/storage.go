@@ -18,6 +18,7 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/management"
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 )
 
@@ -48,6 +49,10 @@ func (a *API) OSImageExists(name string) (bool, error) {
 	url := fmt.Sprintf("%s/%s", azureImageURL, name)
 	response, err := a.client.SendAzureGetRequest(url)
 	if err != nil {
+		if management.IsResourceNotFoundError(err) {
+			return false, nil
+		}
+
 		return false, err
 	}
 
