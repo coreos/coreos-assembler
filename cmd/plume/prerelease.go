@@ -160,7 +160,9 @@ func replicateAzureImage(api *azure.API, imageName string) error {
 
 	plog.Printf("Replicating image to locations: %s", strings.Join(locations, ", "))
 
-	if err := api.ReplicateImage(imageName, "CoreOS", specChannel, specVersion, locations...); err != nil {
+	channelTitle := strings.Title(specChannel)
+
+	if err := api.ReplicateImage(imageName, "CoreOS", channelTitle, specVersion, locations...); err != nil {
 		return fmt.Errorf("image replication failed: %v", err)
 	}
 
