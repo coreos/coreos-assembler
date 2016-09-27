@@ -46,6 +46,17 @@ func (be BlobExistsError) Error() string {
 	return fmt.Sprintf("blob %q already exists", string(be))
 }
 
+func (a *API) BlobExists(storageaccount, storagekey, container, blob string) (bool, error) {
+	sc, err := storage.NewBasicClient(storageaccount, storagekey)
+	if err != nil {
+		return false, err
+	}
+
+	bsc := sc.GetBlobService()
+
+	return bsc.BlobExists(container, blob)
+}
+
 // UploadBlob uploads vhd to the given storage account, container, and blob name.
 //
 // It returns BlobExistsError if the blob exists and overwrite is not true.
