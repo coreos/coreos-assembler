@@ -16,7 +16,6 @@ package locksmith
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -36,6 +35,8 @@ func init() {
 		UserData: `#cloud-config
 
 coreos:
+  update:
+    reboot-strategy: etcd-lock
   etcd2:
     name: $name
     discovery: $discovery
@@ -43,30 +44,15 @@ coreos:
     initial-advertise-peer-urls: http://$private_ipv4:2380
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
+  units:
+    - name: etcd2.service
+      command: start
 `,
 	})
 }
 
-const updateConf = `
-GROUP=stable
-REBOOT_STRATEGY=etcd-lock
-`
-
 func locksmithCluster(c cluster.TestCluster) error {
 	machs := c.Machines()
-
-	// copy locksmith config and restart locksmithd/etcd2.
-	// XXX: can't block due to Type=notify triggering when the cluster has completed bootstrap.
-	for _, m := range c.Machines() {
-		if err := platform.InstallFile(strings.NewReader(updateConf), m, "/etc/coreos/update.conf"); err != nil {
-			return fmt.Errorf("failed to write locksmith config to %s: %v", m.ID(), err)
-		}
-
-		output, err := m.SSH("sudo systemctl restart --no-block etcd2.service locksmithd.service")
-		if err != nil {
-			return fmt.Errorf("failed to start etcd2.service on %s: output %q: error: %v", m.ID(), output, err)
-		}
-	}
 
 	// make sure etcd is ready
 	etcdCheck := func() error {
