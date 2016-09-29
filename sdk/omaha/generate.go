@@ -88,6 +88,7 @@ func GenerateFullUpdate(dir string) error {
 		update_bin    = update_prefix + ".bin"
 		update_gz     = update_prefix + ".gz"
 		update_xml    = update_prefix + ".xml"
+		vmlinuz       = filepath.Join(dir, "coreos_production_image.vmlinuz")
 	)
 
 	if err := checkUpdate(dir, update_xml); err == nil {
@@ -98,6 +99,7 @@ func GenerateFullUpdate(dir string) error {
 	plog.Noticef("Generating update payload: %s", update_gz)
 	if err := run("delta_generator",
 		"-new_image", update_bin,
+		"-new_kernel", vmlinuz,
 		"-out_file", update_gz,
 		"-private_key", privateKey); err != nil {
 		return err
