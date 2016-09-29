@@ -306,6 +306,9 @@ func checkUsrPartition(m platform.Machine, accept []string) error {
 		if vars["mount.usr"] == a {
 			return nil
 		}
+		if vars["verity.usr"] == a {
+			return nil
+		}
 		if vars["usr"] == a {
 			return nil
 		}
