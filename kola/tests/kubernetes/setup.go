@@ -108,7 +108,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 	f := func() error {
 		return nodeCheck(master, workers)
 	}
-	if err := util.Retry(15, 15*time.Second, f); err != nil {
+	if err := util.Retry(15, 30*time.Second, f); err != nil {
 		return nil, err
 	}
 
@@ -312,7 +312,7 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 		if err != nil {
 			return fmt.Errorf("%s", stderr)
 		}
-	case <-time.After(time.Minute * 5):
+	case <-time.After(time.Minute * 7):
 		return fmt.Errorf("Timed out waiting for install script to finish.")
 	}
 
