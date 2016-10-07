@@ -36,15 +36,19 @@ var (
 		Short:  "spawn a CoreOS instance",
 	}
 
-	spawnUserData string
-	spawnShell    bool
-	spawnRemove   bool
+	spawnNodeCount int
+	spawnUserData  string
+	spawnShell     bool
+	spawnRemove    bool
+	spawnVerbose   bool
 )
 
 func init() {
-	cmdSpawn.Flags().StringVarP(&spawnUserData, "userdata", "u", "", "userdata to pass to the instance")
-	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", false, "spawn a shell in the instance before exiting")
-	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instance after shell exits")
+	cmdSpawn.Flags().IntVarP(&spawnNodeCount, "nodecount", "c", 1, "number of nodes to spawn")
+	cmdSpawn.Flags().StringVarP(&spawnUserData, "userdata", "u", "", "userdata to pass to the instances")
+	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", false, "spawn a shell in an instance before exiting")
+	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
+	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
 	root.AddCommand(cmdSpawn)
 }
 
@@ -52,6 +56,10 @@ func runSpawn(cmd *cobra.Command, args []string) {
 	var userdata []byte
 	var err error
 	var cluster platform.Cluster
+
+	if spawnNodeCount <= 0 {
+		die("Cluster Failed: nodecount must be one or more")
+	}
 
 	if spawnUserData != "" {
 		userdata, err = ioutil.ReadFile(spawnUserData)
@@ -78,17 +86,26 @@ func runSpawn(cmd *cobra.Command, args []string) {
 		die("Cluster failed: %v", err)
 	}
 
-	mach, err := cluster.NewMachine(string(userdata))
-	if err != nil {
-		die("Spawning instance failed: %v", err)
-	}
+	var someMach platform.Machine
+	for i := 0; i < spawnNodeCount; i++ {
+		mach, err := cluster.NewMachine(string(userdata))
+		if err != nil {
+			die("Spawning instance failed: %v", err)
+		}
 
-	if spawnRemove {
-		defer mach.Destroy()
+		if spawnVerbose {
+			fmt.Printf("Machine spawned at %v\n", mach.IP())
+		}
+
+		if spawnRemove {
+			defer mach.Destroy()
+		}
+
+		someMach = mach
 	}
 
 	if spawnShell {
-		if err := platform.Manhole(mach); err != nil {
+		if err := platform.Manhole(someMach); err != nil {
 			die("Manhole failed: %v", err)
 		}
 	}
