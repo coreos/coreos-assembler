@@ -160,7 +160,9 @@ func replicateAzureImage(api *azure.API, imageName string) error {
 
 	plog.Printf("Replicating image to locations: %s", strings.Join(locations, ", "))
 
-	if err := api.ReplicateImage(imageName, "CoreOS", specChannel, specVersion, locations...); err != nil {
+	channelTitle := strings.Title(specChannel)
+
+	if err := api.ReplicateImage(imageName, "CoreOS", channelTitle, specVersion, locations...); err != nil {
 		return fmt.Errorf("image replication failed: %v", err)
 	}
 
@@ -215,6 +217,15 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 	blobName := fmt.Sprintf("coreos-%s-%s.vhd", specVersion, specChannel)
 
 	for _, container := range spec.Azure.Containers {
+		blobExists, err := api.BlobExists(spec.Azure.StorageAccount, storageKey.PrimaryKey, container, blobName)
+		if err != nil {
+			return fmt.Errorf("failed to check if file %q in account %q container %q exists: %v", vhdfile, spec.Azure.StorageAccount, container, err)
+		}
+
+		if blobExists {
+			continue
+		}
+
 		if err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
 			if _, ok := err.(azure.BlobExistsError); !ok {
 				return fmt.Errorf("uploading file %q to account %q container %q failed: %v", vhdfile, spec.Azure.StorageAccount, container, err)
