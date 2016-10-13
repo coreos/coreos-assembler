@@ -44,8 +44,10 @@ client_id = {{.ClientID}}
 client_secret = {{.ClientSecret}}
 {{else}}{{if eq .Type "service_account"}}
 [Credentials]
-gs_service_key_file = {{.Path}}
+gs_service_key_file = {{.JsonPath}}
 {{end}}{{end}}
+[GSUtil]
+state_dir = {{.StateDir}}
 `))
 )
 
@@ -66,7 +68,12 @@ type enter struct {
 
 type googleCreds struct {
 	// Path to JSON file (for template above)
-	Path string
+	JsonPath string
+
+	// Path gsutil will store cached credentials and other state.
+	// Must contain a pre-created 'tracker-files' directory because
+	// gsutil sometimes creates it with an inappropriate umask.
+	StateDir string
 
 	// Common fields
 	Type     string
@@ -210,32 +217,49 @@ func (e *enter) MountGnupg() error {
 // consistent handling of credentials across all of mantle and the SDK.
 func (e *enter) CopyGoogleCreds() error {
 	const (
-		name = "application_default_credentials.json"
-		env  = "GOOGLE_APPLICATION_CREDENTIALS"
+		botoName    = "boto"
+		jsonName    = "application_default_credentials.json"
+		trackerName = "tracker-files"
+		botoEnvName = "BOTO_PATH"
+		jsonEnvName = "GOOGLE_APPLICATION_CREDENTIALS"
 	)
 
-	path := os.Getenv(env)
-	if path == "" {
-		path = filepath.Join(e.User.HomeDir, ".config", "gcloud", name)
+	jsonSrc := os.Getenv(jsonEnvName)
+	if jsonSrc == "" {
+		jsonSrc = filepath.Join(e.User.HomeDir, ".config", "gcloud", jsonName)
 	}
 
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(jsonSrc); err != nil {
 		// Skip but do not pass along the invalid env var
-		os.Unsetenv("BOTO_PATH")
-		return os.Unsetenv(env)
+		os.Unsetenv(botoEnvName)
+		return os.Unsetenv(jsonEnvName)
 	}
 
-	newDir, err := ioutil.TempDir(e.UserRunDir, "google-")
+	stateDir, err := ioutil.TempDir(e.UserRunDir, "google-")
 	if err != nil {
 		return err
 	}
-	if err := os.Chown(newDir, e.User.UidNo, e.User.GidNo); err != nil {
+	if err := os.Chown(stateDir, e.User.UidNo, e.User.GidNo); err != nil {
 		return err
 	}
-	newPath := filepath.Join(newDir, name)
-	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
 
-	credsRaw, err := ioutil.ReadFile(path)
+	var (
+		botoPath       = filepath.Join(stateDir, botoName)
+		jsonPath       = filepath.Join(stateDir, jsonName)
+		trackerDir     = filepath.Join(stateDir, trackerName)
+		chrootBotoPath = strings.TrimPrefix(botoPath, e.Chroot)
+		chrootJsonPath = strings.TrimPrefix(jsonPath, e.Chroot)
+		chrootStateDir = strings.TrimPrefix(stateDir, e.Chroot)
+	)
+
+	if err := os.Mkdir(trackerDir, 0700); err != nil {
+		return err
+	}
+	if err := os.Chown(trackerDir, e.User.UidNo, e.User.GidNo); err != nil {
+		return err
+	}
+
+	credsRaw, err := ioutil.ReadFile(jsonSrc)
 	if err != nil {
 		return err
 	}
@@ -243,9 +267,9 @@ func (e *enter) CopyGoogleCreds() error {
 	if err := json.Unmarshal(credsRaw, &creds); err != nil {
 		return err
 	}
-	creds.Path = chrootPath
+	creds.JsonPath = chrootJsonPath
+	creds.StateDir = chrootStateDir
 
-	botoPath := filepath.Join(newDir, "boto")
 	boto, err := os.OpenFile(botoPath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -261,21 +285,20 @@ func (e *enter) CopyGoogleCreds() error {
 	}
 
 	// Include the default boto path as well for user customization.
-	chrootBoto := fmt.Sprintf("%s:/home/%s/.boto",
-		strings.TrimPrefix(botoPath, e.Chroot), e.User.Username)
-	if err := os.Setenv("BOTO_PATH", chrootBoto); err != nil {
+	botoEnv := fmt.Sprintf("%s:/home/%s/.boto", chrootBotoPath, e.User.Username)
+	if err := os.Setenv(botoEnvName, botoEnv); err != nil {
 		return err
 	}
 
-	if err := system.CopyRegularFile(path, newPath); err != nil {
+	if err := system.CopyRegularFile(jsonSrc, jsonPath); err != nil {
 		return err
 	}
 
-	if err := os.Chown(newPath, e.User.UidNo, e.User.GidNo); err != nil {
+	if err := os.Chown(jsonPath, e.User.UidNo, e.User.GidNo); err != nil {
 		return err
 	}
 
-	return os.Setenv(env, chrootPath)
+	return os.Setenv(jsonEnvName, jsonPath)
 }
 
 // bind mount the repo source tree into the chroot and run a command
