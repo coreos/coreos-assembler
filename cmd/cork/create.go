@@ -55,6 +55,11 @@ var (
 	downgradeReplace bool
 	newVersion       string
 
+	setupCmd = &cobra.Command{
+		Use:   "setup",
+		Short: "Setup the system for SDK use",
+		Run:   runSetup,
+	}
 	createCmd = &cobra.Command{
 		Use:   "create",
 		Short: "Download and unpack the SDK",
@@ -101,6 +106,8 @@ func init() {
 	creationFlags.BoolVar(&repoVerify,
 		"verify", false, "Check repo tree and release manifest match")
 
+	root.AddCommand(setupCmd)
+
 	createCmd.Flags().AddFlagSet(chrootFlags)
 	createCmd.Flags().AddFlagSet(creationFlags)
 	createCmd.Flags().BoolVar(&allowReplace,
@@ -130,6 +137,47 @@ func init() {
 	root.AddCommand(updateCmd)
 
 	root.AddCommand(verifyCmd)
+}
+
+func runSetup(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		plog.Fatal("No args accepted")
+	}
+
+	if err := installQemuBinfmt(); err != nil {
+		plog.Fatal("Install QEMU binfmt failed: ", err)
+	}
+}
+
+func installQemuBinfmt() error {
+	const dest = "/etc/binfmt.d/qemu-aarch64.conf"
+	const data = ":qemu-aarch64:M::\\x7fELF\\x02\\x01\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x02\\x00\\xb7:\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\x00\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xfe\\xff\\xff:/usr/bin/qemu-aarch64-static:"
+
+	// Only install if file does not exist
+	if _, err := os.Stat(dest); err == nil {
+		return nil
+	}
+
+	dir := filepath.Dir(dest)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	file, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+
+	if _, err := file.WriteString(data); err != nil {
+		return err
+	}
+
+	if err := file.Close(); err != nil {
+		os.Remove(dest)
+		return err
+	}
+
+	return nil
 }
 
 func runCreate(cmd *cobra.Command, args []string) {
