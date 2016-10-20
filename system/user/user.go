@@ -1,5 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
-// Copyright 2011 The Go Authors.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// user is extension of the standard os.user package which supports groups.
+// user provides an extended User struct to simplify usage
 package user
 
 import (
 	"os/user"
+	"strconv"
 )
 
 // User represents a user account.
@@ -31,27 +31,44 @@ type User struct {
 
 // Current returns the current user.
 func Current() (*User, error) {
-	u, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	return lookupGroup(u)
+	return newUser(user.Current())
 }
 
 // Lookup looks up a user by username.
 func Lookup(username string) (*User, error) {
-	u, err := user.Lookup(username)
-	if err != nil {
-		return nil, err
-	}
-	return lookupGroup(u)
+	return newUser(user.Lookup(username))
 }
 
 // LookupId looks up a user by userid.
 func LookupId(uid string) (*User, error) {
-	u, err := user.LookupId(uid)
+	return newUser(user.LookupId(uid))
+}
+
+// Convert the stock user.User to our own User strict with group info.
+func newUser(u *user.User, err error) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return lookupGroup(u)
+
+	g, err := user.LookupGroupId(u.Gid)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return nil, err
+	}
+
+	gid, err := strconv.Atoi(u.Gid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &User{
+		User:      u,
+		Groupname: g.Name,
+		UidNo:     uid,
+		GidNo:     gid,
+	}, nil
 }
