@@ -383,7 +383,7 @@ func RunTest(t *register.Test, pltfrm string) (err error) {
 		return fmt.Errorf("Failed to create discovery endpoint: %v", err)
 	}
 
-	cfgs := makeConfigs(url, t.UserData, t.ClusterSize)
+	cfgs := MakeConfigs(url, t.UserData, t.ClusterSize)
 
 	if t.ClusterSize > 0 {
 		_, err := platform.NewMachines(c, cfgs)
@@ -465,7 +465,7 @@ func scpKolet(t cluster.TestCluster, mArch string) error {
 
 // replaces $discovery with discover url in etcd cloud config and
 // replaces $name with a unique name
-func makeConfigs(url, cfg string, csize int) []string {
+func MakeConfigs(url, cfg string, csize int) []string {
 	cfg = strings.Replace(cfg, "$discovery", url, -1)
 
 	var cfgs []string
