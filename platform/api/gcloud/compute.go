@@ -53,6 +53,12 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 		Metadata: &compute.Metadata{
 			Items: metadataItems,
 		},
+		Tags: &compute.Tags{
+			// Apparently you need this tag in addition to the
+			// firewall rules to open the port because these ports
+			// are special?
+			Items: []string{"https-server", "http-server"},
+		},
 		Disks: []*compute.AttachedDisk{
 			{
 				AutoDelete: true,
