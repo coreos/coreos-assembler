@@ -233,7 +233,8 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		}
 	}
 
-	imageName := fmt.Sprintf("CoreOS-%s-%s", specChannel, specVersion)
+	// channel name should be caps for azure image
+	imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
 
 	// create image
 	if err := createAzureImage(spec, api, blobName, imageName); err != nil {
