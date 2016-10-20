@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package auth provides Google oauth2 bindings for mantle.
+// Package auth provides Google oauth2 and Azure credential bindings for mantle.
 package auth
 
 import (

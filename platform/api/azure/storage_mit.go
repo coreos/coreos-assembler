@@ -47,7 +47,7 @@ func (be BlobExistsError) Error() string {
 }
 
 func (a *API) BlobExists(storageaccount, storagekey, container, blob string) (bool, error) {
-	sc, err := storage.NewBasicClient(storageaccount, storagekey)
+	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
 	if err != nil {
 		return false, err
 	}
@@ -67,7 +67,7 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 	}
 	defer ds.Close()
 
-	sc, err := storage.NewBasicClient(storageaccount, storagekey)
+	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
 	if err != nil {
 		return err
 	}
