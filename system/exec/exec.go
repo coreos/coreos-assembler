@@ -17,6 +17,7 @@
 package exec
 
 import (
+	"context"
 	"io"
 	"os/exec"
 	"syscall"
@@ -47,15 +48,23 @@ type Cmd interface {
 // Basic Cmd implementation based on exec.Cmd
 type ExecCmd struct {
 	*exec.Cmd
+	cancel context.CancelFunc
 }
 
 func Command(name string, arg ...string) *ExecCmd {
-	return &ExecCmd{exec.Command(name, arg...)}
+	return CommandContext(context.Background(), name, arg...)
+}
+
+func CommandContext(ctx context.Context, name string, arg ...string) *ExecCmd {
+	ctx, cancel := context.WithCancel(ctx)
+	return &ExecCmd{
+		Cmd:    exec.CommandContext(ctx, name, arg...),
+		cancel: cancel,
+	}
 }
 
 func (cmd *ExecCmd) Kill() error {
-	cmd.Process.Kill()
-
+	cmd.cancel()
 	err := cmd.Wait()
 	if err == nil {
 		return nil
