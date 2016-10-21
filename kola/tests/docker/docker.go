@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/targen"
@@ -62,6 +64,18 @@ func init() {
 		Name:     "docker.network",
 		UserData: `#cloud-config`,
 
+		MinVersion: semver.Version{Major: 1192},
+	})
+	register.Register(&register.Test{
+		Run:         dockerOldClient,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"echocontainer": func() error {
+				return genDockerContainer("echo", []string{"echo"})
+			},
+		},
+		Name:       "docker.oldclient",
+		UserData:   `#cloud-config`,
 		MinVersion: semver.Version{Major: 1192},
 	})
 }
@@ -192,7 +206,7 @@ func dockerNetwork(c cluster.TestCluster) error {
 		}
 
 		if !bytes.Equal(out, []byte("HELLO FROM CLIENT")) {
-			return fmt.Errorf(`unexpected result from listener: "%v"`, out)
+			return fmt.Errorf("unexpected result from listener: %q", out)
 		}
 
 		return nil
@@ -237,4 +251,31 @@ func dockerNetwork(c cluster.TestCluster) error {
 	defer cancel()
 
 	return worker.Parallel(ctx, listener, talker)
+}
+
+// Regression test for https://github.com/coreos/bugs/issues/1569 and
+// https://github.com/coreos/docker/pull/31
+func dockerOldClient(c cluster.TestCluster) error {
+	oldclient := "/usr/lib/kola/amd64/docker-1.9.1"
+	if _, err := os.Stat(oldclient); err != nil {
+		return skip.Skip(fmt.Sprintf("Can't find old docker client to test: %v", err))
+	}
+	c.DropFile(oldclient)
+
+	m := c.Machines()[0]
+
+	if err := c.RunNative("echocontainer", m); err != nil {
+		return fmt.Errorf("failed to create echo container: %v", err)
+	}
+
+	output, err := m.SSH("/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
+	if err != nil {
+		return fmt.Errorf("failed to run old docker client: %q status: %q", output, err)
+	}
+
+	if !bytes.Equal(output, []byte("IT WORKED")) {
+		return fmt.Errorf("unexpected result from docker client: %q", output)
+	}
+
+	return nil
 }
