@@ -133,7 +133,7 @@ func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName str
 
 	plog.Printf("Creating OS image with name %q", imageName)
 
-	bloburl := fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", spec.Azure.StorageAccount, spec.Azure.Containers[0], blobName)
+	bloburl := api.UrlOfBlob(spec.Azure.StorageAccount, spec.Azure.Containers[0], blobName).String()
 
 	// a la https://github.com/coreos/scripts/blob/998c7e093922298637e7c7e82e25cee7d336144d/oem/azure/set-image-metadata.sh
 	md := &azure.OSImage{
