@@ -245,14 +245,18 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 
 		// create image
 		if err := createAzureImage(spec, api, blobName, imageName); err != nil {
-			return err
+			// if it is a conflict, it already exists!
+			if !azure.IsConflictError(err) {
+				return err
+			}
+
+			plog.Printf("Azure image %q already exists", imageName)
 		}
 
 		// replicate it
 		if err := replicateAzureImage(api, imageName); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
