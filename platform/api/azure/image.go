@@ -17,6 +17,8 @@ package azure
 import (
 	"encoding/xml"
 	"fmt"
+
+	"github.com/Azure/azure-sdk-for-go/management"
 )
 
 // OSImage struct for https://msdn.microsoft.com/en-us/library/azure/jj157192.aspx call.
@@ -58,4 +60,9 @@ func (a *API) ShareImage(image, permission string) error {
 	}
 
 	return a.client.WaitForOperation(op, nil)
+}
+
+func IsConflictError(err error) bool {
+	azerr, ok := err.(management.AzureError)
+	return ok && azerr.Code == "ConflictError"
 }
