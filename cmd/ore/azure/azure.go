@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
+	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform/api/azure"
 )
 
@@ -30,7 +31,8 @@ var (
 		PersistentPreRun: preauth,
 	}
 
-	opts = azure.Options{}
+	azureProfile      string
+	azureSubscription string
 
 	api *azure.API
 )
@@ -38,12 +40,24 @@ var (
 func init() {
 	sv := Azure.PersistentFlags().StringVar
 
-	sv(&opts.PublishSettingsFile, "publish-settings", "", "publish settings file")
+	sv(&azureProfile, "azure-profile", "", "Azure Profile json file")
+	sv(&azureSubscription, "azure-subscription", "", "Azure subscription name. If unset, the first is used.")
 }
 
 func preauth(cmd *cobra.Command, args []string) {
 	plog.Printf("Creating Azure API...")
-	a, err := azure.New(&opts)
+
+	prof, err := auth.ReadAzureProfile(azureProfile)
+	if err != nil {
+		plog.Fatalf("Failed to read Azure Profile %q: %v", azureProfile, err)
+	}
+
+	opt := prof.SubscriptionOptions(azureSubscription)
+	if opt == nil {
+		plog.Fatalf("Azure subscription named %q doesn't exist in %q", azureSubscription, azureProfile)
+	}
+
+	a, err := azure.New(opt)
 	if err != nil {
 		plog.Fatalf("Failed to create Azure API: %v", err)
 	}
