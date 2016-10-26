@@ -57,7 +57,7 @@ func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 
 	output, err := m.SSH(command)
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %v, status: %v", output, err)
+		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) == "" {
@@ -126,7 +126,7 @@ func WritableFiles(c cluster.TestCluster) error {
 
 	output, err := m.SSH("sudo find / -regextype posix-extended -regex \"/(sys|proc)\" -prune -o -type f -perm -0002 -print")
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %v, status: %v", output, err)
+		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) != "" {
@@ -141,7 +141,7 @@ func WritableDirs(c cluster.TestCluster) error {
 
 	output, err := m.SSH("sudo find / -regextype posix-extended -regex \"/(sys|proc)\" -prune -o -type d -perm -0002 -a ! -perm -1000 -print")
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %v, status: %v", output, err)
+		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) != "" {

@@ -46,7 +46,7 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 	}
 	output, err := m.SSH(command)
 	if err != nil {
-		return fmt.Errorf("Failed to run %v: output %v, status: %v", command, output, err)
+		return fmt.Errorf("Failed to run %s: output %s, status: %v", command, output, err)
 	}
 
 	processes := strings.Split(string(output), "\n")

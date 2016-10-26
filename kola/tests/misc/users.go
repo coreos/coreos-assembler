@@ -46,7 +46,7 @@ func CheckUserShells(c cluster.TestCluster) error {
 
 	output, err := m.SSH("getent passwd")
 	if err != nil {
-		return fmt.Errorf("Failed to run grep: output %v, status: %v", output, err)
+		return fmt.Errorf("Failed to run grep: output %s, status: %v", output, err)
 	}
 
 	users := strings.Split(string(output), "\n")
