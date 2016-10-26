@@ -53,7 +53,7 @@ func init() {
 func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 	badfiles := make([]string, 0, 0)
 
-	command := fmt.Sprintf("sudo find / -path /sys -prune -o -path /proc -prune -o -type f -perm -%v -print", mode)
+	command := fmt.Sprintf("sudo find / -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -%v -print", mode)
 
 	output, err := m.SSH(command)
 	if err != nil {
