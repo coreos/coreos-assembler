@@ -31,12 +31,8 @@ var conf = `{
 	},
 	"systemd": {
 		"units": [{
-			"name": "etcd-wrapper.service",
-			"enable": true,
-			"dropins": [{
-				"name": "10-tag.conf",
-				"contents": "[Service]\nEnvironment=ETCD_TAG=v3.0.4\n"
-			}]
+			"name": "etcd-member.service",
+			"enable": true
 		}]
 	}
 }`
@@ -48,7 +44,7 @@ func init() {
 		Platforms:   []string{"aws", "gce"},
 		Name:        "coreos.rkt.etcd3",
 		UserData:    conf,
-		MinVersion:  semver.Version{Major: 1122},
+		MinVersion:  semver.Version{Major: 1213},
 	})
 }
 
