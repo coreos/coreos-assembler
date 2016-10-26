@@ -52,8 +52,8 @@ func Execute(main *cobra.Command) {
 
 	// TODO(marineam): pflags defines the Value interface differently,
 	// update capnslog accordingly...
-	//main.PersistentFlags().Var(&level, "log-level",
-	//	"Set global log level. (default is NOTICE)")
+	main.PersistentFlags().Var(&logLevel, "log-level",
+		"Set global log level.")
 	main.PersistentFlags().BoolVarP(&logVerbose, "verbose", "v", false,
 		"Alias for --log-level=INFO")
 	main.PersistentFlags().BoolVarP(&logDebug, "debug", "d", false,
