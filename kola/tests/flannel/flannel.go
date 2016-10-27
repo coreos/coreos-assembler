@@ -135,11 +135,11 @@ func ping(a, b platform.Machine, ifname string) error {
 // UDP tests that flannel can send packets using the udp backend.
 func udp(c cluster.TestCluster) error {
 	machs := c.Machines()
-	return util.Retry(12, 10*time.Second, func() error { return ping(machs[0], machs[2], "flannel0") })
+	return util.Retry(12, 15*time.Second, func() error { return ping(machs[0], machs[2], "flannel0") })
 }
 
 // VXLAN tests that flannel can send packets using the vxlan backend.
 func vxlan(c cluster.TestCluster) error {
 	machs := c.Machines()
-	return util.Retry(12, 10*time.Second, func() error { return ping(machs[0], machs[2], "flannel.1") })
+	return util.Retry(12, 15*time.Second, func() error { return ping(machs[0], machs[2], "flannel.1") })
 }
