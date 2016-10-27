@@ -83,7 +83,7 @@ func (ap *AzureProfile) AsOptions() []azure.Options {
 
 		// find the storage endpoint for the subscription
 		for _, e := range ap.Environments {
-			if e.Name == sub.Name {
+			if e.Name == sub.EnvironmentName {
 				newo.StorageEndpointSuffix = e.StorageEndpointSuffix
 				break
 			}
