@@ -194,7 +194,7 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 	}
 
 	// download azure vhd image and unzip it
-	cachedir := filepath.Join(sdk.RepoCache(), "images")
+	cachedir := filepath.Join(sdk.RepoCache(), "images", specChannel, specVersion)
 	bzfile := filepath.Join(cachedir, spec.Azure.Image)
 	vhdfile := strings.TrimSuffix(bzfile, filepath.Ext(bzfile))
 	if err := getAzureVhd(spec, client, src, bzfile, vhdfile); err != nil {
