@@ -234,7 +234,7 @@ func dockerNetwork(c cluster.TestCluster) error {
 			}
 		}
 
-		srcCmd := fmt.Sprintf(`echo "HELLO FROM CLIENT" | docker run -i ncat ncat %s 9988`, dest.IP())
+		srcCmd := fmt.Sprintf(`echo "HELLO FROM CLIENT" | docker run -i ncat ncat %s 9988`, dest.PrivateIP())
 		out, err := src.SSH(srcCmd)
 		if err != nil {
 			return err
