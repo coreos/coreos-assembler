@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
+	_ "github.com/coreos-inc/k8s-kola/tests/bootkube"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
@@ -50,9 +51,15 @@ var (
 		Short: "List kola test names",
 		Run:   runList,
 	}
+
+	bootkubeImageRepo string
+	bootkubeImageTag  string
 )
 
 func init() {
+
+	cmdRun.Flags().StringVar(&bootkubeImageRepo, "bootkubeImageRepo", "", "")
+	cmdRun.Flags().StringVar(&bootkubeImageTag, "bootkubeImageTag", "", "")
 	root.AddCommand(cmdRun)
 	root.AddCommand(cmdList)
 }
@@ -80,6 +87,9 @@ func runRun(cmd *cobra.Command, args []string) {
 	} else {
 		pattern = "*" // run all tests by default
 	}
+
+	kola.RegisterTestOption("BootkubeImageRepo", bootkubeImageRepo)
+	kola.RegisterTestOption("BootkubeImageTag", bootkubeImageTag)
 
 	err := kola.RunTests(pattern, kolaPlatform)
 	if err != nil {

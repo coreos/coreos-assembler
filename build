@@ -20,7 +20,7 @@ host_build() {
 
 cross_build() {
 	local a
-	for a in amd64 arm64; do
+	for a in amd64; do
 		echo "Building $a/$1"
 		mkdir -p "bin/$a"
 		CGO_ENABLED=0 GOARCH=$a \
