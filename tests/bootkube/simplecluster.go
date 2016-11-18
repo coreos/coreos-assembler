@@ -29,9 +29,36 @@ type SimpleCluster struct {
 	Workers []platform.Machine
 }
 
+// Kubectl will run kubectl from /home/core on the Master Machine
+func (sc *SimpleCluster) Kubectl(cmd string) (string, error) {
+	client, err := sc.Master.SSHClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer session.Close()
+
+	var stdout = bytes.NewBuffer(nil)
+	var stderr = bytes.NewBuffer(nil)
+	session.Stderr = stderr
+	session.Stdout = stdout
+
+	err = session.Run("sudo ./kubectl --kubeconfig=/etc/kubernetes/kubeconfig " + cmd)
+	if err != nil {
+		return "", fmt.Errorf("kubectl:%s", stderr)
+	}
+	return stdout.String(), nil
+
+}
+
 // MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
-// and checks that all nodes are registered. NOTE: If startup times become too
-// long there are a few sections of this setup that could be run in parallel.
+// and checks that all nodes are registered before returning. NOTE: If startup
+// times become too long there are a few sections of this setup that could be
+// run in parallel.
 func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 	// options from flags set by main package
 	var (
@@ -95,9 +122,6 @@ func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 		return nodeCheck(master, workers)
 	}
 	if err := util.Retry(10, 10*time.Second, f); err != nil {
-		return nil, err
-	}
-	if err := nodeCheck(master, workers); err != nil {
 		return nil, err
 	}
 
