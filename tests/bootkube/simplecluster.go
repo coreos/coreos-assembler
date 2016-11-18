@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -12,14 +13,6 @@ import (
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
-)
-
-const (
-	defaultBootkubeImageRepo = "quay.io/coreos/bootkube"
-	defaultBootkubeImageTag  = "v0.2.4"
-
-	kubeletImageTag = "v1.4.5_coreos.0"
-	workerNodes     = 1
 )
 
 // SimpleCluster represents a bootkube cluster with single master running
@@ -35,18 +28,18 @@ type SimpleCluster struct {
 func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 	// options from flags set by main package
 	var (
-		imageRepo = c.Options["BootkubeImageRepo"]
-		imageTag  = c.Options["BootkubeImageTag"]
+		imageRepo       = c.Options["BootkubeImageRepo"]
+		imageTag        = c.Options["BootkubeImageTag"]
+		kubeletImageTag = c.Options["KubeletImageTag"]
+		workerNodes     = c.Options["WorkerNodes"]
 	)
-	if imageRepo == "" {
-		imageRepo = defaultBootkubeImageRepo
-	}
-	if imageTag == "" {
-		imageTag = defaultBootkubeImageTag
+	numWorkers, err := strconv.Atoi(workerNodes)
+	if err != nil {
+		return nil, err
 	}
 
 	// provision master node running etcd
-	masterConfig, err := renderCloudConfig("", true)
+	masterConfig, err := renderCloudConfig("", kubeletImageTag, true)
 	if err != nil {
 		return nil, err
 	}
@@ -65,12 +58,12 @@ func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 	}
 
 	// provision workers
-	workerConfig, err := renderCloudConfig(master.PrivateIP(), false)
+	workerConfig, err := renderCloudConfig(master.PrivateIP(), kubeletImageTag, false)
 	if err != nil {
 		return nil, err
 	}
 
-	workerConfigs := make([]string, workerNodes)
+	workerConfigs := make([]string, numWorkers)
 	for i := range workerConfigs {
 		workerConfigs[i] = workerConfig
 	}
@@ -81,7 +74,7 @@ func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 	}
 
 	// start bootkube on workers
-	if err := startWorkers(workers, master); err != nil {
+	if err := startWorkers(workers, master, kubeletImageTag); err != nil {
 		return nil, err
 	}
 
@@ -104,7 +97,7 @@ func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 	return &SimpleCluster{master, workers}, nil
 }
 
-func renderCloudConfig(masterIP string, isMaster bool) (string, error) {
+func renderCloudConfig(masterIP, kubeletImageTag string, isMaster bool) (string, error) {
 	flannelEtcd := fmt.Sprintf("http://%v:2379", masterIP)
 	if isMaster {
 		flannelEtcd = "http://127.0.0.1:2379"
@@ -209,7 +202,7 @@ func startMaster(m platform.Machine, imageRepo, imageTag string) error {
 	return nil
 }
 
-func startWorkers(workers []platform.Machine, master platform.Machine) error {
+func startWorkers(workers []platform.Machine, master platform.Machine, kubeletImageTag string) error {
 	for _, worker := range workers {
 		// transfer kubeconfig from master to worker
 		err := platform.TransferFile(master, "/etc/kubernetes/kubeconfig", worker, "/etc/kubernetes/kubeconfig")
