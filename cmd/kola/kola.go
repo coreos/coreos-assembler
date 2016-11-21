@@ -20,13 +20,13 @@ import (
 	"sort"
 	"text/tabwriter"
 
+	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
 	_ "github.com/coreos-inc/k8s-kola/tests/bootkube"
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/register"
 )
 
 var (
@@ -54,12 +54,16 @@ var (
 
 	bootkubeImageRepo string
 	bootkubeImageTag  string
+	kubeletImageTag   string
+	workerNodes       string
 )
 
 func init() {
 
-	cmdRun.Flags().StringVar(&bootkubeImageRepo, "bootkubeImageRepo", "", "")
-	cmdRun.Flags().StringVar(&bootkubeImageTag, "bootkubeImageTag", "", "")
+	cmdRun.Flags().StringVar(&bootkubeImageRepo, "bootkubeImageRepo", "quay.io/coreos/bootkube", "")
+	cmdRun.Flags().StringVar(&bootkubeImageTag, "bootkubeImageTag", "v0.2.5", "")
+	cmdRun.Flags().StringVar(&kubeletImageTag, "kubeletImageTag", "v1.4.5_coreos.0", "")
+	cmdRun.Flags().StringVar(&workerNodes, "workerNodes", "1", "")
 	root.AddCommand(cmdRun)
 	root.AddCommand(cmdList)
 }
@@ -90,6 +94,8 @@ func runRun(cmd *cobra.Command, args []string) {
 
 	kola.RegisterTestOption("BootkubeImageRepo", bootkubeImageRepo)
 	kola.RegisterTestOption("BootkubeImageTag", bootkubeImageTag)
+	kola.RegisterTestOption("KubeletImageTag", kubeletImageTag)
+	kola.RegisterTestOption("WorkerNodes", workerNodes)
 
 	err := kola.RunTests(pattern, kolaPlatform)
 	if err != nil {
