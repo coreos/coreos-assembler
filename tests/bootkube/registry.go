@@ -15,4 +15,11 @@ func init() {
 		Platforms:   []string{"gce"},
 		ClusterSize: 0,
 	})
+	register.Register(&register.Test{
+		Name:        "bootkube.destruction",
+		Run:         bootkubeDestruction,
+		Platforms:   []string{"gce"},
+		ClusterSize: 0,
+	})
+
 }
