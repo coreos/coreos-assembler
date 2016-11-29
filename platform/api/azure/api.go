@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/management"
+	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/coreos/pkg/capnslog"
 )
 
@@ -35,7 +36,16 @@ type API struct {
 func New(opts *Options) (*API, error) {
 	conf := management.DefaultConfig()
 	conf.APIVersion = "2015-04-01"
-	client, err := management.ClientFromPublishSettingsFileWithConfig(opts.PublishSettingsFile, "", conf)
+
+	if opts.ManagementURL != "" {
+		conf.ManagementURL = opts.ManagementURL
+	}
+
+	if opts.StorageEndpointSuffix == "" {
+		opts.StorageEndpointSuffix = storage.DefaultBaseURL
+	}
+
+	client, err := management.NewClientFromConfig(opts.SubscriptionID, opts.ManagementCertificate, conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create azure client: %v", err)
 	}

@@ -111,7 +111,7 @@ var (
 			Azure: azureSpec{
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
-				Containers:        []string{"publish", "pre-publish"},
+				Containers:        []string{"publish"},
 				Label:             "CoreOS Alpha",
 				Description:       "The Alpha channel closely tracks current development work and is released frequently. The newest versions of docker, etcd and fleet will be available for testing.",
 				RecommendedVMSize: "Medium",
@@ -156,7 +156,7 @@ var (
 			Azure: azureSpec{
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
-				Containers:        []string{"publish", "pre-publish"},
+				Containers:        []string{"publish"},
 				Label:             "CoreOS Beta",
 				Description:       "The Beta channel consists of promoted Alpha releases. Mix a few Beta machines into your production clusters to catch any bugs specific to your hardware or configuration.",
 				RecommendedVMSize: "Medium",
@@ -191,7 +191,7 @@ var (
 			Azure: azureSpec{
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
-				Containers:        []string{"publish", "pre-publish"},
+				Containers:        []string{"publish"},
 				Label:             "CoreOS Stable",
 				Description:       "The Stable channel should be used by production clusters. Versions of CoreOS are battle-tested within the Beta and Alpha channels before being promoted.",
 				RecommendedVMSize: "Medium",
