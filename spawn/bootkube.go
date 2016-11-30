@@ -1,58 +1,28 @@
-package bootkube
+package spawn
 
 import (
 	"bytes"
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 	"text/template"
 	"time"
+
+	"github.com/coreos-inc/pluton"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/pkg/capnslog"
 )
 
-// SimpleCluster represents a bootkube cluster with single master running
-// static etcd and multiple workers.
-type SimpleCluster struct {
-	Master  platform.Machine
-	Workers []platform.Machine
-}
-
-// Kubectl will run kubectl from /home/core on the Master Machine
-func (sc *SimpleCluster) Kubectl(cmd string) (string, error) {
-	client, err := sc.Master.SSHClient()
-	if err != nil {
-		return "", err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-	defer session.Close()
-
-	var stdout = bytes.NewBuffer(nil)
-	var stderr = bytes.NewBuffer(nil)
-	session.Stderr = stderr
-	session.Stdout = stdout
-
-	err = session.Run("sudo ./kubectl --kubeconfig=/etc/kubernetes/kubeconfig " + cmd)
-	if err != nil {
-		return "", fmt.Errorf("kubectl:%s", stderr)
-	}
-	return stdout.String(), nil
-
-}
+var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "spawn")
 
 // MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
 // and checks that all nodes are registered before returning. NOTE: If startup
 // times become too long there are a few sections of this setup that could be
 // run in parallel.
-func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
+func MakeBootkubeCluster(c cluster.TestCluster) (*pluton.Cluster, error) {
 	// options from flags set by main package
 	var (
 		imageRepo       = c.Options["BootkubeImageRepo"]
@@ -110,15 +80,17 @@ func MakeSimpleCluster(c cluster.TestCluster) (*SimpleCluster, error) {
 		return nil, err
 	}
 
-	// check that all nodes appear in kubectl
-	f := func() error {
-		return nodeCheck(master, workers)
+	bootkubeCluster := &pluton.Cluster{
+		Masters: []platform.Machine{master},
+		Workers: workers,
 	}
-	if err := util.Retry(10, 10*time.Second, f); err != nil {
+
+	// check that all nodes appear in kubectl
+	if err := bootkubeCluster.NodeCheck(10); err != nil {
 		return nil, err
 	}
 
-	return &SimpleCluster{master, workers}, nil
+	return bootkubeCluster, nil
 }
 
 func renderCloudConfig(masterIP, kubeletImageTag string, isMaster bool) (string, error) {
@@ -279,29 +251,4 @@ func stripSemverSuffix(v string) (string, error) {
 	}
 
 	return v, nil
-}
-
-func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
-	b, err := master.SSH("./kubectl get nodes")
-	if err != nil {
-		return err
-	}
-
-	// parse kubectl output for IPs
-	addrMap := map[string]struct{}{}
-	for _, line := range strings.Split(string(b), "\n")[1:] {
-		addrMap[strings.SplitN(line, " ", 2)[0]] = struct{}{}
-	}
-
-	nodes = append(nodes, master)
-
-	if len(addrMap) != len(nodes) {
-		return fmt.Errorf("cannot detect all nodes in kubectl output \n%v\n%v", addrMap, nodes)
-	}
-	for _, node := range nodes {
-		if _, ok := addrMap[node.PrivateIP()]; !ok {
-			return fmt.Errorf("node IP missing from kubectl get nodes")
-		}
-	}
-	return nil
 }
