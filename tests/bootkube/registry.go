@@ -6,7 +6,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos-inc/k8s-kola", "tests/bootkube")
+var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "tests/bootkube")
 
 func init() {
 	register.Register(&register.Test{

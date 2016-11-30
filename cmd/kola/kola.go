@@ -26,11 +26,11 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
-	_ "github.com/coreos-inc/k8s-kola/tests/bootkube"
+	_ "github.com/coreos-inc/pluton/tests/bootkube"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos-inc/k8s-kola", "kola")
+	plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "kola")
 
 	root = &cobra.Command{
 		Use:   "kola [command]",
