@@ -12,12 +12,12 @@ import (
 
 // Run various destruction tests
 func bootkubeDestruction(c cluster.TestCluster) error {
-	sc, err := spawn.MakeBootkubeCluster(c)
+	bc, err := spawn.MakeBootkubeCluster(c)
 	if err != nil {
 		return err
 	}
 
-	if err := masterRestart(sc); err != nil {
+	if err := masterRestart(bc); err != nil {
 		return fmt.Errorf("masterRestart: %s", err)
 	}
 
@@ -35,11 +35,11 @@ func masterRestart(c *pluton.Cluster) error {
 	}
 
 	if err := c.NodeCheck(20); err != nil {
-		return err
+		return fmt.Errorf("nodeCheck: %s", err)
 	}
 
 	if err := nginxCheck(c); err != nil {
-		return err
+		return fmt.Errorf("nginxCheck: %s", err)
 	}
 	return nil
 }
