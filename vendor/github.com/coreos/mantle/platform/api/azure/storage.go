@@ -17,6 +17,8 @@ package azure
 import (
 	"encoding/xml"
 	"fmt"
+	"net/url"
+	"path"
 
 	"github.com/Azure/azure-sdk-for-go/management"
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
@@ -67,4 +69,12 @@ func (a *API) OSImageExists(name string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (a *API) UrlOfBlob(account, container, blob string) *url.URL {
+	return &url.URL{
+		Scheme: "https",
+		Host:   fmt.Sprintf("%s.blob.%s", account, a.opts.StorageEndpointSuffix),
+		Path:   path.Join(container, blob),
+	}
 }

@@ -26,6 +26,9 @@ import (
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
+
+	// register OS test suite
+	_ "github.com/coreos/mantle/kola/registry"
 )
 
 var (
