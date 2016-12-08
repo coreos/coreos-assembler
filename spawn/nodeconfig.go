@@ -1,4 +1,4 @@
-package bootkube
+package spawn
 
 var cloudConfigTmpl = `#cloud-config
 coreos: {{ if .Master }}
