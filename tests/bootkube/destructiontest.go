@@ -34,7 +34,7 @@ func masterRestart(c *pluton.Cluster) error {
 		return err
 	}
 
-	if err := c.NodeCheck(20); err != nil {
+	if err := c.NodeCheck(25); err != nil {
 		return fmt.Errorf("nodeCheck: %s", err)
 	}
 
