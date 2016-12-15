@@ -7,11 +7,12 @@ package testing
 import (
 	"reflect"
 	"regexp"
+	"testing"
 	"unicode"
 )
 
 // Verify that our IsSpace agrees with unicode.IsSpace.
-func TestIsSpace(t *T) {
+func TestIsSpace(t *testing.T) {
 	n := 0
 	for r := rune(0); r <= unicode.MaxRune; r++ {
 		if isSpace(r) != unicode.IsSpace(r) {
@@ -24,7 +25,7 @@ func TestIsSpace(t *T) {
 	}
 }
 
-func TestSplitRegexp(t *T) {
+func TestSplitRegexp(t *testing.T) {
 	res := func(s ...string) []string { return s }
 	testCases := []struct {
 		pattern string
@@ -83,7 +84,7 @@ func TestSplitRegexp(t *T) {
 	}
 }
 
-func TestMatcher(t *T) {
+func TestMatcher(t *testing.T) {
 	testCases := []struct {
 		pattern     string
 		parent, sub string
@@ -128,7 +129,7 @@ func TestMatcher(t *T) {
 	}
 
 	for _, tc := range testCases {
-		m := newMatcher(regexp.MatchString, tc.pattern, "-test.run")
+		m := newMatcher(regexp.MatchString, tc.pattern, "-harness.run")
 
 		parent := &common{name: tc.parent}
 		if tc.parent != "" {
@@ -141,7 +142,7 @@ func TestMatcher(t *T) {
 	}
 }
 
-func TestNaming(t *T) {
+func TestNaming(t *testing.T) {
 	m := newMatcher(regexp.MatchString, "", "")
 
 	parent := &common{name: "x", level: 1} // top-level test.

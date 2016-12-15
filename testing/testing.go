@@ -133,26 +133,26 @@ var (
 	// home. The all.bash installation script sets it to make installation more
 	// efficient, but by default the flag is off so a plain "go test" will do a
 	// full test of the package.
-	short = flag.Bool("test.short", false, "run smaller test suite to save time")
+	short = flag.Bool("harness.short", false, "run smaller test suite to save time")
 
 	// The directory in which to create profile files and the like. When run from
 	// "go test", the binary always runs in the source directory for the package;
 	// this flag lets "go test" tell the binary to write the files in the directory where
 	// the "go test" command is run.
-	outputDir = flag.String("test.outputdir", "", "write profiles to `dir`")
+	outputDir = flag.String("harness.outputdir", "", "write profiles to `dir`")
 
 	// Report as tests are run; default is silent for success.
-	chatty           = flag.Bool("test.v", false, "verbose: print additional output")
-	match            = flag.String("test.run", "", "run only tests matching `regexp`")
-	memProfile       = flag.String("test.memprofile", "", "write a memory profile to `file`")
-	memProfileRate   = flag.Int("test.memprofilerate", 0, "set memory profiling `rate` (see runtime.MemProfileRate)")
-	cpuProfile       = flag.String("test.cpuprofile", "", "write a cpu profile to `file`")
-	blockProfile     = flag.String("test.blockprofile", "", "write a goroutine blocking profile to `file`")
-	blockProfileRate = flag.Int("test.blockprofilerate", 1, "set blocking profile `rate` (see runtime.SetBlockProfileRate)")
-	traceFile        = flag.String("test.trace", "", "write an execution trace to `file`")
-	timeout          = flag.Duration("test.timeout", 0, "fail test binary execution after duration `d` (0 means unlimited)")
-	cpuListStr       = flag.String("test.cpu", "", "comma-separated `list` of cpu counts to run each test with")
-	parallel         = flag.Int("test.parallel", runtime.GOMAXPROCS(0), "run at most `n` tests in parallel")
+	chatty           = flag.Bool("harness.v", false, "verbose: print additional output")
+	match            = flag.String("harness.run", "", "run only tests matching `regexp`")
+	memProfile       = flag.String("harness.memprofile", "", "write a memory profile to `file`")
+	memProfileRate   = flag.Int("harness.memprofilerate", 0, "set memory profiling `rate` (see runtime.MemProfileRate)")
+	cpuProfile       = flag.String("harness.cpuprofile", "", "write a cpu profile to `file`")
+	blockProfile     = flag.String("harness.blockprofile", "", "write a goroutine blocking profile to `file`")
+	blockProfileRate = flag.Int("harness.blockprofilerate", 1, "set blocking profile `rate` (see runtime.SetBlockProfileRate)")
+	traceFile        = flag.String("harness.trace", "", "write an execution trace to `file`")
+	timeout          = flag.Duration("harness.timeout", 0, "fail test binary execution after duration `d` (0 means unlimited)")
+	cpuListStr       = flag.String("harness.cpu", "", "comma-separated `list` of cpu counts to run each test with")
+	parallel         = flag.Int("harness.parallel", runtime.GOMAXPROCS(0), "run at most `n` tests in parallel")
 
 	cpuList []int
 )
@@ -190,12 +190,12 @@ func (c *common) parentContext() context.Context {
 	return c.parent.ctx
 }
 
-// Short reports whether the -test.short flag is set.
+// Short reports whether the -harness.short flag is set.
 func Short() bool {
 	return *short
 }
 
-// Verbose reports whether the -test.v flag is set.
+// Verbose reports whether the -harness.v flag is set.
 func Verbose() bool {
 	return *chatty
 }
@@ -380,12 +380,12 @@ func (c *common) log(s string) {
 
 // Log formats its arguments using default formatting, analogous to Println,
 // and records the text in the error log. The text will be printed only if
-// the test fails or the -test.v flag is set.
+// the test fails or the -harness.v flag is set.
 func (c *common) Log(args ...interface{}) { c.log(fmt.Sprintln(args...)) }
 
 // Logf formats its arguments according to the format, analogous to Printf, and
 // records the text in the error log. A final newline is added if not provided.
-// The text will be printed only if the test fails or the -test.v flag is set.
+// The text will be printed only if the test fails or the -harness.v flag is set.
 func (c *common) Logf(format string, args ...interface{}) { c.log(fmt.Sprintf(format, args...)) }
 
 // Error is equivalent to Log followed by Fail.

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package testing_test
+package testing
 
 import (
 	"fmt"
@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/coreos/mantle/testing/internal/testdeps"
 )
 
 func TestMain(m *testing.M) {
@@ -38,9 +40,16 @@ func TestMain(m *testing.M) {
 }
 
 func TestContextCancel(t *testing.T) {
-	ctx := t.Context()
-	// Tests we don't leak this goroutine:
-	go func() {
-		<-ctx.Done()
-	}()
+	suite := MainStart(testdeps.TestDeps{}, []InternalTest{
+		{"ContextCancel", func(h *T) {
+			ctx := h.Context()
+			// Tests we don't leak this goroutine:
+			go func() {
+				<-ctx.Done()
+			}()
+		}}})
+	r := suite.Run()
+	if r != 0 {
+		t.Errorf("Run failed: %d", r)
+	}
 }

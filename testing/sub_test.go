@@ -10,10 +10,11 @@ import (
 	"regexp"
 	"strings"
 	"sync/atomic"
+	"testing"
 	"time"
 )
 
-func TestTestContext(t *T) {
+func TestTestContext(t *testing.T) {
 	const (
 		add1 = 0
 		done = 1
@@ -109,7 +110,7 @@ func TestTestContext(t *T) {
 	}
 }
 
-func TestTRun(t *T) {
+func TestTRun(t *testing.T) {
 	realTest := t
 	testCases := []struct {
 		desc   string
