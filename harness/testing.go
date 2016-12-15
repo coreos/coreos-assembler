@@ -108,7 +108,7 @@
 //		os.Exit(m.Run())
 //	}
 //
-package testing
+package harness
 
 import (
 	"bytes"

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package testing
+package harness
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/mantle/testing/internal/testdeps"
+	"github.com/coreos/mantle/harness/internal/testdeps"
 )
 
 func TestMain(m *testing.M) {
