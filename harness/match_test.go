@@ -129,7 +129,7 @@ func TestMatcher(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		m := newMatcher(regexp.MatchString, tc.pattern, "-harness.run")
+		m := newMatcher(tc.pattern, "-harness.run")
 
 		parent := &common{name: tc.parent}
 		if tc.parent != "" {
@@ -143,7 +143,7 @@ func TestMatcher(t *testing.T) {
 }
 
 func TestNaming(t *testing.T) {
-	m := newMatcher(regexp.MatchString, "", "")
+	m := newMatcher("", "")
 
 	parent := &common{name: "x", level: 1} // top-level test.
 

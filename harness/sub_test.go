@@ -337,7 +337,7 @@ func TestTRun(t *testing.T) {
 		},
 	}}
 	for _, tc := range testCases {
-		ctx := newTestContext(tc.maxPar, newMatcher(regexp.MatchString, "", ""))
+		ctx := newTestContext(tc.maxPar, newMatcher("", ""))
 		buf := &bytes.Buffer{}
 		root := &T{
 			common: common{

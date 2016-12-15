@@ -10,8 +10,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-
-	"github.com/coreos/mantle/harness/internal/testdeps"
 )
 
 func TestMain(m *testing.M) {
@@ -40,7 +38,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestContextCancel(t *testing.T) {
-	suite := MainStart(testdeps.TestDeps{}, []InternalTest{
+	suite := MainStart([]InternalTest{
 		{"ContextCancel", func(h *T) {
 			ctx := h.Context()
 			// Tests we don't leak this goroutine:

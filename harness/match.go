@@ -7,6 +7,7 @@ package harness
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,8 +15,7 @@ import (
 
 // matcher sanitizes, uniques, and filters names of subtests and subbenchmarks.
 type matcher struct {
-	filter    []string
-	matchFunc func(pat, str string) (bool, error)
+	filter []string
 
 	mu       sync.Mutex
 	subNames map[string]int64
@@ -24,8 +24,21 @@ type matcher struct {
 // TODO: fix test_main to avoid race and improve caching, also allowing to
 // eliminate this Mutex.
 var matchMutex sync.Mutex
+var matchPat string
+var matchRe *regexp.Regexp
 
-func newMatcher(matchString func(pat, str string) (bool, error), patterns, name string) *matcher {
+func matchString(pat, str string) (result bool, err error) {
+	if matchRe == nil || matchPat != pat {
+		matchPat = pat
+		matchRe, err = regexp.Compile(matchPat)
+		if err != nil {
+			return
+		}
+	}
+	return matchRe.MatchString(str), nil
+}
+
+func newMatcher(patterns, name string) *matcher {
 	var filter []string
 	if patterns != "" {
 		filter = splitRegexp(patterns)
@@ -41,9 +54,8 @@ func newMatcher(matchString func(pat, str string) (bool, error), patterns, name 
 		}
 	}
 	return &matcher{
-		filter:    filter,
-		matchFunc: matchString,
-		subNames:  map[string]int64{},
+		filter:   filter,
+		subNames: map[string]int64{},
 	}
 }
 
@@ -66,7 +78,7 @@ func (m *matcher) fullName(c *common, subname string) (name string, ok bool) {
 		if i >= len(m.filter) {
 			break
 		}
-		if ok, _ := m.matchFunc(m.filter[i], s); !ok {
+		if ok, _ := matchString(m.filter[i], s); !ok {
 			return name, false
 		}
 	}
