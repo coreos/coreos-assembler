@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestContextCancel(t *testing.T) {
-	suite := MainStart([]InternalTest{
+	suite := NewSuite([]InternalTest{
 		{"ContextCancel", func(h *T) {
 			ctx := h.Context()
 			// Tests we don't leak this goroutine:
