@@ -59,7 +59,7 @@ func newMatcher(patterns, name string) *matcher {
 	}
 }
 
-func (m *matcher) fullName(c *common, subname string) (name string, ok bool) {
+func (m *matcher) fullName(c *H, subname string) (name string, ok bool) {
 	name = subname
 
 	m.mu.Lock()

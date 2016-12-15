@@ -118,7 +118,7 @@ func TestTRun(t *testing.T) {
 		maxPar int
 		chatty bool
 		output string
-		f      func(*T)
+		f      func(*H)
 	}{{
 		desc:   "failnow skips future sequential and parallel tests at same level",
 		ok:     false,
@@ -127,22 +127,22 @@ func TestTRun(t *testing.T) {
 --- FAIL: failnow skips future sequential and parallel tests at same level (N.NNs)
     --- FAIL: failnow skips future sequential and parallel tests at same level/#00 (N.NNs)
     `,
-		f: func(t *T) {
+		f: func(t *H) {
 			ranSeq := false
 			ranPar := false
-			t.Run("", func(t *T) {
-				t.Run("par", func(t *T) {
+			t.Run("", func(t *H) {
+				t.Run("par", func(t *H) {
 					t.Parallel()
 					ranPar = true
 				})
-				t.Run("seq", func(t *T) {
+				t.Run("seq", func(t *H) {
 					ranSeq = true
 				})
 				t.FailNow()
-				t.Run("seq", func(t *T) {
+				t.Run("seq", func(t *H) {
 					realTest.Error("test must be skipped")
 				})
-				t.Run("par", func(t *T) {
+				t.Run("par", func(t *H) {
 					t.Parallel()
 					realTest.Error("test must be skipped.")
 				})
@@ -163,10 +163,10 @@ func TestTRun(t *testing.T) {
     --- FAIL: failure in parallel test propagates upwards/#00 (N.NNs)
         --- FAIL: failure in parallel test propagates upwards/#00/par (N.NNs)
 		`,
-		f: func(t *T) {
-			t.Run("", func(t *T) {
+		f: func(t *H) {
+			t.Run("", func(t *H) {
 				t.Parallel()
-				t.Run("par", func(t *T) {
+				t.Run("par", func(t *H) {
 					t.Parallel()
 					t.Fail()
 				})
@@ -179,7 +179,7 @@ func TestTRun(t *testing.T) {
 		output: `
 === RUN   skipping without message, chatty
 --- SKIP: skipping without message, chatty (N.NNs)`,
-		f: func(t *T) { t.SkipNow() },
+		f: func(t *H) { t.SkipNow() },
 	}, {
 		desc:   "chatty with recursion",
 		ok:     true,
@@ -191,22 +191,22 @@ func TestTRun(t *testing.T) {
 --- PASS: chatty with recursion (N.NNs)
     --- PASS: chatty with recursion/#00 (N.NNs)
         --- PASS: chatty with recursion/#00/#00 (N.NNs)`,
-		f: func(t *T) {
-			t.Run("", func(t *T) {
-				t.Run("", func(t *T) {})
+		f: func(t *H) {
+			t.Run("", func(t *H) {
+				t.Run("", func(t *H) {})
 			})
 		},
 	}, {
 		desc: "skipping without message, not chatty",
 		ok:   true,
-		f:    func(t *T) { t.SkipNow() },
+		f:    func(t *H) { t.SkipNow() },
 	}, {
 		desc: "skipping after error",
 		output: `
 --- FAIL: skipping after error (N.NNs)
 	sub_test.go:NNN: an error
 	sub_test.go:NNN: skipped`,
-		f: func(t *T) {
+		f: func(t *H) {
 			t.Error("an error")
 			t.Skip("skipped")
 		},
@@ -214,11 +214,11 @@ func TestTRun(t *testing.T) {
 		desc:   "use Run to locally synchronize parallelism",
 		ok:     true,
 		maxPar: 1,
-		f: func(t *T) {
+		f: func(t *H) {
 			var count uint32
-			t.Run("waitGroup", func(t *T) {
+			t.Run("waitGroup", func(t *H) {
 				for i := 0; i < 4; i++ {
-					t.Run("par", func(t *T) {
+					t.Run("par", func(t *H) {
 						t.Parallel()
 						atomic.AddUint32(&count, 1)
 					})
@@ -235,12 +235,12 @@ func TestTRun(t *testing.T) {
 		// itself subtests of parallel tests, the counts can get askew.
 		ok:     true,
 		maxPar: 1,
-		f: func(t *T) {
-			t.Run("a", func(t *T) {
+		f: func(t *H) {
+			t.Run("a", func(t *H) {
 				t.Parallel()
-				t.Run("b", func(t *T) {
+				t.Run("b", func(t *H) {
 					// Sequential: ensure running count is decremented.
-					t.Run("c", func(t *T) {
+					t.Run("c", func(t *H) {
 						t.Parallel()
 					})
 
@@ -254,16 +254,16 @@ func TestTRun(t *testing.T) {
 		// itself subtests of parallel tests, the counts can get askew.
 		ok:     true,
 		maxPar: 2,
-		f: func(t *T) {
+		f: func(t *H) {
 			for i := 0; i < 2; i++ {
-				t.Run("a", func(t *T) {
+				t.Run("a", func(t *H) {
 					t.Parallel()
 					time.Sleep(time.Nanosecond)
 					for i := 0; i < 2; i++ {
-						t.Run("b", func(t *T) {
+						t.Run("b", func(t *H) {
 							time.Sleep(time.Nanosecond)
 							for i := 0; i < 2; i++ {
-								t.Run("c", func(t *T) {
+								t.Run("c", func(t *H) {
 									t.Parallel()
 									time.Sleep(time.Nanosecond)
 								})
@@ -278,27 +278,27 @@ func TestTRun(t *testing.T) {
 		desc:   "stress test",
 		ok:     true,
 		maxPar: 4,
-		f: func(t *T) {
-			// t.Parallel doesn't work in the pseudo-T we start with:
+		f: func(t *H) {
+			// t.Parallel doesn't work in the pseudo-H we start with:
 			// it leaks a goroutine.
 			// Call t.Run to get a real one.
-			t.Run("X", func(t *T) {
+			t.Run("X", func(t *H) {
 				t.Parallel()
 				for i := 0; i < 12; i++ {
-					t.Run("a", func(t *T) {
+					t.Run("a", func(t *H) {
 						t.Parallel()
 						time.Sleep(time.Nanosecond)
 						for i := 0; i < 12; i++ {
-							t.Run("b", func(t *T) {
+							t.Run("b", func(t *H) {
 								time.Sleep(time.Nanosecond)
 								for i := 0; i < 12; i++ {
-									t.Run("c", func(t *T) {
+									t.Run("c", func(t *H) {
 										t.Parallel()
 										time.Sleep(time.Nanosecond)
-										t.Run("d1", func(t *T) {})
-										t.Run("d2", func(t *T) {})
-										t.Run("d3", func(t *T) {})
-										t.Run("d4", func(t *T) {})
+										t.Run("d1", func(t *H) {})
+										t.Run("d2", func(t *H) {})
+										t.Run("d3", func(t *H) {})
+										t.Run("d4", func(t *H) {})
 									})
 								}
 							})
@@ -311,16 +311,16 @@ func TestTRun(t *testing.T) {
 		desc:   "skip output",
 		ok:     true,
 		maxPar: 4,
-		f: func(t *T) {
+		f: func(t *H) {
 			t.Skip()
 		},
 	}, {
 		desc:   "panic on goroutine fail after test exit",
 		ok:     false,
 		maxPar: 4,
-		f: func(t *T) {
+		f: func(t *H) {
 			ch := make(chan bool)
-			t.Run("", func(t *T) {
+			t.Run("", func(t *H) {
 				go func() {
 					<-ch
 					defer func() {
@@ -339,13 +339,11 @@ func TestTRun(t *testing.T) {
 	for _, tc := range testCases {
 		ctx := newTestContext(tc.maxPar, newMatcher("", ""))
 		buf := &bytes.Buffer{}
-		root := &T{
-			common: common{
-				signal: make(chan bool),
-				name:   "Test",
-				w:      buf,
-				chatty: tc.chatty,
-			},
+		root := &H{
+			signal:  make(chan bool),
+			name:    "Test",
+			w:       buf,
+			chatty:  tc.chatty,
 			context: ctx,
 		}
 		root.ctx, root.cancel = context.WithCancel(context.Background())

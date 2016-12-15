@@ -131,7 +131,7 @@ func TestMatcher(t *testing.T) {
 	for _, tc := range testCases {
 		m := newMatcher(tc.pattern, "-harness.run")
 
-		parent := &common{name: tc.parent}
+		parent := &H{name: tc.parent}
 		if tc.parent != "" {
 			parent.level = 1
 		}
@@ -145,7 +145,7 @@ func TestMatcher(t *testing.T) {
 func TestNaming(t *testing.T) {
 	m := newMatcher("", "")
 
-	parent := &common{name: "x", level: 1} // top-level test.
+	parent := &H{name: "x", level: 1} // top-level test.
 
 	// Rig the matcher with some preloaded values.
 	m.subNames["x/b"] = 1000

@@ -2,42 +2,35 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package testing provides support for automated testing of Go packages.
-// It is intended to be used in concert with the ``go test'' command, which automates
-// execution of any function of the form
-//     func TestXxx(*testing.T)
-// where Xxx can be any alphanumeric string (but the first letter must not be in
-// [a-z]) and serves to identify the test routine.
+// Package harness provides a reusable test framework akin to the standard
+// "testing" Go package. For now there is no automated code generation
+// component like the "go test" command but that may be a future extension.
+// Test functions must be of type `func(*harness.H)` and registered directly
+// with a test Suite struct which can then be launched via the Run method.
 //
 // Within these functions, use the Error, Fail or related methods to signal failure.
 //
-// To write a new test suite, create a file whose name ends _test.go that
-// contains the TestXxx functions as described here. Put the file in the same
-// package as the one being tested. The file will be excluded from regular
-// package builds but will be included when the ``go test'' command is run.
-// For more detail, run ``go help test'' and ``go help testflag''.
-//
 // Tests may be skipped if not applicable with a call to
 // the Skip method of *T:
-//     func TestTimeConsuming(t *testing.T) {
-//         if testing.Short() {
-//             t.Skip("skipping test in short mode.")
+//     func TimeConsuming(h *harness.T) {
+//         if harness.Short() {
+//             h.Skip("skipping test in short mode.")
 //         }
 //         ...
 //     }
 //
 // Subtests
 //
-// The Run method of T allow defining subtests,
+// The Run method of H allow defining subtests,
 // without having to define separate functions for each. This enables uses
 // like table-driven and hierarchical tests.
 // It also provides a way to share common setup and tear-down code:
 //
-//     func TestFoo(t *testing.T) {
+//     func Foo(h *harness.H) {
 //         // <setup code>
-//         t.Run("A=1", func(t *testing.T) { ... })
-//         t.Run("A=2", func(t *testing.T) { ... })
-//         t.Run("B=1", func(t *testing.T) { ... })
+//         h.Run("A=1", func(h *harness.H) { ... })
+//         h.Run("A=2", func(h *harness.H) { ... })
+//         h.Run("B=1", func(h *harness.H) { ... })
 //         // <tear-down code>
 //     }
 //
@@ -45,28 +38,28 @@
 // of the top-level test and the sequence of names passed to Run, separated by
 // slashes, with an optional trailing sequence number for disambiguation.
 //
-// The argument to the -run command-line flag is an unanchored regular
+// The argument to the -harness.run command-line flag is an unanchored regular
 // expression that matches the test's name. For tests with multiple slash-separated
 // elements, such as subtests, the argument is itself slash-separated, with
 // expressions matching each name element in turn. Because it is unanchored, an
 // empty expression matches any string.
 // For example, using "matching" to mean "whose name contains":
 //
-//     go test -run ''      # Run all tests.
-//     go test -run Foo     # Run top-level tests matching "Foo", such as "TestFooBar".
-//     go test -run Foo/A=  # For top-level tests matching "Foo", run subtests matching "A=".
-//     go test -run /A=1    # For all top-level tests, run subtests matching "A=1".
+//     go run foo.go -harness.run ''      # Run all tests.
+//     go run foo.go -harness.run Foo     # Run top-level tests matching "Foo", such as "TestFooBar".
+//     go run foo.go -harness.run Foo/A=  # For top-level tests matching "Foo", run subtests matching "A=".
+//     go run foo.go -harness.run /A=1    # For all top-level tests, run subtests matching "A=1".
 //
 // Subtests can also be used to control parallelism. A parent test will only
 // complete once all of its subtests complete. In this example, all tests are
 // run in parallel with each other, and only with each other, regardless of
 // other top-level tests that may be defined:
 //
-//     func TestGroupedParallel(t *testing.T) {
+//     func GroupedParallel(h *harness.H) {
 //         for _, tc := range tests {
 //             tc := tc // capture range variable
-//             t.Run(tc.Name, func(t *testing.T) {
-//                 t.Parallel()
+//             h.Run(tc.Name, func(h *harness.H) {
+//                 h.Parallel()
 //                 ...
 //             })
 //         }
@@ -75,37 +68,32 @@
 // Run does not return until parallel subtests have completed, providing a way
 // to clean up after a group of parallel tests:
 //
-//     func TestTeardownParallel(t *testing.T) {
+//     func TeardownParallel(h *harness.H) {
 //         // This Run will not return until the parallel tests finish.
-//         t.Run("group", func(t *testing.T) {
-//             t.Run("Test1", parallelTest1)
-//             t.Run("Test2", parallelTest2)
-//             t.Run("Test3", parallelTest3)
+//         h.Run("group", func(h *harness.H) {
+//             h.Run("Test1", parallelTest1)
+//             h.Run("Test2", parallelTest2)
+//             h.Run("Test3", parallelTest3)
 //         })
 //         // <tear-down code>
 //     }
 //
-// Main
+// Suite
 //
-// It is sometimes necessary for a test program to do extra setup or teardown
-// before or after testing. It is also sometimes necessary for a test to control
-// which code runs on the main thread. To support these and other cases,
-// if a test file contains a function:
+// Individual tests are grouped into a test suite in order to execute them.
+// TODO: this part of the API deviates from the "testing" package and is TBD.
 //
-//	func TestMain(m *testing.M)
+// A simple implementation of a test suite:
 //
-// then the generated test will call TestMain(m) instead of running the tests
-// directly. TestMain runs in the main goroutine and can do whatever setup
-// and teardown is necessary around a call to m.Run. It should then call
-// os.Exit with the result of m.Run. When TestMain is called, flag.Parse has
-// not been run. If TestMain depends on command-line flags, including those
-// of the testing package, it should call flag.Parse explicitly.
+//	func SomeTest(h *harness.H) {
+//		h.Skip("TODO")
+//	}
 //
-// A simple implementation of TestMain is:
-//
-//	func TestMain(m *testing.M) {
-//		// call flag.Parse() here if TestMain uses flags
-//		os.Exit(m.Run())
+//	func main() {
+//		suite := harness.NewSuite([]InternalTest{
+//			{"SomeTest", SomeTest},
+//		})
+//		os.Exit(suite.Run())
 //	}
 //
 package harness
@@ -158,9 +146,17 @@ var (
 	cpuList []int
 )
 
-// common holds the elements common between T and B and
-// captures common methods such as Errorf.
-type common struct {
+// H is a type passed to Test functions to manage test state and support formatted test logs.
+// Logs are accumulated during execution and dumped to standard output when done.
+//
+// A test ends when its Test function returns or calls any of the methods
+// FailNow, Fatal, Fatalf, SkipNow, Skip, or Skipf. Those methods, as well as
+// the Parallel method, must be called only from the goroutine running the
+// Test function.
+//
+// The other reporting methods, such as the variations of Log and Error,
+// may be called simultaneously from multiple goroutines.
+type H struct {
 	mu       sync.RWMutex // guards output, failed, and done.
 	output   []byte       // Output generated by test.
 	w        io.Writer    // For flushToParent.
@@ -174,17 +170,20 @@ type common struct {
 	done     bool // Test is finished and all subtests have completed.
 	hasSub   bool
 
-	parent   *common
+	parent   *H
 	level    int       // Nesting depth of test.
 	name     string    // Name of test.
 	start    time.Time // Time test started
 	duration time.Duration
 	barrier  chan bool // To signal parallel subtests they may start.
 	signal   chan bool // To signal a test is done.
-	sub      []*T      // Queue of subtests to be run in parallel.
+	sub      []*H      // Queue of subtests to be run in parallel.
+
+	isParallel bool
+	context    *testContext // For running tests and subtests.
 }
 
-func (c *common) parentContext() context.Context {
+func (c *H) parentContext() context.Context {
 	if c == nil || c.parent == nil || c.parent.ctx == nil {
 		return context.Background()
 	}
@@ -237,7 +236,7 @@ func decorate(s string) string {
 
 // flushToParent writes c.output to the parent after first writing the header
 // with the given format and arguments.
-func (c *common) flushToParent(format string, args ...interface{}) {
+func (c *H) flushToParent(format string, args ...interface{}) {
 	p := c.parent
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -251,7 +250,7 @@ func (c *common) flushToParent(format string, args ...interface{}) {
 }
 
 type indenter struct {
-	c *common
+	c *H
 }
 
 func (w indenter) Write(b []byte) (n int, err error) {
@@ -278,26 +277,8 @@ func fmtDuration(d time.Duration) string {
 	return fmt.Sprintf("%.2fs", d.Seconds())
 }
 
-// T is a type passed to Test functions to manage test state and support formatted test logs.
-// Logs are accumulated during execution and dumped to standard output when done.
-//
-// A test ends when its Test function returns or calls any of the methods
-// FailNow, Fatal, Fatalf, SkipNow, Skip, or Skipf. Those methods, as well as
-// the Parallel method, must be called only from the goroutine running the
-// Test function.
-//
-// The other reporting methods, such as the variations of Log and Error,
-// may be called simultaneously from multiple goroutines.
-type T struct {
-	common
-	isParallel bool
-	context    *testContext // For running tests and subtests.
-}
-
-func (c *common) private() {}
-
-// Name returns the name of the running test.
-func (c *common) Name() string {
+// Name returns the name of the running test or benchmark.
+func (c *H) Name() string {
 	return c.name
 }
 
@@ -306,11 +287,11 @@ func (c *common) Name() string {
 // A goroutine started during a test can wait for the
 // context's Done channel to become readable as a signal that the
 // test is over, so that the goroutine can exit.
-func (c *common) Context() context.Context {
+func (c *H) Context() context.Context {
 	return c.ctx
 }
 
-func (c *common) setRan() {
+func (c *H) setRan() {
 	if c.parent != nil {
 		c.parent.setRan()
 	}
@@ -320,7 +301,7 @@ func (c *common) setRan() {
 }
 
 // Fail marks the function as having failed but continues execution.
-func (c *common) Fail() {
+func (c *H) Fail() {
 	if c.parent != nil {
 		c.parent.Fail()
 	}
@@ -334,7 +315,7 @@ func (c *common) Fail() {
 }
 
 // Failed reports whether the function has failed.
-func (c *common) Failed() bool {
+func (c *H) Failed() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.failed
@@ -346,7 +327,7 @@ func (c *common) Failed() bool {
 // test function, not from other goroutines
 // created during the test. Calling FailNow does not stop
 // those other goroutines.
-func (c *common) FailNow() {
+func (c *H) FailNow() {
 	c.Fail()
 
 	// Calling runtime.Goexit will exit the goroutine, which
@@ -373,7 +354,7 @@ func (c *common) FailNow() {
 }
 
 // log generates the output. It's always at the same stack depth.
-func (c *common) log(s string) {
+func (c *H) log(s string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.output = append(c.output, decorate(s)...)
@@ -382,45 +363,45 @@ func (c *common) log(s string) {
 // Log formats its arguments using default formatting, analogous to Println,
 // and records the text in the error log. The text will be printed only if
 // the test fails or the -harness.v flag is set.
-func (c *common) Log(args ...interface{}) { c.log(fmt.Sprintln(args...)) }
+func (c *H) Log(args ...interface{}) { c.log(fmt.Sprintln(args...)) }
 
 // Logf formats its arguments according to the format, analogous to Printf, and
 // records the text in the error log. A final newline is added if not provided.
 // The text will be printed only if the test fails or the -harness.v flag is set.
-func (c *common) Logf(format string, args ...interface{}) { c.log(fmt.Sprintf(format, args...)) }
+func (c *H) Logf(format string, args ...interface{}) { c.log(fmt.Sprintf(format, args...)) }
 
 // Error is equivalent to Log followed by Fail.
-func (c *common) Error(args ...interface{}) {
+func (c *H) Error(args ...interface{}) {
 	c.log(fmt.Sprintln(args...))
 	c.Fail()
 }
 
 // Errorf is equivalent to Logf followed by Fail.
-func (c *common) Errorf(format string, args ...interface{}) {
+func (c *H) Errorf(format string, args ...interface{}) {
 	c.log(fmt.Sprintf(format, args...))
 	c.Fail()
 }
 
 // Fatal is equivalent to Log followed by FailNow.
-func (c *common) Fatal(args ...interface{}) {
+func (c *H) Fatal(args ...interface{}) {
 	c.log(fmt.Sprintln(args...))
 	c.FailNow()
 }
 
 // Fatalf is equivalent to Logf followed by FailNow.
-func (c *common) Fatalf(format string, args ...interface{}) {
+func (c *H) Fatalf(format string, args ...interface{}) {
 	c.log(fmt.Sprintf(format, args...))
 	c.FailNow()
 }
 
 // Skip is equivalent to Log followed by SkipNow.
-func (c *common) Skip(args ...interface{}) {
+func (c *H) Skip(args ...interface{}) {
 	c.log(fmt.Sprintln(args...))
 	c.SkipNow()
 }
 
 // Skipf is equivalent to Logf followed by SkipNow.
-func (c *common) Skipf(format string, args ...interface{}) {
+func (c *H) Skipf(format string, args ...interface{}) {
 	c.log(fmt.Sprintf(format, args...))
 	c.SkipNow()
 }
@@ -432,20 +413,20 @@ func (c *common) Skipf(format string, args ...interface{}) {
 // SkipNow must be called from the goroutine running the test, not from
 // other goroutines created during the test. Calling SkipNow does not stop
 // those other goroutines.
-func (c *common) SkipNow() {
+func (c *H) SkipNow() {
 	c.skip()
 	c.finished = true
 	runtime.Goexit()
 }
 
-func (c *common) skip() {
+func (c *H) skip() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.skipped = true
 }
 
 // Skipped reports whether the test was skipped.
-func (c *common) Skipped() bool {
+func (c *H) Skipped() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.skipped
@@ -453,7 +434,7 @@ func (c *common) Skipped() bool {
 
 // Parallel signals that this test is to be run in parallel with (and only with)
 // other parallel tests.
-func (t *T) Parallel() {
+func (t *H) Parallel() {
 	if t.isParallel {
 		panic("testing: t.Parallel called multiple times")
 	}
@@ -477,10 +458,10 @@ func (t *T) Parallel() {
 // of the "go test" command.
 type InternalTest struct {
 	Name string
-	F    func(*T)
+	F    func(*H)
 }
 
-func tRunner(t *T, fn func(t *T)) {
+func tRunner(t *H, fn func(t *H)) {
 	t.ctx, t.cancel = context.WithCancel(t.parentContext())
 	defer t.cancel()
 
@@ -538,24 +519,22 @@ func tRunner(t *T, fn func(t *T)) {
 
 // Run runs f as a subtest of t called name. It reports whether f succeeded.
 // Run will block until all its parallel subtests have completed.
-func (t *T) Run(name string, f func(t *T)) bool {
+func (t *H) Run(name string, f func(t *H)) bool {
 	t.hasSub = true
-	testName, ok := t.context.match.fullName(&t.common, name)
+	testName, ok := t.context.match.fullName(t, name)
 	if !ok {
 		return true
 	}
-	t = &T{
-		common: common{
-			barrier: make(chan bool),
-			signal:  make(chan bool),
-			name:    testName,
-			parent:  &t.common,
-			level:   t.level + 1,
-			chatty:  t.chatty,
-		},
+	t = &H{
+		barrier: make(chan bool),
+		signal:  make(chan bool),
+		name:    testName,
+		parent:  t,
+		level:   t.level + 1,
+		chatty:  t.chatty,
 		context: t.context,
 	}
-	t.w = indenter{&t.common}
+	t.w = indenter{t}
 
 	if t.chatty {
 		// Print directly to root's io.Writer so there is no delay.
@@ -670,7 +649,7 @@ func (m *Suite) Run() int {
 	return 0
 }
 
-func (t *T) report() {
+func (t *H) report() {
 	if t.parent == nil {
 		return
 	}
@@ -702,16 +681,14 @@ func runTests(tests []InternalTest) (ran, ok bool) {
 	for _, procs := range cpuList {
 		runtime.GOMAXPROCS(procs)
 		ctx := newTestContext(*parallel, newMatcher(*match, "-harness.run"))
-		t := &T{
-			common: common{
-				signal:  make(chan bool),
-				barrier: make(chan bool),
-				w:       os.Stdout,
-				chatty:  *chatty,
-			},
+		t := &H{
+			signal:  make(chan bool),
+			barrier: make(chan bool),
+			w:       os.Stdout,
+			chatty:  *chatty,
 			context: ctx,
 		}
-		tRunner(t, func(t *T) {
+		tRunner(t, func(t *H) {
 			for _, test := range tests {
 				t.Run(test.Name, test.F)
 			}
