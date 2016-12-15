@@ -17,8 +17,8 @@
 // package builds but will be included when the ``go test'' command is run.
 // For more detail, run ``go help test'' and ``go help testflag''.
 //
-// Tests and benchmarks may be skipped if not applicable with a call to
-// the Skip method of *T and *B:
+// Tests may be skipped if not applicable with a call to
+// the Skip method of *T:
 //     func TestTimeConsuming(t *testing.T) {
 //         if testing.Short() {
 //             t.Skip("skipping test in short mode.")
@@ -26,103 +26,11 @@
 //         ...
 //     }
 //
-// Benchmarks
+// Subtests
 //
-// Functions of the form
-//     func BenchmarkXxx(*testing.B)
-// are considered benchmarks, and are executed by the "go test" command when
-// its -bench flag is provided. Benchmarks are run sequentially.
-//
-// For a description of the testing flags, see
-// https://golang.org/cmd/go/#hdr-Description_of_testing_flags.
-//
-// A sample benchmark function looks like this:
-//     func BenchmarkHello(b *testing.B) {
-//         for i := 0; i < b.N; i++ {
-//             fmt.Sprintf("hello")
-//         }
-//     }
-//
-// The benchmark function must run the target code b.N times.
-// During benchmark execution, b.N is adjusted until the benchmark function lasts
-// long enough to be timed reliably. The output
-//     BenchmarkHello    10000000    282 ns/op
-// means that the loop ran 10000000 times at a speed of 282 ns per loop.
-//
-// If a benchmark needs some expensive setup before running, the timer
-// may be reset:
-//
-//     func BenchmarkBigLen(b *testing.B) {
-//         big := NewBig()
-//         b.ResetTimer()
-//         for i := 0; i < b.N; i++ {
-//             big.Len()
-//         }
-//     }
-//
-// If a benchmark needs to test performance in a parallel setting, it may use
-// the RunParallel helper function; such benchmarks are intended to be used with
-// the go test -cpu flag:
-//
-//     func BenchmarkTemplateParallel(b *testing.B) {
-//         templ := template.Must(template.New("test").Parse("Hello, {{.}}!"))
-//         b.RunParallel(func(pb *testing.PB) {
-//             var buf bytes.Buffer
-//             for pb.Next() {
-//                 buf.Reset()
-//                 templ.Execute(&buf, "World")
-//             }
-//         })
-//     }
-//
-// Examples
-//
-// The package also runs and verifies example code. Example functions may
-// include a concluding line comment that begins with "Output:" and is compared with
-// the standard output of the function when the tests are run. (The comparison
-// ignores leading and trailing space.) These are examples of an example:
-//
-//     func ExampleHello() {
-//             fmt.Println("hello")
-//             // Output: hello
-//     }
-//
-//     func ExampleSalutations() {
-//             fmt.Println("hello, and")
-//             fmt.Println("goodbye")
-//             // Output:
-//             // hello, and
-//             // goodbye
-//     }
-//
-// Example functions without output comments are compiled but not executed.
-//
-// The naming convention to declare examples for the package, a function F, a type T and
-// method M on type T are:
-//
-//     func Example() { ... }
-//     func ExampleF() { ... }
-//     func ExampleT() { ... }
-//     func ExampleT_M() { ... }
-//
-// Multiple example functions for a package/type/function/method may be provided by
-// appending a distinct suffix to the name. The suffix must start with a
-// lower-case letter.
-//
-//     func Example_suffix() { ... }
-//     func ExampleF_suffix() { ... }
-//     func ExampleT_suffix() { ... }
-//     func ExampleT_M_suffix() { ... }
-//
-// The entire test file is presented as the example when it contains a single
-// example function, at least one other function, type, variable, or constant
-// declaration, and no test or benchmark functions.
-//
-// Subtests and Sub-benchmarks
-//
-// The Run methods of T and B allow defining subtests and sub-benchmarks,
+// The Run method of T allow defining subtests,
 // without having to define separate functions for each. This enables uses
-// like table-driven benchmarks and creating hierarchical tests.
+// like table-driven and hierarchical tests.
 // It also provides a way to share common setup and tear-down code:
 //
 //     func TestFoo(t *testing.T) {
@@ -133,11 +41,11 @@
 //         // <tear-down code>
 //     }
 //
-// Each subtest and sub-benchmark has a unique name: the combination of the name
+// Each subtest has a unique name: the combination of the name
 // of the top-level test and the sequence of names passed to Run, separated by
 // slashes, with an optional trailing sequence number for disambiguation.
 //
-// The argument to the -run and -bench command-line flags is an unanchored regular
+// The argument to the -run command-line flag is an unanchored regular
 // expression that matches the test's name. For tests with multiple slash-separated
 // elements, such as subtests, the argument is itself slash-separated, with
 // expressions matching each name element in turn. Because it is unanchored, an
@@ -236,9 +144,8 @@ var (
 
 	// Report as tests are run; default is silent for success.
 	chatty               = flag.Bool("test.v", false, "verbose: print additional output")
-	count                = flag.Uint("test.count", 1, "run tests and benchmarks `n` times")
 	coverProfile         = flag.String("test.coverprofile", "", "write a coverage profile to `file`")
-	match                = flag.String("test.run", "", "run only tests and examples matching `regexp`")
+	match                = flag.String("test.run", "", "run only tests matching `regexp`")
 	memProfile           = flag.String("test.memprofile", "", "write a memory profile to `file`")
 	memProfileRate       = flag.Int("test.memprofilerate", 0, "set memory profiling `rate` (see runtime.MemProfileRate)")
 	cpuProfile           = flag.String("test.cpuprofile", "", "write a cpu profile to `file`")
@@ -251,8 +158,6 @@ var (
 	cpuListStr           = flag.String("test.cpu", "", "comma-separated `list` of cpu counts to run each test with")
 	parallel             = flag.Int("test.parallel", runtime.GOMAXPROCS(0), "run at most `n` tests in parallel")
 
-	haveExamples bool // are there examples?
-
 	cpuList []int
 )
 
@@ -260,23 +165,23 @@ var (
 // captures common methods such as Errorf.
 type common struct {
 	mu         sync.RWMutex // guards output, failed, and done.
-	output     []byte       // Output generated by test or benchmark.
+	output     []byte       // Output generated by test.
 	w          io.Writer    // For flushToParent.
 	ctx        context.Context
 	cancel     context.CancelFunc
 	chatty     bool // A copy of the chatty flag.
-	ran        bool // Test or benchmark (or one of its subtests) was executed.
-	failed     bool // Test or benchmark has failed.
-	skipped    bool // Test of benchmark has been skipped.
+	ran        bool // Test (or one of its subtests) was executed.
+	failed     bool // Test has failed.
+	skipped    bool // Test has been skipped.
 	finished   bool // Test function has completed.
 	done       bool // Test is finished and all subtests have completed.
 	hasSub     bool
 	raceErrors int // number of races detected during test
 
 	parent   *common
-	level    int       // Nesting depth of test or benchmark.
-	name     string    // Name of test or benchmark.
-	start    time.Time // Time test or benchmark started
+	level    int       // Nesting depth of test.
+	name     string    // Name of test.
+	start    time.Time // Time test started
 	duration time.Duration
 	barrier  chan bool // To signal parallel subtests they may start.
 	signal   chan bool // To signal a test is done.
@@ -384,33 +289,6 @@ func fmtDuration(d time.Duration) string {
 	return fmt.Sprintf("%.2fs", d.Seconds())
 }
 
-// TB is the interface common to T and B.
-type TB interface {
-	Context() context.Context
-	Error(args ...interface{})
-	Errorf(format string, args ...interface{})
-	Fail()
-	FailNow()
-	Failed() bool
-	Fatal(args ...interface{})
-	Fatalf(format string, args ...interface{})
-	Log(args ...interface{})
-	Logf(format string, args ...interface{})
-	Name() string
-	Skip(args ...interface{})
-	SkipNow()
-	Skipf(format string, args ...interface{})
-	Skipped() bool
-
-	// A private method to prevent users implementing the
-	// interface and so future additions to it will not
-	// violate Go 1 compatibility.
-	private()
-}
-
-var _ TB = (*T)(nil)
-var _ TB = (*B)(nil)
-
 // T is a type passed to Test functions to manage test state and support formatted test logs.
 // Logs are accumulated during execution and dumped to standard output when done.
 //
@@ -429,16 +307,16 @@ type T struct {
 
 func (c *common) private() {}
 
-// Name returns the name of the running test or benchmark.
+// Name returns the name of the running test.
 func (c *common) Name() string {
 	return c.name
 }
 
-// Context returns the context for the current test or benchmark.
-// The context is cancelled when the test or benchmark finishes.
-// A goroutine started during a test or benchmark can wait for the
+// Context returns the context for the current test.
+// The context is cancelled when the test finishes.
+// A goroutine started during a test can wait for the
 // context's Done channel to become readable as a signal that the
-// test or benchmark is over, so that the goroutine can exit.
+// test is over, so that the goroutine can exit.
 func (c *common) Context() context.Context {
 	return c.ctx
 }
@@ -474,9 +352,9 @@ func (c *common) Failed() bool {
 }
 
 // FailNow marks the function as having failed and stops its execution.
-// Execution will continue at the next test or benchmark.
+// Execution will continue at the next test.
 // FailNow must be called from the goroutine running the
-// test or benchmark function, not from other goroutines
+// test function, not from other goroutines
 // created during the test. Calling FailNow does not stop
 // those other goroutines.
 func (c *common) FailNow() {
@@ -513,16 +391,13 @@ func (c *common) log(s string) {
 }
 
 // Log formats its arguments using default formatting, analogous to Println,
-// and records the text in the error log. For tests, the text will be printed only if
-// the test fails or the -test.v flag is set. For benchmarks, the text is always
-// printed to avoid having performance depend on the value of the -test.v flag.
+// and records the text in the error log. The text will be printed only if
+// the test fails or the -test.v flag is set.
 func (c *common) Log(args ...interface{}) { c.log(fmt.Sprintln(args...)) }
 
 // Logf formats its arguments according to the format, analogous to Printf, and
-// records the text in the error log. A final newline is added if not provided. For
-// tests, the text will be printed only if the test fails or the -test.v flag is
-// set. For benchmarks, the text is always printed to avoid having performance
-// depend on the value of the -test.v flag.
+// records the text in the error log. A final newline is added if not provided.
+// The text will be printed only if the test fails or the -test.v flag is set.
 func (c *common) Logf(format string, args ...interface{}) { c.log(fmt.Sprintf(format, args...)) }
 
 // Error is equivalent to Log followed by Fail.
@@ -564,7 +439,7 @@ func (c *common) Skipf(format string, args ...interface{}) {
 // SkipNow marks the test as having been skipped and stops its execution.
 // If a test fails (see Error, Errorf, Fail) and is then skipped,
 // it is still considered to have failed.
-// Execution will continue at the next test or benchmark. See also FailNow.
+// Execution will continue at the next test. See also FailNow.
 // SkipNow must be called from the goroutine running the test, not from
 // other goroutines created during the test. Calling SkipNow does not stop
 // those other goroutines.
@@ -784,22 +659,10 @@ func (f matchStringOnly) StopCPUProfile()                             {}
 func (f matchStringOnly) WriteHeapProfile(w io.Writer) error          { return errMain }
 func (f matchStringOnly) WriteProfileTo(string, io.Writer, int) error { return errMain }
 
-// Main is an internal function, part of the implementation of the "go test" command.
-// It was exported because it is cross-package and predates "internal" packages.
-// It is no longer used by "go test" but preserved, as much as possible, for other
-// systems that simulate "go test" using Main, but Main sometimes cannot be updated as
-// new functionality is added to the testing package.
-// Systems simulating "go test" should be updated to use MainStart.
-func Main(matchString func(pat, str string) (bool, error), tests []InternalTest, benchmarks []InternalBenchmark, examples []InternalExample) {
-	os.Exit(MainStart(matchStringOnly(matchString), tests, benchmarks, examples).Run())
-}
-
 // M is a type passed to a TestMain function to run the actual tests.
 type M struct {
-	deps       testDeps
-	tests      []InternalTest
-	benchmarks []InternalBenchmark
-	examples   []InternalExample
+	deps  testDeps
+	tests []InternalTest
 }
 
 // testDeps is an internal interface of functionality that is
@@ -817,12 +680,10 @@ type testDeps interface {
 // MainStart is meant for use by tests generated by 'go test'.
 // It is not meant to be called directly and is not subject to the Go 1 compatibility document.
 // It may change signature from release to release.
-func MainStart(deps testDeps, tests []InternalTest, benchmarks []InternalBenchmark, examples []InternalExample) *M {
+func MainStart(deps testDeps, tests []InternalTest) *M {
 	return &M{
-		deps:       deps,
-		tests:      tests,
-		benchmarks: benchmarks,
-		examples:   examples,
+		deps:  deps,
+		tests: tests,
 	}
 }
 
@@ -837,13 +698,11 @@ func (m *M) Run() int {
 
 	m.before()
 	startAlarm()
-	haveExamples = len(m.examples) > 0
 	testRan, testOk := runTests(m.deps.MatchString, m.tests)
-	exampleRan, exampleOk := runExamples(m.deps.MatchString, m.examples)
-	if !testRan && !exampleRan && *matchBenchmarks == "" {
+	if !testRan {
 		fmt.Fprintln(os.Stderr, "testing: warning: no tests to run")
 	}
-	if !testOk || !exampleOk || !runBenchmarks(m.deps.MatchString, m.benchmarks) || race.Errors() > 0 {
+	if !testOk || race.Errors() > 0 {
 		fmt.Println("FAIL")
 		m.after()
 		return 1
@@ -875,7 +734,7 @@ func (t *T) report() {
 // of the "go test" command.
 func RunTests(matchString func(pat, str string) (bool, error), tests []InternalTest) (ok bool) {
 	ran, ok := runTests(matchString, tests)
-	if !ran && !haveExamples {
+	if !ran {
 		fmt.Fprintln(os.Stderr, "testing: warning: no tests to run")
 	}
 	return ok
@@ -1061,13 +920,9 @@ func parseCpuList() {
 			fmt.Fprintf(os.Stderr, "testing: invalid value %q for -test.cpu\n", val)
 			os.Exit(1)
 		}
-		for i := uint(0); i < *count; i++ {
-			cpuList = append(cpuList, cpu)
-		}
+		cpuList = append(cpuList, cpu)
 	}
 	if cpuList == nil {
-		for i := uint(0); i < *count; i++ {
-			cpuList = append(cpuList, runtime.GOMAXPROCS(-1))
-		}
+		cpuList = append(cpuList, runtime.GOMAXPROCS(-1))
 	}
 }
