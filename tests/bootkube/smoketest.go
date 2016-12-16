@@ -14,7 +14,7 @@ import (
 
 func bootkubeSmoke(c cluster.TestCluster) error {
 	// This should not return until cluster is ready
-	bc, err := spawn.MakeBootkubeCluster(c)
+	bc, err := spawn.MakeBootkubeCluster(c, 1)
 	if err != nil {
 		return err
 	}

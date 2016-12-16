@@ -52,20 +52,18 @@ var (
 		Run:   runList,
 	}
 
-	bootkubeImageRepo  string
-	bootkubeImageTag   string
-	kubeletImageTag    string
-	workerNodes        string
+	bootkubeRepo       string
+	bootkubeTag        string
+	hostKubeletTag     string
 	conformanceRepo    string
 	conformanceVersion string
 )
 
 func init() {
 
-	cmdRun.Flags().StringVar(&bootkubeImageRepo, "bootkubeImageRepo", "quay.io/coreos/bootkube", "")
-	cmdRun.Flags().StringVar(&bootkubeImageTag, "bootkubeImageTag", "v0.2.5", "")
-	cmdRun.Flags().StringVar(&kubeletImageTag, "kubeletImageTag", "v1.4.5_coreos.0", "")
-	cmdRun.Flags().StringVar(&workerNodes, "workerNodes", "1", "")
+	cmdRun.Flags().StringVar(&bootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
+	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.2.6", "")
+	cmdRun.Flags().StringVar(&hostKubeletTag, "hostKubeletTag", "v1.4.7_coreos.0", "")
 	cmdRun.Flags().StringVar(&conformanceRepo, "conformanceRepo", "github.com/coreos/kubernetes", "")
 	cmdRun.Flags().StringVar(&conformanceVersion, "conformanceVersion", "v1.5.1+coreos.0", "")
 	root.AddCommand(cmdRun)
@@ -96,10 +94,9 @@ func runRun(cmd *cobra.Command, args []string) {
 		pattern = "*" // run all tests by default
 	}
 
-	kola.RegisterTestOption("BootkubeImageRepo", bootkubeImageRepo)
-	kola.RegisterTestOption("BootkubeImageTag", bootkubeImageTag)
-	kola.RegisterTestOption("KubeletImageTag", kubeletImageTag)
-	kola.RegisterTestOption("WorkerNodes", workerNodes)
+	kola.RegisterTestOption("BootkubeRepo", bootkubeRepo)
+	kola.RegisterTestOption("BootkubeTag", bootkubeTag)
+	kola.RegisterTestOption("HostKubeletTag", hostKubeletTag)
 	kola.RegisterTestOption("ConformanceRepo", conformanceRepo)
 	kola.RegisterTestOption("ConformanceVersion", conformanceVersion)
 

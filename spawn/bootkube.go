@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
-	"strconv"
 	"text/template"
 	"time"
 
@@ -22,18 +21,13 @@ var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "spawn")
 // and checks that all nodes are registered before returning. NOTE: If startup
 // times become too long there are a few sections of this setup that could be
 // run in parallel.
-func MakeBootkubeCluster(c cluster.TestCluster) (*pluton.Cluster, error) {
+func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluster, error) {
 	// options from flags set by main package
 	var (
-		imageRepo       = c.Options["BootkubeImageRepo"]
-		imageTag        = c.Options["BootkubeImageTag"]
-		kubeletImageTag = c.Options["KubeletImageTag"]
-		workerNodes     = c.Options["WorkerNodes"]
+		imageRepo       = c.Options["BootkubeRepo"]
+		imageTag        = c.Options["BootkubeTag"]
+		kubeletImageTag = c.Options["HostKubeletTag"]
 	)
-	numWorkers, err := strconv.Atoi(workerNodes)
-	if err != nil {
-		return nil, err
-	}
 
 	// provision master node running etcd
 	masterConfig, err := renderCloudConfig("", kubeletImageTag, true)
@@ -60,7 +54,7 @@ func MakeBootkubeCluster(c cluster.TestCluster) (*pluton.Cluster, error) {
 		return nil, err
 	}
 
-	workerConfigs := make([]string, numWorkers)
+	workerConfigs := make([]string, workerNodes)
 	for i := range workerConfigs {
 		workerConfigs[i] = workerConfig
 	}

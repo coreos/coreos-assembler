@@ -12,7 +12,7 @@ import (
 
 // Run various destruction tests
 func bootkubeDestruction(c cluster.TestCluster) error {
-	bc, err := spawn.MakeBootkubeCluster(c)
+	bc, err := spawn.MakeBootkubeCluster(c, 1)
 	if err != nil {
 		return err
 	}
