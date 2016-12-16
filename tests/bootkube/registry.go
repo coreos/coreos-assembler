@@ -10,16 +10,21 @@ var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "tests/boot
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "bootkube.smoke",
-		Run:         bootkubeSmoke,
-		Platforms:   []string{"gce"},
-		ClusterSize: 0,
+		Name:      "bootkube.smoke",
+		Run:       bootkubeSmoke,
+		Platforms: []string{"gce"},
 	})
+
 	register.Register(&register.Test{
-		Name:        "bootkube.destruction",
-		Run:         bootkubeDestruction,
-		Platforms:   []string{"gce"},
-		ClusterSize: 0,
+		Name:      "bootkube.destruction",
+		Run:       bootkubeDestruction,
+		Platforms: []string{"gce"},
+	})
+
+	register.Register(&register.Test{
+		Name:      "conformance.bootkube",
+		Run:       conformanceBootkube,
+		Platforms: []string{"gce"},
 	})
 
 }

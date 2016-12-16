@@ -52,10 +52,12 @@ var (
 		Run:   runList,
 	}
 
-	bootkubeImageRepo string
-	bootkubeImageTag  string
-	kubeletImageTag   string
-	workerNodes       string
+	bootkubeImageRepo  string
+	bootkubeImageTag   string
+	kubeletImageTag    string
+	workerNodes        string
+	conformanceRepo    string
+	conformanceVersion string
 )
 
 func init() {
@@ -64,6 +66,8 @@ func init() {
 	cmdRun.Flags().StringVar(&bootkubeImageTag, "bootkubeImageTag", "v0.2.5", "")
 	cmdRun.Flags().StringVar(&kubeletImageTag, "kubeletImageTag", "v1.4.5_coreos.0", "")
 	cmdRun.Flags().StringVar(&workerNodes, "workerNodes", "1", "")
+	cmdRun.Flags().StringVar(&conformanceRepo, "conformanceRepo", "github.com/coreos/kubernetes", "")
+	cmdRun.Flags().StringVar(&conformanceVersion, "conformanceVersion", "v1.5.1+coreos.0", "")
 	root.AddCommand(cmdRun)
 	root.AddCommand(cmdList)
 }
@@ -96,6 +100,8 @@ func runRun(cmd *cobra.Command, args []string) {
 	kola.RegisterTestOption("BootkubeImageTag", bootkubeImageTag)
 	kola.RegisterTestOption("KubeletImageTag", kubeletImageTag)
 	kola.RegisterTestOption("WorkerNodes", workerNodes)
+	kola.RegisterTestOption("ConformanceRepo", conformanceRepo)
+	kola.RegisterTestOption("ConformanceVersion", conformanceVersion)
 
 	err := kola.RunTests(pattern, kolaPlatform)
 	if err != nil {
