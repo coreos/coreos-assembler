@@ -28,7 +28,7 @@ import (
 )
 
 func (a *API) vmname() string {
-	return fmt.Sprintf("mantle-%x", rand.Int63())
+	return fmt.Sprintf("%s-%x", a.options.BaseName, rand.Int63())
 }
 
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
