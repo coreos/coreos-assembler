@@ -16,7 +16,9 @@
 package gcloud
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/api/compute/v1"
@@ -47,6 +49,19 @@ type API struct {
 }
 
 func New(opts *Options) (*API, error) {
+	const endpointPrefix = "https://www.googleapis.com/compute/v1/"
+
+	// If the image name isn't a full api endpoint accept a name beginning
+	// with "projects/" to specify a different project from the instance.
+	// Also accept a short name and use instance project.
+	if strings.HasPrefix(opts.Image, "projects/") {
+		opts.Image = endpointPrefix + opts.Image
+	} else if !strings.Contains(opts.Image, "/") {
+		opts.Image = fmt.Sprintf("%sprojects/%s/global/images/%s", endpointPrefix, opts.Project, opts.Image)
+	} else if !strings.HasPrefix(opts.Image, endpointPrefix) {
+		return nil, fmt.Errorf("GCE Image argument must be the full api endpoint, begin with 'projects/', or use the short name")
+	}
+
 	var (
 		client *http.Client
 		err    error
