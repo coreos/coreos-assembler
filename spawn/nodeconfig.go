@@ -1,21 +1,24 @@
 package spawn
 
 var cloudConfigTmpl = `#cloud-config
-coreos: {{ if .Master }}
-  etcd2:
-    name: controller
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379
-    listen-peer-urls: http://0.0.0.0:2380
-    initial-cluster: controller=http://$private_ipv4:2380{{ end }}
+coreos:
   flannel:
     etcd_endpoints: {{ .FlannelEtcd }}
     interface: $private_ipv4
   units: {{ if .Master }}
-    - name: etcd2.service
+    - name: etcd-member.service
       command: start
-      runtime: true{{ end }}
+      runtime: true
+      drop-ins:
+        - name: 40-etcd-cluster.conf
+          content: |
+            [Service]
+            Environment="ETCD_NAME=controller"
+            Environment="ETCD_ADVERTISE_CLIENT_URLS=http://$private_ipv4:2379"
+            Environment="ETCD_INITIAL_ADVERTISE_PEER_URLS=http://$private_ipv4:2380"
+            Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379"
+            Environment="ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380"
+            Environment="ETCD_INITIAL_CLUSTER=controller=http://$private_ipv4:2380"{{ end }}
     - name: flanneld.service
       command: start {{ if .Master }}
       drop-ins:
