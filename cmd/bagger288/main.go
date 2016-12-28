@@ -122,9 +122,9 @@ func runUp(cmd *cobra.Command, args []string) {
 		Name:    "pluton",
 		Cluster: cls,
 		Options: map[string]string{
-			"BootkubeImageRepo": bootkubeImage,
-			"BootkubeImageTag":  bootkubeTag,
-			"KubeletImageTag":   hyperkubeTag,
+			"BootkubeRepo":   bootkubeImage,
+			"BootkubeTag":    bootkubeTag,
+			"HostKubeletTag": hyperkubeTag,
 		},
 	}
 
