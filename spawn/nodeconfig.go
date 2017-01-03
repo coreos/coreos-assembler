@@ -19,20 +19,6 @@ coreos:
             Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379"
             Environment="ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380"
             Environment="ETCD_INITIAL_CLUSTER=controller=http://$private_ipv4:2380"{{ end }}
-    - name: flanneld.service
-      command: start {{ if .Master }}
-      drop-ins:
-      - name: 50-network-config.conf
-        content: |
-          [Service]
-          ExecStartPre=/usr/bin/etcdctl --endpoint={{ .FlannelEtcd }} set /coreos.com/network/config '{ "Network": "10.2.0.0/16" }'{{ end }}
-    - name: docker.service
-      drop-ins:
-      - name: 50-flannel.conf
-        content: |
-          [Unit]
-          Requires=flanneld.service
-          After=flanneld.service
     - name: kubelet.service
       enable: false
       content: |
@@ -40,13 +26,17 @@ coreos:
         EnvironmentFile=/etc/environment
         Environment=KUBELET_ACI=quay.io/coreos/hyperkube
         Environment=KUBELET_VERSION={{.KubeletVersion}}
-        Environment="RKT_OPTS=--dns=host"
+        Environment="RKT_OPTS=--dns=host --volume var-lib-cni,kind=host,source=/var/lib/cni --mount volume=var-lib-cni,target=/var/lib/cni"
         ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
         ExecStartPre=/bin/mkdir -p /srv/kubernetes/manifests
         ExecStartPre=/bin/mkdir -p /etc/kubernetes/checkpoint-secrets
+        ExecStartPre=/bin/mkdir -p /etc/kubernetes/cni/net.d
+        ExecStartPre=/bin/mkdir -p /var/lib/cni
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
           --kubeconfig=/etc/kubernetes/kubeconfig \
           --require-kubeconfig \
+          --cni-conf-dir=/etc/kubernetes/cni/net.d \
+          --network-plugin=cni \
           --lock-file=/var/run/lock/kubelet.lock \
           --exit-on-lock-contention \
           --pod-manifest-path=/etc/kubernetes/manifests \
