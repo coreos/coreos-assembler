@@ -62,8 +62,8 @@ var (
 func init() {
 
 	cmdRun.Flags().StringVar(&bootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
-	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.2.6", "")
-	cmdRun.Flags().StringVar(&hostKubeletTag, "hostKubeletTag", "v1.4.7_coreos.0", "")
+	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.3.1", "")
+	cmdRun.Flags().StringVar(&hostKubeletTag, "hostKubeletTag", "v1.5.1_coreos.0", "")
 	cmdRun.Flags().StringVar(&conformanceRepo, "conformanceRepo", "github.com/coreos/kubernetes", "")
 	cmdRun.Flags().StringVar(&conformanceVersion, "conformanceVersion", "v1.5.1+coreos.0", "")
 	root.AddCommand(cmdRun)
