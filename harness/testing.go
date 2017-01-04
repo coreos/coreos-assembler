@@ -11,10 +11,10 @@
 // Within these functions, use the Error, Fail or related methods to signal failure.
 //
 // Tests may be skipped if not applicable with a call to
-// the Skip method of *T:
-//     func TimeConsuming(h *harness.T) {
-//         if harness.Short() {
-//             h.Skip("skipping test in short mode.")
+// the Skip method of *H:
+//     func NeedsSomeData(h *harness.H) {
+//         if os.Getenv("SOME_DATA") == "" {
+//             h.Skip("skipping test due to missing SOME_DATA")
 //         }
 //         ...
 //     }
@@ -110,20 +110,12 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 	"runtime/trace"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 var (
-	// The short flag requests that tests run more quickly, but its functionality
-	// is provided by test writers themselves. The testing package is just its
-	// home. The all.bash installation script sets it to make installation more
-	// efficient, but by default the flag is off so a plain "go test" will do a
-	// full test of the package.
-	short = flag.Bool("harness.short", false, "run smaller test suite to save time")
-
 	// The directory in which to create profile files and the like. When run from
 	// "go test", the binary always runs in the source directory for the package;
 	// this flag lets "go test" tell the binary to write the files in the directory where
@@ -140,10 +132,7 @@ var (
 	blockProfileRate = flag.Int("harness.blockprofilerate", 1, "set blocking profile `rate` (see runtime.SetBlockProfileRate)")
 	traceFile        = flag.String("harness.trace", "", "write an execution trace to `file`")
 	timeout          = flag.Duration("harness.timeout", 0, "fail test binary execution after duration `d` (0 means unlimited)")
-	cpuListStr       = flag.String("harness.cpu", "", "comma-separated `list` of cpu counts to run each test with")
 	parallel         = flag.Int("harness.parallel", runtime.GOMAXPROCS(0), "run at most `n` tests in parallel")
-
-	cpuList []int
 )
 
 // H is a type passed to Test functions to manage test state and support formatted test logs.
@@ -190,14 +179,9 @@ func (c *H) parentContext() context.Context {
 	return c.parent.ctx
 }
 
-// Short reports whether the -harness.short flag is set.
-func Short() bool {
-	return *short
-}
-
 // Verbose reports whether the -harness.v flag is set.
-func Verbose() bool {
-	return *chatty
+func (h *H) Verbose() bool {
+	return h.chatty
 }
 
 // decorate prefixes the string with the file and line of the call site
@@ -630,8 +614,6 @@ func (m *Suite) Run() int {
 		flag.Parse()
 	}
 
-	parseCpuList()
-
 	m.before()
 	startAlarm()
 	testRan, testOk := runTests(m.tests)
@@ -678,29 +660,24 @@ func RunTests(tests []InternalTest) (ok bool) {
 
 func runTests(tests []InternalTest) (ran, ok bool) {
 	ok = true
-	for _, procs := range cpuList {
-		runtime.GOMAXPROCS(procs)
-		ctx := newTestContext(*parallel, newMatcher(*match, "-harness.run"))
-		t := &H{
-			signal:  make(chan bool),
-			barrier: make(chan bool),
-			w:       os.Stdout,
-			chatty:  *chatty,
-			context: ctx,
-		}
-		tRunner(t, func(t *H) {
-			for _, test := range tests {
-				t.Run(test.Name, test.F)
-			}
-			// Run catching the signal rather than the tRunner as a separate
-			// goroutine to avoid adding a goroutine during the sequential
-			// phase as this pollutes the stacktrace output when aborting.
-			go func() { <-t.signal }()
-		})
-		ok = ok && !t.Failed()
-		ran = ran || t.ran
+	ctx := newTestContext(*parallel, newMatcher(*match, "-harness.run"))
+	t := &H{
+		signal:  make(chan bool),
+		barrier: make(chan bool),
+		w:       os.Stdout,
+		chatty:  *chatty,
+		context: ctx,
 	}
-	return ran, ok
+	tRunner(t, func(t *H) {
+		for _, test := range tests {
+			t.Run(test.Name, test.F)
+		}
+		// Run catching the signal rather than the tRunner as a separate
+		// goroutine to avoid adding a goroutine during the sequential
+		// phase as this pollutes the stacktrace output when aborting.
+		go func() { <-t.signal }()
+	})
+	return t.ran, !t.Failed()
 }
 
 // before runs before all testing.
@@ -818,23 +795,5 @@ func startAlarm() {
 func stopAlarm() {
 	if *timeout > 0 {
 		timer.Stop()
-	}
-}
-
-func parseCpuList() {
-	for _, val := range strings.Split(*cpuListStr, ",") {
-		val = strings.TrimSpace(val)
-		if val == "" {
-			continue
-		}
-		cpu, err := strconv.Atoi(val)
-		if err != nil || cpu <= 0 {
-			fmt.Fprintf(os.Stderr, "testing: invalid value %q for -test.cpu\n", val)
-			os.Exit(1)
-		}
-		cpuList = append(cpuList, cpu)
-	}
-	if cpuList == nil {
-		cpuList = append(cpuList, runtime.GOMAXPROCS(-1))
 	}
 }
