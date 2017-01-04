@@ -184,8 +184,8 @@ func (c *H) parentContext() context.Context {
 }
 
 // Verbose reports whether the -harness.v flag is set.
-func Verbose() bool {
-	return *chatty
+func (h *H) Verbose() bool {
+	return h.chatty
 }
 
 // decorate prefixes the string with the file and line of the call site
