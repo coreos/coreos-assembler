@@ -11,10 +11,10 @@
 // Within these functions, use the Error, Fail or related methods to signal failure.
 //
 // Tests may be skipped if not applicable with a call to
-// the Skip method of *T:
-//     func TimeConsuming(h *harness.T) {
-//         if harness.Short() {
-//             h.Skip("skipping test in short mode.")
+// the Skip method of *H:
+//     func NeedsSomeData(h *harness.H) {
+//         if os.Getenv("SOME_DATA") == "" {
+//             h.Skip("skipping test due to missing SOME_DATA")
 //         }
 //         ...
 //     }
@@ -117,13 +117,6 @@ import (
 )
 
 var (
-	// The short flag requests that tests run more quickly, but its functionality
-	// is provided by test writers themselves. The testing package is just its
-	// home. The all.bash installation script sets it to make installation more
-	// efficient, but by default the flag is off so a plain "go test" will do a
-	// full test of the package.
-	short = flag.Bool("harness.short", false, "run smaller test suite to save time")
-
 	// The directory in which to create profile files and the like. When run from
 	// "go test", the binary always runs in the source directory for the package;
 	// this flag lets "go test" tell the binary to write the files in the directory where
@@ -188,11 +181,6 @@ func (c *H) parentContext() context.Context {
 		return context.Background()
 	}
 	return c.parent.ctx
-}
-
-// Short reports whether the -harness.short flag is set.
-func Short() bool {
-	return *short
 }
 
 // Verbose reports whether the -harness.v flag is set.
