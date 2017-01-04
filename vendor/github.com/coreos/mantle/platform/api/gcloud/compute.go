@@ -46,10 +46,11 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 		})
 	}
 
-	prefix := "https://www.googleapis.com/compute/v1/projects/" + a.options.Project
+	instancePrefix := "https://www.googleapis.com/compute/v1/projects/" + a.options.Project
+
 	instance := &compute.Instance{
 		Name:        name,
-		MachineType: prefix + "/zones/" + a.options.Zone + "/machineTypes/" + a.options.MachineType,
+		MachineType: instancePrefix + "/zones/" + a.options.Zone + "/machineTypes/" + a.options.MachineType,
 		Metadata: &compute.Metadata{
 			Items: metadataItems,
 		},
@@ -66,7 +67,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 				Type:       "PERSISTENT",
 				InitializeParams: &compute.AttachedDiskInitializeParams{
 					DiskName:    name,
-					SourceImage: prefix + "/global/images/" + a.options.Image,
+					SourceImage: a.options.Image,
 					DiskType:    "/zones/" + a.options.Zone + "/diskTypes/" + a.options.DiskType,
 				},
 			},
@@ -79,7 +80,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 						Name: "External NAT",
 					},
 				},
-				Network: prefix + "/global/networks/" + a.options.Network,
+				Network: instancePrefix + "/global/networks/" + a.options.Network,
 			},
 		},
 	}
