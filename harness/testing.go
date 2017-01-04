@@ -101,7 +101,6 @@ package harness
 import (
 	"bytes"
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -558,10 +557,6 @@ func (c *testContext) release() {
 	c.startParallel <- true // Pick a waiting test to be run.
 }
 
-// No one should be using func Main anymore.
-// See the doc comment on func Main and use MainStart instead.
-var errMain = errors.New("testing: unexpected use of func Main")
-
 // Suite is a type passed to a TestMain function to run the actual tests.
 type Suite struct {
 	tests []InternalTest
@@ -613,16 +608,6 @@ func (t *H) report() {
 			t.flushToParent(format, "PASS", t.name, dstr)
 		}
 	}
-}
-
-// An internal function but exported because it is cross-package; part of the implementation
-// of the "go test" command.
-func RunTests(tests []InternalTest) (ok bool) {
-	ran, ok := runTests(tests)
-	if !ran {
-		fmt.Fprintln(os.Stderr, "testing: warning: no tests to run")
-	}
-	return ok
 }
 
 func runTests(tests []InternalTest) (ran, ok bool) {
