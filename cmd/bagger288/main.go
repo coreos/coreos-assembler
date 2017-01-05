@@ -52,6 +52,8 @@ func init() {
 
 	sv := cmdUp.Flags().StringVar
 
+	sv(&kola.Options.BaseName, "basename", "bagger288", "Cluster name prefix")
+
 	sv(&bootkubeImage, "bootkube-image", "quay.io/coreos/bootkube", "bootkube image")
 	sv(&bootkubeTag, "bootkube-tag", "", "bootkube image tag")
 	sv(&hyperkubeTag, "hyperkube-tag", "v1.5.1_coreos.0", "hyperkube image tag")
