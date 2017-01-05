@@ -159,6 +159,7 @@ type H struct {
 	done     bool // Test is finished and all subtests have completed.
 	hasSub   bool
 
+	suite    *Suite
 	parent   *H
 	level    int       // Nesting depth of test.
 	name     string    // Name of test.
@@ -169,7 +170,6 @@ type H struct {
 	sub      []*H      // Queue of subtests to be run in parallel.
 
 	isParallel bool
-	context    *testContext // For running tests and subtests.
 }
 
 func (c *H) parentContext() context.Context {
@@ -399,7 +399,7 @@ func (t *H) Parallel() {
 
 	t.signal <- true   // Release calling test.
 	<-t.parent.barrier // Wait for the parent test to complete.
-	t.context.waitParallel()
+	t.suite.waitParallel()
 	t.start = time.Now()
 }
 
@@ -434,7 +434,7 @@ func tRunner(t *H, fn func(t *H)) {
 		if len(t.sub) > 0 {
 			// Run parallel subtests.
 			// Decrease the running count for this test.
-			t.context.release()
+			t.suite.release()
 			// Release the parallel subtests.
 			close(t.barrier)
 			// Wait for subtests to complete.
@@ -443,12 +443,12 @@ func tRunner(t *H, fn func(t *H)) {
 			}
 			if !t.isParallel {
 				// Reacquire the count for sequential tests. See comment in Run.
-				t.context.waitParallel()
+				t.suite.waitParallel()
 			}
 		} else if t.isParallel {
 			// Only release the count for this test if it was run as a parallel
 			// test. See comment in Run method.
-			t.context.release()
+			t.suite.release()
 		}
 		t.report() // Report after all subtests have finished.
 
@@ -470,7 +470,7 @@ func tRunner(t *H, fn func(t *H)) {
 // Run will block until all its parallel subtests have completed.
 func (t *H) Run(name string, f func(t *H)) bool {
 	t.hasSub = true
-	testName, ok := t.context.match.fullName(t, name)
+	testName, ok := t.suite.match.fullName(t, name)
 	if !ok {
 		return true
 	}
@@ -478,10 +478,10 @@ func (t *H) Run(name string, f func(t *H)) bool {
 		barrier: make(chan bool),
 		signal:  make(chan bool),
 		name:    testName,
+		suite:   t.suite,
 		parent:  t,
 		level:   t.level + 1,
 		chatty:  t.chatty,
-		context: t.context,
 	}
 	t.w = indenter{t}
 	t.logger = log.New(&t.output, "\t", log.Lshortfile)
@@ -503,11 +503,14 @@ func (t *H) Run(name string, f func(t *H)) bool {
 	return !t.failed
 }
 
-// testContext holds all fields that are common to all tests. This includes
-// synchronization primitives to run at most *parallel tests.
-type testContext struct {
+// Suite is a type passed to a TestMain function to run the actual tests.
+// Suite manages the execution of a set of test functions.
+type Suite struct {
+	tests []InternalTest
 	match *matcher
 
+	// mu protects the following fields which are used to manage
+	// parallel test execution.
 	mu sync.Mutex
 
 	// Channel used to signal tests that are ready to be run in parallel.
@@ -524,16 +527,7 @@ type testContext struct {
 	maxParallel int
 }
 
-func newTestContext(maxParallel int, m *matcher) *testContext {
-	return &testContext{
-		match:         m,
-		startParallel: make(chan bool),
-		maxParallel:   maxParallel,
-		running:       1, // Set the count to 1 for the main (sequential) test.
-	}
-}
-
-func (c *testContext) waitParallel() {
+func (c *Suite) waitParallel() {
 	c.mu.Lock()
 	if c.running < c.maxParallel {
 		c.running++
@@ -545,7 +539,7 @@ func (c *testContext) waitParallel() {
 	<-c.startParallel
 }
 
-func (c *testContext) release() {
+func (c *Suite) release() {
 	c.mu.Lock()
 	if c.numWaiting == 0 {
 		c.running--
@@ -557,39 +551,40 @@ func (c *testContext) release() {
 	c.startParallel <- true // Pick a waiting test to be run.
 }
 
-// Suite is a type passed to a TestMain function to run the actual tests.
-type Suite struct {
-	tests []InternalTest
-}
-
 // NewSuite
 func NewSuite(tests []InternalTest) *Suite {
 	return &Suite{
-		tests: tests,
+		tests:         tests,
+		startParallel: make(chan bool),
 	}
 }
 
 // Run runs the tests. It returns an exit code to pass to os.Exit.
-func (m *Suite) Run() int {
+func (s *Suite) Run() int {
 	// The user may have already called flag.Parse.
 	if !flag.Parsed() {
 		flag.Parse()
 	}
 
-	m.before()
+	// Initialize Suite based on command line flags.
+	// TODO(marineam): offer other ways to do this.
+	s.match = newMatcher(*match, "-harness.run")
+	s.maxParallel = *parallel
+	s.running = 1 // Set the count to 1 for the main (sequential) test.
+	s.before()
 	startAlarm()
-	testRan, testOk := m.runTests()
+	testRan, testOk := s.runTests()
 	if !testRan {
 		fmt.Fprintln(os.Stderr, "testing: warning: no tests to run")
 	}
 	if !testOk {
 		fmt.Println("FAIL")
-		m.after()
+		s.after()
 		return 1
 	}
 
 	fmt.Println("PASS")
-	m.after()
+	s.after()
 	return 0
 }
 
@@ -611,16 +606,15 @@ func (t *H) report() {
 }
 
 func (s *Suite) runTests() (ran, ok bool) {
-	ctx := newTestContext(*parallel, newMatcher(*match, "-harness.run"))
 	t := &H{
 		signal:  make(chan bool),
 		barrier: make(chan bool),
 		w:       os.Stdout,
 		chatty:  *chatty,
-		context: ctx,
+		suite:   s,
 	}
 	tRunner(t, func(t *H) {
-		for _, test := range tests {
+		for _, test := range s.tests {
 			t.Run(test.Name, test.F)
 		}
 		// Run catching the signal rather than the tRunner as a separate
