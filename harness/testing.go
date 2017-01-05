@@ -571,14 +571,14 @@ func NewSuite(tests []InternalTest) *Suite {
 
 // Run runs the tests. It returns an exit code to pass to os.Exit.
 func (m *Suite) Run() int {
-	// TestMain may have already called flag.Parse.
+	// The user may have already called flag.Parse.
 	if !flag.Parsed() {
 		flag.Parse()
 	}
 
 	m.before()
 	startAlarm()
-	testRan, testOk := runTests(m.tests)
+	testRan, testOk := m.runTests()
 	if !testRan {
 		fmt.Fprintln(os.Stderr, "testing: warning: no tests to run")
 	}
@@ -610,8 +610,7 @@ func (t *H) report() {
 	}
 }
 
-func runTests(tests []InternalTest) (ran, ok bool) {
-	ok = true
+func (s *Suite) runTests() (ran, ok bool) {
 	ctx := newTestContext(*parallel, newMatcher(*match, "-harness.run"))
 	t := &H{
 		signal:  make(chan bool),
