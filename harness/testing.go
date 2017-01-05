@@ -151,7 +151,6 @@ type H struct {
 	logger   *log.Logger
 	ctx      context.Context
 	cancel   context.CancelFunc
-	chatty   bool // A copy of the chatty flag.
 	ran      bool // Test (or one of its subtests) was executed.
 	failed   bool // Test has failed.
 	skipped  bool // Test has been skipped.
@@ -181,7 +180,7 @@ func (c *H) parentContext() context.Context {
 
 // Verbose reports whether the -harness.v flag is set.
 func (h *H) Verbose() bool {
-	return h.chatty
+	return h.suite.chatty
 }
 
 // flushToParent writes c.output to the parent after first writing the header
@@ -481,12 +480,11 @@ func (t *H) Run(name string, f func(t *H)) bool {
 		suite:   t.suite,
 		parent:  t,
 		level:   t.level + 1,
-		chatty:  t.chatty,
 	}
 	t.w = indenter{t}
 	t.logger = log.New(&t.output, "\t", log.Lshortfile)
 
-	if t.chatty {
+	if t.suite.chatty {
 		// Print directly to root's io.Writer so there is no delay.
 		root := t.parent
 		for ; root.parent != nil; root = root.parent {
@@ -506,8 +504,9 @@ func (t *H) Run(name string, f func(t *H)) bool {
 // Suite is a type passed to a TestMain function to run the actual tests.
 // Suite manages the execution of a set of test functions.
 type Suite struct {
-	tests []InternalTest
-	match *matcher
+	tests  []InternalTest
+	match  *matcher
+	chatty bool
 
 	// mu protects the following fields which are used to manage
 	// parallel test execution.
@@ -570,6 +569,7 @@ func (s *Suite) Run() int {
 	// TODO(marineam): offer other ways to do this.
 	s.match = newMatcher(*match, "-harness.run")
 	s.maxParallel = *parallel
+	s.chatty = *chatty
 	s.running = 1 // Set the count to 1 for the main (sequential) test.
 	s.before()
 	startAlarm()
@@ -596,7 +596,7 @@ func (t *H) report() {
 	format := "--- %s: %s (%s)\n"
 	if t.Failed() {
 		t.flushToParent(format, "FAIL", t.name, dstr)
-	} else if t.chatty {
+	} else if t.suite.chatty {
 		if t.Skipped() {
 			t.flushToParent(format, "SKIP", t.name, dstr)
 		} else {
@@ -610,7 +610,6 @@ func (s *Suite) runTests() (ran, ok bool) {
 		signal:  make(chan bool),
 		barrier: make(chan bool),
 		w:       os.Stdout,
-		chatty:  *chatty,
 		suite:   s,
 	}
 	tRunner(t, func(t *H) {

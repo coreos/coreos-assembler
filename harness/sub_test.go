@@ -339,6 +339,7 @@ func TestTRun(t *testing.T) {
 	for _, tc := range testCases {
 		suite := NewSuite(nil)
 		suite.match = newMatcher("", "")
+		suite.chatty = tc.chatty
 		suite.maxParallel = tc.maxPar
 		suite.running = 1
 		buf := &bytes.Buffer{}
@@ -347,7 +348,6 @@ func TestTRun(t *testing.T) {
 			signal: make(chan bool),
 			name:   "Test",
 			w:      buf,
-			chatty: tc.chatty,
 		}
 		root.ctx, root.cancel = context.WithCancel(context.Background())
 		ok := root.Run(tc.desc, tc.f)
