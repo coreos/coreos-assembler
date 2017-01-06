@@ -52,7 +52,7 @@ func nginxCheck(c *pluton.Cluster) error {
 		}
 		return nil
 	}
-	if err := util.Retry(15, 5*time.Second, nginxRunning); err != nil {
+	if err := util.Retry(15, 10*time.Second, nginxRunning); err != nil {
 		return err
 	}
 
