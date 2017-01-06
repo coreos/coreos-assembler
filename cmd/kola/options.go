@@ -44,7 +44,7 @@ func init() {
 	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
 	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
-	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
+	sv(&kola.Options.BaseName, "basename", "pluton", "Cluster name prefix")
 
 	// QEMU-specific options
 	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
@@ -52,7 +52,7 @@ func init() {
 	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
 
 	// gce-specific options
-	sv(&kola.GCEOptions.Image, "gce-image", "jenkins-os-kola-gce-367-1235-0-0", "GCE image")
+	sv(&kola.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1235-4-0-v20170104", "GCE image")
 	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
 	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
 	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
