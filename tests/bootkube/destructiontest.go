@@ -17,8 +17,11 @@ func bootkubeDestruction(c cluster.TestCluster) error {
 		return err
 	}
 
-	if err := masterRestart(bc); err != nil {
-		return fmt.Errorf("masterRestart: %s", err)
+	// run destruction test 3 times to avoid false positives
+	for i := 0; i < 3; i++ {
+		if err := masterRestart(bc); err != nil {
+			return fmt.Errorf("masterRestart: %s", err)
+		}
 	}
 
 	// TODO: add more destructive tests. Also test that workloads started
