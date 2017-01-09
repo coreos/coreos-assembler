@@ -204,8 +204,8 @@ func TestTRun(t *testing.T) {
 		desc: "skipping after error",
 		output: `
 --- FAIL: skipping after error (N.NNs)
-	sub_test.go:NNN: an error
-	sub_test.go:NNN: skipped`,
+        sub_test.go:NNN: an error
+        sub_test.go:NNN: skipped`,
 		f: func(t *H) {
 			t.Error("an error")
 			t.Skip("skipped")

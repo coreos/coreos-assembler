@@ -482,7 +482,9 @@ func (t *H) Run(name string, f func(t *H)) bool {
 		level:   t.level + 1,
 	}
 	t.w = indenter{t}
-	t.logger = log.New(&t.output, "\t", log.Lshortfile)
+	// Indent logs 8 spaces to distinguish them from sub-test headers.
+	const indent = "        "
+	t.logger = log.New(&t.output, indent, log.Lshortfile)
 
 	if t.suite.chatty {
 		// Print directly to root's io.Writer so there is no delay.
