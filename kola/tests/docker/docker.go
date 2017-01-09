@@ -17,8 +17,8 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
@@ -30,8 +30,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/lang/worker"
-	"github.com/coreos/mantle/system/exec"
-	"github.com/coreos/mantle/system/targen"
+	"github.com/coreos/mantle/platform"
 )
 
 var (
@@ -42,13 +41,8 @@ func init() {
 	register.Register(&register.Test{
 		Run:         dockerResources,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"sleepcontainer": func() error {
-				return genDockerContainer("sleep", []string{"sleep"})
-			},
-		},
-		Name:     "docker.resources",
-		UserData: `#cloud-config`,
+		Name:        "docker.resources",
+		UserData:    `#cloud-config`,
 		// began shipping docker 1.10 in 949, which has all of the
 		// tested resource options.
 		MinVersion: semver.Version{Major: 949},
@@ -56,60 +50,26 @@ func init() {
 	register.Register(&register.Test{
 		Run:         dockerNetwork,
 		ClusterSize: 2,
-		NativeFuncs: map[string]func() error{
-			"ncatcontainer": func() error {
-				return genDockerContainer("ncat", []string{"ncat"})
-			},
-		},
-		Name:     "docker.network",
-		UserData: `#cloud-config`,
+		Name:        "docker.network",
+		UserData:    `#cloud-config`,
 
 		MinVersion: semver.Version{Major: 1192},
 	})
 	register.Register(&register.Test{
 		Run:         dockerOldClient,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"echocontainer": func() error {
-				return genDockerContainer("echo", []string{"echo"})
-			},
-		},
-		Name:       "docker.oldclient",
-		UserData:   `#cloud-config`,
-		MinVersion: semver.Version{Major: 1192},
+		Name:        "docker.oldclient",
+		UserData:    `#cloud-config`,
+		MinVersion:  semver.Version{Major: 1192},
 	})
 }
 
-// executed on the target vm to make a docker container out of binaries on the host
-func genDockerContainer(name string, binnames []string) error {
-	tg := targen.New()
+// make a docker container out of binaries on the host
+func genDockerContainer(m platform.Machine, name string, binnames []string) error {
+	genScript := "b=$(which %s) ; tar -hc $b $(ldd $b | grep -o /lib'[^ ]*' | sort -u) | docker import - %s"
 
-	for _, bin := range binnames {
-		binpath, err := exec.LookPath(bin)
-		if err != nil {
-			return fmt.Errorf("failed to find %q binary: %v", bin, err)
-		}
-
-		tg.AddBinary(binpath)
-	}
-
-	pr, pw := io.Pipe()
-	dimport := exec.Command("docker", "import", "-", name)
-	dimport.Stdin = pr
-
-	if err := dimport.Start(); err != nil {
-		return fmt.Errorf("starting docker import failed %v", err)
-	}
-
-	if err := tg.Generate(pw); err != nil {
-		return fmt.Errorf("failed to generate tarball: %v", err)
-	}
-
-	// err is always nil.
-	_ = pw.Close()
-
-	if err := dimport.Wait(); err != nil {
-		return fmt.Errorf("waiting for docker import failed %v", err)
+	if output, err := m.SSH(fmt.Sprintf(genScript, strings.Join(binnames, " "), name)); err != nil {
+		return fmt.Errorf("failed to make %s container: output: %q status: %q", name, output, err)
 	}
 
 	return nil
@@ -123,8 +83,8 @@ func dockerResources(c cluster.TestCluster) error {
 
 	plog.Debug("creating sleep container")
 
-	if err := c.RunNative("sleepcontainer", m); err != nil {
-		return fmt.Errorf("failed to create sleep container: %v", err)
+	if err := genDockerContainer(m, "sleep", []string{"sleep"}); err != nil {
+		return err
 	}
 
 	dockerFmt := "docker run --rm %s sleep sleep 0.2"
@@ -188,12 +148,12 @@ func dockerNetwork(c cluster.TestCluster) error {
 
 	plog.Debug("creating ncat containers")
 
-	if err := c.RunNative("ncatcontainer", src); err != nil {
-		return fmt.Errorf("failed to create ncat container on src: %v", err)
+	if err := genDockerContainer(src, "ncat", []string{"ncat"}); err != nil {
+		return err
 	}
 
-	if err := c.RunNative("ncatcontainer", dest); err != nil {
-		return fmt.Errorf("failed to create ncat container on dest: %v", err)
+	if err := genDockerContainer(dest, "ncat", []string{"ncat"}); err != nil {
+		return err
 	}
 
 	listener := func(c context.Context) error {
@@ -264,8 +224,8 @@ func dockerOldClient(c cluster.TestCluster) error {
 
 	m := c.Machines()[0]
 
-	if err := c.RunNative("echocontainer", m); err != nil {
-		return fmt.Errorf("failed to create echo container: %v", err)
+	if err := genDockerContainer(m, "echo", []string{"echo"}); err != nil {
+		return err
 	}
 
 	output, err := m.SSH("/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
