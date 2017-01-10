@@ -17,11 +17,8 @@ func bootkubeDestruction(c cluster.TestCluster) error {
 		return err
 	}
 
-	// run destruction test 3 times to avoid false positives
-	for i := 0; i < 3; i++ {
-		if err := masterRestart(bc); err != nil {
-			return fmt.Errorf("masterRestart: %s", err)
-		}
+	if err := masterRestart(bc); err != nil {
+		return fmt.Errorf("masterRestart: %s", err)
 	}
 
 	// TODO: add more destructive tests. Also test that workloads started
@@ -33,18 +30,21 @@ func bootkubeDestruction(c cluster.TestCluster) error {
 
 // Restart master node and run nginxCheck
 func masterRestart(c *pluton.Cluster) error {
-	if err := platform.Reboot(c.Masters[0]); err != nil {
-		return err
-	}
+	// reboot and wait for api to come up 3 times to avoid false positives
+	for i := 0; i < 3; i++ {
+		if err := platform.Reboot(c.Masters[0]); err != nil {
+			return err
+		}
 
-	// TODO(pb) find a way to globally disable selinux in kola
-	_, err := c.Masters[0].SSH("sudo setenforce 0")
-	if err != nil {
-		return err
-	}
+		// TODO(pb) find a way to globally disable selinux in kola
+		_, err := c.Masters[0].SSH("sudo setenforce 0")
+		if err != nil {
+			return err
+		}
 
-	if err := c.NodeCheck(25); err != nil {
-		return fmt.Errorf("nodeCheck: %s", err)
+		if err := c.NodeCheck(25); err != nil {
+			return fmt.Errorf("nodeCheck: %s", err)
+		}
 	}
 
 	if err := nginxCheck(c); err != nil {
