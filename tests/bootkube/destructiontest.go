@@ -37,6 +37,12 @@ func masterRestart(c *pluton.Cluster) error {
 		return err
 	}
 
+	// TODO(pb) find a way to globally disable selinux in kola
+	_, err := c.Masters[0].SSH("sudo setenforce 0")
+	if err != nil {
+		return err
+	}
+
 	if err := c.NodeCheck(25); err != nil {
 		return fmt.Errorf("nodeCheck: %s", err)
 	}
