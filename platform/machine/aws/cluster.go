@@ -16,6 +16,7 @@ package aws
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
@@ -62,6 +63,12 @@ func NewCluster(opts *aws.Options) (platform.Cluster, error) {
 }
 
 func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
+	// hacky solution for unified ignition metadata variables
+	if strings.Contains(userdata, `"ignition":`) {
+		userdata = strings.Replace(userdata, "$public_ipv4", "${COREOS_EC2_IPV4_PUBLIC}", -1)
+		userdata = strings.Replace(userdata, "$private_ipv4", "${COREOS_EC2_IPV4_LOCAL}", -1)
+	}
+
 	conf, err := conf.New(userdata)
 	if err != nil {
 		return nil, err
