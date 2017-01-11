@@ -83,7 +83,7 @@ func init() {
 // get docker bridge ip from a machine
 func mach2bip(m platform.Machine, ifname string) (string, error) {
 	// note the escaped % in awk.
-	out, err := m.SSH(fmt.Sprintf(`ip -4 -o addr show dev %s primary | awk -F " +|/" '{printf "%%s", $4}'`, ifname))
+	out, err := m.SSH(fmt.Sprintf(`/usr/lib/systemd/systemd-networkd-wait-online --interface=%s --timeout=60 ; ip -4 -o addr show dev %s primary | awk -F " +|/" '{printf "%%s", $4}'`, ifname, ifname))
 	if err != nil {
 		return "", err
 	}
