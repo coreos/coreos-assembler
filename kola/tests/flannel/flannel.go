@@ -54,6 +54,13 @@ var (
         }]
       },
       {
+        "name": "flannel-docker-opts.service",
+        "dropins": [{
+          "name": "retry.conf",
+          "contents": "[Service]\nTimeoutStartSec=300\nExecStart=\nExecStart=/bin/sh -exc 'for try in 1 2 3 4 5 6 ; do /usr/lib/coreos/flannel-wrapper -d /run/flannel/flannel_docker_opts.env -i && break || sleep 10 ; try=fail ; done ; [ $try != fail ]'"
+        }]
+      },
+      {
         "name": "docker.service",
         "enable": true
       }
