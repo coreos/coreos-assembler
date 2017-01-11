@@ -243,7 +243,7 @@ func CheckMachine(m Machine) error {
 	// ensure ssh works and the system is ready
 	sshChecker := func() error {
 		out, err := m.SSH("systemctl is-system-running")
-		if !bytes.Contains([]byte("initializing starting running"), out) {
+		if !bytes.Contains([]byte("initializing starting running stopping"), out) {
 			return nil // stop retrying if the system went haywire
 		}
 		return err

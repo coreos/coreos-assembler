@@ -17,6 +17,7 @@ package locksmith
 import (
 	"fmt"
 
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -74,10 +75,11 @@ func locksmithCluster(c cluster.TestCluster) error {
 	// reboot all the things
 	for _, m := range machs {
 		worker := func(c context.Context) error {
-			// XXX: stop sshd so checkmachine verifies correctly if reboot worked
-			// XXX: run locksmithctl under systemd-run so our current connection doesn't drop suddenly
-			cmd := "sudo systemctl stop sshd.socket; sudo systemd-run --quiet --on-active=2 --no-block locksmithctl send-need-reboot"
+			cmd := "sudo systemctl stop sshd.socket && sudo locksmithctl send-need-reboot"
 			output, err := m.SSH(cmd)
+			if _, ok := err.(*ssh.ExitMissingError); ok {
+				err = nil // A terminated session is perfectly normal during reboot.
+			}
 			if err != nil {
 				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
 			}
