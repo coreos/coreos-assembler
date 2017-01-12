@@ -24,11 +24,11 @@ node('docker') {
     }
 
     stage('Build') {
-        sh "docker run --rm -e CGO_ENABLED=1 -e GOARCH=${params.GOARCH} -v \"\$PWD\":/usr/src/myapp -w /usr/src/myapp golang:1.7.1 ./build"
+        sh "docker run --rm -e CGO_ENABLED=1 -e GOARCH=${params.GOARCH} -u \"\$(id -u):\$(id -g)\" -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -v \"\$PWD\":/usr/src/myapp -w /usr/src/myapp golang:1.7.1 ./build"
     }
 
     stage('Test') {
-        sh 'docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang:1.7.1 ./test'
+        sh 'docker run --rm -u "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang:1.7.1 ./test'
     }
 
     stage('Post-build') {
