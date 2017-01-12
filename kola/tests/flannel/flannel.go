@@ -19,78 +19,78 @@
 package flannel
 
 import (
-	"bytes"
 	"fmt"
 	"net"
-	"text/template"
-	"time"
+	"strings"
 
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
 )
 
 var (
 	plog        = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/flannel")
-	flannelConf = template.Must(template.New("flannel-userdata").Parse(`#cloud-config
-coreos:
-  etcd2:
-    name: $name
-    discovery: $discovery
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
-  units:
-    - name: etcd2.service
-      command: start
-    - name: flanneld.service
-      drop-ins:
-        - name: 50-network-config.conf
-          content: |
-            [Service]
-            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network":"10.254.0.0/16", "Backend":{"Type": "{{.}}"} }'
-      command: start
-    - name: docker.service
-      command: start
-`))
+	flannelConf = `{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "etcd2.service",
+        "enable": true,
+        "dropins": [{
+          "name": "metadata.conf",
+          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --name=$name --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001 --listen-peer-urls=http://$private_ipv4:2380,http://$private_ipv4:7001"
+        }]
+      },
+      {
+        "name": "flanneld.service",
+        "enable": true,
+        "dropins": [{
+          "name": "50-network-config.conf",
+          "contents": "[Service]\nExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ \"Network\": \"10.254.0.0/16\", \"Backend\": {\"Type\": \"$type\"} }'"
+        }]
+      },
+      {
+        "name": "flannel-docker-opts.service",
+        "dropins": [{
+          "name": "retry.conf",
+          "contents": "[Service]\nTimeoutStartSec=300\nExecStart=\nExecStart=/bin/sh -exc 'for try in 1 2 3 4 5 6 ; do /usr/lib/coreos/flannel-wrapper -d /run/flannel/flannel_docker_opts.env -i && break || sleep 10 ; try=fail ; done ; [ $try != fail ]'"
+        }]
+      },
+      {
+        "name": "docker.service",
+        "enable": true
+      }
+    ]
+  }
+}`
 )
 
 func init() {
-	udpConf := new(bytes.Buffer)
-	if err := flannelConf.Execute(udpConf, "udp"); err != nil {
-		panic(err)
-	}
-
 	register.Register(&register.Test{
 		Run:         udp,
 		ClusterSize: 3,
 		Name:        "coreos.flannel.udp",
 		Platforms:   []string{"aws", "gce"},
-		UserData:    udpConf.String(),
+		UserData:    strings.Replace(flannelConf, "$type", "udp", -1),
 	})
-
-	vxlanConf := new(bytes.Buffer)
-	if err := flannelConf.Execute(vxlanConf, "vxlan"); err != nil {
-		panic(err)
-	}
 
 	register.Register(&register.Test{
 		Run:         vxlan,
 		ClusterSize: 3,
 		Name:        "coreos.flannel.vxlan",
 		Platforms:   []string{"aws", "gce"},
-		UserData:    vxlanConf.String(),
+		UserData:    strings.Replace(flannelConf, "$type", "vxlan", -1),
 	})
 }
 
 // get docker bridge ip from a machine
 func mach2bip(m platform.Machine, ifname string) (string, error) {
 	// note the escaped % in awk.
-	out, err := m.SSH(fmt.Sprintf(`ip -4 -o addr show dev %s primary | awk -F " +|/" '{printf "%%s", $4}'`, ifname))
+	out, err := m.SSH(fmt.Sprintf(`/usr/lib/systemd/systemd-networkd-wait-online --interface=%s --timeout=60 ; ip -4 -o addr show dev %s primary | awk -F " +|/" '{printf "%%s", $4}'`, ifname, ifname))
 	if err != nil {
 		return "", err
 	}
@@ -107,12 +107,12 @@ func mach2bip(m platform.Machine, ifname string) (string, error) {
 func ping(a, b platform.Machine, ifname string) error {
 	srcip, err := mach2bip(a, ifname)
 	if err != nil {
-		return fmt.Errorf("failed to get docker bridge ip: %v", err)
+		return fmt.Errorf("failed to get docker bridge ip #1: %v", err)
 	}
 
 	dstip, err := mach2bip(b, ifname)
 	if err != nil {
-		return fmt.Errorf("failed to get docker bridge ip: %v", err)
+		return fmt.Errorf("failed to get docker bridge ip #2: %v", err)
 	}
 
 	// ensure the docker bridges have the right network
@@ -135,11 +135,23 @@ func ping(a, b platform.Machine, ifname string) error {
 // UDP tests that flannel can send packets using the udp backend.
 func udp(c cluster.TestCluster) error {
 	machs := c.Machines()
-	return util.Retry(12, 15*time.Second, func() error { return ping(machs[0], machs[2], "flannel0") })
+
+	// Wait for all etcd cluster nodes to be ready.
+	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
+		return fmt.Errorf("cluster health: %v", err)
+	}
+
+	return ping(machs[0], machs[2], "flannel0")
 }
 
 // VXLAN tests that flannel can send packets using the vxlan backend.
 func vxlan(c cluster.TestCluster) error {
 	machs := c.Machines()
-	return util.Retry(12, 15*time.Second, func() error { return ping(machs[0], machs[2], "flannel.1") })
+
+	// Wait for all etcd cluster nodes to be ready.
+	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
+		return fmt.Errorf("cluster health: %v", err)
+	}
+
+	return ping(machs[0], machs[2], "flannel.1")
 }

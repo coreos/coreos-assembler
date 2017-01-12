@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	sshRetries = 10
-	sshTimeout = 5 * time.Second
+	sshRetries = 30
+	sshTimeout = 10 * time.Second
 )
 
 var (
@@ -240,13 +240,13 @@ func NewMachines(c Cluster, userdatas []string) ([]Machine, error) {
 //
 // TODO(mischief): better error messages.
 func CheckMachine(m Machine) error {
-	// ensure ssh works
+	// ensure ssh works and the system is ready
 	sshChecker := func() error {
-		_, err := m.SSH("true")
-		if err != nil {
-			return err
+		out, err := m.SSH("systemctl is-system-running")
+		if !bytes.Contains([]byte("initializing starting running stopping"), out) {
+			return nil // stop retrying if the system went haywire
 		}
-		return nil
+		return err
 	}
 
 	if err := util.Retry(sshRetries, sshTimeout, sshChecker); err != nil {
