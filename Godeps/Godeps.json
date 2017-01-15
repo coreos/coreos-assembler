@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
+	"GodepVersion": "v77",
 	"Packages": [
 		"./..."
 	],
@@ -13,6 +13,11 @@
 		},
 		{
 			"ImportPath": "github.com/Azure/azure-sdk-for-go/management",
+			"Comment": "v3.2.0-beta-10-gf8b0607",
+			"Rev": "f8b0607613f19ae9509b5ed6fbfda56caf06d59d"
+		},
+		{
+			"ImportPath": "github.com/Azure/azure-sdk-for-go/management/location",
 			"Comment": "v3.2.0-beta-10-gf8b0607",
 			"Rev": "f8b0607613f19ae9509b5ed6fbfda56caf06d59d"
 		},
@@ -93,10 +98,6 @@
 		{
 			"ImportPath": "github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/writer",
 			"Rev": "070db2d701a462ca2edcf89d677ed3cac309d8e8"
-		},
-		{
-			"ImportPath": "github.com/alecthomas/units",
-			"Rev": "6b4e7dc5e3143b85ea77909c72caf89416fc2915"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
@@ -655,6 +656,14 @@
 			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/ed25519",
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/openpgp",
 			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
 		},
@@ -716,6 +725,10 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/internal/timeseries",
+			"Rev": "d4c55e66d8c3a2f3382d264b08e3e3454a66355a"
+		},
+		{
+			"ImportPath": "golang.org/x/net/lex/httplex",
 			"Rev": "d4c55e66d8c3a2f3382d264b08e3e3454a66355a"
 		},
 		{
@@ -799,19 +812,11 @@
 			"Rev": "12d5545dc1cfa6047a286d5e853841b6471f4c19"
 		},
 		{
-			"ImportPath": "google.golang.org/cloud",
-			"Rev": "ab6762587120f590adf808437a5819b991ac2d20"
-		},
-		{
 			"ImportPath": "google.golang.org/cloud/compute/metadata",
 			"Rev": "ab6762587120f590adf808437a5819b991ac2d20"
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/internal",
-			"Rev": "ab6762587120f590adf808437a5819b991ac2d20"
-		},
-		{
-			"ImportPath": "google.golang.org/cloud/internal/opts",
 			"Rev": "ab6762587120f590adf808437a5819b991ac2d20"
 		},
 		{
@@ -858,18 +863,6 @@
 			"ImportPath": "google.golang.org/grpc/transport",
 			"Comment": "v1.0.0-6-g02fca89",
 			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/ed25519",
-			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/ed25519/internal/edwards25519",
-			"Rev": "119f50887f8fe324fe2386421c27a11af014b64e"
-		},
-		{
-			"ImportPath": "golang.org/x/net/lex/httplex",
-			"Rev": "d4c55e66d8c3a2f3382d264b08e3e3454a66355a"
 		}
 	]
 }
