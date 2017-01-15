@@ -109,11 +109,23 @@ _SOURCE_REALTIME_TIMESTAMP=1423944916372858
 
 func TestExportReaderText(t *testing.T) {
 	er := NewExportReader(strings.NewReader(exportText))
-	if _, err := er.ReadEntry(); err != nil {
+	if entry, err := er.ReadEntry(); err != nil {
 		t.Errorf("first read failed: %v", err)
+	} else {
+		const expect = "AccountsService-DEBUG(+): ActUserManager: ignoring unspecified session '8' since it's not graphical: Success"
+		msg := string(entry[FIELD_MESSAGE])
+		if msg != expect {
+			t.Errorf("%q != %q", msg, expect)
+		}
 	}
-	if _, err := er.ReadEntry(); err != nil {
+	if entry, err := er.ReadEntry(); err != nil {
 		t.Errorf("second read failed: %v", err)
+	} else {
+		const expect = "(root) CMD (run-parts /etc/cron.hourly)"
+		msg := string(entry[FIELD_MESSAGE])
+		if msg != expect {
+			t.Errorf("%q != %q", msg, expect)
+		}
 	}
 	if _, err := er.ReadEntry(); err != io.EOF {
 		t.Errorf("final read didn't return EOF: %v", err)
@@ -122,11 +134,23 @@ func TestExportReaderText(t *testing.T) {
 
 func TestExportReaderLeadingNewline(t *testing.T) {
 	er := NewExportReader(strings.NewReader("\n" + exportText))
-	if _, err := er.ReadEntry(); err != nil {
+	if entry, err := er.ReadEntry(); err != nil {
 		t.Errorf("first read failed: %v", err)
+	} else {
+		const expect = "AccountsService-DEBUG(+): ActUserManager: ignoring unspecified session '8' since it's not graphical: Success"
+		msg := string(entry[FIELD_MESSAGE])
+		if msg != expect {
+			t.Errorf("%q != %q", msg, expect)
+		}
 	}
-	if _, err := er.ReadEntry(); err != nil {
+	if entry, err := er.ReadEntry(); err != nil {
 		t.Errorf("second read failed: %v", err)
+	} else {
+		const expect = "(root) CMD (run-parts /etc/cron.hourly)"
+		msg := string(entry[FIELD_MESSAGE])
+		if msg != expect {
+			t.Errorf("%q != %q", msg, expect)
+		}
 	}
 	if _, err := er.ReadEntry(); err != io.EOF {
 		t.Errorf("final read didn't return EOF: %v", err)
@@ -135,8 +159,14 @@ func TestExportReaderLeadingNewline(t *testing.T) {
 
 func TestExportReaderBinary(t *testing.T) {
 	er := NewExportReader(strings.NewReader(exportBinary))
-	if _, err := er.ReadEntry(); err != nil {
+	if entry, err := er.ReadEntry(); err != nil {
 		t.Errorf("first read failed: %v", err)
+	} else {
+		const expect = "foo\nbar"
+		msg := string(entry[FIELD_MESSAGE])
+		if msg != expect {
+			t.Errorf("%q != %q", msg, expect)
+		}
 	}
 	if _, err := er.ReadEntry(); err != io.EOF {
 		t.Errorf("final read didn't return EOF: %v", err)

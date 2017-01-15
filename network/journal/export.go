@@ -33,8 +33,8 @@ func NewExportReader(r io.Reader) *ExportReader {
 }
 
 // ReadEntry reads one journal entry from the stream and returns it as a map.
-func (e *ExportReader) ReadEntry() (map[string][]byte, error) {
-	entry := make(map[string][]byte)
+func (e *ExportReader) ReadEntry() (Entry, error) {
+	entry := make(Entry)
 	for {
 		name, value, err := e.readField()
 		if err != nil {
