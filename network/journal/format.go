@@ -26,13 +26,20 @@ import (
 // ShortWriter writes journal entries in a format similar to journalctl's
 // "short-precise" format, excluding hostname for conciseness.
 type ShortWriter struct {
-	w io.Writer
+	w  io.Writer
+	tz *time.Location
 }
 
 func NewShortWriter(w io.Writer) *ShortWriter {
 	return &ShortWriter{
-		w: w,
+		w:  w,
+		tz: time.Local,
 	}
+}
+
+// SetTimezone updates the time location. The default is local time.
+func (s *ShortWriter) SetTimezone(tz *time.Location) {
+	s.tz = tz
 }
 
 func (s *ShortWriter) WriteEntry(entry Entry) error {
@@ -44,7 +51,7 @@ func (s *ShortWriter) WriteEntry(entry Entry) error {
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString(realtime.Format(time.StampMicro))
+	buf.WriteString(realtime.In(s.tz).Format(time.StampMicro))
 
 	if identifier, ok := entry[FIELD_SYSLOG_IDENTIFIER]; ok {
 		buf.WriteByte(' ')
