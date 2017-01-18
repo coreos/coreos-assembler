@@ -30,7 +30,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluste
 	)
 
 	// provision master node running etcd
-	masterConfig, err := renderCloudConfig("", kubeletImageTag, true)
+	masterConfig, err := renderCloudConfig(kubeletImageTag, true)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluste
 	}
 
 	// provision workers
-	workerConfig, err := renderCloudConfig(master.PrivateIP(), kubeletImageTag, false)
+	workerConfig, err := renderCloudConfig(kubeletImageTag, false)
 	if err != nil {
 		return nil, err
 	}
@@ -87,19 +87,13 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluste
 	return bootkubeCluster, nil
 }
 
-func renderCloudConfig(masterIP, kubeletImageTag string, isMaster bool) (string, error) {
-	flannelEtcd := fmt.Sprintf("http://%v:2379", masterIP)
-	if isMaster {
-		flannelEtcd = "http://127.0.0.1:2379"
-	}
+func renderCloudConfig(kubeletImageTag string, isMaster bool) (string, error) {
 	config := struct {
 		Master         bool
 		KubeletVersion string
-		FlannelEtcd    string
 	}{
 		isMaster,
 		kubeletImageTag,
-		flannelEtcd,
 	}
 
 	buf := new(bytes.Buffer)

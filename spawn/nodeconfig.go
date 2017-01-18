@@ -2,9 +2,6 @@ package spawn
 
 var cloudConfigTmpl = `#cloud-config
 coreos:
-  flannel:
-    etcd_endpoints: {{ .FlannelEtcd }}
-    interface: $private_ipv4
   units: {{ if .Master }}
     - name: etcd-member.service
       command: start
