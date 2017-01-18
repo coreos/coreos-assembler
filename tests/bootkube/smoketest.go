@@ -14,7 +14,7 @@ import (
 
 func bootkubeSmoke(c cluster.TestCluster) error {
 	// This should not return until cluster is ready
-	bc, err := spawn.MakeBootkubeCluster(c, 1)
+	bc, err := spawn.MakeBootkubeCluster(c, 1, false)
 	if err != nil {
 		return err
 	}
@@ -24,6 +24,20 @@ func bootkubeSmoke(c cluster.TestCluster) error {
 		return fmt.Errorf("nginxCheck: %s", err)
 	}
 	// TODO add more basic or regression tests here
+	return nil
+}
+
+func bootkubeSmokeEtcd(c cluster.TestCluster) error {
+	// This should not return until cluster is ready
+	bc, err := spawn.MakeBootkubeCluster(c, 1, true)
+	if err != nil {
+		return err
+	}
+
+	// run an nginx deployment and ping it
+	if err := nginxCheck(bc); err != nil {
+		return fmt.Errorf("nginxCheck: %s", err)
+	}
 	return nil
 }
 

@@ -2,7 +2,7 @@ package spawn
 
 var cloudConfigTmpl = `#cloud-config
 coreos:
-  units: {{ if .Master }}
+  units: {{ if and .Master .HostedEtcd }}
     - name: etcd-member.service
       command: start
       runtime: true

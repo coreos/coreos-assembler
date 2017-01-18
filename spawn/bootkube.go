@@ -21,7 +21,7 @@ var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "spawn")
 // and checks that all nodes are registered before returning. NOTE: If startup
 // times become too long there are a few sections of this setup that could be
 // run in parallel.
-func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluster, error) {
+func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bool) (*pluton.Cluster, error) {
 	// options from flags set by main package
 	var (
 		imageRepo       = c.Options["BootkubeRepo"]
@@ -30,7 +30,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluste
 	)
 
 	// provision master node running etcd
-	masterConfig, err := renderCloudConfig(kubeletImageTag, true)
+	masterConfig, err := renderCloudConfig(kubeletImageTag, true, selfHostEtcd)
 	if err != nil {
 		return nil, err
 	}
@@ -38,18 +38,20 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluste
 	if err != nil {
 		return nil, err
 	}
-	if err := etcd.GetClusterHealth(master, 1); err != nil {
-		return nil, err
+	if !selfHostEtcd {
+		if err := etcd.GetClusterHealth(master, 1); err != nil {
+			return nil, err
+		}
 	}
 	plog.Infof("Master VM (%s) started. It's IP is %s.", master.ID(), master.IP())
 
 	// start bootkube on master
-	if err := startMaster(master, imageRepo, imageTag); err != nil {
+	if err := startMaster(master, imageRepo, imageTag, selfHostEtcd); err != nil {
 		return nil, err
 	}
 
 	// provision workers
-	workerConfig, err := renderCloudConfig(kubeletImageTag, false)
+	workerConfig, err := renderCloudConfig(kubeletImageTag, false, selfHostEtcd)
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +89,15 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int) (*pluton.Cluste
 	return bootkubeCluster, nil
 }
 
-func renderCloudConfig(kubeletImageTag string, isMaster bool) (string, error) {
+func renderCloudConfig(kubeletImageTag string, isMaster, selfHostEtcd bool) (string, error) {
 	config := struct {
 		Master         bool
 		KubeletVersion string
+		HostedEtcd     bool
 	}{
 		isMaster,
 		kubeletImageTag,
+		!selfHostEtcd,
 	}
 
 	buf := new(bytes.Buffer)
@@ -109,7 +113,13 @@ func renderCloudConfig(kubeletImageTag string, isMaster bool) (string, error) {
 	return buf.String(), nil
 }
 
-func startMaster(m platform.Machine, imageRepo, imageTag string) error {
+func startMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
+	var etcdRenderAdditions, etcdStartAdditions string
+	if selfHostEtcd {
+		etcdRenderAdditions = "--etcd-servers=http://10.3.0.15:2379 --storage-backend=etcd3 --experimental-self-hosted-etcd"
+		etcdStartAdditions = fmt.Sprintf("--etcd-server=http://%s:12379 --experimental-self-hosted-etcd", m.PrivateIP())
+	}
+
 	var cmds = []string{
 		// disable selinux or rkt run commands fail in odd ways
 		"sudo setenforce 0",
@@ -119,8 +129,8 @@ func startMaster(m platform.Machine, imageRepo, imageTag string) error {
 		--volume home,kind=host,source=/home/core \
 		--mount volume=home,target=/core \
 		--trust-keys-from-https --net=host %s:%s --exec \
-		/bootkube -- render --asset-dir=/core/assets --api-servers=https://%s:443,https://%s:443`,
-			imageRepo, imageTag, m.IP(), m.PrivateIP()),
+		/bootkube -- render --asset-dir=/core/assets --api-servers=https://%s:443,https://%s:443 %s`,
+			imageRepo, imageTag, m.IP(), m.PrivateIP(), etcdRenderAdditions),
 
 		// move the local kubeconfig into expected location
 		"sudo chown -R core:core /home/core/assets",
@@ -135,10 +145,12 @@ func startMaster(m platform.Machine, imageRepo, imageTag string) error {
                 --stage1-name=coreos.com/rkt/stage1-fly:1.19.0 \
         	--volume home,kind=host,source=/home/core \
         	--mount volume=home,target=/core \
+        	--volume manifests,kind=host,source=/etc/kubernetes/manifests \
+        	--mount volume=manifests,target=/etc/kubernetes/manifests \
                 --trust-keys-from-https \
 		%s:%s --exec \
-        	/bootkube -- start --asset-dir=/core/assets`,
-			imageRepo, imageTag),
+		/bootkube -- start --asset-dir=/core/assets %s`,
+			imageRepo, imageTag, etcdStartAdditions),
 	}
 
 	// use ssh client to collect stderr and stdout separetly

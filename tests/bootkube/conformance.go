@@ -8,7 +8,7 @@ import (
 )
 
 func conformanceBootkube(c cluster.TestCluster) error {
-	pc, err := spawn.MakeBootkubeCluster(c, 3)
+	pc, err := spawn.MakeBootkubeCluster(c, 3, false)
 	if err != nil {
 		return err
 	}

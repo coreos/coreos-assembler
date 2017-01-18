@@ -16,6 +16,12 @@ func init() {
 	})
 
 	register.Register(&register.Test{
+		Name:      "bootkube.experimentaletcd.smoke",
+		Run:       bootkubeSmokeEtcd,
+		Platforms: []string{"gce"},
+	})
+
+	register.Register(&register.Test{
 		Name:      "bootkube.destruct.reboot",
 		Run:       rebootMaster,
 		Platforms: []string{"gce"},

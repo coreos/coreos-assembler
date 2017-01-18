@@ -130,7 +130,7 @@ func runUp(cmd *cobra.Command, args []string) {
 		},
 	}
 
-	pc, err := spawn.MakeBootkubeCluster(tc, workers)
+	pc, err := spawn.MakeBootkubeCluster(tc, workers, false)
 	if err != nil {
 		die("Failed to create k8s cluster: %v", err)
 	}

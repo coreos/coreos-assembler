@@ -18,7 +18,7 @@ import (
 
 // Restart master node and check that cluster is still functional
 func rebootMaster(tc cluster.TestCluster) error {
-	c, err := spawn.MakeBootkubeCluster(tc, 1)
+	c, err := spawn.MakeBootkubeCluster(tc, 1, false)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func rebootMaster(tc cluster.TestCluster) error {
 
 // Delete api-server pod and wait for it to recover
 func deleteAPIServer(tc cluster.TestCluster) error {
-	c, err := spawn.MakeBootkubeCluster(tc, 1)
+	c, err := spawn.MakeBootkubeCluster(tc, 1, false)
 	if err != nil {
 		return err
 	}
