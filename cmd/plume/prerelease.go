@@ -221,7 +221,7 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		// upload blob, do not overwrite
 		plog.Printf("Uploading %q to Azure Storage...", vhdfile)
 
-		blobName := fmt.Sprintf("coreos-%s-%s.vhd", specVersion, specChannel)
+		blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
 
 		for _, container := range spec.Azure.Containers {
 			blobExists, err := api.BlobExists(spec.Azure.StorageAccount, storageKey.PrimaryKey, container, blobName)
