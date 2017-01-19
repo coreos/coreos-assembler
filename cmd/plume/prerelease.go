@@ -39,8 +39,8 @@ var (
 	preReleaseDryRun bool
 	cmdPreRelease    = &cobra.Command{
 		Use:   "pre-release [options]",
-		Short: "Run pre-release steps for Container Linux",
-		Long:  "Runs pre-release steps for Container Linux, such as image uploading and OS image creation, and replication across regions.",
+		Short: "Run pre-release steps for CoreOS",
+		Long:  "Runs pre-release steps for CoreOS, such as image uploading and OS image creation, and replication across regions.",
 		RunE:  runPreRelease,
 	}
 
@@ -95,7 +95,7 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// getAzureVhd downloads a Container Linux image for Azure and unzips it to vhdPath.
+// getAzureVhd downloads a CoreOS image for Azure and unzips it to vhdPath.
 func getAzureVhd(spec *channelSpec, client *http.Client, src *storage.Bucket, bzipPath, vhdPath string) error {
 	if _, err := os.Stat(vhdPath); err == nil {
 		plog.Printf("Reusing existing image %q", vhdPath)
@@ -163,14 +163,14 @@ func replicateAzureImage(api *azure.API, imageName string) error {
 
 	channelTitle := strings.Title(specChannel)
 
-	if err := api.ReplicateImage(imageName, "Container-Linux", channelTitle, specVersion, locations...); err != nil {
+	if err := api.ReplicateImage(imageName, "CoreOS", channelTitle, specVersion, locations...); err != nil {
 		return fmt.Errorf("image replication failed: %v", err)
 	}
 
 	return nil
 }
 
-// azurePreRelease runs everything necessary to prepare a Container Linux release for Azure.
+// azurePreRelease runs everything necessary to prepare a CoreOS release for Azure.
 //
 // This includes uploading the vhd image to Azure storage, creating an OS image from it,
 // and replicating that OS image.
@@ -241,7 +241,7 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		}
 
 		// channel name should be caps for azure image
-		imageName := fmt.Sprintf("Container-Linux-%s-%s", strings.Title(specChannel), specVersion)
+		imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
 
 		// create image
 		if err := createAzureImage(spec, api, blobName, imageName); err != nil {
