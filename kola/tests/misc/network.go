@@ -68,7 +68,12 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 			}
 		}
 		if valid != true {
-			return fmt.Errorf("Unexpected %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
+			// systemd renames child processes in parentheses before closing their fds
+			if processname[0] == '(' {
+				plog.Infof("Ignoring %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
+			} else {
+				return fmt.Errorf("Unexpected %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
+			}
 		}
 	}
 	return nil
