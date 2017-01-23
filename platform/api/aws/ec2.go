@@ -20,6 +20,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
@@ -54,7 +55,6 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 		}
 
 		// don't make api calls too quickly, or we will hit the rate limit
-
 		time.Sleep(10 * time.Second)
 
 		getinst := &ec2.DescribeInstancesInput{
@@ -73,10 +73,13 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 					continue
 				}
 
-				// "running"
-				if *i.State.Code == int64(16) {
+				if i.PublicIpAddress == nil {
+					continue
+				}
+
+				if *i.State.Name == ec2.InstanceStateNameRunning {
 					// XXX: ssh is a terrible way to check this, but it is all we have.
-					c, err := net.DialTimeout("tcp", *i.PublicIpAddress+":22", 10*time.Second)
+					c, err := net.DialTimeout("tcp", *i.PublicIpAddress+":22", 3*time.Second)
 					if err != nil {
 						continue
 					}
@@ -146,7 +149,7 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 // TerminateInstance schedules an EC2 instance to be terminated.
 func (a *API) TerminateInstance(id string) error {
 	input := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{&id},
+		InstanceIds: []*string{aws.String(id)},
 	}
 
 	if _, err := a.ec2.TerminateInstances(input); err != nil {
