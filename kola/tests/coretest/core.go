@@ -50,6 +50,7 @@ func init() {
 			"EtcdUpdateValue":    TestEtcdUpdateValue,
 			"FleetctlRunService": TestFleetctlRunService,
 		},
+		Platforms: []string{"aws", "gce"},
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
