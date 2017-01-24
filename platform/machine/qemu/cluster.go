@@ -15,6 +15,7 @@
 package qemu
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -126,11 +127,46 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		netif:       netif,
 	}
 
-	imageFile, err := setupDisk(qc.conf.DiskImage)
+	var qmCmd []string
+	switch qc.conf.Board {
+	case "amd64-usr":
+		qmCmd = []string{
+			"qemu-system-x86_64",
+			"-machine", "accel=kvm",
+			"-cpu", "host",
+		}
+	case "arm64-usr":
+		qmCmd = []string{
+			"qemu-system-aarch64",
+			"-machine", "virt",
+			"-cpu", "cortex-a57",
+		}
+	default:
+		panic(qc.conf.Board)
+	}
+
+	qmMac := qm.netif.HardwareAddr.String()
+	qmCfg := qm.configDrive.Directory
+	qmCmd = append(qmCmd,
+		"-bios", qc.conf.BIOSImage,
+		"-smp", "1",
+		"-m", "1024",
+		"-uuid", qm.id,
+		"-display", "none",
+		"-add-fd", "fd=4,set=1",
+		"-drive", "if=none,id=blk,format=raw,file=/dev/fdset/1",
+		"-device", qc.virtio("blk", "drive=blk"),
+		"-netdev", "tap,id=tap,fd=3",
+		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac),
+		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+		"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"),
+	)
+
+	diskFile, err := setupDisk(qc.conf.DiskImage)
 	if err != nil {
 		return nil, err
 	}
-	defer os.Remove(imageFile)
+	defer diskFile.Close()
 
 	qc.mu.Lock()
 
@@ -141,47 +177,16 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	}
 	defer tap.Close()
 
-	qmMac := qm.netif.HardwareAddr.String()
-	qmCfg := qm.configDrive.Directory
-	if qc.conf.Board == "arm64-usr" {
-		qm.qemu = qm.qc.NewCommand(
-			"qemu-system-aarch64",
-			"-machine", "virt",
-			"-cpu", "cortex-a57",
-			"-bios", qc.conf.BIOSImage,
-			"-smp", "1",
-			"-m", "1024",
-			"-uuid", qm.id,
-			"-display", "none",
-			"-drive", "if=none,id=blk,format=raw,file="+imageFile,
-			"-device", "virtio-blk-device,drive=blk",
-			"-netdev", "tap,id=tap,fd=3",
-			"-device", "virtio-net-device,netdev=tap,mac="+qmMac,
-			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
-			"-device", "virtio-9p-device,fsdev=cfg,mount_tag=config-2")
-	} else {
-		qm.qemu = qm.qc.NewCommand(
-			"qemu-system-x86_64",
-			"-machine", "accel=kvm",
-			"-cpu", "host",
-			"-bios", qc.conf.BIOSImage,
-			"-smp", "1",
-			"-m", "1024",
-			"-uuid", qm.id,
-			"-display", "none",
-			"-drive", "if=none,id=blk,format=raw,file="+imageFile,
-			"-device", "virtio-blk-pci,drive=blk",
-			"-netdev", "tap,id=tap,fd=3",
-			"-device", "virtio-net,netdev=tap,mac="+qmMac,
-			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
-			"-device", "virtio-9p-pci,fsdev=cfg,mount_tag=config-2")
-	}
+	qm.qemu = qm.qc.NewCommand(qmCmd[0], qmCmd[1:]...)
 
 	qc.mu.Unlock()
 
 	cmd := qm.qemu.(*ns.Cmd)
 	cmd.Stderr = os.Stderr
-	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=3
+	cmd.ExtraFiles = append(cmd.ExtraFiles,
+		tap.File, // fd=3
+		diskFile, // fd=4
+	)
 
 	if err = qm.qemu.Start(); err != nil {
 		return nil, err
@@ -206,14 +211,30 @@ func (qc *Cluster) GetDiscoveryURL(size int) (string, error) {
 	return qc.LocalCluster.GetDiscoveryURL(size)
 }
 
+// The virtio device name differs between machine types but otherwise
+// configuration is the same. Use this to help construct device args.
+func (qc *Cluster) virtio(device, args string) string {
+	var suffix string
+	switch qc.conf.Board {
+	case "amd64-usr":
+		suffix = "pci"
+	case "arm64-usr":
+		suffix = "device"
+	default:
+		panic(qc.conf.Board)
+	}
+	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
+}
+
 // Copy the base image to a new nameless temporary file.
 // cp is used since it supports sparse and reflink.
-func setupDisk(imageFile string) (string, error) {
+func setupDisk(imageFile string) (*os.File, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	dstFileName := dstFile.Name()
+	defer os.Remove(dstFileName)
 	dstFile.Close()
 
 	cp := exec.Command("cp", "--force",
@@ -223,8 +244,8 @@ func setupDisk(imageFile string) (string, error) {
 	cp.Stderr = os.Stderr
 
 	if err := cp.Run(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return dstFileName, nil
+	return os.OpenFile(dstFileName, os.O_RDWR, 0)
 }
