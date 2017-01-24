@@ -127,12 +127,6 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		netif:       netif,
 	}
 
-	imageFile, err := setupDisk(qc.conf.DiskImage)
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(imageFile)
-
 	var qmCmd []string
 	switch qc.conf.Board {
 	case "amd64-usr":
@@ -159,13 +153,20 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		"-m", "1024",
 		"-uuid", qm.id,
 		"-display", "none",
-		"-drive", "if=none,id=blk,format=raw,file="+imageFile,
+		"-add-fd", "fd=4,set=1",
+		"-drive", "if=none,id=blk,format=raw,file=/dev/fdset/1",
 		"-device", qc.virtio("blk", "drive=blk"),
 		"-netdev", "tap,id=tap,fd=3",
 		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac),
 		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
 		"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"),
 	)
+
+	diskFile, err := setupDisk(qc.conf.DiskImage)
+	if err != nil {
+		return nil, err
+	}
+	defer diskFile.Close()
 
 	qc.mu.Lock()
 
@@ -182,7 +183,10 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 
 	cmd := qm.qemu.(*ns.Cmd)
 	cmd.Stderr = os.Stderr
-	cmd.ExtraFiles = append(cmd.ExtraFiles, tap.File) // fd=3
+	cmd.ExtraFiles = append(cmd.ExtraFiles,
+		tap.File, // fd=3
+		diskFile, // fd=4
+	)
 
 	if err = qm.qemu.Start(); err != nil {
 		return nil, err
@@ -224,12 +228,13 @@ func (qc *Cluster) virtio(device, args string) string {
 
 // Copy the base image to a new nameless temporary file.
 // cp is used since it supports sparse and reflink.
-func setupDisk(imageFile string) (string, error) {
+func setupDisk(imageFile string) (*os.File, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	dstFileName := dstFile.Name()
+	defer os.Remove(dstFileName)
 	dstFile.Close()
 
 	cp := exec.Command("cp", "--force",
@@ -239,8 +244,8 @@ func setupDisk(imageFile string) (string, error) {
 	cp.Stderr = os.Stderr
 
 	if err := cp.Run(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return dstFileName, nil
+	return os.OpenFile(dstFileName, os.O_RDWR, 0)
 }
