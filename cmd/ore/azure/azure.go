@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform/api/azure"
 )
 
@@ -26,9 +27,8 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "ore/azure")
 
 	Azure = &cobra.Command{
-		Use:              "azure [command]",
-		Short:            "azure image and vm utilities",
-		PersistentPreRun: preauth,
+		Use:   "azure [command]",
+		Short: "azure image and vm utilities",
 	}
 
 	azureProfile      string
@@ -38,13 +38,14 @@ var (
 )
 
 func init() {
-	sv := Azure.PersistentFlags().StringVar
+	cli.WrapPreRun(Azure, preauth)
 
+	sv := Azure.PersistentFlags().StringVar
 	sv(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	sv(&azureSubscription, "azure-subscription", "", "Azure subscription name. If unset, the first is used.")
 }
 
-func preauth(cmd *cobra.Command, args []string) {
+func preauth(cmd *cobra.Command, args []string) error {
 	plog.Printf("Creating Azure API...")
 
 	prof, err := auth.ReadAzureProfile(azureProfile)
@@ -63,4 +64,5 @@ func preauth(cmd *cobra.Command, args []string) {
 	}
 
 	api = a
+	return nil
 }
