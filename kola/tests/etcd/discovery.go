@@ -34,6 +34,7 @@ func init() {
 		Manual:      true,
 		ClusterSize: 3,
 		Name:        "coreos.etcd0.discovery",
+		Platforms:   []string{"aws", "gce"},
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -56,6 +57,7 @@ func init() {
 		Run:         Discovery,
 		ClusterSize: 3,
 		Name:        "coreos.etcd2.discovery",
+		Platforms:   []string{"aws", "gce"},
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
