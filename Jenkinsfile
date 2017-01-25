@@ -32,6 +32,8 @@ node('docker') {
     }
 
     stage('Post-build') {
-        archiveArtifacts artifacts: 'bin/**', fingerprint: true, onlyIfSuccessful: true
+        if (env.JOB_BASE_NAME == "master-builder") {
+            archiveArtifacts artifacts: 'bin/**', fingerprint: true, onlyIfSuccessful: true
+        }
     }
 }
