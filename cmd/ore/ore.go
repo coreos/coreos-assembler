@@ -24,15 +24,18 @@ import (
 
 var (
 	root = &cobra.Command{
-		Use:               "ore [command]",
-		Short:             "gce image creation and upload tools",
-		PersistentPreRunE: preauth,
+		Use:   "ore [command]",
+		Short: "gce image creation and upload tools",
 	}
 
 	opts = gcloud.Options{Options: &platform.Options{}}
 
 	api *gcloud.API
 )
+
+func init() {
+	cli.WrapPreRun(root, preauth)
+}
 
 func preauth(cmd *cobra.Command, args []string) error {
 	a, err := gcloud.New(&opts)
