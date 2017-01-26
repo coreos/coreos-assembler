@@ -15,44 +15,27 @@
 package local
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
+
+	"github.com/coreos/mantle/platform/conf"
 )
 
-type ConfigDrive struct {
-	Directory string
-}
-
-func NewConfigDrive(userdata string) (*ConfigDrive, error) {
-	drivePath, err := ioutil.TempDir("", "mantle-config-drive")
-	if err != nil {
-		return nil, err
-	}
-
+// MakeConfigDrive creates a config drive directory tree under outputDir
+// and returns the path to the top level directory.
+func MakeConfigDrive(userdata *conf.Conf, outputDir string) (string, error) {
+	drivePath := path.Join(outputDir, "config-2")
 	userPath := path.Join(drivePath, "openstack/latest/user_data")
-	err = os.MkdirAll(path.Dir(userPath), 0777)
-	if err != nil {
+
+	if err := os.MkdirAll(path.Dir(userPath), 0777); err != nil {
 		os.RemoveAll(drivePath)
-		return nil, err
+		return "", err
 	}
 
-	userData, err := os.OpenFile(userPath, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
+	if err := userdata.WriteFile(userPath); err != nil {
 		os.RemoveAll(drivePath)
-		return nil, err
-	}
-	defer userData.Close()
-
-	_, err = userData.WriteString(userdata)
-	if err != nil {
-		os.RemoveAll(drivePath)
-		return nil, err
+		return "", err
 	}
 
-	return &ConfigDrive{Directory: drivePath}, nil
-}
-
-func (d *ConfigDrive) Destroy() error {
-	return os.RemoveAll(d.Directory)
+	return drivePath, nil
 }

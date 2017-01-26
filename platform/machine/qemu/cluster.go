@@ -121,25 +121,23 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 
 	qc.mu.Unlock()
 
-	var configFile string
-	var configDrive *local.ConfigDrive
+	var confPath string
 	if conf.IsIgnition() {
-		configFile = filepath.Join(dir, "ignition.json")
-		if err := conf.WriteFile(configFile); err != nil {
+		confPath = filepath.Join(dir, "ignition.json")
+		if err := conf.WriteFile(confPath); err != nil {
 			return nil, err
 		}
 	} else {
-		configDrive, err = local.NewConfigDrive(conf.String())
+		confPath, err = local.MakeConfigDrive(conf, dir)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	qm := &machine{
-		qc:          qc,
-		id:          id.String(),
-		configDrive: configDrive,
-		netif:       netif,
+		qc:    qc,
+		id:    id.String(),
+		netif: netif,
 	}
 
 	var qmCmd []string
@@ -176,11 +174,10 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 
 	if conf.IsIgnition() {
 		qmCmd = append(qmCmd,
-			"-fw_cfg", "name=opt/com.coreos/config,file="+configFile)
+			"-fw_cfg", "name=opt/com.coreos/config,file="+confPath)
 	} else {
-		qmCfg := qm.configDrive.Directory
 		qmCmd = append(qmCmd,
-			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+confPath,
 			"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"))
 	}
 
