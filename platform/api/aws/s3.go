@@ -26,10 +26,12 @@ import (
 )
 
 const (
+	// The SDK documentation claims the error code should be `NoSuchKey`, but in
+	// practice that's the error for Get and NotFound is the error for Head.
 	// https://github.com/aws/aws-sdk-go/blob/b84b5a456f5f281454e9fbe89b38e34d617f4a51/service/s3/api.go#L2618-L2620
+	// is just wrong.
 	documentedNotFoundErr = "NoSuchKey"
-	// .. but ignore that comment above, it's misleading
-	actualNotFoundErr = "NotFound"
+	actualNotFoundErr     = "NotFound"
 
 	alreadyExistsErr = "BucketAlreadyOwnedByYou"
 )
