@@ -16,9 +16,9 @@ package qemu
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -59,8 +59,8 @@ type Cluster struct {
 
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
-func NewCluster(conf *Options) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster()
+func NewCluster(conf *Options, outputDir string) (platform.Cluster, error) {
+	lc, err := local.NewLocalCluster(outputDir)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +91,11 @@ func (qc *Cluster) Destroy() error {
 func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	id := uuid.NewV4()
 
+	dir := filepath.Join(qc.OutputDir, id.String())
+	if err := os.Mkdir(dir, 0777); err != nil {
+		return nil, err
+	}
+
 	// hacky solution for cloud config ip substitution
 	// NOTE: escaping is not supported
 	qc.mu.Lock()
@@ -119,11 +124,10 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	var configFile string
 	var configDrive *local.ConfigDrive
 	if conf.IsIgnition() {
-		configFile, err = writeTempFile(conf.String())
-		if err != nil {
+		configFile = filepath.Join(dir, "ignition.json")
+		if err := conf.WriteFile(configFile); err != nil {
 			return nil, err
 		}
-		defer os.Remove(configFile)
 	} else {
 		configDrive, err = local.NewConfigDrive(conf.String())
 		if err != nil {
@@ -266,20 +270,4 @@ func setupDisk(imageFile string) (*os.File, error) {
 	}
 
 	return os.OpenFile(dstFileName, os.O_RDWR, 0)
-}
-
-func writeTempFile(data string) (path string, err error) {
-	tmp, err := ioutil.TempFile("", "mantle-temp")
-	if err != nil {
-		return "", err
-	}
-	path = tmp.Name()
-	n, err := tmp.WriteString(data)
-	if err == nil && n < len(data) {
-		err = io.ErrShortWrite
-	}
-	if err1 := tmp.Close(); err != nil {
-		err = err1
-	}
-	return path, err
 }

@@ -47,14 +47,20 @@ func runQemu(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	cluster, err := qemu.NewCluster(&kola.QEMUOptions)
+	outputDir, err := kola.CleanOutputDir(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	cluster, err := qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		os.Exit(1)
 	}
 	defer cluster.Destroy()
 
-	m, err := cluster.NewMachine("#cloud-config")
+	m, err := cluster.NewMachine(`{"ignition": { "version": "2.0.0" }}`)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Machine failed: %v\n", err)
 		os.Exit(1)

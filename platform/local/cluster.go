@@ -35,6 +35,7 @@ import (
 
 type LocalCluster struct {
 	destructor.MultiDestructor
+	OutputDir   string
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
 	OmahaServer *omaha.TrivialServer
@@ -42,8 +43,8 @@ type LocalCluster struct {
 	nshandle    netns.NsHandle
 }
 
-func NewLocalCluster() (*LocalCluster, error) {
-	lc := &LocalCluster{}
+func NewLocalCluster(outputDir string) (*LocalCluster, error) {
+	lc := &LocalCluster{OutputDir: outputDir}
 
 	var err error
 	lc.nshandle, err = ns.Create()
