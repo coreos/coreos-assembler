@@ -54,7 +54,7 @@ func init() {
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 and AWS images without prompt")
 }
 
-func defaultBucket(in string, region string) (string, error) {
+func defaultBucketURI(in string, region string) (string, error) {
 	if in == "" {
 		in = fmt.Sprintf("s3://s3-%s.users.developer.core-os.net", region)
 	}
@@ -87,7 +87,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
-	s3Bucket, err := defaultBucket(uploadBucket, region)
+	s3Bucket, err := defaultBucketURI(uploadBucket, region)
 	if err != nil {
 		return fmt.Errorf("invalid bucket: %v", err)
 	}
@@ -110,7 +110,8 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 	plog.Debugf("parsed s3 url: %+v", s3URL)
 	s3BucketName := s3URL.Host
-	uploadImageName = strings.TrimPrefix(s3URL.Path+"/"+uploadImageName, "/")
+	uploadFileName := filepath.Base(uploadFile)
+	uploadImageName = strings.TrimPrefix(s3URL.Path+"/"+uploadImageName+"/"+uploadFileName, "/")
 
 	f, err := os.Open(uploadFile)
 	if err != nil {

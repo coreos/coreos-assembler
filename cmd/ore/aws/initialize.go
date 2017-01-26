@@ -37,7 +37,7 @@ func init() {
 }
 
 func runInitialize(cmd *cobra.Command, args []string) error {
-	bucket, err := defaultBucket(bucket, region)
+	bucket, err := defaultBucketURI(bucket, region)
 	if err != nil {
 		return fmt.Errorf("invalid bucket: %v", err)
 	}
