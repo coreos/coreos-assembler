@@ -205,6 +205,11 @@
 			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/restxml",
+			"Comment": "v1.6.10-2-g5e1afe1",
+			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
 			"Comment": "v1.6.10-2-g5e1afe1",
 			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
@@ -216,6 +221,26 @@
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
+			"Comment": "v1.6.10-2-g5e1afe1",
+			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/iam",
+			"Comment": "v1.6.10-2-g5e1afe1",
+			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/s3",
+			"Comment": "v1.6.10-2-g5e1afe1",
+			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/s3/s3iface",
+			"Comment": "v1.6.10-2-g5e1afe1",
+			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/s3/s3manager",
 			"Comment": "v1.6.10-2-g5e1afe1",
 			"Rev": "5e1afe1c0a077fb2da9b5f74232b790d99397ce8"
 		},
