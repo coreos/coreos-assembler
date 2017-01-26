@@ -131,20 +131,6 @@ func (a *API) CreateSnapshot(description, sourceURL string) (*Snapshot, error) {
 	}
 }
 
-// CreateHVMImage creates an HVM AMI
-// The image will be created in the region configured for this API.
-func (a *API) CreateHVMImage(name, description, snapshot *Snapshot) (Image, error) {
-	a.ec2.RegisterImage(&ec2.RegisterImageInput{})
-	return Image{}, nil
-}
-
-// CreateHVMImage creates a PV AMI
-// The image will be created in the region configured for this API.
-func (a *API) CreatePVImage(name, description, snapshot *Snapshot) (Image, error) {
-	a.ec2.RegisterImage(&ec2.RegisterImageInput{})
-	return Image{}, nil
-}
-
 func (a *API) CreateImportRole(bucket string) error {
 	iamc := iam.New(a.session)
 	_, err := iamc.GetRole(&iam.GetRoleInput{
