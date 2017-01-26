@@ -121,3 +121,8 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 	}
 	return
 }
+
+// IsIgnition returns true if the config is for Ignition.
+func (c *Conf) IsIgnition() bool {
+	return c.ignitionV1 != nil || c.ignitionV2 != nil
+}
