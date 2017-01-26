@@ -130,7 +130,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 }
 
 func runUpdateTest() error {
-	cluster, err := qemu.NewCluster(&kola.QEMUOptions)
+	cluster, err := qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	if err != nil {
 		return fmt.Errorf("new cluster: %v", err)
 	}
