@@ -16,6 +16,7 @@ package qemu
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -115,9 +116,19 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 
 	qc.mu.Unlock()
 
-	configDrive, err := local.NewConfigDrive(conf.String())
-	if err != nil {
-		return nil, err
+	var configFile string
+	var configDrive *local.ConfigDrive
+	if conf.IsIgnition() {
+		configFile, err = writeTempFile(conf.String())
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(configFile)
+	} else {
+		configDrive, err = local.NewConfigDrive(conf.String())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	qm := &machine{
@@ -146,7 +157,6 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	}
 
 	qmMac := qm.netif.HardwareAddr.String()
-	qmCfg := qm.configDrive.Directory
 	qmCmd = append(qmCmd,
 		"-bios", qc.conf.BIOSImage,
 		"-smp", "1",
@@ -158,9 +168,17 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		"-device", qc.virtio("blk", "drive=blk"),
 		"-netdev", "tap,id=tap,fd=3",
 		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac),
-		"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
-		"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"),
 	)
+
+	if conf.IsIgnition() {
+		qmCmd = append(qmCmd,
+			"-fw_cfg", "name=opt/com.coreos/config,file="+configFile)
+	} else {
+		qmCfg := qm.configDrive.Directory
+		qmCmd = append(qmCmd,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+qmCfg,
+			"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"))
+	}
 
 	diskFile, err := setupDisk(qc.conf.DiskImage)
 	if err != nil {
@@ -248,4 +266,20 @@ func setupDisk(imageFile string) (*os.File, error) {
 	}
 
 	return os.OpenFile(dstFileName, os.O_RDWR, 0)
+}
+
+func writeTempFile(data string) (path string, err error) {
+	tmp, err := ioutil.TempFile("", "mantle-temp")
+	if err != nil {
+		return "", err
+	}
+	path = tmp.Name()
+	n, err := tmp.WriteString(data)
+	if err == nil && n < len(data) {
+		err = io.ErrShortWrite
+	}
+	if err1 := tmp.Close(); err != nil {
+		err = err1
+	}
+	return path, err
 }
