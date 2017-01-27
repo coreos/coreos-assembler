@@ -17,6 +17,21 @@ import (
 
 var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "spawn")
 
+type BootkubeManager struct {
+	cluster.TestCluster
+
+	firstNode       platform.Machine
+	kubeletImageTag string
+}
+
+func (m *BootkubeManager) AddMasters(n int) ([]platform.Machine, error) {
+	return m.provisionNodes(n, true)
+}
+
+func (m *BootkubeManager) AddWorkers(n int) ([]platform.Machine, error) {
+	return m.provisionNodes(n, false)
+}
+
 // MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
 // and checks that all nodes are registered before returning. NOTE: If startup
 // times become too long there are a few sections of this setup that could be
@@ -30,7 +45,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	)
 
 	// provision master node running etcd
-	masterConfig, err := renderCloudConfig(kubeletImageTag, true, selfHostEtcd)
+	masterConfig, err := renderCloudConfig(kubeletImageTag, true, !selfHostEtcd)
 	if err != nil {
 		return nil, err
 	}
@@ -46,28 +61,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	plog.Infof("Master VM (%s) started. It's IP is %s.", master.ID(), master.IP())
 
 	// start bootkube on master
-	if err := startMaster(master, imageRepo, imageTag, selfHostEtcd); err != nil {
-		return nil, err
-	}
-
-	// provision workers
-	workerConfig, err := renderCloudConfig(kubeletImageTag, false, selfHostEtcd)
-	if err != nil {
-		return nil, err
-	}
-
-	workerConfigs := make([]string, workerNodes)
-	for i := range workerConfigs {
-		workerConfigs[i] = workerConfig
-	}
-
-	workers, err := platform.NewMachines(c, workerConfigs)
-	if err != nil {
-		return nil, err
-	}
-
-	// start bootkube on workers
-	if err := startWorkers(workers, master, kubeletImageTag); err != nil {
+	if err := bootstrapMaster(master, imageRepo, imageTag, selfHostEtcd); err != nil {
 		return nil, err
 	}
 
@@ -76,28 +70,37 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 		return nil, err
 	}
 
-	bootkubeCluster := &pluton.Cluster{
-		Masters: []platform.Machine{master},
-		Workers: workers,
+	manager := &BootkubeManager{
+		TestCluster:     c,
+		kubeletImageTag: kubeletImageTag,
+		firstNode:       master,
 	}
 
-	// check that all nodes appear in kubectl
-	if err := bootkubeCluster.NodeCheck(10); err != nil {
+	// provision workers
+	workers, err := manager.provisionNodes(workerNodes, false)
+	if err != nil {
 		return nil, err
 	}
 
-	return bootkubeCluster, nil
+	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers)
+
+	// check that all nodes appear in kubectl
+	if err := cluster.NodeCheck(12); err != nil {
+		return nil, err
+	}
+
+	return cluster, nil
 }
 
-func renderCloudConfig(kubeletImageTag string, isMaster, selfHostEtcd bool) (string, error) {
+func renderCloudConfig(kubeletImageTag string, isMaster, startEtcd bool) (string, error) {
 	config := struct {
 		Master         bool
 		KubeletVersion string
-		HostedEtcd     bool
+		StartEtcd      bool
 	}{
 		isMaster,
 		kubeletImageTag,
-		!selfHostEtcd,
+		startEtcd,
 	}
 
 	buf := new(bytes.Buffer)
@@ -113,7 +116,7 @@ func renderCloudConfig(kubeletImageTag string, isMaster, selfHostEtcd bool) (str
 	return buf.String(), nil
 }
 
-func startMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
+func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
 	var etcdRenderAdditions, etcdStartAdditions string
 	if selfHostEtcd {
 		etcdRenderAdditions = "--etcd-servers=http://10.3.0.15:2379  --experimental-self-hosted-etcd"
@@ -198,31 +201,53 @@ func startMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bo
 	return nil
 }
 
-func startWorkers(workers []platform.Machine, master platform.Machine, kubeletImageTag string) error {
-	for _, worker := range workers {
-		// transfer kubeconfig from master to worker
-		err := platform.TransferFile(master, "/etc/kubernetes/kubeconfig", worker, "/etc/kubernetes/kubeconfig")
+func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Machine, error) {
+	if n == 0 {
+		return []platform.Machine{}, nil
+	} else if n < 0 {
+		return nil, fmt.Errorf("can't provision negative number of nodes")
+	}
+
+	config, err := renderCloudConfig(m.kubeletImageTag, tagMaster, false)
+	if err != nil {
+		return nil, err
+	}
+
+	configs := make([]string, n)
+	for i := range configs {
+		configs[i] = config
+	}
+
+	nodes, err := platform.NewMachines(m, configs)
+	if err != nil {
+		return nil, err
+	}
+
+	// start kubelet
+	for _, node := range nodes {
+		// transfer kubeconfig from existing node
+		err := platform.TransferFile(m.firstNode, "/etc/kubernetes/kubeconfig", node, "/etc/kubernetes/kubeconfig")
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if err := installKubectl(worker, kubeletImageTag); err != nil {
-			return err
+		if err := installKubectl(node, m.kubeletImageTag); err != nil {
+			return nil, err
 		}
 
-		// disabled on master so might as well here too
-		_, err = worker.SSH("sudo setenforce 0")
+		// disable selinux
+		_, err = node.SSH("sudo setenforce 0")
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// start kubelet
-		_, err = worker.SSH("sudo systemctl enable --now kubelet.service")
+		_, err = node.SSH("sudo systemctl enable --now kubelet.service")
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return nodes, nil
 
 }
 
