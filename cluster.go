@@ -10,14 +10,24 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-// Cluster represents a generic interface to kubernetes cluster upon
-// which tests can be programmed against. The creation is usually implemented
-// by a function that builds the cluster from a kola.TestCluster. Tests may
-// be aware of the implementor function since not all clusters are expected
-// to have the same components nor properties.
+// Cluster represents an interface to test kubernetes clusters The creation is
+// usually implemented by a function that builds the Cluster from a kola
+// TestCluster from the 'spawn' subpackage. Tests may be aware of the
+// implementor function since not all clusters are expected to have the same
+// components nor properties.
 type Cluster struct {
 	Masters []platform.Machine
 	Workers []platform.Machine
+
+	m Manager
+}
+
+func NewCluster(m Manager, masters, workers []platform.Machine) *Cluster {
+	return &Cluster{
+		Masters: masters,
+		Workers: workers,
+		m:       m,
+	}
 }
 
 // Kubectl will run kubectl from /home/core on the Master Machine
@@ -43,6 +53,21 @@ func (c *Cluster) Kubectl(cmd string) (string, error) {
 		return "", fmt.Errorf("kubectl:%s", stderr)
 	}
 	return stdout.String(), nil
+}
+
+// AddMasters creates new master nodes for a Cluster and blocks until ready.
+func (c *Cluster) AddMasters(n int) error {
+	nodes, err := c.m.AddMasters(n)
+	if err != nil {
+		return err
+	}
+
+	c.Masters = append(c.Masters, nodes...)
+
+	if err := c.NodeCheck(12); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NodeCheck will parse kubectl output to ensure all nodes in Cluster are
