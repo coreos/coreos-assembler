@@ -22,11 +22,10 @@ import (
 )
 
 type machine struct {
-	qc          *Cluster
-	id          string
-	qemu        exec.Cmd
-	configDrive *local.ConfigDrive
-	netif       *local.Interface
+	qc    *Cluster
+	id    string
+	qemu  exec.Cmd
+	netif *local.Interface
 }
 
 func (m *machine) ID() string {
@@ -55,13 +54,6 @@ func (m *machine) SSH(cmd string) ([]byte, error) {
 
 func (m *machine) Destroy() error {
 	err := m.qemu.Kill()
-
-	if m.configDrive != nil {
-		err2 := m.configDrive.Destroy()
-		if err == nil && err2 != nil {
-			err = err2
-		}
-	}
 
 	m.qc.DelMach(m)
 
