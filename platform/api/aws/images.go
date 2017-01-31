@@ -213,3 +213,42 @@ func (a *API) CreateImportRole(bucket string) error {
 
 	return nil
 }
+
+func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
+	res, err := a.ec2.RegisterImage(registerImageParams(snapshotID, name, description, EC2ImageTypeHVM))
+	if err != nil {
+		return "", fmt.Errorf("error creating hvm AMI: %v", err)
+	}
+	return *res.ImageId, nil
+}
+
+func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
+	res, err := a.ec2.RegisterImage(registerImageParams(snapshotID, name, description, EC2ImageTypePV))
+	if err != nil {
+		return "", fmt.Errorf("error creating hvm AMI: %v", err)
+	}
+	return *res.ImageId, nil
+}
+
+func registerImageParams(snapshotID, name, description string, imageType EC2ImageType) *ec2.RegisterImageInput {
+	return &ec2.RegisterImageInput{
+		Name:               aws.String(name),
+		Description:        aws.String(description),
+		Architecture:       aws.String("x86_64"),
+		VirtualizationType: aws.String(string(imageType)),
+		RootDeviceName:     aws.String("/dev/xvda"),
+		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
+			&ec2.BlockDeviceMapping{
+				DeviceName: aws.String("/dev/xvda"),
+				Ebs: &ec2.EbsBlockDevice{
+					SnapshotId:          aws.String(snapshotID),
+					DeleteOnTermination: aws.Bool(true),
+				},
+			},
+			&ec2.BlockDeviceMapping{
+				DeviceName:  aws.String("/dev/xvdb"),
+				VirtualName: aws.String("ephemeral0"),
+			},
+		},
+	}
+}
