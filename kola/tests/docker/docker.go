@@ -62,6 +62,41 @@ func init() {
 		UserData:    `#cloud-config`,
 		MinVersion:  semver.Version{Major: 1192},
 	})
+	register.Register(&register.Test{
+		Run:         dockerUserns,
+		ClusterSize: 1,
+		Name:        "docker.userns",
+		// Source yaml:
+		// https://github.com/coreos/container-linux-config-transpiler
+		/*
+			systemd:
+			  units:
+			  - name: docker.service
+			    enable: true
+			    dropins:
+			      - name: 10-uesrns.conf
+			        contents: |-
+			          [Service]
+			          Environment=DOCKER_OPTS=--userns-remap=dockremap
+			storage:
+			  files:
+			  - filesystem: root
+			    path: /etc/subuid
+			    contents:
+			      inline: "dockremap:100000:65536"
+			  - filesystem: root
+			    path: /etc/subgid
+			    contents:
+			      inline: "dockremap:100000:65536"
+			passwd:
+			  users:
+			  - name: dockremap
+			    create: {}
+		*/
+		Platforms:  []string{"aws", "gce"},
+		UserData:   `{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`,
+		MinVersion: semver.Version{Major: 1192},
+	})
 }
 
 // make a docker container out of binaries on the host
@@ -238,6 +273,50 @@ func dockerOldClient(c cluster.TestCluster) error {
 
 	if !bytes.Equal(output, []byte("IT WORKED")) {
 		return fmt.Errorf("unexpected result from docker client: %q", output)
+	}
+
+	return nil
+}
+
+// Regression test for userns breakage under 1.12
+func dockerUserns(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+
+	if err := genDockerContainer(m, "userns-test", []string{"echo", "sleep"}); err != nil {
+		return err
+	}
+
+	_, err := m.SSH(`sudo setenforce 1`)
+	if err != nil {
+		return fmt.Errorf("could not enable selinux")
+	}
+	output, err := m.SSH(`docker run userns-test echo fj.fj`)
+	if err != nil {
+		return fmt.Errorf("failed to run echo under userns: output: %q status: %q", output, err)
+	}
+	if !bytes.Equal(output, []byte("fj.fj")) {
+		return fmt.Errorf("expected fj.fj, got %s", string(output))
+	}
+
+	// And just in case, verify that a container really is userns remapped
+	_, err = m.SSH(`docker run -d --name=sleepy userns-test sleep 10000`)
+	if err != nil {
+		return fmt.Errorf("could not run sleep: %v", err)
+	}
+	uid_map, err := m.SSH(`until [[ "$(/usr/bin/docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
+	                pid=$(docker inspect -f {{.State.Pid}} sleepy); 
+									cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
+	if err != nil {
+		return fmt.Errorf("could not read uid mapping: %v", err)
+	}
+	// uid_map is of the form `$mappedNamespacePidStart   $realNamespacePidStart
+	// $rangeLength`. We expect `0     100000      65536`
+	mapParts := strings.Fields(strings.TrimSpace(string(uid_map)))
+	if len(mapParts) != 3 {
+		return fmt.Errorf("expected uid_map to have three parts, was: %s", string(uid_map))
+	}
+	if mapParts[0] != "0" && mapParts[1] != "100000" {
+		return fmt.Errorf("unexpected userns mapping values: %v", string(uid_map))
 	}
 
 	return nil
