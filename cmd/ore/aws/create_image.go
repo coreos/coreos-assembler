@@ -19,12 +19,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/spf13/cobra"
 )
 
 type createSnapshotArguments struct {
 	snapshotSource      string
 	snapshotDescription string
+	format              aws.EC2ImageFormat
 }
 
 type createImagesArguments struct {
@@ -33,8 +35,9 @@ type createImagesArguments struct {
 	createPV    bool
 	snapshotID  string
 
-	snapshotSource      string
-	snapshotDescription string
+	// All snapshot arguments are valid here too since create image can
+	// implicitly create a snapshot
+	*createSnapshotArguments
 }
 
 var (
@@ -55,42 +58,60 @@ The flags allow controlling various knobs about the images.
 After a successful run, the final line of output will be a line of JSON describing the image resources created and the underlying snapshots`,
 		RunE: runCreateImages,
 	}
-	createImagesArgs = &createImagesArguments{}
+	createImagesArgs = &createImagesArguments{
+		createSnapshotArguments: &createSnapshotArguments{},
+	}
 )
 
 func init() {
+
+	addSnapshotFlags := func(cmd *cobra.Command, args *createSnapshotArguments, prefix string) {
+		cmd.Flags().StringVar(&args.snapshotSource, prefix+"source", "", "snapshot source: must be an 's3://' URI")
+		cmd.Flags().StringVar(&args.snapshotDescription, prefix+"description", "", "snapshot description: will be derived automatically if unset")
+		cmd.Flags().Var(&args.format, prefix+"format", fmt.Sprintf("snapshot format: default %s, %s or %s", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw))
+	}
+
 	AWS.AddCommand(cmdCreateSnapshot)
-	cmdCreateSnapshot.Flags().StringVar(&createSnapshotArgs.snapshotSource, "source", "", "vmdk source: must be an 's3://' URI")
-	cmdCreateSnapshot.Flags().StringVar(&createSnapshotArgs.snapshotDescription, "description", "", "Snapshot description; will be derived automatically if unset")
+	addSnapshotFlags(cmdCreateSnapshot, createSnapshotArgs, "")
 
 	AWS.AddCommand(cmdCreateImages)
 	cmdCreateImages.Flags().StringVar(&createImagesArgs.name, "name", "", "[optional] the name of the image to create; will be derived automatically if unset")
 	cmdCreateImages.Flags().StringVar(&createImagesArgs.description, "description", "", "[optional] the description of the image to create; will be derived automatically if unset")
 	cmdCreateImages.Flags().BoolVar(&createImagesArgs.createPV, "create-pv", true, "whether to create a PV AMI in addition the the HVM AMI")
 	cmdCreateImages.Flags().StringVar(&createImagesArgs.snapshotID, "snapshot-id", "", "[optional] the snapshot ID to base this AMI off of. A new snapshot will be created if not provided.")
-	cmdCreateSnapshot.Flags().StringVar(&createImagesArgs.snapshotSource, "snapshot-source", "", "vmdk source: must be an 's3://' URI")
-	cmdCreateSnapshot.Flags().StringVar(&createSnapshotArgs.snapshotDescription, "snapshot-description", "", "Snapshot description; will be derived automatically if unset")
+	addSnapshotFlags(cmdCreateImages, createImagesArgs.createSnapshotArguments, "snapshot-")
+}
 
+func createSnapshot(args *createSnapshotArguments) (string, error) {
+	snapshot, err := API.CreateSnapshot(args.snapshotDescription, args.snapshotSource, args.format)
+	if err != nil {
+		return "", fmt.Errorf("unable to create snapshot: %v", err)
+	}
+
+	return snapshot.SnapshotID, nil
 }
 
 func runCreateSnapshot(cmd *cobra.Command, args []string) error {
-	snapshot, err := API.CreateSnapshot(createSnapshotArgs.snapshotDescription, createSnapshotArgs.snapshotSource)
+	snapshotID, err := createSnapshot(createSnapshotArgs)
 	if err != nil {
-		return fmt.Errorf("unable to create snapshot: %v", err)
+		return err
 	}
-
-	fmt.Printf("created snapshot: %v\n", snapshot.SnapshotID)
+	json.NewEncoder(os.Stdout).Encode(&struct {
+		SnapshotID string
+	}{
+		SnapshotID: snapshotID,
+	})
 	return nil
 }
 
 func runCreateImages(cmd *cobra.Command, args []string) error {
 	snapshotID := createImagesArgs.snapshotID
 	if snapshotID == "" {
-		newSnapshotID, err := API.CreateSnapshot(createSnapshotArgs.snapshotDescription, createSnapshotArgs.snapshotSource)
+		newSnapshotID, err := createSnapshot(createImagesArgs.createSnapshotArguments)
 		if err != nil {
 			return fmt.Errorf("unable to create snapshot: %v", err)
 		}
-		snapshotID = newSnapshotID.SnapshotID
+		snapshotID = newSnapshotID
 	}
 
 	hvmID, err := API.CreateHVMImage(snapshotID, createImagesArgs.name, createImagesArgs.description)
@@ -107,9 +128,8 @@ func runCreateImages(cmd *cobra.Command, args []string) error {
 	}
 
 	json.NewEncoder(os.Stdout).Encode(&struct {
-		HVM string
-		PV  string `json:",omitempty"`
-
+		HVM        string
+		PV         string `json:",omitempty"`
 		SnapshotID string
 	}{
 		HVM:        hvmID,

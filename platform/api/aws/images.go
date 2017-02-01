@@ -42,6 +42,33 @@ const (
 	EC2ImageTypePV  EC2ImageType = "pv"
 )
 
+type EC2ImageFormat string
+
+const (
+	EC2ImageFormatRaw  EC2ImageFormat = ec2.DiskImageFormatRaw
+	EC2ImageFormatVmdk                = ec2.DiskImageFormatVmdk
+)
+
+func (e *EC2ImageFormat) Set(s string) error {
+	switch s {
+	case string(EC2ImageFormatVmdk):
+		*e = EC2ImageFormatVmdk
+	case string(EC2ImageFormatRaw):
+		*e = EC2ImageFormatRaw
+	default:
+		return fmt.Errorf("invalid ec2 image format: must be raw or vmdk")
+	}
+	return nil
+}
+
+func (e *EC2ImageFormat) String() string {
+	return string(*e)
+}
+
+func (e *EC2ImageFormat) Type() string {
+	return "ec2ImageFormat"
+}
+
 var vmImportRole = "vmimport"
 
 type Image struct {
@@ -58,7 +85,7 @@ type Snapshot struct {
 }
 
 // CreateSnapshot creates an AWS Snapshot
-func (a *API) CreateSnapshot(description, sourceURL string) (*Snapshot, error) {
+func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
 	s3url, err := url.Parse(sourceURL)
 	if err != nil {
 		return nil, err
@@ -77,7 +104,7 @@ func (a *API) CreateSnapshot(description, sourceURL string) (*Snapshot, error) {
 				S3Bucket: aws.String(s3url.Host),
 				S3Key:    aws.String(s3key),
 			},
-			Format: aws.String(ec2.DiskImageFormatVmdk),
+			Format: aws.String(string(format)),
 		},
 	})
 	if err != nil {
@@ -158,7 +185,7 @@ func (a *API) CreateImportRole(bucket string) error {
 				}`),
 			})
 			if err != nil {
-				return fmt.Errorf("coudl not create vmimport role: %v", err)
+				return fmt.Errorf("coull not create vmimport role: %v", err)
 			}
 		}
 	}
