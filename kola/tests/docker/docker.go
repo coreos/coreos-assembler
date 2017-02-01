@@ -102,9 +102,9 @@ func init() {
 // make a docker container out of binaries on the host
 func genDockerContainer(m platform.Machine, name string, binnames []string) error {
 	cmd := `tmpdir=$(mktemp -d); cd $tmpdir; echo -e "FROM scratch\nCOPY . /" > Dockerfile;
-	        b=$(which %s); libs=$(ldd $b | grep -o /lib'[^ ]*' | sort -u);
-	        rsync -av --relative --copy-links $b $libs ./;
-	        docker build -t %s .`
+	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
+	        sudo rsync -av --relative --copy-links $b $libs ./;
+	        sudo docker build -t %s .`
 
 	if output, err := m.SSH(fmt.Sprintf(cmd, strings.Join(binnames, " "), name)); err != nil {
 		return fmt.Errorf("failed to make %s container: output: %q status: %q", name, output, err)
