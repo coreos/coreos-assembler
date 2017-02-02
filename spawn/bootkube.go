@@ -116,7 +116,7 @@ func renderCloudConfig(kubeletImageTag string, isMaster, selfHostEtcd bool) (str
 func startMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
 	var etcdRenderAdditions, etcdStartAdditions string
 	if selfHostEtcd {
-		etcdRenderAdditions = "--etcd-servers=http://10.3.0.15:2379 --storage-backend=etcd3 --experimental-self-hosted-etcd"
+		etcdRenderAdditions = "--etcd-servers=http://10.3.0.15:2379  --experimental-self-hosted-etcd"
 		etcdStartAdditions = fmt.Sprintf("--etcd-server=http://%s:12379 --experimental-self-hosted-etcd", m.PrivateIP())
 	}
 
