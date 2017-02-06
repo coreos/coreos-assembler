@@ -21,11 +21,13 @@ func init() {
 		Platforms: []string{"gce"},
 	})
 
+	/* Temporarily Disabled: Must vet this again when 1.5.3 is out
 	register.Register(&register.Test{
 		Name:      "bootkube.etcd.scale",
 		Run:       etcdScale,
 		Platforms: []string{"gce"},
 	})
+	*/
 
 	register.Register(&register.Test{
 		Name:      "bootkube.destruct.reboot",
