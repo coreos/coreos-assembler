@@ -59,13 +59,10 @@ func Execute(main *cobra.Command) {
 	main.PersistentFlags().BoolVarP(&logDebug, "debug", "d", false,
 		"Alias for --log-level=DEBUG")
 
-	var preRun = main.PersistentPreRun
-	main.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	WrapPreRun(main, func(cmd *cobra.Command, args []string) error {
 		startLogging(cmd)
-		if preRun != nil {
-			preRun(cmd, args)
-		}
-	}
+		return nil
+	})
 
 	if err := main.Execute(); err != nil {
 		plog.Fatal(err)
@@ -103,4 +100,23 @@ func startLogging(cmd *cobra.Command) {
 	}
 
 	plog.Infof("Started logging at level %s", logLevel)
+}
+
+type PreRunEFunc func(cmd *cobra.Command, args []string) error
+
+func WrapPreRun(root *cobra.Command, f PreRunEFunc) {
+	preRun, preRunE := root.PersistentPreRun, root.PersistentPreRunE
+	root.PersistentPreRun, root.PersistentPreRunE = nil, nil
+
+	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if err := f(cmd, args); err != nil {
+			return err
+		}
+		if preRun != nil {
+			preRun(cmd, args)
+		} else if preRunE != nil {
+			return preRunE(cmd, args)
+		}
+		return nil
+	}
 }

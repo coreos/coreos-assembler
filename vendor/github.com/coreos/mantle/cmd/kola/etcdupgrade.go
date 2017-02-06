@@ -90,7 +90,13 @@ coreos:
 	kola.RegisterTestOption("EtcdUpgradeBin", etcdUpgradeBin)
 	kola.RegisterTestOption("EtcdUpgradeBin2", etcdUpgradeBin2)
 
-	if err := kola.RunTest(t, "gce"); err != nil {
+	outputDir, err := kola.CleanOutputDir(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := kola.RunTest(t, "gce", outputDir); err != nil {
 		fmt.Fprintf(os.Stderr, "--- FAIL: %v", err)
 		os.Exit(1)
 	}

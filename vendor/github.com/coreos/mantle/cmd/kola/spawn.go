@@ -78,9 +78,15 @@ func runSpawn(cmd *cobra.Command, args []string) {
 		userdata = "#cloud-config"
 	}
 
+	outputDir, err = kola.CleanOutputDir(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	switch kolaPlatform {
 	case "qemu":
-		cluster, err = qemu.NewCluster(&kola.QEMUOptions)
+		cluster, err = qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	case "gce":
 		cluster, err = gcloud.NewCluster(&kola.GCEOptions)
 	case "aws":

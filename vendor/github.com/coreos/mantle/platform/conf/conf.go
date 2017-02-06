@@ -16,6 +16,7 @@ package conf
 
 import (
 	"encoding/json"
+	"io/ioutil"
 
 	cci "github.com/coreos/coreos-cloudinit/config"
 	v2 "github.com/coreos/ignition/config"
@@ -85,6 +86,16 @@ func (c *Conf) String() string {
 	return ""
 }
 
+// WriteFile writes the userdata in Conf to a local file.
+func (c *Conf) WriteFile(name string) error {
+	return ioutil.WriteFile(name, []byte(c.String()), 0666)
+}
+
+// Bytes returns the serialized userdata in Conf.
+func (c *Conf) Bytes() []byte {
+	return []byte(c.String())
+}
+
 func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
 	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
 		Name:              "core",
@@ -120,4 +131,9 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 		keyStrs = append(keyStrs, key.String())
 	}
 	return
+}
+
+// IsIgnition returns true if the config is for Ignition.
+func (c *Conf) IsIgnition() bool {
+	return c.ignitionV1 != nil || c.ignitionV2 != nil
 }

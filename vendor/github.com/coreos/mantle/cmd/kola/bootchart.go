@@ -56,8 +56,15 @@ func runBootchart(cmd *cobra.Command, args []string) {
 		cluster platform.Cluster
 		err     error
 	)
+
+	outputDir, err = kola.CleanOutputDir(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	if kolaPlatform == "qemu" {
-		cluster, err = qemu.NewCluster(&kola.QEMUOptions)
+		cluster, err = qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	} else if kolaPlatform == "gce" {
 		cluster, err = gcloud.NewCluster(&kola.GCEOptions)
 	} else if kolaPlatform == "aws" {

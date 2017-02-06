@@ -16,15 +16,15 @@ package locksmith
 
 import (
 	"fmt"
-	"time"
 
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
 )
 
 func init() {
@@ -32,39 +32,42 @@ func init() {
 		Name:        "coreos.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
-		UserData: `#cloud-config
-
-coreos:
-  update:
-    reboot-strategy: etcd-lock
-  etcd2:
-    name: $name
-    discovery: $discovery
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
-  units:
-    - name: etcd2.service
-      command: start
-`,
+		Platforms:   []string{"aws", "gce"},
+		UserData: `{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "etcd2.service",
+        "enable": true,
+        "dropins": [{
+          "name": "metadata.conf",
+          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --name=$name --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001 --listen-peer-urls=http://$private_ipv4:2380,http://$private_ipv4:7001"
+        }]
+      }
+    ]
+  },
+  "files": [{
+    "filesystem": "root",
+    "path": "/etc/coreos/update.conf",
+    "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+    "mode": 420
+  }]
+}`,
 	})
 }
 
 func locksmithCluster(c cluster.TestCluster) error {
 	machs := c.Machines()
 
-	// make sure etcd is ready
-	etcdCheck := func() error {
-		output, err := machs[0].SSH("locksmithctl status")
-		if err != nil {
-			return fmt.Errorf("cluster health: %q: %v", output, err)
-		}
-		return nil
+	// Wait for all etcd cluster nodes to be ready.
+	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
+		return fmt.Errorf("cluster health: %v", err)
 	}
 
-	if err := util.Retry(6, 5*time.Second, etcdCheck); err != nil {
-		return fmt.Errorf("etcd bootstrap failed: %v", err)
+	output, err := machs[0].SSH("locksmithctl status")
+	if err != nil {
+		return fmt.Errorf("locksmithctl status: %q: %v", output, err)
 	}
 
 	ctx := context.Background()
@@ -73,10 +76,11 @@ func locksmithCluster(c cluster.TestCluster) error {
 	// reboot all the things
 	for _, m := range machs {
 		worker := func(c context.Context) error {
-			// XXX: stop sshd so checkmachine verifies correctly if reboot worked
-			// XXX: run locksmithctl under systemd-run so our current connection doesn't drop suddenly
-			cmd := "sudo systemctl stop sshd.socket; sudo systemd-run --quiet --on-active=2 --no-block locksmithctl send-need-reboot"
+			cmd := "sudo systemctl stop sshd.socket && sudo locksmithctl send-need-reboot"
 			output, err := m.SSH(cmd)
+			if _, ok := err.(*ssh.ExitMissingError); ok {
+				err = nil // A terminated session is perfectly normal during reboot.
+			}
 			if err != nil {
 				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
 			}

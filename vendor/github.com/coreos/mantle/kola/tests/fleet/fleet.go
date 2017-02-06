@@ -20,69 +20,84 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/util"
 )
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/fleet")
 
-	masterconf = config.CloudConfig{
-		CoreOS: config.CoreOS{
-			Etcd2: config.Etcd2{
-				AdvertiseClientURLs:      "http://$private_ipv4:2379",
-				InitialAdvertisePeerURLs: "http://$private_ipv4:2380",
-				ListenClientURLs:         "http://0.0.0.0:2379,http://0.0.0.0:4001",
-				ListenPeerURLs:           "http://$private_ipv4:2380,http://$private_ipv4:7001",
-			},
-			Fleet: config.Fleet{
-				EtcdRequestTimeout: 15,
-			},
-			Units: []config.Unit{
-				config.Unit{
-					Name:    "etcd2.service",
-					Command: "start",
-				},
-				config.Unit{
-					Name:    "fleet.service",
-					Command: "start",
-				},
-			},
-		},
-		Hostname: "master",
-	}
+	masterconf = `{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "etcd2.service",
+        "enable": true,
+        "dropins": [{
+          "name": "metadata.conf",
+          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001 --listen-peer-urls=http://$private_ipv4:2380,http://$private_ipv4:7001"
+        }]
+      },
+      {
+        "name": "fleet.service",
+        "enable": true,
+        "dropins": [{
+          "name": "environment.conf",
+          "contents": "[Service]\nEnvironment=FLEET_ETCD_REQUEST_TIMEOUT=15"
+        }]
+      }
+    ]
+  },
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/hostname",
+      "contents": { "source": "data:,master" },
+      "mode": 420
+    }]
+  }
+}`
 
-	proxyconf = config.CloudConfig{
-		CoreOS: config.CoreOS{
-			Etcd2: config.Etcd2{
-				Proxy:            "on",
-				ListenClientURLs: "http://0.0.0.0:2379,http://0.0.0.0:4001",
-			},
-			Units: []config.Unit{
-				config.Unit{
-					Name:    "etcd2.service",
-					Command: "start",
-				},
-				config.Unit{
-					Name:    "fleet.service",
-					Command: "start",
-				},
-			},
-		},
-		Hostname: "proxy",
-	}
-
-	fleetunit = `
-[Unit]
-Description=simple fleet test
-[Service]
-ExecStart=/bin/sh -c "while sleep 1; do echo hello world; done"
-`
+	proxyconf = `{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "etcd2.service",
+        "enable": true,
+        "dropins": [{
+          "name": "metadata.conf",
+          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --discovery=$discovery --proxy=on --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001"
+        }]
+      },
+      {
+        "name": "fleet.service",
+        "enable": true
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "filesystem": "root",
+        "path": "/etc/hostname",
+        "contents": { "source": "data:,proxy" },
+        "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "path": "/home/core/hello.service",
+        "contents": { "source": "data:,%5BUnit%5D%0ADescription=simple%20fleet%20test%0A%5BService%5D%0AExecStart=/bin/sh%20-c%20%22while%20sleep%201%3B%20do%20echo%20hello%20world%3B%20done%22" },
+        "mode": 420
+      }
+    ]
+  }
+}`
 )
 
 func init() {
@@ -90,36 +105,40 @@ func init() {
 		Run:         Proxy,
 		ClusterSize: 0,
 		Name:        "coreos.fleet.etcdproxy",
+		Platforms:   []string{"aws", "gce"},
 		UserData:    `#cloud-config`,
 	})
 }
 
 // Test fleet running through an etcd2 proxy.
 func Proxy(c cluster.TestCluster) error {
-	masterconf.CoreOS.Etcd2.Discovery, _ = c.GetDiscoveryURL(1)
-	master, err := c.NewMachine(masterconf.String())
+	discoveryURL, _ := c.GetDiscoveryURL(1)
+
+	master, err := c.NewMachine(strings.Replace(masterconf, "$discovery", discoveryURL, -1))
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		return fmt.Errorf("Cluster.NewMachine master: %s", err)
 	}
 	defer master.Destroy()
 
-	proxyconf.CoreOS.Etcd2.Discovery = masterconf.CoreOS.Etcd2.Discovery
-	proxy, err := c.NewMachine(proxyconf.String())
+	proxy, err := c.NewMachine(strings.Replace(proxyconf, "$discovery", discoveryURL, -1))
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		return fmt.Errorf("Cluster.NewMachine proxy: %s", err)
 	}
 	defer proxy.Destroy()
 
-	err = platform.InstallFile(strings.NewReader(fleetunit), proxy, "/home/core/hello.service")
-	if err != nil {
-		return fmt.Errorf("InstallFile: %s", err)
+	// Wait for all etcd cluster nodes to be ready.
+	if err = etcd.GetClusterHealth(master, 1); err != nil {
+		return fmt.Errorf("cluster health master: %v", err)
+	}
+	if err = etcd.GetClusterHealth(proxy, 1); err != nil {
+		return fmt.Errorf("cluster health proxy: %v", err)
 	}
 
-	// settling...
+	// Several seconds can pass after etcd is ready before fleet notices.
 	fleetStart := func() error {
 		_, err = proxy.SSH("fleetctl start /home/core/hello.service")
 		if err != nil {
-			return fmt.Errorf("fleetctl start: %s", err)
+			return fmt.Errorf("fleetctl start: %v", err)
 		}
 		return nil
 	}
@@ -127,23 +146,13 @@ func Proxy(c cluster.TestCluster) error {
 		return fmt.Errorf("fleetctl start failed: %v", err)
 	}
 
-	var status []byte
-
-	fleetList := func() error {
-		status, err = proxy.SSH("fleetctl list-units -l -fields active -no-legend")
-		if err != nil {
-			return fmt.Errorf("fleetctl list-units: %s", err)
-		}
-
-		if !bytes.Equal(status, []byte("active")) {
-			return fmt.Errorf("unit not active")
-		}
-
-		return nil
+	status, err := proxy.SSH("fleetctl list-units -l -fields active -no-legend")
+	if err != nil {
+		return fmt.Errorf("fleetctl list-units failed: %v", err)
 	}
 
-	if err := util.Retry(5, 1*time.Second, fleetList); err != nil {
-		return fmt.Errorf("fleetctl list-units failed: %v", err)
+	if !bytes.Equal(status, []byte("active")) {
+		return fmt.Errorf("unit not active")
 	}
 
 	return nil
