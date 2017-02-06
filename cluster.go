@@ -48,7 +48,7 @@ func (c *Cluster) Kubectl(cmd string) (string, error) {
 	session.Stderr = stderr
 	session.Stdout = stdout
 
-	err = session.Run("sudo ./kubectl --kubeconfig=/etc/kubernetes/kubeconfig " + cmd)
+	err = session.Run("sudo ./kubectl --kubeconfig=/etc/kubernetes/admin-kubeconfig " + cmd)
 	if err != nil {
 		return "", fmt.Errorf("kubectl:%s", stderr)
 	}

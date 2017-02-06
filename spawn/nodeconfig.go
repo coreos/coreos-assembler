@@ -32,6 +32,8 @@ coreos:
         ExecStartPre=/bin/mkdir -p /var/lib/cni
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
           --kubeconfig=/etc/kubernetes/kubeconfig \
+          --experimental-bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubeconfig \
+          --cert-dir=/etc/kubernetes/secrets \
           --require-kubeconfig \
           --cni-conf-dir=/etc/kubernetes/cni/net.d \
           --network-plugin=cni \

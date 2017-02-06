@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strings"
 	"text/template"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 	"github.com/coreos/pkg/capnslog"
 )
 
@@ -135,10 +137,11 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		/bootkube -- render --asset-dir=/core/assets --api-servers=https://%s:443,https://%s:443 %s`,
 			imageRepo, imageTag, m.IP(), m.PrivateIP(), etcdRenderAdditions),
 
-		// move the local kubeconfig into expected location
+		// move the local kubeconfig into expected location and add admin config for running tests
 		"sudo chown -R core:core /home/core/assets",
 		"sudo mkdir -p /etc/kubernetes",
-		"sudo cp /home/core/assets/auth/kubeconfig /etc/kubernetes/",
+		"sudo cp /home/core/assets/auth/bootstrap-kubeconfig /etc/kubernetes/",
+		"sudo cp /home/core/assets/auth/admin-kubeconfig /etc/kubernetes/",
 
 		// start kubelet
 		"sudo systemctl enable --now kubelet",
@@ -225,8 +228,8 @@ func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Mach
 
 	// start kubelet
 	for _, node := range nodes {
-		// transfer kubeconfig from existing node
-		err := platform.TransferFile(m.firstNode, "/etc/kubernetes/kubeconfig", node, "/etc/kubernetes/kubeconfig")
+		// transfer bootstrap config from existing node
+		err := platform.TransferFile(m.firstNode, "/etc/kubernetes/bootstrap-kubeconfig", node, "/etc/kubernetes/bootstrap-kubeconfig")
 		if err != nil {
 			return nil, err
 		}
@@ -247,7 +250,78 @@ func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Mach
 			return nil, err
 		}
 	}
+
+	// assumes bootkube died before worker node creation and weren't auto-approved
+	if err := approvePendingCSRS(m.firstNode, n); err != nil {
+		return nil, fmt.Errorf("Approving pending CSRs: %s", err)
+	}
 	return nodes, nil
+
+}
+
+// Approve exactly n pending CSRs. Block until n pending CSRs are seen and
+// eventually timeout. TODO(pb): This is kinda hacky and fragile. We should
+// have a way to allow worker nodes to be brought up while bootkube is still
+// running. Also use kubelet to approve CSRs when 1.6 is out.
+func approvePendingCSRS(node platform.Machine, n int) error {
+	var pendingCSRNames []string
+	nPending := func() error {
+		// return names of non-pending CSRs and subtract that from
+		// entire set to get pending set because I don't understand
+		// jsonpath right now
+		jsonpath := `'{.items[?(@.status.conditions)].metadata.name}'`
+		out, err := node.SSH(fmt.Sprintf("./kubectl get csr -o jsonpath=%v", jsonpath))
+		if err != nil {
+			return err
+		}
+
+		nonPendingNames := strings.Split(string(out), " ")
+
+		jsonpath = `'{.items[*].metadata.name}'`
+		out, err = node.SSH(fmt.Sprintf("./kubectl get csr -o jsonpath=%v", jsonpath))
+		if err != nil {
+			return err
+		}
+
+		allCSRs := strings.Split(string(out), " ")
+		// ones we want to approve
+		for _, name := range allCSRs {
+			var isPending = true
+			for _, n := range nonPendingNames {
+				if n == name {
+					isPending = false
+					break
+				}
+			}
+			if isPending {
+				pendingCSRNames = append(pendingCSRNames, name)
+			}
+		}
+
+		if len(pendingCSRNames) != n {
+			pendingCSRNames = pendingCSRNames[:0]
+			return fmt.Errorf("Unepected number of CSR requests expected: %v got: %v", n, pendingCSRNames)
+		}
+		return nil
+	}
+
+	if err := util.Retry(10, 10*time.Second, nPending); err != nil {
+		return err
+	}
+
+	for _, name := range pendingCSRNames {
+		// approve all pending
+		_, err := node.SSH(fmt.Sprintf(`./kubectl get csr %v -o json |  jq -cr ".status.conditions = [{"type":\"Approved\"}]" > out.json`, name))
+		if err != nil {
+			return err
+		}
+		out, err := node.SSH(fmt.Sprintf(`cat out.json | curl -X PUT -H "Content-Type: application/json" --data @- 127.0.0.1:8080/apis/certificates.k8s.io/v1alpha1/certificatesigningrequests/%v/approval`, name))
+		if err != nil {
+			return fmt.Errorf("curling approved csr: %s", out)
+		}
+	}
+
+	return nil
 
 }
 
