@@ -100,7 +100,7 @@ func runRun(cmd *cobra.Command, args []string) {
 	kola.RegisterTestOption("ConformanceRepo", conformanceRepo)
 	kola.RegisterTestOption("ConformanceVersion", conformanceVersion)
 
-	err := kola.RunTests(pattern, kolaPlatform)
+	err := kola.RunTests(pattern, kolaPlatform, outputDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)

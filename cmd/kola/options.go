@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
 	kolaDefaultImages  = map[string]string{
@@ -41,6 +42,7 @@ func init() {
 	bv := root.PersistentFlags().BoolVar
 
 	// general options
+	sv(&outputDir, "output-dir", "_pluton_temp", "Temporary output directory for test data and logs")
 	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
 	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
