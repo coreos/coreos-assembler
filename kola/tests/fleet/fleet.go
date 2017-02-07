@@ -105,7 +105,6 @@ func init() {
 		Run:         Proxy,
 		ClusterSize: 0,
 		Name:        "coreos.fleet.etcdproxy",
-		Platforms:   []string{"aws", "gce"},
 		UserData:    `#cloud-config`,
 	})
 }
