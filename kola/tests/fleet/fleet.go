@@ -31,6 +31,7 @@ import (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/fleet")
 
+	/* TODO: https://github.com/coreos/bugs/issues/1815 */
 	masterconf = `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -50,6 +51,13 @@ var (
           "name": "environment.conf",
           "contents": "[Service]\nEnvironment=FLEET_ETCD_REQUEST_TIMEOUT=15"
         }]
+      },
+      {
+        "name": "coreos-metadata.service",
+        "dropins": [{
+          "name": "qemu.conf",
+          "contents": "[Unit]\nConditionVirtualization=!qemu"
+        }]
       }
     ]
   },
@@ -63,6 +71,7 @@ var (
   }
 }`
 
+	/* TODO: https://github.com/coreos/bugs/issues/1815 */
 	proxyconf = `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -78,6 +87,13 @@ var (
       {
         "name": "fleet.service",
         "enable": true
+      },
+      {
+        "name": "coreos-metadata.service",
+        "dropins": [{
+          "name": "qemu.conf",
+          "contents": "[Unit]\nConditionVirtualization=!qemu"
+        }]
       }
     ]
   },
