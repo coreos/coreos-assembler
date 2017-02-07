@@ -32,7 +32,6 @@ func init() {
 		Name:        "coreos.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
-		Platforms:   []string{"aws", "gce"},
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
