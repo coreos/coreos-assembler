@@ -8,26 +8,36 @@ package bufnet
 
 import (
 	"errors"
-	"io"
 	"net"
 	"time"
+
+	"github.com/coreos/mantle/lang/bufpipe"
 )
 
 // Pipe creates a synchronous, in-memory, full duplex
-// network connection; both ends implement the Conn interface.
-// Reads on one end are matched with writes on the other,
-// copying data directly between the two; there is no internal
-// buffering.
+// network connection with unlimited buffering.
+// Both ends implement the Conn interface.
 func Pipe() (net.Conn, net.Conn) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	r1, w1 := bufpipe.Pipe()
+	r2, w2 := bufpipe.Pipe()
+
+	return &pipe{r1, w2}, &pipe{r2, w1}
+}
+
+// FixedPipe creates a synchronous, in-memory, full duplex
+// network connection with fixed-size buffers that have
+// at least the specified size.
+// Both ends implement the Conn interface.
+func FixedPipe(size int) (net.Conn, net.Conn) {
+	r1, w1 := bufpipe.FixedPipe(size)
+	r2, w2 := bufpipe.FixedPipe(size)
 
 	return &pipe{r1, w2}, &pipe{r2, w1}
 }
 
 type pipe struct {
-	*io.PipeReader
-	*io.PipeWriter
+	*bufpipe.PipeReader
+	*bufpipe.PipeWriter
 }
 
 type pipeAddr int
