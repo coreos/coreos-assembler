@@ -1,19 +1,18 @@
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+// Licensed under the same terms as Go itself:
+// https://github.com/golang/go/blob/master/LICENSE
 
 // Pipe adapter to connect code expecting an io.Reader
 // with code expecting an io.Writer.
 
-package io
+package bufpipe
 
 import (
-	"errors"
+	"io"
 	"sync"
 )
-
-// ErrClosedPipe is the error used for read or write operations on a closed pipe.
-var ErrClosedPipe = errors.New("io: read/write on closed pipe")
 
 // A pipe is the shared pipe structure underlying PipeReader and PipeWriter.
 type pipe struct {
@@ -36,7 +35,7 @@ func (p *pipe) read(b []byte) (n int, err error) {
 	defer p.l.Unlock()
 	for {
 		if p.rerr != nil {
-			return 0, ErrClosedPipe
+			return 0, io.ErrClosedPipe
 		}
 		if p.data != nil {
 			break
@@ -70,7 +69,7 @@ func (p *pipe) write(b []byte) (n int, err error) {
 	p.l.Lock()
 	defer p.l.Unlock()
 	if p.werr != nil {
-		err = ErrClosedPipe
+		err = io.ErrClosedPipe
 		return
 	}
 	p.data = b
@@ -84,7 +83,7 @@ func (p *pipe) write(b []byte) (n int, err error) {
 			break
 		}
 		if p.werr != nil {
-			err = ErrClosedPipe
+			err = io.ErrClosedPipe
 			break
 		}
 		p.wwait.Wait()
@@ -96,7 +95,7 @@ func (p *pipe) write(b []byte) (n int, err error) {
 
 func (p *pipe) rclose(err error) {
 	if err == nil {
-		err = ErrClosedPipe
+		err = io.ErrClosedPipe
 	}
 	p.l.Lock()
 	defer p.l.Unlock()
@@ -107,7 +106,7 @@ func (p *pipe) rclose(err error) {
 
 func (p *pipe) wclose(err error) {
 	if err == nil {
-		err = EOF
+		err = io.EOF
 	}
 	p.l.Lock()
 	defer p.l.Unlock()
@@ -125,13 +124,13 @@ type PipeReader struct {
 // it reads data from the pipe, blocking until a writer
 // arrives or the write end is closed.
 // If the write end is closed with an error, that error is
-// returned as err; otherwise err is EOF.
+// returned as err; otherwise err is io.EOF.
 func (r *PipeReader) Read(data []byte) (n int, err error) {
 	return r.p.read(data)
 }
 
 // Close closes the reader; subsequent writes to the
-// write half of the pipe will return the error ErrClosedPipe.
+// write half of the pipe will return the error io.ErrClosedPipe.
 func (r *PipeReader) Close() error {
 	return r.CloseWithError(nil)
 }
@@ -152,20 +151,20 @@ type PipeWriter struct {
 // it writes data to the pipe, blocking until one or more readers
 // have consumed all the data or the read end is closed.
 // If the read end is closed with an error, that err is
-// returned as err; otherwise err is ErrClosedPipe.
+// returned as err; otherwise err is io.ErrClosedPipe.
 func (w *PipeWriter) Write(data []byte) (n int, err error) {
 	return w.p.write(data)
 }
 
 // Close closes the writer; subsequent reads from the
-// read half of the pipe will return no bytes and EOF.
+// read half of the pipe will return no bytes and io.EOF.
 func (w *PipeWriter) Close() error {
 	return w.CloseWithError(nil)
 }
 
 // CloseWithError closes the writer; subsequent reads from the
 // read half of the pipe will return no bytes and the error err,
-// or EOF if err is nil.
+// or io.EOF if err is nil.
 //
 // CloseWithError always returns nil.
 func (w *PipeWriter) CloseWithError(err error) error {
