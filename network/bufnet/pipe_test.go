@@ -1,8 +1,10 @@
 // Copyright 2010 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+// Licensed under the same terms as Go itself:
+// https://github.com/golang/go/blob/master/LICENSE
 
-package net
+package bufnet
 
 import (
 	"bytes"

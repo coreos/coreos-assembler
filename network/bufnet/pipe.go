@@ -1,12 +1,15 @@
 // Copyright 2010 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+// Licensed under the same terms as Go itself:
+// https://github.com/golang/go/blob/master/LICENSE
 
-package net
+package bufnet
 
 import (
 	"errors"
 	"io"
+	"net"
 	"time"
 )
 
@@ -15,7 +18,7 @@ import (
 // Reads on one end are matched with writes on the other,
 // copying data directly between the two; there is no internal
 // buffering.
-func Pipe() (Conn, Conn) {
+func Pipe() (net.Conn, net.Conn) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
 
@@ -46,22 +49,22 @@ func (p *pipe) Close() error {
 	return err
 }
 
-func (p *pipe) LocalAddr() Addr {
+func (p *pipe) LocalAddr() net.Addr {
 	return pipeAddr(0)
 }
 
-func (p *pipe) RemoteAddr() Addr {
+func (p *pipe) RemoteAddr() net.Addr {
 	return pipeAddr(0)
 }
 
 func (p *pipe) SetDeadline(t time.Time) error {
-	return &OpError{Op: "set", Net: "pipe", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
+	return &net.OpError{Op: "set", Net: "pipe", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
 }
 
 func (p *pipe) SetReadDeadline(t time.Time) error {
-	return &OpError{Op: "set", Net: "pipe", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
+	return &net.OpError{Op: "set", Net: "pipe", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
 }
 
 func (p *pipe) SetWriteDeadline(t time.Time) error {
-	return &OpError{Op: "set", Net: "pipe", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
+	return &net.OpError{Op: "set", Net: "pipe", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
 }
