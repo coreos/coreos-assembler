@@ -10,6 +10,7 @@
 package bufpipe
 
 import (
+	"bytes"
 	"io"
 	"sync"
 )
@@ -19,11 +20,24 @@ type pipe struct {
 	rl    sync.Mutex // gates readers one at a time
 	wl    sync.Mutex // gates writers one at a time
 	l     sync.Mutex // protects remaining fields
-	data  []byte     // data remaining in pending write
+	buf   pipeBuffer // data buffer
 	rwait sync.Cond  // waiting reader
 	wwait sync.Cond  // waiting writer
 	rerr  error      // if reader closed, error to give writes
 	werr  error      // if writer closed, error to give reads
+}
+
+type pipeBuffer interface {
+	Len() int
+	io.Writer
+	io.Reader
+}
+
+func newPipe(buf pipeBuffer) *pipe {
+	p := &pipe{buf: buf}
+	p.rwait.L = &p.l
+	p.wwait.L = &p.l
+	return p
 }
 
 func (p *pipe) read(b []byte) (n int, err error) {
@@ -37,7 +51,7 @@ func (p *pipe) read(b []byte) (n int, err error) {
 		if p.rerr != nil {
 			return 0, io.ErrClosedPipe
 		}
-		if p.data != nil {
+		if p.buf.Len() > 0 {
 			break
 		}
 		if p.werr != nil {
@@ -45,12 +59,8 @@ func (p *pipe) read(b []byte) (n int, err error) {
 		}
 		p.rwait.Wait()
 	}
-	n = copy(b, p.data)
-	p.data = p.data[n:]
-	if len(p.data) == 0 {
-		p.data = nil
-		p.wwait.Signal()
-	}
+	n, err = p.buf.Read(b)
+	p.wwait.Signal()
 	return
 }
 
@@ -68,28 +78,23 @@ func (p *pipe) write(b []byte) (n int, err error) {
 
 	p.l.Lock()
 	defer p.l.Unlock()
-	if p.werr != nil {
-		err = io.ErrClosedPipe
-		return
-	}
-	p.data = b
-	p.rwait.Signal()
 	for {
-		if p.data == nil {
+		if p.werr != nil {
+			err = io.ErrClosedPipe
 			break
 		}
 		if p.rerr != nil {
 			err = p.rerr
 			break
 		}
-		if p.werr != nil {
-			err = io.ErrClosedPipe
+		nn, err := p.buf.Write(b[n:])
+		p.rwait.Signal()
+		n += nn
+		if err != errWriteFull {
 			break
 		}
 		p.wwait.Wait()
 	}
-	n = len(b) - len(p.data)
-	p.data = nil // in case of rerr or werr
 	return
 }
 
@@ -123,6 +128,7 @@ type PipeReader struct {
 // Read implements the standard Read interface:
 // it reads data from the pipe, blocking until a writer
 // arrives or the write end is closed.
+// Closing the write end does not prevent reading buffered data.
 // If the write end is closed with an error, that error is
 // returned as err; otherwise err is io.EOF.
 func (r *PipeReader) Read(data []byte) (n int, err error) {
@@ -148,21 +154,27 @@ type PipeWriter struct {
 }
 
 // Write implements the standard Write interface:
-// it writes data to the pipe, blocking until one or more readers
-// have consumed all the data or the read end is closed.
+// it writes data to the pipe, returning once the data is
+// buffered or the read end is closed.
+// When using a FixedPipe, Write may block until one
+// or more readers have consumed some of the data.
 // If the read end is closed with an error, that err is
 // returned as err; otherwise err is io.ErrClosedPipe.
 func (w *PipeWriter) Write(data []byte) (n int, err error) {
 	return w.p.write(data)
 }
 
-// Close closes the writer; subsequent reads from the
+// Close closes the writer.
+// Buffered data may still be read.
+// Once the buffer is empty subsequent reads from the
 // read half of the pipe will return no bytes and io.EOF.
 func (w *PipeWriter) Close() error {
 	return w.CloseWithError(nil)
 }
 
-// CloseWithError closes the writer; subsequent reads from the
+// CloseWithError closes the writer.
+// Buffered data may still be read.
+// Once the buffer is empty subsequent reads from the
 // read half of the pipe will return no bytes and the error err,
 // or io.EOF if err is nil.
 //
@@ -172,25 +184,40 @@ func (w *PipeWriter) CloseWithError(err error) error {
 	return nil
 }
 
-// Pipe creates a synchronous in-memory pipe.
-// It can be used to connect code expecting an io.Reader
-// with code expecting an io.Writer.
+// Pipe creates a synchronous in-memory pipe with an unlimited buffer.
+// If the input size is unknown a FixedPipe may be preferable.
 //
-// Reads and Writes on the pipe are matched one to one
-// except when multiple Reads are needed to consume a single Write.
-// That is, each Write to the PipeWriter blocks until it has satisfied
-// one or more Reads from the PipeReader that fully consume
-// the written data.
-// The data is copied directly from the Write to the corresponding
-// Read (or Reads); there is no internal buffering.
+// Reads will block until data is written.
+// Writes will never block.
 //
 // It is safe to call Read and Write in parallel with each other or with Close.
 // Parallel calls to Read and parallel calls to Write are also safe:
 // the individual calls will be gated sequentially.
 func Pipe() (*PipeReader, *PipeWriter) {
-	p := new(pipe)
-	p.rwait.L = &p.l
-	p.wwait.L = &p.l
+	p := newPipe(&bytes.Buffer{})
+	r := &PipeReader{p}
+	w := &PipeWriter{p}
+	return r, w
+}
+
+const minBufferSize = 16
+
+// FixedPipe creates a synchronous in-memory pipe with a
+// fixed-size buffer that has at least the specified size.
+// It can be used to mimic a kernel provided fifo or socket
+// which have an internal buffer and blocking I/O.
+//
+// Reads will block until data is written.
+// Writes will block when the internal buffer is filled.
+//
+// It is safe to call Read and Write in parallel with each other or with Close.
+// Parallel calls to Read and parallel calls to Write are also safe:
+// the individual calls will be gated sequentially.
+func FixedPipe(size int) (*PipeReader, *PipeWriter) {
+	if size < minBufferSize {
+		size = minBufferSize
+	}
+	p := newPipe(&fixedBuffer{buf: make([]byte, size)})
 	r := &PipeReader{p}
 	w := &PipeWriter{p}
 	return r, w
