@@ -15,6 +15,7 @@
 package qemu
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -134,10 +135,16 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		}
 	}
 
+	journal, err := platform.NewJournal(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	qm := &machine{
-		qc:    qc,
-		id:    id.String(),
-		netif: netif,
+		qc:      qc,
+		id:      id.String(),
+		netif:   netif,
+		journal: journal,
 	}
 
 	var qmCmd []string
@@ -208,6 +215,11 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	)
 
 	if err = qm.qemu.Start(); err != nil {
+		return nil, err
+	}
+
+	if err := qm.journal.Start(context.TODO(), qm); err != nil {
+		qm.Destroy()
 		return nil, err
 	}
 

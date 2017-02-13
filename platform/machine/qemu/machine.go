@@ -23,10 +23,11 @@ import (
 )
 
 type machine struct {
-	qc    *Cluster
-	id    string
-	qemu  exec.Cmd
-	netif *local.Interface
+	qc      *Cluster
+	id      string
+	qemu    exec.Cmd
+	netif   *local.Interface
+	journal *platform.Journal
 }
 
 func (m *machine) ID() string {
@@ -59,6 +60,9 @@ func (m *machine) Reboot() error {
 
 func (m *machine) Destroy() error {
 	err := m.qemu.Kill()
+	if err2 := m.journal.Destroy(); err == nil && err2 != nil {
+		err = err2
+	}
 
 	m.qc.DelMach(m)
 
