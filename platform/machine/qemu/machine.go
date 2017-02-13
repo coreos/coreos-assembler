@@ -17,6 +17,7 @@ package qemu
 import (
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
 )
@@ -50,6 +51,10 @@ func (m *machine) PasswordSSHClient(user string, password string) (*ssh.Client, 
 
 func (m *machine) SSH(cmd string) ([]byte, error) {
 	return m.qc.SSH(m, cmd)
+}
+
+func (m *machine) Reboot() error {
+	return platform.Reboot(m)
 }
 
 func (m *machine) Destroy() error {
