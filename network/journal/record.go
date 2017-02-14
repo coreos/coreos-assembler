@@ -15,6 +15,7 @@
 package journal
 
 import (
+	"context"
 	"io"
 	"os"
 
@@ -67,30 +68,37 @@ func (r *Recorder) record(export io.Reader) error {
 	}
 }
 
-func (r *Recorder) StartSSH(client *ssh.Client) error {
+func (r *Recorder) StartSSH(ctx context.Context, client *ssh.Client) error {
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-ctx.Done()
+		client.Close()
+	}()
+
 	journal, err := client.NewSession()
 	if err != nil {
+		cancel()
 		return err
 	}
 	journal.Stderr = os.Stderr
 
 	export, err := journal.StdoutPipe()
 	if err != nil {
-		client.Close()
+		cancel()
 		return err
 	}
 
 	cmd := shellquote.Join(r.journalctl()...)
 	if err := journal.Start(cmd); err != nil {
-		client.Close()
+		cancel()
 		return err
 	}
 
 	go func() {
-		defer client.Close()
 		err := r.record(export)
+		cancel()
 		err2 := journal.Wait()
-		// Tolerate closed SSH connections.
+		// Tolerate closed/canceled SSH connections.
 		if _, ok := err2.(*ssh.ExitMissingError); ok {
 			err2 = nil
 		}
@@ -103,9 +111,9 @@ func (r *Recorder) StartSSH(client *ssh.Client) error {
 	return nil
 }
 
-func (r *Recorder) StartLocal() error {
+func (r *Recorder) StartLocal(ctx context.Context) error {
 	cmd := r.journalctl()
-	journal := exec.Command(cmd[0], cmd[1:]...)
+	journal := exec.CommandContext(ctx, cmd[0], cmd[1:]...)
 	journal.Stderr = os.Stderr
 
 	export, err := journal.StdoutPipe()
@@ -133,15 +141,15 @@ func (r *Recorder) Wait() error {
 	return <-r.status
 }
 
-func (r *Recorder) RunSSH(client *ssh.Client) error {
-	if err := r.StartSSH(client); err != nil {
+func (r *Recorder) RunSSH(ctx context.Context, client *ssh.Client) error {
+	if err := r.StartSSH(ctx, client); err != nil {
 		return err
 	}
 	return r.Wait()
 }
 
-func (r *Recorder) RunLocal() error {
-	if err := r.StartLocal(); err != nil {
+func (r *Recorder) RunLocal(ctx context.Context) error {
+	if err := r.StartLocal(ctx); err != nil {
 		return err
 	}
 	return r.Wait()

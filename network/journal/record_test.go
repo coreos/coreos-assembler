@@ -15,6 +15,7 @@
 package journal
 
 import (
+	"context"
 	"io"
 	"strings"
 	"testing"
@@ -48,6 +49,7 @@ func journalAfterEsc(cursor string) string {
 }
 
 func TestRecorderSSH(t *testing.T) {
+	ctx := context.Background()
 	client := mockssh.NewMockClient(func(s *mockssh.Session) {
 		if s.Exec != journalBoot {
 			t.Errorf("got %q wanted %q", s.Exec, journalBoot)
@@ -61,7 +63,7 @@ func TestRecorderSSH(t *testing.T) {
 	})
 
 	recorder := NewRecorder(nullFormatter{})
-	if err := recorder.RunSSH(client); err != nil {
+	if err := recorder.RunSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}
 
@@ -82,7 +84,7 @@ func TestRecorderSSH(t *testing.T) {
 		}
 	})
 
-	if err := recorder.RunSSH(client); err != nil {
+	if err := recorder.RunSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}
 
@@ -100,11 +102,29 @@ func TestRecorderSSH(t *testing.T) {
 		}
 	})
 
-	if err := recorder.RunSSH(client); err != nil {
+	if err := recorder.RunSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}
 
 	if recorder.cursor != cursorBinary {
 		t.Errorf("got %q wanted %q", recorder.cursor, cursorBinary)
+	}
+}
+
+func TestRecorderSSHCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	client := mockssh.NewMockClient(func(s *mockssh.Session) {
+		// Skip close, let the connection hang.
+	})
+
+	recorder := NewRecorder(nullFormatter{})
+	if err := recorder.StartSSH(ctx, client); err != nil {
+		t.Fatal(err)
+	}
+
+	cancel()
+
+	if err := recorder.Wait(); err != nil {
+		t.Fatal(err)
 	}
 }

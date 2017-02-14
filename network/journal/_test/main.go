@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -12,13 +13,16 @@ func main() {
 	log.SetPrefix("       ")
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 
+	bac := context.Background()
 	rec := journal.NewRecorder(journal.ShortWriter(os.Stdout))
 	for {
 		log.Print("Starting journalctl...")
-		err := rec.RunLocal()
+		ctx, cancel := context.WithTimeout(bac, 7*time.Second)
+		err := rec.RunLocal(ctx)
 		if err != nil {
 			log.Print(err)
 		}
+		cancel()
 		time.Sleep(7 * time.Second)
 	}
 }
