@@ -110,9 +110,8 @@ func EnableSelinux(m Machine) error {
 	return nil
 }
 
-// Reboots a machine and blocks until the system to be accessible by SSH again.
-// It will return an error if the machine is not accessible after a timeout.
-func Reboot(m Machine) error {
+// Reboots a machine. Does not block.
+func StartReboot(m Machine) error {
 	// stop sshd so that commonMachineChecks will only work if the machine
 	// actually rebooted
 	out, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
@@ -122,6 +121,16 @@ func Reboot(m Machine) error {
 	}
 	if err != nil {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
+	}
+	return nil
+}
+
+// Reboots a machine and blocks until the system to be accessible by SSH again.
+// It will return an error if the machine is not accessible after a timeout.
+func Reboot(m Machine) error {
+	err := StartReboot(m)
+	if err != nil {
+		return err
 	}
 
 	err = CheckMachine(m)

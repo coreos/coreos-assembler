@@ -15,6 +15,8 @@
 package qemu
 
 import (
+	"context"
+
 	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform"
@@ -55,7 +57,19 @@ func (m *machine) SSH(cmd string) ([]byte, error) {
 }
 
 func (m *machine) Reboot() error {
-	return platform.Reboot(m)
+	if err := platform.StartReboot(m); err != nil {
+		return err
+	}
+	if err := m.journal.Start(context.TODO(), m); err != nil {
+		return err
+	}
+	if err := platform.CheckMachine(m); err != nil {
+		return err
+	}
+	if err := platform.EnableSelinux(m); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *machine) Destroy() error {
