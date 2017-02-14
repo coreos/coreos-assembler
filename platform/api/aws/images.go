@@ -26,15 +26,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 )
 
-type CreateImageConfig struct {
-	// URL specifies an HTTP url to an aws-compatible streaming vmdk from which
-	// to create this image
-	URL string
-	// FilePath specifies a filepath to an aws-compatible streaming vmdk from
-	// which to create this image
-	FilePath string
-}
-
 type EC2ImageType string
 
 const (
@@ -90,15 +81,6 @@ func (e *EC2ImageFormat) Type() string {
 }
 
 var vmImportRole = "vmimport"
-
-type Image struct {
-	// Image ID
-	AMI string
-	// Image type, either pv or hvm
-	Type EC2ImageType
-	// Image region
-	Region string
-}
 
 type Snapshot struct {
 	SnapshotID string
