@@ -39,7 +39,7 @@ type EC2ImageType string
 
 const (
 	EC2ImageTypeHVM EC2ImageType = "hvm"
-	EC2ImageTypePV  EC2ImageType = "pv"
+	EC2ImageTypePV  EC2ImageType = "paravirtual"
 )
 
 type EC2ImageFormat string
@@ -48,6 +48,26 @@ const (
 	EC2ImageFormatRaw  EC2ImageFormat = ec2.DiskImageFormatRaw
 	EC2ImageFormatVmdk                = ec2.DiskImageFormatVmdk
 )
+
+// TODO, these can be derived at runtime
+var akis = map[string]string{
+	"us-east-1":      "aki-919dcaf8",
+	"us-east-2":      "aki-da055ebf",
+	"us-west-1":      "aki-880531cd",
+	"us-west-2":      "aki-fc8f11cc",
+	"eu-west-1":      "aki-52a34525",
+	"eu-west-2":      "aki-8b6369ef",
+	"eu-central-1":   "aki-184c7a05",
+	"ap-south-1":     "aki-a7305ac8",
+	"ap-southeast-1": "aki-503e7402",
+	"ap-southeast-2": "aki-c362fff9",
+	"ap-northeast-1": "aki-176bf516",
+	"ap-northeast-2": "aki-01a66b6f",
+	"sa-east-1":      "aki-5553f448",
+	"ca-central-1":   "aki-320ebd56",
+
+	"us-gov-west-1": "aki-1de98d3e",
+}
 
 func (e *EC2ImageFormat) Set(s string) error {
 	switch s {
@@ -242,7 +262,7 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	res, err := a.ec2.RegisterImage(registerImageParams(snapshotID, name, description, EC2ImageTypeHVM))
+	res, err := a.ec2.RegisterImage(registerImageParams(snapshotID, name+"-hvm", description, "xvd", EC2ImageTypeHVM))
 	if err != nil {
 		return "", fmt.Errorf("error creating hvm AMI: %v", err)
 	}
@@ -250,30 +270,32 @@ func (a *API) CreateHVMImage(snapshotID string, name string, description string)
 }
 
 func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
-	res, err := a.ec2.RegisterImage(registerImageParams(snapshotID, name, description, EC2ImageTypePV))
+	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
+	params.KernelId = aws.String(akis[a.opts.Region])
+	res, err := a.ec2.RegisterImage(params)
 	if err != nil {
 		return "", fmt.Errorf("error creating hvm AMI: %v", err)
 	}
 	return *res.ImageId, nil
 }
 
-func registerImageParams(snapshotID, name, description string, imageType EC2ImageType) *ec2.RegisterImageInput {
+func registerImageParams(snapshotID, name, description string, diskBaseName string, imageType EC2ImageType) *ec2.RegisterImageInput {
 	return &ec2.RegisterImageInput{
 		Name:               aws.String(name),
 		Description:        aws.String(description),
 		Architecture:       aws.String("x86_64"),
 		VirtualizationType: aws.String(string(imageType)),
-		RootDeviceName:     aws.String("/dev/xvda"),
+		RootDeviceName:     aws.String(fmt.Sprintf("/dev/%sa", diskBaseName)),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
 			&ec2.BlockDeviceMapping{
-				DeviceName: aws.String("/dev/xvda"),
+				DeviceName: aws.String(fmt.Sprintf("/dev/%sa", diskBaseName)),
 				Ebs: &ec2.EbsBlockDevice{
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
 				},
 			},
 			&ec2.BlockDeviceMapping{
-				DeviceName:  aws.String("/dev/xvdb"),
+				DeviceName:  aws.String(fmt.Sprintf("/dev/%sb", diskBaseName)),
 				VirtualName: aws.String("ephemeral0"),
 			},
 		},
