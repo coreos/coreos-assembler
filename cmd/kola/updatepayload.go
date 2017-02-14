@@ -227,7 +227,7 @@ func tryUpdate(m platform.Machine) error {
 	plog.Info("Rebooting test machine")
 
 	/* reboot it */
-	if err := platform.Reboot(m); err != nil {
+	if err := m.Reboot(); err != nil {
 		return fmt.Errorf("reboot failed: %v", err)
 	}
 

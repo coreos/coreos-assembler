@@ -17,6 +17,8 @@ package aws
 import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/coreos/mantle/platform"
 )
 
 type machine struct {
@@ -46,6 +48,10 @@ func (am *machine) PasswordSSHClient(user string, password string) (*ssh.Client,
 
 func (am *machine) SSH(cmd string) ([]byte, error) {
 	return am.cluster.SSH(am, cmd)
+}
+
+func (m *machine) Reboot() error {
+	return platform.Reboot(m)
 }
 
 func (am *machine) Destroy() error {

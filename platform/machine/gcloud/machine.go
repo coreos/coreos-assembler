@@ -2,6 +2,8 @@ package gcloud
 
 import (
 	"golang.org/x/crypto/ssh"
+
+	"github.com/coreos/mantle/platform"
 )
 
 type machine struct {
@@ -33,6 +35,10 @@ func (gm *machine) PasswordSSHClient(user string, password string) (*ssh.Client,
 
 func (gm *machine) SSH(cmd string) ([]byte, error) {
 	return gm.gc.SSH(gm, cmd)
+}
+
+func (m *machine) Reboot() error {
+	return platform.Reboot(m)
 }
 
 func (gm *machine) Destroy() error {

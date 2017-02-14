@@ -57,6 +57,9 @@ type Machine interface {
 	// SSH runs a single command over a new SSH connection.
 	SSH(cmd string) ([]byte, error)
 
+	// Reboot restarts the machine and waits for it to come back.
+	Reboot() error
+
 	// Destroy terminates the machine and frees associated resources.
 	Destroy() error
 }
