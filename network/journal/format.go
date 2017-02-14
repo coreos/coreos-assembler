@@ -29,8 +29,9 @@ type Formatter interface {
 }
 
 type shortWriter struct {
-	w  io.Writer
-	tz *time.Location
+	w      io.Writer
+	tz     *time.Location
+	bootid string
 }
 
 // ShortWriter writes journal entries in a format similar to journalctl's
@@ -53,6 +54,10 @@ func (s *shortWriter) WriteEntry(entry Entry) error {
 	if realtime.IsZero() || !ok {
 		// Simply skip entries that are woefully incomplete.
 		return nil
+	}
+
+	if s.isReboot(entry) {
+		io.WriteString(s.w, "-- Reboot --\n")
 	}
 
 	var buf bytes.Buffer
@@ -89,6 +94,23 @@ func (s *shortWriter) WriteEntry(entry Entry) error {
 
 	_, err := buf.WriteTo(s.w)
 	return err
+}
+
+func (s *shortWriter) isReboot(entry Entry) bool {
+	bootid, ok := entry[FIELD_BOOT_ID]
+	if !ok || len(bootid) == 0 {
+		return false
+	}
+
+	newid := string(bootid)
+	if s.bootid == "" {
+		s.bootid = newid
+		return false
+	} else if s.bootid != newid {
+		s.bootid = newid
+		return true
+	}
+	return false
 }
 
 func writeEscaped(buf *bytes.Buffer, line []byte) {
