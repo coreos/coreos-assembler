@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -130,6 +131,12 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 }
 
 func runUpdateTest() error {
+	outputDir, err := kola.CleanOutputDir(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	cluster, err := qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	if err != nil {
 		return fmt.Errorf("new cluster: %v", err)
