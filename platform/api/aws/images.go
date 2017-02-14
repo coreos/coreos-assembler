@@ -88,6 +88,9 @@ type Snapshot struct {
 
 // CreateSnapshot creates an AWS Snapshot
 func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
+	if format == "" {
+		format = EC2ImageFormatVmdk
+	}
 	s3url, err := url.Parse(sourceURL)
 	if err != nil {
 		return nil, err

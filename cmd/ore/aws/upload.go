@@ -44,7 +44,7 @@ var (
 func init() {
 	build := sdk.BuildRoot()
 	AWS.AddCommand(cmdUpload)
-	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/; bucket defaults to a regional bucket and prefix defaults to $USER")
+	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/; defaults to a regional bucket and prefix defaults to $USER")
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags().StringVar(&uploadFile, "file",

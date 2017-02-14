@@ -44,8 +44,13 @@ var (
 	cmdCreateSnapshot = &cobra.Command{
 		Use:   "create-snapshot",
 		Short: "Create AWS Snapshot",
-		Long:  "Create AWS Snapshot from a vmdk url or file",
-		RunE:  runCreateSnapshot,
+		Long: `Create AWS Snapshot from an image in S3.
+Supported formats are VMDK (as created with ./image_to_vm --format=ami_vmdk) and RAW.
+
+The image may be uploaded to S3 manually, or with the 'ore aws upload' command.
+
+This command does not have to be used directly. The 'ore aws create-images' command will create a snapshot if necessary.`,
+		RunE: runCreateSnapshot,
 	}
 	createSnapshotArgs = &createSnapshotArguments{}
 
@@ -55,7 +60,16 @@ var (
 		Long: `Create AWS images. This will create all relevant AMIs (hvm, pv, etc).
 The flags allow controlling various knobs about the images.
 
-After a successful run, the final line of output will be a line of JSON describing the image resources created and the underlying snapshots`,
+After a successful run, the final line of output will be a line of JSON describing the image resources created and the underlying snapshots
+
+A common usage is:
+
+    ore aws create-images --region=us-west-2 \
+		  --snapshot-description="CoreOS-stable-1234.5.6" \
+		  --name="CoreOS-stable-1234.5.6" \
+		  --description="CoreOS stable 1234.5.6" \
+		  --snapshot-source "s3://s3-us-west-2.users.developer.core-os.net/.../coreos_production_ami_vmdk_image.vmdk"
+`,
 		RunE: runCreateImages,
 	}
 	createImagesArgs = &createImagesArguments{
@@ -67,7 +81,7 @@ func init() {
 
 	addSnapshotFlags := func(cmd *cobra.Command, args *createSnapshotArguments, prefix string) {
 		cmd.Flags().StringVar(&args.snapshotSource, prefix+"source", "", "snapshot source: must be an 's3://' URI")
-		cmd.Flags().StringVar(&args.snapshotDescription, prefix+"description", "", "snapshot description: will be derived automatically if unset")
+		cmd.Flags().StringVar(&args.snapshotDescription, prefix+"description", "", "snapshot description")
 		cmd.Flags().Var(&args.format, prefix+"format", fmt.Sprintf("snapshot format: default %s, %s or %s", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw))
 	}
 
@@ -75,8 +89,8 @@ func init() {
 	addSnapshotFlags(cmdCreateSnapshot, createSnapshotArgs, "")
 
 	AWS.AddCommand(cmdCreateImages)
-	cmdCreateImages.Flags().StringVar(&createImagesArgs.name, "name", "", "[optional] the name of the image to create; will be derived automatically if unset")
-	cmdCreateImages.Flags().StringVar(&createImagesArgs.description, "description", "", "[optional] the description of the image to create; will be derived automatically if unset")
+	cmdCreateImages.Flags().StringVar(&createImagesArgs.name, "name", "", "the name of the image to create")
+	cmdCreateImages.Flags().StringVar(&createImagesArgs.description, "description", "", "the description of the image to create")
 	cmdCreateImages.Flags().BoolVar(&createImagesArgs.createPV, "create-pv", true, "whether to create a PV AMI in addition the the HVM AMI")
 	cmdCreateImages.Flags().StringVar(&createImagesArgs.snapshotID, "snapshot-id", "", "[optional] the snapshot ID to base this AMI off of. A new snapshot will be created if not provided.")
 	addSnapshotFlags(cmdCreateImages, createImagesArgs.createSnapshotArguments, "snapshot-")
@@ -105,6 +119,9 @@ func runCreateSnapshot(cmd *cobra.Command, args []string) error {
 }
 
 func runCreateImages(cmd *cobra.Command, args []string) error {
+	if createImagesArgs.name == "" {
+		return fmt.Errorf("must set an image name")
+	}
 	snapshotID := createImagesArgs.snapshotID
 	if snapshotID == "" {
 		newSnapshotID, err := createSnapshot(createImagesArgs.createSnapshotArguments)
