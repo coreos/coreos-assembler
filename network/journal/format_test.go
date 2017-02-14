@@ -136,7 +136,7 @@ func TestFormatShort(t *testing.T) {
 	}} {
 		t.Run(testcase.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			w := NewShortWriter(&buf)
+			w := ShortWriter(&buf)
 			w.SetTimezone(time.UTC) // Needed for consistent test results.
 			if err := w.WriteEntry(testcase.entry); err != nil {
 				t.Error(err)

@@ -23,26 +23,31 @@ import (
 	"unicode/utf8"
 )
 
-// ShortWriter writes journal entries in a format similar to journalctl's
-// "short-precise" format, excluding hostname for conciseness.
-type ShortWriter struct {
+type Formatter interface {
+	SetTimezone(tz *time.Location)
+	WriteEntry(entry Entry) error
+}
+
+type shortWriter struct {
 	w  io.Writer
 	tz *time.Location
 }
 
-func NewShortWriter(w io.Writer) *ShortWriter {
-	return &ShortWriter{
+// ShortWriter writes journal entries in a format similar to journalctl's
+// "short-precise" format, excluding hostname for conciseness.
+func ShortWriter(w io.Writer) Formatter {
+	return &shortWriter{
 		w:  w,
 		tz: time.Local,
 	}
 }
 
 // SetTimezone updates the time location. The default is local time.
-func (s *ShortWriter) SetTimezone(tz *time.Location) {
+func (s *shortWriter) SetTimezone(tz *time.Location) {
 	s.tz = tz
 }
 
-func (s *ShortWriter) WriteEntry(entry Entry) error {
+func (s *shortWriter) WriteEntry(entry Entry) error {
 	realtime := entry.Realtime()
 	message, ok := entry[FIELD_MESSAGE]
 	if realtime.IsZero() || !ok {
