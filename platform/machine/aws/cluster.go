@@ -15,7 +15,10 @@
 package aws
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/coreos/mantle/platform"
@@ -86,6 +89,28 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	mach := &machine{
 		cluster: ac,
 		mach:    instances[0],
+	}
+
+	dir := filepath.Join(ac.OutputDir(), mach.ID())
+	if err := os.Mkdir(dir, 0777); err != nil {
+		mach.Destroy()
+		return nil, err
+	}
+
+	confPath := filepath.Join(dir, "user-data")
+	if err := conf.WriteFile(confPath); err != nil {
+		mach.Destroy()
+		return nil, err
+	}
+
+	if mach.journal, err = platform.NewJournal(dir); err != nil {
+		mach.Destroy()
+		return nil, err
+	}
+
+	if err := mach.journal.Start(context.TODO(), mach); err != nil {
+		mach.Destroy()
+		return nil, err
 	}
 
 	if err := platform.CheckMachine(mach); err != nil {
