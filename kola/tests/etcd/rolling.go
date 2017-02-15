@@ -15,13 +15,9 @@
 package etcd
 
 import (
-	"fmt"
 	"path/filepath"
 
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/platform"
 )
 
 const (
@@ -38,15 +34,6 @@ func RollingUpgrade(cluster cluster.TestCluster) error {
 	)
 
 	csize := len(cluster.Machines())
-
-	if plog.LevelAt(capnslog.DEBUG) {
-		// get journalctl -f from all machines before starting
-		for _, m := range cluster.Machines() {
-			if err := platform.StreamJournal(m); err != nil {
-				return fmt.Errorf("failed to start journal: %v", err)
-			}
-		}
-	}
 
 	// drop in starting etcd binary
 	plog.Debug("adding files to cluster")

@@ -25,7 +25,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/agent"
 
@@ -161,10 +160,6 @@ func runUpdateTest() error {
 	}
 
 	// initial boot
-	if err := startJournal(m); err != nil {
-		return fmt.Errorf("initial boot: %v", err)
-	}
-
 	if err := checkUsrA(m); err != nil {
 		return fmt.Errorf("initial boot: %v", err)
 	}
@@ -174,10 +169,6 @@ func runUpdateTest() error {
 	}
 
 	// second boot
-	if err := startJournal(m); err != nil {
-		return fmt.Errorf("second boot: %v", err)
-	}
-
 	if err := checkUsrB(m); err != nil {
 		return fmt.Errorf("second boot: %v", err)
 	}
@@ -193,10 +184,6 @@ func runUpdateTest() error {
 	}
 
 	// third boot
-	if err := startJournal(m); err != nil {
-		return fmt.Errorf("third boot: %v", err)
-	}
-
 	if err := checkUsrA(m); err != nil {
 		return fmt.Errorf("third boot: %v", err)
 	}
@@ -274,15 +261,6 @@ func newUserdata(qc *qemu.Cluster) (string, error) {
 	}
 
 	return buf.String(), nil
-}
-
-func startJournal(m platform.Machine) error {
-	if plog.LevelAt(capnslog.DEBUG) {
-		if err := platform.StreamJournal(m); err != nil {
-			return fmt.Errorf("start journal: %v", err)
-		}
-	}
-	return nil
 }
 
 func checkUsrA(m platform.Machine) error {
