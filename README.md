@@ -187,3 +187,11 @@ cork enter -- ${S}/image_to_vm.sh --board=${B}
 cork enter -- ${S}/image_to_vm.sh --board=${B} --prod_image
 ```
 
+## TODO
+
+ - Migrate to the standard `log` package to make code easier to embed in
+   other projects which may not use `capnslog`.
+ - Adopt `context` as the primary way of managing the life time of
+   asynchronous jobs. It is more standard and flexible than our local
+   `destructor` package.
+ - Continue to expand the amount of data recorded in `_kola_temp`.
