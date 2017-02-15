@@ -37,7 +37,6 @@ import (
 type LocalCluster struct {
 	destructor.MultiDestructor
 	*platform.BaseCluster
-	OutputDir   string
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
 	OmahaServer *omaha.TrivialServer
@@ -46,7 +45,7 @@ type LocalCluster struct {
 }
 
 func NewLocalCluster(basename, outputDir string) (*LocalCluster, error) {
-	lc := &LocalCluster{OutputDir: outputDir}
+	lc := &LocalCluster{}
 
 	var err error
 	lc.nshandle, err = ns.Create()
@@ -56,7 +55,7 @@ func NewLocalCluster(basename, outputDir string) (*LocalCluster, error) {
 	lc.AddCloser(&lc.nshandle)
 
 	nsdialer := network.NewNsDialer(lc.nshandle)
-	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, nsdialer)
+	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, outputDir, nsdialer)
 	if err != nil {
 		lc.Destroy()
 		return nil, err
