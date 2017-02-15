@@ -110,7 +110,8 @@ func EnableSelinux(m Machine) error {
 	return nil
 }
 
-// Reboots a machine. Does not block.
+// Reboots a machine, stopping ssh first.
+// Afterwards run CheckMachine to verify the system is back and operational.
 func StartReboot(m Machine) error {
 	// stop sshd so that commonMachineChecks will only work if the machine
 	// actually rebooted
@@ -121,26 +122,6 @@ func StartReboot(m Machine) error {
 	}
 	if err != nil {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
-	}
-	return nil
-}
-
-// Reboots a machine and blocks until the system to be accessible by SSH again.
-// It will return an error if the machine is not accessible after a timeout.
-func Reboot(m Machine) error {
-	err := StartReboot(m)
-	if err != nil {
-		return err
-	}
-
-	err = CheckMachine(m)
-	if err != nil {
-		return err
-	}
-
-	err = EnableSelinux(m)
-	if err != nil {
-		return err
 	}
 	return nil
 }

@@ -15,6 +15,8 @@
 package aws
 
 import (
+	"context"
+
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
 
@@ -24,6 +26,7 @@ import (
 type machine struct {
 	cluster *cluster
 	mach    *ec2.Instance
+	journal *platform.Journal
 }
 
 func (am *machine) ID() string {
@@ -51,12 +54,30 @@ func (am *machine) SSH(cmd string) ([]byte, error) {
 }
 
 func (m *machine) Reboot() error {
-	return platform.Reboot(m)
+	if err := platform.StartReboot(m); err != nil {
+		return err
+	}
+	if err := m.journal.Start(context.TODO(), m); err != nil {
+		return err
+	}
+	if err := platform.CheckMachine(m); err != nil {
+		return err
+	}
+	if err := platform.EnableSelinux(m); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (am *machine) Destroy() error {
 	if err := am.cluster.api.TerminateInstance(am.ID()); err != nil {
 		return err
+	}
+
+	if am.journal != nil {
+		if err := am.journal.Destroy(); err != nil {
+			return err
+		}
 	}
 
 	am.cluster.DelMach(am)
