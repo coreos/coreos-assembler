@@ -273,15 +273,6 @@ func CheckMachine(m Machine) error {
 	}
 
 	if len(out) > 0 {
-		if plog.LevelAt(capnslog.DEBUG) {
-			log, err := m.SSH("journalctl -b")
-			if err != nil {
-				plog.Errorf("Failed to read journal: %v", err)
-			} else {
-				plog.Debugf("Journal:\n%s", log)
-			}
-		}
-
 		return fmt.Errorf("some systemd units failed:\n%s", out)
 	}
 
