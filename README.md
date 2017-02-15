@@ -20,10 +20,16 @@ the CoreOS SDK for testing software that has landed in the OS image.
 Ideally, all software needed for a test should be included by building
 it into the image from the SDK.
 
-Kola supports running tests on multiple platforms, currently QEMU and
-GCE. In the future systemd-nspawn and EC2 may be added. Local platforms
-do not rely on access to the Internet as a design principal of kola.
-Tests that do so will break on local platforms.
+Kola supports running tests on multiple platforms, currently QEMU, GCE,
+and AWS. In the future systemd-nspawn and other platforms may be added.
+Local platforms do not rely on access to the Internet as a design
+principal of kola, minimizing external dependencies. Any network
+services required get built directly into kola itself. Machines on cloud
+platforms do not have direct access to the kola so tests may depend on
+Internet services such as discovery.etcd.io or quay.io instead.
+
+Kola outputs assorted logs and test data to `_kola_temp` for later
+inspection. This directory is completely wiped and recreated every time.
 
 Kola is still under heavy development and it is expected that its
 interface will continue to change. Both the CLI and test registration
