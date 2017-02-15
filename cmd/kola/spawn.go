@@ -88,9 +88,9 @@ func runSpawn(cmd *cobra.Command, args []string) {
 	case "qemu":
 		cluster, err = qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	case "gce":
-		cluster, err = gcloud.NewCluster(&kola.GCEOptions)
+		cluster, err = gcloud.NewCluster(&kola.GCEOptions, outputDir)
 	case "aws":
-		cluster, err = aws.NewCluster(&kola.AWSOptions)
+		cluster, err = aws.NewCluster(&kola.AWSOptions, outputDir)
 	default:
 		err = fmt.Errorf("invalid platform %q", kolaPlatform)
 	}
