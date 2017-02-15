@@ -45,7 +45,7 @@ var (
 
 func init() {
 	downloadImageCmd.Flags().StringVar(&downloadImageRoot,
-		"root", "http://storage.core-os.net/coreos/amd64-usr/master/", "base URL of images")
+		"root", "https://alpha.release.core-os.net/amd64-usr/current/", "base URL of images")
 	downloadImageCmd.Flags().StringVar(&downloadImageCacheDir,
 		"cache-dir", filepath.Join(sdk.RepoCache(), "images"), "local dir for image cache")
 	downloadImageCmd.Flags().StringVar(&downloadImagePrefix,
