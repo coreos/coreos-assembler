@@ -101,6 +101,7 @@ func init() {
 		Run:         dockerNetworksReliably,
 		ClusterSize: 1,
 		Name:        "docker.networks-reliably",
+		UserData:    `#cloud-config`,
 		MinVersion:  semver.Version{Major: 1192},
 	})
 }
