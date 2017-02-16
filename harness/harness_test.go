@@ -18,110 +18,57 @@ package harness
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func TestTestContext(t *testing.T) {
-	const (
-		add1 = 0
-		done = 1
-	)
-	// After each of the calls are applied to the context, the
-	type call struct {
-		typ int // run or done
-		// result from applying the call
-		running int
-		waiting int
-		started bool
+func TestMain(m *testing.M) {
+	g0 := runtime.NumGoroutine()
+
+	code := m.Run()
+	if code != 0 {
+		os.Exit(code)
 	}
-	testCases := []struct {
-		max int
-		run []call
-	}{{
-		max: 1,
-		run: []call{
-			{typ: add1, running: 1, waiting: 0, started: true},
-			{typ: done, running: 0, waiting: 0, started: false},
-		},
-	}, {
-		max: 1,
-		run: []call{
-			{typ: add1, running: 1, waiting: 0, started: true},
-			{typ: add1, running: 1, waiting: 1, started: false},
-			{typ: done, running: 1, waiting: 0, started: true},
-			{typ: done, running: 0, waiting: 0, started: false},
-			{typ: add1, running: 1, waiting: 0, started: true},
-		},
-	}, {
-		max: 3,
-		run: []call{
-			{typ: add1, running: 1, waiting: 0, started: true},
-			{typ: add1, running: 2, waiting: 0, started: true},
-			{typ: add1, running: 3, waiting: 0, started: true},
-			{typ: add1, running: 3, waiting: 1, started: false},
-			{typ: add1, running: 3, waiting: 2, started: false},
-			{typ: add1, running: 3, waiting: 3, started: false},
-			{typ: done, running: 3, waiting: 2, started: true},
-			{typ: add1, running: 3, waiting: 3, started: false},
-			{typ: done, running: 3, waiting: 2, started: true},
-			{typ: done, running: 3, waiting: 1, started: true},
-			{typ: done, running: 3, waiting: 0, started: true},
-			{typ: done, running: 2, waiting: 0, started: false},
-			{typ: done, running: 1, waiting: 0, started: false},
-			{typ: done, running: 0, waiting: 0, started: false},
-		},
-	}}
-	for i, tc := range testCases {
-		suite := &Suite{
-			startParallel: make(chan bool),
-			maxParallel:   tc.max,
+
+	// Check that there are no goroutines left behind.
+	t0 := time.Now()
+	stacks := make([]byte, 1<<20)
+	for {
+		g1 := runtime.NumGoroutine()
+		if g1 == g0 {
+			return
 		}
-		for j, call := range tc.run {
-			doCall := func(f func()) chan bool {
-				done := make(chan bool)
-				go func() {
-					f()
-					done <- true
-				}()
-				return done
-			}
-			started := false
-			switch call.typ {
-			case add1:
-				signal := doCall(suite.waitParallel)
-				select {
-				case <-signal:
-					started = true
-				case suite.startParallel <- true:
-					<-signal
-				}
-			case done:
-				signal := doCall(suite.release)
-				select {
-				case <-signal:
-				case <-suite.startParallel:
-					started = true
-					<-signal
-				}
-			}
-			if started != call.started {
-				t.Errorf("%d:%d:started: got %v; want %v", i, j, started, call.started)
-			}
-			if suite.running != call.running {
-				t.Errorf("%d:%d:running: got %v; want %v", i, j, suite.running, call.running)
-			}
-			if suite.numWaiting != call.waiting {
-				t.Errorf("%d:%d:waiting: got %v; want %v", i, j, suite.numWaiting, call.waiting)
-			}
+		stacks = stacks[:runtime.Stack(stacks, true)]
+		time.Sleep(50 * time.Millisecond)
+		if time.Since(t0) > 2*time.Second {
+			fmt.Fprintf(os.Stderr, "Unexpected leftover goroutines detected: %v -> %v\n%s\n", g0, g1, stacks)
+			os.Exit(1)
 		}
 	}
 }
 
-func TestTRun(t *testing.T) {
+func TestContextCancel(t *testing.T) {
+	suite := NewSuite([]InternalTest{
+		{"ContextCancel", func(h *H) {
+			ctx := h.Context()
+			// Tests we don't leak this goroutine:
+			go func() {
+				<-ctx.Done()
+			}()
+		}}})
+	r := suite.Run()
+	if r != 0 {
+		t.Errorf("Run failed: %d", r)
+	}
+}
+
+func TestSubTests(t *testing.T) {
 	realTest := t
 	testCases := []struct {
 		desc   string
@@ -215,8 +162,8 @@ func TestTRun(t *testing.T) {
 		desc: "skipping after error",
 		output: `
 --- FAIL: skipping after error (N.NNs)
-        sub_test.go:NNN: an error
-        sub_test.go:NNN: skipped`,
+        harness_test.go:NNN: an error
+        harness_test.go:NNN: skipped`,
 		f: func(t *H) {
 			t.Error("an error")
 			t.Skip("skipped")
