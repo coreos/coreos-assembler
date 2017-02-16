@@ -69,6 +69,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 					DiskName:    name,
 					SourceImage: a.options.Image,
 					DiskType:    "/zones/" + a.options.Zone + "/diskTypes/" + a.options.DiskType,
+					DiskSizeGb:  12,
 				},
 			},
 		},
