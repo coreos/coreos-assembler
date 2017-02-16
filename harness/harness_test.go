@@ -62,9 +62,8 @@ func TestContextCancel(t *testing.T) {
 				<-ctx.Done()
 			}()
 		}}})
-	r := suite.Run()
-	if r != 0 {
-		t.Errorf("Run failed: %d", r)
+	if err := suite.Run(); err != nil {
+		t.Error(err)
 	}
 }
 

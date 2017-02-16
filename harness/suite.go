@@ -16,6 +16,7 @@
 package harness
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -28,6 +29,9 @@ import (
 )
 
 var (
+	SuiteEmpty  = errors.New("harness: no tests to run")
+	SuiteFailed = errors.New("harness: test suite failed")
+
 	// The directory in which to create profile files and the like. When run from
 	// "go test", the binary always runs in the source directory for the package;
 	// this flag lets "go test" tell the binary to write the files in the directory where
@@ -111,8 +115,8 @@ func NewSuite(tests []InternalTest) *Suite {
 	}
 }
 
-// Run runs the tests. It returns an exit code to pass to os.Exit.
-func (s *Suite) Run() int {
+// Run runs the tests. Returns SuiteFailed for any test failure.
+func (s *Suite) Run() error {
 	// The user may have already called flag.Parse.
 	if !flag.Parsed() {
 		flag.Parse()
@@ -126,22 +130,12 @@ func (s *Suite) Run() int {
 	s.running = 1 // Set the count to 1 for the main (sequential) test.
 	s.before()
 	startAlarm()
-	testRan, testOk := s.runTests()
-	if !testRan {
-		fmt.Fprintln(os.Stderr, "testing: warning: no tests to run")
-	}
-	if !testOk {
-		fmt.Println("FAIL")
-		s.after()
-		return 1
-	}
-
-	fmt.Println("PASS")
+	err := s.runTests()
 	s.after()
-	return 0
+	return err
 }
 
-func (s *Suite) runTests() (ran, ok bool) {
+func (s *Suite) runTests() error {
 	t := &H{
 		signal:  make(chan bool),
 		barrier: make(chan bool),
@@ -157,7 +151,13 @@ func (s *Suite) runTests() (ran, ok bool) {
 		// phase as this pollutes the stacktrace output when aborting.
 		go func() { <-t.signal }()
 	})
-	return t.ran, !t.Failed()
+	if !t.ran {
+		return SuiteEmpty
+	}
+	if t.Failed() {
+		return SuiteFailed
+	}
+	return nil
 }
 
 // before runs before all testing.

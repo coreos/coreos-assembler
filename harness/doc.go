@@ -104,7 +104,12 @@
 //		suite := harness.NewSuite([]InternalTest{
 //			{"SomeTest", SomeTest},
 //		})
-//		os.Exit(suite.Run())
+//		if err := suite.Run(); err != nil {
+//			fmt.Fprintln(os.Stderr, err)
+//			fmt.Println("FAIL")
+//			os.Exit(1)
+//		}
+//		fmt.Println("PASS")
 //	}
 //
 package harness
