@@ -81,17 +81,17 @@ func (t *TestCluster) DropFile(localPath string) error {
 	return nil
 }
 
-// Error, Errorf, Skip, and Skipf partially implement testing.TB.
+// Fatal, Fatalf, Skip, and Skipf partially implement testing.TB.
 
 func (t *TestCluster) err(e error) {
 	panic(e)
 }
 
-func (t *TestCluster) Error(e error) {
+func (t *TestCluster) Fatal(e error) {
 	t.err(e)
 }
 
-func (t *TestCluster) Errorf(format string, args ...interface{}) {
+func (t *TestCluster) Fatalf(format string, args ...interface{}) {
 	t.err(fmt.Errorf(format, args...))
 }
 func (t *TestCluster) skip(why string) {

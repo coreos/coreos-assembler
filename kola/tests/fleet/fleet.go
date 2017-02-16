@@ -20,8 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
@@ -29,8 +27,6 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/fleet")
-
 	masterconf = `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
