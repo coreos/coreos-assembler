@@ -24,7 +24,7 @@ import (
 // Runs conformance tests on a master node of a Cluster
 func RunConformanceTests(c *pluton.Cluster, k8sRepo, k8sVersion string) error {
 	const (
-		kcPath  = "/etc/kubernetes/kubeconfig"
+		kcPath  = "/etc/kubernetes/admin-kubeconfig"
 		goImage = "docker://golang:1.7.4"
 	)
 
