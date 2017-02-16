@@ -116,7 +116,7 @@ func NewSuite(tests []InternalTest) *Suite {
 }
 
 // Run runs the tests. Returns SuiteFailed for any test failure.
-func (s *Suite) Run() error {
+func (s *Suite) Run() (err error) {
 	// The user may have already called flag.Parse.
 	if !flag.Parsed() {
 		flag.Parse()
@@ -128,11 +128,68 @@ func (s *Suite) Run() error {
 	s.maxParallel = *parallel
 	s.chatty = *chatty
 	s.running = 1 // Set the count to 1 for the main (sequential) test.
-	s.before()
-	startAlarm()
-	err := s.runTests()
-	s.after()
-	return err
+
+	flushProfile := func(name string, f *os.File) {
+		err2 := pprof.Lookup(name).WriteTo(f, 0)
+		if err == nil && err2 != nil {
+			err = fmt.Errorf("harness: can't write %s profile: %v", name, err2)
+		}
+		f.Close()
+	}
+
+	if *memProfile != "" && *memProfileRate > 0 {
+		runtime.MemProfileRate = *memProfileRate // must be as early as possible
+		f, err := os.Create(toOutputDir(*memProfile))
+		if err != nil {
+			return err
+		}
+		defer func() {
+			runtime.GC() // materialize all statistics
+			flushProfile("heap", f)
+		}()
+	}
+	if *blockProfile != "" && *blockProfileRate >= 0 {
+		f, err := os.Create(toOutputDir(*blockProfile))
+		if err != nil {
+			return err
+		}
+		runtime.SetBlockProfileRate(*blockProfileRate)
+		defer func() {
+			runtime.SetBlockProfileRate(0) // stop profile
+			flushProfile("block", f)
+		}()
+	}
+	if *cpuProfile != "" {
+		f, err := os.Create(toOutputDir(*cpuProfile))
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			return fmt.Errorf("harness: can't start cpu profile: %v", err)
+		}
+		defer pprof.StopCPUProfile() // flushes profile to disk
+	}
+	if *traceFile != "" {
+		f, err := os.Create(toOutputDir(*traceFile))
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if err := trace.Start(f); err != nil {
+			return fmt.Errorf("harness: can't start tacing: %v", err)
+		}
+		defer trace.Stop() // flushes trace to disk
+	}
+	if *timeout > 0 {
+		timer := time.AfterFunc(*timeout, func() {
+			debug.SetTraceback("all")
+			panic(fmt.Sprintf("harness: tests timed out after %v", *timeout))
+		})
+		defer timer.Stop()
+	}
+
+	return s.runTests()
 }
 
 func (s *Suite) runTests() error {
@@ -158,77 +215,6 @@ func (s *Suite) runTests() error {
 		return SuiteFailed
 	}
 	return nil
-}
-
-// before runs before all testing.
-func (m *Suite) before() {
-	if *memProfileRate > 0 {
-		runtime.MemProfileRate = *memProfileRate
-	}
-	if *cpuProfile != "" {
-		f, err := os.Create(toOutputDir(*cpuProfile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "testing: %s", err)
-			return
-		}
-		if err := pprof.StartCPUProfile(f); err != nil {
-			fmt.Fprintf(os.Stderr, "testing: can't start cpu profile: %s", err)
-			f.Close()
-			return
-		}
-		// Could save f so after can call f.Close; not worth the effort.
-	}
-	if *traceFile != "" {
-		f, err := os.Create(toOutputDir(*traceFile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "testing: %s", err)
-			return
-		}
-		if err := trace.Start(f); err != nil {
-			fmt.Fprintf(os.Stderr, "testing: can't start tracing: %s", err)
-			f.Close()
-			return
-		}
-		// Could save f so after can call f.Close; not worth the effort.
-	}
-	if *blockProfile != "" && *blockProfileRate >= 0 {
-		runtime.SetBlockProfileRate(*blockProfileRate)
-	}
-}
-
-// after runs after all testing.
-func (m *Suite) after() {
-	if *cpuProfile != "" {
-		pprof.StopCPUProfile() // flushes profile to disk
-	}
-	if *traceFile != "" {
-		trace.Stop() // flushes trace to disk
-	}
-	if *memProfile != "" {
-		f, err := os.Create(toOutputDir(*memProfile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "testing: %s\n", err)
-			os.Exit(2)
-		}
-		runtime.GC() // materialize all statistics
-		if err = pprof.WriteHeapProfile(f); err != nil {
-			fmt.Fprintf(os.Stderr, "testing: can't write %s: %s\n", *memProfile, err)
-			os.Exit(2)
-		}
-		f.Close()
-	}
-	if *blockProfile != "" && *blockProfileRate >= 0 {
-		f, err := os.Create(toOutputDir(*blockProfile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "testing: %s\n", err)
-			os.Exit(2)
-		}
-		if err = pprof.Lookup("block").WriteTo(f, 0); err != nil {
-			fmt.Fprintf(os.Stderr, "testing: can't write %s: %s\n", *blockProfile, err)
-			os.Exit(2)
-		}
-		f.Close()
-	}
 }
 
 // toOutputDir returns the file name relocated, if required, to outputDir.
@@ -257,23 +243,4 @@ func toOutputDir(path string) string {
 		return path
 	}
 	return fmt.Sprintf("%s%c%s", *outputDir, os.PathSeparator, path)
-}
-
-var timer *time.Timer
-
-// startAlarm starts an alarm if requested.
-func startAlarm() {
-	if *timeout > 0 {
-		timer = time.AfterFunc(*timeout, func() {
-			debug.SetTraceback("all")
-			panic(fmt.Sprintf("test timed out after %v", *timeout))
-		})
-	}
-}
-
-// stopAlarm turns off the alarm.
-func stopAlarm() {
-	if *timeout > 0 {
-		timer.Stop()
-	}
 }
