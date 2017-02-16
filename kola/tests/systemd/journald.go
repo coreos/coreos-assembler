@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/go-semver/semver"
-	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -29,8 +28,6 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/systemd")
-
 	gatewayconf = config.CloudConfig{
 		CoreOS: config.CoreOS{
 			Units: []config.Unit{
