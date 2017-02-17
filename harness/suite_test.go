@@ -70,10 +70,7 @@ func TestSuiteParallelism(t *testing.T) {
 		},
 	}}
 	for i, tc := range testCases {
-		suite := &Suite{
-			startParallel: make(chan bool),
-			maxParallel:   tc.max,
-		}
+		suite := NewSuite(Options{Parallel: tc.max}, nil)
 		for j, call := range tc.run {
 			doCall := func(f func()) chan bool {
 				done := make(chan bool)
@@ -108,8 +105,8 @@ func TestSuiteParallelism(t *testing.T) {
 			if suite.running != call.running {
 				t.Errorf("%d:%d:running: got %v; want %v", i, j, suite.running, call.running)
 			}
-			if suite.numWaiting != call.waiting {
-				t.Errorf("%d:%d:waiting: got %v; want %v", i, j, suite.numWaiting, call.waiting)
+			if suite.waiting != call.waiting {
+				t.Errorf("%d:%d:waiting: got %v; want %v", i, j, suite.waiting, call.waiting)
 			}
 		}
 	}

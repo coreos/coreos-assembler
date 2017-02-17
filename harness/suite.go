@@ -19,38 +19,106 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
 	"runtime/trace"
+	"strings"
 	"sync"
 	"time"
+)
+
+const (
+	defaultOutputDir = "_harness_temp"
 )
 
 var (
 	SuiteEmpty  = errors.New("harness: no tests to run")
 	SuiteFailed = errors.New("harness: test suite failed")
+)
 
-	// The directory in which to create profile files and the like. When run from
-	// "go test", the binary always runs in the source directory for the package;
-	// this flag lets "go test" tell the binary to write the files in the directory where
-	// the "go test" command is run.
-	outputDir = flag.String("harness.outputdir", "", "write profiles to `dir`")
+// Options
+type Options struct {
+	// The temporary directory in which to write profile files, logs, etc.
+	OutputDir string
 
 	// Report as tests are run; default is silent for success.
-	chatty           = flag.Bool("harness.v", false, "verbose: print additional output")
-	match            = flag.String("harness.run", "", "run only tests matching `regexp`")
-	memProfile       = flag.String("harness.memprofile", "", "write a memory profile to `file`")
-	memProfileRate   = flag.Int("harness.memprofilerate", 0, "set memory profiling `rate` (see runtime.MemProfileRate)")
-	cpuProfile       = flag.String("harness.cpuprofile", "", "write a cpu profile to `file`")
-	blockProfile     = flag.String("harness.blockprofile", "", "write a goroutine blocking profile to `file`")
-	blockProfileRate = flag.Int("harness.blockprofilerate", 1, "set blocking profile `rate` (see runtime.SetBlockProfileRate)")
-	traceFile        = flag.String("harness.trace", "", "write an execution trace to `file`")
-	timeout          = flag.Duration("harness.timeout", 0, "fail test binary execution after duration `d` (0 means unlimited)")
-	parallel         = flag.Int("harness.parallel", runtime.GOMAXPROCS(0), "run at most `n` tests in parallel")
-)
+	Verbose bool
+
+	// Run only tests matching a regexp.
+	Match string
+
+	// Enable memory profiling.
+	MemProfile     bool
+	MemProfileRate int
+
+	// Enable CPU profiling.
+	CpuProfile bool
+
+	// Enable goroutine block profiling.
+	BlockProfile     bool
+	BlockProfileRate int
+
+	// Enable execution trace.
+	ExecutionTrace bool
+
+	// Panic Suite execution after a timeout (0 means unlimited).
+	Timeout time.Duration
+
+	// Limit number of tests to run in parallel (0 means GOMAXPROCS).
+	Parallel int
+}
+
+// FlagSet can be used to setup options via command line flags.
+// An optional prefix can be prepended to each flag.
+// Defaults can be specified prior to calling FlagSet.
+func (o *Options) FlagSet(prefix string, errorHandling flag.ErrorHandling) *flag.FlagSet {
+	o.init()
+	name := strings.Trim(prefix, ".-")
+	f := flag.NewFlagSet(name, errorHandling)
+	f.StringVar(&o.OutputDir, prefix+"outputdir", o.OutputDir,
+		"write profiles, logs, and other data to temporary `dir`")
+	f.BoolVar(&o.Verbose, prefix+"v", o.Verbose,
+		"verbose: print additional output")
+	f.StringVar(&o.Match, prefix+"run", o.Match,
+		"run only tests matching `regexp`")
+	f.BoolVar(&o.MemProfile, prefix+"memprofile", o.MemProfile,
+		"write a memory profile to 'dir/mem.prof'")
+	f.IntVar(&o.MemProfileRate, prefix+"memprofilerate", o.MemProfileRate,
+		"set memory profiling `rate` (see runtime.MemProfileRate)")
+	f.BoolVar(&o.CpuProfile, prefix+"cpuprofile", o.CpuProfile,
+		"write a cpu profile to 'dir/cpu.prof'")
+	f.BoolVar(&o.BlockProfile, prefix+"blockprofile", o.BlockProfile,
+		"write a goroutine blocking profile to 'dir/block.prof'")
+	f.IntVar(&o.BlockProfileRate, prefix+"blockprofilerate", o.BlockProfileRate,
+		"set blocking profile `rate` (see runtime.SetBlockProfileRate)")
+	f.BoolVar(&o.ExecutionTrace, prefix+"trace", o.ExecutionTrace,
+		"write an execution trace to 'dir/exec.trace'")
+	f.DurationVar(&o.Timeout, prefix+"timeout", o.Timeout,
+		"fail test binary execution after duration `d` (0 means unlimited)")
+	f.IntVar(&o.Parallel, prefix+"parallel", o.Parallel,
+		"run at most `n` tests in parallel")
+	return f
+}
+
+// init fills in any default values that shouldn't be the zero value.
+func (o *Options) init() {
+	if o.OutputDir == "" {
+		o.OutputDir = defaultOutputDir
+	}
+	if o.MemProfileRate < 1 {
+		o.MemProfileRate = runtime.MemProfileRate
+	}
+	if o.BlockProfileRate < 1 {
+		o.BlockProfileRate = 1
+	}
+	if o.Parallel < 1 {
+		o.Parallel = runtime.GOMAXPROCS(0)
+	}
+}
 
 // An internal type but exported because it is cross-package; part of the implementation
 // of the "go test" command.
@@ -62,9 +130,9 @@ type InternalTest struct {
 // Suite is a type passed to a TestMain function to run the actual tests.
 // Suite manages the execution of a set of test functions.
 type Suite struct {
-	tests  []InternalTest
-	match  *matcher
-	chatty bool
+	opts  Options
+	tests []InternalTest
+	match *matcher
 
 	// mu protects the following fields which are used to manage
 	// parallel test execution.
@@ -77,59 +145,48 @@ type Suite struct {
 	// This does not include tests that are waiting for subtests to complete.
 	running int
 
-	// numWaiting is the number tests waiting to be run in parallel.
-	numWaiting int
-
-	// maxParallel is a copy of the parallel flag.
-	maxParallel int
+	// waiting is the number tests waiting to be run in parallel.
+	waiting int
 }
 
 func (c *Suite) waitParallel() {
 	c.mu.Lock()
-	if c.running < c.maxParallel {
+	if c.running < c.opts.Parallel {
 		c.running++
 		c.mu.Unlock()
 		return
 	}
-	c.numWaiting++
+	c.waiting++
 	c.mu.Unlock()
 	<-c.startParallel
 }
 
 func (c *Suite) release() {
 	c.mu.Lock()
-	if c.numWaiting == 0 {
+	if c.waiting == 0 {
 		c.running--
 		c.mu.Unlock()
 		return
 	}
-	c.numWaiting--
+	c.waiting--
 	c.mu.Unlock()
 	c.startParallel <- true // Pick a waiting test to be run.
 }
 
-// NewSuite
-func NewSuite(tests []InternalTest) *Suite {
+// NewSuite creates a new test suite.
+// All parameters in Options cannot be modified once given to Suite.
+func NewSuite(opts Options, tests []InternalTest) *Suite {
+	opts.init()
 	return &Suite{
+		opts:          opts,
 		tests:         tests,
+		match:         newMatcher(opts.Match, "Match"),
 		startParallel: make(chan bool),
 	}
 }
 
 // Run runs the tests. Returns SuiteFailed for any test failure.
 func (s *Suite) Run() (err error) {
-	// The user may have already called flag.Parse.
-	if !flag.Parsed() {
-		flag.Parse()
-	}
-
-	// Initialize Suite based on command line flags.
-	// TODO(marineam): offer other ways to do this.
-	s.match = newMatcher(*match, "-harness.run")
-	s.maxParallel = *parallel
-	s.chatty = *chatty
-	s.running = 1 // Set the count to 1 for the main (sequential) test.
-
 	flushProfile := func(name string, f *os.File) {
 		err2 := pprof.Lookup(name).WriteTo(f, 0)
 		if err == nil && err2 != nil {
@@ -138,9 +195,9 @@ func (s *Suite) Run() (err error) {
 		f.Close()
 	}
 
-	if *memProfile != "" && *memProfileRate > 0 {
-		runtime.MemProfileRate = *memProfileRate // must be as early as possible
-		f, err := os.Create(toOutputDir(*memProfile))
+	if s.opts.MemProfile {
+		runtime.MemProfileRate = s.opts.MemProfileRate
+		f, err := os.Create(s.outputPath("mem.prof"))
 		if err != nil {
 			return err
 		}
@@ -149,19 +206,19 @@ func (s *Suite) Run() (err error) {
 			flushProfile("heap", f)
 		}()
 	}
-	if *blockProfile != "" && *blockProfileRate >= 0 {
-		f, err := os.Create(toOutputDir(*blockProfile))
+	if s.opts.BlockProfile {
+		f, err := os.Create(s.outputPath("block.prof"))
 		if err != nil {
 			return err
 		}
-		runtime.SetBlockProfileRate(*blockProfileRate)
+		runtime.SetBlockProfileRate(s.opts.BlockProfileRate)
 		defer func() {
 			runtime.SetBlockProfileRate(0) // stop profile
 			flushProfile("block", f)
 		}()
 	}
-	if *cpuProfile != "" {
-		f, err := os.Create(toOutputDir(*cpuProfile))
+	if s.opts.CpuProfile {
+		f, err := os.Create(s.outputPath("cpu.prof"))
 		if err != nil {
 			return err
 		}
@@ -171,8 +228,8 @@ func (s *Suite) Run() (err error) {
 		}
 		defer pprof.StopCPUProfile() // flushes profile to disk
 	}
-	if *traceFile != "" {
-		f, err := os.Create(toOutputDir(*traceFile))
+	if s.opts.ExecutionTrace {
+		f, err := os.Create(s.outputPath("exec.trace"))
 		if err != nil {
 			return err
 		}
@@ -182,22 +239,23 @@ func (s *Suite) Run() (err error) {
 		}
 		defer trace.Stop() // flushes trace to disk
 	}
-	if *timeout > 0 {
-		timer := time.AfterFunc(*timeout, func() {
+	if s.opts.Timeout > 0 {
+		timer := time.AfterFunc(s.opts.Timeout, func() {
 			debug.SetTraceback("all")
-			panic(fmt.Sprintf("harness: tests timed out after %v", *timeout))
+			panic(fmt.Sprintf("harness: tests timed out after %v", s.opts.Timeout))
 		})
 		defer timer.Stop()
 	}
 
-	return s.runTests()
+	return s.runTests(os.Stdout)
 }
 
-func (s *Suite) runTests() error {
+func (s *Suite) runTests(w io.Writer) error {
+	s.running = 1 // Set the count to 1 for the main (sequential) test.
 	t := &H{
 		signal:  make(chan bool),
 		barrier: make(chan bool),
-		w:       os.Stdout,
+		w:       w,
 		suite:   s,
 	}
 	tRunner(t, func(t *H) {
@@ -218,7 +276,7 @@ func (s *Suite) runTests() error {
 	return nil
 }
 
-// toOutputDir returns the file name relocated, if required, to outputDir.
-func toOutputDir(path string) string {
-	return filepath.Join(*outputDir, path)
+// outputPath returns the file name under Options.OutputDir.
+func (s *Suite) outputPath(path string) string {
+	return filepath.Join(s.opts.OutputDir, path)
 }

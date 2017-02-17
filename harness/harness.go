@@ -70,9 +70,9 @@ func (c *H) parentContext() context.Context {
 	return c.parent.ctx
 }
 
-// Verbose reports whether the -harness.v flag is set.
+// Verbose reports whether the Suite's Verbose option is set.
 func (h *H) Verbose() bool {
-	return h.suite.chatty
+	return h.suite.opts.Verbose
 }
 
 // flushToParent writes c.output to the parent after first writing the header
@@ -371,7 +371,7 @@ func (t *H) Run(name string, f func(t *H)) bool {
 	const indent = "        "
 	t.logger = log.New(&t.output, indent, log.Lshortfile)
 
-	if t.suite.chatty {
+	if t.suite.opts.Verbose {
 		// Print directly to root's io.Writer so there is no delay.
 		root := t.parent
 		for ; root.parent != nil; root = root.parent {
@@ -396,7 +396,7 @@ func (t *H) report() {
 	format := "--- %s: %s (%s)\n"
 	if t.Failed() {
 		t.flushToParent(format, "FAIL", t.name, dstr)
-	} else if t.suite.chatty {
+	} else if t.suite.opts.Verbose {
 		if t.Skipped() {
 			t.flushToParent(format, "SKIP", t.name, dstr)
 		} else {

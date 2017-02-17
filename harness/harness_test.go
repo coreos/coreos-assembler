@@ -17,7 +17,6 @@ package harness
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -54,7 +53,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestContextCancel(t *testing.T) {
-	suite := NewSuite([]InternalTest{
+	suite := NewSuite(Options{}, []InternalTest{
 		{"ContextCancel", func(h *H) {
 			ctx := h.Context()
 			// Tests we don't leak this goroutine:
@@ -62,7 +61,9 @@ func TestContextCancel(t *testing.T) {
 				<-ctx.Done()
 			}()
 		}}})
-	if err := suite.Run(); err != nil {
+	buf := &bytes.Buffer{}
+	if err := suite.runTests(buf); err != nil {
+		t.Log("\n" + buf.String())
 		t.Error(err)
 	}
 }
@@ -71,14 +72,14 @@ func TestSubTests(t *testing.T) {
 	realTest := t
 	testCases := []struct {
 		desc   string
-		ok     bool
+		err    error
 		maxPar int
 		chatty bool
 		output string
 		f      func(*H)
 	}{{
 		desc:   "failnow skips future sequential and parallel tests at same level",
-		ok:     false,
+		err:    SuiteFailed,
 		maxPar: 1,
 		output: `
 --- FAIL: failnow skips future sequential and parallel tests at same level (N.NNs)
@@ -113,7 +114,7 @@ func TestSubTests(t *testing.T) {
 		},
 	}, {
 		desc:   "failure in parallel test propagates upwards",
-		ok:     false,
+		err:    SuiteFailed,
 		maxPar: 1,
 		output: `
 --- FAIL: failure in parallel test propagates upwards (N.NNs)
@@ -131,7 +132,6 @@ func TestSubTests(t *testing.T) {
 		},
 	}, {
 		desc:   "skipping without message, chatty",
-		ok:     true,
 		chatty: true,
 		output: `
 === RUN   skipping without message, chatty
@@ -139,7 +139,6 @@ func TestSubTests(t *testing.T) {
 		f: func(t *H) { t.SkipNow() },
 	}, {
 		desc:   "chatty with recursion",
-		ok:     true,
 		chatty: true,
 		output: `
 === RUN   chatty with recursion
@@ -155,10 +154,10 @@ func TestSubTests(t *testing.T) {
 		},
 	}, {
 		desc: "skipping without message, not chatty",
-		ok:   true,
 		f:    func(t *H) { t.SkipNow() },
 	}, {
 		desc: "skipping after error",
+		err:  SuiteFailed,
 		output: `
 --- FAIL: skipping after error (N.NNs)
         harness_test.go:NNN: an error
@@ -169,7 +168,6 @@ func TestSubTests(t *testing.T) {
 		},
 	}, {
 		desc:   "use Run to locally synchronize parallelism",
-		ok:     true,
 		maxPar: 1,
 		f: func(t *H) {
 			var count uint32
@@ -190,7 +188,6 @@ func TestSubTests(t *testing.T) {
 		// Sequential tests should partake in the counting of running threads.
 		// Otherwise, if one runs parallel subtests in sequential tests that are
 		// itself subtests of parallel tests, the counts can get askew.
-		ok:     true,
 		maxPar: 1,
 		f: func(t *H) {
 			t.Run("a", func(t *H) {
@@ -209,7 +206,6 @@ func TestSubTests(t *testing.T) {
 		// Sequential tests should partake in the counting of running threads.
 		// Otherwise, if one runs parallel subtests in sequential tests that are
 		// itself subtests of parallel tests, the counts can get askew.
-		ok:     true,
 		maxPar: 2,
 		f: func(t *H) {
 			for i := 0; i < 2; i++ {
@@ -233,7 +229,6 @@ func TestSubTests(t *testing.T) {
 		},
 	}, {
 		desc:   "stress test",
-		ok:     true,
 		maxPar: 4,
 		f: func(t *H) {
 			// t.Parallel doesn't work in the pseudo-H we start with:
@@ -266,14 +261,13 @@ func TestSubTests(t *testing.T) {
 		},
 	}, {
 		desc:   "skip output",
-		ok:     true,
 		maxPar: 4,
 		f: func(t *H) {
 			t.Skip()
 		},
 	}, {
 		desc:   "panic on goroutine fail after test exit",
-		ok:     false,
+		err:    SuiteFailed,
 		maxPar: 4,
 		f: func(t *H) {
 			ch := make(chan bool)
@@ -294,30 +288,19 @@ func TestSubTests(t *testing.T) {
 		},
 	}}
 	for _, tc := range testCases {
-		suite := NewSuite(nil)
-		suite.match = newMatcher("", "")
-		suite.chatty = tc.chatty
-		suite.maxParallel = tc.maxPar
-		suite.running = 1
+		suite := NewSuite(Options{
+			Verbose:  tc.chatty,
+			Parallel: tc.maxPar,
+		}, []InternalTest{{tc.desc, tc.f}})
 		buf := &bytes.Buffer{}
-		root := &H{
-			suite:  suite,
-			signal: make(chan bool),
-			name:   "Test",
-			w:      buf,
-		}
-		root.ctx, root.cancel = context.WithCancel(context.Background())
-		ok := root.Run(tc.desc, tc.f)
+		err := suite.runTests(buf)
 		suite.release()
 
-		if ok != tc.ok {
-			t.Errorf("%s:ok: got %v; want %v", tc.desc, ok, tc.ok)
+		if err != tc.err {
+			t.Errorf("%s:err: got %v; want %v", tc.desc, err, tc.err)
 		}
-		if ok != !root.Failed() {
-			t.Errorf("%s:root failed: got %v; want %v", tc.desc, !ok, root.Failed())
-		}
-		if suite.running != 0 || suite.numWaiting != 0 {
-			t.Errorf("%s:running and waiting non-zero: got %d and %d", tc.desc, suite.running, suite.numWaiting)
+		if suite.running != 0 || suite.waiting != 0 {
+			t.Errorf("%s:running and waiting non-zero: got %d and %d", tc.desc, suite.running, suite.waiting)
 		}
 		got := strings.TrimSpace(buf.String())
 		want := strings.TrimSpace(tc.output)
