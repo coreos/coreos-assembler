@@ -19,22 +19,7 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
-	"unicode"
 )
-
-// Verify that our IsSpace agrees with unicode.IsSpace.
-func TestIsSpace(t *testing.T) {
-	n := 0
-	for r := rune(0); r <= unicode.MaxRune; r++ {
-		if isSpace(r) != unicode.IsSpace(r) {
-			t.Errorf("IsSpace(%U)=%t incorrect", r, isSpace(r))
-			n++
-			if n > 10 {
-				return
-			}
-		}
-	}
-}
 
 func TestSplitRegexp(t *testing.T) {
 	res := func(s ...string) []string { return s }
