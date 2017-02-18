@@ -33,7 +33,7 @@ func init() {
 		Manual:      true,
 		ClusterSize: 3,
 		Name:        "coreos.etcd0.discovery",
-		Platforms:   []string{"aws", "gce"},
+		/* TODO: https://github.com/coreos/bugs/issues/1815 */
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -44,6 +44,13 @@ func init() {
         "dropins": [{
           "name": "metadata.conf",
           "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd --name=$name --discovery=$discovery --addr=$private_ipv4:2379 --peer-addr=$private_ipv4:2380"
+        }]
+      },
+      {
+        "name": "coreos-metadata.service",
+        "dropins": [{
+          "name": "qemu.conf",
+          "contents": "[Unit]\nConditionVirtualization=!qemu"
         }]
       }
     ]
@@ -56,7 +63,7 @@ func init() {
 		Run:         Discovery,
 		ClusterSize: 3,
 		Name:        "coreos.etcd2.discovery",
-		Platforms:   []string{"aws", "gce"},
+		/* TODO: https://github.com/coreos/bugs/issues/1815 */
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -67,6 +74,13 @@ func init() {
         "dropins": [{
           "name": "metadata.conf",
           "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --name=$name --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001 --listen-peer-urls=http://$private_ipv4:2380,http://$private_ipv4:7001"
+        }]
+      },
+      {
+        "name": "coreos-metadata.service",
+        "dropins": [{
+          "name": "qemu.conf",
+          "contents": "[Unit]\nConditionVirtualization=!qemu"
         }]
       }
     ]

@@ -125,6 +125,7 @@ func SUIDFiles(c cluster.TestCluster) error {
 		"/usr/bin/umount",
 		"/usr/bin/su",
 		"/usr/bin/sudo",
+		"/usr/lib/polkit-1/polkit-agent-helper-1",
 		"/usr/lib64/polkit-1/polkit-agent-helper-1",
 		"/usr/libexec/dbus-daemon-launch-helper",
 		"/usr/sbin/mount.nfs",
