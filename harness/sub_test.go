@@ -65,7 +65,7 @@ func TestTestContext(t *testing.T) {
 		},
 	}}
 	for i, tc := range testCases {
-		ctx := &testContext{
+		suite := &Suite{
 			startParallel: make(chan bool),
 			maxParallel:   tc.max,
 		}
@@ -81,18 +81,18 @@ func TestTestContext(t *testing.T) {
 			started := false
 			switch call.typ {
 			case add1:
-				signal := doCall(ctx.waitParallel)
+				signal := doCall(suite.waitParallel)
 				select {
 				case <-signal:
 					started = true
-				case ctx.startParallel <- true:
+				case suite.startParallel <- true:
 					<-signal
 				}
 			case done:
-				signal := doCall(ctx.release)
+				signal := doCall(suite.release)
 				select {
 				case <-signal:
-				case <-ctx.startParallel:
+				case <-suite.startParallel:
 					started = true
 					<-signal
 				}
@@ -100,11 +100,11 @@ func TestTestContext(t *testing.T) {
 			if started != call.started {
 				t.Errorf("%d:%d:started: got %v; want %v", i, j, started, call.started)
 			}
-			if ctx.running != call.running {
-				t.Errorf("%d:%d:running: got %v; want %v", i, j, ctx.running, call.running)
+			if suite.running != call.running {
+				t.Errorf("%d:%d:running: got %v; want %v", i, j, suite.running, call.running)
 			}
-			if ctx.numWaiting != call.waiting {
-				t.Errorf("%d:%d:waiting: got %v; want %v", i, j, ctx.numWaiting, call.waiting)
+			if suite.numWaiting != call.waiting {
+				t.Errorf("%d:%d:waiting: got %v; want %v", i, j, suite.numWaiting, call.waiting)
 			}
 		}
 	}
@@ -204,8 +204,8 @@ func TestTRun(t *testing.T) {
 		desc: "skipping after error",
 		output: `
 --- FAIL: skipping after error (N.NNs)
-	sub_test.go:NNN: an error
-	sub_test.go:NNN: skipped`,
+        sub_test.go:NNN: an error
+        sub_test.go:NNN: skipped`,
 		f: func(t *H) {
 			t.Error("an error")
 			t.Skip("skipped")
@@ -337,18 +337,21 @@ func TestTRun(t *testing.T) {
 		},
 	}}
 	for _, tc := range testCases {
-		ctx := newTestContext(tc.maxPar, newMatcher("", ""))
+		suite := NewSuite(nil)
+		suite.match = newMatcher("", "")
+		suite.chatty = tc.chatty
+		suite.maxParallel = tc.maxPar
+		suite.running = 1
 		buf := &bytes.Buffer{}
 		root := &H{
-			signal:  make(chan bool),
-			name:    "Test",
-			w:       buf,
-			chatty:  tc.chatty,
-			context: ctx,
+			suite:  suite,
+			signal: make(chan bool),
+			name:   "Test",
+			w:      buf,
 		}
 		root.ctx, root.cancel = context.WithCancel(context.Background())
 		ok := root.Run(tc.desc, tc.f)
-		ctx.release()
+		suite.release()
 
 		if ok != tc.ok {
 			t.Errorf("%s:ok: got %v; want %v", tc.desc, ok, tc.ok)
@@ -356,8 +359,8 @@ func TestTRun(t *testing.T) {
 		if ok != !root.Failed() {
 			t.Errorf("%s:root failed: got %v; want %v", tc.desc, !ok, root.Failed())
 		}
-		if ctx.running != 0 || ctx.numWaiting != 0 {
-			t.Errorf("%s:running and waiting non-zero: got %d and %d", tc.desc, ctx.running, ctx.numWaiting)
+		if suite.running != 0 || suite.numWaiting != 0 {
+			t.Errorf("%s:running and waiting non-zero: got %d and %d", tc.desc, suite.running, suite.numWaiting)
 		}
 		got := strings.TrimSpace(buf.String())
 		want := strings.TrimSpace(tc.output)

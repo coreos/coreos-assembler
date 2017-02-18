@@ -22,7 +22,6 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
@@ -92,15 +91,6 @@ func init() {
 
 func Discovery(c cluster.TestCluster) error {
 	var err error
-
-	if plog.LevelAt(capnslog.DEBUG) {
-		// get journalctl -f from all machines before starting
-		for _, m := range c.Machines() {
-			if err = platform.StreamJournal(m); err != nil {
-				return fmt.Errorf("failed to start journal: %v", err)
-			}
-		}
-	}
 
 	// NOTE(pb): this check makes the next code somewhat redundant
 	if err = GetClusterHealth(c.Machines()[0], len(c.Machines())); err != nil {

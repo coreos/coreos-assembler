@@ -15,6 +15,7 @@
 package qemu
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/satori/go.uuid"
 
-	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
@@ -50,7 +50,6 @@ type Options struct {
 // XXX: must be exported so that certain QEMU tests can access struct members
 // through type assertions.
 type Cluster struct {
-	*platform.BaseCluster
 	conf *Options
 
 	mu sync.Mutex
@@ -60,19 +59,12 @@ type Cluster struct {
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
 func NewCluster(conf *Options, outputDir string) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(outputDir)
-	if err != nil {
-		return nil, err
-	}
-
-	nsdialer := network.NewNsDialer(lc.GetNsHandle())
-	bc, err := platform.NewBaseClusterWithDialer(conf.BaseName, nsdialer)
+	lc, err := local.NewLocalCluster(conf.BaseName, outputDir)
 	if err != nil {
 		return nil, err
 	}
 
 	qc := &Cluster{
-		BaseCluster:  bc,
 		conf:         conf,
 		LocalCluster: lc,
 	}
@@ -80,18 +72,10 @@ func NewCluster(conf *Options, outputDir string) (platform.Cluster, error) {
 	return qc, nil
 }
 
-func (qc *Cluster) Destroy() error {
-	if err := qc.BaseCluster.Destroy(); err != nil {
-		return err
-	}
-
-	return qc.LocalCluster.Destroy()
-}
-
 func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	id := uuid.NewV4()
 
-	dir := filepath.Join(qc.OutputDir, id.String())
+	dir := filepath.Join(qc.OutputDir(), id.String())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		return nil, err
 	}
@@ -134,10 +118,16 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		}
 	}
 
+	journal, err := platform.NewJournal(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	qm := &machine{
-		qc:    qc,
-		id:    id.String(),
-		netif: netif,
+		qc:      qc,
+		id:      id.String(),
+		netif:   netif,
+		journal: journal,
 	}
 
 	var qmCmd []string
@@ -211,6 +201,11 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		return nil, err
 	}
 
+	if err := qm.journal.Start(context.TODO(), qm); err != nil {
+		qm.Destroy()
+		return nil, err
+	}
+
 	if err := platform.CheckMachine(qm); err != nil {
 		qm.Destroy()
 		return nil, err
@@ -223,11 +218,6 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	qc.AddMach(qm)
 
 	return qm, nil
-}
-
-// overrides BaseCluster.GetDiscoveryURL
-func (qc *Cluster) GetDiscoveryURL(size int) (string, error) {
-	return qc.LocalCluster.GetDiscoveryURL(size)
 }
 
 // The virtio device name differs between machine types but otherwise

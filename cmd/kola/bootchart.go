@@ -66,9 +66,9 @@ func runBootchart(cmd *cobra.Command, args []string) {
 	if kolaPlatform == "qemu" {
 		cluster, err = qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	} else if kolaPlatform == "gce" {
-		cluster, err = gcloud.NewCluster(&kola.GCEOptions)
+		cluster, err = gcloud.NewCluster(&kola.GCEOptions, outputDir)
 	} else if kolaPlatform == "aws" {
-		cluster, err = aws.NewCluster(&kola.AWSOptions)
+		cluster, err = aws.NewCluster(&kola.AWSOptions, outputDir)
 	} else {
 		fmt.Fprintf(os.Stderr, "Invalid platform: %v", kolaPlatform)
 	}

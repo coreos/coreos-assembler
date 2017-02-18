@@ -15,17 +15,21 @@
 package qemu
 
 import (
+	"context"
+
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
 )
 
 type machine struct {
-	qc    *Cluster
-	id    string
-	qemu  exec.Cmd
-	netif *local.Interface
+	qc      *Cluster
+	id      string
+	qemu    exec.Cmd
+	netif   *local.Interface
+	journal *platform.Journal
 }
 
 func (m *machine) ID() string {
@@ -52,8 +56,27 @@ func (m *machine) SSH(cmd string) ([]byte, error) {
 	return m.qc.SSH(m, cmd)
 }
 
+func (m *machine) Reboot() error {
+	if err := platform.StartReboot(m); err != nil {
+		return err
+	}
+	if err := m.journal.Start(context.TODO(), m); err != nil {
+		return err
+	}
+	if err := platform.CheckMachine(m); err != nil {
+		return err
+	}
+	if err := platform.EnableSelinux(m); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (m *machine) Destroy() error {
 	err := m.qemu.Kill()
+	if err2 := m.journal.Destroy(); err == nil && err2 != nil {
+		err = err2
+	}
 
 	m.qc.DelMach(m)
 

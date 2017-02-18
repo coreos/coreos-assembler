@@ -23,31 +23,41 @@ import (
 	"unicode/utf8"
 )
 
-// ShortWriter writes journal entries in a format similar to journalctl's
-// "short-precise" format, excluding hostname for conciseness.
-type ShortWriter struct {
-	w  io.Writer
-	tz *time.Location
+type Formatter interface {
+	SetTimezone(tz *time.Location)
+	WriteEntry(entry Entry) error
 }
 
-func NewShortWriter(w io.Writer) *ShortWriter {
-	return &ShortWriter{
+type shortWriter struct {
+	w      io.Writer
+	tz     *time.Location
+	bootid string
+}
+
+// ShortWriter writes journal entries in a format similar to journalctl's
+// "short-precise" format, excluding hostname for conciseness.
+func ShortWriter(w io.Writer) Formatter {
+	return &shortWriter{
 		w:  w,
 		tz: time.Local,
 	}
 }
 
 // SetTimezone updates the time location. The default is local time.
-func (s *ShortWriter) SetTimezone(tz *time.Location) {
+func (s *shortWriter) SetTimezone(tz *time.Location) {
 	s.tz = tz
 }
 
-func (s *ShortWriter) WriteEntry(entry Entry) error {
+func (s *shortWriter) WriteEntry(entry Entry) error {
 	realtime := entry.Realtime()
 	message, ok := entry[FIELD_MESSAGE]
 	if realtime.IsZero() || !ok {
 		// Simply skip entries that are woefully incomplete.
 		return nil
+	}
+
+	if s.isReboot(entry) {
+		io.WriteString(s.w, "-- Reboot --\n")
 	}
 
 	var buf bytes.Buffer
@@ -84,6 +94,23 @@ func (s *ShortWriter) WriteEntry(entry Entry) error {
 
 	_, err := buf.WriteTo(s.w)
 	return err
+}
+
+func (s *shortWriter) isReboot(entry Entry) bool {
+	bootid, ok := entry[FIELD_BOOT_ID]
+	if !ok || len(bootid) == 0 {
+		return false
+	}
+
+	newid := string(bootid)
+	if s.bootid == "" {
+		s.bootid = newid
+		return false
+	} else if s.bootid != newid {
+		s.bootid = newid
+		return true
+	}
+	return false
 }
 
 func writeEscaped(buf *bytes.Buffer, line []byte) {

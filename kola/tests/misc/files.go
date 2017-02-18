@@ -25,6 +25,12 @@ import (
 
 func init() {
 	register.Register(&register.Test{
+		Run:         DeadLinks,
+		ClusterSize: 1,
+		Name:        "coreos.filesystem.deadlinks",
+		UserData:    `#cloud-config`,
+	})
+	register.Register(&register.Test{
 		Run:         SUIDFiles,
 		ClusterSize: 1,
 		Name:        "coreos.filesystem.suid",
@@ -80,6 +86,21 @@ func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 
 	if len(badfiles) != 0 {
 		return fmt.Errorf("Unknown SUID or SGID files found: %v", badfiles)
+	}
+
+	return nil
+}
+
+func DeadLinks(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+
+	output, err := m.SSH(`sudo find / /usr -ignore_readdir_race -xdev -xtype l`)
+	if err != nil {
+		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+	}
+
+	if string(output) != "" {
+		return fmt.Errorf("Dead symbolic links found: %v", strings.Split(string(output), "\n"))
 	}
 
 	return nil

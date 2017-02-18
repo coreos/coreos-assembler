@@ -62,7 +62,7 @@ func rktEtcd(t cluster.TestCluster) error {
 	}
 
 	if err := util.Retry(60, 3*time.Second, etcdCheck); err != nil {
-		t.Errorf("etcd in rkt failed health check: %v", err)
+		t.Fatalf("etcd in rkt failed health check: %v", err)
 	}
 
 	return nil

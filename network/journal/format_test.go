@@ -16,8 +16,12 @@ package journal
 
 import (
 	"bytes"
+	"io"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/kylelemons/godebug/diff"
 )
 
 func TestFormatShort(t *testing.T) {
@@ -136,7 +140,7 @@ func TestFormatShort(t *testing.T) {
 	}} {
 		t.Run(testcase.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			w := NewShortWriter(&buf)
+			w := ShortWriter(&buf)
 			w.SetTimezone(time.UTC) // Needed for consistent test results.
 			if err := w.WriteEntry(testcase.entry); err != nil {
 				t.Error(err)
@@ -145,5 +149,32 @@ func TestFormatShort(t *testing.T) {
 				t.Errorf("%q != %q", buf.String(), testcase.expect)
 			}
 		})
+	}
+}
+
+func TestFormatShortFromExport(t *testing.T) {
+	var buf bytes.Buffer
+	er := NewExportReader(strings.NewReader(exportText + exportBinary))
+	sw := ShortWriter(&buf)
+	sw.SetTimezone(time.UTC)
+	for {
+		entry, err := er.ReadEntry()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		if err := sw.WriteEntry(entry); err != nil {
+			t.Error(err)
+		}
+	}
+	const expect = `Jul 17 16:01:01.413961 gdm-password][587]: AccountsService-DEBUG(+): ActUserManager: ignoring unspecified session '8' since it's not graphical: Success
+Jul 17 16:01:01.416351 /USR/SBIN/CROND[8278]: (root) CMD (run-parts /etc/cron.hourly)
+-- Reboot --
+Feb 14 20:15:16.372858 python3[16853]: foo
+                                       bar
+`
+	if d := diff.Diff(buf.String(), expect); d != "" {
+		t.Errorf("unexpected output:\n%s", d)
 	}
 }

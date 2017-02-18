@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/mantle",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v77",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
@@ -580,6 +580,10 @@
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
 			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
+		},
+		{
+			"ImportPath": "github.com/kballard/go-shellquote",
+			"Rev": "d8ec1a69a250a17bb0e419c386eac1f3711dc142"
 		},
 		{
 			"ImportPath": "github.com/kylelemons/godebug/diff",
