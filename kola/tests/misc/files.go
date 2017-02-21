@@ -94,9 +94,20 @@ func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 func DeadLinks(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
-	output, err := m.SSH(`sudo find / /usr -ignore_readdir_race -xdev -xtype l`)
+	ignore := []string{
+		"/dev",
+		"/proc",
+		"/run/udev/watch",
+		"/sys",
+		"/var/lib/docker",
+		"/var/lib/rkt",
+	}
+
+	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -xtype l -print", strings.Join(ignore, " -prune -o -path "))
+
+	output, err := m.SSH(command)
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+		return fmt.Errorf("Failed to run %v: output %s, status: %v", command, output, err)
 	}
 
 	if string(output) != "" {
