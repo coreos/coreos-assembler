@@ -30,7 +30,7 @@ func init() {
 	})
 
 	register.Register(&register.Test{
-		Name:      "bootkube.experimentaletcd.smoke",
+		Name:      "experimentaletcd.smoke",
 		Run:       bootkubeSmokeEtcd,
 		Platforms: []string{"gce"},
 	})
