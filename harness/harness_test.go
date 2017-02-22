@@ -62,7 +62,7 @@ func TestContextCancel(t *testing.T) {
 			}()
 		}}})
 	buf := &bytes.Buffer{}
-	if err := suite.runTests(buf); err != nil {
+	if err := suite.runTests(buf, nil); err != nil {
 		t.Log("\n" + buf.String())
 		t.Error(err)
 	}
@@ -293,7 +293,7 @@ func TestSubTests(t *testing.T) {
 			Parallel: tc.maxPar,
 		}, []InternalTest{{tc.desc, tc.f}})
 		buf := &bytes.Buffer{}
-		err := suite.runTests(buf)
+		err := suite.runTests(buf, nil)
 		suite.release()
 
 		if err != tc.err {

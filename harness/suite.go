@@ -199,6 +199,15 @@ func (s *Suite) Run() (err error) {
 		return err
 	}
 
+	tap, err := os.Create(s.outputPath("test.tap"))
+	if err != nil {
+		return err
+	}
+	defer tap.Close()
+	if _, err := fmt.Fprintf(tap, "1..%d\n", len(s.tests)); err != nil {
+		return err
+	}
+
 	if s.opts.MemProfile {
 		runtime.MemProfileRate = s.opts.MemProfileRate
 		f, err := os.Create(s.outputPath("mem.prof"))
@@ -251,15 +260,16 @@ func (s *Suite) Run() (err error) {
 		defer timer.Stop()
 	}
 
-	return s.runTests(os.Stdout)
+	return s.runTests(os.Stdout, tap)
 }
 
-func (s *Suite) runTests(w io.Writer) error {
+func (s *Suite) runTests(out, tap io.Writer) error {
 	s.running = 1 // Set the count to 1 for the main (sequential) test.
 	t := &H{
 		signal:  make(chan bool),
 		barrier: make(chan bool),
-		w:       w,
+		w:       out,
+		tap:     tap,
 		suite:   s,
 	}
 	tRunner(t, func(t *H) {
