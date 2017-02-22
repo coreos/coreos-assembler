@@ -1,127 +1,85 @@
-// Copyright 2016 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Copyright 2017 CoreOS, Inc.
+// Copyright 2016 The Go Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package harness
 
 import (
 	"bytes"
-	"context"
+	"fmt"
+	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func TestTestContext(t *testing.T) {
-	const (
-		add1 = 0
-		done = 1
-	)
-	// After each of the calls are applied to the context, the
-	type call struct {
-		typ int // run or done
-		// result from applying the call
-		running int
-		waiting int
-		started bool
+func TestMain(m *testing.M) {
+	g0 := runtime.NumGoroutine()
+
+	code := m.Run()
+	if code != 0 {
+		os.Exit(code)
 	}
-	testCases := []struct {
-		max int
-		run []call
-	}{{
-		max: 1,
-		run: []call{
-			{typ: add1, running: 1, waiting: 0, started: true},
-			{typ: done, running: 0, waiting: 0, started: false},
-		},
-	}, {
-		max: 1,
-		run: []call{
-			{typ: add1, running: 1, waiting: 0, started: true},
-			{typ: add1, running: 1, waiting: 1, started: false},
-			{typ: done, running: 1, waiting: 0, started: true},
-			{typ: done, running: 0, waiting: 0, started: false},
-			{typ: add1, running: 1, waiting: 0, started: true},
-		},
-	}, {
-		max: 3,
-		run: []call{
-			{typ: add1, running: 1, waiting: 0, started: true},
-			{typ: add1, running: 2, waiting: 0, started: true},
-			{typ: add1, running: 3, waiting: 0, started: true},
-			{typ: add1, running: 3, waiting: 1, started: false},
-			{typ: add1, running: 3, waiting: 2, started: false},
-			{typ: add1, running: 3, waiting: 3, started: false},
-			{typ: done, running: 3, waiting: 2, started: true},
-			{typ: add1, running: 3, waiting: 3, started: false},
-			{typ: done, running: 3, waiting: 2, started: true},
-			{typ: done, running: 3, waiting: 1, started: true},
-			{typ: done, running: 3, waiting: 0, started: true},
-			{typ: done, running: 2, waiting: 0, started: false},
-			{typ: done, running: 1, waiting: 0, started: false},
-			{typ: done, running: 0, waiting: 0, started: false},
-		},
-	}}
-	for i, tc := range testCases {
-		suite := &Suite{
-			startParallel: make(chan bool),
-			maxParallel:   tc.max,
+
+	// Check that there are no goroutines left behind.
+	t0 := time.Now()
+	stacks := make([]byte, 1<<20)
+	for {
+		g1 := runtime.NumGoroutine()
+		if g1 == g0 {
+			return
 		}
-		for j, call := range tc.run {
-			doCall := func(f func()) chan bool {
-				done := make(chan bool)
-				go func() {
-					f()
-					done <- true
-				}()
-				return done
-			}
-			started := false
-			switch call.typ {
-			case add1:
-				signal := doCall(suite.waitParallel)
-				select {
-				case <-signal:
-					started = true
-				case suite.startParallel <- true:
-					<-signal
-				}
-			case done:
-				signal := doCall(suite.release)
-				select {
-				case <-signal:
-				case <-suite.startParallel:
-					started = true
-					<-signal
-				}
-			}
-			if started != call.started {
-				t.Errorf("%d:%d:started: got %v; want %v", i, j, started, call.started)
-			}
-			if suite.running != call.running {
-				t.Errorf("%d:%d:running: got %v; want %v", i, j, suite.running, call.running)
-			}
-			if suite.numWaiting != call.waiting {
-				t.Errorf("%d:%d:waiting: got %v; want %v", i, j, suite.numWaiting, call.waiting)
-			}
+		stacks = stacks[:runtime.Stack(stacks, true)]
+		time.Sleep(50 * time.Millisecond)
+		if time.Since(t0) > 2*time.Second {
+			fmt.Fprintf(os.Stderr, "Unexpected leftover goroutines detected: %v -> %v\n%s\n", g0, g1, stacks)
+			os.Exit(1)
 		}
 	}
 }
 
-func TestTRun(t *testing.T) {
+func TestContextCancel(t *testing.T) {
+	suite := NewSuite(Options{}, []InternalTest{
+		{"ContextCancel", func(h *H) {
+			ctx := h.Context()
+			// Tests we don't leak this goroutine:
+			go func() {
+				<-ctx.Done()
+			}()
+		}}})
+	buf := &bytes.Buffer{}
+	if err := suite.runTests(buf); err != nil {
+		t.Log("\n" + buf.String())
+		t.Error(err)
+	}
+}
+
+func TestSubTests(t *testing.T) {
 	realTest := t
 	testCases := []struct {
 		desc   string
-		ok     bool
+		err    error
 		maxPar int
 		chatty bool
 		output string
 		f      func(*H)
 	}{{
 		desc:   "failnow skips future sequential and parallel tests at same level",
-		ok:     false,
+		err:    SuiteFailed,
 		maxPar: 1,
 		output: `
 --- FAIL: failnow skips future sequential and parallel tests at same level (N.NNs)
@@ -156,7 +114,7 @@ func TestTRun(t *testing.T) {
 		},
 	}, {
 		desc:   "failure in parallel test propagates upwards",
-		ok:     false,
+		err:    SuiteFailed,
 		maxPar: 1,
 		output: `
 --- FAIL: failure in parallel test propagates upwards (N.NNs)
@@ -174,7 +132,6 @@ func TestTRun(t *testing.T) {
 		},
 	}, {
 		desc:   "skipping without message, chatty",
-		ok:     true,
 		chatty: true,
 		output: `
 === RUN   skipping without message, chatty
@@ -182,7 +139,6 @@ func TestTRun(t *testing.T) {
 		f: func(t *H) { t.SkipNow() },
 	}, {
 		desc:   "chatty with recursion",
-		ok:     true,
 		chatty: true,
 		output: `
 === RUN   chatty with recursion
@@ -198,21 +154,20 @@ func TestTRun(t *testing.T) {
 		},
 	}, {
 		desc: "skipping without message, not chatty",
-		ok:   true,
 		f:    func(t *H) { t.SkipNow() },
 	}, {
 		desc: "skipping after error",
+		err:  SuiteFailed,
 		output: `
 --- FAIL: skipping after error (N.NNs)
-        sub_test.go:NNN: an error
-        sub_test.go:NNN: skipped`,
+        harness_test.go:NNN: an error
+        harness_test.go:NNN: skipped`,
 		f: func(t *H) {
 			t.Error("an error")
 			t.Skip("skipped")
 		},
 	}, {
 		desc:   "use Run to locally synchronize parallelism",
-		ok:     true,
 		maxPar: 1,
 		f: func(t *H) {
 			var count uint32
@@ -233,7 +188,6 @@ func TestTRun(t *testing.T) {
 		// Sequential tests should partake in the counting of running threads.
 		// Otherwise, if one runs parallel subtests in sequential tests that are
 		// itself subtests of parallel tests, the counts can get askew.
-		ok:     true,
 		maxPar: 1,
 		f: func(t *H) {
 			t.Run("a", func(t *H) {
@@ -252,7 +206,6 @@ func TestTRun(t *testing.T) {
 		// Sequential tests should partake in the counting of running threads.
 		// Otherwise, if one runs parallel subtests in sequential tests that are
 		// itself subtests of parallel tests, the counts can get askew.
-		ok:     true,
 		maxPar: 2,
 		f: func(t *H) {
 			for i := 0; i < 2; i++ {
@@ -276,7 +229,6 @@ func TestTRun(t *testing.T) {
 		},
 	}, {
 		desc:   "stress test",
-		ok:     true,
 		maxPar: 4,
 		f: func(t *H) {
 			// t.Parallel doesn't work in the pseudo-H we start with:
@@ -309,14 +261,13 @@ func TestTRun(t *testing.T) {
 		},
 	}, {
 		desc:   "skip output",
-		ok:     true,
 		maxPar: 4,
 		f: func(t *H) {
 			t.Skip()
 		},
 	}, {
 		desc:   "panic on goroutine fail after test exit",
-		ok:     false,
+		err:    SuiteFailed,
 		maxPar: 4,
 		f: func(t *H) {
 			ch := make(chan bool)
@@ -337,30 +288,19 @@ func TestTRun(t *testing.T) {
 		},
 	}}
 	for _, tc := range testCases {
-		suite := NewSuite(nil)
-		suite.match = newMatcher("", "")
-		suite.chatty = tc.chatty
-		suite.maxParallel = tc.maxPar
-		suite.running = 1
+		suite := NewSuite(Options{
+			Verbose:  tc.chatty,
+			Parallel: tc.maxPar,
+		}, []InternalTest{{tc.desc, tc.f}})
 		buf := &bytes.Buffer{}
-		root := &H{
-			suite:  suite,
-			signal: make(chan bool),
-			name:   "Test",
-			w:      buf,
-		}
-		root.ctx, root.cancel = context.WithCancel(context.Background())
-		ok := root.Run(tc.desc, tc.f)
+		err := suite.runTests(buf)
 		suite.release()
 
-		if ok != tc.ok {
-			t.Errorf("%s:ok: got %v; want %v", tc.desc, ok, tc.ok)
+		if err != tc.err {
+			t.Errorf("%s:err: got %v; want %v", tc.desc, err, tc.err)
 		}
-		if ok != !root.Failed() {
-			t.Errorf("%s:root failed: got %v; want %v", tc.desc, !ok, root.Failed())
-		}
-		if suite.running != 0 || suite.numWaiting != 0 {
-			t.Errorf("%s:running and waiting non-zero: got %d and %d", tc.desc, suite.running, suite.numWaiting)
+		if suite.running != 0 || suite.waiting != 0 {
+			t.Errorf("%s:running and waiting non-zero: got %d and %d", tc.desc, suite.running, suite.waiting)
 		}
 		got := strings.TrimSpace(buf.String())
 		want := strings.TrimSpace(tc.output)
