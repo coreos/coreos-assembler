@@ -323,6 +323,9 @@ func (s *Suite) cleanOutputDir() error {
 	}
 
 	if err := os.Mkdir(s.opts.OutputDir, 0777); err != nil {
+		if !safe && os.IsExist(err) {
+			return fmt.Errorf("harness: refused to remove existing output directory: %s", s.opts.OutputDir)
+		}
 		return err
 	}
 
