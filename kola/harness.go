@@ -16,17 +16,16 @@ package kola
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/skip"
@@ -36,6 +35,7 @@ import (
 	"github.com/coreos/mantle/platform/machine/aws"
 	"github.com/coreos/mantle/platform/machine/gcloud"
 	"github.com/coreos/mantle/platform/machine/qemu"
+	"github.com/coreos/mantle/system"
 )
 
 var (
@@ -67,58 +67,6 @@ func RegisterTestOption(name, option string) {
 // to run native go functions directly on kola machines. It is necessary
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
-
-type result struct {
-	test     *register.Test
-	result   error
-	duration time.Duration
-}
-
-type resultSlice []*result
-
-// emit tap results.
-// https://testanything.org/tap-version-13-specification.html
-func (res resultSlice) ToTAP(w io.Writer) error {
-	if _, err := fmt.Fprintf(w, "TAP version 13\n1..%d\n", len(res)); err != nil {
-		return err
-	}
-
-	var werr error
-
-	for i, r := range res {
-		t := r.test
-
-		switch err := r.result.(type) {
-		case nil:
-			_, werr = fmt.Fprintf(w, "ok %d - %s\n", i+1, t.Name)
-		case skip.Skip:
-			_, werr = fmt.Fprintf(w, "ok %d - %s # SKIP: %s\n", i+1, t.Name, err)
-		default:
-			_, werr = fmt.Fprintf(w, "not ok %d - %s # %s\n", i+1, t.Name, err)
-		}
-
-		if werr != nil {
-			return werr
-		}
-	}
-
-	return nil
-}
-
-func testRunner(platform, outputDir string, done <-chan struct{}, tests chan *register.Test, results chan *result) {
-	for test := range tests {
-		plog.Noticef("=== RUN %s on %s", test.Name, platform)
-		start := time.Now()
-		err := RunTest(test, platform, outputDir)
-		duration := time.Since(start)
-
-		select {
-		case results <- &result{test, err, duration}:
-		case <-done:
-			return
-		}
-	}
-}
 
 func filterTests(tests map[string]*register.Test, pattern, platform string, version semver.Version) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
@@ -187,15 +135,6 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. If it already exists it will be erased!
 func RunTests(pattern, pltfrm, outputDir string) error {
-	var passed, failed, skipped int
-	var wg sync.WaitGroup
-	var results resultSlice
-
-	outputDir, err := CleanOutputDir(outputDir)
-	if err != nil {
-		return err
-	}
-
 	// Avoid incurring cost of starting machine in getClusterSemver when
 	// either:
 	// 1) we already know 0 tests will run
@@ -230,72 +169,45 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 		}
 	}
 
-	done := make(chan struct{})
-	defer close(done)
-	testc := make(chan *register.Test)
-	resc := make(chan *result)
-
-	wg.Add(TestParallelism)
-
-	for i := 0; i < TestParallelism; i++ {
-		go func() {
-			testRunner(pltfrm, outputDir, done, testc, resc)
-			wg.Done()
-		}()
+	opts := harness.Options{
+		OutputDir: outputDir,
+		Parallel:  TestParallelism,
+		Verbose:   true,
 	}
-	go func() {
-		wg.Wait()
-		close(resc)
-	}()
-
-	// feed pipeline
-	go func() {
-		for _, t := range tests {
-			testc <- t
-
+	htests := []harness.InternalTest{}
+	for _, test := range tests {
+		test := test // for the closure
+		run := func(h *harness.H) {
 			// don't go too fast, in case we're talking to a rate limiting api like AWS EC2.
 			time.Sleep(2 * time.Second)
-		}
-		close(testc)
-	}()
 
-	for r := range resc {
-		t := r.test
-		seconds := r.duration.Seconds()
-		switch err := r.result.(type) {
-		case nil:
-			plog.Noticef("--- PASS: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
-			passed++
-		case skip.Skip:
-			plog.Errorf("--- SKIP: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
-			plog.Errorf("        %v", err)
-			skipped++
-		default:
-			plog.Errorf("--- FAIL: %s on %s (%.3fs)", t.Name, pltfrm, seconds)
-			plog.Errorf("        %v", err)
-			failed++
+			err := RunTest(test, pltfrm, outputDir)
+			if _, ok := err.(skip.Skip); ok {
+				h.Skip(err)
+			} else if err != nil {
+				h.Error(err)
+			}
 		}
-
-		results = append(results, r)
+		htests = append(htests, harness.InternalTest{Name: test.Name, F: run})
 	}
+
+	suite := harness.NewSuite(opts, htests)
+	err = suite.Run()
 
 	if TAPFile != "" {
-		f, err := os.Create(TAPFile)
-		if err != nil {
-			plog.Errorf("failed to create TAP file: %v", err)
-		} else {
-			if err := results.ToTAP(f); err != nil {
-				plog.Errorf("failed write TAP results: %v", err)
-			}
-			f.Close()
+		src := filepath.Join(outputDir, "test.tap")
+		if err2 := system.CopyRegularFile(src, TAPFile); err == nil && err2 != nil {
+			err = err2
 		}
 	}
 
-	plog.Noticef("%d passed %d failed %d skipped out of %d total", passed, failed, skipped, passed+failed+skipped)
-	if failed > 0 {
-		return fmt.Errorf("%d tests failed", failed)
+	if err != nil {
+		fmt.Println("FAIL")
+	} else {
+		fmt.Println("PASS")
 	}
-	return nil
+
+	return err
 }
 
 // getClusterSemVer returns the CoreOS semantic version via starting a
