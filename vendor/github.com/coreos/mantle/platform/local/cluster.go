@@ -29,13 +29,14 @@ import (
 	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/network/ntp"
 	"github.com/coreos/mantle/network/omaha"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
 )
 
 type LocalCluster struct {
 	destructor.MultiDestructor
-	OutputDir   string
+	*platform.BaseCluster
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
 	OmahaServer *omaha.TrivialServer
@@ -43,8 +44,8 @@ type LocalCluster struct {
 	nshandle    netns.NsHandle
 }
 
-func NewLocalCluster(outputDir string) (*LocalCluster, error) {
-	lc := &LocalCluster{OutputDir: outputDir}
+func NewLocalCluster(basename, outputDir string) (*LocalCluster, error) {
+	lc := &LocalCluster{}
 
 	var err error
 	lc.nshandle, err = ns.Create()
@@ -53,9 +54,18 @@ func NewLocalCluster(outputDir string) (*LocalCluster, error) {
 	}
 	lc.AddCloser(&lc.nshandle)
 
+	nsdialer := network.NewNsDialer(lc.nshandle)
+	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, outputDir, nsdialer)
+	if err != nil {
+		lc.Destroy()
+		return nil, err
+	}
+	lc.AddDestructor(lc.BaseCluster)
+
 	// dnsmasq and etcd much be launched in the new namespace
 	nsExit, err := ns.Enter(lc.nshandle)
 	if err != nil {
+		lc.Destroy()
 		return nil, err
 	}
 	defer nsExit()
@@ -166,4 +176,8 @@ func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
 
 func (lc *LocalCluster) GetNsHandle() netns.NsHandle {
 	return lc.nshandle
+}
+
+func (lc *LocalCluster) Destroy() error {
+	return lc.MultiDestructor.Destroy()
 }

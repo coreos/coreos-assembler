@@ -78,29 +78,6 @@ func Manhole(m Machine) error {
 	return nil
 }
 
-// StreamJournal streams the remote system's journal to stdout.
-func StreamJournal(m Machine) error {
-	c, err := m.SSHClient()
-	if err != nil {
-		return fmt.Errorf("SSH client failed: %v", err)
-	}
-
-	s, err := c.NewSession()
-	if err != nil {
-		return fmt.Errorf("SSH session failed: %v", err)
-	}
-
-	s.Stdout = os.Stdout
-	s.Stderr = os.Stderr
-	go func() {
-		defer c.Close()
-		defer s.Close()
-		s.Run("journalctl -f")
-	}()
-
-	return nil
-}
-
 // Enable SELinux on a machine (skip on machines without SELinux support)
 func EnableSelinux(m Machine) error {
 	_, err := m.SSH("if type -P setenforce; then sudo setenforce 1; fi")
@@ -110,9 +87,9 @@ func EnableSelinux(m Machine) error {
 	return nil
 }
 
-// Reboots a machine and blocks until the system to be accessible by SSH again.
-// It will return an error if the machine is not accessible after a timeout.
-func Reboot(m Machine) error {
+// Reboots a machine, stopping ssh first.
+// Afterwards run CheckMachine to verify the system is back and operational.
+func StartReboot(m Machine) error {
 	// stop sshd so that commonMachineChecks will only work if the machine
 	// actually rebooted
 	out, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
@@ -122,16 +99,6 @@ func Reboot(m Machine) error {
 	}
 	if err != nil {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
-	}
-
-	err = CheckMachine(m)
-	if err != nil {
-		return err
-	}
-
-	err = EnableSelinux(m)
-	if err != nil {
-		return err
 	}
 	return nil
 }

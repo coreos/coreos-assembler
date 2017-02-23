@@ -313,9 +313,9 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 	case "qemu":
 		cluster, err = qemu.NewCluster(&QEMUOptions, testDir)
 	case "gce":
-		cluster, err = gcloud.NewCluster(&GCEOptions)
+		cluster, err = gcloud.NewCluster(&GCEOptions, testDir)
 	case "aws":
-		cluster, err = aws.NewCluster(&AWSOptions)
+		cluster, err = aws.NewCluster(&AWSOptions, testDir)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
@@ -366,9 +366,9 @@ func RunTest(t *register.Test, pltfrm, outputDir string) (err error) {
 	case "qemu":
 		c, err = qemu.NewCluster(&QEMUOptions, testDir)
 	case "gce":
-		c, err = gcloud.NewCluster(&GCEOptions)
+		c, err = gcloud.NewCluster(&GCEOptions, testDir)
 	case "aws":
-		c, err = aws.NewCluster(&AWSOptions)
+		c, err = aws.NewCluster(&AWSOptions, testDir)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}

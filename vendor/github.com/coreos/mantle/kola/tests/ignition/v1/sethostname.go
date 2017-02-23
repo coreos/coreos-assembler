@@ -19,14 +19,9 @@ import (
 	"strings"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/ignition")
 )
 
 func init() {

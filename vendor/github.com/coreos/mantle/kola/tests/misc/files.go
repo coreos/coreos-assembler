@@ -25,6 +25,12 @@ import (
 
 func init() {
 	register.Register(&register.Test{
+		Run:         DeadLinks,
+		ClusterSize: 1,
+		Name:        "coreos.filesystem.deadlinks",
+		UserData:    `#cloud-config`,
+	})
+	register.Register(&register.Test{
 		Run:         SUIDFiles,
 		ClusterSize: 1,
 		Name:        "coreos.filesystem.suid",
@@ -85,6 +91,32 @@ func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 	return nil
 }
 
+func DeadLinks(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+
+	ignore := []string{
+		"/dev",
+		"/proc",
+		"/run/udev/watch",
+		"/sys",
+		"/var/lib/docker",
+		"/var/lib/rkt",
+	}
+
+	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -xtype l -print", strings.Join(ignore, " -prune -o -path "))
+
+	output, err := m.SSH(command)
+	if err != nil {
+		return fmt.Errorf("Failed to run %v: output %s, status: %v", command, output, err)
+	}
+
+	if string(output) != "" {
+		return fmt.Errorf("Dead symbolic links found: %v", strings.Split(string(output), "\n"))
+	}
+
+	return nil
+}
+
 func SUIDFiles(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
@@ -104,6 +136,7 @@ func SUIDFiles(c cluster.TestCluster) error {
 		"/usr/bin/umount",
 		"/usr/bin/su",
 		"/usr/bin/sudo",
+		"/usr/lib/polkit-1/polkit-agent-helper-1",
 		"/usr/lib64/polkit-1/polkit-agent-helper-1",
 		"/usr/libexec/dbus-daemon-launch-helper",
 		"/usr/sbin/mount.nfs",

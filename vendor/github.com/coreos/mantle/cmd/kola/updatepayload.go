@@ -19,12 +19,12 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/agent"
 
@@ -130,6 +130,12 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 }
 
 func runUpdateTest() error {
+	outputDir, err := kola.CleanOutputDir(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	cluster, err := qemu.NewCluster(&kola.QEMUOptions, outputDir)
 	if err != nil {
 		return fmt.Errorf("new cluster: %v", err)
@@ -154,10 +160,6 @@ func runUpdateTest() error {
 	}
 
 	// initial boot
-	if err := startJournal(m); err != nil {
-		return fmt.Errorf("initial boot: %v", err)
-	}
-
 	if err := checkUsrA(m); err != nil {
 		return fmt.Errorf("initial boot: %v", err)
 	}
@@ -167,10 +169,6 @@ func runUpdateTest() error {
 	}
 
 	// second boot
-	if err := startJournal(m); err != nil {
-		return fmt.Errorf("second boot: %v", err)
-	}
-
 	if err := checkUsrB(m); err != nil {
 		return fmt.Errorf("second boot: %v", err)
 	}
@@ -186,10 +184,6 @@ func runUpdateTest() error {
 	}
 
 	// third boot
-	if err := startJournal(m); err != nil {
-		return fmt.Errorf("third boot: %v", err)
-	}
-
 	if err := checkUsrA(m); err != nil {
 		return fmt.Errorf("third boot: %v", err)
 	}
@@ -227,7 +221,7 @@ func tryUpdate(m platform.Machine) error {
 	plog.Info("Rebooting test machine")
 
 	/* reboot it */
-	if err := platform.Reboot(m); err != nil {
+	if err := m.Reboot(); err != nil {
 		return fmt.Errorf("reboot failed: %v", err)
 	}
 
@@ -267,15 +261,6 @@ func newUserdata(qc *qemu.Cluster) (string, error) {
 	}
 
 	return buf.String(), nil
-}
-
-func startJournal(m platform.Machine) error {
-	if plog.LevelAt(capnslog.DEBUG) {
-		if err := platform.StreamJournal(m); err != nil {
-			return fmt.Errorf("start journal: %v", err)
-		}
-	}
-	return nil
 }
 
 func checkUsrA(m platform.Machine) error {

@@ -16,6 +16,9 @@
 package gcloud
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/coreos/mantle/platform"
@@ -28,13 +31,13 @@ type cluster struct {
 	api *gcloud.API
 }
 
-func NewCluster(opts *gcloud.Options) (platform.Cluster, error) {
+func NewCluster(opts *gcloud.Options, outputDir string) (platform.Cluster, error) {
 	api, err := gcloud.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName)
+	bc, err := platform.NewBaseCluster(opts.BaseName, outputDir)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +82,28 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		name:  instance.Name,
 		intIP: intip,
 		extIP: extip,
+	}
+
+	dir := filepath.Join(gc.OutputDir(), gm.ID())
+	if err := os.Mkdir(dir, 0777); err != nil {
+		gm.Destroy()
+		return nil, err
+	}
+
+	confPath := filepath.Join(dir, "user-data")
+	if err := conf.WriteFile(confPath); err != nil {
+		gm.Destroy()
+		return nil, err
+	}
+
+	if gm.journal, err = platform.NewJournal(dir); err != nil {
+		gm.Destroy()
+		return nil, err
+	}
+
+	if err := gm.journal.Start(context.TODO(), gm); err != nil {
+		gm.Destroy()
+		return nil, err
 	}
 
 	if err := platform.CheckMachine(gm); err != nil {

@@ -26,11 +26,13 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 var (
@@ -97,14 +99,21 @@ func init() {
 		UserData:   `{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`,
 		MinVersion: semver.Version{Major: 1192},
 	})
+	register.Register(&register.Test{
+		Run:         dockerNetworksReliably,
+		ClusterSize: 1,
+		Name:        "docker.networks-reliably",
+		UserData:    `#cloud-config`,
+		MinVersion:  semver.Version{Major: 1192},
+	})
 }
 
 // make a docker container out of binaries on the host
 func genDockerContainer(m platform.Machine, name string, binnames []string) error {
 	cmd := `tmpdir=$(mktemp -d); cd $tmpdir; echo -e "FROM scratch\nCOPY . /" > Dockerfile;
-	        b=$(which %s); libs=$(ldd $b | grep -o /lib'[^ ]*' | sort -u);
-	        rsync -av --relative --copy-links $b $libs ./;
-	        docker build -t %s .`
+	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
+	        sudo rsync -av --relative --copy-links $b $libs ./;
+	        sudo docker build -t %s .`
 
 	if output, err := m.SSH(fmt.Sprintf(cmd, strings.Join(binnames, " "), name)); err != nil {
 		return fmt.Errorf("failed to make %s container: output: %q status: %q", name, output, err)
@@ -254,6 +263,10 @@ func dockerNetwork(c cluster.TestCluster) error {
 // Regression test for https://github.com/coreos/bugs/issues/1569 and
 // https://github.com/coreos/docker/pull/31
 func dockerOldClient(c cluster.TestCluster) error {
+	if _, ok := c.Cluster.(*qemu.Cluster); ok && kola.QEMUOptions.Board != "amd64-usr" {
+		return skip.Skip("Only applicable to amd64")
+	}
+
 	oldclient := "/usr/lib/kola/amd64/docker-1.9.1"
 	if _, err := os.Stat(oldclient); err != nil {
 		return skip.Skip(fmt.Sprintf("Can't find old docker client to test: %v", err))
@@ -317,6 +330,23 @@ func dockerUserns(c cluster.TestCluster) error {
 	}
 	if mapParts[0] != "0" && mapParts[1] != "100000" {
 		return fmt.Errorf("unexpected userns mapping values: %v", string(uid_map))
+	}
+
+	return nil
+}
+
+// Regression test for https://github.com/coreos/bugs/issues/1785
+// Also, hopefully will catch any similar issues
+func dockerNetworksReliably(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+
+	if err := genDockerContainer(m, "ping", []string{"sh", "ping"}); err != nil {
+		return err
+	}
+
+	output, err := m.SSH(`seq 1 100 | xargs -i -n 1 -P 20 docker run ping sh -c 'out=$(ping -c 1 172.17.0.1 -w 1); if [[ "$?" != 0 ]]; then echo "{} FAIL"; echo "$out"; exit 1; else echo "{} PASS"; fi'`)
+	if err != nil {
+		return fmt.Errorf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
 	}
 
 	return nil

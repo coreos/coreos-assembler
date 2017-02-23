@@ -50,7 +50,7 @@ func init() {
 			"EtcdUpdateValue":    TestEtcdUpdateValue,
 			"FleetctlRunService": TestFleetctlRunService,
 		},
-		Platforms: []string{"aws", "gce"},
+		/* TODO: https://github.com/coreos/bugs/issues/1815 */
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -69,6 +69,13 @@ func init() {
         "dropins": [{
           "name": "environment.conf",
           "contents": "[Service]\nEnvironment=FLEET_ETCD_REQUEST_TIMEOUT=15"
+        }]
+      },
+      {
+        "name": "coreos-metadata.service",
+        "dropins": [{
+          "name": "qemu.conf",
+          "contents": "[Unit]\nConditionVirtualization=!qemu"
         }]
       }
     ]
