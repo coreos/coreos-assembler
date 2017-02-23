@@ -109,9 +109,9 @@ func runUp(cmd *cobra.Command, args []string) {
 
 	switch targetPlatform {
 	case "gce":
-		cls, err = gcloud.NewCluster(&kola.GCEOptions)
+		cls, err = gcloud.NewCluster(&kola.GCEOptions, "_pluton_tmp")
 	case "aws":
-		cls, err = aws.NewCluster(&kola.AWSOptions)
+		cls, err = aws.NewCluster(&kola.AWSOptions, "_pluton_tmp")
 	default:
 		err = fmt.Errorf("invalid platform %q", targetPlatform)
 	}

@@ -22,7 +22,6 @@ import (
 	"github.com/coreos-inc/pluton/spawn"
 
 	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
 
@@ -39,7 +38,7 @@ func rebootMaster(tc cluster.TestCluster) error {
 
 	// reboot and wait for api to come up 3 times to avoid false positives
 	for i := 0; i < 3; i++ {
-		if err := platform.Reboot(c.Masters[0]); err != nil {
+		if err := c.Masters[0].Reboot(); err != nil {
 			return err
 		}
 
