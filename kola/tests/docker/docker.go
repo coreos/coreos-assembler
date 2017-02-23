@@ -106,6 +106,13 @@ func init() {
 		UserData:    `#cloud-config`,
 		MinVersion:  semver.Version{Major: 1192},
 	})
+	register.Register(&register.Test{
+		Run:         dockerUserNoCaps,
+		ClusterSize: 1,
+		Name:        "docker.user-no-caps",
+		UserData:    `#cloud-config`,
+		MinVersion:  semver.Version{Major: 1192},
+	})
 }
 
 // make a docker container out of binaries on the host
@@ -347,6 +354,50 @@ func dockerNetworksReliably(c cluster.TestCluster) error {
 	output, err := m.SSH(`seq 1 100 | xargs -i -n 1 -P 20 docker run ping sh -c 'out=$(ping -c 1 172.17.0.1 -w 1); if [[ "$?" != 0 ]]; then echo "{} FAIL"; echo "$out"; exit 1; else echo "{} PASS"; fi'`)
 	if err != nil {
 		return fmt.Errorf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
+	}
+
+	return nil
+}
+
+// Regression test for CVE-2016-8867
+// CVE-2016-8867 gave a container capabilities, including fowner, even if it
+// was a non-root user.
+// We test that a user inside a container does not have any effective nor
+// permitted capabilities (which is what the cve was).
+// For good measure, we also check that fs permissions deny that user from
+// accessing /root.
+func dockerUserNoCaps(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+
+	if err := genDockerContainer(m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"}); err != nil {
+		return err
+	}
+
+	output, err := m.SSH(`docker run --user 1000:1000 \
+		-v /root:/root \
+		captest sh -c \
+		'cat /proc/self/status | grep -E "Cap(Eff|Prm)"; ls /root &>/dev/null && echo "FAIL: could read root" || echo "PASS: err reading root"'`)
+	if err != nil {
+		return fmt.Errorf("could not run container (we weren't even testing for that): %v: %q", err, string(output))
+	}
+
+	outputlines := strings.Split(string(output), "\n")
+	if len(outputlines) < 3 {
+		return fmt.Errorf("expected two lines of caps and an an error/succcess line. Got %q", string(output))
+	}
+	cap1, cap2 := strings.Fields(outputlines[0]), strings.Fields(outputlines[1])
+	// The format of capabilities in /proc/*/status is e.g.: CapPrm:\t0000000000000000
+	// We could parse the hex to its actual capabilities, but since we're looking for none, just checking it's all 0 is good enough.
+	if len(cap1) != 2 || len(cap2) != 2 {
+		return fmt.Errorf("capability lines didn't have two parts: %q", string(output))
+	}
+	if cap1[1] != "0000000000000000" || cap2[1] != "0000000000000000" {
+		return fmt.Errorf("Permitted / effective capabilities were non-zero: %q", string(output))
+	}
+
+	// Finally, check for fail/success on reading /root
+	if !strings.HasPrefix(outputlines[len(outputlines)-1], "PASS: ") {
+		return fmt.Errorf("reading /root test failed: %q", string(output))
 	}
 
 	return nil
