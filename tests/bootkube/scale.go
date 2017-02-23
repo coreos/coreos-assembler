@@ -62,7 +62,13 @@ func etcdScale(tc cluster.TestCluster) error {
 
 // resizes self-hosted etcd and checks that the desired number of pods are in a running state
 func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
-	const tprEndpoint = "http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/kube-system/etcdclusters/kube-etcd"
+	const (
+		tprGroup   = "etcd.coreos.com"
+		apiVersion = "v1beta1"
+		tprKind    = "clusters"
+	)
+	var tprEndpoint = fmt.Sprintf("http://127.0.0.1:8080/apis/%s/%s/namespaces/kube-system/%s/kube-etcd",
+		tprGroup, apiVersion, tprKind)
 
 	scaleCmds := []string{
 		fmt.Sprintf("curl -H 'Content-Type: application/json' -X GET %v > body.json", tprEndpoint),
@@ -72,29 +78,29 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 	for _, cmd := range scaleCmds {
 		_, err := c.Masters[0].SSH(cmd)
 		if err != nil {
-			return fmt.Errorf("Error in scale up command: %v: %v", cmd, err)
+			return fmt.Errorf("error in scale up command: %v: %v", cmd, err)
 		}
 	}
 
-	// check that all 3 pods are running
+	// check that all pods are running
 	podsReady := func() error {
 		out, err := c.Kubectl(`get po -l etcd_cluster=kube-etcd -o jsonpath='{.items[*].status.phase}' --namespace=kube-system`)
 		if err != nil {
 			return err
 		}
 		phases := strings.Split(out, " ")
-		if len(phases) != 3 {
-			return fmt.Errorf("Not enough etcd pods got %v: %v", out, phases)
+		if len(phases) != size {
+			return fmt.Errorf("expected %d etcd pods got %d: %v", size, len(phases), phases)
 		}
 		for _, phase := range phases {
 			if phase != "Running" {
-				return fmt.Errorf("One or more etcd pods not in a 'Running' phase")
+				return fmt.Errorf("one or more etcd pods not in a 'Running' phase")
 			}
 		}
 		return nil
 	}
 
-	if err := util.Retry(10, 10*time.Second, podsReady); err != nil {
+	if err := util.Retry(10, 15*time.Second, podsReady); err != nil {
 		return err
 	}
 	return nil
@@ -136,7 +142,8 @@ func checkEtcdPodDistribution(c *pluton.Cluster, etcdClusterSize int) error {
 
 	for k, _ := range nodeSet {
 		if _, ok := masterSet[k]; !ok {
-			return fmt.Errorf("Detected self-hosted etcd pod running on non-master node %v %v", masterSet, nodeSet)
+			// Just warn instead of erroring until/if supported
+			plog.Infof("detected self-hosted etcd pod running on non-master node %v %v", masterSet, nodeSet)
 		}
 	}
 
