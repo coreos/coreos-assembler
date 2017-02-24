@@ -85,9 +85,19 @@ func nginxCheck(c *pluton.Cluster) error {
 	}
 
 	// delete pod
-	_, err = c.Kubectl("delete deployment my-nginx")
-	if err != nil {
-		return fmt.Errorf("delete deployment: %v", err)
+	// This part of the test has been flaking a lot in more then one test.
+	// We shouldn't need a retry here, but lets try it anyway and log
+	// failures here as abnormal.
+	deletePod := func() error {
+		_, err = c.Kubectl("delete deployment my-nginx")
+		if err != nil {
+			plog.Infof("unexpected kubectl failure deleting deployment: %v", err)
+			return fmt.Errorf("delete deployment: %v", err)
+		}
+		return nil
+	}
+	if err := util.Retry(5, 5*time.Second, deletePod); err != nil {
+		return err
 	}
 
 	return nil
