@@ -72,7 +72,8 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 
 	scaleCmds := []string{
 		fmt.Sprintf("curl -H 'Content-Type: application/json' -X GET %v > body.json", tprEndpoint),
-		fmt.Sprintf("jq .spec.size=%v < body.json > newbody.json", size),
+		// delete resourceVersion field before curling back
+		fmt.Sprintf("jq 'recurse(.metadata) |= del(.resourceVersion)' < out.json | jq .spec.size=%v > newbody.json", size),
 		fmt.Sprintf("curl -H 'Content-Type: application/json' -X PUT --data @newbody.json %v", tprEndpoint),
 	}
 	for _, cmd := range scaleCmds {
@@ -100,7 +101,7 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 		return nil
 	}
 
-	if err := util.Retry(10, 15*time.Second, podsReady); err != nil {
+	if err := util.Retry(10, 12*time.Second, podsReady); err != nil {
 		return err
 	}
 	return nil
