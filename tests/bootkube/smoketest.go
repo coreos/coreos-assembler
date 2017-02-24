@@ -59,17 +59,17 @@ func nginxCheck(c *pluton.Cluster) error {
 	// start nginx deployment
 	_, err := c.Kubectl("run my-nginx --image=nginx --replicas=2 --port=80")
 	if err != nil {
-		return err
+		return fmt.Errorf("starting deployment: %v", err)
 	}
 
 	// expose nginx
 	_, err = c.Kubectl("expose deployment my-nginx --port=80 --type=LoadBalancer")
 	if err != nil {
-		return err
+		return fmt.Errorf("expose deployment: %v", err)
 	}
 	serviceIP, err := c.Kubectl("get service my-nginx --template={{.spec.clusterIP}}")
 	if err != nil {
-		return err
+		return fmt.Errorf("get service IP: %v", err)
 	}
 
 	// curl for welcome message
@@ -87,7 +87,7 @@ func nginxCheck(c *pluton.Cluster) error {
 	// delete pod
 	_, err = c.Kubectl("delete deployment my-nginx")
 	if err != nil {
-		return err
+		return fmt.Errorf("delete deployment: %v", err)
 	}
 
 	return nil
