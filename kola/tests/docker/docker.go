@@ -95,7 +95,7 @@ func init() {
 			  - name: dockremap
 			    create: {}
 		*/
-		Platforms:  []string{"aws", "gce"},
+		Platforms:  []string{"qemu", "gce"}, // aws: https://github.com/coreos/bugs/issues/1826
 		UserData:   `{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`,
 		MinVersion: semver.Version{Major: 1192},
 	})
