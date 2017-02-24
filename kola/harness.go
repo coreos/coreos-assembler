@@ -16,6 +16,7 @@ package kola
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -178,8 +179,14 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 	for _, test := range tests {
 		test := test // for the closure
 		run := func(h *harness.H) {
+			h.Parallel()
+
 			// don't go too fast, in case we're talking to a rate limiting api like AWS EC2.
-			time.Sleep(2 * time.Second)
+			// FIXME(marineam): API requests must do their own
+			// backoff due to rate limiting, this is unreliable.
+			max := int64(2 * time.Second)
+			splay := time.Duration(rand.Int63n(max))
+			time.Sleep(splay)
 
 			err := RunTest(test, pltfrm, outputDir)
 			if _, ok := err.(skip.Skip); ok {
