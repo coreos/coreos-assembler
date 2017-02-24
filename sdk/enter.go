@@ -265,7 +265,7 @@ func (e *enter) CopyGoogleCreds() error {
 	}
 	var creds googleCreds
 	if err := json.Unmarshal(credsRaw, &creds); err != nil {
-		return err
+		return fmt.Errorf("Unmarshal GoogleCreds failed: %s", err)
 	}
 	creds.JsonPath = chrootJsonPath
 	creds.StateDir = chrootStateDir

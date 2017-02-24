@@ -67,12 +67,12 @@ func DownloadFile(file, fileURL string, client *http.Client) error {
 		}
 		api, err := storage.New(client)
 		if err != nil {
-			plog.Fatal(err)
+			return err
 		}
 		path := strings.TrimLeft(parseURL.Path, "/")
 		obj, err := api.Objects.Get(parseURL.Host, path).Do()
 		if err != nil {
-			plog.Fatal(err)
+			return fmt.Errorf("%s: %s", err, fileURL)
 		}
 		fileURL = obj.MediaLink
 	}
@@ -271,7 +271,7 @@ func UpdateFile(file, url string, client *http.Client) error {
 	defer os.Remove(tempFile)
 
 	if err := DownloadFile(tempFile, url, client); err != nil {
-		return err
+		return fmt.Errorf("%s: %s", url, err)
 	}
 
 	equal, err := cmpFileBytes(file, tempFile)
