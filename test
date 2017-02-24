@@ -41,7 +41,11 @@ echo "Running tests..."
 go test -cover "$@" $pkgs
 
 echo "Checking gofmt..."
-gofmt-l $pkgs
+if [[ "$@" == "-v" ]]; then
+	gofmt-l -d $pkgs
+else
+	gofmt-l $pkgs
+fi
 
 echo "Checking govet..."
 go vet $pkgs

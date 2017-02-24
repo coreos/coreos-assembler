@@ -27,12 +27,15 @@ var (
 		Long:  "Download the current SDK tarball to a local cache.",
 		Run:   runDownload,
 	}
-	downloadVersion string
+	downloadVersion       string
+	downloadVerifyKeyFile string
 )
 
 func init() {
 	downloadCmd.Flags().StringVar(&downloadVersion,
 		"sdk-version", "", "SDK version")
+	downloadCmd.Flags().StringVar(&downloadImageVerifyKeyFile,
+		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 	root.AddCommand(downloadCmd)
 }
 
@@ -46,7 +49,7 @@ func runDownload(cmd *cobra.Command, args []string) {
 	}
 
 	plog.Noticef("Downloading SDK version %s", downloadVersion)
-	if err := sdk.DownloadSDK(downloadVersion); err != nil {
+	if err := sdk.DownloadSDK(downloadVersion, downloadVerifyKeyFile); err != nil {
 		plog.Fatalf("Download failed: %v", err)
 	}
 }

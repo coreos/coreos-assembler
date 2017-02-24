@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/sdk"
@@ -33,7 +32,7 @@ var (
 
 	kolaDefaultBIOS = map[string]string{
 		"amd64-usr": "bios.bin",
-		"arm64-usr": filepath.Join(sdk.BoardRoot("arm64-usr"), "/usr/share/edk2-armvirt/bios.bin"),
+		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_qemu_uefi_efi_code.fd",
 	}
 )
 

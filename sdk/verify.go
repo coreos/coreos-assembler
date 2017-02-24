@@ -17,6 +17,7 @@ package sdk
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -31,7 +32,7 @@ import (
 // sub   4096R/1CB5FA26 2015-08-31 [expires: 2017-08-30]
 // sub   4096R/B58844F1 2015-11-20 [revoked: 2016-05-16]
 // sub   4096R/2E16137F 2016-05-16 [expires: 2017-05-16]
-const buildbotPubKey = `
+const buildbot_coreos_PubKey = `
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v2
 
@@ -255,8 +256,10 @@ K9w3EiyDrgzl0IpotQXxOBGHoCtcxUZvkNeOIxAb8QwkWnhgkljMyQ==
 -----END PGP PUBLIC KEY BLOCK-----
 `
 
-func Verify(signed, signature io.Reader) error {
-	keyring, err := openpgp.ReadArmoredKeyRing(strings.NewReader(buildbotPubKey))
+func Verify(signed, signature io.Reader, key string) error {
+
+	keyring, err := openpgp.ReadArmoredKeyRing(strings.NewReader(key))
+
 	if err != nil {
 		panic(err)
 	}
@@ -265,7 +268,7 @@ func Verify(signed, signature io.Reader) error {
 	return err
 }
 
-func VerifyFile(file string) error {
+func VerifyFile(file, verifyKeyFile string) error {
 	signed, err := os.Open(file)
 	if err != nil {
 		return err
@@ -278,7 +281,18 @@ func VerifyFile(file string) error {
 	}
 	defer signature.Close()
 
-	if err := Verify(signed, signature); err != nil {
+	var key string
+	if verifyKeyFile == "" {
+		key = buildbot_coreos_PubKey
+	} else {
+		b, err := ioutil.ReadFile(verifyKeyFile)
+		if err != nil {
+			return fmt.Errorf("%v: %s", err, verifyKeyFile)
+		}
+		key = string(b[:])
+	}
+
+	if err := Verify(signed, signature, key); err != nil {
 		return fmt.Errorf("%v: %s", err, file)
 	}
 	return nil

@@ -44,14 +44,17 @@ var (
 		RunE:  runPreRelease,
 	}
 
-	azureOpts    = azure.Options{}
-	azureProfile string
+	azureOpts     = azure.Options{}
+	azureProfile  string
+	verifyKeyFile string
 )
 
 func init() {
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdPreRelease.Flags().BoolVarP(&preReleaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
+	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
+		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 
 	AddSpecFlags(cmdPreRelease.Flags())
 	root.AddCommand(cmdPreRelease)
@@ -111,7 +114,7 @@ func getAzureVhd(spec *channelSpec, client *http.Client, src *storage.Bucket, bz
 
 	plog.Printf("Downloading Azure image %q to %q", vhduri, bzipPath)
 
-	if err := sdk.UpdateSignedFile(bzipPath, vhduri.String(), client); err != nil {
+	if err := sdk.UpdateSignedFile(bzipPath, vhduri.String(), client, verifyKeyFile); err != nil {
 		return err
 	}
 

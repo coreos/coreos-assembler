@@ -55,6 +55,8 @@ var (
 	downgradeReplace bool
 	newVersion       string
 
+	verifyKeyFile string
+
 	setupCmd = &cobra.Command{
 		Use:   "setup",
 		Short: "Setup the system for SDK use",
@@ -105,6 +107,8 @@ func init() {
 		"manifest-name", "default.xml", "Manifest file name")
 	creationFlags.BoolVar(&repoVerify,
 		"verify", false, "Check repo tree and release manifest match")
+	creationFlags.StringVar(&verifyKeyFile,
+		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 
 	root.AddCommand(setupCmd)
 
@@ -205,7 +209,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 
 func unpackChroot(replace bool) {
 	plog.Noticef("Downloading SDK version %s", sdkVersion)
-	if err := sdk.DownloadSDK(sdkVersion); err != nil {
+	if err := sdk.DownloadSDK(sdkVersion, verifyKeyFile); err != nil {
 		plog.Fatalf("Download failed: %v", err)
 	}
 

@@ -67,12 +67,12 @@ func DownloadFile(file, fileURL string, client *http.Client) error {
 		}
 		api, err := storage.New(client)
 		if err != nil {
-			plog.Fatal(err)
+			return err
 		}
 		path := strings.TrimLeft(parseURL.Path, "/")
 		obj, err := api.Objects.Get(parseURL.Host, path).Do()
 		if err != nil {
-			plog.Fatal(err)
+			return fmt.Errorf("%s: %s", err, fileURL)
 		}
 		fileURL = obj.MediaLink
 	}
@@ -166,9 +166,10 @@ func downloadFile(file, url string, client *http.Client) error {
 	}
 }
 
-func DownloadSignedFile(file, url string, client *http.Client) error {
+func DownloadSignedFile(file, url string, client *http.Client, verifyKeyFile string) error {
+
 	if _, err := os.Stat(file + ".sig"); err == nil {
-		if e := VerifyFile(file); e == nil {
+		if e := VerifyFile(file, verifyKeyFile); e == nil {
 			plog.Infof("Verified existing file: %s", file)
 			return nil
 		}
@@ -182,7 +183,7 @@ func DownloadSignedFile(file, url string, client *http.Client) error {
 		return err
 	}
 
-	if err := VerifyFile(file); err != nil {
+	if err := VerifyFile(file, verifyKeyFile); err != nil {
 		return err
 	}
 
@@ -190,10 +191,10 @@ func DownloadSignedFile(file, url string, client *http.Client) error {
 	return nil
 }
 
-func DownloadSDK(version string) error {
+func DownloadSDK(version, verifyKeyFile string) error {
 	tarFile := filepath.Join(RepoCache(), "sdks", TarballName(version))
 	tarURL := TarballURL(version)
-	return DownloadSignedFile(tarFile, tarURL, nil)
+	return DownloadSignedFile(tarFile, tarURL, nil, verifyKeyFile)
 }
 
 // false if both files do not exist
@@ -271,7 +272,7 @@ func UpdateFile(file, url string, client *http.Client) error {
 	defer os.Remove(tempFile)
 
 	if err := DownloadFile(tempFile, url, client); err != nil {
-		return err
+		return fmt.Errorf("%s: %s", url, err)
 	}
 
 	equal, err := cmpFileBytes(file, tempFile)
@@ -293,7 +294,7 @@ func UpdateFile(file, url string, client *http.Client) error {
 // UpdateSignedFile will download and replace the local file if the
 // published signature doesn't match the local copy. Leave client nil to
 // use default.
-func UpdateSignedFile(file, url string, client *http.Client) error {
+func UpdateSignedFile(file, url string, client *http.Client, verifyKeyFile string) error {
 	sigFile := file + ".sig"
 	sigURL := url + ".sig"
 
@@ -303,7 +304,7 @@ func UpdateSignedFile(file, url string, client *http.Client) error {
 	}
 
 	// try to verify with latest sig
-	if e := VerifyFile(file); e == nil {
+	if e := VerifyFile(file, verifyKeyFile); e == nil {
 		plog.Infof("Verified existing file: %s", file)
 		return nil
 	}
@@ -312,7 +313,7 @@ func UpdateSignedFile(file, url string, client *http.Client) error {
 	if err := UpdateFile(file, url, client); err != nil {
 		return err
 	}
-	if err := VerifyFile(file); err != nil {
+	if err := VerifyFile(file, verifyKeyFile); err != nil {
 		return err
 	}
 

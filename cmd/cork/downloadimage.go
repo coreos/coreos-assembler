@@ -35,12 +35,13 @@ var (
 		Long:  "Download and verify current CoreOS images to a local cache.",
 		Run:   runDownloadImage,
 	}
-	downloadImageRoot         string
-	downloadImageCacheDir     string
-	downloadImagePrefix       string
-	downloadImageJSONKeyFile  string
-	downloadImageVerify       bool
-	downloadImagePlatformList platformList
+	downloadImageRoot          string
+	downloadImageCacheDir      string
+	downloadImagePrefix        string
+	downloadImageJSONKeyFile   string
+	downloadImageVerifyKeyFile string
+	downloadImageVerify        bool
+	downloadImagePlatformList  platformList
 )
 
 func init() {
@@ -52,15 +53,17 @@ func init() {
 		"image-prefix", "coreos_production", "image filename prefix")
 	downloadImageCmd.Flags().StringVar(&downloadImageJSONKeyFile,
 		"json-key", "", "Google service account key for use with private buckets")
+	downloadImageCmd.Flags().StringVar(&downloadImageVerifyKeyFile,
+		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 	downloadImageCmd.Flags().BoolVar(&downloadImageVerify,
 		"verify", true, "verify")
 	downloadImageCmd.Flags().Var(&downloadImagePlatformList,
-		"platform", "Choose qemu, gce, or aws. Multiple platforms can be specified by repeating the flag")
+		"platform", "Choose qemu, qemu_uefi, gce, or aws. Multiple platforms can be specified by repeating the flag")
 
 	root.AddCommand(downloadImageCmd)
 }
 
-type platformList []string // satisfies pflag.Value interface
+type platformList [][]string // satisfies pflag.Value interface
 
 func (platforms *platformList) String() string {
 	return fmt.Sprintf("%v", *platforms)
@@ -75,21 +78,22 @@ func (platforms *platformList) Type() string {
 // separated flags without spaces will also be parsed correctly.
 func (platforms *platformList) Set(value string) error {
 
-	// maps names of platforms to filename prefix
-	platformMap := map[string]string{
-		"qemu": "_image.bin.bz2",
-		"gce":  "_gce.tar.gz",
-		"aws":  "_ami_image.bin.bz2",
+	// Maps names of platforms to a list of file suffixes to download.
+	platformMap := map[string][]string{
+		"qemu":      {"_image.bin.bz2"},
+		"qemu_uefi": {"_qemu_uefi_efi_code.fd", "_qemu_uefi_efi_vars.fd", "_image.bin.bz2"},
+		"gce":       {"_gce.tar.gz"},
+		"aws":       {"_ami_image.bin.bz2"},
 	}
 
 	values := strings.Split(value, ",")
 
 	for _, platform := range values {
-		prefix, ok := platformMap[platform]
+		suffixes, ok := platformMap[platform]
 		if !ok {
 			plog.Fatalf("platform not supported: %v", platform)
 		}
-		*platforms = append(*platforms, prefix)
+		*platforms = append(*platforms, suffixes)
 	}
 	return nil
 }
@@ -153,23 +157,25 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 		plog.Fatalf("downloading version.txt: %v", err)
 	}
 
-	for _, suffix := range downloadImagePlatformList {
-		fileName := downloadImagePrefix + suffix
-		filePath := filepath.Join(downloadImageCacheDir, fileName)
+	for _, suffixes := range downloadImagePlatformList {
+		for _, suffix := range suffixes {
+			fileName := downloadImagePrefix + suffix
+			filePath := filepath.Join(downloadImageCacheDir, fileName)
 
-		// path.Join doesn't work with urls
-		url := strings.TrimRight(downloadImageRoot, "/") + "/" + fileName
+			// path.Join doesn't work with urls
+			url := strings.TrimRight(downloadImageRoot, "/") + "/" + fileName
 
-		if downloadImageVerify {
-			plog.Noticef("Verifying and updating to latest image %v", fileName)
-			err := sdk.UpdateSignedFile(filePath, url, client)
-			if err != nil {
-				plog.Fatalf("updating signed file: %v", err)
-			}
-		} else {
-			plog.Noticef("Starting non-verified image update %v", fileName)
-			if err := sdk.UpdateFile(filePath, url, client); err != nil {
-				plog.Fatalf("downloading image: %v", err)
+			if downloadImageVerify {
+				plog.Noticef("Verifying and updating to latest image %v", fileName)
+				err := sdk.UpdateSignedFile(filePath, url, client, downloadImageVerifyKeyFile)
+				if err != nil {
+					plog.Fatalf("updating signed file: %v", err)
+				}
+			} else {
+				plog.Noticef("Starting non-verified image update %v", fileName)
+				if err := sdk.UpdateFile(filePath, url, client); err != nil {
+					plog.Fatalf("downloading image: %v", err)
+				}
 			}
 		}
 	}
