@@ -3,9 +3,6 @@
 properties([
     buildDiscarder(logRotator(daysToKeepStr: '20', numToKeepStr: '30')),
 
-    [$class: 'GithubProjectProperty',
-     projectUrlStr: 'https://github.com/coreos/mantle'],
-
     [$class: 'CopyArtifactPermissionProperty',
      projectNames: '*'],
 
