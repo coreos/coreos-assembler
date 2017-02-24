@@ -35,12 +35,13 @@ var (
 		Long:  "Download and verify current CoreOS images to a local cache.",
 		Run:   runDownloadImage,
 	}
-	downloadImageRoot         string
-	downloadImageCacheDir     string
-	downloadImagePrefix       string
-	downloadImageJSONKeyFile  string
-	downloadImageVerify       bool
-	downloadImagePlatformList platformList
+	downloadImageRoot          string
+	downloadImageCacheDir      string
+	downloadImagePrefix        string
+	downloadImageJSONKeyFile   string
+	downloadImageVerifyKeyFile string
+	downloadImageVerify        bool
+	downloadImagePlatformList  platformList
 )
 
 func init() {
@@ -52,6 +53,8 @@ func init() {
 		"image-prefix", "coreos_production", "image filename prefix")
 	downloadImageCmd.Flags().StringVar(&downloadImageJSONKeyFile,
 		"json-key", "", "Google service account key for use with private buckets")
+	downloadImageCmd.Flags().StringVar(&downloadImageVerifyKeyFile,
+		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 	downloadImageCmd.Flags().BoolVar(&downloadImageVerify,
 		"verify", true, "verify")
 	downloadImageCmd.Flags().Var(&downloadImagePlatformList,
@@ -162,7 +165,7 @@ func runDownloadImage(cmd *cobra.Command, args []string) {
 
 		if downloadImageVerify {
 			plog.Noticef("Verifying and updating to latest image %v", fileName)
-			err := sdk.UpdateSignedFile(filePath, url, client)
+			err := sdk.UpdateSignedFile(filePath, url, client, downloadImageVerifyKeyFile)
 			if err != nil {
 				plog.Fatalf("updating signed file: %v", err)
 			}

@@ -54,14 +54,14 @@ func b64reader(s string) io.Reader {
 }
 
 func TestValidSig(t *testing.T) {
-	err := Verify(strings.NewReader(versionTxt), b64reader(versionSig))
+	err := Verify(strings.NewReader(versionTxt), b64reader(versionSig), buildbot_coreos_PubKey)
 	if err != nil {
 		t.Errorf("Verify failed: %v", err)
 	}
 }
 
 func TestInvalidSig(t *testing.T) {
-	err := Verify(strings.NewReader(versionTxt+"bad"), b64reader(versionSig))
+	err := Verify(strings.NewReader(versionTxt+"bad"), b64reader(versionSig), buildbot_coreos_PubKey)
 	if err == nil {
 		t.Errorf("Verify failed to report bad signature")
 	} else if _, ok := err.(errors.SignatureError); !ok {
