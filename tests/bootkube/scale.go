@@ -73,7 +73,7 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 	scaleCmds := []string{
 		fmt.Sprintf("curl -H 'Content-Type: application/json' -X GET %v > body.json", tprEndpoint),
 		// delete resourceVersion field before curling back
-		fmt.Sprintf("jq 'recurse(.metadata) |= del(.resourceVersion)' < out.json | jq .spec.size=%v > newbody.json", size),
+		fmt.Sprintf("jq 'recurse(.metadata) |= del(.resourceVersion)' < body.json | jq .spec.size=%v > newbody.json", size),
 		fmt.Sprintf("curl -H 'Content-Type: application/json' -X PUT --data @newbody.json %v", tprEndpoint),
 	}
 	for _, cmd := range scaleCmds {
