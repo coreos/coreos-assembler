@@ -18,7 +18,7 @@ properties([
     pipelineTriggers([pollSCM('H/15 * * * *')])
 ])
 
-node('docker') {
+node('amd64 && docker') {
     stage('SCM') {
         checkout scm
     }
