@@ -74,7 +74,7 @@ func nginxCheck(c *pluton.Cluster) error {
 
 	// curl for welcome message
 	nginxRunning := func() error {
-		out, err := c.Masters[0].SSH("curl " + serviceIP + ":80")
+		out, err := c.Masters[0].SSH("curl --silent " + serviceIP + ":80")
 		if err != nil || !bytes.Contains(out, []byte("Welcome to nginx!")) {
 			return fmt.Errorf("unable to reach nginx: %s", out)
 		}

@@ -46,27 +46,11 @@ func NewCluster(m Manager, masters, workers []platform.Machine) *Cluster {
 
 // Kubectl will run kubectl from /home/core on the Master Machine
 func (c *Cluster) Kubectl(cmd string) (string, error) {
-	client, err := c.Masters[0].SSHClient()
-	if err != nil {
-		return "", err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-	defer session.Close()
-
-	var stdout = bytes.NewBuffer(nil)
-	var stderr = bytes.NewBuffer(nil)
-	session.Stderr = stderr
-	session.Stdout = stdout
-
-	err = session.Run("sudo ./kubectl --kubeconfig=/etc/kubernetes/kubeconfig " + cmd)
+	stdout, stderr, err := c.SSH("sudo ./kubectl --kubeconfig=/etc/kubernetes/kubeconfig " + cmd)
 	if err != nil {
 		return "", fmt.Errorf("kubectl: %s", stderr)
 	}
-	return stdout.String(), nil
+	return string(stdout), nil
 }
 
 // AddMasters creates new master nodes for a Cluster and blocks until ready.
@@ -88,14 +72,14 @@ func (c *Cluster) AddMasters(n int) error {
 // registered. Set retry for max amount of retries to attempt before erroring.
 func (c *Cluster) NodeCheck(retryAttempts int) error {
 	f := func() error {
-		b, err := c.Masters[0].SSH("./kubectl get nodes")
+		out, err := c.Kubectl("get nodes")
 		if err != nil {
 			return err
 		}
 
 		// parse kubectl output for IPs
 		addrMap := map[string]struct{}{}
-		for _, line := range strings.Split(string(b), "\n")[1:] {
+		for _, line := range strings.Split(out, "\n")[1:] {
 			addrMap[strings.SplitN(line, " ", 2)[0]] = struct{}{}
 		}
 

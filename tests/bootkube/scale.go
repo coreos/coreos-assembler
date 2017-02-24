@@ -77,9 +77,9 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 		fmt.Sprintf("curl -H 'Content-Type: application/json' -X PUT --data @newbody.json %v", tprEndpoint),
 	}
 	for _, cmd := range scaleCmds {
-		_, err := c.Masters[0].SSH(cmd)
+		sout, serr, err := c.SSH(cmd)
 		if err != nil {
-			return fmt.Errorf("error in scale up command: %v: %v", cmd, err)
+			return fmt.Errorf("error in scale up command: %v:\nSTDERR: %s\nSTDOUT: %s", cmd, serr, sout)
 		}
 	}
 
