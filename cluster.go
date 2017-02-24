@@ -64,7 +64,7 @@ func (c *Cluster) Kubectl(cmd string) (string, error) {
 
 	err = session.Run("sudo ./kubectl --kubeconfig=/etc/kubernetes/kubeconfig " + cmd)
 	if err != nil {
-		return "", fmt.Errorf("kubectl:%s", stderr)
+		return "", fmt.Errorf("kubectl: %s", stderr)
 	}
 	return stdout.String(), nil
 }
@@ -116,4 +116,37 @@ func (c *Cluster) NodeCheck(retryAttempts int) error {
 		return err
 	}
 	return nil
+}
+
+// SSH is just a convenience function for running SSH commands when you don't
+// care which machine the command runs on. The current implementation chooses
+// the first master node. The signature is slightly different then the machine
+// SSH command and doesn't automatically print stderr. I expect in the future
+// that this will be more unified with the Machine.SSH signature, but for now
+// this is useful to silence all the retry loops from clogging up the test
+// results while giving the option to deal with stderr.
+func (c *Cluster) SSH(cmd string) (stdout, stderr []byte, err error) {
+	client, err := c.Masters[0].SSHClient()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer session.Close()
+
+	outBuf := bytes.NewBuffer(nil)
+	errBuf := bytes.NewBuffer(nil)
+	session.Stdout = outBuf
+	session.Stderr = errBuf
+
+	err = session.Run(cmd)
+
+	stdout = bytes.TrimSpace(outBuf.Bytes())
+	stderr = bytes.TrimSpace(errBuf.Bytes())
+
+	return stdout, stderr, err
 }
