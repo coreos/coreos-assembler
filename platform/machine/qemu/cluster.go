@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/coreos/pkg/capnslog"
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/platform"
@@ -55,6 +56,10 @@ type Cluster struct {
 	mu sync.Mutex
 	*local.LocalCluster
 }
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/platform/machine/qemu")
+)
 
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
@@ -185,6 +190,8 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		return nil, err
 	}
 	defer tap.Close()
+
+	plog.Debugf("NewMachine: %q", qmCmd)
 
 	qm.qemu = qm.qc.NewCommand(qmCmd[0], qmCmd[1:]...)
 
