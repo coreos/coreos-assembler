@@ -45,7 +45,7 @@ func rebootMaster(tc cluster.TestCluster) error {
 		// TODO(pb) find a way to globally disable selinux in kola
 		_, err := c.Masters[0].SSH("sudo setenforce 0")
 		if err != nil {
-			return err
+			return fmt.Errorf("turning off selinux failed: %v", err)
 		}
 
 		if err := c.NodeCheck(25); err != nil {
