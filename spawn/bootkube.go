@@ -159,7 +159,7 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 
 		// start bootkube (rkt fly makes stderr/stdout seperation work)
 		fmt.Sprintf(`sudo /usr/bin/rkt run \
-                --stage1-name=coreos.com/rkt/stage1-fly:1.19.0 \
+                --stage1-name=coreos.com/rkt/stage1-fly:1.25.0 \
         	--volume home,kind=host,source=/home/core \
         	--mount volume=home,target=/core \
         	--volume manifests,kind=host,source=/etc/kubernetes/manifests \
