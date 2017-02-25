@@ -155,7 +155,7 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		"sudo cp /home/core/assets/auth/kubeconfig /etc/kubernetes/",
 
 		// start kubelet
-		"sudo systemctl enable --now kubelet",
+		"sudo systemctl -q enable --now kubelet",
 
 		// start bootkube (rkt fly makes stderr/stdout seperation work)
 		fmt.Sprintf(`sudo /usr/bin/rkt run \
@@ -256,7 +256,7 @@ func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Mach
 		}
 
 		// start kubelet
-		_, err = node.SSH("sudo systemctl enable --now kubelet.service")
+		_, err = node.SSH("sudo systemctl -q enable --now kubelet.service")
 		if err != nil {
 			return nil, err
 		}
