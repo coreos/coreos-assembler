@@ -81,11 +81,6 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 			continue
 		}
 
-		// Skip the test if Manual is set and the name doesn't fully match.
-		if t.Manual && t.Name != pattern {
-			continue
-		}
-
 		// Check the test's min and end versions when running more then one test
 		if t.Name != pattern && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
 			continue
@@ -269,7 +264,7 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 // RunTest is a harness for running a single test. It is used by
 // RunTests but can also be used directly by binaries that aim to run a
 // single test. Using RunTest directly means that TestCluster flags used
-// to filter out tests such as 'Platforms', 'Manual', or 'MinVersion'
+// to filter out tests such as 'Platforms' or 'MinVersion'
 // are not respected.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
