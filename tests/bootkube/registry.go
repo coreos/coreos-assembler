@@ -36,7 +36,7 @@ func init() {
 	})
 
 	register.Register(&register.Test{
-		Name:      "experimentaletcd.scale",
+		Name:      "bootkube.selfetcd.scale",
 		Run:       etcdScale,
 		Platforms: []string{"gce"},
 	})
