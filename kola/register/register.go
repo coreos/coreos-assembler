@@ -34,9 +34,6 @@ type Test struct {
 	ClusterSize int
 	Platforms   []string // whitelist of platforms to run test against -- defaults to all
 
-	// If manual is set, the test will only execute if the name fully matches without globbing.
-	Manual bool
-
 	// MinVersion prevents the test from executing on CoreOS machines
 	// less than MinVersion. This will be ignored if the name fully
 	// matches without globbing.
