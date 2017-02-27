@@ -131,7 +131,7 @@ func renderCloudConfig(kubeletImageTag string, isMaster, startEtcd bool) (string
 }
 
 func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
-	const startTimeout = time.Minute * 8 // stop bootkube start if it takes longer then this
+	const startTimeout = time.Minute * 10 // stop bootkube start if it takes longer then this
 
 	var etcdRenderAdditions, etcdStartAdditions string
 	if selfHostEtcd {
