@@ -53,14 +53,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestContextCancel(t *testing.T) {
-	suite := NewSuite(Options{}, []InternalTest{
-		{"ContextCancel", func(h *H) {
+	suite := NewSuite(Options{}, Tests{
+		"ContextCancel": func(h *H) {
 			ctx := h.Context()
 			// Tests we don't leak this goroutine:
 			go func() {
 				<-ctx.Done()
 			}()
-		}}})
+		}})
 	buf := &bytes.Buffer{}
 	if err := suite.runTests(buf, nil); err != nil {
 		t.Log("\n" + buf.String())
@@ -291,7 +291,7 @@ func TestSubTests(t *testing.T) {
 		suite := NewSuite(Options{
 			Verbose:  tc.chatty,
 			Parallel: tc.maxPar,
-		}, []InternalTest{{tc.desc, tc.f}})
+		}, Tests{tc.desc: tc.f})
 		buf := &bytes.Buffer{}
 		err := suite.runTests(buf, nil)
 		suite.release()
