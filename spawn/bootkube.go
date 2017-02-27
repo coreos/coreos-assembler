@@ -99,8 +99,8 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers)
 
 	// check that all nodes appear in kubectl
-	if err := cluster.NodeCheck(12); err != nil {
-		return nil, err
+	if err := cluster.NodeCheck(20); err != nil {
+		return nil, fmt.Errorf("final node check: %v", err)
 	}
 
 	return cluster, nil
@@ -131,6 +131,8 @@ func renderCloudConfig(kubeletImageTag string, isMaster, startEtcd bool) (string
 }
 
 func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
+	const startTimeout = time.Minute * 8 // stop bootkube start if it takes longer then this
+
 	var etcdRenderAdditions, etcdStartAdditions string
 	if selfHostEtcd {
 		etcdRenderAdditions = "--etcd-servers=http://10.3.0.15:2379  --experimental-self-hosted-etcd"
@@ -204,9 +206,9 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 				session.Close()
 				return fmt.Errorf("SSH session returned error for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
 			}
-		case <-time.After(time.Minute * 8):
+		case <-time.After(startTimeout):
 			session.Close()
-			return fmt.Errorf("Timed out waiting for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
+			return fmt.Errorf("Timed out waiting %v for cmd %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", startTimeout, cmd, stdout, stderr)
 		}
 		plog.Infof("Success for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
 		session.Close()
