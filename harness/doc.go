@@ -101,8 +101,8 @@
 //	}
 //
 //	func main() {
-//		suite := harness.NewSuite(Options{}, []InternalTest{
-//			{"SomeTest", SomeTest},
+//		suite := harness.NewSuite(Options{}, Tests{
+//			"SomeTest": SomeTest,
 //		})
 //		if err := suite.Run(); err != nil {
 //			fmt.Fprintln(os.Stderr, err)

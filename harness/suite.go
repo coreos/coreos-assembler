@@ -120,18 +120,11 @@ func (o *Options) init() {
 	}
 }
 
-// An internal type but exported because it is cross-package; part of the implementation
-// of the "go test" command.
-type InternalTest struct {
-	Name string
-	F    func(*H)
-}
-
 // Suite is a type passed to a TestMain function to run the actual tests.
 // Suite manages the execution of a set of test functions.
 type Suite struct {
 	opts  Options
-	tests []InternalTest
+	tests Tests
 	match *matcher
 
 	// mu protects the following fields which are used to manage
@@ -175,7 +168,7 @@ func (c *Suite) release() {
 
 // NewSuite creates a new test suite.
 // All parameters in Options cannot be modified once given to Suite.
-func NewSuite(opts Options, tests []InternalTest) *Suite {
+func NewSuite(opts Options, tests Tests) *Suite {
 	opts.init()
 	return &Suite{
 		opts:          opts,
@@ -273,8 +266,8 @@ func (s *Suite) runTests(out, tap io.Writer) error {
 		suite:   s,
 	}
 	tRunner(t, func(t *H) {
-		for _, test := range s.tests {
-			t.Run(test.Name, test.F)
+		for name, test := range s.tests {
+			t.Run(name, test)
 		}
 		// Run catching the signal rather than the tRunner as a separate
 		// goroutine to avoid adding a goroutine during the sequential

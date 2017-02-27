@@ -170,7 +170,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 		Parallel:  TestParallelism,
 		Verbose:   true,
 	}
-	htests := []harness.InternalTest{}
+	var htests harness.Tests
 	for _, test := range tests {
 		test := test // for the closure
 		run := func(h *harness.H) {
@@ -190,7 +190,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 				h.Error(err)
 			}
 		}
-		htests = append(htests, harness.InternalTest{Name: test.Name, F: run})
+		htests.Add(test.Name, run)
 	}
 
 	suite := harness.NewSuite(opts, htests)
