@@ -88,7 +88,7 @@ func RollingUpgrade(cluster cluster.TestCluster) error {
 	for i, m := range cluster.Machines() {
 
 		// check current value set
-		if err := checkKeys(cluster, mapSet, true); err != nil {
+		if err := checkKeys(cluster, mapSet); err != nil {
 			return err
 		}
 
@@ -127,7 +127,7 @@ func RollingUpgrade(cluster cluster.TestCluster) error {
 	mapCopy(mapSet, tempSet)
 
 	// final check all values written correctly
-	if err := checkKeys(cluster, mapSet, true); err != nil {
+	if err := checkKeys(cluster, mapSet); err != nil {
 		return err
 	}
 
