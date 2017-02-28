@@ -15,10 +15,9 @@
 package bootkube
 
 import (
-	"github.com/coreos-inc/pluton/spawn"
-	"github.com/coreos-inc/pluton/upstream"
-
 	"github.com/coreos/mantle/kola/cluster"
+	"github.com/coreos/mantle/pluton/spawn"
+	"github.com/coreos/mantle/pluton/upstream"
 )
 
 func conformanceBootkube(c cluster.TestCluster) error {

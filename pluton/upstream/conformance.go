@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos-inc/pluton"
+	"github.com/coreos/mantle/pluton"
 )
 
 // Runs conformance tests on a master node of a Cluster

@@ -19,10 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos-inc/pluton"
-	"github.com/coreos-inc/pluton/spawn"
-
 	"github.com/coreos/mantle/kola/cluster"
+	"github.com/coreos/mantle/pluton"
+	"github.com/coreos/mantle/pluton/spawn"
 	"github.com/coreos/mantle/util"
 )
 

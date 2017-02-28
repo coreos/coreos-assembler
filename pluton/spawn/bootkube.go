@@ -21,11 +21,11 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/coreos-inc/pluton"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/pluton"
+
 	"github.com/coreos/pkg/capnslog"
 )
 

@@ -23,10 +23,10 @@ import (
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
+	_ "github.com/coreos/mantle/pluton/tests/bootkube"
+
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
-
-	_ "github.com/coreos-inc/pluton/tests/bootkube"
 )
 
 var (
