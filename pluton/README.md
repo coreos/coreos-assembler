@@ -1,14 +1,8 @@
 # pluton
+Pluton represents a tool to enable testing of kubernetes clusters build upon the kola testing primitives. Each test in pluton recieves a working kubernets cluster to test against rather then a `kola.TestCluster`. The spawn package is the glue that utilizes the platform package to build a kubernetes cluster from a tool. Right now, Bootkube on gce is the primarily supported kubernets platform. 
 
-This repository vendors github.com/coreos/mantle to maintain kola tests focused around coreos distributions of kubernetes and their components rather then tests against all the components of an OS image. The repo is private for now because it may be consuming or vendoring closed source components. It may entirely be possible that we can open-source this at some point and so its best to avoid adding code that would prevent this unless necessary.
-
-The main cmd package of kola was forked while the mantle repo is vendored. This way, we build the kola and kolet directly but can maintain our own set of options that specifying the versions and locations of software that the tests will be testing. The OS tests generally assume all binaries that need testing live on the OS. Here we assume that our CI system is building all the assets that kola will test and passing in their locations at the command line. 
-
-## Contributing
-Test writers are needed! Please bug the maintainers to show you how to write a test and to add enough documentation so its not necessary. The smoke test suite is a great place to add tests for one off failures found in our kubernetes distributions.
-
-If the abstractions from the upstream kola packages are not sufficient for our needs we should make upstream changes to github.com/coreos/mantle.
-
-## Vendoring
-
-To start, github.com/coreos/mantle has been manually vendored and its dependencies flattened. If vendor needs become more complex feel free to switch to a vendoring tool of your choice and make a PR.
+## Roadmap
+ - Directly use new harness pkg such that a `pluton.Cluster` is passed to every test function
+ - Begin to build out the ability of tests to register options in the test structure that customize use of the spawn package
+ - build a subcommand that looks like `pluton daemon [options] ./custom_script` in which the custom script is passed the location of a temporary kubeconfig. This will enable use of pluton in other repositories that just rely on a kubeconfig and a single cluster and don't wish to integrate and register tests in to the harness directly
+ - Research allowing different implementations of the spawn package.
