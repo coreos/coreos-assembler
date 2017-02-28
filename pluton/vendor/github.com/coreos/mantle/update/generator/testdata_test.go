@@ -1,0 +1,132 @@
+// Copyright 2016 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package generator
+
+import (
+	"bytes"
+	"encoding/base64"
+)
+
+const (
+	testEmptyHashStr     = `47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=`
+	testOnesHashStr      = `9HqOw+mv8jGNiWlCKCrU/jfWORyCkU9UpdqKN94TAMY=`
+	testUnalignedHashStr = `6pwJcxe6bTOSepRIAED1jRKLlIMd+xhzoxv1CzBayrE=`
+	testRandHashStr      = `EfHWNaFArzNfjv/6IYVeOlUygIN9JmMJNG5L8SeN4sc=`
+	testRandStr          = `
+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`
+)
+
+var (
+	testEmptyHash     []byte
+	testOnes          []byte
+	testOnesHash      []byte
+	testUnaligned     []byte
+	testUnalignedHash []byte
+	testRand          []byte
+	testRandHash      []byte
+)
+
+func init() {
+	testEmptyHash = mustBase64(testEmptyHashStr)
+	testOnes = bytes.Repeat([]byte{0xff}, BlockSize)
+	testOnesHash = mustBase64(testOnesHashStr)
+	testUnaligned = append(testOnes, 0xff)
+	testUnalignedHash = mustBase64(testUnalignedHashStr)
+	testRand = mustBase64(testRandStr)
+	testRandHash = mustBase64(testRandHashStr)
+}
+
+func mustBase64(s string) []byte {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
