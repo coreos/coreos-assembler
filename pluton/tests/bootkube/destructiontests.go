@@ -47,7 +47,7 @@ func rebootMaster(tc cluster.TestCluster) error {
 			return fmt.Errorf("turning off selinux failed: %v", err)
 		}
 
-		if err := c.NodeCheck(25); err != nil {
+		if err := c.Ready(); err != nil {
 			return fmt.Errorf("nodeCheck: %s", err)
 		}
 	}
@@ -95,7 +95,7 @@ func deleteAPIServer(tc cluster.TestCluster) error {
 	}
 
 	// wait for apiserver to return
-	if err := c.NodeCheck(25); err != nil {
+	if err := c.Ready(); err != nil {
 		return fmt.Errorf("nodeCheck: %s", err)
 	}
 
