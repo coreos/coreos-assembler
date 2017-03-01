@@ -15,7 +15,9 @@
 package locksmith
 
 import (
+	"bytes"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
@@ -25,6 +27,7 @@ import (
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 func init() {
@@ -32,7 +35,6 @@ func init() {
 		Name:        "coreos.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
-		/* TODO: https://github.com/coreos/bugs/issues/1815 */
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -54,12 +56,61 @@ func init() {
       }
     ]
   },
-  "files": [{
-    "filesystem": "root",
-    "path": "/etc/coreos/update.conf",
-    "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
-    "mode": 420
-  }]
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/coreos/update.conf",
+      "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+      "mode": 420
+    }]
+  }
+}`,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.locksmith.tls",
+		Run:         locksmithTLS,
+		ClusterSize: 1,
+		UserData: `{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "certgen.service",
+        "contents": "[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=/usr/bin/mkdir -p /etc/ssl/etcd\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=etcd CA' -out /etc/ssl/etcd/ca-etcd-cert.pem -keyout /etc/ssl/etcd/ca-etcd-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_server -subj '/CN=localhost' -out /etc/ssl/etcd/etcd-cert-self.pem -keyout /etc/ssl/etcd/etcd-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/etcd/ca-etcd-cert.pem -CAkey /etc/ssl/etcd/ca-etcd-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/etcd/etcd-cert-self.pem -out /etc/ssl/etcd/etcd-cert.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=locksmith CA' -out /etc/ssl/etcd/ca-locksmith-cert.pem -keyout /etc/ssl/etcd/ca-locksmith-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_client -subj '/CN=locksmith client' -out /etc/ssl/etcd/locksmith-cert-self.pem -keyout /etc/ssl/etcd/locksmith-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/etcd/ca-locksmith-cert.pem -CAkey /etc/ssl/etcd/ca-locksmith-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/etcd/locksmith-cert-self.pem -out /etc/ssl/etcd/locksmith-cert.pem\nExecStart=/usr/bin/chmod 0644 /etc/ssl/etcd/ca-etcd-cert.pem /etc/ssl/etcd/ca-etcd-key.pem /etc/ssl/etcd/ca-locksmith-cert.pem /etc/ssl/etcd/ca-locksmith-key.pem /etc/ssl/etcd/etcd-cert.pem /etc/ssl/etcd/etcd-key.pem /etc/ssl/etcd/locksmith-cert.pem /etc/ssl/etcd/locksmith-key.pem\nExecStart=/usr/bin/ln -fns ../etcd/ca-etcd-cert.pem /etc/ssl/certs/etcd.pem\nExecStart=/usr/bin/c_rehash"
+      },
+      {
+        "name": "etcd2.service",
+        "dropins": [{
+          "name": "environment.conf",
+          "contents": "[Unit]\nAfter=certgen.service\nRequires=certgen.service\n[Service]\nEnvironment=ETCD_ADVERTISE_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_LISTEN_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_CERT_FILE=/etc/ssl/etcd/etcd-cert.pem\nEnvironment=ETCD_KEY_FILE=/etc/ssl/etcd/etcd-key.pem\nEnvironment=ETCD_TRUSTED_CA_FILE=/etc/ssl/etcd/ca-locksmith-cert.pem\nEnvironment=ETCD_CERT_AUTH=true"
+        }]
+      },
+      {
+        "name": "locksmithd.service",
+        "enable": true,
+        "dropins": [{
+          "name": "environment.conf",
+          "contents": "[Unit]\nAfter=etcd2.service\nRequires=etcd2.service\n[Service]\nEnvironment=LOCKSMITHD_ETCD_CERTFILE=/etc/ssl/etcd/locksmith-cert.pem\nEnvironment=LOCKSMITHD_ETCD_KEYFILE=/etc/ssl/etcd/locksmith-key.pem\nEnvironment=LOCKSMITHD_ETCD_CAFILE=/etc/ssl/etcd/ca-etcd-cert.pem\nEnvironment=LOCKSMITHD_ENDPOINT=https://localhost:2379\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_START=00:00\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_LENGTH=23h59m"
+        }]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "filesystem": "root",
+        "path": "/etc/coreos/update.conf",
+        "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+        "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "path": "/etc/ssl/openssl.cnf",
+        "contents": { "source": "data:,%5Breq%5D%0Adistinguished_name=req%0A%5Betcd_ca%5D%0AbasicConstraints=CA:true%0AkeyUsage=keyCertSign,cRLSign%0AsubjectKeyIdentifier=hash%0A%5Betcd_client%5D%0AbasicConstraints=CA:FALSE%0AextendedKeyUsage=clientAuth%0AkeyUsage=digitalSignature,keyEncipherment%0A%5Betcd_server%5D%0AbasicConstraints=CA:FALSE%0AextendedKeyUsage=serverAuth%0AkeyUsage=digitalSignature,keyEncipherment%0AsubjectAltName=IP:127.0.0.1%0A" },
+        "mode": 420
+      }
+    ]
+  }
 }`,
 	})
 }
@@ -101,4 +152,55 @@ func locksmithCluster(c cluster.TestCluster) error {
 	}
 
 	return wg.Wait()
+}
+
+func locksmithTLS(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+	lCmd := "sudo locksmithctl --endpoint https://localhost:2379 --etcd-cafile /etc/ssl/etcd/ca-etcd-cert.pem --etcd-certfile /etc/ssl/etcd/locksmith-cert.pem --etcd-keyfile /etc/ssl/etcd/locksmith-key.pem "
+
+	// First verify etcd has a valid TLS connection ready
+	output, err := m.SSH("openssl s_client -showcerts -verify_return_error -connect localhost:2379 < /dev/null")
+	if err != nil {
+		return fmt.Errorf("openssl s_client: %q: %v", output, err)
+	}
+
+	// Also verify locksmithctl understands the TLS connection
+	output, err = m.SSH(lCmd + "status")
+	if err != nil {
+		return fmt.Errorf("locksmithctl status: %q: %v", output, err)
+	}
+
+	// Stop locksmithd
+	output, err = m.SSH("sudo systemctl stop locksmithd.service")
+	if err != nil {
+		return fmt.Errorf("systemctl stop: %q: %v", output, err)
+	}
+
+	// Set the lock while locksmithd isn't looking
+	output, err = m.SSH(lCmd + "lock")
+	if err != nil {
+		return fmt.Errorf("locksmithctl lock: %q: %v", output, err)
+	}
+
+	// Verify it is locked
+	output, err = m.SSH(lCmd + "status")
+	if err != nil || !bytes.HasPrefix(output, []byte("Available: 0\nMax: 1")) {
+		return fmt.Errorf("locksmithctl status (locked): %q: %v", output, err)
+	}
+
+	// Start locksmithd
+	output, err = m.SSH("sudo systemctl start locksmithd.service")
+	if err != nil {
+		return fmt.Errorf("systemctl start: %q: %v", output, err)
+	}
+
+	// Verify it is unlocked (after locksmithd wakes up again)
+	checker := func() error {
+		output, err := m.SSH(lCmd + "status")
+		if err != nil || !bytes.HasPrefix(output, []byte("Available: 1\nMax: 1")) {
+			return fmt.Errorf("locksmithctl status (unlocked): %q: %v", output, err)
+		}
+		return nil
+	}
+	return util.Retry(10, 12*time.Second, checker)
 }
