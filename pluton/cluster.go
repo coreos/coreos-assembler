@@ -53,6 +53,16 @@ func (c *Cluster) Kubectl(cmd string) (string, error) {
 	return string(stdout), nil
 }
 
+// Ready blocks until a Cluster is considered available. The current
+// implementation only checks that all nodes are Registered. TODO: Use the
+// manager interface to allow the implementor to determine when a Cluster is
+// considered available either by exposing enough information for this function
+// to check that certain pods are running or implementing its own `Ready()
+// error` function that gets called to after the nodeCheck in this function.
+func (c *Cluster) Ready() error {
+	return nodeCheck(c, 25)
+}
+
 // AddMasters creates new master nodes for a Cluster and blocks until ready.
 func (c *Cluster) AddMasters(n int) error {
 	nodes, err := c.m.AddMasters(n)
@@ -62,41 +72,7 @@ func (c *Cluster) AddMasters(n int) error {
 
 	c.Masters = append(c.Masters, nodes...)
 
-	if err := c.NodeCheck(12); err != nil {
-		return err
-	}
-	return nil
-}
-
-// NodeCheck will parse kubectl output to ensure all nodes in Cluster are
-// registered. Set retry for max amount of retries to attempt before erroring.
-func (c *Cluster) NodeCheck(retryAttempts int) error {
-	f := func() error {
-		out, err := c.Kubectl("get nodes")
-		if err != nil {
-			return err
-		}
-
-		// parse kubectl output for IPs
-		addrMap := map[string]struct{}{}
-		for _, line := range strings.Split(out, "\n")[1:] {
-			addrMap[strings.SplitN(line, " ", 2)[0]] = struct{}{}
-		}
-
-		nodes := append(c.Workers, c.Masters...)
-
-		if len(addrMap) != len(nodes) {
-			return fmt.Errorf("cannot detect all nodes in kubectl output \n%v\n%v", addrMap, nodes)
-		}
-		for _, node := range nodes {
-			if _, ok := addrMap[node.PrivateIP()]; !ok {
-				return fmt.Errorf("node IP missing from kubectl get nodes")
-			}
-		}
-		return nil
-	}
-
-	if err := util.Retry(retryAttempts, 10*time.Second, f); err != nil {
+	if err := c.Ready(); err != nil {
 		return err
 	}
 	return nil
@@ -133,4 +109,38 @@ func (c *Cluster) SSH(cmd string) (stdout, stderr []byte, err error) {
 	stderr = bytes.TrimSpace(errBuf.Bytes())
 
 	return stdout, stderr, err
+}
+
+// nodeCheck will parse kubectl output to ensure all nodes in Cluster are
+// registered. Set retry for max amount of retries to attempt before erroring.
+func nodeCheck(c *Cluster, retryAttempts int) error {
+	f := func() error {
+		out, err := c.Kubectl("get nodes")
+		if err != nil {
+			return err
+		}
+
+		// parse kubectl output for IPs
+		addrMap := map[string]struct{}{}
+		for _, line := range strings.Split(out, "\n")[1:] {
+			addrMap[strings.SplitN(line, " ", 2)[0]] = struct{}{}
+		}
+
+		nodes := append(c.Workers, c.Masters...)
+
+		if len(addrMap) != len(nodes) {
+			return fmt.Errorf("cannot detect all nodes in kubectl output \n%v\n%v", addrMap, nodes)
+		}
+		for _, node := range nodes {
+			if _, ok := addrMap[node.PrivateIP()]; !ok {
+				return fmt.Errorf("node IP missing from kubectl get nodes")
+			}
+		}
+		return nil
+	}
+
+	if err := util.Retry(retryAttempts, 10*time.Second, f); err != nil {
+		return err
+	}
+	return nil
 }

@@ -99,7 +99,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers)
 
 	// check that all nodes appear in kubectl
-	if err := cluster.NodeCheck(20); err != nil {
+	if err := cluster.Ready(); err != nil {
 		return nil, fmt.Errorf("final node check: %v", err)
 	}
 
