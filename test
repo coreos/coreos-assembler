@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Run all tests
 #   ./test
@@ -7,6 +7,8 @@
 # Run tests for one package
 #   PKG=./foo ./test
 #
+
+set -e
 
 cd $(dirname $0)
 
