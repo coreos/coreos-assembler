@@ -33,22 +33,22 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "kola")
 
 	root = &cobra.Command{
-		Use:   "kola [command]",
-		Short: "The CoreOS Superdeep Borehole",
-		// http://en.wikipedia.org/wiki/Kola_Superdeep_Borehole
+		Use:   "pluton [command]",
+		Short: "The Kubernetes Tester Based on Kola",
+		//https://en.wikipedia.org/wiki/Pluton
 	}
 
 	cmdRun = &cobra.Command{
 		Use:    "run [glob pattern]",
-		Short:  "Run run kola tests by category",
-		Long:   "run all kola tests (default) or related groups",
+		Short:  "Run run pluton tests by category",
+		Long:   "run all pluton tests (default) or related groups",
 		Run:    runRun,
 		PreRun: preRun,
 	}
 
 	cmdList = &cobra.Command{
 		Use:   "list",
-		Short: "List kola test names",
+		Short: "List pluton test names",
 		Run:   runList,
 	}
 
@@ -84,7 +84,7 @@ func preRun(cmd *cobra.Command, args []string) {
 
 func runRun(cmd *cobra.Command, args []string) {
 	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
+		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'pluton run [glob pattern]'\n")
 		os.Exit(2)
 	}
 	var pattern string
