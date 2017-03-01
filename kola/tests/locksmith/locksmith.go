@@ -32,7 +32,6 @@ func init() {
 		Name:        "coreos.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
-		/* TODO: https://github.com/coreos/bugs/issues/1815 */
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -54,12 +53,14 @@ func init() {
       }
     ]
   },
-  "files": [{
-    "filesystem": "root",
-    "path": "/etc/coreos/update.conf",
-    "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
-    "mode": 420
-  }]
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/coreos/update.conf",
+      "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+      "mode": 420
+    }]
+  }
 }`,
 	})
 }
