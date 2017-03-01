@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "kola")
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton")
 
 	root = &cobra.Command{
 		Use:   "pluton [command]",

@@ -29,7 +29,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos-inc/pluton", "spawn")
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/spawn")
 
 type BootkubeManager struct {
 	cluster.TestCluster
