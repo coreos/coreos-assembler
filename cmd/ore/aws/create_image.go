@@ -18,8 +18,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/mantle/sdk"
 	"github.com/spf13/cobra"
 )
 
@@ -78,9 +81,8 @@ A common usage is:
 )
 
 func init() {
-
 	addSnapshotFlags := func(cmd *cobra.Command, args *createSnapshotArguments, prefix string) {
-		cmd.Flags().StringVar(&args.snapshotSource, prefix+"source", "", "snapshot source: must be an 's3://' URI")
+		cmd.Flags().StringVar(&args.snapshotSource, prefix+"source", "", "snapshot source: must be an 's3://' URI; defaults to the same as upload if unset")
 		cmd.Flags().StringVar(&args.snapshotDescription, prefix+"description", "", "snapshot description")
 		cmd.Flags().Var(&args.format, prefix+"format", fmt.Sprintf("snapshot format: default %s, %s or %s", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw))
 	}
@@ -89,7 +91,7 @@ func init() {
 	addSnapshotFlags(cmdCreateSnapshot, createSnapshotArgs, "")
 
 	AWS.AddCommand(cmdCreateImages)
-	cmdCreateImages.Flags().StringVar(&createImagesArgs.name, "name", "", "the name of the image to create")
+	cmdCreateImages.Flags().StringVar(&createImagesArgs.name, "name", "", "the name of the image to create; defaults to Container-Linux-$USER-$VERSION")
 	cmdCreateImages.Flags().StringVar(&createImagesArgs.description, "description", "", "the description of the image to create")
 	cmdCreateImages.Flags().BoolVar(&createImagesArgs.createPV, "create-pv", true, "whether to create a PV AMI in addition the the HVM AMI")
 	cmdCreateImages.Flags().StringVar(&createImagesArgs.snapshotID, "snapshot-id", "", "[optional] the snapshot ID to base this AMI off of. A new snapshot will be created if not provided.")
@@ -97,7 +99,12 @@ func init() {
 }
 
 func createSnapshot(args *createSnapshotArguments) (string, error) {
-	snapshot, err := API.CreateSnapshot(args.snapshotDescription, args.snapshotSource, args.format)
+	snapshotSource, err := defaultBucketURI(args.snapshotSource, "", "", "", region)
+
+	if err != nil {
+		return "", fmt.Errorf("unable to guess snapshot source: %v", err)
+	}
+	snapshot, err := API.CreateSnapshot(args.snapshotDescription, snapshotSource, args.format)
 	if err != nil {
 		return "", fmt.Errorf("unable to create snapshot: %v", err)
 	}
@@ -120,8 +127,15 @@ func runCreateSnapshot(cmd *cobra.Command, args []string) error {
 
 func runCreateImages(cmd *cobra.Command, args []string) error {
 	if createImagesArgs.name == "" {
-		return fmt.Errorf("must set an image name")
+		buildDir := sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
+		ver, err := sdk.VersionsFromDir(filepath.Dir(buildDir))
+		if err != nil {
+			return fmt.Errorf("could not guess image name: %v", err)
+		}
+		awsVersion := strings.Replace(ver.Version, "+", "-", -1) // '+' is invalid in an AMI name
+		createImagesArgs.name = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
 	}
+
 	snapshotID := createImagesArgs.snapshotID
 	if snapshotID == "" {
 		newSnapshotID, err := createSnapshot(createImagesArgs.createSnapshotArguments)

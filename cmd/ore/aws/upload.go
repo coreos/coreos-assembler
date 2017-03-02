@@ -42,24 +42,37 @@ var (
 )
 
 func init() {
-	build := sdk.BuildRoot()
+	uploadBoard = "amd64-usr"
+
 	AWS.AddCommand(cmdUpload)
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/; defaults to a regional bucket and prefix defaults to $USER")
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
-		build+"/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk",
+		defaultUploadFile(),
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
 	cmdUpload.Flags().BoolVar(&uploadExpire, "expire", true, "expire the S3 image in 10 days")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 and AWS images without prompt")
 }
 
-func defaultBucketURI(in string, region string) (string, error) {
-	if in == "" {
-		in = fmt.Sprintf("s3://s3-%s.users.developer.core-os.net", region)
+func defaultBucketNameForRegion(region string) string {
+	return fmt.Sprintf("s3-%s.users.developer.core-os.net", region)
+}
+
+func defaultUploadFile() string {
+	build := sdk.BuildRoot()
+	return build + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
+}
+
+// defaultBucketURI determines the location the tool should upload to.
+// The 's3URI' parameter, if it contains a path, will override all other
+// arguments
+func defaultBucketURI(s3URI, imageName, board, file, region string) (string, error) {
+	if s3URI == "" {
+		s3URI = fmt.Sprintf("s3://%s", defaultBucketNameForRegion(region))
 	}
 
-	s3URL, err := url.Parse(in)
+	s3URL, err := url.Parse(s3URI)
 	if err != nil {
 		return "", err
 	}
@@ -67,15 +80,36 @@ func defaultBucketURI(in string, region string) (string, error) {
 		return "", fmt.Errorf("invalid s3 scheme; must be 's3://', not '%s://'", s3URL.Scheme)
 	}
 	if s3URL.Host == "" {
-		return "", fmt.Errorf("URL missing bucket name %v\n", in)
+		return "", fmt.Errorf("URL missing bucket name %v\n", s3URI)
 	}
 
 	// if prefix not specified default name to s3://bucket/$USER/$BOARD/$VERSION
 	if s3URL.Path == "" {
-		if user := os.Getenv("USER"); user != "" {
-			s3URL.Path = "/" + os.Getenv("USER")
-			s3URL.Path += "/" + uploadBoard
+		if board == "" {
+			board = "amd64-usr"
 		}
+
+		user := os.Getenv("USER")
+
+		s3URL.Path = "/" + os.Getenv("USER")
+		s3URL.Path += "/" + board
+
+		if file == "" {
+			file = defaultUploadFile()
+		}
+
+		// if an image name is unspecified try to use version.txt
+		if imageName == "" {
+			ver, err := sdk.VersionsFromDir(filepath.Dir(file))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
+				os.Exit(1)
+			}
+			imageName = ver.Version
+		}
+		fileName := filepath.Base(file)
+
+		s3URL.Path = fmt.Sprintf("/%s/%s/%s/%s", user, board, imageName, fileName)
 	}
 
 	return s3URL.String(), nil
@@ -87,19 +121,12 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
-	s3Bucket, err := defaultBucketURI(uploadBucket, region)
+	s3Bucket, err := defaultBucketURI(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
 	if err != nil {
 		return fmt.Errorf("invalid bucket: %v", err)
 	}
-
-	// if an image name is unspecified try to use version.txt
-	if uploadImageName == "" {
-		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
-			os.Exit(1)
-		}
-		uploadImageName = ver.Version
+	if uploadFile == "" {
+		uploadFile = defaultUploadFile()
 	}
 
 	plog.Debugf("upload bucket: %v\n", s3Bucket)
@@ -110,8 +137,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 	plog.Debugf("parsed s3 url: %+v", s3URL)
 	s3BucketName := s3URL.Host
-	uploadFileName := filepath.Base(uploadFile)
-	uploadImageName = strings.TrimPrefix(s3URL.Path+"/"+uploadImageName+"/"+uploadFileName, "/")
+	s3BucketPath := strings.TrimPrefix(s3URL.Path, "/")
 
 	f, err := os.Open(uploadFile)
 	if err != nil {
@@ -119,11 +145,11 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	err = API.UploadImage(f, s3BucketName, uploadImageName, uploadExpire, uploadForce)
+	err = API.UploadImage(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("created aws s3 upload: s3://%v/%v\n", s3BucketName, uploadImageName)
+	fmt.Printf("created aws s3 upload: s3://%v/%v\n", s3BucketName, s3BucketPath)
 	return nil
 }

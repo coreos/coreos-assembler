@@ -16,7 +16,6 @@ package aws
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/spf13/cobra"
 )
@@ -37,26 +36,18 @@ func init() {
 }
 
 func runInitialize(cmd *cobra.Command, args []string) error {
-	bucket, err := defaultBucketURI(bucket, region)
-	if err != nil {
-		return fmt.Errorf("invalid bucket: %v", err)
+	if bucket == "" {
+		bucket = defaultBucketNameForRegion(region)
 	}
 
-	bucketURI, err := url.Parse(bucket)
+	err := API.InitializeBucket(bucket)
 	if err != nil {
-		return fmt.Errorf("invalid bucket: %v", err)
+		return fmt.Errorf("could not initialize bucket %v: %v", bucket, err)
 	}
 
-	bucketName := bucketURI.Host
-
-	err = API.InitializeBucket(bucketName)
+	err = API.CreateImportRole(bucket)
 	if err != nil {
-		return fmt.Errorf("could not initialize bucket %v: %v", bucketName, err)
-	}
-
-	err = API.CreateImportRole(bucketName)
-	if err != nil {
-		return fmt.Errorf("could not create import role for %v: %v", bucketName, err)
+		return fmt.Errorf("could not create import role for %v: %v", bucket, err)
 	}
 	return nil
 }
