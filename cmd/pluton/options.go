@@ -32,7 +32,7 @@ var (
 	}
 
 	kolaDefaultBIOS = map[string]string{
-		"amd64-usr": "bios.bin",
+		"amd64-usr": "bios-256k.bin",
 		"arm64-usr": filepath.Join(sdk.BoardRoot("arm64-usr"), "/usr/share/edk2-armvirt/bios.bin"),
 	}
 )
