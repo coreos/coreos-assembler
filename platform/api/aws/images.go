@@ -264,6 +264,8 @@ func (a *API) CreatePVImage(snapshotID string, name string, description string) 
 	return *res.ImageId, nil
 }
 
+const diskSize = 8 // GB
+
 func registerImageParams(snapshotID, name, description string, diskBaseName string, imageType EC2ImageType) *ec2.RegisterImageInput {
 	return &ec2.RegisterImageInput{
 		Name:               aws.String(name),
@@ -277,6 +279,7 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 				Ebs: &ec2.EbsBlockDevice{
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
+					VolumeSize:          aws.Int64(diskSize),
 				},
 			},
 			&ec2.BlockDeviceMapping{
