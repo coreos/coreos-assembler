@@ -31,7 +31,7 @@ var (
 	}
 
 	kolaDefaultBIOS = map[string]string{
-		"amd64-usr": "bios.bin",
+		"amd64-usr": "bios-256k.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_qemu_uefi_efi_code.fd",
 	}
 )
