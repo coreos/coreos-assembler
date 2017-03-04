@@ -31,7 +31,6 @@ func init() {
 		Run:         Discovery,
 		ClusterSize: 3,
 		Name:        "coreos.etcd2.discovery",
-		/* TODO: https://github.com/coreos/bugs/issues/1815 */
 		UserData: `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -48,7 +47,7 @@ func init() {
         "name": "coreos-metadata.service",
         "dropins": [{
           "name": "qemu.conf",
-          "contents": "[Unit]\nConditionVirtualization=!qemu"
+          "contents": "[Unit]\nConditionVirtualization=!kvm\nConditionVirtualization=!qemu"
         }]
       }
     ]
