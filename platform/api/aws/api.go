@@ -15,45 +15,77 @@
 package aws
 
 import (
-	"fmt"
-
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/platform"
 )
 
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/aws")
+
 type Options struct {
 	*platform.Options
+	// The AWS region regional api calls should use
+	Region string
+	// The profile to use when resolving credentials, if applicable
+	Profile string
+
+	// AccessKeyID is the optional access key to use. It will override all other sources
+	AccessKeyID string
+	// SecretKey is the optional secret key to use. It will override all other sources
+	SecretKey string
+
 	AMI           string
 	InstanceType  string
 	SecurityGroup string
 }
 
 type API struct {
-	session *session.Session
+	session client.ConfigProvider
 	ec2     *ec2.EC2
+	s3      *s3.S3
 	opts    *Options
 }
 
-// New creates a new AWS API wrapper. It uses credentials from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.
+// New creates a new AWS API wrapper. It uses credentials from any of the
+// standard credentials sources, including the environment and the profile
+// configured in ~/.aws.
+// No validation is done that credentials exist and before using the API a
+// preflight check is recommended via api.PreflightCheck
 func New(opts *Options) (*API, error) {
-	creds := credentials.NewEnvCredentials()
-	if _, err := creds.Get(); err != nil {
-		return nil, fmt.Errorf("no AWS credentials provided: %v", err)
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Profile: opts.Profile,
+		Config:  aws.Config{Region: aws.String(opts.Region)},
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	cfg := aws.NewConfig().WithCredentials(creds)
-
-	sess := session.New(cfg)
+	if opts.AccessKeyID != "" {
+		sess.Config.WithCredentials(credentials.NewStaticCredentials(opts.AccessKeyID, opts.SecretKey, ""))
+	}
 
 	api := &API{
 		session: sess,
 		ec2:     ec2.New(sess),
+		s3:      s3.New(sess),
 		opts:    opts,
 	}
 
 	return api, nil
+}
+
+// PreflightCheck validates that the aws configuration provided has valid
+// credentials
+func (a *API) PreflightCheck() error {
+	iamClient := iam.New(a.session)
+	_, err := iamClient.GetUser(&iam.GetUserInput{})
+
+	return err
 }
