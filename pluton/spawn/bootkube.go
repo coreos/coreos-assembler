@@ -140,7 +140,7 @@ func renderNodeConfig(kubeletService string, isMaster, startEtcd bool) (string, 
 	}{
 		isMaster,
 		startEtcd,
-		kubeletService,
+		serviceToConfig(kubeletService),
 	}
 
 	buf := new(bytes.Buffer)
@@ -154,6 +154,22 @@ func renderNodeConfig(kubeletService string, isMaster, startEtcd bool) (string, 
 	}
 
 	return buf.String(), nil
+}
+
+// The service files we read in from the hack directory need to be indented and
+// have a bash variable substituted before being placed in the cloud-config.
+func serviceToConfig(s string) string {
+	const indent = "        " // 8 spaces to fit in cloud-config
+
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = indent + lines[i]
+	}
+
+	service := strings.Join(lines, "\n")
+	service = strings.Replace(service, "${COREOS_PRIVATE_IPV4}", "$private_ipv4", -1)
+
+	return service
 }
 
 func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
