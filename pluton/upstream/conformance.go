@@ -22,14 +22,15 @@ import (
 )
 
 // Runs conformance tests on a master node of a Cluster
-func RunConformanceTests(c *pluton.Cluster, k8sRepo, k8sVersion string) error {
+func RunConformanceTests(c *pluton.Cluster) error {
 	const (
 		kcPath  = "/etc/kubernetes/kubeconfig"
 		goImage = "docker://golang:1.7.4"
+		repo    = "github.com/coreos/kubernetes"
 	)
 
 	cmds := []string{
-		fmt.Sprintf("git clone https://%s /home/core/k8s", k8sRepo),
+		fmt.Sprintf("git clone https://%s /home/core/k8s", repo),
 		"mkdir /home/core/artifacts",
 	}
 	for _, cmd := range cmds {
@@ -54,7 +55,7 @@ func RunConformanceTests(c *pluton.Cluster, k8sRepo, k8sVersion string) error {
 		make all WHAT=test/e2e/e2e.test && \
 		KUBECONFIG=/kubeconfig KUBERNETES_PROVIDER=skeleton KUBERNETES_CONFORMANCE_TEST=Y go run hack/e2e.go \
  		-v --test -check_version_skew=false --test_args='--ginkgo.focus=\[Conformance\]'"`,
-		kcPath, goImage, k8sVersion)
+		kcPath, goImage, c.Info.Version)
 
 	// stream conformance output
 	client, err := c.Masters[0].SSHClient()

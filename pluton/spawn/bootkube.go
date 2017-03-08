@@ -193,10 +193,12 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		/bootkube -- render --asset-dir=/core/assets --api-servers=https://%s:443,https://%s:443 %s`,
 			imageRepo, imageTag, m.IP(), m.PrivateIP(), etcdRenderAdditions),
 
-		// move the local kubeconfig into expected location
+		// move the local kubeconfig and client cert into expected location
 		"sudo chown -R core:core /home/core/assets",
 		"sudo mkdir -p /etc/kubernetes",
 		"sudo cp /home/core/assets/auth/kubeconfig /etc/kubernetes/",
+		// don't fail for backwards compat
+		"sudo cp /home/core/assets/tls/ca.crt /etc/kubernetes/ca.crt || true",
 
 		// start kubelet
 		"sudo systemctl -q enable --now kubelet",
@@ -292,6 +294,12 @@ func (m *BootkubeManager) provisionNodes(n int, master bool) ([]platform.Machine
 		err := platform.TransferFile(m.firstNode, "/etc/kubernetes/kubeconfig", node, "/etc/kubernetes/kubeconfig")
 		if err != nil {
 			return nil, err
+		}
+
+		// transfer client ca cert but soft fail for older verions of bootkube
+		err = platform.TransferFile(m.firstNode, "/etc/kubernetes/ca.crt", node, "/etc/kubernetes/ca.crt")
+		if err != nil {
+			plog.Infof("Warning: unable to transfer client cert to worker: %v", err)
 		}
 
 		if err := installKubectl(node, m.info.UpstreamVersion); err != nil {

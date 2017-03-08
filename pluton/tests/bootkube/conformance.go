@@ -26,11 +26,5 @@ func conformanceBootkube(c cluster.TestCluster) error {
 		return err
 	}
 
-	// cmdline options
-	var (
-		repo    = c.Options["ConformanceRepo"]
-		version = c.Options["ConformanceVersion"]
-	)
-
-	return upstream.RunConformanceTests(pc, repo, version)
+	return upstream.RunConformanceTests(pc)
 }
