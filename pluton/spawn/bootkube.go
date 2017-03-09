@@ -17,7 +17,10 @@ package spawn
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"text/template"
 	"time"
 
@@ -34,8 +37,9 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/spawn")
 type BootkubeManager struct {
 	cluster.TestCluster
 
-	firstNode       platform.Machine
-	kubeletImageTag string
+	firstNode platform.Machine
+	info      pluton.Info
+	files     scriptFiles
 }
 
 func (m *BootkubeManager) AddMasters(n int) ([]platform.Machine, error) {
@@ -53,13 +57,27 @@ func (m *BootkubeManager) AddWorkers(n int) ([]platform.Machine, error) {
 func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bool) (*pluton.Cluster, error) {
 	// options from flags set by main package
 	var (
-		imageRepo       = c.Options["BootkubeRepo"]
-		imageTag        = c.Options["BootkubeTag"]
-		kubeletImageTag = c.Options["HostKubeletTag"]
+		imageRepo = c.Options["BootkubeRepo"]
+		imageTag  = c.Options["BootkubeTag"]
+		scriptDir = c.Options["BootkubeScriptDir"]
 	)
 
+	// parse in script dir info or use defaults
+	var files scriptFiles
+	if scriptDir == "" {
+		plog.Infof("script dir unspecified, using defaults")
+		files.kubeletMaster = defaultKubeletMasterService
+		files.kubeletWorker = defaultKubeletWorkerService
+	} else {
+		var err error
+		files, err = parseScriptDir(scriptDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// provision master node running etcd
-	masterConfig, err := renderCloudConfig(kubeletImageTag, true, !selfHostEtcd)
+	masterConfig, err := renderNodeConfig(files.kubeletMaster, true, !selfHostEtcd)
 	if err != nil {
 		return nil, err
 	}
@@ -79,15 +97,22 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 		return nil, err
 	}
 
+	// parse hyperkube version from service file
+	info, err := getVersionFromService(files.kubeletMaster)
+	if err != nil {
+		return nil, fmt.Errorf("error determining kubernetes version: %v", err)
+	}
+
 	// install kubectl on master
-	if err := installKubectl(master, kubeletImageTag); err != nil {
+	if err := installKubectl(master, info.UpstreamVersion); err != nil {
 		return nil, err
 	}
 
 	manager := &BootkubeManager{
-		TestCluster:     c,
-		kubeletImageTag: kubeletImageTag,
-		firstNode:       master,
+		TestCluster: c,
+		firstNode:   master,
+		files:       files,
+		info:        info,
 	}
 
 	// provision workers
@@ -96,7 +121,7 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 		return nil, err
 	}
 
-	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers)
+	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers, info)
 
 	// check that all nodes appear in kubectl
 	if err := cluster.Ready(); err != nil {
@@ -106,28 +131,45 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	return cluster, nil
 }
 
-func renderCloudConfig(kubeletImageTag string, isMaster, startEtcd bool) (string, error) {
-	config := struct {
+func renderNodeConfig(kubeletService string, isMaster, startEtcd bool) (string, error) {
+	// render template
+	tmplData := struct {
 		Master         bool
-		KubeletVersion string
 		StartEtcd      bool
+		KubeletService string
 	}{
 		isMaster,
-		kubeletImageTag,
 		startEtcd,
+		serviceToConfig(kubeletService),
 	}
 
 	buf := new(bytes.Buffer)
 
-	tmpl, err := template.New("nodeConfig").Parse(cloudConfigTmpl)
+	tmpl, err := template.New("nodeConfig").Parse(nodeTmpl)
 	if err != nil {
 		return "", err
 	}
-	if err := tmpl.Execute(buf, &config); err != nil {
+	if err := tmpl.Execute(buf, &tmplData); err != nil {
 		return "", err
 	}
 
 	return buf.String(), nil
+}
+
+// The service files we read in from the hack directory need to be indented and
+// have a bash variable substituted before being placed in the cloud-config.
+func serviceToConfig(s string) string {
+	const indent = "        " // 8 spaces to fit in cloud-config
+
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = indent + lines[i]
+	}
+
+	service := strings.Join(lines, "\n")
+	service = strings.Replace(service, "${COREOS_PRIVATE_IPV4}", "$private_ipv4", -1)
+
+	return service
 }
 
 func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
@@ -151,10 +193,12 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		/bootkube -- render --asset-dir=/core/assets --api-servers=https://%s:443,https://%s:443 %s`,
 			imageRepo, imageTag, m.IP(), m.PrivateIP(), etcdRenderAdditions),
 
-		// move the local kubeconfig into expected location
+		// move the local kubeconfig and client cert into expected location
 		"sudo chown -R core:core /home/core/assets",
 		"sudo mkdir -p /etc/kubernetes",
 		"sudo cp /home/core/assets/auth/kubeconfig /etc/kubernetes/",
+		// don't fail for backwards compat
+		"sudo cp /home/core/assets/tls/ca.crt /etc/kubernetes/ca.crt || true",
 
 		// start kubelet
 		"sudo systemctl -q enable --now kubelet",
@@ -217,14 +261,19 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 	return nil
 }
 
-func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Machine, error) {
+func (m *BootkubeManager) provisionNodes(n int, master bool) ([]platform.Machine, error) {
 	if n == 0 {
 		return []platform.Machine{}, nil
 	} else if n < 0 {
 		return nil, fmt.Errorf("can't provision negative number of nodes")
 	}
 
-	config, err := renderCloudConfig(m.kubeletImageTag, tagMaster, false)
+	var service = m.files.kubeletWorker
+	if master {
+		service = m.files.kubeletMaster
+	}
+
+	config, err := renderNodeConfig(service, master, false)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +296,13 @@ func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Mach
 			return nil, err
 		}
 
-		if err := installKubectl(node, m.kubeletImageTag); err != nil {
+		// transfer client ca cert but soft fail for older verions of bootkube
+		err = platform.TransferFile(m.firstNode, "/etc/kubernetes/ca.crt", node, "/etc/kubernetes/ca.crt")
+		if err != nil {
+			plog.Infof("Warning: unable to transfer client cert to worker: %v", err)
+		}
+
+		if err := installKubectl(node, m.info.UpstreamVersion); err != nil {
 			return nil, err
 		}
 
@@ -267,21 +322,56 @@ func (m *BootkubeManager) provisionNodes(n int, tagMaster bool) ([]platform.Mach
 
 }
 
-func installKubectl(m platform.Machine, version string) error {
-	version, err := stripSemverSuffix(version)
+type scriptFiles struct {
+	kubeletMaster string
+	kubeletWorker string
+}
+
+func parseScriptDir(scriptDir string) (scriptFiles, error) {
+	var files scriptFiles
+
+	b, err := ioutil.ReadFile(filepath.Join(scriptDir, "kubelet.master"))
 	if err != nil {
-		return err
+		return scriptFiles{}, fmt.Errorf("failed to read expected kubelet.master file: %v", err)
+	}
+	files.kubeletMaster = string(b)
+
+	b, err = ioutil.ReadFile(filepath.Join(scriptDir, "kubelet.worker"))
+	if err != nil {
+		return scriptFiles{}, fmt.Errorf("failed to read expected kubelet.worker file: %v", err)
+	}
+	files.kubeletWorker = string(b)
+
+	return files, nil
+}
+
+func getVersionFromService(kubeletService string) (pluton.Info, error) {
+	var versionLine string
+	lines := strings.Split(kubeletService, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Environment=KUBELET_IMAGE_TAG=") {
+			versionLine = strings.TrimSpace(line)
+			break
+		}
+	}
+	if versionLine == "" {
+		return pluton.Info{}, fmt.Errorf("could not find kubelet version from service file")
 	}
 
-	kubeURL := fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/%v/bin/linux/amd64/kubectl", version)
-	if _, err := m.SSH("wget -q " + kubeURL); err != nil {
-		return err
+	kubeletTag := strings.TrimPrefix(versionLine, "Environment=KUBELET_IMAGE_TAG=")
+	upstream, err := stripSemverSuffix(kubeletTag)
+	if err != nil {
+		return pluton.Info{}, fmt.Errorf("tag %v: %v", kubeletTag, err)
 	}
-	if _, err := m.SSH("chmod +x ./kubectl"); err != nil {
-		return err
+	semVer := strings.Replace(kubeletTag, "_", "+", 1)
+	s := pluton.Info{
+		KubeletTag:      kubeletTag,
+		Version:         semVer,
+		UpstreamVersion: upstream,
 	}
+	plog.Infof("version detection: %#v", s)
 
-	return nil
+	return s, nil
 }
 
 func stripSemverSuffix(v string) (string, error) {
@@ -292,4 +382,16 @@ func stripSemverSuffix(v string) (string, error) {
 	}
 
 	return v, nil
+}
+
+func installKubectl(m platform.Machine, upstreamVersion string) error {
+	kubeURL := fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/%v/bin/linux/amd64/kubectl", upstreamVersion)
+	if _, err := m.SSH("wget -q " + kubeURL); err != nil {
+		return err
+	}
+	if _, err := m.SSH("chmod +x ./kubectl"); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -52,20 +52,16 @@ var (
 		Run:   runList,
 	}
 
-	bootkubeRepo       string
-	bootkubeTag        string
-	hostKubeletTag     string
-	conformanceRepo    string
-	conformanceVersion string
+	bootkubeRepo      string
+	bootkubeTag       string
+	bootkubeScriptDir string
 )
 
 func init() {
 
 	cmdRun.Flags().StringVar(&bootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
 	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.3.7", "")
-	cmdRun.Flags().StringVar(&hostKubeletTag, "hostKubeletTag", "v1.5.3_coreos.0", "")
-	cmdRun.Flags().StringVar(&conformanceRepo, "conformanceRepo", "github.com/coreos/kubernetes", "")
-	cmdRun.Flags().StringVar(&conformanceVersion, "conformanceVersion", "v1.5.3+coreos.0", "")
+	cmdRun.Flags().StringVar(&bootkubeScriptDir, "bootkubeScriptDir", "", "Make use of bootkube's node init scripts and kubelet service files. Leave blank to use default or pass in the hack/quickstart dir from the bootkube repo.")
 	root.AddCommand(cmdRun)
 	root.AddCommand(cmdList)
 }
@@ -96,9 +92,7 @@ func runRun(cmd *cobra.Command, args []string) {
 
 	kola.RegisterTestOption("BootkubeRepo", bootkubeRepo)
 	kola.RegisterTestOption("BootkubeTag", bootkubeTag)
-	kola.RegisterTestOption("HostKubeletTag", hostKubeletTag)
-	kola.RegisterTestOption("ConformanceRepo", conformanceRepo)
-	kola.RegisterTestOption("ConformanceVersion", conformanceVersion)
+	kola.RegisterTestOption("BootkubeScriptDir", bootkubeScriptDir)
 
 	err := kola.RunTests(pattern, kolaPlatform, outputDir)
 	if err != nil {

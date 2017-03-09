@@ -32,14 +32,24 @@ import (
 type Cluster struct {
 	Masters []platform.Machine
 	Workers []platform.Machine
+	Info    Info
 
 	m Manager
 }
 
-func NewCluster(m Manager, masters, workers []platform.Machine) *Cluster {
+// Info contains information about how a Cluster is configured that may be
+// useful for some tests.
+type Info struct {
+	KubeletTag      string // e.g. v1.5.3_coreos.0
+	Version         string // e.g. v1.5.3+coreos.0
+	UpstreamVersion string // e.g. v1.5.3
+}
+
+func NewCluster(m Manager, masters, workers []platform.Machine, info Info) *Cluster {
 	return &Cluster{
 		Masters: masters,
 		Workers: workers,
+		Info:    info,
 		m:       m,
 	}
 }

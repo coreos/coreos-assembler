@@ -100,7 +100,7 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 		return nil
 	}
 
-	if err := util.Retry(10, 12*time.Second, podsReady); err != nil {
+	if err := util.Retry(15, 10*time.Second, podsReady); err != nil {
 		return err
 	}
 	return nil
