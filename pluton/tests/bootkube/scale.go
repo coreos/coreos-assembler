@@ -142,8 +142,7 @@ func checkEtcdPodDistribution(c *pluton.Cluster, etcdClusterSize int) error {
 
 	for k, _ := range nodeSet {
 		if _, ok := masterSet[k]; !ok {
-			// Just warn instead of erroring until/if supported
-			plog.Infof("detected self-hosted etcd pod running on non-master node %v %v", masterSet, nodeSet)
+			return fmt.Errorf("detected self-hosted etcd pod running on non-master node %v %v", masterSet, nodeSet)
 		}
 	}
 
