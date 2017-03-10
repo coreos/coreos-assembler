@@ -54,6 +54,12 @@ func init() {
 		Name:        "coreos.filesystem.writabledirs",
 		UserData:    `#cloud-config`,
 	})
+	register.Register(&register.Test{
+		Run:         StickyDirs,
+		ClusterSize: 1,
+		Name:        "coreos.filesystem.stickydirs",
+		UserData:    `#cloud-config`,
+	})
 }
 
 func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
@@ -179,6 +185,38 @@ func WritableDirs(c cluster.TestCluster) error {
 
 	if string(output) != "" {
 		return fmt.Errorf("Unknown writable directories found: %v", output)
+	}
+
+	return nil
+}
+
+// The default permissions for the root of a tmpfs are 1777
+// https://github.com/coreos/bugs/issues/1812
+func StickyDirs(c cluster.TestCluster) error {
+	m := c.Machines()[0]
+
+	ignore := []string{
+		// don't descend into these
+		"/proc",
+		"/sys",
+
+		// should be sticky, and may have sticky children
+		"/dev/mqueue",
+		"/dev/shm",
+		"/media",
+		"/tmp",
+		"/var/tmp",
+	}
+
+	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -type d -perm /1000 -print", strings.Join(ignore, " -prune -o -path "))
+
+	output, err := m.SSH(command)
+	if err != nil {
+		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+	}
+
+	if string(output) != "" {
+		return fmt.Errorf("Unknown sticky directories found: %v", output)
 	}
 
 	return nil
