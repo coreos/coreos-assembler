@@ -58,4 +58,10 @@ func init() {
 		Run:       conformanceBootkube,
 		Platforms: []string{"gce"},
 	})
+	register.Register(&register.Test{
+		Name:      "conformance.selfetcd.bootkube",
+		Run:       conformanceSelfEtcdBootkube,
+		Platforms: []string{"gce"},
+	})
+
 }

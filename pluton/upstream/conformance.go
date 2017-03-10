@@ -22,6 +22,8 @@ import (
 )
 
 // Runs conformance tests on a master node of a Cluster
+// TODO(pb): find a way to stream to a custom output file for the calling test.
+// Also only print the last few lines to stdout
 func RunConformanceTests(c *pluton.Cluster) error {
 	const (
 		kcPath  = "/etc/kubernetes/kubeconfig"
