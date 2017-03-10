@@ -100,8 +100,8 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 		return nil
 	}
 
-	if err := util.Retry(15, 10*time.Second, podsReady); err != nil {
-		return err
+	if err := util.Retry(20, 10*time.Second, podsReady); err != nil {
+		return fmt.Errorf("Waited 200 seconds for etcd to scale: %v", err)
 	}
 	return nil
 }
@@ -142,8 +142,7 @@ func checkEtcdPodDistribution(c *pluton.Cluster, etcdClusterSize int) error {
 
 	for k, _ := range nodeSet {
 		if _, ok := masterSet[k]; !ok {
-			// Just warn instead of erroring until/if supported
-			plog.Infof("detected self-hosted etcd pod running on non-master node %v %v", masterSet, nodeSet)
+			return fmt.Errorf("detected self-hosted etcd pod running on non-master node %v %v", masterSet, nodeSet)
 		}
 	}
 
