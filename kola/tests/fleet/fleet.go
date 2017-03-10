@@ -27,7 +27,6 @@ import (
 )
 
 var (
-	/* TODO: https://github.com/coreos/bugs/issues/1815 */
 	masterconf = `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -52,7 +51,7 @@ var (
         "name": "coreos-metadata.service",
         "dropins": [{
           "name": "qemu.conf",
-          "contents": "[Unit]\nConditionVirtualization=!qemu"
+          "contents": "[Unit]\nConditionVirtualization=!kvm\nConditionVirtualization=!qemu"
         }]
       }
     ]
@@ -67,7 +66,6 @@ var (
   }
 }`
 
-	/* TODO: https://github.com/coreos/bugs/issues/1815 */
 	proxyconf = `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -88,7 +86,7 @@ var (
         "name": "coreos-metadata.service",
         "dropins": [{
           "name": "qemu.conf",
-          "contents": "[Unit]\nConditionVirtualization=!qemu"
+          "contents": "[Unit]\nConditionVirtualization=!kvm\nConditionVirtualization=!qemu"
         }]
       }
     ]
