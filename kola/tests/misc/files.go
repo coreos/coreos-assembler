@@ -199,6 +199,8 @@ func StickyDirs(c cluster.TestCluster) error {
 		// don't descend into these
 		"/proc",
 		"/sys",
+		"/var/lib/docker",
+		"/var/lib/rkt",
 
 		// should be sticky, and may have sticky children
 		"/dev/mqueue",
