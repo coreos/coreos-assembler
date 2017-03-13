@@ -24,7 +24,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/pluton"
@@ -35,7 +34,7 @@ import (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/spawn")
 
 type BootkubeManager struct {
-	cluster.TestCluster
+	platform.Cluster
 
 	firstNode platform.Machine
 	info      pluton.Info
@@ -50,50 +49,55 @@ func (m *BootkubeManager) AddWorkers(n int) ([]platform.Machine, error) {
 	return m.provisionNodes(n, false)
 }
 
-// MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
-// and checks that all nodes are registered before returning. NOTE: If startup
-// times become too long there are a few sections of this setup that could be
-// run in parallel.
-func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bool) (*pluton.Cluster, error) {
-	// options from flags set by main package
-	var (
-		imageRepo = c.Options["BootkubeRepo"]
-		imageTag  = c.Options["BootkubeTag"]
-		scriptDir = c.Options["BootkubeScriptDir"]
-	)
+// Ultimately a combination of global and test specific options passed via the
+// harness package. We could pass those types directly but it would cause an
+// import cycle. Could also move the GlobalOptions type up into the the pluton
+// package.
+type BootkubeConfig struct {
+	ImageRepo      string
+	ImageTag       string
+	ScriptDir      string
+	InitialWorkers int
+	SelfHostEtcd   bool
+}
 
+// MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
+// and checks that all nodes are registered before returning.
+func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton.Cluster, error) {
 	// parse in script dir info or use defaults
 	var files scriptFiles
-	if scriptDir == "" {
+	if config.ScriptDir == "" {
 		plog.Infof("script dir unspecified, using defaults")
 		files.kubeletMaster = defaultKubeletMasterService
 		files.kubeletWorker = defaultKubeletWorkerService
 	} else {
 		var err error
-		files, err = parseScriptDir(scriptDir)
+		files, err = parseScriptDir(config.ScriptDir)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// provision master node running etcd
-	masterConfig, err := renderNodeConfig(files.kubeletMaster, true, !selfHostEtcd)
+	masterConfig, err := renderNodeConfig(files.kubeletMaster, true, !config.SelfHostEtcd)
 	if err != nil {
 		return nil, err
 	}
-	master, err := c.NewMachine(masterConfig)
+	master, err := cloud.NewMachine(masterConfig)
 	if err != nil {
 		return nil, err
 	}
-	if !selfHostEtcd {
+	if !config.SelfHostEtcd {
 		if err := etcd.GetClusterHealth(master, 1); err != nil {
 			return nil, err
 		}
 	}
 	plog.Infof("Master VM (%s) started. It's IP is %s.", master.ID(), master.IP())
 
+	// TODO(pb): as soon as we have masterIP, start additional workers/masters in parallel with bootkube start
+
 	// start bootkube on master
-	if err := bootstrapMaster(master, imageRepo, imageTag, selfHostEtcd); err != nil {
+	if err := bootstrapMaster(master, config.ImageRepo, config.ImageTag, config.SelfHostEtcd); err != nil {
 		return nil, err
 	}
 
@@ -109,14 +113,14 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	}
 
 	manager := &BootkubeManager{
-		TestCluster: c,
-		firstNode:   master,
-		files:       files,
-		info:        info,
+		Cluster:   cloud,
+		firstNode: master,
+		files:     files,
+		info:      info,
 	}
 
 	// provision workers
-	workers, err := manager.provisionNodes(workerNodes, false)
+	workers, err := manager.provisionNodes(config.InitialWorkers, false)
 	if err != nil {
 		return nil, err
 	}

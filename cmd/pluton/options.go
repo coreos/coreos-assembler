@@ -14,74 +14,34 @@
 
 package main
 
-import (
-	"fmt"
-
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/sdk"
-)
-
-var (
-	outputDir          string
-	kolaPlatform       string
-	defaultTargetBoard = sdk.DefaultBoard()
-	kolaDefaultImages  = map[string]string{
-		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
-		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
-	}
-
-	kolaDefaultBIOS = map[string]string{
-		"amd64-usr": "bios-256k.bin",
-		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_qemu_uefi_efi_code.fd",
-	}
-)
+import "github.com/coreos/mantle/pluton/harness"
 
 func init() {
+	root.AddCommand(cmdRun)
+	root.AddCommand(cmdList)
+
 	sv := root.PersistentFlags().StringVar
 	bv := root.PersistentFlags().BoolVar
 
 	// general options
-	sv(&outputDir, "output-dir", "_pluton_temp", "Temporary output directory for test data and logs")
-	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
-	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
-	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
-	sv(&kola.Options.BaseName, "basename", "pluton", "Cluster name prefix")
-
-	// QEMU-specific options
-	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
-	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
-	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
+	sv(&harness.Opts.OutputDir, "output-dir", "_pluton_temp", "Temporary output directory for test data and logs")
+	sv(&harness.Opts.CloudPlatform, "platform", "gce", "VM platform: qemu, gce, aws")
+	root.PersistentFlags().IntVar(&harness.Opts.Parallel, "parallel", 1, "number of tests to run in parallel")
+	sv(&harness.Opts.PlatformOptions.BaseName, "basename", "pluton", "Cluster name prefix")
+	sv(&harness.Opts.BootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
+	sv(&harness.Opts.BootkubeTag, "bootkubeTag", "v0.3.11", "")
+	sv(&harness.Opts.BootkubeScriptDir, "bootkubeScriptDir", "", "Make use of bootkube's node init scripts and kubelet service files. Leave blank to use default or pass in the hack/quickstart dir from the bootkube repo.")
 
 	// gce-specific options
-	sv(&kola.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-5-0-v20170228", "GCE image")
-	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
-	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
-	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
-	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
-	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
-	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
+	sv(&harness.Opts.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-6-0-v20170315", "GCE image")
+	sv(&harness.Opts.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
+	sv(&harness.Opts.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
+	sv(&harness.Opts.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
+	sv(&harness.Opts.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
+	sv(&harness.Opts.GCEOptions.Network, "gce-network", "default", "GCE network")
+	bv(&harness.Opts.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 
-	// aws-specific options
-	// CoreOS-alpha-845.0.0 on us-west-1
-	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-55438011", "AWS AMI ID")
-	sv(&kola.AWSOptions.InstanceType, "aws-type", "t1.micro", "AWS instance type")
-	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
-}
+	// future choice
+	harness.Opts.CloudPlatform = "gce"
 
-// Sync up the command line options if there is dependency
-func syncOptions() error {
-	image, ok := kolaDefaultImages[kola.QEMUOptions.Board]
-	if !ok {
-		return fmt.Errorf("unsupport board %q", kola.QEMUOptions.Board)
-	}
-
-	if kola.QEMUOptions.DiskImage == "" {
-		kola.QEMUOptions.DiskImage = image
-	}
-
-	if kola.QEMUOptions.BIOSImage == "" {
-		kola.QEMUOptions.BIOSImage = kolaDefaultBIOS[kola.QEMUOptions.Board]
-	}
-
-	return nil
 }
