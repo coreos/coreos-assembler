@@ -56,6 +56,17 @@ func init() {
 	})
 
 	// experimental self-hosted test suite run via `rktbot run etcd tests`
+	register.Register(&register.Test{
+		Name:      "experimenaletcd.destruct.reboot",
+		Run:       rebootMasterSelfEtcd,
+		Platforms: []string{"gce"},
+	})
+
+	register.Register(&register.Test{
+		Name:      "experimentaletcd.destruct.delete",
+		Run:       deleteAPIServerSelfEtcd,
+		Platforms: []string{"gce"},
+	})
 
 	// conformance
 	register.Register(&register.Test{

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
+	"github.com/coreos/mantle/pluton"
 	"github.com/coreos/mantle/pluton/spawn"
 	"github.com/coreos/mantle/util"
 )
@@ -34,7 +35,16 @@ func rebootMaster(tc cluster.TestCluster) error {
 	if err != nil {
 		return err
 	}
-
+	return rebootMasterPluton(c)
+}
+func rebootMasterSelfEtcd(tc cluster.TestCluster) error {
+	c, err := spawn.MakeBootkubeCluster(tc, 1, true)
+	if err != nil {
+		return err
+	}
+	return rebootMasterPluton(c)
+}
+func rebootMasterPluton(c *pluton.Cluster) error {
 	// reboot and wait for api to come up 3 times to avoid false positives
 	for i := 0; i < 3; i++ {
 		if err := c.Masters[0].Reboot(); err != nil {
@@ -64,6 +74,17 @@ func deleteAPIServer(tc cluster.TestCluster) error {
 	if err != nil {
 		return err
 	}
+	return deleteAPIServerPluton(c)
+}
+func deleteAPIServerSelfEtcd(tc cluster.TestCluster) error {
+	c, err := spawn.MakeBootkubeCluster(tc, 1, true)
+	if err != nil {
+		return err
+	}
+	return deleteAPIServerPluton(c)
+}
+
+func deleteAPIServerPluton(c *pluton.Cluster) error {
 
 	out, err := c.Kubectl("get pods -l k8s-app=kube-apiserver -o=jsonpath={.items[*].metadata.name} --namespace=kube-system")
 	if err != nil {
