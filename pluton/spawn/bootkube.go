@@ -203,9 +203,10 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		// start kubelet
 		"sudo systemctl -q enable --now kubelet",
 
-		// start bootkube (rkt fly makes stderr/stdout seperation work)
+		// start bootkube
+		// TODO(pb): separate stdin/stdout
 		fmt.Sprintf(`sudo /usr/bin/rkt run \
-                --stage1-name=coreos.com/rkt/stage1-fly:1.25.0 \
+		--net=host \
         	--volume home,kind=host,source=/home/core \
         	--mount volume=home,target=/core \
         	--volume manifests,kind=host,source=/etc/kubernetes/manifests \
