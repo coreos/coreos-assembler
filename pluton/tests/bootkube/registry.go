@@ -57,7 +57,7 @@ func init() {
 
 	// experimental self-hosted test suite run via `rktbot run etcd tests`
 	register.Register(&register.Test{
-		Name:      "experimenaletcd.destruct.reboot",
+		Name:      "experimentaletcd.destruct.reboot",
 		Run:       rebootMasterSelfEtcd,
 		Platforms: []string{"gce"},
 	})
