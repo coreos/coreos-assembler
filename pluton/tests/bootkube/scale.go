@@ -39,7 +39,7 @@ func etcdScale(tc cluster.TestCluster) error {
 
 	// scale up etcd operator
 	if err := resizeSelfHostedEtcd(c, 3); err != nil {
-		return err
+		return fmt.Errorf("scaling up: %v", err)
 	}
 
 	// todo check that each pod runs on a different master node
@@ -49,7 +49,7 @@ func etcdScale(tc cluster.TestCluster) error {
 
 	// scale back to 1
 	if err := resizeSelfHostedEtcd(c, 1); err != nil {
-		return err
+		return fmt.Errorf("scaling down: %v", err)
 	}
 
 	// run an nginx deployment and ping it
@@ -70,10 +70,10 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 		tprGroup, apiVersion, tprKind)
 
 	scaleCmds := []string{
-		fmt.Sprintf("curl -H 'Content-Type: application/json' -X GET %v > body.json", tprEndpoint),
+		fmt.Sprintf("curl -H -f 'Content-Type: application/json' -X GET %v > body.json", tprEndpoint),
 		// delete resourceVersion field before curling back
 		fmt.Sprintf("jq 'recurse(.metadata) |= del(.resourceVersion)' < body.json | jq .spec.size=%v > newbody.json", size),
-		fmt.Sprintf("curl -H 'Content-Type: application/json' -X PUT --data @newbody.json %v", tprEndpoint),
+		fmt.Sprintf("curl -H -f 'Content-Type: application/json' -X PUT --data @newbody.json %v", tprEndpoint),
 	}
 	for _, cmd := range scaleCmds {
 		sout, serr, err := c.SSH(cmd)

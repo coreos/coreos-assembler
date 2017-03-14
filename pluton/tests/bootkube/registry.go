@@ -49,13 +49,13 @@ func init() {
 		Platforms: []string{"gce"},
 	})
 
+	// experimental self-hosted test suite run via `rktbot run etcd tests`
 	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.scale",
+		Name:      "experimentaletcd.scale",
 		Run:       etcdScale,
 		Platforms: []string{"gce"},
 	})
 
-	// experimental self-hosted test suite run via `rktbot run etcd tests`
 	register.Register(&register.Test{
 		Name:      "experimentaletcd.destruct.reboot",
 		Run:       rebootMasterSelfEtcd,
