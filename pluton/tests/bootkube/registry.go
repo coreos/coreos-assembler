@@ -23,21 +23,10 @@ import (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/tests/bootkube")
 
 func init() {
+	// main test suite run on every PR
 	register.Register(&register.Test{
 		Name:      "bootkube.smoke",
 		Run:       bootkubeSmoke,
-		Platforms: []string{"gce"},
-	})
-
-	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.smoke",
-		Run:       bootkubeSmokeEtcd,
-		Platforms: []string{"gce"},
-	})
-
-	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.scale",
-		Run:       etcdScale,
 		Platforms: []string{"gce"},
 	})
 
@@ -53,6 +42,33 @@ func init() {
 		Platforms: []string{"gce"},
 	})
 
+	// main self-hosted test suite run on every PR
+	register.Register(&register.Test{
+		Name:      "bootkube.selfetcd.smoke",
+		Run:       bootkubeSmokeEtcd,
+		Platforms: []string{"gce"},
+	})
+
+	register.Register(&register.Test{
+		Name:      "bootkube.selfetcd.scale",
+		Run:       etcdScale,
+		Platforms: []string{"gce"},
+	})
+
+	// experimental self-hosted test suite run via `rktbot run etcd tests`
+	register.Register(&register.Test{
+		Name:      "experimenaletcd.destruct.reboot",
+		Run:       rebootMasterSelfEtcd,
+		Platforms: []string{"gce"},
+	})
+
+	register.Register(&register.Test{
+		Name:      "experimentaletcd.destruct.delete",
+		Run:       deleteAPIServerSelfEtcd,
+		Platforms: []string{"gce"},
+	})
+
+	// conformance
 	register.Register(&register.Test{
 		Name:      "conformance.bootkube",
 		Run:       conformanceBootkube,
