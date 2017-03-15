@@ -74,7 +74,7 @@ func init() {
         "name": "coreos-metadata.service",
         "dropins": [{
           "name": "qemu.conf",
-          "contents": "[Unit]\nConditionVirtualization=!kvm\nConditionVirtualization=!qemu"
+          "contents": "[Unit]\nConditionKernelCommandLine=coreos.oem.id"
         }]
       }
     ]
