@@ -19,8 +19,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 func init() {
@@ -48,8 +50,16 @@ func init() {
 func VerityVerify(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
+	// get offset of verity hash within kernel
+	rootOffset := 64
+	// assume ARM64 is only on QEMU for now
+	if _, ok := c.Cluster.(*qemu.Cluster); ok && kola.QEMUOptions.Board == "arm64-usr" {
+		rootOffset = 512
+	}
+
 	// extract verity hash from kernel
-	hash, err := m.SSH("dd if=/boot/coreos/vmlinuz-a skip=64 count=64 bs=1 2>/dev/null")
+	ddcmd := fmt.Sprintf("dd if=/boot/coreos/vmlinuz-a skip=%d count=64 bs=1 2>/dev/null", rootOffset)
+	hash, err := m.SSH(ddcmd)
 	if err != nil {
 		return fmt.Errorf("failed to extract verity hash from kernel: %v: %v", hash, err)
 	}
