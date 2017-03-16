@@ -91,6 +91,26 @@ func init() {
 		},
 	})
 
+	harness.Register(pluton.Test{
+		Name: "bootkube.destruct.checkpointer.cleanupparent.",
+		Run:  unscheduleCheckpointParent,
+		Options: pluton.Options{
+			SelfHostEtcd:   true,
+			InitialMasters: 1,
+			InitialWorkers: 1,
+		},
+	})
+
+	harness.Register(pluton.Test{
+		Name: "bootkube.destruct.checkpointer.cleanupall",
+		Run:  unscheduleCheckpointer,
+		Options: pluton.Options{
+			SelfHostEtcd:   true,
+			InitialMasters: 1,
+			InitialWorkers: 1,
+		},
+	})
+
 	// conformance
 	harness.Register(pluton.Test{
 		Name: "conformance.bootkube",
