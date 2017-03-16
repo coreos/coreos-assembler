@@ -61,12 +61,13 @@ func init() {
 		Platforms: []string{"gce"},
 	})
 
-	// experimental self-hosted test suite run via `rktbot run etcd tests`
 	register.Register(&register.Test{
-		Name:      "experimentaletcd.scale",
+		Name:      "bootkube.selfetcd.scale",
 		Run:       etcdScale,
 		Platforms: []string{"gce"},
 	})
+
+	// experimental self-hosted test suite run via `rktbot run etcd tests`
 
 	// conformance
 	register.Register(&register.Test{
