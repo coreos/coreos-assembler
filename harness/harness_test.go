@@ -18,7 +18,10 @@ package harness
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -315,4 +318,172 @@ func makeRegexp(s string) string {
 	s = strings.Replace(s, ":NNN:", `:\d\d\d:`, -1)
 	s = strings.Replace(s, "(N.NNs)", `\(\d*\.\d*s\)`, -1)
 	return s
+}
+
+func TestOutputDir(t *testing.T) {
+	var suitedir string
+	if dir, err := ioutil.TempDir("", ""); err != nil {
+		t.Fatal(err)
+	} else {
+		defer os.RemoveAll(dir)
+		suitedir = filepath.Join(dir, "_test_temp")
+	}
+
+	var testdirs []string
+	adddir := func(h *H) {
+		testdirs = append(testdirs, h.OutputDir())
+	}
+
+	opts := Options{
+		OutputDir: suitedir,
+		Verbose:   true,
+	}
+	suite := NewSuite(opts, Tests{
+		"OutputDir": adddir,
+	})
+
+	buf := &bytes.Buffer{}
+	if err := suite.runTests(buf, nil); err != nil {
+		t.Log("\n" + buf.String())
+		t.Error(err)
+	}
+
+	expect := []string{
+		filepath.Join(suitedir, "OutputDir"),
+	}
+	if !reflect.DeepEqual(testdirs, expect) {
+		t.Errorf("%v != %v", testdirs, expect)
+	}
+}
+
+func TestSubDirs(t *testing.T) {
+	var suitedir string
+	if dir, err := ioutil.TempDir("", ""); err != nil {
+		t.Fatal(err)
+	} else {
+		defer os.RemoveAll(dir)
+		suitedir = filepath.Join(dir, "_test_temp")
+	}
+
+	var testdirs []string
+	adddir := func(h *H) {
+		testdirs = append(testdirs, h.OutputDir())
+	}
+
+	opts := Options{
+		OutputDir: suitedir,
+		Verbose:   true,
+	}
+	suite := NewSuite(opts, Tests{
+		"OutputDir": adddir,
+	})
+
+	buf := &bytes.Buffer{}
+	if err := suite.runTests(buf, nil); err != nil {
+		t.Log("\n" + buf.String())
+		t.Error(err)
+	}
+
+	expect := []string{
+		filepath.Join(suitedir, "OutputDir"),
+	}
+	if !reflect.DeepEqual(testdirs, expect) {
+		t.Errorf("%v != %v", testdirs, expect)
+	}
+}
+
+func TestTempDir(t *testing.T) {
+	var suitedir string
+	if dir, err := ioutil.TempDir("", ""); err != nil {
+		t.Fatal(err)
+	} else {
+		defer os.RemoveAll(dir)
+		suitedir = filepath.Join(dir, "_test_temp")
+	}
+
+	var testdirs []string
+	opts := Options{
+		OutputDir: suitedir,
+		Verbose:   true,
+	}
+	suite := NewSuite(opts, Tests{
+		"TempDir": func(h *H) {
+			testdirs = append(testdirs, h.TempDir("first"))
+			testdirs = append(testdirs, h.TempDir("second"))
+		},
+	})
+
+	buf := &bytes.Buffer{}
+	if err := suite.runTests(buf, nil); err != nil {
+		t.Log("\n" + buf.String())
+		t.Error(err)
+	}
+
+	if len(testdirs) != 2 {
+		t.Fatalf("expected 2 paths: %v", testdirs)
+	}
+
+	expect := filepath.Join(suitedir, "TempDir")
+	dir := filepath.Dir(testdirs[0])
+	if dir != expect {
+		t.Errorf("%q != %q", dir, expect)
+	}
+	first := filepath.Base(testdirs[0])
+	if !strings.HasPrefix(first, "first") {
+		t.Errorf("%q missing %q prefix", first, "first")
+	}
+	second := filepath.Base(testdirs[1])
+	if !strings.HasPrefix(second, "second") {
+		t.Errorf("%q missing %q prefix", second, "second")
+	}
+}
+
+func TestTempFile(t *testing.T) {
+	var suitedir string
+	if dir, err := ioutil.TempDir("", ""); err != nil {
+		t.Fatal(err)
+	} else {
+		defer os.RemoveAll(dir)
+		suitedir = filepath.Join(dir, "_test_temp")
+	}
+
+	var testfiles []string
+	opts := Options{
+		OutputDir: suitedir,
+		Verbose:   true,
+	}
+	suite := NewSuite(opts, Tests{
+		"TempFile": func(h *H) {
+			f := h.TempFile("first")
+			testfiles = append(testfiles, f.Name())
+			f.Close()
+			f = h.TempFile("second")
+			testfiles = append(testfiles, f.Name())
+			f.Close()
+		},
+	})
+
+	buf := &bytes.Buffer{}
+	if err := suite.runTests(buf, nil); err != nil {
+		t.Log("\n" + buf.String())
+		t.Error(err)
+	}
+
+	if len(testfiles) != 2 {
+		t.Fatalf("expected 2 paths: %v", testfiles)
+	}
+
+	expect := filepath.Join(suitedir, "TempFile")
+	dir := filepath.Dir(testfiles[0])
+	if dir != expect {
+		t.Errorf("%q != %q", dir, expect)
+	}
+	first := filepath.Base(testfiles[0])
+	if !strings.HasPrefix(first, "first") {
+		t.Errorf("%q missing %q prefix", first, "first")
+	}
+	second := filepath.Base(testfiles[1])
+	if !strings.HasPrefix(second, "second") {
+		t.Errorf("%q missing %q prefix", second, "second")
+	}
 }

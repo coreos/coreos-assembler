@@ -20,7 +20,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -284,6 +286,58 @@ func (c *H) Skipped() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.skipped
+}
+
+func (h *H) mkOutputDir() (dir string, err error) {
+	dir = h.suite.outputPath(h.name)
+	if err = os.MkdirAll(dir, 0777); err != nil {
+		err = fmt.Errorf("Failed to create output dir: %v", err)
+	}
+	return
+}
+
+// OutputDir returns the path to a directory for storing data used by
+// the current test. Only test frameworks should care about this.
+// Individual tests should normally use H.TempDir or H.TempFile
+func (h *H) OutputDir() string {
+	dir, err := h.mkOutputDir()
+	if err != nil {
+		h.log(err.Error())
+		h.FailNow()
+	}
+	return dir
+}
+
+// TempDir creates a new directory under OutputDir.
+// No cleanup is required.
+func (h *H) TempDir(prefix string) string {
+	dir, err := h.mkOutputDir()
+	if err != nil {
+		h.log(err.Error())
+		h.FailNow()
+	}
+	tmp, err := ioutil.TempDir(dir, prefix)
+	if err != nil {
+		h.log(fmt.Sprintf("Failed to create temp dir: %v", err))
+		h.FailNow()
+	}
+	return tmp
+}
+
+// TempFile creates a new file under Outputdir.
+// No cleanup is required.
+func (h *H) TempFile(prefix string) *os.File {
+	dir, err := h.mkOutputDir()
+	if err != nil {
+		h.log(err.Error())
+		h.FailNow()
+	}
+	tmp, err := ioutil.TempFile(dir, prefix)
+	if err != nil {
+		h.log(fmt.Sprintf("Failed to create temp file: %v", err))
+		h.FailNow()
+	}
+	return tmp
 }
 
 // Parallel signals that this test is to be run in parallel with (and only with)
