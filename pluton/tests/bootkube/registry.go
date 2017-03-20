@@ -15,13 +15,9 @@
 package bootkube
 
 import (
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/pluton"
 	"github.com/coreos/mantle/pluton/harness"
 )
-
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/tests/bootkube")
 
 func init() {
 	// main test suite run on every PR

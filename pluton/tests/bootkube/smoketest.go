@@ -67,7 +67,7 @@ func nginxCheck(c *pluton.Cluster) error {
 	deletePod := func() error {
 		_, err = c.Kubectl("delete deployment my-nginx")
 		if err != nil {
-			plog.Infof("unexpected kubectl failure deleting deployment: %v", err)
+			c.Logf("unexpected kubectl failure deleting deployment: %v", err)
 			return fmt.Errorf("delete deployment: %v", err)
 		}
 		return nil
