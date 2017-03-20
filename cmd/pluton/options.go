@@ -53,7 +53,7 @@ func init() {
 	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
 
 	// gce-specific options
-	sv(&kola.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1235-9-0-v20170202", "GCE image")
+	sv(&kola.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-5-0-v20170228", "GCE image")
 	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
 	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
 	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")

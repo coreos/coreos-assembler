@@ -28,3 +28,12 @@ func conformanceBootkube(c cluster.TestCluster) error {
 
 	return upstream.RunConformanceTests(pc)
 }
+
+func conformanceSelfEtcdBootkube(c cluster.TestCluster) error {
+	pc, err := spawn.MakeBootkubeCluster(c, 4, true)
+	if err != nil {
+		return err
+	}
+
+	return upstream.RunConformanceTests(pc)
+}

@@ -60,7 +60,7 @@ var (
 func init() {
 
 	cmdRun.Flags().StringVar(&bootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
-	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.3.7", "")
+	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.3.11", "")
 	cmdRun.Flags().StringVar(&bootkubeScriptDir, "bootkubeScriptDir", "", "Make use of bootkube's node init scripts and kubelet service files. Leave blank to use default or pass in the hack/quickstart dir from the bootkube repo.")
 	root.AddCommand(cmdRun)
 	root.AddCommand(cmdList)
