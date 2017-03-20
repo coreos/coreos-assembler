@@ -15,25 +15,12 @@
 package bootkube
 
 import (
-	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/pluton/spawn"
+	"github.com/coreos/mantle/pluton"
 	"github.com/coreos/mantle/pluton/upstream"
 )
 
-func conformanceBootkube(c cluster.TestCluster) error {
-	pc, err := spawn.MakeBootkubeCluster(c, 4, false)
-	if err != nil {
-		return err
+func conformanceBootkube(c *pluton.Cluster) {
+	if err := upstream.RunConformanceTests(c); err != nil {
+		c.Fatal(err)
 	}
-
-	return upstream.RunConformanceTests(pc)
-}
-
-func conformanceSelfEtcdBootkube(c cluster.TestCluster) error {
-	pc, err := spawn.MakeBootkubeCluster(c, 4, true)
-	if err != nil {
-		return err
-	}
-
-	return upstream.RunConformanceTests(pc)
 }

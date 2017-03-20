@@ -17,68 +17,93 @@ package bootkube
 import (
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/pluton"
+	"github.com/coreos/mantle/pluton/harness"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/tests/bootkube")
 
 func init() {
 	// main test suite run on every PR
-	register.Register(&register.Test{
-		Name:      "bootkube.smoke",
-		Run:       bootkubeSmoke,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "bootkube.smoke",
+		Run:  smoke,
+		Options: pluton.Options{
+			SelfHostEtcd:   false,
+			InitialWorkers: 1,
+		},
+	})
+	harness.Register(pluton.Test{
+		Name: "bootkube.destruct.reboot",
+		Run:  rebootMaster,
+		Options: pluton.Options{
+			SelfHostEtcd:   false,
+			InitialWorkers: 1,
+		},
 	})
 
-	register.Register(&register.Test{
-		Name:      "bootkube.destruct.reboot",
-		Run:       rebootMaster,
-		Platforms: []string{"gce"},
-	})
-
-	register.Register(&register.Test{
-		Name:      "bootkube.destruct.delete",
-		Run:       deleteAPIServer,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "bootkube.destruct.delete",
+		Run:  deleteAPIServer,
+		Options: pluton.Options{
+			SelfHostEtcd:   false,
+			InitialWorkers: 1,
+		},
 	})
 
 	// main self-hosted test suite run on every PR
-	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.smoke",
-		Run:       bootkubeSmokeEtcd,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "bootkube.selfetcd.smoke",
+		Run:  smoke,
+		Options: pluton.Options{
+			SelfHostEtcd:   true,
+			InitialWorkers: 1,
+		},
 	})
 
-	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.destruct.reboot",
-		Run:       rebootMasterSelfEtcd,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "bootkube.selfetcd.scale",
+		Run:  etcdScale,
+		Options: pluton.Options{
+			SelfHostEtcd:   true,
+			InitialWorkers: 1,
+		},
 	})
 
-	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.destruct.delete",
-		Run:       deleteAPIServerSelfEtcd,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "bootkube.selfetcd.destruct.reboot",
+		Run:  rebootMaster,
+		Options: pluton.Options{
+			SelfHostEtcd:   false,
+			InitialWorkers: 1,
+		},
 	})
 
-	register.Register(&register.Test{
-		Name:      "bootkube.selfetcd.scale",
-		Run:       etcdScale,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "bootkube.selfetcd.destruct.delete",
+		Run:  deleteAPIServer,
+		Options: pluton.Options{
+			SelfHostEtcd:   false,
+			InitialWorkers: 1,
+		},
 	})
-
-	// experimental self-hosted test suite run via `rktbot run etcd tests`
 
 	// conformance
-	register.Register(&register.Test{
-		Name:      "conformance.bootkube",
-		Run:       conformanceBootkube,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "conformance.bootkube",
+		Run:  conformanceBootkube,
+		Options: pluton.Options{
+			SelfHostEtcd:   false,
+			InitialWorkers: 4,
+		},
 	})
-	register.Register(&register.Test{
-		Name:      "conformance.selfetcd.bootkube",
-		Run:       conformanceSelfEtcdBootkube,
-		Platforms: []string{"gce"},
+	harness.Register(pluton.Test{
+		Name: "conformance.selfetcd.bootkube",
+		Run:  conformanceBootkube,
+		Options: pluton.Options{
+			SelfHostEtcd:   true,
+			InitialWorkers: 4,
+		},
 	})
 
 }
