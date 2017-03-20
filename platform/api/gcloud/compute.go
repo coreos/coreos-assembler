@@ -15,8 +15,8 @@
 package gcloud
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -28,7 +28,9 @@ import (
 )
 
 func (a *API) vmname() string {
-	return fmt.Sprintf("%s-%x", a.options.BaseName, rand.Int63())
+	b := make([]byte, 10)
+	rand.Read(b)
+	return fmt.Sprintf("%s-%x", a.options.BaseName, b)
 }
 
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
