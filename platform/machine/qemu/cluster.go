@@ -161,7 +161,7 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		"-uuid", qm.id,
 		"-display", "none",
 		"-add-fd", "fd=4,set=1",
-		"-drive", "if=none,id=blk,format=raw,file=/dev/fdset/1",
+		"-drive", "if=none,id=blk,format=qcow2,file=/dev/fdset/1",
 		"-device", qc.virtio("blk", "drive=blk"),
 		"-netdev", "tap,id=tap,fd=3",
 		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac),
@@ -242,9 +242,14 @@ func (qc *Cluster) virtio(device, args string) string {
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
-// Copy the base image to a new nameless temporary file.
-// cp is used since it supports sparse and reflink.
+// Create a nameless temporary qcow2 image file backed by a raw image.
 func setupDisk(imageFile string) (*os.File, error) {
+	// keep the COW image from breaking if the "latest" symlink changes
+	backingFile, err := filepath.EvalSymlinks(imageFile)
+	if err != nil {
+		return nil, err
+	}
+
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
 		return nil, err
@@ -253,13 +258,12 @@ func setupDisk(imageFile string) (*os.File, error) {
 	defer os.Remove(dstFileName)
 	dstFile.Close()
 
-	cp := exec.Command("cp", "--force",
-		"--sparse=always", "--reflink=auto",
-		imageFile, dstFileName)
-	cp.Stdout = os.Stdout
-	cp.Stderr = os.Stderr
+	qcowOpts := fmt.Sprintf("backing_file=%s,backing_fmt=raw,lazy_refcounts=on", backingFile)
+	qemuImg := exec.Command("qemu-img", "create", "-f", "qcow2",
+		"-o", qcowOpts, dstFileName)
+	qemuImg.Stderr = os.Stderr
 
-	if err := cp.Run(); err != nil {
+	if err := qemuImg.Run(); err != nil {
 		return nil, err
 	}
 
