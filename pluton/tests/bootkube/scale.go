@@ -19,44 +19,35 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/pluton"
-	"github.com/coreos/mantle/pluton/spawn"
 	"github.com/coreos/mantle/util"
 )
 
-func etcdScale(tc cluster.TestCluster) error {
-	// create cluster with self-hosted etcd
-	c, err := spawn.MakeBootkubeCluster(tc, 1, true)
-	if err != nil {
-		return err
-	}
-
+func etcdScale(c *pluton.Cluster) {
 	// add two master nodes to cluster
 	if err := c.AddMasters(2); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// scale up etcd operator
 	if err := resizeSelfHostedEtcd(c, 3); err != nil {
-		return fmt.Errorf("scaling up: %v", err)
+		c.Fatalf("scaling up: %v", err)
 	}
 
 	// todo check that each pod runs on a different master node
 	if err := checkEtcdPodDistribution(c, 3); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// scale back to 1
 	if err := resizeSelfHostedEtcd(c, 1); err != nil {
-		return fmt.Errorf("scaling down: %v", err)
+		c.Fatalf("scaling down: %v", err)
 	}
 
 	// run an nginx deployment and ping it
 	if err := nginxCheck(c); err != nil {
-		return fmt.Errorf("nginxCheck: %v", err)
+		c.Fatalf("nginxCheck: %v", err)
 	}
-	return nil
 }
 
 // resizes self-hosted etcd and checks that the desired number of pods are in a running state

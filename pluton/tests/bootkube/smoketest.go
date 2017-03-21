@@ -19,39 +19,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/pluton"
-	"github.com/coreos/mantle/pluton/spawn"
 	"github.com/coreos/mantle/util"
 )
 
-func bootkubeSmoke(c cluster.TestCluster) error {
-	// This should not return until cluster is ready
-	bc, err := spawn.MakeBootkubeCluster(c, 1, false)
-	if err != nil {
-		return err
-	}
-
+func smoke(c *pluton.Cluster) {
 	// run an nginx deployment and ping it
-	if err := nginxCheck(bc); err != nil {
-		return fmt.Errorf("nginxCheck: %s", err)
+	if err := nginxCheck(c); err != nil {
+		c.Fatalf("nginxCheck: %s", err)
 	}
 	// TODO add more basic or regression tests here
-	return nil
-}
-
-func bootkubeSmokeEtcd(c cluster.TestCluster) error {
-	// This should not return until cluster is ready
-	bc, err := spawn.MakeBootkubeCluster(c, 1, true)
-	if err != nil {
-		return err
-	}
-
-	// run an nginx deployment and ping it
-	if err := nginxCheck(bc); err != nil {
-		return fmt.Errorf("nginxCheck: %s", err)
-	}
-	return nil
 }
 
 func nginxCheck(c *pluton.Cluster) error {
@@ -90,7 +67,7 @@ func nginxCheck(c *pluton.Cluster) error {
 	deletePod := func() error {
 		_, err = c.Kubectl("delete deployment my-nginx")
 		if err != nil {
-			plog.Infof("unexpected kubectl failure deleting deployment: %v", err)
+			c.Logf("unexpected kubectl failure deleting deployment: %v", err)
 			return fmt.Errorf("delete deployment: %v", err)
 		}
 		return nil

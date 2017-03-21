@@ -12,15 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bootkube
+package harness
 
 import (
-	"github.com/coreos/mantle/pluton"
-	"github.com/coreos/mantle/pluton/upstream"
+	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/api/gcloud"
 )
 
-func conformanceBootkube(c *pluton.Cluster) {
-	if err := upstream.RunConformanceTests(c); err != nil {
-		c.Fatal(err)
-	}
+// GlobalOptions are set in main and represent options that affect all tests
+// run in a single invocation of pluton.
+type GlobalOptions struct {
+	CloudPlatform   string // only GCE is supported currently
+	PlatformOptions platform.Options
+	GCEOptions      gcloud.Options
+
+	Parallel  int
+	OutputDir string
+
+	BootkubeRepo      string
+	BootkubeTag       string
+	BootkubeScriptDir string
 }
+
+// Glue variable for setting global options
+var Opts GlobalOptions

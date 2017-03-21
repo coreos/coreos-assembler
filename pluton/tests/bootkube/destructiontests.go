@@ -19,9 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/pluton"
-	"github.com/coreos/mantle/pluton/spawn"
 	"github.com/coreos/mantle/util"
 )
 
@@ -30,76 +28,44 @@ import (
 // the destructive test.
 
 // Restart master node and check that cluster is still functional
-func rebootMaster(tc cluster.TestCluster) error {
-	c, err := spawn.MakeBootkubeCluster(tc, 1, false)
-	if err != nil {
-		return err
-	}
-	return rebootMasterPluton(c)
-}
-func rebootMasterSelfEtcd(tc cluster.TestCluster) error {
-	c, err := spawn.MakeBootkubeCluster(tc, 1, true)
-	if err != nil {
-		return err
-	}
-	return rebootMasterPluton(c)
-}
-func rebootMasterPluton(c *pluton.Cluster) error {
+func rebootMaster(c *pluton.Cluster) {
 	// reboot and wait for api to come up 3 times to avoid false positives
 	for i := 0; i < 3; i++ {
 		if err := c.Masters[0].Reboot(); err != nil {
-			return err
+			c.Fatal(err)
 		}
 
 		// TODO(pb) find a way to globally disable selinux in kola
 		_, err := c.Masters[0].SSH("sudo setenforce 0")
 		if err != nil {
-			return fmt.Errorf("turning off selinux failed: %v", err)
+			c.Fatalf("turning off selinux failed: %v", err)
 		}
 
 		if err := c.Ready(); err != nil {
-			return fmt.Errorf("nodeCheck: %s", err)
+			c.Fatalf("nodeCheck: %s", err)
 		}
 	}
 
 	if err := nginxCheck(c); err != nil {
-		return fmt.Errorf("nginxCheck: %s", err)
+		c.Fatalf("nginxCheck: %s", err)
 	}
-	return nil
 }
 
-// Delete api-server pod and wait for it to recover
-func deleteAPIServer(tc cluster.TestCluster) error {
-	c, err := spawn.MakeBootkubeCluster(tc, 1, false)
-	if err != nil {
-		return err
-	}
-	return deleteAPIServerPluton(c)
-}
-func deleteAPIServerSelfEtcd(tc cluster.TestCluster) error {
-	c, err := spawn.MakeBootkubeCluster(tc, 1, true)
-	if err != nil {
-		return err
-	}
-	return deleteAPIServerPluton(c)
-}
-
-func deleteAPIServerPluton(c *pluton.Cluster) error {
-
+func deleteAPIServer(c *pluton.Cluster) {
 	out, err := c.Kubectl("get pods -l k8s-app=kube-apiserver -o=jsonpath={.items[*].metadata.name} --namespace=kube-system")
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	apipods := strings.Split(strings.TrimSpace(out), " ")
 	if len(apipods) < 1 {
-		return fmt.Errorf("Failed detect any apiserver pods for deletion")
+		c.Fatal("Failed detect any apiserver pods for deletion")
 	}
 
 	for _, pod := range apipods {
 		_, err := c.Kubectl("delete pod " + pod + " --namespace=kube-system")
 		if err != nil {
-			return fmt.Errorf("Unable to delete apiserver pod: %s", err)
+			c.Fatalf("Unable to delete apiserver pod: %s", err)
 		}
 	}
 
@@ -112,17 +78,15 @@ func deleteAPIServerPluton(c *pluton.Cluster) error {
 		return nil
 	}
 	if err := util.Retry(40, 1*time.Second, f); err != nil {
-		return fmt.Errorf("apiserver never terminated: %s", err)
+		c.Fatalf("apiserver never terminated: %s", err)
 	}
 
 	// wait for apiserver to return
 	if err := c.Ready(); err != nil {
-		return fmt.Errorf("nodeCheck: %s", err)
+		c.Fatalf("nodeCheck: %s", err)
 	}
 
 	if err := nginxCheck(c); err != nil {
-		return fmt.Errorf("nginxCheck: %s", err)
+		c.Fatalf("nginxCheck: %s", err)
 	}
-
-	return nil
 }

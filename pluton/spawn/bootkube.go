@@ -21,10 +21,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
-	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/pluton"
@@ -35,7 +35,7 @@ import (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/spawn")
 
 type BootkubeManager struct {
-	cluster.TestCluster
+	platform.Cluster
 
 	firstNode platform.Machine
 	info      pluton.Info
@@ -43,57 +43,68 @@ type BootkubeManager struct {
 }
 
 func (m *BootkubeManager) AddMasters(n int) ([]platform.Machine, error) {
-	return m.provisionNodes(n, true)
+	masters, _, err := m.provisionNodes(n, 0)
+	return masters, err
 }
 
 func (m *BootkubeManager) AddWorkers(n int) ([]platform.Machine, error) {
-	return m.provisionNodes(n, false)
+	_, workers, err := m.provisionNodes(0, n)
+	return workers, err
+}
+
+// Ultimately a combination of global and test specific options passed via the
+// harness package. We could pass those types directly but it would cause an
+// import cycle. Could also move the GlobalOptions type up into the the pluton
+// package.
+type BootkubeConfig struct {
+	ImageRepo      string
+	ImageTag       string
+	ScriptDir      string
+	InitialWorkers int
+	InitialMasters int
+	SelfHostEtcd   bool
 }
 
 // MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
-// and checks that all nodes are registered before returning. NOTE: If startup
-// times become too long there are a few sections of this setup that could be
-// run in parallel.
-func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bool) (*pluton.Cluster, error) {
-	// options from flags set by main package
-	var (
-		imageRepo = c.Options["BootkubeRepo"]
-		imageTag  = c.Options["BootkubeTag"]
-		scriptDir = c.Options["BootkubeScriptDir"]
-	)
-
+// and checks that all nodes are registered before returning.
+func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton.Cluster, error) {
 	// parse in script dir info or use defaults
 	var files scriptFiles
-	if scriptDir == "" {
+	if config.ScriptDir == "" {
 		plog.Infof("script dir unspecified, using defaults")
 		files.kubeletMaster = defaultKubeletMasterService
 		files.kubeletWorker = defaultKubeletWorkerService
 	} else {
 		var err error
-		files, err = parseScriptDir(scriptDir)
+		files, err = parseScriptDir(config.ScriptDir)
 		if err != nil {
 			return nil, err
 		}
 	}
+	if config.InitialMasters < 1 {
+		return nil, fmt.Errorf("Must specify at least 1 initial master for the bootstrap node")
+	}
 
 	// provision master node running etcd
-	masterConfig, err := renderNodeConfig(files.kubeletMaster, true, !selfHostEtcd)
+	masterConfig, err := renderNodeConfig(files.kubeletMaster, true, !config.SelfHostEtcd)
 	if err != nil {
 		return nil, err
 	}
-	master, err := c.NewMachine(masterConfig)
+	master, err := cloud.NewMachine(masterConfig)
 	if err != nil {
 		return nil, err
 	}
-	if !selfHostEtcd {
+	if !config.SelfHostEtcd {
 		if err := etcd.GetClusterHealth(master, 1); err != nil {
 			return nil, err
 		}
 	}
 	plog.Infof("Master VM (%s) started. It's IP is %s.", master.ID(), master.IP())
 
+	// TODO(pb): as soon as we have masterIP, start additional workers/masters in parallel with bootkube start
+
 	// start bootkube on master
-	if err := bootstrapMaster(master, imageRepo, imageTag, selfHostEtcd); err != nil {
+	if err := bootstrapMaster(master, config.ImageRepo, config.ImageTag, config.SelfHostEtcd); err != nil {
 		return nil, err
 	}
 
@@ -109,19 +120,19 @@ func MakeBootkubeCluster(c cluster.TestCluster, workerNodes int, selfHostEtcd bo
 	}
 
 	manager := &BootkubeManager{
-		TestCluster: c,
-		firstNode:   master,
-		files:       files,
-		info:        info,
+		Cluster:   cloud,
+		firstNode: master,
+		files:     files,
+		info:      info,
 	}
 
-	// provision workers
-	workers, err := manager.provisionNodes(workerNodes, false)
+	// provision additional nodes
+	masters, workers, err := manager.provisionNodes(config.InitialMasters-1, config.InitialWorkers)
 	if err != nil {
 		return nil, err
 	}
 
-	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers, info)
+	cluster := pluton.NewCluster(manager, append([]platform.Machine{master}, masters...), workers, info)
 
 	// check that all nodes appear in kubectl
 	if err := cluster.Ready(); err != nil {
@@ -262,39 +273,67 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 	return nil
 }
 
-func (m *BootkubeManager) provisionNodes(n int, master bool) ([]platform.Machine, error) {
-	if n == 0 {
-		return []platform.Machine{}, nil
-	} else if n < 0 {
-		return nil, fmt.Errorf("can't provision negative number of nodes")
+func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machine, []platform.Machine, error) {
+	if masters == 0 && workers == 0 {
+		return []platform.Machine{}, []platform.Machine{}, nil
+	} else if masters < 0 || workers < 0 {
+		return nil, nil, fmt.Errorf("can't provision negative number of nodes")
 	}
 
-	var service = m.files.kubeletWorker
-	if master {
-		service = m.files.kubeletMaster
-	}
-
-	config, err := renderNodeConfig(service, master, false)
+	configM, err := renderNodeConfig(m.files.kubeletMaster, true, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	configs := make([]string, n)
-	for i := range configs {
-		configs[i] = config
-	}
-
-	nodes, err := platform.NewMachines(m, configs)
+	configW, err := renderNodeConfig(m.files.kubeletWorker, false, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	configsM := make([]string, masters)
+	for i := range configsM {
+		configsM[i] = configM
+	}
+	configsW := make([]string, workers)
+	for i := range configsW {
+		configsW[i] = configW
+	}
+
+	// NewMachines already does parallelization but doesn't guarentee the
+	// order of the nodes returned which matters when we have heterogenious
+	// cloudconfigs here
+	var wg sync.WaitGroup
+	var masterNodes, workerNodes []platform.Machine
+	var merror, werror error
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if len(configsM) != 0 {
+			masterNodes, merror = platform.NewMachines(m, configsM)
+		} else {
+			masterNodes = []platform.Machine{}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if len(configsW) != 0 {
+			workerNodes, werror = platform.NewMachines(m, configsW)
+		} else {
+			workerNodes = []platform.Machine{}
+		}
+	}()
+	wg.Wait()
+	if merror != nil || werror != nil {
+		return nil, nil, fmt.Errorf("error calling NewMachines: %v %v", merror, werror)
 	}
 
 	// start kubelet
-	for _, node := range nodes {
+	for _, node := range append(masterNodes, workerNodes...) {
 		// transfer kubeconfig from existing node
 		err := platform.TransferFile(m.firstNode, "/etc/kubernetes/kubeconfig", node, "/etc/kubernetes/kubeconfig")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// transfer client ca cert but soft fail for older verions of bootkube
@@ -304,22 +343,23 @@ func (m *BootkubeManager) provisionNodes(n int, master bool) ([]platform.Machine
 		}
 
 		if err := installKubectl(node, m.info.UpstreamVersion); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// disable selinux
 		_, err = node.SSH("sudo setenforce 0")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// start kubelet
 		_, err = node.SSH("sudo systemctl -q enable --now kubelet.service")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return nodes, nil
+
+	return masterNodes, workerNodes, nil
 
 }
 

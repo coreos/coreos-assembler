@@ -21,8 +21,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/pluton/harness"
 	_ "github.com/coreos/mantle/pluton/tests/bootkube"
 
 	"github.com/coreos/pkg/capnslog"
@@ -39,11 +38,10 @@ var (
 	}
 
 	cmdRun = &cobra.Command{
-		Use:    "run [glob pattern]",
-		Short:  "Run run pluton tests by category",
-		Long:   "run all pluton tests (default) or related groups",
-		Run:    runRun,
-		PreRun: preRun,
+		Use:   "run [glob pattern]",
+		Short: "Run run pluton tests by category",
+		Long:  "run all pluton tests (default) or related groups",
+		Run:   runRun,
 	}
 
 	cmdList = &cobra.Command{
@@ -51,31 +49,10 @@ var (
 		Short: "List pluton test names",
 		Run:   runList,
 	}
-
-	bootkubeRepo      string
-	bootkubeTag       string
-	bootkubeScriptDir string
 )
-
-func init() {
-
-	cmdRun.Flags().StringVar(&bootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
-	cmdRun.Flags().StringVar(&bootkubeTag, "bootkubeTag", "v0.3.11", "")
-	cmdRun.Flags().StringVar(&bootkubeScriptDir, "bootkubeScriptDir", "", "Make use of bootkube's node init scripts and kubelet service files. Leave blank to use default or pass in the hack/quickstart dir from the bootkube repo.")
-	root.AddCommand(cmdRun)
-	root.AddCommand(cmdList)
-}
 
 func main() {
 	cli.Execute(root)
-}
-
-func preRun(cmd *cobra.Command, args []string) {
-	err := syncOptions()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(3)
-	}
 }
 
 func runRun(cmd *cobra.Command, args []string) {
@@ -90,49 +67,23 @@ func runRun(cmd *cobra.Command, args []string) {
 		pattern = "*" // run all tests by default
 	}
 
-	kola.RegisterTestOption("BootkubeRepo", bootkubeRepo)
-	kola.RegisterTestOption("BootkubeTag", bootkubeTag)
-	kola.RegisterTestOption("BootkubeScriptDir", bootkubeScriptDir)
-
-	err := kola.RunTests(pattern, kolaPlatform, outputDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
+	harness.RunSuite(pattern)
 }
 
 func runList(cmd *cobra.Command, args []string) {
 	var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
-	var testlist list
+	var list []string
 
-	for name, test := range register.Tests {
-		testlist = append(testlist, item{name, test.Platforms})
+	for name := range harness.Tests {
+		list = append(list, name)
 	}
 
-	sort.Sort(testlist)
+	sort.Strings(list)
 
-	fmt.Fprintln(w, "Test Name\tPlatforms Available")
+	fmt.Fprintln(w, "Test Name")
 	fmt.Fprintln(w, "\t")
-	for _, item := range testlist {
-		fmt.Fprintf(w, "%v\n", item)
+	for _, name := range list {
+		fmt.Fprintf(w, "%v\n", name)
 	}
 	w.Flush()
 }
-
-type item struct {
-	Name      string
-	Platforms []string
-}
-
-func (i item) String() string {
-	if len(i.Platforms) == 0 {
-		i.Platforms = []string{"all"}
-	}
-	return fmt.Sprintf("%v\t%v", i.Name, i.Platforms)
-}
-
-type list []item
-
-func (s list) Len() int           { return len(s) }
-func (s list) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s list) Less(i, j int) bool { return s[i].Name < s[j].Name }

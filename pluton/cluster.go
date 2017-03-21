@@ -20,19 +20,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
 
-// Cluster represents an interface to test kubernetes clusters The creation is
-// usually implemented by a function that builds the Cluster from a kola
-// TestCluster from the 'spawn' subpackage. Tests may be aware of the
-// implementor function since not all clusters are expected to have the same
-// components nor properties.
+// Cluster represents an interface to test kubernetes clusters. The harness
+// object is used for logging, exiting or skipping a test. Is nearly
+// identical to the Go test harness. The creation is usually implemented by a
+// function that builds the Cluster from a kola TestCluster from the 'spawn'
+// subpackage. Tests may be aware of the implementor function since not all
+// clusters are expected to have the same components nor properties.
 type Cluster struct {
 	Masters []platform.Machine
 	Workers []platform.Machine
 	Info    Info
+
+	*harness.H
 
 	m Manager
 }
