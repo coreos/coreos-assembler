@@ -26,6 +26,7 @@ func init() {
 		Run:  smoke,
 		Options: pluton.Options{
 			SelfHostEtcd:   false,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -34,6 +35,7 @@ func init() {
 		Run:  rebootMaster,
 		Options: pluton.Options{
 			SelfHostEtcd:   false,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -43,6 +45,7 @@ func init() {
 		Run:  deleteAPIServer,
 		Options: pluton.Options{
 			SelfHostEtcd:   false,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -53,6 +56,7 @@ func init() {
 		Run:  smoke,
 		Options: pluton.Options{
 			SelfHostEtcd:   true,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -62,6 +66,7 @@ func init() {
 		Run:  etcdScale,
 		Options: pluton.Options{
 			SelfHostEtcd:   true,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -71,6 +76,7 @@ func init() {
 		Run:  rebootMaster,
 		Options: pluton.Options{
 			SelfHostEtcd:   false,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -80,6 +86,7 @@ func init() {
 		Run:  deleteAPIServer,
 		Options: pluton.Options{
 			SelfHostEtcd:   false,
+			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
@@ -90,6 +97,7 @@ func init() {
 		Run:  conformanceBootkube,
 		Options: pluton.Options{
 			SelfHostEtcd:   false,
+			InitialMasters: 1,
 			InitialWorkers: 4,
 		},
 	})
@@ -98,6 +106,7 @@ func init() {
 		Run:  conformanceBootkube,
 		Options: pluton.Options{
 			SelfHostEtcd:   true,
+			InitialMasters: 1,
 			InitialWorkers: 4,
 		},
 	})

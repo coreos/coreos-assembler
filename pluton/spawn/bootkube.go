@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -42,11 +43,13 @@ type BootkubeManager struct {
 }
 
 func (m *BootkubeManager) AddMasters(n int) ([]platform.Machine, error) {
-	return m.provisionNodes(n, true)
+	masters, _, err := m.provisionNodes(n, 0)
+	return masters, err
 }
 
 func (m *BootkubeManager) AddWorkers(n int) ([]platform.Machine, error) {
-	return m.provisionNodes(n, false)
+	_, workers, err := m.provisionNodes(0, n)
+	return workers, err
 }
 
 // Ultimately a combination of global and test specific options passed via the
@@ -58,6 +61,7 @@ type BootkubeConfig struct {
 	ImageTag       string
 	ScriptDir      string
 	InitialWorkers int
+	InitialMasters int
 	SelfHostEtcd   bool
 }
 
@@ -76,6 +80,9 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton
 		if err != nil {
 			return nil, err
 		}
+	}
+	if config.InitialMasters < 1 {
+		return nil, fmt.Errorf("Must specify at least 1 initial master for the bootstrap node")
 	}
 
 	// provision master node running etcd
@@ -119,13 +126,13 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton
 		info:      info,
 	}
 
-	// provision workers
-	workers, err := manager.provisionNodes(config.InitialWorkers, false)
+	// provision additional nodes
+	masters, workers, err := manager.provisionNodes(config.InitialMasters-1, config.InitialWorkers)
 	if err != nil {
 		return nil, err
 	}
 
-	cluster := pluton.NewCluster(manager, []platform.Machine{master}, workers, info)
+	cluster := pluton.NewCluster(manager, append([]platform.Machine{master}, masters...), workers, info)
 
 	// check that all nodes appear in kubectl
 	if err := cluster.Ready(); err != nil {
@@ -266,39 +273,67 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 	return nil
 }
 
-func (m *BootkubeManager) provisionNodes(n int, master bool) ([]platform.Machine, error) {
-	if n == 0 {
-		return []platform.Machine{}, nil
-	} else if n < 0 {
-		return nil, fmt.Errorf("can't provision negative number of nodes")
+func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machine, []platform.Machine, error) {
+	if masters == 0 && workers == 0 {
+		return []platform.Machine{}, []platform.Machine{}, nil
+	} else if masters < 0 || workers < 0 {
+		return nil, nil, fmt.Errorf("can't provision negative number of nodes")
 	}
 
-	var service = m.files.kubeletWorker
-	if master {
-		service = m.files.kubeletMaster
-	}
-
-	config, err := renderNodeConfig(service, master, false)
+	configM, err := renderNodeConfig(m.files.kubeletMaster, true, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	configs := make([]string, n)
-	for i := range configs {
-		configs[i] = config
-	}
-
-	nodes, err := platform.NewMachines(m, configs)
+	configW, err := renderNodeConfig(m.files.kubeletWorker, false, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	configsM := make([]string, masters)
+	for i := range configsM {
+		configsM[i] = configM
+	}
+	configsW := make([]string, workers)
+	for i := range configsW {
+		configsW[i] = configW
+	}
+
+	// NewMachines already does parallelization but doesn't guarentee the
+	// order of the nodes returned which matters when we have heterogenious
+	// cloudconfigs here
+	var wg sync.WaitGroup
+	var masterNodes, workerNodes []platform.Machine
+	var merror, werror error
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if len(configsM) != 0 {
+			masterNodes, merror = platform.NewMachines(m, configsM)
+		} else {
+			masterNodes = []platform.Machine{}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if len(configsW) != 0 {
+			workerNodes, werror = platform.NewMachines(m, configsW)
+		} else {
+			workerNodes = []platform.Machine{}
+		}
+	}()
+	wg.Wait()
+	if merror != nil || werror != nil {
+		return nil, nil, fmt.Errorf("error calling NewMachines: %v %v", merror, werror)
 	}
 
 	// start kubelet
-	for _, node := range nodes {
+	for _, node := range append(masterNodes, workerNodes...) {
 		// transfer kubeconfig from existing node
 		err := platform.TransferFile(m.firstNode, "/etc/kubernetes/kubeconfig", node, "/etc/kubernetes/kubeconfig")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// transfer client ca cert but soft fail for older verions of bootkube
@@ -308,22 +343,23 @@ func (m *BootkubeManager) provisionNodes(n int, master bool) ([]platform.Machine
 		}
 
 		if err := installKubectl(node, m.info.UpstreamVersion); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// disable selinux
 		_, err = node.SSH("sudo setenforce 0")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// start kubelet
 		_, err = node.SSH("sudo systemctl -q enable --now kubelet.service")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return nodes, nil
+
+	return masterNodes, workerNodes, nil
 
 }
 

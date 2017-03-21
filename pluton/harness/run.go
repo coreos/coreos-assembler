@@ -98,6 +98,7 @@ func runTest(t pluton.Test, h *harness.H) {
 		ImageTag:       Opts.BootkubeTag,
 		ScriptDir:      Opts.BootkubeScriptDir,
 		InitialWorkers: t.Options.InitialWorkers,
+		InitialMasters: t.Options.InitialMasters,
 		SelfHostEtcd:   t.Options.SelfHostEtcd,
 	}
 
