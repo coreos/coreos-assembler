@@ -105,7 +105,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton
 
 	// start bootkube on master
 	if err := bootstrapMaster(master, config.ImageRepo, config.ImageTag, config.SelfHostEtcd); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("bootstrapping master node: %v", err)
 	}
 
 	// parse hyperkube version from service file
@@ -405,6 +405,15 @@ func getVersionFromService(kubeletService string) (pluton.Info, error) {
 		return pluton.Info{}, fmt.Errorf("tag %v: %v", kubeletTag, err)
 	}
 	semVer := strings.Replace(kubeletTag, "_", "+", 1)
+
+	// hack to handle upstream pre-release versions TODO(pb): simpify this
+	// parsing and only have conformance test rely on accurate upstream
+	// versions, not having kubectl will fail all tests. kubectl can be
+	// copied from hyperkube
+	if strings.Contains(semVer, "-") {
+		upstream = strings.Split(semVer, "+")[0]
+	}
+
 	s := pluton.Info{
 		KubeletTag:      kubeletTag,
 		Version:         semVer,
@@ -428,7 +437,7 @@ func stripSemverSuffix(v string) (string, error) {
 func installKubectl(m platform.Machine, upstreamVersion string) error {
 	kubeURL := fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/%v/bin/linux/amd64/kubectl", upstreamVersion)
 	if _, err := m.SSH("wget -q " + kubeURL); err != nil {
-		return err
+		return fmt.Errorf("curling kubectl: %v", err)
 	}
 	if _, err := m.SSH("chmod +x ./kubectl"); err != nil {
 		return err
