@@ -259,7 +259,7 @@ func (a *API) CreatePVImage(snapshotID string, name string, description string) 
 	params.KernelId = aws.String(akis[a.opts.Region])
 	res, err := a.ec2.RegisterImage(params)
 	if err != nil {
-		return "", fmt.Errorf("error creating hvm AMI: %v", err)
+		return "", fmt.Errorf("error creating paravirtual AMI: %v", err)
 	}
 	return *res.ImageId, nil
 }
