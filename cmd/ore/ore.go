@@ -50,6 +50,7 @@ func preauth(cmd *cobra.Command, args []string) error {
 
 func main() {
 	root.PersistentFlags().BoolVar(&opts.ServiceAuth, "service-auth", false, "use non-interactive auth when running within GCE")
+	root.PersistentFlags().StringVar(&opts.JSONKeyFile, "json-key", "", "use a service account's JSON key for authentication")
 
 	sv := root.PersistentFlags().StringVar
 

@@ -60,6 +60,7 @@ func init() {
 	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
 	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
 	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
+	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
 
 	// aws-specific options
 	// CoreOS-alpha-845.0.0 on us-west-1

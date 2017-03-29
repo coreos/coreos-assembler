@@ -40,6 +40,7 @@ func init() {
 	sv(&harness.Opts.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
 	sv(&harness.Opts.GCEOptions.Network, "gce-network", "default", "GCE network")
 	bv(&harness.Opts.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
+	sv(&harness.Opts.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
 
 	// future choice
 	harness.Opts.CloudPlatform = "gce"
