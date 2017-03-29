@@ -17,6 +17,7 @@ package gcloud
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -38,6 +39,7 @@ type Options struct {
 	MachineType string
 	DiskType    string
 	Network     string
+	JSONKeyFile string
 	ServiceAuth bool
 	*platform.Options
 }
@@ -69,6 +71,12 @@ func New(opts *Options) (*API, error) {
 
 	if opts.ServiceAuth {
 		client = auth.GoogleServiceClient()
+	} else if opts.JSONKeyFile != "" {
+		b, err := ioutil.ReadFile(opts.JSONKeyFile)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		client, err = auth.GoogleClientFromJSONKey(b)
 	} else {
 		client, err = auth.GoogleClient()
 	}
