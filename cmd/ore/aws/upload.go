@@ -112,28 +112,11 @@ func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.UR
 
 	// if prefix not specified default name to s3://bucket/$USER/$BOARD/$VERSION
 	if s3URL.Path == "" {
-		if board == "" {
-			board = "amd64-usr"
-		}
-
 		user := os.Getenv("USER")
 
 		s3URL.Path = "/" + os.Getenv("USER")
 		s3URL.Path += "/" + board
 
-		if file == "" {
-			file = defaultUploadFile()
-		}
-
-		// if an image name is unspecified try to use version.txt
-		if imageName == "" {
-			ver, err := sdk.VersionsFromDir(filepath.Dir(file))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
-				os.Exit(1)
-			}
-			imageName = ver.Version
-		}
 		fileName := filepath.Base(file)
 
 		s3URL.Path = fmt.Sprintf("/%s/%s/%s/%s", user, board, imageName, fileName)
@@ -150,6 +133,17 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	if uploadSourceObject != "" && uploadSourceSnapshot != "" {
 		fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
 		os.Exit(2)
+	}
+
+	// if an image name is unspecified try to use version.txt
+	imageName := uploadImageName
+	if imageName == "" {
+		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
+			os.Exit(1)
+		}
+		imageName = ver.Version
 	}
 
 	amiName := uploadAMIName
@@ -173,7 +167,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 	} else {
-		s3URL, err = defaultBucketURL(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
+		s3URL, err = defaultBucketURL(uploadBucket, imageName, uploadBoard, uploadFile, region)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
