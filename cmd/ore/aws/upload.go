@@ -59,43 +59,43 @@ A common usage is:
 
     ore aws create-images --region=us-west-2 \
 		  --snapshot-description="CoreOS-stable-1234.5.6" \
-		  --name="CoreOS-stable-1234.5.6" \
-		  --description="CoreOS stable 1234.5.6" \
-		  --snapshot-source "s3://s3-us-west-2.users.developer.core-os.net/.../coreos_production_ami_vmdk_image.vmdk"
+		  --ami-name="CoreOS-stable-1234.5.6" \
+		  --ami-description="CoreOS stable 1234.5.6" \
+		  --source-object "s3://s3-us-west-2.users.developer.core-os.net/.../coreos_production_ami_vmdk_image.vmdk"
 `,
 		RunE: runCreateImages,
 	}
 
-	name                string
-	description         string
-	createPV            bool
-	snapshotID          string
-	snapshotSource      string
-	snapshotDescription string
-	format              aws.EC2ImageFormat
+	uploadSourceObject        string
+	uploadSourceSnapshot      string
+	uploadObjectFormat        aws.EC2ImageFormat
+	uploadSnapshotDescription string
+	uploadAMIName             string
+	uploadAMIDescription      string
+	uploadCreatePV            bool
 )
 
 func init() {
 	uploadBoard = "amd64-usr"
 
 	AWS.AddCommand(cmdUpload)
-	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/; defaults to a regional bucket and prefix defaults to $USER")
-	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
+	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/ (defaults to a regional bucket and prefix defaults to $USER)")
+	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image (default COREOS_VERSION)")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
-		"path_to_coreos_image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
-	cmdUpload.Flags().BoolVar(&uploadExpire, "expire", true, "expire the S3 image in 10 days")
-	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 and AWS images without prompt")
+		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
+	cmdUpload.Flags().BoolVar(&uploadExpire, "expire", true, "expire the S3 object in 10 days")
+	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
 
 	AWS.AddCommand(cmdCreateImages)
-	cmdCreateImages.Flags().StringVar(&name, "name", "", "the name of the image to create; defaults to Container-Linux-$USER-$VERSION")
-	cmdCreateImages.Flags().StringVar(&description, "description", "", "the description of the image to create")
-	cmdCreateImages.Flags().BoolVar(&createPV, "create-pv", true, "whether to create a PV AMI in addition the the HVM AMI")
-	cmdCreateImages.Flags().StringVar(&snapshotID, "snapshot-id", "", "[optional] the snapshot ID to base this AMI off of. A new snapshot will be created if not provided.")
-	cmdCreateImages.Flags().StringVar(&snapshotSource, "snapshot-source", "", "snapshot source: must be an 's3://' URI; defaults to the same as upload if unset")
-	cmdCreateImages.Flags().StringVar(&snapshotDescription, "snapshot-description", "", "snapshot description")
-	cmdCreateImages.Flags().Var(&format, "snapshot-format", fmt.Sprintf("snapshot format: default %s, %s or %s", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw))
+	cmdCreateImages.Flags().StringVar(&uploadSourceObject, "source-object", "", "'s3://' URI pointing to image data (default: same as upload)")
+	cmdCreateImages.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
+	cmdCreateImages.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
+	cmdCreateImages.Flags().StringVar(&uploadSnapshotDescription, "snapshot-description", "", "snapshot description (default: empty)")
+	cmdCreateImages.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
+	cmdCreateImages.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
+	cmdCreateImages.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition the the HVM AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -159,12 +159,12 @@ func defaultBucketURI(s3URI, imageName, board, file, region string) (string, err
 }
 
 func createSnapshot() (string, error) {
-	snapshotSource, err := defaultBucketURI(snapshotSource, "", "", "", region)
+	sourceObject, err := defaultBucketURI(uploadSourceObject, "", "", "", region)
 
 	if err != nil {
 		return "", fmt.Errorf("unable to guess snapshot source: %v", err)
 	}
-	snapshot, err := API.CreateSnapshot(snapshotDescription, snapshotSource, format)
+	snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, sourceObject, uploadObjectFormat)
 	if err != nil {
 		return "", fmt.Errorf("unable to create snapshot: %v", err)
 	}
@@ -212,31 +212,31 @@ func runUpload(cmd *cobra.Command, args []string) error {
 }
 
 func runCreateImages(cmd *cobra.Command, args []string) error {
-	if name == "" {
+	if uploadAMIName == "" {
 		buildDir := sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 		ver, err := sdk.VersionsFromDir(filepath.Dir(buildDir))
 		if err != nil {
 			return fmt.Errorf("could not guess image name: %v", err)
 		}
 		awsVersion := strings.Replace(ver.Version, "+", "-", -1) // '+' is invalid in an AMI name
-		name = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
+		uploadAMIName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
 	}
 
-	if snapshotID == "" {
+	if uploadSourceSnapshot == "" {
 		newSnapshotID, err := createSnapshot()
 		if err != nil {
 			return fmt.Errorf("unable to create snapshot: %v", err)
 		}
-		snapshotID = newSnapshotID
+		uploadSourceSnapshot = newSnapshotID
 	}
 
-	hvmID, err := API.CreateHVMImage(snapshotID, name, description)
+	hvmID, err := API.CreateHVMImage(uploadSourceSnapshot, uploadAMIName, uploadAMIDescription)
 	if err != nil {
 		return fmt.Errorf("unable to create HVM image: %v", err)
 	}
 	var pvID string
-	if createPV {
-		pvImageID, err := API.CreatePVImage(snapshotID, name, description)
+	if uploadCreatePV {
+		pvImageID, err := API.CreatePVImage(uploadSourceSnapshot, uploadAMIName, uploadAMIDescription)
 		if err != nil {
 			return fmt.Errorf("unable to create PV image: %v", err)
 		}
@@ -250,7 +250,7 @@ func runCreateImages(cmd *cobra.Command, args []string) error {
 	}{
 		HVM:        hvmID,
 		PV:         pvID,
-		SnapshotID: snapshotID,
+		SnapshotID: uploadSourceSnapshot,
 	})
 	return nil
 }
