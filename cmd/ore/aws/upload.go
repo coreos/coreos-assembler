@@ -91,23 +91,23 @@ func defaultUploadFile() string {
 	return build + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 }
 
-// defaultBucketURI determines the location the tool should upload to.
-// The 's3URI' parameter, if it contains a path, will override all other
+// defaultBucketURL determines the location the tool should upload to.
+// The 'urlPrefix' parameter, if it contains a path, will override all other
 // arguments
-func defaultBucketURI(s3URI, imageName, board, file, region string) (string, error) {
-	if s3URI == "" {
-		s3URI = fmt.Sprintf("s3://%s", defaultBucketNameForRegion(region))
+func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.URL, error) {
+	if urlPrefix == "" {
+		urlPrefix = fmt.Sprintf("s3://%s", defaultBucketNameForRegion(region))
 	}
 
-	s3URL, err := url.Parse(s3URI)
+	s3URL, err := url.Parse(urlPrefix)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if s3URL.Scheme != "s3" {
-		return "", fmt.Errorf("invalid s3 scheme; must be 's3://', not '%s://'", s3URL.Scheme)
+		return nil, fmt.Errorf("invalid s3 scheme; must be 's3://', not '%s://'", s3URL.Scheme)
 	}
 	if s3URL.Host == "" {
-		return "", fmt.Errorf("URL missing bucket name %v\n", s3URI)
+		return nil, fmt.Errorf("URL missing bucket name %v\n", urlPrefix)
 	}
 
 	// if prefix not specified default name to s3://bucket/$USER/$BOARD/$VERSION
@@ -139,7 +139,7 @@ func defaultBucketURI(s3URI, imageName, board, file, region string) (string, err
 		s3URL.Path = fmt.Sprintf("/%s/%s/%s/%s", user, board, imageName, fileName)
 	}
 
-	return s3URL.String(), nil
+	return s3URL, nil
 }
 
 func runUpload(cmd *cobra.Command, args []string) error {
@@ -162,26 +162,28 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		uploadAMIName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
 	}
 
-	s3Bucket, err := defaultBucketURI(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
-	if err != nil {
-		return fmt.Errorf("invalid bucket: %v", err)
-	}
 	if uploadFile == "" {
 		uploadFile = defaultUploadFile()
 	}
 
+	var s3URL *url.URL
+	var err error
 	if uploadSourceObject != "" {
-		s3Bucket = uploadSourceObject
+		s3URL, err = url.Parse(uploadSourceObject)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		s3URL, err = defaultBucketURL(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
 	}
-	plog.Debugf("S3 object: %v\n", s3Bucket)
-	s3URL, err := url.Parse(s3Bucket)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	plog.Debugf("parsed s3 url: %+v", s3URL)
+	plog.Debugf("S3 object: %v\n", s3URL)
 	s3BucketName := s3URL.Host
-	s3BucketPath := strings.TrimPrefix(s3URL.Path, "/")
+	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
 	var createdObject string
 	if uploadSourceObject == "" && uploadSourceSnapshot == "" {
@@ -191,17 +193,17 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 
-		err = API.UploadObject(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
+		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadExpire, uploadForce)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
 			os.Exit(1)
 		}
-		createdObject = fmt.Sprintf("s3://%v/%v", s3BucketName, s3BucketPath)
+		createdObject = s3URL.String()
 	}
 
 	var createdSnapshot string
 	if uploadSourceSnapshot == "" {
-		snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, s3Bucket, uploadObjectFormat)
+		snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			return fmt.Errorf("unable to create snapshot: %v", err)
 		}
