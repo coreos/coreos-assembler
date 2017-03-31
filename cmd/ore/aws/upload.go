@@ -30,43 +30,31 @@ import (
 var (
 	cmdUpload = &cobra.Command{
 		Use:   "upload",
-		Short: "Upload an AMI to s3",
-		Long:  "Upload a streaming vmdk to s3 for use by create-snapshot",
-		RunE:  runUpload,
-	}
-
-	uploadBucket    string
-	uploadImageName string
-	uploadBoard     string
-	uploadFile      string
-	uploadExpire    bool
-	uploadForce     bool
-
-	cmdCreateImages = &cobra.Command{
-		Use:   "create-images",
 		Short: "Create AWS images",
-		Long: `Create AWS images. This will create all relevant AMIs (hvm, pv, etc).
+		Long: `Upload CoreOS image to S3 and create relevant AMIs (hvm and pv).
 
 Supported source formats are VMDK (as created with ./image_to_vm --format=ami_vmdk) and RAW.
 
-The image may be uploaded to S3 manually, or with the 'ore aws upload' command.
-
-The flags allow controlling various knobs about the images.
-
-After a successful run, the final line of output will be a line of JSON describing the image resources created and the underlying snapshots
+After a successful run, the final line of output will be a line of JSON describing the resources created.
 
 A common usage is:
 
-    ore aws create-images --region=us-west-2 \
+    ore aws upload --region=us-west-2 \
 		  --snapshot-description="CoreOS-stable-1234.5.6" \
 		  --ami-name="CoreOS-stable-1234.5.6" \
 		  --ami-description="CoreOS stable 1234.5.6" \
-		  --source-object "s3://s3-us-west-2.users.developer.core-os.net/.../coreos_production_ami_vmdk_image.vmdk"
+		  --file="/home/.../coreos_production_ami_vmdk_image.vmdk"
 `,
-		RunE: runCreateImages,
+		RunE: runUpload,
 	}
 
 	uploadSourceObject        string
+	uploadBucket              string
+	uploadImageName           string
+	uploadBoard               string
+	uploadFile                string
+	uploadExpire              bool
+	uploadForce               bool
 	uploadSourceSnapshot      string
 	uploadObjectFormat        aws.EC2ImageFormat
 	uploadSnapshotDescription string
@@ -76,9 +64,8 @@ A common usage is:
 )
 
 func init() {
-	uploadBoard = "amd64-usr"
-
 	AWS.AddCommand(cmdUpload)
+	cmdUpload.Flags().StringVar(&uploadSourceObject, "source-object", "", "'s3://' URI pointing to image data (default: same as upload)")
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/ (defaults to a regional bucket and prefix defaults to $USER)")
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image (default COREOS_VERSION)")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
@@ -87,15 +74,12 @@ func init() {
 		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
 	cmdUpload.Flags().BoolVar(&uploadExpire, "expire", true, "expire the S3 object in 10 days")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
-
-	AWS.AddCommand(cmdCreateImages)
-	cmdCreateImages.Flags().StringVar(&uploadSourceObject, "source-object", "", "'s3://' URI pointing to image data (default: same as upload)")
-	cmdCreateImages.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
-	cmdCreateImages.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
-	cmdCreateImages.Flags().StringVar(&uploadSnapshotDescription, "snapshot-description", "", "snapshot description (default: empty)")
-	cmdCreateImages.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
-	cmdCreateImages.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
-	cmdCreateImages.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition the the HVM AMI")
+	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
+	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
+	cmdUpload.Flags().StringVar(&uploadSnapshotDescription, "snapshot-description", "", "snapshot description (default: empty)")
+	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
+	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
+	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition to the HVM AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -158,60 +142,16 @@ func defaultBucketURI(s3URI, imageName, board, file, region string) (string, err
 	return s3URL.String(), nil
 }
 
-func createSnapshot() (string, error) {
-	sourceObject, err := defaultBucketURI(uploadSourceObject, "", "", "", region)
-
-	if err != nil {
-		return "", fmt.Errorf("unable to guess snapshot source: %v", err)
-	}
-	snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, sourceObject, uploadObjectFormat)
-	if err != nil {
-		return "", fmt.Errorf("unable to create snapshot: %v", err)
-	}
-
-	return snapshot.SnapshotID, nil
-}
-
 func runUpload(cmd *cobra.Command, args []string) error {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in aws upload cmd: %v\n", args)
 		os.Exit(2)
 	}
-
-	s3Bucket, err := defaultBucketURI(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
-	if err != nil {
-		return fmt.Errorf("invalid bucket: %v", err)
-	}
-	if uploadFile == "" {
-		uploadFile = defaultUploadFile()
+	if uploadSourceObject != "" && uploadSourceSnapshot != "" {
+		fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
+		os.Exit(2)
 	}
 
-	plog.Debugf("upload bucket: %v\n", s3Bucket)
-	s3URL, err := url.Parse(s3Bucket)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	plog.Debugf("parsed s3 url: %+v", s3URL)
-	s3BucketName := s3URL.Host
-	s3BucketPath := strings.TrimPrefix(s3URL.Path, "/")
-
-	f, err := os.Open(uploadFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
-		os.Exit(1)
-	}
-
-	err = API.UploadObject(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("created aws s3 upload: s3://%v/%v\n", s3BucketName, s3BucketPath)
-	return nil
-}
-
-func runCreateImages(cmd *cobra.Command, args []string) error {
 	if uploadAMIName == "" {
 		buildDir := sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 		ver, err := sdk.VersionsFromDir(filepath.Dir(buildDir))
@@ -222,18 +162,58 @@ func runCreateImages(cmd *cobra.Command, args []string) error {
 		uploadAMIName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
 	}
 
+	s3Bucket, err := defaultBucketURI(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
+	if err != nil {
+		return fmt.Errorf("invalid bucket: %v", err)
+	}
+	if uploadFile == "" {
+		uploadFile = defaultUploadFile()
+	}
+
+	if uploadSourceObject != "" {
+		s3Bucket = uploadSourceObject
+	}
+	plog.Debugf("S3 object: %v\n", s3Bucket)
+	s3URL, err := url.Parse(s3Bucket)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+	plog.Debugf("parsed s3 url: %+v", s3URL)
+	s3BucketName := s3URL.Host
+	s3BucketPath := strings.TrimPrefix(s3URL.Path, "/")
+
+	var createdObject string
+	if uploadSourceObject == "" && uploadSourceSnapshot == "" {
+		f, err := os.Open(uploadFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
+			os.Exit(1)
+		}
+
+		err = API.UploadObject(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
+			os.Exit(1)
+		}
+		createdObject = fmt.Sprintf("s3://%v/%v", s3BucketName, s3BucketPath)
+	}
+
+	var createdSnapshot string
 	if uploadSourceSnapshot == "" {
-		newSnapshotID, err := createSnapshot()
+		snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, s3Bucket, uploadObjectFormat)
 		if err != nil {
 			return fmt.Errorf("unable to create snapshot: %v", err)
 		}
-		uploadSourceSnapshot = newSnapshotID
+		uploadSourceSnapshot = snapshot.SnapshotID
+		createdSnapshot = snapshot.SnapshotID
 	}
 
 	hvmID, err := API.CreateHVMImage(uploadSourceSnapshot, uploadAMIName, uploadAMIDescription)
 	if err != nil {
 		return fmt.Errorf("unable to create HVM image: %v", err)
 	}
+
 	var pvID string
 	if uploadCreatePV {
 		pvImageID, err := API.CreatePVImage(uploadSourceSnapshot, uploadAMIName, uploadAMIDescription)
@@ -246,11 +226,13 @@ func runCreateImages(cmd *cobra.Command, args []string) error {
 	json.NewEncoder(os.Stdout).Encode(&struct {
 		HVM        string
 		PV         string `json:",omitempty"`
-		SnapshotID string
+		SnapshotID string `json:",omitempty"`
+		S3Object   string `json:",omitempty"`
 	}{
 		HVM:        hvmID,
 		PV:         pvID,
-		SnapshotID: uploadSourceSnapshot,
+		SnapshotID: createdSnapshot,
+		S3Object:   createdObject,
 	})
 	return nil
 }
