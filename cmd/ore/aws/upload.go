@@ -195,7 +195,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	sourceSnapshot := uploadSourceSnapshot
 	var createdSnapshot string
 	if uploadSourceSnapshot == "" {
-		snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, s3URL.String(), uploadObjectFormat)
+		snapshot, err := API.CreateSnapshot(imageName, uploadSnapshotDescription, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
 			os.Exit(1)

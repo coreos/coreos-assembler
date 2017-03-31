@@ -87,7 +87,7 @@ type Snapshot struct {
 }
 
 // CreateSnapshot creates an AWS Snapshot
-func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
+func (a *API) CreateSnapshot(imageName, description, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
 	if format == "" {
 		format = EC2ImageFormatVmdk
 	}
@@ -149,18 +149,29 @@ func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageForma
 	}
 
 	// TODO(euank): write a waiter for import snapshot
+	var snapshotID string
 	for {
-		done, snapshotID, err := snapshotDone(*importRes.ImportTaskId)
+		var done bool
+		done, snapshotID, err = snapshotDone(*importRes.ImportTaskId)
 		if err != nil {
 			return nil, err
 		}
 		if done {
-			return &Snapshot{
-				SnapshotID: snapshotID,
-			}, nil
+			break
 		}
 		time.Sleep(20 * time.Second)
 	}
+
+	err = a.CreateTags([]string{snapshotID}, map[string]string{
+		"Name": imageName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create tags: %v", err)
+	}
+
+	return &Snapshot{
+		SnapshotID: snapshotID,
+	}, nil
 }
 
 func (a *API) CreateImportRole(bucket string) error {
