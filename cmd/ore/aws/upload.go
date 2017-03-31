@@ -157,7 +157,8 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		buildDir := sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 		ver, err := sdk.VersionsFromDir(filepath.Dir(buildDir))
 		if err != nil {
-			return fmt.Errorf("could not guess image name: %v", err)
+			fmt.Fprintf(os.Stderr, "could not guess image name: %v\n", err)
+			os.Exit(1)
 		}
 		awsVersion := strings.Replace(ver.Version, "+", "-", -1) // '+' is invalid in an AMI name
 		amiName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
@@ -203,7 +204,8 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	if uploadSourceSnapshot == "" {
 		snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, s3URL.String(), uploadObjectFormat)
 		if err != nil {
-			return fmt.Errorf("unable to create snapshot: %v", err)
+			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
+			os.Exit(1)
 		}
 		sourceSnapshot = snapshot.SnapshotID
 		createdSnapshot = sourceSnapshot
@@ -211,19 +213,21 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName, uploadAMIDescription)
 	if err != nil {
-		return fmt.Errorf("unable to create HVM image: %v", err)
+		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
+		os.Exit(1)
 	}
 
 	var pvID string
 	if uploadCreatePV {
 		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
 		if err != nil {
-			return fmt.Errorf("unable to create PV image: %v", err)
+			fmt.Fprintf(os.Stderr, "unable to create PV image: %v\n", err)
+			os.Exit(1)
 		}
 		pvID = pvImageID
 	}
 
-	json.NewEncoder(os.Stdout).Encode(&struct {
+	err = json.NewEncoder(os.Stdout).Encode(&struct {
 		HVM        string
 		PV         string `json:",omitempty"`
 		SnapshotID string `json:",omitempty"`
@@ -234,5 +238,9 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		SnapshotID: createdSnapshot,
 		S3Object:   createdObject,
 	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't encode result: %v\n", err)
+		os.Exit(1)
+	}
 	return nil
 }
