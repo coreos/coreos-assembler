@@ -152,18 +152,15 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
-	if uploadAMIName == "" {
+	amiName := uploadAMIName
+	if amiName == "" {
 		buildDir := sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 		ver, err := sdk.VersionsFromDir(filepath.Dir(buildDir))
 		if err != nil {
 			return fmt.Errorf("could not guess image name: %v", err)
 		}
 		awsVersion := strings.Replace(ver.Version, "+", "-", -1) // '+' is invalid in an AMI name
-		uploadAMIName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
-	}
-
-	if uploadFile == "" {
-		uploadFile = defaultUploadFile()
+		amiName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
 	}
 
 	var s3URL *url.URL
@@ -201,24 +198,25 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		createdObject = s3URL.String()
 	}
 
+	sourceSnapshot := uploadSourceSnapshot
 	var createdSnapshot string
 	if uploadSourceSnapshot == "" {
 		snapshot, err := API.CreateSnapshot(uploadSnapshotDescription, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			return fmt.Errorf("unable to create snapshot: %v", err)
 		}
-		uploadSourceSnapshot = snapshot.SnapshotID
-		createdSnapshot = snapshot.SnapshotID
+		sourceSnapshot = snapshot.SnapshotID
+		createdSnapshot = sourceSnapshot
 	}
 
-	hvmID, err := API.CreateHVMImage(uploadSourceSnapshot, uploadAMIName, uploadAMIDescription)
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName, uploadAMIDescription)
 	if err != nil {
 		return fmt.Errorf("unable to create HVM image: %v", err)
 	}
 
 	var pvID string
 	if uploadCreatePV {
-		pvImageID, err := API.CreatePVImage(uploadSourceSnapshot, uploadAMIName, uploadAMIDescription)
+		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
 		if err != nil {
 			return fmt.Errorf("unable to create PV image: %v", err)
 		}
