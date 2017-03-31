@@ -202,7 +202,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	err = API.UploadImage(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
+	err = API.UploadObject(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
 		os.Exit(1)

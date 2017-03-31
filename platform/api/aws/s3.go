@@ -36,8 +36,8 @@ const (
 	alreadyExistsErr = "BucketAlreadyOwnedByYou"
 )
 
-// UploadImage uploads an image to S3
-func (a *API) UploadImage(r io.Reader, bucket, path string, expire bool, force bool) error {
+// UploadObject uploads an object to S3
+func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force bool) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
 	var expireTime *time.Time
 	if expire {
