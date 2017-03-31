@@ -100,6 +100,34 @@ func (a *API) CreateSnapshot(imageName, description, sourceURL string, format EC
 	}
 	s3key := strings.TrimPrefix(s3url.Path, "/")
 
+	// Look for an existing snapshot with this image name.
+	snapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("status"),
+				Values: aws.StringSlice([]string{"completed"}),
+			},
+			&ec2.Filter{
+				Name:   aws.String("tag:Name"),
+				Values: aws.StringSlice([]string{imageName}),
+			},
+		},
+		OwnerIds: aws.StringSlice([]string{"self"}),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to describe snapshots: %v", err)
+	}
+	if len(snapshotRes.Snapshots) > 1 {
+		return nil, fmt.Errorf("found multiple matching snapshots")
+	}
+	if len(snapshotRes.Snapshots) == 1 {
+		snapshotID := *snapshotRes.Snapshots[0].SnapshotId
+		plog.Infof("found existing snapshot %v, reusing", snapshotID)
+		return &Snapshot{
+			SnapshotID: snapshotID,
+		}, nil
+	}
+
 	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
 		RoleName:    aws.String(vmImportRole),
 		Description: aws.String(description),
