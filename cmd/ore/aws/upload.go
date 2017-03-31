@@ -148,8 +148,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	amiName := uploadAMIName
 	if amiName == "" {
-		buildDir := sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
-		ver, err := sdk.VersionsFromDir(filepath.Dir(buildDir))
+		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not guess image name: %v\n", err)
 			os.Exit(1)
