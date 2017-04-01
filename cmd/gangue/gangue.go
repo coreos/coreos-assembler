@@ -41,8 +41,8 @@ var (
 		Run:   run,
 	}
 
-	gpgKeyFile, jsonKeyFile string
-	serviceAuth, verify     bool
+	gpgKeyFile, jsonKeyFile      string
+	keepSig, serviceAuth, verify bool
 )
 
 func init() {
@@ -53,6 +53,7 @@ func init() {
 	sv(&jsonKeyFile, "json-key", "", "use a service account's JSON key for authentication")
 	bv(&verify, "verify", true, "use GPG verification")
 	sv(&gpgKeyFile, "verify-key", "", "PGP public key file to verify signatures, or blank for the default key built into the program")
+	bv(&keepSig, "keep-sig", false, "keep the detached signature file on disk when successful")
 	root.AddCommand(get)
 }
 
@@ -127,6 +128,9 @@ func run(cmd *cobra.Command, args []string) {
 	// Download the file and verify it (unless disabled)
 	if verify {
 		err = sdk.UpdateSignedFile(output, source, client, gpgKeyFile)
+		if err == nil && !keepSig {
+			err = os.Remove(output + ".sig")
+		}
 	} else {
 		err = sdk.UpdateFile(output, source, client)
 	}
