@@ -87,7 +87,7 @@ type Snapshot struct {
 }
 
 // CreateSnapshot creates an AWS Snapshot
-func (a *API) CreateSnapshot(imageName, description, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
+func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
 	if format == "" {
 		format = EC2ImageFormatVmdk
 	}
@@ -130,7 +130,6 @@ func (a *API) CreateSnapshot(imageName, description, sourceURL string, format EC
 
 	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
 		RoleName:    aws.String(vmImportRole),
-		Description: aws.String(description),
 		DiskContainer: &ec2.SnapshotDiskContainer{
 			// TODO(euank): allow s3 source / local file -> s3 source
 			UserBucket: &ec2.UserBucket{

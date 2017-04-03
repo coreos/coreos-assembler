@@ -40,7 +40,6 @@ After a successful run, the final line of output will be a line of JSON describi
 A common usage is:
 
     ore aws upload --region=us-west-2 \
-		  --snapshot-description="CoreOS-stable-1234.5.6" \
 		  --ami-name="CoreOS-stable-1234.5.6" \
 		  --ami-description="CoreOS stable 1234.5.6" \
 		  --file="/home/.../coreos_production_ami_vmdk_image.vmdk"
@@ -48,19 +47,18 @@ A common usage is:
 		RunE: runUpload,
 	}
 
-	uploadSourceObject        string
-	uploadBucket              string
-	uploadImageName           string
-	uploadBoard               string
-	uploadFile                string
-	uploadExpireObject        bool
-	uploadForce               bool
-	uploadSourceSnapshot      string
-	uploadObjectFormat        aws.EC2ImageFormat
-	uploadSnapshotDescription string
-	uploadAMIName             string
-	uploadAMIDescription      string
-	uploadCreatePV            bool
+	uploadSourceObject   string
+	uploadBucket         string
+	uploadImageName      string
+	uploadBoard          string
+	uploadFile           string
+	uploadExpireObject   bool
+	uploadForce          bool
+	uploadSourceSnapshot string
+	uploadObjectFormat   aws.EC2ImageFormat
+	uploadAMIName        string
+	uploadAMIDescription string
+	uploadCreatePV       bool
 )
 
 func init() {
@@ -76,7 +74,6 @@ func init() {
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
-	cmdUpload.Flags().StringVar(&uploadSnapshotDescription, "snapshot-description", "", "snapshot description (default: empty)")
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition to the HVM AMI")
@@ -195,7 +192,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	sourceSnapshot := uploadSourceSnapshot
 	var createdSnapshot string
 	if uploadSourceSnapshot == "" {
-		snapshot, err := API.CreateSnapshot(imageName, uploadSnapshotDescription, s3URL.String(), uploadObjectFormat)
+		snapshot, err := API.CreateSnapshot(imageName, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
 			os.Exit(1)
