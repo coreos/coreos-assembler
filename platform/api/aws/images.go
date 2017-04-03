@@ -128,22 +128,62 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 		}, nil
 	}
 
-	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
-		RoleName:    aws.String(vmImportRole),
-		DiskContainer: &ec2.SnapshotDiskContainer{
-			// TODO(euank): allow s3 source / local file -> s3 source
-			UserBucket: &ec2.UserBucket{
-				S3Bucket: aws.String(s3url.Host),
-				S3Key:    aws.String(s3key),
-			},
-			Format: aws.String(string(format)),
-		},
-	})
+	// Look for an existing import task with this image name. We have
+	// to fetch all of them and walk the list ourselves.
+	var snapshotTaskID string
+	taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{})
 	if err != nil {
-		return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
+		return nil, fmt.Errorf("unable to describe import tasks: %v", err)
+	}
+	for _, task := range taskRes.ImportSnapshotTasks {
+		if *task.Description != imageName {
+			continue
+		}
+		switch *task.SnapshotTaskDetail.Status {
+		case "cancelled", "cancelling", "deleted", "deleting":
+			continue
+		case "completed":
+			// Either we lost the race with a snapshot that just
+			// completed or this is an old import task for a
+			// snapshot that's been deleted. Check it.
+			_, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+				SnapshotIds: []*string{task.SnapshotTaskDetail.SnapshotId},
+			})
+			if err != nil {
+				if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidSnapshot.NotFound" {
+					continue
+				} else {
+					return nil, fmt.Errorf("couldn't describe snapshot from import task: %v", err)
+				}
+			}
+		}
+		if snapshotTaskID != "" {
+			return nil, fmt.Errorf("found multiple matching import tasks")
+		}
+		snapshotTaskID = *task.ImportTaskId
 	}
 
-	plog.Infof("created snapshot import task %v", *importRes.ImportTaskId)
+	if snapshotTaskID == "" {
+		importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
+			RoleName:    aws.String(vmImportRole),
+			Description: aws.String(imageName),
+			DiskContainer: &ec2.SnapshotDiskContainer{
+				// TODO(euank): allow s3 source / local file -> s3 source
+				UserBucket: &ec2.UserBucket{
+					S3Bucket: aws.String(s3url.Host),
+					S3Key:    aws.String(s3key),
+				},
+				Format: aws.String(string(format)),
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
+		}
+		snapshotTaskID = *importRes.ImportTaskId
+		plog.Infof("created snapshot import task %v", snapshotTaskID)
+	} else {
+		plog.Infof("found existing snapshot import task %v, reusing", snapshotTaskID)
+	}
 
 	snapshotDone := func(snapshotTaskID string) (bool, string, error) {
 		taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{
@@ -179,7 +219,7 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 	var snapshotID string
 	for {
 		var done bool
-		done, snapshotID, err = snapshotDone(*importRes.ImportTaskId)
+		done, snapshotID, err = snapshotDone(snapshotTaskID)
 		if err != nil {
 			return nil, err
 		}
