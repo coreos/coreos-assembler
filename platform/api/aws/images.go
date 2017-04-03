@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -368,4 +369,136 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 			},
 		},
 	}
+}
+
+func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]string, error) {
+	type result struct {
+		region  string
+		imageID string
+		err     error
+	}
+
+	image, err := a.describeImage(sourceImageID)
+	if err != nil {
+		return nil, err
+	}
+
+	describeSnapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+		SnapshotIds: []*string{image.BlockDeviceMappings[0].Ebs.SnapshotId},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe snapshot: %v", err)
+	}
+	snapshot := describeSnapshotRes.Snapshots[0]
+
+	var wg sync.WaitGroup
+	ch := make(chan result, len(regions))
+	for _, region := range regions {
+		opts := *a.opts
+		opts.Region = region
+		aa, err := New(&opts)
+		if err != nil {
+			break
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res := result{region: aa.opts.Region}
+			res.imageID, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
+				*image.Name, *image.Description,
+				image.Tags, snapshot.Tags)
+			ch <- res
+		}()
+	}
+	wg.Wait()
+	close(ch)
+
+	amis := make(map[string]string)
+	for res := range ch {
+		if res.imageID != "" {
+			amis[res.region] = res.imageID
+		}
+		if err == nil {
+			err = res.err
+		}
+	}
+	return amis, err
+}
+
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag) (string, error) {
+	var imageID string
+	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("name"),
+				Values: aws.StringSlice([]string{name}),
+			},
+		},
+		Owners: aws.StringSlice([]string{"self"}),
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't describe images: %v", err)
+	}
+	if len(describeRes.Images) > 1 {
+		return "", fmt.Errorf("found multiple images with name %v", name)
+	}
+	if len(describeRes.Images) == 1 {
+		imageID = *describeRes.Images[0].ImageId
+	}
+
+	if imageID == "" {
+		copyRes, err := a.ec2.CopyImage(&ec2.CopyImageInput{
+			SourceRegion:  aws.String(sourceRegion),
+			SourceImageId: aws.String(sourceImageID),
+			Name:          aws.String(name),
+			Description:   aws.String(description),
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't initiate image copy to %v: %v", a.opts.Region, err)
+		}
+		imageID = *copyRes.ImageId
+	}
+
+	err = a.ec2.WaitUntilImageAvailable(&ec2.DescribeImagesInput{
+		ImageIds: aws.StringSlice([]string{imageID}),
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't copy image to %v: %v", a.opts.Region, err)
+	}
+
+	if len(imageTags) > 0 {
+		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
+			Resources: aws.StringSlice([]string{imageID}),
+			Tags:      imageTags,
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't create image tags: %v", err)
+		}
+	}
+
+	if len(snapshotTags) > 0 {
+		image, err := a.describeImage(imageID)
+		if err != nil {
+			return "", err
+		}
+		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
+			Resources: []*string{image.BlockDeviceMappings[0].Ebs.SnapshotId},
+			Tags:      snapshotTags,
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't create snapshot tags: %v", err)
+		}
+	}
+
+	return imageID, nil
+}
+
+func (a *API) describeImage(imageID string) (*ec2.Image, error) {
+	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
+		ImageIds: aws.StringSlice([]string{imageID}),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe image: %v", err)
+	}
+	return describeRes.Images[0], nil
 }
