@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -263,17 +262,11 @@ func UpdateFile(file, url string, client *http.Client) error {
 		return err
 	}
 
-	t, err := ioutil.TempFile(filepath.Dir(file), "sdkUpdateCheck")
-	if err != nil {
-		return err
-	}
-	t.Close()
-	tempFile := t.Name()
-	defer os.Remove(tempFile)
-
+	tempFile := file + ".part"
 	if err := DownloadFile(tempFile, url, client); err != nil {
 		return fmt.Errorf("%s: %s", url, err)
 	}
+	defer os.Remove(tempFile)
 
 	equal, err := cmpFileBytes(file, tempFile)
 	if os.IsExist(err) { // file may not exist, that is ok
