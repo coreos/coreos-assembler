@@ -54,7 +54,7 @@ func init() {
 	cmdPreRelease.Flags().BoolVarP(&preReleaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
-		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
+		"verify-key", "", "PGP public key to be used in verifying download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 
 	AddSpecFlags(cmdPreRelease.Flags())
 	root.AddCommand(cmdPreRelease)
