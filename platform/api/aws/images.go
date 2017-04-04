@@ -328,6 +328,7 @@ func (a *API) CreateImportRole(bucket string) error {
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
 	params := registerImageParams(snapshotID, name+"-hvm", description, "xvd", EC2ImageTypeHVM)
 	params.EnaSupport = aws.Bool(true)
+	params.SriovNetSupport = aws.String("simple")
 	res, err := a.ec2.RegisterImage(params)
 	if err != nil {
 		return "", fmt.Errorf("error creating hvm AMI: %v", err)
