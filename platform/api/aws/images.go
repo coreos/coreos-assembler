@@ -326,7 +326,16 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	params := registerImageParams(snapshotID, name+"-hvm", description, "xvd", EC2ImageTypeHVM)
+	name += "-hvm"
+	imageID, err := a.findImageID(name)
+	if err != nil {
+		return "", err
+	}
+	if imageID != "" {
+		plog.Infof("found existing HVM image %v, reusing", imageID)
+		return imageID, nil
+	}
+	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM)
 	params.EnaSupport = aws.Bool(true)
 	params.SriovNetSupport = aws.String("simple")
 	res, err := a.ec2.RegisterImage(params)
@@ -337,6 +346,14 @@ func (a *API) CreateHVMImage(snapshotID string, name string, description string)
 }
 
 func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
+	imageID, err := a.findImageID(name)
+	if err != nil {
+		return "", err
+	}
+	if imageID != "" {
+		plog.Infof("found existing PV image %v, reusing", imageID)
+		return imageID, nil
+	}
 	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
 	res, err := a.ec2.RegisterImage(params)
@@ -427,24 +444,9 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 }
 
 func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag) (string, error) {
-	var imageID string
-	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
-		Filters: []*ec2.Filter{
-			&ec2.Filter{
-				Name:   aws.String("name"),
-				Values: aws.StringSlice([]string{name}),
-			},
-		},
-		Owners: aws.StringSlice([]string{"self"}),
-	})
+	imageID, err := a.findImageID(name)
 	if err != nil {
-		return "", fmt.Errorf("couldn't describe images: %v", err)
-	}
-	if len(describeRes.Images) > 1 {
-		return "", fmt.Errorf("found multiple images with name %v", name)
-	}
-	if len(describeRes.Images) == 1 {
-		imageID = *describeRes.Images[0].ImageId
+		return "", err
 	}
 
 	if imageID == "" {
@@ -492,6 +494,29 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 	}
 
 	return imageID, nil
+}
+
+// Find an image we own with the specified name. Return ID or "".
+func (a *API) findImageID(name string) (string, error) {
+	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("name"),
+				Values: aws.StringSlice([]string{name}),
+			},
+		},
+		Owners: aws.StringSlice([]string{"self"}),
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't describe images: %v", err)
+	}
+	if len(describeRes.Images) > 1 {
+		return "", fmt.Errorf("found multiple images with name %v", name)
+	}
+	if len(describeRes.Images) == 1 {
+		return *describeRes.Images[0].ImageId, nil
+	}
+	return "", nil
 }
 
 func (a *API) describeImage(imageID string) (*ec2.Image, error) {
