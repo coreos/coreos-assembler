@@ -35,7 +35,7 @@ var (
 
 Supported source formats are VMDK (as created with ./image_to_vm --format=ami_vmdk) and RAW.
 
-After a successful run, the final line of output will be a line of JSON describing the resources created.
+After a successful run, the final line of output will be a line of JSON describing the relevant resources.
 `,
 		Example: `  ore aws upload --region=us-west-2 \
 	  --ami-name="CoreOS-stable-1234.5.6" \
@@ -170,7 +170,6 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	s3BucketName := s3URL.Host
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
-	var createdObject string
 	if uploadSourceObject == "" && uploadSourceSnapshot == "" {
 		f, err := os.Open(uploadFile)
 		if err != nil {
@@ -183,11 +182,9 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
 			os.Exit(1)
 		}
-		createdObject = s3URL.String()
 	}
 
 	sourceSnapshot := uploadSourceSnapshot
-	var createdSnapshot string
 	if uploadSourceSnapshot == "" {
 		snapshot, err := API.CreateSnapshot(imageName, s3URL.String(), uploadObjectFormat)
 		if err != nil {
@@ -195,7 +192,6 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 		sourceSnapshot = snapshot.SnapshotID
-		createdSnapshot = sourceSnapshot
 	}
 
 	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName, uploadAMIDescription)
@@ -217,13 +213,13 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	err = json.NewEncoder(os.Stdout).Encode(&struct {
 		HVM        string
 		PV         string `json:",omitempty"`
-		SnapshotID string `json:",omitempty"`
-		S3Object   string `json:",omitempty"`
+		SnapshotID string
+		S3Object   string
 	}{
 		HVM:        hvmID,
 		PV:         pvID,
-		SnapshotID: createdSnapshot,
-		S3Object:   createdObject,
+		SnapshotID: sourceSnapshot,
+		S3Object:   s3URL.String(),
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't encode result: %v\n", err)
