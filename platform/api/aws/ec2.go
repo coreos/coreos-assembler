@@ -158,3 +158,21 @@ func (a *API) TerminateInstance(id string) error {
 
 	return nil
 }
+
+func (a *API) CreateTags(resources []string, tags map[string]string) error {
+	tagObjs := make([]*ec2.Tag, 0, len(tags))
+	for key, value := range tags {
+		tagObjs = append(tagObjs, &ec2.Tag{
+			Key:   aws.String(key),
+			Value: aws.String(value),
+		})
+	}
+	_, err := a.ec2.CreateTags(&ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagObjs,
+	})
+	if err != nil {
+		return fmt.Errorf("error creating tags: %v", err)
+	}
+	return err
+}

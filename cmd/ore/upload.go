@@ -198,7 +198,7 @@ func gceSanitize(name string) string {
 // Write file to Google Storage
 func writeFile(api *storage.Service, bucket, filename, destname string) error {
 	fmt.Printf("Writing %v to gs://%v ...\n", filename, bucket)
-	fmt.Printf("(Sometimes this takes a few mintues)\n")
+	fmt.Printf("(Sometimes this takes a few minutes)\n")
 
 	file, err := os.Open(filename)
 	if err != nil {

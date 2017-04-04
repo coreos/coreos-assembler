@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -87,7 +88,7 @@ type Snapshot struct {
 }
 
 // CreateSnapshot creates an AWS Snapshot
-func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
+func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
 	if format == "" {
 		format = EC2ImageFormatVmdk
 	}
@@ -100,23 +101,90 @@ func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageForma
 	}
 	s3key := strings.TrimPrefix(s3url.Path, "/")
 
-	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
-		RoleName:    aws.String(vmImportRole),
-		Description: aws.String(description),
-		DiskContainer: &ec2.SnapshotDiskContainer{
-			// TODO(euank): allow s3 source / local file -> s3 source
-			UserBucket: &ec2.UserBucket{
-				S3Bucket: aws.String(s3url.Host),
-				S3Key:    aws.String(s3key),
+	// Look for an existing snapshot with this image name.
+	snapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("status"),
+				Values: aws.StringSlice([]string{"completed"}),
 			},
-			Format: aws.String(string(format)),
+			&ec2.Filter{
+				Name:   aws.String("tag:Name"),
+				Values: aws.StringSlice([]string{imageName}),
+			},
 		},
+		OwnerIds: aws.StringSlice([]string{"self"}),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
+		return nil, fmt.Errorf("unable to describe snapshots: %v", err)
+	}
+	if len(snapshotRes.Snapshots) > 1 {
+		return nil, fmt.Errorf("found multiple matching snapshots")
+	}
+	if len(snapshotRes.Snapshots) == 1 {
+		snapshotID := *snapshotRes.Snapshots[0].SnapshotId
+		plog.Infof("found existing snapshot %v, reusing", snapshotID)
+		return &Snapshot{
+			SnapshotID: snapshotID,
+		}, nil
 	}
 
-	plog.Infof("created snapshot import task %v", *importRes.ImportTaskId)
+	// Look for an existing import task with this image name. We have
+	// to fetch all of them and walk the list ourselves.
+	var snapshotTaskID string
+	taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{})
+	if err != nil {
+		return nil, fmt.Errorf("unable to describe import tasks: %v", err)
+	}
+	for _, task := range taskRes.ImportSnapshotTasks {
+		if *task.Description != imageName {
+			continue
+		}
+		switch *task.SnapshotTaskDetail.Status {
+		case "cancelled", "cancelling", "deleted", "deleting":
+			continue
+		case "completed":
+			// Either we lost the race with a snapshot that just
+			// completed or this is an old import task for a
+			// snapshot that's been deleted. Check it.
+			_, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+				SnapshotIds: []*string{task.SnapshotTaskDetail.SnapshotId},
+			})
+			if err != nil {
+				if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidSnapshot.NotFound" {
+					continue
+				} else {
+					return nil, fmt.Errorf("couldn't describe snapshot from import task: %v", err)
+				}
+			}
+		}
+		if snapshotTaskID != "" {
+			return nil, fmt.Errorf("found multiple matching import tasks")
+		}
+		snapshotTaskID = *task.ImportTaskId
+	}
+
+	if snapshotTaskID == "" {
+		importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
+			RoleName:    aws.String(vmImportRole),
+			Description: aws.String(imageName),
+			DiskContainer: &ec2.SnapshotDiskContainer{
+				// TODO(euank): allow s3 source / local file -> s3 source
+				UserBucket: &ec2.UserBucket{
+					S3Bucket: aws.String(s3url.Host),
+					S3Key:    aws.String(s3key),
+				},
+				Format: aws.String(string(format)),
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
+		}
+		snapshotTaskID = *importRes.ImportTaskId
+		plog.Infof("created snapshot import task %v", snapshotTaskID)
+	} else {
+		plog.Infof("found existing snapshot import task %v, reusing", snapshotTaskID)
+	}
 
 	snapshotDone := func(snapshotTaskID string) (bool, string, error) {
 		taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{
@@ -149,18 +217,29 @@ func (a *API) CreateSnapshot(description, sourceURL string, format EC2ImageForma
 	}
 
 	// TODO(euank): write a waiter for import snapshot
+	var snapshotID string
 	for {
-		done, snapshotID, err := snapshotDone(*importRes.ImportTaskId)
+		var done bool
+		done, snapshotID, err = snapshotDone(snapshotTaskID)
 		if err != nil {
 			return nil, err
 		}
 		if done {
-			return &Snapshot{
-				SnapshotID: snapshotID,
-			}, nil
+			break
 		}
 		time.Sleep(20 * time.Second)
 	}
+
+	err = a.CreateTags([]string{snapshotID}, map[string]string{
+		"Name": imageName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create tags: %v", err)
+	}
+
+	return &Snapshot{
+		SnapshotID: snapshotID,
+	}, nil
 }
 
 func (a *API) CreateImportRole(bucket string) error {
@@ -247,7 +326,19 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	res, err := a.ec2.RegisterImage(registerImageParams(snapshotID, name+"-hvm", description, "xvd", EC2ImageTypeHVM))
+	name += "-hvm"
+	imageID, err := a.findImageID(name)
+	if err != nil {
+		return "", err
+	}
+	if imageID != "" {
+		plog.Infof("found existing HVM image %v, reusing", imageID)
+		return imageID, nil
+	}
+	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM)
+	params.EnaSupport = aws.Bool(true)
+	params.SriovNetSupport = aws.String("simple")
+	res, err := a.ec2.RegisterImage(params)
 	if err != nil {
 		return "", fmt.Errorf("error creating hvm AMI: %v", err)
 	}
@@ -255,11 +346,19 @@ func (a *API) CreateHVMImage(snapshotID string, name string, description string)
 }
 
 func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
+	imageID, err := a.findImageID(name)
+	if err != nil {
+		return "", err
+	}
+	if imageID != "" {
+		plog.Infof("found existing PV image %v, reusing", imageID)
+		return imageID, nil
+	}
 	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
 	res, err := a.ec2.RegisterImage(params)
 	if err != nil {
-		return "", fmt.Errorf("error creating hvm AMI: %v", err)
+		return "", fmt.Errorf("error creating paravirtual AMI: %v", err)
 	}
 	return *res.ImageId, nil
 }
@@ -288,4 +387,144 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 			},
 		},
 	}
+}
+
+func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]string, error) {
+	type result struct {
+		region  string
+		imageID string
+		err     error
+	}
+
+	image, err := a.describeImage(sourceImageID)
+	if err != nil {
+		return nil, err
+	}
+
+	describeSnapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+		SnapshotIds: []*string{image.BlockDeviceMappings[0].Ebs.SnapshotId},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe snapshot: %v", err)
+	}
+	snapshot := describeSnapshotRes.Snapshots[0]
+
+	var wg sync.WaitGroup
+	ch := make(chan result, len(regions))
+	for _, region := range regions {
+		opts := *a.opts
+		opts.Region = region
+		aa, err := New(&opts)
+		if err != nil {
+			break
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res := result{region: aa.opts.Region}
+			res.imageID, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
+				*image.Name, *image.Description,
+				image.Tags, snapshot.Tags)
+			ch <- res
+		}()
+	}
+	wg.Wait()
+	close(ch)
+
+	amis := make(map[string]string)
+	for res := range ch {
+		if res.imageID != "" {
+			amis[res.region] = res.imageID
+		}
+		if err == nil {
+			err = res.err
+		}
+	}
+	return amis, err
+}
+
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag) (string, error) {
+	imageID, err := a.findImageID(name)
+	if err != nil {
+		return "", err
+	}
+
+	if imageID == "" {
+		copyRes, err := a.ec2.CopyImage(&ec2.CopyImageInput{
+			SourceRegion:  aws.String(sourceRegion),
+			SourceImageId: aws.String(sourceImageID),
+			Name:          aws.String(name),
+			Description:   aws.String(description),
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't initiate image copy to %v: %v", a.opts.Region, err)
+		}
+		imageID = *copyRes.ImageId
+	}
+
+	err = a.ec2.WaitUntilImageAvailable(&ec2.DescribeImagesInput{
+		ImageIds: aws.StringSlice([]string{imageID}),
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't copy image to %v: %v", a.opts.Region, err)
+	}
+
+	if len(imageTags) > 0 {
+		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
+			Resources: aws.StringSlice([]string{imageID}),
+			Tags:      imageTags,
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't create image tags: %v", err)
+		}
+	}
+
+	if len(snapshotTags) > 0 {
+		image, err := a.describeImage(imageID)
+		if err != nil {
+			return "", err
+		}
+		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
+			Resources: []*string{image.BlockDeviceMappings[0].Ebs.SnapshotId},
+			Tags:      snapshotTags,
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't create snapshot tags: %v", err)
+		}
+	}
+
+	return imageID, nil
+}
+
+// Find an image we own with the specified name. Return ID or "".
+func (a *API) findImageID(name string) (string, error) {
+	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("name"),
+				Values: aws.StringSlice([]string{name}),
+			},
+		},
+		Owners: aws.StringSlice([]string{"self"}),
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't describe images: %v", err)
+	}
+	if len(describeRes.Images) > 1 {
+		return "", fmt.Errorf("found multiple images with name %v", name)
+	}
+	if len(describeRes.Images) == 1 {
+		return *describeRes.Images[0].ImageId, nil
+	}
+	return "", nil
+}
+
+func (a *API) describeImage(imageID string) (*ec2.Image, error) {
+	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
+		ImageIds: aws.StringSlice([]string{imageID}),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe image: %v", err)
+	}
+	return describeRes.Images[0], nil
 }

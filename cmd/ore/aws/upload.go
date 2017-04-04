@@ -15,12 +15,14 @@
 package aws
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/sdk"
 	"github.com/spf13/cobra"
 )
@@ -28,31 +30,50 @@ import (
 var (
 	cmdUpload = &cobra.Command{
 		Use:   "upload",
-		Short: "Upload an AMI to s3",
-		Long:  "Upload a streaming vmdk to s3 for use by create-snapshot",
-		RunE:  runUpload,
+		Short: "Create AWS images",
+		Long: `Upload CoreOS image to S3 and create relevant AMIs (hvm and pv).
+
+Supported source formats are VMDK (as created with ./image_to_vm --format=ami_vmdk) and RAW.
+
+After a successful run, the final line of output will be a line of JSON describing the relevant resources.
+`,
+		Example: `  ore aws upload --region=us-west-2 \
+	  --ami-name="CoreOS-stable-1234.5.6" \
+	  --ami-description="CoreOS stable 1234.5.6" \
+	  --file="/home/.../coreos_production_ami_vmdk_image.vmdk"`,
+		RunE: runUpload,
 	}
 
-	uploadBucket    string
-	uploadImageName string
-	uploadBoard     string
-	uploadFile      string
-	uploadExpire    bool
-	uploadForce     bool
+	uploadSourceObject   string
+	uploadBucket         string
+	uploadImageName      string
+	uploadBoard          string
+	uploadFile           string
+	uploadExpireObject   bool
+	uploadForce          bool
+	uploadSourceSnapshot string
+	uploadObjectFormat   aws.EC2ImageFormat
+	uploadAMIName        string
+	uploadAMIDescription string
+	uploadCreatePV       bool
 )
 
 func init() {
-	uploadBoard = "amd64-usr"
-
 	AWS.AddCommand(cmdUpload)
-	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/; defaults to a regional bucket and prefix defaults to $USER")
-	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
+	cmdUpload.Flags().StringVar(&uploadSourceObject, "source-object", "", "'s3://' URI pointing to image data (default: same as upload)")
+	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/ (defaults to a regional bucket and prefix defaults to $USER)")
+	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image (default COREOS_VERSION)")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
-		"path_to_coreos_image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
-	cmdUpload.Flags().BoolVar(&uploadExpire, "expire", true, "expire the S3 image in 10 days")
-	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 and AWS images without prompt")
+		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
+	cmdUpload.Flags().BoolVar(&uploadExpireObject, "expire-object", true, "expire the S3 object in 10 days")
+	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
+	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
+	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
+	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
+	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
+	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition to the HVM AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -64,55 +85,38 @@ func defaultUploadFile() string {
 	return build + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 }
 
-// defaultBucketURI determines the location the tool should upload to.
-// The 's3URI' parameter, if it contains a path, will override all other
+// defaultBucketURL determines the location the tool should upload to.
+// The 'urlPrefix' parameter, if it contains a path, will override all other
 // arguments
-func defaultBucketURI(s3URI, imageName, board, file, region string) (string, error) {
-	if s3URI == "" {
-		s3URI = fmt.Sprintf("s3://%s", defaultBucketNameForRegion(region))
+func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.URL, error) {
+	if urlPrefix == "" {
+		urlPrefix = fmt.Sprintf("s3://%s", defaultBucketNameForRegion(region))
 	}
 
-	s3URL, err := url.Parse(s3URI)
+	s3URL, err := url.Parse(urlPrefix)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if s3URL.Scheme != "s3" {
-		return "", fmt.Errorf("invalid s3 scheme; must be 's3://', not '%s://'", s3URL.Scheme)
+		return nil, fmt.Errorf("invalid s3 scheme; must be 's3://', not '%s://'", s3URL.Scheme)
 	}
 	if s3URL.Host == "" {
-		return "", fmt.Errorf("URL missing bucket name %v\n", s3URI)
+		return nil, fmt.Errorf("URL missing bucket name %v\n", urlPrefix)
 	}
 
 	// if prefix not specified default name to s3://bucket/$USER/$BOARD/$VERSION
 	if s3URL.Path == "" {
-		if board == "" {
-			board = "amd64-usr"
-		}
-
 		user := os.Getenv("USER")
 
 		s3URL.Path = "/" + os.Getenv("USER")
 		s3URL.Path += "/" + board
 
-		if file == "" {
-			file = defaultUploadFile()
-		}
-
-		// if an image name is unspecified try to use version.txt
-		if imageName == "" {
-			ver, err := sdk.VersionsFromDir(filepath.Dir(file))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
-				os.Exit(1)
-			}
-			imageName = ver.Version
-		}
 		fileName := filepath.Base(file)
 
 		s3URL.Path = fmt.Sprintf("/%s/%s/%s/%s", user, board, imageName, fileName)
 	}
 
-	return s3URL.String(), nil
+	return s3URL, nil
 }
 
 func runUpload(cmd *cobra.Command, args []string) error {
@@ -120,36 +124,106 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in aws upload cmd: %v\n", args)
 		os.Exit(2)
 	}
-
-	s3Bucket, err := defaultBucketURI(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
-	if err != nil {
-		return fmt.Errorf("invalid bucket: %v", err)
-	}
-	if uploadFile == "" {
-		uploadFile = defaultUploadFile()
+	if uploadSourceObject != "" && uploadSourceSnapshot != "" {
+		fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
+		os.Exit(2)
 	}
 
-	plog.Debugf("upload bucket: %v\n", s3Bucket)
-	s3URL, err := url.Parse(s3Bucket)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+	// if an image name is unspecified try to use version.txt
+	imageName := uploadImageName
+	if imageName == "" {
+		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
+			os.Exit(1)
+		}
+		imageName = ver.Version
 	}
-	plog.Debugf("parsed s3 url: %+v", s3URL)
+
+	amiName := uploadAMIName
+	if amiName == "" {
+		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not guess image name: %v\n", err)
+			os.Exit(1)
+		}
+		awsVersion := strings.Replace(ver.Version, "+", "-", -1) // '+' is invalid in an AMI name
+		amiName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
+	}
+
+	var s3URL *url.URL
+	var err error
+	if uploadSourceObject != "" {
+		s3URL, err = url.Parse(uploadSourceObject)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		s3URL, err = defaultBucketURL(uploadBucket, imageName, uploadBoard, uploadFile, region)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	}
+	plog.Debugf("S3 object: %v\n", s3URL)
 	s3BucketName := s3URL.Host
-	s3BucketPath := strings.TrimPrefix(s3URL.Path, "/")
+	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
-	f, err := os.Open(uploadFile)
+	if uploadSourceObject == "" && uploadSourceSnapshot == "" {
+		f, err := os.Open(uploadFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
+			os.Exit(1)
+		}
+
+		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadExpireObject, uploadForce)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	sourceSnapshot := uploadSourceSnapshot
+	if uploadSourceSnapshot == "" {
+		snapshot, err := API.CreateSnapshot(imageName, s3URL.String(), uploadObjectFormat)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
+			os.Exit(1)
+		}
+		sourceSnapshot = snapshot.SnapshotID
+	}
+
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName, uploadAMIDescription)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
+		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
 	}
 
-	err = API.UploadImage(f, s3BucketName, s3BucketPath, uploadExpire, uploadForce)
+	var pvID string
+	if uploadCreatePV {
+		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to create PV image: %v\n", err)
+			os.Exit(1)
+		}
+		pvID = pvImageID
+	}
+
+	err = json.NewEncoder(os.Stdout).Encode(&struct {
+		HVM        string
+		PV         string `json:",omitempty"`
+		SnapshotID string
+		S3Object   string
+	}{
+		HVM:        hvmID,
+		PV:         pvID,
+		SnapshotID: sourceSnapshot,
+		S3Object:   s3URL.String(),
+	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Couldn't encode result: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("created aws s3 upload: s3://%v/%v\n", s3BucketName, s3BucketPath)
 	return nil
 }
