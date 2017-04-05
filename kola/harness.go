@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
@@ -170,10 +169,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 			splay := time.Duration(rand.Int63n(max))
 			time.Sleep(splay)
 
-			err := runTest(h, test, pltfrm)
-			if _, ok := err.(skip.Skip); ok {
-				h.Skip(err)
-			} else if err != nil {
+			if err := runTest(h, test, pltfrm); err != nil {
 				h.Error(err)
 			}
 		}
