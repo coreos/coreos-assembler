@@ -241,6 +241,12 @@ func updateRepo() {
 		plog.Fatalf("repo init failed: %v", err)
 	}
 
+	if sigVerify {
+		if err := sdk.RepoVerifyTag(manifestBranch); err != nil {
+			plog.Fatalf("repo tag verification failed: %v", err)
+		}
+	}
+
 	if err := sdk.RepoSync(chrootName); err != nil {
 		plog.Fatalf("repo sync failed: %v", err)
 	}
