@@ -29,11 +29,11 @@ func init() {
 	root.PersistentFlags().IntVar(&harness.Opts.Parallel, "parallel", 1, "number of tests to run in parallel")
 	sv(&harness.Opts.PlatformOptions.BaseName, "basename", "pluton", "Cluster name prefix")
 	sv(&harness.Opts.BootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
-	sv(&harness.Opts.BootkubeTag, "bootkubeTag", "v0.3.11", "")
+	sv(&harness.Opts.BootkubeTag, "bootkubeTag", "v0.3.13", "")
 	sv(&harness.Opts.BootkubeScriptDir, "bootkubeScriptDir", "", "Make use of bootkube's node init scripts and kubelet service files. Leave blank to use default or pass in the hack/quickstart dir from the bootkube repo.")
 
 	// gce-specific options
-	sv(&harness.Opts.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-6-0-v20170315", "GCE image")
+	sv(&harness.Opts.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-7-0-v20170401", "GCE image")
 	sv(&harness.Opts.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
 	sv(&harness.Opts.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
 	sv(&harness.Opts.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
