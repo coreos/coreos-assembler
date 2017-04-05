@@ -426,6 +426,15 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	}
 	snapshot := describeSnapshotRes.Snapshots[0]
 
+	describeAttributeRes, err := a.ec2.DescribeImageAttribute(&ec2.DescribeImageAttributeInput{
+		Attribute: aws.String("launchPermission"),
+		ImageId:   aws.String(sourceImageID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe launch permissions: %v", err)
+	}
+	launchPermissions := describeAttributeRes.LaunchPermissions
+
 	var wg sync.WaitGroup
 	ch := make(chan result, len(regions))
 	for _, region := range regions {
@@ -441,7 +450,8 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 			res := result{region: aa.opts.Region}
 			res.imageID, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
 				*image.Name, *image.Description,
-				image.Tags, snapshot.Tags)
+				image.Tags, snapshot.Tags,
+				launchPermissions)
 			ch <- res
 		}()
 	}
@@ -460,7 +470,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	return amis, err
 }
 
-func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag) (string, error) {
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission) (string, error) {
 	imageID, err := a.findImageID(name)
 	if err != nil {
 		return "", err
@@ -507,6 +517,19 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		})
 		if err != nil {
 			return "", fmt.Errorf("couldn't create snapshot tags: %v", err)
+		}
+	}
+
+	if len(launchPermissions) > 0 {
+		_, err = a.ec2.ModifyImageAttribute(&ec2.ModifyImageAttributeInput{
+			Attribute: aws.String("launchPermission"),
+			ImageId:   aws.String(imageID),
+			LaunchPermission: &ec2.LaunchPermissionModifications{
+				Add: launchPermissions,
+			},
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't grant launch permissions: %v", err)
 		}
 	}
 
