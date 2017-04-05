@@ -49,20 +49,7 @@ var (
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
-
-	testOptions = make(map[string]string, 0)
 )
-
-// RegisterTestOption registers any options that need visibility inside
-// a Test. Panics if existing option is already registered. Each test
-// has global view of options.
-func RegisterTestOption(name, option string) {
-	_, ok := testOptions[name]
-	if ok {
-		panic("test option already registered with same name")
-	}
-	testOptions[name] = option
-}
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -316,17 +303,10 @@ func RunTest(t *register.Test, pltfrm, outputDir string) (err error) {
 		names = append(names, k)
 	}
 
-	// prevent unsafe access if tests ever become parallel and access
-	tempTestOptions := make(map[string]string, 0)
-	for k, v := range testOptions {
-		tempTestOptions[k] = v
-	}
-
 	// Cluster -> TestCluster
 	tcluster := cluster.TestCluster{
 		Name:        t.Name,
 		NativeFuncs: names,
-		Options:     tempTestOptions,
 		Cluster:     c,
 	}
 

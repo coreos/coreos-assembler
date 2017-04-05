@@ -28,7 +28,6 @@ import (
 type TestCluster struct {
 	Name        string
 	NativeFuncs []string
-	Options     map[string]string
 	platform.Cluster
 }
 
