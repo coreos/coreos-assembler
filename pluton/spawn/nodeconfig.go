@@ -26,7 +26,7 @@ coreos:
 
 var defaultKubeletMasterService = `[Service]
 Environment=KUBELET_IMAGE_URL=quay.io/coreos/hyperkube
-Environment=KUBELET_IMAGE_TAG=v1.5.4_coreos.0
+Environment=KUBELET_IMAGE_TAG=v1.5.6_coreos.0
 Environment="RKT_RUN_ARGS=\
 --uuid-file-save=/var/run/kubelet-pod.uuid \
 --volume etc-resolv,kind=host,source=/etc/resolv.conf --mount volume=etc-resolv,target=/etc/resolv.conf \
@@ -64,7 +64,7 @@ WantedBy=multi-user.target`
 
 var defaultKubeletWorkerService = `[Service]
 Environment=KUBELET_IMAGE_URL=quay.io/coreos/hyperkube
-Environment=KUBELET_IMAGE_TAG=v1.5.4_coreos.0
+Environment=KUBELET_IMAGE_TAG=v1.5.6_coreos.0
 Environment="RKT_RUN_ARGS=\
 --uuid-file-save=/var/run/kubelet-pod.uuid \
 --volume etc-resolv,kind=host,source=/etc/resolv.conf --mount volume=etc-resolv,target=/etc/resolv.conf \
