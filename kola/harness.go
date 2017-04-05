@@ -170,7 +170,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 			splay := time.Duration(rand.Int63n(max))
 			time.Sleep(splay)
 
-			err := RunTest(test, pltfrm, outputDir)
+			err := runTest(test, pltfrm, outputDir)
 			if _, ok := err.(skip.Skip); ok {
 				h.Skip(err)
 			} else if err != nil {
@@ -248,14 +248,10 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 	return version, nil
 }
 
-// RunTest is a harness for running a single test. It is used by
-// RunTests but can also be used directly by binaries that aim to run a
-// single test. Using RunTest directly means that TestCluster flags used
-// to filter out tests such as 'Platforms' or 'MinVersion'
-// are not respected.
+// runTest is a harness for running a single test.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
-func RunTest(t *register.Test, pltfrm, outputDir string) (err error) {
+func runTest(t *register.Test, pltfrm, outputDir string) (err error) {
 	var c platform.Cluster
 
 	testDir := filepath.Join(outputDir, t.Name)
