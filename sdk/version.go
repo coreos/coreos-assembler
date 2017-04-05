@@ -108,7 +108,7 @@ func VersionsFromManifest() (Versions, error) {
 	return VersionsFromDir(filepath.Join(RepoRoot(), ".repo", "manifests"))
 }
 
-func VersionsFromRemoteRepo(url, branch string) (ver Versions, err error) {
+func versionsFromRemoteRepoMaybeVerify(url, branch string, verify bool) (ver Versions, err error) {
 	// git clone cannot be given a full ref path, instead it explicitly checks
 	// under both refs/heads/<name> and refs/tags/<name>, in that order.
 	if strings.HasPrefix(branch, "refs/") {
@@ -134,7 +134,23 @@ func VersionsFromRemoteRepo(url, branch string) (ver Versions, err error) {
 		return
 	}
 
+	if verify {
+		tag := exec.Command("git", "-C", tmp, "tag", "-v", branch)
+		tag.Stderr = os.Stderr
+		if err = tag.Run(); err != nil {
+			return
+		}
+	}
+
 	return VersionsFromDir(tmp)
+}
+
+func VersionsFromRemoteRepo(url, branch string) (ver Versions, err error) {
+	return versionsFromRemoteRepoMaybeVerify(url, branch, false)
+}
+
+func VersionsFromSignedRemoteRepo(url, branch string) (ver Versions, err error) {
+	return versionsFromRemoteRepoMaybeVerify(url, branch, true)
 }
 
 func GetDefaultAppId() string {
