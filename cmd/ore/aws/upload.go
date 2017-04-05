@@ -194,7 +194,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		sourceSnapshot = snapshot.SnapshotID
 	}
 
-	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName, uploadAMIDescription)
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)

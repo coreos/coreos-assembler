@@ -326,7 +326,6 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	name += "-hvm"
 	imageID, err := a.findImageID(name)
 	if err != nil {
 		return "", err
