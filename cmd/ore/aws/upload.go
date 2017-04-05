@@ -55,6 +55,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadObjectFormat   aws.EC2ImageFormat
 	uploadAMIName        string
 	uploadAMIDescription string
+	uploadGrantUsers     []string
 	uploadCreatePV       bool
 )
 
@@ -73,6 +74,7 @@ func init() {
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
+	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition to the HVM AMI")
 }
 
@@ -200,6 +202,14 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
+	if len(uploadGrantUsers) > 0 {
+		err = API.GrantLaunchPermission(hvmID, uploadGrantUsers)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	var pvID string
 	if uploadCreatePV {
 		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
@@ -208,6 +218,14 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 		pvID = pvImageID
+
+		if len(uploadGrantUsers) > 0 {
+			err = API.GrantLaunchPermission(pvID, uploadGrantUsers)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	err = json.NewEncoder(os.Stdout).Encode(&struct {

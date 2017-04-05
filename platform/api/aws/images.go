@@ -388,6 +388,24 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 	}
 }
 
+func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
+	arg := &ec2.ModifyImageAttributeInput{
+		Attribute:        aws.String("launchPermission"),
+		ImageId:          aws.String(imageID),
+		LaunchPermission: &ec2.LaunchPermissionModifications{},
+	}
+	for _, userID := range userIDs {
+		arg.LaunchPermission.Add = append(arg.LaunchPermission.Add, &ec2.LaunchPermission{
+			UserId: aws.String(userID),
+		})
+	}
+	_, err := a.ec2.ModifyImageAttribute(arg)
+	if err != nil {
+		return fmt.Errorf("couldn't grant launch permission: %v", err)
+	}
+	return nil
+}
+
 func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]string, error) {
 	type result struct {
 		region  string
