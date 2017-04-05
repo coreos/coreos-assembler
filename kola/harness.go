@@ -170,7 +170,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 			splay := time.Duration(rand.Int63n(max))
 			time.Sleep(splay)
 
-			err := runTest(test, pltfrm, outputDir)
+			err := runTest(h, test, pltfrm)
 			if _, ok := err.(skip.Skip); ok {
 				h.Skip(err)
 			} else if err != nil {
@@ -251,14 +251,10 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 // runTest is a harness for running a single test.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
-func runTest(t *register.Test, pltfrm, outputDir string) (err error) {
+func runTest(h *harness.H, t *register.Test, pltfrm string) (err error) {
 	var c platform.Cluster
 
-	testDir := filepath.Join(outputDir, t.Name)
-	if err := os.MkdirAll(testDir, 0777); err != nil {
-		return err
-	}
-
+	testDir := h.OutputDir()
 	switch pltfrm {
 	case "qemu":
 		c, err = qemu.NewCluster(&QEMUOptions, testDir)
