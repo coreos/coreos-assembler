@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -55,27 +54,6 @@ func GetClusterHealth(m platform.Machine, csize int) error {
 		return fmt.Errorf("health polling failed: %v: %s", err, b)
 	}
 
-	return nil
-}
-
-// run etcd on each cluster machine
-func startEtcd2(m platform.Machine) error {
-	etcdStart := "sudo systemctl start etcd2.service"
-	_, err := m.SSH(etcdStart)
-	if err != nil {
-		return fmt.Errorf("start etcd2.service on %v failed: %s", m.IP(), err)
-	}
-	return nil
-}
-
-// stop etcd on each cluster machine
-func stopEtcd2(m platform.Machine) error {
-	// start etcd instance
-	etcdStop := "sudo systemctl stop etcd2.service"
-	_, err := m.SSH(etcdStop)
-	if err != nil {
-		return fmt.Errorf("stop etcd.2service on failed: %s", err)
-	}
 	return nil
 }
 
@@ -156,52 +134,5 @@ func checkKeys(cluster platform.Cluster, keyMap map[string]string) error {
 		}
 	}
 	plog.Infof("checked %v keys", len(keyMap))
-	return nil
-}
-
-// replace default binary for etcd2.service with given binary
-func replaceEtcd2Bin(m platform.Machine, newPath string) error {
-	if !filepath.IsAbs(newPath) {
-		return fmt.Errorf("newPath must be an absolute filepath")
-	}
-
-	override := "\"[Service]\nExecStart=\nExecStart=" + newPath
-	override += "\nEnvironment=ETCD_SNAPSHOT_COUNT=10" + "\"" // make it easy to trigger snapshots
-
-	_, err := m.SSH(fmt.Sprintf("echo %v | sudo tee /run/systemd/system/etcd2.service.d/99-exec.conf", override))
-	if err != nil {
-		return err
-	}
-	_, err = m.SSH("sudo systemctl daemon-reload")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func checkEtcdVersion(cluster platform.Cluster, m platform.Machine, expected string) error {
-	var b []byte
-
-	checker := func() error {
-		out, err := m.SSH(fmt.Sprintf("curl -s -L http://%s:2379/version", m.IP()))
-		if err != nil {
-			return fmt.Errorf("curl failed: %v", out)
-		}
-
-		b = out
-
-		return nil
-	}
-
-	if err := util.Retry(15, 10*time.Second, checker); err != nil {
-		return err
-	}
-
-	plog.Infof("got version: %s", b)
-
-	if string(b) != expected {
-		return fmt.Errorf("expected %v, got %s", expected, b)
-	}
-
 	return nil
 }
