@@ -20,6 +20,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/coreos/mantle/system/exec"
 )
 
 const (
@@ -131,6 +134,17 @@ func RepoInit(chroot, url, branch, name string) error {
 		"--manifest-url", url,
 		"--manifest-branch", branch,
 		"--manifest-name", name)
+}
+
+func RepoVerifyTag(branch string) error {
+	manifestRepoDir := ".repo/manifests"
+	if strings.HasPrefix(branch, "refs/tags/") {
+		branch = strings.TrimPrefix(branch, "refs/tags/")
+	}
+
+	tag := exec.Command("git", "-C", manifestRepoDir, "tag", "-v", branch)
+	tag.Stderr = os.Stderr
+	return tag.Run()
 }
 
 func RepoSync(chroot string) error {

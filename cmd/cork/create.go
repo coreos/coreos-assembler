@@ -42,6 +42,7 @@ var (
 	manifestName   string
 	manifestBranch string
 	repoVerify     bool
+	sigVerify      bool
 
 	// only for `create` command
 	allowReplace bool
@@ -109,6 +110,8 @@ func init() {
 		"verify", false, "Check repo tree and release manifest match")
 	creationFlags.StringVar(&verifyKeyFile,
 		"verify-key", "", "PGP public key to be used in verifing download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
+	creationFlags.BoolVar(&sigVerify,
+		"verify-signature", false, "Verify the manifest Git tag with GPG")
 
 	root.AddCommand(setupCmd)
 
@@ -192,10 +195,15 @@ func runCreate(cmd *cobra.Command, args []string) {
 	if sdkVersion == "" {
 		plog.Noticef("Detecting SDK version")
 
+		getRemoteVersions := sdk.VersionsFromRemoteRepo
+		if sigVerify {
+			getRemoteVersions = sdk.VersionsFromSignedRemoteRepo
+		}
+
 		if ver, err := sdk.VersionsFromManifest(); err == nil {
 			sdkVersion = ver.SDKVersion
 			plog.Noticef("Found SDK version %s from local repo", sdkVersion)
-		} else if ver, err := sdk.VersionsFromRemoteRepo(manifestURL, manifestBranch); err == nil {
+		} else if ver, err := getRemoteVersions(manifestURL, manifestBranch); err == nil {
 			sdkVersion = ver.SDKVersion
 			plog.Noticef("Found SDK version %s from remote repo", sdkVersion)
 		} else {
@@ -231,6 +239,12 @@ func unpackChroot(replace bool) {
 func updateRepo() {
 	if err := sdk.RepoInit(chrootName, manifestURL, manifestBranch, manifestName); err != nil {
 		plog.Fatalf("repo init failed: %v", err)
+	}
+
+	if sigVerify {
+		if err := sdk.RepoVerifyTag(manifestBranch); err != nil {
+			plog.Fatalf("repo tag verification failed: %v", err)
+		}
 	}
 
 	if err := sdk.RepoSync(chrootName); err != nil {
@@ -288,7 +302,11 @@ func runUpdate(cmd *cobra.Command, args []string) {
 
 	if sdkVersion == "" || newVersion == "" {
 		plog.Notice("Detecting versions in remote repo")
-		ver, err := sdk.VersionsFromRemoteRepo(manifestURL, manifestBranch)
+		getRemoteVersions := sdk.VersionsFromRemoteRepo
+		if sigVerify {
+			getRemoteVersions = sdk.VersionsFromSignedRemoteRepo
+		}
+		ver, err := getRemoteVersions(manifestURL, manifestBranch)
 		if err != nil {
 			plog.Fatalf("Reading from remote repo failed: %v", err)
 		}
