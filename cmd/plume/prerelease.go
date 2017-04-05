@@ -98,29 +98,37 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// getAzureVhd downloads a CoreOS image for Azure and unzips it to vhdPath.
-func getAzureVhd(spec *channelSpec, client *http.Client, src *storage.Bucket, bzipPath, vhdPath string) error {
-	if _, err := os.Stat(vhdPath); err == nil {
-		plog.Printf("Reusing existing image %q", vhdPath)
-		return nil
+// getImageFile downloads a bzipped CoreOS image, verifies its signature,
+// decompresses it, and returns the decompressed path.
+func getImageFile(client *http.Client, src *storage.Bucket, fileName string) (string, error) {
+	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specBoard, specVersion)
+	bzipPath := filepath.Join(cacheDir, fileName)
+	imagePath := strings.TrimSuffix(bzipPath, filepath.Ext(bzipPath))
+
+	if _, err := os.Stat(imagePath); err == nil {
+		plog.Printf("Reusing existing image %q", imagePath)
+		return imagePath, nil
 	}
 
-	vhduri, err := url.Parse(spec.Azure.Image)
+	bzipUri, err := url.Parse(fileName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	vhduri = src.URL().ResolveReference(vhduri)
+	bzipUri = src.URL().ResolveReference(bzipUri)
 
-	plog.Printf("Downloading Azure image %q to %q", vhduri, bzipPath)
+	plog.Printf("Downloading image %q to %q", bzipUri, bzipPath)
 
-	if err := sdk.UpdateSignedFile(bzipPath, vhduri.String(), client, verifyKeyFile); err != nil {
-		return err
+	if err := sdk.UpdateSignedFile(bzipPath, bzipUri.String(), client, verifyKeyFile); err != nil {
+		return "", err
 	}
 
 	// decompress it
 	plog.Printf("Decompressing %q...", bzipPath)
-	return util.Bunzip2File(vhdPath, bzipPath)
+	if err := util.Bunzip2File(imagePath, bzipPath); err != nil {
+		return "", err
+	}
+	return imagePath, nil
 }
 
 func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName string) error {
@@ -204,10 +212,8 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		}
 
 		// download azure vhd image and unzip it
-		cachedir := filepath.Join(sdk.RepoCache(), "images", specChannel, specVersion)
-		bzfile := filepath.Join(cachedir, spec.Azure.Image)
-		vhdfile := strings.TrimSuffix(bzfile, filepath.Ext(bzfile))
-		if err := getAzureVhd(spec, client, src, bzfile, vhdfile); err != nil {
+		vhdfile, err := getImageFile(client, src, spec.Azure.Image)
+		if err != nil {
 			return err
 		}
 
