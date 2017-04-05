@@ -74,7 +74,7 @@ func (c *Cluster) Kubectl(cmd string) (string, error) {
 // to check that certain pods are running or implementing its own `Ready()
 // error` function that gets called to after the nodeCheck in this function.
 func (c *Cluster) Ready() error {
-	return nodeCheck(c, 25)
+	return nodeCheck(c, 30)
 }
 
 // AddMasters creates new master nodes for a Cluster and blocks until ready.
