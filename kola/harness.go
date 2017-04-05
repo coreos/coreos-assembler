@@ -297,9 +297,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) (err error) {
 
 	// Cluster -> TestCluster
 	tcluster := cluster.TestCluster{
-		Name:        t.Name,
-		NativeFuncs: names,
+		H:           h,
 		Cluster:     c,
+		NativeFuncs: names,
 	}
 
 	// drop kolet binary on machines
