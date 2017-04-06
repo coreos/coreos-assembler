@@ -36,7 +36,6 @@ import (
 )
 
 var (
-	preReleaseDryRun bool
 	cmdPreRelease    = &cobra.Command{
 		Use:   "pre-release [options]",
 		Short: "Run pre-release steps for CoreOS",
@@ -51,8 +50,6 @@ var (
 
 func init() {
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
-	cmdPreRelease.Flags().BoolVarP(&preReleaseDryRun, "dry-run", "n", false,
-		"perform a trial run, do not make changes")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
 		"verify-key", "", "PGP public key to be used in verifying download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 
