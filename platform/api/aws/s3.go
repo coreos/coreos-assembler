@@ -17,7 +17,6 @@ package aws
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -37,12 +36,8 @@ const (
 )
 
 // UploadObject uploads an object to S3
-func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force bool) error {
+func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
-	var expireTime *time.Time
-	if expire {
-		expireTime = aws.Time(time.Now().Add(10 * 24 * time.Hour))
-	}
 
 	if !force {
 		_, err := a.s3.HeadObject(&s3.HeadObjectInput{
@@ -58,7 +53,6 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force 
 				return fmt.Errorf("unexpected error heading object s3://%v/%v: %v", bucket, path, err)
 			}
 		} else {
-			// TODO, maybe we should bump expiration here
 			plog.Infof("skipping upload since force was not set: s3://%v/%v", bucket, path)
 			return nil
 		}
@@ -68,7 +62,6 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force 
 		Body:    r,
 		Bucket:  aws.String(bucket),
 		Key:     aws.String(path),
-		Expires: expireTime,
 	})
 	if err != nil {
 		return fmt.Errorf("error uploading s3://%v/%v: %v", bucket, path, err)

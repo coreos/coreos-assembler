@@ -49,7 +49,6 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadImageName      string
 	uploadBoard          string
 	uploadFile           string
-	uploadExpireObject   bool
 	uploadForce          bool
 	uploadSourceSnapshot string
 	uploadObjectFormat   aws.EC2ImageFormat
@@ -68,7 +67,6 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
 		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
-	cmdUpload.Flags().BoolVar(&uploadExpireObject, "expire-object", true, "expire the S3 object in 10 days")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
@@ -180,7 +178,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		}
 		defer f.Close()
 
-		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadExpireObject, uploadForce)
+		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadForce)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
 			os.Exit(1)

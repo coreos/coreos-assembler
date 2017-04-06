@@ -300,7 +300,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 	s3ObjectURL := fmt.Sprintf("s3://%s/%s", cloud.Bucket, s3ObjectPath)
 
 	plog.Printf("Creating S3 object %v...", s3ObjectURL)
-	err = api.UploadObject(f, cloud.Bucket, s3ObjectPath, true, false)
+	err = api.UploadObject(f, cloud.Bucket, s3ObjectPath, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error uploading: %v", err)
 	}
