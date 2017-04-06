@@ -66,12 +66,12 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	client, err := auth.GoogleClient()
 	if err != nil {
-		return err
+		plog.Fatal(err)
 	}
 
 	src, err := storage.NewBucket(client, spec.SourceURL())
 	if err != nil {
-		return err
+		plog.Fatal(err)
 	}
 
 	if err := src.Fetch(ctx); err != nil {
@@ -87,7 +87,7 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	plog.Printf("Running Azure pre-release...")
 
 	if err := azurePreRelease(ctx, client, src, &spec); err != nil {
-		return err
+		plog.Fatal(err)
 	}
 
 	plog.Printf("Pre-release complete, run `plume release` to finish.")
