@@ -299,16 +299,30 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 	s3ObjectPath := fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(spec.AWS.Image, filepath.Ext(spec.AWS.Image)))
 	s3ObjectURL := fmt.Sprintf("s3://%s/%s", cloud.Bucket, s3ObjectPath)
 
-	plog.Printf("Creating S3 object %v...", s3ObjectURL)
-	err = api.UploadObject(f, cloud.Bucket, s3ObjectPath, false)
+	snapshot, err := api.FindSnapshot(imageName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error uploading: %v", err)
+		return nil, nil, fmt.Errorf("unable to check for snapshot: %v", err)
 	}
 
-	plog.Printf("Creating EBS snapshot...")
-	snapshot, err := api.CreateSnapshot(imageName, s3ObjectURL, aws.EC2ImageFormatVmdk)
+	if snapshot == nil {
+		plog.Printf("Creating S3 object %v...", s3ObjectURL)
+		err = api.UploadObject(f, cloud.Bucket, s3ObjectPath, false)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error uploading: %v", err)
+		}
+
+		plog.Printf("Creating EBS snapshot...")
+		snapshot, err = api.CreateSnapshot(imageName, s3ObjectURL, aws.EC2ImageFormatVmdk)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to create snapshot: %v", err)
+		}
+	}
+
+	// delete unconditionally to avoid leaks after a restart
+	plog.Printf("Deleting S3 object %v...", s3ObjectURL)
+	err = api.DeleteObject(cloud.Bucket, s3ObjectPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to create snapshot: %v", err)
+		return nil, nil, fmt.Errorf("Error deleting S3 object: %v", err)
 	}
 
 	plog.Printf("Creating AMIs from %v...", snapshot.SnapshotID)

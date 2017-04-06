@@ -87,20 +87,8 @@ type Snapshot struct {
 	SnapshotID string
 }
 
-// CreateSnapshot creates an AWS Snapshot
-func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
-	if format == "" {
-		format = EC2ImageFormatVmdk
-	}
-	s3url, err := url.Parse(sourceURL)
-	if err != nil {
-		return nil, err
-	}
-	if s3url.Scheme != "s3" {
-		return nil, fmt.Errorf("source must have a 's3://' scheme, not: '%v://'", s3url.Scheme)
-	}
-	s3key := strings.TrimPrefix(s3url.Path, "/")
-
+// Look up a Snapshot by name. Return nil if not found.
+func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 	// Look for an existing snapshot with this image name.
 	snapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
 		Filters: []*ec2.Filter{
@@ -123,7 +111,7 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 	}
 	if len(snapshotRes.Snapshots) == 1 {
 		snapshotID := *snapshotRes.Snapshots[0].SnapshotId
-		plog.Infof("found existing snapshot %v, reusing", snapshotID)
+		plog.Infof("found existing snapshot %v", snapshotID)
 		return &Snapshot{
 			SnapshotID: snapshotID,
 		}, nil
@@ -163,29 +151,51 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 		}
 		snapshotTaskID = *task.ImportTaskId
 	}
-
 	if snapshotTaskID == "" {
-		importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
-			RoleName:    aws.String(vmImportRole),
-			Description: aws.String(imageName),
-			DiskContainer: &ec2.SnapshotDiskContainer{
-				// TODO(euank): allow s3 source / local file -> s3 source
-				UserBucket: &ec2.UserBucket{
-					S3Bucket: aws.String(s3url.Host),
-					S3Key:    aws.String(s3key),
-				},
-				Format: aws.String(string(format)),
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
-		}
-		snapshotTaskID = *importRes.ImportTaskId
-		plog.Infof("created snapshot import task %v", snapshotTaskID)
-	} else {
-		plog.Infof("found existing snapshot import task %v, reusing", snapshotTaskID)
+		return nil, nil
 	}
 
+	plog.Infof("found existing snapshot import task %v", snapshotTaskID)
+	return a.finishSnapshotTask(snapshotTaskID, imageName)
+}
+
+// CreateSnapshot creates an AWS Snapshot
+func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
+	if format == "" {
+		format = EC2ImageFormatVmdk
+	}
+	s3url, err := url.Parse(sourceURL)
+	if err != nil {
+		return nil, err
+	}
+	if s3url.Scheme != "s3" {
+		return nil, fmt.Errorf("source must have a 's3://' scheme, not: '%v://'", s3url.Scheme)
+	}
+	s3key := strings.TrimPrefix(s3url.Path, "/")
+
+	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
+		RoleName:    aws.String(vmImportRole),
+		Description: aws.String(imageName),
+		DiskContainer: &ec2.SnapshotDiskContainer{
+			// TODO(euank): allow s3 source / local file -> s3 source
+			UserBucket: &ec2.UserBucket{
+				S3Bucket: aws.String(s3url.Host),
+				S3Key:    aws.String(s3key),
+			},
+			Format: aws.String(string(format)),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
+	}
+
+	plog.Infof("created snapshot import task %v", *importRes.ImportTaskId)
+	return a.finishSnapshotTask(*importRes.ImportTaskId, imageName)
+}
+
+// Wait on a snapshot import task, post-process the snapshot (e.g. adding
+// tags), and return a Snapshot.
+func (a *API) finishSnapshotTask(snapshotTaskID, imageName string) (*Snapshot, error) {
 	snapshotDone := func(snapshotTaskID string) (bool, string, error) {
 		taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{
 			ImportTaskIds: []*string{aws.String(snapshotTaskID)},
@@ -220,6 +230,7 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 	var snapshotID string
 	for {
 		var done bool
+		var err error
 		done, snapshotID, err = snapshotDone(snapshotTaskID)
 		if err != nil {
 			return nil, err
@@ -230,7 +241,8 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 		time.Sleep(20 * time.Second)
 	}
 
-	err = a.CreateTags([]string{snapshotID}, map[string]string{
+	// post-process
+	err := a.CreateTags([]string{snapshotID}, map[string]string{
 		"Name": imageName,
 	})
 	if err != nil {

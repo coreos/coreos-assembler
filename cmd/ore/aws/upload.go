@@ -49,6 +49,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadImageName      string
 	uploadBoard          string
 	uploadFile           string
+	uploadDeleteObject   bool
 	uploadForce          bool
 	uploadSourceSnapshot string
 	uploadObjectFormat   aws.EC2ImageFormat
@@ -67,6 +68,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
 		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
+	cmdUpload.Flags().BoolVar(&uploadDeleteObject, "delete-object", true, "delete uploaded S3 object after snapshot is created")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
@@ -170,7 +172,23 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	s3BucketName := s3URL.Host
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
-	if uploadSourceObject == "" && uploadSourceSnapshot == "" {
+	// if no snapshot was specified, check for an existing one or a
+	// snapshot task in progress
+	sourceSnapshot := uploadSourceSnapshot
+	if sourceSnapshot == "" {
+		snapshot, err := API.FindSnapshot(imageName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed finding snapshot: %v\n", err)
+			os.Exit(1)
+		}
+		if snapshot != nil {
+			sourceSnapshot = snapshot.SnapshotID
+		}
+	}
+
+	// if there's no existing snapshot and no provided S3 object to
+	// make one from, upload to S3
+	if uploadSourceObject == "" && sourceSnapshot == "" {
 		f, err := os.Open(uploadFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
@@ -185,8 +203,8 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	sourceSnapshot := uploadSourceSnapshot
-	if uploadSourceSnapshot == "" {
+	// if we don't already have a snapshot, make one
+	if sourceSnapshot == "" {
 		snapshot, err := API.CreateSnapshot(imageName, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
@@ -195,6 +213,17 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		sourceSnapshot = snapshot.SnapshotID
 	}
 
+	// if delete is enabled and we created the snapshot from an S3
+	// object that we also created (perhaps in a previous run), delete
+	// the S3 object
+	if uploadSourceObject == "" && uploadSourceSnapshot == "" && uploadDeleteObject {
+		if err := API.DeleteObject(s3BucketName, s3ObjectPath); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to delete object: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// create AMIs and grant permissions
 	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
