@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/qemu"
@@ -270,12 +269,12 @@ func dockerNetwork(c cluster.TestCluster) error {
 // https://github.com/coreos/docker/pull/31
 func dockerOldClient(c cluster.TestCluster) error {
 	if _, ok := c.Cluster.(*qemu.Cluster); ok && kola.QEMUOptions.Board != "amd64-usr" {
-		return skip.Skip("Only applicable to amd64")
+		c.Skip("Only applicable to amd64")
 	}
 
 	oldclient := "/usr/lib/kola/amd64/docker-1.9.1"
 	if _, err := os.Stat(oldclient); err != nil {
-		return skip.Skip(fmt.Sprintf("Can't find old docker client to test: %v", err))
+		c.Skipf("Can't find old docker client to test: %v", err)
 	}
 	c.DropFile(oldclient)
 

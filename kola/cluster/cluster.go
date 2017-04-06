@@ -19,17 +19,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/mantle/kola/skip"
+	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
 )
 
 // TestCluster embedds a Cluster to provide platform independant helper
 // methods.
 type TestCluster struct {
-	Name        string
-	NativeFuncs []string
-	Options     map[string]string
+	*harness.H
 	platform.Cluster
+	NativeFuncs []string
 }
 
 // RunNative runs a registered NativeFunc on a remote machine
@@ -49,7 +48,7 @@ func (t *TestCluster) RunNative(funcName string, m platform.Machine) error {
 
 	defer session.Close()
 
-	b, err := session.CombinedOutput(fmt.Sprintf("./kolet run %q %q", t.Name, funcName))
+	b, err := session.CombinedOutput(fmt.Sprintf("./kolet run %q %q", t.Name(), funcName))
 	if err != nil {
 		return fmt.Errorf("%s", b) // return function std output, not the exit status
 	}
@@ -79,29 +78,4 @@ func (t *TestCluster) DropFile(localPath string) error {
 		}
 	}
 	return nil
-}
-
-// Fatal, Fatalf, Skip, and Skipf partially implement testing.TB.
-
-func (t *TestCluster) err(e error) {
-	panic(e)
-}
-
-func (t *TestCluster) Fatal(e error) {
-	t.err(e)
-}
-
-func (t *TestCluster) Fatalf(format string, args ...interface{}) {
-	t.err(fmt.Errorf(format, args...))
-}
-func (t *TestCluster) skip(why string) {
-	panic(skip.Skip(why))
-}
-
-func (t *TestCluster) Skip(args ...interface{}) {
-	t.skip(fmt.Sprint(args...))
-}
-
-func (t *TestCluster) Skipf(format string, args ...interface{}) {
-	t.skip(fmt.Sprintf(format, args...))
 }

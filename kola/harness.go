@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/kola/skip"
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
@@ -49,20 +48,7 @@ var (
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
-
-	testOptions = make(map[string]string, 0)
 )
-
-// RegisterTestOption registers any options that need visibility inside
-// a Test. Panics if existing option is already registered. Each test
-// has global view of options.
-func RegisterTestOption(name, option string) {
-	_, ok := testOptions[name]
-	if ok {
-		panic("test option already registered with same name")
-	}
-	testOptions[name] = option
-}
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -183,10 +169,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 			splay := time.Duration(rand.Int63n(max))
 			time.Sleep(splay)
 
-			err := RunTest(test, pltfrm, outputDir)
-			if _, ok := err.(skip.Skip); ok {
-				h.Skip(err)
-			} else if err != nil {
+			if err := runTest(h, test, pltfrm); err != nil {
 				h.Error(err)
 			}
 		}
@@ -261,21 +244,13 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 	return version, nil
 }
 
-// RunTest is a harness for running a single test. It is used by
-// RunTests but can also be used directly by binaries that aim to run a
-// single test. Using RunTest directly means that TestCluster flags used
-// to filter out tests such as 'Platforms' or 'MinVersion'
-// are not respected.
+// runTest is a harness for running a single test.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
-func RunTest(t *register.Test, pltfrm, outputDir string) (err error) {
+func runTest(h *harness.H, t *register.Test, pltfrm string) (err error) {
 	var c platform.Cluster
 
-	testDir := filepath.Join(outputDir, t.Name)
-	if err := os.MkdirAll(testDir, 0777); err != nil {
-		return err
-	}
-
+	testDir := h.OutputDir()
 	switch pltfrm {
 	case "qemu":
 		c, err = qemu.NewCluster(&QEMUOptions, testDir)
@@ -316,18 +291,11 @@ func RunTest(t *register.Test, pltfrm, outputDir string) (err error) {
 		names = append(names, k)
 	}
 
-	// prevent unsafe access if tests ever become parallel and access
-	tempTestOptions := make(map[string]string, 0)
-	for k, v := range testOptions {
-		tempTestOptions[k] = v
-	}
-
 	// Cluster -> TestCluster
 	tcluster := cluster.TestCluster{
-		Name:        t.Name,
-		NativeFuncs: names,
-		Options:     tempTestOptions,
+		H:           h,
 		Cluster:     c,
+		NativeFuncs: names,
 	}
 
 	// drop kolet binary on machines
