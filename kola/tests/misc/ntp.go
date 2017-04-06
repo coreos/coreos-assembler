@@ -50,8 +50,6 @@ func NTP(c cluster.TestCluster) error {
 		return fmt.Errorf("Bad network config:\n%s", out)
 	}
 
-	plog.Info("Waiting for systemd-timesyncd.service")
-
 	checker := func() error {
 		out, err = m.SSH("systemctl status systemd-timesyncd.service")
 		if err != nil {
@@ -62,13 +60,12 @@ func NTP(c cluster.TestCluster) error {
 			return fmt.Errorf("unexpected systemd-timesyncd status: %v", out)
 		}
 
-		plog.Info("systemd-timesyncd.service is working!")
 		return nil
 	}
 
 	err = util.Retry(60, 1*time.Second, checker)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return nil
