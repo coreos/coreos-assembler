@@ -23,8 +23,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
@@ -32,7 +30,6 @@ import (
 )
 
 var (
-	plog        = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/flannel")
 	flannelConf = `{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -111,7 +108,7 @@ func mach2bip(m platform.Machine, ifname string) (string, error) {
 }
 
 // ping sends icmp packets from machine a to b using the ping tool.
-func ping(a, b platform.Machine, ifname string) error {
+func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) error {
 	srcip, err := mach2bip(a, ifname)
 	if err != nil {
 		return fmt.Errorf("failed to get docker bridge ip #1: %v", err)
@@ -128,7 +125,7 @@ func ping(a, b platform.Machine, ifname string) error {
 		return fmt.Errorf("bridge ips (%s %s) not in flannel network (%s)", srcip, dstip, ipnet)
 	}
 
-	plog.Infof("ping from %s(%s) to %s(%s)", a.ID(), srcip, b.ID(), dstip)
+	c.Logf("ping from %s(%s) to %s(%s)", a.ID(), srcip, b.ID(), dstip)
 
 	cmd := fmt.Sprintf("ping -c 10 -I %s %s", srcip, dstip)
 	out, err := a.SSH(cmd)
@@ -148,7 +145,7 @@ func udp(c cluster.TestCluster) error {
 		return fmt.Errorf("cluster health: %v", err)
 	}
 
-	return ping(machs[0], machs[2], "flannel0")
+	return ping(c, machs[0], machs[2], "flannel0")
 }
 
 // VXLAN tests that flannel can send packets using the vxlan backend.
@@ -160,5 +157,5 @@ func vxlan(c cluster.TestCluster) error {
 		return fmt.Errorf("cluster health: %v", err)
 	}
 
-	return ping(machs[0], machs[2], "flannel.1")
+	return ping(c, machs[0], machs[2], "flannel.1")
 }

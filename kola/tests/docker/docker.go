@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
@@ -32,10 +31,6 @@ import (
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/qemu"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/docker")
 )
 
 func init() {
@@ -133,7 +128,7 @@ func genDockerContainer(m platform.Machine, name string, binnames []string) erro
 func dockerResources(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
-	plog.Debug("creating sleep container")
+	c.Log("creating sleep container")
 
 	if err := genDockerContainer(m, "sleep", []string{"sleep"}); err != nil {
 		return err
@@ -171,7 +166,7 @@ func dockerResources(c cluster.TestCluster) error {
 		dCmd("--memory-swappiness=50"),
 		dCmd("--shm-size=1m"),
 	} {
-		plog.Debugf("Executing %q", dockerCmd)
+		c.Logf("Executing %q", dockerCmd)
 
 		// lol closures
 		cmd := dockerCmd
@@ -198,7 +193,7 @@ func dockerNetwork(c cluster.TestCluster) error {
 	machines := c.Machines()
 	src, dest := machines[0], machines[1]
 
-	plog.Debug("creating ncat containers")
+	c.Log("creating ncat containers")
 
 	if err := genDockerContainer(src, "ncat", []string{"ncat"}); err != nil {
 		return err
@@ -237,7 +232,6 @@ func dockerNetwork(c cluster.TestCluster) error {
 				return err
 			}
 
-			plog.Debug("waiting for server to be ready")
 			select {
 			case <-c.Done():
 				return fmt.Errorf("timeout waiting for server")
