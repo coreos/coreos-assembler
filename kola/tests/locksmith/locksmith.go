@@ -17,6 +17,7 @@ package locksmith
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -138,6 +139,8 @@ func locksmithCluster(c cluster.TestCluster) error {
 			output, err := m.SSH(cmd)
 			if _, ok := err.(*ssh.ExitMissingError); ok {
 				err = nil // A terminated session is perfectly normal during reboot.
+			} else if err == io.EOF {
+				err = nil // Sometimes copying command output returns EOF here.
 			}
 			if err != nil {
 				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
