@@ -32,6 +32,13 @@ type TestCluster struct {
 	NativeFuncs []string
 }
 
+// Run runs f as a subtest and reports whether f succeeded.
+func (t *TestCluster) Run(name string, f func(c TestCluster)) bool {
+	return t.H.Run(name, func(h *harness.H) {
+		f(TestCluster{H: h, Cluster: t.Cluster})
+	})
+}
+
 // RunNative runs a registered NativeFunc on a remote machine
 func (t *TestCluster) RunNative(funcName string, m platform.Machine) error {
 	// scp and execute kolet on remote machine
