@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/network/omaha"
-	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
@@ -76,7 +75,6 @@ func OmahaPing(c cluster.TestCluster) error {
 
 	select {
 	case <-tc:
-		platform.Manhole(m)
 		return errors.New("timed out waiting for omaha ping")
 	case <-svc.ping:
 	}
