@@ -1,23 +1,15 @@
 package coretest
 
 import (
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 )
-
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/coretest")
 
 // run various native functions that only require a single machine
 func LocalTests(c cluster.TestCluster) error {
 	tests := c.ListNativeFunctions()
 	for _, name := range tests {
-		plog.Noticef("running %v...", name)
-		err := c.RunNative(name, c.Machines()[0])
-		if err != nil {
-			return err
-		}
+		c.RunNative(name, c.Machines()[0])
 	}
 	return nil
 }
@@ -31,11 +23,7 @@ func ClusterTests(c cluster.TestCluster) error {
 
 	tests := c.ListNativeFunctions()
 	for _, name := range tests {
-		plog.Noticef("running %v...", name)
-		err := c.RunNative(name, c.Machines()[0])
-		if err != nil {
-			return err
-		}
+		c.RunNative(name, c.Machines()[0])
 	}
 	return nil
 
@@ -45,11 +33,7 @@ func ClusterTests(c cluster.TestCluster) error {
 func InternetTests(c cluster.TestCluster) error {
 	tests := c.ListNativeFunctions()
 	for _, name := range tests {
-		plog.Noticef("running %v...", name)
-		err := c.RunNative(name, c.Machines()[0])
-		if err != nil {
-			return err
-		}
+		c.RunNative(name, c.Machines()[0])
 	}
 	return nil
 }

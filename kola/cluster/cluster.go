@@ -40,31 +40,30 @@ func (t *TestCluster) Run(name string, f func(c TestCluster)) bool {
 }
 
 // RunNative runs a registered NativeFunc on a remote machine
-func (t *TestCluster) RunNative(funcName string, m platform.Machine) error {
-	// scp and execute kolet on remote machine
-	client, err := m.SSHClient()
-	if err != nil {
-		return fmt.Errorf("kolet SSH client: %v", err)
-	}
+func (t *TestCluster) RunNative(funcName string, m platform.Machine) bool {
+	command := fmt.Sprintf("./kolet run %q %q", t.Name(), funcName)
+	return t.Run(funcName, func(c TestCluster) {
+		client, err := m.SSHClient()
+		if err != nil {
+			c.Fatalf("kolet SSH client: %v", err)
+		}
+		defer client.Close()
 
-	defer client.Close()
+		session, err := client.NewSession()
+		if err != nil {
+			c.Fatalf("kolet SSH session: %v", err)
+		}
+		defer session.Close()
 
-	session, err := client.NewSession()
-	if err != nil {
-		return fmt.Errorf("kolet SSH session: %v", err)
-	}
-
-	defer session.Close()
-
-	b, err := session.CombinedOutput(fmt.Sprintf("./kolet run %q %q", t.Name(), funcName))
-	b = bytes.TrimSpace(b)
-	if len(b) > 0 {
-		t.Logf("kolet:\n%s", b)
-	}
-	if err != nil {
-		return fmt.Errorf("kolet: %v", err)
-	}
-	return nil
+		b, err := session.CombinedOutput(command)
+		b = bytes.TrimSpace(b)
+		if len(b) > 0 {
+			t.Logf("kolet:\n%s", b)
+		}
+		if err != nil {
+			c.Errorf("kolet: %v", err)
+		}
+	})
 }
 
 // ListNativeFunctions returns a slice of function names that can be executed
