@@ -178,6 +178,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
 			os.Exit(1)
 		}
+		defer f.Close()
 
 		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadExpireObject, uploadForce)
 		if err != nil {
