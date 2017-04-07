@@ -338,40 +338,41 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	imageID, err := a.findImageID(name)
-	if err != nil {
-		return "", err
-	}
-	if imageID != "" {
-		plog.Infof("found existing HVM image %v, reusing", imageID)
-		return imageID, nil
-	}
 	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM)
 	params.EnaSupport = aws.Bool(true)
 	params.SriovNetSupport = aws.String("simple")
-	res, err := a.ec2.RegisterImage(params)
-	if err != nil {
-		return "", fmt.Errorf("error creating hvm AMI: %v", err)
-	}
-	return *res.ImageId, nil
+	return a.createImage(params)
 }
 
 func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
-	imageID, err := a.findImageID(name)
-	if err != nil {
-		return "", err
-	}
-	if imageID != "" {
-		plog.Infof("found existing PV image %v, reusing", imageID)
-		return imageID, nil
-	}
 	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
+	return a.createImage(params)
+}
+
+func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	res, err := a.ec2.RegisterImage(params)
-	if err != nil {
-		return "", fmt.Errorf("error creating paravirtual AMI: %v", err)
+
+	if err == nil {
+		return *res.ImageId, nil
 	}
-	return *res.ImageId, nil
+	if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
+		// The AMI already exists. Get its ID. Due to races, this
+		// may take several attempts.
+		for {
+			imageID, err := a.findImageID(*params.Name)
+			if err != nil {
+				return "", err
+			}
+			if imageID != "" {
+				plog.Infof("found existing image %v, reusing", imageID)
+				return imageID, nil
+			}
+			plog.Debugf("failed to locate image %q, retrying...", *params.Name)
+			time.Sleep(10 * time.Second)
+		}
+	}
+	return "", fmt.Errorf("error creating AMI: %v", err)
 }
 
 const diskSize = 8 // GB
