@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,8 +50,12 @@ func (t *TestCluster) RunNative(funcName string, m platform.Machine) error {
 	defer session.Close()
 
 	b, err := session.CombinedOutput(fmt.Sprintf("./kolet run %q %q", t.Name(), funcName))
+	b = bytes.TrimSpace(b)
+	if len(b) > 0 {
+		t.Logf("kolet:\n%s", b)
+	}
 	if err != nil {
-		return fmt.Errorf("%s", b) // return function std output, not the exit status
+		return fmt.Errorf("kolet: %v", err)
 	}
 	return nil
 }

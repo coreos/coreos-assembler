@@ -24,22 +24,29 @@ import (
 	"github.com/coreos/mantle/kola/register"
 
 	// Register any tests that we may wish to execute in kolet.
-	_ "github.com/coreos/mantle/kola"
+	_ "github.com/coreos/mantle/kola/registry"
 )
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kolet")
 
 	root = &cobra.Command{
-		Use:   "kolet",
+		Use:   "kolet run [test] [func]",
 		Short: "Native code runner for kola",
+		Run:   run,
 	}
 
 	cmdRun = &cobra.Command{
-		Use:   "run",
+		Use:   "run [test] [func]",
 		Short: "Run a given test's native function",
+		Run:   run,
 	}
 )
+
+func run(cmd *cobra.Command, args []string) {
+	cmd.Usage()
+	os.Exit(2)
+}
 
 func main() {
 	for testName, testObj := range register.Tests {
@@ -47,7 +54,8 @@ func main() {
 			continue
 		}
 		testCmd := &cobra.Command{
-			Use: testName,
+			Use: testName + " [func]",
+			Run: run,
 		}
 		for nativeName := range testObj.NativeFuncs {
 			nativeFunc := testObj.NativeFuncs[nativeName]
@@ -73,9 +81,4 @@ func main() {
 	root.AddCommand(cmdRun)
 
 	cli.Execute(root)
-
-	// nativeRun always exits so if we are here it we probably just
-	// dumped usage/help info and stopped. Must exit with non-zero
-	// to prevent bugs from creating false-positives in kola.
-	os.Exit(2)
 }
