@@ -31,7 +31,6 @@ import (
 )
 
 var (
-	releaseBatch  bool
 	releaseDryRun bool
 	cmdRelease    = &cobra.Command{
 		Use:   "release [options]",
