@@ -161,7 +161,7 @@ func Proxy(c cluster.TestCluster) error {
 	}
 
 	if !bytes.Equal(status, []byte("active")) {
-		return fmt.Errorf("unit not active")
+		return fmt.Errorf("unit not active: %v", status)
 	}
 
 	return nil
