@@ -547,6 +547,19 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		}
 	}
 
+	// The AMI created by CopyImage doesn't immediately appear in
+	// DescribeImagesOutput, and CopyImage doesn't enforce the
+	// constraint that multiple images cannot have the same name.
+	// As a result we could have created a duplicate image after
+	// losing a race with a CopyImage task created by a previous run.
+	// Don't try to clean this up automatically for now, but at least
+	// detect it so plume pre-release doesn't leave any surprises for
+	// plume release.
+	_, err = a.FindImage(name)
+	if err != nil {
+		return "", fmt.Errorf("checking for duplicate images: %v", err)
+	}
+
 	return imageID, nil
 }
 
