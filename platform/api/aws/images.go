@@ -42,6 +42,7 @@ const (
 )
 
 // TODO, these can be derived at runtime
+// these are pv-grub-hd0_1.04-x86_64
 var akis = map[string]string{
 	"us-east-1":      "aki-919dcaf8",
 	"us-east-2":      "aki-da055ebf",
