@@ -360,7 +360,7 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 		// The AMI already exists. Get its ID. Due to races, this
 		// may take several attempts.
 		for {
-			imageID, err := a.findImageID(*params.Name)
+			imageID, err := a.FindImage(*params.Name)
 			if err != nil {
 				return "", err
 			}
@@ -484,7 +484,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 }
 
 func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission) (string, error) {
-	imageID, err := a.findImageID(name)
+	imageID, err := a.FindImage(name)
 	if err != nil {
 		return "", err
 	}
@@ -550,7 +550,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 }
 
 // Find an image we own with the specified name. Return ID or "".
-func (a *API) findImageID(name string) (string, error) {
+func (a *API) FindImage(name string) (string, error) {
 	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
@@ -580,4 +580,47 @@ func (a *API) describeImage(imageID string) (*ec2.Image, error) {
 		return nil, fmt.Errorf("couldn't describe image: %v", err)
 	}
 	return describeRes.Images[0], nil
+}
+
+// Grant everyone launch permission on the specified image and create-volume
+// permission on its underlying snapshot.
+func (a *API) PublishImage(imageID string) error {
+	// snapshot create-volume permission
+	image, err := a.describeImage(imageID)
+	if err != nil {
+		return err
+	}
+	snapshotID := image.BlockDeviceMappings[0].Ebs.SnapshotId
+	_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
+		Attribute:  aws.String("createVolumePermission"),
+		SnapshotId: snapshotID,
+		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
+			Add: []*ec2.CreateVolumePermission{
+				&ec2.CreateVolumePermission{
+					Group: aws.String("all"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("couldn't grant create volume permission on %v: %v", snapshotID, err)
+	}
+
+	// image launch permission
+	_, err = a.ec2.ModifyImageAttribute(&ec2.ModifyImageAttributeInput{
+		Attribute: aws.String("launchPermission"),
+		ImageId:   aws.String(imageID),
+		LaunchPermission: &ec2.LaunchPermissionModifications{
+			Add: []*ec2.LaunchPermission{
+				&ec2.LaunchPermission{
+					Group: aws.String("all"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("couldn't grant launch permission on %v: %v", imageID, err)
+	}
+
+	return nil
 }
