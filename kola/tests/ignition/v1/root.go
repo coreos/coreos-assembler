@@ -15,8 +15,6 @@
 package ignition
 
 import (
-	"fmt"
-
 	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -106,11 +104,11 @@ func testRoot(c cluster.TestCluster, fs string) error {
 
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
 	if err != nil {
-		return fmt.Errorf("failed to run findmnt: %s: %v", out, err)
+		c.Fatalf("failed to run findmnt: %s: %v", out, err)
 	}
 
 	if string(out) != fs {
-		return fmt.Errorf("root wasn't correctly reformatted:\n%s", out)
+		c.Fatalf("root wasn't correctly reformatted:\n%s", out)
 	}
 
 	return nil
