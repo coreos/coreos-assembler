@@ -108,7 +108,7 @@ func mach2bip(m platform.Machine, ifname string) (string, error) {
 }
 
 // ping sends icmp packets from machine a to b using the ping tool.
-func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) error {
+func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) {
 	srcip, err := mach2bip(a, ifname)
 	if err != nil {
 		c.Fatalf("failed to get docker bridge ip #1: %v", err)
@@ -132,12 +132,10 @@ func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) error {
 	if err != nil {
 		c.Fatalf("ping from %s to %s failed: %s: %v", a.ID(), b.ID(), out, err)
 	}
-
-	return nil
 }
 
 // UDP tests that flannel can send packets using the udp backend.
-func udp(c cluster.TestCluster) error {
+func udp(c cluster.TestCluster) {
 	machs := c.Machines()
 
 	// Wait for all etcd cluster nodes to be ready.
@@ -145,11 +143,11 @@ func udp(c cluster.TestCluster) error {
 		c.Fatalf("cluster health: %v", err)
 	}
 
-	return ping(c, machs[0], machs[2], "flannel0")
+	ping(c, machs[0], machs[2], "flannel0")
 }
 
 // VXLAN tests that flannel can send packets using the vxlan backend.
-func vxlan(c cluster.TestCluster) error {
+func vxlan(c cluster.TestCluster) {
 	machs := c.Machines()
 
 	// Wait for all etcd cluster nodes to be ready.
@@ -157,5 +155,5 @@ func vxlan(c cluster.TestCluster) error {
 		c.Fatalf("cluster health: %v", err)
 	}
 
-	return ping(c, machs[0], machs[2], "flannel.1")
+	ping(c, machs[0], machs[2], "flannel.1")
 }

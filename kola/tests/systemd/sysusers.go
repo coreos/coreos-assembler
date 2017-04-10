@@ -44,7 +44,7 @@ func init() {
 // causing segfaults when those pointers are dereferenced.
 //
 // Tests: https://github.com/coreos/bugs/issues/1394
-func gshadowParser(c cluster.TestCluster) error {
+func gshadowParser(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	for _, cmd := range []string{
@@ -58,6 +58,4 @@ func gshadowParser(c cluster.TestCluster) error {
 			c.Fatalf("failed to run %q: output: %q status: %v", cmd, output, err)
 		}
 	}
-
-	return nil
 }

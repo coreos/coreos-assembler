@@ -48,7 +48,7 @@ func (ps *pingServer) Ping(req *omaha.Request, app *omaha.AppRequest) {
 	ps.ping <- struct{}{}
 }
 
-func OmahaPing(c cluster.TestCluster) error {
+func OmahaPing(c cluster.TestCluster) {
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatal("test only works in qemu")
@@ -76,6 +76,4 @@ func OmahaPing(c cluster.TestCluster) error {
 		c.Fatal("timed out waiting for omaha ping")
 	case <-svc.ping:
 	}
-
-	return nil
 }

@@ -54,7 +54,7 @@ func init() {
 	})
 }
 
-func Discovery(c cluster.TestCluster) error {
+func Discovery(c cluster.TestCluster) {
 	var err error
 
 	// NOTE(pb): this check makes the next code somewhat redundant
@@ -71,6 +71,4 @@ func Discovery(c cluster.TestCluster) error {
 	if err = checkKeys(c, keyMap); err != nil {
 		c.Fatalf("failed to check keys: %v", err)
 	}
-
-	return nil
 }

@@ -86,7 +86,7 @@ func init() {
 	})
 }
 
-func groups(c cluster.TestCluster) error {
+func groups(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	tests := []struct {
@@ -118,11 +118,9 @@ func groups(c cluster.TestCluster) error {
 			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
 		}
 	}
-
-	return nil
 }
 
-func users(c cluster.TestCluster) error {
+func users(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	tests := []struct {
@@ -168,8 +166,6 @@ func users(c cluster.TestCluster) error {
 			c.Errorf("%q wasn't correctly created: got %q:%q, expected %q:%q", t.user, fields[0], fields[1], t.user, t.shadowPassword)
 		}
 	}
-
-	return nil
 }
 
 func getent(m platform.Machine, database string, entry string) (string, error) {

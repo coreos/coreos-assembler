@@ -31,7 +31,7 @@ func init() {
 	})
 }
 
-func CheckUserShells(c cluster.TestCluster) error {
+func CheckUserShells(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	var badusers []string
 
@@ -67,6 +67,4 @@ func CheckUserShells(c cluster.TestCluster) error {
 	if len(badusers) != 0 {
 		c.Fatalf("Invalid users: %v", badusers)
 	}
-
-	return nil
 }

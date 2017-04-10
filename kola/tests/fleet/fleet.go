@@ -119,7 +119,7 @@ func init() {
 }
 
 // Test fleet running through an etcd2 proxy.
-func Proxy(c cluster.TestCluster) error {
+func Proxy(c cluster.TestCluster) {
 	discoveryURL, _ := c.GetDiscoveryURL(1)
 
 	master, err := c.NewMachine(strings.Replace(masterconf, "$discovery", discoveryURL, -1))
@@ -159,6 +159,4 @@ func Proxy(c cluster.TestCluster) error {
 	if !bytes.Equal(status, []byte("active")) {
 		c.Fatalf("unit not active: %v", status)
 	}
-
-	return nil
 }

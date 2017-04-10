@@ -116,7 +116,7 @@ func init() {
 	})
 }
 
-func locksmithCluster(c cluster.TestCluster) error {
+func locksmithCluster(c cluster.TestCluster) {
 	machs := c.Machines()
 
 	// Wait for all etcd cluster nodes to be ready.
@@ -157,10 +157,9 @@ func locksmithCluster(c cluster.TestCluster) error {
 	if err := wg.Wait(); err != nil {
 		c.Fatal(err)
 	}
-	return nil
 }
 
-func locksmithTLS(c cluster.TestCluster) error {
+func locksmithTLS(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	lCmd := "sudo locksmithctl --endpoint https://localhost:2379 --etcd-cafile /etc/ssl/etcd/ca-etcd-cert.pem --etcd-certfile /etc/ssl/etcd/locksmith-cert.pem --etcd-keyfile /etc/ssl/etcd/locksmith-key.pem "
 
@@ -211,5 +210,4 @@ func locksmithTLS(c cluster.TestCluster) error {
 	if err := util.Retry(10, 12*time.Second, checker); err != nil {
 		c.Fatal(err)
 	}
-	return nil
 }

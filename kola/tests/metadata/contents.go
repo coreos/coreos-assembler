@@ -71,7 +71,7 @@ func init() {
 	})
 }
 
-func verifyAWS(c cluster.TestCluster) error {
+func verifyAWS(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("coreos-metadata --version")
@@ -86,17 +86,17 @@ func verifyAWS(c cluster.TestCluster) error {
 	}
 
 	if version.LessThan(semver.Version{Minor: 3}) {
-		return verify(c, "COREOS_IPV4_LOCAL", "COREOS_IPV4_PUBLIC", "COREOS_HOSTNAME")
+		verify(c, "COREOS_IPV4_LOCAL", "COREOS_IPV4_PUBLIC", "COREOS_HOSTNAME")
 	} else {
-		return verify(c, "COREOS_EC2_IPV4_LOCAL", "COREOS_EC2_IPV4_PUBLIC", "COREOS_EC2_HOSTNAME")
+		verify(c, "COREOS_EC2_IPV4_LOCAL", "COREOS_EC2_IPV4_PUBLIC", "COREOS_EC2_HOSTNAME")
 	}
 }
 
-func verifyAzure(c cluster.TestCluster) error {
-	return verify(c, "COREOS_AZURE_IPV4_DYNAMIC", "COREOS_AZURE_IPV4_VIRTUAL")
+func verifyAzure(c cluster.TestCluster) {
+	verify(c, "COREOS_AZURE_IPV4_DYNAMIC", "COREOS_AZURE_IPV4_VIRTUAL")
 }
 
-func verify(c cluster.TestCluster, keys ...string) error {
+func verify(c cluster.TestCluster, keys ...string) {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("cat /run/metadata/coreos")
@@ -109,6 +109,4 @@ func verify(c cluster.TestCluster, keys ...string) error {
 			c.Errorf("%q wasn't found in %q", key, string(out))
 		}
 	}
-
-	return nil
 }

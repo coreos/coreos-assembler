@@ -40,6 +40,5 @@ func init() {
 	})
 }
 
-func empty(_ cluster.TestCluster) error {
-	return nil
+func empty(_ cluster.TestCluster) {
 }

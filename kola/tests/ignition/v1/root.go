@@ -91,15 +91,15 @@ func init() {
 	})
 }
 
-func btrfsRoot(c cluster.TestCluster) error {
-	return testRoot(c, "btrfs")
+func btrfsRoot(c cluster.TestCluster) {
+	testRoot(c, "btrfs")
 }
 
-func xfsRoot(c cluster.TestCluster) error {
-	return testRoot(c, "xfs")
+func xfsRoot(c cluster.TestCluster) {
+	testRoot(c, "xfs")
 }
 
-func testRoot(c cluster.TestCluster, fs string) error {
+func testRoot(c cluster.TestCluster, fs string) {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
@@ -110,6 +110,4 @@ func testRoot(c cluster.TestCluster, fs string) error {
 	if string(out) != fs {
 		c.Fatalf("root wasn't correctly reformatted:\n%s", out)
 	}
-
-	return nil
 }

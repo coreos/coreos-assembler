@@ -85,7 +85,7 @@ func init() {
 	})
 }
 
-func testNFS(c cluster.TestCluster, nfsversion int) error {
+func testNFS(c cluster.TestCluster, nfsversion int) {
 	m1, err := c.NewMachine(nfsserverconf.String())
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
@@ -143,16 +143,14 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 	if err != nil {
 		c.Fatalf("file %q does not exist", tmp)
 	}
-
-	return nil
 }
 
 // Test that the kernel NFS server and client work within CoreOS.
-func NFSv3(c cluster.TestCluster) error {
-	return testNFS(c, 3)
+func NFSv3(c cluster.TestCluster) {
+	testNFS(c, 3)
 }
 
 // Test that NFSv4 without security works on CoreOS.
-func NFSv4(c cluster.TestCluster) error {
-	return testNFS(c, 4)
+func NFSv4(c cluster.TestCluster) {
+	testNFS(c, 4)
 }

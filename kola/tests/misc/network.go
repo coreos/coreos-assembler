@@ -36,7 +36,7 @@ type listener struct {
 	port    string
 }
 
-func checkListeners(c cluster.TestCluster, protocol string, filter string, listeners []listener) error {
+func checkListeners(c cluster.TestCluster, protocol string, filter string, listeners []listener) {
 	m := c.Machines()[0]
 
 	var command string
@@ -77,10 +77,9 @@ func checkListeners(c cluster.TestCluster, protocol string, filter string, liste
 			}
 		}
 	}
-	return nil
 }
 
-func NetworkListeners(c cluster.TestCluster) error {
+func NetworkListeners(c cluster.TestCluster) {
 	TCPListeners := []listener{
 		{"systemd", "ssh"},
 	}
@@ -88,14 +87,6 @@ func NetworkListeners(c cluster.TestCluster) error {
 		{"systemd-n", "dhcpv6-client"},
 		{"systemd-n", "bootpc"},
 	}
-	err := checkListeners(c, "TCP", "TCP:LISTEN", TCPListeners)
-	if err != nil {
-		return err
-	}
-	err = checkListeners(c, "UDP", "", UDPListeners)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	checkListeners(c, "TCP", "TCP:LISTEN", TCPListeners)
+	checkListeners(c, "UDP", "", UDPListeners)
 }

@@ -47,7 +47,7 @@ func init() {
 
 // VerityVerify asserts that the filesystem mounted on /usr matches the
 // dm-verity hash that is embedded in the CoreOS kernel.
-func VerityVerify(c cluster.TestCluster) error {
+func VerityVerify(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// get offset of verity hash within kernel
@@ -92,13 +92,11 @@ func VerityVerify(c cluster.TestCluster) error {
 	if err != nil {
 		c.Fatalf("verity hash verification on %s failed: %v: %v", usrdev, verify, err)
 	}
-
-	return nil
 }
 
 // VerityCorruption asserts that a machine will fail to read a file from a
 // verify filesystem whose blocks have been modified.
-func VerityCorruption(c cluster.TestCluster) error {
+func VerityCorruption(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	// figure out if we are actually using verity
 	out, err := m.SSH("sudo veritysetup status usr")
@@ -165,6 +163,4 @@ func VerityCorruption(c cluster.TestCluster) error {
 	if fields[3] != "C" {
 		c.Fatalf("dmsetup status usr reports verity is valid after corruption!")
 	}
-
-	return nil
 }

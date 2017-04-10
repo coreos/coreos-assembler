@@ -41,7 +41,7 @@ func init() {
 	})
 }
 
-func runsOnce(c cluster.TestCluster) error {
+func runsOnce(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// remove file created by Ignition; fail if it doesn't exist
@@ -60,6 +60,4 @@ func runsOnce(c cluster.TestCluster) error {
 	if err == nil {
 		c.Fatalf("Flag file recreated after reboot")
 	}
-
-	return nil
 }

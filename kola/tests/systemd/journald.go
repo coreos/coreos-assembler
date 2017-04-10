@@ -60,20 +60,20 @@ func init() {
 }
 
 // systemd v225 includes the port in the journal file
-func journalRemote225(c cluster.TestCluster) error {
+func journalRemote225(c cluster.TestCluster) {
 	format := "/var/log/journal/remote/remote-%s:19531.journal"
-	return journalRemote(c, format)
+	journalRemote(c, format)
 }
 
 // systemd v229 has no port in the journal file
-func journalRemote229(c cluster.TestCluster) error {
+func journalRemote229(c cluster.TestCluster) {
 	format := "/var/log/journal/remote/remote-%s.journal"
-	return journalRemote(c, format)
+	journalRemote(c, format)
 }
 
 // JournalRemote tests that systemd-journal-remote can read log entries from
 // a systemd-journal-gatewayd server.
-func journalRemote(c cluster.TestCluster, journalFmt string) error {
+func journalRemote(c cluster.TestCluster, journalFmt string) {
 	// start gatewayd and log a message
 	gateway, err := c.NewMachine(gatewayconf.String())
 	if err != nil {
@@ -120,6 +120,4 @@ func journalRemote(c cluster.TestCluster, journalFmt string) error {
 	if err := util.Retry(5, 2*time.Second, journalReader); err != nil {
 		c.Fatal(err)
 	}
-
-	return nil
 }

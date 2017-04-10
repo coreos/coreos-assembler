@@ -125,7 +125,7 @@ func genDockerContainer(m platform.Machine, name string, binnames []string) erro
 // using a simple container, exercise various docker options that set resource
 // limits. also acts as a regression test for
 // https://github.com/coreos/bugs/issues/1246.
-func dockerResources(c cluster.TestCluster) error {
+func dockerResources(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	c.Log("creating sleep container")
@@ -188,11 +188,10 @@ func dockerResources(c cluster.TestCluster) error {
 	if err := wg.Wait(); err != nil {
 		c.Fatal(err)
 	}
-	return nil
 }
 
 // Ensure that docker containers can make network connections outside of the host
-func dockerNetwork(c cluster.TestCluster) error {
+func dockerNetwork(c cluster.TestCluster) {
 	machines := c.Machines()
 	src, dest := machines[0], machines[1]
 
@@ -262,12 +261,11 @@ func dockerNetwork(c cluster.TestCluster) error {
 	if err := worker.Parallel(ctx, listener, talker); err != nil {
 		c.Fatal(err)
 	}
-	return nil
 }
 
 // Regression test for https://github.com/coreos/bugs/issues/1569 and
 // https://github.com/coreos/docker/pull/31
-func dockerOldClient(c cluster.TestCluster) error {
+func dockerOldClient(c cluster.TestCluster) {
 	if _, ok := c.Cluster.(*qemu.Cluster); ok && kola.QEMUOptions.Board != "amd64-usr" {
 		c.Skip("Only applicable to amd64")
 	}
@@ -292,12 +290,10 @@ func dockerOldClient(c cluster.TestCluster) error {
 	if !bytes.Equal(output, []byte("IT WORKED")) {
 		c.Fatalf("unexpected result from docker client: %q", output)
 	}
-
-	return nil
 }
 
 // Regression test for userns breakage under 1.12
-func dockerUserns(c cluster.TestCluster) error {
+func dockerUserns(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "userns-test", []string{"echo", "sleep"}); err != nil {
@@ -336,13 +332,11 @@ func dockerUserns(c cluster.TestCluster) error {
 	if mapParts[0] != "0" && mapParts[1] != "100000" {
 		c.Fatalf("unexpected userns mapping values: %v", string(uid_map))
 	}
-
-	return nil
 }
 
 // Regression test for https://github.com/coreos/bugs/issues/1785
 // Also, hopefully will catch any similar issues
-func dockerNetworksReliably(c cluster.TestCluster) error {
+func dockerNetworksReliably(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "ping", []string{"sh", "ping"}); err != nil {
@@ -353,8 +347,6 @@ func dockerNetworksReliably(c cluster.TestCluster) error {
 	if err != nil {
 		c.Fatalf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
 	}
-
-	return nil
 }
 
 // Regression test for CVE-2016-8867
@@ -364,7 +356,7 @@ func dockerNetworksReliably(c cluster.TestCluster) error {
 // permitted capabilities (which is what the cve was).
 // For good measure, we also check that fs permissions deny that user from
 // accessing /root.
-func dockerUserNoCaps(c cluster.TestCluster) error {
+func dockerUserNoCaps(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"}); err != nil {
@@ -397,6 +389,4 @@ func dockerUserNoCaps(c cluster.TestCluster) error {
 	if !strings.HasPrefix(outputlines[len(outputlines)-1], "PASS: ") {
 		c.Fatalf("reading /root test failed: %q", string(output))
 	}
-
-	return nil
 }

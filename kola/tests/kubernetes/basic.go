@@ -43,8 +43,8 @@ func init() {
 		for j := range runtimes {
 			// use closure to store version and runtime in a Test
 			t, r := basicTags[i], runtimes[j]
-			f := func(c cluster.TestCluster) error {
-				return CoreOSBasic(c, t, r)
+			f := func(c cluster.TestCluster) {
+				CoreOSBasic(c, t, r)
 			}
 
 			var min semver.Version
@@ -65,7 +65,7 @@ func init() {
 
 // Run basic smoke tests on cluster. Assumes master is machine index 1,
 // workers make up the rest.
-func CoreOSBasic(c cluster.TestCluster, version, runtime string) error {
+func CoreOSBasic(c cluster.TestCluster, version, runtime string) {
 	k, err := setupCluster(c, 2, version, runtime)
 	if err != nil {
 		c.Fatal(err)
@@ -81,8 +81,6 @@ func CoreOSBasic(c cluster.TestCluster, version, runtime string) error {
 	if err := secretCheck(k.master, k.workers); err != nil {
 		c.Fatal(err)
 	}
-
-	return nil
 }
 
 func nodeCheck(master platform.Machine, nodes []platform.Machine) error {

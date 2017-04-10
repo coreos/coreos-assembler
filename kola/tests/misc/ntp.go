@@ -35,7 +35,7 @@ func init() {
 }
 
 // Test that timesyncd starts using the local NTP server
-func NTP(c cluster.TestCluster) error {
+func NTP(c cluster.TestCluster) {
 	m, err := c.NewMachine("#cloud-config")
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
@@ -66,6 +66,4 @@ func NTP(c cluster.TestCluster) error {
 	if err = util.Retry(60, 1*time.Second, checker); err != nil {
 		c.Fatal(err)
 	}
-
-	return nil
 }

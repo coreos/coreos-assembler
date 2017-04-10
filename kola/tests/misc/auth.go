@@ -32,7 +32,7 @@ func init() {
 // Basic authentication tests.
 
 // AuthVerify asserts that invalid passwords do not grant access to the system
-func AuthVerify(c cluster.TestCluster) error {
+func AuthVerify(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	client, err := m.PasswordSSHClient("core", "asdf")
@@ -40,6 +40,4 @@ func AuthVerify(c cluster.TestCluster) error {
 		client.Close()
 		c.Fatalf("Successfully authenticated despite invalid password auth")
 	}
-
-	return nil
 }

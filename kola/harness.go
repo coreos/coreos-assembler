@@ -316,9 +316,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	}()
 
 	// run test
-	if err := t.Run(tcluster); err != nil {
-		tcluster.Error(err)
-	}
+	t.Run(tcluster)
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
