@@ -15,8 +15,6 @@
 package systemd
 
 import (
-	"fmt"
-
 	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -46,7 +44,7 @@ func init() {
 // causing segfaults when those pointers are dereferenced.
 //
 // Tests: https://github.com/coreos/bugs/issues/1394
-func gshadowParser(c cluster.TestCluster) error {
+func gshadowParser(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	for _, cmd := range []string{
@@ -57,9 +55,7 @@ func gshadowParser(c cluster.TestCluster) error {
 	} {
 		output, err := m.SSH(cmd)
 		if err != nil {
-			return fmt.Errorf("failed to run %q: output: %q status: %v", cmd, output, err)
+			c.Fatalf("failed to run %q: output: %q status: %v", cmd, output, err)
 		}
 	}
-
-	return nil
 }

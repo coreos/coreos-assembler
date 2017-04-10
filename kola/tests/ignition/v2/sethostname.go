@@ -15,7 +15,6 @@
 package ignition
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/coreos/go-semver/semver"
@@ -61,17 +60,15 @@ func init() {
 	})
 }
 
-func setHostname(c cluster.TestCluster) error {
+func setHostname(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("hostnamectl")
 	if err != nil {
-		return fmt.Errorf("failed to run hostnamectl: %s: %v", out, err)
+		c.Fatalf("failed to run hostnamectl: %s: %v", out, err)
 	}
 
 	if !strings.Contains(string(out), "Static hostname: core1") {
-		return fmt.Errorf("hostname wasn't set correctly:\n%s", out)
+		c.Fatalf("hostname wasn't set correctly:\n%s", out)
 	}
-
-	return nil
 }

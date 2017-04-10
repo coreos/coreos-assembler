@@ -16,7 +16,6 @@ package fleet
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"time"
 
@@ -120,49 +119,44 @@ func init() {
 }
 
 // Test fleet running through an etcd2 proxy.
-func Proxy(c cluster.TestCluster) error {
+func Proxy(c cluster.TestCluster) {
 	discoveryURL, _ := c.GetDiscoveryURL(1)
 
 	master, err := c.NewMachine(strings.Replace(masterconf, "$discovery", discoveryURL, -1))
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine master: %s", err)
+		c.Fatalf("Cluster.NewMachine master: %s", err)
 	}
 	defer master.Destroy()
 
 	proxy, err := c.NewMachine(strings.Replace(proxyconf, "$discovery", discoveryURL, -1))
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine proxy: %s", err)
+		c.Fatalf("Cluster.NewMachine proxy: %s", err)
 	}
 	defer proxy.Destroy()
 
 	// Wait for all etcd cluster nodes to be ready.
 	if err = etcd.GetClusterHealth(master, 1); err != nil {
-		return fmt.Errorf("cluster health master: %v", err)
+		c.Fatalf("cluster health master: %v", err)
 	}
 	if err = etcd.GetClusterHealth(proxy, 1); err != nil {
-		return fmt.Errorf("cluster health proxy: %v", err)
+		c.Fatalf("cluster health proxy: %v", err)
 	}
 
 	// Several seconds can pass after etcd is ready before fleet notices.
 	fleetStart := func() error {
 		_, err = proxy.SSH("fleetctl start /home/core/hello.service")
-		if err != nil {
-			return fmt.Errorf("fleetctl start: %v", err)
-		}
-		return nil
+		return err
 	}
 	if err := util.Retry(5, 5*time.Second, fleetStart); err != nil {
-		return fmt.Errorf("fleetctl start failed: %v", err)
+		c.Fatalf("fleetctl start failed: %v", err)
 	}
 
 	status, err := proxy.SSH("fleetctl list-units -l -fields active -no-legend")
 	if err != nil {
-		return fmt.Errorf("fleetctl list-units failed: %v", err)
+		c.Fatalf("fleetctl list-units failed: %v", err)
 	}
 
 	if !bytes.Equal(status, []byte("active")) {
-		return fmt.Errorf("unit not active: %v", status)
+		c.Fatalf("unit not active: %v", status)
 	}
-
-	return nil
 }

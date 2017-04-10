@@ -16,7 +16,6 @@ package misc
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -44,13 +43,11 @@ func init() {
 // Simulate coreos-install features
 
 // Verify that the coreos-install cloud-config path is used
-func InstallCloudConfig(c cluster.TestCluster) error {
+func InstallCloudConfig(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Verify the host name was set from the cloud-config file
 	if output, err := m.SSH("hostname"); err != nil || !bytes.Equal(output, []byte("cloud-config-worked")) {
-		return fmt.Errorf("hostname: %q: %v", output, err)
+		c.Fatalf("hostname: %q: %v", output, err)
 	}
-
-	return nil
 }

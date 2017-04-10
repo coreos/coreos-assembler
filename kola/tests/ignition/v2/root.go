@@ -15,7 +15,6 @@
 package ignition
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/coreos/go-semver/semver"
@@ -159,50 +158,46 @@ func init() {
 	})
 }
 
-func btrfsRoot(c cluster.TestCluster) error {
-	return testRoot(c, "btrfs")
+func btrfsRoot(c cluster.TestCluster) {
+	testRoot(c, "btrfs")
 }
 
-func xfsRoot(c cluster.TestCluster) error {
-	return testRoot(c, "xfs")
+func xfsRoot(c cluster.TestCluster) {
+	testRoot(c, "xfs")
 }
 
-func ext4Root(c cluster.TestCluster) error {
+func ext4Root(c cluster.TestCluster) {
 	// Since the image's root partition is formatted to ext4 by default,
 	// this test wont be able to differentiate between the original filesystem
 	// and a newly created one. If mkfs.ext4 never ran, it would still pass.
 	// It will ensure that if mkfs.ext4 ran, it ran successfully.
-	return testRoot(c, "ext4")
+	testRoot(c, "ext4")
 }
 
-func testRoot(c cluster.TestCluster, fs string) error {
+func testRoot(c cluster.TestCluster, fs string) {
 	m := c.Machines()[0]
 
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
 	if err != nil {
-		return fmt.Errorf("failed to run findmnt: %s: %v", out, err)
+		c.Fatalf("failed to run findmnt: %s: %v", out, err)
 	}
 
 	if string(out) != fs {
-		return fmt.Errorf("root wasn't correctly reformatted:\n%s", out)
+		c.Fatalf("root wasn't correctly reformatted:\n%s", out)
 	}
-
-	return nil
 }
 
-func ext4CheckExisting(c cluster.TestCluster) error {
+func ext4CheckExisting(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Redirect /dev/null to stdin so isatty(stdin) fails and the -p flag can be
 	// checked
 	out, err := m.SSH("sudo mkfs.ext4 -p /dev/disk/by-partlabel/ROOT < /dev/null")
 	if err == nil {
-		return fmt.Errorf("mkfs.ext4 returned sucessfully when it should have failed")
+		c.Fatalf("mkfs.ext4 returned sucessfully when it should have failed")
 	}
 
 	if !strings.HasPrefix(string(out), "/dev/disk/by-partlabel/ROOT contains a ext4 file system labelled 'ROOT'") {
-		return fmt.Errorf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
+		c.Fatalf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
 	}
-
-	return nil
 }

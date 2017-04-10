@@ -15,8 +15,6 @@
 package ignition
 
 import (
-	"fmt"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -43,25 +41,23 @@ func init() {
 	})
 }
 
-func runsOnce(c cluster.TestCluster) error {
+func runsOnce(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// remove file created by Ignition; fail if it doesn't exist
 	_, err := m.SSH("sudo rm /etc/ignition-ran")
 	if err != nil {
-		return fmt.Errorf("Couldn't remove flag file: %v", err)
+		c.Fatalf("Couldn't remove flag file: %v", err)
 	}
 
 	err = m.Reboot()
 	if err != nil {
-		return fmt.Errorf("Couldn't reboot machine: %v", err)
+		c.Fatalf("Couldn't reboot machine: %v", err)
 	}
 
 	// make sure file hasn't been recreated
 	_, err = m.SSH("test -e /etc/ignition-ran")
 	if err == nil {
-		return fmt.Errorf("Flag file recreated after reboot")
+		c.Fatalf("Flag file recreated after reboot")
 	}
-
-	return nil
 }

@@ -15,8 +15,6 @@
 package misc
 
 import (
-	"fmt"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -31,7 +29,7 @@ func init() {
 }
 
 // SelinuxEnforce checks that some basic things work after `setenforce 1`
-func SelinuxEnforce(c cluster.TestCluster) error {
+func SelinuxEnforce(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	for _, cmd := range []struct {
@@ -45,13 +43,11 @@ func SelinuxEnforce(c cluster.TestCluster) error {
 	} {
 		output, err := m.SSH(cmd.cmdline)
 		if err != nil {
-			return fmt.Errorf("failed to run %q: output: %q status: %q", cmd.cmdline, output, err)
+			c.Fatalf("failed to run %q: output: %q status: %q", cmd.cmdline, output, err)
 		}
 
 		if cmd.checkoutput && string(output) != cmd.output {
-			return fmt.Errorf("command %q has unexpected output: want %q got %q", cmd.cmdline, cmd.output, string(output))
+			c.Fatalf("command %q has unexpected output: want %q got %q", cmd.cmdline, cmd.output, string(output))
 		}
 	}
-
-	return nil
 }

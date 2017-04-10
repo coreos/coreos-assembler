@@ -60,24 +60,24 @@ func init() {
 }
 
 // systemd v225 includes the port in the journal file
-func journalRemote225(c cluster.TestCluster) error {
+func journalRemote225(c cluster.TestCluster) {
 	format := "/var/log/journal/remote/remote-%s:19531.journal"
-	return journalRemote(c, format)
+	journalRemote(c, format)
 }
 
 // systemd v229 has no port in the journal file
-func journalRemote229(c cluster.TestCluster) error {
+func journalRemote229(c cluster.TestCluster) {
 	format := "/var/log/journal/remote/remote-%s.journal"
-	return journalRemote(c, format)
+	journalRemote(c, format)
 }
 
 // JournalRemote tests that systemd-journal-remote can read log entries from
 // a systemd-journal-gatewayd server.
-func journalRemote(c cluster.TestCluster, journalFmt string) error {
+func journalRemote(c cluster.TestCluster, journalFmt string) {
 	// start gatewayd and log a message
 	gateway, err := c.NewMachine(gatewayconf.String())
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
 	defer gateway.Destroy()
 
@@ -85,13 +85,13 @@ func journalRemote(c cluster.TestCluster, journalFmt string) error {
 	msg := "supercalifragilisticexpialidocious"
 	out, err := gateway.SSH("logger " + msg)
 	if err != nil {
-		return fmt.Errorf("logger: %v: %v", out, err)
+		c.Fatalf("logger: %v: %v", out, err)
 	}
 
 	// spawn a machine to read from gatewayd
 	collector, err := c.NewMachine("#cloud-config")
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
 	defer collector.Destroy()
 
@@ -99,7 +99,7 @@ func journalRemote(c cluster.TestCluster, journalFmt string) error {
 	cmd := fmt.Sprintf("sudo systemd-run --unit systemd-journal-remote-client /usr/lib/systemd/systemd-journal-remote --url http://%s:19531", gateway.PrivateIP())
 	out, err = collector.SSH(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to start systemd-journal-remote: %v: %v", out, err)
+		c.Fatalf("failed to start systemd-journal-remote: %v: %v", out, err)
 	}
 
 	// find the message on the collector
@@ -118,8 +118,6 @@ func journalRemote(c cluster.TestCluster, journalFmt string) error {
 	}
 
 	if err := util.Retry(5, 2*time.Second, journalReader); err != nil {
-		return err
+		c.Fatal(err)
 	}
-
-	return nil
 }

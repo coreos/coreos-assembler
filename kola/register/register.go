@@ -28,7 +28,7 @@ import (
 // function is run.
 type Test struct {
 	Name        string // should be uppercase and unique
-	Run         func(cluster.TestCluster) error
+	Run         func(cluster.TestCluster)
 	NativeFuncs map[string]func() error
 	UserData    string
 	ClusterSize int

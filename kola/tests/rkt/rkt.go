@@ -48,7 +48,7 @@ func init() {
 	})
 }
 
-func rktEtcd(t cluster.TestCluster) error {
+func rktEtcd(t cluster.TestCluster) {
 	m := t.Machines()[0]
 
 	etcdCmd := "etcdctl cluster-health"
@@ -64,6 +64,4 @@ func rktEtcd(t cluster.TestCluster) error {
 	if err := util.Retry(60, 3*time.Second, etcdCheck); err != nil {
 		t.Fatalf("etcd in rkt failed health check: %v", err)
 	}
-
-	return nil
 }

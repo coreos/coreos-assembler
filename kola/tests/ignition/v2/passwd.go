@@ -86,7 +86,7 @@ func init() {
 	})
 }
 
-func groups(c cluster.TestCluster) error {
+func groups(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	tests := []struct {
@@ -108,21 +108,19 @@ func groups(c cluster.TestCluster) error {
 
 	for _, t := range tests {
 		if out, err := getent(m, "group", t.group); err != nil {
-			return err
+			c.Fatal(err)
 		} else if out != t.groupRecord {
-			return fmt.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.groupRecord)
+			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.groupRecord)
 		}
 		if out, err := getent(m, "gshadow", t.group); err != nil {
-			return err
+			c.Fatal(err)
 		} else if out != t.gshadowRecord {
-			return fmt.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
+			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
 		}
 	}
-
-	return nil
 }
 
-func users(c cluster.TestCluster) error {
+func users(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	tests := []struct {
@@ -149,27 +147,25 @@ func users(c cluster.TestCluster) error {
 
 	for _, t := range tests {
 		if out, err := getent(m, "passwd", t.user); err != nil {
-			return err
+			c.Fatal(err)
 		} else if out != t.passwdRecord {
-			return fmt.Errorf("%q wasn't correctly created: got %q, expected %q", t.user, out, t.passwdRecord)
+			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.user, out, t.passwdRecord)
 		}
 
 		out, err := getent(m, "shadow", t.user)
 		if err != nil {
-			return err
+			c.Fatal(err)
 		}
 
 		fields := strings.Split(out, ":")
 		if len(fields) < 2 {
-			return fmt.Errorf("could not parse shadow record (%q) for %q", out, t.user)
+			c.Fatalf("could not parse shadow record (%q) for %q", out, t.user)
 		}
 
 		if fields[0] != t.user || fields[1] != t.shadowPassword {
-			return fmt.Errorf("%q wasn't correctly created: got %q:%q, expected %q:%q", t.user, fields[0], fields[1], t.user, t.shadowPassword)
+			c.Errorf("%q wasn't correctly created: got %q:%q, expected %q:%q", t.user, fields[0], fields[1], t.user, t.shadowPassword)
 		}
 	}
-
-	return nil
 }
 
 func getent(m platform.Machine, database string, entry string) (string, error) {

@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -62,18 +61,19 @@ func init() {
 	})
 }
 
-func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
+func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
+	m := c.Machines()[0]
 	badfiles := make([]string, 0, 0)
 
 	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -%v -print", mode)
 
 	output, err := m.SSH(command)
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) == "" {
-		return nil
+		return
 	}
 
 	files := strings.Split(string(output), "\n")
@@ -91,13 +91,11 @@ func sugidFiles(m platform.Machine, validfiles []string, mode string) error {
 	}
 
 	if len(badfiles) != 0 {
-		return fmt.Errorf("Unknown SUID or SGID files found: %v", badfiles)
+		c.Fatalf("Unknown SUID or SGID files found: %v", badfiles)
 	}
-
-	return nil
 }
 
-func DeadLinks(c cluster.TestCluster) error {
+func DeadLinks(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	ignore := []string{
@@ -113,19 +111,15 @@ func DeadLinks(c cluster.TestCluster) error {
 
 	output, err := m.SSH(command)
 	if err != nil {
-		return fmt.Errorf("Failed to run %v: output %s, status: %v", command, output, err)
+		c.Fatalf("Failed to run %v: output %s, status: %v", command, output, err)
 	}
 
 	if string(output) != "" {
-		return fmt.Errorf("Dead symbolic links found: %v", strings.Split(string(output), "\n"))
+		c.Fatalf("Dead symbolic links found: %v", strings.Split(string(output), "\n"))
 	}
-
-	return nil
 }
 
-func SUIDFiles(c cluster.TestCluster) error {
-	m := c.Machines()[0]
-
+func SUIDFiles(c cluster.TestCluster) {
 	validfiles := []string{
 		"/usr/bin/chage",
 		"/usr/bin/chfn",
@@ -149,50 +143,44 @@ func SUIDFiles(c cluster.TestCluster) error {
 		"/usr/sbin/unix_chkpwd",
 	}
 
-	return sugidFiles(m, validfiles, "4000")
+	sugidFiles(c, validfiles, "4000")
 }
 
-func SGIDFiles(c cluster.TestCluster) error {
-	m := c.Machines()[0]
-
+func SGIDFiles(c cluster.TestCluster) {
 	validfiles := []string{}
 
-	return sugidFiles(m, validfiles, "2000")
+	sugidFiles(c, validfiles, "2000")
 }
 
-func WritableFiles(c cluster.TestCluster) error {
+func WritableFiles(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	output, err := m.SSH("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -0002 -print")
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) != "" {
-		return fmt.Errorf("Unknown writable files found: %v", output)
+		c.Fatalf("Unknown writable files found: %v", output)
 	}
-
-	return nil
 }
 
-func WritableDirs(c cluster.TestCluster) error {
+func WritableDirs(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	output, err := m.SSH("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type d -perm -0002 -a ! -perm -1000 -print")
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) != "" {
-		return fmt.Errorf("Unknown writable directories found: %v", output)
+		c.Fatalf("Unknown writable directories found: %v", output)
 	}
-
-	return nil
 }
 
 // The default permissions for the root of a tmpfs are 1777
 // https://github.com/coreos/bugs/issues/1812
-func StickyDirs(c cluster.TestCluster) error {
+func StickyDirs(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	ignore := []string{
@@ -214,12 +202,10 @@ func StickyDirs(c cluster.TestCluster) error {
 
 	output, err := m.SSH(command)
 	if err != nil {
-		return fmt.Errorf("Failed to run find: output %s, status: %v", output, err)
+		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
 	}
 
 	if string(output) != "" {
-		return fmt.Errorf("Unknown sticky directories found: %v", output)
+		c.Fatalf("Unknown sticky directories found: %v", output)
 	}
-
-	return nil
 }

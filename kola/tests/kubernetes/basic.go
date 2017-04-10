@@ -43,8 +43,8 @@ func init() {
 		for j := range runtimes {
 			// use closure to store version and runtime in a Test
 			t, r := basicTags[i], runtimes[j]
-			f := func(c cluster.TestCluster) error {
-				return CoreOSBasic(c, t, r)
+			f := func(c cluster.TestCluster) {
+				CoreOSBasic(c, t, r)
 			}
 
 			var min semver.Version
@@ -65,24 +65,22 @@ func init() {
 
 // Run basic smoke tests on cluster. Assumes master is machine index 1,
 // workers make up the rest.
-func CoreOSBasic(c cluster.TestCluster, version, runtime string) error {
+func CoreOSBasic(c cluster.TestCluster, version, runtime string) {
 	k, err := setupCluster(c, 2, version, runtime)
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// start nginx pod and curl endpoint
 	if err := nginxCheck(k.master, k.workers); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// http://kubernetes.io/v1.0/docs/user-guide/secrets/ Also, ensures
 	// https://github.com/coreos/bugs/issues/447 does not re-occur.
 	if err := secretCheck(k.master, k.workers); err != nil {
-		return err
+		c.Fatal(err)
 	}
-
-	return nil
 }
 
 func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
