@@ -15,7 +15,6 @@
 package misc
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -46,7 +45,7 @@ func CheckUserShells(c cluster.TestCluster) error {
 
 	output, err := m.SSH("getent passwd")
 	if err != nil {
-		return fmt.Errorf("Failed to run grep: output %s, status: %v", output, err)
+		c.Fatalf("Failed to run grep: output %s, status: %v", output, err)
 	}
 
 	users := strings.Split(string(output), "\n")
@@ -66,7 +65,7 @@ func CheckUserShells(c cluster.TestCluster) error {
 	}
 
 	if len(badusers) != 0 {
-		return fmt.Errorf("Invalid users: %v", badusers)
+		c.Fatalf("Invalid users: %v", badusers)
 	}
 
 	return nil

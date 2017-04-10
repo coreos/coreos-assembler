@@ -16,7 +16,6 @@ package misc
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -49,7 +48,7 @@ func InstallCloudConfig(c cluster.TestCluster) error {
 
 	// Verify the host name was set from the cloud-config file
 	if output, err := m.SSH("hostname"); err != nil || !bytes.Equal(output, []byte("cloud-config-worked")) {
-		return fmt.Errorf("hostname: %q: %v", output, err)
+		c.Fatalf("hostname: %q: %v", output, err)
 	}
 
 	return nil

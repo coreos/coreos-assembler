@@ -38,16 +38,16 @@ func init() {
 func NTP(c cluster.TestCluster) error {
 	m, err := c.NewMachine("#cloud-config")
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
 	defer m.Destroy()
 
 	out, err := m.SSH("networkctl status eth0")
 	if err != nil {
-		return fmt.Errorf("networkctl: %v", err)
+		c.Fatalf("networkctl: %v", err)
 	}
 	if !bytes.Contains(out, []byte("NTP: 10.0.0.1")) {
-		return fmt.Errorf("Bad network config:\n%s", out)
+		c.Fatalf("Bad network config:\n%s", out)
 	}
 
 	checker := func() error {
@@ -63,9 +63,8 @@ func NTP(c cluster.TestCluster) error {
 		return nil
 	}
 
-	err = util.Retry(60, 1*time.Second, checker)
-	if err != nil {
-		return err
+	if err = util.Retry(60, 1*time.Second, checker); err != nil {
+		c.Fatal(err)
 	}
 
 	return nil

@@ -15,8 +15,6 @@
 package misc
 
 import (
-	"fmt"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -40,7 +38,7 @@ func AuthVerify(c cluster.TestCluster) error {
 	client, err := m.PasswordSSHClient("core", "asdf")
 	if err == nil {
 		client.Close()
-		return fmt.Errorf("Successfully authenticated despite invalid password auth")
+		c.Fatalf("Successfully authenticated despite invalid password auth")
 	}
 
 	return nil

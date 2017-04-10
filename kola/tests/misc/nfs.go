@@ -88,7 +88,7 @@ func init() {
 func testNFS(c cluster.TestCluster, nfsversion int) error {
 	m1, err := c.NewMachine(nfsserverconf.String())
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
 
 	defer m1.Destroy()
@@ -98,7 +98,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 	/* poke a file in /tmp */
 	tmp, err := m1.SSH("mktemp")
 	if err != nil {
-		return fmt.Errorf("Machine.SSH: %s", err)
+		c.Fatalf("Machine.SSH: %s", err)
 	}
 
 	c.Logf("Test file %q created on server.", tmp)
@@ -118,7 +118,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 
 	m2, err := c.NewMachine(c2.String())
 	if err != nil {
-		return fmt.Errorf("Cluster.NewMachine: %s", err)
+		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
 
 	defer m2.Destroy()
@@ -136,12 +136,12 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 	}
 
 	if err = util.Retry(10, 3*time.Second, checkmount); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	_, err = m2.SSH(fmt.Sprintf("stat /mnt/%s", path.Base(string(tmp))))
 	if err != nil {
-		return fmt.Errorf("file %q does not exist", tmp)
+		c.Fatalf("file %q does not exist", tmp)
 	}
 
 	return nil
