@@ -68,18 +68,18 @@ func init() {
 func CoreOSBasic(c cluster.TestCluster, version, runtime string) error {
 	k, err := setupCluster(c, 2, version, runtime)
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// start nginx pod and curl endpoint
 	if err := nginxCheck(k.master, k.workers); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// http://kubernetes.io/v1.0/docs/user-guide/secrets/ Also, ensures
 	// https://github.com/coreos/bugs/issues/447 does not re-occur.
 	if err := secretCheck(k.master, k.workers); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	return nil
