@@ -131,7 +131,7 @@ func dockerResources(c cluster.TestCluster) error {
 	c.Log("creating sleep container")
 
 	if err := genDockerContainer(m, "sleep", []string{"sleep"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	dockerFmt := "docker run --rm %s sleep sleep 0.2"
@@ -181,11 +181,14 @@ func dockerResources(c cluster.TestCluster) error {
 		}
 
 		if err := wg.Start(worker); err != nil {
-			return wg.WaitError(err)
+			c.Fatal(wg.WaitError(err))
 		}
 	}
 
-	return wg.Wait()
+	if err := wg.Wait(); err != nil {
+		c.Fatal(err)
+	}
+	return nil
 }
 
 // Ensure that docker containers can make network connections outside of the host
@@ -196,11 +199,11 @@ func dockerNetwork(c cluster.TestCluster) error {
 	c.Log("creating ncat containers")
 
 	if err := genDockerContainer(src, "ncat", []string{"ncat"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	if err := genDockerContainer(dest, "ncat", []string{"ncat"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	listener := func(c context.Context) error {
@@ -256,7 +259,10 @@ func dockerNetwork(c cluster.TestCluster) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	return worker.Parallel(ctx, listener, talker)
+	if err := worker.Parallel(ctx, listener, talker); err != nil {
+		c.Fatal(err)
+	}
+	return nil
 }
 
 // Regression test for https://github.com/coreos/bugs/issues/1569 and
@@ -275,16 +281,16 @@ func dockerOldClient(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "echo", []string{"echo"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	output, err := m.SSH("/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
 	if err != nil {
-		return fmt.Errorf("failed to run old docker client: %q status: %q", output, err)
+		c.Fatalf("failed to run old docker client: %q status: %q", output, err)
 	}
 
 	if !bytes.Equal(output, []byte("IT WORKED")) {
-		return fmt.Errorf("unexpected result from docker client: %q", output)
+		c.Fatalf("unexpected result from docker client: %q", output)
 	}
 
 	return nil
@@ -295,40 +301,40 @@ func dockerUserns(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "userns-test", []string{"echo", "sleep"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	_, err := m.SSH(`sudo setenforce 1`)
 	if err != nil {
-		return fmt.Errorf("could not enable selinux")
+		c.Fatalf("could not enable selinux")
 	}
 	output, err := m.SSH(`docker run userns-test echo fj.fj`)
 	if err != nil {
-		return fmt.Errorf("failed to run echo under userns: output: %q status: %q", output, err)
+		c.Fatalf("failed to run echo under userns: output: %q status: %q", output, err)
 	}
 	if !bytes.Equal(output, []byte("fj.fj")) {
-		return fmt.Errorf("expected fj.fj, got %s", string(output))
+		c.Fatalf("expected fj.fj, got %s", string(output))
 	}
 
 	// And just in case, verify that a container really is userns remapped
 	_, err = m.SSH(`docker run -d --name=sleepy userns-test sleep 10000`)
 	if err != nil {
-		return fmt.Errorf("could not run sleep: %v", err)
+		c.Fatalf("could not run sleep: %v", err)
 	}
 	uid_map, err := m.SSH(`until [[ "$(/usr/bin/docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
 	                pid=$(docker inspect -f {{.State.Pid}} sleepy); 
 									cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
 	if err != nil {
-		return fmt.Errorf("could not read uid mapping: %v", err)
+		c.Fatalf("could not read uid mapping: %v", err)
 	}
 	// uid_map is of the form `$mappedNamespacePidStart   $realNamespacePidStart
 	// $rangeLength`. We expect `0     100000      65536`
 	mapParts := strings.Fields(strings.TrimSpace(string(uid_map)))
 	if len(mapParts) != 3 {
-		return fmt.Errorf("expected uid_map to have three parts, was: %s", string(uid_map))
+		c.Fatalf("expected uid_map to have three parts, was: %s", string(uid_map))
 	}
 	if mapParts[0] != "0" && mapParts[1] != "100000" {
-		return fmt.Errorf("unexpected userns mapping values: %v", string(uid_map))
+		c.Fatalf("unexpected userns mapping values: %v", string(uid_map))
 	}
 
 	return nil
@@ -340,12 +346,12 @@ func dockerNetworksReliably(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "ping", []string{"sh", "ping"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	output, err := m.SSH(`seq 1 100 | xargs -i -n 1 -P 20 docker run ping sh -c 'out=$(ping -c 1 172.17.0.1 -w 1); if [[ "$?" != 0 ]]; then echo "{} FAIL"; echo "$out"; exit 1; else echo "{} PASS"; fi'`)
 	if err != nil {
-		return fmt.Errorf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
+		c.Fatalf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
 	}
 
 	return nil
@@ -362,7 +368,7 @@ func dockerUserNoCaps(c cluster.TestCluster) error {
 	m := c.Machines()[0]
 
 	if err := genDockerContainer(m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"}); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	output, err := m.SSH(`docker run --user 1000:1000 \
@@ -370,26 +376,26 @@ func dockerUserNoCaps(c cluster.TestCluster) error {
 		captest sh -c \
 		'cat /proc/self/status | grep -E "Cap(Eff|Prm)"; ls /root &>/dev/null && echo "FAIL: could read root" || echo "PASS: err reading root"'`)
 	if err != nil {
-		return fmt.Errorf("could not run container (we weren't even testing for that): %v: %q", err, string(output))
+		c.Fatalf("could not run container (we weren't even testing for that): %v: %q", err, string(output))
 	}
 
 	outputlines := strings.Split(string(output), "\n")
 	if len(outputlines) < 3 {
-		return fmt.Errorf("expected two lines of caps and an an error/succcess line. Got %q", string(output))
+		c.Fatalf("expected two lines of caps and an an error/succcess line. Got %q", string(output))
 	}
 	cap1, cap2 := strings.Fields(outputlines[0]), strings.Fields(outputlines[1])
 	// The format of capabilities in /proc/*/status is e.g.: CapPrm:\t0000000000000000
 	// We could parse the hex to its actual capabilities, but since we're looking for none, just checking it's all 0 is good enough.
 	if len(cap1) != 2 || len(cap2) != 2 {
-		return fmt.Errorf("capability lines didn't have two parts: %q", string(output))
+		c.Fatalf("capability lines didn't have two parts: %q", string(output))
 	}
 	if cap1[1] != "0000000000000000" || cap2[1] != "0000000000000000" {
-		return fmt.Errorf("Permitted / effective capabilities were non-zero: %q", string(output))
+		c.Fatalf("Permitted / effective capabilities were non-zero: %q", string(output))
 	}
 
 	// Finally, check for fail/success on reading /root
 	if !strings.HasPrefix(outputlines[len(outputlines)-1], "PASS: ") {
-		return fmt.Errorf("reading /root test failed: %q", string(output))
+		c.Fatalf("reading /root test failed: %q", string(output))
 	}
 
 	return nil
