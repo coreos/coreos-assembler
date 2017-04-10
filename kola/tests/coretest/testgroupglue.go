@@ -18,7 +18,7 @@ func LocalTests(c cluster.TestCluster) error {
 func ClusterTests(c cluster.TestCluster) error {
 	// wait for etcd to come up
 	if err := etcd.GetClusterHealth(c.Machines()[0], len(c.Machines())); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	tests := c.ListNativeFunctions()
