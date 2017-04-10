@@ -25,12 +25,10 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
-	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 func init() {
@@ -52,11 +50,12 @@ func init() {
 		MinVersion: semver.Version{Major: 1192},
 	})
 	register.Register(&register.Test{
-		Run:         dockerOldClient,
-		ClusterSize: 1,
-		Name:        "docker.oldclient",
-		UserData:    `#cloud-config`,
-		MinVersion:  semver.Version{Major: 1192},
+		Run:           dockerOldClient,
+		ClusterSize:   1,
+		Name:          "docker.oldclient",
+		UserData:      `#cloud-config`,
+		Architectures: []string{"amd64"},
+		MinVersion:    semver.Version{Major: 1192},
 	})
 	register.Register(&register.Test{
 		Run:         dockerUserns,
@@ -266,10 +265,6 @@ func dockerNetwork(c cluster.TestCluster) {
 // Regression test for https://github.com/coreos/bugs/issues/1569 and
 // https://github.com/coreos/docker/pull/31
 func dockerOldClient(c cluster.TestCluster) {
-	if _, ok := c.Cluster.(*qemu.Cluster); ok && kola.QEMUOptions.Board != "amd64-usr" {
-		c.Skip("Only applicable to amd64")
-	}
-
 	oldclient := "/usr/lib/kola/amd64/docker-1.9.1"
 	if _, err := os.Stat(oldclient); err != nil {
 		c.Skipf("Can't find old docker client to test: %v", err)
