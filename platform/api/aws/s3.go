@@ -36,7 +36,7 @@ const (
 	alreadyExistsErr = "BucketAlreadyOwnedByYou"
 )
 
-func s3IsNotFoundErr(err error) bool {
+func s3IsNotFound(err error) bool {
 	if awserr, ok := err.(awserr.Error); ok {
 		return awserr.Code() == documentedNotFoundErr || awserr.Code() == actualNotFoundErr
 	}
@@ -57,10 +57,8 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force 
 			Key:    &path,
 		})
 		if err != nil {
-			if s3IsNotFoundErr(err) {
+			if !s3IsNotFound(err) {
 				return fmt.Errorf("unable to head object %v/%v: %v", bucket, path, err)
-			} else {
-				return fmt.Errorf("unexpected error heading object s3://%v/%v: %v", bucket, path, err)
 			}
 		} else {
 			// TODO, maybe we should bump expiration here
