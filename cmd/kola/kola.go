@@ -96,12 +96,15 @@ func runList(cmd *cobra.Command, args []string) {
 	var testlist list
 
 	for name, test := range register.Tests {
-		testlist = append(testlist, item{name, test.Platforms})
+		testlist = append(testlist, item{
+			name,
+			test.Platforms,
+			test.Architectures})
 	}
 
 	sort.Sort(testlist)
 
-	fmt.Fprintln(w, "Test Name\tPlatforms Available")
+	fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures")
 	fmt.Fprintln(w, "\t")
 	for _, item := range testlist {
 		fmt.Fprintf(w, "%v\n", item)
@@ -110,15 +113,19 @@ func runList(cmd *cobra.Command, args []string) {
 }
 
 type item struct {
-	Name      string
-	Platforms []string
+	Name          string
+	Platforms     []string
+	Architectures []string
 }
 
 func (i item) String() string {
 	if len(i.Platforms) == 0 {
 		i.Platforms = []string{"all"}
 	}
-	return fmt.Sprintf("%v\t%v", i.Name, i.Platforms)
+	if len(i.Architectures) == 0 {
+		i.Architectures = []string{"all"}
+	}
+	return fmt.Sprintf("%v\t%v\t%v", i.Name, i.Platforms, i.Architectures)
 }
 
 type list []item

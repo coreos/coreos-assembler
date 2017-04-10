@@ -85,6 +85,19 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 			continue
 		}
 
+		arch := architecture(platform)
+		for _, a := range t.Architectures {
+			if a == arch {
+				allowed = true
+				break
+			} else {
+				allowed = false
+			}
+		}
+		if !allowed {
+			continue
+		}
+
 		r[name] = t
 	}
 
@@ -299,12 +312,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
-		nativeArch := "amd64"
-		if pltfrm == "qemu" && QEMUOptions.Board != "" {
-			nativeArch = strings.SplitN(QEMUOptions.Board, "-", 2)[0]
-		}
-
-		scpKolet(tcluster, nativeArch)
+		scpKolet(tcluster, architecture(pltfrm))
 	}
 
 	defer func() {
@@ -317,6 +325,15 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 
 	// run test
 	t.Run(tcluster)
+}
+
+// architecture returns the machine architecture of the given platform.
+func architecture(pltfrm string) string {
+	nativeArch := "amd64"
+	if pltfrm == "qemu" && QEMUOptions.Board != "" {
+		nativeArch = strings.SplitN(QEMUOptions.Board, "-", 2)[0]
+	}
+	return nativeArch
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.

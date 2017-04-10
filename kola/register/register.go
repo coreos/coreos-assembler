@@ -27,12 +27,13 @@ import (
 // statically declare state of the platform.TestCluster before the test
 // function is run.
 type Test struct {
-	Name        string // should be uppercase and unique
-	Run         func(cluster.TestCluster)
-	NativeFuncs map[string]func() error
-	UserData    string
-	ClusterSize int
-	Platforms   []string // whitelist of platforms to run test against -- defaults to all
+	Name          string // should be uppercase and unique
+	Run           func(cluster.TestCluster)
+	NativeFuncs   map[string]func() error
+	UserData      string
+	ClusterSize   int
+	Platforms     []string // whitelist of platforms to run test against -- defaults to all
+	Architectures []string // whitelist of machine architectures supported -- defaults to all
 
 	// MinVersion prevents the test from executing on CoreOS machines
 	// less than MinVersion. This will be ignored if the name fully
