@@ -183,26 +183,19 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 	return nil
 }
 
-// NewMachines spawns len(userdatas) instances in cluster c, with
-// each instance passed the respective userdata.
-func NewMachines(c Cluster, userdatas []string) ([]Machine, error) {
+// NewMachines spawns n instances in cluster c, with
+// each instance passed the same userdata.
+func NewMachines(c Cluster, userdata string, n int) ([]Machine, error) {
 	var wg sync.WaitGroup
-
-	n := len(userdatas)
-
-	if n <= 0 {
-		return nil, fmt.Errorf("must provide one or more userdatas")
-	}
 
 	mchan := make(chan Machine, n)
 	errchan := make(chan error, n)
 
 	for i := 0; i < n; i++ {
-		ud := userdatas[i]
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m, err := c.NewMachine(ud)
+			m, err := c.NewMachine(userdata)
 			if err != nil {
 				errchan <- err
 			}

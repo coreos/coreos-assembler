@@ -290,15 +290,6 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 		return nil, nil, err
 	}
 
-	configsM := make([]string, masters)
-	for i := range configsM {
-		configsM[i] = configM
-	}
-	configsW := make([]string, workers)
-	for i := range configsW {
-		configsW[i] = configW
-	}
-
 	// NewMachines already does parallelization but doesn't guarentee the
 	// order of the nodes returned which matters when we have heterogenious
 	// cloudconfigs here
@@ -309,16 +300,16 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		if len(configsM) != 0 {
-			masterNodes, merror = platform.NewMachines(m, configsM)
+		if masters > 0 {
+			masterNodes, merror = platform.NewMachines(m, configM, masters)
 		} else {
 			masterNodes = []platform.Machine{}
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		if len(configsW) != 0 {
-			workerNodes, werror = platform.NewMachines(m, configsW)
+		if workers > 0 {
+			workerNodes, werror = platform.NewMachines(m, configW, workers)
 		} else {
 			workerNodes = []platform.Machine{}
 		}
