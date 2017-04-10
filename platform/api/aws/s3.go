@@ -36,6 +36,13 @@ const (
 	alreadyExistsErr = "BucketAlreadyOwnedByYou"
 )
 
+func s3IsNotFoundErr(err error) bool {
+	if awserr, ok := err.(awserr.Error); ok {
+		return awserr.Code() == documentedNotFoundErr || awserr.Code() == actualNotFoundErr
+	}
+	return false
+}
+
 // UploadObject uploads an object to S3
 func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force bool) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
@@ -50,10 +57,8 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force 
 			Key:    &path,
 		})
 		if err != nil {
-			if awserr, ok := err.(awserr.Error); ok {
-				if awserr.Code() != documentedNotFoundErr && awserr.Code() != actualNotFoundErr {
-					return fmt.Errorf("unable to head object %v/%v: %v, %v", bucket, path, awserr.Code(), awserr.Message())
-				}
+			if s3IsNotFoundErr(err) {
+				return fmt.Errorf("unable to head object %v/%v: %v", bucket, path, err)
 			} else {
 				return fmt.Errorf("unexpected error heading object s3://%v/%v: %v", bucket, path, err)
 			}

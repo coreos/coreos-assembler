@@ -20,8 +20,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/platform"
@@ -84,8 +84,8 @@ func New(opts *Options) (*API, error) {
 // PreflightCheck validates that the aws configuration provided has valid
 // credentials
 func (a *API) PreflightCheck() error {
-	iamClient := iam.New(a.session)
-	_, err := iamClient.GetUser(&iam.GetUserInput{})
+	stsClient := sts.New(a.session)
+	_, err := stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 
 	return err
 }
