@@ -15,7 +15,6 @@
 package ignition
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/coreos/go-semver/semver"
@@ -180,11 +179,11 @@ func testRoot(c cluster.TestCluster, fs string) error {
 
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
 	if err != nil {
-		return fmt.Errorf("failed to run findmnt: %s: %v", out, err)
+		c.Fatalf("failed to run findmnt: %s: %v", out, err)
 	}
 
 	if string(out) != fs {
-		return fmt.Errorf("root wasn't correctly reformatted:\n%s", out)
+		c.Fatalf("root wasn't correctly reformatted:\n%s", out)
 	}
 
 	return nil
@@ -197,11 +196,11 @@ func ext4CheckExisting(c cluster.TestCluster) error {
 	// checked
 	out, err := m.SSH("sudo mkfs.ext4 -p /dev/disk/by-partlabel/ROOT < /dev/null")
 	if err == nil {
-		return fmt.Errorf("mkfs.ext4 returned sucessfully when it should have failed")
+		c.Fatalf("mkfs.ext4 returned sucessfully when it should have failed")
 	}
 
 	if !strings.HasPrefix(string(out), "/dev/disk/by-partlabel/ROOT contains a ext4 file system labelled 'ROOT'") {
-		return fmt.Errorf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
+		c.Fatalf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
 	}
 
 	return nil
