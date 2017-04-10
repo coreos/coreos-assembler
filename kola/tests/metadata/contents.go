@@ -15,7 +15,6 @@
 package ignition
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/coreos/go-semver/semver"
@@ -77,13 +76,13 @@ func verifyAWS(c cluster.TestCluster) error {
 
 	out, err := m.SSH("coreos-metadata --version")
 	if err != nil {
-		return fmt.Errorf("failed to cat /run/metadata/coreos: %s: %v", out, err)
+		c.Fatalf("failed to cat /run/metadata/coreos: %s: %v", out, err)
 	}
 
 	versionStr := strings.TrimPrefix(string(out), "coreos-metadata v")
 	version, err := semver.NewVersion(versionStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse coreos-metadata version: %v", err)
+		c.Fatalf("failed to parse coreos-metadata version: %v", err)
 	}
 
 	if version.LessThan(semver.Version{Minor: 3}) {
@@ -102,12 +101,12 @@ func verify(c cluster.TestCluster, keys ...string) error {
 
 	out, err := m.SSH("cat /run/metadata/coreos")
 	if err != nil {
-		return fmt.Errorf("failed to cat /run/metadata/coreos: %s: %v", out, err)
+		c.Fatalf("failed to cat /run/metadata/coreos: %s: %v", out, err)
 	}
 
 	for _, key := range keys {
 		if !strings.Contains(string(out), key) {
-			return fmt.Errorf("%q wasn't found in %q", key, string(out))
+			c.Errorf("%q wasn't found in %q", key, string(out))
 		}
 	}
 
