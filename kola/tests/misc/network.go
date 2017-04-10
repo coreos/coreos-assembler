@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform"
 )
 
 func init() {
@@ -37,7 +36,9 @@ type listener struct {
 	port    string
 }
 
-func checkListeners(m platform.Machine, protocol string, filter string, listeners []listener) error {
+func checkListeners(c cluster.TestCluster, protocol string, filter string, listeners []listener) error {
+	m := c.Machines()[0]
+
 	var command string
 	if filter != "" {
 		command = fmt.Sprintf("sudo lsof -i%v -s%v", protocol, filter)
@@ -70,7 +71,7 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 		if valid != true {
 			// systemd renames child processes in parentheses before closing their fds
 			if processname[0] == '(' {
-				plog.Infof("Ignoring %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
+				c.Logf("Ignoring %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
 			} else {
 				return fmt.Errorf("Unexpected %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
 			}
@@ -80,8 +81,6 @@ func checkListeners(m platform.Machine, protocol string, filter string, listener
 }
 
 func NetworkListeners(c cluster.TestCluster) error {
-	m := c.Machines()[0]
-
 	TCPListeners := []listener{
 		{"systemd", "ssh"},
 	}
@@ -89,11 +88,11 @@ func NetworkListeners(c cluster.TestCluster) error {
 		{"systemd-n", "dhcpv6-client"},
 		{"systemd-n", "bootpc"},
 	}
-	err := checkListeners(m, "TCP", "TCP:LISTEN", TCPListeners)
+	err := checkListeners(c, "TCP", "TCP:LISTEN", TCPListeners)
 	if err != nil {
 		return err
 	}
-	err = checkListeners(m, "UDP", "", UDPListeners)
+	err = checkListeners(c, "UDP", "", UDPListeners)
 	if err != nil {
 		return err
 	}

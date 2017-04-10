@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/coreos/coreos-cloudinit/config"
-	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -28,8 +27,6 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/misc")
-
 	nfsserverconf = config.CloudConfig{
 		CoreOS: config.CoreOS{
 			Units: []config.Unit{
@@ -96,7 +93,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 
 	defer m1.Destroy()
 
-	plog.Info("NFS server booted.")
+	c.Log("NFS server booted.")
 
 	/* poke a file in /tmp */
 	tmp, err := m1.SSH("mktemp")
@@ -104,7 +101,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 		return fmt.Errorf("Machine.SSH: %s", err)
 	}
 
-	plog.Infof("Test file %q created on server.", tmp)
+	c.Logf("Test file %q created on server.", tmp)
 
 	c2 := config.CloudConfig{
 		CoreOS: config.CoreOS{
@@ -126,9 +123,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 
 	defer m2.Destroy()
 
-	plog.Info("NFS client booted.")
-
-	plog.Info("Waiting for NFS mount on client...")
+	c.Log("NFS client booted.")
 
 	checkmount := func() error {
 		status, err := m2.SSH("systemctl is-active mnt.mount")
@@ -136,7 +131,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) error {
 			return fmt.Errorf("mnt.mount status is %q: %v", status, err)
 		}
 
-		plog.Info("Got NFS mount.")
+		c.Log("Got NFS mount.")
 		return nil
 	}
 
