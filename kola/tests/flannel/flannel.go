@@ -111,18 +111,18 @@ func mach2bip(m platform.Machine, ifname string) (string, error) {
 func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) error {
 	srcip, err := mach2bip(a, ifname)
 	if err != nil {
-		return fmt.Errorf("failed to get docker bridge ip #1: %v", err)
+		c.Fatalf("failed to get docker bridge ip #1: %v", err)
 	}
 
 	dstip, err := mach2bip(b, ifname)
 	if err != nil {
-		return fmt.Errorf("failed to get docker bridge ip #2: %v", err)
+		c.Fatalf("failed to get docker bridge ip #2: %v", err)
 	}
 
 	// ensure the docker bridges have the right network
 	_, ipnet, _ := net.ParseCIDR("10.254.0.0/16")
 	if !ipnet.Contains(net.ParseIP(srcip)) || !ipnet.Contains(net.ParseIP(dstip)) {
-		return fmt.Errorf("bridge ips (%s %s) not in flannel network (%s)", srcip, dstip, ipnet)
+		c.Fatalf("bridge ips (%s %s) not in flannel network (%s)", srcip, dstip, ipnet)
 	}
 
 	c.Logf("ping from %s(%s) to %s(%s)", a.ID(), srcip, b.ID(), dstip)
@@ -130,7 +130,7 @@ func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) error {
 	cmd := fmt.Sprintf("ping -c 10 -I %s %s", srcip, dstip)
 	out, err := a.SSH(cmd)
 	if err != nil {
-		return fmt.Errorf("ping from %s to %s failed: %s: %v", a.ID(), b.ID(), out, err)
+		c.Fatalf("ping from %s to %s failed: %s: %v", a.ID(), b.ID(), out, err)
 	}
 
 	return nil
@@ -142,7 +142,7 @@ func udp(c cluster.TestCluster) error {
 
 	// Wait for all etcd cluster nodes to be ready.
 	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
-		return fmt.Errorf("cluster health: %v", err)
+		c.Fatalf("cluster health: %v", err)
 	}
 
 	return ping(c, machs[0], machs[2], "flannel0")
@@ -154,7 +154,7 @@ func vxlan(c cluster.TestCluster) error {
 
 	// Wait for all etcd cluster nodes to be ready.
 	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
-		return fmt.Errorf("cluster health: %v", err)
+		c.Fatalf("cluster health: %v", err)
 	}
 
 	return ping(c, machs[0], machs[2], "flannel.1")
