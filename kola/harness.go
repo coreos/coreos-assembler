@@ -19,7 +19,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -283,16 +282,14 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		}
 	}()
 
-	url, err := c.GetDiscoveryURL(t.ClusterSize)
-	if err != nil {
-		h.Fatalf("Failed to create discovery endpoint: %v", err)
-	}
-
-	cfgs := MakeConfigs(url, t.UserData, t.ClusterSize)
-
 	if t.ClusterSize > 0 {
-		_, err := platform.NewMachines(c, cfgs)
+		url, err := c.GetDiscoveryURL(t.ClusterSize)
 		if err != nil {
+			h.Fatalf("Failed to create discovery endpoint: %v", err)
+		}
+
+		cfg := strings.Replace(t.UserData, "$discovery", url, -1)
+		if _, err := platform.NewMachines(c, cfg, t.ClusterSize); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
@@ -353,18 +350,6 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 		}
 	}
 	c.Fatalf("Unable to locate kolet binary for %s", mArch)
-}
-
-// replaces $discovery with discover url in etcd cloud config and
-// replaces $name with a unique name
-func MakeConfigs(url, cfg string, csize int) []string {
-	cfg = strings.Replace(cfg, "$discovery", url, -1)
-
-	var cfgs []string
-	for i := 0; i < csize; i++ {
-		cfgs = append(cfgs, strings.Replace(cfg, "$name", "instance"+strconv.Itoa(i), -1))
-	}
-	return cfgs
 }
 
 // CleanOutputDir creates an empty directory, any existing data will be wiped!

@@ -70,11 +70,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 	}
 
 	// create worker nodes
-	workerConfigs := make([]string, nodes)
-	for i := range workerConfigs {
-		workerConfigs[i] = "#cloud-config" // want default rather then blank
-	}
-	workers, err := platform.NewMachines(c, workerConfigs)
+	workers, err := platform.NewMachines(c, "#cloud-config", nodes)
 	if err != nil {
 		return nil, err
 	}
