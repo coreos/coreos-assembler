@@ -26,6 +26,8 @@ import (
 	"github.com/coreos/mantle/pluton/spawn"
 )
 
+var bastionMachine platform.Machine
+
 // Call this from main after setting all the global options. Tests are filtered
 // by name based on the glob pattern given.
 func RunSuite(pattern string) {
@@ -45,12 +47,46 @@ func RunSuite(pattern string) {
 	}
 	suite := harness.NewSuite(opts, tests)
 
+	// setup a node for in cluster services not tied to individual test life-cycles
+	var cloud platform.Cluster
+	switch Opts.CloudPlatform {
+	case "gce":
+		var bastionDir = filepath.Join(Opts.OutputDir, "bastion")
+
+		err := os.MkdirAll(bastionDir, 0777)
+		if err != nil {
+			fmt.Printf("setting up bastion cluster: %v\n", err)
+			os.Exit(1)
+		}
+
+		cloud, err = gcloud.NewCluster(&Opts.GCEOptions, bastionDir)
+		if err != nil {
+			fmt.Printf("setting up bastion cluster: %v\n", err)
+			os.Exit(1)
+		}
+
+		bastionMachine, err = cloud.NewMachine("")
+		if err != nil {
+			fmt.Printf("setting up bastion cluster: %v\n", err)
+
+			cloud.Destroy()
+			os.Exit(1)
+		}
+	default:
+		fmt.Printf("invalid cloud platform %v\n", Opts.CloudPlatform)
+		os.Exit(1)
+	}
+
 	if err := suite.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		fmt.Println("FAIL")
+
+		cloud.Destroy()
 		os.Exit(1)
 	}
 	fmt.Println("PASS")
+
+	cloud.Destroy()
 	os.Exit(0)
 }
 
@@ -102,7 +138,7 @@ func runTest(t pluton.Test, h *harness.H) {
 		SelfHostEtcd:   t.Options.SelfHostEtcd,
 	}
 
-	c, err := spawn.MakeBootkubeCluster(cloud, config)
+	c, err := spawn.MakeBootkubeCluster(cloud, config, bastionMachine)
 	if err != nil {
 		h.Fatalf("creating cluster: %v", err)
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/pluton"
+	"github.com/coreos/mantle/pluton/spawn/containercache"
 
 	"github.com/coreos/pkg/capnslog"
 )
@@ -37,6 +38,7 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "pluton/spawn")
 type BootkubeManager struct {
 	platform.Cluster
 
+	bastion   platform.Machine
 	firstNode platform.Machine
 	info      pluton.Info
 	files     scriptFiles
@@ -67,7 +69,7 @@ type BootkubeConfig struct {
 
 // MakeSimpleCluster brings up a multi node bootkube cluster with static etcd
 // and checks that all nodes are registered before returning.
-func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton.Cluster, error) {
+func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion platform.Machine) (*pluton.Cluster, error) {
 	// parse in script dir info or use defaults
 	var files scriptFiles
 	if config.ScriptDir == "" {
@@ -83,6 +85,43 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton
 	}
 	if config.InitialMasters < 1 {
 		return nil, fmt.Errorf("Must specify at least 1 initial master for the bootstrap node")
+	}
+
+	// parse hyperkube version from service file
+	info, err := getVersionFromService(files.kubeletMaster)
+	if err != nil {
+		return nil, fmt.Errorf("error determining kubernetes version: %v", err)
+	}
+
+	containers := []containercache.ImageName{
+		{Name: fmt.Sprintf("quay.io/coreos/hyperkube:%v", info.KubeletTag), Engine: "rkt"},
+		{Name: fmt.Sprintf("quay.io/coreos/hyperkube:%v", info.KubeletTag), Engine: "docker"},
+		{Name: fmt.Sprintf("%v:%v", config.ImageRepo, config.ImageTag), Engine: "rkt"},
+		{Name: "nginx", Engine: "docker"},
+		{Name: "busybox", Engine: "docker"},
+
+		//TODO(pb): find a better way of ensuring we are caching the
+		//right versions of these components. Its not fatal if we
+		//don't, it just means those images don't get cached which
+		//could cause potential test failures
+		{Name: "quay.io/coreos/flannel:v0.7.0-amd64", Engine: "docker"},
+		{Name: "quay.io/coreos/pod-checkpointer:417b8f7552ccf3db192ba1e5472e524848f0eb5f", Engine: "docker"},
+		{Name: "gcr.io/google_containers/kubedns-amd64:1.9", Engine: "docker"},
+		{Name: "gcr.io/google_containers/kube-dnsmasq-amd64:1.4.1", Engine: "docker"},
+		{Name: "gcr.io/google_containers/dnsmasq-metrics-amd64:1.0.1", Engine: "docker"},
+		{Name: "gcr.io/google_containers/exechealthz-amd64:1.2", Engine: "docker"},
+		{Name: "gcr.io/google_containers/pause-amd64:3.0", Engine: "docker"},
+	}
+	if config.SelfHostEtcd {
+		containers = append(containers, containercache.ImageName{Name: "quay.io/coreos/etcd-operator:v0.2.4", Engine: "docker"})
+	} else {
+		containers = append(containers, containercache.ImageName{Name: "quay.io/coreos/etcd:v3.1.0", Engine: "rkt"})
+	}
+
+	// start containercache on bastion machine
+	err = containercache.StartBastionOnce(bastion, containers)
+	if err != nil {
+		return nil, fmt.Errorf("starting bastion: %v", err)
 	}
 
 	// provision master node running etcd
@@ -101,17 +140,15 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton
 	}
 	plog.Infof("Master VM (%s) started. It's IP is %s.", master.ID(), master.IP())
 
+	if err := containercache.Load(bastion, []platform.Machine{master}); err != nil {
+		return nil, fmt.Errorf("copying bootstrap node's containers from cache: %v", err)
+	}
+
 	// TODO(pb): as soon as we have masterIP, start additional workers/masters in parallel with bootkube start
 
 	// start bootkube on master
 	if err := bootstrapMaster(master, config.ImageRepo, config.ImageTag, config.SelfHostEtcd); err != nil {
 		return nil, fmt.Errorf("bootstrapping master node: %v", err)
-	}
-
-	// parse hyperkube version from service file
-	info, err := getVersionFromService(files.kubeletMaster)
-	if err != nil {
-		return nil, fmt.Errorf("error determining kubernetes version: %v", err)
 	}
 
 	// install kubectl on master
@@ -121,6 +158,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig) (*pluton
 
 	manager := &BootkubeManager{
 		Cluster:   cloud,
+		bastion:   bastion,
 		firstNode: master,
 		files:     files,
 		info:      info,
@@ -326,6 +364,12 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 	wg.Wait()
 	if merror != nil || werror != nil {
 		return nil, nil, fmt.Errorf("error calling NewMachines: %v %v", merror, werror)
+	}
+
+	// populate machines with containers from cache
+	err = containercache.Load(m.bastion, append(masterNodes, workerNodes...))
+	if err != nil {
+		return nil, nil, fmt.Errorf("populating cache: %v", err)
 	}
 
 	// start kubelet
