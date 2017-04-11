@@ -49,12 +49,13 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadImageName      string
 	uploadBoard          string
 	uploadFile           string
-	uploadExpireObject   bool
+	uploadDeleteObject   bool
 	uploadForce          bool
 	uploadSourceSnapshot string
 	uploadObjectFormat   aws.EC2ImageFormat
 	uploadAMIName        string
 	uploadAMIDescription string
+	uploadGrantUsers     []string
 	uploadCreatePV       bool
 )
 
@@ -67,12 +68,13 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
 		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
-	cmdUpload.Flags().BoolVar(&uploadExpireObject, "expire-object", true, "expire the S3 object in 10 days")
+	cmdUpload.Flags().BoolVar(&uploadDeleteObject, "delete-object", true, "delete uploaded S3 object after snapshot is created")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object without prompt")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
+	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition to the HVM AMI")
 }
 
@@ -170,22 +172,39 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	s3BucketName := s3URL.Host
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
-	if uploadSourceObject == "" && uploadSourceSnapshot == "" {
+	// if no snapshot was specified, check for an existing one or a
+	// snapshot task in progress
+	sourceSnapshot := uploadSourceSnapshot
+	if sourceSnapshot == "" {
+		snapshot, err := API.FindSnapshot(imageName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed finding snapshot: %v\n", err)
+			os.Exit(1)
+		}
+		if snapshot != nil {
+			sourceSnapshot = snapshot.SnapshotID
+		}
+	}
+
+	// if there's no existing snapshot and no provided S3 object to
+	// make one from, upload to S3
+	if uploadSourceObject == "" && sourceSnapshot == "" {
 		f, err := os.Open(uploadFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
 			os.Exit(1)
 		}
+		defer f.Close()
 
-		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadExpireObject, uploadForce)
+		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadForce)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
 			os.Exit(1)
 		}
 	}
 
-	sourceSnapshot := uploadSourceSnapshot
-	if uploadSourceSnapshot == "" {
+	// if we don't already have a snapshot, make one
+	if sourceSnapshot == "" {
 		snapshot, err := API.CreateSnapshot(imageName, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
@@ -194,10 +213,29 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		sourceSnapshot = snapshot.SnapshotID
 	}
 
-	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName, uploadAMIDescription)
+	// if delete is enabled and we created the snapshot from an S3
+	// object that we also created (perhaps in a previous run), delete
+	// the S3 object
+	if uploadSourceObject == "" && uploadSourceSnapshot == "" && uploadDeleteObject {
+		if err := API.DeleteObject(s3BucketName, s3ObjectPath); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to delete object: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// create AMIs and grant permissions
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
+	}
+
+	if len(uploadGrantUsers) > 0 {
+		err = API.GrantLaunchPermission(hvmID, uploadGrantUsers)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	var pvID string
@@ -208,6 +246,14 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 		pvID = pvImageID
+
+		if len(uploadGrantUsers) > 0 {
+			err = API.GrantLaunchPermission(pvID, uploadGrantUsers)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	err = json.NewEncoder(os.Stdout).Encode(&struct {

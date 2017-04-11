@@ -17,7 +17,6 @@ package aws
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -44,12 +43,8 @@ func s3IsNotFound(err error) bool {
 }
 
 // UploadObject uploads an object to S3
-func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force bool) error {
+func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
-	var expireTime *time.Time
-	if expire {
-		expireTime = aws.Time(time.Now().Add(10 * 24 * time.Hour))
-	}
 
 	if !force {
 		_, err := a.s3.HeadObject(&s3.HeadObjectInput{
@@ -61,20 +56,30 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, expire bool, force 
 				return fmt.Errorf("unable to head object %v/%v: %v", bucket, path, err)
 			}
 		} else {
-			// TODO, maybe we should bump expiration here
 			plog.Infof("skipping upload since force was not set: s3://%v/%v", bucket, path)
 			return nil
 		}
 	}
 
 	_, err := s3uploader.Upload(&s3manager.UploadInput{
-		Body:    r,
-		Bucket:  aws.String(bucket),
-		Key:     aws.String(path),
-		Expires: expireTime,
+		Body:   r,
+		Bucket: aws.String(bucket),
+		Key:    aws.String(path),
 	})
 	if err != nil {
 		return fmt.Errorf("error uploading s3://%v/%v: %v", bucket, path, err)
+	}
+	return err
+}
+
+func (a *API) DeleteObject(bucket, path string) error {
+	plog.Infof("deleting s3://%v/%v", bucket, path)
+	_, err := a.s3.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(path),
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting s3://%v/%v: %v", bucket, path, err)
 	}
 	return err
 }

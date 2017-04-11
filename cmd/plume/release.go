@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,12 +27,12 @@ import (
 	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/storage/index"
 )
 
 var (
-	releaseBatch  bool
 	releaseDryRun bool
 	cmdRelease    = &cobra.Command{
 		Use:   "release [options]",
@@ -80,6 +81,9 @@ func runRelease(cmd *cobra.Command, args []string) {
 
 	// Register GCE image if needed.
 	doGCE(ctx, client, src, &spec)
+
+	// Make AWS images public.
+	doAWS(ctx, client, src, &spec)
 
 	for _, dSpec := range spec.Destinations {
 		dst, err := storage.NewBucket(client, dSpec.BaseURL)
@@ -334,6 +338,50 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 			if failures > 5 {
 				plog.Fatalf("Giving up after %d failures.", failures)
 			}
+		}
+	}
+}
+
+func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
+	if spec.AWS.Image == "" {
+		plog.Notice("AWS image creation disabled.")
+		return
+	}
+
+	imageName := fmt.Sprintf("CoreOS-%v-%v", specChannel, specVersion)
+	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
+
+	for _, cloud := range spec.AWS.Clouds {
+		for _, region := range cloud.Regions {
+			if releaseDryRun {
+				plog.Printf("Checking for images in %v %v...", cloud.Name, region)
+			} else {
+				plog.Printf("Publishing images in %v %v...", cloud.Name, region)
+			}
+
+			api, err := aws.New(&aws.Options{
+				Profile: cloud.Profile,
+				Region:  region,
+			})
+			if err != nil {
+				plog.Fatalf("creating client for %v %v: %v", cloud.Name, region, err)
+			}
+
+			publish := func(imageName string) {
+				imageID, err := api.FindImage(imageName)
+				if err != nil {
+					plog.Fatalf("couldn't find image %q in %v %v: %v", imageName, cloud.Name, region, err)
+				}
+
+				if !releaseDryRun {
+					err := api.PublishImage(imageID)
+					if err != nil {
+						plog.Fatalf("couldn't publish image in %v %v: %v", cloud.Name, region, err)
+					}
+				}
+			}
+			publish(imageName)
+			publish(imageName + "-hvm")
 		}
 	}
 }

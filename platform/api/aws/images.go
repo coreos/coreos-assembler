@@ -42,6 +42,7 @@ const (
 )
 
 // TODO, these can be derived at runtime
+// these are pv-grub-hd0_1.04-x86_64
 var akis = map[string]string{
 	"us-east-1":      "aki-919dcaf8",
 	"us-east-2":      "aki-da055ebf",
@@ -87,20 +88,8 @@ type Snapshot struct {
 	SnapshotID string
 }
 
-// CreateSnapshot creates an AWS Snapshot
-func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
-	if format == "" {
-		format = EC2ImageFormatVmdk
-	}
-	s3url, err := url.Parse(sourceURL)
-	if err != nil {
-		return nil, err
-	}
-	if s3url.Scheme != "s3" {
-		return nil, fmt.Errorf("source must have a 's3://' scheme, not: '%v://'", s3url.Scheme)
-	}
-	s3key := strings.TrimPrefix(s3url.Path, "/")
-
+// Look up a Snapshot by name. Return nil if not found.
+func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 	// Look for an existing snapshot with this image name.
 	snapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
 		Filters: []*ec2.Filter{
@@ -123,7 +112,7 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 	}
 	if len(snapshotRes.Snapshots) == 1 {
 		snapshotID := *snapshotRes.Snapshots[0].SnapshotId
-		plog.Infof("found existing snapshot %v, reusing", snapshotID)
+		plog.Infof("found existing snapshot %v", snapshotID)
 		return &Snapshot{
 			SnapshotID: snapshotID,
 		}, nil
@@ -163,29 +152,51 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 		}
 		snapshotTaskID = *task.ImportTaskId
 	}
-
 	if snapshotTaskID == "" {
-		importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
-			RoleName:    aws.String(vmImportRole),
-			Description: aws.String(imageName),
-			DiskContainer: &ec2.SnapshotDiskContainer{
-				// TODO(euank): allow s3 source / local file -> s3 source
-				UserBucket: &ec2.UserBucket{
-					S3Bucket: aws.String(s3url.Host),
-					S3Key:    aws.String(s3key),
-				},
-				Format: aws.String(string(format)),
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
-		}
-		snapshotTaskID = *importRes.ImportTaskId
-		plog.Infof("created snapshot import task %v", snapshotTaskID)
-	} else {
-		plog.Infof("found existing snapshot import task %v, reusing", snapshotTaskID)
+		return nil, nil
 	}
 
+	plog.Infof("found existing snapshot import task %v", snapshotTaskID)
+	return a.finishSnapshotTask(snapshotTaskID, imageName)
+}
+
+// CreateSnapshot creates an AWS Snapshot
+func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat) (*Snapshot, error) {
+	if format == "" {
+		format = EC2ImageFormatVmdk
+	}
+	s3url, err := url.Parse(sourceURL)
+	if err != nil {
+		return nil, err
+	}
+	if s3url.Scheme != "s3" {
+		return nil, fmt.Errorf("source must have a 's3://' scheme, not: '%v://'", s3url.Scheme)
+	}
+	s3key := strings.TrimPrefix(s3url.Path, "/")
+
+	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
+		RoleName:    aws.String(vmImportRole),
+		Description: aws.String(imageName),
+		DiskContainer: &ec2.SnapshotDiskContainer{
+			// TODO(euank): allow s3 source / local file -> s3 source
+			UserBucket: &ec2.UserBucket{
+				S3Bucket: aws.String(s3url.Host),
+				S3Key:    aws.String(s3key),
+			},
+			Format: aws.String(string(format)),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to create import snapshot task: %v", err)
+	}
+
+	plog.Infof("created snapshot import task %v", *importRes.ImportTaskId)
+	return a.finishSnapshotTask(*importRes.ImportTaskId, imageName)
+}
+
+// Wait on a snapshot import task, post-process the snapshot (e.g. adding
+// tags), and return a Snapshot.
+func (a *API) finishSnapshotTask(snapshotTaskID, imageName string) (*Snapshot, error) {
 	snapshotDone := func(snapshotTaskID string) (bool, string, error) {
 		taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{
 			ImportTaskIds: []*string{aws.String(snapshotTaskID)},
@@ -220,6 +231,7 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 	var snapshotID string
 	for {
 		var done bool
+		var err error
 		done, snapshotID, err = snapshotDone(snapshotTaskID)
 		if err != nil {
 			return nil, err
@@ -230,7 +242,8 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 		time.Sleep(20 * time.Second)
 	}
 
-	err = a.CreateTags([]string{snapshotID}, map[string]string{
+	// post-process
+	err := a.CreateTags([]string{snapshotID}, map[string]string{
 		"Name": imageName,
 	})
 	if err != nil {
@@ -326,41 +339,41 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	name += "-hvm"
-	imageID, err := a.findImageID(name)
-	if err != nil {
-		return "", err
-	}
-	if imageID != "" {
-		plog.Infof("found existing HVM image %v, reusing", imageID)
-		return imageID, nil
-	}
 	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM)
 	params.EnaSupport = aws.Bool(true)
 	params.SriovNetSupport = aws.String("simple")
-	res, err := a.ec2.RegisterImage(params)
-	if err != nil {
-		return "", fmt.Errorf("error creating hvm AMI: %v", err)
-	}
-	return *res.ImageId, nil
+	return a.createImage(params)
 }
 
 func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
-	imageID, err := a.findImageID(name)
-	if err != nil {
-		return "", err
-	}
-	if imageID != "" {
-		plog.Infof("found existing PV image %v, reusing", imageID)
-		return imageID, nil
-	}
 	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
+	return a.createImage(params)
+}
+
+func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	res, err := a.ec2.RegisterImage(params)
-	if err != nil {
-		return "", fmt.Errorf("error creating paravirtual AMI: %v", err)
+
+	if err == nil {
+		return *res.ImageId, nil
 	}
-	return *res.ImageId, nil
+	if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
+		// The AMI already exists. Get its ID. Due to races, this
+		// may take several attempts.
+		for {
+			imageID, err := a.FindImage(*params.Name)
+			if err != nil {
+				return "", err
+			}
+			if imageID != "" {
+				plog.Infof("found existing image %v, reusing", imageID)
+				return imageID, nil
+			}
+			plog.Debugf("failed to locate image %q, retrying...", *params.Name)
+			time.Sleep(10 * time.Second)
+		}
+	}
+	return "", fmt.Errorf("error creating AMI: %v", err)
 }
 
 const diskSize = 8 // GB
@@ -389,6 +402,24 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 	}
 }
 
+func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
+	arg := &ec2.ModifyImageAttributeInput{
+		Attribute:        aws.String("launchPermission"),
+		ImageId:          aws.String(imageID),
+		LaunchPermission: &ec2.LaunchPermissionModifications{},
+	}
+	for _, userID := range userIDs {
+		arg.LaunchPermission.Add = append(arg.LaunchPermission.Add, &ec2.LaunchPermission{
+			UserId: aws.String(userID),
+		})
+	}
+	_, err := a.ec2.ModifyImageAttribute(arg)
+	if err != nil {
+		return fmt.Errorf("couldn't grant launch permission: %v", err)
+	}
+	return nil
+}
+
 func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]string, error) {
 	type result struct {
 		region  string
@@ -409,6 +440,15 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	}
 	snapshot := describeSnapshotRes.Snapshots[0]
 
+	describeAttributeRes, err := a.ec2.DescribeImageAttribute(&ec2.DescribeImageAttributeInput{
+		Attribute: aws.String("launchPermission"),
+		ImageId:   aws.String(sourceImageID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe launch permissions: %v", err)
+	}
+	launchPermissions := describeAttributeRes.LaunchPermissions
+
 	var wg sync.WaitGroup
 	ch := make(chan result, len(regions))
 	for _, region := range regions {
@@ -424,7 +464,8 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 			res := result{region: aa.opts.Region}
 			res.imageID, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
 				*image.Name, *image.Description,
-				image.Tags, snapshot.Tags)
+				image.Tags, snapshot.Tags,
+				launchPermissions)
 			ch <- res
 		}()
 	}
@@ -443,8 +484,8 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	return amis, err
 }
 
-func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag) (string, error) {
-	imageID, err := a.findImageID(name)
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission) (string, error) {
+	imageID, err := a.FindImage(name)
 	if err != nil {
 		return "", err
 	}
@@ -493,11 +534,37 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		}
 	}
 
+	if len(launchPermissions) > 0 {
+		_, err = a.ec2.ModifyImageAttribute(&ec2.ModifyImageAttributeInput{
+			Attribute: aws.String("launchPermission"),
+			ImageId:   aws.String(imageID),
+			LaunchPermission: &ec2.LaunchPermissionModifications{
+				Add: launchPermissions,
+			},
+		})
+		if err != nil {
+			return "", fmt.Errorf("couldn't grant launch permissions: %v", err)
+		}
+	}
+
+	// The AMI created by CopyImage doesn't immediately appear in
+	// DescribeImagesOutput, and CopyImage doesn't enforce the
+	// constraint that multiple images cannot have the same name.
+	// As a result we could have created a duplicate image after
+	// losing a race with a CopyImage task created by a previous run.
+	// Don't try to clean this up automatically for now, but at least
+	// detect it so plume pre-release doesn't leave any surprises for
+	// plume release.
+	_, err = a.FindImage(name)
+	if err != nil {
+		return "", fmt.Errorf("checking for duplicate images: %v", err)
+	}
+
 	return imageID, nil
 }
 
 // Find an image we own with the specified name. Return ID or "".
-func (a *API) findImageID(name string) (string, error) {
+func (a *API) FindImage(name string) (string, error) {
 	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
@@ -527,4 +594,47 @@ func (a *API) describeImage(imageID string) (*ec2.Image, error) {
 		return nil, fmt.Errorf("couldn't describe image: %v", err)
 	}
 	return describeRes.Images[0], nil
+}
+
+// Grant everyone launch permission on the specified image and create-volume
+// permission on its underlying snapshot.
+func (a *API) PublishImage(imageID string) error {
+	// snapshot create-volume permission
+	image, err := a.describeImage(imageID)
+	if err != nil {
+		return err
+	}
+	snapshotID := image.BlockDeviceMappings[0].Ebs.SnapshotId
+	_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
+		Attribute:  aws.String("createVolumePermission"),
+		SnapshotId: snapshotID,
+		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
+			Add: []*ec2.CreateVolumePermission{
+				&ec2.CreateVolumePermission{
+					Group: aws.String("all"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("couldn't grant create volume permission on %v: %v", snapshotID, err)
+	}
+
+	// image launch permission
+	_, err = a.ec2.ModifyImageAttribute(&ec2.ModifyImageAttributeInput{
+		Attribute: aws.String("launchPermission"),
+		ImageId:   aws.String(imageID),
+		LaunchPermission: &ec2.LaunchPermissionModifications{
+			Add: []*ec2.LaunchPermission{
+				&ec2.LaunchPermission{
+					Group: aws.String("all"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("couldn't grant launch permission on %v: %v", imageID, err)
+	}
+
+	return nil
 }
