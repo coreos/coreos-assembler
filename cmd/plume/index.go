@@ -74,10 +74,16 @@ func runIndex(cmd *cobra.Command, args []string) {
 
 	if specBoard != "" {
 		boardOk := false
-		for _, board := range boards {
-			if specBoard == board {
-				boardOk = true
-				break
+	channelLoop:
+		for channel, spec := range specs {
+			if specChannel != "" && specChannel != channel {
+				continue
+			}
+			for _, board := range spec.Boards {
+				if specBoard == board {
+					boardOk = true
+					break channelLoop
+				}
 			}
 		}
 		if !boardOk {
@@ -134,7 +140,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 			}
 
 			doIndex(bkt.Prefix(), false)
-			for _, board := range boards {
+			for _, board := range spec.Boards {
 				if specBoard != "" && specBoard != board {
 					continue
 				}
