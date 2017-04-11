@@ -35,7 +35,7 @@ func init() {
 	// gce-specific options
 	sv(&harness.Opts.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-7-0-v20170401", "GCE image")
 	sv(&harness.Opts.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
-	sv(&harness.Opts.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
+	sv(&harness.Opts.GCEOptions.Zone, "gce-zone", "us-east1-d", "GCE zone name")
 	sv(&harness.Opts.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
 	sv(&harness.Opts.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
 	sv(&harness.Opts.GCEOptions.Network, "gce-network", "default", "GCE network")
