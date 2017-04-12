@@ -74,6 +74,7 @@ type awsSpec struct {
 
 type channelSpec struct {
 	BaseURL      string // Copy from $BaseURL/$Board/$Version
+	Boards       []string
 	Destinations []storageSpec
 	GCE          gceSpec
 	Azure        azureSpec
@@ -84,7 +85,6 @@ var (
 	specBoard   string
 	specChannel string
 	specVersion string
-	boards      = []string{"amd64-usr", "arm64-usr"}
 	gceBoards   = []string{"amd64-usr"}
 	azureBoards = []string{"amd64-usr"}
 	awsBoards   = []string{"amd64-usr"}
@@ -127,6 +127,7 @@ var (
 	specs = map[string]channelSpec{
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
+			Boards:  []string{"amd64-usr", "arm64-usr"},
 			Destinations: []storageSpec{storageSpec{
 				BaseURL:     "gs://alpha.release.core-os.net",
 				NamedPath:   "current",
@@ -179,6 +180,7 @@ var (
 		},
 		"beta": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/beta/boards",
+			Boards:  []string{"amd64-usr", "arm64-usr"},
 			Destinations: []storageSpec{storageSpec{
 				BaseURL:     "gs://beta.release.core-os.net",
 				NamedPath:   "current",
@@ -229,6 +231,7 @@ var (
 		},
 		"stable": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/stable/boards",
+			Boards:  []string{"amd64-usr"},
 			Destinations: []storageSpec{storageSpec{
 				BaseURL:     "gs://stable.release.core-os.net",
 				NamedPath:   "current",
@@ -299,14 +302,14 @@ func ChannelSpec() channelSpec {
 	}
 
 	boardOk := false
-	for _, board := range boards {
+	for _, board := range spec.Boards {
 		if specBoard == board {
 			boardOk = true
 			break
 		}
 	}
 	if !boardOk {
-		plog.Fatalf("Unknown board: %s", specBoard)
+		plog.Fatalf("Unknown board %q for channel %q", specBoard, specChannel)
 	}
 
 	gceOk := false
