@@ -315,9 +315,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	defer func() {
 		// give some time for the remote journal to be flushed so it can be read
 		// before we run the deferred machine destruction
-		if err != nil {
-			time.Sleep(2 * time.Second)
-		}
+		time.Sleep(2 * time.Second)
 	}()
 
 	// run test
