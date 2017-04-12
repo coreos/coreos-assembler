@@ -224,10 +224,9 @@ func serviceToConfig(s string) string {
 func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
 	const startTimeout = time.Minute * 12 // stop bootkube start if it takes longer then this
 
-	var etcdRenderAdditions, etcdStartAdditions string
+	var etcdRenderAdditions string
 	if selfHostEtcd {
-		etcdRenderAdditions = "--etcd-servers=http://10.3.0.15:2379  --experimental-self-hosted-etcd"
-		etcdStartAdditions = fmt.Sprintf("--etcd-server=http://%s:12379 --experimental-self-hosted-etcd", m.PrivateIP())
+		etcdRenderAdditions = "--experimental-self-hosted-etcd"
 	}
 
 	var cmds = []string{
@@ -248,6 +247,7 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		"sudo cp /home/core/assets/auth/kubeconfig /etc/kubernetes/",
 		// don't fail for backwards compat
 		"sudo cp /home/core/assets/tls/ca.crt /etc/kubernetes/ca.crt || true",
+		"sudo mkdir -p /tmp/bootkube",
 
 		// start kubelet
 		"sudo systemctl -q enable --now kubelet",
@@ -258,12 +258,14 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		--net=host \
         	--volume home,kind=host,source=/home/core \
         	--mount volume=home,target=/core \
+        	--volume tmp,kind=host,source=/tmp/bootkube \
+        	--mount volume=tmp,target=/tmp/bootkube \
         	--volume manifests,kind=host,source=/etc/kubernetes/manifests \
         	--mount volume=manifests,target=/etc/kubernetes/manifests \
                 --trust-keys-from-https \
 		%s:%s --exec \
-		/bootkube -- start --asset-dir=/core/assets %s`,
-			imageRepo, imageTag, etcdStartAdditions),
+		/bootkube -- start --asset-dir=/core/assets`,
+			imageRepo, imageTag),
 	}
 
 	// use ssh client to collect stderr and stdout separetly
