@@ -366,7 +366,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 			return nil, fmt.Errorf("BucketRegion %v is not listed in Regions", cloud.BucketRegion)
 		}
 
-		var amis map[string]string
+		amis := map[string]string{}
 		if len(destRegions) > 0 {
 			plog.Printf("Replicating AMI %v...", imageID)
 			amis, err = api.CopyImage(imageID, destRegions)
