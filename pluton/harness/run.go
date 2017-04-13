@@ -59,7 +59,11 @@ func RunSuite(pattern string) {
 			os.Exit(1)
 		}
 
-		cloud, err = gcloud.NewCluster(&Opts.GCEOptions, bastionDir)
+		// override machine size for bastion
+		bastionOpts := Opts.GCEOptions
+		bastionOpts.MachineType = "n1-standard-4"
+
+		cloud, err = gcloud.NewCluster(&bastionOpts, bastionDir)
 		if err != nil {
 			fmt.Printf("setting up bastion cluster: %v\n", err)
 			os.Exit(1)
@@ -72,6 +76,7 @@ func RunSuite(pattern string) {
 			cloud.Destroy()
 			os.Exit(1)
 		}
+
 	default:
 		fmt.Printf("invalid cloud platform %v\n", Opts.CloudPlatform)
 		os.Exit(1)
