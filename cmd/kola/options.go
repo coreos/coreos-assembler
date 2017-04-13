@@ -63,9 +63,9 @@ func init() {
 	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
 
 	// aws-specific options
-	// CoreOS-alpha-845.0.0 on us-west-1
-	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-55438011", "AWS AMI ID")
-	sv(&kola.AWSOptions.InstanceType, "aws-type", "t1.micro", "AWS instance type")
+	// Container Linux 1339.0.0 (alpha) on us-west-1
+	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-17d48a77", "AWS AMI ID")
+	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.micro", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
 }
 
