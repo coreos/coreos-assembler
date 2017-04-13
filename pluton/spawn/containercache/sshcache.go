@@ -1,6 +1,7 @@
 package containercache
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ const (
 	cacheDir          = "/home/core/containercache"
 	downloadRetries   = 3
 	downloadRetryWait = 15 * time.Second
+	downloadTimeout   = 2 * time.Minute
 )
 
 var once sync.Once
@@ -91,36 +93,59 @@ func startBastion(bastion platform.Machine, names []ImageName) error {
 		return fmt.Errorf("%v: %s", err, out)
 	}
 
+	start := time.Now()
+
 	//fetch rkt and docker images and retry on failures
 	//TODO: log failures via harness logs along with stderr
 	for _, name := range names {
 		switch name.Engine {
 		case "rkt":
 			rktFetch := func() error {
-				out, err := bastion.SSH(fmt.Sprintf("sudo rkt fetch %s --trust-keys-from-https", name.Name))
+				err := sshWithTimeout(bastion, fmt.Sprintf("sudo rkt fetch %s --trust-keys-from-https", name.Name), downloadTimeout)
 				if err != nil {
-					return fmt.Errorf("%v: %s", err, out)
+					fmt.Printf("failure or timeout fetching %v, retrying...\n", name.Name)
+					return err
 				}
 				return nil
 			}
+
+			start := time.Now()
+
 			if err := util.Retry(downloadRetries, downloadRetryWait, rktFetch); err != nil {
-				return fmt.Errorf("pulling rkt container %v: %v", name, err)
+				return err
 			}
+
+			elasped := time.Since(start)
+			fmt.Printf("Extracting and fetching %v took %v\n", name.Name, elasped)
+
 		case "docker":
 			dockerFetch := func() error {
-				out, err := bastion.SSH(fmt.Sprintf("docker pull %s", name.Name))
+				err := sshWithTimeout(bastion, fmt.Sprintf("docker pull %s", name.Name), downloadTimeout)
 				if err != nil {
-					return fmt.Errorf("%v: %s", err, out)
+					fmt.Printf("failure or timeout pulling %v, retrying...\n", name.Name)
+					return err
 				}
 				return nil
 			}
+
+			start := time.Now()
+
 			if err := util.Retry(downloadRetries, downloadRetryWait, dockerFetch); err != nil {
-				return fmt.Errorf("pulling docker container %v: %v", name, err)
+				return err
 			}
+
+			elasped := time.Since(start)
+			fmt.Printf("Extracting and pulling %v took %v\n", name.Name, elasped)
+
 		default:
 			return fmt.Errorf("invalid container name Engine must either be 'rkt' or 'docker' got %v", name.Engine)
 		}
 	}
+
+	elasped := time.Since(start)
+	fmt.Printf("Total prefetch time took %v\n", elasped)
+
+	start = time.Now()
 
 	// extract containers to known location for Load to pick up later
 	err = extract(bastion, names)
@@ -128,7 +153,49 @@ func startBastion(bastion platform.Machine, names []ImageName) error {
 		return fmt.Errorf("error extracting containers: %v", err)
 	}
 
+	elasped = time.Since(start)
+	fmt.Printf("Total time extracting prefetched containers to disk: %v\n", elasped)
+
 	return nil
+}
+
+// Will add a timeout to the SSH command
+func sshWithTimeout(m platform.Machine, cmd string, timeout time.Duration) error {
+	client, err := m.SSHClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	var outBuf = bytes.NewBuffer(nil)
+	var errBuf = bytes.NewBuffer(nil)
+	session.Stdout = outBuf
+	session.Stderr = errBuf
+
+	err = session.Start(cmd)
+	if err != nil {
+		return err
+	}
+
+	errc := make(chan error)
+	go func() { errc <- session.Wait() }()
+
+	select {
+	case err := <-errc:
+		if err != nil {
+			return fmt.Errorf("error prefetching cmd: %v -- %s", cmd, append(outBuf.Bytes(), errBuf.Bytes()...))
+		}
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout prefetching: %v -- %s", cmd, append(outBuf.Bytes(), errBuf.Bytes()...))
+	}
+
+	return nil // unreachable
 }
 
 // Extract existing containers to fs
