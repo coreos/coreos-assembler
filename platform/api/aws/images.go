@@ -298,6 +298,10 @@ func (a *API) CreateImportRole(bucket string) error {
 	if err != nil {
 		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "NoSuchEntity" {
 			// Policy does not exist, let's try to create it
+			arnAwsPart := "aws"
+			if a.opts.Region == "us-gov-west-1" {
+				arnAwsPart = "aws-us-gov"
+			}
 			_, err := iamc.PutRolePolicy(&iam.PutRolePolicyInput{
 				RoleName:   &vmImportRole,
 				PolicyName: &policyName,
@@ -311,8 +315,8 @@ func (a *API) CreateImportRole(bucket string) error {
 			"s3:GetObject"
 		],
 		"Resource": [
-			"arn:aws:s3:::` + bucket + `",
-			"arn:aws:s3:::` + bucket + `/*"
+			"arn:` + arnAwsPart + `:s3:::` + bucket + `",
+			"arn:` + arnAwsPart + `:s3:::` + bucket + `/*"
 		]
 	},
 	{
