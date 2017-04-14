@@ -45,6 +45,7 @@ TODO`,
 )
 
 func init() {
+	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	AddSpecFlags(cmdRelease.Flags())
@@ -360,8 +361,9 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 			}
 
 			api, err := aws.New(&aws.Options{
-				Profile: part.Profile,
-				Region:  region,
+				CredentialsFile: awsCredentialsFile,
+				Profile:         part.Profile,
+				Region:          region,
 			})
 			if err != nil {
 				plog.Fatalf("creating client for %v %v: %v", part.Name, region, err)

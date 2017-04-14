@@ -49,12 +49,14 @@ var (
 		RunE:  runPreRelease,
 	}
 
-	azureProfile  string
-	verifyKeyFile string
+	azureProfile       string
+	awsCredentialsFile string
+	verifyKeyFile      string
 )
 
 func init() {
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
+	cmdPreRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
 		"verify-key", "", "PGP public key to be used in verifying download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 
@@ -282,8 +284,9 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, map[string]string, error) {
 	plog.Printf("Connecting to %v...", part.Name)
 	api, err := aws.New(&aws.Options{
-		Profile: part.Profile,
-		Region:  part.BucketRegion,
+		CredentialsFile: awsCredentialsFile,
+		Profile:         part.Profile,
+		Region:          part.BucketRegion,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating client for %v: %v", part.Name, err)
