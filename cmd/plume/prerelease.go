@@ -49,7 +49,6 @@ var (
 		RunE:  runPreRelease,
 	}
 
-	azureOpts     = azure.Options{}
 	azureProfile  string
 	verifyKeyFile string
 )
