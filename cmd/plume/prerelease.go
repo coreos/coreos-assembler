@@ -280,14 +280,14 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 	return nil
 }
 
-func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDescription, imagePath string) (map[string]string, map[string]string, error) {
-	plog.Printf("Connecting to AWS %v...", cloud.Name)
+func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, map[string]string, error) {
+	plog.Printf("Connecting to %v...", part.Name)
 	api, err := aws.New(&aws.Options{
-		Profile: cloud.Profile,
-		Region:  cloud.BucketRegion,
+		Profile: part.Profile,
+		Region:  part.BucketRegion,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating client for %v: %v", cloud.Name, err)
+		return nil, nil, fmt.Errorf("creating client for %v: %v", part.Name, err)
 	}
 
 	f, err := os.Open(imagePath)
@@ -297,7 +297,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 	defer f.Close()
 
 	s3ObjectPath := fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(spec.AWS.Image, filepath.Ext(spec.AWS.Image)))
-	s3ObjectURL := fmt.Sprintf("s3://%s/%s", cloud.Bucket, s3ObjectPath)
+	s3ObjectURL := fmt.Sprintf("s3://%s/%s", part.Bucket, s3ObjectPath)
 
 	snapshot, err := api.FindSnapshot(imageName)
 	if err != nil {
@@ -306,7 +306,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 
 	if snapshot == nil {
 		plog.Printf("Creating S3 object %v...", s3ObjectURL)
-		err = api.UploadObject(f, cloud.Bucket, s3ObjectPath, false)
+		err = api.UploadObject(f, part.Bucket, s3ObjectPath, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error uploading: %v", err)
 		}
@@ -320,7 +320,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 
 	// delete unconditionally to avoid leaks after a restart
 	plog.Printf("Deleting S3 object %v...", s3ObjectURL)
-	err = api.DeleteObject(cloud.Bucket, s3ObjectPath)
+	err = api.DeleteObject(part.Bucket, s3ObjectPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error deleting S3 object: %v", err)
 	}
@@ -345,16 +345,16 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 	}
 
 	postprocess := func(imageID string) (map[string]string, error) {
-		if len(cloud.LaunchPermissions) > 0 {
-			if err := api.GrantLaunchPermission(imageID, cloud.LaunchPermissions); err != nil {
+		if len(part.LaunchPermissions) > 0 {
+			if err := api.GrantLaunchPermission(imageID, part.LaunchPermissions); err != nil {
 				return nil, err
 			}
 		}
 
-		destRegions := make([]string, 0, len(cloud.Regions))
+		destRegions := make([]string, 0, len(part.Regions))
 		foundBucketRegion := false
-		for _, region := range cloud.Regions {
-			if region != cloud.BucketRegion {
+		for _, region := range part.Regions {
+			if region != part.BucketRegion {
 				destRegions = append(destRegions, region)
 			} else {
 				foundBucketRegion = true
@@ -363,7 +363,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 		if !foundBucketRegion {
 			// We don't handle this case and shouldn't ever
 			// encounter it
-			return nil, fmt.Errorf("BucketRegion %v is not listed in Regions", cloud.BucketRegion)
+			return nil, fmt.Errorf("BucketRegion %v is not listed in Regions", part.BucketRegion)
 		}
 
 		amis := map[string]string{}
@@ -374,7 +374,7 @@ func awsUploadToCloud(spec *channelSpec, cloud *awsCloudSpec, imageName, imageDe
 				return nil, fmt.Errorf("couldn't copy image: %v", err)
 			}
 		}
-		amis[cloud.BucketRegion] = imageID
+		amis[part.BucketRegion] = imageID
 
 		return amis, nil
 	}
@@ -494,7 +494,8 @@ func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channe
 // awsPreRelease runs everything necessary to prepare a CoreOS release for AWS.
 //
 // This includes uploading the aws_vmdk image to an S3 bucket in each EC2
-// cloud, creating HVM and PV AMIs, and replicating the AMIs to each region.
+// partition, creating HVM and PV AMIs, and replicating the AMIs to each
+// region.
 func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) error {
 	if spec.AWS.Image == "" {
 		plog.Notice("AWS image creation disabled.")
@@ -511,8 +512,8 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 	}
 
 	var amis amiList
-	for i := range spec.AWS.Clouds {
-		hvmAmis, pvAmis, err := awsUploadToCloud(spec, &spec.AWS.Clouds[i], imageName, imageDescription, imagePath)
+	for i := range spec.AWS.Partitions {
+		hvmAmis, pvAmis, err := awsUploadToPartition(spec, &spec.AWS.Partitions[i], imageName, imageDescription, imagePath)
 		if err != nil {
 			return err
 		}

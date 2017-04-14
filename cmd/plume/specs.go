@@ -57,8 +57,8 @@ type azureSpec struct {
 	SmallIconURI      string
 }
 
-type awsCloudSpec struct {
-	Name              string   // Printable name for the cloud
+type awsPartitionSpec struct {
+	Name              string   // Printable name for the partition
 	Profile           string   // Authentication profile in ~/.aws
 	Bucket            string   // S3 bucket for uploading image
 	BucketRegion      string   // Region of the bucket
@@ -67,9 +67,9 @@ type awsCloudSpec struct {
 }
 
 type awsSpec struct {
-	Prefix string         // Prefix for filenames of AMI lists
-	Image  string         // File name of image source
-	Clouds []awsCloudSpec // Clouds
+	Prefix     string             // Prefix for filenames of AMI lists
+	Image      string             // File name of image source
+	Partitions []awsPartitionSpec // AWS partitions
 }
 
 type channelSpec struct {
@@ -82,15 +82,15 @@ type channelSpec struct {
 }
 
 var (
-	specBoard   string
-	specChannel string
-	specVersion string
-	gceBoards   = []string{"amd64-usr"}
-	azureBoards = []string{"amd64-usr"}
-	awsBoards   = []string{"amd64-usr"}
-	awsClouds   = []awsCloudSpec{
-		awsCloudSpec{
-			Name:         "EC2",
+	specBoard     string
+	specChannel   string
+	specVersion   string
+	gceBoards     = []string{"amd64-usr"}
+	azureBoards   = []string{"amd64-usr"}
+	awsBoards     = []string{"amd64-usr"}
+	awsPartitions = []awsPartitionSpec{
+		awsPartitionSpec{
+			Name:         "AWS",
 			Profile:      "default",
 			Bucket:       "coreos-prod-ami-import-us-west-2",
 			BucketRegion: "us-west-2",
@@ -114,8 +114,8 @@ var (
 				"ca-central-1",
 			},
 		},
-		awsCloudSpec{
-			Name:         "GovCloud",
+		awsPartitionSpec{
+			Name:         "AWS GovCloud",
 			Profile:      "govcloud",
 			Bucket:       "coreos-prod-ami-import-us-gov-west-1",
 			BucketRegion: "us-gov-west-1",
@@ -173,9 +173,9 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix: "coreos_production_ami_",
-				Image:  "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Clouds: awsClouds,
+				Prefix:     "coreos_production_ami_",
+				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions: awsPartitions,
 			},
 		},
 		"beta": channelSpec{
@@ -224,9 +224,9 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix: "coreos_production_ami_",
-				Image:  "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Clouds: awsClouds,
+				Prefix:     "coreos_production_ami_",
+				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions: awsPartitions,
 			},
 		},
 		"stable": channelSpec{
@@ -265,9 +265,9 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix: "coreos_production_ami_",
-				Image:  "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Clouds: awsClouds,
+				Prefix:     "coreos_production_ami_",
+				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions: awsPartitions,
 			},
 		},
 	}
