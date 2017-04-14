@@ -15,6 +15,9 @@
 package aws
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -33,6 +36,9 @@ type Options struct {
 	*platform.Options
 	// The AWS region regional api calls should use
 	Region string
+
+	// The path to the shared credentials file, if not ~/.aws/credentials
+	CredentialsFile string
 	// The profile to use when resolving credentials, if applicable
 	Profile string
 
@@ -59,6 +65,13 @@ type API struct {
 // No validation is done that credentials exist and before using the API a
 // preflight check is recommended via api.PreflightCheck
 func New(opts *Options) (*API, error) {
+	if opts.CredentialsFile != "" {
+		// Not exposed via the API. Ick.
+		if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", opts.CredentialsFile); err != nil {
+			return nil, fmt.Errorf("couldn't set credentials file: %v", err)
+		}
+	}
+
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Profile: opts.Profile,
 		Config:  aws.Config{Region: aws.String(opts.Region)},

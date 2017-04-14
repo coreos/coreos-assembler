@@ -45,6 +45,7 @@ TODO`,
 )
 
 func init() {
+	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	AddSpecFlags(cmdRelease.Flags())
@@ -351,32 +352,33 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	imageName := fmt.Sprintf("CoreOS-%v-%v", specChannel, specVersion)
 	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
 
-	for _, cloud := range spec.AWS.Clouds {
-		for _, region := range cloud.Regions {
+	for _, part := range spec.AWS.Partitions {
+		for _, region := range part.Regions {
 			if releaseDryRun {
-				plog.Printf("Checking for images in %v %v...", cloud.Name, region)
+				plog.Printf("Checking for images in %v %v...", part.Name, region)
 			} else {
-				plog.Printf("Publishing images in %v %v...", cloud.Name, region)
+				plog.Printf("Publishing images in %v %v...", part.Name, region)
 			}
 
 			api, err := aws.New(&aws.Options{
-				Profile: cloud.Profile,
-				Region:  region,
+				CredentialsFile: awsCredentialsFile,
+				Profile:         part.Profile,
+				Region:          region,
 			})
 			if err != nil {
-				plog.Fatalf("creating client for %v %v: %v", cloud.Name, region, err)
+				plog.Fatalf("creating client for %v %v: %v", part.Name, region, err)
 			}
 
 			publish := func(imageName string) {
 				imageID, err := api.FindImage(imageName)
 				if err != nil {
-					plog.Fatalf("couldn't find image %q in %v %v: %v", imageName, cloud.Name, region, err)
+					plog.Fatalf("couldn't find image %q in %v %v: %v", imageName, part.Name, region, err)
 				}
 
 				if !releaseDryRun {
 					err := api.PublishImage(imageID)
 					if err != nil {
-						plog.Fatalf("couldn't publish image in %v %v: %v", cloud.Name, region, err)
+						plog.Fatalf("couldn't publish image in %v %v: %v", part.Name, region, err)
 					}
 				}
 			}
