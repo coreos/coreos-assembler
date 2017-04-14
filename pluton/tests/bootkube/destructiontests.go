@@ -52,7 +52,7 @@ func rebootMaster(c *pluton.Cluster) {
 }
 
 func deleteAPIServer(c *pluton.Cluster) {
-	out, err := c.Kubectl("get pods -l k8s-app=kube-apiserver -o=jsonpath={.items[*].metadata.name} --namespace=kube-system")
+	out, err := c.Kubectl("get pods -l component=kube-apiserver -o=jsonpath={.items[*].metadata.name} --namespace=kube-system")
 	if err != nil {
 		c.Fatal(err)
 	}
