@@ -105,11 +105,11 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 		//don't, it just means those images don't get cached which
 		//could cause potential test failures
 		{Name: "quay.io/coreos/flannel:v0.7.0-amd64", Engine: "docker"},
-		{Name: "quay.io/coreos/pod-checkpointer:417b8f7552ccf3db192ba1e5472e524848f0eb5f", Engine: "docker"},
-		{Name: "gcr.io/google_containers/kubedns-amd64:1.9", Engine: "docker"},
-		{Name: "gcr.io/google_containers/kube-dnsmasq-amd64:1.4.1", Engine: "docker"},
-		{Name: "gcr.io/google_containers/dnsmasq-metrics-amd64:1.0.1", Engine: "docker"},
-		{Name: "gcr.io/google_containers/exechealthz-amd64:1.2", Engine: "docker"},
+		{Name: "quay.io/coreos/pod-checkpointer:8a6356146761b512cc18ab77c8a421676f641c88", Engine: "docker"},
+		{Name: "quay.io/coreos/kenc:48b6feceeee56c657ea9263f47b6ea091e8d3035", Engine: "docker"},
+		{Name: "gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.1", Engine: "docker"},
+		{Name: "gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.1", Engine: "docker"},
+		{Name: "gcr.io/google_containers/k8s-dns-sidecar-amd64:1.14.1", Engine: "docker"},
 		{Name: "gcr.io/google_containers/pause-amd64:3.0", Engine: "docker"},
 	}
 	if config.SelfHostEtcd {
