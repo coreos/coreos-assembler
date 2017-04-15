@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 )
 
 type mockServer struct {
@@ -47,6 +48,13 @@ func TestServerRequestResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create omaha server: %v", err)
 	}
+	defer func() {
+		err := s.Destroy()
+		if err != nil {
+			panic(err)
+		}
+		close(svc.reqChan)
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -56,15 +64,12 @@ func TestServerRequestResponse(t *testing.T) {
 		}
 	}()
 
-	defer s.Destroy()
-
 	buf := new(bytes.Buffer)
 	enc := xml.NewEncoder(buf)
 	enc.Indent("", "\t")
 	err = enc.Encode(nilRequest)
 	if err != nil {
-		t.Errorf("failed to marshal request: %v", err)
-		return
+		t.Fatalf("failed to marshal request: %v", err)
 	}
 
 	// check that server gets the same thing we sent
@@ -84,17 +89,18 @@ func TestServerRequestResponse(t *testing.T) {
 
 	// send omaha request
 	endpoint := fmt.Sprintf("http://%s/v1/update/", s.Addr())
-	res, err := http.Post(endpoint, "text/xml", buf)
+	httpClient := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+	res, err := httpClient.Post(endpoint, "text/xml", buf)
 	if err != nil {
-		t.Errorf("failed to post: %v", err)
-		return
+		t.Fatalf("failed to post: %v", err)
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		t.Errorf("failed to post: %v", res.Status)
-		return
+		t.Fatalf("failed to post: %v", res.Status)
 	}
 
 	dec := xml.NewDecoder(res.Body)
