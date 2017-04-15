@@ -22,7 +22,7 @@ import (
 )
 
 func NewServer(addr string, updater Updater) (*Server, error) {
-	l, err := net.Listen("tcp", addr)
+	l, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return nil, err
 	}
