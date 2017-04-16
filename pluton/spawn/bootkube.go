@@ -256,13 +256,11 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		// TODO(pb): separate stdin/stdout
 		fmt.Sprintf(`sudo /usr/bin/rkt run \
 		--net=host \
-        	--volume home,kind=host,source=/home/core \
-        	--mount volume=home,target=/core \
-        	--volume tmp,kind=host,source=/tmp/bootkube \
-        	--mount volume=tmp,target=/tmp/bootkube \
-        	--volume manifests,kind=host,source=/etc/kubernetes/manifests \
-        	--mount volume=manifests,target=/etc/kubernetes/manifests \
-                --trust-keys-from-https \
+		--volume home,kind=host,source=/home/core \
+		--mount volume=home,target=/core \
+		--volume kubernetes,kind=host,source=/etc/kubernetes \
+		--mount volume=kubernetes,target=/etc/kubernetes \
+		--trust-keys-from-https \
 		%s:%s --exec \
 		/bootkube -- start --asset-dir=/core/assets`,
 			imageRepo, imageTag),
