@@ -15,18 +15,27 @@
 package omaha
 
 import (
+	"fmt"
 	"net/http"
+	"path"
 )
 
+const pkg_prefix = "/packages/"
+
+// trivialUpdater always responds with the given Update.
 type trivialUpdater struct {
 	UpdaterStub
 	Update
 }
 
 func (tu *trivialUpdater) CheckUpdate(req *Request, app *AppRequest) (*Update, error) {
+	if len(tu.Manifest.Packages) == 0 {
+		return nil, NoUpdate
+	}
 	return &tu.Update, nil
 }
 
+// trivialHandler serves up a single file.
 type trivialHandler struct {
 	Path string
 }
@@ -40,36 +49,49 @@ func (th *trivialHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type TrivialServer struct {
 	*Server
-	th trivialHandler
+	tu trivialUpdater
 }
 
 func NewTrivialServer(addr string) (*TrivialServer, error) {
-	s, err := NewServer(addr, &UpdaterStub{})
-	if err != nil {
-		return nil, err
-	}
-	ts := TrivialServer{Server: s}
-	ts.Mux.Handle("/packages/update.gz", &ts.th)
-	return &ts, nil
-}
-
-func (ts *TrivialServer) SetPackage(path string) error {
-	tu := trivialUpdater{
-		Update: Update{
-			URL: URL{CodeBase: "/packages/"},
+	ts := TrivialServer{
+		tu: trivialUpdater{
+			Update: Update{
+				URL: URL{CodeBase: pkg_prefix},
+			},
 		},
 	}
 
-	pkg, err := tu.Manifest.AddPackageFromPath(path)
+	s, err := NewServer(addr, &ts.tu)
+	if err != nil {
+		return nil, err
+	}
+	ts.Server = s
+
+	return &ts, nil
+}
+
+// AddPackage adds a new file to the update response.
+// file is the local filesystem path, name is the final URL component.
+func (ts *TrivialServer) AddPackage(file, name string) error {
+	// name may not include any path components
+	if path.Base(name) != name || name[0] == '.' {
+		return fmt.Errorf("invalid package name %q", name)
+	}
+
+	pkg, err := ts.tu.Manifest.AddPackageFromPath(file)
 	if err != nil {
 		return err
 	}
-	pkg.Name = "update.gz"
-	act := tu.Manifest.AddAction("postinstall")
-	act.DisablePayloadBackoff = true
-	act.Sha256 = pkg.Sha256
+	pkg.Name = name
 
-	ts.th.Path = path
-	ts.Updater = &tu
+	// Insert the update_engine style postinstall action if
+	// this is the first (and probably only) package.
+	if len(ts.tu.Manifest.Actions) == 0 {
+		act := ts.tu.Manifest.AddAction("postinstall")
+		act.DisablePayloadBackoff = true
+		act.Sha256 = pkg.Sha256
+	}
+
+	ts.Mux.Handle(pkg_prefix+name, &trivialHandler{file})
 	return nil
 }

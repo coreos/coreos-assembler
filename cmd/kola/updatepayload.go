@@ -143,7 +143,7 @@ func runUpdateTest() error {
 	defer cluster.Destroy()
 	qc := cluster.(*qemu.Cluster)
 
-	if err := qc.OmahaServer.SetPackage(updatePayload); err != nil {
+	if err := qc.OmahaServer.AddPackage(updatePayload, "update.gz"); err != nil {
 		return fmt.Errorf("bad payload: %v", err)
 	}
 
