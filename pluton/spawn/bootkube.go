@@ -227,6 +227,8 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 	var etcdRenderAdditions string
 	if selfHostEtcd {
 		etcdRenderAdditions = "--experimental-self-hosted-etcd"
+	} else {
+		etcdRenderAdditions = fmt.Sprintf("--etcd-servers=http://%s:2379", m.PrivateIP())
 	}
 
 	var cmds = []string{
