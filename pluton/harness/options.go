@@ -29,8 +29,7 @@ type GlobalOptions struct {
 	Parallel  int
 	OutputDir string
 
-	BootkubeRepo      string
-	BootkubeTag       string
+	BootkubeBinary    string
 	BootkubeScriptDir string
 }
 

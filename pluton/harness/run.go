@@ -135,8 +135,7 @@ func runTest(t pluton.Test, h *harness.H) {
 	}()
 
 	config := spawn.BootkubeConfig{
-		ImageRepo:      Opts.BootkubeRepo,
-		ImageTag:       Opts.BootkubeTag,
+		BinaryPath:     Opts.BootkubeBinary,
 		ScriptDir:      Opts.BootkubeScriptDir,
 		InitialWorkers: t.Options.InitialWorkers,
 		InitialMasters: t.Options.InitialMasters,
