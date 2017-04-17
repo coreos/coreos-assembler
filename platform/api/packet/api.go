@@ -277,6 +277,8 @@ After=dev-sda.device
 
 [Service]
 Type=oneshot
+# Prevent coreos-install from validating cloud-config
+Environment=PATH=/root/bin:/usr/sbin:/usr/bin
 
 ExecStart=/usr/bin/coreos-install -b "%v" -V "%v" -d /dev/sda -o packet %v /userdata
 
@@ -292,6 +294,9 @@ StandardError=journal+console
 [Install]
 RequiredBy=multi-user.target
 `, a.opts.ImageBaseURL, a.opts.ImageVersion, userDataOption, linuxConsole[a.opts.Board])
+
+	// make workarounds
+	coreosCloudInit := base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\nexit 0"))
 
 	// make Ignition config
 	b64UserData := base64.StdEncoding.EncodeToString([]byte(userdata))
@@ -311,6 +316,17 @@ RequiredBy=multi-user.target
 							Opaque: ";base64," + b64UserData,
 						},
 					},
+				},
+				ignition.File{
+					Filesystem: "root",
+					Path:       "/root/bin/coreos-cloudinit",
+					Contents: ignition.FileContents{
+						Source: ignition.Url{
+							Scheme: "data",
+							Opaque: ";base64," + coreosCloudInit,
+						},
+					},
+					Mode: 0755,
 				},
 			},
 		},
