@@ -42,7 +42,7 @@ var (
 
 	cmdRun = &cobra.Command{
 		Use:    "run [glob pattern]",
-		Short:  "Run run kola tests by category",
+		Short:  "Run kola tests by category",
 		Long:   "run all kola tests (default) or related groups",
 		Run:    runRun,
 		PreRun: preRun,
@@ -74,7 +74,7 @@ func preRun(cmd *cobra.Command, args []string) {
 
 func runRun(cmd *cobra.Command, args []string) {
 	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
+		fmt.Fprintf(os.Stderr, "Extra arguments specified. Usage: 'kola run [glob pattern]'\n")
 		os.Exit(2)
 	}
 	var pattern string
