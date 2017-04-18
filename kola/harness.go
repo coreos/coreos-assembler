@@ -54,6 +54,20 @@ var (
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
 
+func NewCluster(pltfrm, outputDir string) (cluster platform.Cluster, err error) {
+	switch pltfrm {
+	case "qemu":
+		cluster, err = qemu.NewCluster(&QEMUOptions, outputDir)
+	case "gce":
+		cluster, err = gcloud.NewCluster(&GCEOptions, outputDir)
+	case "aws":
+		cluster, err = aws.NewCluster(&AWSOptions, outputDir)
+	default:
+		err = fmt.Errorf("invalid platform %q", pltfrm)
+	}
+	return
+}
+
 func filterTests(tests map[string]*register.Test, pattern, platform string, version semver.Version) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
@@ -205,24 +219,13 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 // machine and checking
 func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 	var err error
-	var cluster platform.Cluster
 
 	testDir := filepath.Join(outputDir, "get_cluster_semver")
 	if err := os.MkdirAll(testDir, 0777); err != nil {
 		return nil, err
 	}
 
-	switch pltfrm {
-	case "qemu":
-		cluster, err = qemu.NewCluster(&QEMUOptions, testDir)
-	case "gce":
-		cluster, err = gcloud.NewCluster(&GCEOptions, testDir)
-	case "aws":
-		cluster, err = aws.NewCluster(&AWSOptions, testDir)
-	default:
-		err = fmt.Errorf("invalid platform %q", pltfrm)
-	}
-
+	cluster, err := NewCluster(pltfrm, testDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating cluster for semver check: %v", err)
 	}
@@ -263,21 +266,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	splay := time.Duration(rand.Int63n(max))
 	time.Sleep(splay)
 
-	var c platform.Cluster
-	var err error
-
 	testDir := h.OutputDir()
-	switch pltfrm {
-	case "qemu":
-		c, err = qemu.NewCluster(&QEMUOptions, testDir)
-	case "gce":
-		c, err = gcloud.NewCluster(&GCEOptions, testDir)
-	case "aws":
-		c, err = aws.NewCluster(&AWSOptions, testDir)
-	default:
-		err = fmt.Errorf("invalid platform %q", pltfrm)
-	}
-
+	c, err := NewCluster(pltfrm, testDir)
 	if err != nil {
 		h.Fatalf("Cluster failed: %v", err)
 	}
