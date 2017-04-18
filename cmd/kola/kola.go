@@ -125,6 +125,13 @@ func writeProps() error {
 		Image       string `json:"image"`
 		MachineType string `json:"type"`
 	}
+	type Packet struct {
+		Facility          string `json:"facility"`
+		Plan              string `json:"plan"`
+		InstallerImageURL string `json:"installer"`
+		ImageBaseURL      string `json:"image"`
+		ImageVersion      string `json:"version"`
+	}
 	type QEMU struct {
 		Image string `json:"image"`
 	}
@@ -134,6 +141,7 @@ func writeProps() error {
 		Board    string   `json:"board"`
 		AWS      AWS      `json:"aws"`
 		GCE      GCE      `json:"gce"`
+		Packet   Packet   `json:"packet"`
 		QEMU     QEMU     `json:"qemu"`
 	}{
 		Cmdline:  os.Args,
@@ -147,6 +155,13 @@ func writeProps() error {
 		GCE: GCE{
 			Image:       kola.GCEOptions.Image,
 			MachineType: kola.GCEOptions.MachineType,
+		},
+		Packet: Packet{
+			Facility:          kola.PacketOptions.Facility,
+			Plan:              kola.PacketOptions.Plan,
+			InstallerImageURL: kola.PacketOptions.InstallerImageURL,
+			ImageBaseURL:      kola.PacketOptions.ImageBaseURL,
+			ImageVersion:      kola.PacketOptions.ImageVersion,
 		},
 		QEMU: QEMU{
 			Image: kola.QEMUOptions.DiskImage,
