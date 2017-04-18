@@ -41,7 +41,9 @@ func NewServer(addr string, updater Updater) (*Server, error) {
 		srv:     srv,
 	}
 
-	mux.Handle("/v1/update/", &OmahaHandler{s})
+	h := &OmahaHandler{s}
+	mux.Handle("/v1/update", h)
+	mux.Handle("/v1/update/", h)
 
 	return s, nil
 }
