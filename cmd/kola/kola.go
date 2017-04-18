@@ -99,6 +99,7 @@ func runList(cmd *cobra.Command, args []string) {
 		testlist = append(testlist, item{
 			name,
 			test.Platforms,
+			test.ExcludePlatforms,
 			test.Architectures})
 	}
 
@@ -113,12 +114,29 @@ func runList(cmd *cobra.Command, args []string) {
 }
 
 type item struct {
-	Name          string
-	Platforms     []string
-	Architectures []string
+	Name             string
+	Platforms        []string
+	ExcludePlatforms []string
+	Architectures    []string
 }
 
 func (i item) String() string {
+	if len(i.ExcludePlatforms) > 0 {
+		excludePlatforms := map[string]struct{}{}
+		for _, platform := range i.ExcludePlatforms {
+			excludePlatforms[platform] = struct{}{}
+		}
+		if len(i.Platforms) == 0 {
+			i.Platforms = kolaPlatforms
+		}
+		platforms := []string{}
+		for _, platform := range i.Platforms {
+			if _, ok := excludePlatforms[platform]; !ok {
+				platforms = append(platforms, platform)
+			}
+		}
+		i.Platforms = platforms
+	}
 	if len(i.Platforms) == 0 {
 		i.Platforms = []string{"all"}
 	}

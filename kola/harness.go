@@ -80,6 +80,11 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 				allowed = false
 			}
 		}
+		for _, p := range t.ExcludePlatforms {
+			if p == platform {
+				allowed = false
+			}
+		}
 		if !allowed {
 			continue
 		}
