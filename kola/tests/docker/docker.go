@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
@@ -37,17 +36,12 @@ func init() {
 		ClusterSize: 1,
 		Name:        "docker.resources",
 		UserData:    `#cloud-config`,
-		// began shipping docker 1.10 in 949, which has all of the
-		// tested resource options.
-		MinVersion: semver.Version{Major: 949},
 	})
 	register.Register(&register.Test{
 		Run:         dockerNetwork,
 		ClusterSize: 2,
 		Name:        "docker.network",
 		UserData:    `#cloud-config`,
-
-		MinVersion: semver.Version{Major: 1192},
 	})
 	register.Register(&register.Test{
 		Run:           dockerOldClient,
@@ -55,7 +49,6 @@ func init() {
 		Name:          "docker.oldclient",
 		UserData:      `#cloud-config`,
 		Architectures: []string{"amd64"},
-		MinVersion:    semver.Version{Major: 1192},
 	})
 	register.Register(&register.Test{
 		Run:         dockerUserns,
@@ -88,22 +81,19 @@ func init() {
 			  - name: dockremap
 			    create: {}
 		*/
-		UserData:   `{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`,
-		MinVersion: semver.Version{Major: 1192},
+		UserData: `{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`,
 	})
 	register.Register(&register.Test{
 		Run:         dockerNetworksReliably,
 		ClusterSize: 1,
 		Name:        "docker.networks-reliably",
 		UserData:    `#cloud-config`,
-		MinVersion:  semver.Version{Major: 1192},
 	})
 	register.Register(&register.Test{
 		Run:         dockerUserNoCaps,
 		ClusterSize: 1,
 		Name:        "docker.user-no-caps",
 		UserData:    `#cloud-config`,
-		MinVersion:  semver.Version{Major: 1192},
 	})
 }
 

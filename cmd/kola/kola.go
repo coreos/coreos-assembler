@@ -42,7 +42,7 @@ var (
 
 	cmdRun = &cobra.Command{
 		Use:    "run [glob pattern]",
-		Short:  "Run run kola tests by category",
+		Short:  "Run kola tests by category",
 		Long:   "run all kola tests (default) or related groups",
 		Run:    runRun,
 		PreRun: preRun,
@@ -74,7 +74,7 @@ func preRun(cmd *cobra.Command, args []string) {
 
 func runRun(cmd *cobra.Command, args []string) {
 	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'kola run [glob pattern]'\n")
+		fmt.Fprintf(os.Stderr, "Extra arguments specified. Usage: 'kola run [glob pattern]'\n")
 		os.Exit(2)
 	}
 	var pattern string
@@ -99,6 +99,7 @@ func runList(cmd *cobra.Command, args []string) {
 		testlist = append(testlist, item{
 			name,
 			test.Platforms,
+			test.ExcludePlatforms,
 			test.Architectures})
 	}
 
@@ -113,12 +114,29 @@ func runList(cmd *cobra.Command, args []string) {
 }
 
 type item struct {
-	Name          string
-	Platforms     []string
-	Architectures []string
+	Name             string
+	Platforms        []string
+	ExcludePlatforms []string
+	Architectures    []string
 }
 
 func (i item) String() string {
+	if len(i.ExcludePlatforms) > 0 {
+		excludePlatforms := map[string]struct{}{}
+		for _, platform := range i.ExcludePlatforms {
+			excludePlatforms[platform] = struct{}{}
+		}
+		if len(i.Platforms) == 0 {
+			i.Platforms = kolaPlatforms
+		}
+		platforms := []string{}
+		for _, platform := range i.Platforms {
+			if _, ok := excludePlatforms[platform]; !ok {
+				platforms = append(platforms, platform)
+			}
+		}
+		i.Platforms = platforms
+	}
 	if len(i.Platforms) == 0 {
 		i.Platforms = []string{"all"}
 	}

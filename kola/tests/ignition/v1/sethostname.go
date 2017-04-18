@@ -17,8 +17,6 @@ package ignition
 import (
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -44,18 +42,9 @@ func init() {
 		          }
 		      }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.sethostname.aws",
+		Name:        "coreos.ignition.v1.sethostname",
 		Run:         setHostname,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		UserData:    config,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.sethostname.gce",
-		Run:         setHostname,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
 		UserData:    config,
 	})
 }

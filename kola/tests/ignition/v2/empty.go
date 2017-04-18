@@ -15,26 +15,19 @@
 package ignition
 
 import (
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
 
+// Tests for https://github.com/coreos/bugs/issues/1184
+// This test requires the kola key to be passed to the instance via cloud
+// provider metadata since it will not be injected into the config.
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.empty.aws",
-		Run:         empty,
-		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1010},
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.empty.gce",
-		Run:         empty,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
+		Name:             "coreos.ignition.v2.empty",
+		Run:              empty,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"},
 	})
 }
 

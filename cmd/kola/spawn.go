@@ -23,9 +23,6 @@ import (
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/machine/aws"
-	"github.com/coreos/mantle/platform/machine/gcloud"
-	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 var (
@@ -55,7 +52,6 @@ func init() {
 func runSpawn(cmd *cobra.Command, args []string) {
 	var userdata string
 	var err error
-	var cluster platform.Cluster
 
 	if spawnNodeCount <= 0 {
 		die("Cluster Failed: nodecount must be one or more")
@@ -78,17 +74,7 @@ func runSpawn(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	switch kolaPlatform {
-	case "qemu":
-		cluster, err = qemu.NewCluster(&kola.QEMUOptions, outputDir)
-	case "gce":
-		cluster, err = gcloud.NewCluster(&kola.GCEOptions, outputDir)
-	case "aws":
-		cluster, err = aws.NewCluster(&kola.AWSOptions, outputDir)
-	default:
-		err = fmt.Errorf("invalid platform %q", kolaPlatform)
-	}
-
+	cluster, err := kola.NewCluster(kolaPlatform, outputDir)
 	if err != nil {
 		die("Cluster failed: %v", err)
 	}

@@ -39,7 +39,7 @@ var (
 
 	cmdRun = &cobra.Command{
 		Use:   "run [glob pattern]",
-		Short: "Run run pluton tests by category",
+		Short: "Run pluton tests by category",
 		Long:  "run all pluton tests (default) or related groups",
 		Run:   runRun,
 	}
@@ -57,7 +57,7 @@ func main() {
 
 func runRun(cmd *cobra.Command, args []string) {
 	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguements specified. Usage: 'pluton run [glob pattern]'\n")
+		fmt.Fprintf(os.Stderr, "Extra arguments specified. Usage: 'pluton run [glob pattern]'\n")
 		os.Exit(2)
 	}
 	var pattern string

@@ -84,10 +84,10 @@ func init() {
 
 	// tests requiring network connection to internet
 	register.Register(&register.Test{
-		Name:        "coreos.internet",
-		Run:         InternetTests,
-		ClusterSize: 1,
-		Platforms:   []string{"gce", "aws"},
+		Name:             "coreos.internet",
+		Run:              InternetTests,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"},
 		NativeFuncs: map[string]func() error{
 			"UpdateEngine": TestUpdateEngine,
 			"DockerPing":   TestDockerPing,

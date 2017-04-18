@@ -16,6 +16,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/sdk"
@@ -25,6 +27,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
+	kolaPlatforms      = []string{"aws", "gce", "qemu"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
@@ -42,7 +45,7 @@ func init() {
 
 	// general options
 	sv(&outputDir, "output-dir", "_kola_temp", "Temporary output directory for test data and logs")
-	sv(&kolaPlatform, "platform", "qemu", "VM platform: qemu, gce, aws")
+	sv(&kolaPlatform, "platform", "qemu", "VM platform: "+strings.Join(kolaPlatforms, ", "))
 	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
@@ -63,7 +66,12 @@ func init() {
 	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
 
 	// aws-specific options
+	defaultRegion := os.Getenv("AWS_REGION")
+	if defaultRegion == "" {
+		defaultRegion = "us-west-1"
+	}
 	// Container Linux 1339.0.0 (alpha) on us-west-1
+	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
 	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-17d48a77", "AWS AMI ID")
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.micro", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
@@ -71,6 +79,17 @@ func init() {
 
 // Sync up the command line options if there is dependency
 func syncOptions() error {
+	ok := false
+	for _, platform := range kolaPlatforms {
+		if platform == kolaPlatform {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("unsupport platform %q", kolaPlatform)
+	}
+
 	image, ok := kolaDefaultImages[kola.QEMUOptions.Board]
 	if !ok {
 		return fmt.Errorf("unsupport board %q", kola.QEMUOptions.Board)

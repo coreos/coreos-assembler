@@ -21,10 +21,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/machine/aws"
-	"github.com/coreos/mantle/platform/machine/gcloud"
-	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 var cmdBootchart = &cobra.Command{
@@ -52,27 +48,14 @@ func runBootchart(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	var (
-		cluster platform.Cluster
-		err     error
-	)
-
+	var err error
 	outputDir, err = kola.CleanOutputDir(outputDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
 		os.Exit(1)
 	}
 
-	if kolaPlatform == "qemu" {
-		cluster, err = qemu.NewCluster(&kola.QEMUOptions, outputDir)
-	} else if kolaPlatform == "gce" {
-		cluster, err = gcloud.NewCluster(&kola.GCEOptions, outputDir)
-	} else if kolaPlatform == "aws" {
-		cluster, err = aws.NewCluster(&kola.AWSOptions, outputDir)
-	} else {
-		fmt.Fprintf(os.Stderr, "Invalid platform: %v", kolaPlatform)
-	}
-
+	cluster, err := kola.NewCluster(kolaPlatform, outputDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		os.Exit(1)

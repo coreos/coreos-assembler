@@ -17,8 +17,6 @@ package ignition
 import (
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -47,19 +45,9 @@ func init() {
 		               }
 		           }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.btrfsroot.aws",
+		Name:        "coreos.ignition.v2.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1010},
-		UserData:    btrfsConfig,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.btrfsroot.gce",
-		Run:         btrfsRoot,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
 		UserData:    btrfsConfig,
 	})
 
@@ -86,19 +74,9 @@ func init() {
 		             }
 		         }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.xfsroot.aws",
+		Name:        "coreos.ignition.v2.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1010},
-		UserData:    xfsConfig,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.xfsroot.gce",
-		Run:         xfsRoot,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
 		UserData:    xfsConfig,
 	})
 
@@ -125,35 +103,15 @@ func init() {
 		             }
 		         }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.ext4Root.aws",
+		Name:        "coreos.ignition.v2.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1010},
 		UserData:    ext4Config,
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.ext4Root.gce",
-		Run:         ext4Root,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
-		UserData:    ext4Config,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.ext4CheckExisting.aws",
+		Name:        "coreos.ignition.v2.ext4checkexisting",
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		MinVersion:  semver.Version{Major: 1081},
-		UserData:    ext4Config,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.ext4CheckExisting.gce",
-		Run:         ext4CheckExisting,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1081},
 		UserData:    ext4Config,
 	})
 }

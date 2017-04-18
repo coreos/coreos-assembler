@@ -23,11 +23,11 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         CheckUserShells,
-		ClusterSize: 1,
-		Platforms:   []string{"qemu", "aws"},
-		Name:        "coreos.users.shells",
-		UserData:    `#cloud-config`,
+		Run:              CheckUserShells,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"gce"},
+		Name:             "coreos.users.shells",
+		UserData:         `#cloud-config`,
 	})
 }
 

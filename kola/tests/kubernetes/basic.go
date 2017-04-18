@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -47,16 +46,10 @@ func init() {
 				CoreOSBasic(c, t, r)
 			}
 
-			var min semver.Version
-			if r == "rkt" {
-				min = semver.Version{Major: 1122}
-			}
-
 			register.Register(&register.Test{
 				Name:        "google.kubernetes.basic." + r + "." + t,
 				Run:         f,
 				ClusterSize: 0,
-				MinVersion:  min,
 				Platforms:   []string{"gce"},
 			})
 		}
