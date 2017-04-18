@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/sdk"
@@ -63,7 +64,12 @@ func init() {
 	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
 
 	// aws-specific options
+	defaultRegion := os.Getenv("AWS_REGION")
+	if defaultRegion == "" {
+		defaultRegion = "us-west-1"
+	}
 	// Container Linux 1339.0.0 (alpha) on us-west-1
+	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
 	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-17d48a77", "AWS AMI ID")
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.micro", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
