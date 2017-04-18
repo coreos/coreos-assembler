@@ -16,15 +16,9 @@ package omaha
 
 import (
 	"encoding/xml"
-	"io"
+	"log"
 	"net/http"
-
-	"github.com/coreos/pkg/capnslog"
-
-	"github.com/coreos/mantle/util"
 )
-
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "network/omaha")
 
 type OmahaHandler struct {
 	Updater
@@ -32,32 +26,24 @@ type OmahaHandler struct {
 
 func (o *OmahaHandler) ServeHTTP(w http.ResponseWriter, httpReq *http.Request) {
 	if httpReq.Method != "POST" {
-		plog.Errorf("Unexpected HTTP method: %s", httpReq.Method)
+		log.Printf("omaha: Unexpected HTTP method: %s", httpReq.Method)
 		http.Error(w, "Expected a POST", http.StatusBadRequest)
 		return
 	}
 
 	// A request over 1M in size is certainly bogus.
-	var reader io.Reader
-	reader = http.MaxBytesReader(w, httpReq.Body, 1024*1024)
-
-	// Optionally log request bodies.
-	if plog.LevelAt(capnslog.DEBUG) {
-		pr, pw := io.Pipe()
-		go util.LogFrom(capnslog.DEBUG, pr)
-		reader = io.TeeReader(reader, pw)
-	}
+	reader := http.MaxBytesReader(w, httpReq.Body, 1024*1024)
 
 	decoder := xml.NewDecoder(reader)
 	var omahaReq Request
 	if err := decoder.Decode(&omahaReq); err != nil {
-		plog.Errorf("Failed decoding XML: %v", err)
+		log.Printf("omaha: Failed decoding XML: %v", err)
 		http.Error(w, "Invalid XML", http.StatusBadRequest)
 		return
 	}
 
 	if omahaReq.Protocol != "3.0" {
-		plog.Errorf("Unexpected protocol: %q", omahaReq.Protocol)
+		log.Printf("omaha: Unexpected protocol: %q", omahaReq.Protocol)
 		http.Error(w, "Omaha 3.0 Required", http.StatusBadRequest)
 		return
 	}
@@ -86,23 +72,15 @@ func (o *OmahaHandler) ServeHTTP(w http.ResponseWriter, httpReq *http.Request) {
 	w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 	w.WriteHeader(httpStatus)
 
-	// Optionally log response body.
-	var writer io.Writer = w
-	if plog.LevelAt(capnslog.DEBUG) {
-		pr, pw := io.Pipe()
-		go util.LogFrom(capnslog.DEBUG, pr)
-		writer = io.MultiWriter(w, pw)
-	}
-
-	if _, err := writer.Write([]byte(xml.Header)); err != nil {
-		plog.Errorf("Failed writing response: %v", err)
+	if _, err := w.Write([]byte(xml.Header)); err != nil {
+		log.Printf("omaha: Failed writing response: %v", err)
 		return
 	}
 
-	encoder := xml.NewEncoder(writer)
+	encoder := xml.NewEncoder(w)
 	encoder.Indent("", "\t")
 	if err := encoder.Encode(omahaResp); err != nil {
-		plog.Errorf("Failed encoding response: %v", err)
+		log.Printf("omaha: Failed encoding response: %v", err)
 	}
 }
 
@@ -111,7 +89,7 @@ func (o *OmahaHandler) serveApp(omahaResp *Response, httpReq *http.Request, omah
 		if appStatus, ok := err.(AppStatus); ok {
 			return omahaResp.AddApp(appReq.Id, appStatus)
 		}
-		plog.Error(err)
+		log.Printf("omaha: CheckApp failed: %v", err)
 		return omahaResp.AddApp(appReq.Id, AppInternalError)
 	}
 
@@ -139,7 +117,7 @@ func (o *OmahaHandler) checkUpdate(appResp *AppResponse, httpReq *http.Request, 
 		if updateStatus, ok := err.(UpdateStatus); ok {
 			appResp.AddUpdateCheck(updateStatus)
 		} else {
-			plog.Error(err)
+			log.Printf("omaha: CheckUpdate failed: %v", err)
 			appResp.AddUpdateCheck(UpdateInternalError)
 		}
 	} else if update != nil {
@@ -151,13 +129,6 @@ func (o *OmahaHandler) checkUpdate(appResp *AppResponse, httpReq *http.Request, 
 }
 
 func fillUpdate(u *UpdateResponse, update *Update, httpReq *http.Request) {
-	if update.PreviousVersion == "" {
-		plog.Infof("Update to %s via full update payload",
-			update.Version)
-	} else {
-		plog.Infof("Update from %s to %s via delta update payload",
-			update.PreviousVersion, update.Version)
-	}
 	u.URLs = update.URLs([]string{"http://" + httpReq.Host})
 	u.Manifest = &update.Manifest
 }
