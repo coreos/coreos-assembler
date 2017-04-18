@@ -117,6 +117,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	}
 
 	if err := platform.CheckMachine(mach); err != nil {
+		mach.Destroy()
 		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
 	}
 
