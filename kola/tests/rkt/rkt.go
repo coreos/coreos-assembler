@@ -39,12 +39,12 @@ var conf = `{
 
 func init() {
 	register.Register(&register.Test{
-		Run:         rktEtcd,
-		ClusterSize: 1,
-		Platforms:   []string{"aws", "gce"},
-		Name:        "coreos.rkt.etcd3",
-		UserData:    conf,
-		MinVersion:  semver.Version{Major: 1213},
+		Run:              rktEtcd,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"},
+		Name:             "coreos.rkt.etcd3",
+		UserData:         conf,
+		MinVersion:       semver.Version{Major: 1213},
 	})
 }
 

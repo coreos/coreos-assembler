@@ -75,19 +75,19 @@ var (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         udp,
-		ClusterSize: 3,
-		Name:        "coreos.flannel.udp",
-		Platforms:   []string{"aws", "gce"},
-		UserData:    strings.Replace(flannelConf, "$type", "udp", -1),
+		Run:              udp,
+		ClusterSize:      3,
+		Name:             "coreos.flannel.udp",
+		ExcludePlatforms: []string{"qemu"},
+		UserData:         strings.Replace(flannelConf, "$type", "udp", -1),
 	})
 
 	register.Register(&register.Test{
-		Run:         vxlan,
-		ClusterSize: 3,
-		Name:        "coreos.flannel.vxlan",
-		Platforms:   []string{"aws", "gce"},
-		UserData:    strings.Replace(flannelConf, "$type", "vxlan", -1),
+		Run:              vxlan,
+		ClusterSize:      3,
+		Name:             "coreos.flannel.vxlan",
+		ExcludePlatforms: []string{"qemu"},
+		UserData:         strings.Replace(flannelConf, "$type", "vxlan", -1),
 	})
 }
 
