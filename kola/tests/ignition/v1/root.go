@@ -15,8 +15,6 @@
 package ignition
 
 import (
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -41,18 +39,9 @@ func init() {
 		               }
 		           }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.btrfsroot.aws",
+		Name:        "coreos.ignition.v1.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		UserData:    btrfsConfig,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.btrfsroot.gce",
-		Run:         btrfsRoot,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
 		UserData:    btrfsConfig,
 	})
 
@@ -75,18 +64,9 @@ func init() {
 		             }
 		         }`
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.xfsroot.aws",
+		Name:        "coreos.ignition.v1.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
-		Platforms:   []string{"aws"},
-		UserData:    xfsConfig,
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.xfsroot.gce",
-		Run:         xfsRoot,
-		ClusterSize: 1,
-		Platforms:   []string{"gce"},
-		MinVersion:  semver.Version{Major: 1045},
 		UserData:    xfsConfig,
 	})
 }
