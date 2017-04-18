@@ -16,6 +16,7 @@ package aws
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform"
@@ -40,10 +41,15 @@ var (
 )
 
 func init() {
+	defaultRegion := os.Getenv("AWS_REGION")
+	if defaultRegion == "" {
+		defaultRegion = "us-east-1"
+	}
+
 	AWS.PersistentFlags().StringVar(&profileName, "profile", "", "aws profile name")
 	AWS.PersistentFlags().StringVar(&accessKeyID, "access-id", "", "aws access key")
 	AWS.PersistentFlags().StringVar(&secretAccessKey, "secret-key", "", "aws secret key")
-	AWS.PersistentFlags().StringVar(&region, "region", "us-east-1", "aws region")
+	AWS.PersistentFlags().StringVar(&region, "region", defaultRegion, "aws region")
 	cli.WrapPreRun(AWS, preflightCheck)
 }
 
