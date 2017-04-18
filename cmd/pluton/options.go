@@ -28,9 +28,8 @@ func init() {
 	sv(&harness.Opts.CloudPlatform, "platform", "gce", "VM platform: qemu, gce, aws")
 	root.PersistentFlags().IntVar(&harness.Opts.Parallel, "parallel", 1, "number of tests to run in parallel")
 	sv(&harness.Opts.PlatformOptions.BaseName, "basename", "pluton", "Cluster name prefix")
-	sv(&harness.Opts.BootkubeRepo, "bootkubeRepo", "quay.io/coreos/bootkube", "")
-	sv(&harness.Opts.BootkubeTag, "bootkubeTag", "v0.3.13", "")
-	sv(&harness.Opts.BootkubeScriptDir, "bootkubeScriptDir", "", "Make use of bootkube's node init scripts and kubelet service files. Leave blank to use default or pass in the hack/quickstart dir from the bootkube repo.")
+	sv(&harness.Opts.BootkubeBinary, "bootkubeBinary", "", "filepath to binary")
+	sv(&harness.Opts.BootkubeScriptDir, "bootkubeScriptDir", "", "This should be the quickstart dir within the bootkube repo")
 
 	// gce-specific options
 	sv(&harness.Opts.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/coreos-stable-1298-7-0-v20170401", "GCE image")

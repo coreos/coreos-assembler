@@ -25,7 +25,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/pluton"
 	"github.com/coreos/mantle/pluton/spawn/containercache"
@@ -41,7 +40,7 @@ type BootkubeManager struct {
 	bastion   platform.Machine
 	firstNode platform.Machine
 	info      pluton.Info
-	files     scriptFiles
+	files     *inputFiles
 }
 
 func (m *BootkubeManager) AddMasters(n int) ([]platform.Machine, error) {
@@ -59,8 +58,7 @@ func (m *BootkubeManager) AddWorkers(n int) ([]platform.Machine, error) {
 // import cycle. Could also move the GlobalOptions type up into the the pluton
 // package.
 type BootkubeConfig struct {
-	ImageRepo      string
-	ImageTag       string
+	BinaryPath     string
 	ScriptDir      string
 	InitialWorkers int
 	InitialMasters int
@@ -71,18 +69,11 @@ type BootkubeConfig struct {
 // and checks that all nodes are registered before returning.
 func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion platform.Machine) (*pluton.Cluster, error) {
 	// parse in script dir info or use defaults
-	var files scriptFiles
-	if config.ScriptDir == "" {
-		plog.Infof("script dir unspecified, using defaults")
-		files.kubeletMaster = defaultKubeletMasterService
-		files.kubeletWorker = defaultKubeletWorkerService
-	} else {
-		var err error
-		files, err = parseScriptDir(config.ScriptDir)
-		if err != nil {
-			return nil, err
-		}
+	files, err := parseInputFiles(config)
+	if err != nil {
+		return nil, err
 	}
+
 	if config.InitialMasters < 1 {
 		return nil, fmt.Errorf("Must specify at least 1 initial master for the bootstrap node")
 	}
@@ -96,7 +87,6 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	containers := []containercache.ImageName{
 		{Name: fmt.Sprintf("quay.io/coreos/hyperkube:%v", info.KubeletTag), Engine: "rkt"},
 		{Name: fmt.Sprintf("quay.io/coreos/hyperkube:%v", info.KubeletTag), Engine: "docker"},
-		{Name: fmt.Sprintf("%v:%v", config.ImageRepo, config.ImageTag), Engine: "rkt"},
 		{Name: "nginx", Engine: "docker"},
 		{Name: "busybox", Engine: "docker"},
 
@@ -125,7 +115,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	}
 
 	// provision master node running etcd
-	masterConfig, err := renderNodeConfig(files.kubeletMaster, true, !config.SelfHostEtcd)
+	masterConfig, err := renderNodeConfig(files.kubeletMaster)
 	if err != nil {
 		return nil, err
 	}
@@ -133,11 +123,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	if err != nil {
 		return nil, err
 	}
-	if !config.SelfHostEtcd {
-		if err := etcd.GetClusterHealth(master, 1); err != nil {
-			return nil, err
-		}
-	}
+
 	plog.Infof("Master VM (%s) started. It's IP is %s.", master.ID(), master.IP())
 
 	if err := containercache.Load(bastion, []platform.Machine{master}); err != nil {
@@ -147,7 +133,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	// TODO(pb): as soon as we have masterIP, start additional workers/masters in parallel with bootkube start
 
 	// start bootkube on master
-	if err := bootstrapMaster(master, config.ImageRepo, config.ImageTag, config.SelfHostEtcd); err != nil {
+	if err := bootstrapMaster(master, files, config.SelfHostEtcd); err != nil {
 		return nil, fmt.Errorf("bootstrapping master node: %v", err)
 	}
 
@@ -180,15 +166,11 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	return cluster, nil
 }
 
-func renderNodeConfig(kubeletService string, isMaster, startEtcd bool) (string, error) {
+func renderNodeConfig(kubeletService string) (string, error) {
 	// render template
 	tmplData := struct {
-		Master         bool
-		StartEtcd      bool
 		KubeletService string
 	}{
-		isMaster,
-		startEtcd,
 		serviceToConfig(kubeletService),
 	}
 
@@ -221,52 +203,28 @@ func serviceToConfig(s string) string {
 	return service
 }
 
-func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtcd bool) error {
-	const startTimeout = time.Minute * 12 // stop bootkube start if it takes longer then this
+func bootstrapMaster(m platform.Machine, files *inputFiles, selfHostEtcd bool) error {
+	const startTimeout = time.Minute * 5 // stop bootkube start if it takes longer then this
 
-	var etcdRenderAdditions string
-	if selfHostEtcd {
-		etcdRenderAdditions = "--experimental-self-hosted-etcd"
-	} else {
-		etcdRenderAdditions = fmt.Sprintf("--etcd-servers=http://%s:2379", m.PrivateIP())
+	_, err := m.SSH("sudo setenforce 0")
+	if err != nil {
+		return err
 	}
 
-	var cmds = []string{
-		// disable selinux or rkt run commands fail in odd ways
-		"sudo setenforce 0",
-
-		// render assets
-		fmt.Sprintf(`sudo /usr/bin/rkt run \
-		--volume home,kind=host,source=/home/core \
-		--mount volume=home,target=/core \
-		--trust-keys-from-https --net=host %s:%s --exec \
-		/bootkube -- render --asset-dir=/core/assets --api-servers=https://%s:443,https://%s:443 %s`,
-			imageRepo, imageTag, m.IP(), m.PrivateIP(), etcdRenderAdditions),
-
-		// move the local kubeconfig and client cert into expected location
-		"sudo chown -R core:core /home/core/assets",
-		"sudo mkdir -p /etc/kubernetes",
-		"sudo cp /home/core/assets/auth/kubeconfig /etc/kubernetes/",
-		// don't fail for backwards compat
-		"sudo cp /home/core/assets/tls/ca.crt /etc/kubernetes/ca.crt || true",
-		"sudo mkdir -p /tmp/bootkube",
-
-		// start kubelet
-		"sudo systemctl -q enable --now kubelet",
-
-		// start bootkube
-		// TODO(pb): separate stdin/stdout
-		fmt.Sprintf(`sudo /usr/bin/rkt run \
-		--net=host \
-		--volume home,kind=host,source=/home/core \
-		--mount volume=home,target=/core \
-		--volume kubernetes,kind=host,source=/etc/kubernetes \
-		--mount volume=kubernetes,target=/etc/kubernetes \
-		--trust-keys-from-https \
-		%s:%s --exec \
-		/bootkube -- start --asset-dir=/core/assets`,
-			imageRepo, imageTag),
+	// transfer bootkube binary to machine
+	err = platform.InstallFile(bytes.NewReader(files.bootkube), m, "/home/core/bootkube")
+	if err != nil {
+		return fmt.Errorf("Error transferring bootkube binary to bootstrap machine: %v", err)
 	}
+
+	// transfer init-master.sh to machine
+	err = platform.InstallFile(bytes.NewReader(files.initMaster), m, "/home/core/init-master.sh")
+	if err != nil {
+		return fmt.Errorf("Error transferring bootkube binary to bootstrap machine: %v", err)
+	}
+
+	cmd := fmt.Sprintf("sudo COREOS_PRIVATE_IPV4=%v COREOS_PUBLIC_IPV4=%v SELF_HOST_ETCD=%v /home/core/init-master.sh local",
+		m.PrivateIP(), m.IP(), selfHostEtcd)
 
 	// use ssh client to collect stderr and stdout separetly
 	// TODO: make the SSH method on a platform.Machine return two slices
@@ -276,39 +234,37 @@ func bootstrapMaster(m platform.Machine, imageRepo, imageTag string, selfHostEtc
 		return err
 	}
 	defer client.Close()
-	for _, cmd := range cmds {
-		session, err := client.NewSession()
-		if err != nil {
-			return err
-		}
 
-		var stdout = bytes.NewBuffer(nil)
-		var stderr = bytes.NewBuffer(nil)
-		session.Stderr = stderr
-		session.Stdout = stdout
-
-		err = session.Start(cmd)
-		if err != nil {
-			session.Close()
-			return err
-		}
-
-		// add timeout for each command (mostly used to shorten the bootkube timeout which helps with debugging bootkube start)
-		errc := make(chan error)
-		go func() { errc <- session.Wait() }()
-		select {
-		case err := <-errc:
-			if err != nil {
-				session.Close()
-				return fmt.Errorf("SSH session returned error for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
-			}
-		case <-time.After(startTimeout):
-			session.Close()
-			return fmt.Errorf("Timed out waiting %v for cmd %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", startTimeout, cmd, stdout, stderr)
-		}
-		plog.Infof("Success for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
-		session.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return err
 	}
+	defer session.Close()
+
+	var stdout = bytes.NewBuffer(nil)
+	var stderr = bytes.NewBuffer(nil)
+	session.Stderr = stderr
+	session.Stdout = stdout
+
+	err = session.Start(cmd)
+	if err != nil {
+		return err
+	}
+
+	// add global timeout for bootkube to finish starting, this should be
+	// expected to complete much faster then the built-in bootkube timeout
+	// because we prefetch containers
+	errc := make(chan error)
+	go func() { errc <- session.Wait() }()
+	select {
+	case err := <-errc:
+		if err != nil {
+			return fmt.Errorf("SSH session returned error for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
+		}
+	case <-time.After(startTimeout):
+		return fmt.Errorf("Timed out waiting %v for cmd %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", startTimeout, cmd, stdout, stderr)
+	}
+	plog.Infof("Success for cmd %s: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n--\n", cmd, err, stdout, stderr)
 
 	return nil
 }
@@ -320,12 +276,12 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 		return nil, nil, fmt.Errorf("can't provision negative number of nodes")
 	}
 
-	configM, err := renderNodeConfig(m.files.kubeletMaster, true, false)
+	configM, err := renderNodeConfig(m.files.kubeletMaster)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	configW, err := renderNodeConfig(m.files.kubeletWorker, false, false)
+	configW, err := renderNodeConfig(m.files.kubeletWorker)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -400,25 +356,39 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 
 }
 
-type scriptFiles struct {
+type inputFiles struct {
 	kubeletMaster string
 	kubeletWorker string
+	initMaster    []byte
+	bootkube      []byte
 }
 
-func parseScriptDir(scriptDir string) (scriptFiles, error) {
-	var files scriptFiles
+func parseInputFiles(config BootkubeConfig) (*inputFiles, error) {
+	var files = new(inputFiles)
 
-	b, err := ioutil.ReadFile(filepath.Join(scriptDir, "kubelet.master"))
+	b, err := ioutil.ReadFile(filepath.Join(config.ScriptDir, "kubelet.master"))
 	if err != nil {
-		return scriptFiles{}, fmt.Errorf("failed to read expected kubelet.master file: %v", err)
+		return nil, fmt.Errorf("failed to read expected kubelet.master file: %v", err)
 	}
 	files.kubeletMaster = string(b)
 
-	b, err = ioutil.ReadFile(filepath.Join(scriptDir, "kubelet.worker"))
+	b, err = ioutil.ReadFile(filepath.Join(config.ScriptDir, "kubelet.worker"))
 	if err != nil {
-		return scriptFiles{}, fmt.Errorf("failed to read expected kubelet.worker file: %v", err)
+		return nil, fmt.Errorf("failed to read expected kubelet.worker file: %v", err)
 	}
 	files.kubeletWorker = string(b)
+
+	b, err = ioutil.ReadFile(filepath.Join(config.ScriptDir, "init-master.sh"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read expected init-master.sh file: %v", err)
+	}
+	files.initMaster = b
+
+	b, err = ioutil.ReadFile(config.BinaryPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read expected bootkube binary: %v", err)
+	}
+	files.bootkube = b
 
 	return files, nil
 }
