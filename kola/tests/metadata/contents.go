@@ -17,8 +17,6 @@ package ignition
 import (
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -72,24 +70,7 @@ func init() {
 }
 
 func verifyAWS(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	out, err := m.SSH("coreos-metadata --version")
-	if err != nil {
-		c.Fatalf("failed to cat /run/metadata/coreos: %s: %v", out, err)
-	}
-
-	versionStr := strings.TrimPrefix(string(out), "coreos-metadata v")
-	version, err := semver.NewVersion(versionStr)
-	if err != nil {
-		c.Fatalf("failed to parse coreos-metadata version: %v", err)
-	}
-
-	if version.LessThan(semver.Version{Minor: 3}) {
-		verify(c, "COREOS_IPV4_LOCAL", "COREOS_IPV4_PUBLIC", "COREOS_HOSTNAME")
-	} else {
-		verify(c, "COREOS_EC2_IPV4_LOCAL", "COREOS_EC2_IPV4_PUBLIC", "COREOS_EC2_HOSTNAME")
-	}
+	verify(c, "COREOS_EC2_IPV4_LOCAL", "COREOS_EC2_IPV4_PUBLIC", "COREOS_EC2_HOSTNAME")
 }
 
 func verifyAzure(c cluster.TestCluster) {
