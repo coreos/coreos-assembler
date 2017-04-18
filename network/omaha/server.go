@@ -18,7 +18,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/network/neterror"
 )
 
 func NewServer(addr string, updater Updater) (*Server, error) {
@@ -59,7 +59,7 @@ type Server struct {
 
 func (s *Server) Serve() error {
 	err := s.srv.Serve(s.l)
-	if network.IsClosed(err) {
+	if neterror.IsClosed(err) {
 		// gracefully quit
 		err = nil
 	}
