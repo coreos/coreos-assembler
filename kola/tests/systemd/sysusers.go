@@ -15,8 +15,6 @@
 package systemd
 
 import (
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -27,7 +25,6 @@ func init() {
 		ClusterSize: 1,
 		Name:        "systemd.sysusers.gshadow",
 		UserData:    `#cloud-config`,
-		MinVersion:  semver.Version{Major: 1095},
 	})
 }
 

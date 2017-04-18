@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/util"
@@ -44,7 +42,6 @@ func init() {
 		ExcludePlatforms: []string{"qemu"},
 		Name:             "coreos.rkt.etcd3",
 		UserData:         conf,
-		MinVersion:       semver.Version{Major: 1213},
 	})
 }
 

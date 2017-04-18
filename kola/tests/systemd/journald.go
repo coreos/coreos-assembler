@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/coreos/coreos-cloudinit/config"
-	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -43,37 +42,16 @@ var (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         journalRemote225,
+		Run:         journalRemote,
 		ClusterSize: 0,
-		Name:        "systemd.journal.remote.225",
+		Name:        "systemd.journal.remote",
 		UserData:    `#cloud-config`,
-		EndVersion:  semver.Version{Major: 1024},
 	})
-
-	register.Register(&register.Test{
-		Run:         journalRemote229,
-		ClusterSize: 0,
-		Name:        "systemd.journal.remote.229",
-		UserData:    `#cloud-config`,
-		MinVersion:  semver.Version{Major: 1024},
-	})
-}
-
-// systemd v225 includes the port in the journal file
-func journalRemote225(c cluster.TestCluster) {
-	format := "/var/log/journal/remote/remote-%s:19531.journal"
-	journalRemote(c, format)
-}
-
-// systemd v229 has no port in the journal file
-func journalRemote229(c cluster.TestCluster) {
-	format := "/var/log/journal/remote/remote-%s.journal"
-	journalRemote(c, format)
 }
 
 // JournalRemote tests that systemd-journal-remote can read log entries from
 // a systemd-journal-gatewayd server.
-func journalRemote(c cluster.TestCluster, journalFmt string) {
+func journalRemote(c cluster.TestCluster) {
 	// start gatewayd and log a message
 	gateway, err := c.NewMachine(gatewayconf.String())
 	if err != nil {
@@ -104,7 +82,7 @@ func journalRemote(c cluster.TestCluster, journalFmt string) {
 
 	// find the message on the collector
 	journalReader := func() error {
-		cmd = fmt.Sprintf("sudo journalctl _HOSTNAME=%s -t core --file "+journalFmt, gatewayconf.Hostname, gateway.PrivateIP())
+		cmd = fmt.Sprintf("sudo journalctl _HOSTNAME=%s -t core --file /var/log/journal/remote/remote-%s.journal", gatewayconf.Hostname, gateway.PrivateIP())
 		out, err = collector.SSH(cmd)
 		if err != nil {
 			return fmt.Errorf("journalctl: %v: %v", out, err)
