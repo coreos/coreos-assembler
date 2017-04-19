@@ -27,7 +27,8 @@ import (
 
 type cluster struct {
 	*platform.BaseCluster
-	api *packet.API
+	api      *packet.API
+	sshKeyID string
 }
 
 func NewCluster(opts *packet.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
@@ -41,9 +42,23 @@ func NewCluster(opts *packet.Options, conf *platform.RuntimeConfig) (platform.Cl
 		return nil, err
 	}
 
+	var keyID string
+	if !conf.NoSSHKeyInMetadata {
+		keys, err := bc.Keys()
+		if err != nil {
+			return nil, err
+		}
+
+		keyID, err = api.AddKey(bc.Name(), keys[0].String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	pc := &cluster{
 		BaseCluster: bc,
 		api:         api,
+		sshKeyID:    keyID,
 	}
 
 	return pc, nil
@@ -115,4 +130,14 @@ func (pc *cluster) vmname() string {
 	b := make([]byte, 5)
 	rand.Read(b)
 	return fmt.Sprintf("%s-%x", pc.Name()[0:13], b)
+}
+
+func (pc *cluster) Destroy() error {
+	if pc.sshKeyID != "" {
+		if err := pc.api.DeleteKey(pc.sshKeyID); err != nil {
+			return err
+		}
+	}
+
+	return pc.BaseCluster.Destroy()
 }

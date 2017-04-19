@@ -232,6 +232,25 @@ func (a *API) GetDeviceAddress(device *packngo.Device, family int, public bool) 
 	return ""
 }
 
+func (a *API) AddKey(name, key string) (string, error) {
+	sshKey, _, err := a.c.SSHKeys.Create(&packngo.SSHKeyCreateRequest{
+		Label: name,
+		Key:   key,
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't create SSH key: %v", err)
+	}
+	return sshKey.ID, nil
+}
+
+func (a *API) DeleteKey(keyID string) error {
+	_, err := a.c.SSHKeys.Delete(keyID)
+	if err != nil {
+		return fmt.Errorf("couldn't delete SSH key: %v", err)
+	}
+	return nil
+}
+
 func (a *API) wrapUserData(userdata string) (string, error) {
 	// parse userdata to see what type it is
 	conf, err := conf.New(userdata)
