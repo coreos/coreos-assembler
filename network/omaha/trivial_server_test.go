@@ -56,7 +56,7 @@ func TestTrivialServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Destroy()
-	if err := s.SetPackage(tmp.Name()); err != nil {
+	if err := s.AddPackage(tmp.Name(), "update.gz"); err != nil {
 		t.Fatal(err)
 	}
 	go s.Serve()

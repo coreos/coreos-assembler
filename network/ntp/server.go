@@ -21,7 +21,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/network/neterror"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "network/ntp")
@@ -123,7 +123,7 @@ func (s *Server) Serve() {
 
 	for {
 		req, err := s.Accept()
-		if network.IsClosed(err) {
+		if neterror.IsClosed(err) {
 			// gracefully quit
 			return
 		} else if err != nil {
