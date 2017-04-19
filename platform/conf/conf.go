@@ -23,8 +23,11 @@ import (
 	v2types "github.com/coreos/ignition/config/types"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
+	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh/agent"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
 
 // Conf is a configuration for a CoreOS machine. It may be either a
 // coreos-cloudconfig or an ignition configuration.
@@ -40,7 +43,7 @@ type Conf struct {
 func New(userdata string) (*Conf, error) {
 	c := &Conf{}
 
-	ignc, err := v2.Parse([]byte(userdata))
+	ignc, report, err := v2.Parse([]byte(userdata))
 	switch err {
 	case v2.ErrEmpty:
 		// empty, noop
@@ -63,6 +66,7 @@ func New(userdata string) (*Conf, error) {
 		c.ignitionV2 = &ignc
 	default:
 		// some other error (invalid json, script)
+		plog.Errorf("invalid userdata: %v", report)
 		return nil, err
 	}
 
