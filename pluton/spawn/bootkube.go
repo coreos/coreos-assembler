@@ -204,7 +204,7 @@ func serviceToConfig(s string) string {
 }
 
 func bootstrapMaster(m platform.Machine, files *inputFiles, selfHostEtcd bool) error {
-	const startTimeout = time.Minute * 5 // stop bootkube start if it takes longer then this
+	const startTimeout = time.Minute * 10 // stop bootkube start if it takes longer then this
 
 	_, err := m.SSH("sudo setenforce 0")
 	if err != nil {
