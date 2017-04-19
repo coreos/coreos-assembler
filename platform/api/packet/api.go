@@ -299,7 +299,8 @@ Type=oneshot
 # Prevent coreos-install from validating cloud-config
 Environment=PATH=/root/bin:/usr/sbin:/usr/bin
 
-ExecStart=/usr/bin/coreos-install -b "%v" -V "%v" -d /dev/sda -o packet %v /userdata
+ExecStart=/root/bin/network-setup
+ExecStart=/usr/bin/coreos-install -b "%v" -V "%v" -d /dev/sda -o packet -n %v /userdata
 
 ExecStart=/usr/bin/mount /dev/sda6 /mnt
 ExecStart=/bin/bash -c 'echo "set linux_console=\\\"console=%v\\\"" >> /mnt/grub.cfg'
@@ -318,6 +319,35 @@ RequiredBy=multi-user.target
 
 	// make workarounds
 	coreosCloudInit := base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\nexit 0"))
+	// If we want a private IPv4 address, we need to set it up ourselves
+	networkSetup := base64.StdEncoding.EncodeToString([]byte(`#!/bin/bash
+
+set -e
+
+metadata=$(curl --silent https://metadata.packet.net/metadata)
+q() {
+	jq -r "$1" <<<$metadata
+}
+
+cat > /run/systemd/network/00-mantle.network <<EOF
+[Match]
+MACAddress=$(q '.network.interfaces[0].mac')
+
+[Network]
+Address=$(q '[.network.addresses[] | select(.address_family == 4)][0].address')/$(q '[.network.addresses[] | select(.address_family == 4)][0].cidr')
+Address=$(q '[.network.addresses[] | select(.address_family == 4)][1].address')/$(q '[.network.addresses[] | select(.address_family == 4)][1].cidr')
+DNS=8.8.8.8
+DNS=8.8.4.4
+
+[Route]
+Destination=0.0.0.0/0
+Gateway=$(q '.network.addresses[] | select(.public == true and .address_family == 4).gateway')
+
+[Route]
+Destination=10.0.0.0/8
+Gateway=$(q '.network.addresses[] | select(.public == false and .address_family == 4).gateway')
+EOF
+`))
 
 	// make Ignition config
 	b64UserData := base64.StdEncoding.EncodeToString([]byte(userdata))
@@ -345,6 +375,17 @@ RequiredBy=multi-user.target
 						Source: ignition.Url{
 							Scheme: "data",
 							Opaque: ";base64," + coreosCloudInit,
+						},
+					},
+					Mode: 0755,
+				},
+				ignition.File{
+					Filesystem: "root",
+					Path:       "/root/bin/network-setup",
+					Contents: ignition.FileContents{
+						Source: ignition.Url{
+							Scheme: "data",
+							Opaque: ";base64," + networkSetup,
 						},
 					},
 					Mode: 0755,
