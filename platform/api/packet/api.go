@@ -284,6 +284,8 @@ ExecStart=/usr/bin/coreos-install -b "%v" -V "%v" -d /dev/sda -o packet %v /user
 
 ExecStart=/usr/bin/mount /dev/sda6 /mnt
 ExecStart=/bin/bash -c 'echo "set linux_console=\\\"console=%v\\\"" >> /mnt/grub.cfg'
+# Work around coreos-install bug in Container Linux < 1381.0.0
+ExecStart=/bin/bash -c 'echo "set linux_append=\\\"\$linux_append coreos.oem.id=packet\\\"" >> /mnt/grub.cfg'
 ExecStart=/usr/bin/umount /mnt
 
 ExecStart=/usr/bin/systemctl --no-block isolate reboot.target

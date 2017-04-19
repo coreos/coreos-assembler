@@ -22,27 +22,29 @@ import (
 )
 
 func init() {
+	enableMetadataService := `{
+	    "ignitionVersion": 1,
+	    "systemd": {
+		"units": [
+		    {
+			"name": "coreos-metadata.service",
+			"enable": true
+		    },
+		    {
+			"name": "metadata.target",
+			"enable": true,
+			"contents": "[Install]\nWantedBy=multi-user.target"
+		    }
+		]
+	    }
+	}`
+
 	register.Register(&register.Test{
 		Name:        "coreos.metadata.aws",
 		Run:         verifyAWS,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
-		UserData: `{
-		               "ignitionVersion": 1,
-		               "systemd": {
-		                   "units": [
-		                       {
-		                           "name": "coreos-metadata.service",
-		                           "enable": true
-		                       },
-		                       {
-		                           "name": "metadata.target",
-		                           "enable": true,
-		                           "contents": "[Install]\nWantedBy=multi-user.target"
-		                       }
-		                   ]
-		               }
-		           }`,
+		UserData:    enableMetadataService,
 	})
 
 	register.Register(&register.Test{
@@ -50,22 +52,15 @@ func init() {
 		Run:         verifyAzure,
 		ClusterSize: 1,
 		Platforms:   []string{"azure"},
-		UserData: `{
-		               "ignitionVersion": 1,
-		               "systemd": {
-		                   "units": [
-		                       {
-		                           "name": "coreos-metadata.service",
-		                           "enable": true
-		                       },
-		                       {
-		                           "name": "metadata.target",
-		                           "enable": true,
-		                           "contents": "[Install]\nWantedBy=multi-user.target"
-		                       }
-		                   ]
-		               }
-		           }`,
+		UserData:    enableMetadataService,
+	})
+
+	register.Register(&register.Test{
+		Name:        "coreos.metadata.packet",
+		Run:         verifyPacket,
+		ClusterSize: 1,
+		Platforms:   []string{"packet"},
+		UserData:    enableMetadataService,
 	})
 }
 
@@ -75,6 +70,10 @@ func verifyAWS(c cluster.TestCluster) {
 
 func verifyAzure(c cluster.TestCluster) {
 	verify(c, "COREOS_AZURE_IPV4_DYNAMIC", "COREOS_AZURE_IPV4_VIRTUAL")
+}
+
+func verifyPacket(c cluster.TestCluster) {
+	verify(c, "COREOS_PACKET_HOSTNAME", "COREOS_PACKET_PHONE_HOME_URL", "COREOS_PACKET_IPV4_PUBLIC_0", "COREOS_PACKET_IPV4_PRIVATE_0", "COREOS_PACKET_IPV6_PUBLIC_0")
 }
 
 func verify(c cluster.TestCluster, keys ...string) {
