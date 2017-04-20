@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/validator"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -141,6 +142,24 @@ func getImageFile(client *http.Client, src *storage.Bucket, fileName string) (st
 	return imagePath, nil
 }
 
+func uploadAzureBlob(spec *channelSpec, api *azure.API, storageKey storageservice.GetStorageServiceKeysResponse, vhdfile, container, blobName string) error {
+	blobExists, err := api.BlobExists(spec.Azure.StorageAccount, storageKey.PrimaryKey, container, blobName)
+	if err != nil {
+		return fmt.Errorf("failed to check if file %q in account %q container %q exists: %v", vhdfile, spec.Azure.StorageAccount, container, err)
+	}
+
+	if blobExists {
+		return nil
+	}
+
+	if err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
+		if _, ok := err.(azure.BlobExistsError); !ok {
+			return fmt.Errorf("uploading file %q to account %q container %q failed: %v", vhdfile, spec.Azure.StorageAccount, container, err)
+		}
+	}
+	return nil
+}
+
 func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName string) error {
 	imageexists, err := api.OSImageExists(imageName)
 	if err != nil {
@@ -242,19 +261,9 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
 
 		for _, container := range spec.Azure.Containers {
-			blobExists, err := api.BlobExists(spec.Azure.StorageAccount, storageKey.PrimaryKey, container, blobName)
+			err := uploadAzureBlob(spec, api, storageKey, vhdfile, container, blobName)
 			if err != nil {
-				return fmt.Errorf("failed to check if file %q in account %q container %q exists: %v", vhdfile, spec.Azure.StorageAccount, container, err)
-			}
-
-			if blobExists {
-				continue
-			}
-
-			if err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
-				if _, ok := err.(azure.BlobExistsError); !ok {
-					return fmt.Errorf("uploading file %q to account %q container %q failed: %v", vhdfile, spec.Azure.StorageAccount, container, err)
-				}
+				return err
 			}
 		}
 
