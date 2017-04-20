@@ -94,7 +94,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 		//right versions of these components. Its not fatal if we
 		//don't, it just means those images don't get cached which
 		//could cause potential test failures
-		{Name: "quay.io/coreos/flannel:v0.7.0-amd64", Engine: "docker"},
+		{Name: "quay.io/coreos/flannel:v0.7.1-amd64", Engine: "docker"},
 		{Name: "quay.io/coreos/pod-checkpointer:8a6356146761b512cc18ab77c8a421676f641c88", Engine: "docker"},
 		{Name: "quay.io/coreos/kenc:48b6feceeee56c657ea9263f47b6ea091e8d3035", Engine: "docker"},
 		{Name: "gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.1", Engine: "docker"},
