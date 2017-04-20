@@ -35,6 +35,7 @@ var (
 
 	API             *aws.API
 	region          string
+	credentialsFile string
 	profileName     string
 	accessKeyID     string
 	secretAccessKey string
@@ -46,6 +47,7 @@ func init() {
 		defaultRegion = "us-east-1"
 	}
 
+	AWS.PersistentFlags().StringVar(&credentialsFile, "credentials-file", "", "AWS credentials file")
 	AWS.PersistentFlags().StringVar(&profileName, "profile", "", "AWS profile name")
 	AWS.PersistentFlags().StringVar(&accessKeyID, "access-id", "", "AWS access key")
 	AWS.PersistentFlags().StringVar(&secretAccessKey, "secret-key", "", "AWS secret key")
@@ -56,9 +58,10 @@ func init() {
 func preflightCheck(cmd *cobra.Command, args []string) error {
 	plog.Debugf("Running AWS Preflight check. Region: %v", region)
 	api, err := aws.New(&aws.Options{
-		Region:  region,
-		Profile: profileName,
-		Options: &platform.Options{},
+		Region:          region,
+		CredentialsFile: credentialsFile,
+		Profile:         profileName,
+		Options:         &platform.Options{},
 	})
 	if err != nil {
 		return fmt.Errorf("could not create AWS client: %v", err)
