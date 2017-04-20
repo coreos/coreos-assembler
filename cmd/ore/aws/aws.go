@@ -46,10 +46,10 @@ func init() {
 		defaultRegion = "us-east-1"
 	}
 
-	AWS.PersistentFlags().StringVar(&profileName, "profile", "", "aws profile name")
-	AWS.PersistentFlags().StringVar(&accessKeyID, "access-id", "", "aws access key")
-	AWS.PersistentFlags().StringVar(&secretAccessKey, "secret-key", "", "aws secret key")
-	AWS.PersistentFlags().StringVar(&region, "region", defaultRegion, "aws region")
+	AWS.PersistentFlags().StringVar(&profileName, "profile", "", "AWS profile name")
+	AWS.PersistentFlags().StringVar(&accessKeyID, "access-id", "", "AWS access key")
+	AWS.PersistentFlags().StringVar(&secretAccessKey, "secret-key", "", "AWS secret key")
+	AWS.PersistentFlags().StringVar(&region, "region", defaultRegion, "AWS region")
 	cli.WrapPreRun(AWS, preflightCheck)
 }
 

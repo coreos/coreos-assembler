@@ -23,7 +23,7 @@ import (
 var (
 	cmdInitialize = &cobra.Command{
 		Use:   "initialize",
-		Short: "initialize any uncreated resources for a given aws region",
+		Short: "initialize any uncreated resources for a given AWS region",
 		RunE:  runInitialize,
 	}
 
@@ -32,7 +32,7 @@ var (
 
 func init() {
 	AWS.AddCommand(cmdInitialize)
-	cmdInitialize.Flags().StringVar(&bucket, "bucket", "", "the s3 bucket URI to initialize; will default to a regional bucket")
+	cmdInitialize.Flags().StringVar(&bucket, "bucket", "", "the S3 bucket URI to initialize; will default to a regional bucket")
 }
 
 func runInitialize(cmd *cobra.Command, args []string) error {
