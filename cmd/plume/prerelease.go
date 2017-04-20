@@ -206,6 +206,21 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		return fmt.Errorf("failed reading Azure profile: %v", err)
 	}
 
+	// download azure vhd image and unzip it
+	vhdfile, err := getImageFile(client, src, spec.Azure.Image)
+	if err != nil {
+		return err
+	}
+
+	// sanity check - validate VHD file
+	plog.Printf("Validating VHD file %q", vhdfile)
+	if err := validator.ValidateVhd(vhdfile); err != nil {
+		return err
+	}
+	if err := validator.ValidateVhdSize(vhdfile); err != nil {
+		return err
+	}
+
 	for _, opt := range prof.AsOptions() {
 		// construct azure api client
 		plog.Printf("Creating Azure API from subscription %q endpoint %q", opt.SubscriptionID, opt.ManagementURL)
@@ -218,22 +233,6 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 
 		storageKey, err := api.GetStorageServiceKeys(spec.Azure.StorageAccount)
 		if err != nil {
-			return err
-		}
-
-		// download azure vhd image and unzip it
-		vhdfile, err := getImageFile(client, src, spec.Azure.Image)
-		if err != nil {
-			return err
-		}
-
-		// sanity check - validate VHD file
-		plog.Printf("Validating VHD file %q", vhdfile)
-		if err := validator.ValidateVhd(vhdfile); err != nil {
-			return err
-		}
-
-		if err := validator.ValidateVhdSize(vhdfile); err != nil {
 			return err
 		}
 
