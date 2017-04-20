@@ -173,7 +173,7 @@ func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName str
 
 	plog.Printf("Creating OS image with name %q", imageName)
 
-	bloburl := api.UrlOfBlob(spec.Azure.StorageAccount, spec.Azure.Containers[0], blobName).String()
+	bloburl := api.UrlOfBlob(spec.Azure.StorageAccount, spec.Azure.Container, blobName).String()
 
 	// a la https://github.com/coreos/scripts/blob/998c7e093922298637e7c7e82e25cee7d336144d/oem/azure/set-image-metadata.sh
 	md := &azure.OSImage{
@@ -240,10 +240,15 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		return err
 	}
 
-	for _, opt := range prof.AsOptions() {
+	for _, environment := range spec.Azure.Environments {
+		opt := prof.SubscriptionOptions(environment.SubscriptionName)
+		if opt == nil {
+			return fmt.Errorf("couldn't find subscription %q", environment.SubscriptionName)
+		}
+
 		// construct azure api client
 		plog.Printf("Creating Azure API from subscription %q endpoint %q", opt.SubscriptionID, opt.ManagementURL)
-		api, err := azure.New(&opt)
+		api, err := azure.New(opt)
 		if err != nil {
 			return fmt.Errorf("failed to create Azure API: %v", err)
 		}
@@ -260,7 +265,8 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 
 		blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
 
-		for _, container := range spec.Azure.Containers {
+		containers := append([]string{spec.Azure.Container}, environment.AdditionalContainers...)
+		for _, container := range containers {
 			err := uploadAzureBlob(spec, api, storageKey, vhdfile, container, blobName)
 			if err != nil {
 				return err

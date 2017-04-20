@@ -44,10 +44,16 @@ type gceSpec struct {
 	Limit       int      // Limit on # of old images to keep
 }
 
+type azureEnvironmentSpec struct {
+	SubscriptionName     string   // Name of subscription in Azure profile
+	AdditionalContainers []string // Extra containers to upload the disk image to
+}
+
 type azureSpec struct {
-	Image          string   // File name of image source
-	StorageAccount string   // Storage account to use for image uploads
-	Containers     []string // Containers to upload images to
+	Image          string                 // File name of image source
+	StorageAccount string                 // Storage account to use for image uploads in each environment
+	Container      string                 // Container to hold the disk image in each environment
+	Environments   []azureEnvironmentSpec // Azure environments to upload to
 
 	// Fields for azure.OSImage
 	Label             string
@@ -82,12 +88,23 @@ type channelSpec struct {
 }
 
 var (
-	specBoard     string
-	specChannel   string
-	specVersion   string
-	gceBoards     = []string{"amd64-usr"}
-	azureBoards   = []string{"amd64-usr"}
-	awsBoards     = []string{"amd64-usr"}
+	specBoard         string
+	specChannel       string
+	specVersion       string
+	gceBoards         = []string{"amd64-usr"}
+	azureBoards       = []string{"amd64-usr"}
+	awsBoards         = []string{"amd64-usr"}
+	azureEnvironments = []azureEnvironmentSpec{
+		azureEnvironmentSpec{
+			SubscriptionName: "BizSpark",
+		},
+		azureEnvironmentSpec{
+			SubscriptionName: "BlackForest",
+		},
+		azureEnvironmentSpec{
+			SubscriptionName: "Mooncake",
+		},
+	}
 	awsPartitions = []awsPartitionSpec{
 		awsPartitionSpec{
 			Name:         "AWS",
@@ -174,7 +191,8 @@ var (
 			Azure: azureSpec{
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
-				Containers:        []string{"publish"},
+				Container:         "publish",
+				Environments:      azureEnvironments,
 				Label:             "CoreOS Alpha",
 				Description:       "The Alpha channel closely tracks current development work and is released frequently. The newest versions of docker, etcd and fleet will be available for testing.",
 				RecommendedVMSize: "Medium",
@@ -225,7 +243,8 @@ var (
 			Azure: azureSpec{
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
-				Containers:        []string{"publish"},
+				Container:         "publish",
+				Environments:      azureEnvironments,
 				Label:             "CoreOS Beta",
 				Description:       "The Beta channel consists of promoted Alpha releases. Mix a few Beta machines into your production clusters to catch any bugs specific to your hardware or configuration.",
 				RecommendedVMSize: "Medium",
@@ -266,7 +285,8 @@ var (
 			Azure: azureSpec{
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
-				Containers:        []string{"publish"},
+				Container:         "publish",
+				Environments:      azureEnvironments,
 				Label:             "CoreOS Stable",
 				Description:       "The Stable channel should be used by production clusters. Versions of CoreOS are battle-tested within the Beta and Alpha channels before being promoted.",
 				RecommendedVMSize: "Medium",
