@@ -64,10 +64,12 @@ func preflightCheck(cmd *cobra.Command, args []string) error {
 		Options:         &platform.Options{},
 	})
 	if err != nil {
-		return fmt.Errorf("could not create AWS client: %v", err)
+		fmt.Fprintf(os.Stderr, "could not create AWS client: %v\n", err)
+		os.Exit(1)
 	}
 	if err := api.PreflightCheck(); err != nil {
-		return fmt.Errorf("could not complete AWS preflight check: %v", err)
+		fmt.Fprintf(os.Stderr, "could not complete AWS preflight check: %v\n", err)
+		os.Exit(1)
 	}
 
 	plog.Debugf("Preflight check success; we have liftoff")
