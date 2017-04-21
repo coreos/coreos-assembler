@@ -240,6 +240,10 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		return err
 	}
 
+	blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
+	// channel name should be caps for azure image
+	imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
+
 	for _, environment := range spec.Azure.Environments {
 		opt := prof.SubscriptionOptions(environment.SubscriptionName)
 		if opt == nil {
@@ -263,8 +267,6 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		// upload blob, do not overwrite
 		plog.Printf("Uploading %q to Azure Storage...", vhdfile)
 
-		blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
-
 		containers := append([]string{spec.Azure.Container}, environment.AdditionalContainers...)
 		for _, container := range containers {
 			err := uploadAzureBlob(spec, api, storageKey, vhdfile, container, blobName)
@@ -272,9 +274,6 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 				return err
 			}
 		}
-
-		// channel name should be caps for azure image
-		imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
 
 		// create image
 		if err := createAzureImage(spec, api, blobName, imageName); err != nil {
