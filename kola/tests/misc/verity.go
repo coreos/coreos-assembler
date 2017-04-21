@@ -56,7 +56,7 @@ func VerityVerify(c cluster.TestCluster) {
 	}
 
 	// extract verity hash from kernel
-	ddcmd := fmt.Sprintf("dd if=/boot/coreos/vmlinuz-a skip=%d count=64 bs=1 2>/dev/null", rootOffset)
+	ddcmd := fmt.Sprintf("dd if=/boot/coreos/vmlinuz-a skip=%d count=64 bs=1 status=none", rootOffset)
 	hash, err := m.SSH(ddcmd)
 	if err != nil {
 		c.Fatalf("failed to extract verity hash from kernel: %v: %v", hash, err)
@@ -130,7 +130,7 @@ func VerityCorruption(c cluster.TestCluster) {
 	}
 
 	// poke bytes into /usr/lib/os-release
-	out, err = m.SSH(fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 2>/dev/null`, usrdev, usrdev))
+	out, err = m.SSH(fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 status=none`, usrdev, usrdev))
 	if err != nil {
 		c.Fatalf("failed overwriting disk block: %s: %v", out, err)
 	}
