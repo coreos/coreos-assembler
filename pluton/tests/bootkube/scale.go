@@ -67,18 +67,13 @@ func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
 
 	// check that all pods are running
 	podsReady := func() error {
-		out, err := c.Kubectl(`get po -l etcd_cluster=kube-etcd -o jsonpath='{.items[*].status.phase}' --namespace=kube-system`)
+		out, err := c.Kubectl(`get cluster.etcd kube-etcd --namespace=kube-system -o jsonpath='{.status.members.ready[*]}'`)
 		if err != nil {
 			return err
 		}
-		phases := strings.Split(out, " ")
-		if len(phases) != size {
-			return fmt.Errorf("expected %d etcd pods got %d: %v", size, len(phases), phases)
-		}
-		for _, phase := range phases {
-			if phase != "Running" {
-				return fmt.Errorf("one or more etcd pods not in a 'Running' phase")
-			}
+		members := strings.Split(out, " ")
+		if len(members) != size {
+			return fmt.Errorf("expected %d etcd pods got %d: %v", size, len(members), members)
 		}
 		return nil
 	}
