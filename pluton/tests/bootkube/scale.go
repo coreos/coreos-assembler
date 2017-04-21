@@ -52,25 +52,17 @@ func etcdScale(c *pluton.Cluster) {
 
 // resizes self-hosted etcd and checks that the desired number of pods are in a running state
 func resizeSelfHostedEtcd(c *pluton.Cluster, size int) error {
-	const (
-		tprGroup   = "etcd.coreos.com"
-		apiVersion = "v1beta1"
-		tprKind    = "clusters"
-	)
-	var tprEndpoint = fmt.Sprintf("http://127.0.0.1:8080/apis/%s/%s/namespaces/kube-system/%s/kube-etcd",
-		tprGroup, apiVersion, tprKind)
 
-	scaleCmds := []string{
-		fmt.Sprintf("curl -f -H  'Content-Type: application/json' -X GET %v > body.json", tprEndpoint),
-		// delete resourceVersion field before curling back
-		fmt.Sprintf("jq 'recurse(.metadata) |= del(.resourceVersion)' < body.json | jq .spec.size=%v > newbody.json", size),
-		fmt.Sprintf("curl -f -H  'Content-Type: application/json' -X PUT --data @newbody.json %v", tprEndpoint),
+	// scale commands
+	if _, err := c.Kubectl("get -n kube-system cluster.etcd -o json > body.json"); err != nil {
+		return err
 	}
-	for _, cmd := range scaleCmds {
-		sout, serr, err := c.SSH(cmd)
-		if err != nil {
-			return fmt.Errorf("error in scale up command: %v:\nSTDERR: %s\nSTDOUT: %s", cmd, serr, sout)
-		}
+	sout, serr, err := c.SSH(fmt.Sprintf("jq .items[].spec.size=%v < body.json > newbody.json", size))
+	if err != nil {
+		return fmt.Errorf("error editing etcd cluster spec: \nSTDERR: %s\nSTDOUT: %s", serr, sout)
+	}
+	if _, err := c.Kubectl("apply -f newbody.json -n kube-system"); err != nil {
+		return err
 	}
 
 	// check that all pods are running
