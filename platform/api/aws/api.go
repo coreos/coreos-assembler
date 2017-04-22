@@ -15,9 +15,6 @@
 package aws
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -65,23 +62,19 @@ type API struct {
 // No validation is done that credentials exist and before using the API a
 // preflight check is recommended via api.PreflightCheck
 func New(opts *Options) (*API, error) {
-	if opts.CredentialsFile != "" {
-		// Not exposed via the API. Ick.
-		if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", opts.CredentialsFile); err != nil {
-			return nil, fmt.Errorf("couldn't set credentials file: %v", err)
-		}
+	awsCfg := aws.Config{Region: aws.String(opts.Region)}
+	if opts.AccessKeyID != "" {
+		awsCfg.Credentials = credentials.NewStaticCredentials(opts.AccessKeyID, opts.SecretKey, "")
+	} else if opts.CredentialsFile != "" {
+		awsCfg.Credentials = credentials.NewSharedCredentials(opts.CredentialsFile, opts.Profile)
 	}
 
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Profile: opts.Profile,
-		Config:  aws.Config{Region: aws.String(opts.Region)},
+		Config:  awsCfg,
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if opts.AccessKeyID != "" {
-		sess.Config.WithCredentials(credentials.NewStaticCredentials(opts.AccessKeyID, opts.SecretKey, ""))
 	}
 
 	api := &API{
