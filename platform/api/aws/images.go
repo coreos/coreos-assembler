@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 )
@@ -298,9 +299,9 @@ func (a *API) CreateImportRole(bucket string) error {
 	if err != nil {
 		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "NoSuchEntity" {
 			// Policy does not exist, let's try to create it
-			arnAwsPart := "aws"
-			if a.opts.Region == "us-gov-west-1" {
-				arnAwsPart = "aws-us-gov"
+			partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), a.opts.Region)
+			if !ok {
+				return fmt.Errorf("could not find partition for %v out of partitions %v", a.opts.Region, endpoints.DefaultPartitions())
 			}
 			_, err := iamc.PutRolePolicy(&iam.PutRolePolicyInput{
 				RoleName:   &vmImportRole,
@@ -315,8 +316,8 @@ func (a *API) CreateImportRole(bucket string) error {
 			"s3:GetObject"
 		],
 		"Resource": [
-			"arn:` + arnAwsPart + `:s3:::` + bucket + `",
-			"arn:` + arnAwsPart + `:s3:::` + bucket + `/*"
+			"arn:` + partition.ID() + `:s3:::` + bucket + `",
+			"arn:` + partition.ID() + `:s3:::` + bucket + `/*"
 		]
 	},
 	{

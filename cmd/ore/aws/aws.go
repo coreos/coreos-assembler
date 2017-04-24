@@ -35,6 +35,7 @@ var (
 
 	API             *aws.API
 	region          string
+	credentialsFile string
 	profileName     string
 	accessKeyID     string
 	secretAccessKey string
@@ -46,25 +47,29 @@ func init() {
 		defaultRegion = "us-east-1"
 	}
 
-	AWS.PersistentFlags().StringVar(&profileName, "profile", "", "aws profile name")
-	AWS.PersistentFlags().StringVar(&accessKeyID, "access-id", "", "aws access key")
-	AWS.PersistentFlags().StringVar(&secretAccessKey, "secret-key", "", "aws secret key")
-	AWS.PersistentFlags().StringVar(&region, "region", defaultRegion, "aws region")
+	AWS.PersistentFlags().StringVar(&credentialsFile, "credentials-file", "", "AWS credentials file")
+	AWS.PersistentFlags().StringVar(&profileName, "profile", "", "AWS profile name")
+	AWS.PersistentFlags().StringVar(&accessKeyID, "access-id", "", "AWS access key")
+	AWS.PersistentFlags().StringVar(&secretAccessKey, "secret-key", "", "AWS secret key")
+	AWS.PersistentFlags().StringVar(&region, "region", defaultRegion, "AWS region")
 	cli.WrapPreRun(AWS, preflightCheck)
 }
 
 func preflightCheck(cmd *cobra.Command, args []string) error {
 	plog.Debugf("Running AWS Preflight check. Region: %v", region)
 	api, err := aws.New(&aws.Options{
-		Region:  region,
-		Profile: profileName,
-		Options: &platform.Options{},
+		Region:          region,
+		CredentialsFile: credentialsFile,
+		Profile:         profileName,
+		Options:         &platform.Options{},
 	})
 	if err != nil {
-		return fmt.Errorf("could not create AWS client: %v", err)
+		fmt.Fprintf(os.Stderr, "could not create AWS client: %v\n", err)
+		os.Exit(1)
 	}
 	if err := api.PreflightCheck(); err != nil {
-		return fmt.Errorf("could not complete AWS preflight check: %v", err)
+		fmt.Fprintf(os.Stderr, "could not complete AWS preflight check: %v\n", err)
+		os.Exit(1)
 	}
 
 	plog.Debugf("Preflight check success; we have liftoff")
