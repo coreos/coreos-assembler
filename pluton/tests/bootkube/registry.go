@@ -62,26 +62,26 @@ func init() {
 	})
 
 	harness.Register(pluton.Test{
-		Name: "bootkube.selfetcd.destruct.reboot",
-		Run:  rebootMaster,
-		Options: pluton.Options{
-			SelfHostEtcd:   false,
-			InitialMasters: 1,
-			InitialWorkers: 1,
-		},
-	})
-
-	harness.Register(pluton.Test{
 		Name: "bootkube.selfetcd.destruct.delete",
 		Run:  deleteAPIServer,
 		Options: pluton.Options{
-			SelfHostEtcd:   false,
+			SelfHostEtcd:   true,
 			InitialMasters: 1,
 			InitialWorkers: 1,
 		},
 	})
 
 	// failing/experimental tests
+	harness.Register(pluton.Test{
+		Name: "experimental.selfetcd.destruct.reboot",
+		Run:  rebootMaster,
+		Options: pluton.Options{
+			SelfHostEtcd:   true,
+			InitialMasters: 1,
+			InitialWorkers: 1,
+		},
+	})
+
 	harness.Register(pluton.Test{
 		Name: "experimental.selfetcd.scale",
 		Run:  etcdScale,
