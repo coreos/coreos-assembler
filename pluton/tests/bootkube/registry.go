@@ -71,9 +71,8 @@ func init() {
 		},
 	})
 
-	// failing/experimental tests
 	harness.Register(pluton.Test{
-		Name: "experimental.selfetcd.destruct.reboot",
+		Name: "bootkube.selfetcd.destruct.reboot",
 		Run:  rebootMaster,
 		Options: pluton.Options{
 			SelfHostEtcd:   true,
@@ -83,7 +82,7 @@ func init() {
 	})
 
 	harness.Register(pluton.Test{
-		Name: "experimental.selfetcd.scale",
+		Name: "bootkube.selfetcd.scale",
 		Run:  etcdScale,
 		Options: pluton.Options{
 			SelfHostEtcd:   true,
