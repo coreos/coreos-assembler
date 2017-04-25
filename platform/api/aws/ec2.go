@@ -129,7 +129,7 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 	}
 
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
-	if err := a.CheckInstances(ids, 5*time.Minute); err != nil {
+	if err := a.CheckInstances(ids, 10*time.Minute); err != nil {
 		return nil, err
 	}
 
