@@ -68,16 +68,19 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 
 		for _, r := range insts.Reservations {
 			for _, i := range r.Instances {
-				// skip instances known to be up
-				if online[*i.InstanceId] {
-					continue
-				}
+				switch *i.State.Name {
+				case ec2.InstanceStateNamePending:
+					// continue
+				case ec2.InstanceStateNameRunning:
+					// skip instances known to be up
+					if online[*i.InstanceId] {
+						continue
+					}
 
-				if i.PublicIpAddress == nil {
-					continue
-				}
+					if i.PublicIpAddress == nil {
+						continue
+					}
 
-				if *i.State.Name == ec2.InstanceStateNameRunning {
 					// XXX: ssh is a terrible way to check this, but it is all we have.
 					c, err := net.DialTimeout("tcp", *i.PublicIpAddress+":22", 3*time.Second)
 					if err != nil {
@@ -86,6 +89,9 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 					c.Close()
 
 					online[*i.InstanceId] = true
+				default:
+					// instances should not be stopping, shutting-down, terminated, etc.
+					return fmt.Errorf("instance %v in unexpected state %q", *i.InstanceId, *i.State.Name)
 				}
 			}
 		}
