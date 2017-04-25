@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
@@ -42,7 +43,7 @@ func (a *API) DeleteKey(name string) error {
 }
 
 // CheckInstances waits until a set of EC2 instances are accessible by SSH, waiting a maximum of 'd' time.
-func (a *API) CheckInstances(ids []*string, d time.Duration) error {
+func (a *API) CheckInstances(ids []string, d time.Duration) error {
 	after := time.After(d)
 	online := make(map[string]bool)
 
@@ -58,7 +59,7 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 		time.Sleep(10 * time.Second)
 
 		getinst := &ec2.DescribeInstancesInput{
-			InstanceIds: ids,
+			InstanceIds: aws.StringSlice(ids),
 		}
 
 		insts, err := a.ec2.DescribeInstances(getinst)
@@ -68,16 +69,19 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 
 		for _, r := range insts.Reservations {
 			for _, i := range r.Instances {
-				// skip instances known to be up
-				if online[*i.InstanceId] {
-					continue
-				}
+				switch *i.State.Name {
+				case ec2.InstanceStateNamePending:
+					// continue
+				case ec2.InstanceStateNameRunning:
+					// skip instances known to be up
+					if online[*i.InstanceId] {
+						continue
+					}
 
-				if i.PublicIpAddress == nil {
-					continue
-				}
+					if i.PublicIpAddress == nil {
+						continue
+					}
 
-				if *i.State.Name == ec2.InstanceStateNameRunning {
 					// XXX: ssh is a terrible way to check this, but it is all we have.
 					c, err := net.DialTimeout("tcp", *i.PublicIpAddress+":22", 3*time.Second)
 					if err != nil {
@@ -86,6 +90,9 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 					c.Close()
 
 					online[*i.InstanceId] = true
+				default:
+					// instances should not be stopping, shutting-down, terminated, etc.
+					return fmt.Errorf("instance %v in unexpected state %q", *i.InstanceId, *i.State.Name)
 				}
 			}
 		}
@@ -94,8 +101,8 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 	return nil
 }
 
-// CreateInstances creates EC2 instances with a given ssh key name, user data. The image ID, instance type, and security group set in the API will be used. If wait is true, CreateInstances will block until all instances are reachable by SSH.
-func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool) ([]*ec2.Instance, error) {
+// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used. If wait is true, CreateInstances will block until all instances are reachable by SSH.
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64, wait bool) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -119,37 +126,54 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 		return nil, err
 	}
 
+	ids := make([]string, len(reservations.Instances))
+	for i, inst := range reservations.Instances {
+		ids[i] = *inst.InstanceId
+	}
+
+	for {
+		err := a.CreateTags(ids, map[string]string{
+			"Name": name,
+		})
+		if err == nil {
+			break
+		}
+		if awserr, ok := err.(awserr.Error); !ok || awserr.Code() != "InvalidInstanceID.NotFound" {
+			a.TerminateInstances(ids)
+			return nil, err
+		}
+		// eventual consistency
+		time.Sleep(5 * time.Second)
+	}
+
 	if !wait {
 		return reservations.Instances, nil
 	}
 
-	ids := make([]*string, len(reservations.Instances))
-	for i, inst := range reservations.Instances {
-		ids[i] = inst.InstanceId
-	}
-
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
-	if err := a.CheckInstances(ids, 5*time.Minute); err != nil {
+	if err := a.CheckInstances(ids, 10*time.Minute); err != nil {
+		a.TerminateInstances(ids)
 		return nil, err
 	}
 
 	// call DescribeInstances to get machine IP
 	getinst := &ec2.DescribeInstancesInput{
-		InstanceIds: ids,
+		InstanceIds: aws.StringSlice(ids),
 	}
 
 	insts, err := a.ec2.DescribeInstances(getinst)
 	if err != nil {
+		a.TerminateInstances(ids)
 		return nil, err
 	}
 
-	return insts.Reservations[0].Instances, err
+	return insts.Reservations[0].Instances, nil
 }
 
-// TerminateInstance schedules an EC2 instance to be terminated.
-func (a *API) TerminateInstance(id string) error {
+// TerminateInstances schedules EC2 instances to be terminated.
+func (a *API) TerminateInstances(ids []string) error {
 	input := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{aws.String(id)},
+		InstanceIds: aws.StringSlice(ids),
 	}
 
 	if _, err := a.ec2.TerminateInstances(input); err != nil {
