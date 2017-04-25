@@ -42,7 +42,7 @@ func (a *API) DeleteKey(name string) error {
 }
 
 // CheckInstances waits until a set of EC2 instances are accessible by SSH, waiting a maximum of 'd' time.
-func (a *API) CheckInstances(ids []*string, d time.Duration) error {
+func (a *API) CheckInstances(ids []string, d time.Duration) error {
 	after := time.After(d)
 	online := make(map[string]bool)
 
@@ -58,7 +58,7 @@ func (a *API) CheckInstances(ids []*string, d time.Duration) error {
 		time.Sleep(10 * time.Second)
 
 		getinst := &ec2.DescribeInstancesInput{
-			InstanceIds: ids,
+			InstanceIds: aws.StringSlice(ids),
 		}
 
 		insts, err := a.ec2.DescribeInstances(getinst)
@@ -129,9 +129,9 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 		return reservations.Instances, nil
 	}
 
-	ids := make([]*string, len(reservations.Instances))
+	ids := make([]string, len(reservations.Instances))
 	for i, inst := range reservations.Instances {
-		ids[i] = inst.InstanceId
+		ids[i] = *inst.InstanceId
 	}
 
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
@@ -141,7 +141,7 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 
 	// call DescribeInstances to get machine IP
 	getinst := &ec2.DescribeInstancesInput{
-		InstanceIds: ids,
+		InstanceIds: aws.StringSlice(ids),
 	}
 
 	insts, err := a.ec2.DescribeInstances(getinst)
