@@ -70,7 +70,7 @@ func (m *machine) Reboot() error {
 }
 
 func (am *machine) Destroy() error {
-	if err := am.cluster.api.TerminateInstance(am.ID()); err != nil {
+	if err := am.cluster.api.TerminateInstances([]string{am.ID()}); err != nil {
 		return err
 	}
 

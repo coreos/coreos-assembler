@@ -152,10 +152,10 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 	return insts.Reservations[0].Instances, err
 }
 
-// TerminateInstance schedules an EC2 instance to be terminated.
-func (a *API) TerminateInstance(id string) error {
+// TerminateInstances schedules EC2 instances to be terminated.
+func (a *API) TerminateInstances(ids []string) error {
 	input := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{aws.String(id)},
+		InstanceIds: aws.StringSlice(ids),
 	}
 
 	if _, err := a.ec2.TerminateInstances(input); err != nil {
