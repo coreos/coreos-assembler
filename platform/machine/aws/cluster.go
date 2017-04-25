@@ -84,7 +84,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 
 	conf.CopyKeys(keys)
 
-	instances, err := ac.api.CreateInstances(ac.Name(), conf.String(), 1, true)
+	instances, err := ac.api.CreateInstances(ac.Name(), ac.Name(), conf.String(), 1, true)
 	if err != nil {
 		return nil, err
 	}

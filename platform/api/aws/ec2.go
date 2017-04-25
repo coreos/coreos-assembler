@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
@@ -100,8 +101,8 @@ func (a *API) CheckInstances(ids []string, d time.Duration) error {
 	return nil
 }
 
-// CreateInstances creates EC2 instances with a given ssh key name, user data. The image ID, instance type, and security group set in the API will be used. If wait is true, CreateInstances will block until all instances are reachable by SSH.
-func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool) ([]*ec2.Instance, error) {
+// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used. If wait is true, CreateInstances will block until all instances are reachable by SSH.
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64, wait bool) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -125,13 +126,28 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 		return nil, err
 	}
 
-	if !wait {
-		return reservations.Instances, nil
-	}
-
 	ids := make([]string, len(reservations.Instances))
 	for i, inst := range reservations.Instances {
 		ids[i] = *inst.InstanceId
+	}
+
+	for {
+		err := a.CreateTags(ids, map[string]string{
+			"Name": name,
+		})
+		if err == nil {
+			break
+		}
+		if awserr, ok := err.(awserr.Error); !ok || awserr.Code() != "InvalidInstanceID.NotFound" {
+			a.TerminateInstances(ids)
+			return nil, err
+		}
+		// eventual consistency
+		time.Sleep(5 * time.Second)
+	}
+
+	if !wait {
+		return reservations.Instances, nil
 	}
 
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
