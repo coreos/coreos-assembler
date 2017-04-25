@@ -136,6 +136,7 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
 	if err := a.CheckInstances(ids, 10*time.Minute); err != nil {
+		a.TerminateInstances(ids)
 		return nil, err
 	}
 
@@ -146,10 +147,11 @@ func (a *API) CreateInstances(keyname, userdata string, count uint64, wait bool)
 
 	insts, err := a.ec2.DescribeInstances(getinst)
 	if err != nil {
+		a.TerminateInstances(ids)
 		return nil, err
 	}
 
-	return insts.Reservations[0].Instances, err
+	return insts.Reservations[0].Instances, nil
 }
 
 // TerminateInstances schedules EC2 instances to be terminated.
