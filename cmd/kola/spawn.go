@@ -50,17 +50,24 @@ func init() {
 }
 
 func runSpawn(cmd *cobra.Command, args []string) {
+	if err := doSpawn(cmd, args); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
+}
+
+func doSpawn(cmd *cobra.Command, args []string) error {
 	var userdata string
 	var err error
 
 	if spawnNodeCount <= 0 {
-		die("Cluster Failed: nodecount must be one or more")
+		return fmt.Errorf("Cluster Failed: nodecount must be one or more")
 	}
 
 	if spawnUserData != "" {
 		userbytes, err := ioutil.ReadFile(spawnUserData)
 		if err != nil {
-			die("Reading userdata failed: %v", err)
+			return fmt.Errorf("Reading userdata failed: %v", err)
 		}
 		userdata = string(userbytes)
 	} else {
@@ -70,20 +77,19 @@ func runSpawn(cmd *cobra.Command, args []string) {
 
 	outputDir, err = kola.CleanOutputDir(outputDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Setup failed: %v", err)
 	}
 
 	cluster, err := kola.NewCluster(kolaPlatform, outputDir)
 	if err != nil {
-		die("Cluster failed: %v", err)
+		return fmt.Errorf("Cluster failed: %v", err)
 	}
 
 	var someMach platform.Machine
 	for i := 0; i < spawnNodeCount; i++ {
 		mach, err := cluster.NewMachine(userdata)
 		if err != nil {
-			die("Spawning instance failed: %v", err)
+			return fmt.Errorf("Spawning instance failed: %v", err)
 		}
 
 		if spawnVerbose {
@@ -99,12 +105,8 @@ func runSpawn(cmd *cobra.Command, args []string) {
 
 	if spawnShell {
 		if err := platform.Manhole(someMach); err != nil {
-			die("Manhole failed: %v", err)
+			return fmt.Errorf("Manhole failed: %v", err)
 		}
 	}
-}
-
-func die(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
+	return nil
 }
