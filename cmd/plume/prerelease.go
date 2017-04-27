@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/validator"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -141,6 +142,24 @@ func getImageFile(client *http.Client, src *storage.Bucket, fileName string) (st
 	return imagePath, nil
 }
 
+func uploadAzureBlob(spec *channelSpec, api *azure.API, storageKey storageservice.GetStorageServiceKeysResponse, vhdfile, container, blobName string) error {
+	blobExists, err := api.BlobExists(spec.Azure.StorageAccount, storageKey.PrimaryKey, container, blobName)
+	if err != nil {
+		return fmt.Errorf("failed to check if file %q in account %q container %q exists: %v", vhdfile, spec.Azure.StorageAccount, container, err)
+	}
+
+	if blobExists {
+		return nil
+	}
+
+	if err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
+		if _, ok := err.(azure.BlobExistsError); !ok {
+			return fmt.Errorf("uploading file %q to account %q container %q failed: %v", vhdfile, spec.Azure.StorageAccount, container, err)
+		}
+	}
+	return nil
+}
+
 func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName string) error {
 	imageexists, err := api.OSImageExists(imageName)
 	if err != nil {
@@ -154,7 +173,7 @@ func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName str
 
 	plog.Printf("Creating OS image with name %q", imageName)
 
-	bloburl := api.UrlOfBlob(spec.Azure.StorageAccount, spec.Azure.Containers[0], blobName).String()
+	bloburl := api.UrlOfBlob(spec.Azure.StorageAccount, spec.Azure.Container, blobName).String()
 
 	// a la https://github.com/coreos/scripts/blob/998c7e093922298637e7c7e82e25cee7d336144d/oem/azure/set-image-metadata.sh
 	md := &azure.OSImage{
@@ -206,10 +225,34 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		return fmt.Errorf("failed reading Azure profile: %v", err)
 	}
 
-	for _, opt := range prof.AsOptions() {
+	// download azure vhd image and unzip it
+	vhdfile, err := getImageFile(client, src, spec.Azure.Image)
+	if err != nil {
+		return err
+	}
+
+	// sanity check - validate VHD file
+	plog.Printf("Validating VHD file %q", vhdfile)
+	if err := validator.ValidateVhd(vhdfile); err != nil {
+		return err
+	}
+	if err := validator.ValidateVhdSize(vhdfile); err != nil {
+		return err
+	}
+
+	blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
+	// channel name should be caps for azure image
+	imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
+
+	for _, environment := range spec.Azure.Environments {
+		opt := prof.SubscriptionOptions(environment.SubscriptionName)
+		if opt == nil {
+			return fmt.Errorf("couldn't find subscription %q", environment.SubscriptionName)
+		}
+
 		// construct azure api client
 		plog.Printf("Creating Azure API from subscription %q endpoint %q", opt.SubscriptionID, opt.ManagementURL)
-		api, err := azure.New(&opt)
+		api, err := azure.New(opt)
 		if err != nil {
 			return fmt.Errorf("failed to create Azure API: %v", err)
 		}
@@ -221,46 +264,16 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 			return err
 		}
 
-		// download azure vhd image and unzip it
-		vhdfile, err := getImageFile(client, src, spec.Azure.Image)
-		if err != nil {
-			return err
-		}
-
-		// sanity check - validate VHD file
-		plog.Printf("Validating VHD file %q", vhdfile)
-		if err := validator.ValidateVhd(vhdfile); err != nil {
-			return err
-		}
-
-		if err := validator.ValidateVhdSize(vhdfile); err != nil {
-			return err
-		}
-
 		// upload blob, do not overwrite
 		plog.Printf("Uploading %q to Azure Storage...", vhdfile)
 
-		blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
-
-		for _, container := range spec.Azure.Containers {
-			blobExists, err := api.BlobExists(spec.Azure.StorageAccount, storageKey.PrimaryKey, container, blobName)
+		containers := append([]string{spec.Azure.Container}, environment.AdditionalContainers...)
+		for _, container := range containers {
+			err := uploadAzureBlob(spec, api, storageKey, vhdfile, container, blobName)
 			if err != nil {
-				return fmt.Errorf("failed to check if file %q in account %q container %q exists: %v", vhdfile, spec.Azure.StorageAccount, container, err)
-			}
-
-			if blobExists {
-				continue
-			}
-
-			if err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
-				if _, ok := err.(azure.BlobExistsError); !ok {
-					return fmt.Errorf("uploading file %q to account %q container %q failed: %v", vhdfile, spec.Azure.StorageAccount, container, err)
-				}
+				return err
 			}
 		}
-
-		// channel name should be caps for azure image
-		imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
 
 		// create image
 		if err := createAzureImage(spec, api, blobName, imageName); err != nil {

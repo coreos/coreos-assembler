@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 )
@@ -508,8 +509,12 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		imageID = *copyRes.ImageId
 	}
 
-	err = a.ec2.WaitUntilImageAvailable(&ec2.DescribeImagesInput{
+	// The 10-minute default timeout is not enough. Wait up to 30 minutes.
+	err = a.ec2.WaitUntilImageAvailableWithContext(aws.BackgroundContext(), &ec2.DescribeImagesInput{
 		ImageIds: aws.StringSlice([]string{imageID}),
+	}, func(w *request.Waiter) {
+		w.MaxAttempts = 60
+		w.Delay = request.ConstantWaiterDelay(30 * time.Second)
 	})
 	if err != nil {
 		return "", fmt.Errorf("couldn't copy image to %v: %v", a.opts.Region, err)

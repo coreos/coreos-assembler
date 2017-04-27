@@ -28,6 +28,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/mantle/platform/api/azure"
 	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/storage/index"
 )
@@ -46,6 +47,7 @@ TODO`,
 
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
+	cmdRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	AddSpecFlags(cmdRelease.Flags())
@@ -82,6 +84,9 @@ func runRelease(cmd *cobra.Command, args []string) {
 
 	// Register GCE image if needed.
 	doGCE(ctx, client, src, &spec)
+
+	// Make Azure images public.
+	doAzure(ctx, client, src, &spec)
 
 	// Make AWS images public.
 	doAWS(ctx, client, src, &spec)
@@ -339,6 +344,45 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 			if failures > 5 {
 				plog.Fatalf("Giving up after %d failures.", failures)
 			}
+		}
+	}
+}
+
+func doAzure(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
+	if spec.Azure.StorageAccount == "" {
+		plog.Notice("Azure image creation disabled.")
+		return
+	}
+
+	prof, err := auth.ReadAzureProfile(azureProfile)
+	if err != nil {
+		plog.Fatalf("failed reading Azure profile: %v", err)
+	}
+
+	// channel name should be caps for azure image
+	imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
+
+	for _, environment := range spec.Azure.Environments {
+		opt := prof.SubscriptionOptions(environment.SubscriptionName)
+		if opt == nil {
+			plog.Fatalf("couldn't find subscription %q", environment.SubscriptionName)
+		}
+
+		api, err := azure.New(opt)
+		if err != nil {
+			plog.Fatalf("failed to create Azure API: %v", err)
+		}
+
+		if releaseDryRun {
+			// TODO(bgilbert): check that the image exists
+			plog.Printf("Would share %q on %v", imageName, environment.SubscriptionName)
+			continue
+		} else {
+			plog.Printf("Sharing %q on %v...", imageName, environment.SubscriptionName)
+		}
+
+		if err := api.ShareImage(imageName, "public"); err != nil {
+			plog.Fatalf("failed to share image %q: %v", imageName, err)
 		}
 	}
 }
