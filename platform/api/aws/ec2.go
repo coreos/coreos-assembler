@@ -132,15 +132,21 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, wait
 	}
 
 	for {
-		err := a.CreateTags(ids, map[string]string{
-			"Name": name,
+		_, err := a.ec2.CreateTags(&ec2.CreateTagsInput{
+			Resources: aws.StringSlice(ids),
+			Tags: []*ec2.Tag{
+				&ec2.Tag{
+					Key:   aws.String("Name"),
+					Value: aws.String(name),
+				},
+			},
 		})
 		if err == nil {
 			break
 		}
 		if awserr, ok := err.(awserr.Error); !ok || awserr.Code() != "InvalidInstanceID.NotFound" {
 			a.TerminateInstances(ids)
-			return nil, err
+			return nil, fmt.Errorf("error creating tags: %v", err)
 		}
 		// eventual consistency
 		time.Sleep(5 * time.Second)
