@@ -101,8 +101,8 @@ func (a *API) CheckInstances(ids []string, d time.Duration) error {
 	return nil
 }
 
-// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used. If wait is true, CreateInstances will block until all instances are reachable by SSH.
-func (a *API) CreateInstances(name, keyname, userdata string, count uint64, wait bool) ([]*ec2.Instance, error) {
+// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used.
+func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -152,8 +152,19 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, wait
 		time.Sleep(5 * time.Second)
 	}
 
-	if !wait {
-		return reservations.Instances, nil
+	return reservations.Instances, nil
+}
+
+// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are reachable by SSH.
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
+	instances, err := a.CreateInstancesWithoutWaiting(name, keyname, userdata, count)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, len(instances))
+	for i, inst := range instances {
+		ids[i] = *inst.InstanceId
 	}
 
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
