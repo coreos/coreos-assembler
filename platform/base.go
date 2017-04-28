@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/coreos/pkg/multierror"
 	"github.com/satori/go.uuid"
@@ -28,6 +29,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/util"
 )
 
 type BaseCluster struct {
@@ -145,20 +147,25 @@ func (bc *BaseCluster) Destroy() error {
 // XXX(mischief): i don't really think this belongs here, but it completes the
 // interface we've established.
 func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("Discovery service returned %q", resp.Status)
-	}
+	var result string
+	err := util.Retry(3, 5*time.Second, func() error {
+		resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("Discovery service returned %q", resp.Status)
+		}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		result = string(body)
+		return nil
+	})
+	return result, err
 }
 
 func (bc *BaseCluster) Name() string {
