@@ -150,6 +150,9 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("Discovery service returned %q", resp.Status)
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
