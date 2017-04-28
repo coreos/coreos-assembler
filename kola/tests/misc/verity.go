@@ -27,17 +27,17 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         VerityVerify,
+		Run:         Verity,
 		ClusterSize: 1,
-		Name:        "coreos.verity.verify",
+		Name:        "coreos.verity",
 		UserData:    `#cloud-config`,
 	})
-	register.Register(&register.Test{
-		Run:         VerityCorruption,
-		ClusterSize: 1,
-		Name:        "coreos.verity.corruption",
-		UserData:    `#cloud-config`,
-	})
+}
+
+func Verity(c cluster.TestCluster) {
+	c.Run("verify", VerityVerify)
+	// modifies disk; must run last
+	c.Run("corruption", VerityCorruption)
 }
 
 // Verity verification tests.

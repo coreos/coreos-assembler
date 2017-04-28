@@ -30,7 +30,9 @@ func Retry(attempts int, delay time.Duration, f func() error) error {
 			break
 		}
 
-		time.Sleep(delay)
+		if i < attempts-1 {
+			time.Sleep(delay)
+		}
 	}
 
 	return err

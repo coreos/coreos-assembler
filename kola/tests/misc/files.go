@@ -24,41 +24,20 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         DeadLinks,
+		Run:         Filesystem,
 		ClusterSize: 1,
-		Name:        "coreos.filesystem.deadlinks",
+		Name:        "coreos.filesystem",
 		UserData:    `#cloud-config`,
 	})
-	register.Register(&register.Test{
-		Run:         SUIDFiles,
-		ClusterSize: 1,
-		Name:        "coreos.filesystem.suid",
-		UserData:    `#cloud-config`,
-	})
-	register.Register(&register.Test{
-		Run:         SGIDFiles,
-		ClusterSize: 1,
-		Name:        "coreos.filesystem.sgid",
-		UserData:    `#cloud-config`,
-	})
-	register.Register(&register.Test{
-		Run:         WritableFiles,
-		ClusterSize: 1,
-		Name:        "coreos.filesystem.writablefiles",
-		UserData:    `#cloud-config`,
-	})
-	register.Register(&register.Test{
-		Run:         WritableDirs,
-		ClusterSize: 1,
-		Name:        "coreos.filesystem.writabledirs",
-		UserData:    `#cloud-config`,
-	})
-	register.Register(&register.Test{
-		Run:         StickyDirs,
-		ClusterSize: 1,
-		Name:        "coreos.filesystem.stickydirs",
-		UserData:    `#cloud-config`,
-	})
+}
+
+func Filesystem(c cluster.TestCluster) {
+	c.Run("deadlinks", DeadLinks)
+	c.Run("suid", SUIDFiles)
+	c.Run("sgid", SGIDFiles)
+	c.Run("writablefiles", WritableFiles)
+	c.Run("writabledirs", WritableDirs)
+	c.Run("stickydirs", StickyDirs)
 }
 
 func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
