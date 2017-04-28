@@ -120,7 +120,10 @@ func init() {
 
 // Test fleet running through an etcd2 proxy.
 func Proxy(c cluster.TestCluster) {
-	discoveryURL, _ := c.GetDiscoveryURL(1)
+	discoveryURL, err := c.GetDiscoveryURL(1)
+	if err != nil {
+		c.Fatalf("Couldn't get discovery URL: %s", err)
+	}
 
 	master, err := c.NewMachine(strings.Replace(masterconf, "$discovery", discoveryURL, -1))
 	if err != nil {
