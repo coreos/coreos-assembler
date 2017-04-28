@@ -97,7 +97,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 		{Name: "quay.io/coreos/etcd-operator:v0.2.5", Engine: "docker"},
 		{Name: "quay.io/coreos/etcd:v3.1.6", Engine: "rkt"},
 		{Name: "quay.io/coreos/flannel:v0.7.1-amd64", Engine: "docker"},
-		{Name: "quay.io/coreos/pod-checkpointer:20cf8b9a6018731a0770192f30dfa7a1941521e3", Engine: "docker"},
+		{Name: "quay.io/coreos/pod-checkpointer:2cad4cac4186611a79de1969e3ea4924f02f459e", Engine: "docker"},
 		{Name: "quay.io/coreos/kenc:48b6feceeee56c657ea9263f47b6ea091e8d3035", Engine: "docker"},
 		{Name: "gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.1", Engine: "docker"},
 		{Name: "gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.1", Engine: "docker"},
