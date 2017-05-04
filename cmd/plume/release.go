@@ -39,9 +39,7 @@ var (
 		Use:   "release [options]",
 		Short: "Publish a new CoreOS release.",
 		Run:   runRelease,
-		Long: `Publish a new CoreOS release.
-
-TODO`,
+		Long:  `Publish a new CoreOS release.`,
 	}
 )
 
