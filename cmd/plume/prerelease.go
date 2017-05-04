@@ -192,7 +192,7 @@ func createAzureImage(spec *channelSpec, api *azure.API, blobName, imageName str
 	return api.AddOSImage(md)
 }
 
-func replicateAzureImage(api *azure.API, imageName string) error {
+func replicateAzureImage(spec *channelSpec, api *azure.API, imageName string) error {
 	plog.Printf("Fetching Azure Locations...")
 	locations, err := api.Locations()
 	if err != nil {
@@ -203,7 +203,7 @@ func replicateAzureImage(api *azure.API, imageName string) error {
 
 	channelTitle := strings.Title(specChannel)
 
-	if err := api.ReplicateImage(imageName, "CoreOS", channelTitle, specVersion, locations...); err != nil {
+	if err := api.ReplicateImage(imageName, spec.Azure.Offer, channelTitle, specVersion, locations...); err != nil {
 		return fmt.Errorf("image replication failed: %v", err)
 	}
 
@@ -242,7 +242,7 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 
 	blobName := fmt.Sprintf("container-linux-%s-%s.vhd", specVersion, specChannel)
 	// channel name should be caps for azure image
-	imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
+	imageName := fmt.Sprintf("%s-%s-%s", spec.Azure.Offer, strings.Title(specChannel), specVersion)
 
 	for _, environment := range spec.Azure.Environments {
 		opt := prof.SubscriptionOptions(environment.SubscriptionName)
@@ -286,7 +286,7 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		}
 
 		// replicate it
-		if err := replicateAzureImage(api, imageName); err != nil {
+		if err := replicateAzureImage(spec, api, imageName); err != nil {
 			return err
 		}
 	}
@@ -517,9 +517,9 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 		return nil
 	}
 
-	imageName := fmt.Sprintf("CoreOS-%v-%v", specChannel, specVersion)
+	imageName := fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
 	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
-	imageDescription := fmt.Sprintf("CoreOS Container Linux %v %v", specChannel, specVersion)
+	imageDescription := fmt.Sprintf("%v %v %v", spec.AWS.BaseDescription, specChannel, specVersion)
 
 	imagePath, err := getImageFile(client, src, spec.AWS.Image)
 	if err != nil {

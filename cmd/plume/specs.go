@@ -50,6 +50,7 @@ type azureEnvironmentSpec struct {
 }
 
 type azureSpec struct {
+	Offer          string                 // Azure offer name
 	Image          string                 // File name of image source
 	StorageAccount string                 // Storage account to use for image uploads in each environment
 	Container      string                 // Container to hold the disk image in each environment
@@ -73,9 +74,11 @@ type awsPartitionSpec struct {
 }
 
 type awsSpec struct {
-	Prefix     string             // Prefix for filenames of AMI lists
-	Image      string             // File name of image source
-	Partitions []awsPartitionSpec // AWS partitions
+	BaseName        string             // Prefix of image name
+	BaseDescription string             // Prefix of image description
+	Prefix          string             // Prefix for filenames of AMI lists
+	Image           string             // File name of image source
+	Partitions      []awsPartitionSpec // AWS partitions
 }
 
 type channelSpec struct {
@@ -190,6 +193,7 @@ var (
 				Limit:       25,
 			},
 			Azure: azureSpec{
+				Offer:             "CoreOS",
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
 				Container:         "publish",
@@ -201,9 +205,11 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix:     "coreos_production_ami_",
-				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Partitions: awsPartitions,
+				BaseName:        "CoreOS",
+				BaseDescription: "CoreOS Container Linux",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions:      awsPartitions,
 			},
 		},
 		"beta": channelSpec{
@@ -242,6 +248,7 @@ var (
 				Limit:       25,
 			},
 			Azure: azureSpec{
+				Offer:             "CoreOS",
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
 				Container:         "publish",
@@ -253,9 +260,11 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix:     "coreos_production_ami_",
-				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Partitions: awsPartitions,
+				BaseName:        "CoreOS",
+				BaseDescription: "CoreOS Container Linux",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions:      awsPartitions,
 			},
 		},
 		"stable": channelSpec{
@@ -284,6 +293,7 @@ var (
 				Limit:       25,
 			},
 			Azure: azureSpec{
+				Offer:             "CoreOS",
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
 				Container:         "publish",
@@ -295,9 +305,11 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix:     "coreos_production_ami_",
-				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Partitions: awsPartitions,
+				BaseName:        "CoreOS",
+				BaseDescription: "CoreOS Container Linux",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions:      awsPartitions,
 			},
 		},
 	}
