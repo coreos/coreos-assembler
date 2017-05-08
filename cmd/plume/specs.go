@@ -16,6 +16,7 @@ package main
 
 import (
 	"net/url"
+	"os"
 	"path"
 	"strings"
 
@@ -155,6 +156,73 @@ var (
 		},
 	}
 	specs = map[string]channelSpec{
+		"dev": channelSpec{
+			BaseURL: "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/boards",
+			Boards:  []string{"amd64-usr", "arm64-usr"},
+			Destinations: []storageSpec{storageSpec{
+				BaseURL:       "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/releases",
+				NamedPath:     "current",
+				VersionPath:   true,
+				DirectoryHTML: true,
+				IndexHTML:     true,
+			}},
+			GCE: gceSpec{
+				Project:     "coreos-gce-testing",
+				Family:      "coreos-dev",
+				Description: "CoreOS Container Linux development image",
+				Image:       "coreos_production_gce.tar.gz",
+				Publish:     "coreos_production_gce.txt",
+				Limit:       2,
+			},
+			Azure: azureSpec{
+				Offer:          "ContainerLinuxDev",
+				Image:          "coreos_production_azure_image.vhd.bz2",
+				StorageAccount: "coreos",
+				Container:      "plume-devel",
+				Environments: []azureEnvironmentSpec{
+					azureEnvironmentSpec{
+						SubscriptionName:     "BizSpark",
+						AdditionalContainers: []string{"plume-devel-copy"},
+					},
+				},
+				Label:             "Container Linux Development",
+				Description:       "CoreOS Container Linux development image",
+				RecommendedVMSize: "Medium",
+				IconURI:           "coreos-globe-color-lg-100px.png",
+				SmallIconURI:      "coreos-globe-color-lg-45px.png",
+			},
+			AWS: awsSpec{
+				BaseName:        "ContainerLinuxDev",
+				BaseDescription: "CoreOS Container Linux development image",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions: []awsPartitionSpec{
+					awsPartitionSpec{
+						Name:         "AWS West",
+						Profile:      "coreos-cl",
+						Bucket:       "coreos-dev-ami-import-us-west-2",
+						BucketRegion: "us-west-2",
+						Regions: []string{
+							"us-west-1",
+							"us-west-2",
+						},
+					},
+					awsPartitionSpec{
+						// partition with a single region
+						Name:         "AWS East",
+						Profile:      "coreos-cl",
+						Bucket:       "coreos-dev-ami-import-us-east-2",
+						BucketRegion: "us-east-2",
+						LaunchPermissions: []string{
+							"477645798544",
+						},
+						Regions: []string{
+							"us-east-2",
+						},
+					},
+				},
+			},
+		},
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
 			Boards:  []string{"amd64-usr", "arm64-usr"},
