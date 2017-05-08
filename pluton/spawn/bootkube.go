@@ -339,13 +339,13 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 			plog.Infof("Warning: unable to transfer client cert to worker: %v", err)
 		}
 
-		if err := installKubectl(node, m.info); err != nil {
-			return nil, nil, err
-		}
-
 		// disable selinux
 		_, err = node.SSH("sudo setenforce 0")
 		if err != nil {
+			return nil, nil, err
+		}
+
+		if err := installKubectl(node, m.info); err != nil {
 			return nil, nil, err
 		}
 
