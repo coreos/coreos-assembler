@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"text/template"
@@ -404,48 +403,16 @@ func getVersionFromService(kubeletService string) (pluton.Info, error) {
 		return pluton.Info{}, fmt.Errorf("could not find kubelet version from service file")
 	}
 
-	if kubeletTag == "master" {
-		// Special hack for testing master, which is a non-semver tag.
-		return pluton.Info{
-			KubeletTag:      kubeletTag,
-			Version:         kubeletTag,
-			UpstreamVersion: "v1.7.0-alpha.3", // TODO(diegs): fetch this dynamically, or extract from hyperkube.
-			ImageRepo:       kubeletImageRepo,
-		}, nil
-	}
-	upstream, err := stripSemverSuffix(kubeletTag)
-	if err != nil {
-		return pluton.Info{}, fmt.Errorf("tag %v: %v", kubeletTag, err)
-	}
-	semVer := strings.Replace(kubeletTag, "_", "+", 1)
-
-	// hack to handle upstream pre-release versions TODO(pb): simpify this
-	// parsing and only have conformance test rely on accurate upstream
-	// versions, not having kubectl will fail all tests. kubectl can be
-	// copied from hyperkube
-	if strings.Contains(semVer, "-") {
-		upstream = strings.Split(semVer, "+")[0]
-	}
+	version := strings.Replace(kubeletTag, "_", "+", 1)
 
 	s := pluton.Info{
-		KubeletTag:      kubeletTag,
-		Version:         semVer,
-		UpstreamVersion: upstream,
-		ImageRepo:       kubeletImageRepo,
+		KubeletTag: kubeletTag,
+		Version:    version,
+		ImageRepo:  kubeletImageRepo,
 	}
 	plog.Infof("version detection: %#v", s)
 
 	return s, nil
-}
-
-func stripSemverSuffix(v string) (string, error) {
-	semverPrefix := regexp.MustCompile(`^v[\d]+\.[\d]+\.[\d]+`)
-	v = semverPrefix.FindString(v)
-	if v == "" {
-		return "", fmt.Errorf("error stripping semver suffix")
-	}
-
-	return v, nil
 }
 
 func installKubectl(m platform.Machine, info pluton.Info) error {
