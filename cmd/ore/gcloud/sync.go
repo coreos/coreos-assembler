@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package gcloud
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ var (
 	syncIndexTitle string
 	cmdSync        = &cobra.Command{
 		Use:   "sync gs://src/foo gs://dst/bar",
-		Short: "Copy objects in the cloud!",
+		Short: "Copy objects between GS buckets",
 		Run:   runSync,
 	}
 )
@@ -56,7 +56,7 @@ func init() {
 		"generate index.html pages for each directory")
 	cmdSync.Flags().StringVarP(&syncIndexTitle, "html-title", "T", "",
 		"use the given title instead of bucket name in index pages")
-	root.AddCommand(cmdSync)
+	GCloud.AddCommand(cmdSync)
 }
 
 func runSync(cmd *cobra.Command, args []string) {

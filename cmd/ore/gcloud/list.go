@@ -12,38 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package gcloud
 
 import (
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/coreos/mantle/platform/api/gcloud"
 )
 
 var (
-	cmdDestroy = &cobra.Command{
-		Use:   "destroy-instances -prefix=<prefix> ",
-		Short: "destroy cluster on GCE",
-		Long:  "Destroy GCE instances based on name prefix.",
-		Run:   runDestroy,
+	cmdList = &cobra.Command{
+		Use:   "list-instances -prefix=<prefix>",
+		Short: "List instances on GCE",
+		Run:   runList,
 	}
 )
 
 func init() {
-	root.AddCommand(cmdDestroy)
+	GCloud.AddCommand(cmdList)
 }
 
-func runDestroy(cmd *cobra.Command, args []string) {
+func runList(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		fmt.Fprintf(os.Stderr, "Unrecognized args in ore list cmd: %v\n", args)
+		fmt.Fprintf(os.Stderr, "Unrecognized args in plume list cmd: %v\n", args)
 		os.Exit(2)
-	}
-
-	// avoid wiping out all instances in project or mishaps with short destroyPrefixes
-	if opts.BaseName == "" || len(opts.BaseName) < 2 {
-		fmt.Fprintf(os.Stderr, "Please specify a prefix of length 2 or greater with -prefix\n")
-		os.Exit(1)
 	}
 
 	vms, err := api.ListInstances(opts.BaseName)
@@ -52,14 +47,9 @@ func runDestroy(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	var count int
 	for _, vm := range vms {
-		if err := api.TerminateInstance(vm.Name); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed destroying vm: %v\n", err)
-			os.Exit(1)
-		}
-		count++
+		_, extIP := gcloud.InstanceIPs(vm)
+		fmt.Printf("%v:\n", vm.Name)
+		fmt.Printf(" extIP: %v\n", extIP)
 	}
-
-	fmt.Printf("%v instance(s) scheduled for deletion\n", count)
 }

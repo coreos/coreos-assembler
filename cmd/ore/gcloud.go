@@ -1,4 +1,4 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2017 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,18 +15,9 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
-
-	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/cmd/ore/gcloud"
 )
 
-var (
-	root = &cobra.Command{
-		Use:   "ore [command]",
-		Short: "cloud image creation and upload tools",
-	}
-)
-
-func main() {
-	cli.Execute(root)
+func init() {
+	root.AddCommand(gcloud.GCloud)
 }
