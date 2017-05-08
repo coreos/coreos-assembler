@@ -47,6 +47,7 @@ type Info struct {
 	KubeletTag      string // e.g. v1.5.3_coreos.0
 	Version         string // e.g. v1.5.3+coreos.0
 	UpstreamVersion string // e.g. v1.5.3
+	ImageRepo       string // e.g. quay.io/coreos/hyperkube
 }
 
 func NewCluster(m Manager, masters, workers []platform.Machine, info Info) *Cluster {
