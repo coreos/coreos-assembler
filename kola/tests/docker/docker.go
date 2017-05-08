@@ -33,12 +33,6 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         dockerResources,
-		ClusterSize: 1,
-		Name:        "docker.resources",
-		UserData:    `#cloud-config`,
-	})
-	register.Register(&register.Test{
 		Run:         dockerNetwork,
 		ClusterSize: 2,
 		Name:        "docker.network",
@@ -85,18 +79,23 @@ func init() {
 		UserData:   `{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`,
 		MinVersion: semver.Version{Major: 1354}, // 1353 has kernel 4.9.x which is known to not work with userns on aws, see https://github.com/coreos/bugs/issues/1826
 	})
+
+	// This test covers all functionality that should be quick to run and can be
+	// run:
+	// 1. On an entirely default docker configuration on CL
+	// 2. On a 'dirty machine' (in that other tests have already potentially run)
+	//
+	// Note, being able to run in parallel is desirable for these tests, but not
+	// required. Parallelism should be tweaked at the subtest level in the
+	// 'dockerBaseTests' implementation
+	// The primary goal of using subtests here is to make things quicker to run.
 	register.Register(&register.Test{
-		Run:         dockerNetworksReliably,
+		Run:         dockerBaseTests,
 		ClusterSize: 1,
-		Name:        "docker.networks-reliably",
+		Name:        `docker.base`,
 		UserData:    `#cloud-config`,
 	})
-	register.Register(&register.Test{
-		Run:         dockerUserNoCaps,
-		ClusterSize: 1,
-		Name:        "docker.user-no-caps",
-		UserData:    `#cloud-config`,
-	})
+
 }
 
 // make a docker container out of binaries on the host
@@ -111,6 +110,12 @@ func genDockerContainer(m platform.Machine, name string, binnames []string) erro
 	}
 
 	return nil
+}
+
+func dockerBaseTests(c cluster.TestCluster) {
+	c.Run("resources", dockerResources)
+	c.Run("networks-reliably", dockerNetworksReliably)
+	c.Run("user-no-caps", dockerUserNoCaps)
 }
 
 // using a simple container, exercise various docker options that set resource
