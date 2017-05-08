@@ -135,7 +135,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	}
 
 	// install kubectl on master
-	if err := installKubectl(master, info.UpstreamVersion); err != nil {
+	if err := installKubectl(master, info); err != nil {
 		return nil, err
 	}
 
@@ -332,7 +332,7 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 			plog.Infof("Warning: unable to transfer client cert to worker: %v", err)
 		}
 
-		if err := installKubectl(node, m.info.UpstreamVersion); err != nil {
+		if err := installKubectl(node, m.info); err != nil {
 			return nil, nil, err
 		}
 
@@ -448,13 +448,19 @@ func stripSemverSuffix(v string) (string, error) {
 	return v, nil
 }
 
-func installKubectl(m platform.Machine, upstreamVersion string) error {
-	kubeURL := fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/%v/bin/linux/amd64/kubectl", upstreamVersion)
-	if _, err := m.SSH("wget -q " + kubeURL); err != nil {
-		return fmt.Errorf("curling kubectl: %v", err)
-	}
-	if _, err := m.SSH("chmod +x ./kubectl"); err != nil {
-		return err
+func installKubectl(m platform.Machine, info pluton.Info) error {
+	// copy hyperkube out of image
+	cmd := fmt.Sprintf(`sudo rkt run \
+	--insecure-options=image \
+	--volume=home,kind=host,source=/home/core \
+	--mount volume=home,target=/home/core \
+	%v:%v \
+	--exec /bin/bash -- -c "cp /hyperkube /home/core/kubectl"`,
+		info.ImageRepo, info.KubeletTag)
+
+	out, err := m.SSH(cmd)
+	if err != nil {
+		return fmt.Errorf("installing kubectl %v:%s", err, out)
 	}
 
 	return nil
