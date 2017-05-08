@@ -138,6 +138,14 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 		return nil, err
 	}
 
+	// get more accurate version field, softfail on parse fail
+	v, err := getVersionFromKubectl(master)
+	if err == nil {
+		info.Version = v
+	} else {
+		plog.Infof("ignoring error getting accurate version: %v", err)
+	}
+
 	manager := &BootkubeManager{
 		Cluster:   cloud,
 		bastion:   bastion,
@@ -413,6 +421,22 @@ func getVersionFromService(kubeletService string) (pluton.Info, error) {
 	plog.Infof("version detection: %#v", s)
 
 	return s, nil
+}
+
+// This is called later in the boostrap then getVersionFromService and gives a
+// more accurate value for Info.Version
+func getVersionFromKubectl(m platform.Machine) (string, error) {
+	out, err := m.SSH("./kubectl --version")
+	if err != nil {
+		return "", fmt.Errorf("kubectl version: %v:%s", err, out)
+	}
+
+	fields := strings.Split(string(out), " ")
+	if len(fields) != 2 {
+		return "", fmt.Errorf("unable to parse kubectl version output: %s", out)
+	}
+
+	return fields[1], nil
 }
 
 func installKubectl(m platform.Machine, info pluton.Info) error {
