@@ -16,8 +16,11 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -113,6 +116,9 @@ func genDockerContainer(m platform.Machine, name string, binnames []string) erro
 }
 
 func dockerBaseTests(c cluster.TestCluster) {
+	c.Run("docker-info", func(c cluster.TestCluster) {
+		testDockerInfo("overlay", c)
+	})
 	c.Run("resources", dockerResources)
 	c.Run("networks-reliably", dockerNetworksReliably)
 	c.Run("user-no-caps", dockerUserNoCaps)
@@ -380,5 +386,87 @@ func dockerUserNoCaps(c cluster.TestCluster) {
 	// Finally, check for fail/success on reading /root
 	if !strings.HasPrefix(outputlines[len(outputlines)-1], "PASS: ") {
 		c.Fatalf("reading /root test failed: %q", string(output))
+	}
+}
+
+// testDockerInfo test that docker info's output is as expected.  the expected
+// filesystem may be asserted as one of 'overlay', 'btrfs', 'devicemapper'
+// depending on how the machine was launched.
+func testDockerInfo(expectedFs string, c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	dockerInfoJson, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info`)
+	if err != nil {
+		c.Fatalf("could not get dockerinfo: %v", err)
+	}
+
+	type simplifiedDockerInfo struct {
+		ServerVersion string
+		Driver        string
+		CgroupDriver  string
+		Runtimes      map[string]struct {
+			Path string `json:"path"`
+		}
+		ContainerdCommit struct {
+			ID       string
+			Expected string
+		}
+		RuncCommit struct {
+			ID       string
+			Expected string
+		}
+		SecurityOptions []string
+	}
+
+	info := &simplifiedDockerInfo{}
+	err = json.Unmarshal(dockerInfoJson, &info)
+	if err != nil {
+		c.Fatalf("could not unmarshal dockerInfo %q into known json: %v", string(dockerInfoJson), err)
+	}
+
+	// Canonicalize info
+	sort.Strings(info.SecurityOptions)
+
+	// Because we prefer overlay2/overlay for different docker versions, figure
+	// out the correct driver to be testing for based on our docker version.
+	expectedOverlayDriver := "overlay2"
+	if strings.HasPrefix(info.ServerVersion, "1.12.") || strings.HasPrefix(info.ServerVersion, "17.04.") {
+		expectedOverlayDriver = "overlay"
+	}
+
+	expectedFsDriverMap := map[string]string{
+		"overlay":      expectedOverlayDriver,
+		"btrfs":        "btrfs",
+		"devicemapper": "devicemapper",
+	}
+
+	expectedFsDriver := expectedFsDriverMap[expectedFs]
+	if info.Driver != expectedFsDriver {
+		c.Errorf("unexpected driver: %v != %v", expectedFsDriver, info.Driver)
+	}
+
+	// Validations shared by all versions currently
+	if !reflect.DeepEqual(info.SecurityOptions, []string{"seccomp", "selinux"}) {
+		c.Errorf("unexpected security options: %+v", info.SecurityOptions)
+	}
+
+	if info.CgroupDriver != "cgroupfs" {
+		c.Errorf("unexpected cgroup driver %v", info.CgroupDriver)
+	}
+
+	if info.ContainerdCommit.ID != info.ContainerdCommit.Expected {
+		c.Errorf("commit mismatch for containerd: %v != %v", info.ContainerdCommit.Expected, info.ContainerdCommit.ID)
+	}
+
+	if info.RuncCommit.ID != info.RuncCommit.Expected {
+		c.Errorf("commit mismatch for runc: %v != %v", info.RuncCommit.Expected, info.RuncCommit.ID)
+	}
+
+	if runcInfo, ok := info.Runtimes["runc"]; ok {
+		if runcInfo.Path == "" {
+			c.Errorf("expected non-empty runc path")
+		}
+	} else {
+		c.Errorf("runc was not in runtimes: %+v", info.Runtimes)
 	}
 }
