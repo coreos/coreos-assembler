@@ -99,6 +99,38 @@ func init() {
 		UserData:    `#cloud-config`,
 	})
 
+	register.Register(&register.Test{
+
+		Run:         func(c cluster.TestCluster) { testDockerInfo("btrfs", c) },
+		ClusterSize: 1,
+		Name:        "docker.btrfs-storage",
+		// Note: copied verbatim from https://github.com/coreos/docs/blob/master/os/mounting-storage.md#creating-and-mounting-a-btrfs-volume-file after ct rendering
+		UserData: `{
+			"ignition": {
+				"version": "2.0.0",
+				"config": {}
+			},
+			"storage": {},
+			"systemd": {
+				"units": [
+				{
+					"name": "format-var-lib-docker.service",
+					"enable": true,
+					"contents": "[Unit]\nBefore=docker.service var-lib-docker.mount\nConditionPathExists=!/var/lib/docker.btrfs\n[Service]\nType=oneshot\nExecStart=/usr/bin/truncate --size=25G /var/lib/docker.btrfs\nExecStart=/usr/sbin/mkfs.btrfs /var/lib/docker.btrfs\n[Install]\nWantedBy=multi-user.target\n"
+				},
+				{
+					"name": "var-lib-docker.mount",
+					"enable": true,
+					"contents": "[Unit]\nBefore=docker.service\nAfter=format-var-lib-docker.service\nRequires=format-var-lib-docker.service\n[Install]\nRequiredBy=docker.service\n[Mount]\nWhat=/var/lib/docker.btrfs\nWhere=/var/lib/docker\nType=btrfs\nOptions=loop,discard"
+				}
+				]
+			},
+			"networkd": {},
+			"passwd": {}
+		}`,
+		// Roughly when the 'wrapper' script was removed so security + btrfs worked
+		MinVersion: semver.Version{Major: 1400},
+	})
 }
 
 // make a docker container out of binaries on the host
