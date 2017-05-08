@@ -85,8 +85,8 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	}
 
 	containers := []containercache.ImageName{
-		{Name: fmt.Sprintf("quay.io/coreos/hyperkube:%v", info.KubeletTag), Engine: "rkt"},
-		{Name: fmt.Sprintf("quay.io/coreos/hyperkube:%v", info.KubeletTag), Engine: "docker"},
+		{Name: fmt.Sprintf("%s:%s", info.ImageRepo, info.KubeletTag), Engine: "rkt"},
+		{Name: fmt.Sprintf("%s:%s", info.ImageRepo, info.KubeletTag), Engine: "docker"},
 		{Name: "nginx", Engine: "docker"},
 		{Name: "busybox", Engine: "docker"},
 
@@ -391,19 +391,28 @@ func parseInputFiles(config BootkubeConfig) (*inputFiles, error) {
 }
 
 func getVersionFromService(kubeletService string) (pluton.Info, error) {
-	var versionLine string
+	var kubeletTag, kubeletImageRepo string
 	lines := strings.Split(kubeletService, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "Environment=KUBELET_IMAGE_TAG=") {
-			versionLine = strings.TrimSpace(line)
-			break
+			kubeletTag = strings.TrimPrefix(strings.TrimSpace(line), "Environment=KUBELET_IMAGE_TAG=")
+		} else if strings.Contains(line, "Environment=KUBELET_IMAGE_URL=") {
+			kubeletImageRepo = strings.TrimPrefix(strings.TrimSpace(line), "Environment=KUBELET_IMAGE_URL=")
 		}
 	}
-	if versionLine == "" {
+	if kubeletTag == "" || kubeletImageRepo == "" {
 		return pluton.Info{}, fmt.Errorf("could not find kubelet version from service file")
 	}
 
-	kubeletTag := strings.TrimPrefix(versionLine, "Environment=KUBELET_IMAGE_TAG=")
+	if kubeletTag == "master" {
+		// Special hack for testing master, which is a non-semver tag.
+		return pluton.Info{
+			KubeletTag:      kubeletTag,
+			Version:         kubeletTag,
+			UpstreamVersion: "v1.7.0-alpha.3", // TODO(diegs): fetch this dynamically, or extract from hyperkube.
+			ImageRepo:       kubeletImageRepo,
+		}, nil
+	}
 	upstream, err := stripSemverSuffix(kubeletTag)
 	if err != nil {
 		return pluton.Info{}, fmt.Errorf("tag %v: %v", kubeletTag, err)
@@ -422,6 +431,7 @@ func getVersionFromService(kubeletService string) (pluton.Info, error) {
 		KubeletTag:      kubeletTag,
 		Version:         semVer,
 		UpstreamVersion: upstream,
+		ImageRepo:       kubeletImageRepo,
 	}
 	plog.Infof("version detection: %#v", s)
 
