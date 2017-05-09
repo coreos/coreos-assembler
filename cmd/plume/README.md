@@ -38,6 +38,4 @@ Delete:
 
 - Stuff uploaded into `gs://users.developer.core-os.net/$USER`
 - GCE image in `coreos-gce-testing`
-- Azure image
-- Azure blobs in `plume-devel` and `plume-devel-copy`
 - AWS AMIs and snapshots in `us-west-1`, `us-west-2`, and `us-east-2`

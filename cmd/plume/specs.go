@@ -174,23 +174,6 @@ var (
 				Publish:     "coreos_production_gce.txt",
 				Limit:       2,
 			},
-			Azure: azureSpec{
-				Offer:          "ContainerLinuxDev",
-				Image:          "coreos_production_azure_image.vhd.bz2",
-				StorageAccount: "coreos",
-				Container:      "plume-devel",
-				Environments: []azureEnvironmentSpec{
-					azureEnvironmentSpec{
-						SubscriptionName:     "BizSpark",
-						AdditionalContainers: []string{"plume-devel-copy"},
-					},
-				},
-				Label:             "Container Linux Development",
-				Description:       "CoreOS Container Linux development image",
-				RecommendedVMSize: "Medium",
-				IconURI:           "coreos-globe-color-lg-100px.png",
-				SmallIconURI:      "coreos-globe-color-lg-45px.png",
-			},
 			AWS: awsSpec{
 				BaseName:        "ContainerLinuxDev",
 				BaseDescription: "CoreOS Container Linux development image",
