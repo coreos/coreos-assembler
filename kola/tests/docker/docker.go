@@ -131,6 +131,52 @@ func init() {
 		// Roughly when the 'wrapper' script was removed so security + btrfs worked
 		MinVersion: semver.Version{Major: 1400},
 	})
+
+	register.Register(&register.Test{
+		// For a while we shipped /usr/lib/coreos/dockerd as the execstart of the
+		// docker systemd unit.
+		// This test verifies backwards compatibility with that unit to ensure
+		// users who copied it into /etc aren't broken.
+		Name:        "docker.lib-coreos-dockerd-compat",
+		Run:         dockerBaseTests,
+		ClusterSize: 1,
+		/* config-transpiler
+		systemd:
+		  units:
+			- name: docker.service
+		    contents: |-
+		      [Unit]
+		      Description=Docker Application Container Engine
+		      Documentation=http://docs.docker.com
+		      After=containerd.service docker.socket network.target
+		      Requires=containerd.service docker.socket
+
+		      [Service]
+		      Type=notify
+		      EnvironmentFile=-/run/flannel/flannel_docker_opts.env
+
+		      # the default is not to use systemd for cgroups because the delegate issues still
+		      # exists and systemd currently does not support the cgroup feature set required
+		      # for containers run by docker
+		      ExecStart=/usr/lib/coreos/dockerd --host=fd:// --containerd=/var/run/docker/libcontainerd/docker-containerd.sock $DOCKER_OPTS $DOCKER_CGROUPS $DOCKER_OPT_BIP $DOCKER_OPT_MTU $DOCKER_OPT_IPMASQ
+		      ExecReload=/bin/kill -s HUP $MAINPID
+		      LimitNOFILE=1048576
+		      # Having non-zero Limit*s causes performance problems due to accounting overhead
+		      # in the kernel. We recommend using cgroups to do container-local accounting.
+		      LimitNPROC=infinity
+		      LimitCORE=infinity
+		      # Uncomment TasksMax if your systemd version supports it.
+		      # Only systemd 226 and above support this version.
+		      TasksMax=infinity
+		      TimeoutStartSec=0
+		      # set delegate yes so that systemd does not reset the cgroups of docker containers
+		      Delegate=yes
+
+		      [Install]
+		      WantedBy=multi-user.target
+		*/
+		UserData: `{"ignition":{"version":"2.0.0","config":{}},"storage":{},"systemd":{"units":[{"name":"docker.service","contents":"[Unit]\nDescription=Docker Application Container Engine\nDocumentation=http://docs.docker.com\nAfter=containerd.service docker.socket network.target\nRequires=containerd.service docker.socket\n\n[Service]\nType=notify\nEnvironmentFile=-/run/flannel/flannel_docker_opts.env\n\n# the default is not to use systemd for cgroups because the delegate issues still\n# exists and systemd currently does not support the cgroup feature set required\n# for containers run by docker\nExecStart=/usr/lib/coreos/dockerd --host=fd:// --containerd=/var/run/docker/libcontainerd/docker-containerd.sock $DOCKER_OPTS $DOCKER_CGROUPS $DOCKER_OPT_BIP $DOCKER_OPT_MTU $DOCKER_OPT_IPMASQ\nExecReload=/bin/kill -s HUP $MAINPID\nLimitNOFILE=1048576\n# Having non-zero Limit*s causes performance problems due to accounting overhead\n# in the kernel. We recommend using cgroups to do container-local accounting.\nLimitNPROC=infinity\nLimitCORE=infinity\n# Uncomment TasksMax if your systemd version supports it.\n# Only systemd 226 and above support this version.\nTasksMax=infinity\nTimeoutStartSec=0\n# set delegate yes so that systemd does not reset the cgroups of docker containers\nDelegate=yes\n\n[Install]\nWantedBy=multi-user.target"}]},"networkd":{},"passwd":{}}`,
+	})
 }
 
 // make a docker container out of binaries on the host
