@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package gcloud
 
 import (
 	"fmt"
@@ -39,7 +39,7 @@ var (
 func init() {
 	cmdCreate.Flags().StringVar(&createConfig, "config", "", "path to cloud config file")
 	cmdCreate.Flags().IntVar(&createNumInstances, "n", 1, "number of instances")
-	root.AddCommand(cmdCreate)
+	GCloud.AddCommand(cmdCreate)
 }
 
 func runCreate(cmd *cobra.Command, args []string) {

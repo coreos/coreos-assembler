@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package gcloud
 
 import (
 	"fmt"
@@ -71,7 +71,7 @@ func init() {
 		"use objects to mimic a directory tree")
 	cmdIndex.Flags().StringVarP(&indexTitle, "html-title", "T", "",
 		"use the given title instead of bucket name in index pages")
-	root.AddCommand(cmdIndex)
+	GCloud.AddCommand(cmdIndex)
 }
 
 func runIndex(cmd *cobra.Command, args []string) {

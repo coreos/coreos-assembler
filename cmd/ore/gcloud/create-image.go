@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package gcloud
 
 import (
 	"fmt"
@@ -57,7 +57,7 @@ func init() {
 		"Storage image name")
 	cmdCreateImage.Flags().BoolVar(&createImageForce, "force",
 		false, "overwrite existing GCE images without prompt")
-	root.AddCommand(cmdCreateImage)
+	GCloud.AddCommand(cmdCreateImage)
 }
 
 func runCreateImage(cmd *cobra.Command, args []string) {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package gcloud
 
 import (
 	"fmt"
@@ -52,7 +52,7 @@ func init() {
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
-	root.AddCommand(cmdUpload)
+	GCloud.AddCommand(cmdUpload)
 }
 
 func runUpload(cmd *cobra.Command, args []string) {
