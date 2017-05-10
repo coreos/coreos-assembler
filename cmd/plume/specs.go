@@ -373,7 +373,7 @@ func AddSpecFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&specBoard, "board", "B",
 		board, "target board")
 	flags.StringVarP(&specChannel, "channel", "C",
-		"alpha", "channels: "+channels)
+		"dev", "channels: "+channels)
 	flags.StringVarP(&specVersion, "version", "V",
 		versions.VersionID, "release version")
 }
