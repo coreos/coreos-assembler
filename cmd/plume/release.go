@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/api/azure"
+	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/storage/index"
 )
@@ -152,6 +153,13 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
+	api, err := gcloud.New(&gcloud.Options{
+		Project: spec.GCE.Project,
+	})
+	if err != nil {
+		plog.Fatalf("GCE client failed: %v", err)
+	}
+
 	api_, err := compute.New(client)
 	if err != nil {
 		plog.Fatalf("GCE client failed: %v", err)
@@ -180,14 +188,9 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	desc := fmt.Sprintf("%s, %s, %s published on %s", spec.GCE.Description,
 		specVersion, specBoard, date.Format("2006-01-02"))
 
-	var images []*compute.Image
-	listReq := api_.Images.List(spec.GCE.Project)
-	listReq.Filter(fmt.Sprintf("name eq ^%s-.*", spec.GCE.Family))
-	if err := listReq.Pages(ctx, func(i *compute.ImageList) error {
-		images = append(images, i.Items...)
-		return nil
-	}); err != nil {
-		plog.Fatalf("Listing GCE images failed: %v", err)
+	images, err := api.ListImages(ctx, spec.GCE.Family+"-")
+	if err != nil {
+		plog.Fatal(err)
 	}
 
 	var conflicting []string

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/net/context"
 	"google.golang.org/api/compute/v1"
 )
 
@@ -66,21 +67,18 @@ func (a *API) CreateImage(name, source string, overwrite bool) error {
 	return nil
 }
 
-func (a *API) ListImages(prefix string) ([]string, error) {
-	var images []string
-
-	list, err := a.compute.Images.List(a.options.Project).Do()
+func (a *API) ListImages(ctx context.Context, prefix string) ([]*compute.Image, error) {
+	var images []*compute.Image
+	listReq := a.compute.Images.List(a.options.Project)
+	if prefix != "" {
+		listReq.Filter(fmt.Sprintf("name eq ^%s.*", prefix))
+	}
+	err := listReq.Pages(ctx, func(i *compute.ImageList) error {
+		images = append(images, i.Items...)
+		return nil
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Listing GCE images failed: %v", err)
 	}
-
-	for _, image := range list.Items {
-		if !strings.HasPrefix(image.Name, prefix) {
-			continue
-		}
-
-		images = append(images, image.Name)
-	}
-
 	return images, nil
 }

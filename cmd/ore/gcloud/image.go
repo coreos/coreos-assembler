@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -42,13 +43,13 @@ func runImage(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	images, err := api.ListImages(imagePrefix)
+	images, err := api.ListImages(context.Background(), imagePrefix)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed listing images: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
 	for _, image := range images {
-		fmt.Printf("%v\n", image)
+		fmt.Printf("%v\n", image.Name)
 	}
 }
