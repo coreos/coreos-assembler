@@ -32,7 +32,7 @@ func (a *API) CreateImage(name, source string, overwrite bool) error {
 
 		if op != nil {
 			doable := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
-			if err := a.waitop(op.Name, doable); err != nil {
+			if err := a.NewPending(op.Name, doable).Wait(); err != nil {
 				return err
 			}
 		}
@@ -58,7 +58,7 @@ func (a *API) CreateImage(name, source string, overwrite bool) error {
 	}
 
 	doable := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
-	if err := a.waitop(op.Name, doable); err != nil {
+	if err := a.NewPending(op.Name, doable).Wait(); err != nil {
 		return err
 	}
 

@@ -269,56 +269,34 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	}
 
 	plog.Infof("Waiting for image creation to finish...")
-	failures := 0
-	for op == nil || op.Status != "DONE" {
-		if op != nil {
-			status := strings.ToLower(op.Status)
-			if op.Progress != 0 {
-				plog.Infof("Image creation is %s: %s % 2d%%",
-					status, op.StatusMessage, op.Progress)
-			} else {
-				plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
-			}
+	opReq := api_.GlobalOperations.Get(spec.GCE.Project, op.Name)
+	opReq.Context(ctx)
+	pending := api.NewPending(op.Name, opReq)
+	pending.Interval = 3 * time.Second
+	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
+		status := strings.ToLower(op.Status)
+		if op.Progress != 0 {
+			plog.Infof("Image creation is %s: %s % 2d%%", status, op.StatusMessage, op.Progress)
+		} else {
+			plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
 		}
-
-		time.Sleep(3 * time.Second)
-		opReq := api_.GlobalOperations.Get(spec.GCE.Project, op.Name)
-		opReq.Context(ctx)
-		op, err = opReq.Do()
-		if err != nil {
-			plog.Errorf("Fetching status failed: %v", err)
-			failures++
-			if failures > 5 {
-				plog.Fatalf("Giving up after %d failures.", failures)
-			}
-		}
+		return nil
 	}
-
-	if op.Error != nil {
-		plog.Fatalf("Image creation failed: %+v", op.Error.Errors)
+	if err := pending.Wait(); err != nil {
+		plog.Fatal(err)
 	}
-
 	plog.Info("Success!")
 
 	publishImage(name)
 
-	var pending map[string]*compute.Operation
+	var pendings []*gcloud.Pending
 	addPending := func(op *compute.Operation) {
-		if op.Status == "DONE" {
-			delete(pending, op.Name)
-			if op.Error != nil {
-				plog.Fatalf("Operation failed: %+v", op.Error.Errors)
-			}
-			return
-		}
-		pending[op.Name] = op
-		status := strings.ToLower(op.Status)
-		if op.Progress != 0 {
-			plog.Infof("Operation is %s: %s % 2d%%",
-				status, op.StatusMessage, op.Progress)
-		} else {
-			plog.Infof("Operation is %s. %s", status, op.StatusMessage)
-		}
+		opReq := api_.GlobalOperations.Get(spec.GCE.Project, op.Name)
+		opReq.Context(ctx)
+		pending := api.NewPending(op.Name, opReq)
+		pending.Interval = 1 * time.Second
+		pending.Timeout = 0
+		pendings = append(pendings, pending)
 	}
 
 	for _, old := range images {
@@ -339,26 +317,11 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		addPending(op)
 	}
 
-	updatePending := func(ops *compute.OperationList) error {
-		for _, op := range ops.Items {
-			if _, ok := pending[op.Name]; ok {
-				addPending(op)
-			}
-		}
-		return nil
-	}
-
-	failures = 0
-	for len(pending) > 0 {
-		plog.Infof("Waiting on %s operations.", len(pending))
-		time.Sleep(1 * time.Second)
-		opReq := api_.GlobalOperations.List(spec.GCE.Project)
-		if err := opReq.Pages(ctx, updatePending); err != nil {
-			plog.Errorf("Fetching status failed: %v", err)
-			failures++
-			if failures > 5 {
-				plog.Fatalf("Giving up after %d failures.", failures)
-			}
+	plog.Infof("Waiting on %d operations.", len(pendings))
+	for _, pending := range pendings {
+		err := pending.Wait()
+		if err != nil {
+			plog.Fatal(err)
 		}
 	}
 }

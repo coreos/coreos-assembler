@@ -18,13 +18,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
-	"google.golang.org/api/googleapi"
-
-	"github.com/coreos/mantle/util"
 )
 
 func (a *API) vmname() string {
@@ -99,42 +95,6 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 
 }
 
-type doable interface {
-	Do(opts ...googleapi.CallOption) (*compute.Operation, error)
-}
-
-func (a *API) waitop(operation string, do doable) error {
-	retry := func() error {
-		op, err := do.Do()
-		if err != nil {
-			return err
-		}
-
-		switch op.Status {
-		case "PENDING", "RUNNING":
-			return fmt.Errorf("Operation %q is %q", operation, op.Status)
-		case "DONE":
-			if op.Error != nil {
-				for _, operr := range op.Error.Errors {
-					return fmt.Errorf("Error creating instance: %+v", operr)
-				}
-				return fmt.Errorf("Operation %q failed to start", op.Status)
-			}
-
-			return nil
-		}
-
-		return fmt.Errorf("Unknown operation status %q: %+v", op.Status, op)
-	}
-
-	// 5 minutes
-	if err := util.Retry(30, 10*time.Second, retry); err != nil {
-		return fmt.Errorf("Failed to wait for operation %q: %v", operation, err)
-	}
-
-	return nil
-}
-
 // CreateInstance creates a Google Compute Engine instance.
 func (a *API) CreateInstance(userdata string, keys []*agent.Key) (*compute.Instance, error) {
 	name := a.vmname()
@@ -148,7 +108,7 @@ func (a *API) CreateInstance(userdata string, keys []*agent.Key) (*compute.Insta
 	}
 
 	doable := a.compute.ZoneOperations.Get(a.options.Project, a.options.Zone, op.Name)
-	if err := a.waitop(op.Name, doable); err != nil {
+	if err := a.NewPending(op.Name, doable).Wait(); err != nil {
 		return nil, err
 	}
 
