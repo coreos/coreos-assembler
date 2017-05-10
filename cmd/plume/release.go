@@ -152,7 +152,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
-	api, err := compute.New(client)
+	api_, err := compute.New(client)
 	if err != nil {
 		plog.Fatalf("GCE client failed: %v", err)
 	}
@@ -181,7 +181,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		specVersion, specBoard, date.Format("2006-01-02"))
 
 	var images []*compute.Image
-	listReq := api.Images.List(spec.GCE.Project)
+	listReq := api_.Images.List(spec.GCE.Project)
 	listReq.Filter(fmt.Sprintf("name eq ^%s-.*", spec.GCE.Family))
 	if err := listReq.Pages(ctx, func(i *compute.ImageList) error {
 		images = append(images, i.Items...)
@@ -218,7 +218,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 
 	licenses := make([]string, len(spec.GCE.Licenses))
 	for i, l := range spec.GCE.Licenses {
-		req := api.Licenses.Get(spec.GCE.Project, l)
+		req := api_.Licenses.Get(spec.GCE.Project, l)
 		req.Context(ctx)
 		license, err := req.Do()
 		if err != nil {
@@ -258,7 +258,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	}
 
 	plog.Noticef("Creating GCE image %s", image.Name)
-	insReq := api.Images.Insert(spec.GCE.Project, image)
+	insReq := api_.Images.Insert(spec.GCE.Project, image)
 	insReq.Context(ctx)
 	op, err := insReq.Do()
 	if err != nil {
@@ -279,7 +279,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		}
 
 		time.Sleep(3 * time.Second)
-		opReq := api.GlobalOperations.Get(spec.GCE.Project, op.Name)
+		opReq := api_.GlobalOperations.Get(spec.GCE.Project, op.Name)
 		opReq.Context(ctx)
 		op, err = opReq.Do()
 		if err != nil {
@@ -327,7 +327,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 			State:       "DEPRECATED",
 			Replacement: op.TargetLink,
 		}
-		req := api.Images.Deprecate(spec.GCE.Project, old.Name, status)
+		req := api_.Images.Deprecate(spec.GCE.Project, old.Name, status)
 		req.Context(ctx)
 		op, err := req.Do()
 		if err != nil {
@@ -349,7 +349,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	for len(pending) > 0 {
 		plog.Infof("Waiting on %s operations.", len(pending))
 		time.Sleep(1 * time.Second)
-		opReq := api.GlobalOperations.List(spec.GCE.Project)
+		opReq := api_.GlobalOperations.List(spec.GCE.Project)
 		if err := opReq.Pages(ctx, updatePending); err != nil {
 			plog.Errorf("Fetching status failed: %v", err)
 			failures++
