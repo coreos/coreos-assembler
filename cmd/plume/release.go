@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/api/compute/v1"
@@ -228,11 +229,24 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		licenses[i] = license.SelfLink
 	}
 
+	features := []*compute.GuestOsFeature{}
+	parsedVersion, err := semver.NewVersion(specVersion)
+	if err != nil {
+		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
+	}
+	if !parsedVersion.LessThan(semver.Version{Major: 1409}) {
+		features = append(features, &compute.GuestOsFeature{
+			Type: "VIRTIO_SCSI_MULTIQUEUE",
+		})
+	} else {
+		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
+	}
 	image := &compute.Image{
 		Family:           spec.GCE.Family,
 		Name:             name,
 		Description:      desc,
 		Licenses:         licenses,
+		GuestOsFeatures:  features,
 		ArchiveSizeBytes: int64(obj.Size),
 		RawDisk: &compute.ImageRawDisk{
 			Source: obj.MediaLink,
