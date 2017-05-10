@@ -23,7 +23,7 @@ import (
 
 var (
 	cmdDestroy = &cobra.Command{
-		Use:   "destroy-instances -prefix=<prefix> ",
+		Use:   "destroy-instances --prefix=<prefix> ",
 		Short: "destroy cluster on GCE",
 		Long:  "Destroy GCE instances based on name prefix.",
 		Run:   runDestroy,

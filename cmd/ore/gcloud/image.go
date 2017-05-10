@@ -24,7 +24,7 @@ import (
 
 var (
 	cmdImage = &cobra.Command{
-		Use:   "list-images -prefix=<prefix>",
+		Use:   "list-images --prefix=<prefix>",
 		Short: "List images in GCE",
 		Run:   runImage,
 	}

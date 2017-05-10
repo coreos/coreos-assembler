@@ -27,7 +27,7 @@ import (
 
 var (
 	cmdCreate = &cobra.Command{
-		Use:   "create-instances -image <gce image name> -n <number of instances>",
+		Use:   "create-instances --image <gce image name> --n <number of instances>",
 		Short: "Create cluster on GCE",
 		Run:   runCreate,
 	}
