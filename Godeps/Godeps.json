@@ -840,23 +840,23 @@
 		},
 		{
 			"ImportPath": "google.golang.org/api/compute/v1",
-			"Rev": "f9a4669e07732c84854dce1f5c451c22427228fb"
+			"Rev": "c858ef4400610cbfd097ffc5f5c6e4a1a51eac86"
 		},
 		{
 			"ImportPath": "google.golang.org/api/gensupport",
-			"Rev": "f9a4669e07732c84854dce1f5c451c22427228fb"
+			"Rev": "c858ef4400610cbfd097ffc5f5c6e4a1a51eac86"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
-			"Rev": "f9a4669e07732c84854dce1f5c451c22427228fb"
+			"Rev": "c858ef4400610cbfd097ffc5f5c6e4a1a51eac86"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi/internal/uritemplates",
-			"Rev": "f9a4669e07732c84854dce1f5c451c22427228fb"
+			"Rev": "c858ef4400610cbfd097ffc5f5c6e4a1a51eac86"
 		},
 		{
 			"ImportPath": "google.golang.org/api/storage/v1",
-			"Rev": "f9a4669e07732c84854dce1f5c451c22427228fb"
+			"Rev": "c858ef4400610cbfd097ffc5f5c6e4a1a51eac86"
 		},
 		{
 			"ImportPath": "google.golang.org/appengine",
