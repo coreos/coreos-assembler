@@ -79,7 +79,7 @@ func init() {
 }
 
 func defaultBucketNameForRegion(region string) string {
-	return fmt.Sprintf("s3-%s.users.developer.core-os.net", region)
+	return fmt.Sprintf("coreos-dev-ami-import-%s", region)
 }
 
 func defaultUploadFile() string {

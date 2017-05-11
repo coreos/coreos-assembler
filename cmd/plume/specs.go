@@ -117,7 +117,8 @@ var (
 			Bucket:       "coreos-prod-ami-import-us-west-2",
 			BucketRegion: "us-west-2",
 			LaunchPermissions: []string{
-				"477645798544",
+				"477645798544", // coreosdev
+				"017021077683", // coreos-cl
 			},
 			Regions: []string{
 				"us-east-1",
