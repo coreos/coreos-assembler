@@ -16,6 +16,7 @@ package main
 
 import (
 	"net/url"
+	"os"
 	"path"
 	"strings"
 
@@ -50,6 +51,7 @@ type azureEnvironmentSpec struct {
 }
 
 type azureSpec struct {
+	Offer          string                 // Azure offer name
 	Image          string                 // File name of image source
 	StorageAccount string                 // Storage account to use for image uploads in each environment
 	Container      string                 // Container to hold the disk image in each environment
@@ -73,9 +75,11 @@ type awsPartitionSpec struct {
 }
 
 type awsSpec struct {
-	Prefix     string             // Prefix for filenames of AMI lists
-	Image      string             // File name of image source
-	Partitions []awsPartitionSpec // AWS partitions
+	BaseName        string             // Prefix of image name
+	BaseDescription string             // Prefix of image description
+	Prefix          string             // Prefix for filenames of AMI lists
+	Image           string             // File name of image source
+	Partitions      []awsPartitionSpec // AWS partitions
 }
 
 type channelSpec struct {
@@ -152,6 +156,56 @@ var (
 		},
 	}
 	specs = map[string]channelSpec{
+		"dev": channelSpec{
+			BaseURL: "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/boards",
+			Boards:  []string{"amd64-usr", "arm64-usr"},
+			Destinations: []storageSpec{storageSpec{
+				BaseURL:       "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/releases",
+				NamedPath:     "current",
+				VersionPath:   true,
+				DirectoryHTML: true,
+				IndexHTML:     true,
+			}},
+			GCE: gceSpec{
+				Project:     "coreos-gce-testing",
+				Family:      "coreos-dev",
+				Description: "CoreOS Container Linux development image",
+				Image:       "coreos_production_gce.tar.gz",
+				Publish:     "coreos_production_gce.txt",
+				Limit:       2,
+			},
+			AWS: awsSpec{
+				BaseName:        "ContainerLinuxDev",
+				BaseDescription: "CoreOS Container Linux development image",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions: []awsPartitionSpec{
+					awsPartitionSpec{
+						Name:         "AWS West",
+						Profile:      "coreos-cl",
+						Bucket:       "coreos-dev-ami-import-us-west-2",
+						BucketRegion: "us-west-2",
+						Regions: []string{
+							"us-west-1",
+							"us-west-2",
+						},
+					},
+					awsPartitionSpec{
+						// partition with a single region
+						Name:         "AWS East",
+						Profile:      "coreos-cl",
+						Bucket:       "coreos-dev-ami-import-us-east-2",
+						BucketRegion: "us-east-2",
+						LaunchPermissions: []string{
+							"477645798544",
+						},
+						Regions: []string{
+							"us-east-2",
+						},
+					},
+				},
+			},
+		},
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
 			Boards:  []string{"amd64-usr", "arm64-usr"},
@@ -190,6 +244,7 @@ var (
 				Limit:       25,
 			},
 			Azure: azureSpec{
+				Offer:             "CoreOS",
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
 				Container:         "publish",
@@ -201,9 +256,11 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix:     "coreos_production_ami_",
-				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Partitions: awsPartitions,
+				BaseName:        "CoreOS",
+				BaseDescription: "CoreOS Container Linux",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions:      awsPartitions,
 			},
 		},
 		"beta": channelSpec{
@@ -242,6 +299,7 @@ var (
 				Limit:       25,
 			},
 			Azure: azureSpec{
+				Offer:             "CoreOS",
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
 				Container:         "publish",
@@ -253,9 +311,11 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix:     "coreos_production_ami_",
-				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Partitions: awsPartitions,
+				BaseName:        "CoreOS",
+				BaseDescription: "CoreOS Container Linux",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions:      awsPartitions,
 			},
 		},
 		"stable": channelSpec{
@@ -284,6 +344,7 @@ var (
 				Limit:       25,
 			},
 			Azure: azureSpec{
+				Offer:             "CoreOS",
 				Image:             "coreos_production_azure_image.vhd.bz2",
 				StorageAccount:    "coreos",
 				Container:         "publish",
@@ -295,9 +356,11 @@ var (
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",
 			},
 			AWS: awsSpec{
-				Prefix:     "coreos_production_ami_",
-				Image:      "coreos_production_ami_vmdk_image.vmdk.bz2",
-				Partitions: awsPartitions,
+				BaseName:        "CoreOS",
+				BaseDescription: "CoreOS Container Linux",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions:      awsPartitions,
 			},
 		},
 	}
@@ -310,7 +373,7 @@ func AddSpecFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&specBoard, "board", "B",
 		board, "target board")
 	flags.StringVarP(&specChannel, "channel", "C",
-		"alpha", "channels: "+channels)
+		"dev", "channels: "+channels)
 	flags.StringVarP(&specVersion, "version", "V",
 		versions.VersionID, "release version")
 }

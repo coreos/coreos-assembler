@@ -43,5 +43,8 @@ func Bunzip2File(dst, src string) error {
 	}
 
 	_, err = Bunzip2(out, in)
+	if err != nil {
+		os.Remove(dst)
+	}
 	return err
 }

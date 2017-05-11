@@ -39,9 +39,7 @@ var (
 		Use:   "release [options]",
 		Short: "Publish a new CoreOS release.",
 		Run:   runRelease,
-		Long: `Publish a new CoreOS release.
-
-TODO`,
+		Long:  `Publish a new CoreOS release.`,
 	}
 )
 
@@ -360,7 +358,7 @@ func doAzure(ctx context.Context, client *http.Client, src *storage.Bucket, spec
 	}
 
 	// channel name should be caps for azure image
-	imageName := fmt.Sprintf("CoreOS-%s-%s", strings.Title(specChannel), specVersion)
+	imageName := fmt.Sprintf("%s-%s-%s", spec.Azure.Offer, strings.Title(specChannel), specVersion)
 
 	for _, environment := range spec.Azure.Environments {
 		opt := prof.SubscriptionOptions(environment.SubscriptionName)
@@ -393,7 +391,7 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
-	imageName := fmt.Sprintf("CoreOS-%v-%v", specChannel, specVersion)
+	imageName := fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
 	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
 
 	for _, part := range spec.AWS.Partitions {
