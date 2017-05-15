@@ -160,11 +160,6 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		plog.Fatalf("GCE client failed: %v", err)
 	}
 
-	api_, err := compute.New(client)
-	if err != nil {
-		plog.Fatalf("GCE client failed: %v", err)
-	}
-
 	publishImage := func(image string) {
 		if spec.GCE.Publish == "" {
 			plog.Notice("GCE image name publishing disabled.")
@@ -265,31 +260,18 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	publishImage(name)
 
 	var pendings []*gcloud.Pending
-	addPending := func(op *compute.Operation) {
-		opReq := api_.GlobalOperations.Get(spec.GCE.Project, op.Name)
-		opReq.Context(ctx)
-		pending := api.NewPending(op.Name, opReq)
-		pending.Interval = 1 * time.Second
-		pending.Timeout = 0
-		pendings = append(pendings, pending)
-	}
-
 	for _, old := range images {
 		if old.Deprecated != nil && old.Deprecated.State != "" {
 			continue
 		}
 		plog.Noticef("Deprecating old image %s", old.Name)
-		status := &compute.DeprecationStatus{
-			State:       "DEPRECATED",
-			Replacement: op.TargetLink,
-		}
-		req := api_.Images.Deprecate(spec.GCE.Project, old.Name, status)
-		req.Context(ctx)
-		op, err := req.Do()
+		pending, err := api.DeprecateImage(old.Name, gcloud.DeprecationStateDeprecated, op.TargetLink)
 		if err != nil {
-			plog.Fatalf("Deprecating %s failed: %v", old.Name, err)
+			plog.Fatal(err)
 		}
-		addPending(op)
+		pending.Interval = 1 * time.Second
+		pending.Timeout = 0
+		pendings = append(pendings, pending)
 	}
 
 	plog.Infof("Waiting on %d operations.", len(pendings))

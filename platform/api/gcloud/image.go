@@ -22,6 +22,15 @@ import (
 	"google.golang.org/api/compute/v1"
 )
 
+type DeprecationState string
+
+const (
+	DeprecationStateActive     DeprecationState = "ACTIVE"
+	DeprecationStateDeprecated DeprecationState = "DEPRECATED"
+	DeprecationStateObsolete   DeprecationState = "OBSOLETE"
+	DeprecationStateDeleted    DeprecationState = "DELETED"
+)
+
 type ImageSpec struct {
 	SourceImage           string
 	Family                string
@@ -106,4 +115,17 @@ func (a *API) ListImages(ctx context.Context, prefix string) ([]*compute.Image, 
 		return nil, fmt.Errorf("Listing GCE images failed: %v", err)
 	}
 	return images, nil
+}
+
+func (a *API) DeprecateImage(name string, state DeprecationState, replacement string) (*Pending, error) {
+	req := a.compute.Images.Deprecate(a.options.Project, name, &compute.DeprecationStatus{
+		State:       string(state),
+		Replacement: replacement,
+	})
+	op, err := req.Do()
+	if err != nil {
+		return nil, fmt.Errorf("Deprecating %s failed: %v", name, err)
+	}
+	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
+	return a.NewPending(op.Name, opReq), nil
 }
