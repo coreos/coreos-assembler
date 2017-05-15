@@ -22,49 +22,74 @@ import (
 	"google.golang.org/api/compute/v1"
 )
 
-// CreateImage creates an image on GCE and and wait for completion. If
-// overwrite is true, an existing image will be overwritten if it exists.
-func (a *API) CreateImage(name, source string, overwrite bool) error {
+type ImageSpec struct {
+	SourceImage           string
+	Family                string
+	Name                  string
+	Description           string
+	Licenses              []string // short names
+	DisableSCSIMultiqueue bool     // TODO(bgilbert): Remove after stable > 1409.0.0
+}
+
+// CreateImage creates an image on GCE and returns operation details and
+// a Pending. If overwrite is true, an existing image will be overwritten
+// if it exists.
+func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, *Pending, error) {
+	licenses := make([]string, len(spec.Licenses))
+	for i, l := range spec.Licenses {
+		license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("Invalid GCE license %s: %v", l, err)
+		}
+		licenses[i] = license.SelfLink
+	}
+
 	if overwrite {
-		plog.Debugf("Overwriting image %q", name)
+		plog.Debugf("Overwriting image %q", spec.Name)
 		// delete existing image, ignore error since it might not exist.
-		op, err := a.compute.Images.Delete(a.options.Project, name).Do()
+		op, err := a.compute.Images.Delete(a.options.Project, spec.Name).Do()
 
 		if op != nil {
 			doable := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
 			if err := a.NewPending(op.Name, doable).Wait(); err != nil {
-				return err
+				return nil, nil, err
 			}
 		}
 
 		// don't return error when delete fails because image doesn't exist
 		if err != nil && !strings.HasSuffix(err.Error(), "notFound") {
-			return fmt.Errorf("deleting image: %v", err)
+			return nil, nil, fmt.Errorf("deleting image: %v", err)
 		}
 	}
 
+	features := []*compute.GuestOsFeature{
+		&compute.GuestOsFeature{
+			Type: "VIRTIO_SCSI_MULTIQUEUE",
+		},
+	}
+	if spec.DisableSCSIMultiqueue {
+		features = []*compute.GuestOsFeature{}
+	}
 	image := &compute.Image{
-		Name: name,
+		Family:          spec.Family,
+		Name:            spec.Name,
+		Description:     spec.Description,
+		Licenses:        licenses,
+		GuestOsFeatures: features,
 		RawDisk: &compute.ImageRawDisk{
-			Source: source,
+			Source: spec.SourceImage,
 		},
 	}
 
-	plog.Debugf("Creating image %q from %q", name, source)
+	plog.Debugf("Creating image %q from %q", spec.Name, spec.SourceImage)
 
 	op, err := a.compute.Images.Insert(a.options.Project, image).Do()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	doable := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
-	if err := a.NewPending(op.Name, doable).Wait(); err != nil {
-		return err
-	}
-
-	plog.Debugf("Created image %q from %q", name, source)
-
-	return nil
+	return op, a.NewPending(op.Name, doable), nil
 }
 
 func (a *API) ListImages(ctx context.Context, prefix string) ([]*compute.Image, error) {

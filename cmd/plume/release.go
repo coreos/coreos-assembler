@@ -219,59 +219,34 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
 	}
 
-	licenses := make([]string, len(spec.GCE.Licenses))
-	for i, l := range spec.GCE.Licenses {
-		req := api_.Licenses.Get(spec.GCE.Project, l)
-		req.Context(ctx)
-		license, err := req.Do()
-		if err != nil {
-			plog.Fatalf("Invalid GCE license %s: %v", l, err)
-		}
-		licenses[i] = license.SelfLink
-	}
-
-	features := []*compute.GuestOsFeature{}
-	parsedVersion, err := semver.NewVersion(specVersion)
-	if err != nil {
-		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
-	}
-	if !parsedVersion.LessThan(semver.Version{Major: 1409}) {
-		features = append(features, &compute.GuestOsFeature{
-			Type: "VIRTIO_SCSI_MULTIQUEUE",
-		})
-	} else {
-		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
-	}
-	image := &compute.Image{
-		Family:           spec.GCE.Family,
-		Name:             name,
-		Description:      desc,
-		Licenses:         licenses,
-		GuestOsFeatures:  features,
-		ArchiveSizeBytes: int64(obj.Size),
-		RawDisk: &compute.ImageRawDisk{
-			Source: obj.MediaLink,
-			// TODO: include sha1
-		},
-	}
-
 	if releaseDryRun {
 		plog.Noticef("Would create GCE image %s", name)
 		return
 	}
 
-	plog.Noticef("Creating GCE image %s", image.Name)
-	insReq := api_.Images.Insert(spec.GCE.Project, image)
-	insReq.Context(ctx)
-	op, err := insReq.Do()
+	plog.Noticef("Creating GCE image %s", name)
+	parsedVersion, err := semver.NewVersion(specVersion)
+	if err != nil {
+		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
+	}
+	disableMultiqueue := false
+	if parsedVersion.LessThan(semver.Version{Major: 1409}) {
+		disableMultiqueue = true
+		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
+	}
+	op, pending, err := api.CreateImage(&gcloud.ImageSpec{
+		SourceImage:           obj.MediaLink,
+		Family:                spec.GCE.Family,
+		Name:                  name,
+		Description:           desc,
+		Licenses:              spec.GCE.Licenses,
+		DisableSCSIMultiqueue: disableMultiqueue,
+	}, false)
 	if err != nil {
 		plog.Fatalf("GCE image creation failed: %v", err)
 	}
 
 	plog.Infof("Waiting for image creation to finish...")
-	opReq := api_.GlobalOperations.Get(spec.GCE.Project, op.Name)
-	opReq.Context(ctx)
-	pending := api.NewPending(op.Name, opReq)
 	pending.Interval = 3 * time.Second
 	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
 		status := strings.ToLower(op.Status)

@@ -23,6 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/api/storage/v1"
+
+	"github.com/coreos/mantle/platform/api/gcloud"
 )
 
 var (
@@ -111,7 +113,14 @@ func runCreateImage(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", bucket, imageNameGS)
-	if err := api.CreateImage(imageNameGCE, storageSrc, createImageForce); err != nil {
+	_, pending, err := api.CreateImage(&gcloud.ImageSpec{
+		Name:        imageNameGCE,
+		SourceImage: storageSrc,
+	}, createImageForce)
+	if err == nil {
+		err = pending.Wait()
+	}
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 		os.Exit(1)
 	}
