@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -193,6 +194,28 @@ func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, de
 	return op.TargetLink
 }
 
+// Once we can use sort.Slice (go 1.8), kill with fire.
+type imageSlice []*compute.Image
+
+func (s imageSlice) Len() int {
+	return len(s)
+}
+
+func (s imageSlice) Less(i, j int) bool {
+	getCreation := func(image *compute.Image) time.Time {
+		stamp, err := time.Parse(time.RFC3339, image.CreationTimestamp)
+		if err != nil {
+			plog.Fatalf("Couldn't parse timestamp %q: %v", image.CreationTimestamp, err)
+		}
+		return stamp
+	}
+	return getCreation(s[i]).After(getCreation(s[j]))
+}
+
+func (s imageSlice) Swap(i, j int) {
+	s[j], s[i] = s[i], s[j]
+}
+
 func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
 	if spec.GCE.Project == "" || spec.GCE.Image == "" {
 		plog.Notice("GCE image creation disabled.")
@@ -218,11 +241,15 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	}
 
 	var conflicting []*compute.Image
+	var oldImages imageSlice
 	for _, image := range images {
 		if strings.HasPrefix(image.Name, nameVer) {
 			conflicting = append(conflicting, image)
+		} else {
+			oldImages = append(oldImages, image)
 		}
 	}
+	sort.Sort(oldImages)
 
 	// Check for any with the same version but possibly different dates.
 	var imageLink string
@@ -298,9 +325,18 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		pendings = append(pendings, pending)
 	}
 
-	if spec.GCE.Limit > 0 && len(images) > spec.GCE.Limit {
-		plog.Noticef("Pruning %d GCE images.", len(images)-spec.GCE.Limit)
-		plog.Notice("NOPE! JUST KIDDING, TODO")
+	if spec.GCE.Limit > 0 && len(oldImages) > spec.GCE.Limit {
+		plog.Noticef("Pruning %d GCE images.", len(oldImages)-spec.GCE.Limit)
+		for _, old := range oldImages[spec.GCE.Limit:] {
+			plog.Noticef("Deleting old image %s", old.Name)
+			pending, err := api.DeleteImage(old.Name)
+			if err != nil {
+				plog.Fatal(err)
+			}
+			pending.Interval = 1 * time.Second
+			pending.Timeout = 0
+			pendings = append(pendings, pending)
+		}
 	}
 
 	plog.Infof("Waiting on %d operations.", len(pendings))

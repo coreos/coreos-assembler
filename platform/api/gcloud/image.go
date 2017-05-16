@@ -144,3 +144,12 @@ func (a *API) DeprecateImage(name string, state DeprecationState, replacement st
 	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
 	return a.NewPending(op.Name, opReq), nil
 }
+
+func (a *API) DeleteImage(name string) (*Pending, error) {
+	op, err := a.compute.Images.Delete(a.options.Project, name).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Deleting %s failed: %v", name, err)
+	}
+	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
+	return a.NewPending(op.Name, opReq), nil
+}
