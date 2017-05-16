@@ -204,11 +204,6 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
-	if spec.GCE.Limit > 0 && len(images) > spec.GCE.Limit {
-		plog.Noticef("Pruning %d GCE images.", len(images)-spec.GCE.Limit)
-		plog.Notice("NOPE! JUST KIDDING, TODO")
-	}
-
 	obj := src.Object(src.Prefix() + spec.GCE.Image)
 	if obj == nil {
 		plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
@@ -272,6 +267,11 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		pending.Interval = 1 * time.Second
 		pending.Timeout = 0
 		pendings = append(pendings, pending)
+	}
+
+	if spec.GCE.Limit > 0 && len(images) > spec.GCE.Limit {
+		plog.Noticef("Pruning %d GCE images.", len(images)-spec.GCE.Limit)
+		plog.Notice("NOPE! JUST KIDDING, TODO")
 	}
 
 	plog.Infof("Waiting on %d operations.", len(pendings))
