@@ -147,6 +147,47 @@ func sanitizeVersion() string {
 	return strings.Replace(v, "+", "-", -1)
 }
 
+func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, desc string) string {
+	plog.Noticef("Creating GCE image %s", name)
+	parsedVersion, err := semver.NewVersion(specVersion)
+	if err != nil {
+		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
+	}
+	disableMultiqueue := false
+	if parsedVersion.LessThan(semver.Version{Major: 1409}) {
+		disableMultiqueue = true
+		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
+	}
+	op, pending, err := api.CreateImage(&gcloud.ImageSpec{
+		SourceImage:           obj.MediaLink,
+		Family:                spec.GCE.Family,
+		Name:                  name,
+		Description:           desc,
+		Licenses:              spec.GCE.Licenses,
+		DisableSCSIMultiqueue: disableMultiqueue,
+	}, false)
+	if err != nil {
+		plog.Fatalf("GCE image creation failed: %v", err)
+	}
+
+	plog.Infof("Waiting for image creation to finish...")
+	pending.Interval = 3 * time.Second
+	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
+		status := strings.ToLower(op.Status)
+		if op.Progress != 0 {
+			plog.Infof("Image creation is %s: %s % 2d%%", status, op.StatusMessage, op.Progress)
+		} else {
+			plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
+		}
+		return nil
+	}
+	if err := pending.Wait(); err != nil {
+		plog.Fatal(err)
+	}
+	plog.Info("Success!")
+	return op.TargetLink
+}
+
 func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
 	if spec.GCE.Project == "" || spec.GCE.Image == "" {
 		plog.Notice("GCE image creation disabled.")
@@ -214,44 +255,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
-	plog.Noticef("Creating GCE image %s", name)
-	parsedVersion, err := semver.NewVersion(specVersion)
-	if err != nil {
-		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
-	}
-	disableMultiqueue := false
-	if parsedVersion.LessThan(semver.Version{Major: 1409}) {
-		disableMultiqueue = true
-		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
-	}
-	op, pending, err := api.CreateImage(&gcloud.ImageSpec{
-		SourceImage:           obj.MediaLink,
-		Family:                spec.GCE.Family,
-		Name:                  name,
-		Description:           desc,
-		Licenses:              spec.GCE.Licenses,
-		DisableSCSIMultiqueue: disableMultiqueue,
-	}, false)
-	if err != nil {
-		plog.Fatalf("GCE image creation failed: %v", err)
-	}
-
-	plog.Infof("Waiting for image creation to finish...")
-	pending.Interval = 3 * time.Second
-	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
-		status := strings.ToLower(op.Status)
-		if op.Progress != 0 {
-			plog.Infof("Image creation is %s: %s % 2d%%", status, op.StatusMessage, op.Progress)
-		} else {
-			plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
-		}
-		return nil
-	}
-	if err := pending.Wait(); err != nil {
-		plog.Fatal(err)
-	}
-	plog.Info("Success!")
-
+	imageLink := gceUploadImage(spec, api, obj, name, desc)
 	publishImage(name)
 
 	var pendings []*gcloud.Pending
@@ -260,7 +264,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 			continue
 		}
 		plog.Noticef("Deprecating old image %s", old.Name)
-		pending, err := api.DeprecateImage(old.Name, gcloud.DeprecationStateDeprecated, op.TargetLink)
+		pending, err := api.DeprecateImage(old.Name, gcloud.DeprecationStateDeprecated, imageLink)
 		if err != nil {
 			plog.Fatal(err)
 		}
