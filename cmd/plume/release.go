@@ -201,23 +201,6 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		plog.Fatalf("GCE client failed: %v", err)
 	}
 
-	publishImage := func(image string) {
-		if spec.GCE.Publish == "" {
-			plog.Notice("GCE image name publishing disabled.")
-			return
-		}
-		obj := gs.Object{
-			Name:        src.Prefix() + spec.GCE.Publish,
-			ContentType: "text/plain",
-		}
-		media := strings.NewReader(
-			fmt.Sprintf("projects/%s/global/images/%s\n",
-				spec.GCE.Project, image))
-		if err := src.Upload(ctx, &obj, media); err != nil {
-			plog.Fatal(err)
-		}
-	}
-
 	nameVer := fmt.Sprintf("%s-%s-v", spec.GCE.Family, sanitizeVersion())
 	date := time.Now().UTC()
 	name := nameVer + date.Format("20060102")
@@ -229,38 +212,62 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		plog.Fatal(err)
 	}
 
-	var conflicting []string
+	var conflicting []*compute.Image
 	for _, image := range images {
 		if strings.HasPrefix(image.Name, nameVer) {
-			conflicting = append(conflicting, image.Name)
+			conflicting = append(conflicting, image)
 		}
 	}
 
 	// Check for any with the same version but possibly different dates.
+	var imageLink string
 	if len(conflicting) > 1 {
 		plog.Fatalf("Duplicate GCE images found: %v", conflicting)
 	} else if len(conflicting) == 1 {
-		plog.Noticef("GCE image already exists: %s", conflicting[0])
-		publishImage(conflicting[0])
-		return
+		image := conflicting[0]
+		name = image.Name
+		imageLink = image.SelfLink
+		plog.Noticef("GCE image already exists: %s", name)
+
+		if releaseDryRun {
+			return
+		}
+	} else {
+		obj := src.Object(src.Prefix() + spec.GCE.Image)
+		if obj == nil {
+			plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
+		}
+
+		if releaseDryRun {
+			plog.Noticef("Would create GCE image %s", name)
+			return
+		}
+
+		imageLink = gceUploadImage(spec, api, obj, name, desc)
 	}
 
-	obj := src.Object(src.Prefix() + spec.GCE.Image)
-	if obj == nil {
-		plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
+	if spec.GCE.Publish != "" {
+		obj := gs.Object{
+			Name:        src.Prefix() + spec.GCE.Publish,
+			ContentType: "text/plain",
+		}
+		media := strings.NewReader(
+			fmt.Sprintf("projects/%s/global/images/%s\n",
+				spec.GCE.Project, name))
+		if err := src.Upload(ctx, &obj, media); err != nil {
+			plog.Fatal(err)
+		}
+	} else {
+		plog.Notice("GCE image name publishing disabled.")
 	}
-
-	if releaseDryRun {
-		plog.Noticef("Would create GCE image %s", name)
-		return
-	}
-
-	imageLink := gceUploadImage(spec, api, obj, name, desc)
-	publishImage(name)
 
 	var pendings []*gcloud.Pending
 	for _, old := range images {
 		if old.Deprecated != nil && old.Deprecated.State != "" {
+			continue
+		}
+		if old.Name == name {
+			// The current image, uploaded in a previous run
 			continue
 		}
 		plog.Noticef("Deprecating old image %s", old.Name)
