@@ -147,6 +147,24 @@ func sanitizeVersion() string {
 	return strings.Replace(v, "+", "-", -1)
 }
 
+func gceWaitForImage(pending *gcloud.Pending) {
+	plog.Infof("Waiting for image creation to finish...")
+	pending.Interval = 3 * time.Second
+	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
+		status := strings.ToLower(op.Status)
+		if op.Progress != 0 {
+			plog.Infof("Image creation is %s: %s % 2d%%", status, op.StatusMessage, op.Progress)
+		} else {
+			plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
+		}
+		return nil
+	}
+	if err := pending.Wait(); err != nil {
+		plog.Fatal(err)
+	}
+	plog.Info("Success!")
+}
+
 func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, desc string) string {
 	plog.Noticef("Creating GCE image %s", name)
 	parsedVersion, err := semver.NewVersion(specVersion)
@@ -170,21 +188,8 @@ func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, de
 		plog.Fatalf("GCE image creation failed: %v", err)
 	}
 
-	plog.Infof("Waiting for image creation to finish...")
-	pending.Interval = 3 * time.Second
-	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
-		status := strings.ToLower(op.Status)
-		if op.Progress != 0 {
-			plog.Infof("Image creation is %s: %s % 2d%%", status, op.StatusMessage, op.Progress)
-		} else {
-			plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
-		}
-		return nil
-	}
-	if err := pending.Wait(); err != nil {
-		plog.Fatal(err)
-	}
-	plog.Info("Success!")
+	gceWaitForImage(pending)
+
 	return op.TargetLink
 }
 
@@ -227,10 +232,23 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		image := conflicting[0]
 		name = image.Name
 		imageLink = image.SelfLink
+
+		if image.Status == "FAILED" {
+			plog.Fatalf("Found existing GCE image %q in state %q", name, image.Status)
+		}
+
 		plog.Noticef("GCE image already exists: %s", name)
 
 		if releaseDryRun {
 			return
+		}
+
+		if image.Status == "PENDING" {
+			pending, err := api.GetPendingForImage(image)
+			if err != nil {
+				plog.Fatalf("Couldn't wait for image creation: %v", err)
+			}
+			gceWaitForImage(pending)
 		}
 	} else {
 		obj := src.Object(src.Prefix() + spec.GCE.Image)

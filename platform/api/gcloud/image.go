@@ -117,6 +117,21 @@ func (a *API) ListImages(ctx context.Context, prefix string) ([]*compute.Image, 
 	return images, nil
 }
 
+func (a *API) GetPendingForImage(image *compute.Image) (*Pending, error) {
+	op := a.compute.GlobalOperations.List(a.options.Project)
+	op.Filter(fmt.Sprintf("(targetId eq %v) (operationType eq insert)", image.Id))
+	pendingOps, err := op.Do()
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't list pending operations on %q: %v", image.Name, err)
+	}
+	if len(pendingOps.Items) != 1 {
+		return nil, fmt.Errorf("Found %d != 1 insert operations on %q", len(pendingOps.Items), image.Name)
+	}
+	pendingOp := pendingOps.Items[0]
+	doable := a.compute.GlobalOperations.Get(a.options.Project, pendingOp.Name)
+	return a.NewPending(pendingOp.Name, doable), nil
+}
+
 func (a *API) DeprecateImage(name string, state DeprecationState, replacement string) (*Pending, error) {
 	req := a.compute.Images.Deprecate(a.options.Project, name, &compute.DeprecationStatus{
 		State:       string(state),
