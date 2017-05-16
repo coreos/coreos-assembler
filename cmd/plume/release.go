@@ -307,12 +307,8 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	}
 
 	var pendings []*gcloud.Pending
-	for _, old := range images {
+	for _, old := range oldImages {
 		if old.Deprecated != nil && old.Deprecated.State != "" {
-			continue
-		}
-		if old.Name == name {
-			// The current image, uploaded in a previous run
 			continue
 		}
 		plog.Noticef("Deprecating old image %s", old.Name)
