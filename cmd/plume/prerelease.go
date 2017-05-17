@@ -50,12 +50,36 @@ var (
 		RunE:  runPreRelease,
 	}
 
+	platforms = map[string]platform{
+		"aws": platform{
+			displayName: "AWS",
+			handler:     awsPreRelease,
+		},
+		"azure": platform{
+			displayName: "Azure",
+			handler:     azurePreRelease,
+		},
+	}
+	platformList []string
+
+	selectedPlatforms  []string
 	azureProfile       string
 	awsCredentialsFile string
 	verifyKeyFile      string
 )
 
+type platform struct {
+	displayName string
+	handler     func(context.Context, *http.Client, *storage.Bucket, *channelSpec) error
+}
+
 func init() {
+	for k, _ := range platforms {
+		platformList = append(platformList, k)
+	}
+	sort.Sort(sort.StringSlice(platformList))
+
+	cmdPreRelease.Flags().StringSliceVar(&selectedPlatforms, "platform", platformList, "platform to pre-release")
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdPreRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
@@ -68,6 +92,11 @@ func init() {
 func runPreRelease(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		return errors.New("no args accepted")
+	}
+	for _, platformName := range selectedPlatforms {
+		if _, ok := platforms[platformName]; !ok {
+			return fmt.Errorf("Unknown platform %q", platformName)
+		}
 	}
 
 	spec := ChannelSpec()
@@ -92,16 +121,23 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 		plog.Fatalf("File not found: %s", verurl)
 	}
 
-	plog.Printf("Running AWS pre-release...")
+	for _, platformName := range platformList {
+		run := false
+		for _, v := range selectedPlatforms {
+			if v == platformName {
+				run = true
+				break
+			}
+		}
+		if !run {
+			continue
+		}
 
-	if err := awsPreRelease(ctx, client, src, &spec); err != nil {
-		plog.Fatal(err)
-	}
-
-	plog.Printf("Running Azure pre-release...")
-
-	if err := azurePreRelease(ctx, client, src, &spec); err != nil {
-		plog.Fatal(err)
+		platform := platforms[platformName]
+		plog.Printf("Running %v pre-release...", platform.displayName)
+		if err := platform.handler(ctx, client, src, &spec); err != nil {
+			plog.Fatal(err)
+		}
 	}
 
 	plog.Printf("Pre-release complete, run `plume release` to finish.")
