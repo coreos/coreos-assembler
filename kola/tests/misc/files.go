@@ -140,7 +140,7 @@ func WritableFiles(c cluster.TestCluster) {
 	}
 
 	if string(output) != "" {
-		c.Fatalf("Unknown writable files found: %v", output)
+		c.Fatalf("Unknown writable files found: %s", output)
 	}
 }
 
@@ -153,7 +153,7 @@ func WritableDirs(c cluster.TestCluster) {
 	}
 
 	if string(output) != "" {
-		c.Fatalf("Unknown writable directories found: %v", output)
+		c.Fatalf("Unknown writable directories found: %s", output)
 	}
 }
 
@@ -185,6 +185,6 @@ func StickyDirs(c cluster.TestCluster) {
 	}
 
 	if string(output) != "" {
-		c.Fatalf("Unknown sticky directories found: %v", output)
+		c.Fatalf("Unknown sticky directories found: %s", output)
 	}
 }
