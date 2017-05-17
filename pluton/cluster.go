@@ -44,10 +44,9 @@ type Cluster struct {
 // Info contains information about how a Cluster is configured that may be
 // useful for some tests.
 type Info struct {
-	KubeletTag      string // e.g. v1.5.3_coreos.0
-	Version         string // e.g. v1.5.3+coreos.0
-	UpstreamVersion string // e.g. v1.5.3
-	ImageRepo       string // e.g. quay.io/coreos/hyperkube
+	KubeletTag string // e.g. v1.5.3_coreos.0
+	Version    string // e.g. v1.5.3+coreos.0
+	ImageRepo  string // e.g. quay.io/coreos/hyperkube
 }
 
 func NewCluster(m Manager, masters, workers []platform.Machine, info Info) *Cluster {

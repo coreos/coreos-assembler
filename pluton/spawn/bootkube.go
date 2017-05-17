@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"text/template"
@@ -135,8 +134,16 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	}
 
 	// install kubectl on master
-	if err := installKubectl(master, info.UpstreamVersion); err != nil {
+	if err := installKubectl(master, info); err != nil {
 		return nil, err
+	}
+
+	// get more accurate version field, softfail on parse fail
+	v, err := getVersionFromKubectl(master)
+	if err == nil {
+		info.Version = v
+	} else {
+		plog.Infof("ignoring error getting accurate version: %v", err)
 	}
 
 	manager := &BootkubeManager{
@@ -332,13 +339,13 @@ func (m *BootkubeManager) provisionNodes(masters, workers int) ([]platform.Machi
 			plog.Infof("Warning: unable to transfer client cert to worker: %v", err)
 		}
 
-		if err := installKubectl(node, m.info.UpstreamVersion); err != nil {
-			return nil, nil, err
-		}
-
 		// disable selinux
 		_, err = node.SSH("sudo setenforce 0")
 		if err != nil {
+			return nil, nil, err
+		}
+
+		if err := installKubectl(node, m.info); err != nil {
 			return nil, nil, err
 		}
 
@@ -404,57 +411,47 @@ func getVersionFromService(kubeletService string) (pluton.Info, error) {
 		return pluton.Info{}, fmt.Errorf("could not find kubelet version from service file")
 	}
 
-	if kubeletTag == "master" {
-		// Special hack for testing master, which is a non-semver tag.
-		return pluton.Info{
-			KubeletTag:      kubeletTag,
-			Version:         kubeletTag,
-			UpstreamVersion: "v1.7.0-alpha.3", // TODO(diegs): fetch this dynamically, or extract from hyperkube.
-			ImageRepo:       kubeletImageRepo,
-		}, nil
-	}
-	upstream, err := stripSemverSuffix(kubeletTag)
-	if err != nil {
-		return pluton.Info{}, fmt.Errorf("tag %v: %v", kubeletTag, err)
-	}
-	semVer := strings.Replace(kubeletTag, "_", "+", 1)
-
-	// hack to handle upstream pre-release versions TODO(pb): simpify this
-	// parsing and only have conformance test rely on accurate upstream
-	// versions, not having kubectl will fail all tests. kubectl can be
-	// copied from hyperkube
-	if strings.Contains(semVer, "-") {
-		upstream = strings.Split(semVer, "+")[0]
-	}
+	version := strings.Replace(kubeletTag, "_", "+", 1)
 
 	s := pluton.Info{
-		KubeletTag:      kubeletTag,
-		Version:         semVer,
-		UpstreamVersion: upstream,
-		ImageRepo:       kubeletImageRepo,
+		KubeletTag: kubeletTag,
+		Version:    version,
+		ImageRepo:  kubeletImageRepo,
 	}
 	plog.Infof("version detection: %#v", s)
 
 	return s, nil
 }
 
-func stripSemverSuffix(v string) (string, error) {
-	semverPrefix := regexp.MustCompile(`^v[\d]+\.[\d]+\.[\d]+`)
-	v = semverPrefix.FindString(v)
-	if v == "" {
-		return "", fmt.Errorf("error stripping semver suffix")
+// This is called later in the boostrap then getVersionFromService and gives a
+// more accurate value for Info.Version
+func getVersionFromKubectl(m platform.Machine) (string, error) {
+	out, err := m.SSH("./kubectl --version")
+	if err != nil {
+		return "", fmt.Errorf("kubectl version: %v:%s", err, out)
 	}
 
-	return v, nil
+	fields := strings.Split(string(out), " ")
+	if len(fields) != 2 {
+		return "", fmt.Errorf("unable to parse kubectl version output: %s", out)
+	}
+
+	return fields[1], nil
 }
 
-func installKubectl(m platform.Machine, upstreamVersion string) error {
-	kubeURL := fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/%v/bin/linux/amd64/kubectl", upstreamVersion)
-	if _, err := m.SSH("wget -q " + kubeURL); err != nil {
-		return fmt.Errorf("curling kubectl: %v", err)
-	}
-	if _, err := m.SSH("chmod +x ./kubectl"); err != nil {
-		return err
+func installKubectl(m platform.Machine, info pluton.Info) error {
+	// copy hyperkube out of image
+	cmd := fmt.Sprintf(`sudo rkt run \
+	--insecure-options=image \
+	--volume=home,kind=host,source=/home/core \
+	--mount volume=home,target=/home/core \
+	%v:%v \
+	--exec /bin/bash -- -c "cp /hyperkube /home/core/kubectl"`,
+		info.ImageRepo, info.KubeletTag)
+
+	out, err := m.SSH(cmd)
+	if err != nil {
+		return fmt.Errorf("installing kubectl %v:%s", err, out)
 	}
 
 	return nil
