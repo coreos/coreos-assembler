@@ -160,6 +160,6 @@ func Proxy(c cluster.TestCluster) {
 	}
 
 	if !bytes.Equal(status, []byte("active")) {
-		c.Fatalf("unit not active: %v", status)
+		c.Fatalf("unit not active: %s", status)
 	}
 }

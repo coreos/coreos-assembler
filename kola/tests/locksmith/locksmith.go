@@ -164,7 +164,7 @@ func locksmithTLS(c cluster.TestCluster) {
 	lCmd := "sudo locksmithctl --endpoint https://localhost:2379 --etcd-cafile /etc/ssl/etcd/ca-etcd-cert.pem --etcd-certfile /etc/ssl/etcd/locksmith-cert.pem --etcd-keyfile /etc/ssl/etcd/locksmith-key.pem "
 
 	// First verify etcd has a valid TLS connection ready
-	output, err := m.SSH("openssl s_client -showcerts -verify_return_error -verify_ip 127.0.0.1 -verify_hostname localhost -connect localhost:2379 0</dev/null 2>/dev/null")
+	output, err := m.SSH("openssl s_client -showcerts -verify_return_error -verify_ip 127.0.0.1 -verify_hostname localhost -connect localhost:2379 0</dev/null 2>&1")
 	if err != nil || !bytes.Contains(output, []byte("Verify return code: 0")) {
 		c.Fatalf("openssl s_client: %q: %v", output, err)
 	}

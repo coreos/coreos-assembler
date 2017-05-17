@@ -393,9 +393,9 @@ func dockerUserns(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatalf("could not run sleep: %v", err)
 	}
-	uid_map, err := m.SSH(`until [[ "$(/usr/bin/docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
-	                pid=$(docker inspect -f {{.State.Pid}} sleepy); 
-									cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
+	uid_map, err := m.SSH(`until [[ "$(docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
+		pid=$(docker inspect -f {{.State.Pid}} sleepy);
+		cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
 	if err != nil {
 		c.Fatalf("could not read uid mapping: %v", err)
 	}
