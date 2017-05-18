@@ -224,7 +224,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription)
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription, aws.EC2VolumeTypeGP2)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
@@ -240,7 +240,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	var pvID string
 	if uploadCreatePV {
-		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
+		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription, aws.EC2VolumeTypeGP2)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create PV image: %v\n", err)
 			os.Exit(1)
