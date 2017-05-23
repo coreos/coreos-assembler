@@ -93,10 +93,10 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 		//right versions of these components. Its not fatal if we
 		//don't, it just means those images don't get cached which
 		//could cause potential test failures
-		{Name: "quay.io/coreos/etcd-operator:v0.2.6", Engine: "docker"},
+		{Name: "quay.io/coreos/etcd-operator:v0.3.0", Engine: "docker"},
 		{Name: "quay.io/coreos/etcd:v3.1.6", Engine: "rkt"},
 		{Name: "quay.io/coreos/flannel:v0.7.1-amd64", Engine: "docker"},
-		{Name: "quay.io/coreos/pod-checkpointer:2cad4cac4186611a79de1969e3ea4924f02f459e", Engine: "docker"},
+		{Name: "quay.io/coreos/pod-checkpointer:7da334a1d768c346798601eb8387f266d15cf330", Engine: "docker"},
 		{Name: "quay.io/coreos/kenc:48b6feceeee56c657ea9263f47b6ea091e8d3035", Engine: "docker"},
 		{Name: "gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.1", Engine: "docker"},
 		{Name: "gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.1", Engine: "docker"},
