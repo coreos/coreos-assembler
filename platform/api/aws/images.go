@@ -40,7 +40,7 @@ type EC2ImageFormat string
 
 const (
 	EC2ImageFormatRaw  EC2ImageFormat = ec2.DiskImageFormatRaw
-	EC2ImageFormatVmdk                = ec2.DiskImageFormatVmdk
+	EC2ImageFormatVmdk EC2ImageFormat = ec2.DiskImageFormatVmdk
 )
 
 // TODO(bgilbert): remove after 1451 goes stable

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/api/azure"
+	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/storage/index"
 )
@@ -146,32 +148,85 @@ func sanitizeVersion() string {
 	return strings.Replace(v, "+", "-", -1)
 }
 
+func gceWaitForImage(pending *gcloud.Pending) {
+	plog.Infof("Waiting for image creation to finish...")
+	pending.Interval = 3 * time.Second
+	pending.Progress = func(_ string, _ time.Duration, op *compute.Operation) error {
+		status := strings.ToLower(op.Status)
+		if op.Progress != 0 {
+			plog.Infof("Image creation is %s: %s % 2d%%", status, op.StatusMessage, op.Progress)
+		} else {
+			plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
+		}
+		return nil
+	}
+	if err := pending.Wait(); err != nil {
+		plog.Fatal(err)
+	}
+	plog.Info("Success!")
+}
+
+func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, desc string) string {
+	plog.Noticef("Creating GCE image %s", name)
+	parsedVersion, err := semver.NewVersion(specVersion)
+	if err != nil {
+		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
+	}
+	disableMultiqueue := false
+	if parsedVersion.LessThan(semver.Version{Major: 1409}) {
+		disableMultiqueue = true
+		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
+	}
+	op, pending, err := api.CreateImage(&gcloud.ImageSpec{
+		SourceImage:           obj.MediaLink,
+		Family:                spec.GCE.Family,
+		Name:                  name,
+		Description:           desc,
+		Licenses:              spec.GCE.Licenses,
+		DisableSCSIMultiqueue: disableMultiqueue,
+	}, false)
+	if err != nil {
+		plog.Fatalf("GCE image creation failed: %v", err)
+	}
+
+	gceWaitForImage(pending)
+
+	return op.TargetLink
+}
+
+// Once we can use sort.Slice (go 1.8), kill with fire.
+type imageSlice []*compute.Image
+
+func (s imageSlice) Len() int {
+	return len(s)
+}
+
+func (s imageSlice) Less(i, j int) bool {
+	getCreation := func(image *compute.Image) time.Time {
+		stamp, err := time.Parse(time.RFC3339, image.CreationTimestamp)
+		if err != nil {
+			plog.Fatalf("Couldn't parse timestamp %q: %v", image.CreationTimestamp, err)
+		}
+		return stamp
+	}
+	return getCreation(s[i]).After(getCreation(s[j]))
+}
+
+func (s imageSlice) Swap(i, j int) {
+	s[j], s[i] = s[i], s[j]
+}
+
 func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
 	if spec.GCE.Project == "" || spec.GCE.Image == "" {
 		plog.Notice("GCE image creation disabled.")
 		return
 	}
 
-	api, err := compute.New(client)
+	api, err := gcloud.New(&gcloud.Options{
+		Project: spec.GCE.Project,
+	})
 	if err != nil {
 		plog.Fatalf("GCE client failed: %v", err)
-	}
-
-	publishImage := func(image string) {
-		if spec.GCE.Publish == "" {
-			plog.Notice("GCE image name publishing disabled.")
-			return
-		}
-		obj := gs.Object{
-			Name:        src.Prefix() + spec.GCE.Publish,
-			ContentType: "text/plain",
-		}
-		media := strings.NewReader(
-			fmt.Sprintf("projects/%s/global/images/%s\n",
-				spec.GCE.Project, image))
-		if err := src.Upload(ctx, &obj, media); err != nil {
-			plog.Fatal(err)
-		}
 	}
 
 	nameVer := fmt.Sprintf("%s-%s-v", spec.GCE.Family, sanitizeVersion())
@@ -180,182 +235,111 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	desc := fmt.Sprintf("%s, %s, %s published on %s", spec.GCE.Description,
 		specVersion, specBoard, date.Format("2006-01-02"))
 
-	var images []*compute.Image
-	listReq := api.Images.List(spec.GCE.Project)
-	listReq.Filter(fmt.Sprintf("name eq ^%s-.*", spec.GCE.Family))
-	if err := listReq.Pages(ctx, func(i *compute.ImageList) error {
-		images = append(images, i.Items...)
-		return nil
-	}); err != nil {
-		plog.Fatalf("Listing GCE images failed: %v", err)
+	images, err := api.ListImages(ctx, spec.GCE.Family+"-")
+	if err != nil {
+		plog.Fatal(err)
 	}
 
-	var conflicting []string
+	var conflicting []*compute.Image
+	var oldImages imageSlice
 	for _, image := range images {
 		if strings.HasPrefix(image.Name, nameVer) {
-			conflicting = append(conflicting, image.Name)
+			conflicting = append(conflicting, image)
+		} else {
+			oldImages = append(oldImages, image)
 		}
 	}
+	sort.Sort(oldImages)
 
 	// Check for any with the same version but possibly different dates.
+	var imageLink string
 	if len(conflicting) > 1 {
 		plog.Fatalf("Duplicate GCE images found: %v", conflicting)
 	} else if len(conflicting) == 1 {
-		plog.Noticef("GCE image already exists: %s", conflicting[0])
-		publishImage(conflicting[0])
-		return
-	}
+		image := conflicting[0]
+		name = image.Name
+		imageLink = image.SelfLink
 
-	if spec.GCE.Limit > 0 && len(images) > spec.GCE.Limit {
-		plog.Noticef("Pruning %d GCE images.", len(images)-spec.GCE.Limit)
-		plog.Notice("NOPE! JUST KIDDING, TODO")
-	}
-
-	obj := src.Object(src.Prefix() + spec.GCE.Image)
-	if obj == nil {
-		plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
-	}
-
-	licenses := make([]string, len(spec.GCE.Licenses))
-	for i, l := range spec.GCE.Licenses {
-		req := api.Licenses.Get(spec.GCE.Project, l)
-		req.Context(ctx)
-		license, err := req.Do()
-		if err != nil {
-			plog.Fatalf("Invalid GCE license %s: %v", l, err)
-		}
-		licenses[i] = license.SelfLink
-	}
-
-	features := []*compute.GuestOsFeature{}
-	parsedVersion, err := semver.NewVersion(specVersion)
-	if err != nil {
-		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
-	}
-	if !parsedVersion.LessThan(semver.Version{Major: 1409}) {
-		features = append(features, &compute.GuestOsFeature{
-			Type: "VIRTIO_SCSI_MULTIQUEUE",
-		})
-	} else {
-		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
-	}
-	image := &compute.Image{
-		Family:           spec.GCE.Family,
-		Name:             name,
-		Description:      desc,
-		Licenses:         licenses,
-		GuestOsFeatures:  features,
-		ArchiveSizeBytes: int64(obj.Size),
-		RawDisk: &compute.ImageRawDisk{
-			Source: obj.MediaLink,
-			// TODO: include sha1
-		},
-	}
-
-	if releaseDryRun {
-		plog.Noticef("Would create GCE image %s", name)
-		return
-	}
-
-	plog.Noticef("Creating GCE image %s", image.Name)
-	insReq := api.Images.Insert(spec.GCE.Project, image)
-	insReq.Context(ctx)
-	op, err := insReq.Do()
-	if err != nil {
-		plog.Fatalf("GCE image creation failed: %v", err)
-	}
-
-	plog.Infof("Waiting for image creation to finish...")
-	failures := 0
-	for op == nil || op.Status != "DONE" {
-		if op != nil {
-			status := strings.ToLower(op.Status)
-			if op.Progress != 0 {
-				plog.Infof("Image creation is %s: %s % 2d%%",
-					status, op.StatusMessage, op.Progress)
-			} else {
-				plog.Infof("Image creation is %s. %s", status, op.StatusMessage)
-			}
+		if image.Status == "FAILED" {
+			plog.Fatalf("Found existing GCE image %q in state %q", name, image.Status)
 		}
 
-		time.Sleep(3 * time.Second)
-		opReq := api.GlobalOperations.Get(spec.GCE.Project, op.Name)
-		opReq.Context(ctx)
-		op, err = opReq.Do()
-		if err != nil {
-			plog.Errorf("Fetching status failed: %v", err)
-			failures++
-			if failures > 5 {
-				plog.Fatalf("Giving up after %d failures.", failures)
-			}
-		}
-	}
+		plog.Noticef("GCE image already exists: %s", name)
 
-	if op.Error != nil {
-		plog.Fatalf("Image creation failed: %+v", op.Error.Errors)
-	}
-
-	plog.Info("Success!")
-
-	publishImage(name)
-
-	var pending map[string]*compute.Operation
-	addPending := func(op *compute.Operation) {
-		if op.Status == "DONE" {
-			delete(pending, op.Name)
-			if op.Error != nil {
-				plog.Fatalf("Operation failed: %+v", op.Error.Errors)
-			}
+		if releaseDryRun {
 			return
 		}
-		pending[op.Name] = op
-		status := strings.ToLower(op.Status)
-		if op.Progress != 0 {
-			plog.Infof("Operation is %s: %s % 2d%%",
-				status, op.StatusMessage, op.Progress)
-		} else {
-			plog.Infof("Operation is %s. %s", status, op.StatusMessage)
+
+		if image.Status == "PENDING" {
+			pending, err := api.GetPendingForImage(image)
+			if err != nil {
+				plog.Fatalf("Couldn't wait for image creation: %v", err)
+			}
+			gceWaitForImage(pending)
 		}
+	} else {
+		obj := src.Object(src.Prefix() + spec.GCE.Image)
+		if obj == nil {
+			plog.Fatalf("GCE image not found %s%s", src.URL(), spec.GCE.Image)
+		}
+
+		if releaseDryRun {
+			plog.Noticef("Would create GCE image %s", name)
+			return
+		}
+
+		imageLink = gceUploadImage(spec, api, obj, name, desc)
 	}
 
-	for _, old := range images {
+	if spec.GCE.Publish != "" {
+		obj := gs.Object{
+			Name:        src.Prefix() + spec.GCE.Publish,
+			ContentType: "text/plain",
+		}
+		media := strings.NewReader(
+			fmt.Sprintf("projects/%s/global/images/%s\n",
+				spec.GCE.Project, name))
+		if err := src.Upload(ctx, &obj, media); err != nil {
+			plog.Fatal(err)
+		}
+	} else {
+		plog.Notice("GCE image name publishing disabled.")
+	}
+
+	var pendings []*gcloud.Pending
+	for _, old := range oldImages {
 		if old.Deprecated != nil && old.Deprecated.State != "" {
 			continue
 		}
 		plog.Noticef("Deprecating old image %s", old.Name)
-		status := &compute.DeprecationStatus{
-			State:       "DEPRECATED",
-			Replacement: op.TargetLink,
-		}
-		req := api.Images.Deprecate(spec.GCE.Project, old.Name, status)
-		req.Context(ctx)
-		op, err := req.Do()
+		pending, err := api.DeprecateImage(old.Name, gcloud.DeprecationStateDeprecated, imageLink)
 		if err != nil {
-			plog.Fatalf("Deprecating %s failed: %v", old.Name, err)
+			plog.Fatal(err)
 		}
-		addPending(op)
+		pending.Interval = 1 * time.Second
+		pending.Timeout = 0
+		pendings = append(pendings, pending)
 	}
 
-	updatePending := func(ops *compute.OperationList) error {
-		for _, op := range ops.Items {
-			if _, ok := pending[op.Name]; ok {
-				addPending(op)
+	if spec.GCE.Limit > 0 && len(oldImages) > spec.GCE.Limit {
+		plog.Noticef("Pruning %d GCE images.", len(oldImages)-spec.GCE.Limit)
+		for _, old := range oldImages[spec.GCE.Limit:] {
+			plog.Noticef("Deleting old image %s", old.Name)
+			pending, err := api.DeleteImage(old.Name)
+			if err != nil {
+				plog.Fatal(err)
 			}
+			pending.Interval = 1 * time.Second
+			pending.Timeout = 0
+			pendings = append(pendings, pending)
 		}
-		return nil
 	}
 
-	failures = 0
-	for len(pending) > 0 {
-		plog.Infof("Waiting on %s operations.", len(pending))
-		time.Sleep(1 * time.Second)
-		opReq := api.GlobalOperations.List(spec.GCE.Project)
-		if err := opReq.Pages(ctx, updatePending); err != nil {
-			plog.Errorf("Fetching status failed: %v", err)
-			failures++
-			if failures > 5 {
-				plog.Fatalf("Giving up after %d failures.", failures)
-			}
+	plog.Infof("Waiting on %d operations.", len(pendings))
+	for _, pending := range pendings {
+		err := pending.Wait()
+		if err != nil {
+			plog.Fatal(err)
 		}
 	}
 }

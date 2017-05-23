@@ -25,6 +25,7 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
 
+	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/sdk"
 )
 
@@ -137,7 +138,13 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	// create image on gce
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	err = api.CreateImage(imageNameGCE, storageSrc, uploadForce)
+	_, pending, err := api.CreateImage(&gcloud.ImageSpec{
+		Name:        imageNameGCE,
+		SourceImage: storageSrc,
+	}, uploadForce)
+	if err == nil {
+		err = pending.Wait()
+	}
 
 	// if image already exists ask to delete and try again
 	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
@@ -150,8 +157,13 @@ func runUpload(cmd *cobra.Command, args []string) {
 		switch ans {
 		case "y", "Y", "yes":
 			fmt.Println("Overriding existing image...")
-			err = api.CreateImage(imageNameGCE, storageSrc, true)
-
+			_, pending, err = api.CreateImage(&gcloud.ImageSpec{
+				Name:        imageNameGCE,
+				SourceImage: storageSrc,
+			}, true)
+			if err == nil {
+				err = pending.Wait()
+			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 				os.Exit(1)
