@@ -41,9 +41,9 @@ func checkListeners(c cluster.TestCluster, protocol string, filter string, liste
 
 	var command string
 	if filter != "" {
-		command = fmt.Sprintf("sudo lsof -i%v -s%v", protocol, filter)
+		command = fmt.Sprintf("sudo lsof +c0 -i%v -s%v", protocol, filter)
 	} else {
-		command = fmt.Sprintf("sudo lsof -i%v", protocol)
+		command = fmt.Sprintf("sudo lsof +c0 -i%v", protocol)
 	}
 	output, err := m.SSH(command)
 	if err != nil {
@@ -84,8 +84,8 @@ func NetworkListeners(c cluster.TestCluster) {
 		{"systemd", "ssh"},
 	}
 	UDPListeners := []listener{
-		{"systemd-n", "dhcpv6-client"},
-		{"systemd-n", "bootpc"},
+		{"systemd-network", "dhcpv6-client"},
+		{"systemd-network", "bootpc"},
 	}
 	checkListeners(c, "TCP", "TCP:LISTEN", TCPListeners)
 	checkListeners(c, "UDP", "", UDPListeners)
