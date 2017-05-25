@@ -37,7 +37,7 @@ Supported source formats are VMDK (as created with ./image_to_vm --format=ami_vm
 
 After a successful run, the final line of output will be a line of JSON describing the relevant resources.
 `,
-		Example: `  ore aws upload --region=us-west-2 \
+		Example: `  ore aws upload --region=us-east-1 \
 	  --ami-name="CoreOS-stable-1234.5.6" \
 	  --ami-description="CoreOS stable 1234.5.6" \
 	  --file="/home/.../coreos_production_ami_vmdk_image.vmdk"`,
