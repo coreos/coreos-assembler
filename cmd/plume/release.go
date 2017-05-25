@@ -324,6 +324,10 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	if spec.GCE.Limit > 0 && len(oldImages) > spec.GCE.Limit {
 		plog.Noticef("Pruning %d GCE images.", len(oldImages)-spec.GCE.Limit)
 		for _, old := range oldImages[spec.GCE.Limit:] {
+			if old.Name == "coreos-alpha-1122-0-0-v20160727" {
+				plog.Noticef("%v: not deleting: hardcoded solution to hardcoded problem", old.Name)
+				continue
+			}
 			plog.Noticef("Deleting old image %s", old.Name)
 			pending, err := api.DeleteImage(old.Name)
 			if err != nil {
