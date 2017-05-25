@@ -148,6 +148,14 @@ func (a *API) ListInstances(prefix string) ([]*compute.Instance, error) {
 	return instances, nil
 }
 
+func (a *API) GetConsoleOutput(name string) (string, error) {
+	out, err := a.compute.Instances.GetSerialPortOutput(a.options.Project, a.options.Zone, name).Do()
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve console output for %q: %v", name, err)
+	}
+	return out.Contents, nil
+}
+
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
 func InstanceIPs(inst *compute.Instance) (intIP, extIP string) {
 	for _, iface := range inst.NetworkInterfaces {

@@ -2,6 +2,8 @@ package gcloud
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"golang.org/x/crypto/ssh"
 
@@ -13,6 +15,7 @@ type machine struct {
 	name    string
 	intIP   string
 	extIP   string
+	dir     string
 	journal *platform.Journal
 }
 
@@ -57,6 +60,11 @@ func (m *machine) Reboot() error {
 }
 
 func (gm *machine) Destroy() error {
+	if err := gm.saveConsole(); err != nil {
+		// log error, but do not fail to terminate instance
+		plog.Error(err)
+	}
+
 	if err := gm.gc.api.TerminateInstance(gm.name); err != nil {
 		return err
 	}
@@ -68,6 +76,23 @@ func (gm *machine) Destroy() error {
 	}
 
 	gm.gc.DelMach(gm)
+
+	return nil
+}
+
+func (gm *machine) saveConsole() error {
+	data, err := gm.gc.api.GetConsoleOutput(gm.name)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(gm.dir, "console.txt")
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	f.WriteString(data)
 
 	return nil
 }

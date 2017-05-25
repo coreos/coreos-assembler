@@ -22,6 +22,8 @@ import (
 
 	"golang.org/x/crypto/ssh/agent"
 
+	"github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
 )
@@ -30,6 +32,10 @@ type cluster struct {
 	*platform.BaseCluster
 	api *gcloud.API
 }
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/gcloud")
+)
 
 func NewCluster(opts *gcloud.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := gcloud.New(opts)
@@ -82,19 +88,19 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		extIP: extip,
 	}
 
-	dir := filepath.Join(gc.Conf().OutputDir, gm.ID())
-	if err := os.Mkdir(dir, 0777); err != nil {
+	gm.dir = filepath.Join(gc.Conf().OutputDir, gm.ID())
+	if err := os.Mkdir(gm.dir, 0777); err != nil {
 		gm.Destroy()
 		return nil, err
 	}
 
-	confPath := filepath.Join(dir, "user-data")
+	confPath := filepath.Join(gm.dir, "user-data")
 	if err := conf.WriteFile(confPath); err != nil {
 		gm.Destroy()
 		return nil, err
 	}
 
-	if gm.journal, err = platform.NewJournal(dir); err != nil {
+	if gm.journal, err = platform.NewJournal(gm.dir); err != nil {
 		gm.Destroy()
 		return nil, err
 	}
