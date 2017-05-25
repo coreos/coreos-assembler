@@ -16,6 +16,8 @@ package aws
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
@@ -26,6 +28,7 @@ import (
 type machine struct {
 	cluster *cluster
 	mach    *ec2.Instance
+	dir     string
 	journal *platform.Journal
 }
 
@@ -80,6 +83,29 @@ func (am *machine) Destroy() error {
 		}
 	}
 
+	// faster when run after termination
+	if err := am.saveConsole(); err != nil {
+		return err
+	}
+
 	am.cluster.DelMach(am)
+
+	return nil
+}
+
+func (am *machine) saveConsole() error {
+	data, err := am.cluster.api.GetConsoleOutput(am.ID(), true)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(am.dir, "console.txt")
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	f.WriteString(data)
+
 	return nil
 }
