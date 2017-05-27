@@ -50,12 +50,14 @@ var (
 	TAPFile         string // if not "", write TAP results here
 
 	consoleChecks = []struct {
-		desc  string
-		match *regexp.Regexp
+		desc     string
+		match    *regexp.Regexp
+		skipFlag *register.Flag
 	}{
 		{
-			desc:  "emergency shell",
-			match: regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
+			desc:     "emergency shell",
+			match:    regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
+			skipFlag: &[]register.Flag{register.NoEmergencyShellCheck}[0],
 		},
 		{
 			desc:  "kernel panic",
@@ -309,7 +311,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		if err := c.Destroy(); err != nil {
 			plog.Errorf("cluster.Destroy(): %v", err)
 		}
-		checkConsole(h, c)
+		checkConsole(h, t, c)
 	}()
 
 	if t.ClusterSize > 0 {
@@ -380,9 +382,14 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 	c.Fatalf("Unable to locate kolet binary for %s", mArch)
 }
 
-func checkConsole(h *harness.H, c platform.Cluster) {
+func checkConsole(h *harness.H, t *register.Test, c platform.Cluster) {
 	for id, output := range c.ConsoleOutput() {
 		for _, check := range consoleChecks {
+			if check.skipFlag != nil {
+				if t.HasFlag(*check.skipFlag) {
+					continue
+				}
+			}
 			if check.match.Find([]byte(output)) != nil {
 				h.Errorf("Found %s on machine %s console", check.desc, id)
 			}
