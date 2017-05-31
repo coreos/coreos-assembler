@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
-	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -66,23 +64,13 @@ func NewCluster(opts *aws.Options, outputDir string) (platform.Cluster, error) {
 }
 
 func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	// hacky solution for unified ignition metadata variables
-	if strings.Contains(userdata, `"ignition":`) {
-		userdata = strings.Replace(userdata, "$public_ipv4", "${COREOS_EC2_IPV4_PUBLIC}", -1)
-		userdata = strings.Replace(userdata, "$private_ipv4", "${COREOS_EC2_IPV4_LOCAL}", -1)
-	}
-
-	conf, err := conf.New(userdata)
+	conf, err := ac.MangleUserData(userdata, map[string]string{
+		"$public_ipv4":  "${COREOS_EC2_IPV4_PUBLIC}",
+		"$private_ipv4": "${COREOS_EC2_IPV4_LOCAL}",
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	keys, err := ac.Keys()
-	if err != nil {
-		return nil, err
-	}
-
-	conf.CopyKeys(keys)
 
 	instances, err := ac.api.CreateInstances(ac.Name(), ac.Name(), conf.String(), 1)
 	if err != nil {

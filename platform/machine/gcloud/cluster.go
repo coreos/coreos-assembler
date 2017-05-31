@@ -19,11 +19,9 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
-	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -52,13 +50,10 @@ func NewCluster(opts *gcloud.Options, outputDir string) (platform.Cluster, error
 
 // Calling in parallel is ok
 func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	// hacky solution for unified ignition metadata variables
-	if strings.Contains(userdata, `"ignition":`) {
-		userdata = strings.Replace(userdata, "$public_ipv4", "${COREOS_GCE_IP_EXTERNAL_0}", -1)
-		userdata = strings.Replace(userdata, "$private_ipv4", "${COREOS_GCE_IP_LOCAL_0}", -1)
-	}
-
-	conf, err := conf.New(userdata)
+	conf, err := gc.MangleUserData(userdata, map[string]string{
+		"$public_ipv4":  "${COREOS_GCE_IP_EXTERNAL_0}",
+		"$private_ipv4": "${COREOS_GCE_IP_LOCAL_0}",
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +62,6 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	conf.CopyKeys(keys)
 
 	instance, err := gc.api.CreateInstance(conf.String(), keys)
 	if err != nil {

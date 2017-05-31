@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -125,6 +127,29 @@ func (bc *BaseCluster) DelMach(m Machine) {
 
 func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 	return bc.agent.List()
+}
+
+func (bc *BaseCluster) MangleUserData(userdata string, ignitionVars map[string]string) (*conf.Conf, error) {
+	// hacky solution for unified ignition metadata variables
+	if strings.Contains(userdata, `"ignition":`) {
+		for k, v := range ignitionVars {
+			userdata = strings.Replace(userdata, k, v, -1)
+		}
+	}
+
+	conf, err := conf.New(userdata)
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := bc.Keys()
+	if err != nil {
+		return nil, err
+	}
+
+	conf.CopyKeys(keys)
+
+	return conf, nil
 }
 
 // Destroy destroys each machine in the cluster and closes the SSH agent.
