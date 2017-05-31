@@ -33,25 +33,18 @@ func (o *OmahaHandler) ServeHTTP(w http.ResponseWriter, httpReq *http.Request) {
 
 	// A request over 1M in size is certainly bogus.
 	reader := http.MaxBytesReader(w, httpReq.Body, 1024*1024)
-
-	decoder := xml.NewDecoder(reader)
-	var omahaReq Request
-	if err := decoder.Decode(&omahaReq); err != nil {
-		log.Printf("omaha: Failed decoding XML: %v", err)
-		http.Error(w, "Invalid XML", http.StatusBadRequest)
-		return
-	}
-
-	if omahaReq.Protocol != "3.0" {
-		log.Printf("omaha: Unexpected protocol: %q", omahaReq.Protocol)
-		http.Error(w, "Omaha 3.0 Required", http.StatusBadRequest)
+	contentType := httpReq.Header.Get("Content-Type")
+	omahaReq, err := ParseRequest(contentType, reader)
+	if err != nil {
+		log.Printf("omaha: Failed parsing request: %v", err)
+		http.Error(w, "Bad Omaha Request", http.StatusBadRequest)
 		return
 	}
 
 	httpStatus := 0
 	omahaResp := NewResponse()
 	for _, appReq := range omahaReq.Apps {
-		appResp := o.serveApp(omahaResp, httpReq, &omahaReq, appReq)
+		appResp := o.serveApp(omahaResp, httpReq, omahaReq, appReq)
 		if appResp.Status == AppOK {
 			// HTTP is ok if any app is ok.
 			httpStatus = http.StatusOK
@@ -87,13 +80,13 @@ func (o *OmahaHandler) ServeHTTP(w http.ResponseWriter, httpReq *http.Request) {
 func (o *OmahaHandler) serveApp(omahaResp *Response, httpReq *http.Request, omahaReq *Request, appReq *AppRequest) *AppResponse {
 	if err := o.CheckApp(omahaReq, appReq); err != nil {
 		if appStatus, ok := err.(AppStatus); ok {
-			return omahaResp.AddApp(appReq.Id, appStatus)
+			return omahaResp.AddApp(appReq.ID, appStatus)
 		}
 		log.Printf("omaha: CheckApp failed: %v", err)
-		return omahaResp.AddApp(appReq.Id, AppInternalError)
+		return omahaResp.AddApp(appReq.ID, AppInternalError)
 	}
 
-	appResp := omahaResp.AddApp(appReq.Id, AppOK)
+	appResp := omahaResp.AddApp(appReq.ID, AppOK)
 	if appReq.UpdateCheck != nil {
 		o.checkUpdate(appResp, httpReq, omahaReq, appReq)
 	}

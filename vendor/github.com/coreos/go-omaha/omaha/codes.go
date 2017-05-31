@@ -150,8 +150,8 @@ const (
 	// Standard values
 	AppOK         AppStatus = "ok"
 	AppRestricted AppStatus = "restricted"
-	AppUnknownId  AppStatus = "error-unknownApplication"
-	AppInvalidId  AppStatus = "error-invalidAppId"
+	AppUnknownID  AppStatus = "error-unknownApplication"
+	AppInvalidID  AppStatus = "error-invalidAppId"
 
 	// Extra error values
 	AppInvalidVersion AppStatus = "error-invalidVersion"
@@ -160,7 +160,7 @@ const (
 
 // Make AppStatus easy to use as an error
 func (a AppStatus) Error() string {
-	return string(a)
+	return "omaha: app status " + string(a)
 }
 
 type UpdateStatus string
@@ -177,5 +177,5 @@ const (
 
 // Make UpdateStatus easy to use as an error
 func (u UpdateStatus) Error() string {
-	return string(u)
+	return "omaha: update status " + string(u)
 }

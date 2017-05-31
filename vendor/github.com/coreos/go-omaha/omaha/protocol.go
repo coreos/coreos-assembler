@@ -19,13 +19,12 @@
 // by the server to provide update information, if any, or to simply
 // acknowledge the receipt of event status.
 //
-// https://github.com/google/omaha/blob/wiki/ServerProtocol.md
+// https://github.com/google/omaha/blob/master/doc/ServerProtocolV3.md
 package omaha
 
 import (
 	"encoding/xml"
-
-	"github.com/coreos/mantle/version"
+	"io"
 )
 
 // Request sent by the Omaha client
@@ -34,13 +33,13 @@ type Request struct {
 	OS            *OS           `xml:"os"`
 	Apps          []*AppRequest `xml:"app"`
 	Protocol      string        `xml:"protocol,attr"`
-	Version       string        `xml:"version,attr,omitempty"`
-	IsMachine     string        `xml:"ismachine,attr,omitempty"`
-	RequestId     string        `xml:"requestid,attr,omitempty"`
-	SessionId     string        `xml:"sessionid,attr,omitempty"`
-	UserId        string        `xml:"userid,attr,omitempty"`
 	InstallSource string        `xml:"installsource,attr,omitempty"`
+	IsMachine     int           `xml:"ismachine,attr,omitempty"`
+	RequestID     string        `xml:"requestid,attr,omitempty"`
+	SessionID     string        `xml:"sessionid,attr,omitempty"`
 	TestSource    string        `xml:"testsource,attr,omitempty"`
+	UserID        string        `xml:"userid,attr,omitempty"`
+	Version       string        `xml:"version,attr,omitempty"`
 
 	// update engine extension, duplicates the version attribute.
 	UpdaterVersion string `xml:"updaterversion,attr,omitempty"`
@@ -49,7 +48,7 @@ type Request struct {
 func NewRequest() *Request {
 	return &Request{
 		Protocol: "3.0",
-		Version:  version.Version,
+		// TODO(marineam) set a default client Version
 		OS: &OS{
 			Platform: LocalPlatform(),
 			Arch:     LocalArch(),
@@ -58,39 +57,64 @@ func NewRequest() *Request {
 	}
 }
 
+// ParseRequest verifies and returns the parsed Request document.
+// The MIME Content-Type header may be provided to sanity check its
+// value; if blank it is assumed to be XML in UTF-8.
+func ParseRequest(contentType string, body io.Reader) (*Request, error) {
+	if err := checkContentType(contentType); err != nil {
+		return nil, err
+	}
+
+	r := &Request{}
+	if err := parseReqOrResp(body, r); err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
 func (r *Request) AddApp(id, version string) *AppRequest {
-	a := &AppRequest{Id: id, Version: version}
+	a := &AppRequest{ID: id, Version: version}
 	r.Apps = append(r.Apps, a)
 	return a
+}
+
+func (r *Request) GetApp(id string) *AppRequest {
+	for _, app := range r.Apps {
+		if app.ID == id {
+			return app
+		}
+	}
+	return nil
 }
 
 type AppRequest struct {
 	Ping        *PingRequest    `xml:"ping"`
 	UpdateCheck *UpdateRequest  `xml:"updatecheck"`
 	Events      []*EventRequest `xml:"event" json:",omitempty"`
-	Id          string          `xml:"appid,attr,omitempty"`
-	Version     string          `xml:"version,attr,omitempty"`
-	NextVersion string          `xml:"nextversion,attr,omitempty"`
-	Lang        string          `xml:"lang,attr,omitempty"`
+	ID          string          `xml:"appid,attr,omitempty"`
 	Client      string          `xml:"client,attr,omitempty"`
 	InstallAge  string          `xml:"installage,attr,omitempty"`
+	Lang        string          `xml:"lang,attr,omitempty"`
+	NextVersion string          `xml:"nextversion,attr,omitempty"`
+	Version     string          `xml:"version,attr,omitempty"`
 
 	// update engine extensions
-	Track     string `xml:"track,attr,omitempty"`
-	FromTrack string `xml:"from_track,attr,omitempty"`
 	Board     string `xml:"board,attr,omitempty"`
 	DeltaOK   bool   `xml:"delta_okay,attr,omitempty"`
+	FromTrack string `xml:"from_track,attr,omitempty"`
+	Track     string `xml:"track,attr,omitempty"`
 
 	// coreos update engine extensions
-	BootId       string `xml:"bootid,attr,omitempty"`
+	AlephVersion string `xml:"alephversion,attr,omitempty"`
+	BootID       string `xml:"bootid,attr,omitempty"`
 	MachineID    string `xml:"machineid,attr,omitempty"`
 	OEM          string `xml:"oem,attr,omitempty"`
 	OEMVersion   string `xml:"oemversion,attr,omitempty"`
-	AlephVersion string `xml:"alephversion,attr,omitempty"`
 }
 
 func (a *AppRequest) AddUpdateCheck() *UpdateRequest {
-	a.UpdateCheck = new(UpdateRequest)
+	a.UpdateCheck = &UpdateRequest{}
 	return a.UpdateCheck
 }
 
@@ -100,7 +124,7 @@ func (a *AppRequest) AddPing() *PingRequest {
 }
 
 func (a *AppRequest) AddEvent() *EventRequest {
-	event := new(EventRequest)
+	event := &EventRequest{}
 	a.Events = append(a.Events, event)
 	return event
 }
@@ -110,17 +134,17 @@ type UpdateRequest struct {
 }
 
 type PingRequest struct {
-	Active               int `xml:"active,attr,omitempty"`
-	LastActiveReportDays int `xml:"a,attr,omitempty"`
-	LastReportDays       int `xml:"r,attr,omitempty"`
+	Active               int  `xml:"active,attr,omitempty"`
+	LastActiveReportDays *int `xml:"a,attr,omitempty"`
+	LastReportDays       int  `xml:"r,attr,omitempty"`
 }
 
 type EventRequest struct {
 	Type            EventType   `xml:"eventtype,attr"`
 	Result          EventResult `xml:"eventresult,attr"`
+	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
 	NextVersion     string      `xml:"nextversion,attr,omitempty"`
 	PreviousVersion string      `xml:"previousversion,attr,omitempty"`
-	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
 }
 
 // Response sent by the Omaha server
@@ -135,9 +159,25 @@ type Response struct {
 func NewResponse() *Response {
 	return &Response{
 		Protocol: "3.0",
-		Server:   "mantle",
+		Server:   "go-omaha",
 		DayStart: DayStart{ElapsedSeconds: "0"},
 	}
+}
+
+// ParseResponse verifies and returns the parsed Response document.
+// The MIME Content-Type header may be provided to sanity check its
+// value; if blank it is assumed to be XML in UTF-8.
+func ParseResponse(contentType string, body io.Reader) (*Response, error) {
+	if err := checkContentType(contentType); err != nil {
+		return nil, err
+	}
+
+	r := &Response{}
+	if err := parseReqOrResp(body, r); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 type DayStart struct {
@@ -145,16 +185,25 @@ type DayStart struct {
 }
 
 func (r *Response) AddApp(id string, status AppStatus) *AppResponse {
-	a := &AppResponse{Id: id, Status: status}
+	a := &AppResponse{ID: id, Status: status}
 	r.Apps = append(r.Apps, a)
 	return a
+}
+
+func (r *Response) GetApp(id string) *AppResponse {
+	for _, app := range r.Apps {
+		if app.ID == id {
+			return app
+		}
+	}
+	return nil
 }
 
 type AppResponse struct {
 	Ping        *PingResponse    `xml:"ping"`
 	UpdateCheck *UpdateResponse  `xml:"updatecheck"`
 	Events      []*EventResponse `xml:"event" json:",omitempty"`
-	Id          string           `xml:"appid,attr,omitempty"`
+	ID          string           `xml:"appid,attr,omitempty"`
 	Status      AppStatus        `xml:"status,attr,omitempty"`
 }
 
@@ -206,14 +255,6 @@ type OS struct {
 	Arch        string `xml:"arch,attr,omitempty"`
 }
 
-type Event struct {
-	Type            EventType   `xml:"eventtype,attr"`
-	Result          EventResult `xml:"eventresult,attr"`
-	PreviousVersion string      `xml:"previousversion,attr,omitempty"`
-	ErrorCode       string      `xml:"errorcode,attr,omitempty"`
-	Status          string      `xml:"status,attr,omitempty"`
-}
-
 type URL struct {
 	CodeBase string `xml:"codebase,attr"`
 }
@@ -225,17 +266,16 @@ type Manifest struct {
 }
 
 func (m *Manifest) AddPackage() *Package {
-	p := new(Package)
+	p := &Package{}
 	m.Packages = append(m.Packages, p)
 	return p
 }
 
 func (m *Manifest) AddPackageFromPath(path string) (*Package, error) {
-	p := new(Package)
+	p := &Package{}
 	if err := p.FromPath(path); err != nil {
 		return nil, err
 	}
-
 	m.Packages = append(m.Packages, p)
 	return p, nil
 }
@@ -251,7 +291,7 @@ type Action struct {
 
 	// update engine extensions for event="postinstall"
 	DisplayVersion        string `xml:"DisplayVersion,attr,omitempty"`
-	Sha256                string `xml:"sha256,attr,omitempty"`
+	SHA256                string `xml:"sha256,attr,omitempty"`
 	NeedsAdmin            bool   `xml:"needsadmin,attr,omitempty"`
 	IsDeltaPayload        bool   `xml:"IsDeltaPayload,attr,omitempty"`
 	DisablePayloadBackoff bool   `xml:"DisablePayloadBackoff,attr,omitempty"`

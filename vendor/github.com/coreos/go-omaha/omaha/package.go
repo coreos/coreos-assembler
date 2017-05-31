@@ -29,12 +29,11 @@ var (
 	PackageSizeMismatchError = errors.New("package size is invalid")
 )
 
-// Package represents a single downloadable file. The Sha256 attribute
-// is not a standard part of the Omaha protocol which only uses Sha1.
+// Package represents a single downloadable file.
 type Package struct {
 	Name     string `xml:"name,attr"`
-	Sha1     string `xml:"hash,attr"`
-	Sha256   string `xml:"sha256,attr,omitempty"`
+	SHA1     string `xml:"hash,attr"`
+	SHA256   string `xml:"hash_sha256,attr,omitempty"`
 	Size     uint64 `xml:"size,attr"`
 	Required bool   `xml:"required,attr"`
 }
@@ -61,8 +60,8 @@ func (p *Package) FromReader(r io.Reader) error {
 		return err
 	}
 
-	p.Sha1 = sha1b64
-	p.Sha256 = sha256b64
+	p.SHA1 = sha1b64
+	p.SHA256 = sha256b64
 	p.Size = uint64(n)
 	return nil
 }
@@ -87,12 +86,12 @@ func (p *Package) VerifyReader(r io.Reader) error {
 		return PackageSizeMismatchError
 	}
 
-	if p.Sha1 != sha1b64 {
+	if p.SHA1 != sha1b64 {
 		return PackageHashMismatchError
 	}
 
-	// Allow Sha256 to be empty since it is a protocol extension.
-	if p.Sha256 != "" && p.Sha256 != sha256b64 {
+	// Allow SHA256 to be empty since it is a later protocol addition.
+	if p.SHA256 != "" && p.SHA256 != sha256b64 {
 		return PackageHashMismatchError
 	}
 

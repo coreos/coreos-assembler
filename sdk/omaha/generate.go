@@ -21,9 +21,9 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/coreos/go-omaha/omaha"
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/sdk"
 )
 
@@ -106,7 +106,7 @@ func GenerateFullUpdate(dir string) error {
 	}
 
 	plog.Infof("Writing update manifest: %s", update_xml)
-	update := omaha.Update{Id: sdk.GetDefaultAppId()}
+	update := omaha.Update{ID: sdk.GetDefaultAppId()}
 	pkg, err := update.AddPackageFromPath(update_gz)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func GenerateFullUpdate(dir string) error {
 
 	// update engine needs the payload hash here in the action element
 	postinstall := update.AddAction("postinstall")
-	postinstall.Sha256 = pkg.Sha256
+	postinstall.SHA256 = pkg.SHA256
 
 	if ver, err := sdk.VersionsFromDir(dir); err != nil {
 		return err

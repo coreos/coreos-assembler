@@ -17,12 +17,10 @@ package omaha
 import (
 	"net"
 	"net/http"
-
-	"github.com/coreos/mantle/network/neterror"
 )
 
 func NewServer(addr string, updater Updater) (*Server, error) {
-	l, err := net.Listen("tcp4", addr)
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +57,7 @@ type Server struct {
 
 func (s *Server) Serve() error {
 	err := s.srv.Serve(s.l)
-	if neterror.IsClosed(err) {
+	if isClosed(err) {
 		// gracefully quit
 		err = nil
 	}
@@ -67,8 +65,7 @@ func (s *Server) Serve() error {
 }
 
 func (s *Server) Destroy() error {
-	s.l.Close()
-	return nil
+	return s.l.Close()
 }
 
 func (s *Server) Addr() net.Addr {

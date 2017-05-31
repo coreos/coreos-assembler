@@ -47,6 +47,9 @@ func (th *trivialHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, th.Path)
 }
 
+// TrivialServer is an extremely basic Omaha server that ignores all
+// incoming metadata, always responding with the same update response.
+// The update is constructed by calling AddPackage one or more times.
 type TrivialServer struct {
 	*Server
 	tu trivialUpdater
@@ -89,7 +92,7 @@ func (ts *TrivialServer) AddPackage(file, name string) error {
 	if len(ts.tu.Manifest.Actions) == 0 {
 		act := ts.tu.Manifest.AddAction("postinstall")
 		act.DisablePayloadBackoff = true
-		act.Sha256 = pkg.Sha256
+		act.SHA256 = pkg.SHA256
 	}
 
 	ts.Mux.Handle(pkg_prefix+name, &trivialHandler{file})

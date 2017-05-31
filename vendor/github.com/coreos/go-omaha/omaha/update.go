@@ -25,7 +25,7 @@ import (
 // existing install. The application id may not be blank.
 type Update struct {
 	XMLName         xml.Name `xml:"update" json:"-"`
-	Id              string   `xml:"appid,attr"`
+	ID              string   `xml:"appid,attr"`
 	PreviousVersion string   `xml:"previousversion,attr,omitempty"`
 	URL             URL      `xml:"urls>url"`
 	Manifest
