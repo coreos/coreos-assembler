@@ -269,7 +269,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	time.Sleep(splay)
 
 	conf := &platform.RuntimeConfig{
-		OutputDir: h.OutputDir(),
+		OutputDir:          h.OutputDir(),
+		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 	}
 	c, err := NewCluster(pltfrm, conf)
 	if err != nil {

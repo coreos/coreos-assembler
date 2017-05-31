@@ -142,12 +142,14 @@ func (bc *BaseCluster) MangleUserData(userdata string, ignitionVars map[string]s
 		return nil, err
 	}
 
-	keys, err := bc.Keys()
-	if err != nil {
-		return nil, err
-	}
+	if !bc.conf.NoSSHKeyInUserData {
+		keys, err := bc.Keys()
+		if err != nil {
+			return nil, err
+		}
 
-	conf.CopyKeys(keys)
+		conf.CopyKeys(keys)
+	}
 
 	return conf, nil
 }
