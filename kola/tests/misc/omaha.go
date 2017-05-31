@@ -17,9 +17,10 @@ package misc
 import (
 	"time"
 
+	"github.com/coreos/go-omaha/omaha"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/network/omaha"
 	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
