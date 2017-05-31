@@ -27,7 +27,7 @@ import (
 // statically declare state of the platform.TestCluster before the test
 // function is run.
 type Test struct {
-	Name             string // should be uppercase and unique
+	Name             string // should be unique
 	Run              func(cluster.TestCluster)
 	NativeFuncs      map[string]func() error
 	UserData         string
