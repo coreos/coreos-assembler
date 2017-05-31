@@ -62,8 +62,8 @@ var (
 
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
-func NewCluster(conf *Options, outputDir string) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(conf.BaseName, outputDir)
+func NewCluster(conf *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
+	lc, err := local.NewLocalCluster(conf.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}

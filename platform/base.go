@@ -41,14 +41,14 @@ type BaseCluster struct {
 	machmap  map[string]Machine
 
 	name string
-	dir  string
+	conf *RuntimeConfig
 }
 
-func NewBaseCluster(basename, outputDir string) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(basename, outputDir, network.NewRetryDialer())
+func NewBaseCluster(basename string, conf *RuntimeConfig) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(basename, conf, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(basename, outputDir string, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(basename string, conf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func NewBaseClusterWithDialer(basename, outputDir string, dialer network.Dialer)
 		agent:   agent,
 		machmap: make(map[string]Machine),
 		name:    fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
-		dir:     outputDir,
+		conf:    conf,
 	}
 
 	return bc, nil
@@ -198,5 +198,5 @@ func (bc *BaseCluster) Name() string {
 }
 
 func (bc *BaseCluster) OutputDir() string {
-	return bc.dir
+	return bc.conf.OutputDir
 }

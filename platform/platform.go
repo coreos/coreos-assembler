@@ -80,6 +80,11 @@ type Options struct {
 	BaseName string
 }
 
+// RuntimeConfig contains cluster-specific configuration.
+type RuntimeConfig struct {
+	OutputDir string
+}
+
 // Wrap a StdoutPipe as a io.ReadCloser
 type sshPipe struct {
 	s   *ssh.Session

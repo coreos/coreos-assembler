@@ -80,7 +80,9 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Setup failed: %v", err)
 	}
 
-	cluster, err := kola.NewCluster(kolaPlatform, outputDir)
+	cluster, err := kola.NewCluster(kolaPlatform, &platform.RuntimeConfig{
+		OutputDir: outputDir,
+	})
 	if err != nil {
 		return fmt.Errorf("Cluster failed: %v", err)
 	}

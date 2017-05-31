@@ -29,13 +29,13 @@ type cluster struct {
 	api *gcloud.API
 }
 
-func NewCluster(opts *gcloud.Options, outputDir string) (platform.Cluster, error) {
+func NewCluster(opts *gcloud.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := gcloud.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, outputDir)
+	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
 	if err != nil {
 		return nil, err
 	}

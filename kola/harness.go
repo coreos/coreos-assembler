@@ -54,14 +54,14 @@ var (
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
 
-func NewCluster(pltfrm, outputDir string) (cluster platform.Cluster, err error) {
+func NewCluster(pltfrm string, conf *platform.RuntimeConfig) (cluster platform.Cluster, err error) {
 	switch pltfrm {
 	case "qemu":
-		cluster, err = qemu.NewCluster(&QEMUOptions, outputDir)
+		cluster, err = qemu.NewCluster(&QEMUOptions, conf)
 	case "gce":
-		cluster, err = gcloud.NewCluster(&GCEOptions, outputDir)
+		cluster, err = gcloud.NewCluster(&GCEOptions, conf)
 	case "aws":
-		cluster, err = aws.NewCluster(&AWSOptions, outputDir)
+		cluster, err = aws.NewCluster(&AWSOptions, conf)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
@@ -225,7 +225,9 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 		return nil, err
 	}
 
-	cluster, err := NewCluster(pltfrm, testDir)
+	cluster, err := NewCluster(pltfrm, &platform.RuntimeConfig{
+		OutputDir: testDir,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("creating cluster for semver check: %v", err)
 	}
@@ -266,8 +268,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	splay := time.Duration(rand.Int63n(max))
 	time.Sleep(splay)
 
-	testDir := h.OutputDir()
-	c, err := NewCluster(pltfrm, testDir)
+	conf := &platform.RuntimeConfig{
+		OutputDir: h.OutputDir(),
+	}
+	c, err := NewCluster(pltfrm, conf)
 	if err != nil {
 		h.Fatalf("Cluster failed: %v", err)
 	}

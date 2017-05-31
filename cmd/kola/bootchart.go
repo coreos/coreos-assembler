@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/platform"
 )
 
 var cmdBootchart = &cobra.Command{
@@ -55,7 +56,9 @@ func runBootchart(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	cluster, err := kola.NewCluster(kolaPlatform, outputDir)
+	cluster, err := kola.NewCluster(kolaPlatform, &platform.RuntimeConfig{
+		OutputDir: outputDir,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		os.Exit(1)

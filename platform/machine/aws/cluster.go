@@ -35,13 +35,13 @@ type cluster struct {
 // NewCluster will consume the environment variables $AWS_REGION,
 // $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
 // spawn instances in and the credentials to use to authenticate.
-func NewCluster(opts *aws.Options, outputDir string) (platform.Cluster, error) {
+func NewCluster(opts *aws.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := aws.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, outputDir)
+	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
 	if err != nil {
 		return nil, err
 	}

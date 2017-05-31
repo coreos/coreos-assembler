@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
@@ -53,7 +54,9 @@ func runQemu(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	cluster, err := qemu.NewCluster(&kola.QEMUOptions, outputDir)
+	cluster, err := qemu.NewCluster(&kola.QEMUOptions, &platform.RuntimeConfig{
+		OutputDir: outputDir,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cluster failed: %v\n", err)
 		os.Exit(1)
