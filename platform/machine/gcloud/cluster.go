@@ -82,7 +82,7 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		extIP: extip,
 	}
 
-	dir := filepath.Join(gc.OutputDir(), gm.ID())
+	dir := filepath.Join(gc.Conf().OutputDir, gm.ID())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		gm.Destroy()
 		return nil, err

@@ -199,10 +199,6 @@ func (bc *BaseCluster) Name() string {
 	return bc.name
 }
 
-func (bc *BaseCluster) OutputDir() string {
-	return bc.conf.OutputDir
-}
-
 func (bc *BaseCluster) Conf() RuntimeConfig {
 	return *bc.conf
 }

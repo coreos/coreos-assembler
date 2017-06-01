@@ -88,7 +88,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		mach:    instances[0],
 	}
 
-	dir := filepath.Join(ac.OutputDir(), mach.ID())
+	dir := filepath.Join(ac.Conf().OutputDir, mach.ID())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		mach.Destroy()
 		return nil, err
