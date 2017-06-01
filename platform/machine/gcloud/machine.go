@@ -17,6 +17,7 @@ type machine struct {
 	extIP   string
 	dir     string
 	journal *platform.Journal
+	console string
 }
 
 func (gm *machine) ID() string {
@@ -80,8 +81,13 @@ func (gm *machine) Destroy() error {
 	return nil
 }
 
+func (gm *machine) ConsoleOutput() string {
+	return gm.console
+}
+
 func (gm *machine) saveConsole() error {
-	data, err := gm.gc.api.GetConsoleOutput(gm.name)
+	var err error
+	gm.console, err = gm.gc.api.GetConsoleOutput(gm.name)
 	if err != nil {
 		return err
 	}
@@ -92,7 +98,7 @@ func (gm *machine) saveConsole() error {
 		return err
 	}
 	defer f.Close()
-	f.WriteString(data)
+	f.WriteString(gm.console)
 
 	return nil
 }

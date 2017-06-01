@@ -57,6 +57,10 @@ type Machine interface {
 
 	// Destroy terminates the machine and frees associated resources.
 	Destroy() error
+
+	// ConsoleOutput returns the machine's console output if available,
+	// or an empty string.  Only expected to be valid after Destroy().
+	ConsoleOutput() string
 }
 
 // Cluster represents a cluster of CoreOS machines within a single platform.
@@ -73,6 +77,10 @@ type Cluster interface {
 	// Destroy terminates each machine in the cluster and frees any other
 	// associated resources.
 	Destroy() error
+
+	// ConsoleOutput returns a map of console output from destroyed
+	// cluster machines.
+	ConsoleOutput() map[string]string
 }
 
 // Options contains the base options for all clusters.

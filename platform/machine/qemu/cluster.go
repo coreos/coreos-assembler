@@ -119,10 +119,11 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	}
 
 	qm := &machine{
-		qc:      qc,
-		id:      id.String(),
-		netif:   netif,
-		journal: journal,
+		qc:          qc,
+		id:          id.String(),
+		netif:       netif,
+		journal:     journal,
+		consolePath: filepath.Join(dir, "console.txt"),
 	}
 
 	var qmCmd []string
@@ -143,7 +144,6 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		panic(qc.conf.Board)
 	}
 
-	consolePath := filepath.Join(dir, "console.txt")
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCmd = append(qmCmd,
 		"-bios", qc.conf.BIOSImage,
@@ -156,7 +156,7 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 		"-device", qc.virtio("blk", "drive=blk"),
 		"-netdev", "tap,id=tap,fd=3",
 		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac),
-		"-chardev", "file,id=log,path="+consolePath,
+		"-chardev", "file,id=log,path="+qm.consolePath,
 		"-serial", "chardev:log",
 	)
 

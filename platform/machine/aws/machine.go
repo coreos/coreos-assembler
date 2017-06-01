@@ -30,6 +30,7 @@ type machine struct {
 	mach    *ec2.Instance
 	dir     string
 	journal *platform.Journal
+	console string
 }
 
 func (am *machine) ID() string {
@@ -93,8 +94,13 @@ func (am *machine) Destroy() error {
 	return nil
 }
 
+func (am *machine) ConsoleOutput() string {
+	return am.console
+}
+
 func (am *machine) saveConsole() error {
-	data, err := am.cluster.api.GetConsoleOutput(am.ID(), true)
+	var err error
+	am.console, err = am.cluster.api.GetConsoleOutput(am.ID(), true)
 	if err != nil {
 		return err
 	}
@@ -105,7 +111,7 @@ func (am *machine) saveConsole() error {
 		return err
 	}
 	defer f.Close()
-	f.WriteString(data)
+	f.WriteString(am.console)
 
 	return nil
 }
