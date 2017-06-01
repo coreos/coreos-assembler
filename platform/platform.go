@@ -85,6 +85,7 @@ type RuntimeConfig struct {
 	OutputDir string
 
 	NoSSHKeyInUserData bool // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata bool // don't add SSH key to platform metadata
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser

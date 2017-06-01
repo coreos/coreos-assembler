@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/crypto/ssh/agent"
+
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
 )
@@ -58,9 +60,12 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		return nil, err
 	}
 
-	keys, err := gc.Keys()
-	if err != nil {
-		return nil, err
+	var keys []*agent.Key
+	if !gc.Conf().NoSSHKeyInMetadata {
+		keys, err = gc.Keys()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	instance, err := gc.api.CreateInstance(conf.String(), keys)

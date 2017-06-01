@@ -51,13 +51,15 @@ func NewCluster(opts *aws.Options, conf *platform.RuntimeConfig) (platform.Clust
 		api:         api,
 	}
 
-	keys, err := ac.Keys()
-	if err != nil {
-		return nil, err
-	}
+	if !conf.NoSSHKeyInMetadata {
+		keys, err := ac.Keys()
+		if err != nil {
+			return nil, err
+		}
 
-	if err := api.AddKey(bc.Name(), keys[0].String()); err != nil {
-		return nil, err
+		if err := api.AddKey(bc.Name(), keys[0].String()); err != nil {
+			return nil, err
+		}
 	}
 
 	return ac, nil
@@ -72,7 +74,11 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		return nil, err
 	}
 
-	instances, err := ac.api.CreateInstances(ac.Name(), ac.Name(), conf.String(), 1)
+	var keyname string
+	if !ac.Conf().NoSSHKeyInMetadata {
+		keyname = ac.Name()
+	}
+	instances, err := ac.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +126,10 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 }
 
 func (ac *cluster) Destroy() error {
-	if err := ac.api.DeleteKey(ac.Name()); err != nil {
-		return err
+	if !ac.Conf().NoSSHKeyInMetadata {
+		if err := ac.api.DeleteKey(ac.Name()); err != nil {
+			return err
+		}
 	}
 
 	return ac.BaseCluster.Destroy()

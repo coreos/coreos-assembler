@@ -26,6 +26,7 @@ type Flag int
 
 const (
 	NoSSHKeyInUserData Flag = iota // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata             // don't add SSH key to platform metadata
 )
 
 // Test provides the main test abstraction for kola. The run function is
