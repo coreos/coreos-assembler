@@ -17,7 +17,6 @@ package aws
 import (
 	"encoding/base64"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -44,7 +43,7 @@ func (a *API) DeleteKey(name string) error {
 	return err
 }
 
-// CheckInstances waits until a set of EC2 instances are accessible by SSH, waiting a maximum of 'd' time.
+// CheckInstances waits until a set of EC2 instances are running and have an IP address, waiting a maximum of 'd' time.
 // Returns lists of the accessible and inaccessible instances.
 func (a *API) CheckInstances(ids []string, d time.Duration) ([]string, []string, error) {
 	after := time.After(d)
@@ -81,13 +80,6 @@ func (a *API) CheckInstances(ids []string, d time.Duration) ([]string, []string,
 				if i.PublicIpAddress == nil {
 					continue
 				}
-
-				// XXX: ssh is a terrible way to check this, but it is all we have.
-				c, err := net.DialTimeout("tcp", *i.PublicIpAddress+":22", 3*time.Second)
-				if err != nil {
-					continue
-				}
-				c.Close()
 
 				online = append(online, *i.InstanceId)
 				for j, v := range offline {
@@ -165,7 +157,7 @@ func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, coun
 	return reservations.Instances, nil
 }
 
-// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are reachable by SSH.
+// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are running and have an IP address.
 func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
 	var savedErr error
 	ids := make([]string, 0, count)
