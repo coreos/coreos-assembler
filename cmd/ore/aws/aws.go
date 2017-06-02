@@ -44,7 +44,7 @@ var (
 func init() {
 	defaultRegion := os.Getenv("AWS_REGION")
 	if defaultRegion == "" {
-		defaultRegion = "us-east-1"
+		defaultRegion = "us-west-2"
 	}
 
 	AWS.PersistentFlags().StringVar(&credentialsFile, "credentials-file", "", "AWS credentials file")
