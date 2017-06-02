@@ -16,6 +16,7 @@ package qemu
 
 import (
 	"context"
+	"io/ioutil"
 
 	"golang.org/x/crypto/ssh"
 
@@ -25,11 +26,13 @@ import (
 )
 
 type machine struct {
-	qc      *Cluster
-	id      string
-	qemu    exec.Cmd
-	netif   *local.Interface
-	journal *platform.Journal
+	qc          *Cluster
+	id          string
+	qemu        exec.Cmd
+	netif       *local.Interface
+	journal     *platform.Journal
+	consolePath string
+	console     string
 }
 
 func (m *machine) ID() string {
@@ -78,7 +81,18 @@ func (m *machine) Destroy() error {
 		err = err2
 	}
 
+	buf, err2 := ioutil.ReadFile(m.consolePath)
+	if err2 == nil {
+		m.console = string(buf)
+	} else if err == nil {
+		err = err2
+	}
+
 	m.qc.DelMach(m)
 
 	return err
+}
+
+func (m *machine) ConsoleOutput() string {
+	return m.console
 }

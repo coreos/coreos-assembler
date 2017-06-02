@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -47,6 +48,38 @@ var (
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
+
+	consoleChecks = []struct {
+		desc     string
+		match    *regexp.Regexp
+		skipFlag *register.Flag
+	}{
+		{
+			desc:     "emergency shell",
+			match:    regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
+			skipFlag: &[]register.Flag{register.NoEmergencyShellCheck}[0],
+		},
+		{
+			desc:  "kernel panic",
+			match: regexp.MustCompile("Kernel panic - not syncing"),
+		},
+		{
+			desc:  "kernel oops",
+			match: regexp.MustCompile("Oops:"),
+		},
+		{
+			desc:  "Go panic",
+			match: regexp.MustCompile("panic\\("),
+		},
+		{
+			desc:  "segfault",
+			match: regexp.MustCompile("SEGV"),
+		},
+		{
+			desc:  "core dump",
+			match: regexp.MustCompile("[Cc]ore dump"),
+		},
+	}
 )
 
 // NativeRunner is a closure passed to all kola test functions and used
@@ -278,6 +311,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		if err := c.Destroy(); err != nil {
 			plog.Errorf("cluster.Destroy(): %v", err)
 		}
+		checkConsole(h, t, c)
 	}()
 
 	if t.ClusterSize > 0 {
@@ -346,6 +380,21 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 		}
 	}
 	c.Fatalf("Unable to locate kolet binary for %s", mArch)
+}
+
+func checkConsole(h *harness.H, t *register.Test, c platform.Cluster) {
+	for id, output := range c.ConsoleOutput() {
+		for _, check := range consoleChecks {
+			if check.skipFlag != nil {
+				if t.HasFlag(*check.skipFlag) {
+					continue
+				}
+			}
+			if check.match.Find([]byte(output)) != nil {
+				h.Errorf("Found %s on machine %s console", check.desc, id)
+			}
+		}
+	}
 }
 
 // CleanOutputDir creates an empty directory, any existing data will be wiped!

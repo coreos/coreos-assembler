@@ -37,8 +37,9 @@ import (
 type BaseCluster struct {
 	agent *network.SSHAgent
 
-	machlock sync.Mutex
-	machmap  map[string]Machine
+	machlock   sync.Mutex
+	machmap    map[string]Machine
+	consolemap map[string]string
 
 	name string
 	conf *RuntimeConfig
@@ -55,10 +56,11 @@ func NewBaseClusterWithDialer(basename string, conf *RuntimeConfig, dialer netwo
 	}
 
 	bc := &BaseCluster{
-		agent:   agent,
-		machmap: make(map[string]Machine),
-		name:    fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
-		conf:    conf,
+		agent:      agent,
+		machmap:    make(map[string]Machine),
+		consolemap: make(map[string]string),
+		name:       fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
+		conf:       conf,
 	}
 
 	return bc, nil
@@ -123,6 +125,7 @@ func (bc *BaseCluster) DelMach(m Machine) {
 	bc.machlock.Lock()
 	defer bc.machlock.Unlock()
 	delete(bc.machmap, m.ID())
+	bc.consolemap[m.ID()] = m.ConsoleOutput()
 }
 
 func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
@@ -201,4 +204,14 @@ func (bc *BaseCluster) Name() string {
 
 func (bc *BaseCluster) Conf() RuntimeConfig {
 	return *bc.conf
+}
+
+func (bc *BaseCluster) ConsoleOutput() map[string]string {
+	ret := map[string]string{}
+	bc.machlock.Lock()
+	defer bc.machlock.Unlock()
+	for k, v := range bc.consolemap {
+		ret[k] = v
+	}
+	return ret
 }

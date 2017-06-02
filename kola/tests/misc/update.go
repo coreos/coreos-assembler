@@ -38,6 +38,7 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.update.badverity",
 		UserData:    "#cloud-config",
+		Flags:       []register.Flag{register.NoEmergencyShellCheck},
 		MinVersion:  semver.Version{Major: 1367},
 	})
 	register.Register(&register.Test{
@@ -45,6 +46,7 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.update.badusr",
 		UserData:    "#cloud-config",
+		Flags:       []register.Flag{register.NoEmergencyShellCheck},
 		MinVersion:  semver.Version{Major: 1367},
 	})
 }

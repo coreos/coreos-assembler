@@ -88,19 +88,19 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		mach:    instances[0],
 	}
 
-	dir := filepath.Join(ac.Conf().OutputDir, mach.ID())
-	if err := os.Mkdir(dir, 0777); err != nil {
+	mach.dir = filepath.Join(ac.Conf().OutputDir, mach.ID())
+	if err := os.Mkdir(mach.dir, 0777); err != nil {
 		mach.Destroy()
 		return nil, err
 	}
 
-	confPath := filepath.Join(dir, "user-data")
+	confPath := filepath.Join(mach.dir, "user-data")
 	if err := conf.WriteFile(confPath); err != nil {
 		mach.Destroy()
 		return nil, err
 	}
 
-	if mach.journal, err = platform.NewJournal(dir); err != nil {
+	if mach.journal, err = platform.NewJournal(mach.dir); err != nil {
 		mach.Destroy()
 		return nil, err
 	}
