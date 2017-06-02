@@ -130,7 +130,7 @@ func runUpdatePayload(cmd *cobra.Command, args []string) {
 }
 
 func runUpdateTest() error {
-	outputDir, err := kola.CleanOutputDir(outputDir)
+	outputDir, err := kola.SetupOutputDir(outputDir, "qemu")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
 		os.Exit(1)

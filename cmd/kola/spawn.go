@@ -75,7 +75,7 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		userdata = "#cloud-config"
 	}
 
-	outputDir, err = kola.CleanOutputDir(outputDir)
+	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
 		return fmt.Errorf("Setup failed: %v", err)
 	}

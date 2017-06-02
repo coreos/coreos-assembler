@@ -84,7 +84,14 @@ func runRun(cmd *cobra.Command, args []string) {
 		pattern = "*" // run all tests by default
 	}
 
-	err := kola.RunTests(pattern, kolaPlatform, outputDir)
+	var err error
+	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	err = kola.RunTests(pattern, kolaPlatform, outputDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
