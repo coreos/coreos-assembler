@@ -150,7 +150,7 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 func RunTests(pattern, pltfrm, outputDir string) error {
 	// Avoid incurring cost of starting machine in getClusterSemver when
 	// either:
-	// 1) we already know 0 tests will run
+	// 1) none of the selected tests care about the version
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
 	tests, err := filterTests(register.Tests, pattern, pltfrm, semver.Version{})
@@ -158,14 +158,11 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 		plog.Fatal(err)
 	}
 
-	var skipGetVersion bool
-	if len(tests) == 0 {
-		skipGetVersion = true
-	} else if len(tests) == 1 {
-		for name := range tests {
-			if name == pattern {
-				skipGetVersion = true
-			}
+	skipGetVersion := true
+	for name, t := range tests {
+		if name != pattern && (t.MinVersion != semver.Version{} || t.EndVersion != semver.Version{}) {
+			skipGetVersion = false
+			break
 		}
 	}
 
