@@ -80,6 +80,14 @@ type Options struct {
 	BaseName string
 }
 
+// RuntimeConfig contains cluster-specific configuration.
+type RuntimeConfig struct {
+	OutputDir string
+
+	NoSSHKeyInUserData bool // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata bool // don't add SSH key to platform metadata
+}
+
 // Wrap a StdoutPipe as a io.ReadCloser
 type sshPipe struct {
 	s   *ssh.Session

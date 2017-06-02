@@ -101,7 +101,7 @@ func (a *API) CheckInstances(ids []string, d time.Duration) ([]string, []string,
 	return online, offline, nil
 }
 
-// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used.
+// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used.
 func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
@@ -115,11 +115,15 @@ func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, coun
 	if err != nil {
 		return nil, fmt.Errorf("error resolving security group: %v", err)
 	}
+	key := &keyname
+	if keyname == "" {
+		key = nil
+	}
 	inst := ec2.RunInstancesInput{
 		ImageId:          &a.opts.AMI,
 		MinCount:         &cnt,
 		MaxCount:         &cnt,
-		KeyName:          &keyname,
+		KeyName:          key,
 		InstanceType:     &a.opts.InstanceType,
 		SecurityGroupIds: []*string{&sgId},
 		UserData:         ud,
@@ -159,7 +163,7 @@ func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, coun
 	return reservations.Instances, nil
 }
 
-// CreateInstances creates EC2 instances with a given name tag, ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are reachable by SSH.
+// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are reachable by SSH.
 func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
 	var savedErr error
 	ids := make([]string, 0, count)

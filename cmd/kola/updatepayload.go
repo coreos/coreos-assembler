@@ -136,7 +136,9 @@ func runUpdateTest() error {
 		os.Exit(1)
 	}
 
-	cluster, err := qemu.NewCluster(&kola.QEMUOptions, outputDir)
+	cluster, err := qemu.NewCluster(&kola.QEMUOptions, &platform.RuntimeConfig{
+		OutputDir: outputDir,
+	})
 	if err != nil {
 		return fmt.Errorf("new cluster: %v", err)
 	}

@@ -22,12 +22,19 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 )
 
+type Flag int
+
+const (
+	NoSSHKeyInUserData Flag = iota // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata             // don't add SSH key to platform metadata
+)
+
 // Test provides the main test abstraction for kola. The run function is
 // the actual testing function while the other fields provide ways to
 // statically declare state of the platform.TestCluster before the test
 // function is run.
 type Test struct {
-	Name             string // should be uppercase and unique
+	Name             string // should be unique
 	Run              func(cluster.TestCluster)
 	NativeFuncs      map[string]func() error
 	UserData         string
@@ -35,6 +42,7 @@ type Test struct {
 	Platforms        []string // whitelist of platforms to run test against -- defaults to all
 	ExcludePlatforms []string // blacklist of platforms to ignore -- defaults to none
 	Architectures    []string // whitelist of machine architectures supported -- defaults to all
+	Flags            []Flag   // special-case options for this test
 
 	// MinVersion prevents the test from executing on CoreOS machines
 	// less than MinVersion. This will be ignored if the name fully
@@ -64,4 +72,13 @@ func Register(t *Test) {
 	}
 
 	Tests[t.Name] = t
+}
+
+func (t *Test) HasFlag(flag Flag) bool {
+	for _, f := range t.Flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
 }

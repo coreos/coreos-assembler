@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
-	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -37,13 +35,13 @@ type cluster struct {
 // NewCluster will consume the environment variables $AWS_REGION,
 // $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
 // spawn instances in and the credentials to use to authenticate.
-func NewCluster(opts *aws.Options, outputDir string) (platform.Cluster, error) {
+func NewCluster(opts *aws.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := aws.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, outputDir)
+	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -53,38 +51,34 @@ func NewCluster(opts *aws.Options, outputDir string) (platform.Cluster, error) {
 		api:         api,
 	}
 
-	keys, err := ac.Keys()
-	if err != nil {
-		return nil, err
-	}
+	if !conf.NoSSHKeyInMetadata {
+		keys, err := ac.Keys()
+		if err != nil {
+			return nil, err
+		}
 
-	if err := api.AddKey(bc.Name(), keys[0].String()); err != nil {
-		return nil, err
+		if err := api.AddKey(bc.Name(), keys[0].String()); err != nil {
+			return nil, err
+		}
 	}
 
 	return ac, nil
 }
 
 func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	// hacky solution for unified ignition metadata variables
-	if strings.Contains(userdata, `"ignition":`) {
-		userdata = strings.Replace(userdata, "$public_ipv4", "${COREOS_EC2_IPV4_PUBLIC}", -1)
-		userdata = strings.Replace(userdata, "$private_ipv4", "${COREOS_EC2_IPV4_LOCAL}", -1)
-	}
-
-	conf, err := conf.New(userdata)
+	conf, err := ac.MangleUserData(userdata, map[string]string{
+		"$public_ipv4":  "${COREOS_EC2_IPV4_PUBLIC}",
+		"$private_ipv4": "${COREOS_EC2_IPV4_LOCAL}",
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := ac.Keys()
-	if err != nil {
-		return nil, err
+	var keyname string
+	if !ac.Conf().NoSSHKeyInMetadata {
+		keyname = ac.Name()
 	}
-
-	conf.CopyKeys(keys)
-
-	instances, err := ac.api.CreateInstances(ac.Name(), ac.Name(), conf.String(), 1)
+	instances, err := ac.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +88,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		mach:    instances[0],
 	}
 
-	dir := filepath.Join(ac.OutputDir(), mach.ID())
+	dir := filepath.Join(ac.Conf().OutputDir, mach.ID())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		mach.Destroy()
 		return nil, err
@@ -132,8 +126,10 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 }
 
 func (ac *cluster) Destroy() error {
-	if err := ac.api.DeleteKey(ac.Name()); err != nil {
-		return err
+	if !ac.Conf().NoSSHKeyInMetadata {
+		if err := ac.api.DeleteKey(ac.Name()); err != nil {
+			return err
+		}
 	}
 
 	return ac.BaseCluster.Destroy()

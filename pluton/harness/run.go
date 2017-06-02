@@ -63,7 +63,9 @@ func RunSuite(pattern string) {
 		bastionOpts := Opts.GCEOptions
 		bastionOpts.MachineType = "n1-standard-4"
 
-		cloud, err = gcloud.NewCluster(&bastionOpts, bastionDir)
+		cloud, err = gcloud.NewCluster(&bastionOpts, &platform.RuntimeConfig{
+			OutputDir: bastionDir,
+		})
 		if err != nil {
 			fmt.Printf("setting up bastion cluster: %v\n", err)
 			os.Exit(1)
@@ -120,7 +122,9 @@ func runTest(t pluton.Test, h *harness.H) {
 
 	switch Opts.CloudPlatform {
 	case "gce":
-		cloud, err = gcloud.NewCluster(&Opts.GCEOptions, h.OutputDir())
+		cloud, err = gcloud.NewCluster(&Opts.GCEOptions, &platform.RuntimeConfig{
+			OutputDir: h.OutputDir(),
+		})
 	default:
 		err = fmt.Errorf("invalid cloud platform %v", Opts.CloudPlatform)
 	}

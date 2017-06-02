@@ -19,11 +19,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
-	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -31,13 +31,13 @@ type cluster struct {
 	api *gcloud.API
 }
 
-func NewCluster(opts *gcloud.Options, outputDir string) (platform.Cluster, error) {
+func NewCluster(opts *gcloud.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := gcloud.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, outputDir)
+	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -52,23 +52,21 @@ func NewCluster(opts *gcloud.Options, outputDir string) (platform.Cluster, error
 
 // Calling in parallel is ok
 func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	// hacky solution for unified ignition metadata variables
-	if strings.Contains(userdata, `"ignition":`) {
-		userdata = strings.Replace(userdata, "$public_ipv4", "${COREOS_GCE_IP_EXTERNAL_0}", -1)
-		userdata = strings.Replace(userdata, "$private_ipv4", "${COREOS_GCE_IP_LOCAL_0}", -1)
-	}
-
-	conf, err := conf.New(userdata)
+	conf, err := gc.MangleUserData(userdata, map[string]string{
+		"$public_ipv4":  "${COREOS_GCE_IP_EXTERNAL_0}",
+		"$private_ipv4": "${COREOS_GCE_IP_LOCAL_0}",
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := gc.Keys()
-	if err != nil {
-		return nil, err
+	var keys []*agent.Key
+	if !gc.Conf().NoSSHKeyInMetadata {
+		keys, err = gc.Keys()
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	conf.CopyKeys(keys)
 
 	instance, err := gc.api.CreateInstance(conf.String(), keys)
 	if err != nil {
@@ -84,7 +82,7 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		extIP: extip,
 	}
 
-	dir := filepath.Join(gc.OutputDir(), gm.ID())
+	dir := filepath.Join(gc.Conf().OutputDir, gm.ID())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		gm.Destroy()
 		return nil, err

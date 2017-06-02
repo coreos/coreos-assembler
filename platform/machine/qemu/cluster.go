@@ -27,7 +27,6 @@ import (
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
@@ -63,8 +62,8 @@ var (
 
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
-func NewCluster(conf *Options, outputDir string) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(conf.BaseName, outputDir)
+func NewCluster(conf *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
+	lc, err := local.NewLocalCluster(conf.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +79,7 @@ func NewCluster(conf *Options, outputDir string) (platform.Cluster, error) {
 func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	id := uuid.NewV4()
 
-	dir := filepath.Join(qc.OutputDir(), id.String())
+	dir := filepath.Join(qc.Conf().OutputDir, id.String())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		return nil, err
 	}
@@ -91,23 +90,14 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	netif := qc.Dnsmasq.GetInterface("br0")
 	ip := strings.Split(netif.DHCPv4[0].String(), "/")[0]
 
-	cfg = strings.Replace(cfg, "$public_ipv4", ip, -1)
-	cfg = strings.Replace(cfg, "$private_ipv4", ip, -1)
-
-	conf, err := conf.New(cfg)
+	conf, err := qc.MangleUserData(cfg, map[string]string{
+		"$public_ipv4":  ip,
+		"$private_ipv4": ip,
+	})
 	if err != nil {
 		qc.mu.Unlock()
 		return nil, err
 	}
-
-	keys, err := qc.Keys()
-	if err != nil {
-		qc.mu.Unlock()
-		return nil, err
-	}
-
-	conf.CopyKeys(keys)
-
 	qc.mu.Unlock()
 
 	var confPath string

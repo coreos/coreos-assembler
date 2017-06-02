@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/network"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -39,14 +41,14 @@ type BaseCluster struct {
 	machmap  map[string]Machine
 
 	name string
-	dir  string
+	conf *RuntimeConfig
 }
 
-func NewBaseCluster(basename, outputDir string) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(basename, outputDir, network.NewRetryDialer())
+func NewBaseCluster(basename string, conf *RuntimeConfig) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(basename, conf, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(basename, outputDir string, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(basename string, conf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ func NewBaseClusterWithDialer(basename, outputDir string, dialer network.Dialer)
 		agent:   agent,
 		machmap: make(map[string]Machine),
 		name:    fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
-		dir:     outputDir,
+		conf:    conf,
 	}
 
 	return bc, nil
@@ -127,6 +129,31 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 	return bc.agent.List()
 }
 
+func (bc *BaseCluster) MangleUserData(userdata string, ignitionVars map[string]string) (*conf.Conf, error) {
+	// hacky solution for unified ignition metadata variables
+	if strings.Contains(userdata, `"ignition":`) {
+		for k, v := range ignitionVars {
+			userdata = strings.Replace(userdata, k, v, -1)
+		}
+	}
+
+	conf, err := conf.New(userdata)
+	if err != nil {
+		return nil, err
+	}
+
+	if !bc.conf.NoSSHKeyInUserData {
+		keys, err := bc.Keys()
+		if err != nil {
+			return nil, err
+		}
+
+		conf.CopyKeys(keys)
+	}
+
+	return conf, nil
+}
+
 // Destroy destroys each machine in the cluster and closes the SSH agent.
 func (bc *BaseCluster) Destroy() error {
 	var err multierror.Error
@@ -172,6 +199,6 @@ func (bc *BaseCluster) Name() string {
 	return bc.name
 }
 
-func (bc *BaseCluster) OutputDir() string {
-	return bc.dir
+func (bc *BaseCluster) Conf() RuntimeConfig {
+	return *bc.conf
 }
