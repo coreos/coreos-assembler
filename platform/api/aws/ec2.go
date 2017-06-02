@@ -43,60 +43,8 @@ func (a *API) DeleteKey(name string) error {
 	return err
 }
 
-// CheckInstances waits until a set of EC2 instances are running and have an IP address, waiting a maximum of 'd' time.
-// Returns lists of the accessible and inaccessible instances.
-func (a *API) CheckInstances(ids []string, d time.Duration) ([]string, []string, error) {
-	after := time.After(d)
-	online := make([]string, 0, len(ids))
-	offline := make([]string, len(ids))
-	copy(offline, ids)
-
-	// loop until all machines are online
-	for len(offline) > 0 {
-		select {
-		case <-after:
-			return online, offline, fmt.Errorf("timed out waiting for instances to run")
-		default:
-		}
-
-		// don't make api calls too quickly, or we will hit the rate limit
-		time.Sleep(10 * time.Second)
-
-		getinst := &ec2.DescribeInstancesInput{
-			InstanceIds: aws.StringSlice(offline),
-		}
-
-		insts, err := a.ec2.DescribeInstances(getinst)
-		if err != nil {
-			return online, offline, err
-		}
-
-		for _, r := range insts.Reservations {
-			for _, i := range r.Instances {
-				if *i.State.Name != ec2.InstanceStateNameRunning {
-					continue
-				}
-
-				if i.PublicIpAddress == nil {
-					continue
-				}
-
-				online = append(online, *i.InstanceId)
-				for j, v := range offline {
-					if v == *i.InstanceId {
-						offline = append(offline[:j], offline[j+1:]...)
-						break
-					}
-				}
-			}
-		}
-	}
-
-	return online, offline, nil
-}
-
-// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used.
-func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
+// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are running and have an IP address.
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -154,53 +102,40 @@ func (a *API) CreateInstancesWithoutWaiting(name, keyname, userdata string, coun
 		time.Sleep(5 * time.Second)
 	}
 
-	return reservations.Instances, nil
-}
+	// loop until all machines are online
+	var insts []*ec2.Instance
+	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
+	after := time.After(5 * time.Minute)
+	for done := false; !done; {
+		select {
+		case <-after:
+			a.TerminateInstances(ids)
+			return nil, fmt.Errorf("timed out waiting for instances to run")
+		default:
+		}
 
-// CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are running and have an IP address.
-func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
-	var savedErr error
-	ids := make([]string, 0, count)
+		// don't make api calls too quickly, or we will hit the rate limit
+		time.Sleep(10 * time.Second)
 
-	// try 4 times to get a working set of instances
-	for try := 0; try < 4; try++ {
-		instances, err := a.CreateInstancesWithoutWaiting(name, keyname, userdata, count-uint64(len(ids)))
+		desc, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
+			InstanceIds: aws.StringSlice(ids),
+		})
 		if err != nil {
 			a.TerminateInstances(ids)
 			return nil, err
 		}
+		insts = desc.Reservations[0].Instances
 
-		currentIds := make([]string, len(instances))
-		for i, inst := range instances {
-			currentIds[i] = *inst.InstanceId
+		done = true
+		for _, i := range insts {
+			if *i.State.Name != ec2.InstanceStateNameRunning || i.PublicIpAddress == nil {
+				done = false
+				break
+			}
 		}
-
-		// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
-		online, offline, err := a.CheckInstances(currentIds, 5*time.Minute)
-		ids = append(ids, online...)
-		if err == nil {
-			break
-		}
-		a.TerminateInstances(offline)
-		savedErr = err
-	}
-	if uint64(len(ids)) < count {
-		a.TerminateInstances(ids)
-		return nil, savedErr
 	}
 
-	// call DescribeInstances to get machine IP
-	getinst := &ec2.DescribeInstancesInput{
-		InstanceIds: aws.StringSlice(ids),
-	}
-
-	insts, err := a.ec2.DescribeInstances(getinst)
-	if err != nil {
-		a.TerminateInstances(ids)
-		return nil, err
-	}
-
-	return insts.Reservations[0].Instances, nil
+	return insts, nil
 }
 
 // TerminateInstances schedules EC2 instances to be terminated.
