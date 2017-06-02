@@ -399,15 +399,5 @@ func checkConsole(h *harness.H, t *register.Test, c platform.Cluster) {
 
 // CleanOutputDir creates an empty directory, any existing data will be wiped!
 func CleanOutputDir(outputDir string) (string, error) {
-	outputDir = filepath.Clean(outputDir)
-	if outputDir == "." {
-		return "", fmt.Errorf("kola: missing output directory path")
-	}
-	if err := os.RemoveAll(outputDir); err != nil {
-		return "", err
-	}
-	if err := os.MkdirAll(outputDir, 0777); err != nil {
-		return "", err
-	}
-	return outputDir, nil
+	return harness.CleanOutputDir(outputDir)
 }
