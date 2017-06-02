@@ -237,9 +237,9 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 	}
 
 	if err != nil {
-		fmt.Println("FAIL")
+		fmt.Printf("FAIL, output in %v\n", outputDir)
 	} else {
-		fmt.Println("PASS")
+		fmt.Printf("PASS, output in %v\n", outputDir)
 	}
 
 	return err
