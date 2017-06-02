@@ -188,9 +188,11 @@ func (s *Suite) Run() (err error) {
 		f.Close()
 	}
 
-	if err := s.cleanOutputDir(); err != nil {
+	outputDir, err := CleanOutputDir(s.opts.OutputDir)
+	if err != nil {
 		return err
 	}
+	s.opts.OutputDir = outputDir
 
 	tap, err := os.Create(s.outputPath("test.tap"))
 	if err != nil {
@@ -286,47 +288,4 @@ func (s *Suite) runTests(out, tap io.Writer) error {
 // outputPath returns the file name under Options.OutputDir.
 func (s *Suite) outputPath(path string) string {
 	return filepath.Join(s.opts.OutputDir, path)
-}
-
-// cleanOutputDir creates/empties Options.OutputDir.
-// If the path already exists it must be named similar to `_foo_temp`
-// or contain `.harness_temp` to indicate removal is safe; we don't
-// want users wrecking things by accident with `-outputdir /tmp`
-func (s *Suite) cleanOutputDir() error {
-	// Clean up the path to ensure errors are clear.
-	s.opts.OutputDir = filepath.Clean(s.opts.OutputDir)
-
-	if s.opts.OutputDir == "." {
-		return errors.New("harness: no output directory provided")
-	}
-
-	// Remove any existing data if it is safe to do so.
-	marker := filepath.Join(s.opts.OutputDir, ".harness_temp")
-	base := filepath.Base(s.opts.OutputDir)
-	safe := base[0] == '_' && strings.HasSuffix(base, "_temp")
-	if !safe {
-		if _, err := os.Stat(marker); err == nil {
-			safe = true
-		}
-	}
-	if safe {
-		if err := os.RemoveAll(s.opts.OutputDir); err != nil {
-			return err
-		}
-	}
-
-	if err := os.Mkdir(s.opts.OutputDir, 0777); err != nil {
-		if !safe && os.IsExist(err) {
-			return fmt.Errorf("harness: refused to remove existing output directory: %s", s.opts.OutputDir)
-		}
-		return err
-	}
-
-	f, err := os.Create(marker)
-	if err != nil {
-		return err
-	}
-	f.Close()
-
-	return nil
 }
