@@ -65,7 +65,7 @@ func runCreateDevice(cmd *cobra.Command, args []string) error {
 		userdata = string(data)
 	}
 
-	device, err := API.CreateDevice(hostname, userdata)
+	device, err := API.CreateDevice(hostname, userdata, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create device: %v\n", err)
 		os.Exit(1)

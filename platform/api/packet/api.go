@@ -25,7 +25,9 @@ import (
 	"time"
 
 	ignition "github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/pkg/capnslog"
 	"github.com/packethost/packngo"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 	gs "google.golang.org/api/storage/v1"
 
@@ -47,6 +49,8 @@ const (
 )
 
 var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/packet")
+
 	defaultInstallerImageURL = map[string]string{
 		// HTTPS causes iPXE to fail on a "permission denied" error
 		"amd64-usr": "http://stable.release.core-os.net/amd64-usr/current",
@@ -102,6 +106,11 @@ type API struct {
 	c      *packngo.Client
 	bucket *storage.Bucket
 	opts   *Options
+}
+
+type Console interface {
+	io.WriteCloser
+	SSHClient(ip, user string) (*ssh.Client, error)
 }
 
 func New(opts *Options) (*API, error) {
@@ -166,7 +175,15 @@ func (a *API) PreflightCheck() error {
 	return nil
 }
 
-func (a *API) CreateDevice(hostname, userdata string) (*packngo.Device, error) {
+// console is optional, and is closed on error or when the device is deleted.
+func (a *API) CreateDevice(hostname, userdata string, console Console) (*packngo.Device, error) {
+	consoleStarted := false
+	defer func() {
+		if console != nil && !consoleStarted {
+			console.Close()
+		}
+	}()
+
 	userdata, err := a.wrapUserData(userdata)
 	if err != nil {
 		return nil, err
@@ -193,6 +210,15 @@ func (a *API) CreateDevice(hostname, userdata string) (*packngo.Device, error) {
 		return nil, fmt.Errorf("couldn't create device: %v", err)
 	}
 	deviceID := device.ID
+
+	if console != nil {
+		err := a.startConsole(deviceID, console)
+		consoleStarted = true
+		if err != nil {
+			a.DeleteDevice(deviceID)
+			return nil, err
+		}
+	}
 
 	device, err = a.waitForActive(deviceID)
 	if err != nil {
@@ -481,6 +507,53 @@ func (a *API) createDevice(hostname, ipxeScriptURL string) (device *packngo.Devi
 		}
 	}
 	return
+}
+
+func (a *API) startConsole(deviceID string, console Console) error {
+	ready := make(chan error)
+
+	runner := func() error {
+		defer console.Close()
+
+		client, err := console.SSHClient("sos."+a.opts.Facility+".packet.net", deviceID)
+		if err != nil {
+			return fmt.Errorf("couldn't create SSH client for %s console: %v", deviceID, err)
+		}
+		defer client.Close()
+
+		session, err := client.NewSession()
+		if err != nil {
+			return fmt.Errorf("couldn't create SSH session for %s console: %v", deviceID, err)
+		}
+		defer session.Close()
+
+		reader := newBlockingReader()
+		defer reader.Close()
+
+		session.Stdin = reader
+		session.Stdout = console
+		if err := session.Shell(); err != nil {
+			return fmt.Errorf("couldn't start shell for %s console: %v", deviceID, err)
+		}
+
+		// cause startConsole to return
+		ready <- nil
+
+		err = session.Wait()
+		_, ok := err.(*ssh.ExitMissingError)
+		if err != nil && !ok {
+			plog.Errorf("%s console session failed: %v", deviceID, err)
+		}
+		return nil
+	}
+	go func() {
+		err := runner()
+		if err != nil {
+			ready <- err
+		}
+	}()
+
+	return <-ready
 }
 
 func (a *API) waitForActive(deviceID string) (*packngo.Device, error) {

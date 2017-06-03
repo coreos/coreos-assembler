@@ -21,8 +21,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/packet"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/packet")
 )
 
 type cluster struct {
@@ -73,7 +79,27 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		return nil, err
 	}
 
-	device, err := pc.api.CreateDevice(pc.vmname(), conf.String())
+	vmname := pc.vmname()
+	// Stream the console somewhere temporary until we have a machine ID
+	consolePath := filepath.Join(pc.Conf().OutputDir, "console-"+vmname+".txt")
+	var cons *console
+	var pcons packet.Console // need a nil interface value if unused
+	if pc.sshKeyID != "" {
+		// We can only read the console if Packet has our SSH key
+		f, err := os.OpenFile(consolePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+		if err != nil {
+			return nil, err
+		}
+		cons = &console{
+			pc:   pc,
+			f:    f,
+			done: make(chan interface{}),
+		}
+		pcons = cons
+	}
+
+	// CreateDevice unconditionally closes console when done with it
+	device, err := pc.api.CreateDevice(vmname, conf.String(), pcons)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +107,7 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	mach := &machine{
 		cluster: pc,
 		device:  device,
+		console: cons,
 	}
 	mach.publicIP = pc.api.GetDeviceAddress(device, 4, true)
 	mach.privateIP = pc.api.GetDeviceAddress(device, 4, false)
@@ -93,6 +120,13 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	if err := os.Mkdir(dir, 0777); err != nil {
 		mach.Destroy()
 		return nil, err
+	}
+
+	if cons != nil {
+		if err := os.Rename(consolePath, filepath.Join(dir, "console.txt")); err != nil {
+			mach.Destroy()
+			return nil, err
+		}
 	}
 
 	confPath := filepath.Join(dir, "user-data")

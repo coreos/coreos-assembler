@@ -16,6 +16,7 @@ package packet
 
 import (
 	"context"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 
@@ -27,6 +28,7 @@ type machine struct {
 	cluster   *cluster
 	device    *packngo.Device
 	journal   *platform.Journal
+	console   *console
 	publicIP  string
 	privateIP string
 }
@@ -87,6 +89,22 @@ func (pm *machine) Destroy() error {
 }
 
 func (pm *machine) ConsoleOutput() string {
-	// TODO(bgilbert)
-	return ""
+	if pm.console == nil {
+		return ""
+	}
+	output := pm.console.Output()
+	// The provisioning OS boots through iPXE and the real OS boots
+	// through GRUB.  Try to ignore console logs from provisioning, but
+	// it's better to return everything than nothing.
+	grub := strings.Index(output, "GNU GRUB")
+	if grub == -1 {
+		plog.Warningf("Couldn't find GRUB banner in console output of %s", pm.ID())
+		return output
+	}
+	linux := strings.Index(output[grub:], "Linux version")
+	if linux == -1 {
+		plog.Warningf("Couldn't find Linux banner in console output of %s", pm.ID())
+		return output
+	}
+	return output[grub+linux:]
 }
