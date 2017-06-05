@@ -15,7 +15,7 @@
 package misc
 
 import (
-	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -32,61 +32,77 @@ func init() {
 }
 
 type listener struct {
-	process string
-	port    string
+	// udp or tcp; note each v4 variant will also match 'v6'
+	protocol string
+	port     string
+	process  string
 }
 
-func checkListeners(c cluster.TestCluster, protocol string, filter string, listeners []listener) {
+func checkListeners(c cluster.TestCluster, expectedListeners []listener) {
 	m := c.Machines()[0]
 
-	var command string
-	if filter != "" {
-		command = fmt.Sprintf("sudo lsof +c0 -i%v -s%v", protocol, filter)
-	} else {
-		command = fmt.Sprintf("sudo lsof +c0 -i%v", protocol)
-	}
+	command := "sudo netstat -plutn"
 	output, err := m.SSH(command)
 	if err != nil {
 		c.Fatalf("Failed to run %s: output %s, status: %v", command, output, err)
 	}
 
 	processes := strings.Split(string(output), "\n")
+	// verify header is as expected
+	if len(processes) < 2 {
+		c.Fatalf("expected at least two lines of nestat output: %q", output)
+	}
+	if processes[0] != "Active Internet connections (only servers)" {
+		c.Fatalf("netstat output has changed format: %q", output)
+	}
+	if !regexp.MustCompile(`Proto\s+Recv-Q\s+Send-Q\s+Local Address\s+Foreign Address\s+State\s+PID/Program name`).MatchString(processes[1]) {
+		c.Fatalf("netstat output has changed format: %q", output)
+	}
+	// skip header
+	processes = processes[2:]
 
-	for i, process := range processes {
-		var valid bool
-		// skip header
-		if i == 0 {
+NextProcess:
+	for _, line := range processes {
+		parts := strings.Fields(line)
+		// One gotcha: udp's 'state' field is optional, so it's possible to have 6
+		// or 7 parts depending on that.
+		if len(parts) != 6 && len(parts) != 7 {
+			c.Fatalf("unexpected number of parts on line: %q in output %q", line, output)
+		}
+		proto := parts[0]
+		portdata := strings.Split(parts[3], ":")
+		port := portdata[len(portdata)-1]
+		pidProgramParts := strings.SplitN(parts[len(parts)-1], "/", 2)
+		if len(pidProgramParts) != 2 {
+			c.Errorf("%v did not contain pid and program parts; full output: %q", parts[6], output)
 			continue
 		}
-		data := strings.Fields(process)
-		processname := data[0]
-		pid := data[1]
-		portdata := strings.Split(data[8], ":")
-		port := portdata[len(portdata)-1]
-		for _, listener := range listeners {
-			if processname == listener.process && port == listener.port {
-				valid = true
+		pid, process := pidProgramParts[0], pidProgramParts[1]
+
+		for _, expected := range expectedListeners {
+			if strings.HasPrefix(proto, expected.protocol) && // allow expected tcp to match tcp6
+				expected.port == port &&
+				expected.process == process {
+				// matches expected process
+				continue NextProcess
 			}
 		}
-		if valid != true {
-			// systemd renames child processes in parentheses before closing their fds
-			if processname[0] == '(' {
-				c.Logf("Ignoring %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
-			} else {
-				c.Fatalf("Unexpected %q listener process: %q (pid %s) on %q", protocol, processname, pid, port)
-			}
+
+		if process[0] == '(' {
+			c.Logf("Ignoring %q listener process: %q (pid %s) on %q", proto, process, pid, port)
+			continue
 		}
+
+		c.Logf("full netstat output: %q", output)
+		c.Errorf("Unexpected listener process: %q", line)
 	}
 }
 
 func NetworkListeners(c cluster.TestCluster) {
-	TCPListeners := []listener{
-		{"systemd", "ssh"},
+	expectedListeners := []listener{
+		{"tcp", "22", "systemd"},          // ssh
+		{"udp", "68", "systemd-network"},  // dhcp6-client
+		{"udp", "546", "systemd-network"}, // bootpc
 	}
-	UDPListeners := []listener{
-		{"systemd-network", "dhcpv6-client"},
-		{"systemd-network", "bootpc"},
-	}
-	checkListeners(c, "TCP", "TCP:LISTEN", TCPListeners)
-	checkListeners(c, "UDP", "", UDPListeners)
+	checkListeners(c, expectedListeners)
 }
