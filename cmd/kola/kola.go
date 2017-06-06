@@ -72,6 +72,14 @@ func preRun(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(3)
 	}
+
+	// Packet uses storage, and storage talks too much.
+	if !plog.LevelAt(capnslog.INFO) {
+		mantleLogger := capnslog.MustRepoLogger("github.com/coreos/mantle")
+		mantleLogger.SetLogLevel(map[string]capnslog.LogLevel{
+			"storage": capnslog.WARNING,
+		})
+	}
 }
 
 func runRun(cmd *cobra.Command, args []string) {
