@@ -237,9 +237,9 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 	}
 
 	if err != nil {
-		fmt.Println("FAIL")
+		fmt.Printf("FAIL, output in %v\n", outputDir)
 	} else {
-		fmt.Println("PASS")
+		fmt.Printf("PASS, output in %v\n", outputDir)
 	}
 
 	return err
@@ -397,17 +397,42 @@ func checkConsole(h *harness.H, t *register.Test, c platform.Cluster) {
 	}
 }
 
-// CleanOutputDir creates an empty directory, any existing data will be wiped!
-func CleanOutputDir(outputDir string) (string, error) {
-	outputDir = filepath.Clean(outputDir)
-	if outputDir == "." {
-		return "", fmt.Errorf("kola: missing output directory path")
+func SetupOutputDir(outputDir, platform string) (string, error) {
+	defaulted := outputDir == ""
+	defaultBaseDirName := "_kola_temp"
+	defaultDirName := fmt.Sprintf("%s-%s-%d", platform, time.Now().Format("2006-01-02-1504"), os.Getpid())
+
+	if defaulted {
+		if _, err := os.Stat(defaultBaseDirName); os.IsNotExist(err) {
+			if err := os.Mkdir(defaultBaseDirName, 0777); err != nil {
+				return "", err
+			}
+		}
+		outputDir = filepath.Join(defaultBaseDirName, defaultDirName)
 	}
-	if err := os.RemoveAll(outputDir); err != nil {
+
+	outputDir, err := harness.CleanOutputDir(outputDir)
+	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(outputDir, 0777); err != nil {
-		return "", err
+
+	if defaulted {
+		linkPath := filepath.Join(defaultBaseDirName, platform+"-latest")
+		st, err := os.Lstat(linkPath)
+		if err == nil {
+			if (st.Mode() & os.ModeType) != os.ModeSymlink {
+				return "", fmt.Errorf("%v exists and is not a symlink", linkPath)
+			}
+			if err := os.Remove(linkPath); err != nil {
+				return "", err
+			}
+		} else if !os.IsNotExist(err) {
+			return "", err
+		}
+		if err := os.Symlink(defaultDirName, linkPath); err != nil {
+			return "", err
+		}
 	}
+
 	return outputDir, nil
 }

@@ -15,8 +15,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"text/tabwriter"
 
@@ -84,11 +86,72 @@ func runRun(cmd *cobra.Command, args []string) {
 		pattern = "*" // run all tests by default
 	}
 
-	err := kola.RunTests(pattern, kolaPlatform, outputDir)
+	var err error
+	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
+
+	err = kola.RunTests(pattern, kolaPlatform, outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	// needs to be after RunTests() because harness empties the directory
+	if err := writeProps(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func writeProps() error {
+	f, err := os.OpenFile(filepath.Join(outputDir, "properties.json"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "    ")
+
+	type AWS struct {
+		Region       string `json:"region"`
+		AMI          string `json:"ami"`
+		InstanceType string `json:"type"`
+	}
+	type GCE struct {
+		Image       string `json:"image"`
+		MachineType string `json:"type"`
+	}
+	type QEMU struct {
+		Image string `json:"image"`
+	}
+	return enc.Encode(&struct {
+		Cmdline  []string `json:"cmdline"`
+		Platform string   `json:"platform"`
+		Board    string   `json:"board"`
+		AWS      AWS      `json:"aws"`
+		GCE      GCE      `json:"gce"`
+		QEMU     QEMU     `json:"qemu"`
+	}{
+		Cmdline:  os.Args,
+		Platform: kolaPlatform,
+		Board:    kola.QEMUOptions.Board,
+		AWS: AWS{
+			Region:       kola.AWSOptions.Region,
+			AMI:          kola.AWSOptions.AMI,
+			InstanceType: kola.AWSOptions.InstanceType,
+		},
+		GCE: GCE{
+			Image:       kola.GCEOptions.Image,
+			MachineType: kola.GCEOptions.MachineType,
+		},
+		QEMU: QEMU{
+			Image: kola.QEMUOptions.DiskImage,
+		},
+	})
 }
 
 func runList(cmd *cobra.Command, args []string) {

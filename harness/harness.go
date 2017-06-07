@@ -18,11 +18,13 @@ package harness
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -471,4 +473,47 @@ func (t *H) report() {
 			t.flushToParent(format, "PASS", t.name, dstr)
 		}
 	}
+}
+
+// CleanOutputDir creates/empties an output directory and returns the cleaned path.
+// If the path already exists it must be named similar to `_foo_temp`
+// or contain `.harness_temp` to indicate removal is safe; we don't
+// want users wrecking things by accident with `--output-dir /tmp`
+func CleanOutputDir(path string) (string, error) {
+	// Clean up the path to ensure errors are clear.
+	path = filepath.Clean(path)
+
+	if path == "." {
+		return "", errors.New("harness: no output directory provided")
+	}
+
+	// Remove any existing data if it is safe to do so.
+	marker := filepath.Join(path, ".harness_temp")
+	base := filepath.Base(path)
+	safe := base[0] == '_' && strings.HasSuffix(base, "_temp")
+	if !safe {
+		if _, err := os.Stat(marker); err == nil {
+			safe = true
+		}
+	}
+	if safe {
+		if err := os.RemoveAll(path); err != nil {
+			return "", err
+		}
+	}
+
+	if err := os.Mkdir(path, 0777); err != nil {
+		if !safe && os.IsExist(err) {
+			return "", fmt.Errorf("harness: refused to remove existing output directory: %s", path)
+		}
+		return "", err
+	}
+
+	f, err := os.Create(marker)
+	if err != nil {
+		return "", err
+	}
+	f.Close()
+
+	return path, nil
 }
