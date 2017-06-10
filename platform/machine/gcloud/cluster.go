@@ -37,13 +37,13 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/gcloud")
 )
 
-func NewCluster(opts *gcloud.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
+func NewCluster(opts *gcloud.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := gcloud.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	}
 
 	var keys []*agent.Key
-	if !gc.Conf().NoSSHKeyInMetadata {
+	if !gc.RuntimeConf().NoSSHKeyInMetadata {
 		keys, err = gc.Keys()
 		if err != nil {
 			return nil, err
@@ -88,7 +88,7 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		extIP: extip,
 	}
 
-	gm.dir = filepath.Join(gc.Conf().OutputDir, gm.ID())
+	gm.dir = filepath.Join(gc.RuntimeConf().OutputDir, gm.ID())
 	if err := os.Mkdir(gm.dir, 0777); err != nil {
 		gm.Destroy()
 		return nil, err

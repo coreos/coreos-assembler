@@ -79,7 +79,7 @@ func NewCluster(conf *Options, rconf *platform.RuntimeConfig) (platform.Cluster,
 func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	id := uuid.NewV4()
 
-	dir := filepath.Join(qc.Conf().OutputDir, id.String())
+	dir := filepath.Join(qc.RuntimeConf().OutputDir, id.String())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		return nil, err
 	}
