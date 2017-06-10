@@ -50,7 +50,7 @@ type Options struct {
 // XXX: must be exported so that certain QEMU tests can access struct members
 // through type assertions.
 type Cluster struct {
-	conf *Options
+	opts *Options
 
 	mu sync.Mutex
 	*local.LocalCluster
@@ -62,14 +62,14 @@ var (
 
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
-func NewCluster(conf *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(conf.BaseName, rconf)
+func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
+	lc, err := local.NewLocalCluster(opts.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}
 
 	qc := &Cluster{
-		conf:         conf,
+		opts:         opts,
 		LocalCluster: lc,
 	}
 
@@ -127,7 +127,7 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	}
 
 	var qmCmd []string
-	switch qc.conf.Board {
+	switch qc.opts.Board {
 	case "amd64-usr":
 		qmCmd = []string{
 			"qemu-system-x86_64",
@@ -141,12 +141,12 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 			"-cpu", "cortex-a57",
 		}
 	default:
-		panic(qc.conf.Board)
+		panic(qc.opts.Board)
 	}
 
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCmd = append(qmCmd,
-		"-bios", qc.conf.BIOSImage,
+		"-bios", qc.opts.BIOSImage,
 		"-smp", "1",
 		"-m", "1024",
 		"-uuid", qm.id,
@@ -169,7 +169,7 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 			"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"))
 	}
 
-	diskFile, err := setupDisk(qc.conf.DiskImage)
+	diskFile, err := setupDisk(qc.opts.DiskImage)
 	if err != nil {
 		return nil, err
 	}
@@ -224,13 +224,13 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 // configuration is the same. Use this to help construct device args.
 func (qc *Cluster) virtio(device, args string) string {
 	var suffix string
-	switch qc.conf.Board {
+	switch qc.opts.Board {
 	case "amd64-usr":
 		suffix = "pci"
 	case "arm64-usr":
 		suffix = "device"
 	default:
-		panic(qc.conf.Board)
+		panic(qc.opts.Board)
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
