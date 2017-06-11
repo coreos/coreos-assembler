@@ -142,7 +142,7 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 
 func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
 	if userdata == nil {
-		userdata = conf.CloudConfig("#cloud-config")
+		userdata = conf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
 	}
 
 	// hacky solution for unified ignition metadata variables
