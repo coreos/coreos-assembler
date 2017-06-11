@@ -104,6 +104,14 @@
 			"Rev": "73d058cf8437a1989030afe571eeab9f90eebbbd"
 		},
 		{
+			"ImportPath": "github.com/ajeddeloh/yaml",
+			"Rev": "1072abfea31191db507785e2e0c1b8d1440d35a5"
+		},
+		{
+			"ImportPath": "github.com/alecthomas/units",
+			"Rev": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
 			"Comment": "v1.8.15-5-g40bc776",
 			"Rev": "40bc7761a9f06daa574d20f2ad5454db02a05953"
@@ -256,6 +264,26 @@
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.2.1",
 			"Rev": "dfb21201d9270c1082d5fb0f07f500311ff72f18"
+		},
+		{
+			"ImportPath": "github.com/coreos/container-linux-config-transpiler/config",
+			"Comment": "v0.3.1-31-gd2b5fed",
+			"Rev": "d2b5fed204802a87e7b532d42b3bae3f15ce97ae"
+		},
+		{
+			"ImportPath": "github.com/coreos/container-linux-config-transpiler/config/templating",
+			"Comment": "v0.3.1-31-gd2b5fed",
+			"Rev": "d2b5fed204802a87e7b532d42b3bae3f15ce97ae"
+		},
+		{
+			"ImportPath": "github.com/coreos/container-linux-config-transpiler/config/types",
+			"Comment": "v0.3.1-31-gd2b5fed",
+			"Rev": "d2b5fed204802a87e7b532d42b3bae3f15ce97ae"
+		},
+		{
+			"ImportPath": "github.com/coreos/container-linux-config-transpiler/config/types/util",
+			"Comment": "v0.3.1-31-gd2b5fed",
+			"Rev": "d2b5fed204802a87e7b532d42b3bae3f15ce97ae"
 		},
 		{
 			"ImportPath": "github.com/coreos/coreos-cloudinit/config",
