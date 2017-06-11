@@ -503,7 +503,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
-			"Rev": "37bb68f88c4418889f0a9bfea4a5333d36bd15d5"
+			"Comment": "v0.2.0-5-g5e3acbb",
+			"Rev": "5e3acbb5668c4c3deb4842615c4098eb61fb6b1e"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",
