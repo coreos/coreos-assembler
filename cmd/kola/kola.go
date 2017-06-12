@@ -93,15 +93,16 @@ func runRun(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	err = kola.RunTests(pattern, kolaPlatform, outputDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
+	runErr := kola.RunTests(pattern, kolaPlatform, outputDir)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	if runErr != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", runErr)
 		os.Exit(1)
 	}
 }
