@@ -272,7 +272,7 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 		}
 	}()
 
-	m, err := cluster.NewMachine("#cloud-config")
+	m, err := cluster.NewMachine(nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating new machine for semver check: %v", err)
 	}
@@ -325,8 +325,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 			h.Fatalf("Failed to create discovery endpoint: %v", err)
 		}
 
-		cfg := strings.Replace(t.UserData, "$discovery", url, -1)
-		if _, err := platform.NewMachines(c, cfg, t.ClusterSize); err != nil {
+		userdata := t.UserData
+		if userdata != nil {
+			userdata = userdata.Subst("$discovery", url)
+		}
+		if _, err := platform.NewMachines(c, userdata, t.ClusterSize); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}

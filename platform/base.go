@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -141,15 +140,19 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 	return bc.agent.List()
 }
 
-func (bc *BaseCluster) MangleUserData(userdata string, ignitionVars map[string]string) (*conf.Conf, error) {
+func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
+	if userdata == nil {
+		userdata = conf.CloudConfig("#cloud-config")
+	}
+
 	// hacky solution for unified ignition metadata variables
-	if strings.Contains(userdata, `"ignition":`) {
+	if userdata.IsIgnition() {
 		for k, v := range ignitionVars {
-			userdata = strings.Replace(userdata, k, v, -1)
+			userdata = userdata.Subst(k, v)
 		}
 	}
 
-	conf, err := conf.New(userdata)
+	conf, err := userdata.Render()
 	if err != nil {
 		return nil, err
 	}

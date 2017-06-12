@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/gcloud"
 	"github.com/coreos/mantle/pluton"
 	"github.com/coreos/mantle/pluton/spawn"
@@ -71,7 +72,7 @@ func RunSuite(pattern string) {
 			os.Exit(1)
 		}
 
-		bastionMachine, err = cloud.NewMachine("")
+		bastionMachine, err = cloud.NewMachine(conf.Empty())
 		if err != nil {
 			fmt.Printf("setting up bastion cluster: %v\n", err)
 

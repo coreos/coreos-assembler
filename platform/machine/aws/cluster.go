@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -65,8 +66,8 @@ func NewCluster(opts *aws.Options, rconf *platform.RuntimeConfig) (platform.Clus
 	return ac, nil
 }
 
-func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	conf, err := ac.MangleUserData(userdata, map[string]string{
+func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	conf, err := ac.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_EC2_IPV4_PUBLIC}",
 		"$private_ipv4": "${COREOS_EC2_IPV4_LOCAL}",
 	})

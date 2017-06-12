@@ -30,6 +30,7 @@ import (
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/sdk"
 	sdkomaha "github.com/coreos/mantle/sdk/omaha"
@@ -149,14 +150,14 @@ func runUpdateTest() error {
 		return fmt.Errorf("bad payload: %v", err)
 	}
 
-	cfg, err := newUserdata(qc)
+	userdata, err := newUserdata(qc)
 	if err != nil {
 		return fmt.Errorf("bad userdata: %v", err)
 	}
 
 	plog.Infof("Spawning test machine")
 
-	m, err := cluster.NewMachine(cfg)
+	m, err := cluster.NewMachine(userdata)
 	if err != nil {
 		return fmt.Errorf("new machine: %v", err)
 	}
@@ -242,10 +243,10 @@ func newPayload() string {
 	return filepath.Join(dir, "coreos_production_update.gz")
 }
 
-func newUserdata(qc *qemu.Cluster) (string, error) {
+func newUserdata(qc *qemu.Cluster) (*conf.UserData, error) {
 	keys, err := qc.Keys()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	params := userdataParams{
@@ -254,15 +255,15 @@ func newUserdata(qc *qemu.Cluster) (string, error) {
 	}
 	tmpl, err := template.New("userdata").Parse(userdataTmpl)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, &params); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return buf.String(), nil
+	return conf.CloudConfig(buf.String()), nil
 }
 
 func checkUsrA(m platform.Machine) error {

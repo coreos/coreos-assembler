@@ -27,6 +27,7 @@ import (
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
@@ -76,7 +77,7 @@ func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster,
 	return qc, nil
 }
 
-func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
+func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	id := uuid.NewV4()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id.String())
@@ -90,7 +91,7 @@ func (qc *Cluster) NewMachine(cfg string) (platform.Machine, error) {
 	netif := qc.Dnsmasq.GetInterface("br0")
 	ip := strings.Split(netif.DHCPv4[0].String(), "/")[0]
 
-	conf, err := qc.MangleUserData(cfg, map[string]string{
+	conf, err := qc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  ip,
 		"$private_ipv4": ip,
 	})

@@ -27,7 +27,6 @@ func init() {
 		Run:         Filesystem,
 		ClusterSize: 1,
 		Name:        "coreos.filesystem",
-		UserData:    `#cloud-config`,
 	})
 }
 

@@ -29,13 +29,11 @@ func init() {
 		Run:         NetworkListeners,
 		ClusterSize: 1,
 		Name:        "coreos.network.listeners",
-		UserData:    `#cloud-config`,
 	})
 	register.Register(&register.Test{
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
 		Name:             "coreos.network.initramfs.second-boot",
-		UserData:         `#cloud-config`,
 		ExcludePlatforms: []string{"digitalocean"},
 		MinVersion:       semver.Version{Major: 1445},
 	})

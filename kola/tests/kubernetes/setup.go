@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -49,7 +50,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 		return nil, err
 	}
 
-	master, err := c.NewMachine("#cloud-config")
+	master, err := c.NewMachine(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 	}
 
 	// create worker nodes
-	workers, err := platform.NewMachines(c, "#cloud-config", nodes)
+	workers, err := platform.NewMachines(c, nil, nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -311,8 +312,8 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 	return nil
 }
 
-const (
-	etcdConfig = `#cloud-config
+var (
+	etcdConfig = conf.CloudConfig(`#cloud-config
 
 coreos:
   etcd2:
@@ -321,8 +322,10 @@ coreos:
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
   units:
     - name: etcd2.service
-      command: start`
+      command: start`)
+)
 
+const (
 	masterCNF = `[req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name

@@ -30,13 +30,12 @@ func init() {
 		ClusterSize: 0,
 		Name:        "linux.ntp",
 		Platforms:   []string{"qemu"},
-		UserData:    `#cloud-config`,
 	})
 }
 
 // Test that timesyncd starts using the local NTP server
 func NTP(c cluster.TestCluster) {
-	m, err := c.NewMachine("#cloud-config")
+	m, err := c.NewMachine(nil)
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}

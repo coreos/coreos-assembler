@@ -17,6 +17,7 @@ package ignition
 import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
@@ -24,7 +25,7 @@ func init() {
 		Name:        "coreos.ignition.v1.once",
 		Run:         runsOnce,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
                              "ignitionVersion": 1,
                              "storage": {
                                "filesystems": [
@@ -40,13 +41,13 @@ func init() {
                                  }
                                ]
                              }
-                           }`,
+                           }`),
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.once",
 		Run:         runsOnce,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
                              "ignition": { "version": "2.0.0" },
                              "storage": {
                                "files": [
@@ -59,7 +60,7 @@ func init() {
                                  }
                                ]
                              }
-                           }`,
+                           }`),
 	})
 }
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
@@ -29,7 +30,7 @@ func init() {
 		Run:         Discovery,
 		ClusterSize: 3,
 		Name:        "coreos.etcd2.discovery",
-		UserData: `{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -50,7 +51,7 @@ func init() {
       }
     ]
   }
-}`,
+}`),
 	})
 }
 

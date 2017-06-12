@@ -19,11 +19,12 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
 	// Reformat the root as btrfs
-	btrfsConfigV1 := `{
+	btrfsConfigV1 := conf.Ignition(`{
 		               "ignitionVersion": 1,
 		               "storage": {
 		                   "filesystems": [
@@ -39,8 +40,8 @@ func init() {
 		                       }
 		                   ]
 		               }
-		           }`
-	btrfsConfigV2 := `{
+		           }`)
+	btrfsConfigV2 := conf.Ignition(`{
 		               "ignition": {
 		                   "version": "2.0.0"
 		               },
@@ -60,7 +61,7 @@ func init() {
 		                       }
 		                   ]
 		               }
-		           }`
+		           }`)
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.btrfsroot",
 		Run:         btrfsRoot,
@@ -75,7 +76,7 @@ func init() {
 	})
 
 	// Reformat the root as xfs
-	xfsConfigV1 := `{
+	xfsConfigV1 := conf.Ignition(`{
 		             "ignitionVersion": 1,
 		             "storage": {
 		                 "filesystems": [
@@ -91,8 +92,8 @@ func init() {
 		                     }
 		                 ]
 		             }
-		         }`
-	xfsConfigV2 := `{
+		         }`)
+	xfsConfigV2 := conf.Ignition(`{
 		             "ignition": {
 		                 "version": "2.0.0"
 		             },
@@ -112,7 +113,7 @@ func init() {
 		                     }
 		                 ]
 		             }
-		         }`
+		         }`)
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.xfsroot",
 		Run:         xfsRoot,
@@ -127,7 +128,7 @@ func init() {
 	})
 
 	// Reformat the root as ext4
-	ext4ConfigV1 := `{
+	ext4ConfigV1 := conf.Ignition(`{
 		             "ignitionVersion": 1,
 		             "storage": {
 		                 "filesystems": [
@@ -143,8 +144,8 @@ func init() {
 		                     }
 		                 ]
 		             }
-		         }`
-	ext4ConfigV2 := `{
+		         }`)
+	ext4ConfigV2 := conf.Ignition(`{
 		             "ignition": {
 		                 "version": "2.0.0"
 		             },
@@ -164,7 +165,7 @@ func init() {
 		                     }
 		                 ]
 		             }
-		         }`
+		         }`)
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.ext4root",
 		Run:         ext4Root,

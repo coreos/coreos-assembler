@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -57,8 +58,8 @@ func NewCluster(opts *gcloud.Options, rconf *platform.RuntimeConfig) (platform.C
 }
 
 // Calling in parallel is ok
-func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	conf, err := gc.MangleUserData(userdata, map[string]string{
+func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	conf, err := gc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_GCE_IP_EXTERNAL_0}",
 		"$private_ipv4": "${COREOS_GCE_IP_LOCAL_0}",
 	})

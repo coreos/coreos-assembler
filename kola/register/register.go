@@ -20,6 +20,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/kola/cluster"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type Flag int
@@ -38,7 +39,7 @@ type Test struct {
 	Name             string // should be unique
 	Run              func(cluster.TestCluster)
 	NativeFuncs      map[string]func() error
-	UserData         string
+	UserData         *conf.UserData
 	ClusterSize      int
 	Platforms        []string // whitelist of platforms to run test against -- defaults to all
 	ExcludePlatforms []string // blacklist of platforms to ignore -- defaults to none

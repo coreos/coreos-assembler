@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/packet"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 var (
@@ -70,8 +71,8 @@ func NewCluster(opts *packet.Options, rconf *platform.RuntimeConfig) (platform.C
 	return pc, nil
 }
 
-func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	conf, err := pc.MangleUserData(userdata, map[string]string{
+func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	conf, err := pc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_PACKET_IPV4_PUBLIC_0}",
 		"$private_ipv4": "${COREOS_PACKET_IPV4_PRIVATE_0}",
 	})
@@ -99,7 +100,7 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	}
 
 	// CreateDevice unconditionally closes console when done with it
-	device, err := pc.api.CreateDevice(vmname, conf.String(), pcons)
+	device, err := pc.api.CreateDevice(vmname, conf, pcons)
 	if err != nil {
 		return nil, err
 	}

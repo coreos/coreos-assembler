@@ -31,13 +31,11 @@ func init() {
 		Run:         RebootIntoUSRB,
 		ClusterSize: 1,
 		Name:        "coreos.update.reboot",
-		UserData:    "#cloud-config",
 	})
 	register.Register(&register.Test{
 		Run:         RecoverBadVerity,
 		ClusterSize: 1,
 		Name:        "coreos.update.badverity",
-		UserData:    "#cloud-config",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
 		MinVersion:  semver.Version{Major: 1367},
 	})
@@ -45,7 +43,6 @@ func init() {
 		Run:         RecoverBadUsr,
 		ClusterSize: 1,
 		Name:        "coreos.update.badusr",
-		UserData:    "#cloud-config",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
 		MinVersion:  semver.Version{Major: 1367},
 	})

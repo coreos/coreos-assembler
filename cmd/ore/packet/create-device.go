@@ -21,6 +21,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/coreos/mantle/platform/conf"
 )
 
 var (
@@ -55,17 +57,22 @@ func runCreateDevice(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
-	var userdata string
+	userdata := conf.Empty()
 	if userDataPath != "" {
 		data, err := ioutil.ReadFile(userDataPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Couldn't read userdata file %v: %v\n", userDataPath, err)
 			os.Exit(1)
 		}
-		userdata = string(data)
+		userdata = conf.Unknown(string(data))
+	}
+	conf, err := userdata.Render()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't parse userdata file %v: %v\n", userDataPath, err)
+		os.Exit(1)
 	}
 
-	device, err := API.CreateDevice(hostname, userdata, nil)
+	device, err := API.CreateDevice(hostname, conf, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create device: %v\n", err)
 		os.Exit(1)

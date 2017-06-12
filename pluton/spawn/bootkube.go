@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/pluton"
 	"github.com/coreos/mantle/pluton/spawn/containercache"
 
@@ -170,7 +171,7 @@ func MakeBootkubeCluster(cloud platform.Cluster, config BootkubeConfig, bastion 
 	return cluster, nil
 }
 
-func renderNodeConfig(kubeletService string) (string, error) {
+func renderNodeConfig(kubeletService string) (*conf.UserData, error) {
 	// render template
 	tmplData := struct {
 		KubeletService string
@@ -182,13 +183,13 @@ func renderNodeConfig(kubeletService string) (string, error) {
 
 	tmpl, err := template.New("nodeConfig").Parse(nodeTmpl)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := tmpl.Execute(buf, &tmplData); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return buf.String(), nil
+	return conf.CloudConfig(buf.String()), nil
 }
 
 // The service files we read in from the hack directory need to be indented and

@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -73,18 +74,16 @@ func init() {
 		Run:         NFSv3,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v3",
-		UserData:    `#cloud-config`,
 	})
 	register.Register(&register.Test{
 		Run:         NFSv4,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v4",
-		UserData:    `#cloud-config`,
 	})
 }
 
 func testNFS(c cluster.TestCluster, nfsversion int) {
-	m1, err := c.NewMachine(nfsserverconf.String())
+	m1, err := c.NewMachine(conf.CloudConfig(nfsserverconf.String()))
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
@@ -114,7 +113,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) {
 		Hostname: "nfs2",
 	}
 
-	m2, err := c.NewMachine(c2.String())
+	m2, err := c.NewMachine(conf.CloudConfig(c2.String()))
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}

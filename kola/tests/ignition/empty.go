@@ -17,6 +17,7 @@ package ignition
 import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 // These tests require the kola key to be passed to the instance via cloud
@@ -28,6 +29,7 @@ func init() {
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
+		UserData:         conf.Empty(),
 	})
 	// Tests for https://github.com/coreos/bugs/issues/1981
 	register.Register(&register.Test{
@@ -36,7 +38,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
-		UserData:         `{"ignitionVersion": 1}`,
+		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
 	})
 	register.Register(&register.Test{
 		Name:             "coreos.ignition.v2.noop",
@@ -44,7 +46,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
-		UserData:         `{"ignition":{"version":"2.0.0"}}`,
+		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
 	})
 }
 
