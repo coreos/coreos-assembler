@@ -16,9 +16,11 @@ package conf
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
+	ct "github.com/coreos/container-linux-config-transpiler/config"
 	cci "github.com/coreos/coreos-cloudinit/config"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
@@ -35,6 +37,7 @@ const (
 	kindEmpty kind = iota
 	kindCloudConfig
 	kindIgnition
+	kindContainerLinuxConfig
 	kindScript
 )
 
@@ -59,6 +62,13 @@ type Conf struct {
 func Empty() *UserData {
 	return &UserData{
 		kind: kindEmpty,
+	}
+}
+
+func ContainerLinuxConfig(data string) *UserData {
+	return &UserData{
+		kind: kindContainerLinuxConfig,
+		data: data,
 	}
 }
 
@@ -97,6 +107,7 @@ func Unknown(data string) *UserData {
 	case v2.ErrScript:
 		u.kind = kindScript
 	default:
+		// we don't autodetect Container Linux configs
 		u.kind = kindIgnition
 	}
 
@@ -157,6 +168,23 @@ func (u *UserData) Render() (*Conf, error) {
 			plog.Errorf("invalid userdata: %v", report)
 			return nil, err
 		}
+	case kindContainerLinuxConfig:
+		clc, report := ct.Parse([]byte(u.data))
+		if report.IsFatal() {
+			return nil, fmt.Errorf("parsing Container Linux config: %s", report)
+		} else if len(report.Entries) > 0 {
+			plog.Warningf("parsing Container Linux config: %s", report)
+		}
+
+		// TODO(bgilbert): substitute cloud-specific variables via ct
+		ignc, report := ct.ConvertAs2_0(clc, "")
+		if report.IsFatal() {
+			return nil, fmt.Errorf("rendering Container Linux config: %s", report)
+		} else if len(report.Entries) > 0 {
+			plog.Warningf("rendering Container Linux config: %s", report)
+		}
+
+		c.ignitionV2 = &ignc
 	default:
 		panic("invalid kind")
 	}

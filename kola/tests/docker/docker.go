@@ -51,34 +51,30 @@ func init() {
 		Run:         dockerUserns,
 		ClusterSize: 1,
 		Name:        "docker.userns",
-		// Source yaml:
-		// https://github.com/coreos/container-linux-config-transpiler
-		/*
-			systemd:
-			  units:
-			  - name: docker.service
-			    enable: true
-			    dropins:
-			      - name: 10-uesrns.conf
-			        contents: |-
-			          [Service]
-			          Environment=DOCKER_OPTS=--userns-remap=dockremap
-			storage:
-			  files:
-			  - filesystem: root
-			    path: /etc/subuid
-			    contents:
-			      inline: "dockremap:100000:65536"
-			  - filesystem: root
-			    path: /etc/subgid
-			    contents:
-			      inline: "dockremap:100000:65536"
-			passwd:
-			  users:
-			  - name: dockremap
-			    create: {}
-		*/
-		UserData:   conf.Ignition(`{"ignition":{"version":"2.0.0","config":{}},"storage":{"files":[{"filesystem":"root","path":"/etc/subuid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}},{"filesystem":"root","path":"/etc/subgid","contents":{"source":"data:,dockremap%3A100000%3A65536","verification":{}},"user":{},"group":{}}]},"systemd":{"units":[{"name":"docker.service","enable":true,"dropins":[{"name":"10-uesrns.conf","contents":"[Service]\nEnvironment=DOCKER_OPTS=--userns-remap=dockremap"}]}]},"networkd":{},"passwd":{"users":[{"name":"dockremap","create":{}}]}}`),
+		UserData: conf.ContainerLinuxConfig(`
+systemd:
+  units:
+  - name: docker.service
+    enable: true
+    dropins:
+      - name: 10-uesrns.conf
+        contents: |-
+          [Service]
+          Environment=DOCKER_OPTS=--userns-remap=dockremap
+storage:
+  files:
+  - filesystem: root
+    path: /etc/subuid
+    contents:
+      inline: "dockremap:100000:65536"
+  - filesystem: root
+    path: /etc/subgid
+    contents:
+      inline: "dockremap:100000:65536"
+passwd:
+  users:
+  - name: dockremap
+    create: {}`),
 		MinVersion: semver.Version{Major: 1354}, // 1353 has kernel 4.9.x which is known to not work with userns on aws, see https://github.com/coreos/bugs/issues/1826
 	})
 
@@ -101,30 +97,36 @@ func init() {
 		Run:         func(c cluster.TestCluster) { testDockerInfo("btrfs", c) },
 		ClusterSize: 1,
 		Name:        "docker.btrfs-storage",
-		// Note: copied verbatim from https://github.com/coreos/docs/blob/master/os/mounting-storage.md#creating-and-mounting-a-btrfs-volume-file after ct rendering
-		UserData: conf.Ignition(`{
-			"ignition": {
-				"version": "2.0.0",
-				"config": {}
-			},
-			"storage": {},
-			"systemd": {
-				"units": [
-				{
-					"name": "format-var-lib-docker.service",
-					"enable": true,
-					"contents": "[Unit]\nBefore=docker.service var-lib-docker.mount\nConditionPathExists=!/var/lib/docker.btrfs\n[Service]\nType=oneshot\nExecStart=/usr/bin/truncate --size=25G /var/lib/docker.btrfs\nExecStart=/usr/sbin/mkfs.btrfs /var/lib/docker.btrfs\n[Install]\nWantedBy=multi-user.target\n"
-				},
-				{
-					"name": "var-lib-docker.mount",
-					"enable": true,
-					"contents": "[Unit]\nBefore=docker.service\nAfter=format-var-lib-docker.service\nRequires=format-var-lib-docker.service\n[Install]\nRequiredBy=docker.service\n[Mount]\nWhat=/var/lib/docker.btrfs\nWhere=/var/lib/docker\nType=btrfs\nOptions=loop,discard"
-				}
-				]
-			},
-			"networkd": {},
-			"passwd": {}
-		}`),
+		// Note: copied verbatim from https://github.com/coreos/docs/blob/master/os/mounting-storage.md#creating-and-mounting-a-btrfs-volume-file
+		UserData: conf.ContainerLinuxConfig(`
+systemd:
+  units:
+    - name: format-var-lib-docker.service
+      enable: true
+      contents: |
+        [Unit]
+        Before=docker.service var-lib-docker.mount
+        ConditionPathExists=!/var/lib/docker.btrfs
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/truncate --size=25G /var/lib/docker.btrfs
+        ExecStart=/usr/sbin/mkfs.btrfs /var/lib/docker.btrfs
+        [Install]
+        WantedBy=multi-user.target
+    - name: var-lib-docker.mount
+      enable: true
+      contents: |
+        [Unit]
+        Before=docker.service
+        After=format-var-lib-docker.service
+        Requires=format-var-lib-docker.service
+        [Install]
+        RequiredBy=docker.service
+        [Mount]
+        What=/var/lib/docker.btrfs
+        Where=/var/lib/docker
+        Type=btrfs
+        Options=loop,discard`),
 		// Roughly when the 'wrapper' script was removed so security + btrfs worked
 		MinVersion: semver.Version{Major: 1400},
 	})
@@ -137,42 +139,40 @@ func init() {
 		Name:        "docker.lib-coreos-dockerd-compat",
 		Run:         dockerBaseTests,
 		ClusterSize: 1,
-		/* config-transpiler
-		systemd:
-		  units:
-			- name: docker.service
-		    contents: |-
-		      [Unit]
-		      Description=Docker Application Container Engine
-		      Documentation=http://docs.docker.com
-		      After=containerd.service docker.socket network.target
-		      Requires=containerd.service docker.socket
+		UserData: conf.ContainerLinuxConfig(`
+systemd:
+  units:
+  - name: docker.service
+    contents: |-
+      [Unit]
+      Description=Docker Application Container Engine
+      Documentation=http://docs.docker.com
+      After=containerd.service docker.socket network.target
+      Requires=containerd.service docker.socket
 
-		      [Service]
-		      Type=notify
-		      EnvironmentFile=-/run/flannel/flannel_docker_opts.env
+      [Service]
+      Type=notify
+      EnvironmentFile=-/run/flannel/flannel_docker_opts.env
 
-		      # the default is not to use systemd for cgroups because the delegate issues still
-		      # exists and systemd currently does not support the cgroup feature set required
-		      # for containers run by docker
-		      ExecStart=/usr/lib/coreos/dockerd --host=fd:// --containerd=/var/run/docker/libcontainerd/docker-containerd.sock $DOCKER_OPTS $DOCKER_CGROUPS $DOCKER_OPT_BIP $DOCKER_OPT_MTU $DOCKER_OPT_IPMASQ
-		      ExecReload=/bin/kill -s HUP $MAINPID
-		      LimitNOFILE=1048576
-		      # Having non-zero Limit*s causes performance problems due to accounting overhead
-		      # in the kernel. We recommend using cgroups to do container-local accounting.
-		      LimitNPROC=infinity
-		      LimitCORE=infinity
-		      # Uncomment TasksMax if your systemd version supports it.
-		      # Only systemd 226 and above support this version.
-		      TasksMax=infinity
-		      TimeoutStartSec=0
-		      # set delegate yes so that systemd does not reset the cgroups of docker containers
-		      Delegate=yes
+      # the default is not to use systemd for cgroups because the delegate issues still
+      # exists and systemd currently does not support the cgroup feature set required
+      # for containers run by docker
+      ExecStart=/usr/lib/coreos/dockerd --host=fd:// --containerd=/var/run/docker/libcontainerd/docker-containerd.sock $DOCKER_OPTS $DOCKER_CGROUPS $DOCKER_OPT_BIP $DOCKER_OPT_MTU $DOCKER_OPT_IPMASQ
+      ExecReload=/bin/kill -s HUP $MAINPID
+      LimitNOFILE=1048576
+      # Having non-zero Limit*s causes performance problems due to accounting overhead
+      # in the kernel. We recommend using cgroups to do container-local accounting.
+      LimitNPROC=infinity
+      LimitCORE=infinity
+      # Uncomment TasksMax if your systemd version supports it.
+      # Only systemd 226 and above support this version.
+      TasksMax=infinity
+      TimeoutStartSec=0
+      # set delegate yes so that systemd does not reset the cgroups of docker containers
+      Delegate=yes
 
-		      [Install]
-		      WantedBy=multi-user.target
-		*/
-		UserData: conf.Ignition(`{"ignition":{"version":"2.0.0","config":{}},"storage":{},"systemd":{"units":[{"name":"docker.service","contents":"[Unit]\nDescription=Docker Application Container Engine\nDocumentation=http://docs.docker.com\nAfter=containerd.service docker.socket network.target\nRequires=containerd.service docker.socket\n\n[Service]\nType=notify\nEnvironmentFile=-/run/flannel/flannel_docker_opts.env\n\n# the default is not to use systemd for cgroups because the delegate issues still\n# exists and systemd currently does not support the cgroup feature set required\n# for containers run by docker\nExecStart=/usr/lib/coreos/dockerd --host=fd:// --containerd=/var/run/docker/libcontainerd/docker-containerd.sock $DOCKER_OPTS $DOCKER_CGROUPS $DOCKER_OPT_BIP $DOCKER_OPT_MTU $DOCKER_OPT_IPMASQ\nExecReload=/bin/kill -s HUP $MAINPID\nLimitNOFILE=1048576\n# Having non-zero Limit*s causes performance problems due to accounting overhead\n# in the kernel. We recommend using cgroups to do container-local accounting.\nLimitNPROC=infinity\nLimitCORE=infinity\n# Uncomment TasksMax if your systemd version supports it.\n# Only systemd 226 and above support this version.\nTasksMax=infinity\nTimeoutStartSec=0\n# set delegate yes so that systemd does not reset the cgroups of docker containers\nDelegate=yes\n\n[Install]\nWantedBy=multi-user.target"}]},"networkd":{},"passwd":{}}`),
+      [Install]
+      WantedBy=multi-user.target`),
 	})
 }
 
