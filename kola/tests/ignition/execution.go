@@ -21,6 +21,28 @@ import (
 
 func init() {
 	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.once",
+		Run:         runsOnce,
+		ClusterSize: 1,
+		UserData: `{
+                             "ignitionVersion": 1,
+                             "storage": {
+                               "filesystems": [
+                                 {
+                                   "device": "/dev/disk/by-partlabel/ROOT",
+                                   "format": "ext4",
+                                   "files": [
+                                     {
+                                       "path": "/etc/ignition-ran",
+                                       "contents": "Ignition ran."
+                                     }
+                                   ]
+                                 }
+                               ]
+                             }
+                           }`,
+	})
+	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.once",
 		Run:         runsOnce,
 		ClusterSize: 1,

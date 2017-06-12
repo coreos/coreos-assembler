@@ -24,12 +24,20 @@ import (
 func init() {
 	// Tests for https://github.com/coreos/bugs/issues/1184
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v2.empty",
+		Name:             "coreos.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
 	})
 	// Tests for https://github.com/coreos/bugs/issues/1981
+	register.Register(&register.Test{
+		Name:             "coreos.ignition.v1.noop",
+		Run:              empty,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"},
+		Flags:            []register.Flag{register.NoSSHKeyInUserData},
+		UserData:         `{"ignitionVersion": 1}`,
+	})
 	register.Register(&register.Test{
 		Name:             "coreos.ignition.v2.noop",
 		Run:              empty,

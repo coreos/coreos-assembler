@@ -29,4 +29,12 @@ func init() {
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         `{"ignitionVersion": 1}`,
 	})
+	register.Register(&register.Test{
+		Name:             "coreos.ignition.v2.ssh.key",
+		Run:              empty,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
+		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
+		UserData:         `{"ignition":{"version":"2.0.0"}}`,
+	})
 }
