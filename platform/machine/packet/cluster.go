@@ -16,8 +16,8 @@ package packet
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 
