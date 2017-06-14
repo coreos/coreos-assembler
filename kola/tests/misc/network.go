@@ -18,6 +18,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -28,6 +30,14 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.network.listeners",
 		UserData:    `#cloud-config`,
+	})
+	register.Register(&register.Test{
+		Run:              NetworkInitramfsSecondBoot,
+		ClusterSize:      1,
+		Name:             "coreos.network.initramfs.second-boot",
+		UserData:         `#cloud-config`,
+		ExcludePlatforms: []string{"digitalocean"},
+		MinVersion:       semver.Version{Major: 1445},
 	})
 }
 
@@ -105,4 +115,36 @@ func NetworkListeners(c cluster.TestCluster) {
 		{"udp", "546", "systemd-network"}, // bootpc
 	}
 	checkListeners(c, expectedListeners)
+}
+
+// Verify that networking is not started in the initramfs on the second boot.
+// https://github.com/coreos/bugs/issues/1768
+func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	m.Reboot()
+
+	// get journal lines from the current boot
+	output, err := m.SSH("journalctl -b 0 -o cat -u initrd-switch-root.target -u systemd-networkd.service")
+	if err != nil {
+		c.Fatalf("couldn't run journalctl: %v", err)
+	}
+	lines := strings.Split(string(output), "\n")
+
+	// verify that the network service was started
+	found := false
+	for _, line := range lines {
+		if line == "Started Network Service." {
+			found = true
+			break
+		}
+	}
+	if !found {
+		c.Fatal("couldn't find log entry for networkd startup")
+	}
+
+	// check that we exited the initramfs first
+	if lines[0] != "Reached target Switch Root." {
+		c.Fatal("networkd started in initramfs")
+	}
 }
