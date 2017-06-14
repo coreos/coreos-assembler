@@ -527,8 +527,8 @@ func (a *API) startConsole(deviceID string, console Console) error {
 		}
 		defer session.Close()
 
-		reader := newBlockingReader()
-		defer reader.Close()
+		reader, writer := io.Pipe()
+		defer writer.Close()
 
 		session.Stdin = reader
 		session.Stdout = console
