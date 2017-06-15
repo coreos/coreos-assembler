@@ -155,7 +155,13 @@ func (a *SSHAgent) newClient(host string, user string, auth []ssh.AuthMethod) (*
 // NewClient connects to the given host via SSH, the client will support
 // agent forwarding but it must also be enabled per-session.
 func (a *SSHAgent) NewClient(host string) (*ssh.Client, error) {
-	client, err := a.newClient(host, a.User, []ssh.AuthMethod{ssh.PublicKeysCallback(a.Signers)})
+	return a.NewUserClient(host, a.User)
+}
+
+// NewUserClient connects to the given host via SSH using the provided username.
+// The client will support agent forwarding but it must also be enabled per-session.
+func (a *SSHAgent) NewUserClient(host string, user string) (*ssh.Client, error) {
+	client, err := a.newClient(host, user, []ssh.AuthMethod{ssh.PublicKeysCallback(a.Signers)})
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/sdk"
 )
@@ -27,7 +28,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
-	kolaPlatforms      = []string{"aws", "gce", "qemu"}
+	kolaPlatforms      = []string{"aws", "gce", "packet", "qemu"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
@@ -75,10 +76,25 @@ func init() {
 	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-b1620fd1", "AWS AMI ID")
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.small", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
+
+	// packet-specific options
+	sv(&kola.PacketOptions.ConfigPath, "packet-config-file", "", "Packet config file (default \"~/"+auth.PacketConfigPath+"\")")
+	sv(&kola.PacketOptions.Profile, "packet-profile", "", "Packet profile (default \"default\")")
+	sv(&kola.PacketOptions.ApiKey, "packet-api-key", "", "Packet API key (overrides config file)")
+	sv(&kola.PacketOptions.Project, "packet-project", "", "Packet project UUID (overrides config file)")
+	sv(&kola.PacketOptions.Facility, "packet-facility", "sjc1", "Packet facility code")
+	sv(&kola.PacketOptions.Plan, "packet-plan", "", "Packet plan slug (default board-dependent, e.g. \"baremetal_0\")")
+	sv(&kola.PacketOptions.InstallerImageURL, "packet-installer-image-url", "", "Packet installer image URL, non-https (default board-dependent, e.g. \"http://stable.release.core-os.net/amd64-usr/current\")")
+	sv(&kola.PacketOptions.ImageBaseURL, "packet-image-base-url", "", "Packet image base URL (default board-dependent, e.g. \"https://alpha.release.core-os.net/amd64-usr\")")
+	sv(&kola.PacketOptions.ImageVersion, "packet-image-version", "current", "Packet image version")
+	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
 }
 
 // Sync up the command line options if there is dependency
 func syncOptions() error {
+	kola.PacketOptions.Board = kola.QEMUOptions.Board
+	kola.PacketOptions.GSOptions = &kola.GCEOptions
+
 	ok := false
 	for _, platform := range kolaPlatforms {
 		if platform == kolaPlatform {

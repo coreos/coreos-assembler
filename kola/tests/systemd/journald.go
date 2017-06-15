@@ -19,25 +19,37 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/coreos-cloudinit/config"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/util"
 )
 
 var (
-	gatewayconf = config.CloudConfig{
-		CoreOS: config.CoreOS{
-			Units: []config.Unit{
-				config.Unit{
-					Name:    "systemd-journal-gatewayd.socket",
-					Command: "start",
-				},
-			},
-		},
-		Hostname: "gateway",
-	}
+	gatewayconf = `{
+			   "ignition": {
+			       "version": "2.0.0"
+			   },
+			   "storage": {
+			       "files": [
+				   {
+				       "filesystem": "root",
+				       "path": "/etc/hostname",
+				       "mode": 420,
+				       "contents": {
+					   "source": "data:,gateway"
+				       }
+				   }
+			       ]
+			   },
+			   "systemd": {
+			       "units": [
+				   {
+				       "name": "systemd-journal-gatewayd.socket",
+				       "enable": true
+				   }
+			       ]
+			   }
+		       }`
 )
 
 func init() {
@@ -53,7 +65,7 @@ func init() {
 // a systemd-journal-gatewayd server.
 func journalRemote(c cluster.TestCluster) {
 	// start gatewayd and log a message
-	gateway, err := c.NewMachine(gatewayconf.String())
+	gateway, err := c.NewMachine(gatewayconf)
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
@@ -82,7 +94,7 @@ func journalRemote(c cluster.TestCluster) {
 
 	// find the message on the collector
 	journalReader := func() error {
-		cmd = fmt.Sprintf("sudo journalctl _HOSTNAME=%s -t core --file /var/log/journal/remote/remote-%s.journal", gatewayconf.Hostname, gateway.PrivateIP())
+		cmd = fmt.Sprintf("sudo journalctl _HOSTNAME=gateway -t core --file /var/log/journal/remote/remote-%s.journal", gateway.PrivateIP())
 		out, err = collector.SSH(cmd)
 		if err != nil {
 			return fmt.Errorf("journalctl: %v: %v", out, err)
