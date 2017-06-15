@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2017 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,30 +15,26 @@
 package ignition
 
 import (
-	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
 
-// These tests require the kola key to be passed to the instance via cloud
-// provider metadata since it will not be injected into the config.
 func init() {
-	// Tests for https://github.com/coreos/bugs/issues/1184
+	// verify that SSH key injection works correctly through Ignition,
+	// without injecting via platform metadata
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v2.empty",
+		Name:             "coreos.ignition.v1.ssh.key",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
+		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
+		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
+		UserData:         `{"ignitionVersion": 1}`,
 	})
-	// Tests for https://github.com/coreos/bugs/issues/1981
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v2.noop",
+		Name:             "coreos.ignition.v2.ssh.key",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
-		Flags:            []register.Flag{register.NoSSHKeyInUserData},
+		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
+		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         `{"ignition":{"version":"2.0.0"}}`,
 	})
-}
-
-func empty(_ cluster.TestCluster) {
 }

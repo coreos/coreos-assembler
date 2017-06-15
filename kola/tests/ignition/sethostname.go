@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 
 func init() {
 	// Set the hostname
-	config := `{
+	configV1 := `{
 		          "ignitionVersion": 1,
 		          "storage": {
 		              "filesystems": [
@@ -41,11 +41,34 @@ func init() {
 		              ]
 		          }
 		      }`
+	configV2 := `{
+		          "ignition": {
+		              "version": "2.0.0"
+		          },
+		          "storage": {
+		              "files": [
+		                  {
+		                      "filesystem": "root",
+		                      "path": "/etc/hostname",
+		                      "mode": 420,
+		                      "contents": {
+		                          "source": "data:,core1"
+		                      }
+		                  }
+		              ]
+		          }
+		      }`
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.sethostname",
 		Run:         setHostname,
 		ClusterSize: 1,
-		UserData:    config,
+		UserData:    configV1,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2.sethostname",
+		Run:         setHostname,
+		ClusterSize: 1,
+		UserData:    configV2,
 	})
 }
 

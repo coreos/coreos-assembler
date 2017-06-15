@@ -23,7 +23,24 @@ import (
 
 func init() {
 	// Reformat the root as btrfs
-	btrfsConfig := `{
+	btrfsConfigV1 := `{
+		               "ignitionVersion": 1,
+		               "storage": {
+		                   "filesystems": [
+		                       {
+		                           "device": "/dev/disk/by-partlabel/ROOT",
+		                           "format": "btrfs",
+		                           "create": {
+		                               "force": true,
+		                               "options": [
+		                                   "--label=ROOT"
+		                               ]
+		                           }
+		                       }
+		                   ]
+		               }
+		           }`
+	btrfsConfigV2 := `{
 		               "ignition": {
 		                   "version": "2.0.0"
 		               },
@@ -45,14 +62,37 @@ func init() {
 		               }
 		           }`
 	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.btrfsroot",
+		Run:         btrfsRoot,
+		ClusterSize: 1,
+		UserData:    btrfsConfigV1,
+	})
+	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
-		UserData:    btrfsConfig,
+		UserData:    btrfsConfigV2,
 	})
 
 	// Reformat the root as xfs
-	xfsConfig := `{
+	xfsConfigV1 := `{
+		             "ignitionVersion": 1,
+		             "storage": {
+		                 "filesystems": [
+		                     {
+		                         "device": "/dev/disk/by-partlabel/ROOT",
+		                         "format": "xfs",
+		                         "create": {
+		                             "force": true,
+		                             "options": [
+		                                 "-L", "ROOT"
+		                             ]
+		                         }
+		                     }
+		                 ]
+		             }
+		         }`
+	xfsConfigV2 := `{
 		             "ignition": {
 		                 "version": "2.0.0"
 		             },
@@ -74,14 +114,37 @@ func init() {
 		             }
 		         }`
 	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.xfsroot",
+		Run:         xfsRoot,
+		ClusterSize: 1,
+		UserData:    xfsConfigV1,
+	})
+	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
-		UserData:    xfsConfig,
+		UserData:    xfsConfigV2,
 	})
 
 	// Reformat the root as ext4
-	ext4Config := `{
+	ext4ConfigV1 := `{
+		             "ignitionVersion": 1,
+		             "storage": {
+		                 "filesystems": [
+		                     {
+		                         "device": "/dev/disk/by-partlabel/ROOT",
+		                         "format": "ext4",
+		                         "create": {
+		                             "force": true,
+		                             "options": [
+		                                 "-L", "ROOT"
+		                             ]
+		                         }
+		                     }
+		                 ]
+		             }
+		         }`
+	ext4ConfigV2 := `{
 		             "ignition": {
 		                 "version": "2.0.0"
 		             },
@@ -103,16 +166,28 @@ func init() {
 		             }
 		         }`
 	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.ext4root",
+		Run:         ext4Root,
+		ClusterSize: 1,
+		UserData:    ext4ConfigV1,
+	})
+	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
-		UserData:    ext4Config,
+		UserData:    ext4ConfigV2,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.ext4checkexisting",
+		Run:         ext4CheckExisting,
+		ClusterSize: 1,
+		UserData:    ext4ConfigV1,
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.ext4checkexisting",
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
-		UserData:    ext4Config,
+		UserData:    ext4ConfigV2,
 	})
 }
 

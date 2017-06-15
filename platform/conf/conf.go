@@ -19,10 +19,11 @@ import (
 	"io/ioutil"
 
 	cci "github.com/coreos/coreos-cloudinit/config"
-	v2 "github.com/coreos/ignition/config"
-	v2types "github.com/coreos/ignition/config/types"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
+	v2 "github.com/coreos/ignition/config/v2_0"
+	v2types "github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/ignition/config/validate/report"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -43,6 +44,16 @@ type Conf struct {
 func New(userdata string) (*Conf, error) {
 	c := &Conf{}
 
+	// Reports collapse errors to their underlying strings
+	haveEntry := func(report report.Report, err error) bool {
+		for _, entry := range report.Entries {
+			if err.Error() == entry.Message {
+				return true
+			}
+		}
+		return false
+	}
+
 	ignc, report, err := v2.Parse([]byte(userdata))
 	switch err {
 	case v2.ErrEmpty:
@@ -56,18 +67,22 @@ func New(userdata string) (*Conf, error) {
 	case v2.ErrScript:
 		// pass through scripts unmodified, you are on your own.
 		c.script = userdata
-	case v2.ErrDeprecated:
-		if ignc, err := v1.Parse([]byte(userdata)); err == nil {
-			c.ignitionV1 = &ignc
-		} else {
-			return nil, err
-		}
 	case nil:
 		c.ignitionV2 = &ignc
 	default:
 		// some other error (invalid json, script)
-		plog.Errorf("invalid userdata: %v", report)
-		return nil, err
+		if haveEntry(report, v2types.ErrOldVersion) {
+			// version 1 config
+			var ignc v1types.Config
+			ignc, err = v1.Parse([]byte(userdata))
+			if err != nil {
+				return nil, err
+			}
+			c.ignitionV1 = &ignc
+		} else {
+			plog.Errorf("invalid userdata: %v", report)
+			return nil, err
+		}
 	}
 
 	return c, nil

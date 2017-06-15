@@ -25,6 +25,33 @@ import (
 
 func init() {
 	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.groups",
+		Run:         groups,
+		ClusterSize: 1,
+		UserData: `{
+		             "ignitionVersion": 1,
+		             "systemd": {
+		               "units": [{
+		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
+		                 "mask": true
+		               }]
+		             },
+		             "passwd": {
+		               "groups": [
+		                 {
+		                   "name": "group1",
+		                   "gid":  501
+		                 },
+		                 {
+		                   "name": "group2",
+		                   "gid":  502,
+		                   "passwordHash": "foobar"
+		                 }
+		               ]
+		             }
+		           }`,
+	})
+	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.groups",
 		Run:         groups,
 		ClusterSize: 1,
@@ -46,6 +73,39 @@ func init() {
 		                   "name": "group2",
 		                   "gid":  502,
 		                   "passwordHash": "foobar"
+		                 }
+		               ]
+		             }
+		           }`,
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v1.users",
+		Run:         users,
+		ClusterSize: 1,
+		UserData: `{
+		             "ignitionVersion": 1,
+		             "systemd": {
+		               "units": [{
+		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
+		                 "mask": true
+		               }]
+		             },
+		             "passwd": {
+		               "users": [
+		                 {
+		                   "name": "core",
+		                   "passwordHash": "foobar"
+		                 },
+		                 {
+		                   "name": "user1",
+		                   "create": {}
+		                 },
+		                 {
+		                   "name": "user2",
+		                   "create": {
+		                     "uid": 1010,
+		                     "groups": [ "docker" ]
+		                   }
 		                 }
 		               ]
 		             }

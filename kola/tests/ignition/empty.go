@@ -19,15 +19,32 @@ import (
 	"github.com/coreos/mantle/kola/register"
 )
 
-// Tests for https://github.com/coreos/bugs/issues/1184
-// This test requires the kola key to be passed to the instance via cloud
+// These tests require the kola key to be passed to the instance via cloud
 // provider metadata since it will not be injected into the config.
 func init() {
+	// Tests for https://github.com/coreos/bugs/issues/1184
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v1.empty",
+		Name:             "coreos.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
+	})
+	// Tests for https://github.com/coreos/bugs/issues/1981
+	register.Register(&register.Test{
+		Name:             "coreos.ignition.v1.noop",
+		Run:              empty,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"},
+		Flags:            []register.Flag{register.NoSSHKeyInUserData},
+		UserData:         `{"ignitionVersion": 1}`,
+	})
+	register.Register(&register.Test{
+		Name:             "coreos.ignition.v2.noop",
+		Run:              empty,
+		ClusterSize:      1,
+		ExcludePlatforms: []string{"qemu"},
+		Flags:            []register.Flag{register.NoSSHKeyInUserData},
+		UserData:         `{"ignition":{"version":"2.0.0"}}`,
 	})
 }
 
