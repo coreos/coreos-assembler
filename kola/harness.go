@@ -90,16 +90,16 @@ var (
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
 
-func NewCluster(pltfrm string, conf *platform.RuntimeConfig) (cluster platform.Cluster, err error) {
+func NewCluster(pltfrm string, rconf *platform.RuntimeConfig) (cluster platform.Cluster, err error) {
 	switch pltfrm {
 	case "qemu":
-		cluster, err = qemu.NewCluster(&QEMUOptions, conf)
+		cluster, err = qemu.NewCluster(&QEMUOptions, rconf)
 	case "gce":
-		cluster, err = gcloud.NewCluster(&GCEOptions, conf)
+		cluster, err = gcloud.NewCluster(&GCEOptions, rconf)
 	case "aws":
-		cluster, err = aws.NewCluster(&AWSOptions, conf)
+		cluster, err = aws.NewCluster(&AWSOptions, rconf)
 	case "packet":
-		cluster, err = packet.NewCluster(&PacketOptions, conf)
+		cluster, err = packet.NewCluster(&PacketOptions, rconf)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
@@ -272,7 +272,7 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 		}
 	}()
 
-	m, err := cluster.NewMachine("#cloud-config")
+	m, err := cluster.NewMachine(nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating new machine for semver check: %v", err)
 	}
@@ -303,12 +303,12 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	splay := time.Duration(rand.Int63n(max))
 	time.Sleep(splay)
 
-	conf := &platform.RuntimeConfig{
+	rconf := &platform.RuntimeConfig{
 		OutputDir:          h.OutputDir(),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
 	}
-	c, err := NewCluster(pltfrm, conf)
+	c, err := NewCluster(pltfrm, rconf)
 	if err != nil {
 		h.Fatalf("Cluster failed: %v", err)
 	}
@@ -325,8 +325,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 			h.Fatalf("Failed to create discovery endpoint: %v", err)
 		}
 
-		cfg := strings.Replace(t.UserData, "$discovery", url, -1)
-		if _, err := platform.NewMachines(c, cfg, t.ClusterSize); err != nil {
+		userdata := t.UserData
+		if userdata != nil {
+			userdata = userdata.Subst("$discovery", url)
+		}
+		if _, err := platform.NewMachines(c, userdata, t.ClusterSize); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}

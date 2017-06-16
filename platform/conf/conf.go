@@ -16,8 +16,11 @@ package conf
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"strings"
 
+	ct "github.com/coreos/container-linux-config-transpiler/config"
 	cci "github.com/coreos/coreos-cloudinit/config"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
@@ -28,9 +31,26 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
+type kind int
+
+const (
+	kindEmpty kind = iota
+	kindCloudConfig
+	kindIgnition
+	kindContainerLinuxConfig
+	kindScript
+)
+
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
 
-// Conf is a configuration for a CoreOS machine. It may be either a
+// UserData is an immutable, unvalidated configuration for a Container Linux
+// machine.
+type UserData struct {
+	kind kind
+	data string
+}
+
+// Conf is a configuration for a Container Linux machine. It may be either a
 // coreos-cloudconfig or an ignition configuration.
 type Conf struct {
 	ignitionV1  *v1types.Config
@@ -39,42 +59,107 @@ type Conf struct {
 	script      string
 }
 
-// New parses userdata and returns a new Conf. It returns an error if the
-// userdata can't be parsed as a coreos-cloudinit or ignition configuration.
-func New(userdata string) (*Conf, error) {
-	c := &Conf{}
+func Empty() *UserData {
+	return &UserData{
+		kind: kindEmpty,
+	}
+}
 
-	// Reports collapse errors to their underlying strings
-	haveEntry := func(report report.Report, err error) bool {
-		for _, entry := range report.Entries {
-			if err.Error() == entry.Message {
-				return true
-			}
-		}
-		return false
+func ContainerLinuxConfig(data string) *UserData {
+	return &UserData{
+		kind: kindContainerLinuxConfig,
+		data: data,
+	}
+}
+
+func Ignition(data string) *UserData {
+	return &UserData{
+		kind: kindIgnition,
+		data: data,
+	}
+}
+
+func CloudConfig(data string) *UserData {
+	return &UserData{
+		kind: kindCloudConfig,
+		data: data,
+	}
+}
+
+func Script(data string) *UserData {
+	return &UserData{
+		kind: kindScript,
+		data: data,
+	}
+}
+
+func Unknown(data string) *UserData {
+	u := &UserData{
+		data: data,
 	}
 
-	ignc, report, err := v2.Parse([]byte(userdata))
+	_, _, err := v2.Parse([]byte(data))
 	switch err {
 	case v2.ErrEmpty:
-		// empty, noop
+		u.kind = kindEmpty
 	case v2.ErrCloudConfig:
-		// fall back to cloud-config
-		c.cloudconfig, err = cci.NewCloudConfig(userdata)
+		u.kind = kindCloudConfig
+	case v2.ErrScript:
+		u.kind = kindScript
+	default:
+		// we don't autodetect Container Linux configs
+		u.kind = kindIgnition
+	}
+
+	return u
+}
+
+// Performs a string substitution and returns a new UserData.
+func (u *UserData) Subst(old, new string) *UserData {
+	ret := *u
+	ret.data = strings.Replace(u.data, old, new, -1)
+	return &ret
+}
+
+func (u *UserData) IsIgnition() bool {
+	return u.kind == kindIgnition
+}
+
+// Render parses userdata and returns a new Conf. It returns an error if the
+// userdata can't be parsed.
+func (u *UserData) Render() (*Conf, error) {
+	c := &Conf{}
+
+	switch u.kind {
+	case kindEmpty:
+		// empty, noop
+	case kindCloudConfig:
+		var err error
+		c.cloudconfig, err = cci.NewCloudConfig(u.data)
 		if err != nil {
 			return nil, err
 		}
-	case v2.ErrScript:
+	case kindScript:
 		// pass through scripts unmodified, you are on your own.
-		c.script = userdata
-	case nil:
-		c.ignitionV2 = &ignc
-	default:
-		// some other error (invalid json, script)
-		if haveEntry(report, v2types.ErrOldVersion) {
+		c.script = u.data
+	case kindIgnition:
+		// Reports collapse errors to their underlying strings
+		haveEntry := func(report report.Report, err error) bool {
+			for _, entry := range report.Entries {
+				if err.Error() == entry.Message {
+					return true
+				}
+			}
+			return false
+		}
+
+		ignc, report, err := v2.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV2 = &ignc
+		} else if haveEntry(report, v2types.ErrOldVersion) {
 			// version 1 config
 			var ignc v1types.Config
-			ignc, err = v1.Parse([]byte(userdata))
+			ignc, err = v1.Parse([]byte(u.data))
 			if err != nil {
 				return nil, err
 			}
@@ -83,6 +168,25 @@ func New(userdata string) (*Conf, error) {
 			plog.Errorf("invalid userdata: %v", report)
 			return nil, err
 		}
+	case kindContainerLinuxConfig:
+		clc, report := ct.Parse([]byte(u.data))
+		if report.IsFatal() {
+			return nil, fmt.Errorf("parsing Container Linux config: %s", report)
+		} else if len(report.Entries) > 0 {
+			plog.Warningf("parsing Container Linux config: %s", report)
+		}
+
+		// TODO(bgilbert): substitute cloud-specific variables via ct
+		ignc, report := ct.ConvertAs2_0(clc, "")
+		if report.IsFatal() {
+			return nil, fmt.Errorf("rendering Container Linux config: %s", report)
+		} else if len(report.Entries) > 0 {
+			plog.Warningf("rendering Container Linux config: %s", report)
+		}
+
+		c.ignitionV2 = &ignc
+	default:
+		panic("invalid kind")
 	}
 
 	return c, nil

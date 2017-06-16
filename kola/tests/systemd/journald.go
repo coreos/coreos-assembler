@@ -21,11 +21,12 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
 var (
-	gatewayconf = `{
+	gatewayconf = conf.Ignition(`{
 			   "ignition": {
 			       "version": "2.0.0"
 			   },
@@ -49,7 +50,7 @@ var (
 				   }
 			       ]
 			   }
-		       }`
+		       }`)
 )
 
 func init() {
@@ -57,7 +58,6 @@ func init() {
 		Run:         journalRemote,
 		ClusterSize: 0,
 		Name:        "systemd.journal.remote",
-		UserData:    `#cloud-config`,
 	})
 }
 
@@ -79,7 +79,7 @@ func journalRemote(c cluster.TestCluster) {
 	}
 
 	// spawn a machine to read from gatewayd
-	collector, err := c.NewMachine("#cloud-config")
+	collector, err := c.NewMachine(nil)
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}

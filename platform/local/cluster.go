@@ -44,7 +44,7 @@ type LocalCluster struct {
 	nshandle    netns.NsHandle
 }
 
-func NewLocalCluster(basename string, conf *platform.RuntimeConfig) (*LocalCluster, error) {
+func NewLocalCluster(basename string, rconf *platform.RuntimeConfig) (*LocalCluster, error) {
 	lc := &LocalCluster{}
 
 	var err error
@@ -55,7 +55,7 @@ func NewLocalCluster(basename string, conf *platform.RuntimeConfig) (*LocalClust
 	lc.AddCloser(&lc.nshandle)
 
 	nsdialer := network.NewNsDialer(lc.nshandle)
-	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, conf, nsdialer)
+	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, rconf, nsdialer)
 	if err != nil {
 		lc.Destroy()
 		return nil, err

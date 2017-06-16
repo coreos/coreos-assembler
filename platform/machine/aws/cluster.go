@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -35,13 +36,13 @@ type cluster struct {
 // NewCluster will consume the environment variables $AWS_REGION,
 // $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
 // spawn instances in and the credentials to use to authenticate.
-func NewCluster(opts *aws.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
+func NewCluster(opts *aws.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := aws.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func NewCluster(opts *aws.Options, conf *platform.RuntimeConfig) (platform.Clust
 		api:         api,
 	}
 
-	if !conf.NoSSHKeyInMetadata {
+	if !rconf.NoSSHKeyInMetadata {
 		keys, err := ac.Keys()
 		if err != nil {
 			return nil, err
@@ -65,8 +66,8 @@ func NewCluster(opts *aws.Options, conf *platform.RuntimeConfig) (platform.Clust
 	return ac, nil
 }
 
-func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	conf, err := ac.MangleUserData(userdata, map[string]string{
+func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	conf, err := ac.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_EC2_IPV4_PUBLIC}",
 		"$private_ipv4": "${COREOS_EC2_IPV4_LOCAL}",
 	})
@@ -75,7 +76,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	}
 
 	var keyname string
-	if !ac.Conf().NoSSHKeyInMetadata {
+	if !ac.RuntimeConf().NoSSHKeyInMetadata {
 		keyname = ac.Name()
 	}
 	instances, err := ac.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
@@ -88,7 +89,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		mach:    instances[0],
 	}
 
-	mach.dir = filepath.Join(ac.Conf().OutputDir, mach.ID())
+	mach.dir = filepath.Join(ac.RuntimeConf().OutputDir, mach.ID())
 	if err := os.Mkdir(mach.dir, 0777); err != nil {
 		mach.Destroy()
 		return nil, err
@@ -126,7 +127,7 @@ func (ac *cluster) NewMachine(userdata string) (platform.Machine, error) {
 }
 
 func (ac *cluster) Destroy() error {
-	if !ac.Conf().NoSSHKeyInMetadata {
+	if !ac.RuntimeConf().NoSSHKeyInMetadata {
 		if err := ac.api.DeleteKey(ac.Name()); err != nil {
 			return err
 		}

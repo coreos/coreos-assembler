@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/packet"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 var (
@@ -37,19 +38,19 @@ type cluster struct {
 	sshKeyID string
 }
 
-func NewCluster(opts *packet.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
+func NewCluster(opts *packet.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := packet.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}
 
 	var keyID string
-	if !conf.NoSSHKeyInMetadata {
+	if !rconf.NoSSHKeyInMetadata {
 		keys, err := bc.Keys()
 		if err != nil {
 			return nil, err
@@ -70,8 +71,8 @@ func NewCluster(opts *packet.Options, conf *platform.RuntimeConfig) (platform.Cl
 	return pc, nil
 }
 
-func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	conf, err := pc.MangleUserData(userdata, map[string]string{
+func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	conf, err := pc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_PACKET_IPV4_PUBLIC_0}",
 		"$private_ipv4": "${COREOS_PACKET_IPV4_PRIVATE_0}",
 	})
@@ -81,7 +82,7 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 
 	vmname := pc.vmname()
 	// Stream the console somewhere temporary until we have a machine ID
-	consolePath := filepath.Join(pc.Conf().OutputDir, "console-"+vmname+".txt")
+	consolePath := filepath.Join(pc.RuntimeConf().OutputDir, "console-"+vmname+".txt")
 	var cons *console
 	var pcons packet.Console // need a nil interface value if unused
 	if pc.sshKeyID != "" {
@@ -99,7 +100,7 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	}
 
 	// CreateDevice unconditionally closes console when done with it
-	device, err := pc.api.CreateDevice(vmname, conf.String(), pcons)
+	device, err := pc.api.CreateDevice(vmname, conf, pcons)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func (pc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		return nil, fmt.Errorf("couldn't find IP addresses for device")
 	}
 
-	dir := filepath.Join(pc.Conf().OutputDir, mach.ID())
+	dir := filepath.Join(pc.RuntimeConf().OutputDir, mach.ID())
 	if err := os.Mkdir(dir, 0777); err != nil {
 		mach.Destroy()
 		return nil, err

@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
@@ -28,7 +29,7 @@ func init() {
 		Name:        "coreos.ignition.v1.groups",
 		Run:         groups,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
 		             "ignitionVersion": 1,
 		             "systemd": {
 		               "units": [{
@@ -49,13 +50,13 @@ func init() {
 		                 }
 		               ]
 		             }
-		           }`,
+		           }`),
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.groups",
 		Run:         groups,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
 		             "ignition": { "version": "2.0.0" },
 		             "systemd": {
 		               "units": [{
@@ -76,13 +77,13 @@ func init() {
 		                 }
 		               ]
 		             }
-		           }`,
+		           }`),
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.users",
 		Run:         users,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
 		             "ignitionVersion": 1,
 		             "systemd": {
 		               "units": [{
@@ -109,13 +110,13 @@ func init() {
 		                 }
 		               ]
 		             }
-		           }`,
+		           }`),
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.users",
 		Run:         users,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
 		             "ignition": { "version": "2.0.0" },
 		             "systemd": {
 		               "units": [{
@@ -142,7 +143,7 @@ func init() {
 		                 }
 		               ]
 		             }
-		           }`,
+		           }`),
 	})
 }
 

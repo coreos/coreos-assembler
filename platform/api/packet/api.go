@@ -176,7 +176,7 @@ func (a *API) PreflightCheck() error {
 }
 
 // console is optional, and is closed on error or when the device is deleted.
-func (a *API) CreateDevice(hostname, userdata string, console Console) (*packngo.Device, error) {
+func (a *API) CreateDevice(hostname string, conf *conf.Conf, console Console) (*packngo.Device, error) {
 	consoleStarted := false
 	defer func() {
 		if console != nil && !consoleStarted {
@@ -184,7 +184,7 @@ func (a *API) CreateDevice(hostname, userdata string, console Console) (*packngo
 		}
 	}()
 
-	userdata, err := a.wrapUserData(userdata)
+	userdata, err := a.wrapUserData(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -277,14 +277,9 @@ func (a *API) DeleteKey(keyID string) error {
 	return nil
 }
 
-func (a *API) wrapUserData(userdata string) (string, error) {
-	// parse userdata to see what type it is
-	conf, err := conf.New(userdata)
-	if err != nil {
-		return "", fmt.Errorf("couldn't parse userdata: %v", err)
-	}
+func (a *API) wrapUserData(conf *conf.Conf) (string, error) {
 	userDataOption := "-i"
-	if userdata != "" && !conf.IsIgnition() {
+	if !conf.IsIgnition() && conf.String() != "" {
 		userDataOption = "-c"
 	}
 
@@ -376,9 +371,9 @@ EOF
 `))
 
 	// make Ignition config
-	b64UserData := base64.StdEncoding.EncodeToString([]byte(userdata))
+	b64UserData := base64.StdEncoding.EncodeToString(conf.Bytes())
 	var buf bytes.Buffer
-	err = json.NewEncoder(&buf).Encode(ignition.Config{
+	err := json.NewEncoder(&buf).Encode(ignition.Config{
 		Ignition: ignition.Ignition{
 			Version: ignition.IgnitionVersion{Major: 2},
 		},

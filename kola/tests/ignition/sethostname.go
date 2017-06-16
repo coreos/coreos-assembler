@@ -19,11 +19,12 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
 	// Set the hostname
-	configV1 := `{
+	configV1 := conf.Ignition(`{
 		          "ignitionVersion": 1,
 		          "storage": {
 		              "filesystems": [
@@ -40,8 +41,8 @@ func init() {
 		                  }
 		              ]
 		          }
-		      }`
-	configV2 := `{
+		      }`)
+	configV2 := conf.Ignition(`{
 		          "ignition": {
 		              "version": "2.0.0"
 		          },
@@ -57,7 +58,7 @@ func init() {
 		                  }
 		              ]
 		          }
-		      }`
+		      }`)
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.sethostname",
 		Run:         setHostname,

@@ -16,6 +16,7 @@ package ignition
 
 import (
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
@@ -27,7 +28,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
-		UserData:         `{"ignitionVersion": 1}`,
+		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
 	})
 	register.Register(&register.Test{
 		Name:             "coreos.ignition.v2.ssh.key",
@@ -35,6 +36,6 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
-		UserData:         `{"ignition":{"version":"2.0.0"}}`,
+		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
 	})
 }

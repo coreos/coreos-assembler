@@ -16,17 +16,17 @@ package fleet
 
 import (
 	"bytes"
-	"strings"
 	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
 var (
-	masterconf = `{
+	masterconf = conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -63,9 +63,9 @@ var (
       "mode": 420
     }]
   }
-}`
+}`)
 
-	proxyconf = `{
+	proxyconf = conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -106,7 +106,7 @@ var (
       }
     ]
   }
-}`
+}`)
 )
 
 func init() {
@@ -114,7 +114,6 @@ func init() {
 		Run:         Proxy,
 		ClusterSize: 0,
 		Name:        "coreos.fleet.etcdproxy",
-		UserData:    `#cloud-config`,
 	})
 }
 
@@ -125,13 +124,13 @@ func Proxy(c cluster.TestCluster) {
 		c.Fatalf("Couldn't get discovery URL: %s", err)
 	}
 
-	master, err := c.NewMachine(strings.Replace(masterconf, "$discovery", discoveryURL, -1))
+	master, err := c.NewMachine(masterconf.Subst("$discovery", discoveryURL))
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine master: %s", err)
 	}
 	defer master.Destroy()
 
-	proxy, err := c.NewMachine(strings.Replace(proxyconf, "$discovery", discoveryURL, -1))
+	proxy, err := c.NewMachine(proxyconf.Subst("$discovery", discoveryURL))
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine proxy: %s", err)
 	}

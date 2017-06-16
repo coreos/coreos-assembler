@@ -11,6 +11,7 @@ import (
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -40,7 +41,6 @@ func init() {
 			"RandomUUID":       TestFsRandomUUID,
 			"Useradd":          TestUseradd,
 		},
-		UserData: `#cloud-config`,
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.cluster",
@@ -50,7 +50,7 @@ func init() {
 			"EtcdUpdateValue":    TestEtcdUpdateValue,
 			"FleetctlRunService": TestFleetctlRunService,
 		},
-		UserData: `{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -79,7 +79,7 @@ func init() {
       }
     ]
   }
-}`,
+}`),
 	})
 
 	// tests requiring network connection to internet
@@ -94,7 +94,6 @@ func init() {
 			"DockerEcho":   TestDockerEcho,
 			"NTPDate":      TestNTPDate,
 		},
-		UserData: `#cloud-config`,
 	})
 }
 

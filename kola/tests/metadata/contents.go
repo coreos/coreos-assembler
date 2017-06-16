@@ -19,10 +19,11 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
-	enableMetadataService := `{
+	enableMetadataService := conf.Ignition(`{
 	    "ignitionVersion": 1,
 	    "systemd": {
 		"units": [
@@ -37,7 +38,7 @@ func init() {
 		    }
 		]
 	    }
-	}`
+	}`)
 
 	register.Register(&register.Test{
 		Name:        "coreos.metadata.aws",

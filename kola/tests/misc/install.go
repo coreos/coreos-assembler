@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func init() {
 		Run:         InstallCloudConfig,
 		ClusterSize: 1,
 		Name:        "coreos.install.cloudinit",
-		UserData: `{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "storage": {
     "files": [{
@@ -36,7 +37,7 @@ func init() {
       "mode": 420
     }]
   }
-}`,
+}`),
 	})
 }
 

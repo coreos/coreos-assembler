@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -36,7 +37,7 @@ func init() {
 		Name:        "coreos.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
-		UserData: `{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -65,13 +66,13 @@ func init() {
       "mode": 420
     }]
   }
-}`,
+}`),
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.tls",
 		Run:         locksmithTLS,
 		ClusterSize: 1,
-		UserData: `{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -112,7 +113,7 @@ func init() {
       }
     ]
   }
-}`,
+}`),
 	})
 }
 

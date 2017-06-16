@@ -33,16 +33,15 @@ func TestConfCopyKey(t *testing.T) {
 		t.Fatalf("agent.List failed: %v", err)
 	}
 
-	tests := []struct {
-		conf string
-	}{
-		{`{ "ignition": { "version": "2.0.0" } }`},
-		{`{ "ignitionVersion": 1 }`},
-		{"#cloud-config"},
+	tests := []*UserData{
+		ContainerLinuxConfig(""),
+		Ignition(`{ "ignition": { "version": "2.0.0" } }`),
+		Ignition(`{ "ignitionVersion": 1 }`),
+		CloudConfig("#cloud-config"),
 	}
 
 	for i, tt := range tests {
-		conf, err := New(tt.conf)
+		conf, err := tt.Render()
 		if err != nil {
 			t.Errorf("failed to parse config %d: %v", i, err)
 			continue

@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
@@ -30,12 +31,12 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.omaha.ping",
 		Platforms:   []string{"qemu"},
-		UserData: `#cloud-config
+		UserData: conf.CloudConfig(`#cloud-config
 
 coreos:
   update:
     server: "http://10.0.0.1:34567/v1/update/"
-`,
+`),
 	})
 }
 

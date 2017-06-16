@@ -20,10 +20,11 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
-var conf = `{
+var config = conf.Ignition(`{
 	"ignition": {
 		"version": "2.0.0"
 	},
@@ -33,7 +34,7 @@ var conf = `{
 			"enable": true
 		}]
 	}
-}`
+}`)
 
 func init() {
 	register.Register(&register.Test{
@@ -41,7 +42,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
 		Name:             "coreos.rkt.etcd3",
-		UserData:         conf,
+		UserData:         config,
 	})
 }
 

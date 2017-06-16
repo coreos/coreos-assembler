@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -41,15 +40,15 @@ type BaseCluster struct {
 	machmap    map[string]Machine
 	consolemap map[string]string
 
-	name string
-	conf *RuntimeConfig
+	name  string
+	rconf *RuntimeConfig
 }
 
-func NewBaseCluster(basename string, conf *RuntimeConfig) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(basename, conf, network.NewRetryDialer())
+func NewBaseCluster(basename string, rconf *RuntimeConfig) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(basename, rconf, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(basename string, conf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func NewBaseClusterWithDialer(basename string, conf *RuntimeConfig, dialer netwo
 		machmap:    make(map[string]Machine),
 		consolemap: make(map[string]string),
 		name:       fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
-		conf:       conf,
+		rconf:      rconf,
 	}
 
 	return bc, nil
@@ -141,20 +140,24 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 	return bc.agent.List()
 }
 
-func (bc *BaseCluster) MangleUserData(userdata string, ignitionVars map[string]string) (*conf.Conf, error) {
+func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
+	if userdata == nil {
+		userdata = conf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
+	}
+
 	// hacky solution for unified ignition metadata variables
-	if strings.Contains(userdata, `"ignition":`) {
+	if userdata.IsIgnition() {
 		for k, v := range ignitionVars {
-			userdata = strings.Replace(userdata, k, v, -1)
+			userdata = userdata.Subst(k, v)
 		}
 	}
 
-	conf, err := conf.New(userdata)
+	conf, err := userdata.Render()
 	if err != nil {
 		return nil, err
 	}
 
-	if !bc.conf.NoSSHKeyInUserData {
+	if !bc.rconf.NoSSHKeyInUserData {
 		keys, err := bc.Keys()
 		if err != nil {
 			return nil, err
@@ -211,8 +214,8 @@ func (bc *BaseCluster) Name() string {
 	return bc.name
 }
 
-func (bc *BaseCluster) Conf() RuntimeConfig {
-	return *bc.conf
+func (bc *BaseCluster) RuntimeConf() RuntimeConfig {
+	return *bc.rconf
 }
 
 func (bc *BaseCluster) ConsoleOutput() map[string]string {

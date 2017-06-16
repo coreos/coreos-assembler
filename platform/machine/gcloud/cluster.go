@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -37,13 +38,13 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/gcloud")
 )
 
-func NewCluster(opts *gcloud.Options, conf *platform.RuntimeConfig) (platform.Cluster, error) {
+func NewCluster(opts *gcloud.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
 	api, err := gcloud.New(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, conf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +58,8 @@ func NewCluster(opts *gcloud.Options, conf *platform.RuntimeConfig) (platform.Cl
 }
 
 // Calling in parallel is ok
-func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
-	conf, err := gc.MangleUserData(userdata, map[string]string{
+func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	conf, err := gc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_GCE_IP_EXTERNAL_0}",
 		"$private_ipv4": "${COREOS_GCE_IP_LOCAL_0}",
 	})
@@ -67,7 +68,7 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 	}
 
 	var keys []*agent.Key
-	if !gc.Conf().NoSSHKeyInMetadata {
+	if !gc.RuntimeConf().NoSSHKeyInMetadata {
 		keys, err = gc.Keys()
 		if err != nil {
 			return nil, err
@@ -88,7 +89,7 @@ func (gc *cluster) NewMachine(userdata string) (platform.Machine, error) {
 		extIP: extip,
 	}
 
-	gm.dir = filepath.Join(gc.Conf().OutputDir, gm.ID())
+	gm.dir = filepath.Join(gc.RuntimeConf().OutputDir, gm.ID())
 	if err := os.Mkdir(gm.dir, 0777); err != nil {
 		gm.Destroy()
 		return nil, err

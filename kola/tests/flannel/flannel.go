@@ -21,16 +21,16 @@ package flannel
 import (
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 var (
-	flannelConf = `{
+	flannelConf = conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
     "units": [
@@ -70,7 +70,7 @@ var (
       }
     ]
   }
-}`
+}`)
 )
 
 func init() {
@@ -79,7 +79,7 @@ func init() {
 		ClusterSize:      3,
 		Name:             "coreos.flannel.udp",
 		ExcludePlatforms: []string{"qemu"},
-		UserData:         strings.Replace(flannelConf, "$type", "udp", -1),
+		UserData:         flannelConf.Subst("$type", "udp"),
 	})
 
 	register.Register(&register.Test{
@@ -87,7 +87,7 @@ func init() {
 		ClusterSize:      3,
 		Name:             "coreos.flannel.vxlan",
 		ExcludePlatforms: []string{"qemu"},
-		UserData:         strings.Replace(flannelConf, "$type", "vxlan", -1),
+		UserData:         flannelConf.Subst("$type", "vxlan"),
 	})
 }
 

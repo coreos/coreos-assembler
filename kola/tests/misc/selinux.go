@@ -24,7 +24,6 @@ func init() {
 		Run:         SelinuxEnforce,
 		ClusterSize: 1,
 		Name:        "coreos.selinux.enforce",
-		UserData:    `#cloud-config`,
 	})
 }
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 var (
@@ -57,22 +58,19 @@ func runSpawn(cmd *cobra.Command, args []string) {
 }
 
 func doSpawn(cmd *cobra.Command, args []string) error {
-	var userdata string
 	var err error
 
 	if spawnNodeCount <= 0 {
 		return fmt.Errorf("Cluster Failed: nodecount must be one or more")
 	}
 
+	var userdata *conf.UserData
 	if spawnUserData != "" {
 		userbytes, err := ioutil.ReadFile(spawnUserData)
 		if err != nil {
 			return fmt.Errorf("Reading userdata failed: %v", err)
 		}
-		userdata = string(userbytes)
-	} else {
-		// ensure a key is injected
-		userdata = "#cloud-config"
+		userdata = conf.Unknown(string(userbytes))
 	}
 
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)

@@ -24,6 +24,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -66,7 +67,7 @@ type Machine interface {
 // Cluster represents a cluster of CoreOS machines within a single platform.
 type Cluster interface {
 	// NewMachine creates a new CoreOS machine.
-	NewMachine(config string) (Machine, error)
+	NewMachine(userdata *conf.UserData) (Machine, error)
 
 	// Machines returns a slice of the active machines in the Cluster.
 	Machines() []Machine
@@ -201,7 +202,7 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 
 // NewMachines spawns n instances in cluster c, with
 // each instance passed the same userdata.
-func NewMachines(c Cluster, userdata string, n int) ([]Machine, error) {
+func NewMachines(c Cluster, userdata *conf.UserData, n int) ([]Machine, error) {
 	var wg sync.WaitGroup
 
 	mchan := make(chan Machine, n)
