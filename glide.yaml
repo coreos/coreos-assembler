@@ -72,7 +72,7 @@ import:
   subpackages:
   - quantile
 - package: github.com/boltdb/bolt
-  version: dfb21201d9270c1082d5fb0f07f500311ff72f18
+  version: v1.2.1
 - package: github.com/coreos/container-linux-config-transpiler
   version: d2b5fed204802a87e7b532d42b3bae3f15ce97ae
   subpackages:
@@ -81,11 +81,11 @@ import:
   - config/types
   - config/types/util
 - package: github.com/coreos/coreos-cloudinit
-  version: 4c333e657bfbaa8f6594298b48324f45e6bf5961
+  version: v1.11.0
   subpackages:
   - config
 - package: github.com/coreos/etcd
-  version: 24a90baff8dd153a8481876fb27db64d7ec7e3c7
+  version: v3.0.3
   subpackages:
   - alarm
   - auth
@@ -148,7 +148,7 @@ import:
   - journal
   - unit
 - package: github.com/coreos/ignition
-  version: f8d31e31361479ea4b0bc6704514d87c475160db
+  version: v0.14.0
   subpackages:
   - config
   - config/types
@@ -169,7 +169,7 @@ import:
 - package: github.com/coreos/yaml
   version: 6b16a5714269b2f70720a45406b1babd947a17ef
 - package: github.com/cpuguy83/go-md2man
-  version: 71acacd42f85e5e82f70a55327789582a5200a90
+  version: v1.0.4
   subpackages:
   - md2man
 - package: github.com/gengo/grpc-gateway
@@ -179,7 +179,7 @@ import:
   - runtime/internal
   - utilities
 - package: github.com/go-ini/ini
-  version: afbd495e5aaea13597b5e14fe514ddeaa4d76fc3
+  version: v1.8.6
 - package: github.com/godbus/dbus
   version: a5942dec6340eb0d57f43f2003c190ce06e43dea
 - package: github.com/gogo/protobuf
