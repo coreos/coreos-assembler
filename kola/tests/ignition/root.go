@@ -17,6 +17,8 @@ package ignition
 import (
 	"strings"
 
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -67,12 +69,14 @@ func init() {
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV1,
+		MinVersion:  semver.Version{Major: 1448},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV2,
+		MinVersion:  semver.Version{Major: 1448},
 	})
 
 	// Reformat the root as xfs
