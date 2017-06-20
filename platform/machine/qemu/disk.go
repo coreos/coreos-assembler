@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 
 	"github.com/coreos/mantle/system/exec"
 )
@@ -85,17 +85,11 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	}()
 
 	// extract loop device name
-	lines := strings.Split(string(buf), "\n")
-	var loopnode string
-	for _, field := range strings.Split(lines[0], " ") {
-		if strings.HasPrefix(field, "/dev/loop") {
-			loopnode = strings.TrimPrefix(field, "/dev/")
-			break
-		}
-	}
-	if loopnode == "" {
+	match := regexp.MustCompile(" (loop[0-9]+)p[0-9]+ ").FindStringSubmatch(string(buf))
+	if match == nil {
 		return fmt.Errorf("couldn't obtain loop device name")
 	}
+	loopnode := match[1]
 
 	// mount OEM partition
 	mapperNode := "/dev/mapper/" + loopnode + "p6"
