@@ -62,7 +62,7 @@ func runRelease(cmd *cobra.Command, args []string) {
 
 	spec := ChannelSpec()
 	ctx := context.Background()
-	client, err := auth.GoogleClient()
+	client, err := getGoogleClient()
 	if err != nil {
 		plog.Fatalf("Authentication failed: %v", err)
 	}
