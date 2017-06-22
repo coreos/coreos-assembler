@@ -15,9 +15,13 @@
 package main
 
 import (
+	"io/ioutil"
+	"net/http"
+
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
+	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
 )
 
@@ -27,7 +31,24 @@ var (
 		Use:   "plume [command]",
 		Short: "The CoreOS release utility",
 	}
+
+	gceJSONKeyFile string
 )
+
+func init() {
+	root.PersistentFlags().StringVar(&gceJSONKeyFile, "gce-json-key", "", "use a JSON key for authentication")
+}
+
+func getGoogleClient() (*http.Client, error) {
+	if gceJSONKeyFile != "" {
+		if b, err := ioutil.ReadFile(gceJSONKeyFile); err == nil {
+			return auth.GoogleClientFromJSONKey(b)
+		} else {
+			return nil, err
+		}
+	}
+	return auth.GoogleClient()
+}
 
 func main() {
 	cli.Execute(root)

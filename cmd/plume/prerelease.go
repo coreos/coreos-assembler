@@ -102,7 +102,7 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 
 	spec := ChannelSpec()
 	ctx := context.Background()
-	client, err := auth.GoogleClient()
+	client, err := getGoogleClient()
 	if err != nil {
 		plog.Fatal(err)
 	}

@@ -157,7 +157,7 @@ var (
 		},
 	}
 	specs = map[string]channelSpec{
-		"dev": channelSpec{
+		"user": channelSpec{
 			BaseURL: "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/boards",
 			Boards:  []string{"amd64-usr", "arm64-usr"},
 			Destinations: []storageSpec{storageSpec{
@@ -169,14 +169,14 @@ var (
 			}},
 			GCE: gceSpec{
 				Project:     "coreos-gce-testing",
-				Family:      "coreos-dev",
+				Family:      "coreos-user",
 				Description: "CoreOS Container Linux development image",
 				Image:       "coreos_production_gce.tar.gz",
 				Publish:     "coreos_production_gce.txt",
 				Limit:       2,
 			},
 			AWS: awsSpec{
-				BaseName:        "ContainerLinuxDev",
+				BaseName:        "ContainerLinuxUser",
 				BaseDescription: "CoreOS Container Linux development image",
 				Prefix:          "coreos_production_ami_",
 				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
@@ -202,6 +202,38 @@ var (
 						},
 						Regions: []string{
 							"us-east-2",
+						},
+					},
+				},
+			},
+		},
+		"developer": channelSpec{
+			BaseURL: "gs://builds.developer.core-os.net/boards",
+			Boards:  []string{"amd64-usr", "arm64-usr"},
+			GCE: gceSpec{
+				Project:     "coreos-gce-testing",
+				Family:      "coreos-developer",
+				Description: "CoreOS Container Linux development image",
+				Image:       "coreos_production_gce.tar.gz",
+				Publish:     "coreos_production_gce.txt",
+				Limit:       25,
+			},
+			AWS: awsSpec{
+				BaseName:        "ContainerLinuxDeveloper",
+				BaseDescription: "CoreOS Container Linux development image",
+				Prefix:          "coreos_production_ami_",
+				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Partitions: []awsPartitionSpec{
+					awsPartitionSpec{
+						Name:         "AWS West",
+						Profile:      "coreos-cl",
+						Bucket:       "coreos-dev-ami-import-us-west-2",
+						BucketRegion: "us-west-2",
+						LaunchPermissions: []string{
+							"477645798544",
+						},
+						Regions: []string{
+							"us-west-2",
 						},
 					},
 				},
@@ -374,7 +406,7 @@ func AddSpecFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&specBoard, "board", "B",
 		board, "target board")
 	flags.StringVarP(&specChannel, "channel", "C",
-		"dev", "channels: "+channels)
+		"user", "channels: "+channels)
 	flags.StringVarP(&specVersion, "version", "V",
 		versions.VersionID, "release version")
 }

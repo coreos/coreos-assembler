@@ -25,10 +25,10 @@ done
 
 ```sh
 for board in amd64-usr arm64-usr; do
-    bin/plume pre-release -C dev --verify-key ~/keyfile -B $board -V $version-$COREOS_BUILD_ID
+    bin/plume pre-release -C user --verify-key ~/keyfile -B $board -V $version-$COREOS_BUILD_ID
 done
 for board in amd64-usr arm64-usr; do
-    bin/plume release -C dev -B $board -V <version>-$COREOS_BUILD_ID
+    bin/plume release -C user -B $board -V <version>-$COREOS_BUILD_ID
 done
 ```
 
