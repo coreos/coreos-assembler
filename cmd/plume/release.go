@@ -223,7 +223,8 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	}
 
 	api, err := gcloud.New(&gcloud.Options{
-		Project: spec.GCE.Project,
+		Project:     spec.GCE.Project,
+		JSONKeyFile: gceJSONKeyFile,
 	})
 	if err != nil {
 		plog.Fatalf("GCE client failed: %v", err)
