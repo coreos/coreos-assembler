@@ -20,8 +20,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/mantle/util"
 )
 
 // Copy input image to output and specialize output for running kola tests.
@@ -91,8 +93,19 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	}
 	loopnode := match[1]
 
-	// mount OEM partition
+	// wait for OEM block device
 	mapperNode := "/dev/mapper/" + loopnode + "p6"
+	err = util.Retry(1000, 5*time.Millisecond, func() error {
+		if _, err := os.Stat(mapperNode); !os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("timed out waiting for device node")
+	})
+	if err != nil {
+		return err
+	}
+
+	// mount OEM partition
 	if err := exec.Command("mount", mapperNode, tmpdir).Run(); err != nil {
 		return fmt.Errorf("mounting OEM partition %s on %s: %v", mapperNode, tmpdir, err)
 	}
