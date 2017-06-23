@@ -16,6 +16,7 @@ package fleet
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -153,12 +154,20 @@ func Proxy(c cluster.TestCluster) {
 		c.Fatalf("fleetctl start failed: %v", err)
 	}
 
-	status, err := proxy.SSH("fleetctl list-units -l -fields active -no-legend")
-	if err != nil {
-		c.Fatalf("fleetctl list-units failed: %v", err)
+	fleetList := func() error {
+		status, err := proxy.SSH("fleetctl list-units -l -fields active -no-legend")
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(status, []byte("active")) {
+			return fmt.Errorf("unit not active: %s", status)
+		}
+
+		return nil
 	}
 
-	if !bytes.Equal(status, []byte("active")) {
-		c.Fatalf("unit not active: %s", status)
+	if err := util.Retry(5, 1*time.Second, fleetList); err != nil {
+		c.Fatalf("fleetctl list-units failed: %v", err)
 	}
 }
