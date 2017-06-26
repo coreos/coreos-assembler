@@ -238,8 +238,13 @@ func (qc *Cluster) virtio(device, args string) string {
 
 // Create a nameless temporary qcow2 image file backed by a raw image.
 func setupDisk(imageFile string) (*os.File, error) {
+	// a relative path would be interpreted relative to /tmp
+	backingFile, err := filepath.Abs(imageFile)
+	if err != nil {
+		return nil, err
+	}
 	// keep the COW image from breaking if the "latest" symlink changes
-	backingFile, err := filepath.EvalSymlinks(imageFile)
+	backingFile, err = filepath.EvalSymlinks(backingFile)
 	if err != nil {
 		return nil, err
 	}
