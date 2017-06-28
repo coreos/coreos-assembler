@@ -67,11 +67,17 @@ var (
 	azureProfile       string
 	awsCredentialsFile string
 	verifyKeyFile      string
+	imageInfoFile      string
 )
 
 type platform struct {
 	displayName string
-	handler     func(context.Context, *http.Client, *storage.Bucket, *channelSpec) error
+	handler     func(context.Context, *http.Client, *storage.Bucket, *channelSpec, *imageInfo) error
+}
+
+type imageInfo struct {
+	AWS   *amiList        `json:"aws,omitempty"`
+	Azure *azureImageInfo `json:"azure,omitempty"`
 }
 
 func init() {
@@ -85,6 +91,7 @@ func init() {
 	cmdPreRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
 		"verify-key", "", "path to ASCII-armored PGP public key to be used in verifying download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
+	cmdPreRelease.Flags().StringVar(&imageInfoFile, "write-image-list", "", "optional output file describing uploaded images")
 
 	AddSpecFlags(cmdPreRelease.Flags())
 	root.AddCommand(cmdPreRelease)
@@ -122,6 +129,7 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 		plog.Fatalf("File not found: %s", verurl)
 	}
 
+	var imageInfo imageInfo
 	for _, platformName := range platformList {
 		run := false
 		for _, v := range selectedPlatforms {
@@ -136,8 +144,22 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 
 		platform := platforms[platformName]
 		plog.Printf("Running %v pre-release...", platform.displayName)
-		if err := platform.handler(ctx, client, src, &spec); err != nil {
+		if err := platform.handler(ctx, client, src, &spec, &imageInfo); err != nil {
 			plog.Fatal(err)
+		}
+	}
+
+	if imageInfoFile != "" {
+		f, err := os.OpenFile(imageInfoFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		defer f.Close()
+
+		encoder := json.NewEncoder(f)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(imageInfo); err != nil {
+			plog.Fatalf("couldn't encode image list: %v", err)
 		}
 	}
 
@@ -247,11 +269,15 @@ func replicateAzureImage(spec *channelSpec, api *azure.API, imageName string) er
 	return nil
 }
 
+type azureImageInfo struct {
+	ImageName string `json:"image"`
+}
+
 // azurePreRelease runs everything necessary to prepare a CoreOS release for Azure.
 //
 // This includes uploading the vhd image to Azure storage, creating an OS image from it,
 // and replicating that OS image.
-func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) error {
+func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec, imageInfo *imageInfo) error {
 	if spec.Azure.StorageAccount == "" {
 		plog.Notice("Azure image creation disabled.")
 		return nil
@@ -328,6 +354,9 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 		}
 	}
 
+	imageInfo.Azure = &azureImageInfo{
+		ImageName: imageName,
+	}
 	return nil
 }
 
@@ -558,7 +587,7 @@ func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channe
 // This includes uploading the aws_vmdk image to an S3 bucket in each EC2
 // partition, creating HVM and PV AMIs, and replicating the AMIs to each
 // region.
-func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) error {
+func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec, imageInfo *imageInfo) error {
 	if spec.AWS.Image == "" {
 		plog.Notice("AWS image creation disabled.")
 		return nil
@@ -593,5 +622,6 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 		return fmt.Errorf("uploading AMI IDs: %v", err)
 	}
 
+	imageInfo.AWS = &amis
 	return nil
 }
