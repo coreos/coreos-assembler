@@ -50,7 +50,9 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 		return nil, err
 	}
 
-	master, err := c.NewMachine(nil)
+	// passing cloud-config has the side effect of populating `/etc/environment`,
+	// which the install script depends on
+	master, err := c.NewMachine(conf.CloudConfig(""))
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 	}
 
 	// create worker nodes
-	workers, err := platform.NewMachines(c, nil, nodes)
+	workers, err := platform.NewMachines(c, conf.CloudConfig(""), nodes)
 	if err != nil {
 		return nil, err
 	}
