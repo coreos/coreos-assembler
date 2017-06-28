@@ -32,7 +32,7 @@ import (
 // Must run inside the SDK chroot, easiest to just assemble a script to do it
 const (
 	safePath   = "PATH=/usr/sbin:/usr/bin:/sbin:/bin"
-	sudoPrompt = "--prompt=sudo password for %p: "
+	sudoPrompt = "sudo password for %p: "
 	script     = `#!/bin/bash
 set -e
 
@@ -152,7 +152,7 @@ func Setup(name string) error {
 
 	plog.Info("Configuring SDK chroot")
 	sh := exec.Command(
-		"sudo", sudoPrompt,
+		"sudo", "-p", sudoPrompt,
 		"chroot", chroot,
 		"/usr/bin/env", "-i",
 		"/bin/bash", "--login")
@@ -191,7 +191,7 @@ func extract(tar, dir string) error {
 		return err
 	}
 
-	untar := exec.Command("sudo", sudoPrompt,
+	untar := exec.Command("sudo", "-p", sudoPrompt,
 		"tar", "--numeric-owner", "-x")
 	untar.Dir = dir
 	untar.Stdin = unzipped
@@ -254,7 +254,7 @@ func Delete(name string) error {
 	}
 
 	plog.Noticef("Removing SDK at %s", chroot)
-	rm := exec.Command("sudo", sudoPrompt, "rm", "-rf", chroot)
+	rm := exec.Command("sudo", "-p", sudoPrompt, "rm", "-rf", chroot)
 	rm.Stderr = os.Stderr
 	if err := rm.Run(); err != nil {
 		return err

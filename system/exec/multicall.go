@@ -86,8 +86,7 @@ func (e Entrypoint) Command(args ...string) *ExecCmd {
 // Sudo will prepare the *ExecCmd for the given entrypoint to be run as root
 // via sudo with the provided args.
 func (e Entrypoint) Sudo(args ...string) *ExecCmd {
-	args = append([]string{"--preserve-env",
-		"--prompt=sudo password for %p: ", "--",
+	args = append([]string{"-E", "-p", "sudo password for %p: ", "--",
 		exePath, entryArgPrefix + string(e)}, args...)
 	cmd := Command("sudo", args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
