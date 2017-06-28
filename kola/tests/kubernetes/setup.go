@@ -82,14 +82,10 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 	}
 
 	// configure nodes via generic install scripts
-	if err := runInstallScript(master, controllerInstallScript, options); err != nil {
-		return nil, fmt.Errorf("Installing controller: %v", err)
-	}
+	runInstallScript(c, master, controllerInstallScript, options)
 
 	for _, worker := range workers {
-		if err := runInstallScript(worker, workerInstallScript, options); err != nil {
-			return nil, fmt.Errorf("Installing worker: %v", err)
-		}
+		runInstallScript(c, worker, workerInstallScript, options)
 	}
 
 	// configure kubectl
@@ -256,34 +252,34 @@ func stripSemverSuffix(v string) (string, error) {
 }
 
 // Run and configure the coreos-kubernetes generic install scripts.
-func runInstallScript(m platform.Machine, script string, options map[string]string) error {
+func runInstallScript(c cluster.TestCluster, m platform.Machine, script string, options map[string]string) {
 	if _, err := m.SSH("sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
-		return fmt.Errorf("kubelet-wrapper not found on disk")
+		c.Fatal("kubelet wrapper not found on disk")
 	}
 
 	var buffer = new(bytes.Buffer)
 
 	tmpl, err := template.New("installScript").Parse(script)
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 	if err := tmpl.Execute(buffer, options); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	if err := platform.InstallFile(buffer, m, "/home/core/install.sh"); err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// use client to collect stderr
 	client, err := m.SSHClient()
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 	defer client.Close()
 	session, err := client.NewSession()
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 	defer session.Close()
 
@@ -292,7 +288,7 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 
 	err = session.Start("sudo /home/core/install.sh")
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// timeout script to prevent it looping forever
@@ -303,13 +299,11 @@ func runInstallScript(m platform.Machine, script string, options map[string]stri
 	select {
 	case err := <-errc:
 		if err != nil {
-			return fmt.Errorf("%s", stderr)
+			c.Fatal(err)
 		}
 	case <-time.After(time.Minute * 7):
-		return fmt.Errorf("Timed out waiting for install script to finish.")
+		c.Fatal("Timed out waiting for install script to finish.")
 	}
-
-	return nil
 }
 
 var (
