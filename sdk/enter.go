@@ -498,7 +498,7 @@ func OldEnter(name string, args ...string) error {
 	// selectively pass through environment variables instead of the
 	// catch-all -E which is probably a better way to do it.
 	enterCmd := exec.Command(
-		"sudo", sudoPrompt, "-E",
+		"sudo", "-p", sudoPrompt, "-E",
 		"unshare", "--mount", "--",
 		filepath.Join(RepoRoot(), enterChrootSh),
 		"--chroot", chroot, "--cache_dir", RepoCache(), "--")
