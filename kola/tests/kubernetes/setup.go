@@ -39,22 +39,22 @@ type kCluster struct {
 
 // Setup a multi-node cluster based on generic scrips from coreos-kubernetes repo.
 // https://github.com/coreos/coreos-kubernetes/tree/master/multi-node/generic
-func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*kCluster, error) {
+func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kCluster {
 	// start single-node etcd
 	etcdNode, err := c.NewMachine(etcdConfig)
 	if err != nil {
-		return nil, err
+		c.Fatalf("error creating etcd: %v", err)
 	}
 
 	if err := etcd.GetClusterHealth(etcdNode, 1); err != nil {
-		return nil, err
+		c.Fatalf("error checking etcd health: %v", err)
 	}
 
 	// passing cloud-config has the side effect of populating `/etc/environment`,
 	// which the install script depends on
 	master, err := c.NewMachine(conf.CloudConfig(""))
 	if err != nil {
-		return nil, err
+		c.Fatalf("error creating master: %v", err)
 	}
 
 	options := map[string]string{
@@ -69,18 +69,18 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 
 	// generate TLS assets on master
 	if err := generateMasterTLSAssets(master, options); err != nil {
-		return nil, err
+		c.Fatalf("error creating master tls: %v", err)
 	}
 
 	// create worker nodes
 	workers, err := platform.NewMachines(c, conf.CloudConfig(""), nodes)
 	if err != nil {
-		return nil, err
+		c.Fatalf("error creating workers: %v", err)
 	}
 
 	// generate tls assets on workers by transfering ca from master
 	if err := generateWorkerTLSAssets(master, workers); err != nil {
-		return nil, err
+		c.Fatalf("error creating worker tls: %v", err)
 	}
 
 	// configure nodes via generic install scripts
@@ -92,7 +92,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 
 	// configure kubectl
 	if err := configureKubectl(master, master.PrivateIP(), version); err != nil {
-		return nil, err
+		c.Fatalf("error configuring master kubectl: %v", err)
 	}
 
 	// check that all nodes appear in kubectl
@@ -100,7 +100,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 		return nodeCheck(master, workers)
 	}
 	if err := util.Retry(15, 30*time.Second, f); err != nil {
-		return nil, err
+		c.Fatalf("error waiting for nodes: %v", err)
 	}
 
 	cluster := &kCluster{
@@ -108,7 +108,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) (*k
 		master:  master,
 		workers: workers,
 	}
-	return cluster, nil
+	return cluster
 }
 
 func generateMasterTLSAssets(master platform.Machine, options map[string]string) error {
