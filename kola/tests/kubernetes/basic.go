@@ -59,10 +59,7 @@ func init() {
 // Run basic smoke tests on cluster. Assumes master is machine index 1,
 // workers make up the rest.
 func CoreOSBasic(c cluster.TestCluster, version, runtime string) {
-	k, err := setupCluster(c, 2, version, runtime)
-	if err != nil {
-		c.Fatal(err)
-	}
+	k := setupCluster(c, 2, version, runtime)
 
 	// start nginx pod and curl endpoint
 	if err := nginxCheck(k.master, k.workers); err != nil {
