@@ -44,6 +44,9 @@ type Options struct {
 	// SecretKey is the optional secret key to use. It will override all other sources
 	SecretKey string
 
+	// AMI is the AWS AMI to launch EC2 instances with.
+	// If it is one of the special strings alpha|beta|stable, it will be resolved
+	// to an actual ID.
 	AMI           string
 	InstanceType  string
 	SecurityGroup string
@@ -61,6 +64,7 @@ type API struct {
 // configured in ~/.aws.
 // No validation is done that credentials exist and before using the API a
 // preflight check is recommended via api.PreflightCheck
+// Note that this method may modify Options to update the AMI ID
 func New(opts *Options) (*API, error) {
 	awsCfg := aws.Config{Region: aws.String(opts.Region)}
 	if opts.AccessKeyID != "" {
@@ -76,6 +80,8 @@ func New(opts *Options) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	opts.AMI = resolveAMI(opts.AMI, opts.Region)
 
 	api := &API{
 		session: sess,

@@ -73,7 +73,7 @@ func init() {
 	}
 	// Container Linux 1430.0.0 (alpha) on us-west-2
 	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
-	sv(&kola.AWSOptions.AMI, "aws-ami", "ami-b1620fd1", "AWS AMI ID")
+	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.small", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
 
