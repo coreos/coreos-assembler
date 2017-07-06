@@ -427,7 +427,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
 	}
 
-	err = api.CreateTags([]string{hvmImageID, pvImageID}, map[string]string{
+	err = api.CreateTags([]string{snapshot.SnapshotID, hvmImageID, pvImageID}, map[string]string{
 		"Channel": specChannel,
 		"Version": specVersion,
 	})
