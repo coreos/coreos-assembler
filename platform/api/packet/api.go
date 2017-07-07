@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	ignition "github.com/coreos/ignition/config/v2_0/types"
@@ -51,14 +52,15 @@ const (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/packet")
 
-	defaultInstallerImageURL = map[string]string{
+	defaultInstallerImageBaseURL = map[string]string{
 		// HTTPS causes iPXE to fail on a "permission denied" error
-		"amd64-usr": "http://stable.release.core-os.net/amd64-usr/current",
-		"arm64-usr": "http://beta.release.core-os.net/arm64-usr/current",
+		// FIXME(bgilbert): we want stable and beta, respectively, >= 1465
+		"amd64-usr": "http://alpha.release.core-os.net/amd64-usr/current",
+		"arm64-usr": "http://alpha.release.core-os.net/arm64-usr/current",
 	}
-	defaultImageBaseURL = map[string]string{
-		"amd64-usr": "https://alpha.release.core-os.net/amd64-usr",
-		"arm64-usr": "https://alpha.release.core-os.net/arm64-usr",
+	defaultImageURL = map[string]string{
+		"amd64-usr": "https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2",
+		"arm64-usr": "https://alpha.release.core-os.net/arm64-usr/current/coreos_production_packet_image.bin.bz2",
 	}
 	defaultPlan = map[string]string{
 		"amd64-usr": "baremetal_0",
@@ -89,11 +91,9 @@ type Options struct {
 	// The Container Linux board name
 	Board string
 	// e.g. http://alpha.release.core-os.net/amd64-usr/current
-	InstallerImageURL string
-	// e.g. https://alpha.release.core-os.net/amd64-usr
-	ImageBaseURL string
-	// Version number or "current"
-	ImageVersion string
+	InstallerImageBaseURL string
+	// e.g. https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2
+	ImageURL string
 
 	// Options for Google Storage
 	GSOptions *gcloud.Options
@@ -142,11 +142,11 @@ func New(opts *Options) (*API, error) {
 	if opts.Plan == "" {
 		opts.Plan = defaultPlan[opts.Board]
 	}
-	if opts.InstallerImageURL == "" {
-		opts.InstallerImageURL = defaultInstallerImageURL[opts.Board]
+	if opts.InstallerImageBaseURL == "" {
+		opts.InstallerImageBaseURL = defaultInstallerImageBaseURL[opts.Board]
 	}
-	if opts.ImageBaseURL == "" {
-		opts.ImageBaseURL = defaultImageBaseURL[opts.Board]
+	if opts.ImageURL == "" {
+		opts.ImageURL = defaultImageURL[opts.Board]
 	}
 
 	gapi, err := gcloud.New(opts.GSOptions)
@@ -320,12 +320,11 @@ Type=oneshot
 # Prevent coreos-install from validating cloud-config
 Environment=PATH=/root/bin:/usr/sbin:/usr/bin
 
-ExecStart=/root/bin/network-setup
-ExecStart=/usr/bin/coreos-install -b "%v" -V "%v" -d /dev/sda -o packet -n %v /userdata
+ExecStart=/usr/bin/curl -fo image.bin.bz2 "%v"
+# We don't verify signatures because the iPXE script isn't verified either
+# (and, in fact, is transferred over HTTP)
 
-ExecStart=/usr/bin/mount /dev/sda6 /mnt
-ExecStart=/bin/bash -c 'echo "set linux_console=\\\"console=%v\\\"" >> /mnt/grub.cfg'
-ExecStart=/usr/bin/umount /mnt
+ExecStart=/usr/bin/coreos-install -d /dev/sda -f image.bin.bz2 %v /userdata
 
 ExecStart=/usr/bin/systemctl --no-block isolate reboot.target
 
@@ -334,39 +333,10 @@ StandardError=journal+console
 
 [Install]
 RequiredBy=multi-user.target
-`, a.opts.ImageBaseURL, a.opts.ImageVersion, userDataOption, linuxConsole[a.opts.Board])
+`, a.opts.ImageURL, userDataOption)
 
 	// make workarounds
 	coreosCloudInit := base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\nexit 0"))
-	// If we want a private IPv4 address, we need to set it up ourselves
-	networkSetup := base64.StdEncoding.EncodeToString([]byte(`#!/bin/bash
-
-set -e
-
-metadata=$(curl --silent https://metadata.packet.net/metadata)
-q() {
-	jq -r "$1" <<<$metadata
-}
-
-cat > /run/systemd/network/00-mantle.network <<EOF
-[Match]
-MACAddress=$(q '.network.interfaces[0].mac')
-
-[Network]
-Address=$(q '[.network.addresses[] | select(.address_family == 4)][0].address')/$(q '[.network.addresses[] | select(.address_family == 4)][0].cidr')
-Address=$(q '[.network.addresses[] | select(.address_family == 4)][1].address')/$(q '[.network.addresses[] | select(.address_family == 4)][1].cidr')
-DNS=8.8.8.8
-DNS=8.8.4.4
-
-[Route]
-Destination=0.0.0.0/0
-Gateway=$(q '.network.addresses[] | select(.public == true and .address_family == 4).gateway')
-
-[Route]
-Destination=10.0.0.0/8
-Gateway=$(q '.network.addresses[] | select(.public == false and .address_family == 4).gateway')
-EOF
-`))
 
 	// make Ignition config
 	b64UserData := base64.StdEncoding.EncodeToString(conf.Bytes())
@@ -394,17 +364,6 @@ EOF
 						Source: ignition.Url{
 							Scheme: "data",
 							Opaque: ";base64," + coreosCloudInit,
-						},
-					},
-					Mode: 0755,
-				},
-				ignition.File{
-					Filesystem: "root",
-					Path:       "/root/bin/network-setup",
-					Contents: ignition.FileContents{
-						Source: ignition.Url{
-							Scheme: "data",
-							Opaque: ";base64," + networkSetup,
 						},
 					},
 					Mode: 0755,
@@ -475,7 +434,7 @@ func (a *API) ipxeScript(userdataURL string) string {
 set base-url %s
 kernel ${base-url}/coreos_production_pxe.vmlinuz initrd=coreos_production_pxe_image.cpio.gz coreos.first_boot=1 coreos.config.url=%s console=%s
 initrd ${base-url}/coreos_production_pxe_image.cpio.gz
-boot`, a.opts.InstallerImageURL, userdataURL, linuxConsole[a.opts.Board])
+boot`, strings.TrimRight(a.opts.InstallerImageBaseURL, "/"), userdataURL, linuxConsole[a.opts.Board])
 }
 
 // device creation seems a bit flaky, so try a few times
