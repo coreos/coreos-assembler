@@ -135,11 +135,10 @@ func writeProps() error {
 		MachineType string `json:"type"`
 	}
 	type Packet struct {
-		Facility          string `json:"facility"`
-		Plan              string `json:"plan"`
-		InstallerImageURL string `json:"installer"`
-		ImageBaseURL      string `json:"image"`
-		ImageVersion      string `json:"version"`
+		Facility              string `json:"facility"`
+		Plan                  string `json:"plan"`
+		InstallerImageBaseURL string `json:"installer"`
+		ImageURL              string `json:"image"`
 	}
 	type QEMU struct {
 		Image string `json:"image"`
@@ -166,11 +165,10 @@ func writeProps() error {
 			MachineType: kola.GCEOptions.MachineType,
 		},
 		Packet: Packet{
-			Facility:          kola.PacketOptions.Facility,
-			Plan:              kola.PacketOptions.Plan,
-			InstallerImageURL: kola.PacketOptions.InstallerImageURL,
-			ImageBaseURL:      kola.PacketOptions.ImageBaseURL,
-			ImageVersion:      kola.PacketOptions.ImageVersion,
+			Facility: kola.PacketOptions.Facility,
+			Plan:     kola.PacketOptions.Plan,
+			InstallerImageBaseURL: kola.PacketOptions.InstallerImageBaseURL,
+			ImageURL:              kola.PacketOptions.ImageURL,
 		},
 		QEMU: QEMU{
 			Image: kola.QEMUOptions.DiskImage,
