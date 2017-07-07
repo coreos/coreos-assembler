@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	ignition "github.com/coreos/ignition/config/v2_0/types"
@@ -430,7 +431,7 @@ func (a *API) ipxeScript(userdataURL string) string {
 set base-url %s
 kernel ${base-url}/coreos_production_pxe.vmlinuz initrd=coreos_production_pxe_image.cpio.gz coreos.first_boot=1 coreos.config.url=%s console=%s
 initrd ${base-url}/coreos_production_pxe_image.cpio.gz
-boot`, a.opts.InstallerImageURL, userdataURL, linuxConsole[a.opts.Board])
+boot`, strings.TrimRight(a.opts.InstallerImageURL, "/"), userdataURL, linuxConsole[a.opts.Board])
 }
 
 // device creation seems a bit flaky, so try a few times
