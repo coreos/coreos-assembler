@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	ignTypes "github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/ignition/config/validate"
 	"github.com/coreos/ignition/config/validate/report"
 	"github.com/vincent-petithory/dataurl"
 )
@@ -58,7 +59,7 @@ func (s UpdateServer) Validate() report.Report {
 }
 
 func init() {
-	register2_0(func(in Config, out ignTypes.Config, platform string) (ignTypes.Config, report.Report) {
+	register2_0(func(in Config, ast validate.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, validate.AstNode) {
 		var contents string
 		if in.Update != nil {
 			if in.Update.Group != "" {
@@ -87,6 +88,6 @@ func init() {
 				},
 			})
 		}
-		return out, report.Report{}
+		return out, report.Report{}, ast
 	})
 }

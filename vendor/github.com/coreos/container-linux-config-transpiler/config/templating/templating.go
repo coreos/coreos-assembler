@@ -31,6 +31,7 @@ const (
 	PlatformGCE               = "gce"
 	PlatformPacket            = "packet"
 	PlatformOpenStackMetadata = "openstack-metadata"
+	PlatformVagrantVirtualbox = "vagrant-virtualbox"
 )
 
 var Platforms = []string{
@@ -40,6 +41,7 @@ var Platforms = []string{
 	PlatformGCE,
 	PlatformPacket,
 	PlatformOpenStackMetadata,
+	PlatformVagrantVirtualbox,
 }
 
 const (
@@ -84,6 +86,10 @@ var platformTemplatingMap = map[string]map[string]string{
 		fieldHostname:  "COREOS_OPENSTACK_HOSTNAME",
 		fieldV4Private: "COREOS_OPENSTACK_IPV4_LOCAL",
 		fieldV4Public:  "COREOS_OPENSTACK_IPV4_PUBLIC",
+	},
+	PlatformVagrantVirtualbox: {
+		fieldHostname:  "COREOS_VAGRANT_VIRTUALBOX_HOSTNAME",
+		fieldV4Private: "COREOS_VAGRANT_VIRTUALBOX_PRIVATE_IPV4",
 	},
 }
 

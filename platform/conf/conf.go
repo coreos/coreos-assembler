@@ -169,7 +169,7 @@ func (u *UserData) Render() (*Conf, error) {
 			return nil, err
 		}
 	case kindContainerLinuxConfig:
-		clc, report := ct.Parse([]byte(u.data))
+		clc, ast, report := ct.Parse([]byte(u.data))
 		if report.IsFatal() {
 			return nil, fmt.Errorf("parsing Container Linux config: %s", report)
 		} else if len(report.Entries) > 0 {
@@ -177,7 +177,7 @@ func (u *UserData) Render() (*Conf, error) {
 		}
 
 		// TODO(bgilbert): substitute cloud-specific variables via ct
-		ignc, report := ct.ConvertAs2_0(clc, "")
+		ignc, report := ct.ConvertAs2_0(clc, "", ast)
 		if report.IsFatal() {
 			return nil, fmt.Errorf("rendering Container Linux config: %s", report)
 		} else if len(report.Entries) > 0 {
