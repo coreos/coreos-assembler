@@ -57,7 +57,7 @@ systemd:
   - name: docker.service
     enable: true
     dropins:
-      - name: 10-uesrns.conf
+      - name: 10-userns.conf
         contents: |-
           [Service]
           Environment=DOCKER_OPTS=--userns-remap=dockremap
