@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	targetUUID = "9aa5237a-ab6b-458b-a7e8-f25e2baef1a3"
+	targetUUID   = "9aa5237a-ab6b-458b-a7e8-f25e2baef1a3"
+	targetVfatID = "1A37-8FA3"
 )
 
 func init() {
@@ -214,6 +215,58 @@ func init() {
 		ClusterSize: 1,
 		MinVersion:  semver.Version{Major: 1478},
 	})
+
+	vfatConfigV2_1 := conf.Ignition(`{
+			             "ignition": {
+			                 "version": "2.1.0"
+			             },
+			             "storage": {
+			                 "filesystems": [
+			                     {
+			                         "mount": {
+			                             "device": "/dev/disk/by-partlabel/USR-B",
+			                             "format": "vfat",
+			                             "wipeFilesystem": true,
+			                             "label": "USR-B",
+			                             "uuid": "` + targetVfatID + `"
+			                         }
+			                     }
+			                 ]
+			             }
+			         }`)
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.vfat",
+		Run:         vfatUsrB,
+		ClusterSize: 1,
+		UserData:    vfatConfigV2_1,
+		MinVersion:  semver.Version{Major: 1492},
+	})
+
+	swapConfigV2_1 := conf.Ignition(`{
+			             "ignition": {
+			                 "version": "2.1.0"
+			             },
+			             "storage": {
+			                 "filesystems": [
+			                     {
+			                         "mount": {
+			                             "device": "/dev/disk/by-partlabel/USR-B",
+			                             "format": "swap",
+			                             "wipeFilesystem": true,
+			                             "label": "USR-B",
+			                             "uuid": "` + targetUUID + `"
+			                         }
+			                     }
+			                 ]
+			             }
+			         }`)
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.swap",
+		Run:         swapUsrB,
+		ClusterSize: 1,
+		UserData:    swapConfigV2_1,
+		MinVersion:  semver.Version{Major: 1492},
+	})
 }
 
 var ext4NoClobberV2_1 = conf.Ignition(`{
@@ -245,6 +298,14 @@ func ext4Root(c cluster.TestCluster) {
 	testRoot(c, "ext4")
 }
 
+func vfatUsrB(c cluster.TestCluster) {
+	testFormatted(c, "vfat", "USR-B")
+}
+
+func swapUsrB(c cluster.TestCluster) {
+	testFormatted(c, "swap", "USR-B")
+}
+
 func testFormatted(c cluster.TestCluster, fs, label string) {
 	m := c.Machines()[0]
 
@@ -252,7 +313,11 @@ func testFormatted(c cluster.TestCluster, fs, label string) {
 	if err != nil {
 		c.Fatalf("failed to run blkid: %s: %v", out, err)
 	}
-	if strings.TrimRight(string(out), "\n") != targetUUID {
+	target := targetUUID
+	if fs == "vfat" {
+		target = targetVfatID
+	}
+	if strings.TrimRight(string(out), "\n") != target {
 		c.Fatalf("filesystem wasn't correctly formatted:\n%s", out)
 	}
 
