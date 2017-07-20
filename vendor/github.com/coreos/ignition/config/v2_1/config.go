@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v2_0
+package v2_1
 
 import (
 	"bytes"
 	"errors"
 	"reflect"
 
-	"github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/ignition/config/v2_1/types"
 	"github.com/coreos/ignition/config/validate"
 	astjson "github.com/coreos/ignition/config/validate/astjson"
 	"github.com/coreos/ignition/config/validate/report"
@@ -36,8 +36,6 @@ var (
 	ErrInvalid     = errors.New("config is not valid")
 )
 
-// Parse parses the raw config into a types.Config struct and generates a report of any
-// errors, warnings, info, and deprecations it encountered
 func Parse(rawConfig []byte) (types.Config, report.Report, error) {
 	if isEmpty(rawConfig) {
 		return types.Config{}, report.Report{}, ErrEmpty
@@ -52,7 +50,7 @@ func Parse(rawConfig []byte) (types.Config, report.Report, error) {
 
 	// These errors are fatal and the config should not be further validated
 	if err = json.Unmarshal(rawConfig, &config); err == nil {
-		versionReport := config.Ignition.Version.Validate()
+		versionReport := config.Ignition.Validate()
 		if versionReport.IsFatal() {
 			return types.Config{}, versionReport, ErrInvalid
 		}

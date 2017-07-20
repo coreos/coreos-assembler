@@ -74,7 +74,7 @@ import:
 - package: github.com/boltdb/bolt
   version: v1.2.1
 - package: github.com/coreos/container-linux-config-transpiler
-  version: d2b5fed204802a87e7b532d42b3bae3f15ce97ae
+  version: v0.4.1
   subpackages:
   - config
   - config/templating
@@ -148,7 +148,7 @@ import:
   - journal
   - unit
 - package: github.com/coreos/ignition
-  version: v0.14.0
+  version: v0.17.1
   subpackages:
   - config
   - config/types

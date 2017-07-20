@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	ignTypes "github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/ignition/config/validate"
 	"github.com/coreos/ignition/config/validate/report"
 )
 
@@ -114,11 +115,11 @@ func (flannel *Flannel) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func init() {
-	register2_0(func(in Config, out ignTypes.Config, platform string) (ignTypes.Config, report.Report) {
+	register2_0(func(in Config, ast validate.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, validate.AstNode) {
 		if in.Flannel != nil {
 			contents, err := flannelContents(*in.Flannel, platform)
 			if err != nil {
-				return ignTypes.Config{}, report.ReportFromError(err, report.EntryError)
+				return ignTypes.Config{}, report.ReportFromError(err, report.EntryError), ast
 			}
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.SystemdUnit{
 				Name:   "flanneld.service",
@@ -129,14 +130,17 @@ func init() {
 				}},
 			})
 		}
-		return out, report.Report{}
+		return out, report.Report{}, ast
 	})
 }
 
 // flannelContents creates the string containing the systemd drop in for flannel
 func flannelContents(flannel Flannel, platform string) (string, error) {
 	args := getCliArgs(flannel.Options)
-	vars := []string{fmt.Sprintf("FLANNEL_IMAGE_TAG=v%s", flannel.Version)}
+	var vars []string
+	if flannel.Version != nil {
+		vars = []string{fmt.Sprintf("FLANNEL_IMAGE_TAG=v%s", flannel.Version)}
+	}
 
 	unit, err := assembleUnit("/usr/lib/coreos/flannel-wrapper $FLANNEL_OPTS", args, vars, platform)
 	if err != nil {

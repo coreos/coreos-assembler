@@ -15,6 +15,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -23,14 +24,18 @@ import (
 
 	"github.com/coreos/container-linux-config-transpiler/config/templating"
 	"github.com/coreos/container-linux-config-transpiler/config/types/util"
+	"github.com/coreos/ignition/config/validate"
 )
 
 var (
 	ErrPlatformUnspecified = fmt.Errorf("platform must be specified to use templating")
+	ErrInvalidKey          = errors.New("Key is invalid (wrong type or not found")
+	ErrNilNode             = errors.New("Ast node is nil")
+	ErrKeyNotFound         = errors.New("Key not found")
 )
 
 func init() {
-	register2_0(func(in Config, out ignTypes.Config, platform string) (ignTypes.Config, report.Report) {
+	register2_0(func(in Config, ast validate.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, validate.AstNode) {
 		if platform == templating.PlatformOpenStackMetadata {
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.SystemdUnit{
 				Name: "coreos-metadata.service",
@@ -39,8 +44,15 @@ func init() {
 					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", platform),
 				}},
 			})
+			out.Systemd.Units = append(out.Systemd.Units, ignTypes.SystemdUnit{
+				Name: "coreos-metadata-sshkeys@.service",
+				DropIns: []ignTypes.SystemdUnitDropIn{{
+					Name:     "20-clct-provider-override.conf",
+					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", platform),
+				}},
+			})
 		}
-		return out, report.Report{}
+		return out, report.Report{}, ast
 	})
 }
 
@@ -113,4 +125,42 @@ func getArgs(format, tagName string, e interface{}) []string {
 // getCliArgs builds a list of --ARG=VAL from a struct with cli: tags on its members.
 func getCliArgs(e interface{}) []string {
 	return getArgs("--%s=%v", "cli", e)
+}
+
+// Get returns the value for key, where key is an int or string and n is a
+// sequence node or mapping node, respectively.
+func getNodeChild(n validate.AstNode, key interface{}) (validate.AstNode, error) {
+	if n == nil {
+		return nil, ErrNilNode
+	}
+	switch k := key.(type) {
+	case int:
+		if child, ok := n.SliceChild(k); ok {
+			return child, nil
+		}
+	case string:
+		kvmap, ok := n.KeyValueMap()
+		if !ok {
+			return nil, ErrInvalidKey
+		}
+		if v, ok := kvmap[k]; ok {
+			return v, nil
+		}
+	default:
+		return nil, ErrInvalidKey
+	}
+	// not found
+	return nil, ErrKeyNotFound
+}
+
+// GetPath works like calling Get() repeatly with each argument.
+func getNodeChildPath(n validate.AstNode, key ...interface{}) (validate.AstNode, error) {
+	if len(key) == 0 {
+		return n, nil
+	}
+	next, err := getNodeChild(n, key[0])
+	if err != nil {
+		return nil, err
+	}
+	return getNodeChildPath(next, key[1:]...)
 }

@@ -16,21 +16,16 @@ package types
 
 import (
 	"errors"
-
-	"github.com/coreos/ignition/config/validate/report"
+	"path"
 )
 
 var (
-	ErrCompressionInvalid = errors.New("invalid compression method")
+	ErrPathRelative = errors.New("path not absolute")
 )
 
-type Compression string
-
-func (c Compression) Validate() report.Report {
-	switch c {
-	case "", "gzip":
-	default:
-		return report.ReportFromError(ErrCompressionInvalid, report.EntryError)
+func validatePath(p string) error {
+	if !path.IsAbs(p) {
+		return ErrPathRelative
 	}
-	return report.Report{}
+	return nil
 }

@@ -24,8 +24,8 @@ import (
 	cci "github.com/coreos/coreos-cloudinit/config"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
-	v2 "github.com/coreos/ignition/config/v2_0"
-	v2types "github.com/coreos/ignition/config/v2_0/types"
+	v2 "github.com/coreos/ignition/config/v2_1"
+	v2types "github.com/coreos/ignition/config/v2_1/types"
 	"github.com/coreos/ignition/config/validate/report"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh/agent"
@@ -156,7 +156,7 @@ func (u *UserData) Render() (*Conf, error) {
 		ignc, report, err := v2.Parse([]byte(u.data))
 		if err == nil {
 			c.ignitionV2 = &ignc
-		} else if haveEntry(report, v2types.ErrOldVersion) {
+		} else if haveEntry(report, v2types.ErrInvalidVersion) {
 			// version 1 config
 			var ignc v1types.Config
 			ignc, err = v1.Parse([]byte(u.data))
@@ -169,7 +169,7 @@ func (u *UserData) Render() (*Conf, error) {
 			return nil, err
 		}
 	case kindContainerLinuxConfig:
-		clc, report := ct.Parse([]byte(u.data))
+		clc, ast, report := ct.Parse([]byte(u.data))
 		if report.IsFatal() {
 			return nil, fmt.Errorf("parsing Container Linux config: %s", report)
 		} else if len(report.Entries) > 0 {
@@ -177,14 +177,19 @@ func (u *UserData) Render() (*Conf, error) {
 		}
 
 		// TODO(bgilbert): substitute cloud-specific variables via ct
-		ignc, report := ct.ConvertAs2_0(clc, "")
+		ignc, report := ct.ConvertAs2_0(clc, "", ast)
 		if report.IsFatal() {
 			return nil, fmt.Errorf("rendering Container Linux config: %s", report)
 		} else if len(report.Entries) > 0 {
 			plog.Warningf("rendering Container Linux config: %s", report)
 		}
 
-		c.ignitionV2 = &ignc
+		// ct still returns 2.0 configs. Convert to 2.1.
+		buf, err := json.Marshal(ignc)
+		if err != nil {
+			return nil, fmt.Errorf("serializing Container Linux config: %v", err)
+		}
+		return Ignition(string(buf)).Render()
 	default:
 		panic("invalid kind")
 	}
@@ -227,9 +232,13 @@ func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
 }
 
 func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
-	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.User{
+	var keyObjs []v2types.SSHAuthorizedKey
+	for _, key := range keys {
+		keyObjs = append(keyObjs, v2types.SSHAuthorizedKey(key.String()))
+	}
+	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.PasswdUser{
 		Name:              "core",
-		SSHAuthorizedKeys: keysToStrings(keys),
+		SSHAuthorizedKeys: keyObjs,
 	})
 }
 
