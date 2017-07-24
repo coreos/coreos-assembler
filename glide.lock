@@ -1,5 +1,5 @@
-hash: de105a53aa41b2091d3079379530d8a4e5141be3ad9d223e859bed35ac29ebbd
-updated: 2017-07-18T17:45:11.461481647-07:00
+hash: 72d1ea9edc735b71388127026eca427edda90e011b71644860fd9a9c69949c2c
+updated: 2017-07-24T11:51:32.031519805-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -253,6 +253,24 @@ imports:
   - nl
 - name: github.com/vishvananda/netns
   version: 604eaf189ee867d8c147fafc28def2394e878d25
+- name: github.com/vmware/govmomi
+  version: b63044e5f833781eb7b305bc035392480ee06a82
+  subpackages:
+  - find
+  - list
+  - object
+  - ovf
+  - property
+  - session
+  - task
+  - vim25
+  - vim25/debug
+  - vim25/methods
+  - vim25/mo
+  - vim25/progress
+  - vim25/soap
+  - vim25/types
+  - vim25/xml
 - name: github.com/xiang90/probing
   version: 6a0cc1ae81b4cc11db5e491e030e4b98fba79c19
 - name: go4.org
