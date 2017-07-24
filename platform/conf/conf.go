@@ -224,6 +224,40 @@ func (c *Conf) Bytes() []byte {
 	return []byte(c.String())
 }
 
+func (c *Conf) addSystemdUnitV1(name, contents string, enable bool) {
+	c.ignitionV1.Systemd.Units = append(c.ignitionV1.Systemd.Units, v1types.SystemdUnit{
+		Name:     v1types.SystemdUnitName(name),
+		Contents: contents,
+		Enable:   enable,
+	})
+}
+
+func (c *Conf) addSystemdUnitV2(name, contents string, enable bool) {
+	c.ignitionV2.Systemd.Units = append(c.ignitionV2.Systemd.Units, v2types.Unit{
+		Name:     name,
+		Contents: contents,
+		Enable:   enable,
+	})
+}
+
+func (c *Conf) addSystemdUnitCloudConfig(name, contents string, enable bool) {
+	c.cloudconfig.CoreOS.Units = append(c.cloudconfig.CoreOS.Units, cci.Unit{
+		Name:    name,
+		Content: contents,
+		Enable:  enable,
+	})
+}
+
+func (c *Conf) AddSystemdUnit(name, contents string, enable bool) {
+	if c.ignitionV1 != nil {
+		c.addSystemdUnitV1(name, contents, enable)
+	} else if c.ignitionV2 != nil {
+		c.addSystemdUnitV2(name, contents, enable)
+	} else if c.cloudconfig != nil {
+		c.addSystemdUnitCloudConfig(name, contents, enable)
+	}
+}
+
 func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
 	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
 		Name:              "core",

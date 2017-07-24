@@ -28,7 +28,7 @@ func init() {
 		Name:             "coreos.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
+		ExcludePlatforms: []string{"qemu", "esx"},
 		UserData:         conf.Empty(),
 	})
 	// Tests for https://github.com/coreos/bugs/issues/1981
@@ -36,7 +36,7 @@ func init() {
 		Name:             "coreos.ignition.v1.noop",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
+		ExcludePlatforms: []string{"qemu", "esx"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
 		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
 	})
@@ -44,7 +44,7 @@ func init() {
 		Name:             "coreos.ignition.v2.noop",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
+		ExcludePlatforms: []string{"qemu", "esx"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
 		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
 	})

@@ -28,7 +28,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
-	kolaPlatforms      = []string{"aws", "gce", "packet", "qemu"}
+	kolaPlatforms      = []string{"aws", "esx", "gce", "packet", "qemu"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
@@ -87,6 +87,11 @@ func init() {
 	sv(&kola.PacketOptions.InstallerImageBaseURL, "packet-installer-image-base-url", "", "Packet installer image base URL, non-https (default board-dependent, e.g. \"http://stable.release.core-os.net/amd64-usr/current\")")
 	sv(&kola.PacketOptions.ImageURL, "packet-image-url", "", "Packet image URL (default board-dependent, e.g. \"https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2\")")
 	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
+
+	// esx-specific options
+	sv(&kola.ESXOptions.Server, "esx-server", "", "ESX server")
+	sv(&kola.ESXOptions.Profile, "esx-profile", "", "ESX profile (default \"default\")")
+	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
 }
 
 // Sync up the command line options if there is dependency

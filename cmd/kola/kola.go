@@ -140,6 +140,10 @@ func writeProps() error {
 		InstallerImageBaseURL string `json:"installer"`
 		ImageURL              string `json:"image"`
 	}
+	type ESX struct {
+		Server     string `json:"server"`
+		BaseVMName string `json:"base_vm_name"`
+	}
 	type QEMU struct {
 		Image string `json:"image"`
 	}
@@ -148,6 +152,7 @@ func writeProps() error {
 		Platform string   `json:"platform"`
 		Board    string   `json:"board"`
 		AWS      AWS      `json:"aws"`
+		ESX      ESX      `json:"esx"`
 		GCE      GCE      `json:"gce"`
 		Packet   Packet   `json:"packet"`
 		QEMU     QEMU     `json:"qemu"`
@@ -159,6 +164,10 @@ func writeProps() error {
 			Region:       kola.AWSOptions.Region,
 			AMI:          kola.AWSOptions.AMI,
 			InstanceType: kola.AWSOptions.InstanceType,
+		},
+		ESX: ESX{
+			Server:     kola.ESXOptions.Server,
+			BaseVMName: kola.ESXOptions.BaseVMName,
 		},
 		GCE: GCE{
 			Image:       kola.GCEOptions.Image,

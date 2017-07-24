@@ -31,9 +31,11 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
+	esxapi "github.com/coreos/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
 	packetapi "github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/mantle/platform/machine/aws"
+	"github.com/coreos/mantle/platform/machine/esx"
 	"github.com/coreos/mantle/platform/machine/gcloud"
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/qemu"
@@ -48,6 +50,7 @@ var (
 	GCEOptions    = gcloudapi.Options{Options: &Options} // glue to set platform options from main
 	AWSOptions    = awsapi.Options{Options: &Options}    // glue to set platform options from main
 	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
+	ESXOptions    = esxapi.Options{Options: &Options}    // glue to set platform options from main
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
@@ -100,6 +103,8 @@ func NewCluster(pltfrm string, rconf *platform.RuntimeConfig) (cluster platform.
 		cluster, err = aws.NewCluster(&AWSOptions, rconf)
 	case "packet":
 		cluster, err = packet.NewCluster(&PacketOptions, rconf)
+	case "esx":
+		cluster, err = esx.NewCluster(&ESXOptions, rconf)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
