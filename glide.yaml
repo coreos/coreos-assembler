@@ -148,7 +148,7 @@ import:
   - journal
   - unit
 - package: github.com/coreos/ignition
-  version: v0.17.1
+  version: v0.17.2
   subpackages:
   - config
   - config/types
