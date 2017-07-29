@@ -27,7 +27,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"
@@ -75,7 +74,6 @@ passwd:
   users:
   - name: dockremap
     create: {}`),
-		MinVersion: semver.Version{Major: 1354}, // 1353 has kernel 4.9.x which is known to not work with userns on aws, see https://github.com/coreos/bugs/issues/1826
 	})
 
 	// This test covers all functionality that should be quick to run and can be
@@ -127,8 +125,6 @@ systemd:
         Where=/var/lib/docker
         Type=btrfs
         Options=loop,discard`),
-		// Roughly when the 'wrapper' script was removed so security + btrfs worked
-		MinVersion: semver.Version{Major: 1400},
 	})
 
 	register.Register(&register.Test{

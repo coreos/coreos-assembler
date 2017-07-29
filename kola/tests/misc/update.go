@@ -19,8 +19,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -37,14 +35,12 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.update.badverity",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
-		MinVersion:  semver.Version{Major: 1367},
 	})
 	register.Register(&register.Test{
 		Run:         RecoverBadUsr,
 		ClusterSize: 1,
 		Name:        "coreos.update.badusr",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
-		MinVersion:  semver.Version{Major: 1367},
 	})
 }
 
