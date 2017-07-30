@@ -187,14 +187,39 @@ func init() {
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV1,
+		EndVersion:  semver.Version{Major: 1478},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.ext4checkexisting",
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV2,
+		EndVersion:  semver.Version{Major: 1478},
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.ext4checkexisting",
+		Run:         ext4CheckExisting2_1,
+		ClusterSize: 1,
+		MinVersion:  semver.Version{Major: 1478},
 	})
 }
+
+var ext4NoClobberV2_1 = conf.Ignition(`{
+		            "ignition": {
+		                "version": "2.1.0"
+		            },
+		            "storage": {
+		                "filesystems": [
+		                    {
+		                        "mount": {
+		                            "device": "/dev/disk/by-partlabel/ROOT",
+		                            "format": "ext4",
+		                            "label": "ROOT"
+		                        }
+		                    }
+		                ]
+		            }
+		        }`)
 
 func btrfsRoot(c cluster.TestCluster) {
 	testRoot(c, "btrfs")
@@ -237,5 +262,32 @@ func ext4CheckExisting(c cluster.TestCluster) {
 
 	if !strings.HasPrefix(string(out), "/dev/disk/by-partlabel/ROOT contains a ext4 file system labelled 'ROOT'") {
 		c.Fatalf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
+	}
+}
+
+func ext4CheckExisting2_1(c cluster.TestCluster) {
+	m1 := c.Machines()[0]
+
+	// Get root filesystem UUID
+	out, err := m1.SSH("sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
+	if err != nil {
+		c.Fatalf("Couldn't get m1 filesystem UUID: %v", err)
+	}
+	uuid1 := strings.TrimRight(string(out), "\n")
+
+	// Start a machine with config that conditionally recreates the FS
+	m2, err := c.NewMachine(ext4NoClobberV2_1)
+	if err != nil {
+		c.Fatalf("Couldn't start machine: %v", err)
+	}
+
+	// Verify UUID hasn't changed
+	out, err = m2.SSH("sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
+	if err != nil {
+		c.Fatalf("Couldn't get m2 filesystem UUID: %v", err)
+	}
+	uuid2 := strings.TrimRight(string(out), "\n")
+	if uuid1 != uuid2 {
+		c.Fatalf("Filesystem was reformatted: %s != %s", uuid1, uuid2)
 	}
 }
