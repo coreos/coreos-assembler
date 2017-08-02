@@ -330,3 +330,5 @@ import:
   - naming
   - peer
   - transport
+- package: github.com/vmware/govmomi
+  version: v0.15.0
