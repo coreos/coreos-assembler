@@ -22,11 +22,14 @@ import (
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	cci "github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/go-semver/semver"
+	ign "github.com/coreos/ignition/config"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
-	v2 "github.com/coreos/ignition/config/v2_1"
-	v2types "github.com/coreos/ignition/config/v2_1/types"
-	"github.com/coreos/ignition/config/validate/report"
+	v2 "github.com/coreos/ignition/config/v2_0"
+	v2types "github.com/coreos/ignition/config/v2_0/types"
+	v21 "github.com/coreos/ignition/config/v2_1"
+	v21types "github.com/coreos/ignition/config/v2_1/types"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -55,6 +58,7 @@ type UserData struct {
 type Conf struct {
 	ignitionV1  *v1types.Config
 	ignitionV2  *v2types.Config
+	ignitionV21 *v21types.Config
 	cloudconfig *cci.CloudConfig
 	script      string
 }
@@ -98,13 +102,13 @@ func Unknown(data string) *UserData {
 		data: data,
 	}
 
-	_, _, err := v2.Parse([]byte(data))
+	_, _, err := v21.Parse([]byte(data))
 	switch err {
-	case v2.ErrEmpty:
+	case v21.ErrEmpty:
 		u.kind = kindEmpty
-	case v2.ErrCloudConfig:
+	case v21.ErrCloudConfig:
 		u.kind = kindCloudConfig
-	case v2.ErrScript:
+	case v21.ErrScript:
 		u.kind = kindScript
 	default:
 		// we don't autodetect Container Linux configs
@@ -143,30 +147,35 @@ func (u *UserData) Render() (*Conf, error) {
 		// pass through scripts unmodified, you are on your own.
 		c.script = u.data
 	case kindIgnition:
-		// Reports collapse errors to their underlying strings
-		haveEntry := func(report report.Report, err error) bool {
-			for _, entry := range report.Entries {
-				if err.Error() == entry.Message {
-					return true
-				}
-			}
-			return false
+		ver, err := ign.Version([]byte(u.data))
+		// process indeterminable configs with the current version
+		// so we can get parse errors
+		if err != nil && err != ign.ErrVersionIndeterminable {
+			return nil, err
 		}
 
-		ignc, report, err := v2.Parse([]byte(u.data))
-		if err == nil {
+		switch ver {
+		default:
+			// an Ignition 2.1 config, or an indeterminable one
+			ignc, report, err := v21.Parse([]byte(u.data))
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return nil, err
+			}
+			c.ignitionV21 = &ignc
+		case semver.Version{Major: 2}:
+			ignc, report, err := v2.Parse([]byte(u.data))
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return nil, err
+			}
 			c.ignitionV2 = &ignc
-		} else if haveEntry(report, v2types.ErrInvalidVersion) {
-			// version 1 config
-			var ignc v1types.Config
-			ignc, err = v1.Parse([]byte(u.data))
+		case semver.Version{Major: 1}:
+			ignc, err := v1.Parse([]byte(u.data))
 			if err != nil {
 				return nil, err
 			}
 			c.ignitionV1 = &ignc
-		} else {
-			plog.Errorf("invalid userdata: %v", report)
-			return nil, err
 		}
 	case kindContainerLinuxConfig:
 		clc, ast, report := ct.Parse([]byte(u.data))
@@ -184,12 +193,7 @@ func (u *UserData) Render() (*Conf, error) {
 			plog.Warningf("rendering Container Linux config: %s", report)
 		}
 
-		// ct still returns 2.0 configs. Convert to 2.1.
-		buf, err := json.Marshal(ignc)
-		if err != nil {
-			return nil, fmt.Errorf("serializing Container Linux config: %v", err)
-		}
-		return Ignition(string(buf)).Render()
+		c.ignitionV2 = &ignc
 	default:
 		panic("invalid kind")
 	}
@@ -204,6 +208,9 @@ func (c *Conf) String() string {
 		return string(buf)
 	} else if c.ignitionV2 != nil {
 		buf, _ := json.Marshal(c.ignitionV2)
+		return string(buf)
+	} else if c.ignitionV21 != nil {
+		buf, _ := json.Marshal(c.ignitionV21)
 		return string(buf)
 	} else if c.cloudconfig != nil {
 		return c.cloudconfig.String()
@@ -233,10 +240,18 @@ func (c *Conf) addSystemdUnitV1(name, contents string, enable bool) {
 }
 
 func (c *Conf) addSystemdUnitV2(name, contents string, enable bool) {
-	c.ignitionV2.Systemd.Units = append(c.ignitionV2.Systemd.Units, v2types.Unit{
-		Name:     name,
+	c.ignitionV2.Systemd.Units = append(c.ignitionV2.Systemd.Units, v2types.SystemdUnit{
+		Name:     v2types.SystemdUnitName(name),
 		Contents: contents,
 		Enable:   enable,
+	})
+}
+
+func (c *Conf) addSystemdUnitV21(name, contents string, enable bool) {
+	c.ignitionV21.Systemd.Units = append(c.ignitionV21.Systemd.Units, v21types.Unit{
+		Name:     name,
+		Contents: contents,
+		Enabled:  &enable,
 	})
 }
 
@@ -253,6 +268,8 @@ func (c *Conf) AddSystemdUnit(name, contents string, enable bool) {
 		c.addSystemdUnitV1(name, contents, enable)
 	} else if c.ignitionV2 != nil {
 		c.addSystemdUnitV2(name, contents, enable)
+	} else if c.ignitionV21 != nil {
+		c.addSystemdUnitV21(name, contents, enable)
 	} else if c.cloudconfig != nil {
 		c.addSystemdUnitCloudConfig(name, contents, enable)
 	}
@@ -266,11 +283,18 @@ func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
 }
 
 func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
-	var keyObjs []v2types.SSHAuthorizedKey
+	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.User{
+		Name:              "core",
+		SSHAuthorizedKeys: keysToStrings(keys),
+	})
+}
+
+func (c *Conf) copyKeysIgnitionV21(keys []*agent.Key) {
+	var keyObjs []v21types.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v2types.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v21types.SSHAuthorizedKey(key.String()))
 	}
-	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.PasswdUser{
+	c.ignitionV21.Passwd.Users = append(c.ignitionV21.Passwd.Users, v21types.PasswdUser{
 		Name:              "core",
 		SSHAuthorizedKeys: keyObjs,
 	})
@@ -287,6 +311,8 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 		c.copyKeysIgnitionV1(keys)
 	} else if c.ignitionV2 != nil {
 		c.copyKeysIgnitionV2(keys)
+	} else if c.ignitionV21 != nil {
+		c.copyKeysIgnitionV21(keys)
 	} else if c.cloudconfig != nil {
 		c.copyKeysCloudConfig(keys)
 	}
@@ -301,5 +327,5 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 
 // IsIgnition returns true if the config is for Ignition.
 func (c *Conf) IsIgnition() bool {
-	return c.ignitionV1 != nil || c.ignitionV2 != nil
+	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil
 }
