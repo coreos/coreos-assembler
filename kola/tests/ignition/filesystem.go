@@ -24,6 +24,11 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
+const (
+	targetUUID   = "9aa5237a-ab6b-458b-a7e8-f25e2baef1a3"
+	targetVfatID = "1A37-8FA3"
+)
+
 func init() {
 	// Reformat the root as btrfs
 	btrfsConfigV1 := conf.Ignition(`{
@@ -36,7 +41,8 @@ func init() {
 		                           "create": {
 		                               "force": true,
 		                               "options": [
-		                                   "--label=ROOT"
+		                                   "--label=ROOT",
+		                                   "--uuid=` + targetUUID + `"
 		                               ]
 		                           }
 		                       }
@@ -56,7 +62,8 @@ func init() {
 		                               "create": {
 		                                   "force": true,
 		                                   "options": [
-		                                       "--label=ROOT"
+		                                       "--label=ROOT",
+		                                       "--uuid=` + targetUUID + `"
 		                                   ]
 		                               }
 		                           }
@@ -90,7 +97,8 @@ func init() {
 		                         "create": {
 		                             "force": true,
 		                             "options": [
-		                                 "-L", "ROOT"
+		                                 "-L", "ROOT",
+		                                 "-m", "uuid=` + targetUUID + `"
 		                             ]
 		                         }
 		                     }
@@ -110,7 +118,8 @@ func init() {
 		                             "create": {
 		                                 "force": true,
 		                                 "options": [
-		                                     "-L", "ROOT"
+		                                     "-L", "ROOT",
+		                                     "-m", "uuid=` + targetUUID + `"
 		                                 ]
 		                             }
 		                         }
@@ -142,7 +151,8 @@ func init() {
 		                         "create": {
 		                             "force": true,
 		                             "options": [
-		                                 "-L", "ROOT"
+		                                 "-L", "ROOT",
+		                                 "-U", "` + targetUUID + `"
 		                             ]
 		                         }
 		                     }
@@ -162,7 +172,8 @@ func init() {
 		                             "create": {
 		                                 "force": true,
 		                                 "options": [
-		                                     "-L", "ROOT"
+		                                     "-L", "ROOT",
+		                                     "-U", "` + targetUUID + `"
 		                                 ]
 		                             }
 		                         }
@@ -175,12 +186,14 @@ func init() {
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV1,
+		MinVersion:  semver.Version{Major: 1492},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV2,
+		MinVersion:  semver.Version{Major: 1492},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.ext4checkexisting",
@@ -201,6 +214,58 @@ func init() {
 		Run:         ext4CheckExisting2_1,
 		ClusterSize: 1,
 		MinVersion:  semver.Version{Major: 1478},
+	})
+
+	vfatConfigV2_1 := conf.Ignition(`{
+			             "ignition": {
+			                 "version": "2.1.0"
+			             },
+			             "storage": {
+			                 "filesystems": [
+			                     {
+			                         "mount": {
+			                             "device": "/dev/disk/by-partlabel/USR-B",
+			                             "format": "vfat",
+			                             "wipeFilesystem": true,
+			                             "label": "USR-B",
+			                             "uuid": "` + targetVfatID + `"
+			                         }
+			                     }
+			                 ]
+			             }
+			         }`)
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.vfat",
+		Run:         vfatUsrB,
+		ClusterSize: 1,
+		UserData:    vfatConfigV2_1,
+		MinVersion:  semver.Version{Major: 1492},
+	})
+
+	swapConfigV2_1 := conf.Ignition(`{
+			             "ignition": {
+			                 "version": "2.1.0"
+			             },
+			             "storage": {
+			                 "filesystems": [
+			                     {
+			                         "mount": {
+			                             "device": "/dev/disk/by-partlabel/USR-B",
+			                             "format": "swap",
+			                             "wipeFilesystem": true,
+			                             "label": "USR-B",
+			                             "uuid": "` + targetUUID + `"
+			                         }
+			                     }
+			                 ]
+			             }
+			         }`)
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.swap",
+		Run:         swapUsrB,
+		ClusterSize: 1,
+		UserData:    swapConfigV2_1,
+		MinVersion:  semver.Version{Major: 1492},
 	})
 }
 
@@ -230,21 +295,50 @@ func xfsRoot(c cluster.TestCluster) {
 }
 
 func ext4Root(c cluster.TestCluster) {
-	// Since the image's root partition is formatted to ext4 by default,
-	// this test wont be able to differentiate between the original filesystem
-	// and a newly created one. If mkfs.ext4 never ran, it would still pass.
-	// It will ensure that if mkfs.ext4 ran, it ran successfully.
 	testRoot(c, "ext4")
+}
+
+func vfatUsrB(c cluster.TestCluster) {
+	testFormatted(c, "vfat", "USR-B")
+}
+
+func swapUsrB(c cluster.TestCluster) {
+	testFormatted(c, "swap", "USR-B")
+}
+
+func testFormatted(c cluster.TestCluster, fs, label string) {
+	m := c.Machines()[0]
+
+	out, err := m.SSH("sudo blkid -s UUID -o value /dev/disk/by-label/" + label)
+	if err != nil {
+		c.Fatalf("failed to run blkid: %s: %v", out, err)
+	}
+	target := targetUUID
+	if fs == "vfat" {
+		target = targetVfatID
+	}
+	if strings.TrimRight(string(out), "\n") != target {
+		c.Fatalf("filesystem wasn't correctly formatted:\n%s", out)
+	}
+
+	out, err = m.SSH("sudo blkid -s TYPE -o value /dev/disk/by-label/" + label)
+	if err != nil {
+		c.Fatalf("failed to run blkid: %s: %v", out, err)
+	}
+	if strings.TrimRight(string(out), "\n") != fs {
+		c.Fatalf("filesystem has incorrect type:\n%s", out)
+	}
 }
 
 func testRoot(c cluster.TestCluster, fs string) {
 	m := c.Machines()[0]
 
+	testFormatted(c, fs, "ROOT")
+
 	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
 	if err != nil {
 		c.Fatalf("failed to run findmnt: %s: %v", out, err)
 	}
-
 	if string(out) != fs {
 		c.Fatalf("root wasn't correctly reformatted:\n%s", out)
 	}
