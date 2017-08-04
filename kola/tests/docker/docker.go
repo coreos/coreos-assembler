@@ -42,7 +42,7 @@ func init() {
 	})
 	register.Register(&register.Test{
 		Run:           dockerOldClient,
-		ClusterSize:   1,
+		ClusterSize:   0,
 		Name:          "docker.oldclient",
 		Architectures: []string{"amd64"},
 	})
@@ -343,9 +343,12 @@ func dockerOldClient(c cluster.TestCluster) {
 	if _, err := os.Stat(oldclient); err != nil {
 		c.Skipf("Can't find old docker client to test: %v", err)
 	}
-	c.DropFile(oldclient)
 
-	m := c.Machines()[0]
+	m, err := c.NewMachine(nil)
+	if err != nil {
+		c.Fatal(err)
+	}
+	c.DropFile(oldclient)
 
 	if err := genDockerContainer(m, "echo", []string{"echo"}); err != nil {
 		c.Fatal(err)
