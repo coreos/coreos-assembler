@@ -42,7 +42,7 @@ func init() {
 	})
 	register.Register(&register.Test{
 		Run:           dockerOldClient,
-		ClusterSize:   1,
+		ClusterSize:   0,
 		Name:          "docker.oldclient",
 		Architectures: []string{"amd64"},
 	})
@@ -201,8 +201,6 @@ func dockerBaseTests(c cluster.TestCluster) {
 func dockerResources(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	c.Log("creating sleep container")
-
 	if err := genDockerContainer(m, "sleep", []string{"sleep"}); err != nil {
 		c.Fatal(err)
 	}
@@ -239,8 +237,6 @@ func dockerResources(c cluster.TestCluster) {
 		dCmd("--memory-swappiness=50"),
 		dCmd("--shm-size=1m"),
 	} {
-		c.Logf("Executing %q", dockerCmd)
-
 		// lol closures
 		cmd := dockerCmd
 
@@ -248,7 +244,7 @@ func dockerResources(c cluster.TestCluster) {
 			// TODO: pass context thru to SSH
 			output, err := m.SSH(cmd)
 			if err != nil {
-				return fmt.Errorf("failed to run %q: output: %q status: %q", dockerCmd, output, err)
+				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
 			}
 			return nil
 		}
@@ -343,9 +339,12 @@ func dockerOldClient(c cluster.TestCluster) {
 	if _, err := os.Stat(oldclient); err != nil {
 		c.Skipf("Can't find old docker client to test: %v", err)
 	}
-	c.DropFile(oldclient)
 
-	m := c.Machines()[0]
+	m, err := c.NewMachine(nil)
+	if err != nil {
+		c.Fatal(err)
+	}
+	c.DropFile(oldclient)
 
 	if err := genDockerContainer(m, "echo", []string{"echo"}); err != nil {
 		c.Fatal(err)
@@ -412,9 +411,9 @@ func dockerNetworksReliably(c cluster.TestCluster) {
 		c.Fatal(err)
 	}
 
-	output, err := m.SSH(`seq 1 100 | xargs -i -n 1 -P 20 docker run ping sh -c 'out=$(ping -c 1 172.17.0.1 -w 1); if [[ "$?" != 0 ]]; then echo "{} FAIL"; echo "$out"; exit 1; else echo "{} PASS"; fi'`)
+	output, err := m.SSH(`seq 1 100 | xargs -i -n 1 -P 20 docker run ping sh -c 'out=$(ping -i 0.1 172.17.0.1 -w 1); if [[ "$?" != 0 ]]; then echo "{} FAIL"; echo "$out"; exit 1; else echo "{} PASS"; fi'`)
 	if err != nil {
-		c.Fatalf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
+		c.Fatalf("could not run 100 containers pinging the bridge: %v: %v", err, string(output))
 	}
 }
 
