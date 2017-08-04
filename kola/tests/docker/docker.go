@@ -417,7 +417,7 @@ func dockerNetworksReliably(c cluster.TestCluster) {
 
 	output, err := m.SSH(`seq 1 100 | xargs -i -n 1 -P 20 docker run ping sh -c 'out=$(ping -i 0.1 172.17.0.1 -w 1); if [[ "$?" != 0 ]]; then echo "{} FAIL"; echo "$out"; exit 1; else echo "{} PASS"; fi'`)
 	if err != nil {
-		c.Fatalf("could not run 100 containers pinging the bridge: %v: %q", err, string(output))
+		c.Fatalf("could not run 100 containers pinging the bridge: %v: %v", err, string(output))
 	}
 }
 
