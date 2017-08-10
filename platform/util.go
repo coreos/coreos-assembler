@@ -106,16 +106,16 @@ func StartReboot(m Machine) error {
 
 // RebootMachine will reboot a given machine, provided the machine's journal and
 // runtime config.
-func RebootMachine(m Machine, j *Journal) error {
+func RebootMachine(m Machine, j *Journal, c RuntimeConfig) error {
 	if err := StartReboot(m); err != nil {
 		return fmt.Errorf("machine %q failed to begin rebooting: %v", m.ID(), err)
 	}
-	return StartMachine(m, j)
+	return StartMachine(m, j, c)
 }
 
 // RebootMachine will start a given machine, provided the machine's journal and
 // runtime config.
-func StartMachine(m Machine, j *Journal) error {
+func StartMachine(m Machine, j *Journal, c RuntimeConfig) error {
 	if err := j.Start(context.TODO(), m); err != nil {
 		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
 	}
