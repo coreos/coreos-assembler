@@ -15,7 +15,6 @@
 package packet
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -141,17 +140,7 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	if err := mach.journal.Start(context.TODO(), mach); err != nil {
-		mach.Destroy()
-		return nil, err
-	}
-
-	if err := platform.CheckMachine(mach); err != nil {
-		mach.Destroy()
-		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
-	}
-
-	if err := platform.EnableSelinux(mach); err != nil {
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
 		mach.Destroy()
 		return nil, err
 	}

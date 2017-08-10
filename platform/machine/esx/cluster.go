@@ -15,7 +15,6 @@
 package esx
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -109,17 +108,7 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 		return nil, err
 	}
 
-	if err := mach.journal.Start(context.TODO(), mach); err != nil {
-		mach.Destroy()
-		return nil, err
-	}
-
-	if err := platform.CheckMachine(mach); err != nil {
-		mach.Destroy()
-		return nil, fmt.Errorf("machine %q failed basic checks: %v", mach.ID(), err)
-	}
-
-	if err := platform.EnableSelinux(mach); err != nil {
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
 		mach.Destroy()
 		return nil, err
 	}

@@ -15,6 +15,7 @@
 package platform
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -99,6 +100,30 @@ func StartReboot(m Machine) error {
 	}
 	if err != nil {
 		return fmt.Errorf("issuing reboot command failed: %v", out)
+	}
+	return nil
+}
+
+// RebootMachine will reboot a given machine, provided the machine's journal and
+// runtime config.
+func RebootMachine(m Machine, j *Journal) error {
+	if err := StartReboot(m); err != nil {
+		return fmt.Errorf("machine %q failed to begin rebooting: %v", m.ID(), err)
+	}
+	return StartMachine(m, j)
+}
+
+// RebootMachine will start a given machine, provided the machine's journal and
+// runtime config.
+func StartMachine(m Machine, j *Journal) error {
+	if err := j.Start(context.TODO(), m); err != nil {
+		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
+	}
+	if err := CheckMachine(m); err != nil {
+		return fmt.Errorf("machine %q failed basic checks: %v", m.ID(), err)
+	}
+	if err := EnableSelinux(m); err != nil {
+		return fmt.Errorf("machine %q failed to enable selinux: %v", m.ID(), err)
 	}
 	return nil
 }

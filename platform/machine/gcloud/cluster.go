@@ -16,7 +16,6 @@
 package gcloud
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 
@@ -106,20 +105,11 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	if err := gm.journal.Start(context.TODO(), gm); err != nil {
+	if err := platform.StartMachine(gm, gm.journal); err != nil {
 		gm.Destroy()
 		return nil, err
 	}
 
-	if err := platform.CheckMachine(gm); err != nil {
-		gm.Destroy()
-		return nil, err
-	}
-
-	if err := platform.EnableSelinux(gm); err != nil {
-		gm.Destroy()
-		return nil, err
-	}
 	gc.AddMach(gm)
 
 	return gm, nil
