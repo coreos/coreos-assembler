@@ -312,6 +312,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		OutputDir:          h.OutputDir(),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
+		NoEnableSelinux:    t.HasFlag(register.NoEnableSelinux),
 	}
 	c, err := NewCluster(pltfrm, rconf)
 	if err != nil {
