@@ -27,12 +27,33 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/util"
 )
+
+type simplifiedDockerInfo struct {
+	ServerVersion string
+	Driver        string
+	CgroupDriver  string
+	Runtimes      map[string]struct {
+		Path string `json:"path"`
+	}
+	ContainerdCommit struct {
+		ID       string
+		Expected string
+	}
+	RuncCommit struct {
+		ID       string
+		Expected string
+	}
+	SecurityOptions []string
+}
 
 func init() {
 	register.Register(&register.Test{
@@ -169,6 +190,18 @@ systemd:
 
       [Install]
       WantedBy=multi-user.target`),
+	})
+	register.Register(&register.Test{
+		// Ensure containerd gets back up when it dies
+		Name:        "docker.containerd-restart",
+		Run:         dockerContainerdRestart,
+		ClusterSize: 1,
+		MinVersion:  semver.Version{Major: 1520},
+		UserData: conf.ContainerLinuxConfig(`
+systemd:
+  units:
+   - name: docker.service
+     enable: true`),
 	})
 }
 
@@ -459,39 +492,94 @@ func dockerUserNoCaps(c cluster.TestCluster) {
 	}
 }
 
+// dockerContainerdRestart ensures containerd will restart if it dies. It tests that containerd is running,
+// kills it, the tests that it came back up.
+func dockerContainerdRestart(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	pid, err := m.SSH("systemctl show containerd -p MainPID --value")
+	if err != nil {
+		c.Fatal(err)
+	}
+	if string(pid) == "0" {
+		c.Fatalf("Could not find containerd pid")
+	}
+
+	testContainerdUp(c)
+
+	// kill it
+	if _, err = m.SSH("sudo kill " + string(pid)); err != nil {
+		c.Fatal(err)
+	}
+
+	// retry polling its state
+	util.Retry(12, 6*time.Second, func() error {
+		state, err := m.SSH("systemctl show containerd -p SubState --value")
+		if err != nil {
+			c.Fatal(err)
+		}
+		switch string(state) {
+		case "running":
+			return nil
+		case "stopped", "exited", "failed":
+			c.Fatalf("containerd entered stopped state")
+		}
+		return fmt.Errorf("containerd failed to restart")
+	})
+
+	// verify systemd started it and that it's pid is different
+	newPid, err := m.SSH("systemctl show containerd -p MainPID --value")
+	if err != nil {
+		c.Fatal(err)
+	}
+	if string(newPid) == "0" {
+		c.Fatalf("Containerd is not running (could not find pid)")
+	} else if string(newPid) == string(pid) {
+		c.Fatalf("Old and new pid's are the same. containerd did not die")
+	}
+
+	// verify it came back and docker knows about it
+	testContainerdUp(c)
+}
+
+func testContainerdUp(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	info, err := getDockerInfo(m)
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	if info.ContainerdCommit.ID != info.ContainerdCommit.Expected {
+		c.Fatalf("Docker could not find containerd")
+	}
+}
+
+func getDockerInfo(m platform.Machine) (simplifiedDockerInfo, error) {
+	dockerInfoJson, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info`)
+	if err != nil {
+		return simplifiedDockerInfo{}, fmt.Errorf("could not get dockerinfo: %v", err)
+	}
+
+	target := simplifiedDockerInfo{}
+
+	err = json.Unmarshal(dockerInfoJson, &target)
+	if err != nil {
+		return simplifiedDockerInfo{}, fmt.Errorf("could not unmarshal dockerInfo %q into known json: %v", string(dockerInfoJson), err)
+	}
+
+	return target, nil
+}
+
 // testDockerInfo test that docker info's output is as expected.  the expected
 // filesystem may be asserted as one of 'overlay', 'btrfs', 'devicemapper'
 // depending on how the machine was launched.
 func testDockerInfo(expectedFs string, c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	dockerInfoJson, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info`)
+	info, err := getDockerInfo(m)
 	if err != nil {
-		c.Fatalf("could not get dockerinfo: %v", err)
-	}
-
-	type simplifiedDockerInfo struct {
-		ServerVersion string
-		Driver        string
-		CgroupDriver  string
-		Runtimes      map[string]struct {
-			Path string `json:"path"`
-		}
-		ContainerdCommit struct {
-			ID       string
-			Expected string
-		}
-		RuncCommit struct {
-			ID       string
-			Expected string
-		}
-		SecurityOptions []string
-	}
-
-	info := &simplifiedDockerInfo{}
-	err = json.Unmarshal(dockerInfoJson, &info)
-	if err != nil {
-		c.Fatalf("could not unmarshal dockerInfo %q into known json: %v", string(dockerInfoJson), err)
+		c.Fatal(err)
 	}
 
 	// Canonicalize info
