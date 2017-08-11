@@ -107,7 +107,7 @@ cat >"$HOME"/.bash_profile <<EOF
 cd ${CHROOT_CWD:-~/trunk/src/scripts}
 EOF
 
-cat >"$HOME"/.bashrc <<EOF
+cat >"$HOME"/.bashrc << 'EOF'
 # .bashrc
 
 # This file is sourced by all *interactive* bash shells on startup,
