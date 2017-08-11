@@ -28,7 +28,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         torcxEnable,
 		ClusterSize: 1,
-		Name:        "torcx.enable",
+		Name:        "torcx.enable-service",
 		UserData: conf.ContainerLinuxConfig(`
 systemd:
   units:
