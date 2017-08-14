@@ -61,6 +61,39 @@ func init() {
         inline: |
             set linux_append="rd.auto"`),
 	})
+	register.Register(&register.Test{
+		Run:         DataOnRaid,
+		ClusterSize: 1,
+		Name:        "coreos.disk.raid.data",
+		UserData: conf.ContainerLinuxConfig(`storage:
+  raid:
+    - name: "DATA"
+      level: "raid1"
+      devices:
+        - "/dev/disk/by-partlabel/OEM-CONFIG"
+        - "/dev/disk/by-partlabel/USR-B"
+  filesystems:
+    - name: "DATA"
+      mount:
+        device: "/dev/md/DATA"
+        format: "ext4"
+        create:
+          options:
+            - "-L"
+            - "DATA"
+systemd:
+  units:
+    - name: "var-lib-data.mount"
+      enable: true
+      contents: |
+          [Mount]
+          What=/dev/md/DATA
+          Where=/var/lib/data
+          Type=ext4
+          
+          [Install]
+          WantedBy=local-fs.target`),
+	})
 }
 
 func RootOnRaid(c cluster.TestCluster) {
@@ -75,6 +108,20 @@ func RootOnRaid(c cluster.TestCluster) {
 	}
 
 	checkIfMountpointIsRaid(c, m, "/")
+}
+
+func DataOnRaid(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	checkIfMountpointIsRaid(c, m, "/var/lib/data")
+
+	// reboot it to make sure it comes up again
+	err := m.Reboot()
+	if err != nil {
+		c.Fatalf("could not reboot machine: %v", err)
+	}
+
+	checkIfMountpointIsRaid(c, m, "/var/lib/data")
 }
 
 type lsblkOutput struct {
