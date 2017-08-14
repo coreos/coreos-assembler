@@ -46,8 +46,8 @@ func init() {
 
 	// general options
 	sv(&outputDir, "output-dir", "", "Temporary output directory for test data and logs")
-	sv(&kolaPlatform, "platform", "qemu", "VM platform: "+strings.Join(kolaPlatforms, ", "))
-	root.PersistentFlags().IntVar(&kola.TestParallelism, "parallel", 1, "number of tests to run in parallel")
+	root.PersistentFlags().StringVarP(&kolaPlatform, "platform", "p", "qemu", "VM platform: "+strings.Join(kolaPlatforms, ", "))
+	root.PersistentFlags().IntVarP(&kola.TestParallelism, "parallel", "j", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 
