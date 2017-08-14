@@ -1,0 +1,129 @@
+// Copyright 2017 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package misc
+
+import (
+	"encoding/json"
+
+	"github.com/coreos/mantle/kola/cluster"
+	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
+)
+
+func init() {
+	register.Register(&register.Test{
+		Run:         RootOnRaid,
+		ClusterSize: 1,
+		Name:        "coreos.disk.raid.root",
+		// FIXME: This can only work on qemu, since it's overwriting
+		// /usr/share/oem/grub.cfg. The setting being appended (set
+		// linux_append="rd.auto") should probably be the default, and this
+		// should be removed after the OS level fix is made.
+		// https://github.com/coreos/bugs/issues/2099
+		Platforms: []string{"qemu"},
+		UserData: conf.ContainerLinuxConfig(`storage:
+  raid:
+    - name: "ROOT"
+      level: "raid1"
+      devices:
+        - "/dev/disk/by-partlabel/ROOT"
+        - "/dev/disk/by-partlabel/USR-B"
+  filesystems:
+    - name: "ROOT"
+      mount:
+        device: "/dev/md/ROOT"
+        format: "ext4"
+        create:
+          options:
+            - "-L"
+            - "ROOT"
+    - name: "OEM"
+      mount:
+        device: "/dev/disk/by-label/OEM"
+        format: "ext4"
+  files:
+    - filesystem: "OEM"
+      path: "/grub.cfg"
+      contents:
+        inline: |
+            set linux_append="rd.auto"`),
+	})
+}
+
+func RootOnRaid(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	checkIfMountedOnRoot(c, m)
+
+	// reboot it to make sure it comes up again
+	err := m.Reboot()
+	if err != nil {
+		c.Fatalf("could not reboot machine: %v", err)
+	}
+
+	checkIfMountedOnRoot(c, m)
+}
+
+type lsblkOutput struct {
+	Blockdevices []blockdevice `json:"blockdevices"`
+}
+
+type blockdevice struct {
+	Name       string        `json:"name"`
+	Type       string        `json:"type"`
+	Mountpoint *string       `json:"mountpoint"`
+	Children   []blockdevice `json:"children"`
+}
+
+// checkIfMountedOnRoot will check if a given machine has a device of type raid1
+// mounted at /. If it does not, the test is failed.
+func checkIfMountedOnRoot(c cluster.TestCluster, m platform.Machine) {
+	output, err := m.SSH("lsblk --json")
+	if err != nil {
+		c.Fatalf("couldn't list block devices: %v", err)
+	}
+
+	l := lsblkOutput{}
+	err = json.Unmarshal(output, &l)
+	if err != nil {
+		c.Fatalf("couldn't unmarshal lsblk output: %v", err)
+	}
+
+	foundRoot := checkIfMountedOnRootWalker(c, l.Blockdevices)
+	if !foundRoot {
+		c.Fatalf("didn't find root mountpoint in lsblk output")
+	}
+}
+
+// checkIfMountedOnRootWalker will iterate over bs and recurse into its
+// children, looking for a device mounted at / with type raid1. true is returned
+// if such a device is found. The test is failed if a device of a different type
+// is found to be mounted at /.
+func checkIfMountedOnRootWalker(c cluster.TestCluster, bs []blockdevice) bool {
+	for _, b := range bs {
+		if b.Mountpoint != nil && *b.Mountpoint == "/" {
+			if b.Type != "raid1" {
+				c.Fatalf("device %q is mounted at / with type %q (was expecting raid1)", b.Name, b.Type)
+			}
+			return true
+		}
+		foundRoot := checkIfMountedOnRootWalker(c, b.Children)
+		if foundRoot {
+			return true
+		}
+	}
+	return false
+}
