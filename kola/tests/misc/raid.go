@@ -61,12 +61,45 @@ func init() {
         inline: |
             set linux_append="rd.auto"`),
 	})
+	register.Register(&register.Test{
+		Run:         DataOnRaid,
+		ClusterSize: 1,
+		Name:        "coreos.disk.raid.data",
+		UserData: conf.ContainerLinuxConfig(`storage:
+  raid:
+    - name: "DATA"
+      level: "raid1"
+      devices:
+        - "/dev/disk/by-partlabel/OEM-CONFIG"
+        - "/dev/disk/by-partlabel/USR-B"
+  filesystems:
+    - name: "DATA"
+      mount:
+        device: "/dev/md/DATA"
+        format: "ext4"
+        create:
+          options:
+            - "-L"
+            - "DATA"
+systemd:
+  units:
+    - name: "var-lib-data.mount"
+      enable: true
+      contents: |
+          [Mount]
+          What=/dev/md/DATA
+          Where=/var/lib/data
+          Type=ext4
+          
+          [Install]
+          WantedBy=local-fs.target`),
+	})
 }
 
 func RootOnRaid(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	checkIfMountedOnRoot(c, m)
+	checkIfMountpointIsRaid(c, m, "/")
 
 	// reboot it to make sure it comes up again
 	err := m.Reboot()
@@ -74,7 +107,21 @@ func RootOnRaid(c cluster.TestCluster) {
 		c.Fatalf("could not reboot machine: %v", err)
 	}
 
-	checkIfMountedOnRoot(c, m)
+	checkIfMountpointIsRaid(c, m, "/")
+}
+
+func DataOnRaid(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	checkIfMountpointIsRaid(c, m, "/var/lib/data")
+
+	// reboot it to make sure it comes up again
+	err := m.Reboot()
+	if err != nil {
+		c.Fatalf("could not reboot machine: %v", err)
+	}
+
+	checkIfMountpointIsRaid(c, m, "/var/lib/data")
 }
 
 type lsblkOutput struct {
@@ -88,9 +135,9 @@ type blockdevice struct {
 	Children   []blockdevice `json:"children"`
 }
 
-// checkIfMountedOnRoot will check if a given machine has a device of type raid1
-// mounted at /. If it does not, the test is failed.
-func checkIfMountedOnRoot(c cluster.TestCluster, m platform.Machine) {
+// checkIfMountpointIsRaid will check if a given machine has a device of type
+// raid1 mounted at the given mountpoint. If it does not, the test is failed.
+func checkIfMountpointIsRaid(c cluster.TestCluster, m platform.Machine, mountpoint string) {
 	output, err := m.SSH("lsblk --json")
 	if err != nil {
 		c.Fatalf("couldn't list block devices: %v", err)
@@ -102,25 +149,25 @@ func checkIfMountedOnRoot(c cluster.TestCluster, m platform.Machine) {
 		c.Fatalf("couldn't unmarshal lsblk output: %v", err)
 	}
 
-	foundRoot := checkIfMountedOnRootWalker(c, l.Blockdevices)
+	foundRoot := checkIfMountpointIsRaidWalker(c, l.Blockdevices, mountpoint)
 	if !foundRoot {
 		c.Fatalf("didn't find root mountpoint in lsblk output")
 	}
 }
 
-// checkIfMountedOnRootWalker will iterate over bs and recurse into its
+// checkIfMountpointIsRaidWalker will iterate over bs and recurse into its
 // children, looking for a device mounted at / with type raid1. true is returned
 // if such a device is found. The test is failed if a device of a different type
 // is found to be mounted at /.
-func checkIfMountedOnRootWalker(c cluster.TestCluster, bs []blockdevice) bool {
+func checkIfMountpointIsRaidWalker(c cluster.TestCluster, bs []blockdevice, mountpoint string) bool {
 	for _, b := range bs {
-		if b.Mountpoint != nil && *b.Mountpoint == "/" {
+		if b.Mountpoint != nil && *b.Mountpoint == mountpoint {
 			if b.Type != "raid1" {
-				c.Fatalf("device %q is mounted at / with type %q (was expecting raid1)", b.Name, b.Type)
+				c.Fatalf("device %q is mounted at %q with type %q (was expecting raid1)", b.Name, mountpoint, b.Type)
 			}
 			return true
 		}
-		foundRoot := checkIfMountedOnRootWalker(c, b.Children)
+		foundRoot := checkIfMountpointIsRaidWalker(c, b.Children, mountpoint)
 		if foundRoot {
 			return true
 		}
