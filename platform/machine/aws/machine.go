@@ -15,7 +15,6 @@
 package aws
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 
@@ -58,19 +57,7 @@ func (am *machine) SSH(cmd string) ([]byte, error) {
 }
 
 func (m *machine) Reboot() error {
-	if err := platform.StartReboot(m); err != nil {
-		return err
-	}
-	if err := m.journal.Start(context.TODO(), m); err != nil {
-		return err
-	}
-	if err := platform.CheckMachine(m); err != nil {
-		return err
-	}
-	if err := platform.EnableSelinux(m); err != nil {
-		return err
-	}
-	return nil
+	return platform.RebootMachine(m, m.journal, m.cluster.RuntimeConf())
 }
 
 func (am *machine) Destroy() error {

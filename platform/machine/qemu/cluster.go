@@ -15,7 +15,6 @@
 package qemu
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -202,20 +201,11 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	if err := qm.journal.Start(context.TODO(), qm); err != nil {
+	if err := platform.StartMachine(qm, qm.journal, qc.RuntimeConf()); err != nil {
 		qm.Destroy()
 		return nil, err
 	}
 
-	if err := platform.CheckMachine(qm); err != nil {
-		qm.Destroy()
-		return nil, err
-	}
-
-	if err := platform.EnableSelinux(qm); err != nil {
-		qm.Destroy()
-		return nil, err
-	}
 	qc.AddMach(qm)
 
 	return qm, nil
