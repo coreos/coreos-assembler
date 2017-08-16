@@ -16,7 +16,7 @@ for board in amd64-usr arm64-usr; do
     ./build_image --board=$board --upload --sign="$KEYID" prod
 done
 # amd64-usr only
-for format in ami_vmdk azure gce; do
+for format in ami azure gce; do
     ./image_to_vm.sh --prod_image --board=amd64-usr --format=$format --upload --sign="$KEYID"
 done
 ```
