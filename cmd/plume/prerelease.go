@@ -30,7 +30,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/validator"
-	"github.com/coreos/go-semver/semver"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	gs "google.golang.org/api/storage/v1"
@@ -407,22 +406,13 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	}
 
 	plog.Printf("Creating AMIs from %v...", snapshot.SnapshotID)
-	volumeType := aws.EC2VolumeTypeGP2
-	parsedVersion, err := semver.NewVersion(specVersion)
-	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't parse version %s: %v", specVersion, err)
-	}
-	if parsedVersion.LessThan(semver.Version{Major: 1451}) {
-		volumeType = aws.EC2VolumeTypeStandard
-		plog.Noticef("Using EBS Magnetic storage for version %v", specVersion)
-	}
 
-	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, imageName+"-hvm", imageDescription+" (HVM)", volumeType)
+	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, imageName+"-hvm", imageDescription+" (HVM)")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create HVM image: %v", err)
 	}
 
-	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, imageName, imageDescription+" (PV)", volumeType)
+	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, imageName, imageDescription+" (PV)")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
 	}

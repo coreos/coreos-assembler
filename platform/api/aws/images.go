@@ -43,14 +43,6 @@ const (
 	EC2ImageFormatVmdk EC2ImageFormat = ec2.DiskImageFormatVmdk
 )
 
-// TODO(bgilbert): remove after 1451 goes stable
-type EC2VolumeType string
-
-const (
-	EC2VolumeTypeStandard EC2VolumeType = "standard"
-	EC2VolumeTypeGP2      EC2VolumeType = "gp2"
-)
-
 // TODO, these can be derived at runtime
 // these are pv-grub-hd0_1.04-x86_64
 var akis = map[string]string{
@@ -352,15 +344,15 @@ func (a *API) CreateImportRole(bucket string) error {
 	return nil
 }
 
-func (a *API) CreateHVMImage(snapshotID string, name string, description string, volumeType EC2VolumeType) (string, error) {
-	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM, volumeType)
+func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
+	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM)
 	params.EnaSupport = aws.Bool(true)
 	params.SriovNetSupport = aws.String("simple")
 	return a.createImage(params)
 }
 
-func (a *API) CreatePVImage(snapshotID string, name string, description string, volumeType EC2VolumeType) (string, error) {
-	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV, volumeType)
+func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
+	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
 	return a.createImage(params)
 }
@@ -392,7 +384,7 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 
 const diskSize = 8 // GB
 
-func registerImageParams(snapshotID, name, description string, diskBaseName string, imageType EC2ImageType, volumeType EC2VolumeType) *ec2.RegisterImageInput {
+func registerImageParams(snapshotID, name, description string, diskBaseName string, imageType EC2ImageType) *ec2.RegisterImageInput {
 	return &ec2.RegisterImageInput{
 		Name:               aws.String(name),
 		Description:        aws.String(description),
@@ -406,7 +398,7 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
 					VolumeSize:          aws.Int64(diskSize),
-					VolumeType:          aws.String(string(volumeType)),
+					VolumeType:          aws.String("gp2"),
 				},
 			},
 			&ec2.BlockDeviceMapping{
