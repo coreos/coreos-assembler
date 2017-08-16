@@ -179,7 +179,7 @@ var (
 				BaseName:        "ContainerLinuxUser",
 				BaseDescription: "CoreOS Container Linux development image",
 				Prefix:          "coreos_production_ami_",
-				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Image:           "coreos_production_ami_image.bin.bz2",
 				Partitions: []awsPartitionSpec{
 					awsPartitionSpec{
 						Name:         "AWS West",
@@ -222,7 +222,7 @@ var (
 				BaseName:        "ContainerLinuxDeveloper",
 				BaseDescription: "CoreOS Container Linux development image",
 				Prefix:          "coreos_production_ami_",
-				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Image:           "coreos_production_ami_image.bin.bz2",
 				Partitions: []awsPartitionSpec{
 					awsPartitionSpec{
 						Name:         "AWS West",
@@ -292,7 +292,7 @@ var (
 				BaseName:        "CoreOS",
 				BaseDescription: "CoreOS Container Linux",
 				Prefix:          "coreos_production_ami_",
-				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Image:           "coreos_production_ami_image.bin.bz2",
 				Partitions:      awsPartitions,
 			},
 		},
@@ -347,7 +347,7 @@ var (
 				BaseName:        "CoreOS",
 				BaseDescription: "CoreOS Container Linux",
 				Prefix:          "coreos_production_ami_",
-				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Image:           "coreos_production_ami_image.bin.bz2",
 				Partitions:      awsPartitions,
 			},
 		},
@@ -392,7 +392,7 @@ var (
 				BaseName:        "CoreOS",
 				BaseDescription: "CoreOS Container Linux",
 				Prefix:          "coreos_production_ami_",
-				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
+				Image:           "coreos_production_ami_image.bin.bz2",
 				Partitions:      awsPartitions,
 			},
 		},
