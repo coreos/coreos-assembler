@@ -1,46 +1,102 @@
 # Mantle: Gluing CoreOS together
 
-This repository is a collection of utilities for the CoreOS SDK.
+This repository is a collection of utilities for developing Container Linux. Most of the
+tools are for uploading, running, and interacting with Container Linux instances running
+locally or in a cloud.
 
-## plume
+## Overview
+Mantle is composed of many utilities:
+ - `cork` for handling the Container Linux SDK
+ - `gangue` for downloading from Google Storage
+ - `kola` for launching instances and running tests
+ - `kolet` an agent for kola that runs on instances
+ - `ore` for interfacing with cloud providers
+ - `plume` for releasing Container Linux
+All of the utilities support the `help` command to get a full listing of their subcommands
+and options.
 
-CoreOS release utility
+## cork
+Cork is a tool that helps working with Container Linux images and the SDK.
 
-## plume index
+### cork create
+Download and unpack the Container Linux SDK.
 
-Generate and upload index.html objects to turn a Google Cloud Storage
-bucket into a publicly browsable file tree. Useful if you want something
-like Apache's directory index for your software download repository.
+`cork create`
+
+### cork enter
+Enter the SDK chroot, and optionally run a command. The command and its
+arguments can be given after `--`.
+
+`cork enter -- repo sync`
+
+### cork download-image
+Download a Container Linux image into `$PWD/.cache/images`.
+
+`cork download-image --platform=qemu`
+
+### Building Container Linux with cork
+See [Modifying CoreOS](https://coreos.com/os/docs/latest/sdk-modifying-coreos.html) for
+an example of using cork to build a Container Linux image.
+
+## gangue
+Gangue is a tool for downloading and verifying files from Google Storage with authenticated requests.
+It is primarily used by the SDK.
+
+### gangue get
+Get a file from Google Storage and verify it using GPG.
 
 ## kola
-
-Kola is a framework for testing software integration in CoreOS instances
+Kola is a framework for testing software integration in Container Linux instances
 across multiple platforms. It is primarily designed to operate within
-the CoreOS SDK for testing software that has landed in the OS image.
+the Container Linux SDK for testing software that has landed in the OS image.
 Ideally, all software needed for a test should be included by building
 it into the image from the SDK.
 
 Kola supports running tests on multiple platforms, currently QEMU, GCE,
-and AWS. In the future systemd-nspawn and other platforms may be added.
+AWS, VMware VSphere, and Packet. In the future systemd-nspawn and other
+platforms may be added.
 Local platforms do not rely on access to the Internet as a design
-principal of kola, minimizing external dependencies. Any network
+principle of kola, minimizing external dependencies. Any network
 services required get built directly into kola itself. Machines on cloud
 platforms do not have direct access to the kola so tests may depend on
 Internet services such as discovery.etcd.io or quay.io instead.
 
 Kola outputs assorted logs and test data to `_kola_temp` for later
-inspection. This directory is completely wiped and recreated every time.
+inspection.
 
 Kola is still under heavy development and it is expected that its
-interface will continue to change. Both the CLI and test registration
-interface have upcoming changes.
+interface will continue to change.
+
+By default, kola uses the `qemu` platform with the most recently built image
+(assuming it is run from within the SDK).
 
 ### kola run
-The run command invokes the main kola test harness. The harness will
-run any registered tests on all platforms unless otherwise specified. It
+The run command invokes the main kola test harness. It
 runs any tests whose registered names matches a glob pattern.
 
 `kola run <glob pattern>`
+
+### kola list
+The list command lists all of the available tests.
+
+### kola spawn
+The spawn command launches Container Linux instances. Use `-s` to open a shell on
+the spawned instance.
+
+### kola mkimage
+The mkimage command creates a copy of the input image with its primary console set
+to the serial port (/dev/ttyS0). This causes more output to be logged on the console,
+which is also logged in `_kola_temp`. This can only be used with QEMU images and must
+be used with the `coreos_*_image.bin` image, *not* the `coreos_*_qemu_image.img`.
+
+### kola bootchart
+The bootchart command launches an instance then generates an svg of the boot process
+using `systemd-analyze`.
+
+### kola updatepayload
+The updatepayload command launches a Container Linux instance then updates it by
+sending an update to its update_engine. The update is the `coreos_*_update.gz` in the
+latest build directory.
 
 ### kola test registration
 Registering kola tests currently requires that the tests are registered
@@ -50,15 +106,18 @@ the mantle codebase.
 Groups of similar tests are registered in an init() function inside the
 kola package.  `Register(*Test)` is called per test. A kola `Test`
 struct requires a unique name, and a single function that is the entry
-point into the test.
+point into the test. Additionally, userdata (such as a Container Linux
+Config) can be be supplied. See the `Test` struct in
+[kola/register/register.go](https://github.com/coreos/mantle/tree/master/kola/register/register.go)
+for a complete list of options.
 
 ### kola test writing
 A kola test is a go function that is passed a `platform.TestCluster` to
-run code against.  Its signature is `func(platform.TestCluster) error`
+run code against.  Its signature is `func(platform.TestCluster)`
 and must be registered and built into the kola binary. 
 
 A `TestCluster` implements the `platform.Cluster` interface and will
-give you access to a running cluster of CoreOS machines. A test writer
+give you access to a running cluster of Container Linux machines. A test writer
 can interact with these machines through this interface.
 
 To see test examples look under
@@ -67,7 +126,7 @@ mantle codebase.
 
 ### kola native code
 For some tests, the `Cluster` interface is limited and it is desirable to
-run native go code directly on one of the CoreOS machines. This is
+run native go code directly on one of the Container Linux machines. This is
 currently possible by using the `NativeFuncs` field of a kola `Test`
 struct. This like a limited RPC interface.
 
@@ -75,123 +134,48 @@ struct. This like a limited RPC interface.
 test. It registers and names functions in nearby packages.  These
 functions, unlike the `Run` entry point, must be manually invoked inside
 a kola test using a `TestCluster`'s `RunNative` method. The function
-itself is then run natively on the specified running CoreOS instances.
+itself is then run natively on the specified running Container Linux instances.
 
 For more examples, look at the
 [coretest](https://github.com/coreos/mantle/tree/master/kola/tests/coretest)
 suite of tests under kola. These tests were ported into kola and make
 heavy use of the native code interface.
 
+### Manhole
+The `platform.Manhole()` function creates an interactive SSH session which can
+be used to inspect a machine during a test.
+
+## kolet
+kolet is run on kola instances to run native functions in tests. Generally kolet
+is not invoked manually.
+
 ## ore
+Ore provides a low level interface for each cloud provider. It has commands
+related to launching instances on a variety of platforms (gcloud, aws,
+azure, esx, and packet) within the latest SDK image. Ore mimics the underlying
+api for each cloud provider closely, so the interface for each cloud provider
+is different. See each providers `help` command for the available actions.
 
-Related commands to launch instances on Google Compute Engine(gce)
-within the latest SDK image. SSH keys should be added to the gce project
-metadata before launching a cluster. All commands have flags that can
-overwrite the default project, bucket, and other settings.  `ore help
-<command>` can be used to discover all the switches.
+Note, when uploading to some cloud providers (e.g. gce) the image may need to be packaged
+with a different --format (e.g. --format=gce) when running `image_to_vm.sh`
 
-### ore upload
+## plume
+Plume is the Container Linux release utility. Releases are done in two stages,
+each with their own command: pre-release and release. Both of these commands are idempotent.
 
-Upload latest SDK image to Google Storage and then create a gce image.
-Assumes an image packaged with the flag `--format=gce` is present.
-Common usage for CoreOS devs using the default bucket and project is:
+### plume pre-release
+The pre-release command does as much of the release process as possible without making anything public.
+This includes uploading images to cloud providers (except those like gce which don't allow us to upload
+images without making them public).
 
-`ore upload`
+## plume release
+Publish a new Container Linux release. This makes the images uploaded by pre-release public and uploads
+images that pre-release could not. It copies the release artifacts to public storage buckets and updates
+the directory index.
 
-### ore list-images
-
-Print out gce images from a project. Common usage:
-
-`ore list-images`
-
-### ore create-instances
-
-Launch instances on gce. SSH keys should be added to the metadata
-section of the gce developers console. Common usage:
-
-`ore create-instances -n=3 -image=<gce image name> -config=<cloud config file>`
-
-### ore list-instances
-
-List running gce instances. Common usage:
-
-`ore list-instances`
-
-### ore destroy-instances
-
-Destroy instances on gce based by prefix or name. Images created with
-`create-instances` use a common basename as a prefix that can also be
-used to tear down the cluster. Common usage:
-
-`ore destroy-instances -prefix=$USER`
-
-## cork
-
-Cork is a tool that helps working with CoreOS images and the SDK.
-
-### cork create
-
-Download and unpack the CoreOS SDK.
-
-`cork create`
-
-### cork enter
-
-Enter the SDK chroot, and optionally run a command. The command and its
-arguments can be given after `--`.
-
-`cork enter -- repo sync`
-
-### cork download-image
-
-Download a CoreOS image into `$PWD/.cache/images`.
-
-`cork download-image --platform=qemu`
-
-## building CoreOS on CoreOS
-
-Here is an example script that will download and build a CoreOS image using
-cork and the SDK. It is assumed that it is run on an existing CoreOS instance.
-
-The resulting QEMU images will be in
-`$HOME/coreos/src/build/images/amd64-usr/latest/`.
-
-```sh
-# setup env vars
-export PATH=$HOME/bin:$PATH
-export V=master
-export S=/mnt/host/source/src/scripts
-export B=amd64-usr
-
-# build mantle commands, including cork
-cd $HOME
-git clone https://github.com/coreos/mantle.git
-cd mantle
-docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang ./build
-mkdir -p $HOME/bin/
-cp bin/* $HOME/bin/
-
-mkdir $HOME/coreos
-cd $HOME/coreos
-
-# download CoreOS SDK, build packages and image
-cork create --replace --sdk-version=${V} --verbose
-cork enter -- ${S}/build_packages --board=${B}
-cork enter -- ${S}/build_image --board=${B} dev prod
-
-# optionally you can run the kola tests on the built image
-cork enter -- sudo kola run -v
-
-# build dev and prod QEMU images
-cork enter -- ${S}/image_to_vm.sh --board=${B}
-cork enter -- ${S}/image_to_vm.sh --board=${B} --prod_image
-```
-
-## TODO
-
- - Migrate to the standard `log` package to make code easier to embed in
-   other projects which may not use `capnslog`.
- - Adopt `context` as the primary way of managing the life time of
-   asynchronous jobs. It is more standard and flexible than our local
-   `destructor` package.
- - Continue to expand the amount of data recorded in `_kola_temp`.
+### plume index
+Generate and upload index.html objects to turn a Google Cloud Storage
+bucket into a publicly browsable file tree. Useful if you want something
+like Apache's directory index for your software download repository.
+Plume release handles this as well, so it does not need to be run as part of
+the release process.
