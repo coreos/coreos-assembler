@@ -584,7 +584,7 @@ func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channe
 
 // awsPreRelease runs everything necessary to prepare a CoreOS release for AWS.
 //
-// This includes uploading the aws_vmdk image to an S3 bucket in each EC2
+// This includes uploading the ami_vmdk image to an S3 bucket in each EC2
 // partition, creating HVM and PV AMIs, and replicating the AMIs to each
 // region.
 func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec, imageInfo *imageInfo) error {
