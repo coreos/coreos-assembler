@@ -196,7 +196,7 @@ systemd:
 		Name:        "docker.containerd-restart",
 		Run:         dockerContainerdRestart,
 		ClusterSize: 1,
-		MinVersion:  semver.Version{Major: 1520},
+		MinVersion:  semver.Version{Major: 1506},
 		UserData: conf.ContainerLinuxConfig(`
 systemd:
   units:
