@@ -54,9 +54,8 @@ var (
 
 	defaultInstallerImageBaseURL = map[string]string{
 		// HTTPS causes iPXE to fail on a "permission denied" error
-		// FIXME(bgilbert): we want stable and beta, respectively, >= 1465
-		"amd64-usr": "http://alpha.release.core-os.net/amd64-usr/current",
-		"arm64-usr": "http://alpha.release.core-os.net/arm64-usr/current",
+		"amd64-usr": "http://stable.release.core-os.net/amd64-usr/current",
+		"arm64-usr": "http://beta.release.core-os.net/arm64-usr/current",
 	}
 	defaultImageURL = map[string]string{
 		"amd64-usr": "https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2",
