@@ -22,11 +22,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 )
 
 const (
-	defaultBoard = "amd64-usr"
 	defaultGroup = "developer"
 
 	// In the SDK chroot the repo is always at this location
@@ -84,6 +84,7 @@ func RepoCache() string {
 }
 
 func DefaultBoard() string {
+	defaultBoard := system.PortageArch() + "-usr"
 	cfg := filepath.Join(RepoRoot(), defaultBoardCfg)
 	board, err := ioutil.ReadFile(cfg)
 	if err != nil {
