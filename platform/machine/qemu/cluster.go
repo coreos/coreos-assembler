@@ -133,12 +133,14 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 			"qemu-system-x86_64",
 			"-machine", "accel=kvm",
 			"-cpu", "host",
+			"-m", "1024",
 		}
 	case "arm64-usr":
 		qmCmd = []string{
 			"qemu-system-aarch64",
 			"-machine", "virt",
 			"-cpu", "cortex-a57",
+			"-m", "2048",
 		}
 	default:
 		panic(qc.opts.Board)
@@ -148,7 +150,6 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	qmCmd = append(qmCmd,
 		"-bios", qc.opts.BIOSImage,
 		"-smp", "1",
-		"-m", "1024",
 		"-uuid", qm.id,
 		"-display", "none",
 		"-add-fd", "fd=4,set=1",
