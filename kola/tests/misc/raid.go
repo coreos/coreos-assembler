@@ -17,6 +17,8 @@ package misc
 import (
 	"encoding/json"
 
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -27,16 +29,11 @@ func init() {
 	register.Register(&register.Test{
 		Run:         RootOnRaid,
 		ClusterSize: 1,
+		MinVersion:  semver.Version{Major: 1520},
 		Name:        "coreos.disk.raid.root",
-		// FIXME: This can only work on qemu, since it's overwriting
-		// /usr/share/oem/grub.cfg. The setting being appended (set
-		// linux_append="rd.auto") should probably be the default, and this
-		// should be removed after the OS level fix is made.
-		// https://github.com/coreos/bugs/issues/2099
-		Platforms: []string{"qemu"},
 		UserData: conf.ContainerLinuxConfig(`storage:
   raid:
-    - name: "ROOT"
+    - name: "test-hasroot"
       level: "raid1"
       devices:
         - "/dev/disk/by-partlabel/ROOT"
@@ -44,22 +41,12 @@ func init() {
   filesystems:
     - name: "ROOT"
       mount:
-        device: "/dev/md/ROOT"
+        device: "/dev/md/test-hasroot"
         format: "ext4"
         create:
           options:
             - "-L"
-            - "ROOT"
-    - name: "OEM"
-      mount:
-        device: "/dev/disk/by-label/OEM"
-        format: "ext4"
-  files:
-    - filesystem: "OEM"
-      path: "/grub.cfg"
-      contents:
-        inline: |
-            set linux_append="rd.auto"`),
+            - "ROOT"`),
 	})
 	register.Register(&register.Test{
 		Run:         DataOnRaid,
