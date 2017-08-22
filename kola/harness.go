@@ -372,9 +372,17 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 func architecture(pltfrm string) string {
 	nativeArch := "amd64"
 	if pltfrm == "qemu" && QEMUOptions.Board != "" {
-		nativeArch = strings.SplitN(QEMUOptions.Board, "-", 2)[0]
+		nativeArch = boardToArch(QEMUOptions.Board)
+	}
+	if pltfrm == "packet" && PacketOptions.Board != "" {
+		nativeArch = boardToArch(PacketOptions.Board)
 	}
 	return nativeArch
+}
+
+// returns the arch part of an sdk board name
+func boardToArch(board string) string {
+	return strings.SplitN(board, "-", 2)[0]
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.

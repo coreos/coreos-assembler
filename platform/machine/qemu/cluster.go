@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -127,28 +128,44 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	var qmCmd []string
-	switch qc.opts.Board {
-	case "amd64-usr":
+	combo := runtime.GOARCH + "--" + qc.opts.Board
+	switch combo {
+	case "amd64--amd64-usr":
 		qmCmd = []string{
 			"qemu-system-x86_64",
 			"-machine", "accel=kvm",
 			"-cpu", "host",
+			"-m", "1024",
 		}
-	case "arm64-usr":
+	case "amd64--arm64-usr":
 		qmCmd = []string{
 			"qemu-system-aarch64",
 			"-machine", "virt",
 			"-cpu", "cortex-a57",
+			"-m", "2048",
+		}
+	case "arm64--amd64-usr":
+		qmCmd = []string{
+			"qemu-system-x86_64",
+			"-machine", "pc-q35-2.8",
+			"-cpu", "kvm64",
+			"-m", "1024",
+		}
+	case "arm64--arm64-usr":
+		qmCmd = []string{
+			"qemu-system-aarch64",
+			"-machine", "virt,accel=kvm,gic-version=3",
+			"-cpu", "host",
+			"-m", "2048",
 		}
 	default:
-		panic(qc.opts.Board)
+		panic("host-guest combo not supported: " + combo)
 	}
 
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCmd = append(qmCmd,
 		"-bios", qc.opts.BIOSImage,
 		"-smp", "1",
-		"-m", "1024",
 		"-uuid", qm.id,
 		"-display", "none",
 		"-add-fd", "fd=4,set=1",
@@ -184,7 +201,7 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 	defer tap.Close()
 
-	plog.Debugf("NewMachine: %q", qmCmd)
+	plog.Debugf("NewMachine: (%s) %q", combo, qmCmd)
 
 	qm.qemu = qm.qc.NewCommand(qmCmd[0], qmCmd[1:]...)
 

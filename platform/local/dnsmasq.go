@@ -45,14 +45,26 @@ type Dnsmasq struct {
 	dnsmasq  *exec.ExecCmd
 }
 
-var configTemplate = template.Must(template.New("dnsmasq").Parse(`
+const (
+	numInterfaces = 16
+	numSegments   = 3
+
+	debugConfig = `
+log-queries
+log-dhcp
+`
+
+	quietConfig = `
+quiet-dhcp
+quiet-dhcp6
+quiet-ra
+`
+
+	commonConfig = `
 keep-in-foreground
 leasefile-ro
 log-facility=-
 pid-file=
-quiet-dhcp
-quiet-dhcp6
-quiet-ra
 
 no-resolv
 no-hosts
@@ -79,12 +91,10 @@ dhcp-host={{.HardwareAddr}}{{template "ips" .DHCPv4}}{{template "ips" .DHCPv6}}
 {{end}}
 
 {{define "ips"}}{{range .}}{{printf ",%s" .IP}}{{end}}{{end}}
-`))
-
-const (
-	numInterfaces = 16
-	numSegments   = 3
+`
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/local")
 
 func newInterface(s, i byte) *Interface {
 	return &Interface{
@@ -175,6 +185,16 @@ func NewDnsmasq() (*Dnsmasq, error) {
 	if err = dm.dnsmasq.Start(); err != nil {
 		cfg.Close()
 		return nil, err
+	}
+
+	var configTemplate *template.Template
+
+	if plog.LevelAt(capnslog.DEBUG) {
+		configTemplate = template.Must(
+			template.New("dnsmasq").Parse(debugConfig + commonConfig))
+	} else {
+		configTemplate = template.Must(
+			template.New("dnsmasq").Parse(quietConfig + commonConfig))
 	}
 
 	if err = configTemplate.Execute(cfg, dm); err != nil {
