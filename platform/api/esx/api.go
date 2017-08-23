@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
@@ -280,6 +281,35 @@ func (a *API) GetConsoleOutput(name string) (string, error) {
 	}
 
 	return string(buf), nil
+}
+
+func (a *API) CleanupDevice(name string) error {
+	defaults, err := a.getServerDefaults()
+	if err != nil {
+		return fmt.Errorf("couldn't get server defaults: %v", err)
+	}
+
+	_, err = defaults.finder.VirtualMachine(a.ctx, name)
+	if err == nil {
+		return fmt.Errorf("VM still exists")
+	}
+
+	fm := defaults.datastore.NewFileManager(defaults.datacenter, true)
+
+	// Remove the serial.out file
+	uri := fmt.Sprintf("%s/serial.out", name)
+	err = fm.DeleteFile(a.ctx, uri)
+	if err != nil && !strings.HasSuffix(err.Error(), "was not found") {
+		return fmt.Errorf("couldn't delete serial.out: %v", err)
+	}
+
+	// Remove the VM directory
+	err = fm.DeleteFile(a.ctx, name)
+	if err != nil && !strings.HasSuffix(err.Error(), "was not found") {
+		return fmt.Errorf("couldn't delete vm directory: %v", err)
+	}
+
+	return nil
 }
 
 func (a *API) CreateDevice(name string, conf *conf.Conf) (*ESXMachine, error) {

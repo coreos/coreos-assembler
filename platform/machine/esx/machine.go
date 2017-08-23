@@ -76,6 +76,10 @@ func (em *machine) Destroy() error {
 		return err
 	}
 
+	if err := em.cluster.api.CleanupDevice(em.ID()); err != nil {
+		return err
+	}
+
 	em.cluster.DelMach(em)
 
 	return nil
