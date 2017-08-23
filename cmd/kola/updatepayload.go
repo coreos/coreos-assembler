@@ -263,7 +263,7 @@ func newUserdata(qc *qemu.Cluster) (*conf.UserData, error) {
 		return nil, err
 	}
 
-	return conf.CloudConfig(buf.String()), nil
+	return conf.Script(buf.String()), nil
 }
 
 func checkUsrA(m platform.Machine) error {
