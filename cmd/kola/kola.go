@@ -43,9 +43,14 @@ var (
 	}
 
 	cmdRun = &cobra.Command{
-		Use:    "run [glob pattern]",
-		Short:  "Run kola tests by category",
-		Long:   "run all kola tests (default) or related groups",
+		Use:   "run [glob pattern]",
+		Short: "Run kola tests by category",
+		Long: `Run all kola tests (default) or related groups.
+
+If the glob pattern is exactly equal to the name of a single test, any
+restrictions on the versions of Container Linux supported by that test
+will be ignored.
+`,
 		Run:    runRun,
 		PreRun: preRun,
 	}
