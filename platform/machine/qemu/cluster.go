@@ -58,10 +58,10 @@ type Cluster struct {
 }
 
 type MachineOptions struct {
-	AdditionalDisks []QEMUDisk
+	AdditionalDisks []Disk
 }
 
-type QEMUDisk struct {
+type Disk struct {
 	Size string // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed
 }
 
@@ -85,7 +85,6 @@ func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster,
 	return qc, nil
 }
 
-// Works as a wrapper for NewMachineWithOptions
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	return qc.NewMachineWithOptions(userdata, MachineOptions{})
 }
@@ -246,9 +245,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	cmd := qm.qemu.(*ns.Cmd)
 	cmd.Stderr = os.Stderr
 
-	for _, file := range extraFiles {
-		cmd.ExtraFiles = append(cmd.ExtraFiles, file)
-	}
+	cmd.ExtraFiles = append(cmd.ExtraFiles, extraFiles...)
 
 	if err = qm.qemu.Start(); err != nil {
 		return nil, err
