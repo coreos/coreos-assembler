@@ -23,30 +23,61 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
-func init() {
-	register.Register(&register.Test{
-		Run:         RootOnRaid,
-		ClusterSize: 1,
-		MinVersion:  semver.Version{Major: 1520},
-		Name:        "coreos.disk.raid.root",
-		UserData: conf.ContainerLinuxConfig(`storage:
+var (
+	raidRootUserData = conf.ContainerLinuxConfig(`storage:
+  disks:
+    - device: /dev/vdb
+      wipe_table: true
+      partitions:
+       - label: root1
+         number: 1
+         size: 256MiB
+         type_guid: be9067b9-ea49-4f15-b4f6-f36f8c9e1818
+       - label: root2
+         number: 2
+         size: 256MiB
+         type_guid: be9067b9-ea49-4f15-b4f6-f36f8c9e1818
   raid:
-    - name: "test-hasroot"
+    - name: "rootarray"
       level: "raid1"
       devices:
-        - "/dev/disk/by-partlabel/ROOT"
-        - "/dev/disk/by-partlabel/USR-B"
+        - "/dev/vdb1"
+        - "/dev/vdb2"
   filesystems:
     - name: "ROOT"
       mount:
-        device: "/dev/md/test-hasroot"
+        device: "/dev/md/rootarray"
         format: "ext4"
         create:
           options:
             - "-L"
-            - "ROOT"`),
+            - "ROOT"
+    - name: "NOT_ROOT"
+      mount:
+        device: "/dev/vda9"
+        format: "ext4"
+        create:
+          options:
+            - "-L"
+            - "wasteland"
+          force: true`)
+)
+
+func init() {
+	register.Register(&register.Test{
+		// This test needs additional disks which is only supported on qemu since Ignition
+		// does not support deleting partitions without wiping the partition table and the
+		// disk doesn't have room for new partitions.
+		// TODO(ajeddeloh): change this to delete partition 9 and replace it with 9 and 10
+		// once Ignition supports it.
+		Run:         RootOnRaid,
+		ClusterSize: 0,
+		Platforms:   []string{"qemu"},
+		MinVersion:  semver.Version{Major: 1520},
+		Name:        "coreos.disk.raid.root",
 	})
 	register.Register(&register.Test{
 		Run:         DataOnRaid,
@@ -84,12 +115,20 @@ systemd:
 }
 
 func RootOnRaid(c cluster.TestCluster) {
-	m := c.Machines()[0]
+	options := qemu.MachineOptions{
+		AdditionalDisks: []qemu.Disk{
+			{Size: "520M"},
+		},
+	}
+	m, err := c.Cluster.(*qemu.Cluster).NewMachineWithOptions(raidRootUserData, options)
+	if err != nil {
+		c.Fatal(err)
+	}
 
 	checkIfMountpointIsRaid(c, m, "/")
 
 	// reboot it to make sure it comes up again
-	err := m.Reboot()
+	err = m.Reboot()
 	if err != nil {
 		c.Fatalf("could not reboot machine: %v", err)
 	}
