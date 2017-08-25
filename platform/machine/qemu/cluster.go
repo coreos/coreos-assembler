@@ -168,11 +168,6 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		"-smp", "1",
 		"-uuid", qm.id,
 		"-display", "none",
-		"-add-fd", "fd=4,set=1",
-		"-drive", "if=none,id=blk,format=qcow2,file=/dev/fdset/1",
-		"-device", qc.virtio("blk", "drive=blk"),
-		"-netdev", "tap,id=tap,fd=3",
-		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac),
 		"-chardev", "file,id=log,path="+qm.consolePath,
 		"-serial", "chardev:log",
 	)
@@ -186,11 +181,26 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 			"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"))
 	}
 
+	var extraFiles []*os.File
+	fdnum := 3 // first additional file starts at position 3
+	fdset := 1
+
+	addDisk := func(file *os.File) {
+		id := fmt.Sprintf("d%d", fdnum)
+		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
+			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s", id)))
+		fdnum += 1
+		fdset += 1
+		extraFiles = append(extraFiles, file)
+	}
+
 	diskFile, err := setupDisk(qc.opts.DiskImage)
 	if err != nil {
 		return nil, err
 	}
 	defer diskFile.Close()
+	addDisk(diskFile)
 
 	qc.mu.Lock()
 
@@ -200,6 +210,10 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 	defer tap.Close()
+	qmCmd = append(qmCmd, "-netdev", fmt.Sprintf("tap,id=tap,fd=%d", fdnum),
+		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac))
+	fdnum += 1
+	extraFiles = append(extraFiles, tap.File)
 
 	plog.Debugf("NewMachine: (%s) %q", combo, qmCmd)
 
@@ -209,10 +223,10 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 
 	cmd := qm.qemu.(*ns.Cmd)
 	cmd.Stderr = os.Stderr
-	cmd.ExtraFiles = append(cmd.ExtraFiles,
-		tap.File, // fd=3
-		diskFile, // fd=4
-	)
+
+	for _, file := range extraFiles {
+		cmd.ExtraFiles = append(cmd.ExtraFiles, file)
+	}
 
 	if err = qm.qemu.Start(); err != nil {
 		return nil, err
