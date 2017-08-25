@@ -57,6 +57,14 @@ type Cluster struct {
 	*local.LocalCluster
 }
 
+type MachineOptions struct {
+	AdditionalDisks []QEMUDisk
+}
+
+type QEMUDisk struct {
+	Size string // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed
+}
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/platform/machine/qemu")
 )
@@ -77,7 +85,12 @@ func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster,
 	return qc, nil
 }
 
+// Works as a wrapper for NewMachineWithOptions
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	return qc.NewMachineWithOptions(userdata, MachineOptions{})
+}
+
+func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options MachineOptions) (platform.Machine, error) {
 	id := uuid.NewV4()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id.String())
@@ -195,12 +208,21 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		extraFiles = append(extraFiles, file)
 	}
 
-	diskFile, err := setupDisk(qc.opts.DiskImage)
+	diskFile, err := setupPrimaryDisk(qc.opts.DiskImage)
 	if err != nil {
 		return nil, err
 	}
 	defer diskFile.Close()
 	addDisk(diskFile)
+
+	for _, disk := range options.AdditionalDisks {
+		optionsDiskFile, err := setupDisk(disk.Size)
+		if err != nil {
+			return nil, err
+		}
+		defer optionsDiskFile.Close()
+		addDisk(optionsDiskFile)
+	}
 
 	qc.mu.Lock()
 
@@ -258,7 +280,7 @@ func (qc *Cluster) virtio(device, args string) string {
 }
 
 // Create a nameless temporary qcow2 image file backed by a raw image.
-func setupDisk(imageFile string) (*os.File, error) {
+func setupPrimaryDisk(imageFile string) (*os.File, error) {
 	// a relative path would be interpreted relative to /tmp
 	backingFile, err := filepath.Abs(imageFile)
 	if err != nil {
@@ -270,6 +292,11 @@ func setupDisk(imageFile string) (*os.File, error) {
 		return nil, err
 	}
 
+	qcowOpts := fmt.Sprintf("backing_file=%s,backing_fmt=raw,lazy_refcounts=on", backingFile)
+	return setupDisk("-o", qcowOpts)
+}
+
+func setupDisk(additionalOptions ...string) (*os.File, error) {
 	dstFile, err := ioutil.TempFile("", "mantle-qemu")
 	if err != nil {
 		return nil, err
@@ -278,9 +305,10 @@ func setupDisk(imageFile string) (*os.File, error) {
 	defer os.Remove(dstFileName)
 	dstFile.Close()
 
-	qcowOpts := fmt.Sprintf("backing_file=%s,backing_fmt=raw,lazy_refcounts=on", backingFile)
-	qemuImg := exec.Command("qemu-img", "create", "-f", "qcow2",
-		"-o", qcowOpts, dstFileName)
+	opts := []string{"create", "-f", "qcow2", dstFileName}
+	opts = append(opts, additionalOptions...)
+
+	qemuImg := exec.Command("qemu-img", opts...)
 	qemuImg.Stderr = os.Stderr
 
 	if err := qemuImg.Run(); err != nil {
