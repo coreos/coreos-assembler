@@ -44,7 +44,7 @@ func NewCluster(opts *esx.Options, rconf *platform.RuntimeConfig) (platform.Clus
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, "")
 	if err != nil {
 		return nil, err
 	}

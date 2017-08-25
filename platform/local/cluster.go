@@ -55,7 +55,7 @@ func NewLocalCluster(basename string, rconf *platform.RuntimeConfig) (*LocalClus
 	lc.AddCloser(&lc.nshandle)
 
 	nsdialer := network.NewNsDialer(lc.nshandle)
-	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, rconf, nsdialer)
+	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(basename, rconf, "", nsdialer)
 	if err != nil {
 		lc.Destroy()
 		return nil, err

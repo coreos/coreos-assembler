@@ -131,7 +131,7 @@ func (u *UserData) IsIgnition() bool {
 
 // Render parses userdata and returns a new Conf. It returns an error if the
 // userdata can't be parsed.
-func (u *UserData) Render() (*Conf, error) {
+func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 	c := &Conf{}
 
 	switch u.kind {
@@ -185,8 +185,7 @@ func (u *UserData) Render() (*Conf, error) {
 			plog.Warningf("parsing Container Linux config: %s", report)
 		}
 
-		// TODO(bgilbert): substitute cloud-specific variables via ct
-		ignc, report := ct.ConvertAs2_0(clc, "", ast)
+		ignc, report := ct.ConvertAs2_0(clc, ctPlatform, ast)
 		if report.IsFatal() {
 			return nil, fmt.Errorf("rendering Container Linux config: %s", report)
 		} else if len(report.Entries) > 0 {

@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
+	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/conf"
@@ -40,7 +41,7 @@ func NewCluster(opts *aws.Options, rconf *platform.RuntimeConfig) (platform.Clus
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, ctplatform.EC2)
 	if err != nil {
 		return nil, err
 	}

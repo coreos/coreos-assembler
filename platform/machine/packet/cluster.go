@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/mantle/platform/conf"
@@ -43,7 +44,7 @@ func NewCluster(opts *packet.Options, rconf *platform.RuntimeConfig) (platform.C
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, ctplatform.Packet)
 	if err != nil {
 		return nil, err
 	}
