@@ -37,6 +37,7 @@ func Filesystem(c cluster.TestCluster) {
 	c.Run("writablefiles", WritableFiles)
 	c.Run("writabledirs", WritableDirs)
 	c.Run("stickydirs", StickyDirs)
+	c.Run("blacklist", Blacklist)
 }
 
 func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
@@ -187,5 +188,33 @@ func StickyDirs(c cluster.TestCluster) {
 
 	if string(output) != "" {
 		c.Fatalf("Unknown sticky directories found: %s", output)
+	}
+}
+
+func Blacklist(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	blacklist := []string{
+		// Things excluded from the image that might slip in
+		"/usr/bin/perl",
+		"/usr/bin/python",
+		"/usr/share/man",
+
+		// net-tools "make install" copies binaries from
+		// /usr/bin/{} to /usr/bin/{}.old before overwriting them.
+		// Sometimes this results in an extraneous set of {}.old
+		// binaries for reasons that are not clear.
+		"/usr/bin/*.old",
+	}
+
+	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path /proc -prune -o -path /sys -prune -o -path '%s' -print", strings.Join(blacklist, "' -print -o -path '"))
+
+	output, err := m.SSH(command)
+	if err != nil {
+		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
+	}
+
+	if string(output) != "" {
+		c.Fatalf("Blacklisted files or directories found:\n%s", output)
 	}
 }
