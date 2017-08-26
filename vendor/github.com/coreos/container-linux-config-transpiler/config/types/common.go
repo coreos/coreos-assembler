@@ -22,6 +22,7 @@ import (
 	ignTypes "github.com/coreos/ignition/config/v2_0/types"
 	"github.com/coreos/ignition/config/validate/report"
 
+	"github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/container-linux-config-transpiler/config/templating"
 	"github.com/coreos/container-linux-config-transpiler/config/types/util"
 	"github.com/coreos/ignition/config/validate"
@@ -35,20 +36,20 @@ var (
 )
 
 func init() {
-	register2_0(func(in Config, ast validate.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, validate.AstNode) {
-		if platform == templating.PlatformOpenStackMetadata {
+	register2_0(func(in Config, ast validate.AstNode, out ignTypes.Config, p string) (ignTypes.Config, report.Report, validate.AstNode) {
+		if p == platform.OpenStackMetadata {
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.SystemdUnit{
 				Name: "coreos-metadata.service",
 				DropIns: []ignTypes.SystemdUnitDropIn{{
 					Name:     "20-clct-provider-override.conf",
-					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", platform),
+					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", p),
 				}},
 			})
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.SystemdUnit{
 				Name: "coreos-metadata-sshkeys@.service",
 				DropIns: []ignTypes.SystemdUnitDropIn{{
 					Name:     "20-clct-provider-override.conf",
-					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", platform),
+					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", p),
 				}},
 			})
 		}
@@ -67,19 +68,19 @@ func isZero(v interface{}) bool {
 // assembleUnit will assemble the contents of a systemd unit dropin that will
 // have the given environment variables, and call the given exec line with the
 // provided args prepended to it
-func assembleUnit(exec string, args, vars []string, platform string) (util.SystemdUnit, error) {
+func assembleUnit(exec string, args, vars []string, p string) (util.SystemdUnit, error) {
 	hasTemplating := templating.HasTemplating(args)
 
 	out := util.NewSystemdUnit()
 	if hasTemplating {
-		if platform == "" {
+		if p == "" {
 			return util.SystemdUnit{}, ErrPlatformUnspecified
 		}
 		out.Unit.Add("Requires=coreos-metadata.service")
 		out.Unit.Add("After=coreos-metadata.service")
 		out.Service.Add("EnvironmentFile=/run/metadata/coreos")
 		var err error
-		args, err = templating.PerformTemplating(platform, args)
+		args, err = templating.PerformTemplating(p, args)
 		if err != nil {
 			return util.SystemdUnit{}, err
 		}

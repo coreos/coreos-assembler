@@ -19,6 +19,7 @@ import (
 
 	yaml "github.com/ajeddeloh/yaml"
 	"github.com/coreos/container-linux-config-transpiler/config/astyaml"
+	"github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/container-linux-config-transpiler/config/types"
 	ignTypes "github.com/coreos/ignition/config/v2_0/types"
 	"github.com/coreos/ignition/config/validate"
@@ -66,6 +67,14 @@ func Parse(data []byte) (types.Config, validate.AstNode, report.Report) {
 // ConvertAs2_0 also accepts a platform string, which can either be one of the
 // platform strings defined in config/templating/templating.go or an empty
 // string if [dynamic data](doc/dynamic-data.md) isn't used.
-func ConvertAs2_0(in types.Config, platform string, ast validate.AstNode) (ignTypes.Config, report.Report) {
-	return types.ConvertAs2_0(in, platform, ast)
+func ConvertAs2_0(in types.Config, p string, ast validate.AstNode) (ignTypes.Config, report.Report) {
+	if !platform.IsSupportedPlatform(p) {
+		r := report.Report{}
+		r.Add(report.Entry{
+			Kind:    report.EntryError,
+			Message: "unsupported platform",
+		})
+		return ignTypes.Config{}, r
+	}
+	return types.ConvertAs2_0(in, p, ast)
 }

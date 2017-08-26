@@ -40,15 +40,16 @@ type BaseCluster struct {
 	machmap    map[string]Machine
 	consolemap map[string]string
 
-	name  string
-	rconf *RuntimeConfig
+	name       string
+	rconf      *RuntimeConfig
+	ctPlatform string
 }
 
-func NewBaseCluster(basename string, rconf *RuntimeConfig) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(basename, rconf, network.NewRetryDialer())
+func NewBaseCluster(basename string, rconf *RuntimeConfig, ctPlatform string) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(basename, rconf, ctPlatform, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -60,6 +61,7 @@ func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, dialer netw
 		consolemap: make(map[string]string),
 		name:       fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
 		rconf:      rconf,
+		ctPlatform: ctPlatform,
 	}
 
 	return bc, nil
@@ -152,7 +154,7 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 		}
 	}
 
-	conf, err := userdata.Render()
+	conf, err := userdata.Render(bc.ctPlatform)
 	if err != nil {
 		return nil, err
 	}
