@@ -1,5 +1,5 @@
-hash: 7ae2bd4cddb0e3428f6e304a4811d90d4bebace04a4a6227c40b8402a9d4d055
-updated: 2017-08-02T15:35:40.940553064-07:00
+hash: 963a35f11f8b2de0b5021d586f0b82d09773dce07271ec0de93dfa3aedd9625d
+updated: 2017-08-25T17:03:34.112032005-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -55,10 +55,11 @@ imports:
 - name: github.com/boltdb/bolt
   version: dfb21201d9270c1082d5fb0f07f500311ff72f18
 - name: github.com/coreos/container-linux-config-transpiler
-  version: 390af23d7792fd6b90ff93a33acd003dbf82d6cf
+  version: d42f09a1374bc318d853b53e5a31148db68a4e2a
   subpackages:
   - config
   - config/astyaml
+  - config/platform
   - config/templating
   - config/types
   - config/types/util
