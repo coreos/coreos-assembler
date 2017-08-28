@@ -202,8 +202,9 @@ func Blacklist(c cluster.TestCluster) {
 
 		// net-tools "make install" copies binaries from
 		// /usr/bin/{} to /usr/bin/{}.old before overwriting them.
-		// Sometimes this results in an extraneous set of {}.old
-		// binaries for reasons that are not clear.
+		// This sometimes produced an extraneous set of {}.old
+		// binaries due to make parallelism.
+		// https://github.com/coreos/coreos-overlay/pull/2734
 		"/usr/bin/*.old",
 	}
 
