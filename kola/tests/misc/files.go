@@ -194,6 +194,14 @@ func StickyDirs(c cluster.TestCluster) {
 func Blacklist(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
+	skip := []string{
+		// Directories not to descend into
+		"/proc",
+		"/sys",
+		"/var/lib/docker",
+		"/var/lib/rkt",
+	}
+
 	blacklist := []string{
 		// Things excluded from the image that might slip in
 		"/usr/bin/perl",
@@ -208,7 +216,7 @@ func Blacklist(c cluster.TestCluster) {
 		"/usr/bin/*.old",
 	}
 
-	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path /proc -prune -o -path /sys -prune -o -path '%s' -print", strings.Join(blacklist, "' -print -o -path '"))
+	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(blacklist, "' -print -o -path '"))
 
 	output, err := m.SSH(command)
 	if err != nil {
