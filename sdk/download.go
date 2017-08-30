@@ -60,7 +60,7 @@ func DownloadFile(file, fileURL string, client *http.Client) error {
 	if err != nil {
 		return err
 	}
-	if parseURL.Scheme == "gs" {
+	resolveGS := func() error {
 		if client == nil {
 			client = http.DefaultClient
 		}
@@ -74,6 +74,12 @@ func DownloadFile(file, fileURL string, client *http.Client) error {
 			return fmt.Errorf("%s: %s", err, fileURL)
 		}
 		fileURL = obj.MediaLink
+		return nil
+	}
+	if parseURL.Scheme == "gs" {
+		if err := util.Retry(5, 1*time.Second, resolveGS); err != nil {
+			return err
+		}
 	}
 
 	if err := os.MkdirAll(filepath.Dir(file), 0777); err != nil {
