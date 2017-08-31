@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 var (
@@ -34,11 +36,12 @@ var (
 		Short:  "spawn a CoreOS instance",
 	}
 
-	spawnNodeCount int
-	spawnUserData  string
-	spawnShell     bool
-	spawnRemove    bool
-	spawnVerbose   bool
+	spawnNodeCount      int
+	spawnUserData       string
+	spawnShell          bool
+	spawnRemove         bool
+	spawnVerbose        bool
+	spawnMachineOptions string
 )
 
 func init() {
@@ -47,6 +50,7 @@ func init() {
 	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", false, "spawn a shell in an instance before exiting")
 	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
 	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
+	cmdSpawn.Flags().StringVar(&spawnMachineOptions, "qemu-options", "", "experimental: path to QEMU machine options json")
 	root.AddCommand(cmdSpawn)
 }
 
@@ -87,7 +91,25 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 
 	var someMach platform.Machine
 	for i := 0; i < spawnNodeCount; i++ {
-		mach, err := cluster.NewMachine(userdata)
+		var mach platform.Machine
+		var err error
+		if kolaPlatform == "qemu" && spawnMachineOptions != "" {
+			var b []byte
+			b, err = ioutil.ReadFile(spawnMachineOptions)
+			if err != nil {
+				return fmt.Errorf("Could not read machine options: %v", err)
+			}
+
+			var machineOpts qemu.MachineOptions
+			err = json.Unmarshal(b, &machineOpts)
+			if err != nil {
+				return fmt.Errorf("Could not unmarshal machine options: %v", err)
+			}
+
+			mach, err = cluster.(*qemu.Cluster).NewMachineWithOptions(userdata, machineOpts)
+		} else {
+			mach, err = cluster.NewMachine(userdata)
+		}
 		if err != nil {
 			return fmt.Errorf("Spawning instance failed: %v", err)
 		}
