@@ -34,7 +34,6 @@ var basicTags = []string{
 // regester each tag once per runtime
 var runtimes = []string{
 	"docker",
-	"rkt",
 }
 
 func init() {
