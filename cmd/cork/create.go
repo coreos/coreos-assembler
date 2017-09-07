@@ -52,6 +52,7 @@ var (
 
 	// only for `update` command
 	allowCreate      bool
+	forceSync        bool
 	downgradeInPlace bool
 	downgradeReplace bool
 	newVersion       string
@@ -133,6 +134,8 @@ func init() {
 	updateCmd.Flags().AddFlagSet(creationFlags)
 	updateCmd.Flags().BoolVar(&allowCreate,
 		"create", false, "Create the SDK chroot if missing")
+	updateCmd.Flags().BoolVar(&forceSync,
+		"force-sync", false, "Overrwrite stale .git directories if needed")
 	updateCmd.Flags().BoolVar(&downgradeInPlace,
 		"downgrade-in-place", false,
 		"Allow in-place downgrades of SDK chroot")
@@ -247,7 +250,7 @@ func updateRepo() {
 		}
 	}
 
-	if err := sdk.RepoSync(chrootName); err != nil {
+	if err := sdk.RepoSync(chrootName, forceSync); err != nil {
 		plog.Fatalf("repo sync failed: %v", err)
 	}
 

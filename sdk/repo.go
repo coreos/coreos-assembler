@@ -148,8 +148,10 @@ func RepoVerifyTag(branch string) error {
 	return tag.Run()
 }
 
-func RepoSync(chroot string) error {
-	return enterChroot(
-		chroot, chrootRepoRoot, "--",
-		"repo", "sync", "--no-clone-bundle")
+func RepoSync(chroot string, force bool) error {
+	args := []string{"--", "repo", "sync", "--no-clone-bundle"}
+	if force {
+		args = append(args, "--force-sync")
+	}
+	return enterChroot(chroot, chrootRepoRoot, args...)
 }
