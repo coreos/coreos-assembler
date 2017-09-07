@@ -392,7 +392,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		}
 
 		plog.Printf("Creating EBS snapshot...")
-		snapshot, err = api.CreateSnapshot(imageName, s3ObjectURL, aws.EC2ImageFormatRaw)
+		snapshot, err = api.CreateSnapshot(imageName, s3ObjectURL, aws.EC2ImageFormatVmdk)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to create snapshot: %v", err)
 		}
@@ -574,7 +574,7 @@ func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channe
 
 // awsPreRelease runs everything necessary to prepare a CoreOS release for AWS.
 //
-// This includes uploading the ami image to an S3 bucket in each EC2
+// This includes uploading the ami_vmdk image to an S3 bucket in each EC2
 // partition, creating HVM and PV AMIs, and replicating the AMIs to each
 // region.
 func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec, imageInfo *imageInfo) error {
