@@ -66,7 +66,11 @@ func init() {
       "mode": 420
     }]
   }
-}`),
+}`)})
+	register.Register(&register.Test{
+		Name:        "coreos.locksmith.reboot",
+		Run:         locksmithReboot,
+		ClusterSize: 1,
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.tls",
@@ -115,6 +119,27 @@ func init() {
   }
 }`),
 	})
+}
+
+func locksmithReboot(c cluster.TestCluster) {
+	// The machine should be able to reboot without etcd in the default mode
+	m := c.Machines()[0]
+
+	output, err := m.SSH("sudo systemctl stop sshd.socket && locksmithctl send-need-reboot")
+	if _, ok := err.(*ssh.ExitMissingError); ok {
+		err = nil // A terminated session is perfectly normal during reboot.
+	} else if err == io.EOF {
+		err = nil // Sometimes copying command output returns EOF here.
+	}
+	if err != nil {
+		c.Fatalf("failed to run \"locksmithctl send-need-reboot\": output: %q status: %q", output, err)
+	}
+
+	err = platform.CheckMachine(m)
+	if err != nil {
+		c.Fatalf("failed to check rebooted machine: %v", err)
+	}
+
 }
 
 func locksmithCluster(c cluster.TestCluster) {
