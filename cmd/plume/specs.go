@@ -176,7 +176,7 @@ var (
 				Limit:       2,
 			},
 			AWS: awsSpec{
-				BaseName:        "ContainerLinuxUser",
+				BaseName:        "Container-Linux",
 				BaseDescription: "CoreOS Container Linux development image",
 				Prefix:          "coreos_production_ami_",
 				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
@@ -219,7 +219,7 @@ var (
 				Limit:       25,
 			},
 			AWS: awsSpec{
-				BaseName:        "ContainerLinuxDeveloper",
+				BaseName:        "Container-Linux",
 				BaseDescription: "CoreOS Container Linux development image",
 				Prefix:          "coreos_production_ami_",
 				Image:           "coreos_production_ami_vmdk_image.vmdk.bz2",
