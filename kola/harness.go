@@ -15,6 +15,8 @@
 package kola
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -29,6 +31,7 @@ import (
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/torcx"
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
 	esxapi "github.com/coreos/mantle/platform/api/esx"
@@ -52,8 +55,13 @@ var (
 	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
 	ESXOptions    = esxapi.Options{Options: &Options}    // glue to set platform options from main
 
-	TestParallelism int    //glue var to set test parallelism from main
-	TAPFile         string // if not "", write TAP results here
+	TestParallelism   int    //glue var to set test parallelism from main
+	TAPFile           string // if not "", write TAP results here
+	TorcxManifestFile string // torcx manifest to expose to tests, if set
+	// TorcxManifest is the unmarshalled torcx manifest file. It is available for
+	// tests to access via `kola.TorcxManifest`. It will be nil if there was no
+	// manifest given to kola.
+	TorcxManifest *torcx.Manifest = nil
 
 	consoleChecks = []struct {
 		desc     string
@@ -196,6 +204,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 	// 1) none of the selected tests care about the version
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
+	// 3) the provided torcx flag is wrong
 	tests, err := filterTests(register.Tests, pattern, pltfrm, semver.Version{})
 	if err != nil {
 		plog.Fatal(err)
@@ -207,6 +216,18 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 			skipGetVersion = false
 			break
 		}
+	}
+
+	if TorcxManifestFile != "" {
+		TorcxManifest = &torcx.Manifest{}
+		torcxManifestFile, err := os.Open(TorcxManifestFile)
+		if err != nil {
+			return errors.New("Torcx manifest path provided could not be read")
+		}
+		if err := json.NewDecoder(torcxManifestFile).Decode(TorcxManifest); err != nil {
+			return fmt.Errorf("could not parse torcx manifest as valid json: %v", err)
+		}
+		torcxManifestFile.Close()
 	}
 
 	if !skipGetVersion {
