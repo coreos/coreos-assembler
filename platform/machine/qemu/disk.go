@@ -99,7 +99,7 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 		if _, err := os.Stat(mapperNode); !os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("timed out waiting for device node")
+		return fmt.Errorf("timed out waiting for device node; did you specify a qcow image by mistake?")
 	})
 	if err != nil {
 		return err
