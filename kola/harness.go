@@ -460,19 +460,21 @@ func SetupOutputDir(outputDir, platform string) (string, error) {
 	}
 
 	if defaulted {
+		tempLinkPath := filepath.Join(outputDir, "latest")
 		linkPath := filepath.Join(defaultBaseDirName, platform+"-latest")
+		// don't clobber existing files that are not symlinks
 		st, err := os.Lstat(linkPath)
-		if err == nil {
-			if (st.Mode() & os.ModeType) != os.ModeSymlink {
-				return "", fmt.Errorf("%v exists and is not a symlink", linkPath)
-			}
-			if err := os.Remove(linkPath); err != nil {
-				return "", err
-			}
-		} else if !os.IsNotExist(err) {
+		if err == nil && (st.Mode()&os.ModeType) != os.ModeSymlink {
+			return "", fmt.Errorf("%v exists and is not a symlink", linkPath)
+		} else if err != nil && !os.IsNotExist(err) {
 			return "", err
 		}
-		if err := os.Symlink(defaultDirName, linkPath); err != nil {
+		if err := os.Symlink(defaultDirName, tempLinkPath); err != nil {
+			return "", err
+		}
+		// atomic rename
+		if err := os.Rename(tempLinkPath, linkPath); err != nil {
+			os.Remove(tempLinkPath)
 			return "", err
 		}
 	}
