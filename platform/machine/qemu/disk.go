@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strings"
 	"time"
 
 	"github.com/coreos/mantle/system/exec"
@@ -62,41 +62,35 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 		}
 	}()
 
-	// set up partitions
-	cmd := exec.Command("kpartx", "-av", outputPath)
+	// set up loop device
+	cmd := exec.Command("losetup", "-Pf", "--show", outputPath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("getting stdout pipe: %v", err)
 	}
 	defer stdout.Close()
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("running kpartx: %v", err)
+		return fmt.Errorf("running losetup: %v", err)
 	}
 	buf, err := ioutil.ReadAll(stdout)
 	if err != nil {
 		cmd.Wait()
-		return fmt.Errorf("reading kpartx output: %v", err)
+		return fmt.Errorf("reading losetup output: %v", err)
 	}
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("setting up partitions: %v", err)
+		return fmt.Errorf("setting up loop device: %v", err)
 	}
+	loopdev := strings.TrimSpace(string(buf))
 	defer func() {
-		if err := exec.Command("kpartx", "-d", outputPath).Run(); err != nil {
-			seterr(fmt.Errorf("tearing down partitions: %v", err))
+		if err := exec.Command("losetup", "-d", loopdev).Run(); err != nil {
+			seterr(fmt.Errorf("tearing down loop device: %v", err))
 		}
 	}()
 
-	// extract loop device name
-	match := regexp.MustCompile(" (loop[0-9]+)p[0-9]+ ").FindStringSubmatch(string(buf))
-	if match == nil {
-		return fmt.Errorf("couldn't obtain loop device name")
-	}
-	loopnode := match[1]
-
 	// wait for OEM block device
-	mapperNode := "/dev/mapper/" + loopnode + "p6"
+	oemdev := loopdev + "p6"
 	err = util.Retry(1000, 5*time.Millisecond, func() error {
-		if _, err := os.Stat(mapperNode); !os.IsNotExist(err) {
+		if _, err := os.Stat(oemdev); !os.IsNotExist(err) {
 			return nil
 		}
 		return fmt.Errorf("timed out waiting for device node; did you specify a qcow image by mistake?")
@@ -106,8 +100,8 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	}
 
 	// mount OEM partition
-	if err := exec.Command("mount", mapperNode, tmpdir).Run(); err != nil {
-		return fmt.Errorf("mounting OEM partition %s on %s: %v", mapperNode, tmpdir, err)
+	if err := exec.Command("mount", oemdev, tmpdir).Run(); err != nil {
+		return fmt.Errorf("mounting OEM partition %s on %s: %v", oemdev, tmpdir, err)
 	}
 	defer func() {
 		if err := exec.Command("umount", tmpdir).Run(); err != nil {
