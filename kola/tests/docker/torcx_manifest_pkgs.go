@@ -36,7 +36,7 @@ func init() {
 		Name:             "docker.torcx-manifest-pkgs",
 		ExcludePlatforms: []string{"qemu"}, // Downloads torcx packages
 		// the first version torcx manifests were shipped
-		MinVersion: semver.Version{Major: 1535},
+		MinVersion: semver.Version{Major: 1520},
 	})
 }
 
