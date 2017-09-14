@@ -33,6 +33,10 @@ import (
 	"github.com/coreos/mantle/system/ns"
 )
 
+const (
+	primaryDiskId = "primary-disk"
+)
+
 // Options contains QEMU-specific options for the cluster.
 type Options struct {
 	// DiskImage is the full path to the disk image to boot in QEMU.
@@ -62,7 +66,8 @@ type MachineOptions struct {
 }
 
 type Disk struct {
-	Size string // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed
+	Size   string // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed
+	Serial string // serial number to be passed to qemu via `serial=`. Disks show up under /dev/disk/by-id/virtio-<serial>
 }
 
 var (
@@ -197,10 +202,10 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	fdnum := 3 // first additional file starts at position 3
 	fdset := 1
 
-	addDisk := func(file *os.File) {
+	addDisk := func(file *os.File, serial string) {
 		id := fmt.Sprintf("d%d", fdnum)
 		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d,serial=%s", id, fdset, serial),
 			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s", id)))
 		fdnum += 1
 		fdset += 1
@@ -212,7 +217,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 		return nil, err
 	}
 	defer diskFile.Close()
-	addDisk(diskFile)
+	addDisk(diskFile, primaryDiskId)
 
 	for _, disk := range options.AdditionalDisks {
 		optionsDiskFile, err := setupDisk(disk.Size)
@@ -220,7 +225,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 			return nil, err
 		}
 		defer optionsDiskFile.Close()
-		addDisk(optionsDiskFile)
+		addDisk(optionsDiskFile, disk.Serial)
 	}
 
 	qc.mu.Lock()
