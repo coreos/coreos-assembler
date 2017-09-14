@@ -29,7 +29,7 @@ import (
 var (
 	raidRootUserData = conf.ContainerLinuxConfig(`storage:
   disks:
-    - device: /dev/vdb
+    - device: "/dev/disk/by-id/virtio-secondary"
       wipe_table: true
       partitions:
        - label: root1
@@ -44,8 +44,8 @@ var (
     - name: "rootarray"
       level: "raid1"
       devices:
-        - "/dev/vdb1"
-        - "/dev/vdb2"
+        - "/dev/disk/by-partlabel/root1"
+        - "/dev/disk/by-partlabel/root2"
   filesystems:
     - name: "ROOT"
       mount:
@@ -57,7 +57,7 @@ var (
             - "ROOT"
     - name: "NOT_ROOT"
       mount:
-        device: "/dev/vda9"
+        device: "/dev/disk/by-id/virtio-primary-disk-part9"
         format: "ext4"
         create:
           options:
@@ -117,7 +117,7 @@ systemd:
 func RootOnRaid(c cluster.TestCluster) {
 	options := qemu.MachineOptions{
 		AdditionalDisks: []qemu.Disk{
-			{Size: "520M"},
+			{Size: "520M", Serial: "secondary"},
 		},
 	}
 	m, err := c.Cluster.(*qemu.Cluster).NewMachineWithOptions(raidRootUserData, options)
