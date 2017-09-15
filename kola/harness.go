@@ -82,6 +82,10 @@ var (
 			match: regexp.MustCompile("Oops:"),
 		},
 		{
+			desc:  "excessive bonding link status messages",
+			match: regexp.MustCompile("(?s:link status up for interface [^,]+, enabling it in [0-9]+ ms.*?){10}"),
+		},
+		{
 			desc:  "Go panic",
 			match: regexp.MustCompile("panic: (.*)"),
 		},
