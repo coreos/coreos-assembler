@@ -343,7 +343,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		if err := c.Destroy(); err != nil {
 			plog.Errorf("cluster.Destroy(): %v", err)
 		}
-		checkConsole(h, t, c)
+		for id, output := range c.ConsoleOutput() {
+			for _, badness := range CheckConsole([]byte(output), t) {
+				h.Errorf("Found %s on machine %s console", badness, id)
+			}
+		}
 	}()
 
 	if t.ClusterSize > 0 {
@@ -425,19 +429,20 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 	c.Fatalf("Unable to locate kolet binary for %s", mArch)
 }
 
-func checkConsole(h *harness.H, t *register.Test, c platform.Cluster) {
-	for id, output := range c.ConsoleOutput() {
-		for _, check := range consoleChecks {
-			if check.skipFlag != nil {
-				if t.HasFlag(*check.skipFlag) {
-					continue
-				}
-			}
-			if check.match.Find([]byte(output)) != nil {
-				h.Errorf("Found %s on machine %s console", check.desc, id)
-			}
+// CheckConsole checks some console output for badness and returns short
+// descriptions of any badness it finds. If t is specified, its flags are
+// respected.
+func CheckConsole(output []byte, t *register.Test) []string {
+	var ret []string
+	for _, check := range consoleChecks {
+		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
+			continue
+		}
+		if check.match.Find(output) != nil {
+			ret = append(ret, check.desc)
 		}
 	}
+	return ret
 }
 
 func SetupOutputDir(outputDir, platform string) (string, error) {
