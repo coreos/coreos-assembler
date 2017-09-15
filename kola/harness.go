@@ -75,15 +75,19 @@ var (
 		},
 		{
 			desc:  "kernel panic",
-			match: regexp.MustCompile("Kernel panic - not syncing"),
+			match: regexp.MustCompile("Kernel panic - not syncing: (.*)"),
 		},
 		{
 			desc:  "kernel oops",
 			match: regexp.MustCompile("Oops:"),
 		},
 		{
+			desc:  "excessive bonding link status messages",
+			match: regexp.MustCompile("(?s:link status up for interface [^,]+, enabling it in [0-9]+ ms.*?){10}"),
+		},
+		{
 			desc:  "Go panic",
-			match: regexp.MustCompile("panic\\("),
+			match: regexp.MustCompile("panic: (.*)"),
 		},
 		{
 			desc:  "segfault",
@@ -343,7 +347,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		if err := c.Destroy(); err != nil {
 			plog.Errorf("cluster.Destroy(): %v", err)
 		}
-		checkConsole(h, t, c)
+		for id, output := range c.ConsoleOutput() {
+			for _, badness := range CheckConsole([]byte(output), t) {
+				h.Errorf("Found %s on machine %s console", badness, id)
+			}
+		}
 	}()
 
 	if t.ClusterSize > 0 {
@@ -425,19 +433,26 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 	c.Fatalf("Unable to locate kolet binary for %s", mArch)
 }
 
-func checkConsole(h *harness.H, t *register.Test, c platform.Cluster) {
-	for id, output := range c.ConsoleOutput() {
-		for _, check := range consoleChecks {
-			if check.skipFlag != nil {
-				if t.HasFlag(*check.skipFlag) {
-					continue
-				}
+// CheckConsole checks some console output for badness and returns short
+// descriptions of any badness it finds. If t is specified, its flags are
+// respected.
+func CheckConsole(output []byte, t *register.Test) []string {
+	var ret []string
+	for _, check := range consoleChecks {
+		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
+			continue
+		}
+		match := check.match.FindSubmatch(output)
+		if match != nil {
+			badness := check.desc
+			if len(match) > 1 {
+				// include first subexpression
+				badness += fmt.Sprintf(" (%s)", match[1])
 			}
-			if check.match.Find([]byte(output)) != nil {
-				h.Errorf("Found %s on machine %s console", check.desc, id)
-			}
+			ret = append(ret, badness)
 		}
 	}
+	return ret
 }
 
 func SetupOutputDir(outputDir, platform string) (string, error) {
