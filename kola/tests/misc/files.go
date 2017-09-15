@@ -214,6 +214,14 @@ func Blacklist(c cluster.TestCluster) {
 		// binaries due to make parallelism.
 		// https://github.com/coreos/coreos-overlay/pull/2734
 		"/usr/bin/*.old",
+
+		// Control characters in filenames
+		// There doesn't seem to be a way to detect NUL
+		"*[\x01-\x1f]*",
+		// Space
+		"* *",
+		// DEL
+		"*\x7f*",
 	}
 
 	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(blacklist, "' -print -o -path '"))
