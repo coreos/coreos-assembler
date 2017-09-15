@@ -216,7 +216,6 @@ func Blacklist(c cluster.TestCluster) {
 		"/usr/bin/*.old",
 
 		// Control characters in filenames
-		// There doesn't seem to be a way to detect NUL
 		"*[\x01-\x1f]*",
 		// Space
 		"* *",
