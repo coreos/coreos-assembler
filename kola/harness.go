@@ -75,7 +75,7 @@ var (
 		},
 		{
 			desc:  "kernel panic",
-			match: regexp.MustCompile("Kernel panic - not syncing"),
+			match: regexp.MustCompile("Kernel panic - not syncing: (.*)"),
 		},
 		{
 			desc:  "kernel oops",
@@ -83,7 +83,7 @@ var (
 		},
 		{
 			desc:  "Go panic",
-			match: regexp.MustCompile("panic\\("),
+			match: regexp.MustCompile("panic: (.*)"),
 		},
 		{
 			desc:  "segfault",
@@ -438,8 +438,14 @@ func CheckConsole(output []byte, t *register.Test) []string {
 		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
 			continue
 		}
-		if check.match.Find(output) != nil {
-			ret = append(ret, check.desc)
+		match := check.match.FindSubmatch(output)
+		if match != nil {
+			badness := check.desc
+			if len(match) > 1 {
+				// include first subexpression
+				badness += fmt.Sprintf(" (%s)", match[1])
+			}
+			ret = append(ret, badness)
 		}
 	}
 	return ret
