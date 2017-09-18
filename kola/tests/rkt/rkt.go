@@ -121,7 +121,7 @@ func rktBase(t cluster.TestCluster) {
 		}
 		defer m.SSH(fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
 
-		output, err = m.SSH(fmt.Sprintf("while ! [ -f %s ]; do sleep 0.1; done; rkt status --wait $(cat %s)", uuidFile, uuidFile))
+		output, err = m.SSH(fmt.Sprintf("while ! [ -s %s ]; do sleep 0.1; done; rkt status --wait $(cat %s)", uuidFile, uuidFile))
 		if err != nil {
 			t.Fatalf("error waiting for rkt: %v, %s", err, output)
 		}
@@ -138,7 +138,7 @@ func rktBase(t cluster.TestCluster) {
 		}
 		defer m.SSH(fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
 
-		output, err = m.SSH(fmt.Sprintf("while ! [ -f %s ]; do sleep 0.1; done; rkt status --wait-ready $(cat %s)", uuidFile, uuidFile))
+		output, err = m.SSH(fmt.Sprintf("while ! [ -s %s ]; do sleep 0.1; done; rkt status --wait-ready $(cat %s)", uuidFile, uuidFile))
 		if err != nil {
 			t.Fatalf("error waiting for rkt: %v, %s", err, output)
 		}
