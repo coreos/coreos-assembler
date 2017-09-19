@@ -180,7 +180,7 @@ import:
   - runtime/internal
   - utilities
 - package: github.com/go-ini/ini
-  version: v1.8.6
+  version: v1.28.2
 - package: github.com/godbus/dbus
   version: a5942dec6340eb0d57f43f2003c190ce06e43dea
 - package: github.com/gogo/protobuf
