@@ -80,8 +80,7 @@ runs any tests whose registered names matches a glob pattern.
 The list command lists all of the available tests.
 
 ### kola spawn
-The spawn command launches Container Linux instances. Use `-s` to open a shell on
-the spawned instance.
+The spawn command launches Container Linux instances.
 
 ### kola mkimage
 The mkimage command creates a copy of the input image with its primary console set
