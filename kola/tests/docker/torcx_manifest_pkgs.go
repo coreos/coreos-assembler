@@ -147,25 +147,35 @@ echo "docker" | sudo tee /etc/torcx/next-profile
 		if _, err := m.SSH(`sudo rm -rf /var/lib/docker`); err != nil {
 			c.Fatalf("could not wipe /var/lib/docker: %v", err)
 		}
-		currentVersion, err := m.SSH(`jq -r '.value.images[] | select(.name == "docker").reference' /run/torcx/profile.json`)
-		if err != nil {
-			c.Fatalf("could not get current docker ref: %v", err)
-		}
-		if string(currentVersion) != version {
+		currentVersion := getTorcxDockerReference(c, m)
+		if currentVersion != version {
 			c.Fatalf("expected version to be %s, was %s", version, currentVersion)
 		}
 
-		serverVersion, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info | jq -r '.ServerVersion'`)
-		if err != nil {
-			c.Fatalf("could not get docker version: %v", err)
-		}
+		serverVersion := getDockerServerVersion(c, m)
 		// torcx packages have truncated docker versions, e.g. 1.12.6 has a torcx
 		// package of 1.12
-		if !strings.HasPrefix(string(serverVersion), version) {
+		if !strings.HasPrefix(serverVersion, version) {
 			c.Fatalf("expected a version similar to %v, was %v", version, serverVersion)
 		}
 
 	})
 
 	dockerBaseTests(c)
+}
+
+func getTorcxDockerReference(c cluster.TestCluster, m platform.Machine) string {
+	ver, err := m.SSH(`jq -r '.value.images[] | select(.name == "docker").reference' /run/torcx/profile.json`)
+	if err != nil {
+		c.Fatalf("could not get current docker ref: %v", err)
+	}
+	return string(ver)
+}
+
+func getDockerServerVersion(c cluster.TestCluster, m platform.Machine) string {
+	ver, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info | jq -r '.ServerVersion'`)
+	if err != nil {
+		c.Fatalf("could not get docker version: %v", err)
+	}
+	return string(ver)
 }
