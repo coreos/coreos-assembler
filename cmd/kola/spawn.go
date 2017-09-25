@@ -89,6 +89,10 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Cluster failed: %v", err)
 	}
 
+	if spawnRemove {
+		defer cluster.Destroy()
+	}
+
 	var someMach platform.Machine
 	for i := 0; i < spawnNodeCount; i++ {
 		var mach platform.Machine
@@ -116,10 +120,6 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 
 		if spawnVerbose {
 			fmt.Printf("Machine spawned at %v\n", mach.IP())
-		}
-
-		if spawnRemove {
-			defer mach.Destroy()
 		}
 
 		someMach = mach
