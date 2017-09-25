@@ -20,6 +20,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 )
 
@@ -38,25 +39,25 @@ storage:
         inline: yes
 `),
 	})
+	register.Register(&register.Test{
+		Run:         dockerTorcxFlagFileCloudConfig,
+		ClusterSize: 1,
+		Name:        "docker.torcx-flag-file.cloud-config",
+		MinVersion:  semver.Version{Major: 1548},
+		UserData: conf.CloudConfig(`
+#cloud-config
+write_files:
+  - path: "/etc/coreos/docker-1.12"
+    content: yes
+`),
+	})
 }
 
 func dockerTorcxFlagFile(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	checkVersions := func(expectedRefRE, expectedVerRE string) {
-		ref := getTorcxDockerReference(c, m)
-		if !regexp.MustCompile(expectedRefRE).MatchString(ref) {
-			c.Errorf("reference %s did not match %q", ref, expectedRefRE)
-		}
-
-		ver := getDockerServerVersion(c, m)
-		if !regexp.MustCompile(expectedVerRE).MatchString(ver) {
-			c.Errorf("version %s did not match %q", ver, expectedVerRE)
-		}
-	}
-
 	// flag=yes
-	checkVersions(`^1\.12$`, `^1\.12\.`)
+	checkTorcxDockerVersions(c, m, `^1\.12$`, `^1\.12\.`)
 
 	// flag=no
 	if _, err := m.SSH("echo no | sudo tee /etc/coreos/docker-1.12"); err != nil {
@@ -68,5 +69,29 @@ func dockerTorcxFlagFile(c cluster.TestCluster) {
 	if _, err := m.SSH(`sudo rm -rf /var/lib/docker`); err != nil {
 		c.Fatalf("could not wipe /var/lib/docker: %v", err)
 	}
-	checkVersions(`^1[7-9]\.`, `^1[7-9]\.`)
+	checkTorcxDockerVersions(c, m, `^1[7-9]\.`, `^1[7-9]\.`)
+}
+
+func dockerTorcxFlagFileCloudConfig(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	// cloudinit runs after torcx
+	if err := m.Reboot(); err != nil {
+		c.Fatalf("couldn't reboot: %v", err)
+	}
+
+	// flag=yes
+	checkTorcxDockerVersions(c, m, `^1\.12$`, `^1\.12\.`)
+}
+
+func checkTorcxDockerVersions(c cluster.TestCluster, m platform.Machine, expectedRefRE, expectedVerRE string) {
+	ref := getTorcxDockerReference(c, m)
+	if !regexp.MustCompile(expectedRefRE).MatchString(ref) {
+		c.Errorf("reference %s did not match %q", ref, expectedRefRE)
+	}
+
+	ver := getDockerServerVersion(c, m)
+	if !regexp.MustCompile(expectedVerRE).MatchString(ver) {
+		c.Errorf("version %s did not match %q", ver, expectedVerRE)
+	}
 }
