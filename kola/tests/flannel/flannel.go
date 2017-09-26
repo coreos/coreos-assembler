@@ -92,9 +92,9 @@ func init() {
 }
 
 // get docker bridge ip from a machine
-func mach2bip(m platform.Machine, ifname string) (string, error) {
+func mach2bip(c cluster.TestCluster, m platform.Machine, ifname string) (string, error) {
 	// note the escaped % in awk.
-	out, err := m.SSH(fmt.Sprintf(`/usr/lib/systemd/systemd-networkd-wait-online --interface=%s --timeout=60 ; ip -4 -o addr show dev %s primary | awk -F " +|/" '{printf "%%s", $4}'`, ifname, ifname))
+	out, err := c.SSH(m, fmt.Sprintf(`/usr/lib/systemd/systemd-networkd-wait-online --interface=%s --timeout=60 ; ip -4 -o addr show dev %s primary | awk -F " +|/" '{printf "%%s", $4}'`, ifname, ifname))
 	if err != nil {
 		return "", err
 	}
@@ -109,12 +109,12 @@ func mach2bip(m platform.Machine, ifname string) (string, error) {
 
 // ping sends icmp packets from machine a to b using the ping tool.
 func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) {
-	srcip, err := mach2bip(a, ifname)
+	srcip, err := mach2bip(c, a, ifname)
 	if err != nil {
 		c.Fatalf("failed to get docker bridge ip #1: %v", err)
 	}
 
-	dstip, err := mach2bip(b, ifname)
+	dstip, err := mach2bip(c, b, ifname)
 	if err != nil {
 		c.Fatalf("failed to get docker bridge ip #2: %v", err)
 	}
@@ -128,7 +128,7 @@ func ping(c cluster.TestCluster, a, b platform.Machine, ifname string) {
 	c.Logf("ping from %s(%s) to %s(%s)", a.ID(), srcip, b.ID(), dstip)
 
 	cmd := fmt.Sprintf("ping -c 10 -I %s %s", srcip, dstip)
-	out, err := a.SSH(cmd)
+	out, err := c.SSH(a, cmd)
 	if err != nil {
 		c.Fatalf("ping from %s to %s failed: %s: %v", a.ID(), b.ID(), out, err)
 	}
@@ -139,7 +139,7 @@ func udp(c cluster.TestCluster) {
 	machs := c.Machines()
 
 	// Wait for all etcd cluster nodes to be ready.
-	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
+	if err := etcd.GetClusterHealth(c, machs[0], len(machs)); err != nil {
 		c.Fatalf("cluster health: %v", err)
 	}
 
@@ -151,7 +151,7 @@ func vxlan(c cluster.TestCluster) {
 	machs := c.Machines()
 
 	// Wait for all etcd cluster nodes to be ready.
-	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
+	if err := etcd.GetClusterHealth(c, machs[0], len(machs)); err != nil {
 		c.Fatalf("cluster health: %v", err)
 	}
 

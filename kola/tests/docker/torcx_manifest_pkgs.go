@@ -107,7 +107,7 @@ func dockerTorcxManifestPkgs(c cluster.TestCluster) {
 	}
 
 	// Make sure the default torcx config was fine
-	if _, err := m.SSH(`docker version`); err != nil {
+	if _, err := c.SSH(m, `docker version`); err != nil {
 		c.Fatalf("could not run docker: %v", err)
 	}
 
@@ -122,7 +122,7 @@ func dockerTorcxManifestPkgs(c cluster.TestCluster) {
 
 func testPackageVersion(m platform.Machine, c cluster.TestCluster, version string) {
 	c.Run("install-torcx-profile", func(c cluster.TestCluster) {
-		_, err := m.SSH(fmt.Sprintf(`sudo tee /etc/torcx/profiles/docker.json <<EOF
+		_, err := c.SSH(m, fmt.Sprintf(`sudo tee /etc/torcx/profiles/docker.json <<EOF
 {
   "kind": "profile-manifest-v0",
   "value": {
@@ -144,7 +144,7 @@ echo "docker" | sudo tee /etc/torcx/next-profile
 		if err := m.Reboot(); err != nil {
 			c.Fatalf("could not reboot: %v", err)
 		}
-		if _, err := m.SSH(`sudo rm -rf /var/lib/docker`); err != nil {
+		if _, err := c.SSH(m, `sudo rm -rf /var/lib/docker`); err != nil {
 			c.Fatalf("could not wipe /var/lib/docker: %v", err)
 		}
 		currentVersion := getTorcxDockerReference(c, m)
@@ -165,7 +165,7 @@ echo "docker" | sudo tee /etc/torcx/next-profile
 }
 
 func getTorcxDockerReference(c cluster.TestCluster, m platform.Machine) string {
-	ver, err := m.SSH(`jq -r '.value.images[] | select(.name == "docker").reference' /run/torcx/profile.json`)
+	ver, err := c.SSH(m, `jq -r '.value.images[] | select(.name == "docker").reference' /run/torcx/profile.json`)
 	if err != nil {
 		c.Fatalf("could not get current docker ref: %v", err)
 	}
@@ -173,7 +173,7 @@ func getTorcxDockerReference(c cluster.TestCluster, m platform.Machine) string {
 }
 
 func getDockerServerVersion(c cluster.TestCluster, m platform.Machine) string {
-	ver, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info | jq -r '.ServerVersion'`)
+	ver, err := c.SSH(m, `curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info | jq -r '.ServerVersion'`)
 	if err != nil {
 		c.Fatalf("could not get docker version: %v", err)
 	}

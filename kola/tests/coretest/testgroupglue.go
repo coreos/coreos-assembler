@@ -16,7 +16,7 @@ func LocalTests(c cluster.TestCluster) {
 // run clustering based tests
 func ClusterTests(c cluster.TestCluster) {
 	// wait for etcd to come up
-	if err := etcd.GetClusterHealth(c.Machines()[0], len(c.Machines())); err != nil {
+	if err := etcd.GetClusterHealth(c, c.Machines()[0], len(c.Machines())); err != nil {
 		c.Fatal(err)
 	}
 

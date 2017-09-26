@@ -44,7 +44,7 @@ func SelinuxEnforce(c cluster.TestCluster) {
 		{"sudo cp --remove-destination $(readlink -f /etc/selinux/config) /etc/selinux/config", false, ""},
 		{"sudo sed -i 's/SELINUX=permissive/SELINUX=enforcing/' /etc/selinux/config", false, ""},
 	} {
-		output, err := m.SSH(cmd.cmdline)
+		output, err := c.SSH(m, cmd.cmdline)
 		if err != nil {
 			c.Fatalf("failed to run %q: output: %q status: %q", cmd.cmdline, output, err)
 		}
@@ -59,7 +59,7 @@ func SelinuxEnforce(c cluster.TestCluster) {
 		c.Fatalf("failed to reboot machine: %v", err)
 	}
 
-	output, err := m.SSH("getenforce")
+	output, err := c.SSH(m, "getenforce")
 	if err != nil {
 		c.Fatalf("failed to run \"getenforce\": output: %q status: %q", output, err)
 	}

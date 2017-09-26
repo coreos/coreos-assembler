@@ -206,17 +206,15 @@ systemd:
 }
 
 // make a docker container out of binaries on the host
-func genDockerContainer(m platform.Machine, name string, binnames []string) error {
+func genDockerContainer(c cluster.TestCluster, m platform.Machine, name string, binnames []string) {
 	cmd := `tmpdir=$(mktemp -d); cd $tmpdir; echo -e "FROM scratch\nCOPY . /" > Dockerfile;
 	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
 	        sudo rsync -av --relative --copy-links $b $libs ./;
 	        sudo docker build -t %s .`
 
-	if output, err := m.SSH(fmt.Sprintf(cmd, strings.Join(binnames, " "), name)); err != nil {
-		return fmt.Errorf("failed to make %s container: output: %q status: %q", name, output, err)
+	if output, err := c.SSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name)); err != nil {
+		c.Fatalf("failed to make %s container: output: %q status: %q", name, output, err)
 	}
-
-	return nil
 }
 
 func dockerBaseTests(c cluster.TestCluster) {
@@ -234,9 +232,7 @@ func dockerBaseTests(c cluster.TestCluster) {
 func dockerResources(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	if err := genDockerContainer(m, "sleep", []string{"sleep"}); err != nil {
-		c.Fatal(err)
-	}
+	genDockerContainer(c, m, "sleep", []string{"sleep"})
 
 	dockerFmt := "docker run --rm %s sleep sleep 0.2"
 
@@ -273,9 +269,9 @@ func dockerResources(c cluster.TestCluster) {
 		// lol closures
 		cmd := dockerCmd
 
-		worker := func(c context.Context) error {
+		worker := func(ctx context.Context) error {
 			// TODO: pass context thru to SSH
-			output, err := m.SSH(cmd)
+			output, err := c.SSH(m, cmd)
 			if err != nil {
 				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
 			}
@@ -299,17 +295,12 @@ func dockerNetwork(c cluster.TestCluster) {
 
 	c.Log("creating ncat containers")
 
-	if err := genDockerContainer(src, "ncat", []string{"ncat"}); err != nil {
-		c.Fatal(err)
-	}
+	genDockerContainer(c, src, "ncat", []string{"ncat"})
+	genDockerContainer(c, dest, "ncat", []string{"ncat"})
 
-	if err := genDockerContainer(dest, "ncat", []string{"ncat"}); err != nil {
-		c.Fatal(err)
-	}
-
-	listener := func(c context.Context) error {
+	listener := func(ctx context.Context) error {
 		// Will block until a message is recieved
-		out, err := dest.SSH(
+		out, err := c.SSH(dest,
 			`echo "HELLO FROM SERVER" | docker run -i -p 9988:9988 ncat ncat --idle-timeout 20 --listen 0.0.0.0 9988`,
 		)
 		if err != nil {
@@ -323,10 +314,10 @@ func dockerNetwork(c cluster.TestCluster) {
 		return nil
 	}
 
-	talker := func(c context.Context) error {
+	talker := func(ctx context.Context) error {
 		// Wait until listener is ready before trying anything
 		for {
-			_, err := dest.SSH("sudo lsof -i TCP:9988 -s TCP:LISTEN | grep 9988 -q")
+			_, err := c.SSH(dest, "sudo lsof -i TCP:9988 -s TCP:LISTEN | grep 9988 -q")
 			if err == nil {
 				break // socket is ready
 			}
@@ -337,7 +328,7 @@ func dockerNetwork(c cluster.TestCluster) {
 			}
 
 			select {
-			case <-c.Done():
+			case <-ctx.Done():
 				return fmt.Errorf("timeout waiting for server")
 			default:
 				time.Sleep(100 * time.Millisecond)
@@ -345,7 +336,7 @@ func dockerNetwork(c cluster.TestCluster) {
 		}
 
 		srcCmd := fmt.Sprintf(`echo "HELLO FROM CLIENT" | docker run -i ncat ncat %s 9988`, dest.PrivateIP())
-		out, err := src.SSH(srcCmd)
+		out, err := c.SSH(src, srcCmd)
 		if err != nil {
 			return err
 		}
@@ -379,11 +370,9 @@ func dockerOldClient(c cluster.TestCluster) {
 	}
 	c.DropFile(oldclient)
 
-	if err := genDockerContainer(m, "echo", []string{"echo"}); err != nil {
-		c.Fatal(err)
-	}
+	genDockerContainer(c, m, "echo", []string{"echo"})
 
-	output, err := m.SSH("/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
+	output, err := c.SSH(m, "/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
 	if err != nil {
 		c.Fatalf("failed to run old docker client: %q status: %q", output, err)
 	}
@@ -397,15 +386,13 @@ func dockerOldClient(c cluster.TestCluster) {
 func dockerUserns(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	if err := genDockerContainer(m, "userns-test", []string{"echo", "sleep"}); err != nil {
-		c.Fatal(err)
-	}
+	genDockerContainer(c, m, "userns-test", []string{"echo", "sleep"})
 
-	_, err := m.SSH(`sudo setenforce 1`)
+	_, err := c.SSH(m, `sudo setenforce 1`)
 	if err != nil {
 		c.Fatalf("could not enable selinux")
 	}
-	output, err := m.SSH(`docker run userns-test echo fj.fj`)
+	output, err := c.SSH(m, `docker run userns-test echo fj.fj`)
 	if err != nil {
 		c.Fatalf("failed to run echo under userns: output: %q status: %q", output, err)
 	}
@@ -414,11 +401,11 @@ func dockerUserns(c cluster.TestCluster) {
 	}
 
 	// And just in case, verify that a container really is userns remapped
-	_, err = m.SSH(`docker run -d --name=sleepy userns-test sleep 10000`)
+	_, err = c.SSH(m, `docker run -d --name=sleepy userns-test sleep 10000`)
 	if err != nil {
 		c.Fatalf("could not run sleep: %v", err)
 	}
-	uid_map, err := m.SSH(`until [[ "$(docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
+	uid_map, err := c.SSH(m, `until [[ "$(docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
 		pid=$(docker inspect -f {{.State.Pid}} sleepy);
 		cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
 	if err != nil {
@@ -440,11 +427,9 @@ func dockerUserns(c cluster.TestCluster) {
 func dockerNetworksReliably(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	if err := genDockerContainer(m, "ping", []string{"sh", "ping"}); err != nil {
-		c.Fatal(err)
-	}
+	genDockerContainer(c, m, "ping", []string{"sh", "ping"})
 
-	output, err := m.SSH(`for i in $(seq 1 100); do 
+	output, err := c.SSH(m, `for i in $(seq 1 100); do 
 		echo -n "$i: "
 		docker run --rm ping sh -c 'ping -i 0.2 172.17.0.1 -w 1 >/dev/null && echo PASS || echo FAIL'
 	done`)
@@ -470,11 +455,9 @@ func dockerNetworksReliably(c cluster.TestCluster) {
 func dockerUserNoCaps(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	if err := genDockerContainer(m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"}); err != nil {
-		c.Fatal(err)
-	}
+	genDockerContainer(c, m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"})
 
-	output, err := m.SSH(`docker run --user 1000:1000 \
+	output, err := c.SSH(m, `docker run --user 1000:1000 \
 		-v /root:/root \
 		captest sh -c \
 		'cat /proc/self/status | grep -E "Cap(Eff|Prm)"; ls /root &>/dev/null && echo "FAIL: could read root" || echo "PASS: err reading root"'`)
@@ -507,7 +490,7 @@ func dockerUserNoCaps(c cluster.TestCluster) {
 func dockerContainerdRestart(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	pid, err := m.SSH("systemctl show containerd -p MainPID --value")
+	pid, err := c.SSH(m, "systemctl show containerd -p MainPID --value")
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -518,13 +501,13 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 	testContainerdUp(c)
 
 	// kill it
-	if _, err = m.SSH("sudo kill " + string(pid)); err != nil {
+	if _, err = c.SSH(m, "sudo kill "+string(pid)); err != nil {
 		c.Fatal(err)
 	}
 
 	// retry polling its state
 	util.Retry(12, 6*time.Second, func() error {
-		state, err := m.SSH("systemctl show containerd -p SubState --value")
+		state, err := c.SSH(m, "systemctl show containerd -p SubState --value")
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -538,7 +521,7 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 	})
 
 	// verify systemd started it and that it's pid is different
-	newPid, err := m.SSH("systemctl show containerd -p MainPID --value")
+	newPid, err := c.SSH(m, "systemctl show containerd -p MainPID --value")
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -555,7 +538,7 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 func testContainerdUp(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	info, err := getDockerInfo(m)
+	info, err := getDockerInfo(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -565,8 +548,8 @@ func testContainerdUp(c cluster.TestCluster) {
 	}
 }
 
-func getDockerInfo(m platform.Machine) (simplifiedDockerInfo, error) {
-	dockerInfoJson, err := m.SSH(`curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info`)
+func getDockerInfo(c cluster.TestCluster, m platform.Machine) (simplifiedDockerInfo, error) {
+	dockerInfoJson, err := c.SSH(m, `curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info`)
 	if err != nil {
 		return simplifiedDockerInfo{}, fmt.Errorf("could not get dockerinfo: %v", err)
 	}
@@ -587,7 +570,7 @@ func getDockerInfo(m platform.Machine) (simplifiedDockerInfo, error) {
 func testDockerInfo(expectedFs string, c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	info, err := getDockerInfo(m)
+	info, err := getDockerInfo(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}

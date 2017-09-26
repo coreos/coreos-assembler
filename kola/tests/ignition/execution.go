@@ -68,7 +68,7 @@ func runsOnce(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// remove file created by Ignition; fail if it doesn't exist
-	_, err := m.SSH("sudo rm /etc/ignition-ran")
+	_, err := c.SSH(m, "sudo rm /etc/ignition-ran")
 	if err != nil {
 		c.Fatalf("Couldn't remove flag file: %v", err)
 	}
@@ -79,7 +79,7 @@ func runsOnce(c cluster.TestCluster) {
 	}
 
 	// make sure file hasn't been recreated
-	_, err = m.SSH("test -e /etc/ignition-ran")
+	_, err = c.SSH(m, "test -e /etc/ignition-ran")
 	if err == nil {
 		c.Fatalf("Flag file recreated after reboot")
 	}

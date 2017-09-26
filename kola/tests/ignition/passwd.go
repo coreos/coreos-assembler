@@ -168,12 +168,12 @@ func groups(c cluster.TestCluster) {
 	}
 
 	for _, t := range tests {
-		if out, err := getent(m, "group", t.group); err != nil {
+		if out, err := getent(c, m, "group", t.group); err != nil {
 			c.Fatal(err)
 		} else if out != t.groupRecord {
 			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.groupRecord)
 		}
-		if out, err := getent(m, "gshadow", t.group); err != nil {
+		if out, err := getent(c, m, "gshadow", t.group); err != nil {
 			c.Fatal(err)
 		} else if out != t.gshadowRecord {
 			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
@@ -207,13 +207,13 @@ func users(c cluster.TestCluster) {
 	}
 
 	for _, t := range tests {
-		if out, err := getent(m, "passwd", t.user); err != nil {
+		if out, err := getent(c, m, "passwd", t.user); err != nil {
 			c.Fatal(err)
 		} else if out != t.passwdRecord {
 			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.user, out, t.passwdRecord)
 		}
 
-		out, err := getent(m, "shadow", t.user)
+		out, err := getent(c, m, "shadow", t.user)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -229,9 +229,9 @@ func users(c cluster.TestCluster) {
 	}
 }
 
-func getent(m platform.Machine, database string, entry string) (string, error) {
+func getent(c cluster.TestCluster, m platform.Machine, database string, entry string) (string, error) {
 	cmd := fmt.Sprintf("sudo getent %s %s", database, entry)
-	if out, err := m.SSH(cmd); err == nil {
+	if out, err := c.SSH(m, cmd); err == nil {
 		return string(out), nil
 	} else {
 		return "", fmt.Errorf("failed to run `%s`: %s: %v", cmd, out, err)

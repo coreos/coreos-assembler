@@ -60,13 +60,13 @@ func dockerTorcxFlagFile(c cluster.TestCluster) {
 	checkTorcxDockerVersions(c, m, `^1\.12$`, `^1\.12\.`)
 
 	// flag=no
-	if _, err := m.SSH("echo no | sudo tee /etc/coreos/docker-1.12"); err != nil {
+	if _, err := c.SSH(m, "echo no | sudo tee /etc/coreos/docker-1.12"); err != nil {
 		c.Fatalf("couldn't set docker flag to no: %s", err)
 	}
 	if err := m.Reboot(); err != nil {
 		c.Fatalf("could not reboot: %v", err)
 	}
-	if _, err := m.SSH(`sudo rm -rf /var/lib/docker`); err != nil {
+	if _, err := c.SSH(m, `sudo rm -rf /var/lib/docker`); err != nil {
 		c.Fatalf("could not wipe /var/lib/docker: %v", err)
 	}
 	checkTorcxDockerVersions(c, m, `^1[7-9]\.`, `^1[7-9]\.`)

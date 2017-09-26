@@ -50,7 +50,7 @@ func checkListeners(c cluster.TestCluster, expectedListeners []listener) {
 	m := c.Machines()[0]
 
 	command := "sudo netstat -plutn"
-	output, err := m.SSH(command)
+	output, err := c.SSH(m, command)
 	if err != nil {
 		c.Fatalf("Failed to run %s: output %s, status: %v", command, output, err)
 	}
@@ -123,7 +123,7 @@ func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 	m.Reboot()
 
 	// get journal lines from the current boot
-	output, err := m.SSH("journalctl -b 0 -o cat -u initrd-switch-root.target -u systemd-networkd.service")
+	output, err := c.SSH(m, "journalctl -b 0 -o cat -u initrd-switch-root.target -u systemd-networkd.service")
 	if err != nil {
 		c.Fatalf("couldn't run journalctl: %v", err)
 	}

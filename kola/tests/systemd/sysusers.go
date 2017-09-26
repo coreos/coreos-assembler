@@ -49,7 +49,7 @@ func gshadowParser(c cluster.TestCluster) {
 		`sudo sh -c "echo 'grp2:*::root' >> /etc/gshadow"`,
 		`sudo systemd-sysusers`,
 	} {
-		output, err := m.SSH(cmd)
+		output, err := c.SSH(m, cmd)
 		if err != nil {
 			c.Fatalf("failed to run %q: output: %q status: %v", cmd, output, err)
 		}

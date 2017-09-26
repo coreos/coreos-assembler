@@ -42,7 +42,7 @@ systemd:
 
 func torcxEnable(c cluster.TestCluster) {
 	m := c.Machines()[0]
-	output, err := m.SSH(`systemctl is-enabled docker`)
+	output, err := c.SSH(m, `systemctl is-enabled docker`)
 	if err != nil {
 		c.Fatalf("expected no error: %v", err)
 	}

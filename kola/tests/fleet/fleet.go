@@ -138,16 +138,16 @@ func Proxy(c cluster.TestCluster) {
 	defer proxy.Destroy()
 
 	// Wait for all etcd cluster nodes to be ready.
-	if err = etcd.GetClusterHealth(master, 1); err != nil {
+	if err = etcd.GetClusterHealth(c, master, 1); err != nil {
 		c.Fatalf("cluster health master: %v", err)
 	}
-	if err = etcd.GetClusterHealth(proxy, 1); err != nil {
+	if err = etcd.GetClusterHealth(c, proxy, 1); err != nil {
 		c.Fatalf("cluster health proxy: %v", err)
 	}
 
 	// Several seconds can pass after etcd is ready before fleet notices.
 	fleetStart := func() error {
-		_, err = proxy.SSH("fleetctl start /home/core/hello.service")
+		_, err = c.SSH(proxy, "fleetctl start /home/core/hello.service")
 		return err
 	}
 	if err := util.Retry(5, 5*time.Second, fleetStart); err != nil {
@@ -155,7 +155,7 @@ func Proxy(c cluster.TestCluster) {
 	}
 
 	fleetList := func() error {
-		status, err := proxy.SSH("fleetctl list-units -l -fields active -no-legend")
+		status, err := c.SSH(proxy, "fleetctl list-units -l -fields active -no-legend")
 		if err != nil {
 			return err
 		}

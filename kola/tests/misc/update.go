@@ -106,8 +106,8 @@ func RecoverBadUsr(c cluster.TestCluster) {
 	})
 
 	// create verity metadata for USR-B
-	output, err := m.SSH("sudo veritysetup format --hash=sha256 " +
-		"--data-block-size 4096 --hash-block-size 4096 --data-blocks 25600 --hash-offset 104857600 " +
+	output, err := c.SSH(m, "sudo veritysetup format --hash=sha256 "+
+		"--data-block-size 4096 --hash-block-size 4096 --data-blocks 25600 --hash-offset 104857600 "+
 		"/dev/disk/by-partlabel/USR-B /dev/disk/by-partlabel/USR-B")
 	if err != nil {
 		c.Fatalf("Failed to run veritysetup: output %s, status: %v", output, err)
@@ -136,7 +136,7 @@ func RecoverBadUsr(c cluster.TestCluster) {
 // run commands as root
 func runAsRoot(c cluster.TestCluster, m platform.Machine, commands []string) {
 	for _, command := range commands {
-		output, err := m.SSH("sudo " + command)
+		output, err := c.SSH(m, "sudo "+command)
 		if err != nil {
 			c.Fatalf("Failed to run %q: output %s, status: %v", command, output, err)
 		}
@@ -145,7 +145,7 @@ func runAsRoot(c cluster.TestCluster, m platform.Machine, commands []string) {
 
 func assertBootedUsr(c cluster.TestCluster, m platform.Machine, usr string) {
 	usrdev := getUsrDeviceNode(c, m)
-	target, err := m.SSH("readlink -f /dev/disk/by-partlabel/" + usr)
+	target, err := c.SSH(m, "readlink -f /dev/disk/by-partlabel/"+usr)
 	if err != nil {
 		c.Fatalf("Failed to readlink: output %s, status %v", target, err)
 	}

@@ -42,7 +42,7 @@ func CheckUserShells(c cluster.TestCluster) {
 		"core":     "/bin/bash",
 	}
 
-	output, err := m.SSH("getent passwd")
+	output, err := c.SSH(m, "getent passwd")
 	if err != nil {
 		c.Fatalf("Failed to run grep: output %s, status: %v", output, err)
 	}

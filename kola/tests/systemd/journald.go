@@ -73,7 +73,7 @@ func journalRemote(c cluster.TestCluster) {
 
 	// log a unique message on gatewayd machine
 	msg := "supercalifragilisticexpialidocious"
-	out, err := gateway.SSH("logger " + msg)
+	out, err := c.SSH(gateway, "logger "+msg)
 	if err != nil {
 		c.Fatalf("logger: %v: %v", out, err)
 	}
@@ -87,7 +87,7 @@ func journalRemote(c cluster.TestCluster) {
 
 	// collect logs from gatewayd machine
 	cmd := fmt.Sprintf("sudo systemd-run --unit systemd-journal-remote-client /usr/lib/systemd/systemd-journal-remote --url http://%s:19531", gateway.PrivateIP())
-	out, err = collector.SSH(cmd)
+	out, err = c.SSH(collector, cmd)
 	if err != nil {
 		c.Fatalf("failed to start systemd-journal-remote: %v: %v", out, err)
 	}
@@ -95,7 +95,7 @@ func journalRemote(c cluster.TestCluster) {
 	// find the message on the collector
 	journalReader := func() error {
 		cmd = fmt.Sprintf("sudo journalctl _HOSTNAME=gateway -t core --file /var/log/journal/remote/remote-%s.journal", gateway.PrivateIP())
-		out, err = collector.SSH(cmd)
+		out, err = c.SSH(collector, cmd)
 		if err != nil {
 			return fmt.Errorf("journalctl: %v: %v", out, err)
 		}
