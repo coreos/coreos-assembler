@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
@@ -89,4 +90,20 @@ func (t *TestCluster) DropFile(localPath string) error {
 		}
 	}
 	return nil
+}
+
+// SSH runs a ssh command on the given machine in the cluster. It differs from
+// Machine.SSH in that stderr is written to the test's output as a 'Log' line.
+// This ensures the output will be correctly accumulated under the correct
+// test.
+func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
+	stdout, stderr, err := m.NewSSH(cmd)
+
+	if len(stderr) > 0 {
+		for _, line := range strings.Split(string(stderr), "\n") {
+			t.Log(line)
+		}
+	}
+
+	return stdout, err
 }

@@ -72,9 +72,9 @@ func runBootchart(cmd *cobra.Command, args []string) {
 	}
 	defer m.Destroy()
 
-	out, err := m.SSH("systemd-analyze plot")
+	out, stderr, err := m.NewSSH("systemd-analyze plot")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SSH failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "SSH failed: %v: %s\n", err, stderr)
 		os.Exit(1)
 	}
 
