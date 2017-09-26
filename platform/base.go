@@ -101,14 +101,12 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
 	}
-
 	defer session.Close()
 
 	session.Stderr = os.Stderr
