@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2017 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ const (
 	sshTimeout = 10 * time.Second
 )
 
-// Machine represents a CoreOS instance.
+// Machine represents a Container Linux instance.
 type Machine interface {
 	// ID returns the plaform-specific machine identifier.
 	ID() string
@@ -69,9 +69,9 @@ type Machine interface {
 	ConsoleOutput() string
 }
 
-// Cluster represents a cluster of CoreOS machines within a single platform.
+// Cluster represents a cluster of Container Linux machines within a single platform.
 type Cluster interface {
-	// NewMachine creates a new CoreOS machine.
+	// NewMachine creates a new Container Linux machine.
 	NewMachine(userdata *conf.UserData) (Machine, error)
 
 	// Machines returns a slice of the active machines in the Cluster.
@@ -250,7 +250,7 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int) ([]Machine, error) {
 
 // CheckMachine tests a machine for various error conditions such as ssh
 // being available and no systemd units failing at the time ssh is reachable.
-// It also ensures the remote system is running CoreOS.
+// It also ensures the remote system is running Container Linux by CoreOS.
 //
 // TODO(mischief): better error messages.
 func CheckMachine(m Machine) error {
@@ -267,14 +267,14 @@ func CheckMachine(m Machine) error {
 		return fmt.Errorf("ssh unreachable: %v", err)
 	}
 
-	// ensure we're talking to a CoreOS system
+	// ensure we're talking to a Container Linux system
 	out, stderr, err := m.NewSSH("grep ^ID= /etc/os-release")
 	if err != nil {
 		return fmt.Errorf("no /etc/os-release file: %s: %s", err, stderr)
 	}
 
 	if !bytes.Equal(out, []byte("ID=coreos")) {
-		return fmt.Errorf("not a CoreOS instance")
+		return fmt.Errorf("not a Container Linux instance")
 	}
 
 	// ensure no systemd units failed during boot
