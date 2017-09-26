@@ -51,12 +51,7 @@ type Machine interface {
 	PasswordSSHClient(user string, password string) (*ssh.Client, error)
 
 	// SSH runs a single command over a new SSH connection.
-	SSH(cmd string) ([]byte, error)
-
-	// NewSSH is a temporary copy of ssh with a different signature so
-	// refactoring can be done in pieces for ease of review.
-	// A later commit replaces SSH with NewSSH
-	NewSSH(cmd string) ([]byte, []byte, error)
+	SSH(cmd string) ([]byte, []byte, error)
 
 	// Reboot restarts the machine and waits for it to come back.
 	Reboot() error
@@ -177,7 +172,7 @@ func ReadFile(m Machine, path string) (io.ReadCloser, error) {
 // InstallFile copies data from in to the path to on m.
 func InstallFile(in io.Reader, m Machine, to string) error {
 	dir := filepath.Dir(to)
-	out, stderr, err := m.NewSSH(fmt.Sprintf("sudo mkdir -p %s", dir))
+	out, stderr, err := m.SSH(fmt.Sprintf("sudo mkdir -p %s", dir))
 	if err != nil {
 		return fmt.Errorf("failed creating directory %s: %s: %s", dir, stderr, err)
 	}
@@ -256,7 +251,7 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int) ([]Machine, error) {
 func CheckMachine(m Machine) error {
 	// ensure ssh works and the system is ready
 	sshChecker := func() error {
-		out, stderr, err := m.NewSSH("systemctl is-system-running")
+		out, stderr, err := m.SSH("systemctl is-system-running")
 		if !bytes.Contains([]byte("initializing starting running stopping"), out) {
 			return nil // stop retrying if the system went haywire
 		}
@@ -268,7 +263,7 @@ func CheckMachine(m Machine) error {
 	}
 
 	// ensure we're talking to a Container Linux system
-	out, stderr, err := m.NewSSH("grep ^ID= /etc/os-release")
+	out, stderr, err := m.SSH("grep ^ID= /etc/os-release")
 	if err != nil {
 		return fmt.Errorf("no /etc/os-release file: %s: %s", err, stderr)
 	}
@@ -278,7 +273,7 @@ func CheckMachine(m Machine) error {
 	}
 
 	// ensure no systemd units failed during boot
-	out, stderr, err = m.NewSSH("systemctl --no-legend --state failed list-units")
+	out, stderr, err = m.SSH("systemctl --no-legend --state failed list-units")
 	if err != nil {
 		return fmt.Errorf("systemctl: %s: %s: %s", out, err, stderr)
 	}

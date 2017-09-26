@@ -53,12 +53,8 @@ func (em *machine) PasswordSSHClient(user string, password string) (*ssh.Client,
 	return em.cluster.PasswordSSHClient(em.IP(), user, password)
 }
 
-func (em *machine) SSH(cmd string) ([]byte, error) {
+func (em *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return em.cluster.SSH(em, cmd)
-}
-
-func (em *machine) NewSSH(cmd string) ([]byte, []byte, error) {
-	return em.cluster.NewSSH(em, cmd)
 }
 
 func (m *machine) Reboot() error {

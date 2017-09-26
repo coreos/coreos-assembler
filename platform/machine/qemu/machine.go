@@ -54,12 +54,8 @@ func (m *machine) PasswordSSHClient(user string, password string) (*ssh.Client, 
 	return m.qc.PasswordSSHClient(m.IP(), user, password)
 }
 
-func (m *machine) SSH(cmd string) ([]byte, error) {
+func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return m.qc.SSH(m, cmd)
-}
-
-func (m *machine) NewSSH(cmd string) ([]byte, []byte, error) {
-	return m.qc.NewSSH(m, cmd)
 }
 
 func (m *machine) Reboot() error {

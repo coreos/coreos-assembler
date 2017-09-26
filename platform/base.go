@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -96,27 +95,7 @@ func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string
 
 // SSH executes the given command, cmd, on the given Machine, m. It returns the
 // stdout and stderr of the command and an error.
-func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, error) {
-	client, err := bc.SSHClient(m.IP())
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-	defer session.Close()
-
-	session.Stderr = os.Stderr
-	out, err := session.Output(cmd)
-	out = bytes.TrimSpace(out)
-	return out, err
-}
-
-// NewSSH is a temporary method as part of refactoring SSH
-func (bc *BaseCluster) NewSSH(m Machine, cmd string) ([]byte, []byte, error) {
+func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	client, err := bc.SSHClient(m.IP())

@@ -97,7 +97,7 @@ func (t *TestCluster) DropFile(localPath string) error {
 // This ensures the output will be correctly accumulated under the correct
 // test.
 func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
-	stdout, stderr, err := m.NewSSH(cmd)
+	stdout, stderr, err := m.SSH(cmd)
 
 	if len(stderr) > 0 {
 		for _, line := range strings.Split(string(stderr), "\n") {
