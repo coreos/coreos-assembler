@@ -94,6 +94,8 @@ func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string
 	return sshClient, nil
 }
 
+// SSH executes the given command, cmd, on the given Machine, m. It returns the
+// stdout and stderr of the command and an error.
 func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, error) {
 	client, err := bc.SSHClient(m.IP())
 	if err != nil {
@@ -113,6 +115,29 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, error) {
 	out, err := session.Output(cmd)
 	out = bytes.TrimSpace(out)
 	return out, err
+}
+
+// NewSSH is a temporary method as part of refactoring SSH
+func (bc *BaseCluster) NewSSH(m Machine, cmd string) ([]byte, []byte, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	client, err := bc.SSHClient(m.IP())
+	if err != nil {
+		return nil, nil, err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer session.Close()
+
+	session.Stdout = &stdout
+	session.Stderr = &stderr
+	err = session.Run(cmd)
+	out := bytes.TrimSpace(stdout.Bytes())
+	return out, stderr.Bytes(), err
 }
 
 func (bc *BaseCluster) Machines() []Machine {

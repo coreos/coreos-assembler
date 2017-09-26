@@ -53,6 +53,11 @@ type Machine interface {
 	// SSH runs a single command over a new SSH connection.
 	SSH(cmd string) ([]byte, error)
 
+	// NewSSH is a temporary copy of ssh with a different signature so
+	// refactoring can be done in pieces for ease of review.
+	// A later commit replaces SSH with NewSSH
+	NewSSH(cmd string) ([]byte, []byte, error)
+
 	// Reboot restarts the machine and waits for it to come back.
 	Reboot() error
 

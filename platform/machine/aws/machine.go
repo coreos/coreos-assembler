@@ -56,6 +56,10 @@ func (am *machine) SSH(cmd string) ([]byte, error) {
 	return am.cluster.SSH(am, cmd)
 }
 
+func (am *machine) NewSSH(cmd string) ([]byte, []byte, error) {
+	return am.cluster.NewSSH(am, cmd)
+}
+
 func (m *machine) Reboot() error {
 	return platform.RebootMachine(m, m.journal, m.cluster.RuntimeConf())
 }
