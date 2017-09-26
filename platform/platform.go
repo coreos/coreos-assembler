@@ -255,7 +255,10 @@ func CheckMachine(m Machine) error {
 		if !bytes.Contains([]byte("initializing starting running stopping"), out) {
 			return nil // stop retrying if the system went haywire
 		}
-		return err
+		if err != nil {
+			return fmt.Errorf("could not check if machine is running: %s: %v: %s", out, err, stderr)
+		}
+		return nil
 	}
 
 	if err := util.Retry(sshRetries, sshTimeout, sshChecker); err != nil {
@@ -265,7 +268,7 @@ func CheckMachine(m Machine) error {
 	// ensure we're talking to a Container Linux system
 	out, stderr, err := m.SSH("grep ^ID= /etc/os-release")
 	if err != nil {
-		return fmt.Errorf("no /etc/os-release file: %s: %s", err, stderr)
+		return fmt.Errorf("no /etc/os-release file: %v: %s", err, stderr)
 	}
 
 	if !bytes.Equal(out, []byte("ID=coreos")) {
@@ -275,7 +278,7 @@ func CheckMachine(m Machine) error {
 	// ensure no systemd units failed during boot
 	out, stderr, err = m.SSH("systemctl --no-legend --state failed list-units")
 	if err != nil {
-		return fmt.Errorf("systemctl: %s: %s: %s", out, err, stderr)
+		return fmt.Errorf("systemctl: %s: %v: %s", out, err, stderr)
 	}
 
 	if len(out) > 0 {
