@@ -1,5 +1,5 @@
-hash: 963a35f11f8b2de0b5021d586f0b82d09773dce07271ec0de93dfa3aedd9625d
-updated: 2017-08-25T17:03:34.112032005-07:00
+hash: 94594dafe764552ae67c272233c7bfebdd5c0705937f78846b90f8540a368601
+updated: 2017-09-26T21:09:01.302051668-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -55,7 +55,7 @@ imports:
 - name: github.com/boltdb/bolt
   version: dfb21201d9270c1082d5fb0f07f500311ff72f18
 - name: github.com/coreos/container-linux-config-transpiler
-  version: d42f09a1374bc318d853b53e5a31148db68a4e2a
+  version: be4cb16b0aaf0f6b4fdf63b8b2a081397276bf0f
   subpackages:
   - config
   - config/astyaml
@@ -131,7 +131,7 @@ imports:
   - journal
   - unit
 - name: github.com/coreos/ignition
-  version: 11813c57bc05f30644bbae7891ae30a4a62e0b33
+  version: 01c039a5ce59acd39e5741713e59abfcb74d0782
   subpackages:
   - config
   - config/types
@@ -143,6 +143,7 @@ imports:
   - config/v2_1/types
   - config/validate
   - config/validate/astjson
+  - config/validate/astnode
   - config/validate/report
 - name: github.com/coreos/ioprogress
   version: 4637e494fd9b23c5565ee193e89f91fdc1639bc0
