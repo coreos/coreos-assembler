@@ -93,8 +93,7 @@ storage:
       inline: "dockremap:100000:65536"
 passwd:
   users:
-  - name: dockremap
-    create: {}`),
+  - name: dockremap`),
 	})
 
 	// This test covers all functionality that should be quick to run and can be
