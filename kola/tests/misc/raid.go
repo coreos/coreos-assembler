@@ -164,7 +164,7 @@ type blockdevice struct {
 // checkIfMountpointIsRaid will check if a given machine has a device of type
 // raid1 mounted at the given mountpoint. If it does not, the test is failed.
 func checkIfMountpointIsRaid(c cluster.TestCluster, m platform.Machine, mountpoint string) {
-	output, err := m.SSH("lsblk --json")
+	output, err := c.SSH(m, "lsblk --json")
 	if err != nil {
 		c.Fatalf("couldn't list block devices: %v", err)
 	}

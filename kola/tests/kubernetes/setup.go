@@ -46,7 +46,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kC
 		c.Fatalf("error creating etcd: %v", err)
 	}
 
-	if err := etcd.GetClusterHealth(etcdNode, 1); err != nil {
+	if err := etcd.GetClusterHealth(c, etcdNode, 1); err != nil {
 		c.Fatalf("error checking etcd health: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kC
 	}
 
 	// generate TLS assets on master
-	if err := generateMasterTLSAssets(master, options); err != nil {
+	if err := generateMasterTLSAssets(c, master, options); err != nil {
 		c.Fatalf("error creating master tls: %v", err)
 	}
 
@@ -79,7 +79,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kC
 	}
 
 	// generate tls assets on workers by transfering ca from master
-	if err := generateWorkerTLSAssets(master, workers); err != nil {
+	if err := generateWorkerTLSAssets(c, master, workers); err != nil {
 		c.Fatalf("error creating worker tls: %v", err)
 	}
 
@@ -91,13 +91,13 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kC
 	}
 
 	// configure kubectl
-	if err := configureKubectl(master, master.PrivateIP(), version); err != nil {
+	if err := configureKubectl(c, master, master.PrivateIP(), version); err != nil {
 		c.Fatalf("error configuring master kubectl: %v", err)
 	}
 
 	// check that all nodes appear in kubectl
 	f := func() error {
-		return nodeCheck(master, workers)
+		return nodeCheck(c, master, workers)
 	}
 	if err := util.Retry(15, 30*time.Second, f); err != nil {
 		c.Fatalf("error waiting for nodes: %v", err)
@@ -111,7 +111,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kC
 	return cluster
 }
 
-func generateMasterTLSAssets(master platform.Machine, options map[string]string) error {
+func generateMasterTLSAssets(c cluster.TestCluster, master platform.Machine, options map[string]string) error {
 	var buffer = new(bytes.Buffer)
 
 	tmpl, err := template.New("masterCNF").Parse(masterCNF)
@@ -149,7 +149,7 @@ func generateMasterTLSAssets(master platform.Machine, options map[string]string)
 	}
 
 	for _, cmd := range cmds {
-		b, err := master.SSH(cmd)
+		b, err := c.SSH(master, cmd)
 		if err != nil {
 			return fmt.Errorf("Failed on cmd: %s with error: %s and output %s", cmd, err, b)
 		}
@@ -157,7 +157,7 @@ func generateMasterTLSAssets(master platform.Machine, options map[string]string)
 	return nil
 }
 
-func generateWorkerTLSAssets(master platform.Machine, workers []platform.Machine) error {
+func generateWorkerTLSAssets(c cluster.TestCluster, master platform.Machine, workers []platform.Machine) error {
 	for i, worker := range workers {
 		// copy tls assets from master to workers
 		err := platform.TransferFile(master, "/etc/kubernetes/ssl/ca.pem", worker, "/home/core/ca.pem")
@@ -193,7 +193,7 @@ func generateWorkerTLSAssets(master platform.Machine, workers []platform.Machine
 		}
 
 		for _, cmd := range cmds {
-			b, err := worker.SSH(cmd)
+			b, err := c.SSH(worker, cmd)
 			if err != nil {
 				return fmt.Errorf("Failed on cmd: %s with error: %s and output %s", cmd, err, b)
 			}
@@ -203,7 +203,7 @@ func generateWorkerTLSAssets(master platform.Machine, workers []platform.Machine
 }
 
 // https://coreos.com/kubernetes/docs/latest/configure-kubectl.html
-func configureKubectl(m platform.Machine, server string, version string) error {
+func configureKubectl(c cluster.TestCluster, m platform.Machine, server string, version string) error {
 	// ignore suffix like '-coreos.1' to grab upstream kubelet
 	version, err := stripSemverSuffix(version)
 	if err != nil {
@@ -217,10 +217,10 @@ func configureKubectl(m platform.Machine, server string, version string) error {
 		kubeURL   = fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/%v/bin/linux/amd64/kubectl", version)
 	)
 
-	if _, err := m.SSH("wget -q " + kubeURL); err != nil {
+	if _, err := c.SSH(m, "wget -q "+kubeURL); err != nil {
 		return err
 	}
-	if _, err := m.SSH("chmod +x ./kubectl"); err != nil {
+	if _, err := c.SSH(m, "chmod +x ./kubectl"); err != nil {
 		return err
 	}
 
@@ -232,7 +232,7 @@ func configureKubectl(m platform.Machine, server string, version string) error {
 		"./kubectl config use-context default-system",
 	}
 	for _, cmd := range cmds {
-		b, err := m.SSH(cmd)
+		b, err := c.SSH(m, cmd)
 		if err != nil {
 			return fmt.Errorf("Failed on cmd: %s with error: %s and output %s", cmd, err, b)
 		}
@@ -255,7 +255,7 @@ func stripSemverSuffix(v string) (string, error) {
 
 // Run and configure the coreos-kubernetes generic install scripts.
 func runInstallScript(c cluster.TestCluster, m platform.Machine, script string, options map[string]string) {
-	if _, err := m.SSH("sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
+	if _, err := c.SSH(m, "sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
 		c.Fatal("kubelet wrapper not found on disk")
 	}
 

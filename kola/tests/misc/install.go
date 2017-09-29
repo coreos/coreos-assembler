@@ -48,7 +48,7 @@ func InstallCloudConfig(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Verify the host name was set from the cloud-config file
-	if output, err := m.SSH("hostname"); err != nil || !bytes.Equal(output, []byte("cloud-config-worked")) {
+	if output, err := c.SSH(m, "hostname"); err != nil || !bytes.Equal(output, []byte("cloud-config-worked")) {
 		c.Fatalf("hostname: %q: %v", output, err)
 	}
 }

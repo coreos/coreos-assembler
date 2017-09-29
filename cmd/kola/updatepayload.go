@@ -177,9 +177,9 @@ func runUpdateTest() error {
 	}
 
 	// Invalidate USR-A to ensure the update is legit.
-	if out, err := m.SSH("sudo coreos-setgoodroot && " +
+	if out, stderr, err := m.SSH("sudo coreos-setgoodroot && " +
 		"sudo wipefs /dev/disk/by-partlabel/USR-A"); err != nil {
-		return fmt.Errorf("invalidating USR-A failed: %v: %v", out, err)
+		return fmt.Errorf("invalidating USR-A failed: %s: %v: %s", out, err, stderr)
 	}
 
 	if err := tryUpdate(m); err != nil {
@@ -198,9 +198,9 @@ func tryUpdate(m platform.Machine) error {
 	plog.Infof("Triggering update_engine")
 
 	/* trigger update, monitor the progress. */
-	out, err := m.SSH("update_engine_client -check_for_update")
+	out, stderr, err := m.SSH("update_engine_client -check_for_update")
 	if err != nil {
-		return fmt.Errorf("Executing update_engine_client failed: %v: %v", out, err)
+		return fmt.Errorf("Executing update_engine_client failed: %v: %v: %s", out, err, stderr)
 	}
 
 	start := time.Now()
@@ -208,9 +208,9 @@ func tryUpdate(m platform.Machine) error {
 	for status != "UPDATE_STATUS_UPDATED_NEED_REBOOT" && time.Since(start) < updateTimeout {
 		time.Sleep(10 * time.Second)
 
-		envs, err := m.SSH("update_engine_client -status 2>/dev/null")
+		envs, stderr, err := m.SSH("update_engine_client -status 2>/dev/null")
 		if err != nil {
-			return fmt.Errorf("checking status failed: %v", err)
+			return fmt.Errorf("checking status failed: %v: %s", err, stderr)
 		}
 
 		em := splitNewlineEnv(string(envs))
@@ -283,9 +283,9 @@ func checkUsrB(m platform.Machine) error {
 // checkUsrPartition inspects /proc/cmdline of the machine, looking for the
 // expected partition mounted at /usr.
 func checkUsrPartition(m platform.Machine, accept []string) error {
-	out, err := m.SSH("cat /proc/cmdline")
+	out, stderr, err := m.SSH("cat /proc/cmdline")
 	if err != nil {
-		return fmt.Errorf("cat /proc/cmdline: %v: %v", out, err)
+		return fmt.Errorf("cat /proc/cmdline: %v: %v: %s", out, err, stderr)
 	}
 	plog.Debugf("Kernel cmdline: %s", out)
 

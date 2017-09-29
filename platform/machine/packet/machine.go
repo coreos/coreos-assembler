@@ -52,7 +52,7 @@ func (pm *machine) PasswordSSHClient(user string, password string) (*ssh.Client,
 	return pm.cluster.PasswordSSHClient(pm.IP(), user, password)
 }
 
-func (pm *machine) SSH(cmd string) ([]byte, error) {
+func (pm *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return pm.cluster.SSH(pm, cmd)
 }
 

@@ -125,7 +125,7 @@ func locksmithReboot(c cluster.TestCluster) {
 	// The machine should be able to reboot without etcd in the default mode
 	m := c.Machines()[0]
 
-	output, err := m.SSH("sudo systemctl stop sshd.socket && locksmithctl send-need-reboot")
+	output, err := c.SSH(m, "sudo systemctl stop sshd.socket && locksmithctl send-need-reboot")
 	if _, ok := err.(*ssh.ExitMissingError); ok {
 		err = nil // A terminated session is perfectly normal during reboot.
 	} else if err == io.EOF {
@@ -146,11 +146,11 @@ func locksmithCluster(c cluster.TestCluster) {
 	machs := c.Machines()
 
 	// Wait for all etcd cluster nodes to be ready.
-	if err := etcd.GetClusterHealth(machs[0], len(machs)); err != nil {
+	if err := etcd.GetClusterHealth(c, machs[0], len(machs)); err != nil {
 		c.Fatalf("cluster health: %v", err)
 	}
 
-	output, err := machs[0].SSH("locksmithctl status")
+	output, err := c.SSH(machs[0], "locksmithctl status")
 	if err != nil {
 		c.Fatalf("locksmithctl status: %q: %v", output, err)
 	}
@@ -160,9 +160,9 @@ func locksmithCluster(c cluster.TestCluster) {
 
 	// reboot all the things
 	for _, m := range machs {
-		worker := func(c context.Context) error {
+		worker := func(ctx context.Context) error {
 			cmd := "sudo systemctl stop sshd.socket && sudo locksmithctl send-need-reboot"
-			output, err := m.SSH(cmd)
+			output, err := c.SSH(m, cmd)
 			if _, ok := err.(*ssh.ExitMissingError); ok {
 				err = nil // A terminated session is perfectly normal during reboot.
 			} else if err == io.EOF {
@@ -190,44 +190,44 @@ func locksmithTLS(c cluster.TestCluster) {
 	lCmd := "sudo locksmithctl --endpoint https://localhost:2379 --etcd-cafile /etc/ssl/etcd/ca-etcd-cert.pem --etcd-certfile /etc/ssl/etcd/locksmith-cert.pem --etcd-keyfile /etc/ssl/etcd/locksmith-key.pem "
 
 	// First verify etcd has a valid TLS connection ready
-	output, err := m.SSH("openssl s_client -showcerts -verify_return_error -verify_ip 127.0.0.1 -verify_hostname localhost -connect localhost:2379 0</dev/null 2>&1")
+	output, err := c.SSH(m, "openssl s_client -showcerts -verify_return_error -verify_ip 127.0.0.1 -verify_hostname localhost -connect localhost:2379 0</dev/null 2>&1")
 	if err != nil || !bytes.Contains(output, []byte("Verify return code: 0")) {
 		c.Fatalf("openssl s_client: %q: %v", output, err)
 	}
 
 	// Also verify locksmithctl understands the TLS connection
-	output, err = m.SSH(lCmd + "status")
+	output, err = c.SSH(m, lCmd+"status")
 	if err != nil {
 		c.Fatalf("locksmithctl status: %q: %v", output, err)
 	}
 
 	// Stop locksmithd
-	output, err = m.SSH("sudo systemctl stop locksmithd.service")
+	output, err = c.SSH(m, "sudo systemctl stop locksmithd.service")
 	if err != nil {
 		c.Fatalf("systemctl stop: %q: %v", output, err)
 	}
 
 	// Set the lock while locksmithd isn't looking
-	output, err = m.SSH(lCmd + "lock")
+	output, err = c.SSH(m, lCmd+"lock")
 	if err != nil {
 		c.Fatalf("locksmithctl lock: %q: %v", output, err)
 	}
 
 	// Verify it is locked
-	output, err = m.SSH(lCmd + "status")
+	output, err = c.SSH(m, lCmd+"status")
 	if err != nil || !bytes.HasPrefix(output, []byte("Available: 0\nMax: 1")) {
 		c.Fatalf("locksmithctl status (locked): %q: %v", output, err)
 	}
 
 	// Start locksmithd
-	output, err = m.SSH("sudo systemctl start locksmithd.service")
+	output, err = c.SSH(m, "sudo systemctl start locksmithd.service")
 	if err != nil {
 		c.Fatalf("systemctl start: %q: %v", output, err)
 	}
 
 	// Verify it is unlocked (after locksmithd wakes up again)
 	checker := func() error {
-		output, err := m.SSH(lCmd + "status")
+		output, err := c.SSH(m, lCmd+"status")
 		if err != nil || !bytes.HasPrefix(output, []byte("Available: 1\nMax: 1")) {
 			return fmt.Errorf("locksmithctl status (unlocked): %q: %v", output, err)
 		}

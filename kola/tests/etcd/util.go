@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
@@ -30,12 +31,12 @@ import (
 // GetClusterHealth polls etcdctl cluster-health command until success
 // or maximum retries have been reached. Can be effectively used to
 // block a test until the etcd cluster is up and running.
-func GetClusterHealth(m platform.Machine, csize int) error {
+func GetClusterHealth(c cluster.TestCluster, m platform.Machine, csize int) error {
 	var err error
 	var b []byte
 
 	checker := func() error {
-		b, err := m.SSH("etcdctl cluster-health")
+		b, err := c.SSH(m, "etcdctl cluster-health")
 		if err != nil {
 			return err
 		}
@@ -62,16 +63,16 @@ func GetClusterHealth(m platform.Machine, csize int) error {
 // If all the values don't get set due to a machine that is down and
 // error is NOT returned. An error is returned if no keys are able to be
 // set.
-func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
+func setKeys(c cluster.TestCluster, n int) (map[string]string, error) {
 	var written = map[string]string{}
-	for _, m := range cluster.Machines() {
+	for _, m := range c.Machines() {
 		for i := 0; i < n; i++ {
 			// random key and value, may overwrwite previous sets if
 			// collision which is fine
 			key := strconv.Itoa(rand.Int())[0:3]
 			value := strconv.Itoa(rand.Int())[0:3]
 
-			b, err := m.SSH(fmt.Sprintf("curl -s -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value))
+			b, err := c.SSH(m, fmt.Sprintf("curl -s -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value))
 			if err != nil {
 				return nil, err
 			}
@@ -94,12 +95,12 @@ func setKeys(cluster platform.Cluster, n int) (map[string]string, error) {
 
 // checkKeys tests that each node in the cluster has the full provided
 // key set in keyMap. Quorum get must be used.
-func checkKeys(cluster platform.Cluster, keyMap map[string]string) error {
-	for i, m := range cluster.Machines() {
+func checkKeys(c cluster.TestCluster, keyMap map[string]string) error {
+	for i, m := range c.Machines() {
 		for k, v := range keyMap {
 			cmd := fmt.Sprintf("curl -s http://127.0.0.1:2379/v2/keys/%v?quorum=true", k)
 
-			b, err := m.SSH(cmd)
+			b, err := c.SSH(m, cmd)
 			if err != nil {
 				return fmt.Errorf("error curling key: %v", err)
 			}

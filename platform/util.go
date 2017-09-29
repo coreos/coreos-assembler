@@ -81,9 +81,9 @@ func Manhole(m Machine) error {
 
 // Enable SELinux on a machine (skip on machines without SELinux support)
 func EnableSelinux(m Machine) error {
-	_, err := m.SSH("if type -P setenforce; then sudo setenforce 1; fi")
+	_, stderr, err := m.SSH("if type -P setenforce; then sudo setenforce 1; fi")
 	if err != nil {
-		return fmt.Errorf("Unable to enable SELinux: %v", err)
+		return fmt.Errorf("Unable to enable SELinux: %s: %s", err, stderr)
 	}
 	return nil
 }
@@ -93,13 +93,13 @@ func EnableSelinux(m Machine) error {
 func StartReboot(m Machine) error {
 	// stop sshd so that commonMachineChecks will only work if the machine
 	// actually rebooted
-	out, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
+	out, stderr, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
 	if _, ok := err.(*ssh.ExitMissingError); ok {
 		// A terminated session is perfectly normal during reboot.
 		err = nil
 	}
 	if err != nil {
-		return fmt.Errorf("issuing reboot command failed: %v", out)
+		return fmt.Errorf("issuing reboot command failed: %s: %s: %s", out, err, stderr)
 	}
 	return nil
 }

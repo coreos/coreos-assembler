@@ -53,7 +53,7 @@ func VerityVerify(c cluster.TestCluster) {
 
 	// extract verity hash from kernel
 	ddcmd := fmt.Sprintf("dd if=/boot/coreos/vmlinuz-a skip=%d count=64 bs=1 status=none", rootOffset)
-	hash, err := m.SSH(ddcmd)
+	hash, err := c.SSH(m, ddcmd)
 	if err != nil {
 		c.Fatalf("failed to extract verity hash from kernel: %v: %v", hash, err)
 	}
@@ -62,7 +62,7 @@ func VerityVerify(c cluster.TestCluster) {
 	usrdev := getUsrDeviceNode(c, m)
 
 	// figure out partition size for hash dev offset
-	offset, err := m.SSH("sudo e2size " + usrdev)
+	offset, err := c.SSH(m, "sudo e2size "+usrdev)
 	if err != nil {
 		c.Fatalf("failed to find /usr partition size: %v: %v", offset, err)
 	}
@@ -70,7 +70,7 @@ func VerityVerify(c cluster.TestCluster) {
 	offset = bytes.TrimSpace(offset)
 	veritycmd := fmt.Sprintf("sudo veritysetup verify --verbose --hash-offset=%s %s %s %s", offset, usrdev, usrdev, hash)
 
-	verify, err := m.SSH(veritycmd)
+	verify, err := c.SSH(m, veritycmd)
 	if err != nil {
 		c.Fatalf("verity hash verification on %s failed: %v: %v", usrdev, verify, err)
 	}
@@ -84,7 +84,7 @@ func VerityCorruption(c cluster.TestCluster) {
 	skipUnlessVerity(c, m)
 
 	// assert that dm shows verity is in use and the device is valid (V)
-	out, err := m.SSH("sudo dmsetup --target verity status usr")
+	out, err := c.SSH(m, "sudo dmsetup --target verity status usr")
 	if err != nil {
 		c.Fatalf("failed checking dmsetup status of usr: %s: %v", out, err)
 	}
@@ -105,25 +105,25 @@ func VerityCorruption(c cluster.TestCluster) {
 	usrdev := getUsrDeviceNode(c, m)
 
 	// poke bytes into /usr/lib/os-release
-	out, err = m.SSH(fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 status=none`, usrdev, usrdev))
+	out, err = c.SSH(m, fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 status=none`, usrdev, usrdev))
 	if err != nil {
 		c.Fatalf("failed overwriting disk block: %s: %v", out, err)
 	}
 
 	// make sure we flush everything so cat has to go through to the device backing verity.
-	out, err = m.SSH("sudo /bin/sh -c 'sync; echo -n 3 >/proc/sys/vm/drop_caches'")
+	out, err = c.SSH(m, "sudo /bin/sh -c 'sync; echo -n 3 >/proc/sys/vm/drop_caches'")
 	if err != nil {
 		c.Fatalf("failed dropping disk caches: %s: %v", out, err)
 	}
 
 	// read the file back. if we can read it successfully, verity did not do its job.
-	out, err = m.SSH("cat /usr/lib/os-release")
+	out, err = c.SSH(m, "cat /usr/lib/os-release")
 	if err == nil {
 		c.Fatalf("verity did not prevent reading a corrupted file!")
 	}
 
 	// assert that dm shows verity device is now corrupted (C)
-	out, err = m.SSH("sudo dmsetup --target verity status usr")
+	out, err = c.SSH(m, "sudo dmsetup --target verity status usr")
 	if err != nil {
 		c.Fatalf("failed checking dmsetup status of usr: %s: %v", out, err)
 	}
@@ -149,7 +149,7 @@ func getKernelVerityHashOffset(c cluster.TestCluster) int {
 
 func getUsrDeviceNode(c cluster.TestCluster, m platform.Machine) string {
 	// find /usr dev
-	usrdev, err := m.SSH("findmnt -no SOURCE /usr")
+	usrdev, err := c.SSH(m, "findmnt -no SOURCE /usr")
 	if err != nil {
 		c.Fatalf("failed to find device for /usr: %v: %v", usrdev, err)
 	}
@@ -157,7 +157,7 @@ func getUsrDeviceNode(c cluster.TestCluster, m platform.Machine) string {
 	// XXX: if the /usr dev is /dev/mapper/usr, we're on a verity enabled
 	// image, so use dmsetup to find the real device.
 	if strings.TrimSpace(string(usrdev)) == "/dev/mapper/usr" {
-		usrdev, err = m.SSH("echo -n /dev/$(sudo dmsetup info --noheadings -Co blkdevs_used usr)")
+		usrdev, err = c.SSH(m, "echo -n /dev/$(sudo dmsetup info --noheadings -Co blkdevs_used usr)")
 		if err != nil {
 			c.Fatalf("failed to find device for /usr: %v: %v", usrdev, err)
 		}
@@ -168,7 +168,7 @@ func getUsrDeviceNode(c cluster.TestCluster, m platform.Machine) string {
 
 func skipUnlessVerity(c cluster.TestCluster, m platform.Machine) {
 	// figure out if we are actually using verity
-	out, err := m.SSH("sudo veritysetup status usr")
+	out, err := c.SSH(m, "sudo veritysetup status usr")
 	if err != nil && bytes.Equal(out, []byte("/dev/mapper/usr is inactive.")) {
 		// verity not in use, so skip.
 		c.Skip("verity is not enabled")

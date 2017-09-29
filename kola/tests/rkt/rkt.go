@@ -58,12 +58,12 @@ func init() {
 
 }
 
-func rktEtcd(t cluster.TestCluster) {
-	m := t.Machines()[0]
+func rktEtcd(c cluster.TestCluster) {
+	m := c.Machines()[0]
 
 	etcdCmd := "etcdctl cluster-health"
 	etcdCheck := func() error {
-		output, err := m.SSH(etcdCmd)
+		output, err := c.SSH(m, etcdCmd)
 		if err != nil {
 			return fmt.Errorf("failed to run %q: output: %q status: %q", etcdCmd, output, err)
 		}
@@ -72,95 +72,95 @@ func rktEtcd(t cluster.TestCluster) {
 	}
 
 	if err := util.Retry(60, 3*time.Second, etcdCheck); err != nil {
-		t.Fatalf("etcd in rkt failed health check: %v", err)
+		c.Fatalf("etcd in rkt failed health check: %v", err)
 	}
 }
 
 // we use subtests to improve testing performance here. Creating the aci is
 // more expensive than actually running most of these tests.
-func rktBase(t cluster.TestCluster) {
-	m := t.Machines()[0]
+func rktBase(c cluster.TestCluster) {
+	m := c.Machines()[0]
 
 	// TODO this should not be necessary, but is at the time of writing
-	m.SSH("sudo setenforce 0")
+	c.SSH(m, "sudo setenforce 0")
 
-	createTestAci(t, m, "test.rkt.aci", []string{"echo", "sleep", "sh"})
+	createTestAci(c, m, "test.rkt.aci", []string{"echo", "sleep", "sh"})
 
-	journalForPodContains := func(t cluster.TestCluster, uuidFile string, contains string) {
-		output, err := m.SSH(fmt.Sprintf("journalctl --dir /var/log/journal/$(cat %s | sed 's/-//g')", uuidFile))
+	journalForPodContains := func(c cluster.TestCluster, uuidFile string, contains string) {
+		output, err := c.SSH(m, fmt.Sprintf("journalctl --dir /var/log/journal/$(cat %s | sed 's/-//g')", uuidFile))
 		if err != nil {
-			t.Fatalf("error running journalctl: %v", err)
+			c.Fatalf("error running journalctl: %v", err)
 		}
 		if !bytes.Contains(output, []byte(contains)) {
-			t.Fatalf("expected journal logs from machine dir to include app output %q; was %s", contains, output)
+			c.Fatalf("expected journal logs from machine dir to include app output %q; was %s", contains, output)
 		}
 	}
 
-	t.Run("cli", func(t cluster.TestCluster) {
+	c.Run("cli", func(c cluster.TestCluster) {
 		uuidFile := "/tmp/run-test.uuid"
 
-		output, err := m.SSH(fmt.Sprintf("sudo rkt run --uuid-file-save=%s test.rkt.aci:latest --exec=sh -- -c 'echo success'", uuidFile))
+		output, err := c.SSH(m, fmt.Sprintf("sudo rkt run --uuid-file-save=%s test.rkt.aci:latest --exec=sh -- -c 'echo success'", uuidFile))
 		if err != nil {
-			t.Fatalf("failed to run test aci: %v, %s", err, output)
+			c.Fatalf("failed to run test aci: %v, %s", err, output)
 		}
-		defer m.SSH(fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
+		defer c.SSH(m, fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
 
 		if !bytes.Contains(output, []byte("success")) {
-			t.Fatalf("expected rkt stdout to include app output ('success'); was %s", output)
+			c.Fatalf("expected rkt stdout to include app output ('success'); was %s", output)
 		}
 
-		journalForPodContains(t, uuidFile, "success")
+		journalForPodContains(c, uuidFile, "success")
 	})
 
-	t.Run("unit", func(t cluster.TestCluster) {
+	c.Run("unit", func(c cluster.TestCluster) {
 		uuidFile := "/tmp/run-as-unit-test.uuid"
 
-		output, err := m.SSH(fmt.Sprintf("sudo systemd-run --quiet --unit run-as-unit.service -- rkt run --uuid-file-save=%s test.rkt.aci:latest --exec=sh -- -c 'echo success'", uuidFile))
+		output, err := c.SSH(m, fmt.Sprintf("sudo systemd-run --quiet --unit run-as-unit.service -- rkt run --uuid-file-save=%s test.rkt.aci:latest --exec=sh -- -c 'echo success'", uuidFile))
 		if err != nil {
-			t.Fatalf("failed to systemd-run rkt: %v, %s", err, output)
+			c.Fatalf("failed to systemd-run rkt: %v, %s", err, output)
 		}
-		defer m.SSH(fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
+		defer c.SSH(m, fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
 
-		output, err = m.SSH(fmt.Sprintf("while ! [ -s %s ]; do sleep 0.1; done; rkt status --wait $(cat %s)", uuidFile, uuidFile))
+		output, err = c.SSH(m, fmt.Sprintf("while ! [ -s %s ]; do sleep 0.1; done; rkt status --wait $(cat %s)", uuidFile, uuidFile))
 		if err != nil {
-			t.Fatalf("error waiting for rkt: %v, %s", err, output)
+			c.Fatalf("error waiting for rkt: %v, %s", err, output)
 		}
 
-		journalForPodContains(t, uuidFile, "success")
+		journalForPodContains(c, uuidFile, "success")
 	})
 
-	t.Run("machinectl-integration", func(t cluster.TestCluster) {
+	c.Run("machinectl-integration", func(c cluster.TestCluster) {
 		uuidFile := "/tmp/run-machinectl.uuid"
 
-		output, err := m.SSH(fmt.Sprintf("sudo systemd-run --quiet --unit run-machinectl -- rkt run --uuid-file-save=%s test.rkt.aci:latest --exec=sleep -- inf", uuidFile))
+		output, err := c.SSH(m, fmt.Sprintf("sudo systemd-run --quiet --unit run-machinectl -- rkt run --uuid-file-save=%s test.rkt.aci:latest --exec=sleep -- inf", uuidFile))
 		if err != nil {
-			t.Fatalf("failed to run test aci: %v, %s", err, output)
+			c.Fatalf("failed to run test aci: %v, %s", err, output)
 		}
-		defer m.SSH(fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
+		defer c.SSH(m, fmt.Sprintf("sudo rkt rm --uuid-file=%s", uuidFile))
 
-		output, err = m.SSH(fmt.Sprintf("while ! [ -s %s ]; do sleep 0.1; done; rkt status --wait-ready $(cat %s)", uuidFile, uuidFile))
+		output, err = c.SSH(m, fmt.Sprintf("while ! [ -s %s ]; do sleep 0.1; done; rkt status --wait-ready $(cat %s)", uuidFile, uuidFile))
 		if err != nil {
-			t.Fatalf("error waiting for rkt: %v, %s", err, output)
+			c.Fatalf("error waiting for rkt: %v, %s", err, output)
 		}
 
-		machinectlOutput, err := m.SSH(fmt.Sprintf("machinectl show rkt-$(cat %s)", uuidFile))
+		machinectlOutput, err := c.SSH(m, fmt.Sprintf("machinectl show rkt-$(cat %s)", uuidFile))
 		if err != nil {
-			t.Fatalf("error running machinectl: %v, %s", err, output)
+			c.Fatalf("error running machinectl: %v, %s", err, output)
 		}
 
 		for _, line := range []string{"State=running", "Class=container", "Service=rkt"} {
 			if !bytes.Contains(machinectlOutput, []byte(line)) {
-				t.Fatalf("expected machinectl to include %q: was %s", line, machinectlOutput)
+				c.Fatalf("expected machinectl to include %q: was %s", line, machinectlOutput)
 			}
 		}
 
-		output, err = m.SSH(fmt.Sprintf("sudo rkt stop --uuid-file=%s", uuidFile))
+		output, err = c.SSH(m, fmt.Sprintf("sudo rkt stop --uuid-file=%s", uuidFile))
 		if err != nil {
-			t.Fatalf("error stopping app: %v, %s", err, output)
+			c.Fatalf("error stopping app: %v, %s", err, output)
 		}
-		output, err = m.SSH(fmt.Sprintf("rkt status --wait $(cat %s)", uuidFile))
+		output, err = c.SSH(m, fmt.Sprintf("rkt status --wait $(cat %s)", uuidFile))
 		if err != nil {
-			t.Fatalf("error waiting for app to stop: %v, %s", err, output)
+			c.Fatalf("error waiting for app to stop: %v, %s", err, output)
 		}
 	})
 }
@@ -183,15 +183,15 @@ func createTestAci(c cluster.TestCluster, m platform.Machine, name string, bins 
 		arch = "aarch64"
 	}
 
-	output, err := m.SSH(`set -e
+	output, err := c.SSH(m, `set -e
 	tmpdir=$(mktemp -d)
 	cd $tmpdir
 	cat > manifest <<EOF
-` + fmt.Sprintf(testAciManifest, name, arch) + `
+`+fmt.Sprintf(testAciManifest, name, arch)+`
 EOF
 
 	mkdir rootfs
-	bins=$(which ` + strings.Join(bins, " ") + `)
+	bins=$(which `+strings.Join(bins, " ")+`)
 	libs=$(sudo ldd $bins | grep -o /lib'[^ ]*' | sort -u)
 	sudo rsync -av --relative --copy-links $bins $libs ./rootfs/
 

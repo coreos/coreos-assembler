@@ -60,10 +60,10 @@ func testKubeletWrapperVarLog(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Wait up to 10 minutes the version
-	_, err := m.SSH(`
+	_, err := c.SSH(m, `
 	for i in {1..120}; do 
 		sleep 5
-		if journalctl -u kubelet -o cat | grep '` + versionOutput + `' &>/dev/null; then
+		if journalctl -u kubelet -o cat | grep '`+versionOutput+`' &>/dev/null; then
 			exit 0
 		fi
 	done

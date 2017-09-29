@@ -59,7 +59,7 @@ func Discovery(c cluster.TestCluster) {
 	var err error
 
 	// NOTE(pb): this check makes the next code somewhat redundant
-	if err = GetClusterHealth(c.Machines()[0], len(c.Machines())); err != nil {
+	if err = GetClusterHealth(c, c.Machines()[0], len(c.Machines())); err != nil {
 		c.Fatalf("discovery failed cluster-health check: %v", err)
 	}
 

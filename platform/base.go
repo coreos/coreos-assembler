@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -94,25 +93,30 @@ func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string
 	return sshClient, nil
 }
 
-func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, error) {
+// SSH executes the given command, cmd, on the given Machine, m. It returns the
+// stdout and stderr of the command and an error.
+// Leading and trailing whitespace is trimmed from each.
+func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 	client, err := bc.SSHClient(m.IP())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
 	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
 	defer session.Close()
 
-	session.Stderr = os.Stderr
-	out, err := session.Output(cmd)
-	out = bytes.TrimSpace(out)
-	return out, err
+	session.Stdout = &stdout
+	session.Stderr = &stderr
+	err = session.Run(cmd)
+	outBytes := bytes.TrimSpace(stdout.Bytes())
+	errBytes := bytes.TrimSpace(stderr.Bytes())
+	return outBytes, errBytes, err
 }
 
 func (bc *BaseCluster) Machines() []Machine {

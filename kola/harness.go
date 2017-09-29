@@ -307,9 +307,9 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 		return nil, fmt.Errorf("creating new machine for semver check: %v", err)
 	}
 
-	out, err := m.SSH("grep ^VERSION_ID= /etc/os-release")
+	out, stderr, err := m.SSH("grep ^VERSION_ID= /etc/os-release")
 	if err != nil {
-		return nil, fmt.Errorf("parsing /etc/os-release: %v", err)
+		return nil, fmt.Errorf("parsing /etc/os-release: %v: %s", err, stderr)
 	}
 
 	version, err := semver.NewVersion(strings.Split(string(out), "=")[1])

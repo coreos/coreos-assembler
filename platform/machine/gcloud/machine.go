@@ -53,7 +53,7 @@ func (gm *machine) PasswordSSHClient(user string, password string) (*ssh.Client,
 	return gm.gc.PasswordSSHClient(gm.IP(), user, password)
 }
 
-func (gm *machine) SSH(cmd string) ([]byte, error) {
+func (gm *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return gm.gc.SSH(gm, cmd)
 }
 

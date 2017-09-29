@@ -309,7 +309,7 @@ func swapUsrB(c cluster.TestCluster) {
 func testFormatted(c cluster.TestCluster, fs, label string) {
 	m := c.Machines()[0]
 
-	out, err := m.SSH("sudo blkid -s UUID -o value /dev/disk/by-label/" + label)
+	out, err := c.SSH(m, "sudo blkid -s UUID -o value /dev/disk/by-label/"+label)
 	if err != nil {
 		c.Fatalf("failed to run blkid: %s: %v", out, err)
 	}
@@ -321,7 +321,7 @@ func testFormatted(c cluster.TestCluster, fs, label string) {
 		c.Fatalf("filesystem wasn't correctly formatted:\n%s", out)
 	}
 
-	out, err = m.SSH("sudo blkid -s TYPE -o value /dev/disk/by-label/" + label)
+	out, err = c.SSH(m, "sudo blkid -s TYPE -o value /dev/disk/by-label/"+label)
 	if err != nil {
 		c.Fatalf("failed to run blkid: %s: %v", out, err)
 	}
@@ -335,7 +335,7 @@ func testRoot(c cluster.TestCluster, fs string) {
 
 	testFormatted(c, fs, "ROOT")
 
-	out, err := m.SSH("findmnt --noheadings --output FSTYPE --target /")
+	out, err := c.SSH(m, "findmnt --noheadings --output FSTYPE --target /")
 	if err != nil {
 		c.Fatalf("failed to run findmnt: %s: %v", out, err)
 	}
@@ -349,7 +349,7 @@ func ext4CheckExisting(c cluster.TestCluster) {
 
 	// Redirect /dev/null to stdin so isatty(stdin) fails and the -p flag can be
 	// checked
-	out, err := m.SSH("sudo mkfs.ext4 -p /dev/disk/by-partlabel/ROOT < /dev/null")
+	out, err := c.SSH(m, "sudo mkfs.ext4 -p /dev/disk/by-partlabel/ROOT < /dev/null")
 	if err == nil {
 		c.Fatalf("mkfs.ext4 returned sucessfully when it should have failed")
 	}
@@ -363,7 +363,7 @@ func ext4CheckExisting2_1(c cluster.TestCluster) {
 	m1 := c.Machines()[0]
 
 	// Get root filesystem UUID
-	out, err := m1.SSH("sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
+	out, err := c.SSH(m1, "sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
 	if err != nil {
 		c.Fatalf("Couldn't get m1 filesystem UUID: %v", err)
 	}
@@ -376,7 +376,7 @@ func ext4CheckExisting2_1(c cluster.TestCluster) {
 	}
 
 	// Verify UUID hasn't changed
-	out, err = m2.SSH("sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
+	out, err = c.SSH(m2, "sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
 	if err != nil {
 		c.Fatalf("Couldn't get m2 filesystem UUID: %v", err)
 	}

@@ -61,19 +61,19 @@ func CoreOSBasic(c cluster.TestCluster, version, runtime string) {
 	k := setupCluster(c, 2, version, runtime)
 
 	// start nginx pod and curl endpoint
-	if err := nginxCheck(k.master, k.workers); err != nil {
+	if err := nginxCheck(c, k.master, k.workers); err != nil {
 		c.Fatal(err)
 	}
 
 	// http://kubernetes.io/v1.0/docs/user-guide/secrets/ Also, ensures
 	// https://github.com/coreos/bugs/issues/447 does not re-occur.
-	if err := secretCheck(k.master, k.workers); err != nil {
+	if err := secretCheck(c, k.master, k.workers); err != nil {
 		c.Fatal(err)
 	}
 }
 
-func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
-	b, err := master.SSH("./kubectl get nodes")
+func nodeCheck(c cluster.TestCluster, master platform.Machine, nodes []platform.Machine) error {
+	b, err := c.SSH(master, "./kubectl get nodes")
 	if err != nil {
 		return err
 	}
@@ -99,17 +99,17 @@ func nodeCheck(master platform.Machine, nodes []platform.Machine) error {
 	return nil
 }
 
-func nginxCheck(master platform.Machine, nodes []platform.Machine) error {
+func nginxCheck(c cluster.TestCluster, master platform.Machine, nodes []platform.Machine) error {
 	pod := strings.NewReader(nginxPodYAML)
 	if err := platform.InstallFile(pod, master, "./nginx-pod.yaml"); err != nil {
 		return err
 	}
-	if _, err := master.SSH("./kubectl create -f nginx-pod.yaml"); err != nil {
+	if _, err := c.SSH(master, "./kubectl create -f nginx-pod.yaml"); err != nil {
 		return err
 	}
 	// wait for pod status to be 'Running'
 	podIsRunning := func() error {
-		b, err := master.SSH("./kubectl get pod nginx --template={{.status.phase}}")
+		b, err := c.SSH(master, "./kubectl get pod nginx --template={{.status.phase}}")
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func nginxCheck(master platform.Machine, nodes []platform.Machine) error {
 	}
 
 	// delete pod
-	_, err := master.SSH("./kubectl delete pods nginx")
+	_, err := c.SSH(master, "./kubectl delete pods nginx")
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func nginxCheck(master platform.Machine, nodes []platform.Machine) error {
 	return nil
 }
 
-func secretCheck(master platform.Machine, nodes []platform.Machine) error {
+func secretCheck(c cluster.TestCluster, master platform.Machine, nodes []platform.Machine) error {
 	// create yaml files
 	secret := strings.NewReader(secretYAML)
 	pod := strings.NewReader(secretPodYAML)
@@ -142,15 +142,15 @@ func secretCheck(master platform.Machine, nodes []platform.Machine) error {
 		return err
 	}
 
-	if _, err := master.SSH("./kubectl create -f secret.yaml"); err != nil {
+	if _, err := c.SSH(master, "./kubectl create -f secret.yaml"); err != nil {
 		return err
 	}
-	_, err := master.SSH("./kubectl describe secret test-secret")
+	_, err := c.SSH(master, "./kubectl describe secret test-secret")
 	if err != nil {
 		return err
 	}
 
-	b, err := master.SSH("./kubectl create -f secret-pod.yaml")
+	b, err := c.SSH(master, "./kubectl create -f secret-pod.yaml")
 	if err != nil {
 		return err
 	}
