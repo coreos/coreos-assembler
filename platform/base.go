@@ -95,6 +95,7 @@ func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string
 
 // SSH executes the given command, cmd, on the given Machine, m. It returns the
 // stdout and stderr of the command and an error.
+// Leading and trailing whitespace is trimmed from each.
 func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -113,8 +114,9 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	session.Stdout = &stdout
 	session.Stderr = &stderr
 	err = session.Run(cmd)
-	out := bytes.TrimSpace(stdout.Bytes())
-	return out, stderr.Bytes(), err
+	outBytes := bytes.TrimSpace(stdout.Bytes())
+	errBytes := bytes.TrimSpace(stderr.Bytes())
+	return outBytes, errBytes, err
 }
 
 func (bc *BaseCluster) Machines() []Machine {
