@@ -51,19 +51,13 @@ var (
       mount:
         device: "/dev/md/rootarray"
         format: "ext4"
-        create:
-          options:
-            - "-L"
-            - "ROOT"
+        label: ROOT
     - name: "NOT_ROOT"
       mount:
         device: "/dev/disk/by-id/virtio-primary-disk-part9"
         format: "ext4"
-        create:
-          options:
-            - "-L"
-            - "wasteland"
-          force: true`)
+        label: wasteland
+        wipe_filesystem: true`)
 )
 
 func init() {
@@ -95,10 +89,7 @@ func init() {
       mount:
         device: "/dev/md/DATA"
         format: "ext4"
-        create:
-          options:
-            - "-L"
-            - "DATA"
+        label: DATA
 systemd:
   units:
     - name: "var-lib-data.mount"

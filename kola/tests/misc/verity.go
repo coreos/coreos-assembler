@@ -117,9 +117,15 @@ func VerityCorruption(c cluster.TestCluster) {
 	}
 
 	// read the file back. if we can read it successfully, verity did not do its job.
-	out, err = c.SSH(m, "cat /usr/lib/os-release")
+	out, stderr, err := m.SSH("cat /usr/lib/os-release")
 	if err == nil {
 		c.Fatalf("verity did not prevent reading a corrupted file!")
+	}
+	for _, line := range strings.Split(string(stderr), "\n") {
+		// cat is expected to fail on EIO; report other errors
+		if line != "cat: /usr/lib/os-release: Input/output error" {
+			c.Log(line)
+		}
 	}
 
 	// assert that dm shows verity device is now corrupted (C)
