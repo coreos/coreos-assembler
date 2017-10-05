@@ -2,19 +2,15 @@ language: go
 sudo: false
 matrix:
   include:
-    - go: 1.8.x
+    - go: 1.9.1
   allow_failures:
     - go: tip
 
-# Gracefully handle developer forks
-install: |
-    MANTLE_DIR="${GOPATH}/src/github.com/coreos/mantle"
-    if [[ "${TRAVIS_BUILD_DIR}" != "${MANTLE_DIR}" ]]; then
-        mkdir -p "${MANTLE_DIR%/*}"
-        mv "${TRAVIS_BUILD_DIR}" "${MANTLE_DIR}"
-        export TRAVIS_BUILD_DIR="${MANTLE_DIR}"
-        cd "${TRAVIS_BUILD_DIR}"
-    fi
+go_import_path: github.com/coreos/mantle
+
+install:
+  # './build' uses 'git describe' which needs tags
+  - git fetch --unshallow --tags
 
 script:
   - ./build
