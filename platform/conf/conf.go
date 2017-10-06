@@ -274,6 +274,106 @@ func (c *Conf) AddSystemdUnit(name, contents string, enable bool) {
 	}
 }
 
+func (c *Conf) addSystemdDropinV1(service, name, contents string) {
+	for i, unit := range c.ignitionV1.Systemd.Units {
+		if unit.Name == v1types.SystemdUnitName(service) {
+			unit.DropIns = append(unit.DropIns, v1types.SystemdUnitDropIn{
+				Name:     v1types.SystemdUnitDropInName(name),
+				Contents: contents,
+			})
+			c.ignitionV1.Systemd.Units[i] = unit
+			return
+		}
+	}
+	c.ignitionV1.Systemd.Units = append(c.ignitionV1.Systemd.Units, v1types.SystemdUnit{
+		Name: v1types.SystemdUnitName(service),
+		DropIns: []v1types.SystemdUnitDropIn{
+			{
+				Name:     v1types.SystemdUnitDropInName(name),
+				Contents: contents,
+			},
+		},
+	})
+}
+
+func (c *Conf) addSystemdDropinV2(service, name, contents string) {
+	for i, unit := range c.ignitionV2.Systemd.Units {
+		if unit.Name == v2types.SystemdUnitName(service) {
+			unit.DropIns = append(unit.DropIns, v2types.SystemdUnitDropIn{
+				Name:     v2types.SystemdUnitDropInName(name),
+				Contents: contents,
+			})
+			c.ignitionV2.Systemd.Units[i] = unit
+			return
+		}
+	}
+	c.ignitionV2.Systemd.Units = append(c.ignitionV2.Systemd.Units, v2types.SystemdUnit{
+		Name: v2types.SystemdUnitName(service),
+		DropIns: []v2types.SystemdUnitDropIn{
+			{
+				Name:     v2types.SystemdUnitDropInName(name),
+				Contents: contents,
+			},
+		},
+	})
+}
+
+func (c *Conf) addSystemdDropinV21(service, name, contents string) {
+	for i, unit := range c.ignitionV21.Systemd.Units {
+		if unit.Name == service {
+			unit.Dropins = append(unit.Dropins, v21types.Dropin{
+				Name:     name,
+				Contents: contents,
+			})
+			c.ignitionV21.Systemd.Units[i] = unit
+			return
+		}
+	}
+	c.ignitionV21.Systemd.Units = append(c.ignitionV21.Systemd.Units, v21types.Unit{
+		Name: service,
+		Dropins: []v21types.Dropin{
+			{
+				Name:     name,
+				Contents: contents,
+			},
+		},
+	})
+}
+
+func (c *Conf) addSystemdDropinCloudConfig(service, name, contents string) {
+	for i, unit := range c.cloudconfig.CoreOS.Units {
+		if unit.Name == service {
+			unit.DropIns = append(unit.DropIns, cci.UnitDropIn{
+				Name:    name,
+				Content: contents,
+			})
+			c.cloudconfig.CoreOS.Units[i] = unit
+			return
+		}
+	}
+	c.cloudconfig.CoreOS.Units = append(c.cloudconfig.CoreOS.Units, cci.Unit{
+		Name: service,
+		DropIns: []cci.UnitDropIn{
+			{
+				Name:    name,
+				Content: contents,
+			},
+		},
+	})
+}
+
+func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
+	if c.ignitionV1 != nil {
+		c.addSystemdDropinV1(service, name, contents)
+	} else if c.ignitionV2 != nil {
+		c.addSystemdDropinV2(service, name, contents)
+	} else if c.ignitionV21 != nil {
+		c.addSystemdDropinV21(service, name, contents)
+	} else if c.cloudconfig != nil {
+		c.addSystemdDropinCloudConfig(service, name, contents)
+	}
+}
+
 func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
 	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
 		Name:              "core",
