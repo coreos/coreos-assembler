@@ -149,6 +149,11 @@ func writeProps() error {
 		Server     string `json:"server"`
 		BaseVMName string `json:"base_vm_name"`
 	}
+	type OCI struct {
+		Region string `json:"region"`
+		Image  string `json:"image"`
+		Shape  string `json:"shape"`
+	}
 	type QEMU struct {
 		Image string `json:"image"`
 	}
@@ -159,6 +164,7 @@ func writeProps() error {
 		AWS      AWS      `json:"aws"`
 		ESX      ESX      `json:"esx"`
 		GCE      GCE      `json:"gce"`
+		OCI      OCI      `json:"oci"`
 		Packet   Packet   `json:"packet"`
 		QEMU     QEMU     `json:"qemu"`
 	}{
@@ -177,6 +183,11 @@ func writeProps() error {
 		GCE: GCE{
 			Image:       kola.GCEOptions.Image,
 			MachineType: kola.GCEOptions.MachineType,
+		},
+		OCI: OCI{
+			Region: kola.OCIOptions.Region,
+			Image:  kola.OCIOptions.Image,
+			Shape:  kola.OCIOptions.Shape,
 		},
 		Packet: Packet{
 			Facility: kola.PacketOptions.Facility,
