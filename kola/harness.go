@@ -82,8 +82,18 @@ var (
 			match: regexp.MustCompile("Oops:"),
 		},
 		{
+			desc:  "kernel warning",
+			match: regexp.MustCompile(`WARNING: CPU: \d+ PID: \d+ at (.+)`),
+		},
+		{
+			// https://github.com/coreos/bugs/issues/2065
 			desc:  "excessive bonding link status messages",
 			match: regexp.MustCompile("(?s:link status up for interface [^,]+, enabling it in [0-9]+ ms.*?){10}"),
+		},
+		{
+			// https://github.com/coreos/bugs/issues/2180
+			desc:  "ext4 delayed allocation failure",
+			match: regexp.MustCompile(`EXT4-fs \([^)]+\): Delayed block allocation failed for inode \d+ at logical offset \d+ with max blocks \d+ with (error \d+)`),
 		},
 		{
 			desc:  "Go panic",
