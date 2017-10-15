@@ -82,6 +82,10 @@ var (
 			match: regexp.MustCompile("Oops:"),
 		},
 		{
+			desc:  "kernel warning",
+			match: regexp.MustCompile(`WARNING: CPU: \d+ PID: \d+ at (.+)`),
+		},
+		{
 			desc:  "excessive bonding link status messages",
 			match: regexp.MustCompile("(?s:link status up for interface [^,]+, enabling it in [0-9]+ ms.*?){10}"),
 		},
