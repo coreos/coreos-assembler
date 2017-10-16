@@ -34,7 +34,7 @@ func init() {
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
 		Name:             "coreos.network.initramfs.second-boot",
-		ExcludePlatforms: []string{"digitalocean"},
+		ExcludePlatforms: []string{"digitalocean", "oci"},
 		MinVersion:       semver.Version{Major: 1445},
 	})
 }
