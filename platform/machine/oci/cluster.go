@@ -70,7 +70,7 @@ func (oc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	if !conf.IsIgnition() {
+	if !conf.IsIgnition() && !conf.IsEmpty() {
 		return nil, fmt.Errorf("only Ignition is supported on OCI")
 	}
 
