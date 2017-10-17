@@ -152,7 +152,7 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 	}
 
 	// hacky solution for unified ignition metadata variables
-	if userdata.IsIgnition() {
+	if userdata.IsIgnitionCompatible() {
 		for k, v := range ignitionVars {
 			userdata = userdata.Subst(k, v)
 		}
