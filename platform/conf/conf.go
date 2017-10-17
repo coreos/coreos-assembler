@@ -125,8 +125,8 @@ func (u *UserData) Subst(old, new string) *UserData {
 	return &ret
 }
 
-func (u *UserData) IsIgnition() bool {
-	return u.kind == kindIgnition
+func (u *UserData) IsIgnitionCompatible() bool {
+	return u.kind == kindIgnition || u.kind == kindContainerLinuxConfig
 }
 
 // Render parses userdata and returns a new Conf. It returns an error if the
