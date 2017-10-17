@@ -28,7 +28,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
-	kolaPlatforms      = []string{"aws", "esx", "gce", "packet", "qemu"}
+	kolaPlatforms      = []string{"aws", "esx", "gce", "oci", "packet", "qemu"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
@@ -93,6 +93,11 @@ func init() {
 	sv(&kola.ESXOptions.Server, "esx-server", "", "ESX server")
 	sv(&kola.ESXOptions.Profile, "esx-profile", "", "ESX profile (default \"default\")")
 	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
+
+	// oci-specific options
+	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region")
+	sv(&kola.OCIOptions.Image, "oci-image", "", "OCI image id")
+	sv(&kola.OCIOptions.Shape, "oci-shape", "VM.Standard1.1", "OCI shape")
 }
 
 // Sync up the command line options if there is dependency

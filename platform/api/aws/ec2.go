@@ -104,35 +104,30 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 
 	// loop until all machines are online
 	var insts []*ec2.Instance
+
 	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
-	after := time.After(5 * time.Minute)
-	for done := false; !done; {
-		select {
-		case <-after:
-			a.TerminateInstances(ids)
-			return nil, fmt.Errorf("timed out waiting for instances to run")
-		default:
-		}
-
-		// don't make api calls too quickly, or we will hit the rate limit
-		time.Sleep(10 * time.Second)
-
+	timeout := 5 * time.Minute
+	// don't make api calls too quickly, or we will hit the rate limit
+	delay := 10 * time.Second
+	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
 		desc, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
 			InstanceIds: aws.StringSlice(ids),
 		})
 		if err != nil {
-			a.TerminateInstances(ids)
-			return nil, err
+			return false, err
 		}
 		insts = desc.Reservations[0].Instances
 
-		done = true
 		for _, i := range insts {
 			if *i.State.Name != ec2.InstanceStateNameRunning || i.PublicIpAddress == nil {
-				done = false
-				break
+				return false, nil
 			}
 		}
+		return true, nil
+	})
+	if err != nil {
+		a.TerminateInstances(ids)
+		return nil, fmt.Errorf("waiting for instances to run: %v", err)
 	}
 
 	return insts, nil

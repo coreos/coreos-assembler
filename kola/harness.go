@@ -36,10 +36,12 @@ import (
 	awsapi "github.com/coreos/mantle/platform/api/aws"
 	esxapi "github.com/coreos/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
+	ociapi "github.com/coreos/mantle/platform/api/oci"
 	packetapi "github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/mantle/platform/machine/aws"
 	"github.com/coreos/mantle/platform/machine/esx"
 	"github.com/coreos/mantle/platform/machine/gcloud"
+	"github.com/coreos/mantle/platform/machine/oci"
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/system"
@@ -54,6 +56,7 @@ var (
 	AWSOptions    = awsapi.Options{Options: &Options}    // glue to set platform options from main
 	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
 	ESXOptions    = esxapi.Options{Options: &Options}    // glue to set platform options from main
+	OCIOptions    = ociapi.Options{Options: &Options}    // glue to set platform options from main
 
 	TestParallelism   int    //glue var to set test parallelism from main
 	TAPFile           string // if not "", write TAP results here
@@ -127,6 +130,8 @@ func NewCluster(pltfrm string, rconf *platform.RuntimeConfig) (cluster platform.
 		cluster, err = packet.NewCluster(&PacketOptions, rconf)
 	case "esx":
 		cluster, err = esx.NewCluster(&ESXOptions, rconf)
+	case "oci":
+		cluster, err = oci.NewCluster(&OCIOptions, rconf)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}

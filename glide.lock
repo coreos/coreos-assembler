@@ -1,5 +1,5 @@
-hash: 94594dafe764552ae67c272233c7bfebdd5c0705937f78846b90f8540a368601
-updated: 2017-09-26T21:09:01.302051668-07:00
+hash: 60eec217e594dbb9d208c5504cae0901fa8c911f8c3c46ab82f59503e6202efd
+updated: 2017-09-19T15:55:32.264973547-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -165,7 +165,7 @@ imports:
   - runtime/internal
   - utilities
 - name: github.com/go-ini/ini
-  version: afbd495e5aaea13597b5e14fe514ddeaa4d76fc3
+  version: 20b96f641a5ea98f2f8619ff4f3e061cff4833bd
 - name: github.com/godbus/dbus
   version: a5942dec6340eb0d57f43f2003c190ce06e43dea
 - name: github.com/gogo/protobuf

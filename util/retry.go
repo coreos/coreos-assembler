@@ -15,6 +15,7 @@
 package util
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -36,4 +37,27 @@ func Retry(attempts int, delay time.Duration, f func() error) error {
 	}
 
 	return err
+}
+
+func WaitUntilReady(timeout, delay time.Duration, checkFunction func() (bool, error)) error {
+	after := time.After(timeout)
+	for {
+		select {
+		case <-after:
+			return fmt.Errorf("timed limit exceeded")
+		default:
+		}
+
+		time.Sleep(delay)
+
+		done, err := checkFunction()
+		if err != nil {
+			return err
+		}
+
+		if done {
+			break
+		}
+	}
+	return nil
 }
