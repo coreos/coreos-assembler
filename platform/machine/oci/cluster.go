@@ -33,7 +33,8 @@ var (
 
 type cluster struct {
 	*platform.BaseCluster
-	api *oci.API
+	api    *oci.API
+	sshKey string
 }
 
 func NewCluster(opts *oci.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
@@ -50,6 +51,14 @@ func NewCluster(opts *oci.Options, rconf *platform.RuntimeConfig) (platform.Clus
 	oc := &cluster{
 		BaseCluster: bc,
 		api:         api,
+	}
+
+	if !rconf.NoSSHKeyInMetadata {
+		keys, err := oc.Keys()
+		if err != nil {
+			return nil, err
+		}
+		oc.sshKey = keys[0].String()
 	}
 
 	return oc, nil
@@ -83,7 +92,7 @@ ExecStart=
 ExecStart=/usr/bin/mkdir --parent /run/metadata
 ExecStart=/usr/bin/bash -c 'echo "COREOS_OCI_IPV4_PRIVATE_0=$(curl http://169.254.169.254/opc/v1/vnics/ | jq .[].privateIp -r)" > ${OUTPUT}'`)
 
-	instance, err := oc.api.CreateInstance(oc.vmname(), conf.String())
+	instance, err := oc.api.CreateInstance(oc.vmname(), conf.String(), oc.sshKey)
 	if err != nil {
 		return nil, err
 	}
