@@ -28,7 +28,7 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "auth")
 )
 
-const ociConfigPath = ".oraclebmc/config"
+const ociConfigPath = ".oci/config"
 
 // OCIProfile represents a parsed OCI profile.
 type OCIProfile struct {
@@ -44,12 +44,12 @@ type OCIProfile struct {
 }
 
 // ReadOCIConfig builds an OCIProfile from the OCIConfig files.
-// It takes a path (which defaults to $HOME/.oraclebmc/config) and will parse
+// It takes a path (which defaults to $HOME/.oci/config) and will parse
 // the standard configuration, defined at:
 // https://docs.us-phoenix-1.oraclecloud.com/Content/API/Concepts/sdkconfig.htm
 //
 // It will then attempt to parse a .mantle file in the same directory (defaulting
-// to ($HOME/.oraclebmc/config.mantle) to allow overrides & other variable
+// to ($HOME/.oci/config.mantle) to allow overrides & other variable
 // definitions not used in the standard configuration.
 //
 // The parsing is done with via InsensitiveLoad which ignores casing for both
