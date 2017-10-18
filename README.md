@@ -1,4 +1,4 @@
-# Mantle: Gluing CoreOS together
+# Mantle: Gluing Container Linux together
 
 This repository is a collection of utilities for developing Container Linux. Most of the
 tools are for uploading, running, and interacting with Container Linux instances running
