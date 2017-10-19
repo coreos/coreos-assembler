@@ -19,8 +19,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/coreos-cloudinit/config"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -28,45 +26,22 @@ import (
 )
 
 var (
-	nfsserverconf = config.CloudConfig{
-		CoreOS: config.CoreOS{
-			Units: []config.Unit{
-				config.Unit{
-					Name:    "rpc-statd.service",
-					Command: "start",
-				},
-				config.Unit{
-					Name:    "rpc-mountd.service",
-					Command: "start",
-				},
-				config.Unit{
-					Name:    "nfsd.service",
-					Command: "start",
-				},
-			},
-		},
-		WriteFiles: []config.File{
-			config.File{
-				Content: "/tmp	*(ro,insecure,all_squash,no_subtree_check,fsid=0)",
-				Path: "/etc/exports",
-			},
-		},
-		Hostname: "nfs1",
-	}
-
-	mounttmpl = `[Unit]
-Description=NFS Client
-After=network-online.target
-Requires=network-online.target
-After=rpc-statd.service
-Requires=rpc-statd.service
-
-[Mount]
-What=%s:/tmp
-Where=/mnt
-Type=nfs
-Options=defaults,noexec,nfsvers=%d
-`
+	nfsserverconf = conf.ContainerLinuxConfig(`storage:
+  files:
+    - filesystem: "root"
+      path: "/etc/hostname"
+      contents:
+        inline: "nfs1"
+      mode: 0644
+    - filesystem: "root"
+      path: "/etc/exports"
+      contents:
+        inline: "/tmp  *(ro,insecure,all_squash,no_subtree_check,fsid=0)"
+      mode: 0644
+systemd:
+  units:
+    - name: "nfs-server.service"
+      enabled: true`)
 )
 
 func init() {
@@ -83,7 +58,7 @@ func init() {
 }
 
 func testNFS(c cluster.TestCluster, nfsversion int) {
-	m1, err := c.NewMachine(conf.CloudConfig(nfsserverconf.String()))
+	m1, err := c.NewMachine(nfsserverconf)
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
@@ -100,20 +75,35 @@ func testNFS(c cluster.TestCluster, nfsversion int) {
 
 	c.Logf("Test file %q created on server.", tmp)
 
-	c2 := config.CloudConfig{
-		CoreOS: config.CoreOS{
-			Units: []config.Unit{
-				config.Unit{
-					Name:    "mnt.mount",
-					Command: "start",
-					Content: fmt.Sprintf(mounttmpl, m1.PrivateIP(), nfsversion),
-				},
-			},
-		},
-		Hostname: "nfs2",
-	}
+	c2 := conf.ContainerLinuxConfig(fmt.Sprintf(`storage:
+  files:
+    - filesystem: "root"
+      path: "/etc/hostname"
+      contents:
+        inline: "nfs2"
+      mode: 0644
+systemd:
+  units:
+    - name: "mnt.mount"
+      enabled: true
+      contents: |-
+        [Unit]
+        Description=NFS Client
+        After=network-online.target
+        Requires=network-online.target
+        After=rpc-statd.service
+        Requires=rpc-statd.service
 
-	m2, err := c.NewMachine(conf.CloudConfig(c2.String()))
+        [Mount]
+        What=%s:/tmp
+        Where=/mnt
+        Type=nfs
+        Options=defaults,noexec,nfsvers=%d
+
+        [Install]
+        WantedBy=multi-user.target`, m1.PrivateIP(), nfsversion))
+
+	m2, err := c.NewMachine(c2)
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
 	}
