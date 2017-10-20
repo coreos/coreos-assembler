@@ -425,6 +425,12 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 }
 
 // IsIgnition returns true if the config is for Ignition.
+// Returns false in the case of empty configs as on most platforms,
+// this will default back to cloudconfig
 func (c *Conf) IsIgnition() bool {
 	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil
+}
+
+func (c *Conf) IsEmpty() bool {
+	return !c.IsIgnition() && c.cloudconfig == nil && c.script == ""
 }

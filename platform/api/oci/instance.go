@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-func (a *API) CreateInstance(name, userdata string) (*Machine, error) {
+func (a *API) CreateInstance(name, userdata, sshKey string) (*Machine, error) {
 	vcn, err := a.GetVCN("kola")
 	if err != nil {
 		return nil, err
@@ -35,10 +35,16 @@ func (a *API) CreateInstance(name, userdata string) (*Machine, error) {
 		return nil, err
 	}
 
+	metadata := map[string]string{}
+	if userdata != "" {
+		metadata["user_data"] = base64.StdEncoding.EncodeToString([]byte(userdata))
+	}
+	if sshKey != "" {
+		metadata["ssh_authorized_keys"] = sshKey
+	}
+
 	opts := baremetal.LaunchInstanceOptions{
-		Metadata: map[string]string{
-			"user_data": base64.StdEncoding.EncodeToString([]byte(userdata)),
-		},
+		Metadata: metadata,
 		CreateVnicOptions: &baremetal.CreateVnicOptions{
 			AssignPublicIp: boolToPtr(true),
 			SubnetID:       subnet.ID,
