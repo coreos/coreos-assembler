@@ -72,7 +72,7 @@ func init() {
 	if defaultRegion == "" {
 		defaultRegion = "us-west-2"
 	}
-	// Container Linux 1430.0.0 (alpha) on us-west-2
+	sv(&kola.AWSOptions.CredentialsFile, "aws-credentials-file", "", "AWS credentials file (default \"~/.aws/credentials\")")
 	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
 	sv(&kola.AWSOptions.Profile, "aws-profile", "default", "AWS profile name")
 	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
@@ -91,11 +91,13 @@ func init() {
 	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
 
 	// esx-specific options
+	sv(&kola.ESXOptions.ConfigPath, "esx-config-file", "", "ESX config file (default \"~/"+auth.ESXConfigPath+"\")")
 	sv(&kola.ESXOptions.Server, "esx-server", "", "ESX server")
 	sv(&kola.ESXOptions.Profile, "esx-profile", "", "ESX profile (default \"default\")")
 	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
 
 	// oci-specific options
+	sv(&kola.OCIOptions.ConfigPath, "oci-config-file", "", "OCI config file (default \"~/"+auth.OCIConfigPath+"\")")
 	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region")
 	sv(&kola.OCIOptions.Image, "oci-image", "", "OCI image id")
 	sv(&kola.OCIOptions.Shape, "oci-shape", "VM.Standard1.1", "OCI shape")

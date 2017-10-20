@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 )
 
-const configPath = ".config/esx.json"
+const ESXConfigPath = ".config/esx.json"
 
 // ESXProfile represents a parsed ESX profile. This is a custom format
 // specific to Mantle.
@@ -42,7 +42,7 @@ func ReadESXConfig(path string) (map[string]ESXProfile, error) {
 		if err != nil {
 			return nil, err
 		}
-		path = filepath.Join(user.HomeDir, configPath)
+		path = filepath.Join(user.HomeDir, ESXConfigPath)
 	}
 
 	f, err := os.Open(path)

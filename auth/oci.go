@@ -28,7 +28,7 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "auth")
 )
 
-const ociConfigPath = ".oci/config"
+const OCIConfigPath = ".oci/config"
 
 // OCIProfile represents a parsed OCI profile.
 type OCIProfile struct {
@@ -60,7 +60,7 @@ func ReadOCIConfig(path string) (map[string]OCIProfile, error) {
 		if err != nil {
 			return nil, err
 		}
-		path = filepath.Join(user.HomeDir, ociConfigPath)
+		path = filepath.Join(user.HomeDir, OCIConfigPath)
 	}
 
 	profiles := make(map[string]OCIProfile)
