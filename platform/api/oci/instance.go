@@ -35,8 +35,9 @@ func (a *API) CreateInstance(name, userdata, sshKey string) (*Machine, error) {
 		return nil, err
 	}
 
-	metadata := map[string]string{
-		"user_data": base64.StdEncoding.EncodeToString([]byte(userdata)),
+	metadata := map[string]string{}
+	if userdata != "" {
+		metadata["user_data"] = base64.StdEncoding.EncodeToString([]byte(userdata))
 	}
 	if sshKey != "" {
 		metadata["ssh_authorized_keys"] = sshKey
