@@ -44,7 +44,7 @@ func WaitUntilReady(timeout, delay time.Duration, checkFunction func() (bool, er
 	for {
 		select {
 		case <-after:
-			return fmt.Errorf("timed limit exceeded")
+			return fmt.Errorf("time limit exceeded")
 		default:
 		}
 
