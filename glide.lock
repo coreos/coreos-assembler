@@ -1,5 +1,5 @@
-hash: 60eec217e594dbb9d208c5504cae0901fa8c911f8c3c46ab82f59503e6202efd
-updated: 2017-09-19T15:55:32.264973547-07:00
+hash: 9ed44e912cf07844692f9a2c481af006804a1979f34e9d5b3e4837ec8a3c9bb3
+updated: 2017-10-20T23:58:28.580442431-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -158,6 +158,10 @@ imports:
   version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
   - md2man
+- name: github.com/digitalocean/godo
+  version: 77ea48de76a7b31b234d854f15d003c68bb2fb90
+  subpackages:
+  - context
 - name: github.com/gengo/grpc-gateway
   version: dcb844349dc5d2cb0300fdc4d2d374839d0d2e13
   subpackages:
@@ -179,6 +183,10 @@ imports:
   - proto
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
+- name: github.com/google/go-querystring
+  version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+  subpackages:
+  - query
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jmespath/go-jmespath
@@ -243,6 +251,8 @@ imports:
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
   version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
+- name: github.com/tent/http-link-go
+  version: ac974c61c2f990f4115b119354b5e0b47550e888
 - name: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
