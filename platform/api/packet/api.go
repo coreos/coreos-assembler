@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/storage"
+	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -508,19 +509,19 @@ func (a *API) startConsole(deviceID string, console Console) error {
 }
 
 func (a *API) waitForActive(deviceID string) (*packngo.Device, error) {
-	for tries := launchTimeout / launchPollInterval; tries >= 0; tries-- {
-		device, _, err := a.c.Devices.Get(deviceID)
+	var device *packngo.Device
+	err := util.WaitUntilReady(launchTimeout, launchPollInterval, func() (bool, error) {
+		var err error
+		device, _, err = a.c.Devices.Get(deviceID)
 		if err != nil {
-			return nil, fmt.Errorf("querying device: %v", err)
+			return false, fmt.Errorf("querying device: %v", err)
 		}
-		if device.State == "active" {
-			return device, nil
-		}
-		if tries > 0 {
-			time.Sleep(launchPollInterval)
-		}
+		return device.State == "active", nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("timed out waiting for device")
+	return device, nil
 }
 
 // Connect to the discard port and wait for the connection to close,
