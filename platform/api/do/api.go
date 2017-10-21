@@ -100,11 +100,23 @@ func resolveImage(imageSpec string) (godo.DropletCreateImage, error) {
 	}
 
 	switch imageSpec {
+	case "":
+		// pick the most conservative default
+		imageSpec = "stable"
+		fallthrough
 	case "alpha", "beta", "stable":
 		return godo.DropletCreateImage{Slug: "coreos-" + imageSpec}, nil
 	default:
 		return godo.DropletCreateImage{}, fmt.Errorf("couldn't resolve image %q", imageSpec)
 	}
+}
+
+func (a *API) PreflightCheck(ctx context.Context) error {
+	_, _, err := a.c.Account.Get(ctx)
+	if err != nil {
+		return fmt.Errorf("querying account: %v", err)
+	}
+	return nil
 }
 
 func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, userdata string) (*godo.Droplet, error) {
@@ -139,6 +151,44 @@ func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, user
 	}
 
 	return droplet, nil
+}
+
+func (a *API) GetDroplet(ctx context.Context, dropletID int) (*godo.Droplet, error) {
+	droplet, _, err := a.c.Droplets.Get(ctx, dropletID)
+	if err != nil {
+		return nil, err
+	}
+	return droplet, nil
+}
+
+// SnapshotDroplet creates a snapshot of a droplet and waits until complete.
+// The Snapshot API doesn't return the snapshot ID, so we don't either.
+func (a *API) SnapshotDroplet(ctx context.Context, dropletID int, name string) error {
+	action, _, err := a.c.DropletActions.Snapshot(ctx, dropletID, name)
+	if err != nil {
+		return err
+	}
+	actionID := action.ID
+
+	err = util.WaitUntilReady(30*time.Minute, 15*time.Second, func() (bool, error) {
+		action, _, err := a.c.Actions.Get(ctx, actionID)
+		if err != nil {
+			return false, err
+		}
+		switch action.Status {
+		case "in-progress":
+			return false, nil
+		case "completed":
+			return true, nil
+		default:
+			return false, fmt.Errorf("snapshot failed")
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *API) DeleteDroplet(ctx context.Context, dropletID int) error {
