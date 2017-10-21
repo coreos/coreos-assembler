@@ -50,17 +50,25 @@ func NewCluster(opts *do.Options, rconf *platform.RuntimeConfig) (platform.Clust
 		return nil, err
 	}
 
-	var keyID int
+	var key string
 	if !rconf.NoSSHKeyInMetadata {
 		keys, err := bc.Keys()
 		if err != nil {
 			return nil, err
 		}
-
-		keyID, err = api.AddKey(context.TODO(), bc.Name(), keys[0].String())
+		key = keys[0].String()
+	} else {
+		// The DO API requires us to provide an SSH key for
+		// Container Linux droplets. Provide one that can never
+		// authenticate.
+		key, err = do.GenerateFakeKey()
 		if err != nil {
 			return nil, err
 		}
+	}
+	keyID, err := api.AddKey(context.TODO(), bc.Name(), key)
+	if err != nil {
+		return nil, err
 	}
 
 	return &cluster{
@@ -133,10 +141,8 @@ func (dc *cluster) vmname() string {
 }
 
 func (dc *cluster) Destroy() error {
-	if dc.sshKeyID != 0 {
-		if err := dc.api.DeleteKey(context.TODO(), dc.sshKeyID); err != nil {
-			return err
-		}
+	if err := dc.api.DeleteKey(context.TODO(), dc.sshKeyID); err != nil {
+		return err
 	}
 
 	return dc.BaseCluster.Destroy()
