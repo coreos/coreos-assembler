@@ -82,7 +82,8 @@ func init() {
 
 	// oci-specific options
 	sv(&kola.OCIOptions.ConfigPath, "oci-config-file", "", "OCI config file (default \"~/"+auth.OCIConfigPath+"\")")
-	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region")
+	sv(&kola.OCIOptions.Profile, "oci-profile", "", "OCI profile (default \"default\")")
+	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region (overrides config file)")
 	sv(&kola.OCIOptions.Image, "oci-image", "", "OCI image id")
 	sv(&kola.OCIOptions.Shape, "oci-shape", "VM.Standard1.1", "OCI shape")
 

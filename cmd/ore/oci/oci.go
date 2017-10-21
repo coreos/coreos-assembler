@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform/api/oci"
 	"github.com/coreos/pkg/capnslog"
@@ -34,6 +35,9 @@ var (
 )
 
 func init() {
+	OCI.PersistentFlags().StringVar(&options.ConfigPath, "config-file", "", "config file (default \"~/"+auth.OCIConfigPath+"\")")
+	OCI.PersistentFlags().StringVar(&options.Profile, "profile", "", "profile (default \"default\")")
+	OCI.PersistentFlags().StringVar(&options.Region, "region", "", "region (overrides config file)")
 	cli.WrapPreRun(OCI, preauth)
 }
 
