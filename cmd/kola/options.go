@@ -52,21 +52,6 @@ func init() {
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 
-	// QEMU-specific options
-	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
-	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
-	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
-
-	// gce-specific options
-	sv(&kola.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/family/coreos-alpha", "GCE image, full api endpoints names are accepted if resource is in a different project")
-	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
-	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
-	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
-	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
-	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
-	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
-	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
-
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
 	if defaultRegion == "" {
@@ -79,6 +64,28 @@ func init() {
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.small", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
 
+	// esx-specific options
+	sv(&kola.ESXOptions.ConfigPath, "esx-config-file", "", "ESX config file (default \"~/"+auth.ESXConfigPath+"\")")
+	sv(&kola.ESXOptions.Server, "esx-server", "", "ESX server")
+	sv(&kola.ESXOptions.Profile, "esx-profile", "", "ESX profile (default \"default\")")
+	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
+
+	// gce-specific options
+	sv(&kola.GCEOptions.Image, "gce-image", "projects/coreos-cloud/global/images/family/coreos-alpha", "GCE image, full api endpoints names are accepted if resource is in a different project")
+	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
+	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
+	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
+	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
+	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
+	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
+	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
+
+	// oci-specific options
+	sv(&kola.OCIOptions.ConfigPath, "oci-config-file", "", "OCI config file (default \"~/"+auth.OCIConfigPath+"\")")
+	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region")
+	sv(&kola.OCIOptions.Image, "oci-image", "", "OCI image id")
+	sv(&kola.OCIOptions.Shape, "oci-shape", "VM.Standard1.1", "OCI shape")
+
 	// packet-specific options
 	sv(&kola.PacketOptions.ConfigPath, "packet-config-file", "", "Packet config file (default \"~/"+auth.PacketConfigPath+"\")")
 	sv(&kola.PacketOptions.Profile, "packet-profile", "", "Packet profile (default \"default\")")
@@ -90,17 +97,10 @@ func init() {
 	sv(&kola.PacketOptions.ImageURL, "packet-image-url", "", "Packet image URL (default board-dependent, e.g. \"https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2\")")
 	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
 
-	// esx-specific options
-	sv(&kola.ESXOptions.ConfigPath, "esx-config-file", "", "ESX config file (default \"~/"+auth.ESXConfigPath+"\")")
-	sv(&kola.ESXOptions.Server, "esx-server", "", "ESX server")
-	sv(&kola.ESXOptions.Profile, "esx-profile", "", "ESX profile (default \"default\")")
-	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
-
-	// oci-specific options
-	sv(&kola.OCIOptions.ConfigPath, "oci-config-file", "", "OCI config file (default \"~/"+auth.OCIConfigPath+"\")")
-	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region")
-	sv(&kola.OCIOptions.Image, "oci-image", "", "OCI image id")
-	sv(&kola.OCIOptions.Shape, "oci-shape", "VM.Standard1.1", "OCI shape")
+	// QEMU-specific options
+	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
+	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
+	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
 }
 
 // Sync up the command line options if there is dependency

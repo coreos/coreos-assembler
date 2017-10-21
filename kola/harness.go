@@ -51,12 +51,12 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
 	Options       = platform.Options{}
-	QEMUOptions   = qemu.Options{Options: &Options}      // glue to set platform options from main
-	GCEOptions    = gcloudapi.Options{Options: &Options} // glue to set platform options from main
 	AWSOptions    = awsapi.Options{Options: &Options}    // glue to set platform options from main
-	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
 	ESXOptions    = esxapi.Options{Options: &Options}    // glue to set platform options from main
+	GCEOptions    = gcloudapi.Options{Options: &Options} // glue to set platform options from main
 	OCIOptions    = ociapi.Options{Options: &Options}    // glue to set platform options from main
+	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
+	QEMUOptions   = qemu.Options{Options: &Options}      // glue to set platform options from main
 
 	TestParallelism   int    //glue var to set test parallelism from main
 	TAPFile           string // if not "", write TAP results here
@@ -120,18 +120,18 @@ type NativeRunner func(funcName string, m platform.Machine) error
 
 func NewCluster(pltfrm string, rconf *platform.RuntimeConfig) (cluster platform.Cluster, err error) {
 	switch pltfrm {
-	case "qemu":
-		cluster, err = qemu.NewCluster(&QEMUOptions, rconf)
-	case "gce":
-		cluster, err = gcloud.NewCluster(&GCEOptions, rconf)
 	case "aws":
 		cluster, err = aws.NewCluster(&AWSOptions, rconf)
-	case "packet":
-		cluster, err = packet.NewCluster(&PacketOptions, rconf)
 	case "esx":
 		cluster, err = esx.NewCluster(&ESXOptions, rconf)
+	case "gce":
+		cluster, err = gcloud.NewCluster(&GCEOptions, rconf)
 	case "oci":
 		cluster, err = oci.NewCluster(&OCIOptions, rconf)
+	case "packet":
+		cluster, err = packet.NewCluster(&PacketOptions, rconf)
+	case "qemu":
+		cluster, err = qemu.NewCluster(&QEMUOptions, rconf)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
