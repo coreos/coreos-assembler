@@ -70,7 +70,7 @@ func init() {
 	sv(&kola.DOOptions.AccessToken, "do-token", "", "DigitalOcean access token (overrides config file)")
 	sv(&kola.DOOptions.Region, "do-region", "sfo2", "DigitalOcean region slug")
 	sv(&kola.DOOptions.Size, "do-size", "512mb", "DigitalOcean size slug")
-	sv(&kola.DOOptions.Image, "do-image", "alpha", "DigitalOcean image ID or {alpha, beta, stable}")
+	sv(&kola.DOOptions.Image, "do-image", "alpha", "DigitalOcean image ID, {alpha, beta, stable}, or user image name")
 
 	// esx-specific options
 	sv(&kola.ESXOptions.ConfigPath, "esx-config-file", "", "ESX config file (default \"~/"+auth.ESXConfigPath+"\")")

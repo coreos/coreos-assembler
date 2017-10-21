@@ -50,7 +50,7 @@ type Options struct {
 	Region string
 	// Droplet size slug (e.g. "512mb")
 	Size string
-	// Numeric image ID or {alpha, beta, stable}
+	// Numeric image ID, {alpha, beta, stable}, or user image name
 	Image string
 }
 
@@ -79,26 +79,31 @@ func New(opts *Options) (*API, error) {
 		}
 	}
 
-	client := godo.NewClient(oauth2.NewClient(context.TODO(), &tokenSource{opts.AccessToken}))
+	ctx := context.TODO()
+	client := godo.NewClient(oauth2.NewClient(ctx, &tokenSource{opts.AccessToken}))
 
-	image, err := resolveImage(opts.Image)
+	a := &API{
+		c:    client,
+		opts: opts,
+	}
+
+	var err error
+	a.image, err = a.resolveImage(ctx, opts.Image)
 	if err != nil {
 		return nil, err
 	}
 
-	return &API{
-		c:     client,
-		opts:  opts,
-		image: image,
-	}, nil
+	return a, nil
 }
 
-func resolveImage(imageSpec string) (godo.DropletCreateImage, error) {
+func (a *API) resolveImage(ctx context.Context, imageSpec string) (godo.DropletCreateImage, error) {
+	// try numeric image ID first
 	imageID, err := strconv.Atoi(imageSpec)
 	if err == nil {
 		return godo.DropletCreateImage{ID: imageID}, nil
 	}
 
+	// handle magic values
 	switch imageSpec {
 	case "":
 		// pick the most conservative default
@@ -106,9 +111,15 @@ func resolveImage(imageSpec string) (godo.DropletCreateImage, error) {
 		fallthrough
 	case "alpha", "beta", "stable":
 		return godo.DropletCreateImage{Slug: "coreos-" + imageSpec}, nil
-	default:
-		return godo.DropletCreateImage{}, fmt.Errorf("couldn't resolve image %q", imageSpec)
 	}
+
+	// resolve to user image ID
+	image, err := a.GetUserImage(ctx, imageSpec)
+	if err == nil {
+		return godo.DropletCreateImage{ID: image.ID}, nil
+	}
+
+	return godo.DropletCreateImage{}, fmt.Errorf("couldn't resolve image %q in %v", imageSpec, a.opts.Region)
 }
 
 func (a *API) PreflightCheck(ctx context.Context) error {
@@ -197,6 +208,44 @@ func (a *API) DeleteDroplet(ctx context.Context, dropletID int) error {
 		return fmt.Errorf("deleting droplet %d: %v", dropletID, err)
 	}
 	return nil
+}
+
+func (a *API) GetUserImage(ctx context.Context, imageName string) (*godo.Image, error) {
+	var ret *godo.Image
+	page := godo.ListOptions{
+		Page:    1,
+		PerPage: 200,
+	}
+	for {
+		images, _, err := a.c.Images.ListUser(ctx, &page)
+		if err != nil {
+			return nil, err
+		}
+		for _, image := range images {
+			if image.Name != imageName {
+				continue
+			}
+			for _, region := range image.Regions {
+				if region != a.opts.Region {
+					continue
+				}
+				if ret != nil {
+					return nil, fmt.Errorf("found multiple images named %q in %v", imageName, a.opts.Region)
+				}
+				ret = &image
+				break
+			}
+		}
+		if len(images) < page.PerPage {
+			break
+		}
+		page.Page += 1
+	}
+
+	if ret == nil {
+		return nil, fmt.Errorf("couldn't find image %q in %v", imageName, a.opts.Region)
+	}
+	return ret, nil
 }
 
 func (a *API) AddKey(ctx context.Context, name, key string) (int, error) {
