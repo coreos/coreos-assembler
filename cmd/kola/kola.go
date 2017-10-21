@@ -135,6 +135,11 @@ func writeProps() error {
 		AMI          string `json:"ami"`
 		InstanceType string `json:"type"`
 	}
+	type DO struct {
+		Region string `json:"region"`
+		Size   string `json:"size"`
+		Image  string `json:"image"`
+	}
 	type ESX struct {
 		Server     string `json:"server"`
 		BaseVMName string `json:"base_vm_name"`
@@ -162,6 +167,7 @@ func writeProps() error {
 		Platform string   `json:"platform"`
 		Board    string   `json:"board"`
 		AWS      AWS      `json:"aws"`
+		DO       DO       `json:"do"`
 		ESX      ESX      `json:"esx"`
 		GCE      GCE      `json:"gce"`
 		OCI      OCI      `json:"oci"`
@@ -175,6 +181,11 @@ func writeProps() error {
 			Region:       kola.AWSOptions.Region,
 			AMI:          kola.AWSOptions.AMI,
 			InstanceType: kola.AWSOptions.InstanceType,
+		},
+		DO: DO{
+			Region: kola.DOOptions.Region,
+			Size:   kola.DOOptions.Size,
+			Image:  kola.DOOptions.Image,
 		},
 		ESX: ESX{
 			Server:     kola.ESXOptions.Server,

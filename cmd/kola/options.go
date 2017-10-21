@@ -28,7 +28,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
-	kolaPlatforms      = []string{"aws", "esx", "gce", "oci", "packet", "qemu"}
+	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "oci", "packet", "qemu"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
@@ -63,6 +63,14 @@ func init() {
 	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.small", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
+
+	// do-specific options
+	sv(&kola.DOOptions.ConfigPath, "do-config-file", "", "DigitalOcean config file (default \"~/"+auth.DOConfigPath+"\")")
+	sv(&kola.DOOptions.Profile, "do-profile", "", "DigitalOcean profile (default \"default\")")
+	sv(&kola.DOOptions.AccessToken, "do-token", "", "DigitalOcean access token (overrides config file)")
+	sv(&kola.DOOptions.Region, "do-region", "sfo2", "DigitalOcean region slug")
+	sv(&kola.DOOptions.Size, "do-size", "512mb", "DigitalOcean size slug")
+	sv(&kola.DOOptions.Image, "do-image", "alpha", "DigitalOcean image ID or {alpha, beta, stable}")
 
 	// esx-specific options
 	sv(&kola.ESXOptions.ConfigPath, "esx-config-file", "", "ESX config file (default \"~/"+auth.ESXConfigPath+"\")")
