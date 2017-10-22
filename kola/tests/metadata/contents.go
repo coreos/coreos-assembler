@@ -80,10 +80,7 @@ func verifyPacket(c cluster.TestCluster) {
 func verify(c cluster.TestCluster, keys ...string) {
 	m := c.Machines()[0]
 
-	out, err := c.SSH(m, "cat /run/metadata/coreos")
-	if err != nil {
-		c.Fatalf("failed to cat /run/metadata/coreos: %s: %v", out, err)
-	}
+	out := c.MustSSH(m, "cat /run/metadata/coreos")
 
 	for _, key := range keys {
 		if !strings.Contains(string(out), key) {

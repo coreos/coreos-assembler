@@ -309,10 +309,7 @@ func swapUsrB(c cluster.TestCluster) {
 func testFormatted(c cluster.TestCluster, fs, label string) {
 	m := c.Machines()[0]
 
-	out, err := c.SSH(m, "sudo blkid -s UUID -o value /dev/disk/by-label/"+label)
-	if err != nil {
-		c.Fatalf("failed to run blkid: %s: %v", out, err)
-	}
+	out := c.MustSSH(m, "sudo blkid -s UUID -o value /dev/disk/by-label/"+label)
 	target := targetUUID
 	if fs == "vfat" {
 		target = targetVfatID
@@ -321,10 +318,7 @@ func testFormatted(c cluster.TestCluster, fs, label string) {
 		c.Fatalf("filesystem wasn't correctly formatted:\n%s", out)
 	}
 
-	out, err = c.SSH(m, "sudo blkid -s TYPE -o value /dev/disk/by-label/"+label)
-	if err != nil {
-		c.Fatalf("failed to run blkid: %s: %v", out, err)
-	}
+	out = c.MustSSH(m, "sudo blkid -s TYPE -o value /dev/disk/by-label/"+label)
 	if strings.TrimRight(string(out), "\n") != fs {
 		c.Fatalf("filesystem has incorrect type:\n%s", out)
 	}
@@ -335,10 +329,7 @@ func testRoot(c cluster.TestCluster, fs string) {
 
 	testFormatted(c, fs, "ROOT")
 
-	out, err := c.SSH(m, "findmnt --noheadings --output FSTYPE --target /")
-	if err != nil {
-		c.Fatalf("failed to run findmnt: %s: %v", out, err)
-	}
+	out := c.MustSSH(m, "findmnt --noheadings --output FSTYPE --target /")
 	if string(out) != fs {
 		c.Fatalf("root wasn't correctly reformatted:\n%s", out)
 	}
@@ -363,10 +354,7 @@ func ext4CheckExisting2_1(c cluster.TestCluster) {
 	m1 := c.Machines()[0]
 
 	// Get root filesystem UUID
-	out, err := c.SSH(m1, "sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
-	if err != nil {
-		c.Fatalf("Couldn't get m1 filesystem UUID: %v", err)
-	}
+	out := c.MustSSH(m1, "sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
 	uuid1 := strings.TrimRight(string(out), "\n")
 
 	// Start a machine with config that conditionally recreates the FS
@@ -376,10 +364,7 @@ func ext4CheckExisting2_1(c cluster.TestCluster) {
 	}
 
 	// Verify UUID hasn't changed
-	out, err = c.SSH(m2, "sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
-	if err != nil {
-		c.Fatalf("Couldn't get m2 filesystem UUID: %v", err)
-	}
+	out = c.MustSSH(m2, "sudo blkid /dev/disk/by-partlabel/ROOT -s UUID -o value")
 	uuid2 := strings.TrimRight(string(out), "\n")
 	if uuid1 != uuid2 {
 		c.Fatalf("Filesystem was reformatted: %s != %s", uuid1, uuid2)
