@@ -196,22 +196,8 @@ func init() {
 		MinVersion:  semver.Version{Major: 1492},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.ext4checkexisting",
-		Run:         ext4CheckExisting,
-		ClusterSize: 1,
-		UserData:    ext4ConfigV1,
-		EndVersion:  semver.Version{Major: 1478},
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.ext4checkexisting",
-		Run:         ext4CheckExisting,
-		ClusterSize: 1,
-		UserData:    ext4ConfigV2,
-		EndVersion:  semver.Version{Major: 1478},
-	})
-	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2_1.ext4checkexisting",
-		Run:         ext4CheckExisting2_1,
+		Run:         ext4CheckExisting,
 		ClusterSize: 1,
 		MinVersion:  semver.Version{Major: 1478},
 	})
@@ -345,21 +331,6 @@ func testRoot(c cluster.TestCluster, fs string) {
 }
 
 func ext4CheckExisting(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	// Redirect /dev/null to stdin so isatty(stdin) fails and the -p flag can be
-	// checked
-	out, err := c.SSH(m, "sudo mkfs.ext4 -p /dev/disk/by-partlabel/ROOT < /dev/null")
-	if err == nil {
-		c.Fatalf("mkfs.ext4 returned sucessfully when it should have failed")
-	}
-
-	if !strings.HasPrefix(string(out), "/dev/disk/by-partlabel/ROOT contains a ext4 file system labelled 'ROOT'") {
-		c.Fatalf("mkfs.ext4 did not check for existing filesystems.\nmkfs.ext4: %s", out)
-	}
-}
-
-func ext4CheckExisting2_1(c cluster.TestCluster) {
 	m1 := c.Machines()[0]
 
 	// Get root filesystem UUID
