@@ -107,3 +107,14 @@ func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
 
 	return stdout, err
 }
+
+// MustSSH runs a ssh command on the given machine in the cluster, writes
+// its stderr to the test's output as a 'Log' line, fails the test if the
+// command is unsuccessful, and returns the command's stdout.
+func (t *TestCluster) MustSSH(m platform.Machine, cmd string) []byte {
+	out, err := t.SSH(m, cmd)
+	if err != nil {
+		t.Fatalf("%q failed: output %s, status %v", cmd, out, err)
+	}
+	return out
+}
