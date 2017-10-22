@@ -135,24 +135,24 @@ func writeProps() error {
 		AMI          string `json:"ami"`
 		InstanceType string `json:"type"`
 	}
+	type ESX struct {
+		Server     string `json:"server"`
+		BaseVMName string `json:"base_vm_name"`
+	}
 	type GCE struct {
 		Image       string `json:"image"`
 		MachineType string `json:"type"`
+	}
+	type OCI struct {
+		Region string `json:"region"`
+		Image  string `json:"image"`
+		Shape  string `json:"shape"`
 	}
 	type Packet struct {
 		Facility              string `json:"facility"`
 		Plan                  string `json:"plan"`
 		InstallerImageBaseURL string `json:"installer"`
 		ImageURL              string `json:"image"`
-	}
-	type ESX struct {
-		Server     string `json:"server"`
-		BaseVMName string `json:"base_vm_name"`
-	}
-	type OCI struct {
-		Region string `json:"region"`
-		Image  string `json:"image"`
-		Shape  string `json:"shape"`
 	}
 	type QEMU struct {
 		Image string `json:"image"`
