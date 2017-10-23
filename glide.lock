@@ -1,5 +1,5 @@
-hash: 9ed44e912cf07844692f9a2c481af006804a1979f34e9d5b3e4837ec8a3c9bb3
-updated: 2017-10-20T23:58:28.580442431-07:00
+hash: 57283d4781c33b1d003b989068252bae4a7f76a7488c942133b4b6ce5af7d90d
+updated: 2017-10-24T18:09:13.866306264-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -226,6 +226,10 @@ imports:
   - vhdcore/writer
 - name: github.com/packethost/packngo
   version: 8ff1de745a8a4fdc5323ffd9ac2bc55195ff671e
+- name: github.com/pin/tftp
+  version: 9ea92f6b1029bc1bf3072bba195c84bb9b0370e3
+  subpackages:
+  - netascii
 - name: github.com/prometheus/client_golang
   version: e51041b3fa41cece0dca035740ba6411905be473
   subpackages:
