@@ -53,6 +53,11 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		ud = &tud
 	}
 
+	err := a.ensureInstanceProfile(a.opts.IAMInstanceProfile)
+	if err != nil {
+		return nil, fmt.Errorf("error verifying IAM instance profile: %v", err)
+	}
+
 	sgId, err := a.getSecurityGroupID(a.opts.SecurityGroup)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving security group: %v", err)
@@ -69,6 +74,9 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		InstanceType:     &a.opts.InstanceType,
 		SecurityGroupIds: []*string{&sgId},
 		UserData:         ud,
+		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
+			Name: &a.opts.IAMInstanceProfile,
+		},
 	}
 
 	reservations, err := a.ec2.RunInstances(&inst)
