@@ -108,49 +108,33 @@ func (a *API) DeleteRouteTable(ID string) error {
 }
 
 func (a *API) CreateDefaultSecurityList(vcnID string) (*baremetal.SecurityList, error) {
-	// Protocol 6 in OCI is TCP, 1 is ICMP
-	// 2379-2380, 4001, & 7001 on TCP are used by etcd and required to run some kola tests
 	ingressRules := []baremetal.IngressSecurityRule{
 		{
+			// Allow all TCP on private network
 			Protocol: "6",
 			Source:   "10.0.0.0/16",
 			TCPOptions: &baremetal.TCPOptions{
 				DestinationPortRange: baremetal.PortRange{
-					Min: 2379,
-					Max: 2380,
+					Min: 1,
+					Max: 65535,
 				},
 			},
 		},
 		{
-			Protocol: "6",
+			// Allow all UDP on private network
+			Protocol: "17",
 			Source:   "10.0.0.0/16",
-			TCPOptions: &baremetal.TCPOptions{
+			UDPOptions: &baremetal.UDPOptions{
 				DestinationPortRange: baremetal.PortRange{
-					Min: 4001,
-					Max: 4001,
+					Min: 1,
+					Max: 65535,
 				},
 			},
 		},
 		{
-			Protocol: "6",
+			// Allow all ICMP on private network
+			Protocol: "1",
 			Source:   "10.0.0.0/16",
-			TCPOptions: &baremetal.TCPOptions{
-				DestinationPortRange: baremetal.PortRange{
-					Min: 7001,
-					Max: 7001,
-				},
-			},
-		},
-		{
-			// 9988 is used by the docker.network test
-			Protocol: "6",
-			Source:   "10.0.0.0/16",
-			TCPOptions: &baremetal.TCPOptions{
-				DestinationPortRange: baremetal.PortRange{
-					Min: 9988,
-					Max: 9988,
-				},
-			},
 		},
 		{
 			// Default setting:
@@ -174,17 +158,6 @@ func (a *API) CreateDefaultSecurityList(vcnID string) (*baremetal.SecurityList, 
 			Source:   "0.0.0.0/0",
 			ICMPOptions: &baremetal.ICMPOptions{
 				Code: 4,
-				Type: 3,
-			},
-		},
-		{
-			// Default Setting:
-			// Allow type 3 ICMP with no code
-			// from any local private ip address
-			Protocol: "1",
-			Source:   "10.0.0.0/16",
-			ICMPOptions: &baremetal.ICMPOptions{
-				Code: 0,
 				Type: 3,
 			},
 		},
