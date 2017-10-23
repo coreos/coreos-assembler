@@ -15,7 +15,12 @@
 package ignition
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/pin/tftp"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -23,12 +28,8 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
-func init() {
-	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.resource.local",
-		Run:         resourceLocal,
-		ClusterSize: 1,
-		UserData: conf.Ignition(`{
+var (
+	localClient = conf.Ignition(`{
 		  "ignition": {
 		      "version": "2.1.0"
 		  },
@@ -40,10 +41,34 @@ func init() {
 			      "contents": {
 				  "source": "data:,kola-data"
 			      }
+			  },
+			  {
+			      "filesystem": "root",
+			      "path": "/resource/http",
+			      "contents": {
+				  "source": "http://$IP/http"
+			      }
+			  },
+			  {
+			      "filesystem": "root",
+			      "path": "/resource/tftp",
+			      "contents": {
+				  "source": "tftp://$IP/tftp"
+			      }
 			  }
 		      ]
 		  }
-	      }`),
+	      }`)
+)
+
+func init() {
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.resource.local",
+		Run:         resourceLocal,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"Serve": Serve,
+		},
 	})
 	register.Register(&register.Test{
 		Name:             "coreos.ignition.v2_1.resource.remote",
@@ -106,10 +131,19 @@ func init() {
 }
 
 func resourceLocal(c cluster.TestCluster) {
-	m := c.Machines()[0]
+	server := c.Machines()[0]
 
-	checkResources(c, m, map[string]string{
+	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s Serve", c.Name()))
+
+	client, err := c.NewMachine(localClient.Subst("$IP", server.PrivateIP()))
+	if err != nil {
+		c.Fatalf("starting client: %v", err)
+	}
+
+	checkResources(c, client, map[string]string{
 		"data": "kola-data",
+		"http": "kola-http",
+		"tftp": "kola-tftp",
 	})
 }
 
@@ -149,4 +183,32 @@ func checkResources(c cluster.TestCluster, m platform.Machine, resources map[str
 			c.Fatalf("%s: %q != %q", filename, expectedContents, contents)
 		}
 	}
+}
+
+func Serve() error {
+	go func() {
+		http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "text/plain")
+			w.Write([]byte("kola-http"))
+		})
+		err := http.ListenAndServe(":80", nil)
+		fmt.Println(err)
+	}()
+
+	go func() {
+		readHandler := func(filename string, r io.ReaderFrom) error {
+			switch filename {
+			case "/tftp":
+				r.ReadFrom(bytes.NewBufferString("kola-tftp"))
+			default:
+				return fmt.Errorf("404 not found")
+			}
+			return nil
+		}
+		server := tftp.NewServer(readHandler, nil)
+		err := server.ListenAndServe(":69")
+		fmt.Println(err)
+	}()
+
+	select {}
 }
