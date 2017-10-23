@@ -277,6 +277,14 @@ func (a *API) DeleteKey(keyID string) error {
 	return nil
 }
 
+func (a *API) ListKeys() ([]packngo.SSHKey, error) {
+	keys, _, err := a.c.SSHKeys.List()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't list SSH keys: %v", err)
+	}
+	return keys, nil
+}
+
 func (a *API) wrapUserData(conf *conf.Conf) (string, error) {
 	userDataOption := "-i"
 	if !conf.IsIgnition() && conf.String() != "" {
