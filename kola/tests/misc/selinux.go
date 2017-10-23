@@ -44,10 +44,7 @@ func SelinuxEnforce(c cluster.TestCluster) {
 		{"sudo cp --remove-destination $(readlink -f /etc/selinux/config) /etc/selinux/config", false, ""},
 		{"sudo sed -i 's/SELINUX=permissive/SELINUX=enforcing/' /etc/selinux/config", false, ""},
 	} {
-		output, err := c.SSH(m, cmd.cmdline)
-		if err != nil {
-			c.Fatalf("failed to run %q: output: %q status: %q", cmd.cmdline, output, err)
-		}
+		output := c.MustSSH(m, cmd.cmdline)
 
 		if cmd.checkoutput && string(output) != cmd.output {
 			c.Fatalf("command %q has unexpected output: want %q got %q", cmd.cmdline, cmd.output, string(output))
@@ -59,10 +56,7 @@ func SelinuxEnforce(c cluster.TestCluster) {
 		c.Fatalf("failed to reboot machine: %v", err)
 	}
 
-	output, err := c.SSH(m, "getenforce")
-	if err != nil {
-		c.Fatalf("failed to run \"getenforce\": output: %q status: %q", output, err)
-	}
+	output := c.MustSSH(m, "getenforce")
 
 	if string(output) != "Enforcing" {
 		c.Fatalf("command \"getenforce\" has unexpected output: want \"Enforcing\" got %q", string(output))

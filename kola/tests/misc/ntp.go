@@ -41,10 +41,7 @@ func NTP(c cluster.TestCluster) {
 	}
 	defer m.Destroy()
 
-	out, err := c.SSH(m, "networkctl status eth0")
-	if err != nil {
-		c.Fatalf("networkctl: %v", err)
-	}
+	out := c.MustSSH(m, "networkctl status eth0")
 	if !bytes.Contains(out, []byte("NTP: 10.0.0.1")) {
 		c.Fatalf("Bad network config:\n%s", out)
 	}

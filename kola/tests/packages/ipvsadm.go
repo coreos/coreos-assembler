@@ -25,10 +25,7 @@ func ipvsadm(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Test it runs at all
-	out, err := c.SSH(m, "sudo ipvsadm")
-	if err != nil {
-		c.Fatalf("could not run ipvsadm: %v", err)
-	}
+	out := c.MustSSH(m, "sudo ipvsadm")
 	if !bytes.Contains(out, []byte(`IP Virtual Server version`)) {
 		c.Fatalf("unexpected ipvsadm output: %v", string(out))
 	}
@@ -42,16 +39,10 @@ func ipvsadm(c cluster.TestCluster) {
 	-a -t 207.175.44.110:80 -r 192.168.10.4:80 -m
 	-a -t 207.175.44.110:80 -r 192.168.10.5:80 -m
 	" | sudo ipvsadm -R`
-	out, err = c.SSH(m, cmd)
-	if err != nil {
-		c.Fatalf("could not run ipvsadm: %v", err)
-	}
+	c.MustSSH(m, cmd)
 
 	// Test we can read back what we just did
-	out, err = c.SSH(m, "sudo ipvsadm -Ln")
-	if err != nil {
-		c.Fatalf("could not run ipvsadm: %v", err)
-	}
+	out = c.MustSSH(m, "sudo ipvsadm -Ln")
 	if !bytes.Contains(out, []byte(`TCP  207.175.44.110:80 rr`)) {
 		c.Fatalf("could not create virtual service %v", string(out))
 	}
@@ -63,16 +54,10 @@ func ipvsadm(c cluster.TestCluster) {
 	}
 
 	// Test we can delete the service
-	out, err = c.SSH(m, "sudo ipvsadm -D -t 207.175.44.110:80")
-	if err != nil {
-		c.Fatalf("could not run ipvsadm: %v", err)
-	}
+	c.MustSSH(m, "sudo ipvsadm -D -t 207.175.44.110:80")
 
 	// Ensure it was really deleted
-	out, err = c.SSH(m, "sudo ipvsadm -Ln")
-	if err != nil {
-		c.Fatalf("could not run ipvsadm: %v", err)
-	}
+	out = c.MustSSH(m, "sudo ipvsadm -Ln")
 	if bytes.Contains(out, []byte(`TCP 207.175.44.110:80 rr`)) {
 		c.Fatalf("could not delete virtual service")
 	}

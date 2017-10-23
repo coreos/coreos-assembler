@@ -34,11 +34,7 @@ func init() {
 func dnfInstall(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	output, err := c.SSH(m, `toolbox sh -c 'dnf install -y tcpdump; tcpdump --version >/dev/null && echo PASS' 2>/dev/null`)
-
-	if err != nil {
-		c.Fatalf("Error running dnf install in toolbox: %v", err)
-	}
+	output := c.MustSSH(m, `toolbox sh -c 'dnf install -y tcpdump; tcpdump --version >/dev/null && echo PASS' 2>/dev/null`)
 
 	if !strings.Contains(string(output), "PASS") {
 		c.Fatalf("Expected 'pass' in output; got %v", string(output))

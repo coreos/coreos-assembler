@@ -53,27 +53,16 @@ func VerityVerify(c cluster.TestCluster) {
 
 	// extract verity hash from kernel
 	ddcmd := fmt.Sprintf("dd if=/boot/coreos/vmlinuz-a skip=%d count=64 bs=1 status=none", rootOffset)
-	hash, err := c.SSH(m, ddcmd)
-	if err != nil {
-		c.Fatalf("failed to extract verity hash from kernel: %v: %v", hash, err)
-	}
+	hash := c.MustSSH(m, ddcmd)
 
 	// find /usr dev
 	usrdev := getUsrDeviceNode(c, m)
 
 	// figure out partition size for hash dev offset
-	offset, err := c.SSH(m, "sudo e2size "+usrdev)
-	if err != nil {
-		c.Fatalf("failed to find /usr partition size: %v: %v", offset, err)
-	}
-
+	offset := c.MustSSH(m, "sudo e2size "+usrdev)
 	offset = bytes.TrimSpace(offset)
-	veritycmd := fmt.Sprintf("sudo veritysetup verify --verbose --hash-offset=%s %s %s %s", offset, usrdev, usrdev, hash)
 
-	verify, err := c.SSH(m, veritycmd)
-	if err != nil {
-		c.Fatalf("verity hash verification on %s failed: %v: %v", usrdev, verify, err)
-	}
+	c.MustSSH(m, fmt.Sprintf("sudo veritysetup verify --verbose --hash-offset=%s %s %s %s", offset, usrdev, usrdev, hash))
 }
 
 // VerityCorruption asserts that a machine will fail to read a file from a
@@ -84,10 +73,7 @@ func VerityCorruption(c cluster.TestCluster) {
 	skipUnlessVerity(c, m)
 
 	// assert that dm shows verity is in use and the device is valid (V)
-	out, err := c.SSH(m, "sudo dmsetup --target verity status usr")
-	if err != nil {
-		c.Fatalf("failed checking dmsetup status of usr: %s: %v", out, err)
-	}
+	out := c.MustSSH(m, "sudo dmsetup --target verity status usr")
 
 	fields := strings.Fields(string(out))
 	if len(fields) != 4 {
@@ -105,16 +91,10 @@ func VerityCorruption(c cluster.TestCluster) {
 	usrdev := getUsrDeviceNode(c, m)
 
 	// poke bytes into /usr/lib/os-release
-	out, err = c.SSH(m, fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 status=none`, usrdev, usrdev))
-	if err != nil {
-		c.Fatalf("failed overwriting disk block: %s: %v", out, err)
-	}
+	c.MustSSH(m, fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 status=none`, usrdev, usrdev))
 
 	// make sure we flush everything so cat has to go through to the device backing verity.
-	out, err = c.SSH(m, "sudo /bin/sh -c 'sync; echo -n 3 >/proc/sys/vm/drop_caches'")
-	if err != nil {
-		c.Fatalf("failed dropping disk caches: %s: %v", out, err)
-	}
+	c.MustSSH(m, "sudo /bin/sh -c 'sync; echo -n 3 >/proc/sys/vm/drop_caches'")
 
 	// read the file back. if we can read it successfully, verity did not do its job.
 	out, stderr, err := m.SSH("cat /usr/lib/os-release")
@@ -129,10 +109,7 @@ func VerityCorruption(c cluster.TestCluster) {
 	}
 
 	// assert that dm shows verity device is now corrupted (C)
-	out, err = c.SSH(m, "sudo dmsetup --target verity status usr")
-	if err != nil {
-		c.Fatalf("failed checking dmsetup status of usr: %s: %v", out, err)
-	}
+	out = c.MustSSH(m, "sudo dmsetup --target verity status usr")
 
 	fields = strings.Fields(string(out))
 	if len(fields) != 4 {
@@ -155,18 +132,12 @@ func getKernelVerityHashOffset(c cluster.TestCluster) int {
 
 func getUsrDeviceNode(c cluster.TestCluster, m platform.Machine) string {
 	// find /usr dev
-	usrdev, err := c.SSH(m, "findmnt -no SOURCE /usr")
-	if err != nil {
-		c.Fatalf("failed to find device for /usr: %v: %v", usrdev, err)
-	}
+	usrdev := c.MustSSH(m, "findmnt -no SOURCE /usr")
 
 	// XXX: if the /usr dev is /dev/mapper/usr, we're on a verity enabled
 	// image, so use dmsetup to find the real device.
 	if strings.TrimSpace(string(usrdev)) == "/dev/mapper/usr" {
-		usrdev, err = c.SSH(m, "echo -n /dev/$(sudo dmsetup info --noheadings -Co blkdevs_used usr)")
-		if err != nil {
-			c.Fatalf("failed to find device for /usr: %v: %v", usrdev, err)
-		}
+		usrdev = c.MustSSH(m, "echo -n /dev/$(sudo dmsetup info --noheadings -Co blkdevs_used usr)")
 	}
 
 	return string(usrdev)

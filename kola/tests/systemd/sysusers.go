@@ -43,15 +43,8 @@ func init() {
 func gshadowParser(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	for _, cmd := range []string{
-		`sudo sh -c "echo 'grp0:*::root' >> /etc/gshadow"`,
-		`sudo sh -c "echo 'grp1:*::somebody.a1,somebody.a2,somebody.a3,somebody.a4,somebody.a5,somebody.a6,somebody.a7,somebody.a8,somebody.a9,somebody.a10,somebody.a11,somebody.a12,somebody.a13,somebody.a14,somebody.a15,somebody.a16,somebody.a17,somebody.a18,somebody.a19,somebody.a20,somebody.a21,somebody.a22,somebody.a23,somebody.a24,somebody.a25,somebody.a26,somebody.a27,somebody.a28,somebody.a29,somebody.a30,somebody.a31,somebody.a32,somebody.a33,somebody.a34,somebody.a35,somebody.a36,somebody.a37,somebody.a38,somebody.a39,somebody.a40,somebody.a41,somebody.a42,somebody.a43,somebody.a44,somebody.a45,somebody.a46,somebody.a47,a1234' >> /etc/gshadow"`,
-		`sudo sh -c "echo 'grp2:*::root' >> /etc/gshadow"`,
-		`sudo systemd-sysusers`,
-	} {
-		output, err := c.SSH(m, cmd)
-		if err != nil {
-			c.Fatalf("failed to run %q: output: %q status: %v", cmd, output, err)
-		}
-	}
+	c.MustSSH(m, `sudo sh -c "echo 'grp0:*::root' >> /etc/gshadow"`)
+	c.MustSSH(m, `sudo sh -c "echo 'grp1:*::somebody.a1,somebody.a2,somebody.a3,somebody.a4,somebody.a5,somebody.a6,somebody.a7,somebody.a8,somebody.a9,somebody.a10,somebody.a11,somebody.a12,somebody.a13,somebody.a14,somebody.a15,somebody.a16,somebody.a17,somebody.a18,somebody.a19,somebody.a20,somebody.a21,somebody.a22,somebody.a23,somebody.a24,somebody.a25,somebody.a26,somebody.a27,somebody.a28,somebody.a29,somebody.a30,somebody.a31,somebody.a32,somebody.a33,somebody.a34,somebody.a35,somebody.a36,somebody.a37,somebody.a38,somebody.a39,somebody.a40,somebody.a41,somebody.a42,somebody.a43,somebody.a44,somebody.a45,somebody.a46,somebody.a47,a1234' >> /etc/gshadow"`)
+	c.MustSSH(m, `sudo sh -c "echo 'grp2:*::root' >> /etc/gshadow"`)
+	c.MustSSH(m, `sudo systemd-sysusers`)
 }

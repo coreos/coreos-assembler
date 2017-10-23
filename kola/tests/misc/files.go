@@ -44,12 +44,7 @@ func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
 	m := c.Machines()[0]
 	badfiles := make([]string, 0, 0)
 
-	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -%v -print", mode)
-
-	output, err := c.SSH(m, command)
-	if err != nil {
-		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
-	}
+	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -%v -print", mode))
 
 	if string(output) == "" {
 		return
@@ -86,12 +81,7 @@ func DeadLinks(c cluster.TestCluster) {
 		"/var/lib/rkt",
 	}
 
-	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -xtype l -print", strings.Join(ignore, " -prune -o -path "))
-
-	output, err := c.SSH(m, command)
-	if err != nil {
-		c.Fatalf("Failed to run %v: output %s, status: %v", command, output, err)
-	}
+	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -xtype l -print", strings.Join(ignore, " -prune -o -path ")))
 
 	if string(output) != "" {
 		c.Fatalf("Dead symbolic links found: %v", strings.Split(string(output), "\n"))
@@ -136,10 +126,7 @@ func SGIDFiles(c cluster.TestCluster) {
 func WritableFiles(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	output, err := c.SSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -0002 -print")
-	if err != nil {
-		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
-	}
+	output := c.MustSSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -0002 -print")
 
 	if string(output) != "" {
 		c.Fatalf("Unknown writable files found: %s", output)
@@ -149,10 +136,7 @@ func WritableFiles(c cluster.TestCluster) {
 func WritableDirs(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	output, err := c.SSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type d -perm -0002 -a ! -perm -1000 -print")
-	if err != nil {
-		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
-	}
+	output := c.MustSSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type d -perm -0002 -a ! -perm -1000 -print")
 
 	if string(output) != "" {
 		c.Fatalf("Unknown writable directories found: %s", output)
@@ -179,12 +163,7 @@ func StickyDirs(c cluster.TestCluster) {
 		"/var/tmp",
 	}
 
-	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -type d -perm /1000 -print", strings.Join(ignore, " -prune -o -path "))
-
-	output, err := c.SSH(m, command)
-	if err != nil {
-		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
-	}
+	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -type d -perm /1000 -print", strings.Join(ignore, " -prune -o -path ")))
 
 	if string(output) != "" {
 		c.Fatalf("Unknown sticky directories found: %s", output)
@@ -223,12 +202,7 @@ func Blacklist(c cluster.TestCluster) {
 		"*\x7f*",
 	}
 
-	command := fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(blacklist, "' -print -o -path '"))
-
-	output, err := c.SSH(m, command)
-	if err != nil {
-		c.Fatalf("Failed to run find: output %s, status: %v", output, err)
-	}
+	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(blacklist, "' -print -o -path '")))
 
 	if string(output) != "" {
 		c.Fatalf("Blacklisted files or directories found:\n%s", output)

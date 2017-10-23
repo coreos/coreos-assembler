@@ -53,13 +53,11 @@ func RebootIntoUSRB(c cluster.TestCluster) {
 
 	assertBootedUsr(c, m, "USR-A")
 
-	runAsRoot(c, m, []string{
-		// copy USR-A to USR-B
-		"dd if=/dev/disk/by-partlabel/USR-A of=/dev/disk/by-partlabel/USR-B bs=10M status=none",
+	// copy USR-A to USR-B
+	c.MustSSH(m, "sudo dd if=/dev/disk/by-partlabel/USR-A of=/dev/disk/by-partlabel/USR-B bs=10M status=none")
 
-		// copy kernel
-		"cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b",
-	})
+	// copy kernel
+	c.MustSSH(m, "sudo cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b")
 
 	prioritizeUsr(c, m, "USR-B")
 	if err := m.Reboot(); err != nil {
@@ -77,16 +75,14 @@ func RecoverBadVerity(c cluster.TestCluster) {
 
 	assertBootedUsr(c, m, "USR-A")
 
-	runAsRoot(c, m, []string{
-		// copy USR-A to USR-B
-		"dd if=/dev/disk/by-partlabel/USR-A of=/dev/disk/by-partlabel/USR-B bs=10M status=none",
+	// copy USR-A to USR-B
+	c.MustSSH(m, "sudo dd if=/dev/disk/by-partlabel/USR-A of=/dev/disk/by-partlabel/USR-B bs=10M status=none")
 
-		// copy kernel
-		"cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b",
+	// copy kernel
+	c.MustSSH(m, "sudo cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b")
 
-		// invalidate verity hash on B kernel
-		fmt.Sprintf("dd of=/boot/coreos/vmlinuz-b bs=1 seek=%d count=64 conv=notrunc status=none <<<0000000000000000000000000000000000000000000000000000000000000000", getKernelVerityHashOffset(c)),
-	})
+	// invalidate verity hash on B kernel
+	c.MustSSH(m, fmt.Sprintf("sudo dd of=/boot/coreos/vmlinuz-b bs=1 seek=%d count=64 conv=notrunc status=none <<<0000000000000000000000000000000000000000000000000000000000000000", getKernelVerityHashOffset(c)))
 
 	prioritizeUsr(c, m, "USR-B")
 	rebootWithEmergencyShellTimeout(c, m)
@@ -100,18 +96,13 @@ func RecoverBadUsr(c cluster.TestCluster) {
 
 	assertBootedUsr(c, m, "USR-A")
 
-	runAsRoot(c, m, []string{
-		// create filesystem for USR-B
-		"mkfs.ext4 -q -b 4096 /dev/disk/by-partlabel/USR-B 25600",
-	})
+	// create filesystem for USR-B
+	c.MustSSH(m, "sudo mkfs.ext4 -q -b 4096 /dev/disk/by-partlabel/USR-B 25600")
 
 	// create verity metadata for USR-B
-	output, err := c.SSH(m, "sudo veritysetup format --hash=sha256 "+
+	output := c.MustSSH(m, "sudo veritysetup format --hash=sha256 "+
 		"--data-block-size 4096 --hash-block-size 4096 --data-blocks 25600 --hash-offset 104857600 "+
 		"/dev/disk/by-partlabel/USR-B /dev/disk/by-partlabel/USR-B")
-	if err != nil {
-		c.Fatalf("Failed to run veritysetup: output %s, status: %v", output, err)
-	}
 
 	// extract root hash for USR-B
 	match := regexp.MustCompile("\nRoot hash:\\s+([0-9a-f]+)").FindSubmatch(output)
@@ -120,46 +111,29 @@ func RecoverBadUsr(c cluster.TestCluster) {
 	}
 	verityHash := match[1]
 
-	runAsRoot(c, m, []string{
-		// copy kernel
-		"cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b",
+	// copy kernel
+	c.MustSSH(m, "sudo cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b")
 
-		// update verity hash on B kernel
-		fmt.Sprintf("dd of=/boot/coreos/vmlinuz-b bs=1 seek=%d count=64 conv=notrunc status=none <<<%s", getKernelVerityHashOffset(c), verityHash),
-	})
+	// update verity hash on B kernel
+	c.MustSSH(m, fmt.Sprintf("sudo dd of=/boot/coreos/vmlinuz-b bs=1 seek=%d count=64 conv=notrunc status=none <<<%s", getKernelVerityHashOffset(c), verityHash))
 
 	prioritizeUsr(c, m, "USR-B")
 	rebootWithEmergencyShellTimeout(c, m)
 	assertBootedUsr(c, m, "USR-A")
 }
 
-// run commands as root
-func runAsRoot(c cluster.TestCluster, m platform.Machine, commands []string) {
-	for _, command := range commands {
-		output, err := c.SSH(m, "sudo "+command)
-		if err != nil {
-			c.Fatalf("Failed to run %q: output %s, status: %v", command, output, err)
-		}
-	}
-}
-
 func assertBootedUsr(c cluster.TestCluster, m platform.Machine, usr string) {
 	usrdev := getUsrDeviceNode(c, m)
-	target, err := c.SSH(m, "readlink -f /dev/disk/by-partlabel/"+usr)
-	if err != nil {
-		c.Fatalf("Failed to readlink: output %s, status %v", target, err)
-	}
+	target := c.MustSSH(m, "readlink -f /dev/disk/by-partlabel/"+usr)
 	if usrdev != string(target) {
 		c.Fatalf("Expected /usr to be %v (%s) but it is %v", usr, target, usrdev)
 	}
 }
 
 func prioritizeUsr(c cluster.TestCluster, m platform.Machine, usr string) {
-	runAsRoot(c, m, []string{
-		"cgpt repair /dev/disk/by-partlabel/" + usr,
-		"cgpt add -S0 -T1 /dev/disk/by-partlabel/" + usr,
-		"cgpt prioritize /dev/disk/by-partlabel/" + usr,
-	})
+	c.MustSSH(m, "sudo cgpt repair /dev/disk/by-partlabel/"+usr)
+	c.MustSSH(m, "sudo cgpt add -S0 -T1 /dev/disk/by-partlabel/"+usr)
+	c.MustSSH(m, "sudo cgpt prioritize /dev/disk/by-partlabel/"+usr)
 }
 
 // reboot, waiting extra-long for the 5-minute emergency shell timeout

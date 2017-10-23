@@ -68,10 +68,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) {
 	c.Log("NFS server booted.")
 
 	/* poke a file in /tmp */
-	tmp, err := c.SSH(m1, "mktemp")
-	if err != nil {
-		c.Fatalf("Machine.SSH: %s", err)
-	}
+	tmp := c.MustSSH(m1, "mktemp")
 
 	c.Logf("Test file %q created on server.", tmp)
 
@@ -126,10 +123,7 @@ systemd:
 		c.Fatal(err)
 	}
 
-	_, err = c.SSH(m2, fmt.Sprintf("stat /mnt/%s", path.Base(string(tmp))))
-	if err != nil {
-		c.Fatalf("file %q does not exist", tmp)
-	}
+	c.MustSSH(m2, fmt.Sprintf("stat /mnt/%s", path.Base(string(tmp))))
 }
 
 // Test that the kernel NFS server and client work within CoreOS.

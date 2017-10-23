@@ -255,9 +255,7 @@ func stripSemverSuffix(v string) (string, error) {
 
 // Run and configure the coreos-kubernetes generic install scripts.
 func runInstallScript(c cluster.TestCluster, m platform.Machine, script string, options map[string]string) {
-	if _, err := c.SSH(m, "sudo stat /usr/lib/coreos/kubelet-wrapper"); err != nil {
-		c.Fatal("kubelet wrapper not found on disk")
-	}
+	c.MustSSH(m, "sudo stat /usr/lib/coreos/kubelet-wrapper")
 
 	var buffer = new(bytes.Buffer)
 

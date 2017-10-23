@@ -66,10 +66,7 @@ func OmahaPing(c cluster.TestCluster) {
 
 	m := c.Machines()[0]
 
-	out, err := c.SSH(m, "update_engine_client -check_for_update")
-	if err != nil {
-		c.Fatalf("failed to execute update_engine_client -check_for_update: %v: %v", out, err)
-	}
+	c.MustSSH(m, "update_engine_client -check_for_update")
 
 	tc := time.After(30 * time.Second)
 

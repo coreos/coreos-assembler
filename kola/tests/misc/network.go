@@ -49,11 +49,7 @@ type listener struct {
 func checkListeners(c cluster.TestCluster, expectedListeners []listener) {
 	m := c.Machines()[0]
 
-	command := "sudo netstat -plutn"
-	output, err := c.SSH(m, command)
-	if err != nil {
-		c.Fatalf("Failed to run %s: output %s, status: %v", command, output, err)
-	}
+	output := c.MustSSH(m, "sudo netstat -plutn")
 
 	processes := strings.Split(string(output), "\n")
 	// verify header is as expected
@@ -123,10 +119,7 @@ func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 	m.Reboot()
 
 	// get journal lines from the current boot
-	output, err := c.SSH(m, "journalctl -b 0 -o cat -u initrd-switch-root.target -u systemd-networkd.service")
-	if err != nil {
-		c.Fatalf("couldn't run journalctl: %v", err)
-	}
+	output := c.MustSSH(m, "journalctl -b 0 -o cat -u initrd-switch-root.target -u systemd-networkd.service")
 	lines := strings.Split(string(output), "\n")
 
 	// verify that the network service was started

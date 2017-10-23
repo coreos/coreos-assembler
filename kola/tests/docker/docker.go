@@ -211,9 +211,7 @@ func genDockerContainer(c cluster.TestCluster, m platform.Machine, name string, 
 	        sudo rsync -av --relative --copy-links $b $libs ./;
 	        sudo docker build -t %s .`
 
-	if output, err := c.SSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name)); err != nil {
-		c.Fatalf("failed to make %s container: output: %q status: %q", name, output, err)
-	}
+	c.MustSSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
 }
 
 func dockerBaseTests(c cluster.TestCluster) {
@@ -371,10 +369,7 @@ func dockerOldClient(c cluster.TestCluster) {
 
 	genDockerContainer(c, m, "echo", []string{"echo"})
 
-	output, err := c.SSH(m, "/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
-	if err != nil {
-		c.Fatalf("failed to run old docker client: %q status: %q", output, err)
-	}
+	output := c.MustSSH(m, "/home/core/docker-1.9.1 run echo echo 'IT WORKED'")
 
 	if !bytes.Equal(output, []byte("IT WORKED")) {
 		c.Fatalf("unexpected result from docker client: %q", output)
@@ -387,29 +382,17 @@ func dockerUserns(c cluster.TestCluster) {
 
 	genDockerContainer(c, m, "userns-test", []string{"echo", "sleep"})
 
-	_, err := c.SSH(m, `sudo setenforce 1`)
-	if err != nil {
-		c.Fatalf("could not enable selinux")
-	}
-	output, err := c.SSH(m, `docker run userns-test echo fj.fj`)
-	if err != nil {
-		c.Fatalf("failed to run echo under userns: output: %q status: %q", output, err)
-	}
+	c.MustSSH(m, `sudo setenforce 1`)
+	output := c.MustSSH(m, `docker run userns-test echo fj.fj`)
 	if !bytes.Equal(output, []byte("fj.fj")) {
 		c.Fatalf("expected fj.fj, got %s", string(output))
 	}
 
 	// And just in case, verify that a container really is userns remapped
-	_, err = c.SSH(m, `docker run -d --name=sleepy userns-test sleep 10000`)
-	if err != nil {
-		c.Fatalf("could not run sleep: %v", err)
-	}
-	uid_map, err := c.SSH(m, `until [[ "$(docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
+	c.MustSSH(m, `docker run -d --name=sleepy userns-test sleep 10000`)
+	uid_map := c.MustSSH(m, `until [[ "$(docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
 		pid=$(docker inspect -f {{.State.Pid}} sleepy);
 		cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
-	if err != nil {
-		c.Fatalf("could not read uid mapping: %v", err)
-	}
 	// uid_map is of the form `$mappedNamespacePidStart   $realNamespacePidStart
 	// $rangeLength`. We expect `0     100000      65536`
 	mapParts := strings.Fields(strings.TrimSpace(string(uid_map)))
@@ -428,13 +411,10 @@ func dockerNetworksReliably(c cluster.TestCluster) {
 
 	genDockerContainer(c, m, "ping", []string{"sh", "ping"})
 
-	output, err := c.SSH(m, `for i in $(seq 1 100); do 
+	output := c.MustSSH(m, `for i in $(seq 1 100); do
 		echo -n "$i: "
 		docker run --rm ping sh -c 'ping -i 0.2 172.17.0.1 -w 1 >/dev/null && echo PASS || echo FAIL'
 	done`)
-	if err != nil {
-		c.Fatalf("could not run 100 containers pinging the bridge: %v: %v", err, string(output))
-	}
 
 	numPass := strings.Count(string(output), "PASS")
 
@@ -456,13 +436,10 @@ func dockerUserNoCaps(c cluster.TestCluster) {
 
 	genDockerContainer(c, m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"})
 
-	output, err := c.SSH(m, `docker run --user 1000:1000 \
+	output := c.MustSSH(m, `docker run --user 1000:1000 \
 		-v /root:/root \
 		captest sh -c \
 		'cat /proc/self/status | grep -E "Cap(Eff|Prm)"; ls /root &>/dev/null && echo "FAIL: could read root" || echo "PASS: err reading root"'`)
-	if err != nil {
-		c.Fatalf("could not run container (we weren't even testing for that): %v: %q", err, string(output))
-	}
 
 	outputlines := strings.Split(string(output), "\n")
 	if len(outputlines) < 3 {
@@ -489,10 +466,7 @@ func dockerUserNoCaps(c cluster.TestCluster) {
 func dockerContainerdRestart(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	pid, err := c.SSH(m, "systemctl show containerd -p MainPID --value")
-	if err != nil {
-		c.Fatal(err)
-	}
+	pid := c.MustSSH(m, "systemctl show containerd -p MainPID --value")
 	if string(pid) == "0" {
 		c.Fatalf("Could not find containerd pid")
 	}
@@ -500,16 +474,11 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 	testContainerdUp(c)
 
 	// kill it
-	if _, err = c.SSH(m, "sudo kill "+string(pid)); err != nil {
-		c.Fatal(err)
-	}
+	c.MustSSH(m, "sudo kill "+string(pid))
 
 	// retry polling its state
 	util.Retry(12, 6*time.Second, func() error {
-		state, err := c.SSH(m, "systemctl show containerd -p SubState --value")
-		if err != nil {
-			c.Fatal(err)
-		}
+		state := c.MustSSH(m, "systemctl show containerd -p SubState --value")
 		switch string(state) {
 		case "running":
 			return nil
@@ -520,10 +489,7 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 	})
 
 	// verify systemd started it and that it's pid is different
-	newPid, err := c.SSH(m, "systemctl show containerd -p MainPID --value")
-	if err != nil {
-		c.Fatal(err)
-	}
+	newPid := c.MustSSH(m, "systemctl show containerd -p MainPID --value")
 	if string(newPid) == "0" {
 		c.Fatalf("Containerd is not running (could not find pid)")
 	} else if string(newPid) == string(pid) {

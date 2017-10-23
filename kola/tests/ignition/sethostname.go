@@ -76,10 +76,7 @@ func init() {
 func setHostname(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	out, err := c.SSH(m, "hostnamectl")
-	if err != nil {
-		c.Fatalf("failed to run hostnamectl: %s: %v", out, err)
-	}
+	out := c.MustSSH(m, "hostnamectl")
 
 	if !strings.Contains(string(out), "Static hostname: core1") {
 		c.Fatalf("hostname wasn't set correctly:\n%s", out)

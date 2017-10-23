@@ -60,7 +60,7 @@ func testKubeletWrapperVarLog(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Wait up to 10 minutes the version
-	_, err := c.SSH(m, `
+	c.MustSSH(m, `
 	for i in {1..120}; do 
 		sleep 5
 		if journalctl -u kubelet -o cat | grep '`+versionOutput+`' &>/dev/null; then
@@ -69,7 +69,4 @@ func testKubeletWrapperVarLog(c cluster.TestCluster) {
 	done
 	journalctl -u kubelet -o cat
 	exit 1`)
-	if err != nil {
-		c.Fatalf("unable to get expected kubelet.service version output: %v", err)
-	}
 }

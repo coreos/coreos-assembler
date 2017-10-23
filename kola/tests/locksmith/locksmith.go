@@ -150,10 +150,7 @@ func locksmithCluster(c cluster.TestCluster) {
 		c.Fatalf("cluster health: %v", err)
 	}
 
-	output, err := c.SSH(machs[0], "locksmithctl status")
-	if err != nil {
-		c.Fatalf("locksmithctl status: %q: %v", output, err)
-	}
+	c.MustSSH(machs[0], "locksmithctl status")
 
 	ctx := context.Background()
 	wg := worker.NewWorkerGroup(ctx, len(machs))
@@ -196,22 +193,13 @@ func locksmithTLS(c cluster.TestCluster) {
 	}
 
 	// Also verify locksmithctl understands the TLS connection
-	output, err = c.SSH(m, lCmd+"status")
-	if err != nil {
-		c.Fatalf("locksmithctl status: %q: %v", output, err)
-	}
+	c.MustSSH(m, lCmd+"status")
 
 	// Stop locksmithd
-	output, err = c.SSH(m, "sudo systemctl stop locksmithd.service")
-	if err != nil {
-		c.Fatalf("systemctl stop: %q: %v", output, err)
-	}
+	c.MustSSH(m, "sudo systemctl stop locksmithd.service")
 
 	// Set the lock while locksmithd isn't looking
-	output, err = c.SSH(m, lCmd+"lock")
-	if err != nil {
-		c.Fatalf("locksmithctl lock: %q: %v", output, err)
-	}
+	c.MustSSH(m, lCmd+"lock")
 
 	// Verify it is locked
 	output, err = c.SSH(m, lCmd+"status")
@@ -220,10 +208,7 @@ func locksmithTLS(c cluster.TestCluster) {
 	}
 
 	// Start locksmithd
-	output, err = c.SSH(m, "sudo systemctl start locksmithd.service")
-	if err != nil {
-		c.Fatalf("systemctl start: %q: %v", output, err)
-	}
+	c.MustSSH(m, "sudo systemctl start locksmithd.service")
 
 	// Verify it is unlocked (after locksmithd wakes up again)
 	checker := func() error {
