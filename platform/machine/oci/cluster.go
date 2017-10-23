@@ -67,7 +67,7 @@ func NewCluster(opts *oci.Options, rconf *platform.RuntimeConfig) (platform.Clus
 func (oc *cluster) vmname() string {
 	b := make([]byte, 5)
 	rand.Read(b)
-	return fmt.Sprintf("%s-%x", oc.Name(), b)
+	return fmt.Sprintf("%s-%x", oc.Name()[0:13], b)
 }
 
 func (oc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
