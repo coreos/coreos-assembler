@@ -57,8 +57,8 @@ func (om *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return om.cluster.SSH(om, cmd)
 }
 
-func (m *machine) Reboot() error {
-	return platform.RebootMachine(m, m.journal, m.cluster.RuntimeConf())
+func (om *machine) Reboot() error {
+	return platform.RebootMachine(om, om.journal, om.cluster.RuntimeConf())
 }
 
 func (om *machine) Destroy() error {
