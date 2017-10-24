@@ -1,0 +1,305 @@
+// Copyright 2017 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package do
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/coreos/pkg/capnslog"
+	"github.com/digitalocean/godo"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/oauth2"
+
+	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/do")
+)
+
+type Options struct {
+	*platform.Options
+
+	// Config file. Defaults to $HOME/.config/digitalocean.json.
+	ConfigPath string
+	// Profile name
+	Profile string
+	// Personal access token (overrides config profile)
+	AccessToken string
+
+	// Region slug (e.g. "sfo2")
+	Region string
+	// Droplet size slug (e.g. "512mb")
+	Size string
+	// Numeric image ID, {alpha, beta, stable}, or user image name
+	Image string
+}
+
+type API struct {
+	c     *godo.Client
+	opts  *Options
+	image godo.DropletCreateImage
+}
+
+func New(opts *Options) (*API, error) {
+	if opts.AccessToken == "" {
+		profiles, err := auth.ReadDOConfig(opts.ConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't read DigitalOcean config: %v", err)
+		}
+
+		if opts.Profile == "" {
+			opts.Profile = "default"
+		}
+		profile, ok := profiles[opts.Profile]
+		if !ok {
+			return nil, fmt.Errorf("no such profile %q", opts.Profile)
+		}
+		if opts.AccessToken == "" {
+			opts.AccessToken = profile.AccessToken
+		}
+	}
+
+	ctx := context.TODO()
+	client := godo.NewClient(oauth2.NewClient(ctx, &tokenSource{opts.AccessToken}))
+
+	a := &API{
+		c:    client,
+		opts: opts,
+	}
+
+	var err error
+	a.image, err = a.resolveImage(ctx, opts.Image)
+	if err != nil {
+		return nil, err
+	}
+
+	return a, nil
+}
+
+func (a *API) resolveImage(ctx context.Context, imageSpec string) (godo.DropletCreateImage, error) {
+	// try numeric image ID first
+	imageID, err := strconv.Atoi(imageSpec)
+	if err == nil {
+		return godo.DropletCreateImage{ID: imageID}, nil
+	}
+
+	// handle magic values
+	switch imageSpec {
+	case "":
+		// pick the most conservative default
+		imageSpec = "stable"
+		fallthrough
+	case "alpha", "beta", "stable":
+		return godo.DropletCreateImage{Slug: "coreos-" + imageSpec}, nil
+	}
+
+	// resolve to user image ID
+	image, err := a.GetUserImage(ctx, imageSpec, true)
+	if err == nil {
+		return godo.DropletCreateImage{ID: image.ID}, nil
+	}
+
+	return godo.DropletCreateImage{}, fmt.Errorf("couldn't resolve image %q in %v", imageSpec, a.opts.Region)
+}
+
+func (a *API) PreflightCheck(ctx context.Context) error {
+	_, _, err := a.c.Account.Get(ctx)
+	if err != nil {
+		return fmt.Errorf("querying account: %v", err)
+	}
+	return nil
+}
+
+func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, userdata string) (*godo.Droplet, error) {
+	droplet, _, err := a.c.Droplets.Create(ctx, &godo.DropletCreateRequest{
+		Name:              name,
+		Region:            a.opts.Region,
+		Size:              a.opts.Size,
+		Image:             a.image,
+		SSHKeys:           []godo.DropletCreateSSHKey{{ID: sshKeyID}},
+		IPv6:              true,
+		PrivateNetworking: true,
+		UserData:          userdata,
+		Tags:              []string{"mantle"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create droplet: %v", err)
+	}
+	dropletID := droplet.ID
+
+	err = util.WaitUntilReady(5*time.Minute, 10*time.Second, func() (bool, error) {
+		var err error
+		// update droplet in closure
+		droplet, _, err = a.c.Droplets.Get(ctx, dropletID)
+		if err != nil {
+			return false, err
+		}
+		return droplet.Status == "active", nil
+	})
+	if err != nil {
+		a.DeleteDroplet(ctx, dropletID)
+		return nil, fmt.Errorf("waiting for droplet to run: %v", err)
+	}
+
+	return droplet, nil
+}
+
+func (a *API) GetDroplet(ctx context.Context, dropletID int) (*godo.Droplet, error) {
+	droplet, _, err := a.c.Droplets.Get(ctx, dropletID)
+	if err != nil {
+		return nil, err
+	}
+	return droplet, nil
+}
+
+// SnapshotDroplet creates a snapshot of a droplet and waits until complete.
+// The Snapshot API doesn't return the snapshot ID, so we don't either.
+func (a *API) SnapshotDroplet(ctx context.Context, dropletID int, name string) error {
+	action, _, err := a.c.DropletActions.Snapshot(ctx, dropletID, name)
+	if err != nil {
+		return err
+	}
+	actionID := action.ID
+
+	err = util.WaitUntilReady(30*time.Minute, 15*time.Second, func() (bool, error) {
+		action, _, err := a.c.Actions.Get(ctx, actionID)
+		if err != nil {
+			return false, err
+		}
+		switch action.Status {
+		case "in-progress":
+			return false, nil
+		case "completed":
+			return true, nil
+		default:
+			return false, fmt.Errorf("snapshot failed")
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *API) DeleteDroplet(ctx context.Context, dropletID int) error {
+	_, err := a.c.Droplets.Delete(ctx, dropletID)
+	if err != nil {
+		return fmt.Errorf("deleting droplet %d: %v", dropletID, err)
+	}
+	return nil
+}
+
+func (a *API) GetUserImage(ctx context.Context, imageName string, inRegion bool) (*godo.Image, error) {
+	var ret *godo.Image
+	var regionMessage string
+	if inRegion {
+		regionMessage = fmt.Sprintf(" in %v", a.opts.Region)
+	}
+	page := godo.ListOptions{
+		Page:    1,
+		PerPage: 200,
+	}
+	for {
+		images, _, err := a.c.Images.ListUser(ctx, &page)
+		if err != nil {
+			return nil, err
+		}
+		for _, image := range images {
+			if image.Name != imageName {
+				continue
+			}
+			for _, region := range image.Regions {
+				if inRegion && region != a.opts.Region {
+					continue
+				}
+				if ret != nil {
+					return nil, fmt.Errorf("found multiple images named %q%s", imageName, regionMessage)
+				}
+				ret = &image
+				break
+			}
+		}
+		if len(images) < page.PerPage {
+			break
+		}
+		page.Page += 1
+	}
+
+	if ret == nil {
+		return nil, fmt.Errorf("couldn't find image %q%s", imageName, regionMessage)
+	}
+	return ret, nil
+}
+
+func (a *API) DeleteImage(ctx context.Context, imageID int) error {
+	_, err := a.c.Images.Delete(ctx, imageID)
+	if err != nil {
+		return fmt.Errorf("deleting image %d: %v", imageID, err)
+	}
+	return nil
+}
+
+func (a *API) AddKey(ctx context.Context, name, key string) (int, error) {
+	sshKey, _, err := a.c.Keys.Create(ctx, &godo.KeyCreateRequest{
+		Name:      name,
+		PublicKey: key,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("couldn't create SSH key: %v", err)
+	}
+	return sshKey.ID, nil
+}
+
+func (a *API) DeleteKey(ctx context.Context, keyID int) error {
+	_, err := a.c.Keys.DeleteByID(ctx, keyID)
+	if err != nil {
+		return fmt.Errorf("couldn't delete SSH key: %v", err)
+	}
+	return nil
+}
+
+// GenerateFakeKey generates a SSH key pair, returns the public key, and
+// discards the private key. This is useful for droplets that don't need a
+// public key, since DO insists on requiring one.
+func GenerateFakeKey() (string, error) {
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", err
+	}
+	sshKey, err := ssh.NewPublicKey(&rsaKey.PublicKey)
+	if err != nil {
+		return "", err
+	}
+	return string(ssh.MarshalAuthorizedKey(sshKey)), nil
+}
+
+type tokenSource struct {
+	token string
+}
+
+func (t *tokenSource) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken: t.token,
+	}, nil
+}

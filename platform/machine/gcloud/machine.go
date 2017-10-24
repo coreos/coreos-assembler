@@ -57,8 +57,8 @@ func (gm *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return gm.gc.SSH(gm, cmd)
 }
 
-func (m *machine) Reboot() error {
-	return platform.RebootMachine(m, m.journal, m.gc.RuntimeConf())
+func (gm *machine) Reboot() error {
+	return platform.RebootMachine(gm, gm.journal, gm.gc.RuntimeConf())
 }
 
 func (gm *machine) Destroy() error {
