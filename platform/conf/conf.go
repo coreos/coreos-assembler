@@ -111,8 +111,15 @@ func Unknown(data string) *UserData {
 	case v21.ErrScript:
 		u.kind = kindScript
 	default:
-		// we don't autodetect Container Linux configs
-		u.kind = kindIgnition
+		// Guess whether this is an Ignition config or a CLC.
+		// This treats an invalid Ignition config as a CLC, and a
+		// CLC in the JSON subset of YAML as an Ignition config.
+		var decoded interface{}
+		if err := json.Unmarshal([]byte(data), &decoded); err != nil {
+			u.kind = kindContainerLinuxConfig
+		} else {
+			u.kind = kindIgnition
+		}
 	}
 
 	return u
