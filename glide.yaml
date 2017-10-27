@@ -215,6 +215,8 @@ import:
   - pbutil
 - package: github.com/packethost/packngo
   version: 8ff1de745a8a4fdc5323ffd9ac2bc55195ff671e
+- package: github.com/pin/tftp
+  version: v2.1.0
 - package: github.com/prometheus/client_golang
   version: e51041b3fa41cece0dca035740ba6411905be473
   subpackages:

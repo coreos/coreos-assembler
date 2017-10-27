@@ -63,6 +63,7 @@ func init() {
 	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "t2.small", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
+	sv(&kola.AWSOptions.IAMInstanceProfile, "aws-iam-profile", "kola", "AWS IAM instance profile name")
 
 	// do-specific options
 	sv(&kola.DOOptions.ConfigPath, "do-config-file", "", "DigitalOcean config file (default \"~/"+auth.DOConfigPath+"\")")

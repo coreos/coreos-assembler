@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/coreos/pkg/capnslog"
@@ -47,14 +48,16 @@ type Options struct {
 	// AMI is the AWS AMI to launch EC2 instances with.
 	// If it is one of the special strings alpha|beta|stable, it will be resolved
 	// to an actual ID.
-	AMI           string
-	InstanceType  string
-	SecurityGroup string
+	AMI                string
+	InstanceType       string
+	SecurityGroup      string
+	IAMInstanceProfile string
 }
 
 type API struct {
 	session client.ConfigProvider
 	ec2     *ec2.EC2
+	iam     *iam.IAM
 	s3      *s3.S3
 	opts    *Options
 }
@@ -86,6 +89,7 @@ func New(opts *Options) (*API, error) {
 	api := &API{
 		session: sess,
 		ec2:     ec2.New(sess),
+		iam:     iam.New(sess),
 		s3:      s3.New(sess),
 		opts:    opts,
 	}
