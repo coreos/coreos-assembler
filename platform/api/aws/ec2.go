@@ -85,6 +85,10 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 						Key:   aws.String("Name"),
 						Value: aws.String(name),
 					},
+					&ec2.Tag{
+						Key:   aws.String("CreatedBy"),
+						Value: aws.String("mantle"),
+					},
 				},
 			},
 		},
