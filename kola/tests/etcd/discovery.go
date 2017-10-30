@@ -15,6 +15,9 @@
 package etcd
 
 import (
+	"encoding/json"
+
+	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -53,6 +56,43 @@ func init() {
   }
 }`),
 	})
+
+	register.Register(&register.Test{
+		Run:         etcdMemberV2BackupRestore,
+		ClusterSize: 1,
+		Name:        "coreos.etcd-member.v2-backup-restore",
+		// needs etcdctl v3 because a v2 backup with a v3 daemon panics, see https://github.com/coreos/etcd/issues/7150
+		MinVersion: semver.Version{Major: 1520},
+		UserData: conf.ContainerLinuxConfig(`
+
+etcd:
+  listen_client_urls:          http://0.0.0.0:4001,http://{PRIVATE_IPV4}:2379
+  advertise_client_urls:       http://{PRIVATE_IPV4}:2379
+  listen_peer_urls:            http://0.0.0.0:2380
+  initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
+  discovery:                   $discovery
+`),
+		ExcludePlatforms: []string{"qemu", "esx"}, // etcd-member requires networking and ct rendering
+	})
+
+	register.Register(&register.Test{
+		Run: etcdmemberEtcdctlV3,
+		// Clustersize of 1 to avoid needing private ips everywhere for clustering;
+		// this lets it run on more platforms, and also faster
+		ClusterSize: 1,
+		Name:        "coreos.etcd-member.etcdctlv3",
+		// tests etcdctl v3
+		MinVersion: semver.Version{Major: 1520},
+		UserData: conf.ContainerLinuxConfig(`
+
+etcd:
+  listen_client_urls:          http://0.0.0.0:2379
+  advertise_client_urls:       http://127.0.0.1:2379
+  listen_peer_urls:            http://0.0.0.0:2380
+  initial_advertise_peer_urls: http://127.0.0.1:2380
+`),
+		ExcludePlatforms: []string{"qemu"}, // networking to download etcd image
+	})
 }
 
 func Discovery(c cluster.TestCluster) {
@@ -72,4 +112,113 @@ func Discovery(c cluster.TestCluster) {
 	if err = checkKeys(c, keyMap); err != nil {
 		c.Fatalf("failed to check keys: %v", err)
 	}
+
+}
+
+// etcdMemberV2BackupRestore tests that the basic etcdctl v2 operations (get,
+// put, rm) work. It verifies that a backup and restore, similar to the one
+// documented in
+// https://coreos.com/etcd/docs/latest/v2/admin_guide.html#disaster-recovery
+// works.
+// Note, this is a v2 backup/restore being performed against the current v3
+// etcd
+func etcdMemberV2BackupRestore(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	if err := GetClusterHealth(c, c.Machines()[0], len(c.Machines())); err != nil {
+		c.Fatalf("failed cluster-health check: %v", err)
+	}
+
+	c.MustSSH(m, `
+	set -e
+
+	prefix=$RANDOM
+	etcdctl set /$prefix/test magic
+	res="$(etcdctl get /$prefix/test)"
+	if [[ "$res" != "magic" ]]; then
+		echo "Expected magic, got $res"
+		exit 1
+	fi
+
+	backup_to="$(mktemp -d)"
+
+	sudo etcdctl backup --data-dir=/var/lib/etcd \
+	               --backup-dir "${backup_to}"
+	
+	etcdctl rm /$prefix/test
+
+	if etcdctl get /$prefix/test 2>&1; then
+		echo "Expected rm'd key to error on get, didn't"
+		exit 1
+	fi
+
+	sudo systemctl stop etcd-member
+
+	# Note: this means we're now a new cluster of size 1 because of how etcd2
+	# backup/restore works.
+	sudo rm -rf /var/lib/etcd
+	sudo mv "${backup_to}" /var/lib/etcd/
+	sudo chown -R etcd:etcd /var/lib/etcd
+
+	sudo mkdir -p /run/systemd/system/etcd-member.service.d/
+	sudo tee /run/systemd/system/etcd-member.service.d/10-force-new.conf <<EOF
+[Service]
+Environment=ETCD_FORCE_NEW_CLUSTER=true
+EOF
+
+	sudo systemctl daemon-reload
+	sudo systemctl start etcd-member
+
+	res="$(etcdctl get /$prefix/test)"
+	if [[ "$res" != "magic" ]]; then
+		echo "Expected magic after backup-restore, got $res"
+		exit 1
+	fi
+`)
+}
+
+// etcdmemberEtcdctlV3 tests the basic operatoin of the ETCDCTL_API=3 behavior
+// of the etcdctl we ship.
+func etcdmemberEtcdctlV3(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	type etcdMemberOutput struct {
+		Members []struct {
+			ID         uint64
+			Name       string
+			PeerURLs   []string
+			ClientURLs []string
+		}
+	}
+	memberJson := c.MustSSH(m, `ETCDCTL_API=3 etcdctl member list --write-out=json`)
+
+	members := etcdMemberOutput{}
+	if err := json.Unmarshal(memberJson, &members); err != nil {
+		c.Fatalf("could not unmarshal %s: %s", memberJson, err)
+	}
+
+	if len(members.Members) != len(c.Machines()) {
+		c.Fatalf("expected %v members; only got %v", len(c.Machines()), len(members.Members))
+	}
+
+	c.MustSSH(m, `
+	set -e
+	export ETCDCTL_API=3
+	if [[ "$(etcdctl put foo bar)" != "OK" ]]; then
+		echo "Put failed"
+		exit 1
+	fi
+
+	value="$(etcdctl get foo -w json | jq '.kvs[].value' -r | base64 -d)"
+
+	if [[ "${value}" != "bar" ]]; then
+		echo "Reading our put failed: expected bar, got ${value}"
+		exit 1
+	fi
+
+	backup_to="$(mktemp -d)"
+
+	sudo -E etcdctl snapshot save "${backup_to}/snapshot.db"
+	sudo -E etcdctl snapshot status "${backup_to}/snapshot.db"
+`)
 }
