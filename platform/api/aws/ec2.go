@@ -135,6 +135,51 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 	return insts, nil
 }
 
+// gcEC2 will terminate ec2 instances older than gracePeriod.
+// It will only operate on ec2 instances tagged with 'mantle' to avoid stomping
+// on other resources in the account.
+func (a *API) gcEC2(gracePeriod time.Duration) error {
+	durationAgo := time.Now().Add(-1 * gracePeriod)
+
+	instances, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("tag:CreatedBy"),
+				Values: aws.StringSlice([]string{"mantle"}),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error describing instances: %v", err)
+	}
+
+	toTerminate := []string{}
+
+	for _, reservation := range instances.Reservations {
+		for _, instance := range reservation.Instances {
+			if instance.LaunchTime.After(durationAgo) {
+				plog.Debugf("ec2: skipping instance %s due to being too new", *instance.InstanceId)
+				// Skip, still too new
+				continue
+			}
+
+			if instance.State != nil {
+				switch *instance.State.Name {
+				case ec2.InstanceStateNamePending, ec2.InstanceStateNameRunning, ec2.InstanceStateNameStopped:
+					toTerminate = append(toTerminate, *instance.InstanceId)
+				case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
+				default:
+					plog.Infof("ec2: skipping instance in state %s", *instance.State.Name)
+				}
+			} else {
+				plog.Warningf("ec2 instance had no state: %s", *instance.InstanceId)
+			}
+		}
+	}
+
+	return a.TerminateInstances(toTerminate)
+}
+
 // TerminateInstances schedules EC2 instances to be terminated.
 func (a *API) TerminateInstances(ids []string) error {
 	if len(ids) == 0 {
