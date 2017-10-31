@@ -15,6 +15,8 @@
 package aws
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -95,6 +97,12 @@ func New(opts *Options) (*API, error) {
 	}
 
 	return api, nil
+}
+
+// GC removes AWS resources that are at least gracePeriod old.
+// It attempts to only operate on resources that were created by a mantle tool.
+func (a *API) GC(gracePeriod time.Duration) error {
+	return a.gcEC2(gracePeriod)
 }
 
 // PreflightCheck validates that the aws configuration provided has valid
