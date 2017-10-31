@@ -137,6 +137,9 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 
 // TerminateInstances schedules EC2 instances to be terminated.
 func (a *API) TerminateInstances(ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
 	input := &ec2.TerminateInstancesInput{
 		InstanceIds: aws.StringSlice(ids),
 	}
