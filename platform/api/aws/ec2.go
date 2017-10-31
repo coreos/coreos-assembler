@@ -77,6 +77,21 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
 			Name: &a.opts.IAMInstanceProfile,
 		},
+		TagSpecifications: []*ec2.TagSpecification{
+			&ec2.TagSpecification{
+				ResourceType: aws.String(ec2.ResourceTypeInstance),
+				Tags: []*ec2.Tag{
+					&ec2.Tag{
+						Key:   aws.String("Name"),
+						Value: aws.String(name),
+					},
+					&ec2.Tag{
+						Key:   aws.String("CreatedBy"),
+						Value: aws.String("mantle"),
+					},
+				},
+			},
+		},
 	}
 
 	reservations, err := a.ec2.RunInstances(&inst)
@@ -87,27 +102,6 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 	ids := make([]string, len(reservations.Instances))
 	for i, inst := range reservations.Instances {
 		ids[i] = *inst.InstanceId
-	}
-
-	for {
-		_, err := a.ec2.CreateTags(&ec2.CreateTagsInput{
-			Resources: aws.StringSlice(ids),
-			Tags: []*ec2.Tag{
-				&ec2.Tag{
-					Key:   aws.String("Name"),
-					Value: aws.String(name),
-				},
-			},
-		})
-		if err == nil {
-			break
-		}
-		if awserr, ok := err.(awserr.Error); !ok || awserr.Code() != "InvalidInstanceID.NotFound" {
-			a.TerminateInstances(ids)
-			return nil, fmt.Errorf("error creating tags: %v", err)
-		}
-		// eventual consistency
-		time.Sleep(5 * time.Second)
 	}
 
 	// loop until all machines are online
