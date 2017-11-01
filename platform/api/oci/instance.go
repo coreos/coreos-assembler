@@ -35,7 +35,9 @@ func (a *API) CreateInstance(name, userdata, sshKey string) (*Machine, error) {
 		return nil, err
 	}
 
-	metadata := map[string]string{}
+	metadata := map[string]string{
+		"created_by": "mantle",
+	}
 	if userdata != "" {
 		metadata["user_data"] = base64.StdEncoding.EncodeToString([]byte(userdata))
 	}
