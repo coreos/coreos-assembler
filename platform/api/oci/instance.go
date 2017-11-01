@@ -157,3 +157,31 @@ func (a *API) GetConsoleOutput(instanceID string) (string, error) {
 
 	return content.Data, nil
 }
+
+func (a *API) gcInstances(gracePeriod time.Duration) error {
+	threshold := time.Now().Add(-gracePeriod)
+
+	result, err := a.client.ListInstances(a.opts.CompartmentID, nil)
+	if err != nil {
+		return err
+	}
+	for _, instance := range result.Instances {
+		if instance.Metadata["created_by"] != "mantle" {
+			continue
+		}
+
+		if instance.TimeCreated.After(threshold) {
+			continue
+		}
+
+		switch instance.State {
+		case "TERMINATING", "TERMINATED":
+			continue
+		}
+
+		if err := a.TerminateInstance(instance.ID); err != nil {
+			return fmt.Errorf("couldn't terminate instance %v: %v", instance.ID, err)
+		}
+	}
+	return nil
+}
