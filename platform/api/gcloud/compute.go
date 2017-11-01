@@ -31,7 +31,15 @@ func (a *API) vmname() string {
 
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
 func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Instance {
-	var metadataItems []*compute.MetadataItems
+	mantle := "mantle"
+	metadataItems := []*compute.MetadataItems{
+		&compute.MetadataItems{
+			// this should be done with a label instead, but
+			// our old vendored Go binding doesn't support those
+			Key:   "created-by",
+			Value: &mantle,
+		},
+	}
 	if len(keys) > 0 {
 		var sshKeys string
 		for i, key := range keys {
