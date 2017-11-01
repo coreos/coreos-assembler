@@ -561,3 +561,46 @@ func waitForInstall(address string) (err error) {
 	}
 	return
 }
+
+func (a *API) GC(gracePeriod time.Duration) error {
+	threshold := time.Now().Add(-gracePeriod)
+
+	devices, _, err := a.c.Devices.List(a.opts.Project)
+	if err != nil {
+		return fmt.Errorf("listing devices: %v", err)
+	}
+	for _, device := range devices {
+		tagged := false
+		for _, tag := range device.Tags {
+			if tag == "mantle" {
+				tagged = true
+				break
+			}
+		}
+		if !tagged {
+			continue
+		}
+
+		switch device.State {
+		case "queued", "provisioning":
+			continue
+		}
+
+		if device.Locked {
+			continue
+		}
+
+		created, err := time.Parse(time.RFC3339, device.Created)
+		if err != nil {
+			return fmt.Errorf("couldn't parse %q: %v", device.Created, err)
+		}
+		if created.After(threshold) {
+			continue
+		}
+
+		if err := a.DeleteDevice(device.ID); err != nil {
+			return fmt.Errorf("couldn't delete device %v: %v", device.ID, err)
+		}
+	}
+	return nil
+}

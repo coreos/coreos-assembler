@@ -16,6 +16,7 @@ package oci
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/oracle/bmcs-go-sdk"
 
@@ -110,6 +111,10 @@ func New(opts *Options) (*API, error) {
 		client: client,
 		opts:   opts,
 	}, nil
+}
+
+func (a *API) GC(gracePeriod time.Duration) error {
+	return a.gcInstances(gracePeriod)
 }
 
 func boolToPtr(b bool) *bool {

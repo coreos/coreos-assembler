@@ -164,6 +164,25 @@ func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, user
 	return droplet, nil
 }
 
+func (a *API) listDropletsWithTag(ctx context.Context, tag string) ([]godo.Droplet, error) {
+	page := godo.ListOptions{
+		Page:    1,
+		PerPage: 200,
+	}
+	var ret []godo.Droplet
+	for {
+		droplets, _, err := a.c.Droplets.ListByTag(ctx, tag, &page)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, droplets...)
+		if len(droplets) < page.PerPage {
+			return ret, nil
+		}
+		page.Page += 1
+	}
+}
+
 func (a *API) GetDroplet(ctx context.Context, dropletID int) (*godo.Droplet, error) {
 	droplet, _, err := a.c.Droplets.Get(ctx, dropletID)
 	if err != nil {
@@ -292,6 +311,33 @@ func GenerateFakeKey() (string, error) {
 		return "", err
 	}
 	return string(ssh.MarshalAuthorizedKey(sshKey)), nil
+}
+
+func (a *API) GC(ctx context.Context, gracePeriod time.Duration) error {
+	threshold := time.Now().Add(-gracePeriod)
+
+	droplets, err := a.listDropletsWithTag(ctx, "mantle")
+	if err != nil {
+		return fmt.Errorf("listing droplets: %v", err)
+	}
+	for _, droplet := range droplets {
+		if droplet.Status == "archive" {
+			continue
+		}
+
+		created, err := time.Parse(time.RFC3339, droplet.Created)
+		if err != nil {
+			return fmt.Errorf("couldn't parse %q: %v", droplet.Created, err)
+		}
+		if created.After(threshold) {
+			continue
+		}
+
+		if err := a.DeleteDroplet(ctx, droplet.ID); err != nil {
+			return fmt.Errorf("couldn't delete droplet %d: %v", droplet.ID, err)
+		}
+	}
+	return nil
 }
 
 type tokenSource struct {
