@@ -183,28 +183,6 @@ func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, de
 	return op.TargetLink
 }
 
-// Once we can use sort.Slice (go 1.8), kill with fire.
-type imageSlice []*compute.Image
-
-func (s imageSlice) Len() int {
-	return len(s)
-}
-
-func (s imageSlice) Less(i, j int) bool {
-	getCreation := func(image *compute.Image) time.Time {
-		stamp, err := time.Parse(time.RFC3339, image.CreationTimestamp)
-		if err != nil {
-			plog.Fatalf("Couldn't parse timestamp %q: %v", image.CreationTimestamp, err)
-		}
-		return stamp
-	}
-	return getCreation(s[i]).After(getCreation(s[j]))
-}
-
-func (s imageSlice) Swap(i, j int) {
-	s[j], s[i] = s[i], s[j]
-}
-
 func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
 	if spec.GCE.Project == "" || spec.GCE.Image == "" {
 		plog.Notice("GCE image creation disabled.")
@@ -230,8 +208,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		plog.Fatal(err)
 	}
 
-	var conflicting []*compute.Image
-	var oldImages imageSlice
+	var conflicting, oldImages []*compute.Image
 	for _, image := range images {
 		if strings.HasPrefix(image.Name, nameVer) {
 			conflicting = append(conflicting, image)
@@ -239,7 +216,16 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 			oldImages = append(oldImages, image)
 		}
 	}
-	sort.Sort(oldImages)
+	sort.Slice(oldImages, func(i, j int) bool {
+		getCreation := func(image *compute.Image) time.Time {
+			stamp, err := time.Parse(time.RFC3339, image.CreationTimestamp)
+			if err != nil {
+				plog.Fatalf("Couldn't parse timestamp %q: %v", image.CreationTimestamp, err)
+			}
+			return stamp
+		}
+		return getCreation(oldImages[i]).After(getCreation(oldImages[j]))
+	})
 
 	// Check for any with the same version but possibly different dates.
 	var imageLink string
