@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/api/compute/v1"
@@ -101,4 +102,8 @@ func New(opts *Options) (*API, error) {
 
 func (a *API) Client() *http.Client {
 	return a.client
+}
+
+func (a *API) GC(gracePeriod time.Duration) error {
+	return a.gcInstances(gracePeriod)
 }

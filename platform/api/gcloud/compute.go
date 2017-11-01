@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
@@ -177,4 +178,49 @@ func InstanceIPs(inst *compute.Instance) (intIP, extIP string) {
 		}
 	}
 	return
+}
+
+func (a *API) gcInstances(gracePeriod time.Duration) error {
+	threshold := time.Now().Add(-gracePeriod)
+
+	list, err := a.compute.Instances.List(a.options.Project, a.options.Zone).Do()
+	if err != nil {
+		return err
+	}
+	for _, instance := range list.Items {
+		// check metadata because our vendored Go binding
+		// doesn't support labels
+		if instance.Metadata == nil {
+			continue
+		}
+		isMantle := false
+		for _, item := range instance.Metadata.Items {
+			if item.Key == "created-by" && item.Value != nil && *item.Value == "mantle" {
+				isMantle = true
+				break
+			}
+		}
+		if !isMantle {
+			continue
+		}
+
+		created, err := time.Parse(time.RFC3339, instance.CreationTimestamp)
+		if err != nil {
+			return fmt.Errorf("couldn't parse %q: %v", instance.CreationTimestamp, err)
+		}
+		if created.After(threshold) {
+			continue
+		}
+
+		switch instance.Status {
+		case "TERMINATED":
+			continue
+		}
+
+		if err := a.TerminateInstance(instance.Name); err != nil {
+			return fmt.Errorf("couldn't terminate instance %q: %v", instance.Name, err)
+		}
+	}
+
+	return nil
 }
