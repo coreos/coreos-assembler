@@ -32,12 +32,11 @@ const (
 )
 
 type ImageSpec struct {
-	SourceImage           string
-	Family                string
-	Name                  string
-	Description           string
-	Licenses              []string // short names
-	DisableSCSIMultiqueue bool     // TODO(bgilbert): Remove after stable > 1409.0.0
+	SourceImage string
+	Family      string
+	Name        string
+	Description string
+	Licenses    []string // short names
 }
 
 // CreateImage creates an image on GCE and returns operation details and
@@ -71,20 +70,16 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		}
 	}
 
-	features := []*compute.GuestOsFeature{
-		&compute.GuestOsFeature{
-			Type: "VIRTIO_SCSI_MULTIQUEUE",
-		},
-	}
-	if spec.DisableSCSIMultiqueue {
-		features = []*compute.GuestOsFeature{}
-	}
 	image := &compute.Image{
-		Family:          spec.Family,
-		Name:            spec.Name,
-		Description:     spec.Description,
-		Licenses:        licenses,
-		GuestOsFeatures: features,
+		Family:      spec.Family,
+		Name:        spec.Name,
+		Description: spec.Description,
+		Licenses:    licenses,
+		GuestOsFeatures: []*compute.GuestOsFeature{
+			&compute.GuestOsFeature{
+				Type: "VIRTIO_SCSI_MULTIQUEUE",
+			},
+		},
 		RawDisk: &compute.ImageRawDisk{
 			Source: spec.SourceImage,
 		},

@@ -22,7 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/api/compute/v1"
@@ -168,22 +167,12 @@ func gceWaitForImage(pending *gcloud.Pending) {
 
 func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, desc string) string {
 	plog.Noticef("Creating GCE image %s", name)
-	parsedVersion, err := semver.NewVersion(specVersion)
-	if err != nil {
-		plog.Fatalf("couldn't parse version %s: %v", specVersion, err)
-	}
-	disableMultiqueue := false
-	if parsedVersion.LessThan(semver.Version{Major: 1409}) {
-		disableMultiqueue = true
-		plog.Noticef("Not enabling multiqueue for version %v", specVersion)
-	}
 	op, pending, err := api.CreateImage(&gcloud.ImageSpec{
-		SourceImage:           obj.MediaLink,
-		Family:                spec.GCE.Family,
-		Name:                  name,
-		Description:           desc,
-		Licenses:              spec.GCE.Licenses,
-		DisableSCSIMultiqueue: disableMultiqueue,
+		SourceImage: obj.MediaLink,
+		Family:      spec.GCE.Family,
+		Name:        name,
+		Description: desc,
+		Licenses:    spec.GCE.Licenses,
 	}, false)
 	if err != nil {
 		plog.Fatalf("GCE image creation failed: %v", err)
