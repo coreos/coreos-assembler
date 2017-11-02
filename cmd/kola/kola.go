@@ -214,7 +214,7 @@ func writeProps() error {
 
 func runList(cmd *cobra.Command, args []string) {
 	var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
-	var testlist list
+	var testlist []item
 
 	for name, test := range register.Tests {
 		testlist = append(testlist, item{
@@ -224,7 +224,9 @@ func runList(cmd *cobra.Command, args []string) {
 			test.Architectures})
 	}
 
-	sort.Sort(testlist)
+	sort.Slice(testlist, func(i, j int) bool {
+		return testlist[i].Name < testlist[j].Name
+	})
 
 	fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures")
 	fmt.Fprintln(w, "\t")
@@ -266,9 +268,3 @@ func (i item) String() string {
 	}
 	return fmt.Sprintf("%v\t%v\t%v", i.Name, i.Platforms, i.Architectures)
 }
-
-type list []item
-
-func (s list) Len() int           { return len(s) }
-func (s list) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s list) Less(i, j int) bool { return s[i].Name < s[j].Name }

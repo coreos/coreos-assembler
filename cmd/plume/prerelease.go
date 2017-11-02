@@ -483,18 +483,6 @@ type amiList struct {
 	Entries []amiListEntry `json:"amis"`
 }
 
-func (l *amiList) Len() int {
-	return len(l.Entries)
-}
-
-func (l *amiList) Less(i, j int) bool {
-	return l.Entries[i].Region < l.Entries[j].Region
-}
-
-func (l *amiList) Swap(i, j int) {
-	l.Entries[i], l.Entries[j] = l.Entries[j], l.Entries[i]
-}
-
 func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channelSpec, amis *amiList) error {
 	upload := func(name string, data string) error {
 		var contentType string
@@ -518,7 +506,9 @@ func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channe
 	}
 
 	// emit keys in stable order
-	sort.Sort(amis)
+	sort.Slice(amis.Entries, func(i, j int) bool {
+		return amis.Entries[i].Region < amis.Entries[j].Region
+	})
 
 	// format JSON AMI list
 	var jsonBuf bytes.Buffer
