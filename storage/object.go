@@ -26,24 +26,11 @@ import (
 	"github.com/coreos/mantle/lang/reader"
 )
 
-// ObjectSlice provides sort.Interface for natural sorting Objects by Name.
-type ObjectSlice []*storage.Object
-
-func (objs ObjectSlice) Len() int {
-	return len(objs)
-}
-
-func (objs ObjectSlice) Less(i, j int) bool {
-	return natsort.Less(objs[i].Name, objs[j].Name)
-}
-
-func (objs ObjectSlice) Swap(i, j int) {
-	objs[i], objs[j] = objs[j], objs[i]
-}
-
 // SortObjects orders Objects by Name using natural sorting.
 func SortObjects(objs []*storage.Object) {
-	sort.Sort(ObjectSlice(objs))
+	sort.Slice(objs, func(i, j int) bool {
+		return natsort.Less(objs[i].Name, objs[j].Name)
+	})
 }
 
 // Update CRC32c and Size in the given Object

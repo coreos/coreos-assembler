@@ -31,25 +31,14 @@ func Less(a, b string) bool {
 
 // Strings natural sorts a slice of strings.
 func Strings(s []string) {
-	sort.Sort(StringSlice(s))
+	sort.Slice(s, func(i, j int) bool {
+		return Less(s[i], s[j])
+	})
 }
 
 // StringsAreSorted tests whether a slice of strings is natural sorted.
 func StringsAreSorted(s []string) bool {
-	return sort.IsSorted(StringSlice(s))
-}
-
-// StringSlice provides sort.Interface for natural sorting []string.
-type StringSlice []string
-
-func (ss StringSlice) Len() int {
-	return len(ss)
-}
-
-func (ss StringSlice) Less(i, j int) bool {
-	return Less(ss[i], ss[j])
-}
-
-func (ss StringSlice) Swap(i, j int) {
-	ss[i], ss[j] = ss[j], ss[i]
+	return sort.SliceIsSorted(s, func(i, j int) bool {
+		return Less(s[i], s[j])
+	})
 }
