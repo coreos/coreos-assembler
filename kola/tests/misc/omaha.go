@@ -31,11 +31,8 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.omaha.ping",
 		Platforms:   []string{"qemu"},
-		UserData: conf.CloudConfig(`#cloud-config
-
-coreos:
-  update:
-    server: "http://10.0.0.1:34567/v1/update/"
+		UserData: conf.ContainerLinuxConfig(`update:
+  server: "http://10.0.0.1:34567/v1/update/"
 `),
 	})
 }
