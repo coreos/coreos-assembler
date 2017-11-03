@@ -31,11 +31,8 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.omaha.ping",
 		Platforms:   []string{"qemu"},
-		UserData: conf.CloudConfig(`#cloud-config
-
-coreos:
-  update:
-    server: "http://10.0.0.1:34567/v1/update/"
+		UserData: conf.ContainerLinuxConfig(`update:
+  server: "http://10.0.0.1:34567/v1/update/"
 `),
 	})
 }
@@ -66,7 +63,10 @@ func OmahaPing(c cluster.TestCluster) {
 
 	m := c.Machines()[0]
 
-	c.MustSSH(m, "update_engine_client -check_for_update")
+	out, stderr, err := m.SSH("update_engine_client -check_for_update")
+	if err != nil {
+		c.Fatalf("couldn't check for update: %s, %s, %v", out, stderr, err)
+	}
 
 	tc := time.After(30 * time.Second)
 
