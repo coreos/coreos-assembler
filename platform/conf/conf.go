@@ -410,6 +410,11 @@ func (c *Conf) copyKeysCloudConfig(keys []*agent.Key) {
 	c.cloudconfig.SSHAuthorizedKeys = append(c.cloudconfig.SSHAuthorizedKeys, keysToStrings(keys)...)
 }
 
+func (c *Conf) copyKeysScript(keys []*agent.Key) {
+	keyString := strings.Join(keysToStrings(keys), "\n")
+	c.script = strings.Replace(c.script, "@SSH_KEYS@", keyString, -1)
+}
+
 // CopyKeys copies public keys from agent ag into the configuration to the
 // appropriate configuration section for the core user.
 func (c *Conf) CopyKeys(keys []*agent.Key) {
@@ -421,6 +426,8 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 		c.copyKeysIgnitionV21(keys)
 	} else if c.cloudconfig != nil {
 		c.copyKeysCloudConfig(keys)
+	} else if c.script != "" {
+		c.copyKeysScript(keys)
 	}
 }
 
