@@ -245,6 +245,7 @@ func (a *API) GetUserImage(ctx context.Context, imageName string, inRegion bool)
 			return nil, err
 		}
 		for _, image := range images {
+			image := image
 			if image.Name != imageName {
 				continue
 			}
