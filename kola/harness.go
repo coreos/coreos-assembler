@@ -375,15 +375,15 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 	}()
 
 	if t.ClusterSize > 0 {
-		url, err := c.GetDiscoveryURL(t.ClusterSize)
-		if err != nil {
-			h.Fatalf("Failed to create discovery endpoint: %v", err)
-		}
-
 		userdata := t.UserData
-		if userdata != nil {
+		if userdata != nil && userdata.Contains("$discovery") {
+			url, err := c.GetDiscoveryURL(t.ClusterSize)
+			if err != nil {
+				h.Fatalf("Failed to create discovery endpoint: %v", err)
+			}
 			userdata = userdata.Subst("$discovery", url)
 		}
+
 		if _, err := platform.NewMachines(c, userdata, t.ClusterSize); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}

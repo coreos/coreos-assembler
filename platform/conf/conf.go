@@ -125,6 +125,11 @@ func Unknown(data string) *UserData {
 	return u
 }
 
+// Contains returns true if the UserData contains the specified string.
+func (u *UserData) Contains(substr string) bool {
+	return strings.Contains(u.data, substr)
+}
+
 // Performs a string substitution and returns a new UserData.
 func (u *UserData) Subst(old, new string) *UserData {
 	ret := *u
