@@ -26,13 +26,14 @@ import (
 
 // Journal manages recording the journal of a Machine.
 type Journal struct {
-	journal  *os.File
-	recorder *journal.Recorder
-	cancel   context.CancelFunc
+	journal    *os.File
+	journalRaw *os.File
+	recorder   *journal.Recorder
+	cancel     context.CancelFunc
 }
 
 // NewJournal creates a Journal recorder that will log to "journal.txt"
-// inside the given output directory.
+// and "journal_raw.txt" inside the given output directory.
 func NewJournal(dir string) (*Journal, error) {
 	p := filepath.Join(dir, "journal.txt")
 	j, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -40,9 +41,16 @@ func NewJournal(dir string) (*Journal, error) {
 		return nil, err
 	}
 
+	p = filepath.Join(dir, "journal_raw.txt")
+	jr, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Journal{
-		journal:  j,
-		recorder: journal.NewRecorder(journal.ShortWriter(j)),
+		journal:    j,
+		journalRaw: jr,
+		recorder:   journal.NewRecorder(journal.ShortWriter(j), jr),
 	}, nil
 }
 
@@ -81,6 +89,9 @@ func (j *Journal) Destroy() error {
 		err = j.recorder.Wait()
 	}
 	if err2 := j.journal.Close(); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 := j.journalRaw.Close(); err == nil && err2 != nil {
 		err = err2
 	}
 	return err
