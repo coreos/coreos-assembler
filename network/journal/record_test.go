@@ -17,6 +17,7 @@ package journal
 import (
 	"context"
 	"io"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +43,16 @@ func (n nullFormatter) WriteEntry(entry Entry) error {
 	return nil
 }
 
+type discardCloser struct{}
+
+func (d discardCloser) Close() error {
+	return nil
+}
+
+func (d discardCloser) Write(b []byte) (int, error) {
+	return ioutil.Discard.Write(b)
+}
+
 // Escapes ; chars in cursor with \
 // May need tweaking if the shellquote library behavior ever changes.
 func journalAfterEsc(cursor string) string {
@@ -62,7 +73,7 @@ func TestRecorderSSH(t *testing.T) {
 		}
 	})
 
-	recorder := NewRecorder(nullFormatter{})
+	recorder := NewRecorder(nullFormatter{}, discardCloser{})
 	if err := recorder.RunSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +128,7 @@ func TestRecorderSSHCancel(t *testing.T) {
 		// Skip close, let the connection hang.
 	})
 
-	recorder := NewRecorder(nullFormatter{})
+	recorder := NewRecorder(nullFormatter{}, discardCloser{})
 	if err := recorder.StartSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}
