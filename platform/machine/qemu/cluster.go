@@ -205,8 +205,8 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	addDisk := func(file *os.File, serial string) {
 		id := fmt.Sprintf("d%d", fdnum)
 		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d,serial=%s", id, fdset, serial),
-			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s", id)))
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
+			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s,serial=%s", id, serial)))
 		fdnum += 1
 		fdset += 1
 		extraFiles = append(extraFiles, file)
