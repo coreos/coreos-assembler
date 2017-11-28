@@ -29,6 +29,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coreos/mantle/harness/reporters"
+	"github.com/coreos/mantle/harness/testresult"
 )
 
 const (
@@ -70,6 +73,8 @@ type Options struct {
 
 	// Limit number of tests to run in parallel (0 means GOMAXPROCS).
 	Parallel int
+
+	Reporters reporters.Reporters
 }
 
 // FlagSet can be used to setup options via command line flags.
@@ -203,6 +208,16 @@ func (s *Suite) Run() (err error) {
 		return err
 	}
 
+	reportDir := s.outputPath("reports")
+	if err := os.Mkdir(reportDir, 0777); err != nil {
+		return err
+	}
+	defer func() {
+		if reportErr := s.opts.Reporters.Output(reportDir); reportErr != nil && err != nil {
+			err = reportErr
+		}
+	}()
+
 	if s.opts.MemProfile {
 		runtime.MemProfileRate = s.opts.MemProfileRate
 		f, err := os.Create(s.outputPath("mem.prof"))
@@ -261,11 +276,12 @@ func (s *Suite) Run() (err error) {
 func (s *Suite) runTests(out, tap io.Writer) error {
 	s.running = 1 // Set the count to 1 for the main (sequential) test.
 	t := &H{
-		signal:  make(chan bool),
-		barrier: make(chan bool),
-		w:       out,
-		tap:     tap,
-		suite:   s,
+		signal:    make(chan bool),
+		barrier:   make(chan bool),
+		w:         out,
+		tap:       tap,
+		suite:     s,
+		reporters: s.opts.Reporters,
 	}
 	tRunner(t, func(t *H) {
 		for name, test := range s.tests {
@@ -280,8 +296,12 @@ func (s *Suite) runTests(out, tap io.Writer) error {
 		return SuiteEmpty
 	}
 	if t.Failed() {
+		s.opts.Reporters.SetResult(testresult.Fail)
 		return SuiteFailed
 	}
+
+	s.opts.Reporters.SetResult(testresult.Pass)
+
 	return nil
 }
 

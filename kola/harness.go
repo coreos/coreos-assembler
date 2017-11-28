@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/harness"
+	"github.com/coreos/mantle/harness/reporters"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/torcx"
@@ -223,6 +224,8 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. If it already exists it will be erased!
 func RunTests(pattern, pltfrm, outputDir string) error {
+	var versionStr string
+
 	// Avoid incurring cost of starting machine in getClusterSemver when
 	// either:
 	// 1) none of the selected tests care about the version
@@ -260,6 +263,8 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 			plog.Fatal(err)
 		}
 
+		versionStr = version.String()
+
 		// one more filter pass now that we know real version
 		tests, err = filterTests(tests, pattern, pltfrm, *version)
 		if err != nil {
@@ -271,6 +276,9 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 		OutputDir: outputDir,
 		Parallel:  TestParallelism,
 		Verbose:   true,
+		Reporters: reporters.Reporters{
+			reporters.NewJSONReporter("report.json", pltfrm, versionStr),
+		},
 	}
 	var htests harness.Tests
 	for _, test := range tests {

@@ -29,6 +29,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coreos/mantle/harness/reporters"
+	"github.com/coreos/mantle/harness/testresult"
 )
 
 // H is a type passed to Test functions to manage test state and support formatted test logs.
@@ -67,6 +70,8 @@ type H struct {
 	sub      []*H      // Queue of subtests to be run in parallel.
 
 	isParallel bool
+
+	reporters reporters.Reporters
 }
 
 func (c *H) parentContext() context.Context {
@@ -81,6 +86,15 @@ func (h *H) Verbose() bool {
 	return h.suite.opts.Verbose
 }
 
+func (c *H) status() testresult.TestResult {
+	if c.Failed() {
+		return testresult.Fail
+	} else if c.Skipped() {
+		return testresult.Skip
+	}
+	return testresult.Pass
+}
+
 // flushToParent writes c.output to the parent after first writing the header
 // with the given format and arguments.
 func (c *H) flushToParent(format string, args ...interface{}) {
@@ -90,12 +104,14 @@ func (c *H) flushToParent(format string, args ...interface{}) {
 
 	fmt.Fprintf(p.w, format, args...)
 
+	status := c.status()
+
 	// TODO: include test numbers in TAP output.
 	if p.tap != nil {
 		name := strings.Replace(c.name, "#", "", -1)
-		if c.Failed() {
+		if status == testresult.Fail {
 			fmt.Fprintf(p.tap, "not ok - %s\n", name)
-		} else if c.Skipped() {
+		} else if status == testresult.Skip {
 			fmt.Fprintf(p.tap, "ok - %s # SKIP\n", name)
 		} else {
 			fmt.Fprintf(p.tap, "ok - %s\n", name)
@@ -104,7 +120,8 @@ func (c *H) flushToParent(format string, args ...interface{}) {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	io.Copy(p.w, &c.output)
+	outputBufferCopy := c.output
+	outputBufferCopy.WriteTo(p.w)
 }
 
 type indenter struct {
@@ -429,12 +446,13 @@ func (t *H) Run(name string, f func(t *H)) bool {
 		return true
 	}
 	t = &H{
-		barrier: make(chan bool),
-		signal:  make(chan bool),
-		name:    testName,
-		suite:   t.suite,
-		parent:  t,
-		level:   t.level + 1,
+		barrier:   make(chan bool),
+		signal:    make(chan bool),
+		name:      testName,
+		suite:     t.suite,
+		parent:    t,
+		level:     t.level + 1,
+		reporters: t.reporters,
 	}
 	t.w = indenter{t}
 	// Indent logs 8 spaces to distinguish them from sub-test headers.
@@ -464,15 +482,25 @@ func (t *H) report() {
 	}
 	dstr := fmtDuration(t.duration)
 	format := "--- %s: %s (%s)\n"
-	if t.Failed() {
-		t.flushToParent(format, "FAIL", t.name, dstr)
-	} else if t.suite.opts.Verbose {
-		if t.Skipped() {
-			t.flushToParent(format, "SKIP", t.name, dstr)
-		} else {
-			t.flushToParent(format, "PASS", t.name, dstr)
-		}
+
+	status := t.status()
+	if status == testresult.Fail || t.suite.opts.Verbose {
+		t.flushToParent(format, status, t.name, dstr)
 	}
+
+	// TODO: store multiple buffers for subtests without indentation
+	// potentially add a TeeWriter which will output to both buffers
+	//
+	// original comment from PR ---
+	// euank: As a followup, we could potentially use something other
+	// than c.output here.  c.output came from an indenter. We don't
+	// need the indentation for reporters.  One way we could do that is
+	// by replacing H.w with a TeeWriter which tees to an indented sink
+	// and a normal sink, and then use whichever is appropriate.  We
+	// could also write verbosely to the 'reporter sink'.  I'm fine with
+	// this being a TODO if you don't want to tackle it in this initial
+	// PR.
+	t.reporters.ReportTest(t.name, status, t.duration, t.output.Bytes())
 }
 
 // CleanOutputDir creates/empties an output directory and returns the cleaned path.
