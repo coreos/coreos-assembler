@@ -58,7 +58,7 @@ func init() {
 	downloadImageCmd.Flags().BoolVar(&downloadImageVerify,
 		"verify", true, "verify")
 	downloadImageCmd.Flags().Var(&downloadImagePlatformList,
-		"platform", "Choose aws, esx, gce, qemu, or qemu_uefi. Multiple platforms can be specified by repeating the flag")
+		"platform", "Choose aws, esx, gce, oci, qemu, or qemu_uefi. Multiple platforms can be specified by repeating the flag")
 
 	root.AddCommand(downloadImageCmd)
 }
@@ -83,6 +83,7 @@ func (platforms *platformList) Set(value string) error {
 		"aws":       {"_ami_vmdk_image.vmdk.bz2"},
 		"esx":       {"_vmware_ova.ova"},
 		"gce":       {"_gce.tar.gz"},
+		"oci":       {"_oracle_oci_qcow_image.img.bz2"},
 		"qemu":      {"_image.bin.bz2"},
 		"qemu_uefi": {"_qemu_uefi_efi_code.fd", "_qemu_uefi_efi_vars.fd", "_image.bin.bz2"},
 	}
