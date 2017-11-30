@@ -113,7 +113,12 @@ func init() {
 		Platforms:   []string{"aws"},
 		UserData: conf.Ignition(`{
 		  "ignition": {
-		      "version": "2.1.0"
+		      "version": "2.1.0",
+		      "config": {
+		          "append": [{
+		              "source": "s3://kola-fixtures/resources/authenticated.ign"
+		          }]
+		      }
 		  },
 		  "storage": {
 		      "files": [
@@ -164,12 +169,17 @@ func resourceS3(c cluster.TestCluster) {
 		// object accessible by any authenticated S3 user, such as
 		// the IAM role associated with the instance
 		"s3-auth": "kola-authenticated",
+		// object created by configuration accessible by any authenticated
+		// S3 user, such as the IAM role associated with the instance
+		"s3-config": "kola-config",
 	})
 
-	// verify that the object is inaccessible anonymously
-	_, _, err := m.SSH("curl -sf https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/authenticated")
-	if err == nil {
-		c.Fatal("anonymously fetching authenticated resource should have failed, but did not")
+	// verify that the objects are inaccessible anonymously
+	for _, objectName := range []string{"authenticated", "authenticated.ign"} {
+		_, _, err := m.SSH("curl -sf https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/" + objectName)
+		if err == nil {
+			c.Fatal("anonymously fetching authenticated resource should have failed, but did not")
+		}
 	}
 
 	// ...but that the anonymous object is accessible
