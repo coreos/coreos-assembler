@@ -15,10 +15,14 @@
 package platform
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/coreos/pkg/multierror"
 
 	"github.com/coreos/mantle/network/journal"
 	"github.com/coreos/mantle/util"
@@ -26,14 +30,14 @@ import (
 
 // Journal manages recording the journal of a Machine.
 type Journal struct {
-	journal    *os.File
-	journalRaw *os.File
+	journal    io.WriteCloser
+	journalRaw io.WriteCloser
 	recorder   *journal.Recorder
 	cancel     context.CancelFunc
 }
 
 // NewJournal creates a Journal recorder that will log to "journal.txt"
-// and "journal_raw.txt" inside the given output directory.
+// and "journal-raw.txt.gz" inside the given output directory.
 func NewJournal(dir string) (*Journal, error) {
 	p := filepath.Join(dir, "journal.txt")
 	j, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -41,16 +45,21 @@ func NewJournal(dir string) (*Journal, error) {
 		return nil, err
 	}
 
-	p = filepath.Join(dir, "journal_raw.txt")
+	p = filepath.Join(dir, "journal-raw.txt.gz")
 	jr, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		return nil, err
+	}
+	// gzip to save space; a single test can generate well over 1M of logs
+	jrz, err := gzip.NewWriterLevel(jr, gzip.BestCompression)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Journal{
 		journal:    j,
-		journalRaw: jr,
-		recorder:   journal.NewRecorder(journal.ShortWriter(j), jr),
+		journalRaw: jrz,
+		recorder:   journal.NewRecorder(journal.ShortWriter(j), jrz),
 	}, nil
 }
 
@@ -83,16 +92,18 @@ func (j *Journal) Start(ctx context.Context, m Machine) error {
 }
 
 func (j *Journal) Destroy() error {
-	var err error
+	var err multierror.Error
 	if j.cancel != nil {
 		j.cancel()
-		err = j.recorder.Wait()
+		if e := j.recorder.Wait(); e != nil {
+			err = append(err, e)
+		}
 	}
-	if err2 := j.journal.Close(); err == nil && err2 != nil {
-		err = err2
+	if e := j.journal.Close(); e != nil {
+		err = append(err, e)
 	}
-	if err2 := j.journalRaw.Close(); err == nil && err2 != nil {
-		err = err2
+	if e := j.journalRaw.Close(); e != nil {
+		err = append(err, e)
 	}
-	return err
+	return err.AsError()
 }
