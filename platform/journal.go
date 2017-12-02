@@ -36,6 +36,23 @@ type Journal struct {
 	cancel     context.CancelFunc
 }
 
+// wrapper that also closes the underlying file
+type gzWriteCloser struct {
+	*gzip.Writer
+	underlying io.Closer
+}
+
+func (g gzWriteCloser) Close() error {
+	var err multierror.Error
+	if e := g.Writer.Close(); e != nil {
+		err = append(err, e)
+	}
+	if e := g.underlying.Close(); e != nil {
+		err = append(err, e)
+	}
+	return err.AsError()
+}
+
 // NewJournal creates a Journal recorder that will log to "journal.txt"
 // and "journal-raw.txt.gz" inside the given output directory.
 func NewJournal(dir string) (*Journal, error) {
@@ -55,11 +72,15 @@ func NewJournal(dir string) (*Journal, error) {
 	if err != nil {
 		return nil, err
 	}
+	jrzc := gzWriteCloser{
+		underlying: jr,
+		Writer:     jrz,
+	}
 
 	return &Journal{
 		journal:    j,
-		journalRaw: jrz,
-		recorder:   journal.NewRecorder(journal.ShortWriter(j), jrz),
+		journalRaw: jrzc,
+		recorder:   journal.NewRecorder(journal.ShortWriter(j), jrzc),
 	}, nil
 }
 
