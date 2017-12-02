@@ -61,25 +61,20 @@ func (om *machine) Reboot() error {
 	return platform.RebootMachine(om, om.journal, om.cluster.RuntimeConf())
 }
 
-func (om *machine) Destroy() error {
+func (om *machine) Destroy() {
 	if err := om.saveConsole(); err != nil {
-		// log error, but do not fail to terminate instance
-		plog.Error(err)
+		plog.Errorf("Error saving console for instance %v: %v", om.ID(), err)
 	}
 
 	if err := om.cluster.api.TerminateInstance(om.ID()); err != nil {
-		return fmt.Errorf("terminating instance: %v", err)
+		plog.Errorf("Error terminating instance %v: %v", om.ID(), err)
 	}
 
 	if om.journal != nil {
-		if err := om.journal.Destroy(); err != nil {
-			return err
-		}
+		om.journal.Destroy()
 	}
 
 	om.cluster.DelMach(om)
-
-	return nil
 }
 
 func (om *machine) ConsoleOutput() string {

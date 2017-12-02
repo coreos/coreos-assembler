@@ -157,12 +157,12 @@ func (pc *cluster) vmname() string {
 	return fmt.Sprintf("%s-%x", pc.Name()[0:13], b)
 }
 
-func (pc *cluster) Destroy() error {
+func (pc *cluster) Destroy() {
 	if pc.sshKeyID != "" {
 		if err := pc.api.DeleteKey(pc.sshKeyID); err != nil {
-			return err
+			plog.Errorf("Error deleting key %v: %v", pc.sshKeyID, err)
 		}
 	}
 
-	return pc.BaseCluster.Destroy()
+	pc.BaseCluster.Destroy()
 }

@@ -56,8 +56,9 @@ type Machine interface {
 	// Reboot restarts the machine and waits for it to come back.
 	Reboot() error
 
-	// Destroy terminates the machine and frees associated resources.
-	Destroy() error
+	// Destroy terminates the machine and frees associated resources. It should log
+	// any failures; since they are not actionable, it does not return an error.
+	Destroy()
 
 	// ConsoleOutput returns the machine's console output if available,
 	// or an empty string.  Only expected to be valid after Destroy().
@@ -76,8 +77,9 @@ type Cluster interface {
 	GetDiscoveryURL(size int) (string, error)
 
 	// Destroy terminates each machine in the cluster and frees any other
-	// associated resources.
-	Destroy() error
+	// associated resources. It should log any failures; since they are not
+	// actionable, it does not return an error
+	Destroy()
 
 	// ConsoleOutput returns a map of console output from destroyed
 	// cluster machines.

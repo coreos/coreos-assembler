@@ -60,19 +60,16 @@ func (dm *machine) Reboot() error {
 	return platform.RebootMachine(dm, dm.journal, dm.cluster.RuntimeConf())
 }
 
-func (dm *machine) Destroy() error {
+func (dm *machine) Destroy() {
 	if err := dm.cluster.api.DeleteDroplet(context.TODO(), dm.droplet.ID); err != nil {
-		return err
+		plog.Errorf("Error deleting droplet %v: %v", dm.droplet.ID, err)
 	}
 
 	if dm.journal != nil {
-		if err := dm.journal.Destroy(); err != nil {
-			return err
-		}
+		dm.journal.Destroy()
 	}
 
 	dm.cluster.DelMach(dm)
-	return nil
 }
 
 func (dm *machine) ConsoleOutput() string {

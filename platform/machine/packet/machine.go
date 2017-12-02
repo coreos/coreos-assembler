@@ -60,19 +60,16 @@ func (pm *machine) Reboot() error {
 	return platform.RebootMachine(pm, pm.journal, pm.cluster.RuntimeConf())
 }
 
-func (pm *machine) Destroy() error {
+func (pm *machine) Destroy() {
 	if err := pm.cluster.api.DeleteDevice(pm.ID()); err != nil {
-		return err
+		plog.Errorf("Error terminating device %v: %v", pm.ID(), err)
 	}
 
 	if pm.journal != nil {
-		if err := pm.journal.Destroy(); err != nil {
-			return err
-		}
+		pm.journal.Destroy()
 	}
 
 	pm.cluster.DelMach(pm)
-	return nil
 }
 
 func (pm *machine) ConsoleOutput() string {

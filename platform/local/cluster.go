@@ -39,7 +39,7 @@ type LocalCluster struct {
 	*platform.BaseCluster
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
-	OmahaServer *omaha.TrivialServer
+	OmahaServer OmahaWrapper
 	SimpleEtcd  *SimpleEtcd
 	nshandle    netns.NsHandle
 }
@@ -92,11 +92,12 @@ func NewLocalCluster(basename string, rconf *platform.RuntimeConfig) (*LocalClus
 	lc.AddCloser(lc.NTPServer)
 	go lc.NTPServer.Serve()
 
-	lc.OmahaServer, err = omaha.NewTrivialServer(":34567")
+	omahaServer, err := omaha.NewTrivialServer(":34567")
 	if err != nil {
 		lc.Destroy()
 		return nil, err
 	}
+	lc.OmahaServer = OmahaWrapper{TrivialServer: omahaServer}
 	lc.AddDestructor(lc.OmahaServer)
 	go lc.OmahaServer.Serve()
 
@@ -178,6 +179,6 @@ func (lc *LocalCluster) GetNsHandle() netns.NsHandle {
 	return lc.nshandle
 }
 
-func (lc *LocalCluster) Destroy() error {
-	return lc.MultiDestructor.Destroy()
+func (lc *LocalCluster) Destroy() {
+	lc.MultiDestructor.Destroy()
 }

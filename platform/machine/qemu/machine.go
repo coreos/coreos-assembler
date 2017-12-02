@@ -17,7 +17,6 @@ package qemu
 import (
 	"io/ioutil"
 
-	"github.com/coreos/pkg/multierror"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform"
@@ -63,30 +62,20 @@ func (m *machine) Reboot() error {
 	return platform.RebootMachine(m, m.journal, m.qc.RuntimeConf())
 }
 
-func (m *machine) Destroy() error {
-	var ret multierror.Error
-
+func (m *machine) Destroy() {
 	if err := m.qemu.Kill(); err != nil {
-		ret = append(ret, err)
+		plog.Errorf("Error killing instance %v: %v", m.ID(), err)
 	}
 
-	if err := m.journal.Destroy(); err != nil {
-		ret = append(ret, err)
-	}
+	m.journal.Destroy()
 
 	if buf, err := ioutil.ReadFile(m.consolePath); err == nil {
 		m.console = string(buf)
 	} else {
-		ret = append(ret, err)
+		plog.Errorf("Error reading console for instance %v: %v", m.ID(), err)
 	}
 
 	m.qc.DelMach(m)
-
-	err := ret.AsError()
-	if err != nil {
-		plog.Errorf("Error destoying instance %v: %v", m.ID(), err)
-	}
-	return err
 }
 
 func (m *machine) ConsoleOutput() string {
