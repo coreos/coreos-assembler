@@ -93,6 +93,10 @@ var (
 			match: regexp.MustCompile(`WARNING: CPU: \d+ PID: \d+ at (.+)`),
 		},
 		{
+			desc:  "failure of disk under I/O",
+			match: regexp.MustCompile("rejecting I/O to offline device"),
+		},
+		{
 			// https://github.com/coreos/bugs/issues/2065
 			desc:  "excessive bonding link status messages",
 			match: regexp.MustCompile("(?s:link status up for interface [^,]+, enabling it in [0-9]+ ms.*?){10}"),
