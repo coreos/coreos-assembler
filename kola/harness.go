@@ -328,11 +328,7 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating cluster for semver check: %v", err)
 	}
-	defer func() {
-		if err := cluster.Destroy(); err != nil {
-			plog.Errorf("cluster.Destroy(): %v", err)
-		}
-	}()
+	defer cluster.Destroy()
 
 	m, err := cluster.NewMachine(nil)
 	if err != nil {
@@ -376,9 +372,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		h.Fatalf("Cluster failed: %v", err)
 	}
 	defer func() {
-		if err := c.Destroy(); err != nil {
-			plog.Errorf("cluster.Destroy(): %v", err)
-		}
+		c.Destroy()
 		for id, output := range c.ConsoleOutput() {
 			for _, badness := range CheckConsole([]byte(output), t) {
 				h.Errorf("Found %s on machine %s console", badness, id)
