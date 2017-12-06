@@ -75,7 +75,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
-	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", true, "create a PV AMI in addition to the HVM AMI")
+	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", false, "create a PV AMI in addition to the HVM AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
