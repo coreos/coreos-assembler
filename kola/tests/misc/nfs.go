@@ -19,6 +19,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -49,11 +51,13 @@ func init() {
 		Run:         NFSv3,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v3",
+		MinVersion:  semver.Version{Major: 1618},
 	})
 	register.Register(&register.Test{
 		Run:         NFSv4,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v4",
+		MinVersion:  semver.Version{Major: 1618},
 	})
 }
 
