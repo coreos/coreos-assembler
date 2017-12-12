@@ -72,7 +72,7 @@ etcd:
   initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
   discovery:                   $discovery
 `),
-		ExcludePlatforms: []string{"qemu", "esx"}, // etcd-member requires networking and ct rendering
+		ExcludePlatforms: []string{"qemu", "esx", "oci"}, // etcd-member requires networking and ct rendering
 	})
 
 	register.Register(&register.Test{
