@@ -61,25 +61,20 @@ func (gm *machine) Reboot() error {
 	return platform.RebootMachine(gm, gm.journal, gm.gc.RuntimeConf())
 }
 
-func (gm *machine) Destroy() error {
+func (gm *machine) Destroy() {
 	if err := gm.saveConsole(); err != nil {
-		// log error, but do not fail to terminate instance
-		plog.Error(err)
+		plog.Errorf("Error saving console for instance %v: %v", gm.ID(), err)
 	}
 
 	if err := gm.gc.api.TerminateInstance(gm.name); err != nil {
-		return err
+		plog.Errorf("Error terminating instance %v: %v", gm.ID(), err)
 	}
 
 	if gm.journal != nil {
-		if err := gm.journal.Destroy(); err != nil {
-			return err
-		}
+		gm.journal.Destroy()
 	}
 
 	gm.gc.DelMach(gm)
-
-	return nil
 }
 
 func (gm *machine) ConsoleOutput() string {

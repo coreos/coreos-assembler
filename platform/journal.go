@@ -112,19 +112,17 @@ func (j *Journal) Start(ctx context.Context, m Machine) error {
 	return nil
 }
 
-func (j *Journal) Destroy() error {
-	var err multierror.Error
+func (j *Journal) Destroy() {
 	if j.cancel != nil {
 		j.cancel()
-		if e := j.recorder.Wait(); e != nil {
-			err = append(err, e)
+		if err := j.recorder.Wait(); err != nil {
+			plog.Errorf("j.recorder.Wait() failed: %v", err)
 		}
 	}
-	if e := j.journal.Close(); e != nil {
-		err = append(err, e)
+	if err := j.journal.Close(); err != nil {
+		plog.Errorf("Failed to close journal: %v", err)
 	}
-	if e := j.journalRaw.Close(); e != nil {
-		err = append(err, e)
+	if err := j.journalRaw.Close(); err != nil {
+		plog.Errorf("Failed to close raw journal: %v", err)
 	}
-	return err.AsError()
 }

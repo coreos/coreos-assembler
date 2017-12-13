@@ -97,16 +97,11 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 	return se, nil
 }
 
-func (se *SimpleEtcd) Destroy() error {
-	var err error
-	firstErr := func(e error) {
-		if e != nil && err == nil {
-			err = e
-		}
-	}
-
+func (se *SimpleEtcd) Destroy() {
 	if se.listener != nil {
-		firstErr(se.listener.Close())
+		if err := se.listener.Close(); err != nil {
+			plog.Errorf("Error closing etcd listener: %v", err)
+		}
 	}
 
 	if se.server != nil {
@@ -114,10 +109,10 @@ func (se *SimpleEtcd) Destroy() error {
 	}
 
 	if se.dataDir != "" {
-		firstErr(os.RemoveAll(se.dataDir))
+		if err := os.RemoveAll(se.dataDir); err != nil {
+			plog.Errorf("Error removing etcd data dir: %v", err)
+		}
 	}
-
-	return err
 }
 
 // Generate all publishable URLs for a given HTTP port.

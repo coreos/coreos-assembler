@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/pkg/multierror"
+	"github.com/coreos/pkg/capnslog"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -30,6 +30,10 @@ import (
 	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform")
 )
 
 type BaseCluster struct {
@@ -176,20 +180,15 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 }
 
 // Destroy destroys each machine in the cluster and closes the SSH agent.
-func (bc *BaseCluster) Destroy() error {
-	var err multierror.Error
+func (bc *BaseCluster) Destroy() {
 
 	for _, m := range bc.Machines() {
-		if e := m.Destroy(); e != nil {
-			err = append(err, e)
-		}
+		m.Destroy()
 	}
 
-	if e := bc.agent.Close(); e != nil {
-		err = append(err, e)
+	if err := bc.agent.Close(); err != nil {
+		plog.Errorf("Error closing agent: %v", err)
 	}
-
-	return err.AsError()
 }
 
 // XXX(mischief): i don't really think this belongs here, but it completes the

@@ -221,6 +221,8 @@ func (dm *Dnsmasq) GetInterface(bridge string) (in *Interface) {
 	panic("Not a valid bridge!")
 }
 
-func (dm *Dnsmasq) Destroy() error {
-	return dm.dnsmasq.Kill()
+func (dm *Dnsmasq) Destroy() {
+	if err := dm.dnsmasq.Kill(); err != nil {
+		plog.Errorf("Error killing dnsmasq: %v", err)
+	}
 }

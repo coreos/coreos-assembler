@@ -17,12 +17,16 @@ package destructor
 import (
 	"io"
 
-	"github.com/coreos/pkg/multierror"
+	"github.com/coreos/pkg/capnslog"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "lang/destructor")
 )
 
 // Destructor is a common interface for objects that need to be cleaned up.
 type Destructor interface {
-	Destroy() error
+	Destroy()
 }
 
 // CloseDestructor wraps any Closer to provide the Destructor interface.
@@ -30,21 +34,19 @@ type CloserDestructor struct {
 	io.Closer
 }
 
-func (c CloserDestructor) Destroy() error {
-	return c.Close()
+func (c CloserDestructor) Destroy() {
+	if err := c.Close(); err != nil {
+		plog.Errorf("Close() returned error: %v", err)
+	}
 }
 
 // MultiDestructor wraps multiple Destructors for easy cleanup.
 type MultiDestructor []Destructor
 
-func (m MultiDestructor) Destroy() error {
-	var errs multierror.Error
+func (m MultiDestructor) Destroy() {
 	for _, d := range m {
-		if err := d.Destroy(); err != nil {
-			errs = append(errs, err)
-		}
+		d.Destroy()
 	}
-	return errs.AsError()
 }
 
 func (m *MultiDestructor) AddCloser(closer io.Closer) {

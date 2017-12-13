@@ -61,28 +61,24 @@ func (em *machine) Reboot() error {
 	return platform.RebootMachine(em, em.journal, em.cluster.RuntimeConf())
 }
 
-func (em *machine) Destroy() error {
+func (em *machine) Destroy() {
 	if err := em.cluster.api.TerminateDevice(em.ID()); err != nil {
-		return err
+		plog.Errorf("Error terminating device %v: %v", em.ID(), err)
 	}
 
 	if em.journal != nil {
-		if err := em.journal.Destroy(); err != nil {
-			return err
-		}
+		em.journal.Destroy()
 	}
 
 	if err := em.saveConsole(); err != nil {
-		return err
+		plog.Errorf("Error saving console for device %v: %v", em.ID(), err)
 	}
 
 	if err := em.cluster.api.CleanupDevice(em.ID()); err != nil {
-		return err
+		plog.Errorf("Error cleaning up device for device %v: %v", em.ID(), err)
 	}
 
 	em.cluster.DelMach(em)
-
-	return nil
 }
 
 func (em *machine) ConsoleOutput() string {

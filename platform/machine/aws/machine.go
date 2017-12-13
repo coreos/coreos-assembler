@@ -60,25 +60,21 @@ func (am *machine) Reboot() error {
 	return platform.RebootMachine(am, am.journal, am.cluster.RuntimeConf())
 }
 
-func (am *machine) Destroy() error {
+func (am *machine) Destroy() {
 	if err := am.cluster.api.TerminateInstances([]string{am.ID()}); err != nil {
-		return err
+		plog.Errorf("Error terminating instance %v: %v", am.ID(), err)
 	}
 
 	if am.journal != nil {
-		if err := am.journal.Destroy(); err != nil {
-			return err
-		}
+		am.journal.Destroy()
 	}
 
 	// faster when run after termination
 	if err := am.saveConsole(); err != nil {
-		return err
+		plog.Errorf("Error saving console for instance %v: %v", am.ID(), err)
 	}
 
 	am.cluster.DelMach(am)
-
-	return nil
 }
 
 func (am *machine) ConsoleOutput() string {

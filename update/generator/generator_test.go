@@ -32,11 +32,8 @@ type testGenerator struct {
 }
 
 // Report errors to testing framework instead of return value.
-func (g *testGenerator) Destroy() error {
-	if err := g.Generator.Destroy(); err != nil {
-		g.t.Errorf("Generator.Destroy: %v", err)
-	}
-	return nil
+func (g *testGenerator) Destroy() {
+	g.Generator.Destroy()
 }
 
 func TestGenerateWithoutPartition(t *testing.T) {

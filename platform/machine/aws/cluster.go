@@ -19,9 +19,15 @@ import (
 	"path/filepath"
 
 	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
+	"github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/conf"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/aws")
 )
 
 type cluster struct {
@@ -115,12 +121,12 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	return mach, nil
 }
 
-func (ac *cluster) Destroy() error {
+func (ac *cluster) Destroy() {
 	if !ac.RuntimeConf().NoSSHKeyInMetadata {
 		if err := ac.api.DeleteKey(ac.Name()); err != nil {
-			return err
+			plog.Errorf("Error deleting key %v: %v", ac.Name(), err)
 		}
 	}
 
-	return ac.BaseCluster.Destroy()
+	ac.BaseCluster.Destroy()
 }

@@ -140,10 +140,10 @@ func (dc *cluster) vmname() string {
 	return fmt.Sprintf("%s-%x", dc.Name()[0:13], b)
 }
 
-func (dc *cluster) Destroy() error {
+func (dc *cluster) Destroy() {
 	if err := dc.api.DeleteKey(context.TODO(), dc.sshKeyID); err != nil {
-		return err
+		plog.Errorf("Error deleting key %v: %v", dc.sshKeyID, err)
 	}
 
-	return dc.BaseCluster.Destroy()
+	dc.BaseCluster.Destroy()
 }
