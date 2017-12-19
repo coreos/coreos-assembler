@@ -45,6 +45,10 @@ func (gm *machine) PrivateIP() string {
 	return gm.intIP
 }
 
+func (gm *machine) RuntimeConf() platform.RuntimeConfig {
+	return gm.gc.RuntimeConf()
+}
+
 func (gm *machine) SSHClient() (*ssh.Client, error) {
 	return gm.gc.SSHClient(gm.IP())
 }
@@ -58,7 +62,7 @@ func (gm *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (gm *machine) Reboot() error {
-	return platform.RebootMachine(gm, gm.journal, gm.gc.RuntimeConf())
+	return platform.RebootMachine(gm, gm.journal)
 }
 
 func (gm *machine) Destroy() {

@@ -45,6 +45,10 @@ func (em *machine) PrivateIP() string {
 	return em.mach.IPAddress
 }
 
+func (em *machine) RuntimeConf() platform.RuntimeConfig {
+	return em.cluster.RuntimeConf()
+}
+
 func (em *machine) SSHClient() (*ssh.Client, error) {
 	return em.cluster.SSHClient(em.IP())
 }
@@ -58,7 +62,7 @@ func (em *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (em *machine) Reboot() error {
-	return platform.RebootMachine(em, em.journal, em.cluster.RuntimeConf())
+	return platform.RebootMachine(em, em.journal)
 }
 
 func (em *machine) Destroy() {

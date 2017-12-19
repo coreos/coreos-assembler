@@ -44,6 +44,10 @@ func (dm *machine) PrivateIP() string {
 	return dm.privateIP
 }
 
+func (dm *machine) RuntimeConf() platform.RuntimeConfig {
+	return dm.cluster.RuntimeConf()
+}
+
 func (dm *machine) SSHClient() (*ssh.Client, error) {
 	return dm.cluster.SSHClient(dm.IP())
 }
@@ -57,7 +61,7 @@ func (dm *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (dm *machine) Reboot() error {
-	return platform.RebootMachine(dm, dm.journal, dm.cluster.RuntimeConf())
+	return platform.RebootMachine(dm, dm.journal)
 }
 
 func (dm *machine) Destroy() {

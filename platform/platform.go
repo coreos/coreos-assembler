@@ -44,6 +44,9 @@ type Machine interface {
 	// PrivateIP returns the machine's private IP.
 	PrivateIP() string
 
+	// RuntimeConf returns the cluster's runtime configuration.
+	RuntimeConf() RuntimeConfig
+
 	// SSHClient establishes a new SSH connection to the machine.
 	SSHClient() (*ssh.Client, error)
 
@@ -98,6 +101,7 @@ type RuntimeConfig struct {
 	NoSSHKeyInUserData bool // don't inject SSH key into Ignition/cloud-config
 	NoSSHKeyInMetadata bool // don't add SSH key to platform metadata
 	NoEnableSelinux    bool // don't enable selinux when starting or rebooting a machine
+	AllowFailedUnits   bool // don't fail CheckMachine if a systemd unit has failed
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser
@@ -277,14 +281,15 @@ func CheckMachine(m Machine) error {
 		return fmt.Errorf("not a Container Linux instance")
 	}
 
-	// ensure no systemd units failed during boot
-	out, stderr, err = m.SSH("systemctl --no-legend --state failed list-units")
-	if err != nil {
-		return fmt.Errorf("systemctl: %s: %v: %s", out, err, stderr)
-	}
-
-	if len(out) > 0 {
-		return fmt.Errorf("some systemd units failed:\n%s", out)
+	if !m.RuntimeConf().AllowFailedUnits {
+		// ensure no systemd units failed during boot
+		out, stderr, err = m.SSH("systemctl --no-legend --state failed list-units")
+		if err != nil {
+			return fmt.Errorf("systemctl: %s: %v: %s", out, err, stderr)
+		}
+		if len(out) > 0 {
+			return fmt.Errorf("some systemd units failed:\n%s", out)
+		}
 	}
 
 	return nil

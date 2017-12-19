@@ -46,6 +46,10 @@ func (m *machine) PrivateIP() string {
 	return m.netif.DHCPv4[0].IP.String()
 }
 
+func (m *machine) RuntimeConf() platform.RuntimeConfig {
+	return m.qc.RuntimeConf()
+}
+
 func (m *machine) SSHClient() (*ssh.Client, error) {
 	return m.qc.SSHClient(m.IP())
 }
@@ -59,7 +63,7 @@ func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (m *machine) Reboot() error {
-	return platform.RebootMachine(m, m.journal, m.qc.RuntimeConf())
+	return platform.RebootMachine(m, m.journal)
 }
 
 func (m *machine) Destroy() {
