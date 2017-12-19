@@ -44,6 +44,10 @@ func (am *machine) PrivateIP() string {
 	return *am.mach.PrivateIpAddress
 }
 
+func (am *machine) RuntimeConf() platform.RuntimeConfig {
+	return am.cluster.RuntimeConf()
+}
+
 func (am *machine) SSHClient() (*ssh.Client, error) {
 	return am.cluster.SSHClient(am.IP())
 }

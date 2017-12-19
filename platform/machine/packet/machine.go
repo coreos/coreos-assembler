@@ -44,6 +44,10 @@ func (pm *machine) PrivateIP() string {
 	return pm.privateIP
 }
 
+func (pm *machine) RuntimeConf() platform.RuntimeConfig {
+	return pm.cluster.RuntimeConf()
+}
+
 func (pm *machine) SSHClient() (*ssh.Client, error) {
 	return pm.cluster.SSHClient(pm.IP())
 }

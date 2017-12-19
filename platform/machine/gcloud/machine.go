@@ -45,6 +45,10 @@ func (gm *machine) PrivateIP() string {
 	return gm.intIP
 }
 
+func (gm *machine) RuntimeConf() platform.RuntimeConfig {
+	return gm.gc.RuntimeConf()
+}
+
 func (gm *machine) SSHClient() (*ssh.Client, error) {
 	return gm.gc.SSHClient(gm.IP())
 }

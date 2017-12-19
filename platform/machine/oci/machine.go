@@ -45,6 +45,10 @@ func (om *machine) PrivateIP() string {
 	return om.mach.PrivateIPAddress
 }
 
+func (om *machine) RuntimeConf() platform.RuntimeConfig {
+	return om.cluster.RuntimeConf()
+}
+
 func (om *machine) SSHClient() (*ssh.Client, error) {
 	return om.cluster.SSHClient(om.IP())
 }
