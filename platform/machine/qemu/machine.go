@@ -63,7 +63,7 @@ func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (m *machine) Reboot() error {
-	return platform.RebootMachine(m, m.journal, m.qc.RuntimeConf())
+	return platform.RebootMachine(m, m.journal)
 }
 
 func (m *machine) Destroy() {

@@ -256,7 +256,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 		return nil, err
 	}
 
-	if err := platform.StartMachine(qm, qm.journal, qc.RuntimeConf()); err != nil {
+	if err := platform.StartMachine(qm, qm.journal); err != nil {
 		qm.Destroy()
 		return nil, err
 	}

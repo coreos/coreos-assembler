@@ -111,7 +111,7 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	if err := platform.StartMachine(mach, mach.journal, ac.RuntimeConf()); err != nil {
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
 		mach.Destroy()
 		return nil, err
 	}

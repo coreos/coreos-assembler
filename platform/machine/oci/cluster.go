@@ -119,7 +119,7 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_OCI_IPV4_PRIVATE_0=$(curl http://169.25
 		return nil, err
 	}
 
-	if err := platform.StartMachine(mach, mach.journal, oc.RuntimeConf()); err != nil {
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
 		mach.Destroy()
 		return nil, err
 	}
