@@ -75,6 +75,7 @@ func DeadLinks(c cluster.TestCluster) {
 	ignore := []string{
 		"/dev",
 		"/proc",
+		"/run/systemd/units",
 		"/run/udev/watch",
 		"/sys",
 		"/var/lib/docker",
