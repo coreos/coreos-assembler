@@ -107,6 +107,11 @@ var (
 			match: regexp.MustCompile(`EXT4-fs \([^)]+\): Delayed block allocation failed for inode \d+ at logical offset \d+ with max blocks \d+ with (error \d+)`),
 		},
 		{
+			// kernel 4.14.11
+			desc:  "bad page table",
+			match: regexp.MustCompile("mm/pgtable-generic.c:\\d+: bad (p.d|pte)"),
+		},
+		{
 			desc:  "Go panic",
 			match: regexp.MustCompile("panic: (.*)"),
 		},
