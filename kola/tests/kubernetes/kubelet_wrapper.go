@@ -20,8 +20,8 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
-const hyperkubeTag = "v1.5.7_coreos.0"
-const versionOutput = "Kubernetes v1.5.7+coreos.0" // --version for /hyperkube
+const hyperkubeTag = "v1.9.2_coreos.0"
+const versionOutput = "Kubernetes v1.9.2+coreos.0" // --version for /hyperkube
 
 func init() {
 	// regression test for https://github.com/coreos/bugs/issues/1892
@@ -37,10 +37,10 @@ systemd:
     contents: |-
       [Service]
       Type=oneshot
-      Environment=KUBELET_VERSION=` + hyperkubeTag + `
+      Environment=KUBELET_IMAGE_TAG=` + hyperkubeTag + `
       # var-log and resolv were at various times either in the kubelet-wrapper
       # docs or recommended to people
-      Environment="RKT_OPTS=--volume var-log,kind=host,source=/var/log \
+      Environment="RKT_RUN_ARGS=--volume var-log,kind=host,source=/var/log \
         --mount volume=var-log,target=/var/log \
         --volume resolv,kind=host,source=/etc/resolv.conf \
         --mount volume=resolv,target=/etc/resolv.conf"
@@ -63,10 +63,10 @@ func testKubeletWrapperVarLog(c cluster.TestCluster) {
 	c.MustSSH(m, `
 	for i in {1..120}; do 
 		sleep 5
-		if journalctl -u kubelet -o cat | grep '`+versionOutput+`' &>/dev/null; then
+		if journalctl -t kubelet-wrapper -o cat | grep -F '`+versionOutput+`' &>/dev/null; then
 			exit 0
 		fi
 	done
-	journalctl -u kubelet -o cat
+	journalctl -t kubelet-wrapper -o cat
 	exit 1`)
 }
