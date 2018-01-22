@@ -197,7 +197,7 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 			plog.Warningf("parsing Container Linux config: %s", report)
 		}
 
-		ignc, report := ct.ConvertAs2_0(clc, ctPlatform, ast)
+		ignc, report := ct.Convert(clc, ctPlatform, ast)
 		if report.IsFatal() {
 			return nil, fmt.Errorf("rendering Container Linux config for platform %q: %s", ctPlatform, report)
 		} else if len(report.Entries) > 0 {

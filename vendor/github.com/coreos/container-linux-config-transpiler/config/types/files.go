@@ -15,14 +15,28 @@
 package types
 
 import (
+	"errors"
+	"flag"
+	"fmt"
+	"io/ioutil"
 	"net/url"
+	"path"
 
 	"github.com/coreos/container-linux-config-transpiler/config/astyaml"
+	"github.com/coreos/container-linux-config-transpiler/internal/util"
 
 	ignTypes "github.com/coreos/ignition/config/v2_1/types"
 	"github.com/coreos/ignition/config/validate/astnode"
 	"github.com/coreos/ignition/config/validate/report"
 	"github.com/vincent-petithory/dataurl"
+)
+
+var (
+	DefaultFileMode = 0644
+	DefaultDirMode  = 0755
+
+	WarningUnsetFileMode = fmt.Errorf("mode unspecified for file, defaulting to %#o", DefaultFileMode)
+	WarningUnsetDirMode  = fmt.Errorf("mode unspecified for directory, defaulting to %#o", DefaultDirMode)
 )
 
 type FileUser struct {
@@ -40,13 +54,14 @@ type File struct {
 	Path       string       `yaml:"path"`
 	User       FileUser     `yaml:"user"`
 	Group      FileGroup    `yaml:"group"`
-	Mode       int          `yaml:"mode"`
+	Mode       *int         `yaml:"mode"`
 	Contents   FileContents `yaml:"contents"`
 }
 
 type FileContents struct {
 	Remote Remote `yaml:"remote"`
 	Inline string `yaml:"inline"`
+	Local  string `yaml:"local"`
 }
 
 type Remote struct {
@@ -60,7 +75,7 @@ type Directory struct {
 	Path       string    `yaml:"path"`
 	User       FileUser  `yaml:"user"`
 	Group      FileGroup `yaml:"group"`
-	Mode       int       `yaml:"mode"`
+	Mode       *int      `yaml:"mode"`
 }
 
 type Link struct {
@@ -72,11 +87,28 @@ type Link struct {
 	Target     string    `yaml:"target"`
 }
 
+func (f File) ValidateMode() report.Report {
+	if f.Mode == nil {
+		return report.ReportFromError(WarningUnsetFileMode, report.EntryWarning)
+	}
+	return report.Report{}
+}
+
+func (d Directory) ValidateMode() report.Report {
+	if d.Mode == nil {
+		return report.ReportFromError(WarningUnsetDirMode, report.EntryWarning)
+	}
+	return report.Report{}
+}
+
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		r := report.Report{}
 		files_node, _ := getNodeChildPath(ast, "storage", "files")
 		for i, file := range in.Storage.Files {
+			if file.Mode == nil {
+				file.Mode = util.IntToPtr(DefaultFileMode)
+			}
 			file_node, _ := getNodeChild(files_node, i)
 			newFile := ignTypes.File{
 				Node: ignTypes.Node{
@@ -92,7 +124,7 @@ func init() {
 					},
 				},
 				FileEmbedded1: ignTypes.FileEmbedded1{
-					Mode: file.Mode,
+					Mode: *file.Mode,
 				},
 			}
 
@@ -101,6 +133,42 @@ func init() {
 					Source: (&url.URL{
 						Scheme: "data",
 						Opaque: "," + dataurl.EscapeString(file.Contents.Inline),
+					}).String(),
+				}
+			}
+
+			if file.Contents.Local != "" {
+				// The provided local file path is relative to the value of the
+				// --files-dir flag.
+				filesDir := flag.Lookup("files-dir")
+				if filesDir == nil || filesDir.Value.String() == "" {
+					err := errors.New("local files require setting the --files-dir flag to the directory that contains the file")
+					flagReport := report.ReportFromError(err, report.EntryError)
+					if n, err := getNodeChildPath(file_node, "contents", "local"); err == nil {
+						line, col, _ := n.ValueLineCol(nil)
+						flagReport.AddPosition(line, col, "")
+					}
+					r.Merge(flagReport)
+					continue
+				}
+				localPath := path.Join(filesDir.Value.String(), file.Contents.Local)
+				contents, err := ioutil.ReadFile(localPath)
+				if err != nil {
+					// If the file could not be read, record error and continue.
+					convertReport := report.ReportFromError(err, report.EntryError)
+					if n, err := getNodeChildPath(file_node, "contents", "local"); err == nil {
+						line, col, _ := n.ValueLineCol(nil)
+						convertReport.AddPosition(line, col, "")
+					}
+					r.Merge(convertReport)
+					continue
+				}
+
+				// Include the contents of the local file as if it were provided inline.
+				newFile.Contents = ignTypes.FileContents{
+					Source: (&url.URL{
+						Scheme: "data",
+						Opaque: "," + dataurl.Escape(contents),
 					}).String(),
 				}
 			}
@@ -114,6 +182,7 @@ func init() {
 						line, col, _ := n.ValueLineCol(nil)
 						convertReport.AddPosition(line, col, "")
 					}
+					r.Merge(convertReport)
 					continue
 				}
 
@@ -145,6 +214,9 @@ func init() {
 			out.Storage.Files = append(out.Storage.Files, newFile)
 		}
 		for _, dir := range in.Storage.Directories {
+			if dir.Mode == nil {
+				dir.Mode = util.IntToPtr(DefaultDirMode)
+			}
 			out.Storage.Directories = append(out.Storage.Directories, ignTypes.Directory{
 				Node: ignTypes.Node{
 					Filesystem: dir.Filesystem,
@@ -159,7 +231,7 @@ func init() {
 					},
 				},
 				DirectoryEmbedded1: ignTypes.DirectoryEmbedded1{
-					Mode: dir.Mode,
+					Mode: *dir.Mode,
 				},
 			})
 		}

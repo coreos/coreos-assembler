@@ -28,7 +28,7 @@ type Docker struct {
 }
 
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		if in.Docker != nil {
 			contents := fmt.Sprintf("[Service]\nEnvironment=\"DOCKER_OPTS=%s\"", strings.Join(in.Docker.Flags, " "))
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.Unit{

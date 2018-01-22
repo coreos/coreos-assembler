@@ -59,7 +59,7 @@ func (s UpdateServer) Validate() report.Report {
 }
 
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		var contents string
 		if in.Update != nil {
 			if in.Update.Group != "" {

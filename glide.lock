@@ -1,5 +1,5 @@
-hash: 57283d4781c33b1d003b989068252bae4a7f76a7488c942133b4b6ce5af7d90d
-updated: 2017-10-24T18:09:13.866306264-07:00
+hash: 7ebbcb125b3ea95da33523f73d40d119e6e60b1a6d7e58768207ab66009deb84
+updated: 2018-01-22T13:02:57.169254052-08:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -55,7 +55,7 @@ imports:
 - name: github.com/boltdb/bolt
   version: dfb21201d9270c1082d5fb0f07f500311ff72f18
 - name: github.com/coreos/container-linux-config-transpiler
-  version: be4cb16b0aaf0f6b4fdf63b8b2a081397276bf0f
+  version: b76ab0b2d66ff1ac6902f4fe118a02c1bed6e5ce
   subpackages:
   - config
   - config/astyaml
@@ -63,6 +63,7 @@ imports:
   - config/templating
   - config/types
   - config/types/util
+  - internal/util
 - name: github.com/coreos/coreos-cloudinit
   version: 4c333e657bfbaa8f6594298b48324f45e6bf5961
   subpackages:
