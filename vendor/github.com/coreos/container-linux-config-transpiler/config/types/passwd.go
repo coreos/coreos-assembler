@@ -63,7 +63,7 @@ type Group struct {
 }
 
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		for _, user := range in.Passwd.Users {
 			newUser := ignTypes.PasswdUser{
 				Name:              user.Name,

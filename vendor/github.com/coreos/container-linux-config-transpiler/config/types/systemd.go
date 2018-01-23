@@ -39,7 +39,7 @@ type SystemdUnitDropIn struct {
 }
 
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		for _, unit := range in.Systemd.Units {
 			newUnit := ignTypes.Unit{
 				Name:     unit.Name,

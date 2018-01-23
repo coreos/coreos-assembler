@@ -87,10 +87,12 @@ storage:
     path: /etc/subuid
     contents:
       inline: "dockremap:100000:65536"
+    mode: 0644
   - filesystem: root
     path: /etc/subgid
     contents:
       inline: "dockremap:100000:65536"
+    mode: 0644
 passwd:
   users:
   - name: dockremap`),

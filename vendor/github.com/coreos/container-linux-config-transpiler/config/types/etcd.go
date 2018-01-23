@@ -119,7 +119,7 @@ func (etcd *Etcd) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		if in.Etcd != nil {
 			contents, err := etcdContents(*in.Etcd, platform)
 			if err != nil {

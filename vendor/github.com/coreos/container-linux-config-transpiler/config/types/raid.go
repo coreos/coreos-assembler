@@ -28,7 +28,7 @@ type Raid struct {
 }
 
 func init() {
-	register2_0(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
+	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
 		for _, array := range in.Storage.Arrays {
 			newArray := ignTypes.Raid{
 				Name:    array.Name,

@@ -37,6 +37,7 @@ storage:
       path: /etc/coreos/docker-1.12
       contents:
         inline: yes
+      mode: 0644
 `),
 	})
 	register.Register(&register.Test{
