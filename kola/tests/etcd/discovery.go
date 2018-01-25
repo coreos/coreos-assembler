@@ -28,7 +28,6 @@ import (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
 
 func init() {
-	// test etcd discovery with 2.0 with new cloud config
 	register.Register(&register.Test{
 		Run:         Discovery,
 		ClusterSize: 3,
@@ -55,6 +54,7 @@ func init() {
     ]
   }
 }`),
+		EndVersion: semver.Version{Major: 1662},
 	})
 
 	register.Register(&register.Test{
