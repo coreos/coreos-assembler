@@ -141,7 +141,7 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		}
 
 		if spawnVerbose {
-			fmt.Printf("Machine spawned at %v\n", mach.IP())
+			fmt.Printf("Machine %v spawned at %v\n", mach.ID(), mach.IP())
 		}
 
 		someMach = mach
