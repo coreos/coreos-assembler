@@ -43,6 +43,35 @@ func init() {
   "systemd": {
     "units": [
       {
+        "name": "etcd-member.service",
+        "enable": true,
+        "dropins": [{
+          "name": "metadata.conf",
+          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379 --listen-peer-urls=http://$private_ipv4:2380"
+        }]
+      }
+    ]
+  },
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/coreos/update.conf",
+      "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+      "mode": 420
+    }]
+  }
+}`),
+		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.locksmith.cluster.etcd2",
+		Run:         locksmithCluster,
+		ClusterSize: 3,
+		UserData: conf.Ignition(`{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
         "name": "etcd2.service",
         "enable": true,
         "dropins": [{
@@ -67,7 +96,9 @@ func init() {
       "mode": 420
     }]
   }
-}`)})
+}`),
+		EndVersion: semver.Version{Major: 1662},
+	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.reboot",
 		Run:         locksmithReboot,
