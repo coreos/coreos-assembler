@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016-2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -387,16 +387,32 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 }
 
 func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
+	keyStrs := keysToStrings(keys)
+	for i := range c.ignitionV1.Passwd.Users {
+		user := &c.ignitionV1.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyStrs...)
+			return
+		}
+	}
 	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
 		Name:              "core",
-		SSHAuthorizedKeys: keysToStrings(keys),
+		SSHAuthorizedKeys: keyStrs,
 	})
 }
 
 func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
+	keyStrs := keysToStrings(keys)
+	for i := range c.ignitionV2.Passwd.Users {
+		user := &c.ignitionV2.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyStrs...)
+			return
+		}
+	}
 	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.User{
 		Name:              "core",
-		SSHAuthorizedKeys: keysToStrings(keys),
+		SSHAuthorizedKeys: keyStrs,
 	})
 }
 
@@ -404,6 +420,13 @@ func (c *Conf) copyKeysIgnitionV21(keys []*agent.Key) {
 	var keyObjs []v21types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v21types.SSHAuthorizedKey(key.String()))
+	}
+	for i := range c.ignitionV21.Passwd.Users {
+		user := &c.ignitionV21.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
+			return
+		}
 	}
 	c.ignitionV21.Passwd.Users = append(c.ignitionV21.Passwd.Users, v21types.PasswdUser{
 		Name:              "core",
