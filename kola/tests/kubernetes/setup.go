@@ -307,16 +307,15 @@ func runInstallScript(c cluster.TestCluster, m platform.Machine, script string, 
 }
 
 var (
-	etcdConfig = conf.CloudConfig(`#cloud-config
-
-coreos:
-  etcd2:
-    name: $name
-    advertise-client-urls: http://$public_ipv4:2379
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+	etcdConfig = conf.ContainerLinuxConfig(`
+etcd:
+  advertise_client_urls: http://{PUBLIC_IPV4}:2379
+  listen_client_urls: http://0.0.0.0:2379
+systemd:
   units:
-    - name: etcd2.service
-      command: start`)
+    - name: etcd-member.service
+      enabled: true
+`)
 )
 
 const (

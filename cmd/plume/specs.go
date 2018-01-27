@@ -279,7 +279,7 @@ var (
 				Container:         "publish",
 				Environments:      azureEnvironments,
 				Label:             "CoreOS Alpha",
-				Description:       "The Alpha channel closely tracks current development work and is released frequently. The newest versions of docker, etcd and fleet will be available for testing.",
+				Description:       "The Alpha channel closely tracks current development work and is released frequently. The newest versions of the Linux kernel, systemd, and other components will be available for testing.",
 				RecommendedVMSize: "Medium",
 				IconURI:           "coreos-globe-color-lg-100px.png",
 				SmallIconURI:      "coreos-globe-color-lg-45px.png",

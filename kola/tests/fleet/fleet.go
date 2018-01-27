@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
@@ -115,6 +117,7 @@ func init() {
 		Run:         Proxy,
 		ClusterSize: 0,
 		Name:        "coreos.fleet.etcdproxy",
+		EndVersion:  semver.Version{Major: 1662},
 	})
 }
 

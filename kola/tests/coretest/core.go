@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/kola/register"
@@ -80,6 +81,7 @@ func init() {
     ]
   }
 }`),
+		EndVersion: semver.Version{Major: 1662},
 	})
 
 	// tests requiring network connection to internet

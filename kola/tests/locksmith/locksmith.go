@@ -20,6 +20,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
@@ -35,6 +36,35 @@ import (
 func init() {
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.cluster",
+		Run:         locksmithCluster,
+		ClusterSize: 3,
+		UserData: conf.Ignition(`{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "etcd-member.service",
+        "enable": true,
+        "dropins": [{
+          "name": "metadata.conf",
+          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379 --listen-peer-urls=http://$private_ipv4:2380"
+        }]
+      }
+    ]
+  },
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/coreos/update.conf",
+      "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+      "mode": 420
+    }]
+  }
+}`),
+		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.locksmith.cluster.etcd2",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
 		UserData: conf.Ignition(`{
@@ -66,7 +96,9 @@ func init() {
       "mode": 420
     }]
   }
-}`)})
+}`),
+		EndVersion: semver.Version{Major: 1662},
+	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.reboot",
 		Run:         locksmithReboot,
@@ -82,13 +114,13 @@ func init() {
     "units": [
       {
         "name": "certgen.service",
-        "contents": "[Unit]\nAfter=system-config.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=/usr/bin/mkdir -p /etc/ssl/etcd\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=etcd CA' -out /etc/ssl/etcd/ca-etcd-cert.pem -keyout /etc/ssl/etcd/ca-etcd-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_server -subj '/CN=localhost' -out /etc/ssl/etcd/etcd-cert-self.pem -keyout /etc/ssl/etcd/etcd-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/etcd/ca-etcd-cert.pem -CAkey /etc/ssl/etcd/ca-etcd-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/etcd/etcd-cert-self.pem -out /etc/ssl/etcd/etcd-cert.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=locksmith CA' -out /etc/ssl/etcd/ca-locksmith-cert.pem -keyout /etc/ssl/etcd/ca-locksmith-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_client -subj '/CN=locksmith client' -out /etc/ssl/etcd/locksmith-cert-self.pem -keyout /etc/ssl/etcd/locksmith-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/etcd/ca-locksmith-cert.pem -CAkey /etc/ssl/etcd/ca-locksmith-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/etcd/locksmith-cert-self.pem -out /etc/ssl/etcd/locksmith-cert.pem\nExecStart=/usr/bin/chmod 0644 /etc/ssl/etcd/ca-etcd-cert.pem /etc/ssl/etcd/ca-etcd-key.pem /etc/ssl/etcd/ca-locksmith-cert.pem /etc/ssl/etcd/ca-locksmith-key.pem /etc/ssl/etcd/etcd-cert.pem /etc/ssl/etcd/etcd-key.pem /etc/ssl/etcd/locksmith-cert.pem /etc/ssl/etcd/locksmith-key.pem\nExecStart=/usr/bin/ln -fns ../etcd/ca-etcd-cert.pem /etc/ssl/certs/etcd.pem\nExecStart=/usr/bin/c_rehash"
+        "contents": "[Unit]\nAfter=system-config.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=/usr/bin/mkdir -p /etc/ssl/certs\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=etcd CA' -out /etc/ssl/certs/ca-etcd-cert.pem -keyout /etc/ssl/certs/ca-etcd-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_server -subj '/CN=localhost' -out /etc/ssl/certs/etcd-cert-self.pem -keyout /etc/ssl/certs/etcd-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/certs/ca-etcd-cert.pem -CAkey /etc/ssl/certs/ca-etcd-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/certs/etcd-cert-self.pem -out /etc/ssl/certs/etcd-cert.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=locksmith CA' -out /etc/ssl/certs/ca-locksmith-cert.pem -keyout /etc/ssl/certs/ca-locksmith-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_client -subj '/CN=locksmith client' -out /etc/ssl/certs/locksmith-cert-self.pem -keyout /etc/ssl/certs/locksmith-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/certs/ca-locksmith-cert.pem -CAkey /etc/ssl/certs/ca-locksmith-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/certs/locksmith-cert-self.pem -out /etc/ssl/certs/locksmith-cert.pem\nExecStart=/usr/bin/chmod 0644 /etc/ssl/certs/ca-etcd-cert.pem /etc/ssl/certs/ca-etcd-key.pem /etc/ssl/certs/ca-locksmith-cert.pem /etc/ssl/certs/ca-locksmith-key.pem /etc/ssl/certs/etcd-cert.pem /etc/ssl/certs/etcd-key.pem /etc/ssl/certs/locksmith-cert.pem /etc/ssl/certs/locksmith-key.pem\nExecStart=/usr/bin/ln -fns ca-etcd-cert.pem /etc/ssl/certs/etcd.pem\nExecStart=/usr/bin/c_rehash"
       },
       {
-        "name": "etcd2.service",
+        "name": "etcd-member.service",
         "dropins": [{
           "name": "environment.conf",
-          "contents": "[Unit]\nAfter=certgen.service\nRequires=certgen.service\n[Service]\nEnvironment=ETCD_ADVERTISE_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_LISTEN_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_CERT_FILE=/etc/ssl/etcd/etcd-cert.pem\nEnvironment=ETCD_KEY_FILE=/etc/ssl/etcd/etcd-key.pem\nEnvironment=ETCD_TRUSTED_CA_FILE=/etc/ssl/etcd/ca-locksmith-cert.pem\nEnvironment=ETCD_CERT_AUTH=true"
+          "contents": "[Unit]\nAfter=certgen.service\nRequires=certgen.service\n[Service]\nEnvironment=ETCD_ADVERTISE_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_LISTEN_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_CERT_FILE=/etc/ssl/certs/etcd-cert.pem\nEnvironment=ETCD_KEY_FILE=/etc/ssl/certs/etcd-key.pem\nEnvironment=ETCD_TRUSTED_CA_FILE=/etc/ssl/certs/ca-locksmith-cert.pem\nEnvironment=ETCD_CLIENT_CERT_AUTH=true"
         }]
       },
       {
@@ -96,7 +128,7 @@ func init() {
         "enable": true,
         "dropins": [{
           "name": "environment.conf",
-          "contents": "[Unit]\nAfter=etcd2.service\nRequires=etcd2.service\n[Service]\nEnvironment=LOCKSMITHD_ETCD_CERTFILE=/etc/ssl/etcd/locksmith-cert.pem\nEnvironment=LOCKSMITHD_ETCD_KEYFILE=/etc/ssl/etcd/locksmith-key.pem\nEnvironment=LOCKSMITHD_ETCD_CAFILE=/etc/ssl/etcd/ca-etcd-cert.pem\nEnvironment=LOCKSMITHD_ENDPOINT=https://localhost:2379\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_START=00:00\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_LENGTH=23h59m"
+          "contents": "[Unit]\nAfter=etcd-member.service\nRequires=etcd-member.service\n[Service]\nEnvironment=LOCKSMITHD_ETCD_CERTFILE=/etc/ssl/certs/locksmith-cert.pem\nEnvironment=LOCKSMITHD_ETCD_KEYFILE=/etc/ssl/certs/locksmith-key.pem\nEnvironment=LOCKSMITHD_ETCD_CAFILE=/etc/ssl/certs/ca-etcd-cert.pem\nEnvironment=LOCKSMITHD_ENDPOINT=https://localhost:2379\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_START=00:00\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_LENGTH=23h59m"
         }]
       }
     ]
@@ -118,6 +150,55 @@ func init() {
     ]
   }
 }`),
+		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
+	})
+	register.Register(&register.Test{
+		Name:        "coreos.locksmith.tls.etcd2",
+		Run:         locksmithTLS,
+		ClusterSize: 1,
+		UserData: conf.Ignition(`{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [
+      {
+        "name": "certgen.service",
+        "contents": "[Unit]\nAfter=system-config.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStartPre=/usr/bin/mkdir -p /etc/ssl/certs\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=etcd CA' -out /etc/ssl/certs/ca-etcd-cert.pem -keyout /etc/ssl/certs/ca-etcd-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_server -subj '/CN=localhost' -out /etc/ssl/certs/etcd-cert-self.pem -keyout /etc/ssl/certs/etcd-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/certs/ca-etcd-cert.pem -CAkey /etc/ssl/certs/ca-etcd-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/certs/etcd-cert-self.pem -out /etc/ssl/certs/etcd-cert.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_ca -subj '/CN=locksmith CA' -out /etc/ssl/certs/ca-locksmith-cert.pem -keyout /etc/ssl/certs/ca-locksmith-key.pem\nExecStart=/usr/bin/openssl req -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_client -subj '/CN=locksmith client' -out /etc/ssl/certs/locksmith-cert-self.pem -keyout /etc/ssl/certs/locksmith-key.pem\nExecStart=/usr/bin/openssl x509 -CA /etc/ssl/certs/ca-locksmith-cert.pem -CAkey /etc/ssl/certs/ca-locksmith-key.pem -CAcreateserial -sha512 -days 3 -in /etc/ssl/certs/locksmith-cert-self.pem -out /etc/ssl/certs/locksmith-cert.pem\nExecStart=/usr/bin/chmod 0644 /etc/ssl/certs/ca-etcd-cert.pem /etc/ssl/certs/ca-etcd-key.pem /etc/ssl/certs/ca-locksmith-cert.pem /etc/ssl/certs/ca-locksmith-key.pem /etc/ssl/certs/etcd-cert.pem /etc/ssl/certs/etcd-key.pem /etc/ssl/certs/locksmith-cert.pem /etc/ssl/certs/locksmith-key.pem\nExecStart=/usr/bin/ln -fns ca-etcd-cert.pem /etc/ssl/certs/etcd.pem\nExecStart=/usr/bin/c_rehash"
+      },
+      {
+        "name": "etcd2.service",
+        "dropins": [{
+          "name": "environment.conf",
+          "contents": "[Unit]\nAfter=certgen.service\nRequires=certgen.service\n[Service]\nEnvironment=ETCD_ADVERTISE_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_LISTEN_CLIENT_URLS=https://127.0.0.1:2379\nEnvironment=ETCD_CERT_FILE=/etc/ssl/certs/etcd-cert.pem\nEnvironment=ETCD_KEY_FILE=/etc/ssl/certs/etcd-key.pem\nEnvironment=ETCD_TRUSTED_CA_FILE=/etc/ssl/certs/ca-locksmith-cert.pem\nEnvironment=ETCD_CLIENT_CERT_AUTH=true"
+        }]
+      },
+      {
+        "name": "locksmithd.service",
+        "enable": true,
+        "dropins": [{
+          "name": "environment.conf",
+          "contents": "[Unit]\nAfter=etcd2.service\nRequires=etcd2.service\n[Service]\nEnvironment=LOCKSMITHD_ETCD_CERTFILE=/etc/ssl/certs/locksmith-cert.pem\nEnvironment=LOCKSMITHD_ETCD_KEYFILE=/etc/ssl/certs/locksmith-key.pem\nEnvironment=LOCKSMITHD_ETCD_CAFILE=/etc/ssl/certs/ca-etcd-cert.pem\nEnvironment=LOCKSMITHD_ENDPOINT=https://localhost:2379\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_START=00:00\nEnvironment=LOCKSMITHD_REBOOT_WINDOW_LENGTH=23h59m"
+        }]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "filesystem": "root",
+        "path": "/etc/coreos/update.conf",
+        "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
+        "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "path": "/etc/ssl/openssl.cnf",
+        "contents": { "source": "data:,%5Breq%5D%0Adistinguished_name=req%0A%5Betcd_ca%5D%0AbasicConstraints=CA:true%0AkeyUsage=keyCertSign,cRLSign%0AsubjectKeyIdentifier=hash%0A%5Betcd_client%5D%0AbasicConstraints=CA:FALSE%0AextendedKeyUsage=clientAuth%0AkeyUsage=digitalSignature,keyEncipherment%0A%5Betcd_server%5D%0AbasicConstraints=CA:FALSE%0AextendedKeyUsage=serverAuth%0AkeyUsage=digitalSignature,keyEncipherment%0AsubjectAltName=@sans%0A%5Bsans%5D%0ADNS.1=localhost%0AIP.1=127.0.0.1%0A" },
+        "mode": 420
+      }
+    ]
+  }
+}`),
+		EndVersion: semver.Version{Major: 1662},
 	})
 }
 
@@ -184,10 +265,10 @@ func locksmithCluster(c cluster.TestCluster) {
 
 func locksmithTLS(c cluster.TestCluster) {
 	m := c.Machines()[0]
-	lCmd := "sudo locksmithctl --endpoint https://localhost:2379 --etcd-cafile /etc/ssl/etcd/ca-etcd-cert.pem --etcd-certfile /etc/ssl/etcd/locksmith-cert.pem --etcd-keyfile /etc/ssl/etcd/locksmith-key.pem "
+	lCmd := "sudo locksmithctl --endpoint https://localhost:2379 --etcd-cafile /etc/ssl/certs/ca-etcd-cert.pem --etcd-certfile /etc/ssl/certs/locksmith-cert.pem --etcd-keyfile /etc/ssl/certs/locksmith-key.pem "
 
 	// First verify etcd has a valid TLS connection ready
-	output, err := c.SSH(m, "openssl s_client -showcerts -verify_return_error -verify_ip 127.0.0.1 -verify_hostname localhost -connect localhost:2379 0</dev/null 2>&1")
+	output, err := c.SSH(m, "openssl s_client -showcerts -verify_return_error -verify_ip 127.0.0.1 -verify_hostname localhost -connect localhost:2379 -cert /etc/ssl/certs/locksmith-cert.pem -key /etc/ssl/certs/locksmith-key.pem 0</dev/null 2>&1")
 	if err != nil || !bytes.Contains(output, []byte("Verify return code: 0")) {
 		c.Fatalf("openssl s_client: %q: %v", output, err)
 	}
