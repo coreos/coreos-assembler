@@ -43,6 +43,7 @@ var (
 
 	spawnNodeCount      int
 	spawnUserData       string
+	spawnDetach         bool
 	spawnShell          bool
 	spawnRemove         bool
 	spawnVerbose        bool
@@ -54,6 +55,7 @@ var (
 func init() {
 	cmdSpawn.Flags().IntVarP(&spawnNodeCount, "nodecount", "c", 1, "number of nodes to spawn")
 	cmdSpawn.Flags().StringVarP(&spawnUserData, "userdata", "u", "", "file containing userdata to pass to the instances")
+	cmdSpawn.Flags().BoolVarP(&spawnDetach, "detach", "t", false, "-kv --shell=false --remove=false")
 	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", true, "spawn a shell in an instance before exiting")
 	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
 	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
@@ -72,6 +74,13 @@ func runSpawn(cmd *cobra.Command, args []string) {
 
 func doSpawn(cmd *cobra.Command, args []string) error {
 	var err error
+
+	if spawnDetach {
+		spawnSetSSHKeys = true
+		spawnVerbose = true
+		spawnShell = false
+		spawnRemove = false
+	}
 
 	if spawnNodeCount <= 0 {
 		return fmt.Errorf("Cluster Failed: nodecount must be one or more")
