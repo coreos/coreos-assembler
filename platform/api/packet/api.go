@@ -191,7 +191,6 @@ func (a *API) CreateDevice(hostname string, conf *conf.Conf, console Console) (*
 
 	// The Ignition config can't go in userdata via coreos.config.url=https://metadata.packet.net/userdata because Ignition supplies an Accept header that metadata.packet.net finds 406 Not Acceptable.
 	// It can't go in userdata via coreos.oem.id=packet because the Packet OEM expects unit files in /usr/share/oem which the PXE image doesn't have.
-	// If metadata.packet.net is fixed and we move the Ignition config to userdata, "coreos-install -c /cloud-config" will also need "-i /empty" to prevent the installed Ignition from interpreting the userdata intended for the installer Ignition.
 	userdataName, userdataURL, err := a.uploadObject(hostname, "application/vnd.coreos.ignition+json", []byte(userdata))
 	if err != nil {
 		return nil, err
@@ -288,7 +287,13 @@ func (a *API) ListKeys() ([]packngo.SSHKey, error) {
 func (a *API) wrapUserData(conf *conf.Conf) (string, error) {
 	userDataOption := "-i"
 	if !conf.IsIgnition() && conf.String() != "" {
-		userDataOption = "-c"
+		// By providing a no-op Ignition config, we prevent Ignition
+		// from enabling oem-cloudinit.service, which is unordered
+		// with respect to the cloud-config installed by the -c
+		// option. Otherwise it might override settings in the
+		// cloud-config with defaults obtained from the Packet
+		// metadata endpoint.
+		userDataOption = "-i /noop.ign -c"
 	}
 
 	// make systemd units
@@ -344,6 +349,7 @@ RequiredBy=multi-user.target
 `, a.opts.ImageURL, userDataOption)
 
 	// make workarounds
+	noopIgnitionConfig := base64.StdEncoding.EncodeToString([]byte(`{"ignition": {"version": "2.1.0"}}`))
 	coreosCloudInit := base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\nexit 0"))
 
 	// make Ignition config
@@ -364,6 +370,18 @@ RequiredBy=multi-user.target
 							Opaque: ";base64," + b64UserData,
 						},
 					},
+					Mode: 0644,
+				},
+				ignition.File{
+					Filesystem: "root",
+					Path:       "/noop.ign",
+					Contents: ignition.FileContents{
+						Source: ignition.Url{
+							Scheme: "data",
+							Opaque: ";base64," + noopIgnitionConfig,
+						},
+					},
+					Mode: 0644,
 				},
 				ignition.File{
 					Filesystem: "root",

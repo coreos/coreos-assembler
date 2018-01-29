@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/platform/machine/packet"
 )
 
 var (
@@ -40,21 +41,24 @@ var (
 			      "path": "/resource/data",
 			      "contents": {
 				  "source": "data:,kola-data"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/http",
 			      "contents": {
 				  "source": "http://$IP/http"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/tftp",
 			      "contents": {
 				  "source": "tftp://$IP/tftp"
-			      }
+			      },
+			      "mode": 420
 			  }
 		      ]
 		  }
@@ -86,21 +90,24 @@ func init() {
 			      "path": "/resource/http",
 			      "contents": {
 				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/https",
 			      "contents": {
 				  "source": "https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/s3-anon",
 			      "contents": {
 				  "source": "s3://kola-fixtures/resources/anonymous"
-			      }
+			      },
+			      "mode": 420
 			  }
 		      ]
 		  }
@@ -127,7 +134,8 @@ func init() {
 			      "path": "/resource/s3-auth",
 			      "contents": {
 				  "source": "s3://kola-fixtures/resources/authenticated"
-			      }
+			      },
+			      "mode": 420
 			  }
 		      ]
 		  }
@@ -140,7 +148,12 @@ func resourceLocal(c cluster.TestCluster) {
 
 	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s Serve", c.Name()))
 
-	client, err := c.NewMachine(localClient.Subst("$IP", server.PrivateIP()))
+	ip := server.PrivateIP()
+	if c.Platform() == packet.Platform {
+		// private IP not configured in the initramfs
+		ip = server.IP()
+	}
+	client, err := c.NewMachine(localClient.Subst("$IP", ip))
 	if err != nil {
 		c.Fatalf("starting client: %v", err)
 	}

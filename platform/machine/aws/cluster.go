@@ -26,6 +26,10 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
+const (
+	Platform platform.Name = "aws"
+)
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/aws")
 )
@@ -47,7 +51,7 @@ func NewCluster(opts *aws.Options, rconf *platform.RuntimeConfig) (platform.Clus
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, ctplatform.EC2)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, ctplatform.EC2)
 	if err != nil {
 		return nil, err
 	}

@@ -92,6 +92,7 @@ func dockerTorcxManifestPkgs(c cluster.TestCluster) {
 						Hash: &version.Hash,
 					},
 				},
+				Mode: 0644,
 			},
 		})
 	}

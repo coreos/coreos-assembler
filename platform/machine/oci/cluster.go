@@ -27,6 +27,10 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
+const (
+	Platform platform.Name = "oci"
+)
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/oci")
 )
@@ -43,7 +47,7 @@ func NewCluster(opts *oci.Options, rconf *platform.RuntimeConfig) (platform.Clus
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, "")
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, "")
 	if err != nil {
 		return nil, err
 	}

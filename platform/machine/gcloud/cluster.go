@@ -34,6 +34,10 @@ type cluster struct {
 	api *gcloud.API
 }
 
+const (
+	Platform platform.Name = "gcloud"
+)
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/gcloud")
 )
@@ -44,7 +48,7 @@ func NewCluster(opts *gcloud.Options, rconf *platform.RuntimeConfig) (platform.C
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, ctplatform.GCE)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, ctplatform.GCE)
 	if err != nil {
 		return nil, err
 	}

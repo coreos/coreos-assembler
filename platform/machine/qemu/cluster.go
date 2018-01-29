@@ -34,7 +34,8 @@ import (
 )
 
 const (
-	primaryDiskId = "primary-disk"
+	Platform      platform.Name = "qemu"
+	primaryDiskId               = "primary-disk"
 )
 
 // Options contains QEMU-specific options for the cluster.
@@ -77,7 +78,7 @@ var (
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
 func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(opts.BaseName, rconf)
+	lc, err := local.NewLocalCluster(opts.BaseName, rconf, Platform)
 	if err != nil {
 		return nil, err
 	}
