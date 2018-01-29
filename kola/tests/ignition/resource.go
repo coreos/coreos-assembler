@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/platform/machine/packet"
 )
 
 var (
@@ -147,7 +148,12 @@ func resourceLocal(c cluster.TestCluster) {
 
 	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s Serve", c.Name()))
 
-	client, err := c.NewMachine(localClient.Subst("$IP", server.PrivateIP()))
+	ip := server.PrivateIP()
+	if c.Platform() == packet.Platform {
+		// private IP not configured in the initramfs
+		ip = server.IP()
+	}
+	client, err := c.NewMachine(localClient.Subst("$IP", ip))
 	if err != nil {
 		c.Fatalf("starting client: %v", err)
 	}
