@@ -22,6 +22,18 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
+)
+
+var (
+	// prevents a race where update-engine sets the boot partition back to
+	// USR-A after the test sets it to USR-B
+	disableUpdateEngine = conf.ContainerLinuxConfig(`systemd:
+  units:
+    - name: update-engine.service
+      mask: true
+    - name: locksmithd.service
+      mask: true`)
 )
 
 func init() {
@@ -29,18 +41,21 @@ func init() {
 		Run:         RebootIntoUSRB,
 		ClusterSize: 1,
 		Name:        "coreos.update.reboot",
+		UserData:    disableUpdateEngine,
 	})
 	register.Register(&register.Test{
 		Run:         RecoverBadVerity,
 		ClusterSize: 1,
 		Name:        "coreos.update.badverity",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
+		UserData:    disableUpdateEngine,
 	})
 	register.Register(&register.Test{
 		Run:         RecoverBadUsr,
 		ClusterSize: 1,
 		Name:        "coreos.update.badusr",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
+		UserData:    disableUpdateEngine,
 	})
 }
 
