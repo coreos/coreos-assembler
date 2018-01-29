@@ -35,7 +35,8 @@ func init() {
                                    "files": [
                                      {
                                        "path": "/etc/ignition-ran",
-                                       "contents": "Ignition ran."
+                                       "contents": "Ignition ran.",
+                                       "mode": 420
                                      }
                                    ]
                                  }
@@ -56,7 +57,8 @@ func init() {
                                    "path": "/etc/ignition-ran",
                                    "contents": {
                                      "source": "data:,Ignition%20ran."
-                                   }
+                                   },
+                                   "mode": 420
                                  }
                                ]
                              }

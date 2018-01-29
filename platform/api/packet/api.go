@@ -364,6 +364,7 @@ RequiredBy=multi-user.target
 							Opaque: ";base64," + b64UserData,
 						},
 					},
+					Mode: 0644,
 				},
 				ignition.File{
 					Filesystem: "root",

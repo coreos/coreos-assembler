@@ -40,21 +40,24 @@ var (
 			      "path": "/resource/data",
 			      "contents": {
 				  "source": "data:,kola-data"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/http",
 			      "contents": {
 				  "source": "http://$IP/http"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/tftp",
 			      "contents": {
 				  "source": "tftp://$IP/tftp"
-			      }
+			      },
+			      "mode": 420
 			  }
 		      ]
 		  }
@@ -86,21 +89,24 @@ func init() {
 			      "path": "/resource/http",
 			      "contents": {
 				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/https",
 			      "contents": {
 				  "source": "https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
-			      }
+			      },
+			      "mode": 420
 			  },
 			  {
 			      "filesystem": "root",
 			      "path": "/resource/s3-anon",
 			      "contents": {
 				  "source": "s3://kola-fixtures/resources/anonymous"
-			      }
+			      },
+			      "mode": 420
 			  }
 		      ]
 		  }
@@ -127,7 +133,8 @@ func init() {
 			      "path": "/resource/s3-auth",
 			      "contents": {
 				  "source": "s3://kola-fixtures/resources/authenticated"
-			      }
+			      },
+			      "mode": 420
 			  }
 		      ]
 		  }
