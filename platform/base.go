@@ -45,14 +45,15 @@ type BaseCluster struct {
 
 	name       string
 	rconf      *RuntimeConfig
+	platform   Name
 	ctPlatform string
 }
 
-func NewBaseCluster(basename string, rconf *RuntimeConfig, ctPlatform string) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(basename, rconf, ctPlatform, network.NewRetryDialer())
+func NewBaseCluster(basename string, rconf *RuntimeConfig, platform Name, ctPlatform string) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(basename, rconf, platform, ctPlatform, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, platform Name, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -64,6 +65,7 @@ func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, ctPlatform 
 		consolemap: make(map[string]string),
 		name:       fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
 		rconf:      rconf,
+		platform:   platform,
 		ctPlatform: ctPlatform,
 	}
 
@@ -213,6 +215,10 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 		return nil
 	})
 	return result, err
+}
+
+func (bc *BaseCluster) Platform() Name {
+	return bc.platform
 }
 
 func (bc *BaseCluster) Name() string {

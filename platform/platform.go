@@ -33,6 +33,9 @@ const (
 	sshTimeout = 10 * time.Second
 )
 
+// Name is a unique identifier for a platform.
+type Name string
+
 // Machine represents a Container Linux instance.
 type Machine interface {
 	// ID returns the plaform-specific machine identifier.
@@ -70,6 +73,9 @@ type Machine interface {
 
 // Cluster represents a cluster of Container Linux machines within a single platform.
 type Cluster interface {
+	// Platform returns the name of the platform.
+	Platform() Name
+
 	// NewMachine creates a new Container Linux machine.
 	NewMachine(userdata *conf.UserData) (Machine, error)
 

@@ -27,6 +27,10 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 )
 
+const (
+	Platform platform.Name = "esx"
+)
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/esx")
 )
@@ -44,7 +48,7 @@ func NewCluster(opts *esx.Options, rconf *platform.RuntimeConfig) (platform.Clus
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, "")
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, "")
 	if err != nil {
 		return nil, err
 	}

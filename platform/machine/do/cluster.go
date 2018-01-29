@@ -32,6 +32,10 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
+const (
+	Platform platform.Name = "do"
+)
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/do")
 )
@@ -48,7 +52,7 @@ func NewCluster(opts *do.Options, rconf *platform.RuntimeConfig) (platform.Clust
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, ctplatform.DO)
+	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, ctplatform.DO)
 	if err != nil {
 		return nil, err
 	}
