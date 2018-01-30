@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -115,6 +116,20 @@ func (am *machine) saveConsole(origConsole string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	// merge the two logs
+	overlapLen := 100
+	if len(am.console) < overlapLen {
+		overlapLen = len(am.console)
+	}
+	origIdx := strings.LastIndex(origConsole, am.console[0:overlapLen])
+	if origIdx != -1 {
+		// overlap
+		am.console = origConsole[0:origIdx] + am.console
+	} else if origConsole != "" {
+		// two logs with no overlap; add scissors
+		am.console = origConsole + "\n\n8<------------------------\n\n" + am.console
 	}
 
 	path := filepath.Join(am.dir, "console.txt")
