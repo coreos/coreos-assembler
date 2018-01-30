@@ -49,8 +49,9 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf"
 // UserData is an immutable, unvalidated configuration for a Container Linux
 // machine.
 type UserData struct {
-	kind kind
-	data string
+	kind      kind
+	data      string
+	extraKeys []*agent.Key // SSH keys to be injected during rendering
 }
 
 // Conf is a configuration for a Container Linux machine. It may be either a
@@ -137,6 +138,13 @@ func (u *UserData) Subst(old, new string) *UserData {
 	return &ret
 }
 
+// Adds an SSH key and returns a new UserData.
+func (u *UserData) AddKey(key agent.Key) *UserData {
+	ret := *u
+	ret.extraKeys = append(ret.extraKeys, &key)
+	return &ret
+}
+
 func (u *UserData) IsIgnitionCompatible() bool {
 	return u.kind == kindIgnition || u.kind == kindContainerLinuxConfig
 }
@@ -207,6 +215,11 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 		c.ignitionV21 = &ignc
 	default:
 		panic("invalid kind")
+	}
+
+	if len(u.extraKeys) > 0 {
+		// not a no-op in the zero-key case
+		c.CopyKeys(u.extraKeys)
 	}
 
 	return c, nil
