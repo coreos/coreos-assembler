@@ -15,13 +15,16 @@
 package aws
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 type machine struct {
@@ -65,6 +68,11 @@ func (am *machine) Reboot() error {
 }
 
 func (am *machine) Destroy() {
+	origConsole, err := am.cluster.api.GetConsoleOutput(am.ID(), false)
+	if err != nil {
+		plog.Warningf("Error retrieving console log for %v: %v", am.ID(), err)
+	}
+
 	if err := am.cluster.api.TerminateInstances([]string{am.ID()}); err != nil {
 		plog.Errorf("Error terminating instance %v: %v", am.ID(), err)
 	}
@@ -73,8 +81,7 @@ func (am *machine) Destroy() {
 		am.journal.Destroy()
 	}
 
-	// faster when run after termination
-	if err := am.saveConsole(); err != nil {
+	if err := am.saveConsole(origConsole); err != nil {
 		plog.Errorf("Error saving console for instance %v: %v", am.ID(), err)
 	}
 
@@ -85,9 +92,27 @@ func (am *machine) ConsoleOutput() string {
 	return am.console
 }
 
-func (am *machine) saveConsole() error {
-	var err error
-	am.console, err = am.cluster.api.GetConsoleOutput(am.ID(), true)
+func (am *machine) saveConsole(origConsole string) error {
+	// am.cluster.api.GetConsoleOutput(am.ID(), true) will loop until
+	// the returned console output is non-empty. However, if the
+	// instance has e.g. been running for several minutes, the returned
+	// output will be non-empty but won't necessarily include the most
+	// recent log messages.  So we loop until the post-termination logs
+	// are different from the pre-termination logs.
+	err := util.Retry(60, 5*time.Second, func() error {
+		var err error
+		am.console, err = am.cluster.api.GetConsoleOutput(am.ID(), false)
+		if err != nil {
+			return err
+		}
+
+		if am.console == origConsole {
+			plog.Debugf("waiting for console for %v", am.ID())
+			return fmt.Errorf("timed out waiting for console output of %v", am.ID())
+		}
+
+		return nil
+	})
 	if err != nil {
 		return err
 	}
