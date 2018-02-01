@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016-2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,8 +49,9 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf"
 // UserData is an immutable, unvalidated configuration for a Container Linux
 // machine.
 type UserData struct {
-	kind kind
-	data string
+	kind      kind
+	data      string
+	extraKeys []*agent.Key // SSH keys to be injected during rendering
 }
 
 // Conf is a configuration for a Container Linux machine. It may be either a
@@ -137,6 +138,13 @@ func (u *UserData) Subst(old, new string) *UserData {
 	return &ret
 }
 
+// Adds an SSH key and returns a new UserData.
+func (u *UserData) AddKey(key agent.Key) *UserData {
+	ret := *u
+	ret.extraKeys = append(ret.extraKeys, &key)
+	return &ret
+}
+
 func (u *UserData) IsIgnitionCompatible() bool {
 	return u.kind == kindIgnition || u.kind == kindContainerLinuxConfig
 }
@@ -207,6 +215,11 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 		c.ignitionV21 = &ignc
 	default:
 		panic("invalid kind")
+	}
+
+	if len(u.extraKeys) > 0 {
+		// not a no-op in the zero-key case
+		c.CopyKeys(u.extraKeys)
 	}
 
 	return c, nil
@@ -387,16 +400,32 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 }
 
 func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
+	keyStrs := keysToStrings(keys)
+	for i := range c.ignitionV1.Passwd.Users {
+		user := &c.ignitionV1.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyStrs...)
+			return
+		}
+	}
 	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
 		Name:              "core",
-		SSHAuthorizedKeys: keysToStrings(keys),
+		SSHAuthorizedKeys: keyStrs,
 	})
 }
 
 func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
+	keyStrs := keysToStrings(keys)
+	for i := range c.ignitionV2.Passwd.Users {
+		user := &c.ignitionV2.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyStrs...)
+			return
+		}
+	}
 	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.User{
 		Name:              "core",
-		SSHAuthorizedKeys: keysToStrings(keys),
+		SSHAuthorizedKeys: keyStrs,
 	})
 }
 
@@ -404,6 +433,13 @@ func (c *Conf) copyKeysIgnitionV21(keys []*agent.Key) {
 	var keyObjs []v21types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v21types.SSHAuthorizedKey(key.String()))
+	}
+	for i := range c.ignitionV21.Passwd.Users {
+		user := &c.ignitionV21.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
+			return
+		}
 	}
 	c.ignitionV21.Passwd.Users = append(c.ignitionV21.Passwd.Users, v21types.PasswdUser{
 		Name:              "core",
