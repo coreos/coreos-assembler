@@ -41,6 +41,7 @@ func init() {
 			"ReadOnly":         TestReadOnlyFs,
 			"RandomUUID":       TestFsRandomUUID,
 			"Useradd":          TestUseradd,
+			"MachineID":        TestMachineID,
 		},
 	})
 	register.Register(&register.Test{
@@ -335,5 +336,16 @@ func TestUseradd() error {
 		return fmt.Errorf("id %s: %v", u, err)
 	}
 
+	return nil
+}
+
+// Test that /etc/machine-id isn't empty or COREOS_BLANK_MACHINE_ID
+func TestMachineID() error {
+	id := MachineID()
+	if id == "" {
+		return fmt.Errorf("machine-id is empty")
+	} else if id == "COREOS_BLANK_MACHINE_ID" {
+		return fmt.Errorf("machine-id is %s", id)
+	}
 	return nil
 }
