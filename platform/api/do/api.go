@@ -131,16 +131,25 @@ func (a *API) PreflightCheck(ctx context.Context) error {
 }
 
 func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, userdata string) (*godo.Droplet, error) {
-	droplet, _, err := a.c.Droplets.Create(ctx, &godo.DropletCreateRequest{
-		Name:              name,
-		Region:            a.opts.Region,
-		Size:              a.opts.Size,
-		Image:             a.image,
-		SSHKeys:           []godo.DropletCreateSSHKey{{ID: sshKeyID}},
-		IPv6:              true,
-		PrivateNetworking: true,
-		UserData:          userdata,
-		Tags:              []string{"mantle"},
+	var droplet *godo.Droplet
+	var err error
+	// DO frequently gives us 422 errors saying "Please try again"
+	err = util.RetryConditional(6, 10*time.Second, shouldRetry, func() error {
+		droplet, _, err = a.c.Droplets.Create(ctx, &godo.DropletCreateRequest{
+			Name:              name,
+			Region:            a.opts.Region,
+			Size:              a.opts.Size,
+			Image:             a.image,
+			SSHKeys:           []godo.DropletCreateSSHKey{{ID: sshKeyID}},
+			IPv6:              true,
+			PrivateNetworking: true,
+			UserData:          userdata,
+			Tags:              []string{"mantle"},
+		})
+		if err != nil {
+			plog.Errorf("Error creating droplet: %v. Retrying...", err)
+		}
+		return err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create droplet: %v", err)
@@ -349,4 +358,15 @@ func (t *tokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{
 		AccessToken: t.token,
 	}, nil
+}
+
+// shouldRetry returns if the error is from DigitalOcean and we should
+// retry the request which generated it
+func shouldRetry(err error) bool {
+	errResp, ok := err.(*godo.ErrorResponse)
+	if !ok {
+		return false
+	}
+	status := errResp.Response.StatusCode
+	return status == 422 || status >= 500
 }
