@@ -20,16 +20,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/digitalocean/godo"
 
 	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/do"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -94,15 +91,8 @@ func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	var droplet *godo.Droplet
-	// DO frequently gives us 422 errors saying "Please try again"
-	if err := util.RetryConditional(6, 10*time.Second, shouldRetry, func() error {
-		droplet, err = dc.api.CreateDroplet(context.TODO(), dc.vmname(), dc.sshKeyID, conf.String())
-		if err != nil {
-			plog.Errorf("Error creating droplet: %v, retrying...", err)
-		}
-		return err
-	}); err != nil {
+	droplet, err := dc.api.CreateDroplet(context.TODO(), dc.vmname(), dc.sshKeyID, conf.String())
+	if err != nil {
 		return nil, err
 	}
 
@@ -160,15 +150,4 @@ func (dc *cluster) Destroy() {
 	}
 
 	dc.BaseCluster.Destroy()
-}
-
-// shouldRetry returns if the error is from DigitalOcean and we should
-// retry the request which generated it
-func shouldRetry(err error) bool {
-	errResp, ok := err.(*godo.ErrorResponse)
-	if !ok {
-		return false
-	}
-	status := errResp.Response.StatusCode
-	return status == 422 || status >= 500
 }
