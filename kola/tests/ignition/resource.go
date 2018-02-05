@@ -73,12 +73,15 @@ func init() {
 		NativeFuncs: map[string]func() error{
 			"Serve": Serve,
 		},
+		// https://github.com/coreos/bugs/issues/2205
+		ExcludePlatforms: []string{"do"},
 	})
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v2_1.resource.remote",
-		Run:              resourceRemote,
-		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
+		Name:        "coreos.ignition.v2_1.resource.remote",
+		Run:         resourceRemote,
+		ClusterSize: 1,
+		// https://github.com/coreos/bugs/issues/2205 for DO
+		ExcludePlatforms: []string{"qemu", "do"},
 		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "2.1.0"

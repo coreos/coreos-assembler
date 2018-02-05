@@ -31,10 +31,12 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:              dockerTorcxManifestPkgs,
-		ClusterSize:      0,
-		Name:             "docker.torcx-manifest-pkgs",
-		ExcludePlatforms: []string{"qemu"}, // Downloads torcx packages
+		Run:         dockerTorcxManifestPkgs,
+		ClusterSize: 0,
+		Name:        "docker.torcx-manifest-pkgs",
+		// Downloads torcx packages
+		// https://github.com/coreos/bugs/issues/2205 for DO
+		ExcludePlatforms: []string{"qemu", "do"},
 		// the first version torcx manifests were shipped
 		MinVersion: semver.Version{Major: 1520},
 	})
