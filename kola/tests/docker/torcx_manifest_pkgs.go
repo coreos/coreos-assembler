@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
 	ignition "github.com/coreos/ignition/config/v2_1/types"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
@@ -37,8 +36,6 @@ func init() {
 		// Downloads torcx packages
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"qemu", "do"},
-		// the first version torcx manifests were shipped
-		MinVersion: semver.Version{Major: 1520},
 	})
 }
 

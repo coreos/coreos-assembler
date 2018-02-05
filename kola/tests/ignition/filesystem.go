@@ -17,8 +17,6 @@ package ignition
 import (
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -76,14 +74,12 @@ func init() {
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV1,
-		MinVersion:  semver.Version{Major: 1448},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV2,
-		MinVersion:  semver.Version{Major: 1448},
 	})
 
 	// Reformat the root as xfs
@@ -186,20 +182,17 @@ func init() {
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV1,
-		MinVersion:  semver.Version{Major: 1492},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV2,
-		MinVersion:  semver.Version{Major: 1492},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2_1.ext4checkexisting",
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
-		MinVersion:  semver.Version{Major: 1478},
 	})
 
 	vfatConfigV2_1 := conf.Ignition(`{
@@ -225,7 +218,6 @@ func init() {
 		Run:         vfatUsrB,
 		ClusterSize: 1,
 		UserData:    vfatConfigV2_1,
-		MinVersion:  semver.Version{Major: 1492},
 	})
 
 	swapConfigV2_1 := conf.Ignition(`{
@@ -251,7 +243,6 @@ func init() {
 		Run:         swapUsrB,
 		ClusterSize: 1,
 		UserData:    swapConfigV2_1,
-		MinVersion:  semver.Version{Major: 1492},
 	})
 }
 
