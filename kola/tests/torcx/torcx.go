@@ -15,7 +15,6 @@
 package torcx
 
 import (
-	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -35,8 +34,6 @@ systemd:
   - name: docker.service
     enable: true
 `),
-		// the version where docker was torcx-ified.
-		MinVersion: semver.Version{Major: 1451},
 	})
 }
 

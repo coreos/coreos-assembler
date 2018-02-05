@@ -18,8 +18,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -35,7 +33,6 @@ func init() {
 		ClusterSize:      1,
 		Name:             "coreos.network.initramfs.second-boot",
 		ExcludePlatforms: []string{"do", "oci"},
-		MinVersion:       semver.Version{Major: 1445},
 	})
 }
 

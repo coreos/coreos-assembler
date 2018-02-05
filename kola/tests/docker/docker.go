@@ -27,8 +27,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/lang/worker"
@@ -197,7 +195,6 @@ systemd:
 		Name:        "docker.containerd-restart",
 		Run:         dockerContainerdRestart,
 		ClusterSize: 1,
-		MinVersion:  semver.Version{Major: 1506},
 		UserData: conf.ContainerLinuxConfig(`
 systemd:
   units:

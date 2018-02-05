@@ -17,7 +17,6 @@ package docker
 import (
 	"regexp"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -29,7 +28,6 @@ func init() {
 		Run:         dockerTorcxFlagFile,
 		ClusterSize: 1,
 		Name:        "docker.torcx-flag-file",
-		MinVersion:  semver.Version{Major: 1520},
 		UserData: conf.ContainerLinuxConfig(`
 storage:
   files:
@@ -44,7 +42,6 @@ storage:
 		Run:         dockerTorcxFlagFileCloudConfig,
 		ClusterSize: 1,
 		Name:        "docker.torcx-flag-file.cloud-config",
-		MinVersion:  semver.Version{Major: 1520},
 		UserData: conf.CloudConfig(`
 #cloud-config
 write_files:

@@ -15,19 +15,14 @@
 package packages
 
 import (
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
 
 func init() {
 	register.Register(&register.Test{
-		// MinVersion currently set for ipvsadm
-		// TODO(ajeddeloh) allow subtests to specify minversion
 		Run:         packageTests,
 		ClusterSize: 1,
-		MinVersion:  semver.Version{Major: 1520},
 		Name:        "packages",
 	})
 }

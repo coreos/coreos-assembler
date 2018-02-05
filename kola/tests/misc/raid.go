@@ -17,8 +17,6 @@ package misc
 import (
 	"encoding/json"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -70,7 +68,6 @@ func init() {
 		Run:         RootOnRaid,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
-		MinVersion:  semver.Version{Major: 1520},
 		Name:        "coreos.disk.raid.root",
 	})
 	register.Register(&register.Test{

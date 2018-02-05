@@ -83,8 +83,6 @@ func init() {
 		Run:         etcdMemberV2BackupRestore,
 		ClusterSize: 1,
 		Name:        "coreos.etcd-member.v2-backup-restore",
-		// needs etcdctl v3 because a v2 backup with a v3 daemon panics, see https://github.com/coreos/etcd/issues/7150
-		MinVersion: semver.Version{Major: 1520},
 		UserData: conf.ContainerLinuxConfig(`
 
 etcd:
@@ -103,8 +101,6 @@ etcd:
 		// this lets it run on more platforms, and also faster
 		ClusterSize: 1,
 		Name:        "coreos.etcd-member.etcdctlv3",
-		// tests etcdctl v3
-		MinVersion: semver.Version{Major: 1520},
 		UserData: conf.ContainerLinuxConfig(`
 
 etcd:
