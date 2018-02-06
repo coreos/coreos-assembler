@@ -62,6 +62,7 @@ var akis = map[string]string{
 	"ca-central-1":   "aki-320ebd56",
 
 	"us-gov-west-1": "aki-1de98d3e",
+	"cn-north-1":    "aki-9e8f1da7",
 }
 
 func (e *EC2ImageFormat) Set(s string) error {
