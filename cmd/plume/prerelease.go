@@ -425,7 +425,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
 	}
 
-	postprocess := func(imageID string) (map[string]string, error) {
+	postprocess := func(imageID string, pv bool) (map[string]string, error) {
 		if len(part.LaunchPermissions) > 0 {
 			if err := api.GrantLaunchPermission(imageID, part.LaunchPermissions); err != nil {
 				return nil, err
@@ -436,7 +436,11 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		foundBucketRegion := false
 		for _, region := range part.Regions {
 			if region != part.BucketRegion {
-				destRegions = append(destRegions, region)
+				if pv && !aws.RegionSupportsPV(region) {
+					plog.Debugf("%v doesn't support PV AMIs; skipping", region)
+				} else {
+					destRegions = append(destRegions, region)
+				}
 			} else {
 				foundBucketRegion = true
 			}
@@ -460,12 +464,12 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		return amis, nil
 	}
 
-	hvmAmis, err := postprocess(hvmImageID)
+	hvmAmis, err := postprocess(hvmImageID, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("processing HVM images: %v", err)
 	}
 
-	pvAmis, err := postprocess(pvImageID)
+	pvAmis, err := postprocess(pvImageID, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("processing PV images: %v", err)
 	}
@@ -475,7 +479,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 type amiListEntry struct {
 	Region string `json:"name"`
-	PvAmi  string `json:"pv"`
+	PvAmi  string `json:"pv,omitempty"`
 	HvmAmi string `json:"hvm"`
 }
 
@@ -524,21 +528,25 @@ func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channe
 	for _, entry := range amis.Entries {
 		hvmRecords = append(hvmRecords,
 			fmt.Sprintf("%v=%v", entry.Region, entry.HvmAmi))
-		pvRecords = append(pvRecords,
-			fmt.Sprintf("%v=%v", entry.Region, entry.PvAmi))
+		if entry.PvAmi != "" {
+			pvRecords = append(pvRecords,
+				fmt.Sprintf("%v=%v", entry.Region, entry.PvAmi))
+		}
 
 		if err := upload(fmt.Sprintf("hvm_%v.txt", entry.Region),
 			entry.HvmAmi+"\n"); err != nil {
 			return err
 		}
-		if err := upload(fmt.Sprintf("pv_%v.txt", entry.Region),
-			entry.PvAmi+"\n"); err != nil {
-			return err
-		}
-		// compatibility
-		if err := upload(fmt.Sprintf("%v.txt", entry.Region),
-			entry.PvAmi+"\n"); err != nil {
-			return err
+		if entry.PvAmi != "" {
+			if err := upload(fmt.Sprintf("pv_%v.txt", entry.Region),
+				entry.PvAmi+"\n"); err != nil {
+				return err
+			}
+			// compatibility
+			if err := upload(fmt.Sprintf("%v.txt", entry.Region),
+				entry.PvAmi+"\n"); err != nil {
+				return err
+			}
 		}
 	}
 	hvmAll := strings.Join(hvmRecords, "|") + "\n"
