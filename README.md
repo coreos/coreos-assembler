@@ -263,9 +263,10 @@ tenancy=tenancy.ocid.goes.here
 region=region-goes-here
 ```
 
-The `oci setup config` command will generate the key file automatically.
+The `oci setup config` command will generate the key file automatically. You must add your public key
+(`~/.oci/oci_api_key_public.pem`) to your oci user in the oci web console.
 
-The `~/.oraclebmc/config.mantle` file is only used by Mantle and must be populated manually:
+The `~/.oci/config.mantle` file is only used by Mantle and must be populated manually:
 ```
 [DEFAULT]
 compartment=compartment.ocid.goes.here
