@@ -15,6 +15,7 @@
 package aws
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -27,6 +28,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+)
+
+var (
+	NoRegionPVSupport = errors.New("Region does not support PV")
 )
 
 type EC2ImageType string
@@ -62,6 +67,12 @@ var akis = map[string]string{
 	"ca-central-1":   "aki-320ebd56",
 
 	"us-gov-west-1": "aki-1de98d3e",
+	"cn-north-1":    "aki-9e8f1da7",
+}
+
+func RegionSupportsPV(region string) bool {
+	_, ok := akis[region]
+	return ok
 }
 
 func (e *EC2ImageFormat) Set(s string) error {
@@ -352,6 +363,9 @@ func (a *API) CreateHVMImage(snapshotID string, name string, description string)
 }
 
 func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
+	if !RegionSupportsPV(a.opts.Region) {
+		return "", NoRegionPVSupport
+	}
 	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
 	return a.createImage(params)
@@ -437,6 +451,14 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	image, err := a.describeImage(sourceImageID)
 	if err != nil {
 		return nil, err
+	}
+
+	if *image.VirtualizationType == ec2.VirtualizationTypeParavirtual {
+		for _, region := range regions {
+			if !RegionSupportsPV(region) {
+				return nil, NoRegionPVSupport
+			}
+		}
 	}
 
 	describeSnapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{

@@ -126,6 +126,7 @@ var (
 				"us-west-2",
 				"eu-west-1",
 				"eu-west-2",
+				"eu-west-3",
 				"eu-central-1",
 				"ap-south-1",
 				"ap-southeast-1",
@@ -152,6 +153,7 @@ var (
 			BucketRegion: "cn-north-1",
 			Regions: []string{
 				"cn-north-1",
+				"cn-northwest-1",
 			},
 		},
 	}
@@ -188,6 +190,7 @@ var (
 						Regions: []string{
 							"us-west-1",
 							"us-west-2",
+							"eu-west-3", // no PV
 						},
 					},
 					awsPartitionSpec{
