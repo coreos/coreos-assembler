@@ -15,13 +15,17 @@
 package aws
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 )
 
 type machine struct {
@@ -65,6 +69,11 @@ func (am *machine) Reboot() error {
 }
 
 func (am *machine) Destroy() {
+	origConsole, err := am.cluster.api.GetConsoleOutput(am.ID())
+	if err != nil {
+		plog.Warningf("Error retrieving console log for %v: %v", am.ID(), err)
+	}
+
 	if err := am.cluster.api.TerminateInstances([]string{am.ID()}); err != nil {
 		plog.Errorf("Error terminating instance %v: %v", am.ID(), err)
 	}
@@ -73,8 +82,7 @@ func (am *machine) Destroy() {
 		am.journal.Destroy()
 	}
 
-	// faster when run after termination
-	if err := am.saveConsole(); err != nil {
+	if err := am.saveConsole(origConsole); err != nil {
 		plog.Errorf("Error saving console for instance %v: %v", am.ID(), err)
 	}
 
@@ -85,11 +93,41 @@ func (am *machine) ConsoleOutput() string {
 	return am.console
 }
 
-func (am *machine) saveConsole() error {
-	var err error
-	am.console, err = am.cluster.api.GetConsoleOutput(am.ID(), true)
+func (am *machine) saveConsole(origConsole string) error {
+	// If the instance has e.g. been running for several minutes, the
+	// returned output will be non-empty but won't necessarily include
+	// the most recent log messages. So we loop until the post-termination
+	// logs are different from the pre-termination logs.
+	err := util.WaitUntilReady(5*time.Minute, 5*time.Second, func() (bool, error) {
+		var err error
+		am.console, err = am.cluster.api.GetConsoleOutput(am.ID())
+		if err != nil {
+			return false, err
+		}
+
+		if am.console == origConsole {
+			plog.Debugf("waiting for console for %v", am.ID())
+			return false, nil
+		}
+
+		return true, nil
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("retrieving console output of %v: %v", am.ID(), err)
+	}
+
+	// merge the two logs
+	overlapLen := 100
+	if len(am.console) < overlapLen {
+		overlapLen = len(am.console)
+	}
+	origIdx := strings.LastIndex(origConsole, am.console[0:overlapLen])
+	if origIdx != -1 {
+		// overlap
+		am.console = origConsole[0:origIdx] + am.console
+	} else if origConsole != "" {
+		// two logs with no overlap; add scissors
+		am.console = origConsole + "\n\n8<------------------------\n\n" + am.console
 	}
 
 	path := filepath.Join(am.dir, "console.txt")
