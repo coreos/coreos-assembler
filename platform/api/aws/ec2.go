@@ -214,36 +214,26 @@ func (a *API) CreateTags(resources []string, tags map[string]string) error {
 	return err
 }
 
-func (a *API) GetConsoleOutput(instanceID string, wait bool) (string, error) {
-	var output string
-
-	err := util.Retry(60, 5*time.Second, func() error {
-		res, err := a.ec2.GetConsoleOutput(&ec2.GetConsoleOutputInput{
-			InstanceId: aws.String(instanceID),
-		})
-		if err != nil {
-			return fmt.Errorf("couldn't get console output of %v: %v", instanceID, err)
-		}
-
-		if res.Output == nil {
-			if wait {
-				plog.Debugf("waiting for console for %v", instanceID)
-				return fmt.Errorf("timed out waiting for console output of %v", instanceID)
-			} else {
-				return nil
-			}
-		}
-
-		decoded, err := base64.StdEncoding.DecodeString(*res.Output)
-		if err != nil {
-			return fmt.Errorf("couldn't decode console output of %v: %v", instanceID, err)
-		}
-
-		output = string(decoded)
-		return nil
+// GetConsoleOutput returns the console output. Returns "", nil if no logs
+// are available.
+func (a *API) GetConsoleOutput(instanceID string) (string, error) {
+	res, err := a.ec2.GetConsoleOutput(&ec2.GetConsoleOutputInput{
+		InstanceId: aws.String(instanceID),
 	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't get console output of %v: %v", instanceID, err)
+	}
 
-	return output, err
+	if res.Output == nil {
+		return "", nil
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(*res.Output)
+	if err != nil {
+		return "", fmt.Errorf("couldn't decode console output of %v: %v", instanceID, err)
+	}
+
+	return string(decoded), nil
 }
 
 // getSecurityGroupID gets a security group matching the given name.

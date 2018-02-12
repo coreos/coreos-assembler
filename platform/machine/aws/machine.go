@@ -69,7 +69,7 @@ func (am *machine) Reboot() error {
 }
 
 func (am *machine) Destroy() {
-	origConsole, err := am.cluster.api.GetConsoleOutput(am.ID(), false)
+	origConsole, err := am.cluster.api.GetConsoleOutput(am.ID())
 	if err != nil {
 		plog.Warningf("Error retrieving console log for %v: %v", am.ID(), err)
 	}
@@ -94,15 +94,13 @@ func (am *machine) ConsoleOutput() string {
 }
 
 func (am *machine) saveConsole(origConsole string) error {
-	// am.cluster.api.GetConsoleOutput(am.ID(), true) will loop until
-	// the returned console output is non-empty. However, if the
-	// instance has e.g. been running for several minutes, the returned
-	// output will be non-empty but won't necessarily include the most
-	// recent log messages.  So we loop until the post-termination logs
-	// are different from the pre-termination logs.
+	// If the instance has e.g. been running for several minutes, the
+	// returned output will be non-empty but won't necessarily include
+	// the most recent log messages. So we loop until the post-termination
+	// logs are different from the pre-termination logs.
 	err := util.Retry(60, 5*time.Second, func() error {
 		var err error
-		am.console, err = am.cluster.api.GetConsoleOutput(am.ID(), false)
+		am.console, err = am.cluster.api.GetConsoleOutput(am.ID())
 		if err != nil {
 			return err
 		}
