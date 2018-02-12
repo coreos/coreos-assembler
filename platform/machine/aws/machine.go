@@ -98,22 +98,22 @@ func (am *machine) saveConsole(origConsole string) error {
 	// returned output will be non-empty but won't necessarily include
 	// the most recent log messages. So we loop until the post-termination
 	// logs are different from the pre-termination logs.
-	err := util.Retry(60, 5*time.Second, func() error {
+	err := util.WaitUntilReady(5*time.Minute, 5*time.Second, func() (bool, error) {
 		var err error
 		am.console, err = am.cluster.api.GetConsoleOutput(am.ID())
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		if am.console == origConsole {
 			plog.Debugf("waiting for console for %v", am.ID())
-			return fmt.Errorf("timed out waiting for console output of %v", am.ID())
+			return false, nil
 		}
 
-		return nil
+		return true, nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("retrieving console output of %v: %v", am.ID(), err)
 	}
 
 	// merge the two logs
