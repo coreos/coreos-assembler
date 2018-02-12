@@ -153,61 +153,65 @@ func (e *enter) MountAPI() error {
 	return nil
 }
 
-// MountAgent bind mounts a SSH or GnuPG agent socket into the chroot
-func (e *enter) MountAgent(env string) error {
-	origPath := os.Getenv(env)
+// MountAgent bind mounts a SSH agent socket into the chroot
+func (e *enter) mountSSHAgent() error {
+	origPath := os.Getenv("SSH_AUTH_SOCK")
 	if origPath == "" {
 		return nil
 	}
 
-	origDir, origFile := filepath.Split(origPath)
+	origDir := filepath.Dir(origPath)
 	if _, err := os.Stat(origDir); err != nil {
 		// Just skip if the agent has gone missing.
 		return nil
 	}
 
-	newDir, err := ioutil.TempDir(e.UserRunDir, "agent-")
-	if err != nil {
+	newDir := filepath.Join(e.Chroot, origDir)
+	if err := os.Mkdir(newDir, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	if err := system.Bind(origDir, newDir); err != nil {
-		return err
-	}
-
-	newPath := filepath.Join(newDir, origFile)
-	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
-	return os.Setenv(env, chrootPath)
+	return system.Bind(origDir, newDir)
 }
 
 // MountGnupg bind mounts $GNUPGHOME or ~/.gnupg and the agent socket
 // if available. The agent is ignored if the home dir isn't available.
-func (e *enter) MountGnupg() error {
+func (e *enter) mountGnupg() error {
 	origHome := os.Getenv("GNUPGHOME")
 	if origHome == "" {
 		origHome = filepath.Join(e.User.HomeDir, ".gnupg")
 	}
 
 	if _, err := os.Stat(origHome); err != nil {
-		// Skip but do not pass along $GNUPGHOME
-		return os.Unsetenv("GNUPGHOME")
+		// Skip but do not bind mount anything
+		return nil
 	}
 
-	newHome, err := ioutil.TempDir(e.UserRunDir, "gnupg-")
-	if err != nil {
+	// gpg misbehaves in the sdk with GNUPGHOME set to anything but ~/.gnupg
+	// so always unset it so the default ~/.gnupg is used.
+	if err := os.Unsetenv("GNUPGHOME"); err != nil {
 		return err
 	}
 
+	// now mount the agent socket directory through
+	newHome := filepath.Join(e.Chroot, e.User.HomeDir, ".gnupg")
 	if err := system.Bind(origHome, newHome); err != nil {
 		return err
 	}
 
-	chrootHome := strings.TrimPrefix(newHome, e.Chroot)
-	if err := os.Setenv("GNUPGHOME", chrootHome); err != nil {
+	// gpg expects the socket at /run/user/$uid/gnupg
+	origAgentDir := filepath.Join("/run", "user", e.User.Uid, "gnupg")
+	if _, err := os.Stat(origAgentDir); err != nil {
+		// Skip but do not bind mount anything
+		return nil
+	}
+
+	newAgentDir := filepath.Join(e.UserRunDir, "gnupg")
+	if err := os.Mkdir(newAgentDir, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	return e.MountAgent("GPG_AGENT_INFO")
+	return system.Bind(origAgentDir, newAgentDir)
 }
 
 // CopyGoogleCreds copies a Google credentials JSON file if one exists.
@@ -365,11 +369,11 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	if err := e.MountAgent("SSH_AUTH_SOCK"); err != nil {
+	if err := e.mountSSHAgent(); err != nil {
 		return err
 	}
 
-	if err := e.MountGnupg(); err != nil {
+	if err := e.mountGnupg(); err != nil {
 		return err
 	}
 
