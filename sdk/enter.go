@@ -182,9 +182,17 @@ func (e *enter) mountGnupg() error {
 		origHome = filepath.Join(e.User.HomeDir, ".gnupg")
 	}
 
+	// gpg misbehaves in the SDK with GNUPGHOME set to anything but
+	// ~/.gnupg. New SDKs don't encounter this problem because GNUPGHOME
+	// is no longer included in the sudo env_keep list. For old SDKs,
+	// unset GNUPGHOME so the default ~/.gnupg is used.
+	if err := os.Unsetenv("GNUPGHOME"); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(origHome); err != nil {
 		// Skip but do not bind mount anything
-		return os.Unsetenv("GNUPGHOME")
+		return nil
 	}
 
 	// now mount the agent socket directory through
@@ -194,14 +202,6 @@ func (e *enter) mountGnupg() error {
 	}
 
 	if err := system.Bind(origHome, newHome); err != nil {
-		return err
-	}
-
-	// gpg misbehaves in the SDK with GNUPGHOME set to anything but
-	// ~/.gnupg. It must be set so it gets passed as part of keep_env
-	// so Jenkins can sign artifacts
-	chrootHome := filepath.Join(e.User.HomeDir, ".gnupg")
-	if err := os.Setenv("GNUPGHOME", chrootHome); err != nil {
 		return err
 	}
 
