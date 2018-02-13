@@ -197,10 +197,6 @@ func (e *enter) mountGnupg() error {
 
 	// now mount the agent socket directory through
 	newHome := filepath.Join(e.Chroot, e.User.HomeDir, ".gnupg")
-	if err := os.Mkdir(newHome, 0700); err != nil && !os.IsExist(err) {
-		return err
-	}
-
 	if err := system.Bind(origHome, newHome); err != nil {
 		return err
 	}
