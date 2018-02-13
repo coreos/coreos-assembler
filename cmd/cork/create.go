@@ -48,8 +48,6 @@ var (
 	allowReplace bool
 
 	// only for `enter` command
-	legacy bool
-	// only for `enter` command, deprecated.
 	experimental bool
 
 	// only for `update` command
@@ -125,11 +123,8 @@ func init() {
 	root.AddCommand(createCmd)
 
 	enterCmd.Flags().AddFlagSet(chrootFlags)
-	enterCmd.Flags().BoolVar(&legacy,
-		"legacy", false, "Use old enter implementation")
 	enterCmd.Flags().BoolVar(&experimental,
-		"experimental", true, "Do not use. Kept for compatibility")
-	enterCmd.Flags().MarkDeprecated("experimental", "--experimental is now default. This flag will be removed soon. Use --legacy for the old enter method.")
+		"experimental", false, "Use new enter implementation")
 	root.AddCommand(enterCmd)
 
 	deleteCmd.Flags().AddFlagSet(chrootFlags)
@@ -267,9 +262,9 @@ func updateRepo() {
 }
 
 func runEnter(cmd *cobra.Command, args []string) {
-	enter := sdk.Enter
-	if legacy || !experimental {
-		enter = sdk.OldEnter
+	enter := sdk.OldEnter
+	if experimental {
+		enter = sdk.Enter
 	}
 
 	if err := enter(chrootName, args...); err != nil && len(args) != 0 {
