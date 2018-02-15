@@ -159,7 +159,7 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 
 	if spawnShell {
 		if spawnRemove {
-			reader := strings.NewReader(`PS1="\033[0;31m[bound]\033[0m $PS1"` + "\n")
+			reader := strings.NewReader(`PS1="\[\033[0;31m\][bound]\[\033[0m\] $PS1"` + "\n")
 			if err := platform.InstallFile(reader, someMach, "/etc/profile.d/kola-spawn-bound.sh"); err != nil {
 				return fmt.Errorf("Setting shell prompt failed: %v", err)
 			}
