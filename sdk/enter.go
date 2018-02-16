@@ -154,8 +154,8 @@ func (e *enter) MountAPI() error {
 }
 
 // MountAgent bind mounts a SSH or GnuPG agent socket into the chroot
-func (e *enter) MountAgent(env string) error {
-	origPath := os.Getenv(env)
+func (e *enter) MountSSHAgent() error {
+	origPath := os.Getenv("SSH_AUTH_SOCK")
 	if origPath == "" {
 		return nil
 	}
@@ -177,12 +177,12 @@ func (e *enter) MountAgent(env string) error {
 
 	newPath := filepath.Join(newDir, origFile)
 	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
-	return os.Setenv(env, chrootPath)
+	return os.Setenv("SSH_AUTH_SOCK", chrootPath)
 }
 
 // MountGnupg bind mounts $GNUPGHOME or ~/.gnupg and the agent socket
 // if available. The agent is ignored if the home dir isn't available.
-func (e *enter) MountGnupg() error {
+func (e *enter) MountGnupgHome() error {
 	origHome := os.Getenv("GNUPGHOME")
 	if origHome == "" {
 		origHome = filepath.Join(e.User.HomeDir, ".gnupg")
@@ -193,8 +193,11 @@ func (e *enter) MountGnupg() error {
 		return os.Unsetenv("GNUPGHOME")
 	}
 
-	newHome, err := ioutil.TempDir(e.UserRunDir, "gnupg-")
-	if err != nil {
+	// gpg gets confused when GNUPGHOME isn't ~/.gnupg, so mount it there.
+	// Additionally, set the GNUPGHOME variable so commands run with sudo
+	// can also use it.
+	newHome := filepath.Join(e.Chroot, e.User.HomeDir, ".gnupg")
+	if err := os.Mkdir(newHome, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
 
@@ -202,12 +205,25 @@ func (e *enter) MountGnupg() error {
 		return err
 	}
 
-	chrootHome := strings.TrimPrefix(newHome, e.Chroot)
-	if err := os.Setenv("GNUPGHOME", chrootHome); err != nil {
+	return os.Setenv("GNUPGHOME", filepath.Join(e.User.HomeDir, ".gnupg"))
+}
+
+func (e *enter) MountGnupgAgent() error {
+	// Newer GPG releases make it harder to find out what dir has the sockets
+	// so use /run/user/$uid/gnupg which is the default
+	origAgentDir := filepath.Join("/run", "user", e.User.Uid, "gnupg")
+	if _, err := os.Stat(origAgentDir); err != nil {
+		// Skip
+		return nil
+	}
+
+	// gpg acts weird if this is elsewhere, so use /run/user/$uid/gnupg
+	newAgentDir := filepath.Join(e.Chroot, origAgentDir)
+	if err := os.Mkdir(newAgentDir, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	return e.MountAgent("GPG_AGENT_INFO")
+	return system.Bind(origAgentDir, newAgentDir)
 }
 
 // CopyGoogleCreds copies a Google credentials JSON file if one exists.
@@ -365,11 +381,15 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	if err := e.MountAgent("SSH_AUTH_SOCK"); err != nil {
+	if err := e.MountSSHAgent(); err != nil {
 		return err
 	}
 
-	if err := e.MountGnupg(); err != nil {
+	if err := e.MountGnupgHome(); err != nil {
+		return err
+	}
+
+	if err := e.MountGnupgAgent(); err != nil {
 		return err
 	}
 
