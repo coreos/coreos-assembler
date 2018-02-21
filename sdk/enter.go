@@ -58,12 +58,13 @@ func init() {
 // Information on the chroot. Except for Cmd and CmdDir paths
 // are relative to the host system.
 type enter struct {
-	RepoRoot   string
-	Chroot     string
-	Cmd        []string
-	CmdDir     string
-	User       *user.User
-	UserRunDir string
+	RepoRoot     string     `json:",omitempty"`
+	Chroot       string     `json:",omitempty"`
+	Cmd          []string   `json:",omitempty"`
+	CmdDir       string     `json:",omitempty"`
+	BindGpgAgent bool       `json:",omitempty"`
+	User         *user.User `json:",omitempty"`
+	UserRunDir   string     `json:",omitempty"`
 }
 
 type googleCreds struct {
@@ -318,16 +319,16 @@ func (e *enter) CopyGoogleCreds() error {
 }
 
 // bind mount the repo source tree into the chroot and run a command
+// Called via the multicall interface. Should only have 1 arg which is an
+// enter struct encoded in json.
 func enterChrootHelper(args []string) (err error) {
-	if len(args) < 3 {
-		return fmt.Errorf("got %d args, need at least 3", len(args))
+	if len(args) != 1 {
+		return fmt.Errorf("got %d args, need exactly 1", len(args))
 	}
 
-	e := enter{
-		RepoRoot: args[0],
-		Chroot:   args[1],
-		CmdDir:   args[2],
-		Cmd:      args[3:],
+	var e enter
+	if err := json.Unmarshal([]byte(args[0]), &e); err != nil {
+		return err
 	}
 
 	username := os.Getenv("SUDO_USER")
@@ -389,8 +390,10 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	if err := e.MountGnupgAgent(); err != nil {
-		return err
+	if e.BindGpgAgent {
+		if err := e.MountGnupgAgent(); err != nil {
+			return err
+		}
 	}
 
 	if err := e.CopyGoogleCreds(); err != nil {
@@ -401,8 +404,10 @@ func enterChrootHelper(args []string) (err error) {
 		return fmt.Errorf("Chrooting to %q failed: %v", e.Chroot, err)
 	}
 
-	if err := os.Chdir(e.CmdDir); err != nil {
-		return err
+	if e.CmdDir != "" {
+		if err := os.Chdir(e.CmdDir); err != nil {
+			return err
+		}
 	}
 
 	sudo := "/usr/bin/sudo"
@@ -478,37 +483,51 @@ func setDefaultEmail(environ []string) []string {
 	return setDefault(environ, "EMAIL", email)
 }
 
-// Enter the chroot and run a command in the given dir. The args get passed
-// directly to sudo so things like -i for a login shell are allowed.
-func enterChroot(name, dir string, args ...string) error {
-	reroot := RepoRoot()
-	chroot := filepath.Join(reroot, name)
-	args = append([]string{reroot, chroot, dir}, args...)
+// Enter the chroot and run a command in the given dir. The args specified in cmd
+//get passed directly to sudo so things like -i for a login shell are allowed.
+func enterChroot(e enter) error {
+	if e.RepoRoot == "" {
+		e.RepoRoot = RepoRoot()
+	}
+	if e.Chroot == "" {
+		e.Chroot = "chroot"
+	}
+	e.Chroot = filepath.Join(e.RepoRoot, e.Chroot)
 
-	sudo := enterChrootCmd.Sudo(args...)
+	enterJson, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+	sudo := enterChrootCmd.Sudo(string(enterJson))
 	sudo.Env = setDefaultEmail(os.Environ())
 	sudo.Stdin = os.Stdin
 	sudo.Stdout = os.Stdout
 	sudo.Stderr = os.Stderr
 
-	if err := copyUserConfig(chroot); err != nil {
+	if err := copyUserConfig(e.Chroot); err != nil {
 		return err
 	}
 
+	// will call enterChrootHelper via the multicall interface
 	return sudo.Run()
 }
 
 // Enter the chroot with a login shell, optionally invoking a command.
 // The command may be prefixed by environment variable assignments.
-func Enter(name string, args ...string) error {
+func Enter(name string, bindGpgAgent bool, args ...string) error {
 	// pass -i to sudo to invoke a login shell
 	cmd := []string{"-i", "--"}
 	if len(args) > 0 {
 		cmd = append(cmd, "env", "--")
 		cmd = append(cmd, args...)
 	}
-	// the directory doesn't matter here, sudo -i will chdir to $HOME
-	return enterChroot(name, "/", cmd...)
+	// the CmdDir doesn't matter here, sudo -i will chdir to $HOME
+	e := enter{
+		Chroot:       name,
+		Cmd:          cmd,
+		BindGpgAgent: bindGpgAgent,
+	}
+	return enterChroot(e)
 }
 
 func OldEnter(name string, args ...string) error {
