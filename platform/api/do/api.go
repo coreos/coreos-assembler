@@ -133,8 +133,9 @@ func (a *API) PreflightCheck(ctx context.Context) error {
 func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, userdata string) (*godo.Droplet, error) {
 	var droplet *godo.Droplet
 	var err error
-	// DO frequently gives us 422 errors saying "Please try again"
-	err = util.RetryConditional(6, 10*time.Second, shouldRetry, func() error {
+	// DO frequently gives us 422 errors saying "Please try again". Retry every 10 seconds
+	// for up to 5 min
+	err = util.RetryConditional(5*6, 10*time.Second, shouldRetry, func() error {
 		droplet, _, err = a.c.Droplets.Create(ctx, &godo.DropletCreateRequest{
 			Name:              name,
 			Region:            a.opts.Region,
