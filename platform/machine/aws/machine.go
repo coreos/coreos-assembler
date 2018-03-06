@@ -113,7 +113,12 @@ func (am *machine) saveConsole(origConsole string) error {
 		return true, nil
 	})
 	if err != nil {
-		return fmt.Errorf("retrieving console output of %v: %v", am.ID(), err)
+		err = fmt.Errorf("retrieving console output of %v: %v", am.ID(), err)
+		if origConsole != "" {
+			plog.Warning(err)
+		} else {
+			return err
+		}
 	}
 
 	// merge the two logs
