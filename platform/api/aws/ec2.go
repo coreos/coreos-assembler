@@ -107,8 +107,8 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 	// loop until all machines are online
 	var insts []*ec2.Instance
 
-	// 5 minutes is a pretty reasonable timeframe for AWS instances to work.
-	timeout := 5 * time.Minute
+	// 10 minutes is a pretty reasonable timeframe for AWS instances to work.
+	timeout := 10 * time.Minute
 	// don't make api calls too quickly, or we will hit the rate limit
 	delay := 10 * time.Second
 	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
