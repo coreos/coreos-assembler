@@ -67,7 +67,7 @@ func (a *API) CreateInstance(name, userdata, sshKey string) (*Machine, error) {
 
 	id := inst.ID
 
-	err = util.WaitUntilReady(5*time.Minute, 10*time.Second, func() (bool, error) {
+	err = util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
 		inst, err = a.client.GetInstance(id)
 		if err != nil {
 			return false, err
