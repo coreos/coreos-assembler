@@ -117,7 +117,7 @@ var (
 		},
 		{
 			desc:  "segfault",
-			match: regexp.MustCompile("SEGV"),
+			match: regexp.MustCompile("SIGSEGV|=11/SEGV"),
 		},
 		{
 			desc:  "core dump",
