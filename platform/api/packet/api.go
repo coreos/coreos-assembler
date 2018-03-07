@@ -41,10 +41,10 @@ import (
 )
 
 const (
-	// Provisioning a VM is supposed to take < 8 minutes.
+	// Provisioning a VM is supposed to take < 8 minutes, but in practice can take longer.
 	launchTimeout       = 10 * time.Minute
 	launchPollInterval  = 30 * time.Second
-	installTimeout      = 10 * time.Minute
+	installTimeout      = 15 * time.Minute
 	installPollInterval = 5 * time.Second
 	apiRetries          = 3
 	apiRetryInterval    = 5 * time.Second
