@@ -95,9 +95,17 @@ type Cluster interface {
 	ConsoleOutput() map[string]string
 }
 
+// SystemdDropin is a userdata type agnostic struct representing a systemd dropin
+type SystemdDropin struct {
+	Unit     string
+	Name     string
+	Contents string
+}
+
 // Options contains the base options for all clusters.
 type Options struct {
-	BaseName string
+	BaseName       string
+	SystemdDropins []SystemdDropin
 }
 
 // RuntimeConfig contains cluster-specific configuration.

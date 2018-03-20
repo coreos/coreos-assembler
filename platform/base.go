@@ -171,6 +171,10 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 		return nil, err
 	}
 
+	for _, dropin := range bc.baseopts.SystemdDropins {
+		conf.AddSystemdUnitDropin(dropin.Unit, dropin.Name, dropin.Contents)
+	}
+
 	if !bc.rconf.NoSSHKeyInUserData {
 		keys, err := bc.Keys()
 		if err != nil {

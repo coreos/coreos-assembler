@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/kola"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
 )
 
@@ -43,6 +44,7 @@ var (
 func init() {
 	sv := root.PersistentFlags().StringVar
 	bv := root.PersistentFlags().BoolVar
+	ss := root.PersistentFlags().StringSlice
 
 	// general options
 	sv(&outputDir, "output-dir", "", "Temporary output directory for test data and logs")
@@ -51,6 +53,7 @@ func init() {
 	root.PersistentFlags().IntVarP(&kola.TestParallelism, "parallel", "j", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
+	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Specify multiple times for multiple units.")
 
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
@@ -140,6 +143,14 @@ func syncOptions() error {
 
 	if kola.QEMUOptions.BIOSImage == "" {
 		kola.QEMUOptions.BIOSImage = kolaDefaultBIOS[kola.QEMUOptions.Board]
+	}
+	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
+	for _, unit := range units {
+		kola.Options.SystemdDropins = append(kola.Options.SystemdDropins, platform.SystemdDropin{
+			Unit:     unit,
+			Name:     "10-debug.conf",
+			Contents: "[Service]\nEnvironment=SYSTEMD_LOG_LEVEL=debug",
+		})
 	}
 
 	return nil
