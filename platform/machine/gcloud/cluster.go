@@ -48,7 +48,7 @@ func NewCluster(opts *gcloud.Options, rconf *platform.RuntimeConfig) (platform.C
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, ctplatform.GCE)
+	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.GCE)
 	if err != nil {
 		return nil, err
 	}

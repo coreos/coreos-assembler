@@ -47,13 +47,14 @@ type BaseCluster struct {
 	rconf      *RuntimeConfig
 	platform   Name
 	ctPlatform string
+	baseopts   *Options
 }
 
-func NewBaseCluster(basename string, rconf *RuntimeConfig, platform Name, ctPlatform string) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(basename, rconf, platform, ctPlatform, network.NewRetryDialer())
+func NewBaseCluster(opts *Options, rconf *RuntimeConfig, platform Name, ctPlatform string) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(opts, rconf, platform, ctPlatform, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, platform Name, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(opts *Options, rconf *RuntimeConfig, platform Name, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -63,10 +64,11 @@ func NewBaseClusterWithDialer(basename string, rconf *RuntimeConfig, platform Na
 		agent:      agent,
 		machmap:    make(map[string]Machine),
 		consolemap: make(map[string]string),
-		name:       fmt.Sprintf("%s-%s", basename, uuid.NewV4()),
+		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.NewV4()),
 		rconf:      rconf,
 		platform:   platform,
 		ctPlatform: ctPlatform,
+		baseopts:   opts,
 	}
 
 	return bc, nil

@@ -51,7 +51,7 @@ func NewCluster(opts *aws.Options, rconf *platform.RuntimeConfig) (platform.Clus
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, ctplatform.EC2)
+	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.EC2)
 	if err != nil {
 		return nil, err
 	}
