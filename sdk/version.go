@@ -131,6 +131,7 @@ func versionsFromRemoteRepoMaybeVerify(url, branch string, verify bool) (ver Ver
 	clone := exec.Command("git", "clone", "-q", "--depth=1", "--single-branch", "-b", branch, url, tmp)
 	clone.Stderr = os.Stderr
 	if err = clone.Run(); err != nil {
+		err = fmt.Errorf("'git clone %s' failed: %q", branch, err)
 		return
 	}
 
@@ -138,6 +139,7 @@ func versionsFromRemoteRepoMaybeVerify(url, branch string, verify bool) (ver Ver
 		tag := exec.Command("git", "-C", tmp, "tag", "-v", branch)
 		tag.Stderr = os.Stderr
 		if err = tag.Run(); err != nil {
+			err = fmt.Errorf("'git tag --verify %s' failed: %q", branch, err)
 			return
 		}
 	}
