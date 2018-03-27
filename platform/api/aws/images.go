@@ -637,13 +637,21 @@ func (a *API) PublishImage(imageID string) error {
 	if err != nil {
 		return err
 	}
-	if len(image.BlockDeviceMappings) == 0 || image.BlockDeviceMappings[0].Ebs == nil {
+	var snapshotID *string
+	// The EBS volume is usually listed before the ephemeral volume, but
+	// not always, e.g. ami-fddb0490 in cn-north-1
+	for _, mapping := range image.BlockDeviceMappings {
+		if mapping.Ebs != nil {
+			snapshotID = mapping.Ebs.SnapshotId
+			break
+		}
+	}
+	if snapshotID == nil {
 		// We observed a case where a returned `image` didn't have a block device mapping.
 		// Hopefully retrying this a couple times will work and it's just a sorta
 		// eventual consistency thing
 		return fmt.Errorf("no backing block device for %v", imageID)
 	}
-	snapshotID := image.BlockDeviceMappings[0].Ebs.SnapshotId
 	_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
 		Attribute:  aws.String("createVolumePermission"),
 		SnapshotId: snapshotID,
