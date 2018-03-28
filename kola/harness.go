@@ -107,6 +107,11 @@ var (
 			match: regexp.MustCompile(`EXT4-fs \([^)]+\): Delayed block allocation failed for inode \d+ at logical offset \d+ with max blocks \d+ with (error \d+)`),
 		},
 		{
+			// https://github.com/coreos/bugs/issues/2284
+			desc:  "GRUB memory corruption",
+			match: regexp.MustCompile("((alloc|free) magic) (is )?broken"),
+		},
+		{
 			// kernel 4.14.11
 			desc:  "bad page table",
 			match: regexp.MustCompile("mm/pgtable-generic.c:\\d+: bad (p.d|pte)"),
