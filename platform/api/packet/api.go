@@ -295,6 +295,7 @@ func (a *API) wrapUserData(conf *conf.Conf) (string, error) {
 		// metadata endpoint.
 		userDataOption = "-i /noop.ign -c"
 	}
+	escapedImageURL := strings.Replace(a.opts.ImageURL, "%", "%%", -1)
 
 	// make systemd units
 	discardSocketUnit := `
@@ -346,7 +347,7 @@ StandardError=journal+console
 
 [Install]
 RequiredBy=multi-user.target
-`, a.opts.ImageURL, userDataOption)
+`, escapedImageURL, userDataOption)
 
 	// make workarounds
 	noopIgnitionConfig := base64.StdEncoding.EncodeToString([]byte(`{"ignition": {"version": "2.1.0"}}`))
