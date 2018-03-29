@@ -309,6 +309,25 @@ func (a *API) DeleteKey(ctx context.Context, keyID int) error {
 	return nil
 }
 
+func (a *API) ListKeys(ctx context.Context) ([]godo.Key, error) {
+	page := godo.ListOptions{
+		Page:    1,
+		PerPage: 200,
+	}
+	var ret []godo.Key
+	for {
+		keys, _, err := a.c.Keys.List(ctx, &page)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, keys...)
+		if len(keys) < page.PerPage {
+			return ret, nil
+		}
+		page.Page += 1
+	}
+}
+
 // GenerateFakeKey generates a SSH key pair, returns the public key, and
 // discards the private key. This is useful for droplets that don't need a
 // public key, since DO insists on requiring one.
