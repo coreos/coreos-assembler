@@ -206,6 +206,9 @@ func locksmithReboot(c cluster.TestCluster) {
 	// The machine should be able to reboot without etcd in the default mode
 	m := c.Machines()[0]
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	output, err := c.SSH(m, "sudo systemctl stop sshd.socket && locksmithctl send-need-reboot")
 	if _, ok := err.(*ssh.ExitMissingError); ok {
 		err = nil // A terminated session is perfectly normal during reboot.
@@ -216,7 +219,7 @@ func locksmithReboot(c cluster.TestCluster) {
 		c.Fatalf("failed to run \"locksmithctl send-need-reboot\": output: %q status: %q", output, err)
 	}
 
-	err = platform.CheckMachine(m)
+	err = platform.CheckMachine(ctx, m)
 	if err != nil {
 		c.Fatalf("failed to check rebooted machine: %v", err)
 	}
@@ -233,7 +236,8 @@ func locksmithCluster(c cluster.TestCluster) {
 
 	c.MustSSH(machs[0], "locksmithctl status")
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 	wg := worker.NewWorkerGroup(ctx, len(machs))
 
 	// reboot all the things
@@ -250,7 +254,7 @@ func locksmithCluster(c cluster.TestCluster) {
 				return fmt.Errorf("failed to run %q: output: %q status: %q", cmd, output, err)
 			}
 
-			return platform.CheckMachine(m)
+			return platform.CheckMachine(ctx, m)
 		}
 
 		if err := wg.Start(worker); err != nil {

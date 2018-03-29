@@ -117,7 +117,7 @@ func StartMachine(m Machine, j *Journal) error {
 	if err := j.Start(context.TODO(), m); err != nil {
 		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
 	}
-	if err := CheckMachine(m); err != nil {
+	if err := CheckMachine(context.TODO(), m); err != nil {
 		return fmt.Errorf("machine %q failed basic checks: %v", m.ID(), err)
 	}
 	if !m.RuntimeConf().NoEnableSelinux {

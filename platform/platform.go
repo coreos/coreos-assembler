@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
@@ -260,9 +261,12 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int) ([]Machine, error) {
 // It also ensures the remote system is running Container Linux by CoreOS.
 //
 // TODO(mischief): better error messages.
-func CheckMachine(m Machine) error {
+func CheckMachine(ctx context.Context, m Machine) error {
 	// ensure ssh works and the system is ready
 	sshChecker := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		out, stderr, err := m.SSH("systemctl is-system-running")
 		if !bytes.Contains([]byte("initializing starting running stopping"), out) {
 			return nil // stop retrying if the system went haywire
@@ -298,5 +302,5 @@ func CheckMachine(m Machine) error {
 		}
 	}
 
-	return nil
+	return ctx.Err()
 }

@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -159,7 +161,7 @@ func rebootWithEmergencyShellTimeout(c cluster.TestCluster, m platform.Machine) 
 		c.Fatal(err)
 	}
 	time.Sleep(5 * time.Minute)
-	if err := platform.CheckMachine(m); err != nil {
+	if err := platform.CheckMachine(context.TODO(), m); err != nil {
 		c.Fatal(err)
 	}
 }
