@@ -22,8 +22,7 @@ import (
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	cci "github.com/coreos/coreos-cloudinit/config"
-	"github.com/coreos/go-semver/semver"
-	ign "github.com/coreos/ignition/config"
+	ignerr "github.com/coreos/ignition/config/shared/errors"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
 	v2 "github.com/coreos/ignition/config/v2_0"
@@ -105,11 +104,11 @@ func Unknown(data string) *UserData {
 
 	_, _, err := v21.Parse([]byte(data))
 	switch err {
-	case v21.ErrEmpty:
+	case ignerr.ErrEmpty:
 		u.kind = kindEmpty
-	case v21.ErrCloudConfig:
+	case ignerr.ErrCloudConfig:
 		u.kind = kindCloudConfig
-	case v21.ErrScript:
+	case ignerr.ErrScript:
 		u.kind = kindScript
 	default:
 		// Guess whether this is an Ignition config or a CLC.
@@ -154,6 +153,41 @@ func (u *UserData) IsIgnitionCompatible() bool {
 func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 	c := &Conf{}
 
+	renderIgnition := func() error {
+		// Try each known version in turn.  Newer parsers will
+		// fall back to older ones, so try older versions first.
+		ignc1, report, err := v1.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV1 = &ignc1
+			return nil
+			// FIXME(bgilbert): https://github.com/coreos/ignition/pull/532
+		} else if err != ignerr.ErrInvalid {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		ignc2, report, err := v2.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV2 = &ignc2
+			return nil
+		} else if err != ignerr.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		ignc21, report, err := v21.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV21 = &ignc21
+			return nil
+		} else if err != ignerr.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		// give up
+		return err
+	}
+
 	switch u.kind {
 	case kindEmpty:
 		// empty, noop
@@ -167,35 +201,9 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 		// pass through scripts unmodified, you are on your own.
 		c.script = u.data
 	case kindIgnition:
-		ver, err := ign.Version([]byte(u.data))
-		// process indeterminable configs with the current version
-		// so we can get parse errors
-		if err != nil && err != ign.ErrVersionIndeterminable {
+		err := renderIgnition()
+		if err != nil {
 			return nil, err
-		}
-
-		switch ver {
-		default:
-			// an Ignition 2.1 config, or an indeterminable one
-			ignc, report, err := v21.Parse([]byte(u.data))
-			if err != nil {
-				plog.Errorf("invalid userdata: %v", report)
-				return nil, err
-			}
-			c.ignitionV21 = &ignc
-		case semver.Version{Major: 2}:
-			ignc, report, err := v2.Parse([]byte(u.data))
-			if err != nil {
-				plog.Errorf("invalid userdata: %v", report)
-				return nil, err
-			}
-			c.ignitionV2 = &ignc
-		case semver.Version{Major: 1}:
-			ignc, err := v1.Parse([]byte(u.data))
-			if err != nil {
-				return nil, err
-			}
-			c.ignitionV1 = &ignc
 		}
 	case kindContainerLinuxConfig:
 		clc, ast, report := ct.Parse([]byte(u.data))
