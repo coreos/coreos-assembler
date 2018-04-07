@@ -1,5 +1,5 @@
-hash: d7c26224e97d03fbba50efe1beebc5a1dd863041e0d1ae6a6992b0d543bf50ef
-updated: 2018-01-22T13:35:50.083268783-08:00
+hash: c8ced16c6f437d0523c100d4d1b62c73e5c08d1200e34b9d4d41255afac00136
+updated: 2018-04-06T20:02:46.136591923-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -292,6 +292,7 @@ imports:
   version: 6a0cc1ae81b4cc11db5e491e030e4b98fba79c19
 - name: go4.org
   version: 03efcb870d84809319ea509714dd6d19a1498483
+  repo: https://github.com/go4org/go4
   subpackages:
   - errorutil
 - name: golang.org/x/crypto
