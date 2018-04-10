@@ -70,6 +70,8 @@ var (
 	// manifest given to kola.
 	TorcxManifest *torcx.Manifest = nil
 
+	UpdatePayloadFile string
+
 	consoleChecks = []struct {
 		desc     string
 		match    *regexp.Regexp

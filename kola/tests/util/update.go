@@ -15,6 +15,7 @@
 package util
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -40,4 +41,10 @@ func GetUsrDeviceNode(c cluster.TestCluster, m platform.Machine) string {
 	}
 
 	return string(usrdev)
+}
+
+func InvalidateUsrPartition(c cluster.TestCluster, m platform.Machine, partition string) {
+	if out, stderr, err := m.SSH(fmt.Sprintf("sudo coreos-setgoodroot && sudo wipefs /dev/disk/by-partlabel/%s", partition)); err != nil {
+		c.Fatalf("invalidating %s failed: %s: %v: %s", partition, out, err, stderr)
+	}
 }

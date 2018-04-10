@@ -54,6 +54,7 @@ func init() {
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Specify multiple times for multiple units.")
+	sv(&kola.UpdatePayloadFile, "update-payload", "", "Path to an update payload that should be made available to tests")
 
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
