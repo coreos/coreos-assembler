@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/machine/qemu"
 )
@@ -56,7 +57,7 @@ func VerityVerify(c cluster.TestCluster) {
 	hash := c.MustSSH(m, ddcmd)
 
 	// find /usr dev
-	usrdev := getUsrDeviceNode(c, m)
+	usrdev := util.GetUsrDeviceNode(c, m)
 
 	// figure out partition size for hash dev offset
 	offset := c.MustSSH(m, "sudo e2size "+usrdev)
@@ -88,7 +89,7 @@ func VerityCorruption(c cluster.TestCluster) {
 	// try setting NAME=CoreOS to NAME=LulzOS in /usr/lib/os-release
 
 	// get usr device, probably vda3
-	usrdev := getUsrDeviceNode(c, m)
+	usrdev := util.GetUsrDeviceNode(c, m)
 
 	// poke bytes into /usr/lib/os-release
 	c.MustSSH(m, fmt.Sprintf(`echo NAME=LulzOS | sudo dd of=%s seek=$(expr $(sudo debugfs -R "blocks /lib/os-release" %s 2>/dev/null) \* 4096) bs=1 status=none`, usrdev, usrdev))
@@ -128,19 +129,6 @@ func getKernelVerityHashOffset(c cluster.TestCluster) int {
 		return 512
 	}
 	return 64
-}
-
-func getUsrDeviceNode(c cluster.TestCluster, m platform.Machine) string {
-	// find /usr dev
-	usrdev := c.MustSSH(m, "findmnt -no SOURCE /usr")
-
-	// XXX: if the /usr dev is /dev/mapper/usr, we're on a verity enabled
-	// image, so use dmsetup to find the real device.
-	if strings.TrimSpace(string(usrdev)) == "/dev/mapper/usr" {
-		usrdev = c.MustSSH(m, "echo -n /dev/$(sudo dmsetup info --noheadings -Co blkdevs_used usr)")
-	}
-
-	return string(usrdev)
 }
 
 func skipUnlessVerity(c cluster.TestCluster, m platform.Machine) {
