@@ -22,14 +22,15 @@ import (
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	cci "github.com/coreos/coreos-cloudinit/config"
-	"github.com/coreos/go-semver/semver"
-	ign "github.com/coreos/ignition/config"
+	ignerr "github.com/coreos/ignition/config/shared/errors"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
 	v2 "github.com/coreos/ignition/config/v2_0"
 	v2types "github.com/coreos/ignition/config/v2_0/types"
 	v21 "github.com/coreos/ignition/config/v2_1"
 	v21types "github.com/coreos/ignition/config/v2_1/types"
+	v22 "github.com/coreos/ignition/config/v2_2"
+	v22types "github.com/coreos/ignition/config/v2_2/types"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -60,6 +61,7 @@ type Conf struct {
 	ignitionV1  *v1types.Config
 	ignitionV2  *v2types.Config
 	ignitionV21 *v21types.Config
+	ignitionV22 *v22types.Config
 	cloudconfig *cci.CloudConfig
 	script      string
 }
@@ -103,13 +105,13 @@ func Unknown(data string) *UserData {
 		data: data,
 	}
 
-	_, _, err := v21.Parse([]byte(data))
+	_, _, err := v22.Parse([]byte(data))
 	switch err {
-	case v21.ErrEmpty:
+	case ignerr.ErrEmpty:
 		u.kind = kindEmpty
-	case v21.ErrCloudConfig:
+	case ignerr.ErrCloudConfig:
 		u.kind = kindCloudConfig
-	case v21.ErrScript:
+	case ignerr.ErrScript:
 		u.kind = kindScript
 	default:
 		// Guess whether this is an Ignition config or a CLC.
@@ -154,6 +156,50 @@ func (u *UserData) IsIgnitionCompatible() bool {
 func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 	c := &Conf{}
 
+	renderIgnition := func() error {
+		// Try each known version in turn.  Newer parsers will
+		// fall back to older ones, so try older versions first.
+		ignc1, report, err := v1.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV1 = &ignc1
+			return nil
+			// FIXME(bgilbert): https://github.com/coreos/ignition/pull/532
+		} else if err != ignerr.ErrInvalid {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		ignc2, report, err := v2.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV2 = &ignc2
+			return nil
+		} else if err != ignerr.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		ignc21, report, err := v21.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV21 = &ignc21
+			return nil
+		} else if err != ignerr.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		ignc22, report, err := v22.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV22 = &ignc22
+			return nil
+		} else if err != ignerr.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
+		// give up
+		return err
+	}
+
 	switch u.kind {
 	case kindEmpty:
 		// empty, noop
@@ -167,35 +213,9 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 		// pass through scripts unmodified, you are on your own.
 		c.script = u.data
 	case kindIgnition:
-		ver, err := ign.Version([]byte(u.data))
-		// process indeterminable configs with the current version
-		// so we can get parse errors
-		if err != nil && err != ign.ErrVersionIndeterminable {
+		err := renderIgnition()
+		if err != nil {
 			return nil, err
-		}
-
-		switch ver {
-		default:
-			// an Ignition 2.1 config, or an indeterminable one
-			ignc, report, err := v21.Parse([]byte(u.data))
-			if err != nil {
-				plog.Errorf("invalid userdata: %v", report)
-				return nil, err
-			}
-			c.ignitionV21 = &ignc
-		case semver.Version{Major: 2}:
-			ignc, report, err := v2.Parse([]byte(u.data))
-			if err != nil {
-				plog.Errorf("invalid userdata: %v", report)
-				return nil, err
-			}
-			c.ignitionV2 = &ignc
-		case semver.Version{Major: 1}:
-			ignc, err := v1.Parse([]byte(u.data))
-			if err != nil {
-				return nil, err
-			}
-			c.ignitionV1 = &ignc
 		}
 	case kindContainerLinuxConfig:
 		clc, ast, report := ct.Parse([]byte(u.data))
@@ -235,6 +255,9 @@ func (c *Conf) String() string {
 		return string(buf)
 	} else if c.ignitionV21 != nil {
 		buf, _ := json.Marshal(c.ignitionV21)
+		return string(buf)
+	} else if c.ignitionV22 != nil {
+		buf, _ := json.Marshal(c.ignitionV22)
 		return string(buf)
 	} else if c.cloudconfig != nil {
 		return c.cloudconfig.String()
@@ -279,6 +302,14 @@ func (c *Conf) addSystemdUnitV21(name, contents string, enable bool) {
 	})
 }
 
+func (c *Conf) addSystemdUnitV22(name, contents string, enable bool) {
+	c.ignitionV22.Systemd.Units = append(c.ignitionV22.Systemd.Units, v22types.Unit{
+		Name:     name,
+		Contents: contents,
+		Enabled:  &enable,
+	})
+}
+
 func (c *Conf) addSystemdUnitCloudConfig(name, contents string, enable bool) {
 	c.cloudconfig.CoreOS.Units = append(c.cloudconfig.CoreOS.Units, cci.Unit{
 		Name:    name,
@@ -294,6 +325,8 @@ func (c *Conf) AddSystemdUnit(name, contents string, enable bool) {
 		c.addSystemdUnitV2(name, contents, enable)
 	} else if c.ignitionV21 != nil {
 		c.addSystemdUnitV21(name, contents, enable)
+	} else if c.ignitionV22 != nil {
+		c.addSystemdUnitV22(name, contents, enable)
 	} else if c.cloudconfig != nil {
 		c.addSystemdUnitCloudConfig(name, contents, enable)
 	}
@@ -365,6 +398,28 @@ func (c *Conf) addSystemdDropinV21(service, name, contents string) {
 	})
 }
 
+func (c *Conf) addSystemdDropinV22(service, name, contents string) {
+	for i, unit := range c.ignitionV22.Systemd.Units {
+		if unit.Name == service {
+			unit.Dropins = append(unit.Dropins, v22types.SystemdDropin{
+				Name:     name,
+				Contents: contents,
+			})
+			c.ignitionV22.Systemd.Units[i] = unit
+			return
+		}
+	}
+	c.ignitionV22.Systemd.Units = append(c.ignitionV22.Systemd.Units, v22types.Unit{
+		Name: service,
+		Dropins: []v22types.SystemdDropin{
+			{
+				Name:     name,
+				Contents: contents,
+			},
+		},
+	})
+}
+
 func (c *Conf) addSystemdDropinCloudConfig(service, name, contents string) {
 	for i, unit := range c.cloudconfig.CoreOS.Units {
 		if unit.Name == service {
@@ -394,6 +449,8 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 		c.addSystemdDropinV2(service, name, contents)
 	} else if c.ignitionV21 != nil {
 		c.addSystemdDropinV21(service, name, contents)
+	} else if c.ignitionV22 != nil {
+		c.addSystemdDropinV22(service, name, contents)
 	} else if c.cloudconfig != nil {
 		c.addSystemdDropinCloudConfig(service, name, contents)
 	}
@@ -447,6 +504,24 @@ func (c *Conf) copyKeysIgnitionV21(keys []*agent.Key) {
 	})
 }
 
+func (c *Conf) copyKeysIgnitionV22(keys []*agent.Key) {
+	var keyObjs []v22types.SSHAuthorizedKey
+	for _, key := range keys {
+		keyObjs = append(keyObjs, v22types.SSHAuthorizedKey(key.String()))
+	}
+	for i := range c.ignitionV22.Passwd.Users {
+		user := &c.ignitionV22.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
+			return
+		}
+	}
+	c.ignitionV22.Passwd.Users = append(c.ignitionV22.Passwd.Users, v22types.PasswdUser{
+		Name:              "core",
+		SSHAuthorizedKeys: keyObjs,
+	})
+}
+
 func (c *Conf) copyKeysCloudConfig(keys []*agent.Key) {
 	c.cloudconfig.SSHAuthorizedKeys = append(c.cloudconfig.SSHAuthorizedKeys, keysToStrings(keys)...)
 }
@@ -465,6 +540,8 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 		c.copyKeysIgnitionV2(keys)
 	} else if c.ignitionV21 != nil {
 		c.copyKeysIgnitionV21(keys)
+	} else if c.ignitionV22 != nil {
+		c.copyKeysIgnitionV22(keys)
 	} else if c.cloudconfig != nil {
 		c.copyKeysCloudConfig(keys)
 	} else if c.script != "" {
@@ -483,7 +560,7 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 // Returns false in the case of empty configs as on most platforms,
 // this will default back to cloudconfig
 func (c *Conf) IsIgnition() bool {
-	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil
+	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil
 }
 
 func (c *Conf) IsEmpty() bool {

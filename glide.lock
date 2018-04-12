@@ -1,5 +1,5 @@
-hash: d7c26224e97d03fbba50efe1beebc5a1dd863041e0d1ae6a6992b0d543bf50ef
-updated: 2018-01-22T13:35:50.083268783-08:00
+hash: 449f30a142c9b53eb4e1d6605bc3ccbbfb04133d3dfa22b67ea2aeeca5b7b8d4
+updated: 2018-04-06T21:16:05.841606878-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -132,16 +132,22 @@ imports:
   - journal
   - unit
 - name: github.com/coreos/ignition
-  version: bf496dea2504d9015852d4ed60361852fc193bd3
+  version: 8bc8a13ee812ce0755be0245808c3044a7ef0add
   subpackages:
   - config
+  - config/shared/errors
+  - config/shared/validations
   - config/types
+  - config/util
   - config/v1
   - config/v1/types
   - config/v2_0
   - config/v2_0/types
   - config/v2_1
   - config/v2_1/types
+  - config/v2_2
+  - config/v2_2/types
+  - config/v2_3_experimental/types
   - config/validate
   - config/validate/astjson
   - config/validate/astnode
@@ -292,6 +298,7 @@ imports:
   version: 6a0cc1ae81b4cc11db5e491e030e4b98fba79c19
 - name: go4.org
   version: 03efcb870d84809319ea509714dd6d19a1498483
+  repo: https://github.com/go4org/go4
   subpackages:
   - errorutil
 - name: golang.org/x/crypto
