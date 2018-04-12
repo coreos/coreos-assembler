@@ -9,8 +9,8 @@ import:
   - management/location
   - management/storageservice
   - storage
-- package: github.com/Microsoft/azure-vhd-utils-for-go
-  version: 070db2d701a462ca2edcf89d677ed3cac309d8e8
+- package: github.com/Microsoft/azure-vhd-utils
+  version: 43293b8d76460dd25093d216c95abc79342e1657
   subpackages:
   - upload
   - upload/concurrent
