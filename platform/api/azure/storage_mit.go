@@ -31,10 +31,10 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
-	"github.com/Microsoft/azure-vhd-utils-for-go/upload"
-	"github.com/Microsoft/azure-vhd-utils-for-go/upload/metadata"
-	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/common"
-	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/diskstream"
+	"github.com/Microsoft/azure-vhd-utils/upload"
+	"github.com/Microsoft/azure-vhd-utils/upload/metadata"
+	"github.com/Microsoft/azure-vhd-utils/vhdcore/common"
+	"github.com/Microsoft/azure-vhd-utils/vhdcore/diskstream"
 	"github.com/coreos/pkg/multierror"
 )
 
