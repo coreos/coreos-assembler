@@ -129,12 +129,15 @@ func BuildImageDir(board, version string) string {
 }
 
 func RepoInit(chroot, url, branch, name string) error {
-	return enterChroot(
-		chroot, chrootRepoRoot, "--",
-		"repo", "init",
-		"--manifest-url", url,
-		"--manifest-branch", branch,
-		"--manifest-name", name)
+	return enterChroot(enter{
+		Chroot: chroot,
+		CmdDir: chrootRepoRoot,
+		Cmd: []string{"--",
+			"repo", "init",
+			"--manifest-url", url,
+			"--manifest-branch", branch,
+			"--manifest-name", name,
+		}})
 }
 
 func RepoVerifyTag(branch string) error {
@@ -153,5 +156,9 @@ func RepoSync(chroot string, force bool) error {
 	if force {
 		args = append(args, "--force-sync")
 	}
-	return enterChroot(chroot, chrootRepoRoot, args...)
+	return enterChroot(enter{
+		Chroot: chroot,
+		CmdDir: chrootRepoRoot,
+		Cmd:    args,
+	})
 }

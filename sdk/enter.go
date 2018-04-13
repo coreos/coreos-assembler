@@ -58,12 +58,13 @@ func init() {
 // Information on the chroot. Except for Cmd and CmdDir paths
 // are relative to the host system.
 type enter struct {
-	RepoRoot   string
-	Chroot     string
-	Cmd        []string
-	CmdDir     string
-	User       *user.User
-	UserRunDir string
+	RepoRoot     string     `json:",omitempty"`
+	Chroot       string     `json:",omitempty"`
+	Cmd          []string   `json:",omitempty"`
+	CmdDir       string     `json:",omitempty"`
+	BindGpgAgent bool       `json:",omitempty"`
+	User         *user.User `json:",omitempty"`
+	UserRunDir   string     `json:",omitempty"`
 }
 
 type googleCreds struct {
@@ -154,8 +155,8 @@ func (e *enter) MountAPI() error {
 }
 
 // MountAgent bind mounts a SSH or GnuPG agent socket into the chroot
-func (e *enter) MountAgent(env string) error {
-	origPath := os.Getenv(env)
+func (e *enter) MountSSHAgent() error {
+	origPath := os.Getenv("SSH_AUTH_SOCK")
 	if origPath == "" {
 		return nil
 	}
@@ -177,12 +178,12 @@ func (e *enter) MountAgent(env string) error {
 
 	newPath := filepath.Join(newDir, origFile)
 	chrootPath := strings.TrimPrefix(newPath, e.Chroot)
-	return os.Setenv(env, chrootPath)
+	return os.Setenv("SSH_AUTH_SOCK", chrootPath)
 }
 
 // MountGnupg bind mounts $GNUPGHOME or ~/.gnupg and the agent socket
 // if available. The agent is ignored if the home dir isn't available.
-func (e *enter) MountGnupg() error {
+func (e *enter) MountGnupgHome() error {
 	origHome := os.Getenv("GNUPGHOME")
 	if origHome == "" {
 		origHome = filepath.Join(e.User.HomeDir, ".gnupg")
@@ -193,8 +194,11 @@ func (e *enter) MountGnupg() error {
 		return os.Unsetenv("GNUPGHOME")
 	}
 
-	newHome, err := ioutil.TempDir(e.UserRunDir, "gnupg-")
-	if err != nil {
+	// gpg gets confused when GNUPGHOME isn't ~/.gnupg, so mount it there.
+	// Additionally, set the GNUPGHOME variable so commands run with sudo
+	// can also use it.
+	newHome := filepath.Join(e.Chroot, e.User.HomeDir, ".gnupg")
+	if err := os.Mkdir(newHome, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
 
@@ -202,12 +206,25 @@ func (e *enter) MountGnupg() error {
 		return err
 	}
 
-	chrootHome := strings.TrimPrefix(newHome, e.Chroot)
-	if err := os.Setenv("GNUPGHOME", chrootHome); err != nil {
+	return os.Setenv("GNUPGHOME", filepath.Join(e.User.HomeDir, ".gnupg"))
+}
+
+func (e *enter) MountGnupgAgent() error {
+	// Newer GPG releases make it harder to find out what dir has the sockets
+	// so use /run/user/$uid/gnupg which is the default
+	origAgentDir := filepath.Join("/run", "user", e.User.Uid, "gnupg")
+	if _, err := os.Stat(origAgentDir); err != nil {
+		// Skip
+		return nil
+	}
+
+	// gpg acts weird if this is elsewhere, so use /run/user/$uid/gnupg
+	newAgentDir := filepath.Join(e.Chroot, origAgentDir)
+	if err := os.Mkdir(newAgentDir, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	return e.MountAgent("GPG_AGENT_INFO")
+	return system.Bind(origAgentDir, newAgentDir)
 }
 
 // CopyGoogleCreds copies a Google credentials JSON file if one exists.
@@ -302,16 +319,16 @@ func (e *enter) CopyGoogleCreds() error {
 }
 
 // bind mount the repo source tree into the chroot and run a command
+// Called via the multicall interface. Should only have 1 arg which is an
+// enter struct encoded in json.
 func enterChrootHelper(args []string) (err error) {
-	if len(args) < 3 {
-		return fmt.Errorf("got %d args, need at least 3", len(args))
+	if len(args) != 1 {
+		return fmt.Errorf("got %d args, need exactly 1", len(args))
 	}
 
-	e := enter{
-		RepoRoot: args[0],
-		Chroot:   args[1],
-		CmdDir:   args[2],
-		Cmd:      args[3:],
+	var e enter
+	if err := json.Unmarshal([]byte(args[0]), &e); err != nil {
+		return err
 	}
 
 	username := os.Getenv("SUDO_USER")
@@ -365,12 +382,18 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	if err := e.MountAgent("SSH_AUTH_SOCK"); err != nil {
+	if err := e.MountSSHAgent(); err != nil {
 		return err
 	}
 
-	if err := e.MountGnupg(); err != nil {
+	if err := e.MountGnupgHome(); err != nil {
 		return err
+	}
+
+	if e.BindGpgAgent {
+		if err := e.MountGnupgAgent(); err != nil {
+			return err
+		}
 	}
 
 	if err := e.CopyGoogleCreds(); err != nil {
@@ -381,8 +404,10 @@ func enterChrootHelper(args []string) (err error) {
 		return fmt.Errorf("Chrooting to %q failed: %v", e.Chroot, err)
 	}
 
-	if err := os.Chdir(e.CmdDir); err != nil {
-		return err
+	if e.CmdDir != "" {
+		if err := os.Chdir(e.CmdDir); err != nil {
+			return err
+		}
 	}
 
 	sudo := "/usr/bin/sudo"
@@ -458,37 +483,51 @@ func setDefaultEmail(environ []string) []string {
 	return setDefault(environ, "EMAIL", email)
 }
 
-// Enter the chroot and run a command in the given dir. The args get passed
-// directly to sudo so things like -i for a login shell are allowed.
-func enterChroot(name, dir string, args ...string) error {
-	reroot := RepoRoot()
-	chroot := filepath.Join(reroot, name)
-	args = append([]string{reroot, chroot, dir}, args...)
+// Enter the chroot and run a command in the given dir. The args specified in cmd
+//get passed directly to sudo so things like -i for a login shell are allowed.
+func enterChroot(e enter) error {
+	if e.RepoRoot == "" {
+		e.RepoRoot = RepoRoot()
+	}
+	if e.Chroot == "" {
+		e.Chroot = "chroot"
+	}
+	e.Chroot = filepath.Join(e.RepoRoot, e.Chroot)
 
-	sudo := enterChrootCmd.Sudo(args...)
+	enterJson, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+	sudo := enterChrootCmd.Sudo(string(enterJson))
 	sudo.Env = setDefaultEmail(os.Environ())
 	sudo.Stdin = os.Stdin
 	sudo.Stdout = os.Stdout
 	sudo.Stderr = os.Stderr
 
-	if err := copyUserConfig(chroot); err != nil {
+	if err := copyUserConfig(e.Chroot); err != nil {
 		return err
 	}
 
+	// will call enterChrootHelper via the multicall interface
 	return sudo.Run()
 }
 
 // Enter the chroot with a login shell, optionally invoking a command.
 // The command may be prefixed by environment variable assignments.
-func Enter(name string, args ...string) error {
+func Enter(name string, bindGpgAgent bool, args ...string) error {
 	// pass -i to sudo to invoke a login shell
 	cmd := []string{"-i", "--"}
 	if len(args) > 0 {
 		cmd = append(cmd, "env", "--")
 		cmd = append(cmd, args...)
 	}
-	// the directory doesn't matter here, sudo -i will chdir to $HOME
-	return enterChroot(name, "/", cmd...)
+	// the CmdDir doesn't matter here, sudo -i will chdir to $HOME
+	e := enter{
+		Chroot:       name,
+		Cmd:          cmd,
+		BindGpgAgent: bindGpgAgent,
+	}
+	return enterChroot(e)
 }
 
 func OldEnter(name string, args ...string) error {
