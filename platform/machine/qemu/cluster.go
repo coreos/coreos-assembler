@@ -78,7 +78,7 @@ var (
 // NewCluster creates a Cluster instance, suitable for running virtual
 // machines in QEMU.
 func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(opts.BaseName, rconf, Platform)
+	lc, err := local.NewLocalCluster(opts.Options, rconf, Platform)
 	if err != nil {
 		return nil, err
 	}

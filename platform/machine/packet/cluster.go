@@ -48,7 +48,7 @@ func NewCluster(opts *packet.Options, rconf *platform.RuntimeConfig) (platform.C
 		return nil, err
 	}
 
-	bc, err := platform.NewBaseCluster(opts.BaseName, rconf, Platform, ctplatform.Packet)
+	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.Packet)
 	if err != nil {
 		return nil, err
 	}
