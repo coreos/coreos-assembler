@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/validator"
+	"github.com/Microsoft/azure-vhd-utils/vhdcore/validator"
 	"github.com/spf13/cobra"
 )
 

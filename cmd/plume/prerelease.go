@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
-	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/validator"
+	"github.com/Microsoft/azure-vhd-utils/vhdcore/validator"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	gs "google.golang.org/api/storage/v1"

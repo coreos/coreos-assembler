@@ -31,10 +31,10 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
-	"github.com/Microsoft/azure-vhd-utils-for-go/upload"
-	"github.com/Microsoft/azure-vhd-utils-for-go/upload/metadata"
-	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/common"
-	"github.com/Microsoft/azure-vhd-utils-for-go/vhdcore/diskstream"
+	"github.com/Microsoft/azure-vhd-utils/upload"
+	"github.com/Microsoft/azure-vhd-utils/upload/metadata"
+	"github.com/Microsoft/azure-vhd-utils/vhdcore/common"
+	"github.com/Microsoft/azure-vhd-utils/vhdcore/diskstream"
 	"github.com/coreos/pkg/multierror"
 )
 
@@ -111,7 +111,9 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 		}
 		rangesToSkip = ranges
 	} else {
-		createBlob(bsc, container, blob, ds.GetSize(), localMetaData)
+		if err := createBlob(bsc, container, blob, ds.GetSize(), localMetaData); err != nil {
+			return err
+		}
 	}
 
 	uploadableRanges, err := upload.LocateUploadableRanges(ds, rangesToSkip, pageBlobPageSize)
@@ -136,12 +138,7 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 		MD5Hash:               localMetaData.FileMetaData.MD5Hash,
 	}
 
-	err = upload.Upload(cxt)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return upload.Upload(cxt)
 }
 
 // getBlobMetaData returns the custom metadata associated with a page blob which is set by createBlob method.

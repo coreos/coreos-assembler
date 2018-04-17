@@ -1,5 +1,5 @@
-hash: 449f30a142c9b53eb4e1d6605bc3ccbbfb04133d3dfa22b67ea2aeeca5b7b8d4
-updated: 2018-04-06T21:16:05.841606878-04:00
+hash: ccda62f1e6128add938d352b751576c51bc9fa73d060001436ee668f01e5c894
+updated: 2018-04-16T17:45:56.386448612-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -211,8 +211,8 @@ imports:
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
-- name: github.com/Microsoft/azure-vhd-utils-for-go
-  version: 070db2d701a462ca2edcf89d677ed3cac309d8e8
+- name: github.com/Microsoft/azure-vhd-utils
+  version: 43293b8d76460dd25093d216c95abc79342e1657
   subpackages:
   - upload
   - upload/concurrent
