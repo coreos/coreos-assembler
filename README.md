@@ -182,7 +182,7 @@ Plume release handles this as well, so it does not need to be run as part of
 the release process.
 
 ## Platform Credentials
-Each platform reads the credentials it uses from different files. The `aws`, `do`, `esx`, `oci` and `packet`
+Each platform reads the credentials it uses from different files. The `aws`, `do`, `esx` and `packet`
 platforms support selecting from multiple configured credentials, call "profiles". The examples below
 are for the "default" profile, but other profiles can be specified in the credentials files and selected
 via the `--<platform-name>-profile` flag:
@@ -245,32 +245,6 @@ you can paste in. This will populate the `.boto` file.
 
 See [Google Cloud Platform's Documentation](https://cloud.google.com/storage/docs/boto-gsutil)
 for more information about the `.boto` file.
-
-### oci
-`oci` reads the `~/.oci/config` file used by Oracle's oci command-line tool in addition to a
-`~/.oci/config.mantle` file. The `~/.oci/config` file can be created using the `oci` command:
-```
-oci setup config
-```
-
-or populated manually:
-```
-[DEFAULT]
-user=user.ocid.goes.here
-fingerprint=api.key.fingerprint.goes.here
-key_file=/path/to/oci_api_key.pem
-tenancy=tenancy.ocid.goes.here
-region=region-goes-here
-```
-
-The `oci setup config` command will generate the key file automatically. You must add your public key
-(`~/.oci/oci_api_key_public.pem`) to your oci user in the oci web console.
-
-The `~/.oci/config.mantle` file is only used by Mantle and must be populated manually:
-```
-[DEFAULT]
-compartment=compartment.ocid.goes.here
-```
 
 ### packet
 `packet` uses `~/.config/packet.json`. This can be configured manually:

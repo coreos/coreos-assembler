@@ -38,13 +38,11 @@ import (
 	doapi "github.com/coreos/mantle/platform/api/do"
 	esxapi "github.com/coreos/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
-	ociapi "github.com/coreos/mantle/platform/api/oci"
 	packetapi "github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/mantle/platform/machine/aws"
 	"github.com/coreos/mantle/platform/machine/do"
 	"github.com/coreos/mantle/platform/machine/esx"
 	"github.com/coreos/mantle/platform/machine/gcloud"
-	"github.com/coreos/mantle/platform/machine/oci"
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/system"
@@ -58,7 +56,6 @@ var (
 	DOOptions     = doapi.Options{Options: &Options}     // glue to set platform options from main
 	ESXOptions    = esxapi.Options{Options: &Options}    // glue to set platform options from main
 	GCEOptions    = gcloudapi.Options{Options: &Options} // glue to set platform options from main
-	OCIOptions    = ociapi.Options{Options: &Options}    // glue to set platform options from main
 	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
 	QEMUOptions   = qemu.Options{Options: &Options}      // glue to set platform options from main
 
@@ -146,8 +143,6 @@ func NewCluster(pltfrm string, rconf *platform.RuntimeConfig) (cluster platform.
 		cluster, err = esx.NewCluster(&ESXOptions, rconf)
 	case "gce":
 		cluster, err = gcloud.NewCluster(&GCEOptions, rconf)
-	case "oci":
-		cluster, err = oci.NewCluster(&OCIOptions, rconf)
 	case "packet":
 		cluster, err = packet.NewCluster(&PacketOptions, rconf)
 	case "qemu":

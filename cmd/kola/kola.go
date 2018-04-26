@@ -148,11 +148,6 @@ func writeProps() error {
 		Image       string `json:"image"`
 		MachineType string `json:"type"`
 	}
-	type OCI struct {
-		Region string `json:"region"`
-		Image  string `json:"image"`
-		Shape  string `json:"shape"`
-	}
 	type Packet struct {
 		Facility              string `json:"facility"`
 		Plan                  string `json:"plan"`
@@ -170,7 +165,6 @@ func writeProps() error {
 		DO       DO       `json:"do"`
 		ESX      ESX      `json:"esx"`
 		GCE      GCE      `json:"gce"`
-		OCI      OCI      `json:"oci"`
 		Packet   Packet   `json:"packet"`
 		QEMU     QEMU     `json:"qemu"`
 	}{
@@ -194,11 +188,6 @@ func writeProps() error {
 		GCE: GCE{
 			Image:       kola.GCEOptions.Image,
 			MachineType: kola.GCEOptions.MachineType,
-		},
-		OCI: OCI{
-			Region: kola.OCIOptions.Region,
-			Image:  kola.OCIOptions.Image,
-			Shape:  kola.OCIOptions.Shape,
 		},
 		Packet: Packet{
 			Facility: kola.PacketOptions.Facility,

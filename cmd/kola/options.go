@@ -29,7 +29,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
-	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "oci", "packet", "qemu"}
+	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "packet", "qemu"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
@@ -91,13 +91,6 @@ func init() {
 	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
 	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
-
-	// oci-specific options
-	sv(&kola.OCIOptions.ConfigPath, "oci-config-file", "", "OCI config file (default \"~/"+auth.OCIConfigPath+"\")")
-	sv(&kola.OCIOptions.Profile, "oci-profile", "", "OCI profile (default \"default\")")
-	sv(&kola.OCIOptions.Region, "oci-region", "", "OCI region (overrides config file)")
-	sv(&kola.OCIOptions.Image, "oci-image", "", "OCI image id")
-	sv(&kola.OCIOptions.Shape, "oci-shape", "VM.Standard1.1", "OCI shape")
 
 	// packet-specific options
 	sv(&kola.PacketOptions.ConfigPath, "packet-config-file", "", "Packet config file (default \"~/"+auth.PacketConfigPath+"\")")
