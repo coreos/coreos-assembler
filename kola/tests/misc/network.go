@@ -32,7 +32,7 @@ func init() {
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
 		Name:             "coreos.network.initramfs.second-boot",
-		ExcludePlatforms: []string{"do", "oci"},
+		ExcludePlatforms: []string{"do"},
 	})
 }
 

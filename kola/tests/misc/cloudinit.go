@@ -32,7 +32,6 @@ hostname: "core1"
 write_files:
   - path: "/foo"
     content: bar`),
-		ExcludePlatforms: []string{"oci"},
 	})
 	register.Register(&register.Test{
 		Run:         CloudInitScript,
@@ -47,7 +46,6 @@ EOF
 chown -R core.core ~core/.ssh
 chmod 700 ~core/.ssh
 chmod 600 ~core/.ssh/authorized_keys`),
-		ExcludePlatforms: []string{"oci"},
 	})
 }
 
