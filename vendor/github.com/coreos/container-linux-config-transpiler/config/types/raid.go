@@ -15,7 +15,7 @@
 package types
 
 import (
-	ignTypes "github.com/coreos/ignition/config/v2_1/types"
+	ignTypes "github.com/coreos/ignition/config/v2_2/types"
 	"github.com/coreos/ignition/config/validate/astnode"
 	"github.com/coreos/ignition/config/validate/report"
 )
@@ -25,6 +25,7 @@ type Raid struct {
 	Level   string   `yaml:"level"`
 	Devices []string `yaml:"devices"`
 	Spares  int      `yaml:"spares"`
+	Options []string `yaml:"options"`
 }
 
 func init() {
@@ -35,6 +36,7 @@ func init() {
 				Level:   array.Level,
 				Spares:  array.Spares,
 				Devices: convertStringSliceToTypesDeviceSlice(array.Devices),
+				Options: convertStringSiceToTypesRaidOptionSlice(array.Options),
 			}
 
 			out.Storage.Raid = append(out.Storage.Raid, newArray)
@@ -48,6 +50,15 @@ func convertStringSliceToTypesDeviceSlice(ss []string) []ignTypes.Device {
 	var res []ignTypes.Device
 	for _, s := range ss {
 		res = append(res, ignTypes.Device(s))
+	}
+	return res
+}
+
+// golang--
+func convertStringSiceToTypesRaidOptionSlice(ss []string) []ignTypes.RaidOption {
+	var res []ignTypes.RaidOption
+	for _, s := range ss {
+		res = append(res, ignTypes.RaidOption(s))
 	}
 	return res
 }

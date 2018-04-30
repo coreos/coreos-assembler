@@ -15,7 +15,7 @@
 package types
 
 import (
-	ignTypes "github.com/coreos/ignition/config/v2_1/types"
+	ignTypes "github.com/coreos/ignition/config/v2_2/types"
 	"github.com/coreos/ignition/config/validate/astnode"
 	"github.com/coreos/ignition/config/validate/report"
 )
@@ -74,7 +74,7 @@ func init() {
 				HomeDir:           user.HomeDir,
 				NoCreateHome:      user.NoCreateHome,
 				PrimaryGroup:      user.PrimaryGroup,
-				Groups:            convertStringSliceIntoTypesPasswdUserGroupSlice(user.Groups),
+				Groups:            convertStringSliceIntoTypesGroupSlice(user.Groups),
 				NoUserGroup:       user.NoUserGroup,
 				System:            user.System,
 				NoLogInit:         user.NoLogInit,
@@ -130,10 +130,10 @@ func convertStringSliceIntoTypesUsercreateGroupSlice(ss []string) []ignTypes.Use
 }
 
 // golang--
-func convertStringSliceIntoTypesPasswdUserGroupSlice(ss []string) []ignTypes.PasswdUserGroup {
-	var res []ignTypes.PasswdUserGroup
+func convertStringSliceIntoTypesGroupSlice(ss []string) []ignTypes.Group {
+	var res []ignTypes.Group
 	for _, s := range ss {
-		res = append(res, ignTypes.PasswdUserGroup(s))
+		res = append(res, ignTypes.Group(s))
 	}
 	return res
 }

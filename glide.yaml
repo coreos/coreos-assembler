@@ -74,7 +74,7 @@ import:
 - package: github.com/boltdb/bolt
   version: v1.2.1
 - package: github.com/coreos/container-linux-config-transpiler
-  version: v0.6.1
+  version: v0.8.0
   subpackages:
   - config
   - config/platform

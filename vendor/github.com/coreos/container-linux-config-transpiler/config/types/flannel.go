@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/go-semver/semver"
-	ignTypes "github.com/coreos/ignition/config/v2_1/types"
+	ignTypes "github.com/coreos/ignition/config/v2_2/types"
 	"github.com/coreos/ignition/config/validate/astnode"
 	"github.com/coreos/ignition/config/validate/report"
 )
@@ -124,7 +124,7 @@ func init() {
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.Unit{
 				Name:   "flanneld.service",
 				Enable: true,
-				Dropins: []ignTypes.Dropin{{
+				Dropins: []ignTypes.SystemdDropin{{
 					Name:     "20-clct-flannel.conf",
 					Contents: contents,
 				}},
