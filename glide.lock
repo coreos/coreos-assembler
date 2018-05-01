@@ -1,5 +1,5 @@
-hash: bb3ac76db19d1d55dbfd43f5b0470fab1208e2e857987b83df5ac9102dac248a
-updated: 2018-04-30T15:04:20.880657483-04:00
+hash: 30ead59326ca220d43427ee93b593da718f5cd49431e540398cf169b98bf9607
+updated: 2018-05-01T11:01:11.575512366-05:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -232,7 +232,7 @@ imports:
   - vhdcore/vhdfile
   - vhdcore/writer
 - name: github.com/packethost/packngo
-  version: 8ff1de745a8a4fdc5323ffd9ac2bc55195ff671e
+  version: 80f62d78849dba04e42d8812329ee00558e37c5b
 - name: github.com/pin/tftp
   version: 9ea92f6b1029bc1bf3072bba195c84bb9b0370e3
   subpackages:
