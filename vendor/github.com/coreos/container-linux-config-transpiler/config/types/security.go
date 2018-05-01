@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,35 +20,26 @@ import (
 	"github.com/coreos/ignition/config/validate/report"
 )
 
-type Networkd struct {
-	Units []NetworkdUnit `yaml:"units"`
+type Security struct {
+	TLS TLS `yaml:"tls"`
 }
 
-type NetworkdUnit struct {
-	Name     string               `yaml:"name"`
-	Contents string               `yaml:"contents"`
-	Dropins  []NetworkdUnitDropIn `yaml:"dropins"`
+type TLS struct {
+	CertificateAuthorities []CaReference `yaml:"certificate_authorities"`
 }
 
-type NetworkdUnitDropIn struct {
-	Name     string `yaml:"name"`
-	Contents string `yaml:"contents"`
+type CaReference struct {
+	Source       string       `yaml:"source"`
+	Verification Verification `yaml:"verification"`
 }
 
 func init() {
 	register(func(in Config, ast astnode.AstNode, out ignTypes.Config, platform string) (ignTypes.Config, report.Report, astnode.AstNode) {
-		for _, unit := range in.Networkd.Units {
-			newUnit := ignTypes.Networkdunit{
-				Name:     unit.Name,
-				Contents: unit.Contents,
-			}
-			for _, dropIn := range unit.Dropins {
-				newUnit.Dropins = append(newUnit.Dropins, ignTypes.NetworkdDropin{
-					Name:     dropIn.Name,
-					Contents: dropIn.Contents,
-				})
-			}
-			out.Networkd.Units = append(out.Networkd.Units, newUnit)
+		for _, ca := range in.Ignition.Security.TLS.CertificateAuthorities {
+			out.Ignition.Security.TLS.CertificateAuthorities = append(out.Ignition.Security.TLS.CertificateAuthorities, ignTypes.CaReference{
+				Source:       ca.Source,
+				Verification: convertVerification(ca.Verification),
+			})
 		}
 		return out, report.Report{}, ast
 	})

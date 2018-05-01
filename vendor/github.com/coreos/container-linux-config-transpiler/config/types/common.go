@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
-	ignTypes "github.com/coreos/ignition/config/v2_1/types"
+	ignTypes "github.com/coreos/ignition/config/v2_2/types"
 	"github.com/coreos/ignition/config/validate/report"
 
 	"github.com/coreos/container-linux-config-transpiler/config/platform"
@@ -41,7 +41,7 @@ func init() {
 		if p == platform.OpenStackMetadata || p == platform.CloudStackConfigDrive {
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.Unit{
 				Name: "coreos-metadata.service",
-				Dropins: []ignTypes.Dropin{{
+				Dropins: []ignTypes.SystemdDropin{{
 					Name:     "20-clct-provider-override.conf",
 					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", p),
 				}},
@@ -49,7 +49,7 @@ func init() {
 			out.Systemd.Units = append(out.Systemd.Units, ignTypes.Unit{
 				Name:    "coreos-metadata-sshkeys@.service",
 				Enabled: iutil.BoolToPtr(true),
-				Dropins: []ignTypes.Dropin{{
+				Dropins: []ignTypes.SystemdDropin{{
 					Name:     "20-clct-provider-override.conf",
 					Contents: fmt.Sprintf("[Service]\nEnvironment=COREOS_METADATA_OPT_PROVIDER=--provider=%s", p),
 				}},

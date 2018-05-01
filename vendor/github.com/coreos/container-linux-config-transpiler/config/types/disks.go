@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
-	ignTypes "github.com/coreos/ignition/config/v2_1/types"
+	ignTypes "github.com/coreos/ignition/config/v2_2/types"
 	"github.com/coreos/ignition/config/validate/astnode"
 	"github.com/coreos/ignition/config/validate/report"
 )

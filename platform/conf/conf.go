@@ -232,7 +232,7 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 			plog.Warningf("rendering Container Linux config: %s", report)
 		}
 
-		c.ignitionV21 = &ignc
+		c.ignitionV22 = &ignc
 	default:
 		panic("invalid kind")
 	}
