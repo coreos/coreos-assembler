@@ -174,7 +174,7 @@ import:
   subpackages:
   - md2man
 - package: github.com/digitalocean/godo
-  version: v1.1.1
+  version: v1.1.3
 - package: github.com/gengo/grpc-gateway
   version: dcb844349dc5d2cb0300fdc4d2d374839d0d2e13
   subpackages:
