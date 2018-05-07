@@ -366,7 +366,7 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	if err := system.Bind(e.RepoRoot, newRepoRoot); err != nil {
+	if err := system.RecursiveBind(e.RepoRoot, newRepoRoot); err != nil {
 		return err
 	}
 
