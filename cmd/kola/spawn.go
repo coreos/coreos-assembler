@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -32,6 +33,8 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/qemu"
+	"github.com/coreos/mantle/sdk"
+	"github.com/coreos/mantle/sdk/omaha"
 )
 
 var (
@@ -45,6 +48,7 @@ var (
 	spawnNodeCount      int
 	spawnUserData       string
 	spawnDetach         bool
+	spawnOmahaPackage   string
 	spawnShell          bool
 	spawnRemove         bool
 	spawnVerbose        bool
@@ -57,6 +61,7 @@ func init() {
 	cmdSpawn.Flags().IntVarP(&spawnNodeCount, "nodecount", "c", 1, "number of nodes to spawn")
 	cmdSpawn.Flags().StringVarP(&spawnUserData, "userdata", "u", "", "file containing userdata to pass to the instances")
 	cmdSpawn.Flags().BoolVarP(&spawnDetach, "detach", "t", false, "-kv --shell=false --remove=false")
+	cmdSpawn.Flags().StringVar(&spawnOmahaPackage, "omaha-package", "", "add an update payload to the Omaha server, referenced by image version (e.g. 'latest')")
 	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", true, "spawn a shell in an instance before exiting")
 	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
 	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
@@ -125,10 +130,31 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		defer cluster.Destroy()
 	}
 
+	var updateConf *strings.Reader
+	if spawnOmahaPackage != "" {
+		qc, ok := cluster.(*qemu.Cluster)
+		if !ok {
+			//TODO(lucab): expand platform support
+			return errors.New("--omaha-package is currently only supported on qemu")
+		}
+		dir := sdk.BuildImageDir(kola.QEMUOptions.Board, spawnOmahaPackage)
+		if err := omaha.GenerateFullUpdate(dir); err != nil {
+			return fmt.Errorf("Building full update failed: %v", err)
+		}
+		updatePayload := filepath.Join(dir, "coreos_production_update.gz")
+		if err := qc.OmahaServer.AddPackage(updatePayload, "update.gz"); err != nil {
+			return fmt.Errorf("bad payload: %v", err)
+		}
+		updateConf = strings.NewReader("GROUP=developer\nSERVER=http://10.0.0.1:34567/v1/update/\n")
+	}
+
 	var someMach platform.Machine
 	for i := 0; i < spawnNodeCount; i++ {
 		var mach platform.Machine
 		var err error
+		if spawnVerbose {
+			fmt.Println("Spawning machine...")
+		}
 		if kolaPlatform == "qemu" && spawnMachineOptions != "" {
 			var b []byte
 			b, err = ioutil.ReadFile(spawnMachineOptions)
@@ -148,6 +174,11 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		}
 		if err != nil {
 			return fmt.Errorf("Spawning instance failed: %v", err)
+		}
+		if updateConf != nil {
+			if err := platform.InstallFile(updateConf, mach, "/etc/coreos/update.conf"); err != nil {
+				return fmt.Errorf("Setting update.conf: %v", err)
+			}
 		}
 
 		if spawnVerbose {
