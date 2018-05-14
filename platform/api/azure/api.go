@@ -16,10 +16,15 @@ package azure
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/management"
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/coreos/pkg/capnslog"
+
+	"github.com/coreos/mantle/auth"
 )
 
 var (
@@ -45,6 +50,36 @@ func New(opts *Options) (*API, error) {
 		opts.StorageEndpointSuffix = storage.DefaultBaseURL
 	}
 
+	profiles, err := auth.ReadAzureProfile(opts.AzureProfile)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't read Azure profile: %v", err)
+	}
+
+	subOpts := profiles.SubscriptionOptions(opts.AzureSubscription)
+	if subOpts == nil {
+		return nil, fmt.Errorf("Azure subscription named %q doesn't exist in %q", opts.AzureSubscription, opts.AzureProfile)
+	}
+
+	if opts.SubscriptionID == "" {
+		opts.SubscriptionID = subOpts.SubscriptionID
+	}
+
+	if opts.SubscriptionName == "" {
+		opts.SubscriptionName = subOpts.SubscriptionName
+	}
+
+	if opts.ManagementURL == "" {
+		opts.ManagementURL = subOpts.ManagementURL
+	}
+
+	if opts.ManagementCertificate == nil {
+		opts.ManagementCertificate = subOpts.ManagementCertificate
+	}
+
+	if opts.StorageEndpointSuffix == "" {
+		opts.StorageEndpointSuffix = subOpts.StorageEndpointSuffix
+	}
+
 	client, err := management.NewClientFromConfig(opts.SubscriptionID, opts.ManagementCertificate, conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create azure client: %v", err)
@@ -55,5 +90,42 @@ func New(opts *Options) (*API, error) {
 		opts:   opts,
 	}
 
+	err = api.resolveImage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve image: %v", err)
+	}
+
 	return api, nil
+}
+
+func randomName(prefix string) string {
+	b := make([]byte, 5)
+	rand.Read(b)
+	return fmt.Sprintf("%s-%x", prefix, b)
+}
+
+func (a *API) GC(gracePeriod time.Duration) error {
+	durationAgo := time.Now().Add(-1 * gracePeriod)
+
+	listGroups, err := a.ListResourceGroups("")
+	if err != nil {
+		return fmt.Errorf("listing resource groups: %v", err)
+	}
+
+	for _, l := range *listGroups.Value {
+		if strings.HasPrefix(*l.Name, "kola-cluster") {
+			createdAt := *(*l.Tags)["createdAt"]
+			timeCreated, err := time.Parse(time.RFC3339, createdAt)
+			if err != nil {
+				return fmt.Errorf("error parsing time: %v", err)
+			}
+			if !timeCreated.After(durationAgo) {
+				if err = a.TerminateResourceGroup(*l.Name); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
