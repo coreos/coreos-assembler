@@ -38,7 +38,8 @@ func init() {
     }]
   }
 }`),
-		Distros: []string{"cl"},
+		Distros:          []string{"cl"},
+		ExcludePlatforms: []string{"azure"},
 	})
 }
 

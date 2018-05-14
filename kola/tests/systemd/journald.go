@@ -60,8 +60,10 @@ func init() {
 		Name:        "systemd.journal.remote",
 		Distros:     []string{"cl"},
 
+		// Disabled on Azure because setting hostname
+		// is required at the instance creation level
 		// qemu-unpriv machines cannot communicate
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		ExcludePlatforms: []string{"azure", "qemu-unpriv"},
 	})
 }
 
