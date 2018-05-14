@@ -17,14 +17,22 @@ package azure
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/arm/compute"
+	"github.com/Azure/azure-sdk-for-go/arm/network"
+	"github.com/Azure/azure-sdk-for-go/arm/resources/resources"
+	armStorage "github.com/Azure/azure-sdk-for-go/arm/storage"
 	"github.com/Azure/azure-sdk-for-go/management"
 	"github.com/Azure/azure-sdk-for-go/storage"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/auth"
+	internalAuth "github.com/coreos/mantle/auth"
 )
 
 var (
@@ -32,8 +40,16 @@ var (
 )
 
 type API struct {
-	client management.Client
-	opts   *Options
+	client     management.Client
+	rgClient   resources.GroupsClient
+	imgClient  compute.ImagesClient
+	compClient compute.VirtualMachinesClient
+	netClient  network.VirtualNetworksClient
+	subClient  network.SubnetsClient
+	ipClient   network.PublicIPAddressesClient
+	intClient  network.InterfacesClient
+	accClient  armStorage.AccountsClient
+	opts       *Options
 }
 
 // New creates a new Azure client. If no publish settings file is provided or
@@ -50,7 +66,7 @@ func New(opts *Options) (*API, error) {
 		opts.StorageEndpointSuffix = storage.DefaultBaseURL
 	}
 
-	profiles, err := auth.ReadAzureProfile(opts.AzureProfile)
+	profiles, err := internalAuth.ReadAzureProfile(opts.AzureProfile)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't read Azure profile: %v", err)
 	}
@@ -58,6 +74,18 @@ func New(opts *Options) (*API, error) {
 	subOpts := profiles.SubscriptionOptions(opts.AzureSubscription)
 	if subOpts == nil {
 		return nil, fmt.Errorf("Azure subscription named %q doesn't exist in %q", opts.AzureSubscription, opts.AzureProfile)
+	}
+
+	if os.Getenv("AZURE_AUTH_LOCATION") == "" {
+		if opts.AzureAuthLocation == "" {
+			user, err := user.Current()
+			if err != nil {
+				return nil, err
+			}
+			opts.AzureAuthLocation = filepath.Join(user.HomeDir, internalAuth.AzureAuthPath)
+		}
+		// TODO: Move to Flight once built to allow proper unsetting
+		os.Setenv("AZURE_AUTH_LOCATION", opts.AzureAuthLocation)
 	}
 
 	if opts.SubscriptionID == "" {
@@ -96,6 +124,46 @@ func New(opts *Options) (*API, error) {
 	}
 
 	return api, nil
+}
+
+func (a *API) SetupClients() error {
+	auther, err := auth.GetClientSetup(resources.DefaultBaseURI)
+	if err != nil {
+		return err
+	}
+	a.rgClient = resources.NewGroupsClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.rgClient.Authorizer = auther
+
+	auther, err = auth.GetClientSetup(compute.DefaultBaseURI)
+	if err != nil {
+		return err
+	}
+	a.imgClient = compute.NewImagesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.imgClient.Authorizer = auther
+	a.compClient = compute.NewVirtualMachinesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.compClient.Authorizer = auther
+
+	auther, err = auth.GetClientSetup(network.DefaultBaseURI)
+	if err != nil {
+		return err
+	}
+	a.netClient = network.NewVirtualNetworksClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.netClient.Authorizer = auther
+	a.subClient = network.NewSubnetsClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.subClient.Authorizer = auther
+	a.ipClient = network.NewPublicIPAddressesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.ipClient.Authorizer = auther
+	a.intClient = network.NewInterfacesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.intClient.Authorizer = auther
+
+	auther, err = auth.GetClientSetup(armStorage.DefaultBaseURI)
+	if err != nil {
+		return err
+	}
+	a.accClient = armStorage.NewAccountsClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
+	a.accClient.Authorizer = auther
+
+	return nil
 }
 
 func randomName(prefix string) string {

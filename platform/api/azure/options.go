@@ -22,6 +22,7 @@ type Options struct {
 	*platform.Options
 
 	AzureProfile      string
+	AzureAuthLocation string
 	AzureSubscription string
 
 	DiskURI   string
