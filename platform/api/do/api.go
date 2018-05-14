@@ -16,15 +16,12 @@ package do
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/digitalocean/godo"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
 
 	"github.com/coreos/mantle/auth"
@@ -326,21 +323,6 @@ func (a *API) ListKeys(ctx context.Context) ([]godo.Key, error) {
 		}
 		page.Page += 1
 	}
-}
-
-// GenerateFakeKey generates a SSH key pair, returns the public key, and
-// discards the private key. This is useful for droplets that don't need a
-// public key, since DO insists on requiring one.
-func GenerateFakeKey() (string, error) {
-	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return "", err
-	}
-	sshKey, err := ssh.NewPublicKey(&rsaKey.PublicKey)
-	if err != nil {
-		return "", err
-	}
-	return string(ssh.MarshalAuthorizedKey(sshKey)), nil
 }
 
 func (a *API) GC(ctx context.Context, gracePeriod time.Duration) error {

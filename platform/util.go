@@ -16,6 +16,8 @@ package platform
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"os"
 
@@ -126,4 +128,19 @@ func StartMachine(m Machine, j *Journal) error {
 		}
 	}
 	return nil
+}
+
+// GenerateFakeKey generates a SSH key pair, returns the public key, and
+// discards the private key. This is useful for droplets that don't need a
+// public key, since DO & Azure insists on requiring one.
+func GenerateFakeKey() (string, error) {
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", err
+	}
+	sshKey, err := ssh.NewPublicKey(&rsaKey.PublicKey)
+	if err != nil {
+		return "", err
+	}
+	return string(ssh.MarshalAuthorizedKey(sshKey)), nil
 }

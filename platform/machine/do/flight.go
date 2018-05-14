@@ -69,7 +69,7 @@ func NewFlight(opts *do.Options) (platform.Flight, error) {
 
 	// The DO API requires us to provide an SSH key for Container Linux
 	// droplets.  Create one that can never authenticate.
-	key, err := do.GenerateFakeKey()
+	key, err := platform.GenerateFakeKey()
 	if err != nil {
 		df.Destroy()
 		return nil, err
