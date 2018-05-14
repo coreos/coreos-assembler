@@ -30,7 +30,7 @@ var (
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
 	kolaArchitectures  = []string{"amd64"}
-	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv"}
+	kolaPlatforms      = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv"}
 	kolaDistros        = []string{"cl", "fcos", "rhcos"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
@@ -80,6 +80,17 @@ func init() {
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "m4.large", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
 	sv(&kola.AWSOptions.IAMInstanceProfile, "aws-iam-profile", "kola", "AWS IAM instance profile name")
+
+	// azure-specific options
+	sv(&kola.AzureOptions.AzureProfile, "azure-profile", "", "Azure profile (default \"~/"+auth.AzureProfilePath+"\")")
+	sv(&kola.AzureOptions.AzureAuthLocation, "azure-auth", "", "Azure auth location (default \"~/"+auth.AzureAuthPath+"\")")
+	sv(&kola.AzureOptions.DiskURI, "azure-disk-uri", "", "Azure disk uri (custom images)")
+	sv(&kola.AzureOptions.Publisher, "azure-publisher", "CoreOS", "Azure image publisher (default \"CoreOS\"")
+	sv(&kola.AzureOptions.Offer, "azure-offer", "CoreOS", "Azure image offer (default \"CoreOS\"")
+	sv(&kola.AzureOptions.Sku, "azure-sku", "alpha", "Azure image sku/channel (default \"alpha\"")
+	sv(&kola.AzureOptions.Version, "azure-version", "", "Azure image version")
+	sv(&kola.AzureOptions.Location, "azure-location", "westus", "Azure location (default \"westus\"")
+	sv(&kola.AzureOptions.Size, "azure-size", "Standard_D2_v2", "Azure machine size (default \"Standard_D2_v2\")")
 
 	// do-specific options
 	sv(&kola.DOOptions.ConfigPath, "do-config-file", "", "DigitalOcean config file (default \"~/"+auth.DOConfigPath+"\")")
