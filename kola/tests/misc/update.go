@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 )
@@ -68,7 +69,7 @@ func init() {
 func RebootIntoUSRB(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	assertBootedUsr(c, m, "USR-A")
+	util.AssertBootedUsr(c, m, "USR-A")
 
 	// copy USR-A to USR-B
 	c.MustSSH(m, "sudo dd if=/dev/disk/by-partlabel/USR-A of=/dev/disk/by-partlabel/USR-B bs=10M status=none")
@@ -80,7 +81,7 @@ func RebootIntoUSRB(c cluster.TestCluster) {
 	if err := m.Reboot(); err != nil {
 		c.Fatalf("couldn't reboot: %v", err)
 	}
-	assertBootedUsr(c, m, "USR-B")
+	util.AssertBootedUsr(c, m, "USR-B")
 }
 
 // Verify that we reboot into the old image after the new image fails a
@@ -90,7 +91,7 @@ func RecoverBadVerity(c cluster.TestCluster) {
 
 	skipUnlessVerity(c, m)
 
-	assertBootedUsr(c, m, "USR-A")
+	util.AssertBootedUsr(c, m, "USR-A")
 
 	// copy USR-A to USR-B
 	c.MustSSH(m, "sudo dd if=/dev/disk/by-partlabel/USR-A of=/dev/disk/by-partlabel/USR-B bs=10M status=none")
@@ -103,7 +104,7 @@ func RecoverBadVerity(c cluster.TestCluster) {
 
 	prioritizeUsr(c, m, "USR-B")
 	rebootWithEmergencyShellTimeout(c, m)
-	assertBootedUsr(c, m, "USR-A")
+	util.AssertBootedUsr(c, m, "USR-A")
 }
 
 // Verify that we reboot into the old image when the new image is an
@@ -111,7 +112,7 @@ func RecoverBadVerity(c cluster.TestCluster) {
 func RecoverBadUsr(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	assertBootedUsr(c, m, "USR-A")
+	util.AssertBootedUsr(c, m, "USR-A")
 
 	// create filesystem for USR-B
 	c.MustSSH(m, "sudo mkfs.ext4 -q -b 4096 /dev/disk/by-partlabel/USR-B 25600")
@@ -136,15 +137,7 @@ func RecoverBadUsr(c cluster.TestCluster) {
 
 	prioritizeUsr(c, m, "USR-B")
 	rebootWithEmergencyShellTimeout(c, m)
-	assertBootedUsr(c, m, "USR-A")
-}
-
-func assertBootedUsr(c cluster.TestCluster, m platform.Machine, usr string) {
-	usrdev := getUsrDeviceNode(c, m)
-	target := c.MustSSH(m, "readlink -f /dev/disk/by-partlabel/"+usr)
-	if usrdev != string(target) {
-		c.Fatalf("Expected /usr to be %v (%s) but it is %v", usr, target, usrdev)
-	}
+	util.AssertBootedUsr(c, m, "USR-A")
 }
 
 func prioritizeUsr(c cluster.TestCluster, m platform.Machine, usr string) {
