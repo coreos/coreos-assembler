@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
+	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform/api/azure"
 )
@@ -31,6 +32,7 @@ var (
 	}
 
 	azureProfile      string
+	azureAuth         string
 	azureSubscription string
 	azureLocation     string
 
@@ -42,6 +44,7 @@ func init() {
 
 	sv := Azure.PersistentFlags().StringVar
 	sv(&azureProfile, "azure-profile", "", "Azure Profile json file")
+	sv(&azureAuth, "azure-auth", "", "Azure auth location (default \"~/"+auth.AzureAuthPath+"\")")
 	sv(&azureSubscription, "azure-subscription", "", "Azure subscription name. If unset, the first is used.")
 	sv(&azureLocation, "azure-location", "westus", "Azure location (default \"westus\")")
 }
@@ -51,6 +54,7 @@ func preauth(cmd *cobra.Command, args []string) error {
 
 	a, err := azure.New(&azure.Options{
 		AzureProfile:      azureProfile,
+		AzureAuthLocation: azureAuth,
 		AzureSubscription: azureSubscription,
 		Location:          azureLocation,
 	})
