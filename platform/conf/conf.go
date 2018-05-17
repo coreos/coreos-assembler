@@ -163,8 +163,7 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 		if err == nil {
 			c.ignitionV1 = &ignc1
 			return nil
-			// FIXME(bgilbert): https://github.com/coreos/ignition/pull/532
-		} else if err != ignerr.ErrInvalid {
+		} else if err != ignerr.ErrUnknownVersion {
 			plog.Errorf("invalid userdata: %v", report)
 			return err
 		}
