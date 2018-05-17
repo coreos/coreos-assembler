@@ -149,7 +149,7 @@ import:
   - journal
   - unit
 - package: github.com/coreos/ignition
-  version: v0.24.0
+  version: v0.25.0
   subpackages:
   - config
   - config/types
