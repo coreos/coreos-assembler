@@ -139,7 +139,7 @@ func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 		return nil, fmt.Errorf("unable to describe import tasks: %v", err)
 	}
 	for _, task := range taskRes.ImportSnapshotTasks {
-		if *task.Description != imageName {
+		if task.Description == nil || *task.Description != imageName {
 			continue
 		}
 		switch *task.SnapshotTaskDetail.Status {
