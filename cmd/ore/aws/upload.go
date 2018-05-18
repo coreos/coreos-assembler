@@ -106,17 +106,15 @@ func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.UR
 		return nil, fmt.Errorf("URL missing bucket name %v\n", urlPrefix)
 	}
 
-	// if prefix not specified default name to s3://bucket/$USER/$BOARD/$VERSION
+	// if prefix not specified, default to /$USER/$BOARD/$VERSION
 	if s3URL.Path == "" {
-		user := os.Getenv("USER")
-
-		s3URL.Path = "/" + os.Getenv("USER")
-		s3URL.Path += "/" + board
-
-		fileName := filepath.Base(file)
-
-		s3URL.Path = fmt.Sprintf("/%s/%s/%s/%s", user, board, imageName, fileName)
+		s3URL.Path = fmt.Sprintf("/%s/%s/%s", os.Getenv("USER"), board, imageName)
 	}
+
+	if s3URL.Path[len(s3URL.Path)-1] != '/' {
+		s3URL.Path += "/"
+	}
+	s3URL.Path += filepath.Base(file)
 
 	return s3URL, nil
 }
