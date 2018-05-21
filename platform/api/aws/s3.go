@@ -56,11 +56,12 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
 				return fmt.Errorf("unable to head object %v/%v: %v", bucket, path, err)
 			}
 		} else {
-			plog.Infof("skipping upload since force was not set: s3://%v/%v", bucket, path)
+			plog.Infof("skipping upload since object exists and force was not set: s3://%v/%v", bucket, path)
 			return nil
 		}
 	}
 
+	plog.Infof("uploading s3://%v/%v", bucket, path)
 	_, err := s3uploader.Upload(&s3manager.UploadInput{
 		Body:   r,
 		Bucket: aws.String(bucket),
