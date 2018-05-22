@@ -396,6 +396,15 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 		return "", fmt.Errorf("error creating AMI: %v", err)
 	}
 
+	// We do this even in the already-exists path in case the previous
+	// run was interrupted.
+	err = a.CreateTags([]string{imageID}, map[string]string{
+		"Name": *params.Name,
+	})
+	if err != nil {
+		return "", fmt.Errorf("couldn't tag image name: %v", err)
+	}
+
 	return imageID, nil
 }
 
