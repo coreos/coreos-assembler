@@ -374,26 +374,29 @@ func (a *API) CreatePVImage(snapshotID string, name string, description string) 
 func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	res, err := a.ec2.RegisterImage(params)
 
+	var imageID string
 	if err == nil {
-		return *res.ImageId, nil
-	}
-	if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
+		imageID = *res.ImageId
+	} else if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
 		// The AMI already exists. Get its ID. Due to races, this
 		// may take several attempts.
 		for {
-			imageID, err := a.FindImage(*params.Name)
+			imageID, err = a.FindImage(*params.Name)
 			if err != nil {
 				return "", err
 			}
 			if imageID != "" {
 				plog.Infof("found existing image %v, reusing", imageID)
-				return imageID, nil
+				break
 			}
 			plog.Debugf("failed to locate image %q, retrying...", *params.Name)
 			time.Sleep(10 * time.Second)
 		}
+	} else {
+		return "", fmt.Errorf("error creating AMI: %v", err)
 	}
-	return "", fmt.Errorf("error creating AMI: %v", err)
+
+	return imageID, nil
 }
 
 const diskSize = 8 // GB
