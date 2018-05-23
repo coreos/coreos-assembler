@@ -28,6 +28,8 @@ fn whitespace_split_packages(pkgs: &Vec<String>) -> Vec<String> {
 fn manifest_data_to_tmpdir(path: &Path, manifest: &TreeComposeConfig) -> io::Result<tempfile::TempDir> {
     let tmpdir = tempfile::tempdir_in("/tmp")?;
     let postprocess_script : &str = manifest.postprocess_script.as_ref().map_or("", String::as_str);
+    // Handle unprefixed path
+    let path = if path.as_os_str().is_empty() { Path::new(".") } else { path };
     for entry in fs::read_dir(path)? {
         let entry = entry?;
         let path = entry.path();
