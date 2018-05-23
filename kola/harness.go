@@ -111,6 +111,11 @@ var (
 			match: regexp.MustCompile("((alloc|free) magic) (is )?broken"),
 		},
 		{
+			// https://github.com/coreos/bugs/issues/2435
+			desc:  "Ignition fetch cancellation race",
+			match: regexp.MustCompile("ignition\\[[0-9]+\\]: failed to fetch config: context canceled"),
+		},
+		{
 			// kernel 4.14.11
 			desc:  "bad page table",
 			match: regexp.MustCompile("mm/pgtable-generic.c:\\d+: bad (p.d|pte)"),
