@@ -97,8 +97,10 @@ pub struct TreeComposeConfig {
     #[serde(rename="check-groups")]
     pub check_groups: Option<CheckPasswd>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename="ignore-removed-users")]
     pub ignore_removed_users: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename="ignore-removed-groups")]
     pub ignore_removed_groups: Option<Vec<String>>,
 
     // Content manimulation
