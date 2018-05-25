@@ -1,3 +1,4 @@
-
+/Cargo.lock
+/coreos-assembler
 /target
 **/*.rs.bk
