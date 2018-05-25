@@ -60,7 +60,7 @@ pub struct TreeComposeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install_langs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="initramfs-args")]
+    #[serde(rename = "initramfs-args")]
     pub initramfs_args: Option<Vec<String>>,
 
     // Tree layout options
@@ -81,38 +81,38 @@ pub struct TreeComposeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub automatic_version_prefix: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="mutate-os-relase")]
+    #[serde(rename = "mutate-os-relase")]
     pub mutate_os_release: Option<String>,
 
     // passwd-related bits
     #[serde(skip_serializing_if = "Option::is_none")]
     pub etc_group_members: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="preserve-passwd")]
+    #[serde(rename = "preserve-passwd")]
     pub preserve_passwd: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="check-passwd")]
+    #[serde(rename = "check-passwd")]
     pub check_passwd: Option<CheckPasswd>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="check-groups")]
+    #[serde(rename = "check-groups")]
     pub check_groups: Option<CheckPasswd>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="ignore-removed-users")]
+    #[serde(rename = "ignore-removed-users")]
     pub ignore_removed_users: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="ignore-removed-groups")]
+    #[serde(rename = "ignore-removed-groups")]
     pub ignore_removed_groups: Option<Vec<String>>,
 
     // Content manimulation
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="postprocess-script")]
+    #[serde(rename = "postprocess-script")]
     pub postprocess_script: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="add-files")]
+    #[serde(rename = "add-files")]
     pub add_files: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remove_files: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename="remove-from-packages")]
+    #[serde(rename = "remove-from-packages")]
     pub remove_from_packages: Option<Vec<Vec<String>>>,
 }
