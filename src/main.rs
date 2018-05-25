@@ -138,7 +138,7 @@ fn main() {
     ::process::exit(match run() {
         Ok(_) => 0,
         Err(e) => {
-            println!("{}", e);
+            eprintln!("{}", e);
             1
         }
     })
