@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -30,10 +31,11 @@ import (
 
 // Journal manages recording the journal of a Machine.
 type Journal struct {
-	journal    io.WriteCloser
-	journalRaw io.WriteCloser
-	recorder   *journal.Recorder
-	cancel     context.CancelFunc
+	journal     io.WriteCloser
+	journalRaw  io.WriteCloser
+	journalPath string
+	recorder    *journal.Recorder
+	cancel      context.CancelFunc
 }
 
 // wrapper that also closes the underlying file
@@ -62,8 +64,8 @@ func NewJournal(dir string) (*Journal, error) {
 		return nil, err
 	}
 
-	p = filepath.Join(dir, "journal-raw.txt.gz")
-	jr, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	pr := filepath.Join(dir, "journal-raw.txt.gz")
+	jr, err := os.OpenFile(pr, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +80,10 @@ func NewJournal(dir string) (*Journal, error) {
 	}
 
 	return &Journal{
-		journal:    j,
-		journalRaw: jrzc,
-		recorder:   journal.NewRecorder(journal.ShortWriter(j), jrzc),
+		journal:     j,
+		journalRaw:  jrzc,
+		recorder:    journal.NewRecorder(journal.ShortWriter(j), jrzc),
+		journalPath: p,
 	}, nil
 }
 
@@ -110,6 +113,16 @@ func (j *Journal) Start(ctx context.Context, m Machine) error {
 
 	j.cancel = cancel
 	return nil
+}
+
+// There is no guarantee that anything is returned if called before Destroy
+func (j *Journal) Read() ([]byte, error) {
+	f, err := os.Open(j.journalPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading journal: %v", err)
+	}
+	defer f.Close()
+	return ioutil.ReadAll(f)
 }
 
 func (j *Journal) Destroy() {

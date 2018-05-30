@@ -77,6 +77,15 @@ func (dm *machine) Destroy() {
 }
 
 func (dm *machine) ConsoleOutput() string {
-	// DigitalOcean provides no API for this
-	return ""
+	// DigitalOcean provides no API for retrieving ConsoleOutput
+	// return the journal instead to allow for error checks to be run.
+	if dm.journal == nil {
+		return ""
+	}
+
+	data, err := dm.journal.Read()
+	if err != nil {
+		plog.Errorf("Reading journal for droplet %v: %v", dm.droplet.ID, err)
+	}
+	return string(data)
 }
