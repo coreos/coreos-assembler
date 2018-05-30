@@ -6,7 +6,7 @@ set -xeuo pipefail
 # createrepo_c+yum-utils is used for managing rojig bits.
 yum -y install rpm-ostree make cargo golang git jq \
     rsync pygobject3-base python3-gobject-base \
-    createrepo_c yum-utils
+    createrepo_c dnf-utils
 
 mkdir -p /usr/app/
 cd /usr/app/
