@@ -5,7 +5,7 @@ set -xeuo pipefail
 # rsync, python2, pygobject3-base are dependencies of ostree-releng-scripts
 # Also add python3 so people can use that too.
 # createrepo_c+yum-utils is used for managing rojig bits.
-yum -y install rpm-ostree selinux-policy-targeted \
+yum -y install rpm-ostree selinux-policy-targeted rpm-build \
     make cargo golang git jq \
     rsync pygobject3-base python3-gobject-base \
     createrepo_c dnf-utils
