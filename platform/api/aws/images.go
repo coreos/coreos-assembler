@@ -623,7 +623,7 @@ func (a *API) FindImage(name string) (string, error) {
 		return "", fmt.Errorf("couldn't describe images: %v", err)
 	}
 	if len(describeRes.Images) > 1 {
-		return "", fmt.Errorf("found multiple images with name %v", name)
+		return "", fmt.Errorf("found multiple images with name %v. DescribeImage output: %v", name, describeRes.Images)
 	}
 	if len(describeRes.Images) == 1 {
 		return *describeRes.Images[0].ImageId, nil
