@@ -52,19 +52,14 @@ const (
 // these are pv-grub-hd0_1.04-x86_64
 var akis = map[string]string{
 	"us-east-1":      "aki-919dcaf8",
-	"us-east-2":      "aki-da055ebf",
 	"us-west-1":      "aki-880531cd",
 	"us-west-2":      "aki-fc8f11cc",
 	"eu-west-1":      "aki-52a34525",
-	"eu-west-2":      "aki-8b6369ef",
 	"eu-central-1":   "aki-184c7a05",
-	"ap-south-1":     "aki-a7305ac8",
 	"ap-southeast-1": "aki-503e7402",
 	"ap-southeast-2": "aki-c362fff9",
 	"ap-northeast-1": "aki-176bf516",
-	"ap-northeast-2": "aki-01a66b6f",
 	"sa-east-1":      "aki-5553f448",
-	"ca-central-1":   "aki-320ebd56",
 
 	"us-gov-west-1": "aki-1de98d3e",
 	"cn-north-1":    "aki-9e8f1da7",
