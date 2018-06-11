@@ -30,8 +30,6 @@ import (
 	"github.com/coreos/mantle/system/user"
 )
 
-const enterChrootSh = "src/scripts/sdk_lib/enter_chroot.sh"
-
 var (
 	enterChrootCmd exec.Entrypoint
 
@@ -528,24 +526,4 @@ func Enter(name string, bindGpgAgent bool, args ...string) error {
 		BindGpgAgent: bindGpgAgent,
 	}
 	return enterChroot(e)
-}
-
-func OldEnter(name string, args ...string) error {
-	chroot := filepath.Join(RepoRoot(), name)
-
-	// TODO(marineam): the original cros_sdk uses a white list to
-	// selectively pass through environment variables instead of the
-	// catch-all -E which is probably a better way to do it.
-	enterCmd := exec.Command(
-		"sudo", "-p", sudoPrompt, "-E",
-		"unshare", "--mount", "--",
-		filepath.Join(RepoRoot(), enterChrootSh),
-		"--chroot", chroot, "--cache_dir", RepoCache(), "--")
-	enterCmd.Args = append(enterCmd.Args, args...)
-	enterCmd.Env = setDefaultEmail(os.Environ())
-	enterCmd.Stdin = os.Stdin
-	enterCmd.Stdout = os.Stdout
-	enterCmd.Stderr = os.Stderr
-
-	return enterCmd.Run()
 }
