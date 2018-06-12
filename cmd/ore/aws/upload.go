@@ -40,7 +40,8 @@ After a successful run, the final line of output will be a line of JSON describi
 		Example: `  ore aws upload --region=us-east-1 \
 	  --ami-name="CoreOS-stable-1234.5.6" \
 	  --ami-description="CoreOS stable 1234.5.6" \
-	  --file="/home/.../coreos_production_ami_vmdk_image.vmdk"`,
+	  --file="/home/.../coreos_production_ami_vmdk_image.vmdk" \
+	  --tags="machine=production"`,
 		RunE: runUpload,
 	}
 
@@ -57,6 +58,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadAMIDescription string
 	uploadGrantUsers     []string
 	uploadCreatePV       bool
+	uploadTags           []string
 )
 
 func init() {
@@ -76,6 +78,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", false, "create a PV AMI in addition to the HVM AMI")
+	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list to tags to attach to the AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -236,6 +239,21 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	tagMap := make(map[string]string)
+	if len(uploadTags) > 0 {
+		for _, tag := range uploadTags {
+			splitTag := strings.SplitN(tag, "=", 2)
+			key, value := splitTag[0], splitTag[1]
+			tagMap[key] = value
+		}
+		err = API.CreateTags([]string{hvmID}, tagMap)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	var pvID string
 	if uploadCreatePV {
 		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
@@ -249,6 +267,15 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			err = API.GrantLaunchPermission(pvID, uploadGrantUsers)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		if len(uploadTags) > 0 {
+			err = API.CreateTags([]string{pvID}, tagMap)
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
 				os.Exit(1)
 			}
 		}
