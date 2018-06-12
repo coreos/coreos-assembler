@@ -90,8 +90,9 @@ fn run() -> Result<(), String> {
     // copying in the other files that are referenced by the manifest.
     let mut tmpd: Option<tempfile::TempDir> = None;
     if is_yaml(manifest_path.to_str().unwrap()) {
+        let bufrd = io::BufReader::new(manifest_f);
         let mut manifest: TreeComposeConfig =
-            serde_yaml::from_reader(manifest_f).map_err(|err| err.to_string())?;
+            serde_yaml::from_reader(bufrd).map_err(|err| err.to_string())?;
         if manifest.include.is_some() {
             return Err("include: is currently not supported in YAML syntax".into());
         }
@@ -111,7 +112,8 @@ fn run() -> Result<(), String> {
         let bn = bfn.to_str().unwrap().replace(".yaml", ".json");
         let manifest_json_path = tmpd_path.join(bn);
         let out_json = fs::File::create(&manifest_json_path).map_err(|err| err.to_string())?;
-        serde_json::to_writer_pretty(out_json, &manifest).map_err(|err| err.to_string())?;
+        let bufwr = io::BufWriter::new(out_json);
+        serde_json::to_writer_pretty(bufwr, &manifest).map_err(|err| err.to_string())?;
 
         // Replace the YAML argument with JSON
         let manifest_path_str = manifest_json_path.to_str().unwrap();
