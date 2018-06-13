@@ -29,6 +29,6 @@ func TestTLSFetchURLs(c cluster.TestCluster) {
 
 	for _, url := range urlsToFetch {
 		c.MustSSH(m, fmt.Sprintf("curl -s -S -m 30 --retry 2 %s", url))
-		c.MustSSH(m, fmt.Sprintf("wget -nv -T 30 -t 2 --delete-after %s", url))
+		c.MustSSH(m, fmt.Sprintf("wget -nv -T 30 -t 2 --delete-after %s 2> >(grep -v -- '->' >&2)", url))
 	}
 }
