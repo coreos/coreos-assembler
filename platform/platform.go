@@ -106,6 +106,7 @@ type SystemdDropin struct {
 // Options contains the base options for all clusters.
 type Options struct {
 	BaseName       string
+	Distribution   string
 	SystemdDropins []SystemdDropin
 }
 

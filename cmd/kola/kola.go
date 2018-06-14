@@ -160,6 +160,7 @@ func writeProps() error {
 	return enc.Encode(&struct {
 		Cmdline  []string `json:"cmdline"`
 		Platform string   `json:"platform"`
+		Distro   string   `json:"distro"`
 		Board    string   `json:"board"`
 		AWS      AWS      `json:"aws"`
 		DO       DO       `json:"do"`
@@ -170,6 +171,7 @@ func writeProps() error {
 	}{
 		Cmdline:  os.Args,
 		Platform: kolaPlatform,
+		Distro:   kola.Options.Distribution,
 		Board:    kola.QEMUOptions.Board,
 		AWS: AWS{
 			Region:       kola.AWSOptions.Region,
