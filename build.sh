@@ -10,16 +10,26 @@ yum -y install rpm-ostree selinux-policy-targeted rpm-build \
     rsync pygobject3-base python3-gobject-base \
     createrepo_c dnf-utils
 
+# Gather RPMs before we ran builddep
+rpm -qa --queryformat='%{NAME}\n' | sort -u > /root/rpms.txt
+dnf builddep -y rpm-ostree
+git clone https://github.com/projectatomic/rpm-ostree
+cd rpm-ostree
+# Note --enable-rust
+./autogen.sh --prefix=/usr --libdir=/usr/lib64 --sysconfdir=/etc --enable-rust
+make -j 8
+make install
+cd ..
+rm rpm-ostree -rf
+rpm -qa --queryformat='%{NAME}\n' |sort -u > /root/rpms-new.txt
+# Yeah this is a pretty awesome hack; now we remove the BuildRequires
+comm -1 -3 /root/rpms{,-new}.txt | xargs -r yum -y remove
+
 mkdir -p /usr/app/
 cd /usr/app/
 git clone https://github.com/ostreedev/ostree-releng-scripts
 
-cd /root/src
-ls -al
-make build PREFIX=/usr/bin
-cargo build --release
-mv target/release/coreos-assembler /usr/bin
-cd /
+mv /root/src/coreos-assembler.sh /usr/bin/coreos-assembler
 rm /root/src -rf
 
 # Part of general image management
