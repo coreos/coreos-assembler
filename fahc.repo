@@ -1,0 +1,3 @@
+[fahc]
+baseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/jigdo
+gpgcheck=0
