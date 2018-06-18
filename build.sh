@@ -33,4 +33,12 @@ rm mantle -rf
 
 dnf remove -y cargo golang
 rpm -q grubby && dnf remove -y grubby
+
+# more tooling for building openshift/os in the container
+cd /root
+git clone https://github.com/openshift/os
+cp os/RPM-GPG-KEY* /etc/pki/rpm-gpg/
+rm os -rf
+dnf copr -y enable walters/buildtools-fedora
+dnf -y install dnf-plugins-core fedpkg openssh-clients rpmdistro-gitoverlay
 yum clean all
