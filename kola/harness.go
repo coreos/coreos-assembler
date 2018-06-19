@@ -96,6 +96,12 @@ var (
 			match: regexp.MustCompile("rejecting I/O to offline device"),
 		},
 		{
+			// Failure to set up Packet networking in initramfs,
+			// perhaps due to unresponsive metadata server
+			desc:  "coreos-metadata failure to set up initramfs network",
+			match: regexp.MustCompile("Failed to start CoreOS Static Network Agent"),
+		},
+		{
 			// https://github.com/coreos/bugs/issues/2065
 			desc:  "excessive bonding link status messages",
 			match: regexp.MustCompile("(?s:link status up for interface [^,]+, enabling it in [0-9]+ ms.*?){10}"),
