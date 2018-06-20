@@ -78,7 +78,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", false, "create a PV AMI in addition to the HVM AMI")
-	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list to tags to attach to the AMI")
+	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -240,18 +240,19 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	tagMap := make(map[string]string)
-	if len(uploadTags) > 0 {
-		for _, tag := range uploadTags {
-			splitTag := strings.SplitN(tag, "=", 2)
-			key, value := splitTag[0], splitTag[1]
-			tagMap[key] = value
-		}
-		err = API.CreateTags([]string{hvmID}, tagMap)
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
+	for _, tag := range uploadTags {
+		splitTag := strings.SplitN(tag, "=", 2)
+		if len(splitTag) != 2 {
+			fmt.Fprintf(os.Stderr, "invalid tag format; should be key=value, not %v\n", tag)
 			os.Exit(1)
 		}
+		key, value := splitTag[0], splitTag[1]
+		tagMap[key] = value
+	}
+
+	if err := API.CreateTags([]string{hvmID, sourceSnapshot}, tagMap); err != nil {
+		fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
+		os.Exit(1)
 	}
 
 	var pvID string
@@ -271,13 +272,9 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if len(uploadTags) > 0 {
-			err = API.CreateTags([]string{pvID}, tagMap)
-
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
-				os.Exit(1)
-			}
+		if err := API.CreateTags([]string{pvID}, tagMap); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
+			os.Exit(1)
 		}
 	}
 
