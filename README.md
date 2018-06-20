@@ -1,15 +1,9 @@
-Wraps [rpm-ostree compose tree](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/compose-server.md) a
-container.
+This container aggregates various tools used to build Fedora CoreOS style
+systems, including:
 
-Today, it mostly implements a YAML → JSON conversion for the treefiles, as I view
-the use of JSON as a mistake for various reasons.
-
-Usage example:
-
-```
-host# podman run --privileged --rm -v /var/srv:/srv quay.io/cgwalters/coreos-assembler
-# cd /srv && coreos-assembler --repo=repo --cachedir=cache host.yml
-```
+ - [mantle](https://github.com/coreos/mantle)
+ - [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
+ - [ImageFactory](https://github.com/redhat-imaging/imagefactory/)
 
 Development
 ---
