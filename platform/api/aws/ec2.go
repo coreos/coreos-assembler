@@ -197,6 +197,10 @@ func (a *API) TerminateInstances(ids []string) error {
 }
 
 func (a *API) CreateTags(resources []string, tags map[string]string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+
 	tagObjs := make([]*ec2.Tag, 0, len(tags))
 	for key, value := range tags {
 		tagObjs = append(tagObjs, &ec2.Tag{
