@@ -178,7 +178,7 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 			continue
 		}
 
-		// Check the test's min and end versions when running more then one test
+		// Check the test's min and end versions when running more than one test
 		if t.Name != pattern && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
 			continue
 		}
@@ -280,6 +280,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 	}
 
 	if !skipGetVersion {
+		plog.Info("Creating cluster to check semver...")
 		version, err := getClusterSemver(pltfrm, outputDir)
 		if err != nil {
 			plog.Fatal(err)

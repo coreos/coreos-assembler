@@ -24,14 +24,24 @@ import (
 	"github.com/coreos/mantle/kola"
 )
 
-var cmdCheckConsole = &cobra.Command{
-	Use:    "check-console [input-file...]",
-	Run:    runCheckConsole,
-	PreRun: preRun,
-	Short:  "Check console output for badness.",
-}
+var (
+	cmdCheckConsole = &cobra.Command{
+		Use:    "check-console [input-file...]",
+		Run:    runCheckConsole,
+		PreRun: preRun,
+		Short:  "Check console output for badness.",
+		Long: `
+Check console output for expressions matching failure messages logged
+by a Container Linux instance.
+
+If no files are specified as arguments, stdin is checked.
+`}
+
+	checkConsoleVerbose bool
+)
 
 func init() {
+	cmdCheckConsole.Flags().BoolVarP(&checkConsoleVerbose, "verbose", "v", false, "output user input prompts")
 	root.AddCommand(cmdCheckConsole)
 }
 
@@ -48,6 +58,9 @@ func runCheckConsole(cmd *cobra.Command, args []string) {
 		sourceName := arg
 		if arg == "-" {
 			sourceName = "stdin"
+			if checkConsoleVerbose {
+				fmt.Printf("Reading input from %s...\n", sourceName)
+			}
 			console, err = ioutil.ReadAll(os.Stdin)
 		} else {
 			console, err = ioutil.ReadFile(arg)
