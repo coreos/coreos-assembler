@@ -424,7 +424,7 @@ func tRunner(t *H, fn func(t *H)) {
 		t.report() // Report after all subtests have finished.
 
 		// Do not lock t.done to allow race detector to detect race in case
-		// the user does not appropriately synchronizes a goroutine.
+		// the user does not appropriately synchronize a goroutine.
 		t.done = true
 		if t.parent != nil && !t.hasSub {
 			t.setRan()
