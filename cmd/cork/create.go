@@ -49,6 +49,7 @@ var (
 
 	// only for `enter` command
 	bindGpgAgent bool
+	useHostDNS   bool
 
 	// only for `update` command
 	allowCreate      bool
@@ -125,6 +126,8 @@ func init() {
 	enterCmd.Flags().AddFlagSet(chrootFlags)
 	enterCmd.Flags().BoolVar(&bindGpgAgent,
 		"bind-gpg-agent", true, "bind mount the gpg agent socket directory")
+	enterCmd.Flags().BoolVar(&useHostDNS,
+		"use-host-dns", false, "Use the host's /etc/resolv.conf instead of 8.8.8.8 and 8.8.4.4")
 	root.AddCommand(enterCmd)
 
 	deleteCmd.Flags().AddFlagSet(chrootFlags)
@@ -262,7 +265,7 @@ func updateRepo() {
 }
 
 func runEnter(cmd *cobra.Command, args []string) {
-	err := sdk.Enter(chrootName, bindGpgAgent, args...)
+	err := sdk.Enter(chrootName, bindGpgAgent, useHostDNS, args...)
 	if err != nil && len(args) != 0 {
 		plog.Fatalf("Running %v failed: %v", args, err)
 	}
@@ -345,7 +348,7 @@ func runUpdate(cmd *cobra.Command, args []string) {
 
 	updateRepo()
 
-	if err := sdk.Enter(chrootName, false, updateCommand...); err != nil {
+	if err := sdk.Enter(chrootName, false, false, updateCommand...); err != nil {
 		plog.Fatalf("update_chroot failed: %v", err)
 	}
 }

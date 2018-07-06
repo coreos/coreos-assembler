@@ -526,7 +526,7 @@ func enterChroot(e enter) error {
 
 // Enter the chroot with a login shell, optionally invoking a command.
 // The command may be prefixed by environment variable assignments.
-func Enter(name string, bindGpgAgent bool, args ...string) error {
+func Enter(name string, bindGpgAgent, useHostDNS bool, args ...string) error {
 	// pass -i to sudo to invoke a login shell
 	cmd := []string{"-i", "--"}
 	if len(args) > 0 {
@@ -538,6 +538,7 @@ func Enter(name string, bindGpgAgent bool, args ...string) error {
 		Chroot:       name,
 		Cmd:          cmd,
 		BindGpgAgent: bindGpgAgent,
+		UseHostDNS:   useHostDNS,
 	}
 	return enterChroot(e)
 }
