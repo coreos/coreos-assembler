@@ -48,7 +48,6 @@ var (
 	allowReplace bool
 
 	// only for `enter` command
-	experimental bool
 	bindGpgAgent bool
 
 	// only for `update` command
@@ -124,9 +123,6 @@ func init() {
 	root.AddCommand(createCmd)
 
 	enterCmd.Flags().AddFlagSet(chrootFlags)
-	enterCmd.Flags().BoolVar(&experimental,
-		"experimental", false, "Use new enter implementation")
-	enterCmd.Flags().MarkDeprecated("experimental", "--experimental is deprecated and will be removed next release. Equivilent to --bind-gpg-agent=false")
 	enterCmd.Flags().BoolVar(&bindGpgAgent,
 		"bind-gpg-agent", true, "bind mount the gpg agent socket directory")
 	root.AddCommand(enterCmd)
@@ -266,10 +262,6 @@ func updateRepo() {
 }
 
 func runEnter(cmd *cobra.Command, args []string) {
-	if experimental {
-		bindGpgAgent = false
-	}
-
 	err := sdk.Enter(chrootName, bindGpgAgent, args...)
 	if err != nil && len(args) != 0 {
 		plog.Fatalf("Running %v failed: %v", args, err)
