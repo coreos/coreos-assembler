@@ -49,6 +49,10 @@ state_dir = {{.StateDir}}
 `))
 )
 
+const (
+	defaultResolv = "nameserver 8.8.8.8\nnameserver 8.8.4.4"
+)
+
 func init() {
 	enterChrootCmd = exec.NewEntrypoint("enterChroot", enterChrootHelper)
 }
@@ -61,6 +65,7 @@ type enter struct {
 	Cmd          []string   `json:",omitempty"`
 	CmdDir       string     `json:",omitempty"`
 	BindGpgAgent bool       `json:",omitempty"`
+	UseHostDNS   bool       `json:",omitempty"`
 	User         *user.User `json:",omitempty"`
 	UserRunDir   string     `json:",omitempty"`
 }
@@ -316,6 +321,20 @@ func (e *enter) CopyGoogleCreds() error {
 	return os.Setenv(jsonEnvName, jsonPath)
 }
 
+func (e enter) SetupDNS() error {
+	resolv := "/etc/resolv.conf"
+	chrootResolv := filepath.Join(e.Chroot, resolv)
+	if !e.UseHostDNS {
+		return ioutil.WriteFile(chrootResolv, []byte(defaultResolv), 0644)
+	}
+
+	if _, err := os.Stat(resolv); err == nil {
+		// Only copy if resolv.conf exists, if missing resolver uses localhost
+		return system.InstallRegularFile(resolv, chrootResolv)
+	}
+	return nil
+}
+
 // bind mount the repo source tree into the chroot and run a command
 // Called via the multicall interface. Should only have 1 arg which is an
 // enter struct encoded in json.
@@ -343,13 +362,8 @@ func enterChrootHelper(args []string) (err error) {
 		return err
 	}
 
-	// Only copy if resolv.conf exists, if missing resolver uses localhost
-	resolv := "/etc/resolv.conf"
-	if _, err := os.Stat(resolv); err == nil {
-		chrootResolv := filepath.Join(e.Chroot, resolv)
-		if err := system.InstallRegularFile(resolv, chrootResolv); err != nil {
-			return err
-		}
+	if err := e.SetupDNS(); err != nil {
+		return err
 	}
 
 	// namespaces are per-thread attributes
