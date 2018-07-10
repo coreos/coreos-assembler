@@ -27,6 +27,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"}, // Network access for toolbox
 		Name:             "coreos.toolbox.dnf-install",
+		Distros:          []string{"cl"},
 	})
 }
 

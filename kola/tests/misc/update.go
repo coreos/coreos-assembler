@@ -45,6 +45,7 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.update.reboot",
 		UserData:    disableUpdateEngine,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         RecoverBadVerity,
@@ -52,6 +53,7 @@ func init() {
 		Name:        "coreos.update.badverity",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
 		UserData:    disableUpdateEngine,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         RecoverBadUsr,
@@ -59,6 +61,7 @@ func init() {
 		Name:        "coreos.update.badusr",
 		Flags:       []register.Flag{register.NoEmergencyShellCheck},
 		UserData:    disableUpdateEngine,
+		Distros:     []string{"cl"},
 	})
 }
 

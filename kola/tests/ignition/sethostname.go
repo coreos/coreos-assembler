@@ -64,12 +64,14 @@ func init() {
 		Run:         setHostname,
 		ClusterSize: 1,
 		UserData:    configV1,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.sethostname",
 		Run:         setHostname,
 		ClusterSize: 1,
 		UserData:    configV2,
+		Distros:     []string{"cl", "rhcos"},
 	})
 }
 

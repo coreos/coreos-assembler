@@ -24,6 +24,7 @@ func init() {
 		Run:         packageTests,
 		ClusterSize: 1,
 		Name:        "packages",
+		Distros:     []string{"cl"},
 	})
 }
 

@@ -155,6 +155,7 @@ func init() {
 		MinVersion:    semver.Version{Major: 926},
 		EndVersion:    semver.Version{Major: 1745},
 		Architectures: []string{"amd64"},
+		Distros:       []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:           UpdateGrubNop,
@@ -163,6 +164,7 @@ func init() {
 		UserData:      grubUpdaterConf,
 		MinVersion:    semver.Version{Major: 1745},
 		Architectures: []string{"amd64"},
+		Distros:       []string{"cl"},
 	})
 }
 

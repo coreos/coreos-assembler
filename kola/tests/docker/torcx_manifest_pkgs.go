@@ -36,6 +36,7 @@ func init() {
 		// Downloads torcx packages
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"qemu", "do"},
+		Distros:          []string{"cl"},
 	})
 }
 

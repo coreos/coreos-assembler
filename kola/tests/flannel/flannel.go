@@ -116,6 +116,7 @@ func init() {
 		ClusterSize:      3,
 		Name:             "coreos.flannel.udp",
 		ExcludePlatforms: []string{"qemu"},
+		Distros:          []string{"cl"},
 		UserData:         flannelConf.Subst("$type", "udp"),
 	})
 
@@ -124,6 +125,7 @@ func init() {
 		ClusterSize:      3,
 		Name:             "coreos.flannel.udp.etcd2",
 		ExcludePlatforms: []string{"qemu"},
+		Distros:          []string{"cl"},
 		UserData:         flannelConfEtcd2.Subst("$type", "udp"),
 		EndVersion:       semver.Version{Major: 1662},
 	})
@@ -133,6 +135,7 @@ func init() {
 		ClusterSize:      3,
 		Name:             "coreos.flannel.vxlan",
 		ExcludePlatforms: []string{"qemu"},
+		Distros:          []string{"cl"},
 		UserData:         flannelConf.Subst("$type", "vxlan"),
 	})
 
@@ -141,6 +144,7 @@ func init() {
 		ClusterSize:      3,
 		Name:             "coreos.flannel.vxlan.etcd2",
 		ExcludePlatforms: []string{"qemu"},
+		Distros:          []string{"cl"},
 		UserData:         flannelConfEtcd2.Subst("$type", "vxlan"),
 		EndVersion:       semver.Version{Major: 1662},
 	})

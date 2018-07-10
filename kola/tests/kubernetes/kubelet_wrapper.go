@@ -53,6 +53,7 @@ systemd:
       WantedBy=multi-user.target
 `),
 		ExcludePlatforms: []string{"qemu"}, // network access for hyperkube
+		Distros:          []string{"cl"},
 	})
 }
 

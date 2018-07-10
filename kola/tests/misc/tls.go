@@ -20,7 +20,8 @@ func init() {
 		Run:              TestTLSFetchURLs,
 		ClusterSize:      1,
 		Name:             "coreos.tls.fetch-urls",
-		ExcludePlatforms: []string{"qemu"}, // Networking outside cluster required
+		ExcludePlatforms: []string{"qemu"},  // Networking outside cluster required
+		ExcludeDistros:   []string{"rhcos"}, // wget not included in RHCOS
 	})
 }
 

@@ -27,6 +27,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"gce"},
 		Name:             "coreos.users.shells",
+		Distros:          []string{"cl"},
 	})
 }
 

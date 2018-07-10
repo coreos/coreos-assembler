@@ -58,17 +58,20 @@ func init() {
 		Run:         dockerNetwork,
 		ClusterSize: 2,
 		Name:        "docker.network",
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:           dockerOldClient,
 		ClusterSize:   0,
 		Name:          "docker.oldclient",
 		Architectures: []string{"amd64"},
+		Distros:       []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         dockerUserns,
 		ClusterSize: 1,
 		Name:        "docker.userns",
+		Distros:     []string{"cl"},
 		UserData: conf.ContainerLinuxConfig(`
 systemd:
   units:
@@ -109,6 +112,7 @@ passwd:
 		Run:         dockerBaseTests,
 		ClusterSize: 1,
 		Name:        `docker.base`,
+		Distros:     []string{"cl"},
 	})
 
 	register.Register(&register.Test{
@@ -145,6 +149,7 @@ systemd:
         Where=/var/lib/docker
         Type=btrfs
         Options=loop,discard`),
+		Distros: []string{"cl"},
 	})
 
 	register.Register(&register.Test{
@@ -155,6 +160,7 @@ systemd:
 		Name:        "docker.lib-coreos-dockerd-compat",
 		Run:         dockerBaseTests,
 		ClusterSize: 1,
+		Distros:     []string{"cl"},
 		UserData: conf.ContainerLinuxConfig(`
 systemd:
   units:
@@ -195,6 +201,7 @@ systemd:
 		Name:        "docker.containerd-restart",
 		Run:         dockerContainerdRestart,
 		ClusterSize: 1,
+		Distros:     []string{"cl"},
 		UserData: conf.ContainerLinuxConfig(`
 systemd:
   units:

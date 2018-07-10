@@ -69,6 +69,7 @@ func init() {
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
 		Name:        "coreos.disk.raid.root",
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         DataOnRaid,
@@ -99,6 +100,7 @@ systemd:
           
           [Install]
           WantedBy=local-fs.target`),
+		Distros: []string{"cl"},
 	})
 }
 

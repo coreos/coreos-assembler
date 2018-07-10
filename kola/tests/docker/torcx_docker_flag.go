@@ -37,6 +37,7 @@ storage:
         inline: yes
       mode: 0644
 `),
+		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         dockerTorcxFlagFileCloudConfig,
@@ -48,6 +49,7 @@ write_files:
   - path: "/etc/coreos/docker-1.12"
     content: yes
 `),
+		Distros: []string{"cl"},
 	})
 }
 

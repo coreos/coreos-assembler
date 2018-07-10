@@ -34,6 +34,7 @@ systemd:
   - name: docker.service
     enable: true
 `),
+		Distros: []string{"cl"},
 	})
 }
 

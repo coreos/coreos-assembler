@@ -25,6 +25,7 @@ func init() {
 		ClusterSize: 1,
 		Name:        "coreos.selinux.enforce",
 		Flags:       []register.Flag{register.NoEnableSelinux},
+		Distros:     []string{"cl", "rhcos"},
 	})
 }
 
@@ -55,6 +56,9 @@ func SelinuxEnforce(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatalf("failed to reboot machine: %v", err)
 	}
+
+	o := c.MustSSH(m, "which getenforce")
+	c.Logf(string(o))
 
 	output := c.MustSSH(m, "getenforce")
 

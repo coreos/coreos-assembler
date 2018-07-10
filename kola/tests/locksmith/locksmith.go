@@ -62,6 +62,7 @@ func init() {
   }
 }`),
 		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
+		Distros:          []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.cluster.etcd2",
@@ -98,11 +99,13 @@ func init() {
   }
 }`),
 		EndVersion: semver.Version{Major: 1662},
+		Distros:    []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.reboot",
 		Run:         locksmithReboot,
 		ClusterSize: 1,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.tls",
@@ -151,6 +154,7 @@ func init() {
   }
 }`),
 		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
+		Distros:          []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.tls.etcd2",
@@ -199,6 +203,7 @@ func init() {
   }
 }`),
 		EndVersion: semver.Version{Major: 1662},
+		Distros:    []string{"cl"},
 	})
 }
 

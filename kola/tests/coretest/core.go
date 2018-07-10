@@ -43,6 +43,7 @@ func init() {
 			"Useradd":          TestUseradd,
 			"MachineID":        TestMachineID,
 		},
+		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.cluster",
@@ -83,6 +84,7 @@ func init() {
   }
 }`),
 		EndVersion: semver.Version{Major: 1662},
+		Distros:    []string{"cl"},
 	})
 
 	// tests requiring network connection to internet
@@ -97,6 +99,7 @@ func init() {
 			"DockerEcho":   TestDockerEcho,
 			"NTPDate":      TestNTPDate,
 		},
+		Distros: []string{"cl"},
 	})
 }
 

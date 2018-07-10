@@ -38,6 +38,7 @@ func init() {
     }]
   }
 }`),
+		Distros: []string{"cl"},
 	})
 }
 
