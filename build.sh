@@ -5,10 +5,13 @@ set -xeuo pipefail
 # rsync, python2, pygobject3-base are dependencies of ostree-releng-scripts
 # Also add python3 so people can use that too.
 # createrepo_c+yum-utils is used for managing rojig bits.
+# We also install podman+buildah+skopeo to support recursive containerization,
+# and manipulating images.
 dnf -y install rpm-ostree selinux-policy-targeted rpm-build \
     make cargo golang git jq \
     rsync pygobject3-base python3-gobject-base \
-    createrepo_c dnf-utils
+    createrepo_c dnf-utils \
+    podman buildah skopeo
 
 # Gather RPMs before we ran builddep
 rpm -qa --queryformat='%{NAME}\n' | sort -u > /root/rpms.txt
