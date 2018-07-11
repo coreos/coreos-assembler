@@ -49,7 +49,9 @@ var (
 
 	// only for `enter` command
 	bindGpgAgent bool
-	useHostDNS   bool
+
+	// for create/update/enter
+	useHostDNS bool
 
 	// only for `update` command
 	allowCreate      bool
@@ -98,6 +100,8 @@ func init() {
 	chrootFlags = pflag.NewFlagSet("chroot", pflag.ExitOnError)
 	chrootFlags.StringVar(&chrootName,
 		"chroot", "chroot", "SDK chroot directory name")
+	chrootFlags.BoolVar(&useHostDNS,
+		"use-host-dns", false, "Use the host's /etc/resolv.conf instead of 8.8.8.8 and 8.8.4.4")
 
 	creationFlags = pflag.NewFlagSet("creation", pflag.ExitOnError)
 	creationFlags.StringVar(&sdkVersion,
@@ -126,8 +130,6 @@ func init() {
 	enterCmd.Flags().AddFlagSet(chrootFlags)
 	enterCmd.Flags().BoolVar(&bindGpgAgent,
 		"bind-gpg-agent", true, "bind mount the gpg agent socket directory")
-	enterCmd.Flags().BoolVar(&useHostDNS,
-		"use-host-dns", false, "Use the host's /etc/resolv.conf instead of 8.8.8.8 and 8.8.4.4")
 	root.AddCommand(enterCmd)
 
 	deleteCmd.Flags().AddFlagSet(chrootFlags)
@@ -243,7 +245,7 @@ func unpackChroot(replace bool) {
 }
 
 func updateRepo() {
-	if err := sdk.RepoInit(chrootName, manifestURL, manifestBranch, manifestName); err != nil {
+	if err := sdk.RepoInit(chrootName, manifestURL, manifestBranch, manifestName, useHostDNS); err != nil {
 		plog.Fatalf("repo init failed: %v", err)
 	}
 
@@ -253,7 +255,7 @@ func updateRepo() {
 		}
 	}
 
-	if err := sdk.RepoSync(chrootName, forceSync); err != nil {
+	if err := sdk.RepoSync(chrootName, forceSync, useHostDNS); err != nil {
 		plog.Fatalf("repo sync failed: %v", err)
 	}
 

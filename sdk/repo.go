@@ -128,10 +128,11 @@ func BuildImageDir(board, version string) string {
 	return filepath.Join(BuildRoot(), "images", board, dir)
 }
 
-func RepoInit(chroot, url, branch, name string) error {
+func RepoInit(chroot, url, branch, name string, useHostDNS bool) error {
 	return enterChroot(enter{
-		Chroot: chroot,
-		CmdDir: chrootRepoRoot,
+		Chroot:     chroot,
+		CmdDir:     chrootRepoRoot,
+		UseHostDNS: useHostDNS,
 		Cmd: []string{"--",
 			"repo", "init",
 			"--manifest-url", url,
@@ -151,14 +152,15 @@ func RepoVerifyTag(branch string) error {
 	return tag.Run()
 }
 
-func RepoSync(chroot string, force bool) error {
+func RepoSync(chroot string, force, useHostDNS bool) error {
 	args := []string{"--", "repo", "sync", "--no-clone-bundle"}
 	if force {
 		args = append(args, "--force-sync")
 	}
 	return enterChroot(enter{
-		Chroot: chroot,
-		CmdDir: chrootRepoRoot,
-		Cmd:    args,
+		Chroot:     chroot,
+		CmdDir:     chrootRepoRoot,
+		Cmd:        args,
+		UseHostDNS: useHostDNS,
 	})
 }
