@@ -295,7 +295,7 @@ func setupPrimaryDisk(imageFile string) (*os.File, error) {
 		return nil, err
 	}
 
-	qcowOpts := fmt.Sprintf("backing_file=%s,backing_fmt=raw,lazy_refcounts=on", backingFile)
+	qcowOpts := fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile)
 	return setupDisk("-o", qcowOpts)
 }
 
