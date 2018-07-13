@@ -38,7 +38,7 @@ var (
 		      "files": [
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/data",
+			      "path": "/var/resource/data",
 			      "contents": {
 				  "source": "data:,kola-data"
 			      },
@@ -46,7 +46,7 @@ var (
 			  },
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/http",
+			      "path": "/var/resource/http",
 			      "contents": {
 				  "source": "http://$IP/http"
 			      },
@@ -54,7 +54,7 @@ var (
 			  },
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/tftp",
+			      "path": "/var/resource/tftp",
 			      "contents": {
 				  "source": "tftp://$IP/tftp"
 			      },
@@ -90,7 +90,7 @@ func init() {
 		      "files": [
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/http",
+			      "path": "/var/resource/http",
 			      "contents": {
 				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
 			      },
@@ -98,7 +98,7 @@ func init() {
 			  },
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/https",
+			      "path": "/var/resource/https",
 			      "contents": {
 				  "source": "https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
 			      },
@@ -106,7 +106,7 @@ func init() {
 			  },
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/s3-anon",
+			      "path": "/var/resource/s3-anon",
 			      "contents": {
 				  "source": "s3://kola-fixtures/resources/anonymous"
 			      },
@@ -126,7 +126,7 @@ func init() {
 		      "version": "2.1.0",
 		      "config": {
 		          "append": [{
-		              "source": "s3://kola-fixtures/resources/authenticated.ign"
+		              "source": "s3://kola-fixtures/resources/authenticated-var.ign"
 		          }]
 		      }
 		  },
@@ -134,7 +134,7 @@ func init() {
 		      "files": [
 			  {
 			      "filesystem": "root",
-			      "path": "/resource/s3-auth",
+			      "path": "/var/resource/s3-auth",
 			      "contents": {
 				  "source": "s3://kola-fixtures/resources/authenticated"
 			      },
@@ -204,7 +204,7 @@ func resourceS3(c cluster.TestCluster) {
 
 func checkResources(c cluster.TestCluster, m platform.Machine, resources map[string]string) {
 	for filename, expectedContents := range resources {
-		contents := c.MustSSH(m, fmt.Sprintf("sudo cat /resource/%s", filename))
+		contents := c.MustSSH(m, fmt.Sprintf("sudo cat /var/resource/%s", filename))
 		if string(contents) != expectedContents {
 			c.Fatalf("%s: %q != %q", filename, expectedContents, contents)
 		}

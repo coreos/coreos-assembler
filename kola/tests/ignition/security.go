@@ -73,9 +73,9 @@ func securityTLS(c cluster.TestCluster) {
 		ip = server.IP()
 	}
 
-	c.MustSSH(server, "sudo mkdir /tls")
-	c.MustSSH(server, "sudo openssl ecparam -genkey -name secp384r1 -out /tls/server.key")
-	c.MustSSH(server, strings.Replace(`sudo bash -c 'openssl req -new -x509 -sha256 -key /tls/server.key -out /tls/server.crt -days 3650 -subj "/CN=$IP" -config <(cat <<-EOF
+	c.MustSSH(server, "sudo mkdir /var/tls")
+	c.MustSSH(server, "sudo openssl ecparam -genkey -name secp384r1 -out /var/tls/server.key")
+	c.MustSSH(server, strings.Replace(`sudo bash -c 'openssl req -new -x509 -sha256 -key /var/tls/server.key -out /var/tls/server.crt -days 3650 -subj "/CN=$IP" -config <(cat <<-EOF
 [req]
 default_bits = 2048
 default_md = sha256
@@ -88,7 +88,7 @@ CN = $IP
 subjectAltName = IP:$IP
 EOF
 ) -extensions SAN'`, "$IP", ip, -1))
-	publicKey := c.MustSSH(server, "sudo cat /tls/server.crt")
+	publicKey := c.MustSSH(server, "sudo cat /var/tls/server.crt")
 
 	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s TLSServe", c.Name()))
 
@@ -103,12 +103,12 @@ EOF
 }
 
 func TLSServe() error {
-	publicKey, err := ioutil.ReadFile("/tls/server.crt")
+	publicKey, err := ioutil.ReadFile("/var/tls/server.crt")
 	if err != nil {
 		return fmt.Errorf("reading public key: %v", err)
 	}
 
-	privateKey, err := ioutil.ReadFile("/tls/server.key")
+	privateKey, err := ioutil.ReadFile("/var/tls/server.key")
 	if err != nil {
 		return fmt.Errorf("reading private key: %v", err)
 	}
@@ -118,7 +118,7 @@ func TLSServe() error {
         "storage": {
             "files": [{
                 "filesystem": "root",
-                "path": "/resource/data",
+                "path": "/var/resource/data",
                 "contents": { "source": "data:,kola-data" }
             }]
         }
