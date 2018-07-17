@@ -61,6 +61,17 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 	if err != nil {
 		return nil, fmt.Errorf("error resolving security group: %v", err)
 	}
+
+	vpcId, err := a.getVPCID(sgId)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving vpc: %v", err)
+	}
+
+	subnetId, err := a.getSubnetID(vpcId)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving subnet: %v", err)
+	}
+
 	key := &keyname
 	if keyname == "" {
 		key = nil
@@ -72,6 +83,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		KeyName:          key,
 		InstanceType:     &a.opts.InstanceType,
 		SecurityGroupIds: []*string{&sgId},
+		SubnetId:         &subnetId,
 		UserData:         ud,
 		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
 			Name: &a.opts.IAMInstanceProfile,
