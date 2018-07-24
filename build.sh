@@ -1,15 +1,26 @@
 #!/usr/bin/bash
 set -xeuo pipefail
 
+# We want to run what builds we can as an unprivileged user;
+# running as non-root is much better for the libvirt stack in particular
+# for the cases where we have --privileged in the container run for other reasons.
+# At some point we may make this the default.
+useradd builder
+
+# dumb-init is a good idea in general, but specifically fixes things with
+# libvirt forking qemu and assuming the process gets reaped on shutdown.
 # selinux-policy-targeted is needed for rpm-ostree rojig.
 # rsync, python2, pygobject3-base are dependencies of ostree-releng-scripts
 # Also add python3 so people can use that too.
+# qemu-img and virsh are for coreos-virt-install.
 # createrepo_c+yum-utils is used for managing rojig bits.
 # We also install podman+buildah+skopeo to support recursive containerization,
 # and manipulating images.
-dnf -y install rpm-ostree selinux-policy-targeted rpm-build \
+dnf -y install dumb-init \
+    rpm-ostree selinux-policy-targeted rpm-build \
     make cargo golang git jq \
     rsync pygobject3-base python3-gobject-base \
+    libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install \
     createrepo_c dnf-utils \
     podman buildah skopeo
 
@@ -35,7 +46,9 @@ mkdir -p /usr/app/
 cd /usr/app/
 git clone https://github.com/ostreedev/ostree-releng-scripts
 
-mv /root/src/coreos-assembler.sh /usr/bin/coreos-assembler
+cd /root/src
+make install
+cd /
 rm /root/src -rf
 
 # Part of general image management

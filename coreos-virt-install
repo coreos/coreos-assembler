@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+# Wrapper for virt-install designed to run in a container
+# environment, and using defaults targeted for CoreOS.
+# https://github.com/cgwalters/coreos-assembler/issues/7
+# Today, this requires a Kickstart (and an installer ISO path);
+# we might change things down the line to have defaults for
+# one or both.
+
+import os,sys,argparse,subprocess,io,time,re,multiprocessing
+
+def fatal(msg):
+    print('error: {}'.format(msg), file=sys.stderr)
+    raise SystemExit(1)
+
+if os.getuid() == 0:
+    fatal("This script should be run as non-root in a container")
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--dest", help="Destination disk",
+                    action='store', required=True)
+parser.add_argument("--create-disk", help="Automatically create disk as qcow2, parsing kickstart for size",
+                    action='store_true')
+parser.add_argument("--kickstart", help="Kickstart path",
+                    action='store', required=True)
+parser.add_argument("--location", help="Installer location",
+                    action='store', required=True)
+parser.add_argument("--memory", help="Memory size in MB",
+                    action='store', type=int, default=2048)
+parser.add_argument("--console-log-file", help="Console log file",
+                    action='store')
+parser.add_argument("--wait", help="Number of minutes to wait",
+                    action='store', type=int, default=10)
+args = parser.parse_args()
+
+# Copy of bits from https://pagure.io/standard-test-roles/pull-request/223
+def get_libvirt_smp_arg():
+    """Determine the number of CPUs that should be visible in the guest.
+    See e.g. https://www.redhat.com/archives/libvirt-users/2017-June/msg00025.html
+    We want to match the number of host physical cores.
+    """
+    # We may be run in a cgroup with fewer cores available than physical.
+    available_cpu = int(subprocess.check_output(['nproc']).strip())
+    # https://stackoverflow.com/questions/6481005/how-to-obtain-the-number-of-cpus-cores-in-linux-from-the-command-line
+    core_sockets = set()
+    for line in io.BytesIO(subprocess.check_output(['lscpu', '-b', '-p=Core,Socket'])):
+        if line.startswith(b'#'):
+            continue
+        core_sockets.add(line.strip())
+    sockets = min(available_cpu, len(core_sockets))
+    return '--vcpus=sockets={},cores=1,threads=1'.format(sockets)
+
+def run_sync_verbose(argv, **kwargs):
+    print("cmd: {}".format(subprocess.list2cmdline(argv)))
+    subprocess.check_call(argv, **kwargs)
+
+# This is an "extension" to kickstart files that we implement as a comment.
+if args.create_disk:
+    magic_virt_install_size_str = '#--coreos-virt-install-disk-size-gb:'
+    disk_re = re.compile(r'^' + magic_virt_install_size_str + ' *([0-9]+)$')
+    disk_size = None
+    with open(args.kickstart) as f:
+        for line in f:
+            m = disk_re.search(line)
+            if not m:
+                continue
+            disk_size = int(m.group(1))
+            break
+    if disk_size is None:
+        fatal("--create-disk specified, but failed to find '{}' in kickstart".format(magic_virt_install_size_str))
+    run_sync_verbose(['qemu-img', 'create', '-f', 'qcow2', args.dest, '{}G'.format(disk_size)])
+    print("Created initial disk: {} with size {}G".format(args.dest, disk_size))
+
+# Doesn't need to be truly unique, let's just use our pid+time
+domain="coreos-inst-{}-{}".format(os.getpid(),int(time.time()))
+try:
+    vinstall_args = ["virt-install", "--connect=qemu:///session",
+                     "--name={}".format(domain),
+                     "--noautoconsole"]
+    if args.console_log_file:
+        vinstall_args.append("--console=log.file={}".format(args.console_log_file))
+    vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
+                          "--memory={}".format(args.memory), get_libvirt_smp_arg(),
+                          "--os-variant=rhel7", "--rng=/dev/urandom",
+                          "--check", "path_in_use=off",
+                          "--disk=path={},cache=unsafe".format(args.dest),
+                          "--location={}".format(args.location),
+                          "--initrd-inject={}".format(args.kickstart),
+                          "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(args.kickstart))])
+    run_sync_verbose(vinstall_args)
+finally:
+    subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
+print("Completed install to disk image: {}".format(args.dest))

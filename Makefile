@@ -1,14 +1,10 @@
-PREFIX ?= "./"
+PREFIX ?= /usr
+DESTDIR ?=
 
-.PHONY: clean check
+.PHONY: all install
 
-clean:
-	rm -rf target/
-	rm -f coreos-assembler
+all:
 
-build:
-	cargo build --release
-	mv target/release/coreos-assembler ${PREFIX}
-
-check:
-	find . -name "*.rs" | xargs rustfmt --write-mode diff
+install:
+	install -D -t $(DESTDIR)$(PREFIX)/bin coreos-virt-install
+	install -D coreos-assembler.sh $(DESTDIR)$(PREFIX)/bin/coreos-assembler
