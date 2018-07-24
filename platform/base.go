@@ -223,6 +223,10 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 	return result, err
 }
 
+func (bc *BaseCluster) Distribution() string {
+	return bc.baseopts.Distribution
+}
+
 func (bc *BaseCluster) Platform() Name {
 	return bc.platform
 }

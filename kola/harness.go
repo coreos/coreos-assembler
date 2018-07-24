@@ -183,34 +183,33 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 			continue
 		}
 
-		allowed := true
-		for _, p := range t.Platforms {
-			if p == platform {
-				allowed = true
-				break
-			} else {
-				allowed = false
+		isAllowed := func(item string, include, exclude []string) bool {
+			allowed := true
+			for _, i := range include {
+				if i == item {
+					allowed = true
+					break
+				} else {
+					allowed = false
+				}
 			}
-		}
-		for _, p := range t.ExcludePlatforms {
-			if p == platform {
-				allowed = false
+			for _, i := range exclude {
+				if i == item {
+					allowed = false
+				}
 			}
+			return allowed
 		}
-		if !allowed {
+
+		if !isAllowed(platform, t.Platforms, t.ExcludePlatforms) {
 			continue
 		}
 
-		arch := architecture(platform)
-		for _, a := range t.Architectures {
-			if a == arch {
-				allowed = true
-				break
-			} else {
-				allowed = false
-			}
+		if !isAllowed(Options.Distribution, t.Distros, t.ExcludeDistros) {
+			continue
 		}
-		if !allowed {
+
+		if !isAllowed(architecture(platform), t.Architectures, []string{}) {
 			continue
 		}
 
@@ -358,8 +357,21 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing /etc/os-release: %v: %s", err, stderr)
 	}
+	ver := strings.Split(string(out), "=")[1]
 
-	version, err := semver.NewVersion(strings.Split(string(out), "=")[1])
+	// TODO: add distro specific version handling
+	switch Options.Distribution {
+	case "cl":
+		return parseCLVersion(ver)
+	case "rhcos":
+		return &semver.Version{}, nil
+	}
+
+	return nil, fmt.Errorf("no case to handle version parsing for distribution %q", Options.Distribution)
+}
+
+func parseCLVersion(input string) (*semver.Version, error) {
+	version, err := semver.NewVersion(input)
 	if err != nil {
 		return nil, fmt.Errorf("parsing os-release semver: %v", err)
 	}
