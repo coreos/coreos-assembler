@@ -49,15 +49,23 @@ func init() {
 		Run:         NFSv3,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v3",
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         NFSv4,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v4",
+		Distros:     []string{"cl"},
+	})
+	register.Register(&register.Test{
+		Run:         RHCOSNFSv4,
+		ClusterSize: 0,
+		Name:        "rhcos.linux.nfs.v4",
+		Distros:     []string{"rhcos"},
 	})
 }
 
-func testNFS(c cluster.TestCluster, nfsversion int) {
+func testNFS(c cluster.TestCluster, nfsversion int, remotePath string) {
 	m1, err := c.NewMachine(nfsserverconf)
 	if err != nil {
 		c.Fatalf("Cluster.NewMachine: %s", err)
@@ -81,7 +89,7 @@ func testNFS(c cluster.TestCluster, nfsversion int) {
       mode: 0644
 systemd:
   units:
-    - name: "mnt.mount"
+    - name: "var-mnt.mount"
       enabled: true
       contents: |-
         [Unit]
@@ -92,13 +100,13 @@ systemd:
         Requires=rpc-statd.service
 
         [Mount]
-        What=%s:/tmp
-        Where=/mnt
+        What=%s:%s
+        Where=/var/mnt
         Type=nfs
         Options=defaults,noexec,nfsvers=%d
 
         [Install]
-        WantedBy=multi-user.target`, m1.PrivateIP(), nfsversion))
+        WantedBy=multi-user.target`, m1.PrivateIP(), remotePath, nfsversion))
 
 	m2, err := c.NewMachine(c2)
 	if err != nil {
@@ -110,9 +118,9 @@ systemd:
 	c.Log("NFS client booted.")
 
 	checkmount := func() error {
-		status, err := c.SSH(m2, "systemctl is-active mnt.mount")
+		status, err := c.SSH(m2, "systemctl is-active var-mnt.mount")
 		if err != nil || string(status) != "active" {
-			return fmt.Errorf("mnt.mount status is %q: %v", status, err)
+			return fmt.Errorf("var-mnt.mount status is %q: %v", status, err)
 		}
 
 		c.Log("Got NFS mount.")
@@ -123,15 +131,20 @@ systemd:
 		c.Fatal(err)
 	}
 
-	c.MustSSH(m2, fmt.Sprintf("stat /mnt/%s", path.Base(string(tmp))))
+	c.MustSSH(m2, fmt.Sprintf("stat /var/mnt/%s", path.Base(string(tmp))))
 }
 
 // Test that the kernel NFS server and client work within CoreOS.
 func NFSv3(c cluster.TestCluster) {
-	testNFS(c, 3)
+	testNFS(c, 3, "/tmp")
 }
 
 // Test that NFSv4 without security works on CoreOS.
 func NFSv4(c cluster.TestCluster) {
-	testNFS(c, 4)
+	testNFS(c, 4, "/tmp")
+}
+
+// Test that NFSv4 without security works on RHCOS.
+func RHCOSNFSv4(c cluster.TestCluster) {
+	testNFS(c, 4, "/")
 }
