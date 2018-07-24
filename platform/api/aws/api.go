@@ -113,3 +113,9 @@ func (a *API) PreflightCheck() error {
 
 	return err
 }
+
+func (a *API) tagCreatedByMantle(resources []string) error {
+	return a.CreateTags(resources, map[string]string{
+		"CreatedBy": "mantle",
+	})
+}

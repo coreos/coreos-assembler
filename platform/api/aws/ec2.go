@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	"github.com/coreos/mantle/util"
@@ -62,6 +61,17 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 	if err != nil {
 		return nil, fmt.Errorf("error resolving security group: %v", err)
 	}
+
+	vpcId, err := a.getVPCID(sgId)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving vpc: %v", err)
+	}
+
+	subnetId, err := a.getSubnetID(vpcId)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving subnet: %v", err)
+	}
+
 	key := &keyname
 	if keyname == "" {
 		key = nil
@@ -73,6 +83,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		KeyName:          key,
 		InstanceType:     &a.opts.InstanceType,
 		SecurityGroupIds: []*string{&sgId},
+		SubnetId:         &subnetId,
 		UserData:         ud,
 		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
 			Name: &a.opts.IAMInstanceProfile,
@@ -238,90 +249,4 @@ func (a *API) GetConsoleOutput(instanceID string) (string, error) {
 	}
 
 	return string(decoded), nil
-}
-
-// getSecurityGroupID gets a security group matching the given name.
-// If the security group does not exist, it's created.
-func (a *API) getSecurityGroupID(name string) (string, error) {
-	sgIds, err := a.ec2.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-		GroupNames: []*string{&name},
-	})
-	if isSecurityGroupNotExist(err) {
-		return a.createSecurityGroup(name)
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("unable to get security group named %v: %v", name, err)
-	}
-	if len(sgIds.SecurityGroups) == 0 {
-		return "", fmt.Errorf("zero security groups matched name %v", name)
-	}
-	return *sgIds.SecurityGroups[0].GroupId, nil
-}
-
-// createSecurityGroup creates a security group with tcp/22 access allowed from the
-// internet.
-func (a *API) createSecurityGroup(name string) (string, error) {
-	sg, err := a.ec2.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
-		GroupName:   aws.String(name),
-		Description: aws.String("mantle security group for testing"),
-	})
-	if err != nil {
-		return "", err
-	}
-	plog.Debugf("created security group %v", *sg.GroupId)
-
-	allowedIngresses := []ec2.AuthorizeSecurityGroupIngressInput{
-		{
-			// SSH access from the public internet
-			GroupId: sg.GroupId,
-			IpPermissions: []*ec2.IpPermission{
-				{
-					IpProtocol: aws.String("tcp"),
-					IpRanges: []*ec2.IpRange{
-						{
-							CidrIp: aws.String("0.0.0.0/0"),
-						},
-					},
-					FromPort: aws.Int64(22),
-					ToPort:   aws.Int64(22),
-				},
-			},
-		},
-		{
-			// Access from all things in this vpc with the same SG (e.g. other
-			// machines in our kola cluster)
-			GroupId:                 sg.GroupId,
-			SourceSecurityGroupName: aws.String(name),
-		},
-	}
-
-	for _, input := range allowedIngresses {
-		_, err := a.ec2.AuthorizeSecurityGroupIngress(&input)
-
-		if err != nil {
-			// We created the SG but can't add all the needed rules, let's try to
-			// bail gracefully
-			_, delErr := a.ec2.DeleteSecurityGroup(&ec2.DeleteSecurityGroupInput{
-				GroupId: sg.GroupId,
-			})
-			if delErr != nil {
-				return "", fmt.Errorf("created sg %v (%v) but couldn't authorize it. Manual deletion may be required: %v", *sg.GroupId, name, err)
-			}
-			return "", fmt.Errorf("created sg %v (%v), but couldn't authorize it and thus deleted it: %v", *sg.GroupId, name, err)
-		}
-	}
-	return *sg.GroupId, err
-}
-
-func isSecurityGroupNotExist(err error) bool {
-	if err == nil {
-		return false
-	}
-	if awsErr, ok := (err).(awserr.Error); ok {
-		if awsErr.Code() == "InvalidGroup.NotFound" {
-			return true
-		}
-	}
-	return false
 }
