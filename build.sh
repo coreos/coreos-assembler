@@ -16,6 +16,9 @@ dnf -y install rpm-ostree selinux-policy-targeted rpm-build \
 # Gather RPMs before we ran builddep
 rpm -qa --queryformat='%{NAME}\n' | sort -u > /root/rpms.txt
 dnf builddep -y rpm-ostree
+# Temporary bits until https://github.com/projectatomic/rpm-ostree/pull/1460
+# propagates
+dnf -y install python3-sphinx python3-devel
 git clone https://github.com/projectatomic/rpm-ostree
 cd rpm-ostree
 # Note --enable-rust
