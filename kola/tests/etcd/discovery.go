@@ -55,6 +55,7 @@ func init() {
   }
 }`),
 		EndVersion: semver.Version{Major: 1662},
+		Distros:    []string{"cl"},
 	})
 
 	register.Register(&register.Test{
@@ -77,6 +78,7 @@ func init() {
   }
 }`),
 		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
+		Distros:          []string{"cl"},
 	})
 
 	register.Register(&register.Test{
@@ -93,6 +95,7 @@ etcd:
   discovery:                   $discovery
 `),
 		ExcludePlatforms: []string{"qemu", "esx"}, // etcd-member requires networking and ct rendering
+		Distros:          []string{"cl"},
 	})
 
 	register.Register(&register.Test{
@@ -110,6 +113,7 @@ etcd:
   initial_advertise_peer_urls: http://127.0.0.1:2380
 `),
 		ExcludePlatforms: []string{"qemu"}, // networking to download etcd image
+		Distros:          []string{"cl"},
 	})
 }
 

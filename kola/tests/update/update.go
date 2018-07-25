@@ -40,6 +40,7 @@ func init() {
 		NativeFuncs: map[string]func() error{
 			"Omaha": Serve,
 		},
+		Distros: []string{"cl"},
 	})
 }
 

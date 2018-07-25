@@ -61,6 +61,7 @@ func init() {
 		},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do"},
+		Distros:          []string{"cl", "rhcos"},
 	})
 }
 

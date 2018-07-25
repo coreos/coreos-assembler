@@ -118,6 +118,7 @@ func init() {
 		ClusterSize: 0,
 		Name:        "coreos.fleet.etcdproxy",
 		EndVersion:  semver.Version{Major: 1662},
+		Distros:     []string{"cl"},
 	})
 }
 

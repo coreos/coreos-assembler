@@ -34,6 +34,7 @@ func init() {
 		UserData: conf.ContainerLinuxConfig(`update:
   server: "http://10.0.0.1:34567/v1/update/"
 `),
+		Distros: []string{"cl"},
 	})
 }
 

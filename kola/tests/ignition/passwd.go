@@ -51,6 +51,7 @@ func init() {
 		               ]
 		             }
 		           }`),
+		Distros: []string{"cl", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.groups",
@@ -78,6 +79,7 @@ func init() {
 		               ]
 		             }
 		           }`),
+		Distros: []string{"cl", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v1.users",
@@ -111,6 +113,7 @@ func init() {
 		               ]
 		             }
 		           }`),
+		Distros: []string{"cl", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.users",
@@ -144,6 +147,7 @@ func init() {
 		               ]
 		             }
 		           }`),
+		Distros: []string{"cl", "rhcos"},
 	})
 }
 

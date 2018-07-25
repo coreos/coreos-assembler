@@ -29,6 +29,7 @@ func init() {
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
+		Distros:          []string{"cl"},
 		UserData:         conf.Empty(),
 	})
 	// Tests for https://github.com/coreos/bugs/issues/1981
@@ -37,6 +38,7 @@ func init() {
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
+		Distros:          []string{"cl"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
 		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
 	})
@@ -45,6 +47,7 @@ func init() {
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
+		Distros:          []string{"cl"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
 		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
 	})

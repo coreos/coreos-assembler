@@ -27,6 +27,7 @@ func init() {
 		Run:         Filesystem,
 		ClusterSize: 1,
 		Name:        "coreos.filesystem",
+		Distros:     []string{"cl"},
 	})
 }
 

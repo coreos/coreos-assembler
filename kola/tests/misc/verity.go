@@ -32,6 +32,7 @@ func init() {
 		Run:         Verity,
 		ClusterSize: 1,
 		Name:        "coreos.verity",
+		Distros:     []string{"cl"},
 	})
 }
 

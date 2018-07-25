@@ -46,6 +46,7 @@ func init() {
 		Run:              rktEtcd,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
+		Distros:          []string{"cl"},
 		Name:             "coreos.rkt.etcd3",
 		UserData:         config,
 	})
@@ -54,6 +55,7 @@ func init() {
 		Name:        "rkt.base",
 		ClusterSize: 1,
 		Run:         rktBase,
+		Distros:     []string{"cl"},
 	})
 
 }

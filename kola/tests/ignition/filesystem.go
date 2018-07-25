@@ -74,12 +74,14 @@ func init() {
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV1,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV2,
+		Distros:     []string{"cl"},
 	})
 
 	// Reformat the root as xfs
@@ -128,12 +130,14 @@ func init() {
 		Run:         xfsRoot,
 		ClusterSize: 1,
 		UserData:    xfsConfigV1,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
 		UserData:    xfsConfigV2,
+		Distros:     []string{"cl"},
 	})
 
 	// Reformat the root as ext4
@@ -182,17 +186,20 @@ func init() {
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV1,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV2,
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2_1.ext4checkexisting",
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
+		Distros:     []string{"cl"},
 	})
 
 	vfatConfigV2_1 := conf.Ignition(`{
@@ -218,6 +225,7 @@ func init() {
 		Run:         vfatUsrB,
 		ClusterSize: 1,
 		UserData:    vfatConfigV2_1,
+		Distros:     []string{"cl"},
 	})
 
 	swapConfigV2_1 := conf.Ignition(`{
@@ -243,6 +251,7 @@ func init() {
 		Run:         swapUsrB,
 		ClusterSize: 1,
 		UserData:    swapConfigV2_1,
+		Distros:     []string{"cl"},
 	})
 }
 

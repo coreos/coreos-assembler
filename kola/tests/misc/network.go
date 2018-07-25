@@ -30,12 +30,14 @@ func init() {
 		Run:         NetworkListeners,
 		ClusterSize: 1,
 		Name:        "coreos.network.listeners",
+		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
 		Name:             "coreos.network.initramfs.second-boot",
 		ExcludePlatforms: []string{"do"},
+		Distros:          []string{"cl"},
 	})
 }
 
