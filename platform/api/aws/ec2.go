@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	"github.com/coreos/mantle/util"
@@ -127,6 +128,11 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 			InstanceIds: aws.StringSlice(ids),
 		})
 		if err != nil {
+			// Keep retrying if the InstanceID disappears momentarily
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidInstanceID.NotFound" {
+				plog.Debugf("instance ID not found, retrying: %v", err)
+				return false, nil
+			}
 			return false, err
 		}
 		insts = desc.Reservations[0].Instances
