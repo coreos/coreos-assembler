@@ -3,7 +3,7 @@ systems, including:
 
  - [mantle](https://github.com/coreos/mantle)
  - [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
- - [ImageFactory](https://github.com/redhat-imaging/imagefactory/)
+ - [libvirt](https://github.com/libvirt/libvirt)
 
 Development
 ---
