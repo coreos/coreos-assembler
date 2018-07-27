@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/etcd"
@@ -121,32 +119,12 @@ func init() {
 	})
 
 	register.Register(&register.Test{
-		Run:              udp,
-		ClusterSize:      3,
-		Name:             "coreos.flannel.udp.etcd2",
-		ExcludePlatforms: []string{"qemu"},
-		Distros:          []string{"cl"},
-		UserData:         flannelConfEtcd2.Subst("$type", "udp"),
-		EndVersion:       semver.Version{Major: 1662},
-	})
-
-	register.Register(&register.Test{
 		Run:              vxlan,
 		ClusterSize:      3,
 		Name:             "coreos.flannel.vxlan",
 		ExcludePlatforms: []string{"qemu"},
 		Distros:          []string{"cl"},
 		UserData:         flannelConf.Subst("$type", "vxlan"),
-	})
-
-	register.Register(&register.Test{
-		Run:              vxlan,
-		ClusterSize:      3,
-		Name:             "coreos.flannel.vxlan.etcd2",
-		ExcludePlatforms: []string{"qemu"},
-		Distros:          []string{"cl"},
-		UserData:         flannelConfEtcd2.Subst("$type", "vxlan"),
-		EndVersion:       semver.Version{Major: 1662},
 	})
 }
 

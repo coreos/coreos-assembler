@@ -8,11 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -44,47 +42,6 @@ func init() {
 			"MachineID":        TestMachineID,
 		},
 		Distros: []string{"cl"},
-	})
-	register.Register(&register.Test{
-		Name:        "coreos.cluster",
-		Run:         ClusterTests,
-		ClusterSize: 3,
-		NativeFuncs: map[string]func() error{
-			"EtcdUpdateValue":    TestEtcdUpdateValue,
-			"FleetctlRunService": TestFleetctlRunService,
-		},
-		UserData: conf.Ignition(`{
-  "ignition": { "version": "2.0.0" },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd2.service",
-        "enable": true,
-        "dropins": [{
-          "name": "metadata.conf",
-          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001 --listen-peer-urls=http://$private_ipv4:2380,http://$private_ipv4:7001"
-        }]
-      },
-      {
-        "name": "fleet.service",
-        "enable": true,
-        "dropins": [{
-          "name": "environment.conf",
-          "contents": "[Service]\nEnvironment=FLEET_ETCD_REQUEST_TIMEOUT=15"
-        }]
-      },
-      {
-        "name": "coreos-metadata.service",
-        "dropins": [{
-          "name": "qemu.conf",
-          "contents": "[Unit]\nConditionKernelCommandLine=coreos.oem.id"
-        }]
-      }
-    ]
-  }
-}`),
-		EndVersion: semver.Version{Major: 1662},
-		Distros:    []string{"cl"},
 	})
 
 	// tests requiring network connection to internet
