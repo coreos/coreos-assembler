@@ -20,7 +20,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"io/ioutil"
-	"reflect"
 
 	"github.com/coreos/go-semver/semver"
 
@@ -148,16 +147,6 @@ coreos:
 
 func init() {
 	register.Register(&register.Test{
-		Run:           UpdateGrub,
-		ClusterSize:   1,
-		Name:          "coreos.update.grub",
-		UserData:      grubUpdaterConf,
-		MinVersion:    semver.Version{Major: 926},
-		EndVersion:    semver.Version{Major: 1745},
-		Architectures: []string{"amd64"},
-		Distros:       []string{"cl"},
-	})
-	register.Register(&register.Test{
 		Run:           UpdateGrubNop,
 		ClusterSize:   1,
 		Name:          "coreos.update.grubnop",
@@ -176,50 +165,6 @@ func gunzipAndRead(comp []byte) ([]byte, error) {
 		return nil, err
 	}
 	return ioutil.ReadAll(uncomp)
-}
-
-func UpdateGrub(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	// work around bug 1872
-	c.MustSSH(m, "cat /opt/patch.sh || ( sudo systemctl start system-config.target && sleep 10 )")
-
-	originalBytes, err := gunzipAndRead(c.MustSSH(m, "cat /boot/coreos/grub/i386-pc/linux.mod"))
-	if err != nil {
-		c.Fatalf("failed decompressing: %v", err)
-	}
-	sumAr := sha512.Sum512(originalBytes)
-	sum := hex.EncodeToString(sumAr[:])
-	offsetValue, ok := grubUpdates[sum]
-	if !ok {
-		c.Fatalf("did not find bad linux.mod")
-	}
-
-	if msg := string(c.MustSSH(m, "sudo /opt/patch.sh")); msg != "linux.mod updated successfully" {
-		c.Fatalf("Could not find correct linux.mod: %v", msg)
-	}
-
-	newBytes, err := gunzipAndRead(c.MustSSH(m, "cat /boot/coreos/grub/i386-pc/linux.mod"))
-	if err != nil {
-		c.Fatalf("failed decompressing: %v", err)
-	}
-	// golang doesn't do slice comparison. golang --
-	if !reflect.DeepEqual(newBytes[offsetValue.offset:offsetValue.offset+4], offsetValue.value) {
-		c.Fatalf("did not patch grub")
-	}
-	sumAr = sha512.Sum512(newBytes)
-	if offsetValue.newHash != hex.EncodeToString(sumAr[:]) {
-		c.Fatalf("final hash did not match: expected %v got %v", offsetValue.newHash, hex.EncodeToString(sumAr[:]))
-	}
-
-	c.MustSSH(m, "cat /boot/coreos/grub/skip-bug-2400-patch")
-
-	m.Reboot()
-	if msg := string(c.MustSSH(m, "sudo /opt/patch.sh")); msg != "" {
-		c.Fatalf("update did not stick: %v", msg)
-	}
-	m.Reboot()
-	c.MustSSH(m, "true")
 }
 
 func UpdateGrubNop(c cluster.TestCluster) {
