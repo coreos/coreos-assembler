@@ -473,8 +473,12 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 		}
 	}
 
+	snapshotID, err := getImageSnapshotID(image)
+	if err != nil {
+		return nil, err
+	}
 	describeSnapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-		SnapshotIds: []*string{image.BlockDeviceMappings[0].Ebs.SnapshotId},
+		SnapshotIds: []*string{&snapshotID},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't describe snapshot: %v", err)
@@ -649,24 +653,13 @@ func (a *API) PublishImage(imageID string) error {
 	if err != nil {
 		return err
 	}
-	var snapshotID *string
-	// The EBS volume is usually listed before the ephemeral volume, but
-	// not always, e.g. ami-fddb0490 in cn-north-1
-	for _, mapping := range image.BlockDeviceMappings {
-		if mapping.Ebs != nil {
-			snapshotID = mapping.Ebs.SnapshotId
-			break
-		}
-	}
-	if snapshotID == nil {
-		// We observed a case where a returned `image` didn't have a block device mapping.
-		// Hopefully retrying this a couple times will work and it's just a sorta
-		// eventual consistency thing
-		return fmt.Errorf("no backing block device for %v", imageID)
+	snapshotID, err := getImageSnapshotID(image)
+	if err != nil {
+		return err
 	}
 	_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
 		Attribute:  aws.String("createVolumePermission"),
-		SnapshotId: snapshotID,
+		SnapshotId: &snapshotID,
 		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
 			Add: []*ec2.CreateVolumePermission{
 				&ec2.CreateVolumePermission{
@@ -696,4 +689,18 @@ func (a *API) PublishImage(imageID string) error {
 	}
 
 	return nil
+}
+
+func getImageSnapshotID(image *ec2.Image) (string, error) {
+	// The EBS volume is usually listed before the ephemeral volume, but
+	// not always, e.g. ami-fddb0490 or ami-8cd40ce1 in cn-north-1
+	for _, mapping := range image.BlockDeviceMappings {
+		if mapping.Ebs != nil {
+			return *mapping.Ebs.SnapshotId, nil
+		}
+	}
+	// We observed a case where a returned `image` didn't have a block
+	// device mapping.  Hopefully retrying this a couple times will work
+	// and it's just a sorta eventual consistency thing
+	return "", fmt.Errorf("no backing block device for %v", image.ImageId)
 }
