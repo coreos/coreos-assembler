@@ -85,3 +85,15 @@ func (m *machine) Destroy() {
 func (m *machine) ConsoleOutput() string {
 	return m.console
 }
+
+func (m *machine) JournalOutput() string {
+	if m.journal == nil {
+		return ""
+	}
+
+	data, err := m.journal.Read()
+	if err != nil {
+		plog.Errorf("Reading journal for instance %v: %v", m.ID(), err)
+	}
+	return string(data)
+}

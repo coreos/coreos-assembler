@@ -248,3 +248,13 @@ func (bc *BaseCluster) ConsoleOutput() map[string]string {
 	}
 	return ret
 }
+
+func (bc *BaseCluster) JournalOutput() map[string]string {
+	ret := map[string]string{}
+	bc.machlock.Lock()
+	defer bc.machlock.Unlock()
+	for k, v := range bc.machmap {
+		ret[k] = v.JournalOutput()
+	}
+	return ret
+}

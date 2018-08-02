@@ -70,6 +70,10 @@ type Machine interface {
 	// ConsoleOutput returns the machine's console output if available,
 	// or an empty string.  Only expected to be valid after Destroy().
 	ConsoleOutput() string
+
+	// JournalOutput returns the machine's journal output if available,
+	// or an empty string.  Only expected to be valid after Destroy().
+	JournalOutput() string
 }
 
 // Cluster represents a cluster of Container Linux machines within a single platform.
@@ -94,6 +98,10 @@ type Cluster interface {
 	// ConsoleOutput returns a map of console output from destroyed
 	// cluster machines.
 	ConsoleOutput() map[string]string
+
+	// JournalOutput returns a map of journal output from destroyed
+	// cluster machines.
+	JournalOutput() map[string]string
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

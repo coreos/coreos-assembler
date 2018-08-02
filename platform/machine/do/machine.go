@@ -78,7 +78,10 @@ func (dm *machine) Destroy() {
 
 func (dm *machine) ConsoleOutput() string {
 	// DigitalOcean provides no API for retrieving ConsoleOutput
-	// return the journal instead to allow for error checks to be run.
+	return ""
+}
+
+func (dm *machine) JournalOutput() string {
 	if dm.journal == nil {
 		return ""
 	}
