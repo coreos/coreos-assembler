@@ -28,6 +28,16 @@ parser.add_argument("--memory", help="Memory size in MB",
                     action='store', type=int, default=2048)
 parser.add_argument("--console-log-file", help="Console log file",
                     action='store')
+# You can use this with e.g.:
+# ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-repo --ref=fedora/x86_64/coreos
+# %pre
+# mkdir -p /mnt/ostree-repo
+# mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
+# %end
+# But note: https://bugzilla.redhat.com/show_bug.cgi?id=1379389
+
+parser.add_argument("--local-repo", help="Pass through local repo via 9p",
+                    action='store')
 parser.add_argument("--wait", help="Number of minutes to wait",
                     action='store', type=int, default=10)
 args = parser.parse_args()
@@ -78,6 +88,8 @@ try:
                      "--noautoconsole"]
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
+    if args.local_repo:
+        vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.local_repo))
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7", "--rng=/dev/urandom",
