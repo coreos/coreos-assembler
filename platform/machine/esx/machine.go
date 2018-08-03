@@ -109,3 +109,15 @@ func (em *machine) saveConsole() error {
 
 	return nil
 }
+
+func (em *machine) JournalOutput() string {
+	if em.journal == nil {
+		return ""
+	}
+
+	data, err := em.journal.Read()
+	if err != nil {
+		plog.Errorf("Reading journal for device %v: %v", em.ID(), err)
+	}
+	return string(data)
+}

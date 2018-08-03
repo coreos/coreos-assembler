@@ -96,3 +96,15 @@ func (pm *machine) ConsoleOutput() string {
 	}
 	return output[grub+linux:]
 }
+
+func (pm *machine) JournalOutput() string {
+	if pm.journal == nil {
+		return ""
+	}
+
+	data, err := pm.journal.Read()
+	if err != nil {
+		plog.Errorf("Reading journal for device %v: %v", pm.ID(), err)
+	}
+	return string(data)
+}

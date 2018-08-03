@@ -145,3 +145,15 @@ func (am *machine) saveConsole(origConsole string) error {
 
 	return nil
 }
+
+func (am *machine) JournalOutput() string {
+	if am.journal == nil {
+		return ""
+	}
+
+	data, err := am.journal.Read()
+	if err != nil {
+		plog.Errorf("Reading journal for instance %v: %v", am.ID(), err)
+	}
+	return string(data)
+}

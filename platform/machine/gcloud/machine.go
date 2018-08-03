@@ -102,3 +102,15 @@ func (gm *machine) saveConsole() error {
 
 	return nil
 }
+
+func (gm *machine) JournalOutput() string {
+	if gm.journal == nil {
+		return ""
+	}
+
+	data, err := gm.journal.Read()
+	if err != nil {
+		plog.Errorf("Reading journal for instance %v: %v", gm.ID(), err)
+	}
+	return string(data)
+}

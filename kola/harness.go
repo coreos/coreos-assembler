@@ -409,6 +409,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 				h.Errorf("Found %s on machine %s console", badness, id)
 			}
 		}
+		for id, output := range c.JournalOutput() {
+			for _, badness := range CheckConsole([]byte(output), t) {
+				h.Errorf("Found %s on machine %s journal", badness, id)
+			}
+		}
 	}()
 
 	if t.ClusterSize > 0 {
