@@ -58,7 +58,7 @@ func init() {
 		Run:         journalRemote,
 		ClusterSize: 0,
 		Name:        "systemd.journal.remote",
-		Distros:     []string{"cl", "rhcos"},
+		Distros:     []string{"cl"},
 	})
 }
 
