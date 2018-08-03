@@ -54,10 +54,16 @@ rm /root/src -rf
 # Part of general image management
 dnf -y install awscli
 cd /root
-git clone https://github.com/coreos/mantle
-# for now just build ore, we can add more components as we use them
-mantle/build ore
-mv mantle/bin/ore /usr/bin
+# We want https://github.com/coreos/mantle/pull/888
+git clone --branch rhcos_general https://github.com/arithx/mantle
+cd mantle
+# Add components as necessary
+./build ore kola kolet
+for x in ore kola; do
+    mv bin/${x} /usr/bin
+done
+install -D -m 0755 -t /usr/lib/kola/amd64 bin/amd64/kolet
+cd ..
 rm mantle -rf
 
 dnf remove -y cargo golang
