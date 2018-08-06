@@ -43,6 +43,20 @@ func init() {
 		},
 		Distros: []string{"cl"},
 	})
+	register.Register(&register.Test{
+		Name:        "rhcos.basic",
+		Run:         LocalTests,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"PortSSH":        TestPortSsh,
+			"DbusPerms":      TestDbusPerms,
+			"ServicesActive": TestServicesActiveRHCOS,
+			"ReadOnly":       TestReadOnlyFs,
+			"Useradd":        TestUseradd,
+			"MachineID":      TestMachineID,
+		},
+		Distros: []string{"rhcos"},
+	})
 
 	// tests requiring network connection to internet
 	register.Register(&register.Test{
@@ -214,13 +228,23 @@ func TestInstalledUpdateEngineRsaKeys() error {
 }
 
 func TestServicesActive() error {
-	//t.Parallel()
-	units := []string{
+	return servicesActive([]string{
 		"multi-user.target",
 		"docker.socket",
 		"systemd-timesyncd.service",
 		"update-engine.service",
-	}
+	})
+}
+
+func TestServicesActiveRHCOS() error {
+	return servicesActive([]string{
+		"multi-user.target",
+		"docker.service",
+	})
+}
+
+func servicesActive(units []string) error {
+	//t.Parallel()
 	for _, unit := range units {
 		c := exec.Command("systemctl", "is-active", unit)
 		err := c.Run()
