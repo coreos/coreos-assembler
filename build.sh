@@ -54,8 +54,7 @@ rm /root/src -rf
 # Part of general image management
 dnf -y install awscli
 cd /root
-# We want https://github.com/coreos/mantle/pull/888
-git clone --branch rhcos_general https://github.com/arithx/mantle
+git clone https://github.com/coreos/mantle
 cd mantle
 # Add components as necessary
 ./build ore kola kolet
