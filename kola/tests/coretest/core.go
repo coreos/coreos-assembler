@@ -239,7 +239,7 @@ func TestServicesActive() error {
 func TestServicesActiveRHCOS() error {
 	return servicesActive([]string{
 		"multi-user.target",
-		"docker.service",
+		"crio.service",
 	})
 }
 
