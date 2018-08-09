@@ -113,7 +113,7 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"cl", "rhcos"},
+		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.users",
@@ -147,18 +147,82 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"cl", "rhcos"},
+		Distros: []string{"cl"},
 	})
+	register.Register(&register.Test{
+		Name:        "rhcos.ignition.v1.users",
+		Run:         usersRhcos,
+		ClusterSize: 1,
+		UserData: conf.Ignition(`{
+		             "ignitionVersion": 1,
+		             "passwd": {
+		               "users": [
+		                 {
+		                   "name": "core",
+		                   "passwordHash": "foobar"
+		                 },
+		                 {
+		                   "name": "user1",
+		                   "create": {}
+		                 },
+		                 {
+		                   "name": "user2",
+		                   "create": {
+		                     "uid": 1010,
+		                     "groups": [ "sudo" ]
+		                   }
+		                 }
+		               ]
+		             }
+		           }`),
+		Distros: []string{"rhcos"},
+	})
+	register.Register(&register.Test{
+		Name:        "rhcos.ignition.v2.users",
+		Run:         usersRhcos,
+		ClusterSize: 1,
+		UserData: conf.Ignition(`{
+		             "ignition": { "version": "2.0.0" },
+		             "passwd": {
+		               "users": [
+		                 {
+		                   "name": "core",
+		                   "passwordHash": "foobar"
+		                 },
+		                 {
+		                   "name": "user1",
+		                   "create": {}
+		                 },
+		                 {
+		                   "name": "user2",
+		                   "create": {
+		                     "uid": 1010,
+		                     "groups": [ "sudo" ]
+		                   }
+		                 }
+		               ]
+		             }
+		           }`),
+		Distros: []string{"rhcos"},
+	})
+}
+
+type userTest struct {
+	user           string
+	passwdRecord   string
+	shadowPassword string
+}
+
+type groupTest struct {
+	group         string
+	groupRecord   string
+	gshadowRecord string
 }
 
 func groups(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	tests := []struct {
-		group         string
-		groupRecord   string
-		gshadowRecord string
-	}{
+	tests := []groupTest{
 		{
 			group:         "group1",
 			groupRecord:   "group1:x:501:",
@@ -170,29 +234,13 @@ func groups(c cluster.TestCluster) {
 			gshadowRecord: "group2:foobar::",
 		},
 	}
-
-	for _, t := range tests {
-		if out, err := getent(c, m, "group", t.group); err != nil {
-			c.Fatal(err)
-		} else if out != t.groupRecord {
-			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.groupRecord)
-		}
-		if out, err := getent(c, m, "gshadow", t.group); err != nil {
-			c.Fatal(err)
-		} else if out != t.gshadowRecord {
-			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
-		}
-	}
+	testGroup(c, m, tests)
 }
 
 func users(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	tests := []struct {
-		user           string
-		passwdRecord   string
-		shadowPassword string
-	}{
+	tests := []userTest{
 		{
 			user:           "core",
 			passwdRecord:   "core:x:500:500:CoreOS Admin:/home/core:/bin/bash",
@@ -209,7 +257,33 @@ func users(c cluster.TestCluster) {
 			shadowPassword: "*",
 		},
 	}
+	testUser(c, m, tests)
+}
 
+func usersRhcos(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	tests := []userTest{
+		{
+			user:           "core",
+			passwdRecord:   "core:x:1000:1000::/home/core:/bin/bash",
+			shadowPassword: "foobar",
+		},
+		{
+			user:           "user1",
+			passwdRecord:   "user1:x:1001:1001::/home/user1:/bin/bash",
+			shadowPassword: "*",
+		},
+		{
+			user:           "user2",
+			passwdRecord:   "user2:x:1010:1010::/home/user2:/bin/bash",
+			shadowPassword: "*",
+		},
+	}
+	testUser(c, m, tests)
+}
+
+func testUser(c cluster.TestCluster, m platform.Machine, tests []userTest) {
 	for _, t := range tests {
 		if out, err := getent(c, m, "passwd", t.user); err != nil {
 			c.Fatal(err)
@@ -229,6 +303,21 @@ func users(c cluster.TestCluster) {
 
 		if fields[0] != t.user || fields[1] != t.shadowPassword {
 			c.Errorf("%q wasn't correctly created: got %q:%q, expected %q:%q", t.user, fields[0], fields[1], t.user, t.shadowPassword)
+		}
+	}
+}
+
+func testGroup(c cluster.TestCluster, m platform.Machine, tests []groupTest) {
+	for _, t := range tests {
+		if out, err := getent(c, m, "group", t.group); err != nil {
+			c.Fatal(err)
+		} else if out != t.groupRecord {
+			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.groupRecord)
+		}
+		if out, err := getent(c, m, "gshadow", t.group); err != nil {
+			c.Fatal(err)
+		} else if out != t.gshadowRecord {
+			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
 		}
 	}
 }
