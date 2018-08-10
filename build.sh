@@ -17,24 +17,33 @@ rpmostree_deps="rpm-ostree selinux-policy-targeted rpm-build"
 curl -L --remote-name-all https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2018.7/1.fc28/x86_64/rpm-ostree-{,libs-}2018.7-1.fc28.x86_64.rpm
 dnf -y install ./rpm-ostree*.rpm && rm -f *.rpm
 
-# These are only used to build things in here
+# These are only used to build things in here, we define them separately because
+# they're cleaned up later
 self_builddeps="cargo golang"
-build_tools="make ${self_builddeps} git rpm-build"
-virtinstall_deps="libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install"
-releng_scripts_deps="rsync pygobject3-base python3-gobject-base"
-# To support recursive containerization and manipulating images
-container_tools="podman buildah skopeo"
-misc_tools="jq awscli"
+
+grep -v '^#' <<EOF | xargs dnf -y install
+${self_builddeps}
+
 # dumb-init is a good idea in general, but specifically fixes things with
 # libvirt forking qemu and assuming the process gets reaped on shutdown.
-dnf -y install dumb-init \
-    ${self_builddeps} \
-    ${rpmostree_deps} \
-    ${build_tools} \
-    ${container_tools} \
-    ${releng_scripts_deps} \
-    ${virtinstall_deps} \
-    ${rdgo_deps}
+dumb-init
+
+# Standard build tools
+make git rpm-build
+
+# virt-install dependencies
+libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
+
+# ostree-releng-scripts dependencies
+rsync pygobject3-base python3-gobject-base
+
+# To support recursive containerization and manipulating images
+podman buildah skopeo
+
+# Miscellaneous tools
+jq awscli
+EOF
+
 
 mkdir -p /usr/app/
 cd /usr/app/
