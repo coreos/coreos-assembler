@@ -9,10 +9,7 @@ useradd builder
 
 dnf -y install dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
-rdgo_deps="dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay"
 
-# We need selinux-policy-targeted and rpm-build for rojig.
-rpmostree_deps="rpm-ostree selinux-policy-targeted rpm-build"
 # Pull latest rpm-ostree
 curl -L --remote-name-all https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2018.7/1.fc28/x86_64/rpm-ostree-{,libs-}2018.7-1.fc28.x86_64.rpm
 dnf -y install ./rpm-ostree*.rpm && rm -f *.rpm
@@ -27,6 +24,12 @@ ${self_builddeps}
 # dumb-init is a good idea in general, but specifically fixes things with
 # libvirt forking qemu and assuming the process gets reaped on shutdown.
 dumb-init
+
+# rpmdistro-gitoverlay deps
+dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay
+
+# We need these for rojig
+selinux-policy-targeted rpm-build
 
 # Standard build tools
 make git rpm-build
