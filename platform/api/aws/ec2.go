@@ -17,6 +17,7 @@ package aws
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -106,7 +107,19 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		},
 	}
 
-	reservations, err := a.ec2.RunInstances(&inst)
+	var reservations *ec2.Reservation
+	err = util.RetryConditional(5, 5*time.Second, func(err error) bool {
+		// due to AWS' eventual consistency despite ensuring that the IAM Instance
+		// Profile has been created it may not be available to ec2 yet.
+		if awsErr, ok := err.(awserr.Error); ok && (awsErr.Code() == "InvalidParameterValue" && strings.Contains(awsErr.Message(), "iamInstanceProfile.name")) {
+			return true
+		}
+		return false
+	}, func() error {
+		var ierr error
+		reservations, ierr = a.ec2.RunInstances(&inst)
+		return ierr
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error running instances: %v", err)
 	}

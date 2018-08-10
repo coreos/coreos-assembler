@@ -16,10 +16,13 @@ package aws
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+
+	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -36,11 +39,25 @@ const (
     }
   ]
 }`
+	s3ReadOnlyAccess = `{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}`
 )
 
 // ensureInstanceProfile checks that the specified instance profile exists,
-// and creates it and its backing role if not. The role will have no access
-// policy.
+// and creates it and its backing role if not. The role will have the
+// AmazonS3RReadOnlyAccess permissions policy applied to allow fetches
+// of S3 objects that are not owned by the root account.
 func (a *API) ensureInstanceProfile(name string) error {
 	_, err := a.iam.GetInstanceProfile(&iam.GetInstanceProfileInput{
 		InstanceProfileName: &name,
@@ -60,6 +77,15 @@ func (a *API) ensureInstanceProfile(name string) error {
 	if err != nil {
 		return fmt.Errorf("creating role %q: %v", name, err)
 	}
+	policy := "AmazonS3ReadOnlyAccess"
+	_, err = a.iam.PutRolePolicy(&iam.PutRolePolicyInput{
+		PolicyName:     &policy,
+		PolicyDocument: aws.String(s3ReadOnlyAccess),
+		RoleName:       &name,
+	})
+	if err != nil {
+		return fmt.Errorf("adding %q policy to role %q: %v", policy, name, err)
+	}
 
 	_, err = a.iam.CreateInstanceProfile(&iam.CreateInstanceProfileInput{
 		InstanceProfileName: &name,
@@ -74,6 +100,21 @@ func (a *API) ensureInstanceProfile(name string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("adding role %q to instance profile %q: %v", name, name, err)
+	}
+
+	// wait for instance profile to fully exist in IAM before returning.
+	// note that this does not guarantee that it will exist within ec2.
+	err = util.WaitUntilReady(30*time.Second, 5*time.Second, func() (bool, error) {
+		_, err = a.iam.GetInstanceProfile(&iam.GetInstanceProfileInput{
+			InstanceProfileName: &name,
+		})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("waiting for instance profile to become ready: %v", err)
 	}
 
 	return nil
