@@ -15,6 +15,7 @@
 package qemu
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -34,8 +35,7 @@ import (
 )
 
 const (
-	Platform      platform.Name = "qemu"
-	primaryDiskId               = "primary-disk"
+	Platform platform.Name = "qemu"
 )
 
 // Options contains QEMU-specific options for the cluster.
@@ -67,12 +67,16 @@ type MachineOptions struct {
 }
 
 type Disk struct {
-	Size   string // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed
-	Serial string // serial number to be passed to qemu via `serial=`. Disks show up under /dev/disk/by-id/virtio-<serial>
+	Size        string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
+	BackingFile string   // raw disk image to use. Incompatible with Size.
+	DeviceOpts  []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
 }
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/platform/machine/qemu")
+	plog               = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/platform/machine/qemu")
+	ErrNeedSizeOrFile  = errors.New("Disks need either Size or BackingFile specified")
+	ErrBothSizeAndFile = errors.New("Only one of Size and BackingFile can be specified")
+	primaryDiskOptions = []string{"serial=primary-disk"}
 )
 
 // NewCluster creates a Cluster instance, suitable for running virtual
@@ -89,6 +93,28 @@ func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster,
 	}
 
 	return qc, nil
+}
+
+func (d Disk) GetOpts() string {
+	if len(d.DeviceOpts) == 0 {
+		return ""
+	}
+	return "," + strings.Join(d.DeviceOpts, ",")
+}
+
+func (d Disk) SetupFile() (*os.File, error) {
+	if d.Size == "" && d.BackingFile == "" {
+		return nil, ErrNeedSizeOrFile
+	}
+	if d.Size != "" && d.BackingFile != "" {
+		return nil, ErrBothSizeAndFile
+	}
+
+	if d.Size != "" {
+		return setupDisk(d.Size)
+	} else {
+		return setupDiskFromFile(d.BackingFile)
+	}
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -199,34 +225,31 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 			"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"))
 	}
 
+	allDisks := append([]Disk{
+		{
+			BackingFile: qc.opts.DiskImage,
+			DeviceOpts:  primaryDiskOptions,
+		},
+	}, options.AdditionalDisks...)
+
 	var extraFiles []*os.File
 	fdnum := 3 // first additional file starts at position 3
 	fdset := 1
 
-	addDisk := func(file *os.File, serial string) {
-		id := fmt.Sprintf("d%d", fdnum)
-		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
-			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s,serial=%s", id, serial)))
-		fdnum += 1
-		fdset += 1
-		extraFiles = append(extraFiles, file)
-	}
-
-	diskFile, err := setupPrimaryDisk(qc.opts.DiskImage)
-	if err != nil {
-		return nil, err
-	}
-	defer diskFile.Close()
-	addDisk(diskFile, primaryDiskId)
-
-	for _, disk := range options.AdditionalDisks {
-		optionsDiskFile, err := setupDisk(disk.Size)
+	for _, disk := range allDisks {
+		optionsDiskFile, err := disk.SetupFile()
 		if err != nil {
 			return nil, err
 		}
 		defer optionsDiskFile.Close()
-		addDisk(optionsDiskFile, disk.Serial)
+		extraFiles = append(extraFiles, optionsDiskFile)
+
+		id := fmt.Sprintf("d%d", fdnum)
+		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
+			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s%s", id, disk.GetOpts())))
+		fdnum += 1
+		fdset += 1
 	}
 
 	qc.mu.Lock()
@@ -283,7 +306,7 @@ func (qc *Cluster) virtio(device, args string) string {
 }
 
 // Create a nameless temporary qcow2 image file backed by a raw image.
-func setupPrimaryDisk(imageFile string) (*os.File, error) {
+func setupDiskFromFile(imageFile string) (*os.File, error) {
 	// a relative path would be interpreted relative to /tmp
 	backingFile, err := filepath.Abs(imageFile)
 	if err != nil {
