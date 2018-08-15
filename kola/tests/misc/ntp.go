@@ -30,7 +30,7 @@ func init() {
 		ClusterSize: 0,
 		Name:        "linux.ntp",
 		Platforms:   []string{"qemu"},
-		Distros:     []string{"cl", "rhcos"},
+		Distros:     []string{"cl"},
 	})
 }
 
