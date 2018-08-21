@@ -3,6 +3,7 @@ package registry
 // Tests imported for registration side effects. These make up the OS test suite and is explicitly imported from the main package.
 import (
 	_ "github.com/coreos/mantle/kola/tests/coretest"
+	_ "github.com/coreos/mantle/kola/tests/crio"
 	_ "github.com/coreos/mantle/kola/tests/docker"
 	_ "github.com/coreos/mantle/kola/tests/etcd"
 	_ "github.com/coreos/mantle/kola/tests/flannel"
