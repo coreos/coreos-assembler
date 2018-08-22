@@ -26,6 +26,8 @@ fatal() {
 tmpd=$(mktemp -d /tmp/qcow2-to-vagrant.XXXXXX)
 tmp_dest=${tmpd}/box.img
 cp --reflink=auto ${src} ${tmp_dest}
+# <walters> I commonly chmod a-w VM images
+chmod u+w ${tmp_dest}
 
 # http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
 guestfish[0]="guestfish"
