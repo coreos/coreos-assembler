@@ -36,6 +36,8 @@ make git rpm-build
 
 # virt-install dependencies
 libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
+# And we process kickstarts
+/usr/bin/ksflatten
 
 # ostree-releng-scripts dependencies
 rsync pygobject3-base python3-gobject-base
