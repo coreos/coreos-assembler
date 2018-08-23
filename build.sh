@@ -47,6 +47,9 @@ podman buildah skopeo
 jq awscli
 EOF
 
+# The podman change to use systemd for cgroups broke our hack to use
+# podman-in-docker...we should fix our pipeline, but for now:
+dnf -y downgrade https://kojipkgs.fedoraproject.org//packages/podman/0.7.4/4.git80612fb.fc28/x86_64/podman-0.7.4-4.git80612fb.fc28.x86_64.rpm
 
 mkdir -p /usr/app/
 cd /usr/app/
