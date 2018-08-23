@@ -7,6 +7,7 @@
 # one or both.
 
 import os,sys,argparse,subprocess,io,time,re,multiprocessing
+import tempfile
 
 def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
@@ -59,9 +60,15 @@ def get_libvirt_smp_arg():
     sockets = min(available_cpu, len(core_sockets))
     return '--vcpus=sockets={},cores=1,threads=1'.format(sockets)
 
-def run_sync_verbose(argv, **kwargs):
+def run(fn, argv, **kwargs):
     print("cmd: {}".format(subprocess.list2cmdline(argv)))
-    subprocess.check_call(argv, **kwargs)
+    return fn(argv, **kwargs)
+
+def run_sync_verbose(argv, **kwargs):
+    run(subprocess.check_call, argv, **kwargs)
+
+ks_tmp = tempfile.NamedTemporaryFile(prefix="coreos-virtinstall", suffix=".ks")
+run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
 
 # This is an "extension" to kickstart files that we implement as a comment.
 if args.create_disk:
@@ -96,8 +103,8 @@ try:
                           "--check", "path_in_use=off",
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--location={}".format(args.location),
-                          "--initrd-inject={}".format(args.kickstart),
-                          "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(args.kickstart))])
+                          "--initrd-inject={}".format(ks_tmp.name),
+                          "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name))])
     run_sync_verbose(vinstall_args)
 finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
