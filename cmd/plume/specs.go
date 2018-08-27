@@ -160,7 +160,7 @@ var (
 	specs = map[string]channelSpec{
 		"user": channelSpec{
 			BaseURL: "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/boards",
-			Boards:  []string{"amd64-usr", "arm64-usr"},
+			Boards:  []string{"amd64-usr"},
 			Destinations: []storageSpec{storageSpec{
 				BaseURL:       "gs://users.developer.core-os.net/" + os.Getenv("USER") + "/releases",
 				NamedPath:     "current",
@@ -211,7 +211,7 @@ var (
 		},
 		"developer": channelSpec{
 			BaseURL: "gs://builds.developer.core-os.net/boards",
-			Boards:  []string{"amd64-usr", "arm64-usr"},
+			Boards:  []string{"amd64-usr"},
 			GCE: gceSpec{
 				Project:     "coreos-gce-testing",
 				Family:      "coreos-developer",
@@ -240,7 +240,7 @@ var (
 		},
 		"alpha": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/alpha/boards",
-			Boards:  []string{"amd64-usr", "arm64-usr"},
+			Boards:  []string{"amd64-usr"},
 			Destinations: []storageSpec{storageSpec{
 				BaseURL:     "gs://alpha.release.core-os.net",
 				NamedPath:   "current",
@@ -297,7 +297,7 @@ var (
 		},
 		"beta": channelSpec{
 			BaseURL: "gs://builds.release.core-os.net/beta/boards",
-			Boards:  []string{"amd64-usr", "arm64-usr"},
+			Boards:  []string{"amd64-usr"},
 			Destinations: []storageSpec{storageSpec{
 				BaseURL:     "gs://beta.release.core-os.net",
 				NamedPath:   "current",

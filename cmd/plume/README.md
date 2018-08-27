@@ -7,29 +7,21 @@ CoreOS release utility
 ### Build a release image with the SDK
 
 ```sh
-# Use same build ID for all boards
 export COREOS_BUILD_ID=$(date +%Y-%m-%d-%H%M)
 KEYID="<keyid>"
 gpg2 --armor --export "$KEYID" > ~/keyfile
-for board in amd64-usr arm64-usr; do
-    ./build_packages --board=$board
-    ./build_image --board=$board --upload --sign="$KEYID" prod
-done
-# amd64-usr only
+./build_packages
+./build_image --upload --sign="$KEYID" prod
 for format in ami_vmdk azure gce; do
-    ./image_to_vm.sh --prod_image --board=amd64-usr --format=$format --upload --sign="$KEYID"
+    ./image_to_vm.sh --format=$format --upload --sign="$KEYID"
 done
 ```
 
 ### Perform the "release"
 
 ```sh
-for board in amd64-usr arm64-usr; do
-    bin/plume pre-release -C user --verify-key ~/keyfile -B $board -V $version-$COREOS_BUILD_ID
-done
-for board in amd64-usr arm64-usr; do
-    bin/plume release -C user -B $board -V <version>-$COREOS_BUILD_ID
-done
+bin/plume pre-release -C user --verify-key ~/keyfile -V $version-$COREOS_BUILD_ID
+bin/plume release -C user -V <version>-$COREOS_BUILD_ID
 ```
 
 ### Clean up
