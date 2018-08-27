@@ -19,12 +19,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/machine/qemu"
 )
 
 func init() {
@@ -50,12 +48,8 @@ func Verity(c cluster.TestCluster) {
 func VerityVerify(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	// get offset of verity hash within kernel
-	rootOffset := getKernelVerityHashOffset(c)
-
 	// extract verity hash from kernel
-	ddcmd := fmt.Sprintf("dd if=/boot/coreos/vmlinuz-a skip=%d count=64 bs=1 status=none", rootOffset)
-	hash := c.MustSSH(m, ddcmd)
+	hash := c.MustSSH(m, "dd if=/boot/coreos/vmlinuz-a skip=64 count=64 bs=1 status=none")
 
 	// find /usr dev
 	usrdev := util.GetUsrDeviceNode(c, m)
@@ -121,15 +115,6 @@ func VerityCorruption(c cluster.TestCluster) {
 	if fields[3] != "C" {
 		c.Fatalf("dmsetup status usr reports verity is valid after corruption!")
 	}
-}
-
-// get offset of verity hash within kernel
-func getKernelVerityHashOffset(c cluster.TestCluster) int {
-	// assume ARM64 is only on QEMU for now
-	if _, ok := c.Cluster.(*qemu.Cluster); ok && kola.QEMUOptions.Board == "arm64-usr" {
-		return 512
-	}
-	return 64
 }
 
 func skipUnlessVerity(c cluster.TestCluster, m platform.Machine) {

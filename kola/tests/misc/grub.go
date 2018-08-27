@@ -147,13 +147,12 @@ coreos:
 
 func init() {
 	register.Register(&register.Test{
-		Run:           UpdateGrubNop,
-		ClusterSize:   1,
-		Name:          "coreos.update.grubnop",
-		UserData:      grubUpdaterConf,
-		MinVersion:    semver.Version{Major: 1745},
-		Architectures: []string{"amd64"},
-		Distros:       []string{"cl"},
+		Run:         UpdateGrubNop,
+		ClusterSize: 1,
+		Name:        "coreos.update.grubnop",
+		UserData:    grubUpdaterConf,
+		MinVersion:  semver.Version{Major: 1745},
+		Distros:     []string{"cl"},
 	})
 }
 

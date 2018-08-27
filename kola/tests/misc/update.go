@@ -103,7 +103,7 @@ func RecoverBadVerity(c cluster.TestCluster) {
 	c.MustSSH(m, "sudo cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b")
 
 	// invalidate verity hash on B kernel
-	c.MustSSH(m, fmt.Sprintf("sudo dd of=/boot/coreos/vmlinuz-b bs=1 seek=%d count=64 conv=notrunc status=none <<<0000000000000000000000000000000000000000000000000000000000000000", getKernelVerityHashOffset(c)))
+	c.MustSSH(m, "sudo dd of=/boot/coreos/vmlinuz-b bs=1 seek=64 count=64 conv=notrunc status=none <<<0000000000000000000000000000000000000000000000000000000000000000")
 
 	prioritizeUsr(c, m, "USR-B")
 	rebootWithEmergencyShellTimeout(c, m)
@@ -136,7 +136,7 @@ func RecoverBadUsr(c cluster.TestCluster) {
 	c.MustSSH(m, "sudo cp /boot/coreos/vmlinuz-a /boot/coreos/vmlinuz-b")
 
 	// update verity hash on B kernel
-	c.MustSSH(m, fmt.Sprintf("sudo dd of=/boot/coreos/vmlinuz-b bs=1 seek=%d count=64 conv=notrunc status=none <<<%s", getKernelVerityHashOffset(c), verityHash))
+	c.MustSSH(m, fmt.Sprintf("sudo dd of=/boot/coreos/vmlinuz-b bs=1 seek=64 count=64 conv=notrunc status=none <<<%s", verityHash))
 
 	prioritizeUsr(c, m, "USR-B")
 	rebootWithEmergencyShellTimeout(c, m)
