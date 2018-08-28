@@ -28,6 +28,9 @@ dumb-init
 # rpmdistro-gitoverlay deps
 dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay
 
+# Currently a transitive req of rpmdistro-gitoverlay via mock, but we
+# expect people to use these explicitly in their repo configurations.
+distribution-gpg-keys
 # We need these for rojig
 selinux-policy-targeted rpm-build
 
