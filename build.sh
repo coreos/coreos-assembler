@@ -1,6 +1,14 @@
 #!/usr/bin/bash
 set -xeuo pipefail
 
+srcdir=$(pwd)
+
+# Init submodules
+dnf -y install git
+if ! test -f mantle/README.md; then
+    git submodule update --init
+fi
+
 # We want to run what builds we can as an unprivileged user;
 # running as non-root is much better for the libvirt stack in particular
 # for the cases where we have --privileged in the container run for other reasons.
@@ -56,29 +64,28 @@ EOF
 # podman-in-docker...we should fix our pipeline, but for now:
 dnf -y downgrade https://kojipkgs.fedoraproject.org//packages/podman/0.7.4/4.git80612fb.fc28/x86_64/podman-0.7.4-4.git80612fb.fc28.x86_64.rpm
 
+# TODO: install these as e.g.
+# /usr/bin/ostree-releng-script-rsync-repos
 mkdir -p /usr/app/
-cd /usr/app/
-git clone https://github.com/ostreedev/ostree-releng-scripts
+rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 
-cd /root/src
+# And the main scripts
 make install
-cd /
-rm /root/src -rf
 
 # Part of general image management
-cd /root
-git clone https://github.com/coreos/mantle
-cd mantle
-# Add components as necessary
-./build ore kola kolet
-for x in ore kola; do
-    mv bin/${x} /usr/bin
-done
+(cd mantle
+ # Add components as necessary
+ ./build ore kola kolet
+ for x in ore kola; do
+     mv bin/${x} /usr/bin
+ done
 install -D -m 0755 -t /usr/lib/kola/amd64 bin/amd64/kolet
-cd ..
-rm mantle -rf
+)
 
+# Cleanup deps
 dnf remove -y ${self_builddeps}
 rpm -q grubby && dnf remove -y grubby
-
+# Further cleanup
 dnf clean all
+cd /
+rm ${srcdir} -rf
