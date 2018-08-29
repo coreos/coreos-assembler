@@ -4,6 +4,7 @@ set -xeuo pipefail
 srcdir=$(pwd)
 
 # Init submodules
+ls -al .git mantle
 dnf -y install git
 if ! test -f mantle/README.md; then
     git submodule update --init
