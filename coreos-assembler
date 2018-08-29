@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Usage: coreos-assembler <cmd> ...
+# Currently this just wraps the two binaries we have today
+# under a global entrypoint with subcommands.
+
+cmd=${1:-}
+
+if [ -z "${cmd}" ]; then
+    echo usage: "coreos-assembler CMD ..."
+    echo "Commands:"
+    ls /usr/libexec/coreos-assembler | while read cmd; do
+        echo "  ${cmd}"
+    done
+    exit 1
+fi
+
+target=/usr/libexec/coreos-assembler/${cmd}
+if test -x "${target}"; then
+    exec ${target} "$@"
+fi
+
+echo "Unknown command: ${cmd}" 1>&2
+exit 1
