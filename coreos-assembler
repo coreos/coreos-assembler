@@ -15,7 +15,7 @@ if [ -z "${cmd}" ]; then
     exit 1
 fi
 
-target=/usr/libexec/coreos-assembler/${cmd}
+target=/usr/libexec/coreos-assembler/cmd-${cmd}
 if test -x "${target}"; then
     exec ${target} "$@"
 fi

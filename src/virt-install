@@ -13,9 +13,6 @@ def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
     raise SystemExit(1)
 
-if os.getuid() == 0:
-    fatal("This script should be run as non-root in a container")
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--dest", help="Destination disk",
                     action='store', required=True)
@@ -23,6 +20,8 @@ parser.add_argument("--create-disk", help="Automatically create disk as qcow2, p
                     action='store_true')
 parser.add_argument("--kickstart", help="Kickstart path",
                     action='store', required=True)
+parser.add_argument("--kickstart-out", help="Save flattened kickstart",
+                    action='store')
 parser.add_argument("--location", help="Installer location",
                     action='store', required=True)
 parser.add_argument("--memory", help="Memory size in MB",
@@ -67,7 +66,10 @@ def run(fn, argv, **kwargs):
 def run_sync_verbose(argv, **kwargs):
     run(subprocess.check_call, argv, **kwargs)
 
-ks_tmp = tempfile.NamedTemporaryFile(prefix="coreos-virtinstall", suffix=".ks")
+if args.kickstart_out:
+    ks_tmp = open(args.kickstart_out, 'w')
+else:
+    ks_tmp = tempfile.NamedTemporaryFile(prefix="coreos-virtinstall", suffix=".ks")
 run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
 
 # This is an "extension" to kickstart files that we implement as a comment.
