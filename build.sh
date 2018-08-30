@@ -3,11 +3,17 @@ set -xeuo pipefail
 
 srcdir=$(pwd)
 
-# Init submodules
-ls -al .git mantle
-dnf -y install git
+# Work around https://github.com/coreos/coreos-assembler/issues/27
+if ! test -d .git; then
+    dnf -y install git
+    (git config --global user.email dummy@example.com
+     git init && git add . && git commit -a -m 'dummy commit'
+     git tag -m tag dummy-tag) >/dev/null
+fi
+
 if ! test -f mantle/README.md; then
-    git submodule update --init
+    echo "Run: git submodule update --init" 1>&2
+    exit 1
 fi
 
 # We want to run what builds we can as an unprivileged user;
