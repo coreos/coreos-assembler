@@ -5,6 +5,8 @@ set -xeuo pipefail
 
 srcdir=$(pwd)
 
+arch="$(uname -m)"
+
 # Work around https://github.com/coreos/coreos-assembler/issues/27
 if ! test -d .git; then
     dnf -y install git
@@ -28,7 +30,7 @@ dnf -y install dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
 
 # Pull latest rpm-ostree
-curl -L --remote-name-all https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2018.7/1.fc28/x86_64/rpm-ostree-{,libs-}2018.7-1.fc28.x86_64.rpm
+curl -L --remote-name-all https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2018.7/1.fc28/${arch}/rpm-ostree-{,libs-}2018.7-1.fc28.${arch}.rpm
 dnf -y install ./rpm-ostree*.rpm && rm -f *.rpm
 
 # These are only used to build things in here, we define them separately because
@@ -71,7 +73,7 @@ EOF
 
 # The podman change to use systemd for cgroups broke our hack to use
 # podman-in-docker...we should fix our pipeline, but for now:
-dnf -y downgrade https://kojipkgs.fedoraproject.org//packages/podman/0.7.4/4.git80612fb.fc28/x86_64/podman-0.7.4-4.git80612fb.fc28.x86_64.rpm
+dnf -y downgrade https://kojipkgs.fedoraproject.org//packages/podman/0.7.4/4.git80612fb.fc28/${arch}/podman-0.7.4-4.git80612fb.fc28.${arch}.rpm
 
 # TODO: install these as e.g.
 # /usr/bin/ostree-releng-script-rsync-repos
@@ -89,6 +91,7 @@ make install
      mv bin/${x} /usr/bin
  done
 install -D -m 0755 -t /usr/lib/kola/amd64 bin/amd64/kolet
+install -D -m 0755 -t /usr/lib/kola/arm64 bin/arm64/kolet
 )
 
 # Cleanup deps
