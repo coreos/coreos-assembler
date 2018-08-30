@@ -4,6 +4,55 @@ systems, including:
  - [mantle](https://github.com/coreos/mantle)
  - [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
  - [libvirt](https://github.com/libvirt/libvirt)
+ 
+Getting started - prerequisites
+---
+
+You can use `podman` or `docker`. These examples use `podman`. Note the
+container must be privileged, as the build process uses container functionality
+itself (i.e. we're doing [recursive containers(https://github.com/projectatomic/bubblewrap/issues/284)]).
+
+Secondly, in order to build VM images, the container must have access to
+`/dev/kvm`.  If you're running this in a VM, you must enable
+[nested virt](https://docs.fedoraproject.org/en-US/quick-docs/using-nested-virtualization-in-kvm/).
+See also [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances).
+
+Setup
+---
+
+Here we store data in `/srv/coreos` on our host system.  You can choose
+any directory you like.
+
+```
+$ mkdir /srv/coreos
+$ cd /srv/coreos
+$ alias coreos-assembler='podman run --net=host -ti --privileged -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler:testing'
+```
+
+Initializing
+---
+
+You only need to do this once; it will create various directories and also
+download an installer image (used to make VMs).
+
+```
+$ coreos-assembler init
+```
+
+One thing to note is you'll have a `/srv/coreos/src/config` directory.  By
+default, this is a clone of https://github.com/cgwalters/fedora-coreos-config
+If you're doing something custom, you likely want to fork it and edit.  Just
+replace the `src/config` directory with your git clone.
+
+Performing a build
+---
+
+```
+$ coreos-assembler build
+```
+
+Each build will write an ostree commit into `/srv/coreos/repo` as well
+as generate VM images in `/srv/coreos/builds/$datestamp`.
 
 Development
 ---

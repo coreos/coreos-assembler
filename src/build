@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -xeuo pipefail
+
+export LIBGUESTFS_BACKEND=direct
+
+fatal() {
+    echo "$@" 1>&2; exit 1
+}
+
+if ! [ -d repo ]; then
+    fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
+fi
+
+workdir=$(pwd)
+configdir=${workdir}/src/config
+manifest=${configdir}/manifest.yaml
+
+if ! [ -f "${manifest}" -a -f "${configdir}/fedora-coreos.yaml" ]; then
+    manifest="${configdir}/fedora-coreos.yaml"
+fi
+
+echo "Using manifest: ${manifest}"
+
+# We'll rewrite this in a real language I promise
+manifest_get() {
+    python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))'"$1"')' "${manifest}"
+}
+
+# Abuse the rojig/name as the name of the VM images
+name=$(manifest_get '["rojig"]["name"]')
+# TODO - allow this to be unset
+ref=$(manifest_get '["ref"]')
+
+cd builds
+
+treecompose_args=""
+if grep -q '^# unified-core' "${manifest}"; then
+    treecompose_args="${treecompose_args} --unified-core"
+fi
+
+buildid=$(date -u +'%Y-%m-%d-%H-%M')
+
+previous_commit=
+if [ -z "${SKIPCOMPOSE:-}" ]; then
+rm -rf work
+mkdir -p work
+previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
+rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} --touch-if-changed work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest}
+if ! [ -f work/treecompose.changed ] ; then
+    exit 0
+fi
+ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
+ostree --repo=${workdir}/repo summary -u
+setfacl -R -m u:builder:rwX ${workdir}/repo
+fi
+commit=$(ostree --repo=${workdir}/repo rev-parse "${ref}")
+version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
+
+mkdir -p "${buildid}"
+setfacl -R -d -m u:builder:rwX "${buildid}"
+setfacl -R -m u:builder:rwX "${buildid}"
+cd "${buildid}"
+
+# Generate JSON
+if [ -n "${previous_commit}" ]; then
+    previous_commit_json='"'"${previous_commit}"'"'
+else
+    previous_commit_json=null
+fi
+
+rm -f local.ks
+# HACK: pull out the magic bit; we should have virt-install
+# handle this with the ksflatten
+grep -e "--coreos-virt-install-disk-size-gb" ${configdir}/image.ks > local.ks
+# https://github.com/coreos/coreos-assembler/pull/12
+# AKA commit 1d2150cf5607ade19780e4bd6f195e5c0efdb0ac
+# TODO: move this into coreos-virt-install
+cat >>local.ks <<EOF
+%include ${configdir}/image.ks
+%pre
+mkdir -p /mnt/ostree-repo
+mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
+%end
+ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-repo --ref="${ref}"
+EOF
+
+imageprefix=${name}-${version}
+# Having a `builder` user is a bit painful too.  Hmm.
+runuser -u builder -- /usr/libexec/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log --local-repo=${workdir}/repo
+
+/usr/libexec/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
+
+cat > meta.json <<EOF
+{
+ "previous-commit": ${previous_commit_json},
+ "commit": "${commit}",
+ "version": "${version}"
+}
+EOF

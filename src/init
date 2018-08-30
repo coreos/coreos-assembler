@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -xeuo pipefail
+
+INSTALLER=https://dl.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-28-1.1.iso
+INSTALLER_CHECKSUM=https://dl.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-28-1.1-x86_64-CHECKSUM
+
+fatal() {
+    echo "$@" 1>&2; exit 1
+}
+
+if [ $(stat -f --printf="%T" .) = "overlayfs" ]; then
+    fatal "$(pwd) must be a volume"
+fi
+
+# Initialize sources (git)
+mkdir -p src
+(cd src
+ if ! test -d config; then
+     git clone https://github.com/cgwalters/fedora-coreos-config config
+ fi)
+
+mkdir -p installer
+(cd installer
+ installer_bn=$(basename ${INSTALLER})
+ if ! [ -f "${installer_bn}" ]; then
+     mkdir -p tmp
+     cd tmp
+     curl -L --remote-name-all ${INSTALLER} ${INSTALLER_CHECKSUM}
+     checksums_bn=$(basename ${INSTALLER_CHECKSUM})
+     sha256sum -c ${checksums_bn}
+     mv ${installer_bn} ${checksums_bn} ..
+     cd ..
+     rm tmp -rf
+ fi
+)
+
+mkdir -p cache
+mkdir -p builds
+ostree --repo=repo init --mode=archive
+ostree --repo=repo-build init --mode=bare-user
+setfacl -R -d -m u:builder:rwX repo-build
+setfacl -R -m u:builder:rwX repo-build
