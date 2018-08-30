@@ -1,4 +1,6 @@
 #!/usr/bin/bash
+
+export PS4='\[\033[0;33m\]$(basename ${0}):${LINENO}: \[\033[0;37m\]'
 set -xeuo pipefail
 
 srcdir=$(pwd)
