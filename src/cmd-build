@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-export LIBGUESTFS_BACKEND=direct
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
 
-fatal() {
-    echo "$@" 1>&2; exit 1
-}
+export LIBGUESTFS_BACKEND=direct
 
 if ! [ -d repo ]; then
     fatal "No $(pwd)/repo found; did you run coreos-assembler init?"

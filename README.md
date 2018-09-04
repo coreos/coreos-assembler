@@ -10,7 +10,7 @@ Getting started - prerequisites
 
 You can use `podman` or `docker`. These examples use `podman`. Note the
 container must be privileged, as the build process uses container functionality
-itself (i.e. we're doing [recursive containers(https://github.com/projectatomic/bubblewrap/issues/284)]).
+itself - we're using [recursive containers](https://github.com/projectatomic/bubblewrap/issues/284).
 
 Secondly, in order to build VM images, the container must have access to
 `/dev/kvm`.  If you're running this in a VM, you must enable
@@ -26,7 +26,7 @@ any directory you like.
 ```
 $ mkdir /srv/coreos
 $ cd /srv/coreos
-$ alias coreos-assembler='podman run --net=host -ti --privileged -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler:testing'
+$ alias coreos-assembler='podman run --rm --net=host -ti --privileged -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler:testing'
 ```
 
 Initializing
