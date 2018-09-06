@@ -6,7 +6,7 @@ dn=$(dirname $0)
 
 preflight
 
-sudo setfacl -d -m u:builder:rwX .
+sudo chown builder: .
 
 INSTALLER=https://dl.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-28-1.1.iso
 INSTALLER_CHECKSUM=https://dl.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-28-1.1-x86_64-CHECKSUM
