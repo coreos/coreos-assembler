@@ -4,6 +4,12 @@ set -euo pipefail
 # Currently this just wraps the two binaries we have today
 # under a global entrypoint with subcommands.
 
+case $(id -un) in
+    root) exec runuser -u builder -- $0 "$@";;
+    builder) ;;
+    *) echo "Executed as non-builder user" 1>&2; exit 1;;
+esac
+
 cmd=${1:-}
 
 if [ -z "${cmd}" ]; then
