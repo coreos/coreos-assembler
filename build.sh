@@ -3,6 +3,19 @@ set -xeuo pipefail
 
 srcdir=$(pwd)
 
+# Enable FAHC https://pagure.io/fedora-atomic-host-continuous
+# so we have ostree/rpm-ostree git master for our :latest
+# NOTE: The canonical copy of this code lives in rpm-ostree's CI:
+# https://github.com/projectatomic/rpm-ostree/blob/d2b0e42bfce972406ac69f8e2136c98f22b85fb2/ci/build.sh#L13
+# Please edit there first
+echo -e '[fahc]\nmetadata_expire=1m\nbaseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/rdgo/build/\ngpgcheck=0\n' > /etc/yum.repos.d/fahc.repo
+# Until we fix https://github.com/rpm-software-management/libdnf/pull/149
+excludes='exclude=ostree ostree-libs ostree-grub2 rpm-ostree'
+for repo in /etc/yum.repos.d/fedora*.repo; do
+    cat ${repo} | (while read line; do if echo "$line" | grep -qE -e '^enabled=1'; then echo "${excludes}"; fi; echo $line; done) > ${repo}.new
+    mv ${repo}.new ${repo}
+done
+
 # Work around https://github.com/coreos/coreos-assembler/issues/27
 if ! test -d .git; then
     dnf -y install git
@@ -16,12 +29,10 @@ if ! test -f mantle/README.md; then
     exit 1
 fi
 
-dnf -y install dnf-utils dnf-plugins-core
+# xargs is part of findutils, which may not be installed
+# And we want the copr command (for now)
+dnf -y install /usr/bin/xargs dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
-
-# Pull latest rpm-ostree
-curl -L --remote-name-all https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2018.7/1.fc28/x86_64/rpm-ostree-{,libs-}2018.7-1.fc28.x86_64.rpm
-dnf -y install ./rpm-ostree*.rpm && rm -f *.rpm
 
 # These are only used to build things in here, we define them separately because
 # they're cleaned up later
@@ -36,6 +47,9 @@ sudo
 # dumb-init is a good idea in general, but specifically fixes things with
 # libvirt forking qemu and assuming the process gets reaped on shutdown.
 dumb-init
+
+# For composes
+rpm-ostree
 
 # rpmdistro-gitoverlay deps
 dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay
