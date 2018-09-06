@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+if [[ -z "$@" ]]; then
+    # If no arguments then offer user bash prompt inside the container
+    exec /usr/bin/env PS1='[coreos-assembler]$ ' /usr/bin/bash
+else
+    # They provided arguments so just run the commands
+    exec /usr/bin/bash -c "$@"
+fi
