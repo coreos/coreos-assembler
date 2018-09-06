@@ -50,6 +50,7 @@ sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/
 if ! [ -f work/treecompose.changed ] ; then
     exit 0
 fi
+sudo chown -R -h builder: ${workdir}/repo-build
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
 ostree --repo=${workdir}/repo summary -u
 fi
