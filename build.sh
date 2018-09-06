@@ -16,12 +16,6 @@ if ! test -f mantle/README.md; then
     exit 1
 fi
 
-# We want to run what builds we can as an unprivileged user;
-# running as non-root is much better for the libvirt stack in particular
-# for the cases where we have --privileged in the container run for other reasons.
-# At some point we may make this the default.
-useradd builder
-
 dnf -y install dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
 
@@ -35,6 +29,9 @@ self_builddeps="cargo golang"
 
 grep -v '^#' <<EOF | xargs dnf -y install
 ${self_builddeps}
+
+# We default to builder user, but sudo where necessary
+sudo
 
 # dumb-init is a good idea in general, but specifically fixes things with
 # libvirt forking qemu and assuming the process gets reaped on shutdown.
@@ -96,3 +93,10 @@ rpm -q grubby && dnf remove -y grubby
 dnf clean all
 cd /
 rm ${srcdir} -rf
+
+# We want to run what builds we can as an unprivileged user;
+# running as non-root is much better for the libvirt stack in particular
+# for the cases where we have --privileged in the container run for other reasons.
+# At some point we may make this the default.
+useradd builder -G wheel
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd

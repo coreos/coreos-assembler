@@ -44,20 +44,19 @@ if [ -z "${SKIPCOMPOSE:-}" ]; then
 rm -rf work
 mkdir -p work
 previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
-rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} --touch-if-changed work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest}
+# This one needs sudo, since it uses container features itself
+# But see also https://github.com/projectatomic/rpm-ostree/issues/1011
+sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} --touch-if-changed work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest}
 if ! [ -f work/treecompose.changed ] ; then
     exit 0
 fi
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
 ostree --repo=${workdir}/repo summary -u
-setfacl -R -m u:builder:rwX ${workdir}/repo
 fi
 commit=$(ostree --repo=${workdir}/repo rev-parse "${ref}")
 version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 
 mkdir -p "${buildid}"
-setfacl -R -d -m u:builder:rwX "${buildid}"
-setfacl -R -m u:builder:rwX "${buildid}"
 cd "${buildid}"
 
 # Generate JSON
@@ -84,8 +83,7 @@ ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-rep
 EOF
 
 imageprefix=${name}-${version}
-# Having a `builder` user is a bit painful too.  Hmm.
-runuser -u builder -- /usr/libexec/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log --local-repo=${workdir}/repo
+/usr/libexec/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log --local-repo=${workdir}/repo
 
 /usr/libexec/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 
