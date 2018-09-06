@@ -9,8 +9,9 @@ cmd=${1:-}
 if [ -z "${cmd}" ]; then
     echo usage: "coreos-assembler CMD ..."
     echo "Commands:"
-    ls /usr/libexec/coreos-assembler | while read cmd; do
-        echo "  ${cmd}"
+    ls /usr/libexec/coreos-assembler/cmd-* | while read cmd; do
+        bin=$(basename $cmd)
+        echo "  ${bin:4}"
     done
     exit 1
 fi
