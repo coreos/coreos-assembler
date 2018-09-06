@@ -17,3 +17,43 @@ preflight() {
         fatal "This container must currently be run with --privileged"
     fi
 }
+
+prepare_build() {
+    preflight
+    if ! [ -d repo ]; then
+        fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
+    fi
+
+    export workdir=$(pwd)
+    export configdir=${workdir}/src/config
+    export manifest=${configdir}/manifest.yaml
+
+    if ! [ -f "${manifest}" -a -f "${configdir}/fedora-coreos.yaml" ]; then
+        export manifest="${configdir}/fedora-coreos.yaml"
+    fi
+
+    echo "Using manifest: ${manifest}"
+
+    # Abuse the rojig/name as the name of the VM images
+    export name=$(manifest_get '["rojig"]["name"]')
+    # TODO - allow this to be unset
+    export ref=$(manifest_get '["ref"]')
+
+    cd builds
+    rm -rf work
+    mkdir -p work
+}
+
+# We'll rewrite this in a real language I promise
+manifest_get() {
+    python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))'"$1"')' "${manifest}"
+}
+
+runcompose() {
+    local treecompose_args=""
+    if grep -q '^# unified-core' "${manifest}"; then
+        treecompose_args="${treecompose_args} --unified-core"
+    fi
+    export previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
+    sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} --touch-if-changed work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
+}

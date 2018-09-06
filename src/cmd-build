@@ -6,54 +6,18 @@ dn=$(dirname $0)
 
 export LIBGUESTFS_BACKEND=direct
 
-if ! [ -d repo ]; then
-    fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
-fi
-
-workdir=$(pwd)
-configdir=${workdir}/src/config
-manifest=${configdir}/manifest.yaml
-
-if ! [ -f "${manifest}" -a -f "${configdir}/fedora-coreos.yaml" ]; then
-    manifest="${configdir}/fedora-coreos.yaml"
-fi
-
-echo "Using manifest: ${manifest}"
-
-# We'll rewrite this in a real language I promise
-manifest_get() {
-    python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))'"$1"')' "${manifest}"
-}
-
-# Abuse the rojig/name as the name of the VM images
-name=$(manifest_get '["rojig"]["name"]')
-# TODO - allow this to be unset
-ref=$(manifest_get '["ref"]')
-
-cd builds
-
-treecompose_args=""
-if grep -q '^# unified-core' "${manifest}"; then
-    treecompose_args="${treecompose_args} --unified-core"
-fi
+prepare_build
 
 buildid=$(date -u +'%Y-%m-%d-%H-%M')
 
-previous_commit=
-if [ -z "${SKIPCOMPOSE:-}" ]; then
-rm -rf work
-mkdir -p work
-previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
-# This one needs sudo, since it uses container features itself
-# But see also https://github.com/projectatomic/rpm-ostree/issues/1011
-sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} --touch-if-changed work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest}
+# Build uses cached data
+runcompose --cache-only
 if ! [ -f work/treecompose.changed ] ; then
     exit 0
 fi
 sudo chown -R -h builder: ${workdir}/repo-build
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
 ostree --repo=${workdir}/repo summary -u
-fi
 commit=$(ostree --repo=${workdir}/repo rev-parse "${ref}")
 version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 

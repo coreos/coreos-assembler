@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -xeuo pipefail
+
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+
+prepare_build
+runcompose --download-only
