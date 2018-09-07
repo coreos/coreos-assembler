@@ -12,14 +12,32 @@ buildid=$(date -u +'%Y-%m-%d-%H-%M')
 
 # Build uses cached data
 runcompose --cache-only
-if ! [ -f work/treecompose.changed ] ; then
-    exit 0
-fi
 sudo chown -R -h $USER: ${workdir}/repo-build
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
 ostree --repo=${workdir}/repo summary -u
 commit=$(ostree --repo=${workdir}/repo rev-parse "${ref}")
 version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
+
+sha256sum_str() {
+    sha256sum | cut -f 1 -d ' '
+}
+
+kickstart_input=${configdir}/image.ks
+kickstart_checksum=$(cat ${kickstart_input} | sha256sum_str)
+image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
+
+previous_build=
+if [ -L latest ]; then
+    previous_build=$(readlink latest)
+fi
+
+if [ -n "${previous_build}" ]; then
+    previous_image_input_checksum=$(jq -r '.["image-input-checksum"]' < "${previous_build}/meta.json")
+    if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
+        echo "No changes in image inputs."
+        exit 0
+    fi
+fi
 
 mkdir -p "${buildid}"
 cd "${buildid}"
@@ -34,12 +52,12 @@ fi
 rm -f local.ks
 # HACK: pull out the magic bit; we should have virt-install
 # handle this with the ksflatten
-grep -e "--coreos-virt-install-disk-size-gb" ${configdir}/image.ks > local.ks
+grep -e "--coreos-virt-install-disk-size-gb" ${kickstart_input} > local.ks
 # https://github.com/coreos/coreos-assembler/pull/12
 # AKA commit 1d2150cf5607ade19780e4bd6f195e5c0efdb0ac
 # TODO: move this into coreos-virt-install
 cat >>local.ks <<EOF
-%include ${configdir}/image.ks
+%include ${kickstart_input}
 %pre
 mkdir -p /mnt/ostree-repo
 mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
@@ -55,6 +73,8 @@ tail -F $(pwd)/install.log & # send output of virt-install to console
 
 cat > meta.json <<EOF
 {
+ "image-input-checksum": "${image_input_checksum}",
+ "kickstart-checksum": "${kickstart_checksum}",
  "previous-commit": ${previous_commit_json},
  "commit": "${commit}",
  "version": "${version}"
