@@ -39,8 +39,8 @@ if [ -n "${previous_build}" ]; then
     fi
 fi
 
-mkdir -p "${buildid}"
-cd "${buildid}"
+mkdir -p "work/${buildid}"
+cd "work/${buildid}"
 
 # Generate JSON
 if [ -n "${previous_commit}" ]; then
@@ -82,4 +82,5 @@ cat > meta.json <<EOF
 EOF
 
 cd ${workdir}/builds
+mv work/${buildid} .
 ln -Tsfr "${buildid}" latest
