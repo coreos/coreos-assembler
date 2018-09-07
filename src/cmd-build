@@ -96,3 +96,6 @@ cat > meta.json <<EOF
  "version": "${version}"
 }
 EOF
+
+cd ${workdir}/builds
+ln -sfr "${buildid}" latest
