@@ -98,4 +98,4 @@ cat > meta.json <<EOF
 EOF
 
 cd ${workdir}/builds
-ln -sfr "${buildid}" latest
+ln -Tsfr "${buildid}" latest
