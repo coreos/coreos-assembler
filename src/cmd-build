@@ -8,8 +8,6 @@ export LIBGUESTFS_BACKEND=direct
 
 prepare_build
 
-buildid=$(date -u +'%Y-%m-%d-%H-%M')
-
 # Build uses cached data
 runcompose --cache-only
 sudo chown -R -h $USER: ${workdir}/repo-build
@@ -31,13 +29,21 @@ if [ -L latest ]; then
     previous_build=$(readlink latest)
 fi
 
+image_genver=1
 if [ -n "${previous_build}" ]; then
     previous_image_input_checksum=$(jq -r '.["image-input-checksum"]' < "${previous_build}/meta.json")
     if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
         exit 0
     fi
+    previous_ostree_commit=$(jq -r '.["commit"]' < "${previous_build}/meta.json")
+    previous_image_genver=$(jq -r '.["image-genver"]' < "${previous_build}/meta.json")
+    if [ "${previous_ostree_commit}" = "${commit}" ]; then
+        image_genver=$((${previous_image_genver} + 1))
+    fi
 fi
+
+buildid=${version}-${image_genver}
 
 mkdir -p "work/${buildid}"
 cd "work/${buildid}"
@@ -65,7 +71,7 @@ mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-rep
 ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-repo --ref="${ref}"
 EOF
 
-imageprefix=${name}-${version}
+imageprefix=${name}-${version}-${image_genver}
 tail -F $(pwd)/install.log & # send output of virt-install to console
 /usr/libexec/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log --local-repo=${workdir}/repo
 
@@ -74,6 +80,7 @@ tail -F $(pwd)/install.log & # send output of virt-install to console
 cat > meta.json <<EOF
 {
  "image-input-checksum": "${image_input_checksum}",
+ "image-genver": "${image_genver}",
  "kickstart-checksum": "${kickstart_checksum}",
  "previous-commit": ${previous_commit_json},
  "commit": "${commit}",
