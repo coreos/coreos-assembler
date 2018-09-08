@@ -88,17 +88,7 @@ mkdir -p /usr/app/
 rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 
 # And the main scripts
-make install
-
-# Part of general image management
-(cd mantle
- # Add components as necessary
- ./build ore kola kolet
- for x in ore kola; do
-     mv bin/${x} /usr/bin
- done
-install -D -m 0755 -t /usr/lib/kola/amd64 bin/amd64/kolet
-)
+make && make install
 
 # Cleanup deps
 dnf remove -y ${self_builddeps}
