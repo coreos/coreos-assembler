@@ -54,7 +54,6 @@ runcompose() {
     if grep -q '^# unified-core' "${manifest}"; then
         treecompose_args="${treecompose_args} --unified-core"
     fi
-    export previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
     sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} \
          --touch-if-changed $(pwd)/work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
 }
