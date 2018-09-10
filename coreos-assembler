@@ -11,6 +11,7 @@ case $(id -un) in
 esac
 
 cmd=${1:-}
+shift
 
 if [ -z "${cmd}" ]; then
     echo usage: "coreos-assembler CMD ..."
