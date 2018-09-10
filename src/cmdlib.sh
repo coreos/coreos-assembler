@@ -28,8 +28,8 @@ prepare_build() {
     export configdir=${workdir}/src/config
     export manifest=${configdir}/manifest.yaml
 
-    if ! [ -f "${manifest}" -a -f "${configdir}/fedora-coreos.yaml" ]; then
-        export manifest="${configdir}/fedora-coreos.yaml"
+    if ! [ -f "${manifest}" ]; then
+        fatal "Failed to find ${manifest}"
     fi
 
     echo "Using manifest: ${manifest}"

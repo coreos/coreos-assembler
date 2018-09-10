@@ -4,6 +4,21 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
 
+source="${1:-}"
+if [ -z "${source}" ] && ! [ -e src/config ]; then
+    set +x
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler init GITCONFIG
+
+  For example, you can use https://github.com/cgwalters/fedora-coreos-config
+  as GITCONFIG, or fork it.  Another option useful for local development
+  (if you're running a shell inside this container) is to pass a file path
+  starting with `/` - a symlink to it will be created and then used directly."
+EOF
+    exit 1
+fi
+shift
+
 preflight
 
 sudo chown $USER: .
@@ -14,8 +29,16 @@ INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/fedora/linux/releases/
 # Initialize sources (git)
 mkdir -p src
 (cd src
- if ! test -d config; then
-     git clone https://github.com/cgwalters/fedora-coreos-config config
+ if ! test -e config; then
+     case "${source}" in
+         /*) ln -sr "${source}" config;;
+         *) git clone "${source}" config;;
+     esac
+     manifest=config/manifest.yaml
+     if ! [ -f "${manifest}" ]; then
+         echo 1>&2 "Failed to find src/${manifest}"
+         fatal "If using a custom configuration, be sure it has a manifest.yaml."
+     fi
  fi)
 
 mkdir -p installer

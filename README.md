@@ -34,17 +34,18 @@ $ alias coreos-assembler='podman run --rm --net=host -ti --privileged -v $(pwd):
 Initializing
 ---
 
-You only need to do this once; it will create various directories and also
+You only need to do this once; it will clone the specified
+configuration repo, create various directories and also
 download an installer image (used to make VMs).
 
 ```
-$ coreos-assembler init
+$ coreos-assembler init https://github.com/cgwalters/fedora-coreos-config
 ```
 
-One thing to note is you'll have a `/srv/coreos/src/config` directory.  By
-default, this is a clone of https://github.com/cgwalters/fedora-coreos-config
-If you're doing something custom, you likely want to fork it and edit.  Just
-replace the `src/config` directory with your git clone.
+The specified git repository will be cloned into `/srv/coreos/src/config`.
+
+If you're doing something custom, you likely want to fork that upstream
+repository.
 
 Performing a build
 ---
