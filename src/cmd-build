@@ -11,7 +11,12 @@ prepare_build
 # Build uses cached data
 previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
 runcompose --cache-only
-sudo chown -R -h $USER: ${workdir}/repo-build
+# https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
+# The passwd files (among others) don't have world readability.  This won't
+# actually corrupt the repository as the *canonical* permissions are stored
+# as xattrs.  Probably what we should do is have an ostree option to specify
+# a permission mask for objects.
+sudo chmod -R a+rX ${workdir}/repo-build/objects
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
 ostree --repo=${workdir}/repo summary -u
 commit=$(ostree --repo=${workdir}/repo rev-parse "${ref}")
