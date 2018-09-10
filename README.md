@@ -1,10 +1,12 @@
-This container aggregates various tools used to build Fedora CoreOS style
-systems, including:
+This container aggregates various tools used to build [Fedora CoreOS](https://github.com/coreos/coreos.fedoraproject.org)
+style systems.
+
+It reuses various upstream tools, such as:
 
  - [mantle](https://github.com/coreos/mantle)
  - [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
  - [libvirt](https://github.com/libvirt/libvirt)
- 
+
 Getting started - prerequisites
 ---
 
@@ -21,7 +23,7 @@ Setup
 ---
 
 Here we store data in `/srv/coreos` on our host system.  You can choose
-any directory you like.
+any directory you like.  You should run these commands as `root`.
 
 ```
 $ mkdir /srv/coreos
@@ -52,7 +54,7 @@ $ coreos-assembler build
 ```
 
 Each build will write an ostree commit into `/srv/coreos/repo` as well
-as generate VM images in `/srv/coreos/builds/$datestamp`.
+as generate VM images in `/srv/coreos/builds/`.
 
 Development
 ---
