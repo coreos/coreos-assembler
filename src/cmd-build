@@ -9,6 +9,7 @@ export LIBGUESTFS_BACKEND=direct
 prepare_build
 
 # Build uses cached data
+previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
 runcompose --cache-only
 sudo chown -R -h $USER: ${workdir}/repo-build
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
