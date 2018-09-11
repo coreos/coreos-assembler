@@ -515,3 +515,18 @@ run_virtinstall() {
                                            --ostree-repo="${ostree_repo}" "$@"
     mv "${tmpdest}" "${dest}"
 }
+
+get_latest_build() {
+    if [ -L builds/latest ]; then
+        readlink builds/latest
+    fi
+}
+
+get_latest_qemu() {
+    local latest
+    latest=$(get_latest_build)
+    if [ -n "$latest" ]; then
+        # shellcheck disable=SC2086
+        ls builds/${latest}/*-qemu.qcow2
+    fi
+}
