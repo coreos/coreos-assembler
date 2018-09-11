@@ -9,7 +9,7 @@ if [ $# -ne 1 ] || [ $1 == -h ] || [ $1 == --help ]; then
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init GITCONFIG
 
-  For example, you can use https://github.com/cgwalters/fedora-coreos-config
+  For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
   (if you're running a shell inside this container) is to pass a file path
   starting with `/` - a symlink to it will be created and then used directly."
