@@ -1,4 +1,4 @@
-This container aggregates various tools used to build [Fedora CoreOS](https://github.com/coreos/coreos.fedoraproject.org)
+This container aggregates various tools used to build [Fedora CoreOS](https://coreos.fedoraproject.org)
 style systems.
 
 It reuses various upstream tools, such as:
