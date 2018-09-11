@@ -86,7 +86,7 @@ var crioContainerTemplate = `{
 		"attempt": 1
 	},
 	"image": {
-		"image": "docker.io/library/%s"
+		"image": "localhost/%s:latest"
 	},
 	"command": [
 		"%s"
@@ -216,7 +216,7 @@ func genContainer(c cluster.TestCluster, m platform.Machine, name string, binnam
 	cmd := `tmpdir=$(mktemp -d); cd $tmpdir; echo -e "FROM scratch\nCOPY . /" > Dockerfile;
 	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
 			sudo rsync -av --relative --copy-links $b $libs ./;
-			sudo podman build -t %s .`
+			sudo podman build -t localhost/%s .`
 	c.MustSSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
 
 	return path.Base(configPathPod), path.Base(configPathContainer), nil
@@ -242,13 +242,23 @@ func crioNetwork(c cluster.TestCluster) {
 	}
 
 	listener := func(ctx context.Context) error {
-		podID := c.MustSSH(dest, fmt.Sprintf("sudo crictl runp %s", crioConfigPod))
-		containerID := c.MustSSH(dest, fmt.Sprintf("sudo crictl create %s %s %s",
+		podID, err := c.SSH(dest, fmt.Sprintf("sudo crictl runp %s", crioConfigPod))
+		if err != nil {
+			return err
+		}
+
+		containerID, err := c.SSH(dest, fmt.Sprintf("sudo crictl create %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
+		if err != nil {
+			return err
+		}
 
 		// This command will block until a message is recieved
-		output := string(c.MustSSH(dest, fmt.Sprintf("sudo timeout 30 crictl exec -t %s echo 'HELLO FROM SERVER' | timeout 20 ncat --listen 0.0.0.0 9988 || echo 'LISTENER TIMEOUT'", containerID)))
-		if output != "HELLO FROM CLIENT" {
+		output, err := c.SSH(dest, fmt.Sprintf("sudo timeout 30 crictl exec -t %s echo 'HELLO FROM SERVER' | timeout 20 ncat --listen 0.0.0.0 9988 || echo 'LISTENER TIMEOUT'", containerID))
+		if err != nil {
+			return err
+		}
+		if string(output) != "HELLO FROM CLIENT" {
 			return fmt.Errorf("unexpected result from listener: %s", output)
 		}
 
@@ -275,13 +285,23 @@ func crioNetwork(c cluster.TestCluster) {
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
-		podID := c.MustSSH(src, fmt.Sprintf("sudo crictl runp %s", crioConfigPod))
-		containerID := c.MustSSH(src, fmt.Sprintf("sudo crictl create %s %s %s",
-			podID, crioConfigContainer, crioConfigPod))
+		podID, err := c.SSH(src, fmt.Sprintf("sudo crictl runp %s", crioConfigPod))
+		if err != nil {
+			return err
+		}
 
-		output := string(c.MustSSH(src, fmt.Sprintf("sudo crictl exec -t %s echo 'HELLO FROM CLIENT' | ncat %s 9988",
-			containerID, dest.PrivateIP())))
-		if output != "HELLO FROM SERVER" {
+		containerID, err := c.SSH(src, fmt.Sprintf("sudo crictl create %s %s %s",
+			podID, crioConfigContainer, crioConfigPod))
+		if err != nil {
+			return err
+		}
+
+		output, err := c.SSH(src, fmt.Sprintf("sudo crictl exec -t %s echo 'HELLO FROM CLIENT' | ncat %s 9988",
+			containerID, dest.PrivateIP()))
+		if err != nil {
+			return err
+		}
+		if string(output) != "HELLO FROM SERVER" {
 			return fmt.Errorf(`unexpected result from listener: "%s"`, output)
 		}
 
