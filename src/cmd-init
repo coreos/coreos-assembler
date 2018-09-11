@@ -4,8 +4,7 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
 
-source="${1:-}"
-if [ -z "${source}" ] && ! [ -e src/config ]; then
+if [ $# -ne 1 ] || [ $1 == -h ] || [ $1 == --help ]; then
     set +x
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init GITCONFIG
@@ -17,7 +16,12 @@ Usage: coreos-assembler init GITCONFIG
 EOF
     exit 1
 fi
-shift
+
+if [ -e src/config ]; then
+    fatal "src/config already exists, refusing to proceed."
+fi
+
+source=$1; shift
 
 preflight
 
