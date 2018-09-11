@@ -8,8 +8,8 @@ preflight
 
 sudo chown $USER: .
 
-INSTALLER=https://dl.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-28-1.1.iso
-INSTALLER_CHECKSUM=https://dl.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-28-1.1-x86_64-CHECKSUM
+INSTALLER=https://download.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-28-1.1.iso
+INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-28-1.1-x86_64-CHECKSUM
 
 # Initialize sources (git)
 mkdir -p src
