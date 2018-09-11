@@ -8,9 +8,24 @@ export LIBGUESTFS_BACKEND=direct
 
 prepare_build
 
-# Build uses cached data
 previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
-runcompose --cache-only
+# Generate metadata that's *input* to the ostree commit
+config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
+config_dirty=false
+if ! git -C ${configdir} diff --exit-code; then
+    config_dirty=true
+fi
+commitmeta_input_json=$(pwd)/work/commit-metadata-input.json
+cat >${commitmeta_input_json} <<EOF
+{
+  "coreos-assembler.config-gitrev": "${config_gitrev}",
+  "coreos-assembler.config-dirty": ${config_dirty}
+}
+EOF
+composejson=$(pwd)/work/compose.json
+# Build uses cached data
+runcompose --cache-only --add-metadata-from-json ${commitmeta_input_json} \
+           --write-composejson-to ${composejson}
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
 # The passwd files (among others) don't have world readability.  This won't
 # actually corrupt the repository as the *canonical* permissions are stored
@@ -37,13 +52,13 @@ fi
 
 image_genver=1
 if [ -n "${previous_build}" ]; then
-    previous_image_input_checksum=$(jq -r '.["image-input-checksum"]' < "${previous_build}/meta.json")
+    previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_build}/meta.json")
     if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
         exit 0
     fi
-    previous_ostree_commit=$(jq -r '.["commit"]' < "${previous_build}/meta.json")
-    previous_image_genver=$(jq -r '.["image-genver"]' < "${previous_build}/meta.json")
+    previous_ostree_commit=$(jq -r '.["ostree-commit"]' < "${previous_build}/meta.json")
+    previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_build}/meta.json")
     if [ "${previous_ostree_commit}" = "${commit}" ]; then
         image_genver=$((${previous_image_genver} + 1))
     fi
@@ -83,16 +98,16 @@ tail -F $(pwd)/install.log & # send output of virt-install to console
 
 /usr/libexec/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 
-cat > meta.json <<EOF
+cat > tmp-meta.json <<EOF
 {
- "image-input-checksum": "${image_input_checksum}",
- "image-genver": "${image_genver}",
- "kickstart-checksum": "${kickstart_checksum}",
- "previous-commit": ${previous_commit_json},
- "commit": "${commit}",
- "version": "${version}"
+ "coreos-assembler.image-input-checksum": "${image_input_checksum}",
+ "coreos-assembler.image-genver": "${image_genver}",
+ "coreos-assembler.kickstart-checksum": "${kickstart_checksum}"
 }
 EOF
+# Merge all the JSON
+cat tmp-meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.json
+rm -f tmp-meta.json
 
 cd ${workdir}/builds
 mv work/${buildid} .
