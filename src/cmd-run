@@ -78,10 +78,8 @@ done
 preflight
 
 if [ -z "${VM_DISK}" ]; then
-    if [ -L ./builds/latest ]; then
-        latest_build=$(readlink builds/latest)
-        VM_DISK=$(ls builds/"${latest_build}"/*-"${latest_build}"-qemu.qcow2)
-    else
+    VM_DISK=$(get_latest_qemu)
+    if [ -z "${VM_DISK}" ]; then
         die "No builds/latest, and no -d argument provided"
     fi
 fi

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+latest_qcow=$(get_latest_qemu)
+if [ -z "${latest_qcow}" ]; then
+    fatal "No latest build"
+fi
+
+# XXX: teach to kola to auto-detect based on prefix; see discussions in
+# https://github.com/coreos/coreos-assembler/pull/85
+distro=
+bn=$(basename "${latest_qcow}")
+if [[ ${bn} = fedora-coreos-* ]]; then
+    distro="-b fcos"
+elif [[ ${bn} = rhcos-* ]]; then
+    distro="-b rhcos --ignition-version v2"
+else
+    echo "WARNING: Failed to detect distro, use -b to specify"
+fi
+
+# let's print out the actual exec() call we do
+set -x
+
+# shellcheck disable=SC2086
+exec kola $distro --output-dir tmp/kola --qemu-image "${latest_qcow}" "$@"
