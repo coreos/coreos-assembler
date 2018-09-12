@@ -62,5 +62,6 @@ mkdir -p installer
 
 mkdir -p cache
 mkdir -p builds
+mkdir -p tmp
 ostree --repo=repo init --mode=archive
 ostree --repo=repo-build init --mode=bare-user

@@ -26,9 +26,26 @@ cat >${commitmeta_input_json} <<EOF
 }
 EOF
 composejson=$(pwd)/work/compose.json
-# Build uses cached data
+changed_stamp=$(pwd)/work/treecompose.changed
+# --cache-only is here since `fetch` is a separate verb.
 runcompose --cache-only --add-metadata-from-json ${commitmeta_input_json} \
+           --touch-if-changed "${changed_stamp}" \
            --write-composejson-to ${composejson}
+commit=$(ostree --repo=${workdir}/repo-build rev-parse "${ref}")
+version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
+# Very special handling for --write-composejson-to as rpm-ostree doesn't
+# write it if the commit didn't change.
+if [ -f "${changed_stamp}" ]; then
+    # Be nice to people who have older versions
+    mkdir -p ${workdir}/tmp
+    # Clean up prior versions
+    rm -f ${workdir}/tmp/compose-*.json
+    # Save this in case the image build fails
+    cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
+else
+    # Grab the previous JSON
+    cp -a --reflink=auto ${workdir}/tmp/compose-${commit}.json work/compose.json
+fi
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
 # The passwd files (among others) don't have world readability.  This won't
 # actually corrupt the repository as the *canonical* permissions are stored
@@ -37,8 +54,6 @@ runcompose --cache-only --add-metadata-from-json ${commitmeta_input_json} \
 sudo chmod -R a+rX ${workdir}/repo-build/objects
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
 ostree --repo=${workdir}/repo summary -u
-commit=$(ostree --repo=${workdir}/repo rev-parse "${ref}")
-version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 
 sha256sum_str() {
     sha256sum | cut -f 1 -d ' '
