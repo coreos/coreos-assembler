@@ -93,6 +93,8 @@ ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-rep
 EOF
 
 imageprefix=${name}-${version}-${image_genver}
+# permissions on /dev/kvm vary by distro. Recreate it so we know it's what we expect
+sudo rm -f /dev/kvm; sudo mknod /dev/kvm c 10 232 && sudo setfacl -m u:$USER:rw /dev/kvm
 tail -F $(pwd)/install.log & # send output of virt-install to console
 /usr/libexec/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 \
                --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks \
