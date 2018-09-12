@@ -3,4 +3,4 @@ WORKDIR /root/src
 COPY . /root/src
 RUN ./build.sh
 USER builder
-ENTRYPOINT ["/usr/bin/coreos-assembler"]
+ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/coreos-assembler"]
