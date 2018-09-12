@@ -28,7 +28,7 @@ any directory you like.  You should run these commands as `root`.
 ```
 $ mkdir /srv/coreos
 $ cd /srv/coreos
-$ alias coreos-assembler='podman run --rm --net=host -ti --privileged -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler:testing'
+$ alias coreos-assembler='podman run --rm --net=host -ti --privileged -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler
 ```
 
 Initializing
