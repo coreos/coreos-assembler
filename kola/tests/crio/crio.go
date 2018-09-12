@@ -335,7 +335,7 @@ func crioNetworksReliably(c cluster.TestCluster) {
 		podID := c.MustSSH(m, cmdCreatePod)
 		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
-		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec -t %s ping -i 0.2 172.17.0.1 -w 1 >/dev/null && echo PASS || echo FAIL", containerID)))
+		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec -t %s ping -i 0.2 10.88.0.1 -w 1 >/dev/null && echo PASS || echo FAIL", containerID)))
 	}
 
 	numPass := strings.Count(string(output), "PASS")
