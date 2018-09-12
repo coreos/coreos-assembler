@@ -12,6 +12,16 @@ case $USER in
     *) echo "Executed as non-builder user; assuming sudo rights..." 1>&2;;
 esac
 
+# Ensure we've unshared our mount namespace so
+# the later umount doesn't affect the host potentially
+if [ -z "${coreos_assembler_unshared:-}" ]; then
+    exec sudo -- env coreos_assembler_unshared=1 unshare -m -- runuser -u ${USER} -- $0 "$@"
+fi
+# Work around https://github.com/containers/libpod/issues/1448
+if [ -e /sys/fs/selinux/status ]; then
+    sudo umount /sys/fs/selinux
+fi
+
 cmd=${1:-}
 shift
 
