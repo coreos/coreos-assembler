@@ -1,26 +1,68 @@
 #!/usr/bin/env bash
-set -xeuo pipefail
+set -euo pipefail
 
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
 
-if [ $# -ne 1 ] || [ $1 == -h ] || [ $1 == --help ]; then
-    set +x
+# Initialize FORCE to 0
+FORCE=0
+
+print_help() {
     cat 1>&2 <<'EOF'
-Usage: coreos-assembler init GITCONFIG
+Usage: coreos-assembler init --help
+       coreos-assembler init [--force] GITCONFIG
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
   (if you're running a shell inside this container) is to pass a file path
   starting with `/` - a symlink to it will be created and then used directly."
 EOF
+}
+
+# Call getopt to validate the provided input.
+options=$(getopt --options hf --longoptions help,force -- "$@")
+[ $? -eq 0 ] || {
+    print_help
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+    -h | --help)
+        print_help
+        exit 0
+        ;;
+    -f | --force)
+        FORCE=1
+        ;;
+    --)
+        shift
+        break
+        ;;
+    *)
+        print_help
+        fatal "init: unrecognized option: $1"
+        exit 1
+        ;;
+    esac
+    shift
+done
+
+
+# If user did not provide a repo then error out
+if [ $# -ne 1 ]; then
+    print_help
+    fatal "ERROR: Missing GITCONFIG"
     exit 1
 fi
 
-if [ -e src/config ]; then
-    fatal "src/config already exists, refusing to proceed."
+# If the current working dir is not empty then error out
+# unless force provided
+if [ "$FORCE" != "1" -a ! -z "$(ls -A ./)" ]; then
+   fatal "init: current directory is not empty, override with --force"
 fi
 
+set -x
 source=$1; shift
 
 preflight
