@@ -1,5 +1,7 @@
 package: github.com/coreos/mantle
 import:
+- package: github.com/gophercloud/gophercloud
+  version: 185230dfbd12fc178f22e1e2a5c4cf0e3ef5ae45
 - package: github.com/Azure/azure-sdk-for-go
   version: f8b0607613f19ae9509b5ed6fbfda56caf06d59d
 - package: github.com/Microsoft/azure-vhd-utils

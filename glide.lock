@@ -1,5 +1,5 @@
-hash: 31d923eadfbe59a92020365502d284be743092e1e0ab3c29a90dc61f7ffd8914
-updated: 2018-12-03T14:07:46.657913577-08:00
+hash: 5475c3d087b7babe6ca84b095ca35202a7d093f3ad93873ff673855acb18e501
+updated: 2019-01-08T15:50:26.470658939-06:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -200,6 +200,26 @@ imports:
   - query
 - name: github.com/google/uuid
   version: 9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8
+- name: github.com/gophercloud/gophercloud
+  version: 185230dfbd12fc178f22e1e2a5c4cf0e3ef5ae45
+  subpackages:
+  - internal
+  - openstack
+  - openstack/compute/v2/extensions/floatingips
+  - openstack/compute/v2/extensions/keypairs
+  - openstack/compute/v2/flavors
+  - openstack/compute/v2/images
+  - openstack/compute/v2/servers
+  - openstack/identity/v2/tenants
+  - openstack/identity/v2/tokens
+  - openstack/identity/v3/tokens
+  - openstack/imageservice/v2/imagedata
+  - openstack/imageservice/v2/images
+  - openstack/networking/v2/extensions/security/groups
+  - openstack/networking/v2/extensions/security/rules
+  - openstack/networking/v2/networks
+  - openstack/utils
+  - pagination
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jmespath/go-jmespath
@@ -214,7 +234,7 @@ imports:
   - diff
   - pretty
 - name: github.com/matttproud/golang_protobuf_extensions
-  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  version: c182affec369e30f25d3eb8cd8a478dee585ae7d
   subpackages:
   - pbutil
 - name: github.com/Microsoft/azure-vhd-utils
@@ -375,7 +395,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: a37df1387b4521194676d88c79230c613610d5f4
+  version: e9657d882bb81064595ca3b56cbe2546bbabf7b1
   subpackages:
   - internal
   - internal/app_identity
@@ -387,7 +407,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/cloud
-  version: 022eb1645b78acb655755a0c1e185c68cd5c8eb3
+  version: 23e89d0c751acbfd91a6342a2a3cdba1e90928a5
   subpackages:
   - compute/metadata
 - name: google.golang.org/genproto
