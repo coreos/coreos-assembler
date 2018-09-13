@@ -50,14 +50,10 @@ gf() {
 }
 
 gf run
-gf list-filesystems |tee ${tmpd}/filesystems.txt
-vg=/dev/coreos/root
-if ! grep -qFe "${vg}" ${tmpd}/filesystems.txt; then
-    sed -e 's,^,# ,' < ${tmpd}/filesystems.txt
-    fatal "Missing LVM VG ${vg} in filesystems"
-fi
-gf mount "${vg}" /
-gf mount "/dev/sda1" /boot
+root=$(gf findfs-label root)
+gf mount "${root}" /
+boot=$(gf findfs-label boot)
+gf mount "${boot}" /boot
 # Not used currently
 #stateroot=/ostree/deploy/$(gf ls /ostree/deploy)
 #rootdir=${stateroot}/deploy/$(gf ls ${stateroot}/deploy | grep -v \.origin)
