@@ -55,5 +55,5 @@ runcompose() {
         treecompose_args="${treecompose_args} --unified-core"
     fi
     sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} \
-         --touch-if-changed $(pwd)/work/treecompose.changed ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
+         ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
 }
