@@ -8,6 +8,9 @@ export LIBGUESTFS_BACKEND=direct
 
 prepare_build
 
+ostree --version
+rpm-ostree --version
+
 previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
