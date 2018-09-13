@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -xeuo pipefail
+
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+
+# This has some useful sanity checks
+prepare_build
+
+# But go back to the toplevel
+cd ${workdir}
+# Note we don't prune the cache/ dir or the objects
+# in the repos.  If you want that, just rm -rf them.
+rm -rf repo/refs/heads/* builds/* tmp/*
+ostree --repo=repo summary -u
+sudo rm -rf repo-build/refs/heads/*
