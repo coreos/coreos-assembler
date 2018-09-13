@@ -29,7 +29,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
-	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "packet", "qemu"}
+	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "openstack", "packet", "qemu"}
 	kolaDistros        = []string{"cl", "fcos", "rhcos"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
@@ -94,6 +94,16 @@ func init() {
 	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
 	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication")
+
+	// openstack-specific options
+	sv(&kola.OpenStackOptions.ConfigPath, "openstack-config-file", "", "OpenStack config file (default \"~/"+auth.OpenStackConfigPath+"\")")
+	sv(&kola.OpenStackOptions.Profile, "openstack-profile", "", "OpenStack profile (default \"default\")")
+	sv(&kola.OpenStackOptions.Region, "openstack-region", "", "OpenStack region")
+	sv(&kola.OpenStackOptions.Image, "openstack-image", "", "OpenStack image ref")
+	sv(&kola.OpenStackOptions.Flavor, "openstack-flavor", "1", "OpenStack flavor ref")
+	sv(&kola.OpenStackOptions.Network, "openstack-network", "", "OpenStack network")
+	sv(&kola.OpenStackOptions.Domain, "openstack-domain", "", "OpenStack domain ID")
+	sv(&kola.OpenStackOptions.FloatingIPPool, "openstack-floating-ip-pool", "", "OpenStack floating IP pool for Compute v2 networking")
 
 	// packet-specific options
 	sv(&kola.PacketOptions.ConfigPath, "packet-config-file", "", "Packet config file (default \"~/"+auth.PacketConfigPath+"\")")
