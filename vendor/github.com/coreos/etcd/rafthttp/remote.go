@@ -53,9 +53,18 @@ func (g *remote) send(m raftpb.Message) {
 			plog.MergeWarningf("dropped internal raft message to %s since sending buffer is full (bad/overloaded network)", g.id)
 		}
 		plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
 	}
 }
 
 func (g *remote) stop() {
 	g.pipeline.stop()
+}
+
+func (g *remote) Pause() {
+	g.stop()
+}
+
+func (g *remote) Resume() {
+	g.pipeline.start()
 }

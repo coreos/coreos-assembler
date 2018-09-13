@@ -15,27 +15,28 @@
 package etcdserver
 
 import (
-	"strconv"
-	"strings"
+	"bytes"
+	"context"
+	"encoding/binary"
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc/metadata"
+	"github.com/coreos/etcd/raft"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 const (
-	// the max request size that raft accepts.
-	// TODO: make this a flag? But we probably do not want to
-	// accept large request which might block raft stream. User
-	// specify a large value might end up with shooting in the foot.
-	maxRequestBytes = 1.5 * 1024 * 1024
-
-	// max timeout for waiting a v3 request to go through raft.
-	maxV3RequestTimeout = 5 * time.Second
+	// In the health case, there might be a small gap (10s of entries) between
+	// the applied index and committed index.
+	// However, if the committed entries are very heavy to apply, the gap might grow.
+	// We should stop accepting new proposals if the gap growing to a certain point.
+	maxGapBetweenApplyAndCommitIndex = 5000
 )
 
 type RaftKV interface {
@@ -54,7 +55,13 @@ type Lessor interface {
 
 	// LeaseRenew renews the lease with given ID. The renewed TTL is returned. Or an error
 	// is returned.
-	LeaseRenew(id lease.LeaseID) (int64, error)
+	LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error)
+
+	// LeaseTimeToLive retrieves lease information.
+	LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error)
+
+	// LeaseLeases lists all leases.
+	LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error)
 }
 
 type Authenticator interface {
@@ -77,76 +84,76 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	var result *applyResult
+	var resp *pb.RangeResponse
 	var err error
+	defer func(start time.Time) {
+		warnOfExpensiveReadOnlyRangeRequest(start, r, resp, err)
+	}(time.Now())
 
-	if r.Serializable {
-		var user string
-		user, err = s.usernameFromCtx(ctx)
+	if !r.Serializable {
+		err = s.linearizableReadNotify(ctx)
 		if err != nil {
 			return nil, err
 		}
-		result = s.applyV3.Apply(
-			&pb.InternalRaftRequest{
-				Header: &pb.RequestHeader{Username: user},
-				Range:  r})
-	} else {
-		result, err = s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	}
-	if err != nil {
+	chk := func(ai *auth.AuthInfo) error {
+		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
+	}
+
+	get := func() { resp, err = s.applyV3Base.Range(nil, r) }
+	if serr := s.doSerialize(ctx, chk, get); serr != nil {
+		err = serr
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.RangeResponse), nil
+	return resp, err
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Put: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.PutResponse), nil
+	return resp.(*pb.PutResponse), nil
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.DeleteRangeResponse), nil
+	return resp.(*pb.DeleteRangeResponse), nil
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	var result *applyResult
-	var err error
-
-	if isTxnSerializable(r) {
-		user, err := s.usernameFromCtx(ctx)
-		if err != nil {
-			return nil, err
+	if isTxnReadonly(r) {
+		if !isTxnSerializable(r) {
+			err := s.linearizableReadNotify(ctx)
+			if err != nil {
+				return nil, err
+			}
 		}
-		result = s.applyV3.Apply(
-			&pb.InternalRaftRequest{
-				Header: &pb.RequestHeader{Username: user},
-				Txn:    r})
-	} else {
-		result, err = s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
+		var resp *pb.TxnResponse
+		var err error
+		chk := func(ai *auth.AuthInfo) error {
+			return checkTxnAuth(s.authStore, ai, r)
+		}
+
+		defer func(start time.Time) {
+			warnOfExpensiveReadOnlyTxnRequest(start, r, resp, err)
+		}(time.Now())
+
+		get := func() { resp, err = s.applyV3Base.Txn(r) }
+		if serr := s.doSerialize(ctx, chk, get); serr != nil {
+			return nil, serr
+		}
+		return resp, err
 	}
+
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.TxnResponse), nil
+	return resp.(*pb.TxnResponse), nil
 }
 
 func isTxnSerializable(r *pb.TxnRequest) bool {
@@ -163,8 +170,22 @@ func isTxnSerializable(r *pb.TxnRequest) bool {
 	return true
 }
 
+func isTxnReadonly(r *pb.TxnRequest) bool {
+	for _, u := range r.Success {
+		if r := u.GetRequestRange(); r == nil {
+			return false
+		}
+	}
+	for _, u := range r.Failure {
+		if r := u.GetRequestRange(); r == nil {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
 	if r.Physical && result != nil && result.physc != nil {
 		<-result.physc
 		// The compaction is done deleting keys; the hash is now settled
@@ -197,330 +218,362 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 		// only use positive int64 id's
 		r.ID = int64(s.reqIDGen.Next() & ((1 << 63) - 1))
 	}
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseGrant: r})
+	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseGrant: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.LeaseGrantResponse), nil
+	return resp.(*pb.LeaseGrantResponse), nil
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
+	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.LeaseRevokeResponse), nil
+	return resp.(*pb.LeaseRevokeResponse), nil
 }
 
-func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
+func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
 	ttl, err := s.lessor.Renew(id)
-	if err == nil {
+	if err == nil { // already requested to primary lessor(leader)
 		return ttl, nil
 	}
 	if err != lease.ErrNotPrimary {
 		return -1, err
 	}
 
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
 	// renewals don't go through raft; forward to leader manually
+	for cctx.Err() == nil && err != nil {
+		leader, lerr := s.waitLeader(cctx)
+		if lerr != nil {
+			return -1, lerr
+		}
+		for _, url := range leader.PeerURLs {
+			lurl := url + leasehttp.LeasePrefix
+			ttl, err = leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
+			if err == nil || err == lease.ErrLeaseNotFound {
+				return ttl, err
+			}
+		}
+	}
+	return -1, ErrTimeout
+}
+
+func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	if s.Leader() == s.ID() {
+		// primary; timetolive directly from leader
+		le := s.lessor.Lookup(lease.LeaseID(r.ID))
+		if le == nil {
+			return nil, lease.ErrLeaseNotFound
+		}
+		// TODO: fill out ResponseHeader
+		resp := &pb.LeaseTimeToLiveResponse{Header: &pb.ResponseHeader{}, ID: r.ID, TTL: int64(le.Remaining().Seconds()), GrantedTTL: le.TTL()}
+		if r.Keys {
+			ks := le.Keys()
+			kbs := make([][]byte, len(ks))
+			for i := range ks {
+				kbs[i] = []byte(ks[i])
+			}
+			resp.Keys = kbs
+		}
+		return resp, nil
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
+	// forward to leader
+	for cctx.Err() == nil {
+		leader, err := s.waitLeader(cctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, url := range leader.PeerURLs {
+			lurl := url + leasehttp.LeaseInternalPrefix
+			resp, err := leasehttp.TimeToLiveHTTP(cctx, lease.LeaseID(r.ID), r.Keys, lurl, s.peerRt)
+			if err == nil {
+				return resp.LeaseTimeToLiveResponse, nil
+			}
+			if err == lease.ErrLeaseNotFound {
+				return nil, err
+			}
+		}
+	}
+	return nil, ErrTimeout
+}
+
+func (s *EtcdServer) LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
+	ls := s.lessor.Leases()
+	lss := make([]*pb.LeaseStatus, len(ls))
+	for i := range ls {
+		lss[i] = &pb.LeaseStatus{ID: int64(ls[i].ID)}
+	}
+	return &pb.LeaseLeasesResponse{Header: newHeader(s), Leases: lss}, nil
+}
+
+func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error) {
 	leader := s.cluster.Member(s.Leader())
-	for i := 0; i < 5 && leader == nil; i++ {
+	for leader == nil {
 		// wait an election
 		dur := time.Duration(s.Cfg.ElectionTicks) * time.Duration(s.Cfg.TickMs) * time.Millisecond
 		select {
 		case <-time.After(dur):
 			leader = s.cluster.Member(s.Leader())
-		case <-s.done:
-			return -1, ErrStopped
+		case <-s.stopping:
+			return nil, ErrStopped
+		case <-ctx.Done():
+			return nil, ErrNoLeader
 		}
 	}
 	if leader == nil || len(leader.PeerURLs) == 0 {
-		return -1, ErrNoLeader
+		return nil, ErrNoLeader
 	}
-
-	for _, url := range leader.PeerURLs {
-		lurl := url + "/leases"
-		ttl, err = leasehttp.RenewHTTP(id, lurl, s.peerRt, s.Cfg.peerDialTimeout())
-		if err == nil {
-			break
-		}
-	}
-	return ttl, err
+	return leader, nil
 }
 
 func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Alarm: r})
+	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{Alarm: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AlarmResponse), nil
+	return resp.(*pb.AlarmResponse), nil
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthEnable: r})
+	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{AuthEnable: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthEnableResponse), nil
+	return resp.(*pb.AuthEnableResponse), nil
 }
 
 func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthDisable: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthDisable: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthDisableResponse), nil
+	return resp.(*pb.AuthDisableResponse), nil
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	st, err := s.AuthStore().GenSimpleToken()
-	if err != nil {
+	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
 
-	internalReq := &pb.InternalAuthenticateRequest{
-		Name:        r.Name,
-		Password:    r.Password,
-		SimpleToken: st,
+	var resp proto.Message
+	for {
+		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
+		if err != nil {
+			if err != auth.ErrAuthNotEnabled {
+				plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+			}
+			return nil, err
+		}
+
+		st, err := s.AuthStore().GenTokenPrefix()
+		if err != nil {
+			return nil, err
+		}
+
+		internalReq := &pb.InternalAuthenticateRequest{
+			Name:        r.Name,
+			Password:    r.Password,
+			SimpleToken: st,
+		}
+
+		resp, err = s.raftRequestOnce(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
+		if err != nil {
+			return nil, err
+		}
+		if checkedRevision == s.AuthStore().Revision() {
+			break
+		}
+		plog.Infof("revision when password checked is obsolete, retrying")
 	}
 
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
-	if err != nil {
-		return nil, err
-	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthenticateResponse), nil
+	return resp.(*pb.AuthenticateResponse), nil
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserAddResponse), nil
+	return resp.(*pb.AuthUserAddResponse), nil
 }
 
 func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserDelete: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserDelete: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserDeleteResponse), nil
+	return resp.(*pb.AuthUserDeleteResponse), nil
 }
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserChangePasswordResponse), nil
+	return resp.(*pb.AuthUserChangePasswordResponse), nil
 }
 
 func (s *EtcdServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserGrantRole: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserGrantRole: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserGrantRoleResponse), nil
+	return resp.(*pb.AuthUserGrantRoleResponse), nil
 }
 
 func (s *EtcdServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserGet: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserGet: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserGetResponse), nil
+	return resp.(*pb.AuthUserGetResponse), nil
 }
 
 func (s *EtcdServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserList: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserList: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserListResponse), nil
+	return resp.(*pb.AuthUserListResponse), nil
 }
 
 func (s *EtcdServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserRevokeRole: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserRevokeRole: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthUserRevokeRoleResponse), nil
+	return resp.(*pb.AuthUserRevokeRoleResponse), nil
 }
 
 func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleAdd: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleAdd: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthRoleAddResponse), nil
+	return resp.(*pb.AuthRoleAddResponse), nil
 }
 
 func (s *EtcdServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleGrantPermission: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleGrantPermission: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthRoleGrantPermissionResponse), nil
+	return resp.(*pb.AuthRoleGrantPermissionResponse), nil
 }
 
 func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleGet: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleGet: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthRoleGetResponse), nil
+	return resp.(*pb.AuthRoleGetResponse), nil
 }
 
 func (s *EtcdServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleList: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleList: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthRoleListResponse), nil
+	return resp.(*pb.AuthRoleListResponse), nil
 }
 
 func (s *EtcdServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleRevokePermission: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleRevokePermission: r})
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
-	}
-	return result.resp.(*pb.AuthRoleRevokePermissionResponse), nil
+	return resp.(*pb.AuthRoleRevokePermissionResponse), nil
 }
 
 func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleDelete: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleDelete: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthRoleDeleteResponse), nil
+}
+
+func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 	if result.err != nil {
 		return nil, result.err
 	}
-	return result.resp.(*pb.AuthRoleDeleteResponse), nil
+	return result.resp, nil
 }
 
-func (s *EtcdServer) isValidSimpleToken(token string) bool {
-	splitted := strings.Split(token, ".")
-	if len(splitted) != 2 {
-		return false
-	}
-	index, err := strconv.Atoi(splitted[1])
-	if err != nil {
-		return false
-	}
-
-	// CAUTION: below index synchronization is required because this node
-	// might not receive and apply the log entry of Authenticate() RPC.
-	authApplied := false
-	for i := 0; i < 10; i++ {
-		if uint64(index) <= s.getAppliedIndex() {
-			authApplied = true
-			break
+func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+	for {
+		resp, err := s.raftRequestOnce(ctx, r)
+		if err != auth.ErrAuthOldRevision {
+			return resp, err
 		}
-
-		time.Sleep(100 * time.Millisecond)
 	}
-
-	if !authApplied {
-		plog.Errorf("timeout of waiting Authenticate() RPC")
-		return false
-	}
-
-	return true
 }
 
-func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
-	md, ok := metadata.FromContext(ctx)
-	if !ok {
-		return "", nil
+// doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
+func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
+	for {
+		ai, err := s.AuthInfoFromCtx(ctx)
+		if err != nil {
+			return err
+		}
+		if ai == nil {
+			// chk expects non-nil AuthInfo; use empty credentials
+			ai = &auth.AuthInfo{}
+		}
+		if err = chk(ai); err != nil {
+			if err == auth.ErrAuthOldRevision {
+				continue
+			}
+			return err
+		}
+		// fetch response for serialized request
+		get()
+		//  empty credentials or current auth info means no need to retry
+		if ai.Revision == 0 || ai.Revision == s.authStore.Revision() {
+			return nil
+		}
+		// avoid TOCTOU error, retry of the request is required.
 	}
-
-	ts, tok := md["token"]
-	if !tok {
-		return "", nil
-	}
-
-	token := ts[0]
-	if !s.isValidSimpleToken(token) {
-		return "", ErrInvalidAuthToken
-	}
-
-	username, uok := s.AuthStore().UsernameFromToken(token)
-	if !uok {
-		plog.Warningf("invalid auth token: %s", token)
-		return "", ErrInvalidAuthToken
-	}
-	return username, nil
 }
 
-func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+	ai := s.getAppliedIndex()
+	ci := s.getCommittedIndex()
+	if ci > ai+maxGapBetweenApplyAndCommitIndex {
+		return nil, ErrTooManyRequests
+	}
+
 	r.Header = &pb.RequestHeader{
 		ID: s.reqIDGen.Next(),
 	}
-	username, err := s.usernameFromCtx(ctx)
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	r.Header.Username = username
+	if authInfo != nil {
+		r.Header.Username = authInfo.Username
+		r.Header.AuthRevision = authInfo.Revision
+	}
 
 	data, err := r.Marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(data) > maxRequestBytes {
+	if len(data) > int(s.Cfg.MaxRequestBytes) {
 		return nil, ErrRequestTooLarge
 	}
 
@@ -530,7 +583,7 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	}
 	ch := s.w.Register(id)
 
-	cctx, cancel := context.WithTimeout(ctx, maxV3RequestTimeout)
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
 	defer cancel()
 
 	start := time.Now()
@@ -551,4 +604,116 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 }
 
 // Watchable returns a watchable interface attached to the etcdserver.
-func (s *EtcdServer) Watchable() mvcc.Watchable { return s.KV() }
+func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
+
+func (s *EtcdServer) linearizableReadLoop() {
+	var rs raft.ReadState
+
+	for {
+		ctxToSend := make([]byte, 8)
+		id1 := s.reqIDGen.Next()
+		binary.BigEndian.PutUint64(ctxToSend, id1)
+
+		select {
+		case <-s.readwaitc:
+		case <-s.stopping:
+			return
+		}
+
+		nextnr := newNotifier()
+
+		s.readMu.Lock()
+		nr := s.readNotifier
+		s.readNotifier = nextnr
+		s.readMu.Unlock()
+
+		cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
+		if err := s.r.ReadIndex(cctx, ctxToSend); err != nil {
+			cancel()
+			if err == raft.ErrStopped {
+				return
+			}
+			plog.Errorf("failed to get read index from raft: %v", err)
+			nr.notify(err)
+			continue
+		}
+		cancel()
+
+		var (
+			timeout bool
+			done    bool
+		)
+		for !timeout && !done {
+			select {
+			case rs = <-s.r.readStateC:
+				done = bytes.Equal(rs.RequestCtx, ctxToSend)
+				if !done {
+					// a previous request might time out. now we should ignore the response of it and
+					// continue waiting for the response of the current requests.
+					id2 := uint64(0)
+					if len(rs.RequestCtx) == 8 {
+						id2 = binary.BigEndian.Uint64(rs.RequestCtx)
+					}
+					plog.Warningf("ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader (request ID want %d, got %d)", id1, id2)
+					slowReadIndex.Inc()
+				}
+
+			case <-time.After(s.Cfg.ReqTimeout()):
+				plog.Warningf("timed out waiting for read index response")
+				nr.notify(ErrTimeout)
+				timeout = true
+				slowReadIndex.Inc()
+
+			case <-s.stopping:
+				return
+			}
+		}
+		if !done {
+			continue
+		}
+
+		if ai := s.getAppliedIndex(); ai < rs.Index {
+			select {
+			case <-s.applyWait.Wait(rs.Index):
+			case <-s.stopping:
+				return
+			}
+		}
+		// unblock all l-reads requested at indices before rs.Index
+		nr.notify(nil)
+	}
+}
+
+func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
+	s.readMu.RLock()
+	nc := s.readNotifier
+	s.readMu.RUnlock()
+
+	// signal linearizable loop for current notify if it hasn't been already
+	select {
+	case s.readwaitc <- struct{}{}:
+	default:
+	}
+
+	// wait for read state notification
+	select {
+	case <-nc.c:
+		return nc.err
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.done:
+		return ErrStopped
+	}
+}
+
+func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error) {
+	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
+	if authInfo != nil || err != nil {
+		return authInfo, err
+	}
+	if !s.Cfg.ClientCertAuthEnabled {
+		return nil, nil
+	}
+	authInfo = s.AuthStore().AuthInfoFromTLS(ctx)
+	return authInfo, nil
+}

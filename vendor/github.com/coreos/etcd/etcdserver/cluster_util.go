@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-semver/semver"
@@ -94,7 +93,16 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 			}
 			continue
 		}
-		return membership.NewClusterFromMembers("", id, membs), nil
+
+		// check the length of membership members
+		// if the membership members are present then prepare and return raft cluster
+		// if membership members are not present then the raft cluster formed will be
+		// an invalid empty cluster hence return failed to get raft cluster member(s) from the given urls error
+		if len(membs) > 0 {
+			return membership.NewClusterFromMembers("", id, membs), nil
+		}
+
+		return nil, fmt.Errorf("failed to get raft cluster member(s) from the given urls.")
 	}
 	return nil, fmt.Errorf("could not retrieve cluster information from the given urls")
 }
@@ -232,15 +240,6 @@ func getVersion(m *membership.Member, rt http.RoundTripper) (*version.Versions, 
 			plog.Warningf("failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
-		// etcd 2.0 does not have version endpoint on peer url.
-		if resp.StatusCode == http.StatusNotFound {
-			httputil.GracefulClose(resp)
-			return &version.Versions{
-				Server:  "2.0.0",
-				Cluster: "2.0.0",
-			}, nil
-		}
-
 		var b []byte
 		b, err = ioutil.ReadAll(resp.Body)
 		resp.Body.Close()

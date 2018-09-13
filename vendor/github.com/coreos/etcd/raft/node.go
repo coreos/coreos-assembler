@@ -15,10 +15,10 @@
 package raft
 
 import (
+	"context"
 	"errors"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
-	"golang.org/x/net/context"
 )
 
 type SnapshotStatus int
@@ -38,7 +38,7 @@ var (
 // SoftState provides state that is useful for logging and debugging.
 // The state is volatile and does not need to be persisted to the WAL.
 type SoftState struct {
-	Lead      uint64
+	Lead      uint64 // must use atomic operations to access; keep 64-bit aligned.
 	RaftState StateType
 }
 
@@ -60,6 +60,12 @@ type Ready struct {
 	// HardState will be equal to empty state if there is no update.
 	pb.HardState
 
+	// ReadStates can be used for node to serve linearizable read requests locally
+	// when its applied index is greater than the index in ReadState.
+	// Note that the readState will be returned when raft receives msgReadIndex.
+	// The returned is only valid for the request that requested to read.
+	ReadStates []ReadState
+
 	// Entries specifies entries to be saved to stable storage BEFORE
 	// Messages are sent.
 	Entries []pb.Entry
@@ -77,6 +83,10 @@ type Ready struct {
 	// If it contains a MsgSnap message, the application MUST report back to raft
 	// when the snapshot has been received or has failed by calling ReportSnapshot.
 	Messages []pb.Message
+
+	// MustSync indicates whether the HardState and Entries must be synchronously
+	// written to disk or if an asynchronous write is permissible.
+	MustSync bool
 }
 
 func isHardStateEqual(a, b pb.HardState) bool {
@@ -96,7 +106,7 @@ func IsEmptySnap(sp pb.Snapshot) bool {
 func (rd Ready) containsUpdates() bool {
 	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
 		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
-		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || len(rd.ReadStates) != 0
 }
 
 // Node represents a node in a raft cluster.
@@ -130,27 +140,23 @@ type Node interface {
 	// However, as an optimization, the application may call Advance while it is applying the
 	// commands. For example. when the last Ready contains a snapshot, the application might take
 	// a long time to apply the snapshot data. To continue receiving Ready without blocking raft
-	// progress, it can call Advance before finish applying the last ready. To make this optimization
-	// work safely, when the application receives a Ready with softState.RaftState equal to Candidate
-	// it MUST apply all pending configuration changes if there is any.
-	//
-	// Here is a simple solution that waiting for ALL pending entries to get applied.
-	// ```
-	// ...
-	// rd := <-n.Ready()
-	// go apply(rd.CommittedEntries) // optimization to apply asynchronously in FIFO order.
-	// if rd.SoftState.RaftState == StateCandidate {
-	//     waitAllApplied()
-	// }
-	// n.Advance()
-	// ...
-	//```
+	// progress, it can call Advance before finishing applying the last ready.
 	Advance()
 	// ApplyConfChange applies config change to the local node.
 	// Returns an opaque ConfState protobuf which must be recorded
 	// in snapshots. Will never return nil; it returns a pointer only
 	// to match MemoryStorage.Compact.
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
+
+	// TransferLeadership attempts to transfer leadership to the given transferee.
+	TransferLeadership(ctx context.Context, lead, transferee uint64)
+
+	// ReadIndex request a read state. The read state will be set in the ready.
+	// Read state has a read index. Once the application advances further than the read
+	// index, any linearizable read requests issued before the read request can be
+	// processed safely. The read state will have the same rctx attached.
+	ReadIndex(ctx context.Context, rctx []byte) error
+
 	// Status returns the current status of the raft state machine.
 	Status() Status
 	// ReportUnreachable reports the given node is not reachable for the last send.
@@ -313,7 +319,7 @@ func (n *node) run(r *raft) {
 			r.Step(m)
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
-			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m.Type) {
+			if pr := r.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
 				r.Step(m) // raft never returns an error
 			}
 		case cc := <-n.confc:
@@ -328,6 +334,8 @@ func (n *node) run(r *raft) {
 			switch cc.Type {
 			case pb.ConfChangeAddNode:
 				r.addNode(cc.NodeID)
+			case pb.ConfChangeAddLearnerNode:
+				r.addLearner(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
 				// block incoming proposal when local node is
 				// removed
@@ -361,7 +369,9 @@ func (n *node) run(r *raft) {
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
+
 			r.msgs = nil
+			r.readStates = nil
 			advancec = n.advancec
 		case <-advancec:
 			if prevHardSt.Commit != 0 {
@@ -458,8 +468,12 @@ func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 
 func (n *node) Status() Status {
 	c := make(chan Status)
-	n.status <- c
-	return <-c
+	select {
+	case n.status <- c:
+		return <-c
+	case <-n.done:
+		return Status{}
+	}
 }
 
 func (n *node) ReportUnreachable(id uint64) {
@@ -478,6 +492,19 @@ func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
 	}
 }
 
+func (n *node) TransferLeadership(ctx context.Context, lead, transferee uint64) {
+	select {
+	// manually set 'from' and 'to', so that leader can voluntarily transfers its leadership
+	case n.recvc <- pb.Message{Type: pb.MsgTransferLeader, From: transferee, To: lead}:
+	case <-n.done:
+	case <-ctx.Done():
+	}
+}
+
+func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
+	return n.step(ctx, pb.Message{Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: rctx}}})
+}
+
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEntries(),
@@ -493,5 +520,20 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot
 	}
+	if len(r.readStates) != 0 {
+		rd.ReadStates = r.readStates
+	}
+	rd.MustSync = MustSync(rd.HardState, prevHardSt, len(rd.Entries))
 	return rd
+}
+
+// MustSync returns true if the hard state and count of Raft entries indicate
+// that a synchronous write to persistent storage is required.
+func MustSync(st, prevst pb.HardState, entsnum int) bool {
+	// Persistent state on all servers:
+	// (Updated on stable storage before responding to RPCs)
+	// currentTerm
+	// votedFor
+	// log entries[]
+	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
 }

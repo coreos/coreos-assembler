@@ -6,5 +6,5 @@ test:
 	./test
 
 vendor:
-	@glide update --strip-vendor
-	@glide-vc --use-lock-file --no-tests --only-code
+	@glide -q update --strip-vendor
+	@glide-vc --use-lock-file --no-tests --only-code --no-test-imports
