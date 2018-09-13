@@ -104,6 +104,13 @@ create images from the image file.
  - UserData is passed to the instances via the GCE metadata service.
  - Instances are tagged with `created-by:mantle` which is used when filtering instances for `GC`.
 
+## OpenStack
+
+ - The OpenStack platform wraps [gophercloud](https://github.com/gophercloud/gophercloud).
+ - By default SSH keys will be passed via both the OpenStack metadata AND the userdata.
+ - UserData is passed to the instances via the OpenStack metadata service.
+ - Instances are tagged with `CreatedBy: mantle` which is used when filtering instances for `GC`.
+
 ## Packet
 
  - The Packet platform wraps [packngo](https://github.com/packethost/packngo).
