@@ -1,5 +1,5 @@
-hash: 1ed796d34ee34858f1651209ecd07a85b2c20a43f59a375c5fc65043852259c3
-updated: 2018-08-22T15:12:37.293892299-07:00
+hash: 25572b299dc1ddba3eec789e849da346c8ae56aa84cb40dc2bd4d5e09cbcca9d
+updated: 2018-09-05T16:36:44.568478534-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -134,10 +134,8 @@ imports:
 - name: github.com/coreos/ignition
   version: f7079129b8651ac51dba14c3af65692bb413c1dd
   subpackages:
-  - config
   - config/shared/errors
   - config/shared/validations
-  - config/types
   - config/util
   - config/v1
   - config/v1/types
