@@ -4,13 +4,8 @@ set -euo pipefail
 # Currently this just wraps the two binaries we have today
 # under a global entrypoint with subcommands.
 
+# docker/podman don't run through PAM, but we want this set
 export USER=${USER:-$(id -nu)}
-
-case $USER in
-    root) exec runuser -u builder -- $0 "$@";;
-    builder) ;;
-    *) echo "Executed as non-builder user; assuming sudo rights..." 1>&2;;
-esac
 
 # Ensure we've unshared our mount namespace so
 # the later umount doesn't affect the host potentially
