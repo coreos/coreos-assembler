@@ -1,0 +1,12 @@
+[package]
+name = "coreos-assembler"
+version = "0.1.0"
+authors = ["Colin Walters <walters@verbum.org>"]
+
+[dependencies]
+clap = "~2.28"
+failure = "0.1.1"
+
+[[bin]]
+name = "coreos-assembler-rs"
+path = "src/coreos-assembler.rs"
