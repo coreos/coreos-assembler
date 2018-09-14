@@ -103,6 +103,7 @@ try:
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7", "--rng=/dev/urandom",
                           "--check", "path_in_use=off",
+                          "--network=none",  # We want predictablity, disable networking
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--location={}".format(args.location),
                           "--initrd-inject={}".format(ks_tmp.name),
