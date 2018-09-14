@@ -21,7 +21,7 @@ fi
 cmd=${1:-}
 build_commands="init fetch build run clean"
 other_commands="shell"
-utility_commands="gf-oemid virt-install"
+utility_commands="gf-oemid virt-install oscontainer"
 if [ -z "${cmd}" ]; then
     echo usage: "coreos-assembler CMD ..."
     echo "Build commands:"
