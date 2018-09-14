@@ -96,4 +96,4 @@ repositories.
 Development
 ---
 
-The container image is built in [OpenShift CI](https://api.ci.openshift.org/console/project/coreos/browse/builds/coreos-assembler?tab=history).
+The container image is built in [OpenShift CI](https://api.ci.openshift.org/console/project/rhcos/browse/builds/coreos-assembler?tab=history).
