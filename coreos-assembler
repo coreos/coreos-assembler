@@ -23,8 +23,6 @@ if [ -e /sys/fs/selinux/status ]; then
 fi
 
 cmd=${1:-}
-shift
-
 if [ -z "${cmd}" ]; then
     echo usage: "coreos-assembler CMD ..."
     echo "Commands:"
@@ -34,6 +32,7 @@ if [ -z "${cmd}" ]; then
     done
     exit 1
 fi
+shift
 
 target=/usr/libexec/coreos-assembler/cmd-${cmd}
 if test -x "${target}"; then
