@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +28,6 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -91,11 +91,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err != nil {
-		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
-			h.tr.AddRemote(from, strings.Split(urls, ","))
-		}
-	}
+	addRemoteFromRequest(h.tr, r)
 
 	// Limit the data size that could be read from the request body, which ensures that read from
 	// connection will not time out accidentally due to possible blocking in underlying implementation.
@@ -104,6 +100,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		plog.Errorf("failed to read raft message (%v)", err)
 		http.Error(w, "error reading raft message", http.StatusBadRequest)
+		recvFailures.WithLabelValues(r.RemoteAddr).Inc()
 		return
 	}
 
@@ -111,6 +108,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := m.Unmarshal(b); err != nil {
 		plog.Errorf("failed to unmarshal raft message (%v)", err)
 		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
+		recvFailures.WithLabelValues(r.RemoteAddr).Inc()
 		return
 	}
 
@@ -123,6 +121,9 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			plog.Warningf("failed to process raft message (%v)", err)
 			http.Error(w, "error processing raft message", http.StatusInternalServerError)
+			w.(http.Flusher).Flush()
+			// disconnect the http stream
+			panic(err)
 		}
 		return
 	}
@@ -171,18 +172,16 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err != nil {
-		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
-			h.tr.AddRemote(from, strings.Split(urls, ","))
-		}
-	}
+	addRemoteFromRequest(h.tr, r)
 
 	dec := &messageDecoder{r: r.Body}
-	m, err := dec.decode()
+	// let snapshots be very large since they can exceed 512MB for large installations
+	m, err := dec.decodeLimit(uint64(1 << 63))
 	if err != nil {
 		msg := fmt.Sprintf("failed to decode raft message (%v)", err)
 		plog.Errorf(msg)
 		http.Error(w, msg, http.StatusBadRequest)
+		recvFailures.WithLabelValues(r.RemoteAddr).Inc()
 		return
 	}
 

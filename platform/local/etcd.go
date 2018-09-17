@@ -72,7 +72,7 @@ func NewSimpleEtcd() (*SimpleEtcd, error) {
 		return nil, err
 	}
 
-	cfg := &etcdserver.ServerConfig{
+	cfg := etcdserver.ServerConfig{
 		Name:       memberName,
 		ClientURLs: clientURLs,
 		PeerURLs:   peerURLs,

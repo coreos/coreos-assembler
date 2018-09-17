@@ -16,6 +16,7 @@ package membership
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/netutil"
@@ -32,6 +34,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
+
 	"github.com/coreos/go-semver/semver"
 )
 
@@ -175,7 +178,7 @@ func (c *RaftCluster) String() string {
 	fmt.Fprintf(b, "Members:[%s] ", strings.Join(ms, " "))
 	var ids []string
 	for id := range c.removed {
-		ids = append(ids, fmt.Sprintf("%s", id))
+		ids = append(ids, id.String())
 	}
 	fmt.Fprintf(b, "RemovedMemberIDs:[%s]}", strings.Join(ids, " "))
 	return b.String()
@@ -200,13 +203,14 @@ func (c *RaftCluster) SetBackend(be backend.Backend) {
 	mustCreateBackendBuckets(c.be)
 }
 
-func (c *RaftCluster) Recover() {
+func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
 	mustDetectDowngrade(c.version)
+	onSet(c.version)
 
 	for _, m := range c.members {
 		plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.id)
@@ -356,7 +360,7 @@ func (c *RaftCluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *RaftCluster) SetVersion(ver *semver.Version) {
+func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
@@ -372,6 +376,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version) {
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
+	onSet(ver)
 }
 
 func (c *RaftCluster) IsReadyToAddNewMember() bool {
@@ -482,9 +487,11 @@ func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) erro
 	sort.Sort(MembersByPeerURLs(ems))
 	sort.Sort(MembersByPeerURLs(lms))
 
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
 	for i := range ems {
-		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
-			return fmt.Errorf("unmatched member while checking PeerURLs")
+		if ok, err := netutil.URLStringsEqual(ctx, ems[i].PeerURLs, lms[i].PeerURLs); !ok {
+			return fmt.Errorf("unmatched member while checking PeerURLs (%v)", err)
 		}
 		lms[i].ID = ems[i].ID
 	}
