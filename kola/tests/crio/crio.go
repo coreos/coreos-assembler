@@ -53,7 +53,7 @@ var crioPodTemplate = `{
 	"log_path": "",
 	"stdin": false,
 	"stdin_once": false,
-	"tty": true,
+	"tty": false,
 	"linux": {
 			"resources": {
 					"memory_limit_in_bytes": 209715200,
@@ -254,7 +254,7 @@ func crioNetwork(c cluster.TestCluster) {
 		}
 
 		// This command will block until a message is recieved
-		output, err := c.SSH(dest, fmt.Sprintf("sudo timeout 30 crictl exec -t %s echo 'HELLO FROM SERVER' | timeout 20 ncat --listen 0.0.0.0 9988 || echo 'LISTENER TIMEOUT'", containerID))
+		output, err := c.SSH(dest, fmt.Sprintf("sudo timeout 30 crictl exec %s echo 'HELLO FROM SERVER' | timeout 20 ncat --listen 0.0.0.0 9988 || echo 'LISTENER TIMEOUT'", containerID))
 		if err != nil {
 			return err
 		}
@@ -296,7 +296,7 @@ func crioNetwork(c cluster.TestCluster) {
 			return err
 		}
 
-		output, err := c.SSH(src, fmt.Sprintf("sudo crictl exec -t %s echo 'HELLO FROM CLIENT' | ncat %s 9988",
+		output, err := c.SSH(src, fmt.Sprintf("sudo crictl exec %s echo 'HELLO FROM CLIENT' | ncat %s 9988",
 			containerID, dest.PrivateIP()))
 		if err != nil {
 			return err
@@ -335,7 +335,7 @@ func crioNetworksReliably(c cluster.TestCluster) {
 		podID := c.MustSSH(m, cmdCreatePod)
 		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
-		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec -t %s ping -i 0.2 10.88.0.1 -w 1 >/dev/null && echo PASS || echo FAIL", containerID)))
+		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec %s ping -i 0.2 10.88.0.1 -w 1 >/dev/null && echo PASS || echo FAIL", containerID)))
 	}
 
 	numPass := strings.Count(string(output), "PASS")
