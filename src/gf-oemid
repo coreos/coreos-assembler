@@ -23,7 +23,14 @@ fatal() {
     exit 1
 }
 
-tmpd=$(mktemp -d /tmp/qcow2-to-vagrant.XXXXXX)
+# We may have a tmpdir injected by an outer build process; if so use it,
+# otherwise make our own.
+if [ -n "${ASSEMBLER_BUILD_TMPDIR:-}" ]; then
+    tmpd=${ASSEMBLER_BUILD_TMPDIR}/gf-oemid
+    mkdir ${tmpd}
+else
+    tmpd=$(mktemp -d /tmp/gf-oemid.XXXXXX)
+fi
 tmp_dest=${tmpd}/box.img
 cp --reflink=auto ${src} ${tmp_dest}
 # <walters> I commonly chmod a-w VM images
@@ -69,3 +76,5 @@ gf upload ${tmpd}/grub.cfg ${grubcfg_src}
 gf umount-all
 guestfish --remote -- exit
 mv "${tmp_dest}" "${dest}"
+
+rm ${tmpd} -rf

@@ -86,6 +86,13 @@ buildid=${version}-${image_genver}
 
 mkdir -p "work/${buildid}"
 cd "work/${buildid}"
+# This is used by child processes inside here as a temporary directory, e.g. by
+# gf-oemid. We don't want `/tmp` as we want to be able to reliably `rename()`
+# directly.
+build_tmp=$(pwd)/build-tmp
+# Longer exported variable name for child processes
+export ASSEMBLER_BUILD_TMPDIR=${build_tmp}
+rm ${build_tmp} -rf && mkdir ${build_tmp}
 
 # Generate JSON
 if [ -n "${previous_commit}" ]; then
@@ -120,7 +127,7 @@ sudo rm -f /dev/kvm; sudo mknod /dev/kvm c 10 232 && sudo setfacl -m u:$USER:rw 
 
 /usr/libexec/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 
-cat > tmp-meta.json <<EOF
+cat > ${build_tmp}/meta.json <<EOF
 {
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
@@ -128,9 +135,9 @@ cat > tmp-meta.json <<EOF
 }
 EOF
 # Merge all the JSON
-cat tmp-meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.json
-rm -f tmp-meta.json
+cat ${build_tmp}/meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.json
 
+rm "${build_tmp}" -rf
 cd ${workdir}/builds
 mv work/${buildid} .
 ln -Tsfr "${buildid}" latest
