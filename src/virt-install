@@ -91,12 +91,14 @@ if args.create_disk:
 
 # Doesn't need to be truly unique, let's just use our pid+time
 domain="coreos-inst-{}-{}".format(os.getpid(),int(time.time()))
+tail_proc = None
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
                      "--name={}".format(domain),
                      "--noautoconsole"]
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
+        tail_proc = subprocess.Popen(['tail', '-F', args.console_log_file])
     if args.local_repo:
         vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.local_repo))
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
@@ -111,4 +113,6 @@ try:
     run_sync_verbose(vinstall_args)
 finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
+    if tail_proc is not None:
+        tail_proc.terminate()
 print("Completed install to disk image: {}".format(args.dest))
