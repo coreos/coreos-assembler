@@ -18,12 +18,24 @@ if [ -e /sys/fs/selinux/status ]; then
 fi
 
 cmd=${1:-}
+build_commands="init fetch build run clean"
+other_commands="shell"
+utility_commands="gf-oemid virt-install"
 if [ -z "${cmd}" ]; then
     echo usage: "coreos-assembler CMD ..."
-    echo "Commands:"
-    ls /usr/libexec/coreos-assembler/cmd-* | while read cmd; do
-        bin=$(basename $cmd)
-        echo "  ${bin:4}"
+    echo "Build commands:"
+    for bin in ${build_commands}; do
+        echo "  ${bin}"
+    done
+
+    echo "Other commands:"
+    for bin in ${other_commands}; do
+        echo "  ${bin}"
+    done
+
+    echo "Utility commands:"
+    for bin in ${utility_commands}; do
+        echo "  ${bin}"
     done
     exit 1
 fi
