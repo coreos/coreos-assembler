@@ -99,12 +99,13 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
 {"ignition": {"config": {}, "security": {"tls": {}}, "timeouts": {}, "version": "2.2.0"}, "networkd": {}, "passwd": {"users": [{"groups": ["sudo"], "name": "core"}]}, "storage": {}, "systemd": {"units": [{"name": "serial-getty@ttyS0.service", "dropins": [{"name": "autologin-core.conf", "contents": "[Service]\nTTYVTDisallocate=no\nExecStart=\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\n"}]}${ign_var_srv_mount}]}}
 EOF
     exec 3<>${f}
-    if ! jq . < ${f} >/dev/null; then
-        cat "${f}"
-        exit 1
-    fi
     rm -f ${f}
     IGNITION_CONFIG_FILE=/proc/self/fd/3
+
+    if ! jq . < ${IGNITION_CONFIG_FILE} >/dev/null; then
+        cat "${IGNITION_CONFIG_FILE}"
+        exit 1
+    fi
 fi
 set -- -fw_cfg name=opt/com.coreos/config,file="${IGNITION_CONFIG_FILE}" "$@"
 
