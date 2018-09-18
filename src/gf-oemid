@@ -29,7 +29,7 @@ cp --reflink=auto ${src} ${tmp_dest}
 # <walters> I commonly chmod a-w VM images
 chmod u+w ${tmp_dest}
 
-coreos_gf_run_mount
+coreos_gf_run_mount "${tmp_dest}"
 # For now we just modify the grub config, but *not* the /boot/loader
 # entry that generated it, because...well it's simpler and in theory
 # we only need the OEM ID for the first boot where Ignition runs.  Might
