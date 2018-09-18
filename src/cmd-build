@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -xeuo pipefail
+set -euo pipefail
 
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
@@ -15,7 +15,7 @@ previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
 config_dirty=false
-if ! git -C ${configdir} diff --exit-code; then
+if ! git -C ${configdir} diff --quiet --exit-code; then
     config_dirty=true
 fi
 commitmeta_input_json=$(pwd)/work/commit-metadata-input.json
