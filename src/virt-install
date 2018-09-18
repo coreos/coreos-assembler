@@ -72,6 +72,15 @@ else:
     ks_tmp = tempfile.NamedTemporaryFile(prefix="coreos-virtinstall", suffix=".ks")
 run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
 
+# This is an implmentation detail of https://github.com/dustymabe/ignition-dracut
+# So we hardcode it here.
+# See: https://github.com/dustymabe/ignition-dracut/pull/12
+ks_tmp.write("""
+%post
+touch /boot/coreos-firstboot
+%end
+""")
+
 # This is an "extension" to kickstart files that we implement as a comment.
 if args.create_disk:
     magic_virt_install_size_str = '#--coreos-virt-install-disk-size-gb:'
