@@ -118,12 +118,12 @@ ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-rep
 EOF
 
 imageprefix=${name}-${version}-${image_genver}
-/usr/libexec/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 \
+/usr/lib/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 \
                --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks \
                --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
                --local-repo=${workdir}/repo
 
-/usr/libexec/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
+/usr/lib/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 
 cat > ${build_tmp}/meta.json <<EOF
 {
