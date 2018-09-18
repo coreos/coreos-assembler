@@ -37,9 +37,12 @@ dnf copr -y enable walters/buildtools-fedora
 # For now, since we get builds slightly faster there
 dnf copr -y enable dustymabe/ignition
 
-# These are only used to build things in here, we define them separately because
-# they're cleaned up later
-self_builddeps="cargo golang"
+# These are only used to build things in here.  Today
+# we ship these in the container too to make it easier
+# to use the container as a development environment for itself.
+# Down the line we may strip these out, or have a separate
+# development version.
+self_builddeps=$(grep -v '^#' ${srcdir}/build-deps.txt)
 
 # Process our base dependencies + build dependencies
 (echo ${self_builddeps} && grep -v '^#' ${srcdir}/deps.txt) | xargs dnf -y install
@@ -56,8 +59,8 @@ rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 # And the main scripts
 make && make install
 
-# Cleanup deps
-dnf remove -y ${self_builddeps}
+# Commented out for now, see above
+#dnf remove -y ${self_builddeps}
 rpm -q grubby && dnf remove -y grubby
 # Further cleanup
 dnf clean all
