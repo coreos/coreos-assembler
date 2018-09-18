@@ -102,7 +102,7 @@ EOF
     rm -f ${f}
     IGNITION_CONFIG_FILE=/proc/self/fd/3
 
-    if ! jq . < ${IGNITION_CONFIG_FILE} >/dev/null; then
+    if ! ignition-validate ${IGNITION_CONFIG_FILE}; then
         cat "${IGNITION_CONFIG_FILE}"
         exit 1
     fi

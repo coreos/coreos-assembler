@@ -34,6 +34,9 @@ fi
 dnf -y install /usr/bin/xargs dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
 
+# For now, since we get builds slightly faster there
+dnf copr -y enable dustymabe/ignition
+
 # These are only used to build things in here, we define them separately because
 # they're cleaned up later
 self_builddeps="cargo golang"
@@ -76,6 +79,9 @@ podman buildah skopeo
 
 # Miscellaneous tools
 jq awscli
+
+# For ignition file validation in cmd-run
+ignition
 EOF
 
 # The podman change to use systemd for cgroups broke our hack to use
