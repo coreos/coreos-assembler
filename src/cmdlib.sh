@@ -5,6 +5,18 @@ fatal() {
 }
 
 preflight() {
+    # Verify we have all dependencies
+    local deps=$(grep -v '^#' /usr/libexec/coreos-assembler/deps.txt)
+    if ! rpm -q ${deps} >/dev/null; then
+        local missing=""
+        for pkg in ${deps}; do
+            if ! rpm -q "${pkg}" >/dev/null; then
+                missing="$missing $pkg"
+            fi
+        done
+        fatal "Failed to find expected dependency packages: $missing"
+    fi
+
     if [ $(stat -f --printf="%T" .) = "overlayfs" ]; then
         fatal "$(pwd) must be a volume"
     fi
