@@ -5,11 +5,13 @@
 # http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
 GUESTFISH_PID=
 coreos_gf_launch() {
+    local src=$1
+    shift
     local guestfish
     guestfish[0]="guestfish"
     guestfish[1]="--listen"
     guestfish[3]="-a"
-    guestfish[4]="${tmp_dest}"
+    guestfish[4]="${src}"
 
     eval $("${guestfish[@]}")
     if [ -z "$GUESTFISH_PID" ]; then
@@ -29,7 +31,7 @@ coreos_gf() {
 # Run libguestfs and mount the root and boot partitions.
 # Export `stateroot` and `deploydir` variables.
 coreos_gf_run_mount() {
-    coreos_gf_launch
+    coreos_gf_launch "$@"
     coreos_gf run
     local root=$(coreos_gf findfs-label root)
     coreos_gf mount "${root}" /
