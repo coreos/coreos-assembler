@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -xeuo pipefail
+
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+. ${dn}/libguestfish.sh
+
+# Usage: gf-post-virt-install <input image>
+#
+# Currently we're using Anaconda which is primarily designed to
+# do per-system installs - the case we're doing here is "golden images",
+# so we need to "undo" some things that Anaconda does, e.g. persisting
+# /var/lib/systemd/random-seed.
+#
+# To make things crystal clear, we just blow away all of /var.  This
+# works with rpm-ostree since it will be re-created with systemd tmpfiles
+# on boot.
+
+src=$1
+shift
+
+coreos_gf_run_mount "${src}"
+coreos_gf glob rm-rf ${stateroot}'/var/*'
+# Note libostree also injects .ostree-selabeled, which
+# the glob currently keeps - that's fine.

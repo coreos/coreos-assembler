@@ -124,4 +124,8 @@ finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
     if tail_proc is not None:
         tail_proc.terminate()
-print("Completed install to disk image: {}".format(args.dest))
+
+print("Anaconda done")
+run_sync_verbose(['/usr/libexec/coreos-assembler/gf-post-virt-install', args.dest])
+print("Image complete: {}".format(args.dest))
+
