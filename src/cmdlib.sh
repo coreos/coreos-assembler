@@ -10,11 +10,23 @@ preflight() {
     fi
 
     if ! stat /dev/kvm >/dev/null; then
-        fatal "Unable to access /dev/kvm"
+        fatal "Unable to find /dev/kvm"
     fi
 
     if ! capsh --print | grep -q 'Current.*cap_sys_admin'; then
         fatal "This container must currently be run with --privileged"
+    fi
+
+    if ! sudo true; then
+        fatal "The user must currently have sudo privileges"
+    fi
+
+    # permissions on /dev/kvm vary by (host) distro.  If it's
+    # not writable, recreate it.
+    if ! [ -w /dev/kvm ]; then
+        sudo rm -f /dev/kvm
+        sudo mknod /dev/kvm c 10 232
+        sudo setfacl -m u:$USER:rw /dev/kvm
     fi
 }
 
