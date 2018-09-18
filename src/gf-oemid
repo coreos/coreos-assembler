@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-# Usage: coreos-oemid <input image> <output image> OEMID
-#
-# Example: coreos-oemid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 ec2
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+. ${dn}/libguestfish.sh
+
+# Usage: gf-oemid <input image> <output image> OEMID
+# Example: gf-oemid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 ec2
 #
 # This will add the coreos.oem.id=ec2 to the bootloader arguments. Intended to
 # be used for Ignition. It's much faster to do this than generate a fresh image
@@ -12,16 +15,6 @@ set -xeuo pipefail
 src=$1
 dest=$2
 oemid=$3
-
-# We don't want to use the system libvirtd if we're in a container
-if test -f /run/container || test -f /.dockerenv; then
-    export LIBGUESTFS_BACKEND=direct
-fi
-
-fatal() {
-    echo "error: $@" 1>&2
-    exit 1
-}
 
 # We may have a tmpdir injected by an outer build process; if so use it,
 # otherwise make our own.
@@ -36,45 +29,16 @@ cp --reflink=auto ${src} ${tmp_dest}
 # <walters> I commonly chmod a-w VM images
 chmod u+w ${tmp_dest}
 
-# http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
-guestfish[0]="guestfish"
-guestfish[1]="--listen"
-guestfish[3]="-a"
-guestfish[4]="${tmp_dest}"
-
-GUESTFISH_PID=
-eval $("${guestfish[@]}")
-if [ -z "$GUESTFISH_PID" ]; then
-    fatal "guestfish didn't start up, see error messages above"
-fi
-cleanup_guestfish () {
-    guestfish --remote -- exit >/dev/null 2>&1 ||:
-}
-trap cleanup_guestfish EXIT ERR
-
-gf() {
-    guestfish --remote -- "$@"
-}
-
-gf run
-root=$(gf findfs-label root)
-gf mount "${root}" /
-boot=$(gf findfs-label boot)
-gf mount "${boot}" /boot
-# Not used currently
-#stateroot=/ostree/deploy/$(gf ls /ostree/deploy)
-#rootdir=${stateroot}/deploy/$(gf ls ${stateroot}/deploy | grep -v \.origin)
+coreos_gf_run_mount
 # For now we just modify the grub config, but *not* the /boot/loader
 # entry that generated it, because...well it's simpler and in theory
 # we only need the OEM ID for the first boot where Ignition runs.  Might
 # as well not have other things using it persistently.
 grubcfg_src=/boot/grub2/grub.cfg
-gf download ${grubcfg_src} ${tmpd}/grub.cfg
+coreos_gf download ${grubcfg_src} ${tmpd}/grub.cfg
 sed -i -e 's,^\(linux16 .*\),\1 coreos.oem.id='${oemid}',' ${tmpd}/grub.cfg
-gf upload ${tmpd}/grub.cfg ${grubcfg_src}
+coreos_gf upload ${tmpd}/grub.cfg ${grubcfg_src}
+coreos_gf_shutdown
 
-gf umount-all
-guestfish --remote -- exit
 mv "${tmp_dest}" "${dest}"
-
 rm ${tmpd} -rf
