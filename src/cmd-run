@@ -96,7 +96,40 @@ fi
 if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     f=$(mktemp)
     cat > ${f} <<EOF
-{"ignition": {"config": {}, "security": {"tls": {}}, "timeouts": {}, "version": "2.2.0"}, "networkd": {}, "passwd": {"users": [{"groups": ["sudo"], "name": "core"}]}, "storage": {}, "systemd": {"units": [{"name": "serial-getty@ttyS0.service", "dropins": [{"name": "autologin-core.conf", "contents": "[Service]\nTTYVTDisallocate=no\nExecStart=\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\n"}]}${ign_var_srv_mount}]}}
+{
+    "ignition": {
+        "config": {},
+        "security": {
+            "tls": {}
+        },
+        "timeouts": {},
+        "version": "2.2.0"
+    },
+    "networkd": {},
+    "passwd": {
+        "users": [
+            {
+                "groups": ["sudo"],
+                "name": "core"
+            }
+        ]
+    },
+    "storage": {},
+    "systemd": {
+        "units": [
+            {
+                "name": "serial-getty@ttyS0.service",
+                "dropins": [
+                    {
+                        "name": "autologin-core.conf",
+                        "contents": "[Service]\nTTYVTDisallocate=no\nExecStart=\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\n"
+                    }
+                ]
+            }
+            ${ign_var_srv_mount}
+        ]
+    }
+}
 EOF
     exec 3<>${f}
     rm -f ${f}
