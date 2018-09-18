@@ -41,48 +41,8 @@ dnf copr -y enable dustymabe/ignition
 # they're cleaned up later
 self_builddeps="cargo golang"
 
-grep -v '^#' <<EOF | xargs dnf -y install
-${self_builddeps}
-
-# We default to builder user, but sudo where necessary
-sudo
-
-# dumb-init is a good idea in general, but specifically fixes things with
-# libvirt forking qemu and assuming the process gets reaped on shutdown.
-dumb-init
-
-# For composes
-rpm-ostree
-
-# rpmdistro-gitoverlay deps
-dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay
-
-# Currently a transitive req of rpmdistro-gitoverlay via mock, but we
-# expect people to use these explicitly in their repo configurations.
-distribution-gpg-keys
-# We need these for rojig
-selinux-policy-targeted rpm-build
-
-# Standard build tools
-make git rpm-build
-
-# virt-install dependencies
-libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
-# And we process kickstarts
-/usr/bin/ksflatten
-
-# ostree-releng-scripts dependencies
-rsync pygobject3-base python3-gobject-base
-
-# To support recursive containerization and manipulating images
-podman buildah skopeo
-
-# Miscellaneous tools
-jq awscli
-
-# For ignition file validation in cmd-run
-ignition
-EOF
+# Process our base dependencies + build dependencies
+(echo ${self_builddeps} && grep -v '^#' ${srcdir}/deps.txt) | xargs dnf -y install
 
 # The podman change to use systemd for cgroups broke our hack to use
 # podman-in-docker...we should fix our pipeline, but for now:
