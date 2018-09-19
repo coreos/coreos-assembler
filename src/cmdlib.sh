@@ -6,7 +6,7 @@ fatal() {
 
 preflight() {
     # Verify we have all dependencies
-    local deps=$(grep -v '^#' /usr/libexec/coreos-assembler/deps.txt)
+    local deps=$(grep -v '^#' /usr/lib/coreos-assembler/deps.txt)
     if ! rpm -q ${deps} >/dev/null; then
         local missing=""
         for pkg in ${deps}; do
