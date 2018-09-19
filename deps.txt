@@ -24,6 +24,8 @@ make git rpm-build
 libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
 # And we process kickstarts
 /usr/bin/ksflatten
+# We also might use lorax-composer (livemedia-creator) in the future to make images
+lorax
 
 # ostree-releng-scripts dependencies
 rsync python2-gobject-base python3-gobject-base
