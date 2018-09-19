@@ -6,15 +6,18 @@ fatal() {
 
 preflight() {
     # Verify we have all dependencies
-    local deps=$(grep -v '^#' /usr/libexec/coreos-assembler/deps.txt)
-    if ! rpm -q ${deps} >/dev/null; then
+    local deps=$(grep -v '^#' /usr/lib/coreos-assembler/deps.txt)
+    # Explicitly check the packages in one rpm -q to avoid
+    # overhead, only drop down to individual calls if that fails.
+    # We use --whatprovides so we handle file paths too.
+    if ! rpm -q --whatprovides ${deps} &>/dev/null; then
         local missing=""
-        for pkg in ${deps}; do
-            if ! rpm -q "${pkg}" >/dev/null; then
-                missing="$missing $pkg"
+        for dep in ${deps}; do
+            if ! rpm -q --whatprovides "${dep}" &>/dev/null; then
+                missing="$missing $dep"
             fi
         done
-        fatal "Failed to find expected dependency packages: $missing"
+        fatal "Failed to find expected dependencies:$missing"
     fi
 
     if [ $(stat -f --printf="%T" .) = "overlayfs" ]; then
