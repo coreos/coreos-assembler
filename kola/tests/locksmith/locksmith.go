@@ -37,29 +37,14 @@ func init() {
 		Name:        "cl.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
-		UserData: conf.Ignition(`{
-  "ignition": { "version": "2.0.0" },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd-member.service",
-        "enable": true,
-        "dropins": [{
-          "name": "metadata.conf",
-          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379 --listen-peer-urls=http://$private_ipv4:2380"
-        }]
-      }
-    ]
-  },
-  "storage": {
-    "files": [{
-      "filesystem": "root",
-      "path": "/etc/coreos/update.conf",
-      "contents": { "source": "data:,REBOOT_STRATEGY=etcd-lock%0A" },
-      "mode": 420
-    }]
-  }
-}`),
+		UserData: conf.ContainerLinuxConfig(`locksmith:
+  reboot_strategy: etcd-lock
+etcd:
+  listen_client_urls:          http://0.0.0.0:2379
+  advertise_client_urls:       http://{PRIVATE_IPV4}:2379
+  initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
+  listen_peer_urls:            http://{PRIVATE_IPV4}:2380
+  discovery:                   $discovery`),
 		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
 		Distros:          []string{"cl"},
 	})
