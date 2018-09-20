@@ -130,6 +130,26 @@ cat tmp/meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.jso
 rm tmp -rf
 # Back to the toplevel build directory, so we can rename this one
 cd ${workdir}/builds
-# -T to error out if it exists somehow, i.e. just do rename()
+# We create a .build-commit file to note that we're in the
+# middle of a "commit".  This may be useful in the future
+# for having things be transactional.  If for example we
+# were interrupted between the rename() and linkat() below,
+# things would be inconsistent and future builds would fail
+# on the `mv`.
+touch .build-commit
 mv -T ${tmp_builddir} ${buildid}
+# Replace the latest link
 ln -Tsfr "${buildid}" latest
+python3 -c 'import os,json,sys,stat;
+builds=[]
+for d in os.listdir("."):
+  s = os.lstat(d)
+  if not (stat.S_ISDIR(s.st_mode) and os.path.isfile(d + "/meta.json")):
+    continue
+  builds.append((d, s.st_ctime))
+json.dump({"builds":
+           list(map(lambda x: x[0], sorted(builds, key=lambda x: x[0])))},
+          sys.stdout)
+' > ${workdir}/tmp/builds.json
+mv ${workdir}/tmp/builds.json builds.json
+rm .build-commit
