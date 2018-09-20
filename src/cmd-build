@@ -18,7 +18,7 @@ config_dirty=false
 if ! git -C ${configdir} diff --quiet --exit-code; then
     config_dirty=true
 fi
-commitmeta_input_json=$(pwd)/commit-metadata-input.json
+commitmeta_input_json=$(pwd)/tmp/commit-metadata-input.json
 cat >${commitmeta_input_json} <<EOF
 {
   "coreos-assembler.config-gitrev": "${config_gitrev}",
@@ -26,8 +26,8 @@ cat >${commitmeta_input_json} <<EOF
 }
 EOF
 # These need to be absolute paths right now for rpm-ostree
-composejson=$(pwd)/compose.json
-changed_stamp=$(pwd)/treecompose.changed
+composejson=$(pwd)/tmp/compose.json
+changed_stamp=$(pwd)/tmp/treecompose.changed
 # --cache-only is here since `fetch` is a separate verb.
 runcompose --cache-only --add-metadata-from-json ${commitmeta_input_json} \
            --touch-if-changed "${changed_stamp}" \
@@ -37,15 +37,13 @@ version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version 
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
-    # Be nice to people who have older versions
-    mkdir -p ${workdir}/tmp
     # Clean up prior versions
     rm -f ${workdir}/tmp/compose-*.json
     # Save this in case the image build fails
     cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
 else
     # Grab the previous JSON
-    cp -a --reflink=auto ${workdir}/tmp/compose-${commit}.json compose.json
+    cp -a --reflink=auto ${workdir}/tmp/compose-${commit}.json ${composejson}
 fi
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
 # The passwd files (among others) don't have world readability.  This won't
@@ -86,13 +84,7 @@ fi
 
 buildid=${version}-${image_genver}
 
-# This is used by child processes inside here as a temporary directory, e.g. by
-# gf-oemid. We don't want `/tmp` as we want to be able to reliably `rename()`
-# directly.
-build_tmp=$(pwd)/build-tmp
-# Longer exported variable name for child processes
-export ASSEMBLER_BUILD_TMPDIR=${build_tmp}
-rm ${build_tmp} -rf && mkdir ${build_tmp}
+
 
 # Generate JSON
 if [ -n "${previous_commit}" ]; then
@@ -101,14 +93,13 @@ else
     previous_commit_json=null
 fi
 
-rm -f local.ks
 # HACK: pull out the magic bit; we should have virt-install
 # handle this with the ksflatten
-grep -e "--coreos-virt-install-disk-size-gb" ${kickstart_input} > local.ks
+grep -e "--coreos-virt-install-disk-size-gb" ${kickstart_input} > tmp/local.ks
 # https://github.com/coreos/coreos-assembler/pull/12
 # AKA commit 1d2150cf5607ade19780e4bd6f195e5c0efdb0ac
 # TODO: move this into coreos-virt-install
-cat >>local.ks <<EOF
+cat >>tmp/local.ks <<EOF
 %include ${kickstart_input}
 %pre
 mkdir -p /mnt/ostree-repo
@@ -118,14 +109,14 @@ ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-rep
 EOF
 
 imageprefix=${name}-${version}-${image_genver}
-/usr/lib/coreos-assembler/virt-install --dest=$(pwd)/${imageprefix}-base.qcow2 \
-               --create-disk --kickstart $(pwd)/local.ks --kickstart-out $(pwd)/flattened.ks \
+/usr/lib/coreos-assembler/virt-install --dest=$(pwd)/tmp/${imageprefix}-base.qcow2 \
+               --create-disk --kickstart $(pwd)/tmp/local.ks --kickstart-out $(pwd)/tmp/flattened.ks \
                --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
                --local-repo=${workdir}/repo
 
-/usr/lib/coreos-assembler/gf-oemid ${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
+/usr/lib/coreos-assembler/gf-oemid tmp/${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 
-cat > ${build_tmp}/meta.json <<EOF
+cat > tmp/meta.json <<EOF
 {
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
@@ -133,9 +124,11 @@ cat > ${build_tmp}/meta.json <<EOF
 }
 EOF
 # Merge all the JSON
-cat ${build_tmp}/meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.json
+cat tmp/meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.json
 
-rm "${build_tmp}" -rf
+# Clean up our temporary data
+rm tmp -rf
+# Back to the toplevel build directory, so we can rename this one
 cd ${workdir}/builds
 # -T to error out if it exists somehow, i.e. just do rename()
 mv -T ${tmp_builddir} ${buildid}
