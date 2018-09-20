@@ -66,9 +66,15 @@ prepare_build() {
     # TODO - allow this to be unset
     export ref=$(manifest_get '["ref"]')
 
-    cd builds
-    rm -rf work
-    mkdir -p work
+    # This dir is no longer used
+    rm builds/work -rf
+
+    # Allocate temporary space for this build
+    tmp_builddir=${workdir}/tmp/build
+    rm ${tmp_builddir} -rf
+    mkdir ${tmp_builddir}
+    # And everything after this assumes it's in the temp builddir
+    cd ${tmp_builddir}
 }
 
 # We'll rewrite this in a real language I promise

@@ -18,15 +18,16 @@ config_dirty=false
 if ! git -C ${configdir} diff --quiet --exit-code; then
     config_dirty=true
 fi
-commitmeta_input_json=$(pwd)/work/commit-metadata-input.json
+commitmeta_input_json=$(pwd)/commit-metadata-input.json
 cat >${commitmeta_input_json} <<EOF
 {
   "coreos-assembler.config-gitrev": "${config_gitrev}",
   "coreos-assembler.config-dirty": ${config_dirty}
 }
 EOF
-composejson=$(pwd)/work/compose.json
-changed_stamp=$(pwd)/work/treecompose.changed
+# These need to be absolute paths right now for rpm-ostree
+composejson=$(pwd)/compose.json
+changed_stamp=$(pwd)/treecompose.changed
 # --cache-only is here since `fetch` is a separate verb.
 runcompose --cache-only --add-metadata-from-json ${commitmeta_input_json} \
            --touch-if-changed "${changed_stamp}" \
@@ -44,7 +45,7 @@ if [ -f "${changed_stamp}" ]; then
     cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
 else
     # Grab the previous JSON
-    cp -a --reflink=auto ${workdir}/tmp/compose-${commit}.json work/compose.json
+    cp -a --reflink=auto ${workdir}/tmp/compose-${commit}.json compose.json
 fi
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
 # The passwd files (among others) don't have world readability.  This won't
@@ -64,19 +65,20 @@ kickstart_checksum=$(cat ${kickstart_input} | sha256sum_str)
 image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
 
 previous_build=
-if [ -L latest ]; then
-    previous_build=$(readlink latest)
+if [ -L ${workdir}/builds/latest ]; then
+    previous_build=$(readlink ${workdir}/builds/latest)
 fi
 
 image_genver=1
 if [ -n "${previous_build}" ]; then
-    previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_build}/meta.json")
+    previous_builddir=${workdir}/builds/${previous_build}
+    previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
     if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
         exit 0
     fi
-    previous_ostree_commit=$(jq -r '.["ostree-commit"]' < "${previous_build}/meta.json")
-    previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_build}/meta.json")
+    previous_ostree_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
+    previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
     if [ "${previous_ostree_commit}" = "${commit}" ]; then
         image_genver=$((${previous_image_genver} + 1))
     fi
@@ -84,8 +86,6 @@ fi
 
 buildid=${version}-${image_genver}
 
-mkdir -p "work/${buildid}"
-cd "work/${buildid}"
 # This is used by child processes inside here as a temporary directory, e.g. by
 # gf-oemid. We don't want `/tmp` as we want to be able to reliably `rename()`
 # directly.
@@ -137,5 +137,6 @@ cat ${build_tmp}/meta.json ${commitmeta_input_json} ${composejson} | jq -s add >
 
 rm "${build_tmp}" -rf
 cd ${workdir}/builds
-mv work/${buildid} .
+# -T to error out if it exists somehow, i.e. just do rename()
+mv -T ${tmp_builddir} ${buildid}
 ln -Tsfr "${buildid}" latest
