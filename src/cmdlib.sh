@@ -69,12 +69,22 @@ prepare_build() {
     # This dir is no longer used
     rm builds/work -rf
 
+    # Be nice to people who have older versions that
+    # didn't create this in `init`.
+    mkdir -p ${workdir}/tmp
+
     # Allocate temporary space for this build
     tmp_builddir=${workdir}/tmp/build
     rm ${tmp_builddir} -rf
     mkdir ${tmp_builddir}
     # And everything after this assumes it's in the temp builddir
     cd ${tmp_builddir}
+    # *This* tmp directory is truly temporary to this build, and
+    # contains artifacts we definitely don't want to outlive it, unlike
+    # other things in ${workdir}/tmp.  We also export it as an environment
+    # variable for child processes like gf-oemid.
+    mkdir tmp
+    export TMPDIR=$(pwd)/tmp
 }
 
 # We'll rewrite this in a real language I promise

@@ -16,14 +16,7 @@ src=$1
 dest=$2
 oemid=$3
 
-# We may have a tmpdir injected by an outer build process; if so use it,
-# otherwise make our own.
-if [ -n "${ASSEMBLER_BUILD_TMPDIR:-}" ]; then
-    tmpd=${ASSEMBLER_BUILD_TMPDIR}/gf-oemid
-    mkdir ${tmpd}
-else
-    tmpd=$(mktemp -d /tmp/gf-oemid.XXXXXX)
-fi
+tmpd=$(mktemp -td gf-oemid.XXXXXX)
 tmp_dest=${tmpd}/box.img
 cp --reflink=auto ${src} ${tmp_dest}
 # <walters> I commonly chmod a-w VM images
