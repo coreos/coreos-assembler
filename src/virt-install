@@ -98,6 +98,18 @@ if args.create_disk:
     run_sync_verbose(['qemu-img', 'create', '-f', 'qcow2', args.dest, '{}G'.format(disk_size)])
     print("Created initial disk: {} with size {}G".format(args.dest, disk_size))
 
+# Now a hack to avoid libvirt race conditions; it's
+# activated by the cmdline (and exits after 30s), and in virt-install the daemon
+# might not have grabbed the socket by the time the rest of the virt-install
+# code tries to talk to it.
+# https://github.com/coreos/coreos-assembler/issues/31
+# At some point we'll talk to qemu directly.
+for x in range(10):
+    if subprocess.call(['virsh', '--connect=qemu:///session', 'version'], stdout=subprocess.DEVNULL) == 0:
+        break
+    print("Waiting for libvirt {}/10", x)
+    time.sleep(1)
+
 # Doesn't need to be truly unique, let's just use our pid+time
 domain="coreos-inst-{}-{}".format(os.getpid(),int(time.time()))
 tail_proc = None
