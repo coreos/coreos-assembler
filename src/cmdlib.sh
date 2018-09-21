@@ -84,7 +84,7 @@ manifest_get() {
 
 runcompose() {
     local treecompose_args=""
-    if grep -q '^# unified-core' "${manifest}"; then
+    if ! grep -q '^# disable-unified-core' "${manifest}"; then
         treecompose_args="${treecompose_args} --unified-core"
     fi
     sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} \
