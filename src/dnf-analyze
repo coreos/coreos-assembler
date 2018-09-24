@@ -1,3 +1,22 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+
+import dnf,argparse,sys
+
+def fatal(msg):
+    print('error: {}'.format(msg), file=sys.stderr)
+    raise SystemExit(1)
+    
+parser = argparse.ArgumentParser()
+parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
+                    action='store', required=True)
+parser.add_argument("--repo-dir", help="Directory which stores all .repo definitions.",
+                    action='store', required=True)
+parser.add_argument("--log", help="If set, log to file and stdout.",
+                    action='store')
+parser.add_argument("--size", help="Display total dependency tree size.",
+                    action='store_true')
+parser.add_argument("--exit-on", help="Emphasize interpreted dependencies through 'exit 1'",
+                    action='store_true')
+args = parser.parse_args()
 
 # PLACEHOLDER
