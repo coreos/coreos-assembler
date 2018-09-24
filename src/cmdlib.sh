@@ -97,6 +97,30 @@ runcompose() {
     if ! grep -q '^# disable-unified-core' "${manifest}"; then
         treecompose_args="${treecompose_args} --unified-core"
     fi
+    # Implement support for automatic local overrides:
+    # https://github.com/coreos/coreos-assembler/issues/118
+    local overridesdir=${workdir}/overrides/
+    if [ -d ${overridesdir}/rpm ]; then
+        (cd ${overridesdir}/rpm && createrepo_c .)
+        echo "Using RPM overrides from: ${overridesdir}/rpm"
+        local tmp_overridesdir=${TMPDIR}/override
+        mkdir ${tmp_overridesdir}
+        local manifestdir=$(dirname ${manifest})
+        rsync -rl ${manifestdir}/ ${tmp_overridesdir}/
+        cat > ${tmp_overridesdir}/coreos-assembler-override-manifest.yaml <<EOF
+include: $(basename ${manifest})
+repos:
+  - coreos-assembler-local-overrides
+EOF
+        cat > ${tmp_overridesdir}/coreos-assembler-local-overrides.repo <<EOF
+[coreos-assembler-local-overrides]
+name=coreos-assembler-local-overrides
+baseurl=file://${workdir}/overrides/rpm
+gpgcheck=0
+EOF
+        manifest=${tmp_overridesdir}/coreos-assembler-override-manifest.yaml
+    fi
+
     set -x
     sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} \
          ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
