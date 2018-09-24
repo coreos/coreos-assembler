@@ -25,10 +25,6 @@ useradd builder
 dnf -y install dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
 
-# Pull latest rpm-ostree
-curl -L --remote-name-all https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2018.7/1.fc28/x86_64/rpm-ostree-{,libs-}2018.7-1.fc28.x86_64.rpm
-dnf -y install ./rpm-ostree*.rpm && rm -f *.rpm
-
 # These are only used to build things in here, we define them separately because
 # they're cleaned up later
 self_builddeps="cargo golang"
@@ -39,6 +35,9 @@ ${self_builddeps}
 # dumb-init is a good idea in general, but specifically fixes things with
 # libvirt forking qemu and assuming the process gets reaped on shutdown.
 dumb-init
+
+# rpm-ostree
+rpm-ostree
 
 # rpmdistro-gitoverlay deps
 dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay
