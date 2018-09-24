@@ -22,7 +22,7 @@ fi
 # At some point we may make this the default.
 useradd builder
 
-dnf -y install dnf-utils dnf-plugins-core
+dnf -y install /usr/bin/xargs dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
 
 # These are only used to build things in here, we define them separately because
