@@ -6,8 +6,6 @@ def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
     raise SystemExit(1)
     
-def 
-    
 parser = argparse.ArgumentParser()
 parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
                     action='store', required=True)
@@ -29,8 +27,8 @@ base = dnf.Base()
 
 # Dnf config.
 base_config = base.conf
-base_config.assumeyes = true
-base_config.best = true
+base_config.assumeyes = "true"
+base_config.best = "true"
 base_config.cachedir = "/tmp/dnf"
 if args.log:
     base_config.logdir = args.log
@@ -38,13 +36,8 @@ else:
     base_config.logdir = "/dev/null"
 base_config.reposdir = args.repo_dir
 
-print("Repos Enabled:")
-for x in base.repos.all():
-    print(x)
-
-print("Filling Sack...")
-base.fill_sack([load_system_repo=False, load_available_repos=True])
-
-q = base.sack.query()
+# Parse repos in dir and fill sack.
+base.read_all_repos()
+base.fill_sack()
 
 # PLACEHOLDER
