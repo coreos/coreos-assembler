@@ -19,4 +19,20 @@ parser.add_argument("--exit-on", help="Emphasize interpreted dependencies throug
                     action='store_true')
 args = parser.parse_args()
 
+# Split comma delimited packages into an array.
+base_packages = args.packages.split(",")
+
+# Init dnf config.
+base_config = dnf.conf.Conf
+base_config.assumeyes = true
+base_config.best = true
+if args.log:
+    base_config.logdir = args.log
+else:
+    base_config.logdir = "/dev/null"
+base_config.reposdir = args.repo_dir
+
+base = dnf.Base()
+base.fill_sack([load_system_repo=False, load_available_repos=True])
+
 # PLACEHOLDER
