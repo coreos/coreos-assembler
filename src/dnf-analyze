@@ -2,6 +2,8 @@
 
 import dnf,argparse,sys
 
+interpretedPkg = ["python", "perl"]
+
 # type(self.children) = type(self.pkg_meta) = type(dnf.package.Package)
 # https://dnf.readthedocs.io/en/latest/api_package.html#dnf.package.Package
 # type(self.name) = str
@@ -17,14 +19,25 @@ class Package(object):
                 toScan.append(x)
         # Scan the packages which do not already exist in this tree path but pass in the whole tree path to the next child.
         for x in toScan:
-            self.children.append(Package(self.query, self.generation, x, self.scanned)        
+            self.children.append(Package(self.query, self.generation, x, self.scanned))
+    
+    def interpreted(self):
+        # For each package listed as examples for interpreted languages...
+        for x in interpretedPkg:
+            # If one is found in the Package.pkg_meta.name, then label this Package object as an interpreted object.
+            if x in self.pkg_meta.name:
+                self.interpreted = "true"
         
     def __init__(self, query, generation, pkg, scanned):
         self.generation = generation + 1
-        #TODO: depending on types, use the passed query object to find more dnf.package.Package types.
         self.pkg_meta = pkg
         self.children = []
         self.scanned = scanned
+        self.interpreted = "false"
+        
+        #TODO: query logic
+        
+        interpreted()
         findChildren()
         
     
