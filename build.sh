@@ -18,16 +18,42 @@ configure_yum_repos() {
         mv ${repo}.new ${repo}
     done
 
-    # xargs is part of findutils, which may not be installed
-    # And we want the copr command (for now)
-    dnf -y install /usr/bin/xargs dnf-utils dnf-plugins-core
-    dnf copr -y enable walters/buildtools-fedora
+    # enable `walters/buildtools-fedora` copr
+	# pulled from https://copr.fedorainfracloud.org/coprs/walters/buildtools-fedora/repo/fedora-28/walters-buildtools-fedora-fedora-28.repo
+    cat > /etc/yum.repos.d/walters-buildtools-fedora-fedora-28.repo  <<'EOF'
+[walters-buildtools-fedora]
+name=Copr repo for buildtools-fedora owned by walters
+baseurl=https://copr-be.cloud.fedoraproject.org/results/walters/buildtools-fedora/fedora-$releasever-$basearch/
+type=rpm-md
+skip_if_unavailable=True
+gpgcheck=1
+gpgkey=https://copr-be.cloud.fedoraproject.org/results/walters/buildtools-fedora/pubkey.gpg
+repo_gpgcheck=0
+enabled=1
+enabled_metadata=1
+EOF
 
-    # For now, since we get builds slightly faster there
-    dnf copr -y enable dustymabe/ignition
+    # enable `dustymabe/ignition` copr
+	# pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
+    cat > /etc/yum.repos.d/dustymabe-ignition-fedora-28.repo <<'EOF'
+[dustymabe-ignition]
+name=Copr repo for ignition owned by dustymabe
+baseurl=https://copr-be.cloud.fedoraproject.org/results/dustymabe/ignition/fedora-$releasever-$basearch/
+type=rpm-md
+skip_if_unavailable=True
+gpgcheck=1
+gpgkey=https://copr-be.cloud.fedoraproject.org/results/dustymabe/ignition/pubkey.gpg
+repo_gpgcheck=0
+enabled=1
+enabled_metadata=1
+EOF
+
 }
 
 install_rpms() {
+
+    # xargs is part of findutils, which may not be installed
+    dnf -y install /usr/bin/xargs
 
     # These are only used to build things in here.  Today
     # we ship these in the container too to make it easier
@@ -59,7 +85,6 @@ make_and_makeinstall() {
 
     # Work around https://github.com/coreos/coreos-assembler/issues/27
     if ! test -d .git; then
-        dnf -y install git
         (git config --global user.email dummy@example.com
          git init && git add . && git commit -a -m 'dummy commit'
          git tag -m tag dummy-tag) >/dev/null
