@@ -299,14 +299,17 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		return fmt.Errorf("ssh unreachable: %v", err)
 	}
 
-	// ensure we're talking to a Container Linux system
-	out, stderr, err := m.SSH("grep ^ID= /etc/os-release")
+	out, stderr, err := m.SSH(`. /etc/os-release && echo "$ID-$VARIANT_ID"`)
 	if err != nil {
 		return fmt.Errorf("no /etc/os-release file: %v: %s", err, stderr)
 	}
 
-	if !bytes.Equal(out, []byte("ID=coreos")) && !bytes.Equal(out, []byte(`ID="rhcos"`)) {
-		return fmt.Errorf("not a supported instance")
+	// ensure we're talking to a supported system
+	switch string(out) {
+	case `coreos-`, `rhcos-`, `fedora-coreos`:
+		break
+	default:
+		return fmt.Errorf("not a supported instance: %v", string(out))
 	}
 
 	if !m.RuntimeConf().AllowFailedUnits {

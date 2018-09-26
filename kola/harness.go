@@ -494,6 +494,15 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 			if err := c.DropFile(kolet); err != nil {
 				c.Fatalf("dropping kolet binary: %v", err)
 			}
+			// The default SELinux rules do not allow init_t to execute user_home_t
+			if Options.Distribution == "rhcos" || Options.Distribution == "fcos" {
+				for _, machine := range c.Machines() {
+					out, stderr, err := machine.SSH("sudo chcon -t bin_t kolet")
+					if err != nil {
+						c.Fatalf("running chcon on kolet: %s: %s: %v", out, stderr, err)
+					}
+				}
+			}
 			return
 		}
 	}

@@ -30,7 +30,7 @@ var (
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
 	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "packet", "qemu"}
-	kolaDistros        = []string{"cl", "rhcos"}
+	kolaDistros        = []string{"cl", "fcos", "rhcos"}
 	kolaDefaultImages  = map[string]string{
 		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
 		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
