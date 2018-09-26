@@ -2,9 +2,31 @@
 
 import dnf,argparse,sys
 
-def fatal(msg):
-    print('error: {}'.format(msg), file=sys.stderr)
-    raise SystemExit(1)
+# type(self.children) = type(self.pkg_meta) = type(dnf.package.Package)
+# https://dnf.readthedocs.io/en/latest/api_package.html#dnf.package.Package
+# type(self.name) = str
+# type(self.generation) = int
+class Package(object):
+    def findChildren(self):
+        # First, prevent recursive scans i.e. glib requires glib translations which require glib.
+        # However, this cannot be done in a way where each node is aware of the rest of the tree; this would result in an incomplete dependency tree.
+        toScan = []
+        for x in self.pkg_meta.requires:
+            if x not in self.scanned:
+                self.scanned.append(x)
+                toScan.append(x)
+        # Scan the packages which do not already exist in this tree path but pass in the whole tree path to the next child.
+        for x in toScan:
+            self.children.append(Package(self.query, self.generation, x, self.scanned)        
+        
+    def __init__(self, query, generation, pkg, scanned):
+        self.generation = generation + 1
+        #TODO: depending on types, use the passed query object to find more dnf.package.Package types.
+        self.pkg_meta = pkg
+        self.children = []
+        self.scanned = scanned
+        findChildren()
+        
     
 parser = argparse.ArgumentParser()
 parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
@@ -39,5 +61,9 @@ base_config.reposdir = args.repo_dir
 # Parse repos in dir and fill sack.
 base.read_all_repos()
 base.fill_sack()
+
+query = base.sack.query()
+
+
 
 # PLACEHOLDER
