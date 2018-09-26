@@ -75,10 +75,6 @@ install_rpms() {
     # Further cleanup
     dnf clean all
 
-    # TODO: install these as e.g.
-    # /usr/bin/ostree-releng-script-rsync-repos
-    mkdir -p /usr/app/
-    rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 }
 
 make_and_makeinstall() {
@@ -89,6 +85,11 @@ make_and_makeinstall() {
          git init && git add . && git commit -a -m 'dummy commit'
          git tag -m tag dummy-tag) >/dev/null
     fi
+
+    # TODO: install these as e.g.
+    # /usr/bin/ostree-releng-script-rsync-repos
+    mkdir -p /usr/app/
+    rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 
     if ! test -f mantle/README.md; then
         echo "Run: git submodule update --init" 1>&2
