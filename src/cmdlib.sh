@@ -1,5 +1,13 @@
 # Shared shell script library
 
+# Global variables
+export workdir=$(pwd)
+export configdir=${workdir}/src/config
+export manifest=${configdir}/manifest.yaml
+export superminpreparedir="${workdir}/tmp/supermin-prepare.d"
+export superminbuilddir="${workdir}/tmp/supermin-build.d"
+export cachesimg="${workdir}/caches.qcow2"
+
 fatal() {
     echo "error: $@" 1>&2; exit 1
 }
@@ -28,13 +36,13 @@ preflight() {
         fatal "Unable to find /dev/kvm"
     fi
 
-    if ! capsh --print | grep -q 'Current.*cap_sys_admin'; then
-        fatal "This container must currently be run with --privileged"
-    fi
+#   if ! capsh --print | grep -q 'Current.*cap_sys_admin'; then
+#       fatal "This container must currently be run with --privileged"
+#   fi
 
-    if ! sudo true; then
-        fatal "The user must currently have sudo privileges"
-    fi
+#   if ! sudo true; then
+#       fatal "The user must currently have sudo privileges"
+#   fi
 
     # permissions on /dev/kvm vary by (host) distro.  If it's
     # not writable, recreate it.
@@ -51,9 +59,12 @@ prepare_build() {
         fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
     fi
 
-    export workdir=$(pwd)
-    export configdir=${workdir}/src/config
-    export manifest=${configdir}/manifest.yaml
+#   export workdir=$(pwd)
+#   export configdir=${workdir}/src/config
+#   export manifest=${configdir}/manifest.yaml
+#   export superminpreparedir="${workdir}/tmp/supermin-prepare.d"
+#   export superminbuilddir="${workdir}/tmp/supermin-build.d"
+#   export cachesimg="${workdir}/caches.qcow2"
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"
@@ -101,4 +112,82 @@ runcompose() {
     sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} \
          ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
     set +x
+}
+
+prepare_vm() {
+    # rpms to create appliance VM out of
+    rpms=' bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules'
+    rpms+=' cifs-utils' # for samba
+    rpms+=' systemd' # for clean reboot
+    rpms+=' dhcp-client bind-export-libs iproute' # networking
+    rpms+=' rpm-ostree distribution-gpg-keys' # to run the compose
+    rpms+=' selinux-policy selinux-policy-targeted policycoreutils' #selinux
+
+    # prepare appliance VM
+    supermin -v --prepare --use-installed $rpms -o "${superminpreparedir}"
+    supermin -v --build "${superminpreparedir}" \
+             --include-packagelist --size 4G -f ext2 -o "${superminbuilddir}"
+
+    # Create a disk image for our caches (pkgcache and bare-user build repo)
+    [ ! -d "${workdir}/tmp/emptydir" ] && mkdir "${workdir}/tmp/emptydir"
+    if [ ! -f "${cachesimg}" ]; then
+        virt-make-fs --format=qcow2 --type=xfs \
+                     --size=10G "${workdir}/tmp/emptydir" "${cachesimg}"
+    fi
+}
+
+run_vm() {
+    init=$1
+    set -x
+
+    # Copy in the init script with the code we want to run  
+    chmod +x "${init}"
+    virt-copy-in -a "${superminbuilddir}/root" "${init}" /
+
+    # Execute unprivileged VM to run compose. Some notes:
+    # - smb="${workdir}" - we'll serve our workdir over samba
+    # - sda - rootfs from supermin build
+    # - sdb - caches.qcow2 - we store the bare-user repo and pkgcache here
+    # - discard=unmap - using virtio-scsi disks and discard=unmap so we can fstrim
+    #                   and recover disk space from the VM
+    qemu-kvm -nodefaults -nographic -m 2048 -no-reboot \
+              -kernel "${superminbuilddir}/kernel" \
+              -initrd "${superminbuilddir}/initrd" \
+              -netdev user,id=eth0,hostname=supermin,smb="${workdir}",hostfwd=tcp:127.0.0.1:8000-:8000 \
+              -device virtio-net-pci,netdev=eth0 \
+              -device virtio-scsi-pci,id=scsi0,bus=pci.0,addr=0x3 \
+              -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${superminbuilddir}/root" \
+              -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
+              -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${cachesimg}" \
+              -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
+              -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
+
+    if [ -f "${workdir}/tmp/supermin-failure" ]; then
+        rm -f "${workdir}/tmp/supermin-failure"
+        fatal "Detected failure from compose VM run"
+    fi
+}
+
+runcompose_in_vm() {
+    previous_commit=$1
+    ref=$2
+    shift; shift;
+
+    local treecompose_args=""
+    if ! grep -q '^# disable-unified-core' "${manifest}"; then
+        treecompose_args="${treecompose_args} --unified-core"
+    fi
+
+    cmd="rpm-ostree compose tree --repo=${workdir}/repo-build"
+    cmd+=" --cachedir=${workdir}/cache ${treecompose_args}"
+    cmd+=" ${TREECOMPOSE_FLAGS:-} ${manifest} $@"
+
+    # populate variables in init script
+    template=$(dirname $0)/supermin-init
+    sed -e "s|^workdir=|workdir=\"${workdir}\"|" \
+        -e "s|^previous_commit=|previous_commit=\"${previous_commit}\"|" \
+        -e "s|^ref=|ref=\"${ref}\"|" \
+        -e "s|^cmd=|cmd=\"${cmd}\"|" $template > "${superminbuilddir}/init"
+
+    run_vm "${superminbuilddir}/init"
 }

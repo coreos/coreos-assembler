@@ -1,0 +1,144 @@
+#!/bin/sh
+set -ux
+
+trap fatal SIGHUP SIGINT SIGQUIT SIGABRT
+
+export PATH=/usr/sbin/:$PATH
+
+mount -t proc /proc /proc
+mount -t sysfs /sys /sys
+mount -t devtmpfs devtmpfs /dev
+
+# Load selinux policy
+LANG=C /sbin/load_policy  -i
+
+# Load kernel module for 9pnet_virtio for 9pfs mount
+#/sbin/modprobe 9pnet_virtio
+
+# Need fuse module for rofiles-fuse/bwrap during post scripts run
+/sbin/modprobe fuse
+
+# set up networking
+/usr/sbin/dhclient eth0 & 
+sleep 2 # wait for dhcp
+
+
+# these varaibles will be populated in this script before running
+workdir=
+ref=
+cmd=
+previous_commit=
+
+# set a variable for our mountpoint for hostworkdir
+hostworkdir='/hostworkdir'
+
+# If usuing unified core we need to use the repo-build bare-user repo. 
+# If not use the repo archive repo.
+if [[ "$cmd" =~ unified-core ]]; then
+	unifiedcore=1
+    repo='repo-build'
+else
+	unifiedcore=1
+    repo='repo'
+fi
+
+
+[ -d "${workdir}" ]     || mkdir -p "${workdir}"
+[ -d "${hostworkdir}" ] || mkdir -p "${hostworkdir}"
+
+# mount cache disk 
+mount /dev/sdb "${workdir}"
+
+#bash -i 
+
+# mount host "${workdir}" via samba
+#ount -t 9p -o rw,trans=virtio,version=9p2000.L srv /hostsrv/
+# cat /proc/fs/cifs/DebugData
+mount -t cifs -o 'username=root,password=,cache=loose' '\\10.0.2.4\qemu' "${hostworkdir}"
+
+# symlink some things from $workdir to $hostworkdir
+[ -e "${workdir}/tmp" ]       || ln -s "${hostworkdir}/tmp"       "${workdir}/tmp"
+[ -e "${workdir}/src" ]       || ln -s "${hostworkdir}/src"       "${workdir}/src"
+[ -e "${workdir}/localrepo" ] || ln -s "${hostworkdir}/localrepo" "${workdir}/localrepo"
+
+# create a few directories if they don't exist
+[ -d "${workdir}/cache" ]      || mkdir "${workdir}/cache"
+[ -d "${workdir}/repo-build" ] || mkdir "${workdir}/repo-build"
+[ -d "${workdir}/repo" ]       || mkdir "${workdir}/repo"
+
+# initialize the repos if they don't exist
+[ -f "${workdir}/repo-build/config" ] || ostree init --mode=bare-user --repo="${workdir}/repo-build/"
+[ -f "${workdir}/repo/config" ]       || ostree init --mode=archive --repo="${workdir}/repo/"
+
+
+#bash -i
+
+
+compose() {
+    # make sure previous_commit exists in the build repo
+    if [ "${previous_commit}" != "null" ]; then
+        pc=$(ostree --repo="${workdir}/${repo}" rev-parse "${ref}" || true)
+        if [ "${previous_commit}" != "${pc}" ]; then
+            # is it possible to use --commit-metadata-only here ? 
+            ostree pull-local --repo="${workdir}/${repo}" "${hostworkdir}/repo/" "$ref"
+        fi
+    fi
+
+    # run the command from given to us
+    $cmd --repo="${workdir}/${repo}" || fatal
+
+    # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
+    # The passwd files (among others) don't have world readability.  This won't
+    # actually corrupt the repository as the *canonical* permissions are stored
+    # as xattrs.  Probably what we should do is have an ostree option to specify
+    # a permission mask for objects.
+    [ "${unifiedcore}" = "1" ] && chmod -R a+rX "${workdir}/repo-build/objects"
+
+    #bash -i
+
+    # Sync over to repo in $hostworkdir
+    if [ "${unifiedcore}" = "1" ]; then
+        # Need to do this in two steps instead of one 
+        # https://github.com/ostreedev/ostree/issues/1734
+        ostree pull-local --repo="${workdir}/repo/"     "${workdir}/repo-build/" $ref || fatal
+        ostree pull-local --repo="${hostworkdir}/repo/" "${workdir}/repo/"       $ref || fatal
+    else
+        ostree pull-local --repo="${hostworkdir}/repo/" "${workdir}/repo/"       $ref || fatal
+    fi
+
+    # prune - we'll leave just one commit in repo
+    if [ "${unifiedcore}" = "1" ]; then
+        ostree prune --repo="${workdir}/repo-build/" --only-branch "${ref}" --depth=0 || fatal
+        ostree prune --repo="${workdir}/repo/"       --only-branch "${ref}" --depth=0 || fatal
+    else
+        ostree prune --repo="${workdir}/repo/"       --only-branch "${ref}" --depth=0 || fatal
+    fi
+
+    #bash -i
+}
+
+fatal() {
+    echo "Failure from inside supermin VM"
+    touch "${workdir}/tmp/supermin-failure"
+    cleanup
+}
+
+cleanup() {
+    set +eu
+    # release disk space back to the host and unmount
+    fstrim -v "${workdir}"
+    sync
+    umount "${hostworkdir}"
+    umount "${workdir}"
+
+    # shutdown
+    reboot -f 
+#   echo 1 > /proc/sys/kernel/sysrq
+#   echo o > /proc/sysrq-trigger
+#   sleep 10
+}
+
+# run the compose
+compose
+# run the cleanup
+cleanup

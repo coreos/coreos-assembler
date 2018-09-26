@@ -36,3 +36,6 @@ jq awscli
 
 # For ignition file validation in cmd-run
 ignition
+
+# For running supermin VM via qemu and sharing via samba
+samba cifs-utils
