@@ -1,6 +1,20 @@
 FROM registry.fedoraproject.org/fedora:28
-WORKDIR /root/src
-COPY . /root/src
-RUN ./build.sh
+WORKDIR /root/containerbuild
+
+# Only need a few of our scripts for the first few steps
+COPY ./build.sh ./deps.txt ./build-deps.txt /root/containerbuild/
+RUN ./build.sh configure_yum_repos
+RUN ./build.sh install_rpms
+
+# Ok copy in the rest of them for the next few steps
+COPY ./ /root/containerbuild/
+RUN ./build.sh make_and_makeinstall
+RUN ./build.sh configure_user
+
+# clean up scripts (it will get cached in layers, but oh well)
+WORKDIR /srv/
+RUN rm -rf /root/containerbuild
+
+# run as `builder` user
 USER builder
 ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/coreos-assembler"]
