@@ -3,6 +3,8 @@ set -xeuo pipefail
 
 srcdir=$(pwd)
 
+# XXX configure repos
+
 # Enable FAHC https://pagure.io/fedora-atomic-host-continuous
 # so we have ostree/rpm-ostree git master for our :latest
 # NOTE: The canonical copy of this code lives in rpm-ostree's CI:
@@ -16,19 +18,6 @@ for repo in /etc/yum.repos.d/fedora*.repo; do
     mv ${repo}.new ${repo}
 done
 
-# Work around https://github.com/coreos/coreos-assembler/issues/27
-if ! test -d .git; then
-    dnf -y install git
-    (git config --global user.email dummy@example.com
-     git init && git add . && git commit -a -m 'dummy commit'
-     git tag -m tag dummy-tag) >/dev/null
-fi
-
-if ! test -f mantle/README.md; then
-    echo "Run: git submodule update --init" 1>&2
-    exit 1
-fi
-
 # xargs is part of findutils, which may not be installed
 # And we want the copr command (for now)
 dnf -y install /usr/bin/xargs dnf-utils dnf-plugins-core
@@ -36,6 +25,10 @@ dnf copr -y enable walters/buildtools-fedora
 
 # For now, since we get builds slightly faster there
 dnf copr -y enable dustymabe/ignition
+
+
+
+# XXX install rpms
 
 # These are only used to build things in here.  Today
 # we ship these in the container too to make it easier
@@ -51,21 +44,38 @@ self_builddeps=$(grep -v '^#' ${srcdir}/build-deps.txt)
 # podman-in-docker...we should fix our pipeline, but for now:
 dnf -y downgrade https://kojipkgs.fedoraproject.org//packages/podman/0.7.4/4.git80612fb.fc28/x86_64/podman-0.7.4-4.git80612fb.fc28.x86_64.rpm
 
-# TODO: install these as e.g.
-# /usr/bin/ostree-releng-script-rsync-repos
-mkdir -p /usr/app/
-rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
-
-# And the main scripts
-make && make install
-
 # Commented out for now, see above
 #dnf remove -y ${self_builddeps}
 rpm -q grubby && dnf remove -y grubby
 # Further cleanup
 dnf clean all
+
+# TODO: install these as e.g.
+# /usr/bin/ostree-releng-script-rsync-repos
+mkdir -p /usr/app/
+rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
+
+# XXX make and install software
+
+# Work around https://github.com/coreos/coreos-assembler/issues/27
+if ! test -d .git; then
+    dnf -y install git
+    (git config --global user.email dummy@example.com
+     git init && git add . && git commit -a -m 'dummy commit'
+     git tag -m tag dummy-tag) >/dev/null
+fi
+
+if ! test -f mantle/README.md; then
+    echo "Run: git submodule update --init" 1>&2
+    exit 1
+fi
+
+# And the main scripts
+make && make install
 cd /
 rm ${srcdir} -rf
+
+# XXX user configuration
 
 # We want to run what builds we can as an unprivileged user;
 # running as non-root is much better for the libvirt stack in particular
