@@ -11,7 +11,20 @@ prepare_build
 ostree --version
 rpm-ostree --version
 
-previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
+previous_build=
+if [ -L ${workdir}/builds/latest ]; then
+    previous_build=$(readlink ${workdir}/builds/latest)
+    previous_builddir=${workdir}/builds/${previous_build}
+fi
+
+previous_commit=
+if [ -n "${ref:-}" ]; then
+    previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
+else
+    if [ -n "${previous_build}" ]; then
+        previous_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
+    fi
+fi
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
 config_dirty=false
@@ -32,26 +45,27 @@ changed_stamp=$(pwd)/tmp/treecompose.changed
 runcompose --cache-only --add-metadata-from-json ${commitmeta_input_json} \
            --touch-if-changed "${changed_stamp}" \
            --write-composejson-to ${composejson}
-commit=$(ostree --repo=${workdir}/repo-build rev-parse "${ref}")
-version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
+    commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
     # Clean up prior versions
     rm -f ${workdir}/tmp/compose-*.json
     # Save this in case the image build fails
     cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
 else
+    commit=${previous_commit}
     # Grab the previous JSON
-    cp -a --reflink=auto ${workdir}/tmp/compose-${commit}.json ${composejson}
+    cp -a --reflink=auto ${workdir}/tmp/compose-${previous_commit}.json ${composejson}
 fi
+version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
 # The passwd files (among others) don't have world readability.  This won't
 # actually corrupt the repository as the *canonical* permissions are stored
 # as xattrs.  Probably what we should do is have an ostree option to specify
 # a permission mask for objects.
 sudo chmod -R a+rX ${workdir}/repo-build/objects
-ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref}"
+ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref:-${commit}}"
 ostree --repo=${workdir}/repo summary -u
 
 sha256sum_str() {
@@ -62,29 +76,20 @@ kickstart_input=${configdir}/image.ks
 kickstart_checksum=$(cat ${kickstart_input} | sha256sum_str)
 image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
 
-previous_build=
-if [ -L ${workdir}/builds/latest ]; then
-    previous_build=$(readlink ${workdir}/builds/latest)
-fi
-
 image_genver=1
 if [ -n "${previous_build}" ]; then
-    previous_builddir=${workdir}/builds/${previous_build}
     previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
     if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
         exit 0
     fi
-    previous_ostree_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
     previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
-    if [ "${previous_ostree_commit}" = "${commit}" ]; then
+    if [ "${previous_commit}" = "${commit}" ]; then
         image_genver=$((${previous_image_genver} + 1))
     fi
 fi
 
 buildid=${version}-${image_genver}
-
-
 
 # Generate JSON
 if [ -n "${previous_commit}" ]; then
