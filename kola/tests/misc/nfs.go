@@ -49,7 +49,7 @@ func init() {
 		Run:         NFSv3,
 		ClusterSize: 0,
 		Name:        "linux.nfs.v3",
-		Distros:     []string{"cl"},
+		Distros:     []string{"cl", "fcos"},
 	})
 	register.Register(&register.Test{
 		Run:         NFSv4,

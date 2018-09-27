@@ -71,7 +71,7 @@ func init() {
 		Run:         setHostname,
 		ClusterSize: 1,
 		UserData:    configV2,
-		Distros:     []string{"cl", "rhcos"},
+		Distros:     []string{"cl", "rhcos", "fcos"},
 	})
 }
 
