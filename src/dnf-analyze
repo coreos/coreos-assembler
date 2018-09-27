@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+
+import dnf,argparse,sys,math
+
+interpretedPkg = ["python", "perl"]
+
+# type(self.children) = type(self.pkg_meta) = type(dnf.package.Package)
+# https://dnf.readthedocs.io/en/latest/api_package.html#dnf.package.Package
+# type(self.name) = str
+# type(self.generation) = int
+class Package(object):
+    def printChildren(self):
+        # For each child of the type Package(object)
+        for x in self.children:
+            # Print a dash according to the generation and then the child's name contained in the package definition.
+            printColor('-' * self.generation, x.pkg_meta.name, ' size: ', x.pkg_meta.downloadsize / 2^20 )
+            # Then call each child's children causing a tree.
+            x.printChildren()
+    
+    def findChildren(self):
+        # First, prevent recursive scans i.e. glib requires glib translations which require glib.
+        # However, this cannot be done in a way where each node is aware of the rest of the tree; this would result in an incomplete dependency tree.
+        toScan = []
+        for x in self.pkg_meta.requires:
+            if x not in self.scanned:
+                self.scanned.append(x)
+                toScan.append(x)
+        # Scan the packages which do not already exist in this tree path but pass in the whole tree path to the next child.
+        for x in toScan:
+            self.children.append(Package(self.query, self.generation, x, self.scanned))
+    
+    def interpreted(self):
+        # For each package listed as examples for interpreted languages...
+        for x in interpretedPkg:
+            # If one is found in the Package.pkg_meta.name, then label this Package object as an interpreted object.
+            if x in self.pkg_meta.name:
+                self.interpreted = "true"
+        
+    def __init__(self, query, generation, pkg, scanned):
+        # VARS
+        self.generation = generation + 1
+        self.pkg_meta = pkg
+        self.children = []
+        self.scanned = scanned
+        self.interpreted = "false"
+        
+        #TODO: query logic
+        
+        # INIT LOGIC
+        interpreted()
+        findChildren()
+        
+    
+parser = argparse.ArgumentParser()
+parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
+                    action='store', required=True)
+parser.add_argument("--repo-dir", help="Directory which stores all .repo definitions.",
+                    action='store', required=True)
+parser.add_argument("--log", help="If set, log to file and stdout.",
+                    action='store')
+parser.add_argument("--size", help="Display total dependency tree size.",
+                    action='store_true')
+parser.add_argument("--exit-on", help="Emphasize interpreted dependencies through 'exit 1'",
+                    action='store_true')
+args = parser.parse_args()
+
+# Split comma delimited packages into an array.
+base_packages = args.packages.split(",")
+
+# Init dnf object.
+base = dnf.Base()
+
+# Dnf config.
+base_config = base.conf
+base_config.assumeyes = "true"
+base_config.best = "true"
+base_config.cachedir = "/tmp/dnf"
+if args.log:
+    base_config.logdir = args.log
+else:
+    base_config.logdir = "/dev/null"
+base_config.reposdir = args.repo_dir
+
+# Parse repos in dir and fill sack.
+base.read_all_repos()
+base.fill_sack()
+
+query = base.sack.query()
+
+
+
+# PLACEHOLDER

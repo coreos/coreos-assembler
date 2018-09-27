@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler analyze --help
+
+EOF
+}
+
+# Call getopt to validate the provided input.
+options=$(getopt --options hf --longoptions help,force -- "$@")
+[ $? -eq 0 ] || {
+    print_help
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+    -h | --help)
+        print_help
+        exit 0
+        ;;
+    *)
+        print_help
+        fatal "init: unrecognized option: $1"
+        exit 1
+        ;;
+    esac
+    shift
+done
+
+# LOOP: if rpm-ostree-entrypoint.yaml exist; do
+# append PKG[] with "*.yaml"."packages*"
+# if "*.yaml"."include" exist; LOOP
+# else; improper coreos-assembler init
+
+# analyze.py $PKG $REPOS $FLAGS
