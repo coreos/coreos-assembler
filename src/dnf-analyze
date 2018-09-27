@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import dnf,argparse,sys
+import dnf,argparse,sys,math
 
 interpretedPkg = ["python", "perl"]
 
@@ -9,6 +9,14 @@ interpretedPkg = ["python", "perl"]
 # type(self.name) = str
 # type(self.generation) = int
 class Package(object):
+    def printChildren(self):
+        # For each child of the type Package(object)
+        for x in self.children:
+            # Print a dash according to the generation and then the child's name contained in the package definition.
+            printColor('-' * self.generation, x.pkg_meta.name, ' size: ', x.pkg_meta.downloadsize / 2^20 )
+            # Then call each child's children causing a tree.
+            x.printChildren()
+    
     def findChildren(self):
         # First, prevent recursive scans i.e. glib requires glib translations which require glib.
         # However, this cannot be done in a way where each node is aware of the rest of the tree; this would result in an incomplete dependency tree.
@@ -29,6 +37,7 @@ class Package(object):
                 self.interpreted = "true"
         
     def __init__(self, query, generation, pkg, scanned):
+        # VARS
         self.generation = generation + 1
         self.pkg_meta = pkg
         self.children = []
@@ -37,6 +46,7 @@ class Package(object):
         
         #TODO: query logic
         
+        # INIT LOGIC
         interpreted()
         findChildren()
         
