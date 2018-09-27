@@ -54,7 +54,7 @@ Performing a build
 $ coreos-assembler build
 ```
 
-Each build will write an ostree commit into `/srv/coreos/repo` as well
+Each build will write an OSTree commit into `/srv/coreos/repo` as well
 as generate VM images in `/srv/coreos/builds/`.
 
 Next, rerun `coreos-assembler build` and notice the system correctly
