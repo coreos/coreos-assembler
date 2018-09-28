@@ -120,6 +120,8 @@ imageprefix=${name}-${version}-${image_genver}
                --local-repo=${workdir}/repo
 
 /usr/lib/coreos-assembler/gf-oemid tmp/${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
+# make a version-less symlink to have a stable path
+ln -s ${imageprefix}-qemu.qcow2 ${name}-qemu.qcow2
 
 cat > tmp/meta.json <<EOF
 {
