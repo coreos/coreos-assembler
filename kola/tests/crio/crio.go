@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
 )
@@ -212,12 +213,8 @@ func genContainer(c cluster.TestCluster, m platform.Machine, name string, binnam
 		return "", "", err
 	}
 
-	// This shell script creates the crio image used for testing
-	cmd := `tmpdir=$(mktemp -d); cd $tmpdir; echo -e "FROM scratch\nCOPY . /" > Dockerfile;
-	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
-			sudo rsync -av --relative --copy-links $b $libs ./;
-			sudo podman build -t localhost/%s .`
-	c.MustSSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
+	// Create the crio image used for testing
+	util.GenPodmanScratchContainer(c, m, name, binnames)
 
 	return path.Base(configPathPod), path.Base(configPathContainer), nil
 }
