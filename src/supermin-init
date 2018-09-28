@@ -32,17 +32,6 @@ previous_commit=
 # set a variable for our mountpoint for hostworkdir
 hostworkdir='/hostworkdir'
 
-# If usuing unified core we need to use the repo-build bare-user repo. 
-# If not use the repo archive repo.
-if [[ "$cmd" =~ unified-core ]]; then
-	unifiedcore=1
-    repo='repo-build'
-else
-	unifiedcore=1
-    repo='repo'
-fi
-
-
 [ -d "${workdir}" ]     || mkdir -p "${workdir}"
 [ -d "${hostworkdir}" ] || mkdir -p "${hostworkdir}"
 
@@ -77,42 +66,31 @@ mount -t cifs -o 'username=root,password=,cache=loose' '\\10.0.2.4\qemu' "${host
 compose() {
     # make sure previous_commit exists in the build repo
     if [ "${previous_commit}" != "null" ]; then
-        pc=$(ostree --repo="${workdir}/${repo}" rev-parse "${ref}" || true)
+        pc=$(ostree --repo="${workdir}/repo-build" rev-parse "${ref}" || true)
         if [ "${previous_commit}" != "${pc}" ]; then
             # is it possible to use --commit-metadata-only here ? 
-            ostree pull-local --repo="${workdir}/${repo}" "${hostworkdir}/repo/" "$ref"
+            ostree pull-local --repo="${workdir}/repo-build" "${hostworkdir}/repo/" "$ref"
         fi
     fi
 
     # run the command from given to us
-    $cmd --repo="${workdir}/${repo}" || fatal
+    $cmd || fatal
 
     # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
     # The passwd files (among others) don't have world readability.  This won't
     # actually corrupt the repository as the *canonical* permissions are stored
     # as xattrs.  Probably what we should do is have an ostree option to specify
     # a permission mask for objects.
-    [ "${unifiedcore}" = "1" ] && chmod -R a+rX "${workdir}/repo-build/objects"
+    chmod -R a+rX "${workdir}/repo-build/objects"
 
     #bash -i
 
     # Sync over to repo in $hostworkdir
-    if [ "${unifiedcore}" = "1" ]; then
-        # Need to do this in two steps instead of one 
-        # https://github.com/ostreedev/ostree/issues/1734
-        ostree pull-local --repo="${workdir}/repo/"     "${workdir}/repo-build/" $ref || fatal
-        ostree pull-local --repo="${hostworkdir}/repo/" "${workdir}/repo/"       $ref || fatal
-    else
-        ostree pull-local --repo="${hostworkdir}/repo/" "${workdir}/repo/"       $ref || fatal
-    fi
+    ostree pull-local --repo="${hostworkdir}/repo/" "${workdir}/repo-build/" $ref || fatal
+    # Sync over to repo in $hostworkdir
 
     # prune - we'll leave just one commit in repo
-    if [ "${unifiedcore}" = "1" ]; then
-        ostree prune --repo="${workdir}/repo-build/" --only-branch "${ref}" --depth=0 || fatal
-        ostree prune --repo="${workdir}/repo/"       --only-branch "${ref}" --depth=0 || fatal
-    else
-        ostree prune --repo="${workdir}/repo/"       --only-branch "${ref}" --depth=0 || fatal
-    fi
+    ostree prune --repo="${workdir}/repo-build/" --only-branch "${ref}" --depth=0 || fatal
 
     #bash -i
 }
@@ -133,9 +111,6 @@ cleanup() {
 
     # shutdown
     reboot -f 
-#   echo 1 > /proc/sys/kernel/sysrq
-#   echo o > /proc/sysrq-trigger
-#   sleep 10
 }
 
 # run the compose
