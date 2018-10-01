@@ -57,3 +57,5 @@ import:
 # This needs to be pinned. Dunno why.
 - package: github.com/cpuguy83/go-md2man
   version: 71acacd42f85e5e82f70a55327789582a5200a90
+- package: golang.org/x/sys
+  version: c2ed4eda69e7f62900806e4cd6e45f0429f859fa
