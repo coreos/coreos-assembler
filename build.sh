@@ -52,6 +52,10 @@ EOF
 
 install_rpms() {
 
+    # first, make sure we're in sync with latest Fedora, avoids issues like:
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1625641
+    dnf -y distro-sync
+
     # xargs is part of findutils, which may not be installed
     dnf -y install /usr/bin/xargs
 
