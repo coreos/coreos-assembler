@@ -1,5 +1,5 @@
-hash: 2b41fab78138da09632e01ad9a78d59e127b19ed891058e93a358c74b950a578
-updated: 2018-09-26T13:04:25.031398864-07:00
+hash: cd1d1196b85d57be2c1b006a75c2166b6607aa8be729c9dc348e5aa2f75e38de
+updated: 2018-10-01T12:06:01.80855308-05:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -383,7 +383,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/cloud
-  version: 29b5aa7b5bc98fabb6b4d3e4322311baf21fb295
+  version: ce3259d98fbcbe04db4ed502d169f519aada03b5
   subpackages:
   - compute/metadata
 - name: google.golang.org/genproto
