@@ -30,7 +30,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         Discovery,
 		ClusterSize: 3,
-		Name:        "coreos.etcd-member.discovery",
+		Name:        "cl.etcd-member.discovery",
 		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "systemd": {
@@ -53,7 +53,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         etcdMemberV2BackupRestore,
 		ClusterSize: 1,
-		Name:        "coreos.etcd-member.v2-backup-restore",
+		Name:        "cl.etcd-member.v2-backup-restore",
 		UserData: conf.ContainerLinuxConfig(`
 
 etcd:
@@ -72,7 +72,7 @@ etcd:
 		// Clustersize of 1 to avoid needing private ips everywhere for clustering;
 		// this lets it run on more platforms, and also faster
 		ClusterSize: 1,
-		Name:        "coreos.etcd-member.etcdctlv3",
+		Name:        "cl.etcd-member.etcdctlv3",
 		UserData: conf.ContainerLinuxConfig(`
 
 etcd:

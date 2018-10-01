@@ -26,7 +26,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         InstallCloudConfig,
 		ClusterSize: 1,
-		Name:        "coreos.install.cloudinit",
+		Name:        "cl.install.cloudinit",
 		UserData: conf.Ignition(`{
   "ignition": { "version": "2.0.0" },
   "storage": {

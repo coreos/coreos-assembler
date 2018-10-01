@@ -41,7 +41,7 @@ func init() {
 	}`)
 
 	register.Register(&register.Test{
-		Name:        "coreos.metadata.aws",
+		Name:        "cl.metadata.aws",
 		Run:         verifyAWS,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
@@ -50,7 +50,7 @@ func init() {
 	})
 
 	register.Register(&register.Test{
-		Name:        "coreos.metadata.azure",
+		Name:        "cl.metadata.azure",
 		Run:         verifyAzure,
 		ClusterSize: 1,
 		Platforms:   []string{"azure"},
@@ -59,7 +59,7 @@ func init() {
 	})
 
 	register.Register(&register.Test{
-		Name:        "coreos.metadata.packet",
+		Name:        "cl.metadata.packet",
 		Run:         verifyPacket,
 		ClusterSize: 1,
 		Platforms:   []string{"packet"},

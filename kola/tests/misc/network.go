@@ -29,13 +29,13 @@ func init() {
 	register.Register(&register.Test{
 		Run:         NetworkListeners,
 		ClusterSize: 1,
-		Name:        "coreos.network.listeners",
+		Name:        "cl.network.listeners",
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
-		Name:             "coreos.network.initramfs.second-boot",
+		Name:             "cl.network.initramfs.second-boot",
 		ExcludePlatforms: []string{"do"},
 		Distros:          []string{"cl"},
 	})

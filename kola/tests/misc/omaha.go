@@ -29,7 +29,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         OmahaPing,
 		ClusterSize: 1,
-		Name:        "coreos.omaha.ping",
+		Name:        "cl.omaha.ping",
 		Platforms:   []string{"qemu"},
 		UserData: conf.ContainerLinuxConfig(`update:
   server: "http://10.0.0.1:34567/v1/update/"

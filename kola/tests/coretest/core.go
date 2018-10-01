@@ -25,7 +25,7 @@ const (
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.basic",
+		Name:        "cl.basic",
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{
@@ -60,7 +60,7 @@ func init() {
 
 	// tests requiring network connection to internet
 	register.Register(&register.Test{
-		Name:             "coreos.internet",
+		Name:             "cl.internet",
 		Run:              InternetTests,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},

@@ -26,7 +26,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         CloudInitBasic,
 		ClusterSize: 1,
-		Name:        "coreos.cloudinit.basic",
+		Name:        "cl.cloudinit.basic",
 		UserData: conf.CloudConfig(`#cloud-config
 hostname: "core1"
 write_files:
@@ -37,7 +37,7 @@ write_files:
 	register.Register(&register.Test{
 		Run:         CloudInitScript,
 		ClusterSize: 1,
-		Name:        "coreos.cloudinit.script",
+		Name:        "cl.cloudinit.script",
 		UserData: conf.Script(`#!/bin/bash
 echo bar > /foo
 mkdir -p ~core/.ssh

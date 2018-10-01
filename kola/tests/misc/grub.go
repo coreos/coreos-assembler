@@ -149,7 +149,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         UpdateGrubNop,
 		ClusterSize: 1,
-		Name:        "coreos.update.grubnop",
+		Name:        "cl.update.grubnop",
 		UserData:    grubUpdaterConf,
 		MinVersion:  semver.Version{Major: 1745},
 		Distros:     []string{"cl"},

@@ -68,13 +68,13 @@ func init() {
 		Run:         RootOnRaid,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
-		Name:        "coreos.disk.raid.root",
+		Name:        "cl.disk.raid.root",
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Run:         DataOnRaid,
 		ClusterSize: 1,
-		Name:        "coreos.disk.raid.data",
+		Name:        "cl.disk.raid.data",
 		UserData: conf.ContainerLinuxConfig(`storage:
   raid:
     - name: "DATA"

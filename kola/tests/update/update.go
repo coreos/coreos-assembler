@@ -34,7 +34,7 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.update.payload",
+		Name:        "cl.update.payload",
 		Run:         payload,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{

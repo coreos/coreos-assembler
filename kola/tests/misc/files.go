@@ -26,7 +26,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         Filesystem,
 		ClusterSize: 1,
-		Name:        "coreos.filesystem",
+		Name:        "cl.filesystem",
 		Distros:     []string{"cl"},
 	})
 }

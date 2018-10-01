@@ -34,7 +34,7 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.locksmith.cluster",
+		Name:        "cl.locksmith.cluster",
 		Run:         locksmithCluster,
 		ClusterSize: 3,
 		UserData: conf.Ignition(`{
