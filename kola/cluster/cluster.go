@@ -31,13 +31,26 @@ type TestCluster struct {
 	*harness.H
 	platform.Cluster
 	NativeFuncs []string
+
+	// If set to true and a sub-test fails all future sub-tests will be skipped
+	FailFast   bool
+	hasFailure bool
 }
 
 // Run runs f as a subtest and reports whether f succeeded.
 func (t *TestCluster) Run(name string, f func(c TestCluster)) bool {
-	return t.H.Run(name, func(h *harness.H) {
+	if t.FailFast && t.hasFailure {
+		return t.H.Run(name, func(h *harness.H) {
+			func(c TestCluster) {
+				c.Skip("A previous test has already failed")
+			}(TestCluster{H: h, Cluster: t.Cluster})
+		})
+	}
+	t.hasFailure = !t.H.Run(name, func(h *harness.H) {
 		f(TestCluster{H: h, Cluster: t.Cluster})
 	})
+	return !t.hasFailure
+
 }
 
 // RunNative runs a registered NativeFunc on a remote machine

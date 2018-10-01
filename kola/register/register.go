@@ -49,6 +49,10 @@ type Test struct {
 	Architectures    []string // whitelist of machine architectures supported -- defaults to all
 	Flags            []Flag   // special-case options for this test
 
+	// FailFast skips any sub-test that occurs after a sub-test has
+	// failed.
+	FailFast bool
+
 	// MinVersion prevents the test from executing on CoreOS machines
 	// less than MinVersion. This will be ignored if the name fully
 	// matches without globbing.
