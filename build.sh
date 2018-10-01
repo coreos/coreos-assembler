@@ -22,6 +22,9 @@ fi
 # At some point we may make this the default.
 useradd builder
 
+# https://bugzilla.redhat.com/show_bug.cgi?id=1625641
+dnf -y distro-sync
+
 dnf -y install /usr/bin/xargs dnf-utils dnf-plugins-core
 dnf copr -y enable walters/buildtools-fedora
 
