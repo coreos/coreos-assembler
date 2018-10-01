@@ -25,7 +25,7 @@ import (
 func init() {
 	// Tests for https://github.com/coreos/bugs/issues/1184
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.misc.empty",
+		Name:             "cl.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
@@ -34,7 +34,7 @@ func init() {
 	})
 	// Tests for https://github.com/coreos/bugs/issues/1981
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v1.noop",
+		Name:             "cl.ignition.v1.noop",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
@@ -43,7 +43,7 @@ func init() {
 		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
 	})
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v2.noop",
+		Name:             "cl.ignition.v2.noop",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},

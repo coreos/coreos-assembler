@@ -29,7 +29,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         Verity,
 		ClusterSize: 1,
-		Name:        "coreos.verity",
+		Name:        "cl.verity",
 		Distros:     []string{"cl"},
 	})
 }

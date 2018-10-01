@@ -26,7 +26,7 @@ func init() {
 		Run:              CheckUserShells,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"gce"},
-		Name:             "coreos.users.shells",
+		Name:             "cl.users.shells",
 		Distros:          []string{"cl"},
 	})
 }

@@ -82,7 +82,7 @@ func init() {
 		Distros: []string{"cl", "rhcos"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.users",
+		Name:        "cl.ignition.v1.users",
 		Run:         users,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
@@ -116,7 +116,7 @@ func init() {
 		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.users",
+		Name:        "cl.ignition.v2.users",
 		Run:         users,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{

@@ -112,7 +112,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:              udp,
 		ClusterSize:      3,
-		Name:             "coreos.flannel.udp",
+		Name:             "cl.flannel.udp",
 		ExcludePlatforms: []string{"qemu"},
 		Distros:          []string{"cl"},
 		UserData:         flannelConf.Subst("$type", "udp"),
@@ -121,7 +121,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:              vxlan,
 		ClusterSize:      3,
-		Name:             "coreos.flannel.vxlan",
+		Name:             "cl.flannel.vxlan",
 		ExcludePlatforms: []string{"qemu"},
 		Distros:          []string{"cl"},
 		UserData:         flannelConf.Subst("$type", "vxlan"),

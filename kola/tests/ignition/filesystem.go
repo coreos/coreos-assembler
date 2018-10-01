@@ -70,14 +70,14 @@ func init() {
 		               }
 		           }`)
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.btrfsroot",
+		Name:        "cl.ignition.v1.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV1,
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.btrfsroot",
+		Name:        "cl.ignition.v2.btrfsroot",
 		Run:         btrfsRoot,
 		ClusterSize: 1,
 		UserData:    btrfsConfigV2,
@@ -126,14 +126,14 @@ func init() {
 		             }
 		         }`)
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.xfsroot",
+		Name:        "cl.ignition.v1.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
 		UserData:    xfsConfigV1,
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.xfsroot",
+		Name:        "cl.ignition.v2.xfsroot",
 		Run:         xfsRoot,
 		ClusterSize: 1,
 		UserData:    xfsConfigV2,
@@ -182,21 +182,21 @@ func init() {
 		             }
 		         }`)
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.ext4root",
+		Name:        "cl.ignition.v1.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV1,
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.ext4root",
+		Name:        "cl.ignition.v2.ext4root",
 		Run:         ext4Root,
 		ClusterSize: 1,
 		UserData:    ext4ConfigV2,
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.ext4checkexisting",
+		Name:        "cl.ignition.v2_1.ext4checkexisting",
 		Run:         ext4CheckExisting,
 		ClusterSize: 1,
 		Distros:     []string{"cl"},
@@ -221,7 +221,7 @@ func init() {
 			             }
 			         }`)
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.vfat",
+		Name:        "cl.ignition.v2_1.vfat",
 		Run:         vfatUsrB,
 		ClusterSize: 1,
 		UserData:    vfatConfigV2_1,
@@ -247,7 +247,7 @@ func init() {
 			             }
 			         }`)
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.swap",
+		Name:        "cl.ignition.v2_1.swap",
 		Run:         swapUsrB,
 		ClusterSize: 1,
 		UserData:    swapConfigV2_1,

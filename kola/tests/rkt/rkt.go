@@ -45,7 +45,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"},
 		Distros:          []string{"cl"},
-		Name:             "coreos.rkt.etcd3",
+		Name:             "cl.rkt.etcd3",
 		UserData:         config,
 	})
 

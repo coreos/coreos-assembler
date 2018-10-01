@@ -99,6 +99,15 @@ The updatepayload command launches a Container Linux instance then updates it by
 sending an update to its update_engine. The update is the `coreos_*_update.gz` in the
 latest build directory.
 
+#### kola test namespacing
+The top-level namespace of tests should fit into one of the following categories:
+1. Groups of tests targeting specific packages/binaries may use that
+namespace (ex: `docker.*`)
+2. Tests that target multiple supported distributions may use the
+`coreos` namespace.
+3. Tests that target singular distributions may use the distribution's
+namespace.
+
 #### kola test registration
 Registering kola tests currently requires that the tests are registered
 under the kola package and that the test function itself lives within
