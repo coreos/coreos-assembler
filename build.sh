@@ -52,6 +52,11 @@ EOF
 
 install_rpms() {
 
+    # First, a general update; this is best practice.  We also hit an issue recently
+    # where qemu implicitly depended on an updated libusbx but didn't have a versioned
+    # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
+    dnf -y distro-sync
+
     # xargs is part of findutils, which may not be installed
     dnf -y install /usr/bin/xargs
 
