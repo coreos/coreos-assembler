@@ -9,7 +9,7 @@ dumb-init
 rpm-ostree
 
 # rpmdistro-gitoverlay deps
-dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients rpmdistro-gitoverlay
+dnf-plugins-core createrepo_c dnf-utils fedpkg openssh-clients
 
 # Currently a transitive req of rpmdistro-gitoverlay via mock, but we
 # expect people to use these explicitly in their repo configurations.
