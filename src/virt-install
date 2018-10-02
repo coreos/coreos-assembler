@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 # Wrapper for virt-install designed to run in a container
 # environment, and using defaults targeted for CoreOS.
 # https://github.com/cgwalters/coreos-assembler/issues/7
