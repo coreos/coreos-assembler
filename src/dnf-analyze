@@ -25,9 +25,9 @@ def directoryExists(path):
 if not directoryExists(args.repo_dir):
     print('Bad Repo Directory.')
     exit(1)
-if not directoryExists(args.log-dir):
-    print('Bad Log Directory.')
-    exit(1)
+if not directoryExists(args.log_dir):
+    print('Bad Log Directory: Defaulting to /var/log')
+    args.log_dir = '/var/log'
 if (args.size != True) or (args.size != False):
     print('Size must be set to True or False.')
     exit(1)
@@ -99,11 +99,8 @@ base = dnf.Base()
 base_config = base.conf
 base_config.assumeyes = "true"
 base_config.best = "true"
-base_config.cachedir = "/tmp/dnf"
-if args.log:
-    base_config.logdir = args.log
-else:
-    base_config.logdir = "/var/log"
+base_config.cachedir = "/var/cache/dnf"
+base_config.logdir = args.log
 base_config.reposdir = args.repo_dir
 
 # Parse repos in dir and fill sack without system rpm scanning.
