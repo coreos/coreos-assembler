@@ -1,13 +1,11 @@
 #!/usr/bin/python3
 
+# GLOBAL
 import dnf,argparse,sys,math
-
 interpretedPkg = ["python", "perl"]
+query = dnf.query.Query
 
-# type(self.children) = type(self.pkg_meta) = type(dnf.package.Package)
-# https://dnf.readthedocs.io/en/latest/api_package.html#dnf.package.Package
-# type(self.name) = str
-# type(self.generation) = int
+# CLASS
 class Package(object):
     def printChildren(self):
         # For each child of the type Package(object)
@@ -22,12 +20,15 @@ class Package(object):
         # However, this cannot be done in a way where each node is aware of the rest of the tree; this would result in an incomplete dependency tree.
         toScan = []
         for x in self.pkg_meta.requires:
-            if x not in self.scanned:
-                self.scanned.append(x)
-                toScan.append(x)
+            # Convert hawkey.ReqDep to string.
+            i = str(x)
+            if i not in self.scanned:
+                self.scanned.append(i)
+                toScan.append(i)
         # Scan the packages which do not already exist in this tree path but pass in the whole tree path to the next child.
         for x in toScan:
-            self.children.append(Package(self.query, self.generation, x, self.scanned))
+            j = query.filter(name=x,latest=True)
+            self.children.append(Package(query,self.generation,j[0],self.scanned))
     
     def interpreted(self):
         # For each package listed as examples for interpreted languages...
@@ -36,21 +37,19 @@ class Package(object):
             if x in self.pkg_meta.name:
                 self.interpreted = "true"
         
-    def __init__(self, query, generation, pkg, scanned):
-        # VARS
+    def __init__(self,generation,pkg,scanned):
+        # ATTR
         self.generation = generation + 1
         self.pkg_meta = pkg
         self.children = []
         self.scanned = scanned
         self.interpreted = "false"
         
-        #TODO: query logic
-        
-        # INIT LOGIC
+        # METHOD
         interpreted()
         findChildren()
         
-    
+# CLI ENTRYPOINT
 parser = argparse.ArgumentParser()
 parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
                     action='store', required=True)
@@ -78,15 +77,20 @@ base_config.cachedir = "/tmp/dnf"
 if args.log:
     base_config.logdir = args.log
 else:
-    base_config.logdir = "/dev/null"
+    base_config.logdir = "/var/log"
 base_config.reposdir = args.repo_dir
 
-# Parse repos in dir and fill sack.
+# Parse repos in dir and fill sack without system rpm scanning.
 base.read_all_repos()
-base.fill_sack()
+base.fill_sack(load_system_repo=False,load_available_repos=True)
 
+# Init query object on new sack. From here on out, no changes are made to query.
 query = base.sack.query()
 
-
-
-# PLACEHOLDER
+# Replace each element in the base_packages array with a Packages object.
+for x in range(0,len(base_packages)):
+    i = base_packages[x]
+    # Assuming best first, get latest package.
+    j = query.filter(name=i,latest=True)
+    # Use first item in j JIC.
+    base_packages[x] = Package(query,0,j[0],"")
