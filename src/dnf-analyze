@@ -2,18 +2,40 @@
 
 # GLOBAL
 import dnf,argparse,sys,math
-interpretedPkg = ["python", "perl"]
+interpretedLabel = ["python", "perl"]
+interpretedPkg = []
 query = dnf.query.Query
+
+# CLI ENTRYPOINT
+parser = argparse.ArgumentParser()
+parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
+                    action='store', required=True)
+parser.add_argument("--repo-dir", help="Directory which stores all .repo definitions.",
+                    action='store', required=True)
+parser.add_argument("--log", help="If set, log to file and stdout.",
+                    action='store')
+parser.add_argument("--size", help="Display total dependency tree size.",
+                    action='store_true')
+parser.add_argument("--exit-on", help="Emphasize interpreted dependencies through 'exit 1'",
+                    action='store_true')
+args = parser.parse_args()
 
 # CLASS
 class Package(object):
-    def printChildren(self):
-        # For each child of the type Package(object)
+    def printTree(self):
+        # Make an indentation format for easier read.
+        ind = '-' * self.generation
+        # Print dnf.package.Package.name.
+        print(ind + self.pkg_meta.name)
+        # Print size in MB if args.size.
+        if args.size:
+            print(ind + 'size: ' + (self.pkg_meta.downloadsize / 2^20))
+        # Print number of depends.
+        print(ind + 'depends: ' + len(self.children))
+        # Print if it is interpreted.
+        print(ind + 'isInterpreted: ' + str(self.interpreted))
         for x in self.children:
-            # Print a dash according to the generation and then the child's name contained in the package definition.
-            printColor('-' * self.generation, x.pkg_meta.name, ' size: ', x.pkg_meta.downloadsize / 2^20 )
-            # Then call each child's children causing a tree.
-            x.printChildren()
+            x.printTree()
     
     def findChildren(self):
         # First, prevent recursive scans i.e. glib requires glib translations which require glib.
@@ -32,10 +54,13 @@ class Package(object):
     
     def interpreted(self):
         # For each package listed as examples for interpreted languages...
-        for x in interpretedPkg:
+        for x in interpretedLabel:
             # If one is found in the Package.pkg_meta.name, then label this Package object as an interpreted object.
             if x in self.pkg_meta.name:
-                self.interpreted = "true"
+                self.interpreted = True
+                # If this package already hasn't been scanned, labeled interpreted, and placed in interpretedPkg, place in interpretedPkg.
+                if self.pkg_meta.name not in interpretedPkg:
+                    interpretedPkg.append(self.pkg_meta.name)
         
     def __init__(self,generation,pkg,scanned):
         # ATTR
@@ -43,33 +68,19 @@ class Package(object):
         self.pkg_meta = pkg
         self.children = []
         self.scanned = scanned
-        self.interpreted = "false"
+        self.interpreted = False
         
         # METHOD
         interpreted()
         findChildren()
-        
-# CLI ENTRYPOINT
-parser = argparse.ArgumentParser()
-parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
-                    action='store', required=True)
-parser.add_argument("--repo-dir", help="Directory which stores all .repo definitions.",
-                    action='store', required=True)
-parser.add_argument("--log", help="If set, log to file and stdout.",
-                    action='store')
-parser.add_argument("--size", help="Display total dependency tree size.",
-                    action='store_true')
-parser.add_argument("--exit-on", help="Emphasize interpreted dependencies through 'exit 1'",
-                    action='store_true')
-args = parser.parse_args()
 
 # Split comma delimited packages into an array.
 base_packages = args.packages.split(",")
 
-# Init dnf object.
+# Init DNF object.
 base = dnf.Base()
 
-# Dnf config.
+# DNF config.
 base_config = base.conf
 base_config.assumeyes = "true"
 base_config.best = "true"
@@ -94,3 +105,10 @@ for x in range(0,len(base_packages)):
     j = query.filter(name=i,latest=True)
     # Use first item in j JIC.
     base_packages[x] = Package(query,0,j[0],"")
+
+# Major print functions.
+for x in base_backages:
+    x.printTree()
+for x in interpreted:
+    print('Interpreted Package: ' + x)
+print('Total Interpreted Packages: ' + len(interpreted))
