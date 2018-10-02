@@ -156,7 +156,7 @@ if [ "${VM_PERSIST}" = 0 ]; then
     vm_drive_args=",cache=unsafe"
 fi
 
-set -- -drive if=virtio,file=${VM_DISK}${vm_drive_args:-} "$@"
+set -- -drive if=virtio${vm_drive_args:-},file=${VM_DISK} "$@"
 
 exec qemu-kvm -name coreos -m ${VM_MEMORY} -nographic \
               -netdev user,id=eth0,hostname=coreos${hostfwd:-} \
