@@ -139,12 +139,14 @@ ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-rep
 EOF
 
 imageprefix=${name}-${version}-${image_genver}
+# Make these two verbose
+set -x
 /usr/lib/coreos-assembler/virt-install --dest=$(pwd)/tmp/${imageprefix}-base.qcow2 \
                --create-disk --kickstart $(pwd)/tmp/local.ks --kickstart-out $(pwd)/tmp/flattened.ks \
                --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
                --local-repo=${workdir}/repo
-
 /usr/lib/coreos-assembler/gf-oemid tmp/${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
+set +x
 # make a version-less symlink to have a stable path
 ln -s ${imageprefix}-qemu.qcow2 ${name}-qemu.qcow2
 
