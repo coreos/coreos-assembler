@@ -112,3 +112,5 @@ for x in base_backages:
 for x in interpreted:
     print('Interpreted Package: ' + x)
 print('Total Interpreted Packages: ' + len(interpreted))
+# TODO: print which base packages introduce interpreted dependencies.
+# TODO: print which packages require interpreted dependencies.
