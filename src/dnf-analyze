@@ -1,24 +1,39 @@
 #!/usr/bin/python3
 
 # GLOBAL
-import dnf,argparse,sys,math
+import dnf,argparse,os,math
 interpretedLabel = ["python", "perl"]
 interpretedPkg = []
 query = dnf.query.Query
 
 # CLI ENTRYPOINT
 parser = argparse.ArgumentParser()
-parser.add_argument("--packages", help="Comma Separated list of packages to analyze.",
-                    action='store', required=True)
-parser.add_argument("--repo-dir", help="Directory which stores all .repo definitions.",
-                    action='store', required=True)
-parser.add_argument("--log", help="If set, log to file and stdout.",
-                    action='store')
-parser.add_argument("--size", help="Display total dependency tree size.",
-                    action='store_true')
-parser.add_argument("--exit-on", help="Emphasize interpreted dependencies through 'exit 1'",
-                    action='store_true')
+parser.add_argument('--packages',help='Comma Separated list of packages to analyze.',action='store', required=True)
+parser.add_argument('--repo-dir',help='Directory which stores all .repo definitions.',action='store', required=True)
+parser.add_argument('--log-dir',help='If set, log to file and stdout.',action='store')
+parser.add_argument('--size',help="Display total dependency tree size.",action='store_true')
+parser.add_argument('--exit-on',help="Emphasize interpreted dependencies through 'exit 1'",action='store_true')
 args = parser.parse_args()
+
+# CLI VERIFY
+def directoryExists(path):
+    if os.path.isdir(path):
+        if os.access(path, os.W_OK):
+            return True
+    return False
+
+if not directoryExists(args.repo_dir):
+    print('Bad Repo Directory.')
+    exit(1)
+if not directoryExists(args.log-dir):
+    print('Bad Log Directory.')
+    exit(1)
+if (args.size != True) or (args.size != False):
+    print('Size must be set to True or False.')
+    exit(1)
+if (args.exit_on != True) or (args.exit_on != False):
+    print('Exit On must be set to True or False.')
+    exit(1)
 
 # CLASS
 class Package(object):
@@ -109,8 +124,15 @@ for x in range(0,len(base_packages)):
 # Major print functions.
 for x in base_backages:
     x.printTree()
-for x in interpreted:
-    print('Interpreted Package: ' + x)
-print('Total Interpreted Packages: ' + len(interpreted))
+    
+if len(interpreted) > 0:    
+    for x in interpreted:
+        print('Interpreted Package: ' + x)
+    print('Total Interpreted Packages: ' + len(interpreted))
+    if args.exit_on:
+        exit(1)
+
 # TODO: print which base packages introduce interpreted dependencies.
 # TODO: print which packages require interpreted dependencies.
+
+exit(0)
