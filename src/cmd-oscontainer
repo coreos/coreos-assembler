@@ -56,8 +56,7 @@ def oscontainer_extract(containers_storage, src, dest,
 # Given an OSTree repository at src (and exactly one ref) generate an oscontainer
 # with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
-                      base_image='scratch',
-                      push=False, tls_verify=True):
+                      base_image, push=False, tls_verify=True):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -117,7 +116,7 @@ parser_extract = subparsers.add_parser('extract', help='Extract an oscontainer')
 parser_extract.add_argument("src", help="Image reference")
 parser_extract.add_argument("dest", help="Destination directory")
 parser_build = subparsers.add_parser('build', help='Build an oscontainer')
-parser_build.add_argument("--from", help="Base image (may be unset)")
+parser_build.add_argument("--from", help="Base image (default 'scratch')", default='scratch')
 parser_build.add_argument("src", help="OSTree repository")
 parser_build.add_argument("rev", help="OSTree ref (or revision)")
 parser_build.add_argument("name", help="Image name")
@@ -134,6 +133,6 @@ if args.action == 'extract':
                         tls_verify=not args.disable_tls_verify)
 elif args.action == 'build':
     oscontainer_build(containers_storage, args.src, args.rev, args.name,
-                      base_image=getattr(args, 'from'),
+                      getattr(args, 'from'),
                       push=args.push,
                       tls_verify=not args.disable_tls_verify)
