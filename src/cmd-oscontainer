@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 # An "oscontainer" is an ostree (archive) repository stuck inside
 # a Docker/OCI container at /srv/repo.  For more information,
 # see https://github.com/openshift/pivot
