@@ -446,6 +446,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		H:           h,
 		Cluster:     c,
 		NativeFuncs: names,
+		FailFast:    t.FailFast,
 	}
 
 	// drop kolet binary on machines
