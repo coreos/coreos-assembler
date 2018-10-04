@@ -70,10 +70,6 @@ install_rpms() {
     # Process our base dependencies + build dependencies
     (echo ${self_builddeps} && grep -v '^#' ${srcdir}/deps.txt) | xargs dnf -y install
 
-    # The podman change to use systemd for cgroups broke our hack to use
-    # podman-in-docker...we should fix our pipeline, but for now:
-    dnf -y downgrade https://kojipkgs.fedoraproject.org//packages/podman/0.7.4/4.git80612fb.fc28/x86_64/podman-0.7.4-4.git80612fb.fc28.x86_64.rpm
-
     # Commented out for now, see above
     #dnf remove -y ${self_builddeps}
     rpm -q grubby && dnf remove -y grubby
