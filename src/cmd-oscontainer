@@ -56,7 +56,8 @@ def oscontainer_extract(containers_storage, src, dest,
 # Given an OSTree repository at src (and exactly one ref) generate an oscontainer
 # with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
-                      base_image, push=False, tls_verify=True):
+                      base_image, push=False, tls_verify=True,
+                      inspect_out=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -96,7 +97,10 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         subprocess.call(['buildah', rootarg, 'umount', bid], stdout=subprocess.DEVNULL)
         subprocess.call(['buildah', rootarg, 'rm', bid], stdout=subprocess.DEVNULL)
 
-    run_verbose(['podman', rootarg, 'inspect', image_name_and_tag])
+    inspect = run_get_json(['podman', rootarg, 'inspect', image_name_and_tag])[0]
+    if inspect_out is not None:
+        with open(inspect_out, 'w') as f:
+            json.dump(inspect, f)
     if push:
         print("Pushing container")
         if not tls_verify:
@@ -120,6 +124,8 @@ parser_build.add_argument("--from", help="Base image (default 'scratch')", defau
 parser_build.add_argument("src", help="OSTree repository")
 parser_build.add_argument("rev", help="OSTree ref (or revision)")
 parser_build.add_argument("name", help="Image name")
+parser_build.add_argument("--inspect-out", help="Write image JSON to file",
+                          action='store', metavar='FILE')
 parser_build.add_argument("--push", help="Push to registry",
                           action='store_true')
 args = parser.parse_args()
@@ -134,5 +140,6 @@ if args.action == 'extract':
 elif args.action == 'build':
     oscontainer_build(containers_storage, args.src, args.rev, args.name,
                       getattr(args, 'from'),
+                      inspect_out=args.inspect_out,
                       push=args.push,
                       tls_verify=not args.disable_tls_verify)
