@@ -46,6 +46,7 @@ func init() {
 		Name:             `podman.workflow`,
 		ExcludePlatforms: []string{"qemu"}, // Requires internet for pulling nginx
 		Distros:          []string{"rhcos"},
+		FailFast:         true,
 	})
 	register.Register(&register.Test{
 		Run:         podmanNetworkTest,
@@ -57,7 +58,7 @@ func init() {
 
 // simplifiedContainerPsInfo represents a container entry in podman ps -a
 type simplifiedContainerPsInfo struct {
-	Id     string `json:"id"`
+	ID     string `json:"id"`
 	Image  string `json:"image"`
 	Status string `json:"status"`
 }
@@ -77,16 +78,16 @@ type simplifiedPodmanInfo struct {
 
 func getSimplifiedPsInfo(c cluster.TestCluster, m platform.Machine) (simplifiedPsInfo, error) {
 	target := simplifiedPsInfo{}
-	psJson, err := c.SSH(m, `sudo podman ps -a --format json`)
+	psJSON, err := c.SSH(m, `sudo podman ps -a --format json`)
 
 	if err != nil {
 		return target, fmt.Errorf("could not get info: %v", err)
 	}
 
-	err = json.Unmarshal(psJson, &target.containers)
+	err = json.Unmarshal(psJSON, &target.containers)
 
 	if err != nil {
-		return target, fmt.Errorf("could not unmarshal info %q into known json: %v", string(psJson), err)
+		return target, fmt.Errorf("could not unmarshal info %q into known json: %v", string(psJSON), err)
 	}
 	return target, nil
 }
@@ -95,14 +96,14 @@ func getSimplifiedPsInfo(c cluster.TestCluster, m platform.Machine) (simplifiedP
 func getPodmanInfo(c cluster.TestCluster, m platform.Machine) (simplifiedPodmanInfo, error) {
 	target := simplifiedPodmanInfo{}
 
-	pInfoJson, err := c.SSH(m, `sudo podman info --format json`)
+	pInfoJSON, err := c.SSH(m, `sudo podman info --format json`)
 	if err != nil {
 		return target, fmt.Errorf("Could not get info: %v", err)
 	}
 
-	err = json.Unmarshal(pInfoJson, &target)
+	err = json.Unmarshal(pInfoJSON, &target)
 	if err != nil {
-		return target, fmt.Errorf("Could not unmarshal info %q into known JSON: %v", string(pInfoJson), err)
+		return target, fmt.Errorf("Could not unmarshal info %q into known JSON: %v", string(pInfoJSON), err)
 	}
 	return target, nil
 }
@@ -120,86 +121,100 @@ func podmanWorkflow(c cluster.TestCluster) {
 	// Test: Verify container can run with volume mount and port forwarding
 	image := "docker.io/library/nginx"
 	wwwRoot := "/usr/share/nginx/html"
+	var id string
 
-	dir := c.MustSSH(m, `mktemp -d`)
+	c.Run("run", func(c cluster.TestCluster) {
+		dir := c.MustSSH(m, `mktemp -d`)
+		cmd := fmt.Sprintf("echo TEST PAGE > %s/index.html", string(dir))
+		c.MustSSH(m, cmd)
 
-	cmd := fmt.Sprintf("echo TEST PAGE > %s/index.html", string(dir))
-	c.MustSSH(m, cmd)
+		cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s", string(dir), wwwRoot, image)
+		out := c.MustSSH(m, cmd)
+		id = string(out)
 
-	cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s", string(dir), wwwRoot, image)
-	out := c.MustSSH(m, cmd)
-	id := string(out)
-
-	podIsRunning := func() error {
-		b, err := c.SSH(m, `curl -f http://localhost 2>/dev/null`)
-		if err != nil {
-			return err
+		podIsRunning := func() error {
+			b, err := c.SSH(m, `curl -f http://localhost 2>/dev/null`)
+			if err != nil {
+				return err
+			}
+			if !bytes.Contains(b, []byte("TEST PAGE")) {
+				return fmt.Errorf("nginx pod is not running %s", b)
+			}
+			return nil
 		}
-		if !bytes.Contains(b, []byte("TEST PAGE")) {
-			return fmt.Errorf("nginx pod is not running %s", b)
-		}
-		return nil
-	}
 
-	if err := util.Retry(6, 5*time.Second, podIsRunning); err != nil {
-		c.Fatal("Pod is not running")
-	}
+		if err := util.Retry(6, 5*time.Second, podIsRunning); err != nil {
+			c.Fatal("Pod is not running")
+		}
+	})
 
 	// Test: Execute command in container
-	cmd = fmt.Sprintf("sudo podman exec %s echo hello", id[0:12])
-	out = c.MustSSH(m, cmd)
+	c.Run("exec", func(c cluster.TestCluster) {
+		cmd := fmt.Sprintf("sudo podman exec %s echo hello", id[0:12])
+		out := c.MustSSH(m, cmd)
 
-	if string(out) != "hello" {
-		c.Fatal("Could not exec command in container")
-	}
+		if string(out) != "hello" {
+			c.Fatal("Could not exec command in container")
+		}
+	})
 
 	// Test: Stop container
-	cmd = fmt.Sprintf("sudo podman stop %s", id[0:12])
-	c.MustSSH(m, cmd)
-	psInfo, err := getSimplifiedPsInfo(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
+	c.Run("stop", func(c cluster.TestCluster) {
+		cmd := fmt.Sprintf("sudo podman stop %s", id[0:12])
+		c.MustSSH(m, cmd)
+		psInfo, err := getSimplifiedPsInfo(c, m)
+		if err != nil {
+			c.Fatal(err)
+		}
 
-	found := false
-	for _, container := range psInfo.containers {
-		if container.Id == id {
-			found = true
-			if container.Status != "exited" {
-				c.Fatalf("Container %s was not stopped. Current status: %s", id, container.Status)
+		found := false
+		for _, container := range psInfo.containers {
+			if container.ID == id {
+				found = true
+				if container.Status != "exited" {
+					c.Fatalf("Container %s was not stopped. Current status: %s", id, container.Status)
+				}
 			}
 		}
-	}
 
-	if found == false {
-		c.Fatalf("Unable to find container %s in podman ps -a output", id)
-	}
+		if found == false {
+			c.Fatalf("Unable to find container %s in podman ps -a output", id)
+		}
+	})
 
 	// Test: Remove container
-	cmd = fmt.Sprintf("sudo podman rm %s", id[0:12])
-	c.MustSSH(m, cmd)
-	psInfo, err = getSimplifiedPsInfo(c, m)
-	found = false
-	for _, container := range psInfo.containers {
-		if container.Id == id {
-			found = true
+	c.Run("remove", func(c cluster.TestCluster) {
+		cmd := fmt.Sprintf("sudo podman rm %s", id[0:12])
+		c.MustSSH(m, cmd)
+		psInfo, err := getSimplifiedPsInfo(c, m)
+		if err != nil {
+			c.Fatal(err)
 		}
-	}
 
-	if found == true {
-		c.Fatalf("Container %s should be removed. %v", id[0:12], psInfo.containers)
-	}
+		found := false
+		for _, container := range psInfo.containers {
+			if container.ID == id {
+				found = true
+			}
+		}
+
+		if found == true {
+			c.Fatalf("Container %s should be removed. %v", id[0:12], psInfo.containers)
+		}
+	})
 
 	// Test: Delete container
-	cmd = fmt.Sprintf("sudo podman rmi %s", image)
-	out = c.MustSSH(m, cmd)
-	imageId := string(out)
+	c.Run("delete", func(c cluster.TestCluster) {
+		cmd := fmt.Sprintf("sudo podman rmi %s", image)
+		out := c.MustSSH(m, cmd)
+		imageID := string(out)
 
-	cmd = fmt.Sprintf("sudo podman images | grep %s", imageId)
-	out, err = c.SSH(m, cmd)
-	if err == nil {
-		c.Fatalf("Image should be deleted but found %s", string(out))
-	}
+		cmd = fmt.Sprintf("sudo podman images | grep %s", imageID)
+		out, err := c.SSH(m, cmd)
+		if err == nil {
+			c.Fatalf("Image should be deleted but found %s", string(out))
+		}
+	})
 }
 
 // Test: Verify basic podman info information
