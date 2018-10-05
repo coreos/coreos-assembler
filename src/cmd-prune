@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This is just a thin wrapper around prune_builds. That way we still get the
+# preflight checks to make sure the workdir looks sane.
+
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+
+prepare_build
+
+# Parse options
+KEEP_LAST_N=
+options=$(getopt --options '' --longoptions keep: -- "$@")
+[ $? -eq 0 ] || {
+    print_help
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+        --keep)
+            shift
+            KEEP_LAST_N="--keep-last-n $1"
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            fatal "$0: unrecognized option: $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+${dn}/prune_builds ${KEEP_LAST_N} --workdir ${workdir}
