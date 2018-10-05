@@ -26,7 +26,7 @@ def run_verbose(args, **kwargs):
 # Given a container reference, pull the latest version, then extract the ostree
 # repo a new directory dest/repo.
 def oscontainer_extract(containers_storage, src, dest,
-                        tls_verify=True):
+                        tls_verify=True, ref=None):
     dest = os.path.realpath(dest)
     subprocess.check_call(["ostree", "--repo="+dest, "refs"])
     rootarg = '--root='+containers_storage
@@ -52,6 +52,9 @@ def oscontainer_extract(containers_storage, src, dest,
         run_verbose(["ostree", "--repo="+dest, "pull-local", src_repo, commit])
     finally:
         subprocess.call(['podman', rootarg, 'umount', cid])
+    if args.ref is not None:
+        run_verbose(["ostree", "--repo="+dest, "refs", '--create='+args.ref, commit])
+
 
 # Given an OSTree repository at src (and exactly one ref) generate an oscontainer
 # with it.
@@ -119,6 +122,7 @@ subparsers = parser.add_subparsers(dest='action')
 parser_extract = subparsers.add_parser('extract', help='Extract an oscontainer')
 parser_extract.add_argument("src", help="Image reference")
 parser_extract.add_argument("dest", help="Destination directory")
+parser_extract.add_argument("--ref", help="Also set an ostree ref")
 parser_build = subparsers.add_parser('build', help='Build an oscontainer')
 parser_build.add_argument("--from", help="Base image (default 'scratch')", default='scratch')
 parser_build.add_argument("src", help="OSTree repository")
@@ -136,7 +140,8 @@ if os.path.exists(containers_storage):
 
 if args.action == 'extract':
     oscontainer_extract(containers_storage, args.src, args.dest,
-                        tls_verify=not args.disable_tls_verify)
+                        tls_verify=not args.disable_tls_verify,
+                        ref=args.ref)
 elif args.action == 'build':
     oscontainer_build(containers_storage, args.src, args.rev, args.name,
                       getattr(args, 'from'),
