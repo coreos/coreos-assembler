@@ -80,6 +80,7 @@ ks_tmp.write("""
 touch /boot/coreos-firstboot
 %end
 """)
+ks_tmp.flush()
 
 # This is an "extension" to kickstart files that we implement as a comment.
 if args.create_disk:
