@@ -69,7 +69,7 @@ def run_sync_verbose(argv, **kwargs):
 if args.kickstart_out:
     ks_tmp = open(args.kickstart_out, 'w')
 else:
-    ks_tmp = tempfile.NamedTemporaryFile(prefix="coreos-virtinstall", suffix=".ks")
+    ks_tmp = tempfile.NamedTemporaryFile(mode='w', prefix="coreos-virtinstall", suffix=".ks")
 run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
 
 # This is an implementation detail of https://github.com/dustymabe/ignition-dracut
