@@ -46,10 +46,10 @@ fi
 previous_commit=
 if [ -n "${ref:-}" ]; then
     previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
-else
-    if [ -n "${previous_build}" ]; then
-        previous_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
-    fi
+fi
+# If the ref was unset or missing, look at the previous build
+if [ -z "${previous_commit}" ] && [ -n "${previous_build}" ]; then
+    previous_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
 fi
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
