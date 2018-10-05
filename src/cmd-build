@@ -40,6 +40,7 @@ previous_build=
 if [ -L ${workdir}/builds/latest ]; then
     previous_build=$(readlink ${workdir}/builds/latest)
     previous_builddir=${workdir}/builds/${previous_build}
+    echo "Previous build: ${previous_build}"
 fi
 
 previous_commit=
