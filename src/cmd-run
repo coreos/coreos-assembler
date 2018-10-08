@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+dn=$(dirname $0)
+. ${dn}/cmdlib.sh
+
 VM_DISK=
 VM_MEMORY=2048
 VM_PERSIST=0
@@ -69,6 +72,8 @@ while [ $# -ge 1 ]; do
             die "Unknown argument $1";;
     esac
 done
+
+preflight
 
 if [ -z "${VM_DISK}" ]; then
     if [ -L ./builds/latest ]; then
