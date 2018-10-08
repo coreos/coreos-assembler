@@ -23,14 +23,19 @@ cp --reflink=auto ${src} ${tmp_dest}
 chmod u+w ${tmp_dest}
 
 coreos_gf_run_mount "${tmp_dest}"
-# For now we just modify the grub config, but *not* the /boot/loader
-# entry that generated it, because...well it's simpler and in theory
-# we only need the OEM ID for the first boot where Ignition runs.  Might
-# as well not have other things using it persistently.
-grubcfg_src=/boot/grub2/grub.cfg
-coreos_gf download ${grubcfg_src} ${tmpd}/grub.cfg
+
+# Inject OEM label in all relevant places:
+# * grub config
+# * BLS config (for subsequent config regeneration)
+grubcfg_path=/boot/loader/grub.cfg
+coreos_gf download ${grubcfg_path} ${tmpd}/grub.cfg
 sed -i -e 's,^\(linux16 .*\),\1 coreos.oem.id='${oemid}',' ${tmpd}/grub.cfg
-coreos_gf upload ${tmpd}/grub.cfg ${grubcfg_src}
+coreos_gf upload ${tmpd}/grub.cfg ${grubcfg_path}
+blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
+coreos_gf download ${blscfg_path} ${tmpd}/bls.conf
+sed -i -e 's,^\(options .*\),\1 coreos.oem.id='${oemid}',' ${tmpd}/bls.conf
+coreos_gf upload ${tmpd}/bls.conf ${blscfg_path}
+
 coreos_gf_shutdown
 
 mv "${tmp_dest}" "${dest}"
