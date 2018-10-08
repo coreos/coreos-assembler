@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
@@ -32,6 +33,10 @@ import (
 const (
 	sshRetries = 30
 	sshTimeout = 10 * time.Second
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform")
 )
 
 // Name is a unique identifier for a platform.

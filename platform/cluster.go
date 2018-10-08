@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -30,10 +29,6 @@ import (
 	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform")
 )
 
 type BaseCluster struct {
