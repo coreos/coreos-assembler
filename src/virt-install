@@ -28,6 +28,8 @@ parser.add_argument("--memory", help="Memory size in MB",
                     action='store', type=int, default=2048)
 parser.add_argument("--console-log-file", help="Console log file",
                     action='store')
+parser.add_argument("--logs", help="Copy Anaconda logs to DIR",
+                    action='store', metavar="DIR")
 # Note https://bugzilla.redhat.com/show_bug.cgi?id=1379389
 parser.add_argument("--ostree-repo", help="Pass through OSTree repo via 9p",
                     action='store', required=True)
@@ -90,6 +92,25 @@ mkdir -p /mnt/ostree-repo
 mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
 %end
     """)
+# Hacky bits to copy out all of the Anaconda logs on shutdown
+if args.logs:
+    ks_tmp.write("""
+%pre
+set -euo pipefail
+mkdir -p /mnt/logs
+mount -t 9p -o rw,trans=virtio,version=9p2000.L /mnt/logs /mnt/logs
+cat >/etc/systemd/system/coreos-virtinstall-logs.service <<EOF
+[Unit]
+RequiresMountsFor=/mnt/logs
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStop=/bin/sh -c 'cp /tmp/*.log /mnt/logs'
+EOF
+systemctl daemon-reload
+systemctl start coreos-virtinstall-logs
+%end
+    """)
 ks_tmp.flush()
 
 # This is an "extension" to kickstart files that we implement as a comment.
@@ -131,6 +152,8 @@ try:
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
         tail_proc = subprocess.Popen(['tail', '-F', args.console_log_file])
+    if args.logs:
+        vinstall_args.append("--filesystem=source={},target=/mnt/logs,accessmode=mapped".format(args.logs))
     if args.ostree_repo:
         vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.ostree_repo))
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
