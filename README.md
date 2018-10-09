@@ -99,6 +99,11 @@ The updatepayload command launches a Container Linux instance then updates it by
 sending an update to its update_engine. The update is the `coreos_*_update.gz` in the
 latest build directory.
 
+#### kola subtest parallelization
+Subtests can be parallelized by adding `c.H.Parallel()` at the top of the inline function
+given to `c.Run`. It is not recommended to utilize the `FailFast` flag in tests that utilize
+this functionality as it can have unintended results.
+
 #### kola test namespacing
 The top-level namespace of tests should fit into one of the following categories:
 1. Groups of tests targeting specific packages/binaries may use that
