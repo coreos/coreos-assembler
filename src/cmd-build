@@ -125,11 +125,13 @@ fi
 imageprefix=${name}-${version}-${image_genver}
 # Make these two verbose
 set -x
+mkdir -p tmp/anaconda
 /usr/lib/coreos-assembler/virt-install --dest=$(pwd)/tmp/${imageprefix}-base.qcow2 \
                --create-disk --kickstart ${kickstart_input} --kickstart-out $(pwd)/tmp/flattened.ks \
                --ostree-remote=${name} --ostree-stateroot=${name} \
-               --ostree-ref=${ref} --ostree-repo=${workdir}/repo \
-               --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log
+               --ostree-ref=${ref:-${commit}} --ostree-repo=${workdir}/repo \
+               --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
+               --logs $(pwd)/tmp/anaconda
 /usr/lib/coreos-assembler/gf-oemid tmp/${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 set +x
 # make a version-less symlink to have a stable path
