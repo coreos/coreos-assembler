@@ -66,10 +66,8 @@ cat >${commitmeta_input_json} <<EOF
 EOF
 # These need to be absolute paths right now for rpm-ostree
 composejson=$(pwd)/tmp/compose.json
-changed_stamp=$(pwd)/tmp/treecompose.changed
 # --cache-only is here since `fetch` is a separate verb.
 runcompose --cache-only ${FORCE} --add-metadata-from-json ${commitmeta_input_json} \
-           --touch-if-changed "${changed_stamp}" \
            --write-composejson-to ${composejson}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.

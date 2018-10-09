@@ -73,6 +73,9 @@ prepare_build() {
     # didn't create this in `init`.
     mkdir -p ${workdir}/tmp
 
+    # Needs to be absolute for rpm-ostree today
+    export changed_stamp=$(pwd)/tmp/treecompose.changed
+
     # Allocate temporary space for this build
     tmp_builddir=${workdir}/tmp/build
     rm ${tmp_builddir} -rf
@@ -121,8 +124,11 @@ EOF
         manifest=${tmp_overridesdir}/coreos-assembler-override-manifest.yaml
     fi
 
+    rm -f ${changed_stamp}
     set -x
-    sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache ${treecompose_args} \
+    sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache \
+         --touch-if-changed "${changed_stamp}" \
+         ${treecompose_args} \
          ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
     set +x
 }
