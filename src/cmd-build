@@ -122,28 +122,14 @@ else
     previous_commit_json=null
 fi
 
-# HACK: pull out the magic bit; we should have virt-install
-# handle this with the ksflatten
-grep -e "--coreos-virt-install-disk-size-gb" ${kickstart_input} > tmp/local.ks
-# https://github.com/coreos/coreos-assembler/pull/12
-# AKA commit 1d2150cf5607ade19780e4bd6f195e5c0efdb0ac
-# TODO: move this into coreos-virt-install
-cat >>tmp/local.ks <<EOF
-%include ${kickstart_input}
-%pre
-mkdir -p /mnt/ostree-repo
-mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
-%end
-ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-repo --ref="${ref}"
-EOF
-
 imageprefix=${name}-${version}-${image_genver}
 # Make these two verbose
 set -x
 /usr/lib/coreos-assembler/virt-install --dest=$(pwd)/tmp/${imageprefix}-base.qcow2 \
-               --create-disk --kickstart $(pwd)/tmp/local.ks --kickstart-out $(pwd)/tmp/flattened.ks \
-               --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
-               --local-repo=${workdir}/repo
+               --create-disk --kickstart ${kickstart_input} --kickstart-out $(pwd)/tmp/flattened.ks \
+               --ostree-remote=${name} --ostree-stateroot=${name} \
+               --ostree-ref=${ref} --ostree-repo=${workdir}/repo \
+               --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log
 /usr/lib/coreos-assembler/gf-oemid tmp/${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
 set +x
 # make a version-less symlink to have a stable path
