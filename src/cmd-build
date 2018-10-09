@@ -6,7 +6,8 @@ dn=$(dirname $0)
 
 # Parse options
 FORCE=
-options=$(getopt --options f --longoptions force -- "$@")
+NORESUME=
+options=$(getopt --options f --longoptions force,no-resume -- "$@")
 [ $? -eq 0 ] || {
     print_help
     exit 1
@@ -16,6 +17,9 @@ while true; do
     case "$1" in
         -f | --force)
             FORCE="--force-nocache"
+            ;;
+        --no-resume)
+            NORESUME="1"
             ;;
         --)
             shift
@@ -78,6 +82,10 @@ if [ -f "${changed_stamp}" ]; then
     # Save this in case the image build fails
     cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
 else
+    if [ -n "${NORESUME}" ]; then
+        echo "--no-resume set, exiting"
+        exit 0
+    fi
     commit=${previous_commit}
     # Grab the previous JSON
     cp -a --reflink=auto ${workdir}/tmp/compose-${previous_commit}.json ${composejson}
