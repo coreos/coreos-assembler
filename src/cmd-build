@@ -6,7 +6,8 @@ dn=$(dirname $0)
 
 # Parse options
 FORCE=
-options=$(getopt --options f --longoptions force -- "$@")
+SKIP_PRUNE=0
+options=$(getopt --options f --longoptions force,skip-prune -- "$@")
 [ $? -eq 0 ] || {
     print_help
     exit 1
@@ -16,6 +17,9 @@ while true; do
     case "$1" in
         -f | --force)
             FORCE="--force-nocache"
+            ;;
+        --skip-prune)
+            SKIP_PRUNE=1
             ;;
         --)
             shift
@@ -161,16 +165,11 @@ touch .build-commit
 mv -T ${tmp_builddir} ${buildid}
 # Replace the latest link
 ln -Tsfr "${buildid}" latest
-python3 -c 'import os,json,sys,stat;
-builds=[]
-for d in os.listdir("."):
-  s = os.lstat(d)
-  if not (stat.S_ISDIR(s.st_mode) and os.path.isfile(d + "/meta.json")):
-    continue
-  builds.append((d, s.st_ctime))
-json.dump({"builds":
-           list(map(lambda x: x[0], sorted(builds, key=lambda x: x[0])))},
-          sys.stdout)
-' > ${workdir}/tmp/builds.json
-mv ${workdir}/tmp/builds.json builds.json
+# And now clean up previous builds and regen builds.json
+KEEP_LAST_N=
+if [ ${SKIP_PRUNE} = 1 ]; then
+    # Really then, we're just using the `prune_builds` to regen builds.json
+    KEEP_LAST_N="--keep-last-n=0"
+fi
+${dn}/prune_builds --workdir ${workdir} ${KEEP_LAST_N}
 rm .build-commit

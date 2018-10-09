@@ -1,0 +1,79 @@
+#!/usr/bin/python3 -u
+
+'''
+    This script is called by both the `build` and `prune` commands. It'll be
+    shared more cleanly once we port everything to Python/Go.
+'''
+
+import os
+import sys
+import json
+import shutil
+import argparse
+import tempfile
+import subprocess
+
+import dateutil.parser
+
+# Let's just hardcode this here for now
+DEFAULT_KEEP_LAST_N = 3
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--workdir", required=True, help="Path to workdir")
+parser.add_argument("--keep-last-n", type=int, default=DEFAULT_KEEP_LAST_N,
+                    help="Number of builds to keep (0 for all)")
+args = parser.parse_args()
+
+skip_pruning = (args.keep_last_n == 0)
+
+# first, regen builds.json
+
+builds = []
+builds_dir = os.path.join(args.workdir, "builds")
+with os.scandir(builds_dir) as it:
+    for entry in it:
+
+        # ignore non-dirs
+        if not entry.is_dir(follow_symlinks=False):
+            # those are really the only three non-dir things we expect there
+            if entry.name not in ['builds.json', 'latest']:
+                print(f"Ignoring non-directory {entry.name}")
+            continue
+
+        # ignore dirs missing meta.json
+        meta_file = os.path.join(entry.path, 'meta.json')
+        if not os.path.isfile(meta_file):
+            print(f"Ignoring directory {entry.name}")
+            continue
+
+        # collect dirs and timestamps
+        with open(meta_file) as f:
+            j = json.load(f)
+        t = dateutil.parser.parse(j['ostree-timestamp'])
+        builds.append((entry.name, t))
+
+builds = sorted(builds, key=lambda x: x[1], reverse=True)
+builds_to_delete = []
+if not skip_pruning and len(builds) > args.keep_last_n:
+    builds_to_delete = builds[args.keep_last_n:]
+    del builds[args.keep_last_n:]
+
+f = tempfile.NamedTemporaryFile(mode='w', dir=builds_dir, delete=False)
+json.dump({'builds': [x[0] for x in builds]}, f)
+os.rename(f.name, os.path.join(builds_dir, "builds.json"))
+
+# if we're not pruning, then we're done!
+if skip_pruning:
+    sys.exit()
+
+# now delete other build dirs not in the manifest
+
+for build_dir, _ in builds_to_delete:
+    shutil.rmtree(os.path.join(builds_dir, build_dir))
+
+# and finally prune OSTree repos
+
+for repo_name in ['repo', 'repo-build']:
+    repo = os.path.join(args.workdir, repo_name)
+    subprocess.run(["ostree", "prune", "--repo", repo, "--refs-only",
+                    f"--depth={args.keep_last_n-1}"], check=True)
