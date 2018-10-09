@@ -28,15 +28,14 @@ parser.add_argument("--memory", help="Memory size in MB",
                     action='store', type=int, default=2048)
 parser.add_argument("--console-log-file", help="Console log file",
                     action='store')
-# You can use this with e.g.:
-# ostreesetup --nogpg --osname=coreos --remote=coreos --url=file:///mnt/ostree-repo --ref=fedora/x86_64/coreos
-# %pre
-# mkdir -p /mnt/ostree-repo
-# mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
-# %end
-# But note: https://bugzilla.redhat.com/show_bug.cgi?id=1379389
-
-parser.add_argument("--local-repo", help="Pass through local repo via 9p",
+# Note https://bugzilla.redhat.com/show_bug.cgi?id=1379389
+parser.add_argument("--ostree-repo", help="Pass through OSTree repo via 9p",
+                    action='store', required=True)
+parser.add_argument("--ostree-stateroot", help="OSTree stateroot",
+                    action='store')
+parser.add_argument("--ostree-ref", help="OSTree ref",
+                    action='store')
+parser.add_argument("--ostree-remote", help="OSTree remote",
                     action='store')
 parser.add_argument("--wait", help="Number of minutes to wait",
                     action='store', type=int, default=10)
@@ -80,6 +79,17 @@ ks_tmp.write("""
 touch /boot/coreos-firstboot
 %end
 """)
+if args.ostree_repo:
+    assert args.ostree_stateroot
+    assert args.ostree_remote
+    assert args.ostree_ref
+    ks_tmp.write(f"""
+ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=file:///mnt/ostree-repo --ref="{args.ostree_ref}"
+%pre
+mkdir -p /mnt/ostree-repo
+mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
+%end
+    """)
 ks_tmp.flush()
 
 # This is an "extension" to kickstart files that we implement as a comment.
@@ -121,8 +131,8 @@ try:
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
         tail_proc = subprocess.Popen(['tail', '-F', args.console_log_file])
-    if args.local_repo:
-        vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.local_repo))
+    if args.ostree_repo:
+        vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.ostree_repo))
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7", "--rng=/dev/urandom",
