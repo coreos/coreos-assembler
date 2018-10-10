@@ -15,7 +15,7 @@ Usage: coreos-assembler init --help
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
   (if you're running a shell inside this container) is to pass a file path
-  starting with `/` - a symlink to it will be created and then used directly."
+  starting with `/` - a symlink to it will be created and then used directly.
 EOF
 }
 
