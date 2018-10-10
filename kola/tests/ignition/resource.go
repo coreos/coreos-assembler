@@ -75,7 +75,7 @@ func init() {
 		},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do"},
-		Distros:          []string{"cl", "rhcos"},
+		Distros:          []string{"cl", "rhcos", "fcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2_1.resource.remote",

@@ -57,6 +57,20 @@ func init() {
 		},
 		Distros: []string{"rhcos"},
 	})
+	register.Register(&register.Test{
+		Name:        "fcos.basic",
+		Run:         LocalTests,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"PortSSH":        TestPortSsh,
+			"DbusPerms":      TestDbusPerms,
+			"ServicesActive": TestServicesActiveFCOS,
+			"ReadOnly":       TestReadOnlyFs,
+			"Useradd":        TestUseradd,
+			"MachineID":      TestMachineID,
+		},
+		Distros: []string{"fcos"},
+	})
 
 	// tests requiring network connection to internet
 	register.Register(&register.Test{
@@ -240,6 +254,12 @@ func TestServicesActiveRHCOS() error {
 	return servicesActive([]string{
 		"multi-user.target",
 		"crio.service",
+	})
+}
+
+func TestServicesActiveFCOS() error {
+	return servicesActive([]string{
+		"multi-user.target",
 	})
 }
 

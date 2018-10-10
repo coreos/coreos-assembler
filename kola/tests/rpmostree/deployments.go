@@ -28,7 +28,7 @@ func init() {
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
 		Name:        "rhcos.rpmostree.upgrade-rollback",
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "fcos"},
 	})
 	register.Register(&register.Test{
 		Run:         rpmOstreeInstallUninstall,

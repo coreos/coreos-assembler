@@ -30,17 +30,15 @@ func init() {
 		Run:         rpmOstreeStatus,
 		ClusterSize: 1,
 		Name:        "rhcos.rpmostree.status",
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "fcos"},
 	})
 }
 
 var (
-	// hard code the osname for RHCOS
-	// TODO: should this also support FCOS?
-	rhcosOsname string = "rhcos"
+	supportedOsNames = []string{"rhcos", "coreos"}
 
 	// Regex to extract version number from "rpm-ostree status"
-	rpmOstreeVersionRegex string = `^Version: (\d+\.\d+\.\d+).*`
+	rpmOstreeVersionRegex string = `^Version: (\d+\.\d+\.?\d*).*`
 )
 
 // rpmOstreeDeployment represents some of the data of an rpm-ostree deployment
@@ -120,10 +118,15 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 		c.Fatalf("Expected one deployment; found %d deployments", len(status.Deployments))
 	}
 
-	// the osname should only be RHCOS
-	// TODO: perhaps this should also support FCOS?
-	if status.Deployments[0].Osname != rhcosOsname {
-		c.Fatalf(`"osname" has incorrect value: want %q, got %q`, rhcosOsname, status.Deployments[0].Osname)
+	supported := false
+	for _, name := range supportedOsNames {
+		if status.Deployments[0].Osname == name {
+			supported = true
+			break
+		}
+	}
+	if !supported {
+		c.Fatalf(`"osname" has incorrect value: wanted one of %v, got %q`, supportedOsNames, status.Deployments[0].Osname)
 	}
 
 	// deployment should be booted (duh!)
