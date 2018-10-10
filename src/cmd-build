@@ -4,11 +4,20 @@ set -euo pipefail
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
 
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler build --help
+       coreos-assembler build [--force] [--skip-prune]
+
+  Build OSTree and image artifacts from previously fetched packages.
+EOF
+}
+
 # Parse options
 FORCE=
 SKIP_PRUNE=0
 rc=0
-options=$(getopt --options f --longoptions force,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hf --longoptions help,force,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -16,6 +25,10 @@ options=$(getopt --options f --longoptions force,skip-prune -- "$@") || rc=$?
 eval set -- "$options"
 while true; do
     case "$1" in
+        -h | --help)
+            print_help
+            exit 0
+            ;;
         -f | --force)
             FORCE="--force-nocache"
             ;;
@@ -33,6 +46,12 @@ while true; do
     esac
     shift
 done
+
+if [ $# -ne 0 ]; then
+    print_help
+    fatal "ERROR: Too many arguments"
+    exit 1
+fi
 
 export LIBGUESTFS_BACKEND=direct
 

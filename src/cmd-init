@@ -49,7 +49,6 @@ while true; do
     shift
 done
 
-
 # If user did not provide a repo then error out
 if [ $# -ne 1 ]; then
     print_help
