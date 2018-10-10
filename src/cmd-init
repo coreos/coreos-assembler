@@ -20,8 +20,9 @@ EOF
 }
 
 # Call getopt to validate the provided input.
-options=$(getopt --options hf --longoptions help,force -- "$@")
-[ $? -eq 0 ] || {
+rc=0
+options=$(getopt --options hf --longoptions help,force -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
     print_help
     exit 1
 }

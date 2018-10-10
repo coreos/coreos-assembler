@@ -11,8 +11,9 @@ prepare_build
 
 # Parse options
 KEEP_LAST_N=
-options=$(getopt --options '' --longoptions keep: -- "$@")
-[ $? -eq 0 ] || {
+rc=0
+options=$(getopt --options '' --longoptions keep: -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
     print_help
     exit 1
 }

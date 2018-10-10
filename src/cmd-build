@@ -7,8 +7,9 @@ dn=$(dirname $0)
 # Parse options
 FORCE=
 SKIP_PRUNE=0
-options=$(getopt --options f --longoptions force,skip-prune -- "$@")
-[ $? -eq 0 ] || {
+rc=0
+options=$(getopt --options f --longoptions force,skip-prune -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
     print_help
     exit 1
 }
