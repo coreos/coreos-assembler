@@ -15,13 +15,14 @@ Usage: coreos-assembler init --help
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
   (if you're running a shell inside this container) is to pass a file path
-  starting with `/` - a symlink to it will be created and then used directly."
+  starting with `/` - a symlink to it will be created and then used directly.
 EOF
 }
 
 # Call getopt to validate the provided input.
-options=$(getopt --options hf --longoptions help,force -- "$@")
-[ $? -eq 0 ] || {
+rc=0
+options=$(getopt --options hf --longoptions help,force -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
     print_help
     exit 1
 }
@@ -47,7 +48,6 @@ while true; do
     esac
     shift
 done
-
 
 # If user did not provide a repo then error out
 if [ $# -ne 1 ]; then

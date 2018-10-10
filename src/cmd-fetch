@@ -4,5 +4,45 @@ set -euo pipefail
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
 
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler fetch --help
+       coreos-assembler fetch
+
+  Fetch and import the latest packages.
+EOF
+}
+
+rc=0
+options=$(getopt --options h --longoptions help -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
+    print_help
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+        -h | --help)
+            print_help
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            fatal "$0: unrecognized option: $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ $# -ne 0 ]; then
+    print_help
+    fatal "ERROR: Too many arguments"
+    exit 1
+fi
+
 prepare_build
 runcompose --download-only

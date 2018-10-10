@@ -7,18 +7,31 @@ set -euo pipefail
 dn=$(dirname $0)
 . ${dn}/cmdlib.sh
 
-prepare_build
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler prune --help
+       coreos-assembler prune [--keep=N]
+
+  Delete older build artifacts. By default, only the last 3 builds are kept.
+  This can be overridden with the `--keep` option.
+EOF
+}
 
 # Parse options
 KEEP_LAST_N=
-options=$(getopt --options '' --longoptions keep: -- "$@")
-[ $? -eq 0 ] || {
+rc=0
+options=$(getopt --options h --longoptions help,keep: -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
     print_help
     exit 1
 }
 eval set -- "$options"
 while true; do
     case "$1" in
+        -h | --help)
+            print_help
+            exit 0
+            ;;
         --keep)
             shift
             KEEP_LAST_N="--keep-last-n $1"
@@ -34,5 +47,13 @@ while true; do
     esac
     shift
 done
+
+if [ $# -ne 0 ]; then
+    print_help
+    fatal "ERROR: Too many arguments"
+    exit 1
+fi
+
+prepare_build
 
 ${dn}/prune_builds ${KEEP_LAST_N} --workdir ${workdir}
