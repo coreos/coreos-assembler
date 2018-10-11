@@ -72,8 +72,15 @@ for build_dir, _ in builds_to_delete:
     shutil.rmtree(os.path.join(builds_dir, build_dir))
 
 # and finally prune OSTree repos
-
-for repo_name in ['repo', 'repo-build']:
+def ostree_prune(repo_name, sudo=False):
     repo = os.path.join(args.workdir, repo_name)
-    subprocess.run(["ostree", "prune", "--repo", repo, "--refs-only",
-                    f"--depth={args.keep_last_n-1}"], check=True)
+    argv = []
+    if sudo:
+        argv.extend(['sudo', '--'])
+    print(f"Pruning {repo_name}")
+    argv.extend(["ostree", "prune", "--repo", repo, "--refs-only",
+                    f"--depth={args.keep_last_n-1}"])
+    subprocess.run(argv, check=True)
+
+ostree_prune('repo')
+ostree_prune('repo-build', sudo=True)
