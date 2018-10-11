@@ -75,6 +75,21 @@ fi
 if [ -z "${previous_commit}" ] && [ -n "${previous_build}" ]; then
     previous_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
 fi
+echo "Previous commit: ${previous_commit:-none}"
+
+sha256sum_str() {
+    sha256sum | cut -f 1 -d ' '
+}
+
+# Calculate kickstart checksum now and gather previous image build variables if any
+kickstart_input=${configdir}/image.ks
+kickstart_checksum=$(cat ${kickstart_input} | sha256sum_str)
+if [ -n "${previous_build}" ]; then
+    previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
+    previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
+fi
+echo "Kickstart checksum: ${kickstart_checksum}"
+
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
 config_dirty=false
@@ -103,10 +118,40 @@ if [ -f "${changed_stamp}" ]; then
     cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
 else
     commit=${previous_commit}
-    # Grab the previous JSON
-    cp -a --reflink=auto ${workdir}/tmp/compose-${previous_commit}.json ${composejson}
+    image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
+    if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
+        echo "No changes in image inputs."
+        exit 0
+    fi
+
+    # Grab the previous treecompose JSON (local developer case: treecompose succeeded but
+    # image build failed) if possible, otherwise grab the previous build
+    cached_previous_composejson=${workdir}/tmp/compose-${previous_commit}.json
+    if [ -f "${cached_previous_composejson}" ]; then
+        echo "Resuming partial build from: ${commit}"
+        cp -a --reflink=auto ${cached_previous_composejson} ${composejson}
+    else
+        if [ -z "${previous_build}" ]; then
+            fatal "compose tree had no changes, but no previous build or cached data"
+        fi
+        echo "Commit ${commit} unchanged; reusing previous build's rpm-ostree metadata"
+        # This will have all of the data from the previous build, but we'll
+        # overwrite things.
+        cp -a --reflink=auto ${previous_builddir}/meta.json ${composejson}
+    fi
 fi
+
+image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
+echo "New image input checksum: ${image_input_checksum}"
+image_genver=1
+if [ "${previous_commit}" = "${commit}" ]; then
+    image_genver=$((${previous_image_genver} + 1))
+fi
+
 version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
+buildid=${version}-${image_genver}
+echo "New build ID: ${buildid}"
+
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
 # The passwd files (among others) don't have world readability.  This won't
 # actually corrupt the repository as the *canonical* permissions are stored
@@ -115,29 +160,6 @@ version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version 
 sudo chmod -R a+rX ${workdir}/repo-build/objects
 ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref:-${commit}}"
 ostree --repo=${workdir}/repo summary -u
-
-sha256sum_str() {
-    sha256sum | cut -f 1 -d ' '
-}
-
-kickstart_input=${configdir}/image.ks
-kickstart_checksum=$(cat ${kickstart_input} | sha256sum_str)
-image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
-
-image_genver=1
-if [ -n "${previous_build}" ]; then
-    previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
-    if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
-        echo "No changes in image inputs."
-        exit 0
-    fi
-    previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
-    if [ "${previous_commit}" = "${commit}" ]; then
-        image_genver=$((${previous_image_genver} + 1))
-    fi
-fi
-
-buildid=${version}-${image_genver}
 
 # Generate JSON
 if [ -n "${previous_commit}" ]; then
@@ -171,8 +193,9 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.kickstart-checksum": "${kickstart_checksum}"
 }
 EOF
-# Merge all the JSON
-cat tmp/meta.json ${commitmeta_input_json} ${composejson} | jq -s add > meta.json
+# Merge all the JSON; note that we want ${composejson} first
+# since we may be overriding data from a previous build.
+cat ${composejson} tmp/meta.json ${commitmeta_input_json} | jq -s add > meta.json
 
 # Clean up our temporary data
 rm tmp -rf
