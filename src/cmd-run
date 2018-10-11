@@ -119,7 +119,16 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
             }
         ]
     },
-    "storage": {},
+    "storage": {
+        "files": [
+            {
+                "filesystem": "root",
+                "path": "/etc/sysctl.d/10-coreos.conf",
+                "contents": { "source": "data:,kernel.printk%20=%203%204%201%207%0A" },
+                "mode": 420
+            }
+        ]
+    },
     "systemd": {
         "units": [
             {
@@ -130,11 +139,6 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
                         "contents": "[Service]\nTTYVTDisallocate=no\nExecStart=\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\n"
                     }
                 ]
-            },
-            {
-                "name": "coreos-assembler-quiet-tty.service",
-                "enabled": true,
-                "contents": "[Service]\nExecStart=/usr/sbin/sysctl kernel.printk='3 4 1 7'\n[Install]\nWantedBy=multi-user.target\n"
             }
             ${ign_var_srv_mount}
         ]
