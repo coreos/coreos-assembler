@@ -49,7 +49,9 @@ with os.scandir(builds_dir) as it:
         # collect dirs and timestamps
         with open(meta_file) as f:
             j = json.load(f)
-        t = dateutil.parser.parse(j['ostree-timestamp'])
+        # Older versions only had ostree-timestamp
+        ts = j.get('build-timestamp') or j['ostree-timestamp']
+        t = dateutil.parser.parse(ts)
         builds.append((entry.name, t))
 
 builds = sorted(builds, key=lambda x: x[1], reverse=True)

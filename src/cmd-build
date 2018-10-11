@@ -161,8 +161,11 @@ set +x
 # make a version-less symlink to have a stable path
 ln -s ${imageprefix}-qemu.qcow2 ${name}-qemu.qcow2
 
+build_timestamp=$(date -u --iso-8601=seconds)
+
 cat > tmp/meta.json <<EOF
 {
+ "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
  "coreos-assembler.kickstart-checksum": "${kickstart_checksum}"
