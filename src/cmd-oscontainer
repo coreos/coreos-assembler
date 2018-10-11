@@ -40,7 +40,7 @@ def oscontainer_extract(containers_storage, src, dest,
     if commit is None:
         raise SystemExit("Failed to find label '{}'".format(OSCONTAINER_COMMIT_LABEL))
     iid = inspect['Id']
-    print("Preparing to extract cid {}", iid)
+    print(f"Preparing to extract cid: {iid}")
     # We're not actually going to run the container. The main thing `create` does
     # then for us is "materialize" the merged rootfs, so we can mount it.
     # In theory we shouldn't need --entrypoint=/enoent here, but
