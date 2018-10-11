@@ -6,16 +6,20 @@ dn=$(dirname $0)
 
 # Initialize FORCE to 0
 FORCE=0
+SUBDIR=
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
-       coreos-assembler init [--force] GITCONFIG
+       coreos-assembler init [--force] GITCONFIG [SUBDIR]
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
   (if you're running a shell inside this container) is to pass a file path
   starting with `/` - a symlink to it will be created and then used directly.
+
+  If specified, SUBDIR is a subdirectory of the git repository that should
+  contain manifest.yaml and image.ks.
 EOF
 }
 
@@ -50,7 +54,7 @@ while true; do
 done
 
 # If user did not provide a repo then error out
-if [ $# -ne 1 ]; then
+if [ $# = 0 ]; then
     print_help
     fatal "ERROR: Missing GITCONFIG"
     exit 1
@@ -64,6 +68,7 @@ fi
 
 set -x
 source=$1; shift
+subdir=${1:-}
 
 preflight
 
@@ -77,8 +82,13 @@ mkdir -p src
 (cd src
  if ! test -e config; then
      case "${source}" in
-         /*) ln -sr "${source}" config;;
-         *) git clone "${source}" config;;
+         /*) ln -sr "${source}/${subdir}" config;;
+         *) git clone "${source}" config
+            if [ -n "${subdir}" ]; then
+                mv config config-git
+                ln -sr config-git/${subdir} config
+            fi
+            ;;
      esac
      manifest=config/manifest.yaml
      if ! [ -f "${manifest}" ]; then
