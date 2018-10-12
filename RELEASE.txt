@@ -1,0 +1,19 @@
+
+# Rough notes for release:
+
+# Grab the pretty gitlog grouped by contributor
+LASTTAG='v0.2.0'
+NEWTAG='v0.3.0'
+git shortlog --no-merges --pretty=format:"%h %s" -e ${LASTTAG}..HEAD
+
+# Create a tag using git-evtag (will pop open vim window)
+# Copy in notes from shortlog command and add release message.
+git-evtag sign ${NEWTAG}
+
+# verify using git-evtag and git
+git-evtag verify ${NEWTAG}
+git verify-tag ${NEWTAG}
+
+# push to the remote (change if your remote is named different)
+REMOTE=origin
+git push ${REMOTE} --tags
