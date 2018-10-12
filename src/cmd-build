@@ -143,13 +143,14 @@ fi
 
 image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
-image_genver=1
+version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 if [ "${previous_commit}" = "${commit}" ]; then
     image_genver=$((${previous_image_genver} + 1))
+    buildid=${version}-${image_genver}
+else
+    image_genver=0
+    buildid=${version}
 fi
-
-version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
-buildid=${version}-${image_genver}
 echo "New build ID: ${buildid}"
 
 # https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
