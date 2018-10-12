@@ -119,7 +119,10 @@ if [ -f "${changed_stamp}" ]; then
 else
     commit=${previous_commit}
     image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
-    if [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
+    # Note we may not actually have a previous build in the case of
+    # successfully composing an ostree but failing the image on the
+    # first build.
+    if [ -n "${previous_build}" ] && [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
         exit 0
     fi
