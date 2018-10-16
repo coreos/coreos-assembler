@@ -147,6 +147,40 @@ func init() {
 	      }`),
 		Distros: []string{"cl", "rhcos"},
 	})
+	// TODO: once Ignition supports this on all channels/distros
+	//       this test should be rolled into coreos.ignition.v2_1.resources.remote
+	// Test specifically for versioned s3 objects
+	register.Register(&register.Test{
+		Name:        "coreos.ignition.v2_1.resource.s3.versioned",
+		Run:         resourceS3Versioned,
+		ClusterSize: 1,
+		UserData: conf.Ignition(`{
+		  "ignition": {
+		      "version": "2.1.0"
+		  },
+		  "storage": {
+		      "files": [
+			  {
+			      "filesystem": "root",
+			      "path": "/var/resource/original",
+			      "contents": {
+				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=null"
+			      },
+			      "mode": 420
+			  },
+			  {
+			      "filesystem": "root",
+			      "path": "/var/resource/latest",
+			      "contents": {
+				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=RDWqxfnlcJOSDf1.5jy6ZP.oK9Bt7_Id"
+			      },
+			      "mode": 420
+			  }
+		      ]
+		  }
+	      }`),
+		Distros: []string{"cl", "rhcos"},
+	})
 }
 
 func resourceLocal(c cluster.TestCluster) {
@@ -203,6 +237,15 @@ func resourceS3(c cluster.TestCluster) {
 
 	// ...but that the anonymous object is accessible
 	c.MustSSH(m, "curl -sf https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous")
+}
+
+func resourceS3Versioned(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	checkResources(c, m, map[string]string{
+		"original": "original",
+		"latest":   "updated",
+	})
 }
 
 func checkResources(c cluster.TestCluster, m platform.Machine, resources map[string]string) {
