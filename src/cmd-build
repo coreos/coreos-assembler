@@ -176,16 +176,20 @@ imageprefix=${name}-${version}-${image_genver}
 # Make these two verbose
 set -x
 mkdir -p tmp/anaconda
-/usr/lib/coreos-assembler/virt-install --dest=$(pwd)/tmp/${imageprefix}-base.qcow2 \
+img_base=tmp/${imageprefix}-base.qcow2
+img_qemu=${imageprefix}-qemu.qcow2
+/usr/lib/coreos-assembler/virt-install --dest=$(pwd)/${img_base} \
                --create-disk --kickstart ${kickstart_input} --kickstart-out $(pwd)/tmp/flattened.ks \
                --ostree-remote=${name} --ostree-stateroot=${name} \
                --ostree-ref=${ref:-${commit}} --ostree-repo=${workdir}/repo \
                --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
                --logs $(pwd)/tmp/anaconda
-/usr/lib/coreos-assembler/gf-oemid tmp/${imageprefix}-base.qcow2 $(pwd)/${imageprefix}-qemu.qcow2 qemu
+/usr/lib/coreos-assembler/gf-oemid $(pwd)/${img_base} $(pwd)/${img_qemu} qemu
 set +x
 # make a version-less symlink to have a stable path
-ln -s ${imageprefix}-qemu.qcow2 ${name}-qemu.qcow2
+ln -s ${img_qemu} ${name}-qemu.qcow2
+
+img_qemu_sha256=$(sha256sum ${img_qemu} | cut -f 1 -d ' ')
 
 build_timestamp=$(date -u --iso-8601=seconds)
 
@@ -194,7 +198,11 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
- "coreos-assembler.kickstart-checksum": "${kickstart_checksum}"
+ "coreos-assembler.kickstart-checksum": "${kickstart_checksum}",
+ "images": {
+    "qemu": { "path": "${img_qemu}",
+              "sha256": "${img_qemu_sha256}" }
+ }
 }
 EOF
 # Merge all the JSON; note that we want ${composejson} first
