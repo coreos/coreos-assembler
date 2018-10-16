@@ -172,7 +172,7 @@ else
     previous_commit_json=null
 fi
 
-imageprefix=${name}-${version}-${image_genver}
+imageprefix=${name}-${buildid}
 # Make these two verbose
 set -x
 mkdir -p tmp/anaconda
