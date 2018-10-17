@@ -42,6 +42,8 @@ if args.insert_only:
     if os.path.isfile(builds_json):
         with open(builds_json) as f:
             builddata = json.load(f)
+    else:
+        builddata = {'builds': []}
     builddata['builds'].insert(0, args.insert_only)
     write_json(builds_json, builddata)
     sys.exit(0)
