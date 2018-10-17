@@ -27,12 +27,19 @@ coreos_gf_run_mount "${tmp_dest}"
 # Inject OEM label in all relevant places:
 # * grub config
 # * BLS config (for subsequent config regeneration)
+# First, the grub config.
 grubcfg_path=/boot/loader/grub.cfg
 coreos_gf download ${grubcfg_path} ${tmpd}/grub.cfg
+# Remove any oemid currently there
+sed -i -e 's, coreos.oem.id=[a-zA-Z0-9]*,,g' ${tmpd}/grub.cfg
+# Insert our new oemid
 sed -i -e 's,^\(linux16 .*\),\1 coreos.oem.id='${oemid}',' ${tmpd}/grub.cfg
 coreos_gf upload ${tmpd}/grub.cfg ${grubcfg_path}
+# Now the BLS version
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download ${blscfg_path} ${tmpd}/bls.conf
+# Remove any oemid currently there
+sed -i -e 's, coreos.oem.id=[a-zA-Z0-9]*,,g' ${tmpd}/bls.conf
 sed -i -e 's,^\(options .*\),\1 coreos.oem.id='${oemid}',' ${tmpd}/bls.conf
 coreos_gf upload ${tmpd}/bls.conf ${blscfg_path}
 
