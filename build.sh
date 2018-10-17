@@ -98,7 +98,7 @@ make_and_makeinstall() {
     fi
 
     # And the main scripts
-    make && make install
+    make && make check && make install
 }
 
 configure_user(){
