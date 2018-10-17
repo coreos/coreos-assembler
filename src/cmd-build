@@ -223,11 +223,10 @@ touch .build-commit
 mv -T ${tmp_builddir} ${buildid}
 # Replace the latest link
 ln -Tsfr "${buildid}" latest
-# And now clean up previous builds and regen builds.json
-KEEP_LAST_N=
+# Update builds.json
+prune_args=""
 if [ ${SKIP_PRUNE} = 1 ]; then
-    # Really then, we're just using the `prune_builds` to regen builds.json
-    KEEP_LAST_N="--keep-last-n=0"
+    prune_args="--insert-only ${buildid}"
 fi
-${dn}/prune_builds --workdir ${workdir} ${KEEP_LAST_N}
+${dn}/prune_builds --workdir ${workdir} ${prune_args}
 rm .build-commit

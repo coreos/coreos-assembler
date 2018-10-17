@@ -22,14 +22,33 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--workdir", required=True, help="Path to workdir")
 parser.add_argument("--keep-last-n", type=int, default=DEFAULT_KEEP_LAST_N,
                     help="Number of builds to keep (0 for all)")
+parser.add_argument("--insert-only", help="Append a new latest build, do not prune",
+                    action='store')
 args = parser.parse_args()
+
+builds = []
+builds_dir = os.path.join(args.workdir, "builds")
+builds_json = os.path.join(builds_dir, "builds.json")
+
+def write_json(path, data):
+    dn = os.path.dirname(path)
+    f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
+    json.dump(data, f)
+    os.fchmod(f.file.fileno(), 0o644)
+    os.rename(f.name, path)
+
+# Handle --insert-only
+if args.insert_only:
+    if os.path.isfile(builds_json):
+        with open(builds_json) as f:
+            builddata = json.load(f)
+    builddata['builds'].insert(0, args.insert_only)
+    write_json(builds_json, builddata)
+    sys.exit(0)
 
 skip_pruning = (args.keep_last_n == 0)
 
 # first, regen builds.json
-
-builds = []
-builds_dir = os.path.join(args.workdir, "builds")
 with os.scandir(builds_dir) as it:
     for entry in it:
 
@@ -60,9 +79,7 @@ if not skip_pruning and len(builds) > args.keep_last_n:
     builds_to_delete = builds[args.keep_last_n:]
     del builds[args.keep_last_n:]
 
-f = tempfile.NamedTemporaryFile(mode='w', dir=builds_dir, delete=False)
-json.dump({'builds': [x[0] for x in builds]}, f)
-os.rename(f.name, os.path.join(builds_dir, "builds.json"))
+write_json(builds_json, {'builds': [x[0] for x in builds]})
 
 # if we're not pruning, then we're done!
 if skip_pruning:
