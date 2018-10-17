@@ -5,6 +5,9 @@ DESTDIR ?=
 
 all: mantle
 
+check:
+	./tests/check.sh
+
 mantle:
 	cd mantle && ./build ore kola kolet
 
