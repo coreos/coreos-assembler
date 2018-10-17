@@ -1,6 +1,10 @@
 # Python version of cmdlib.sh
 
-import os,json,tempfile
+import os,json,tempfile,subprocess
+
+def run_verbose(args, **kwargs):
+    print("+ {}".format(subprocess.list2cmdline(args)))
+    subprocess.check_call(args, **kwargs)
 
 def write_json(path, data):
     dn = os.path.dirname(path)

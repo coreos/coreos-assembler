@@ -2,6 +2,8 @@
 # A major assumption here is that the disk image uses OSTree
 # and also has `boot` and `root` filesystem labels.
 
+# We don't want to use libvirt for this, it inhibits debugging
+export LIBGUESTFS_BACKEND=direct
 # http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
 GUESTFISH_PID=
 coreos_gf_launch() {

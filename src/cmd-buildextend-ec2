@@ -1,0 +1,72 @@
+#!/usr/bin/python3 -u
+# An operation that mutates a build by uploading to EC2,
+# extending the meta.json with AMI information.
+
+import os,sys,json,yaml,shutil,argparse,subprocess,re,collections
+import tempfile,hashlib,gzip
+
+sys.path.insert(0, '/usr/lib/coreos-assembler')
+from cmdlib import run_verbose, write_json
+
+# Parse args and dispatch
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", help="Build ID",
+                    required=True)
+parser.add_argument("--region", help="EC2 region",
+                    required=True)
+parser.add_argument("--bucket", help="S3 Bucket",
+                    required=True)
+args = parser.parse_args()
+
+with open('src/config/manifest.yaml') as f:
+    manifest = yaml.safe_load(f)
+
+base_name = manifest['rojig']['name']
+ami_name_version = f'{base_name}-{args.build}'
+
+builddir = f'builds/{args.build}'
+buildmeta_path = f'{builddir}/meta.json'
+with open(buildmeta_path) as f:
+    buildmeta = json.load(f)
+
+tmpdir='tmp/buildpost-ec2'
+if os.path.isdir(tmpdir):
+    shutil.rmtree(tmpdir)
+os.mkdir(tmpdir)
+
+def generate_ec2_vmdk():
+    img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
+    tmp_img_ec2 = f'{tmpdir}/{ami_name_version}.qcow2'
+    tmp_img_ec2_vmdk = f'{tmpdir}/{ami_name_version}.vmdk'
+    run_verbose(['/usr/lib/coreos-assembler/gf-oemid',
+                 img_qemu, tmp_img_ec2, 'ec2'])
+    run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vmdk',
+                 tmp_img_ec2,
+                 '-o', 'adapter_type=lsilogic,subformat=streamOptimized,compat6',
+                 tmp_img_ec2_vmdk])
+    os.unlink(tmp_img_ec2)
+    return tmp_img_ec2_vmdk
+
+def run_ore():
+    tmp_img_ec2_vmdk = generate_ec2_vmdk()
+    ore_args = ['ore', 'aws', 'upload',
+                '--region', args.region,
+                '--bucket', args.bucket,
+                '--ami-name', ami_name_version,
+                '--name', ami_name_version,
+                '--ami-description', f"{manifest['rojig']['summary']} {args.build}",
+                '--file', tmp_img_ec2_vmdk,
+                '--delete-object']
+    print("+ {}".format(subprocess.list2cmdline(ore_args)))
+    ore_data = json.loads(subprocess.check_output(ore_args))
+    shutil.rmtree(tmpdir)
+    # This matches the Container Linux schema:
+    # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
+    ami_data = {'name': args.region,
+                'hvm': ore_data['HVM']}
+    buildmeta['amis'] = [ami_data]
+    write_json(buildmeta_path, buildmeta)
+    print(f"Updated: {buildmeta_path}")
+
+# Do it!
+run_ore()
