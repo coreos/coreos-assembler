@@ -15,6 +15,9 @@ import subprocess
 
 import dateutil.parser
 
+sys.path.insert(0, '/usr/lib/coreos-assembler')
+from cmdlib import write_json
+
 # Let's just hardcode this here for now
 DEFAULT_KEEP_LAST_N = 3
 
@@ -29,13 +32,6 @@ args = parser.parse_args()
 builds = []
 builds_dir = os.path.join(args.workdir, "builds")
 builds_json = os.path.join(builds_dir, "builds.json")
-
-def write_json(path, data):
-    dn = os.path.dirname(path)
-    f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
-    json.dump(data, f)
-    os.fchmod(f.file.fileno(), 0o644)
-    os.rename(f.name, path)
 
 # Handle --insert-only
 if args.insert_only:
