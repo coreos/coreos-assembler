@@ -31,6 +31,14 @@ $ cd /srv/coreos
 $ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler'
 ```
 
+If you need access to CA certificates on your host (for example, when you need to access
+a git repo that is not on the public Internet), you can mount in the host certificates
+as read-only.  For example, on a Fedora host the alias would change to:
+
+`$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v /etc/pki:/etc/pki:ro -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler'`
+
+See this [Stack Overflow question](https://stackoverflow.com/questions/26028971/docker-container-ssl-certificates) for additional discussion.
+
 Initializing
 ---
 
@@ -80,7 +88,7 @@ Currently, the assembler only takes two input files that are from `src/config`:
  - `manifest.yaml`: An rpm-ostree "manifest" or "treefile", which mostly boils
    down to a list of RPMs and a set of rpm-md repositories
    they come from.  It also supports `postprocess` to make
-   arbitrary changes.  See the [upstream docs](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/treefile.md). 
+   arbitrary changes.  See the [upstream docs](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/treefile.md).
  - `image.ks`: An [Anaconda  Kickstart](https://pykickstart.readthedocs.io/en/latest/)
    file.  Use this to define the base disk image output.
 
