@@ -108,13 +108,15 @@ runcompose() {
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         local tmp_overridesdir=${TMPDIR}/override
         mkdir ${tmp_overridesdir}
-        local manifestdir=$(dirname ${manifest})
-        rsync -rl ${manifestdir}/ ${tmp_overridesdir}/
         cat > ${tmp_overridesdir}/coreos-assembler-override-manifest.yaml <<EOF
-include: $(basename ${manifest})
+include: ${workdir}/src/config/manifest.yaml
 repos:
   - coreos-assembler-local-overrides
 EOF
+        # Because right now rpm-ostree doesn't look for .repo files in
+        # each included dir.
+        # https://github.com/projectatomic/rpm-ostree/issues/1628
+        cp ${workdir}/src/config/*.repo ${tmp_overridesdir}/
         cat > ${tmp_overridesdir}/coreos-assembler-local-overrides.repo <<EOF
 [coreos-assembler-local-overrides]
 name=coreos-assembler-local-overrides
