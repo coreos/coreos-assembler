@@ -59,8 +59,9 @@ func init() {
 		NativeFuncs: map[string]func() error{
 			"TLSServe": TLSServe,
 		},
-		// https://github.com/coreos/bugs/issues/2205
-		ExcludePlatforms: []string{"do"},
+		// DO: https://github.com/coreos/bugs/issues/2205
+		// Packet & QEMU: https://github.com/coreos/ignition/issues/645
+		ExcludePlatforms: []string{"do", "packet", "qemu"},
 		Distros:          []string{"cl", "rhcos", "fcos"},
 	})
 }
