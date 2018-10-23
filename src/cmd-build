@@ -144,6 +144,10 @@ else
     fi
 fi
 
+if [ -n "${previous_build}" ]; then
+    rpm-ostree --repo=${workdir}/repo-build db diff ${previous_commit} ${commit}
+fi
+
 image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
 version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
