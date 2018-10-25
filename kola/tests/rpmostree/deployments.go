@@ -28,13 +28,13 @@ func init() {
 	register.Register(&register.Test{
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
-		Name:        "rhcos.rpmostree.upgrade-rollback",
+		Name:        "rpmostree.upgrade-rollback",
 		Distros:     []string{"rhcos", "fcos"},
 	})
 	register.Register(&register.Test{
 		Run:         rpmOstreeInstallUninstall,
 		ClusterSize: 1,
-		Name:        "rhcos.rpmostree.install-uninstall",
+		Name:        "rpmostree.install-uninstall",
 		// this Ignition config lands the EPEL repo + key
 		UserData: conf.Ignition(`{
   "ignition": {

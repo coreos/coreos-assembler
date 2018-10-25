@@ -15,13 +15,13 @@
 package rpmostree
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -29,7 +29,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:         rpmOstreeStatus,
 		ClusterSize: 1,
-		Name:        "rhcos.rpmostree.status",
+		Name:        "rpmostree.status",
 		Distros:     []string{"rhcos", "fcos"},
 	})
 }
