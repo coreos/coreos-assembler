@@ -41,46 +41,13 @@ var (
 	rpmOstreeVersionRegex string = `^Version: (\d+\.\d+\.?\d*).*`
 )
 
-// rpmOstreeDeployment represents some of the data of an rpm-ostree deployment
-type rpmOstreeDeployment struct {
-	Booted            bool     `json:"booted"`
-	Checksum          string   `json:"checksum"`
-	Origin            string   `json:"origin"`
-	Osname            string   `json:"osname"`
-	Packages          []string `json:"packages"`
-	RequestedPackages []string `json:"requested-packages"`
-	Version           string   `json:"version"`
-}
-
-// simplifiedRpmOstreeStatus contains deployments from rpm-ostree status
-type simplifiedRpmOstreeStatus struct {
-	Deployments []rpmOstreeDeployment
-}
-
-// getRpmOstreeStatusJSON returns an unmarshal'ed JSON object that contains
-// a limited representation of the output of `rpm-ostree status --json`
-func getRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifiedRpmOstreeStatus, error) {
-	target := simplifiedRpmOstreeStatus{}
-	rpmOstreeJSON, err := c.SSH(m, "rpm-ostree status --json")
-	if err != nil {
-		return target, fmt.Errorf("Could not get rpm-ostree status: %v", err)
-	}
-
-	err = json.Unmarshal(rpmOstreeJSON, &target)
-	if err != nil {
-		return target, fmt.Errorf("Couldn't umarshal the rpm-ostree status JSON data: %v", err)
-	}
-
-	return target, nil
-}
-
 // rpmOstreeCleanup calls 'rpm-ostree cleanup -rpmb' on a host and verifies
 // that only one deployment remains
 func rpmOstreeCleanup(c cluster.TestCluster, m platform.Machine) error {
 	c.MustSSH(m, "sudo rpm-ostree cleanup -rpmb")
 
 	// one last check to make sure we are back to the original state
-	cleanupStatus, err := getRpmOstreeStatusJSON(c, m)
+	cleanupStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		return fmt.Errorf(`Failed to get status JSON: %v`, err)
 	}
@@ -102,7 +69,7 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 		c.Fatalf(`The "rpm-ostreed" service is not "static": got %v`, string(enabledOut))
 	}
 
-	status, err := getRpmOstreeStatusJSON(c, m)
+	status, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}

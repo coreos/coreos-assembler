@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform/conf"
 )
 
@@ -87,7 +88,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 
 	m := c.Machines()[0]
 
-	originalStatus, err := getRpmOstreeStatusJSON(c, m)
+	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -109,7 +110,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 	c.MustSSH(m, "sudo rpm-ostree rebase :"+newBranch)
 
 	// get latest rpm-ostree status output to check validity
-	postUpgradeStatus, err := getRpmOstreeStatusJSON(c, m)
+	postUpgradeStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -126,7 +127,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 	}
 
 	// get latest rpm-ostree status output
-	postRebootStatus, err := getRpmOstreeStatusJSON(c, m)
+	postRebootStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -164,7 +165,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot machine: %v", err)
 	}
 
-	rollbackStatus, err := getRpmOstreeStatusJSON(c, m)
+	rollbackStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -192,7 +193,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	originalStatus, err := getRpmOstreeStatusJSON(c, m)
+	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -210,7 +211,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot machine: %v", installRebootErr)
 	}
 
-	postInstallStatus, err := getRpmOstreeStatusJSON(c, m)
+	postInstallStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -271,7 +272,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot machine: %v", uninstallRebootErr)
 	}
 
-	postUninstallStatus, err := getRpmOstreeStatusJSON(c, m)
+	postUninstallStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
