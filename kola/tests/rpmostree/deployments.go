@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform/conf"
 )
 
@@ -27,13 +28,14 @@ func init() {
 	register.Register(&register.Test{
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
-		Name:        "rhcos.rpmostree.upgrade-rollback",
+		Name:        "rpmostree.upgrade-rollback",
 		Distros:     []string{"rhcos", "fcos"},
+		FailFast:    true,
 	})
 	register.Register(&register.Test{
 		Run:         rpmOstreeInstallUninstall,
 		ClusterSize: 1,
-		Name:        "rhcos.rpmostree.install-uninstall",
+		Name:        "rpmostree.install-uninstall",
 		// this Ignition config lands the EPEL repo + key
 		UserData: conf.Ignition(`{
   "ignition": {
@@ -87,7 +89,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 
 	m := c.Machines()[0]
 
-	originalStatus, err := getRpmOstreeStatusJSON(c, m)
+	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -96,103 +98,110 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		c.Fatalf(`Unexpected results from "rpm-ostree status"; received: %v`, originalStatus)
 	}
 
-	// create a local branch to act as our upgrade target
-	originalCsum := originalStatus.Deployments[0].Checksum
-	createBranch := "sudo ostree refs --create " + newBranch + " " + originalCsum
-	c.MustSSH(m, createBranch)
+	c.Run("upgrade", func(c cluster.TestCluster) {
+		// create a local branch to act as our upgrade target
+		originalCsum := originalStatus.Deployments[0].Checksum
+		createBranch := "sudo ostree refs --create " + newBranch + " " + originalCsum
+		c.MustSSH(m, createBranch)
 
-	// make a commit to the new branch
-	createCommit := "sudo ostree commit -b " + newBranch + " --tree ref=" + originalCsum + " --add-metadata-string version=" + newVersion
-	newCommit := c.MustSSH(m, createCommit)
+		// make a commit to the new branch
+		createCommit := "sudo ostree commit -b " + newBranch + " --tree ref=" + originalCsum + " --add-metadata-string version=" + newVersion
+		newCommit := c.MustSSH(m, createCommit)
 
-	// use "rpm-ostree rebase" to get to the "new" commit
-	c.MustSSH(m, "sudo rpm-ostree rebase :"+newBranch)
+		// use "rpm-ostree rebase" to get to the "new" commit
+		c.MustSSH(m, "sudo rpm-ostree rebase :"+newBranch)
 
-	// get latest rpm-ostree status output to check validity
-	postUpgradeStatus, err := getRpmOstreeStatusJSON(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
+		// get latest rpm-ostree status output to check validity
+		postUpgradeStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		if err != nil {
+			c.Fatal(err)
+		}
 
-	// should have two deployments
-	if len(postUpgradeStatus.Deployments) != 2 {
-		c.Fatalf("Expected two deployments; found %d deployments", len(postUpgradeStatus.Deployments))
-	}
+		// should have two deployments
+		if len(postUpgradeStatus.Deployments) != 2 {
+			c.Fatalf("Expected two deployments; found %d deployments", len(postUpgradeStatus.Deployments))
+		}
 
-	// reboot into new deployment
-	rebootErr := m.Reboot()
-	if rebootErr != nil {
-		c.Fatalf("Failed to reboot machine: %v", err)
-	}
+		// reboot into new deployment
+		rebootErr := m.Reboot()
+		if rebootErr != nil {
+			c.Fatalf("Failed to reboot machine: %v", err)
+		}
 
-	// get latest rpm-ostree status output
-	postRebootStatus, err := getRpmOstreeStatusJSON(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
+		// get latest rpm-ostree status output
+		postRebootStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		if err != nil {
+			c.Fatal(err)
+		}
 
-	// should still have 2 deployments
-	if len(postRebootStatus.Deployments) != 2 {
-		c.Fatalf("Expected two deployments; found %d deployment", len(postRebootStatus.Deployments))
-	}
+		// should still have 2 deployments
+		if len(postRebootStatus.Deployments) != 2 {
+			c.Fatalf("Expected two deployments; found %d deployment", len(postRebootStatus.Deployments))
+		}
 
-	// origin should be new branch
-	if postRebootStatus.Deployments[0].Origin != newBranch {
-		c.Fatalf(`New deployment origin is incorrect; expected %q, got %q`, newBranch, postRebootStatus.Deployments[0].Origin)
-	}
+		// origin should be new branch
+		if postRebootStatus.Deployments[0].Origin != newBranch {
+			c.Fatalf(`New deployment origin is incorrect; expected %q, got %q`, newBranch, postRebootStatus.Deployments[0].Origin)
+		}
 
-	// new deployment should be booted
-	if !postRebootStatus.Deployments[0].Booted {
-		c.Fatalf("New deployment is not reporting as booted")
-	}
+		// new deployment should be booted
+		if !postRebootStatus.Deployments[0].Booted {
+			c.Fatalf("New deployment is not reporting as booted")
+		}
 
-	// checksum should be new commit
-	if postRebootStatus.Deployments[0].Checksum != string(newCommit) {
-		c.Fatalf(`New deployment checksum is incorrect; expected %q, got %q`, newCommit, postRebootStatus.Deployments[0].Checksum)
-	}
+		// checksum should be new commit
+		if postRebootStatus.Deployments[0].Checksum != string(newCommit) {
+			c.Fatalf(`New deployment checksum is incorrect; expected %q, got %q`, newCommit, postRebootStatus.Deployments[0].Checksum)
+		}
 
-	// version should be new version string
-	if postRebootStatus.Deployments[0].Version != newVersion {
-		c.Fatalf(`New deployment version is incorrect; expected %q, got %q`, newVersion, postRebootStatus.Deployments[0].Checksum)
-	}
+		// version should be new version string
+		if postRebootStatus.Deployments[0].Version != newVersion {
+			c.Fatalf(`New deployment version is incorrect; expected %q, got %q`, newVersion, postRebootStatus.Deployments[0].Checksum)
+		}
+	})
 
-	// rollback to original deployment
-	c.MustSSH(m, "sudo rpm-ostree rollback")
+	c.Run("rollback", func(c cluster.TestCluster) {
+		// rollback to original deployment
+		c.MustSSH(m, "sudo rpm-ostree rollback")
 
-	newRebootErr := m.Reboot()
-	if newRebootErr != nil {
-		c.Fatalf("Failed to reboot machine: %v", err)
-	}
+		newRebootErr := m.Reboot()
+		if newRebootErr != nil {
+			c.Fatalf("Failed to reboot machine: %v", err)
+		}
 
-	rollbackStatus, err := getRpmOstreeStatusJSON(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
+		rollbackStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		if err != nil {
+			c.Fatal(err)
+		}
 
-	// still 2 deployments...
-	if len(rollbackStatus.Deployments) != 2 {
-		c.Fatalf("Expected two deployments; found %d deployments", len(rollbackStatus.Deployments))
-	}
+		// still 2 deployments...
+		if len(rollbackStatus.Deployments) != 2 {
+			c.Fatalf("Expected two deployments; found %d deployments", len(rollbackStatus.Deployments))
+		}
 
-	// validate we are back to the original deployment by comparing the
-	// the two rpmOstreeDeployment structs
-	if !reflect.DeepEqual(originalStatus.Deployments[0], rollbackStatus.Deployments[0]) {
-		c.Fatalf(`Differences found in "rpm-ostree status"; original %v, current: %v`, originalStatus.Deployments[0], rollbackStatus.Deployments[0])
-	}
+		// validate we are back to the original deployment by comparing the
+		// the two rpmOstreeDeployment structs
+		if !reflect.DeepEqual(originalStatus.Deployments[0], rollbackStatus.Deployments[0]) {
+			c.Fatalf(`Differences found in "rpm-ostree status"; original %v, current: %v`, originalStatus.Deployments[0], rollbackStatus.Deployments[0])
+		}
 
-	// cleanup our mess
-	cleanupErr := rpmOstreeCleanup(c, m)
-	if cleanupErr != nil {
-		c.Fatal(cleanupErr)
-	}
+		// cleanup our mess
+		cleanupErr := rpmOstreeCleanup(c, m)
+		if cleanupErr != nil {
+			c.Fatal(cleanupErr)
+		}
+	})
 }
 
 // rpmOstreeInstallUninstall verifies that we can install a package
 // and then uninstall it
+// we've hardcoded 'fpaste' throughout the test because it should be
+// a package that a) will be around a long time and b) is small +
+// well-defined
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	originalStatus, err := getRpmOstreeStatusJSON(c, m)
+	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -202,101 +211,105 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	}
 
 	originalCsum := originalStatus.Deployments[0].Checksum
-	// install fpaste and reboot
-	c.MustSSH(m, "sudo rpm-ostree install fpaste")
 
-	installRebootErr := m.Reboot()
-	if installRebootErr != nil {
-		c.Fatalf("Failed to reboot machine: %v", installRebootErr)
-	}
+	c.Run("install", func(c cluster.TestCluster) {
+		// install fpaste and reboot
+		c.MustSSH(m, "sudo rpm-ostree install fpaste")
 
-	postInstallStatus, err := getRpmOstreeStatusJSON(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	if len(postInstallStatus.Deployments) != 2 {
-		c.Fatalf(`Expected two deployments, found %d deployments`, len(postInstallStatus.Deployments))
-	}
-
-	// check the command is present, in the rpmdb, and usable
-	cmdOut := c.MustSSH(m, "command -v fpaste")
-	if string(cmdOut) != "/bin/fpaste" {
-		c.Fatalf(`fpaste binary in unexpected location. expectd %q, got %q`, "/bin/fpaste", string(cmdOut))
-	}
-
-	// e.g. fpaste-0.3.7.4.1-2.el7.noarch
-	rpmOut := c.MustSSH(m, "rpm -q fpaste")
-	rpmMatch := regexp.MustCompile("^fpaste.*noarch").MatchString(string(rpmOut))
-	if !rpmMatch {
-		c.Fatalf(`Output from "rpm -q" was unexpected: %q`, string(rpmOut))
-	}
-
-	// just verify the command runs
-	c.MustSSH(m, "fpaste --version")
-
-	// package should be in the metadata
-	var reqPkg bool = false
-	for _, pkg := range postInstallStatus.Deployments[0].RequestedPackages {
-		if pkg == "fpaste" {
-			reqPkg = true
-			break
+		installRebootErr := m.Reboot()
+		if installRebootErr != nil {
+			c.Fatalf("Failed to reboot machine: %v", installRebootErr)
 		}
-	}
-	if !reqPkg {
-		c.Fatalf(`Unable to find "fpaste" in requested-packages: %v`, postInstallStatus.Deployments[0].RequestedPackages)
-	}
 
-	var installPkg bool = false
-	for _, pkg := range postInstallStatus.Deployments[0].Packages {
-		if pkg == "fpaste" {
-			installPkg = true
-			break
+		postInstallStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		if err != nil {
+			c.Fatal(err)
 		}
-	}
-	if !installPkg {
-		c.Fatalf(`Unable to find "fpaste" in packages: %v`, postInstallStatus.Deployments[0].Packages)
-	}
 
-	// checksum should be different
-	if postInstallStatus.Deployments[0].Checksum == originalCsum {
-		c.Fatalf(`Commit IDs incorrectly matched after package install`)
-	}
+		if len(postInstallStatus.Deployments) != 2 {
+			c.Fatalf(`Expected two deployments, found %d deployments`, len(postInstallStatus.Deployments))
+		}
+
+		// check the command is present, in the rpmdb, and usable
+		cmdOut := c.MustSSH(m, "command -v fpaste")
+		if string(cmdOut) != "/bin/fpaste" {
+			c.Fatalf(`fpaste binary in unexpected location. expectd %q, got %q`, "/bin/fpaste", string(cmdOut))
+		}
+
+		// e.g. fpaste-0.3.7.4.1-2.el7.noarch
+		rpmOut := c.MustSSH(m, "rpm -q fpaste")
+		rpmMatch := regexp.MustCompile("^fpaste.*noarch").MatchString(string(rpmOut))
+		if !rpmMatch {
+			c.Fatalf(`Output from "rpm -q" was unexpected: %q`, string(rpmOut))
+		}
+
+		// just verify the command runs
+		c.MustSSH(m, "fpaste --version")
+
+		// package should be in the metadata
+		var reqPkg bool = false
+		for _, pkg := range postInstallStatus.Deployments[0].RequestedPackages {
+			if pkg == "fpaste" {
+				reqPkg = true
+				break
+			}
+		}
+		if !reqPkg {
+			c.Fatalf(`Unable to find "fpaste" in requested-packages: %v`, postInstallStatus.Deployments[0].RequestedPackages)
+		}
+
+		var installPkg bool = false
+		for _, pkg := range postInstallStatus.Deployments[0].Packages {
+			if pkg == "fpaste" {
+				installPkg = true
+				break
+			}
+		}
+		if !installPkg {
+			c.Fatalf(`Unable to find "fpaste" in packages: %v`, postInstallStatus.Deployments[0].Packages)
+		}
+
+		// checksum should be different
+		if postInstallStatus.Deployments[0].Checksum == originalCsum {
+			c.Fatalf(`Commit IDs incorrectly matched after package install`)
+		}
+	})
 
 	// uninstall the package
-	c.MustSSH(m, "sudo rpm-ostree uninstall fpaste")
+	c.Run("uninstall", func(c cluster.TestCluster) {
+		c.MustSSH(m, "sudo rpm-ostree uninstall fpaste")
 
-	uninstallRebootErr := m.Reboot()
-	if uninstallRebootErr != nil {
-		c.Fatalf("Failed to reboot machine: %v", uninstallRebootErr)
-	}
+		uninstallRebootErr := m.Reboot()
+		if uninstallRebootErr != nil {
+			c.Fatalf("Failed to reboot machine: %v", uninstallRebootErr)
+		}
 
-	postUninstallStatus, err := getRpmOstreeStatusJSON(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
+		postUninstallStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		if err != nil {
+			c.Fatal(err)
+		}
 
-	// check the metadata to make sure everything went well
-	if len(postUninstallStatus.Deployments) != 2 {
-		c.Fatal("Expected two deployments, got %d", len(postUninstallStatus.Deployments))
-	}
+		// check the metadata to make sure everything went well
+		if len(postUninstallStatus.Deployments) != 2 {
+			c.Fatal("Expected two deployments, got %d", len(postUninstallStatus.Deployments))
+		}
 
-	if postUninstallStatus.Deployments[0].Checksum != originalCsum {
-		c.Fatalf(`Checksum is incorrect; expected %q, got %q`, originalCsum, postUninstallStatus.Deployments[0].Checksum)
-	}
+		if postUninstallStatus.Deployments[0].Checksum != originalCsum {
+			c.Fatalf(`Checksum is incorrect; expected %q, got %q`, originalCsum, postUninstallStatus.Deployments[0].Checksum)
+		}
 
-	if len(postUninstallStatus.Deployments[0].RequestedPackages) != 0 {
-		c.Fatalf(`Found unexpected requested-packages: %q`, postUninstallStatus.Deployments[0].RequestedPackages)
-	}
+		if len(postUninstallStatus.Deployments[0].RequestedPackages) != 0 {
+			c.Fatalf(`Found unexpected requested-packages: %q`, postUninstallStatus.Deployments[0].RequestedPackages)
+		}
 
-	if len(postUninstallStatus.Deployments[0].Packages) != 0 {
-		c.Fatalf(`Found unexpected packages: %q`, postUninstallStatus.Deployments[0].Packages)
-	}
+		if len(postUninstallStatus.Deployments[0].Packages) != 0 {
+			c.Fatalf(`Found unexpected packages: %q`, postUninstallStatus.Deployments[0].Packages)
+		}
 
-	// cleanup our mess
-	cleanupErr := rpmOstreeCleanup(c, m)
-	if cleanupErr != nil {
-		c.Fatal(cleanupErr)
-	}
-
+		// cleanup our mess
+		cleanupErr := rpmOstreeCleanup(c, m)
+		if cleanupErr != nil {
+			c.Fatal(cleanupErr)
+		}
+	})
 }
