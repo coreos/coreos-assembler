@@ -100,10 +100,6 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         subprocess.call(['buildah', rootarg, 'umount', bid], stdout=subprocess.DEVNULL)
         subprocess.call(['buildah', rootarg, 'rm', bid], stdout=subprocess.DEVNULL)
 
-    inspect = run_get_json(['podman', rootarg, 'inspect', image_name_and_tag])[0]
-    if inspect_out is not None:
-        with open(inspect_out, 'w') as f:
-            json.dump(inspect, f)
     if push:
         print("Pushing container")
         if not tls_verify:
@@ -111,6 +107,12 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         else:
             tls_arg = '--tls-verify'
         run_verbose(['podman', rootarg, 'push', tls_arg, image_name_and_tag])
+        inspect = run_get_json(['skopeo', 'inspect', "docker://"+image_name_and_tag])
+    else:
+        inspect = run_get_json(['podman', rootarg, 'inspect', image_name_and_tag])[0]
+    if inspect_out is not None:
+        with open(inspect_out, 'w') as f:
+            json.dump(inspect, f)
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
