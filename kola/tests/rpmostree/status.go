@@ -35,8 +35,6 @@ func init() {
 }
 
 var (
-	supportedOsNames = []string{"rhcos", "coreos"}
-
 	// Regex to extract version number from "rpm-ostree status"
 	rpmOstreeVersionRegex string = `^Version: (\d+\.\d+\.?\d*).*`
 )
@@ -83,17 +81,6 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	// should only have one deployment
 	if len(status.Deployments) != 1 {
 		c.Fatalf("Expected one deployment; found %d deployments", len(status.Deployments))
-	}
-
-	supported := false
-	for _, name := range supportedOsNames {
-		if status.Deployments[0].Osname == name {
-			supported = true
-			break
-		}
-	}
-	if !supported {
-		c.Fatalf(`"osname" has incorrect value: wanted one of %v, got %q`, supportedOsNames, status.Deployments[0].Osname)
 	}
 
 	// deployment should be booted (duh!)
