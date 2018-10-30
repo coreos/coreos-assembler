@@ -33,13 +33,14 @@ builds = []
 builds_dir = os.path.join(args.workdir, "builds")
 builds_json = os.path.join(builds_dir, "builds.json")
 
+if os.path.isfile(builds_json):
+    with open(builds_json) as f:
+        builddata = json.load(f)
+else:
+    builddata = {'builds': []}
+
 # Handle --insert-only
 if args.insert_only:
-    if os.path.isfile(builds_json):
-        with open(builds_json) as f:
-            builddata = json.load(f)
-    else:
-        builddata = {'builds': []}
     builddata['builds'].insert(0, args.insert_only)
     write_json(builds_json, builddata)
     sys.exit(0)
@@ -77,7 +78,8 @@ if not skip_pruning and len(builds) > args.keep_last_n:
     builds_to_delete = builds[args.keep_last_n:]
     del builds[args.keep_last_n:]
 
-write_json(builds_json, {'builds': [x[0] for x in builds]})
+builddata['builds'] = [x[0] for x in builds]
+write_json(builds_json, builddata)
 
 # if we're not pruning, then we're done!
 if skip_pruning:
