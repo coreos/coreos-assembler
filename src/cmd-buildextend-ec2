@@ -16,6 +16,8 @@ parser.add_argument("--region", help="EC2 region",
                     required=True)
 parser.add_argument("--bucket", help="S3 Bucket",
                     required=True)
+parser.add_argument("--grant-user", help="Grant user launch permission",
+                    nargs="*", default=[])
 args = parser.parse_args()
 
 with open('src/config/manifest.yaml') as f:
@@ -57,6 +59,8 @@ def run_ore():
                 '--ami-description', f"{manifest['rojig']['summary']} {args.build}",
                 '--file', tmp_img_ec2_vmdk,
                 '--delete-object']
+    for user in args.grant_user:
+        ore_args.extend(['--grant-user', user])
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
     ore_data = json.loads(subprocess.check_output(ore_args))
     shutil.rmtree(tmpdir)
