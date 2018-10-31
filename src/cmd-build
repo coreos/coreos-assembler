@@ -200,6 +200,7 @@ build_timestamp=$(date -u --iso-8601=seconds)
 cat > tmp/meta.json <<EOF
 {
  "buildid": "${buildid}",
+ "name": "${name}",
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
