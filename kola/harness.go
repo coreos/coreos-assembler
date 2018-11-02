@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -390,13 +389,6 @@ func parseCLVersion(input string) (*semver.Version, error) {
 // analysis after the test run. It should already exist.
 func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flight) {
 	h.Parallel()
-
-	// don't go too fast, in case we're talking to a rate limiting api like AWS EC2.
-	// FIXME(marineam): API requests must do their own
-	// backoff due to rate limiting, this is unreliable.
-	max := int64(2 * time.Second)
-	splay := time.Duration(rand.Int63n(max))
-	time.Sleep(splay)
 
 	rconf := &platform.RuntimeConfig{
 		OutputDir:          h.OutputDir(),
