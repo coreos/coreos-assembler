@@ -38,32 +38,28 @@ type BaseCluster struct {
 	machmap    map[string]Machine
 	consolemap map[string]string
 
-	name       string
-	rconf      *RuntimeConfig
-	platform   Name
-	ctPlatform string
-	baseopts   *Options
+	bf    *BaseFlight
+	name  string
+	rconf *RuntimeConfig
 }
 
-func NewBaseCluster(opts *Options, rconf *RuntimeConfig, platform Name, ctPlatform string) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(opts, rconf, platform, ctPlatform, network.NewRetryDialer())
+func NewBaseCluster(bf *BaseFlight, rconf *RuntimeConfig) (*BaseCluster, error) {
+	return NewBaseClusterWithDialer(bf, rconf, network.NewRetryDialer())
 }
 
-func NewBaseClusterWithDialer(opts *Options, rconf *RuntimeConfig, platform Name, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
+func NewBaseClusterWithDialer(bf *BaseFlight, rconf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
 	}
 
 	bc := &BaseCluster{
+		bf:         bf,
 		agent:      agent,
 		machmap:    make(map[string]Machine),
 		consolemap: make(map[string]string),
-		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.NewV4()),
+		name:       fmt.Sprintf("%s-%s", bf.baseopts.BaseName, uuid.NewV4()),
 		rconf:      rconf,
-		platform:   platform,
-		ctPlatform: ctPlatform,
-		baseopts:   opts,
 	}
 
 	return bc, nil
@@ -161,12 +157,12 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 		}
 	}
 
-	conf, err := userdata.Render(bc.ctPlatform)
+	conf, err := userdata.Render(bc.bf.ctPlatform)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, dropin := range bc.baseopts.SystemdDropins {
+	for _, dropin := range bc.bf.baseopts.SystemdDropins {
 		conf.AddSystemdUnitDropin(dropin.Unit, dropin.Name, dropin.Contents)
 	}
 
@@ -219,11 +215,11 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 }
 
 func (bc *BaseCluster) Distribution() string {
-	return bc.baseopts.Distribution
+	return bc.bf.baseopts.Distribution
 }
 
 func (bc *BaseCluster) Platform() Name {
-	return bc.platform
+	return bc.bf.Platform()
 }
 
 func (bc *BaseCluster) Name() string {

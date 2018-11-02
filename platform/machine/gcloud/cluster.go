@@ -21,9 +21,6 @@ import (
 
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/coreos/pkg/capnslog"
-
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/platform/conf"
@@ -31,34 +28,7 @@ import (
 
 type cluster struct {
 	*platform.BaseCluster
-	api *gcloud.API
-}
-
-const (
-	Platform platform.Name = "gcloud"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/gcloud")
-)
-
-func NewCluster(opts *gcloud.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	api, err := gcloud.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.GCE)
-	if err != nil {
-		return nil, err
-	}
-
-	gc := &cluster{
-		BaseCluster: bc,
-		api:         api,
-	}
-
-	return gc, nil
+	flight *flight
 }
 
 // Calling in parallel is ok
@@ -79,7 +49,7 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		}
 	}
 
-	instance, err := gc.api.CreateInstance(conf.String(), keys)
+	instance, err := gc.flight.api.CreateInstance(conf.String(), keys)
 	if err != nil {
 		return nil, err
 	}
@@ -118,4 +88,9 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	gc.AddMach(gm)
 
 	return gm, nil
+}
+
+func (gc *cluster) Destroy() {
+	gc.BaseCluster.Destroy()
+	gc.flight.DelCluster(gc)
 }

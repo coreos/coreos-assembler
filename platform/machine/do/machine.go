@@ -65,7 +65,7 @@ func (dm *machine) Reboot() error {
 }
 
 func (dm *machine) Destroy() {
-	if err := dm.cluster.api.DeleteDroplet(context.TODO(), dm.droplet.ID); err != nil {
+	if err := dm.cluster.flight.api.DeleteDroplet(context.TODO(), dm.droplet.ID); err != nil {
 		plog.Errorf("Error deleting droplet %v: %v", dm.droplet.ID, err)
 	}
 

@@ -66,7 +66,7 @@ func (em *machine) Reboot() error {
 }
 
 func (em *machine) Destroy() {
-	if err := em.cluster.api.TerminateDevice(em.ID()); err != nil {
+	if err := em.cluster.flight.api.TerminateDevice(em.ID()); err != nil {
 		plog.Errorf("Error terminating device %v: %v", em.ID(), err)
 	}
 
@@ -78,7 +78,7 @@ func (em *machine) Destroy() {
 		plog.Errorf("Error saving console for device %v: %v", em.ID(), err)
 	}
 
-	if err := em.cluster.api.CleanupDevice(em.ID()); err != nil {
+	if err := em.cluster.flight.api.CleanupDevice(em.ID()); err != nil {
 		plog.Errorf("Error cleaning up device for device %v: %v", em.ID(), err)
 	}
 
@@ -91,7 +91,7 @@ func (em *machine) ConsoleOutput() string {
 
 func (em *machine) saveConsole() error {
 	var err error
-	em.console, err = em.cluster.api.GetConsoleOutput(em.ID())
+	em.console, err = em.cluster.flight.api.GetConsoleOutput(em.ID())
 	if err != nil {
 		return err
 	}

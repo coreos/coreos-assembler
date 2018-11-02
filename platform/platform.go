@@ -81,7 +81,7 @@ type Machine interface {
 	JournalOutput() string
 }
 
-// Cluster represents a cluster of Container Linux machines within a single platform.
+// Cluster represents a cluster of machines within a single Flight.
 type Cluster interface {
 	// Platform returns the name of the platform.
 	Platform() Name
@@ -110,6 +110,23 @@ type Cluster interface {
 	// JournalOutput returns a map of journal output from destroyed
 	// cluster machines.
 	JournalOutput() map[string]string
+}
+
+// Flight represents a group of Clusters within a single platform.
+type Flight interface {
+	// NewCluster creates a new Cluster.
+	NewCluster(rconf *RuntimeConfig) (Cluster, error)
+
+	// Platform returns the name of the platform.
+	Platform() Name
+
+	// Clusters returns a slice of the active Clusters.
+	Clusters() []Cluster
+
+	// Destroy terminates each cluster and frees any other associated
+	// resources.  It should log any failures; since they are not
+	// actionable, it does not return an error.
+	Destroy()
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

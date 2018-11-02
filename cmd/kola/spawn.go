@@ -118,7 +118,15 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Setup failed: %v", err)
 	}
 
-	cluster, err := kola.NewCluster(kolaPlatform, &platform.RuntimeConfig{
+	flight, err := kola.NewFlight(kolaPlatform)
+	if err != nil {
+		return fmt.Errorf("Flight failed: %v", err)
+	}
+	if spawnRemove {
+		defer flight.Destroy()
+	}
+
+	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
 		OutputDir:        outputDir,
 		AllowFailedUnits: true,
 	})

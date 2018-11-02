@@ -20,45 +20,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/esx"
 	"github.com/coreos/mantle/platform/conf"
-)
-
-const (
-	Platform platform.Name = "esx"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/esx")
 )
 
 type cluster struct {
 	*platform.BaseCluster
-	api *esx.API
-}
-
-// NewCluster creates an instance of a Cluster suitable for spawning
-// instances on VMware ESXi vSphere platform.
-func NewCluster(opts *esx.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	api, err := esx.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, "")
-	if err != nil {
-		return nil, err
-	}
-
-	ec := &cluster{
-		BaseCluster: bc,
-		api:         api,
-	}
-
-	return ec, nil
+	flight *flight
 }
 
 func (ec *cluster) vmname() string {
@@ -85,7 +53,7 @@ Environment=OUTPUT=/run/metadata/coreos
 ExecStart=/usr/bin/mkdir --parent /run/metadata
 ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens192 | grep -Po "inet \K[\d.]+")\nCOREOS_ESX_IPV4_PUBLIC_0=$(ip addr show ens192 | grep -Po "inet \K[\d.]+")" > ${OUTPUT}'`, false)
 
-	instance, err := ec.api.CreateDevice(ec.vmname(), conf)
+	instance, err := ec.flight.api.CreateDevice(ec.vmname(), conf)
 	if err != nil {
 		return nil, err
 	}
@@ -120,4 +88,9 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 	ec.AddMach(mach)
 
 	return mach, nil
+}
+
+func (ec *cluster) Destroy() {
+	ec.BaseCluster.Destroy()
+	ec.flight.DelCluster(ec)
 }

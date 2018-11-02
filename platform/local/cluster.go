@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/go-omaha/omaha"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
@@ -37,71 +36,12 @@ import (
 type LocalCluster struct {
 	destructor.MultiDestructor
 	*platform.BaseCluster
+	flight      *LocalFlight
 	Dnsmasq     *Dnsmasq
 	NTPServer   *ntp.Server
 	OmahaServer OmahaWrapper
 	SimpleEtcd  *SimpleEtcd
 	nshandle    netns.NsHandle
-}
-
-func NewLocalCluster(opts *platform.Options, rconf *platform.RuntimeConfig, platformName platform.Name) (*LocalCluster, error) {
-	lc := &LocalCluster{}
-
-	var err error
-	lc.nshandle, err = ns.Create()
-	if err != nil {
-		return nil, err
-	}
-	lc.AddCloser(&lc.nshandle)
-
-	nsdialer := network.NewNsDialer(lc.nshandle)
-	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(opts, rconf, platformName, "", nsdialer)
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.BaseCluster)
-
-	// dnsmasq and etcd much be launched in the new namespace
-	nsExit, err := ns.Enter(lc.nshandle)
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	defer nsExit()
-
-	lc.Dnsmasq, err = NewDnsmasq()
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.Dnsmasq)
-
-	lc.SimpleEtcd, err = NewSimpleEtcd()
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.SimpleEtcd)
-
-	lc.NTPServer, err = ntp.NewServer(":123")
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddCloser(lc.NTPServer)
-	go lc.NTPServer.Serve()
-
-	omahaServer, err := omaha.NewTrivialServer(":34567")
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.OmahaServer = OmahaWrapper{TrivialServer: omahaServer}
-	lc.AddDestructor(lc.OmahaServer)
-	go lc.OmahaServer.Serve()
-
-	return lc, nil
 }
 
 func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
@@ -180,5 +120,6 @@ func (lc *LocalCluster) GetNsHandle() netns.NsHandle {
 }
 
 func (lc *LocalCluster) Destroy() {
+	// does not lc.flight.DelCluster() since we are not the top-level object
 	lc.MultiDestructor.Destroy()
 }

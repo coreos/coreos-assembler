@@ -137,7 +137,13 @@ func runUpdateTest() error {
 		os.Exit(1)
 	}
 
-	cluster, err := qemu.NewCluster(&kola.QEMUOptions, &platform.RuntimeConfig{
+	flight, err := qemu.NewFlight(&kola.QEMUOptions)
+	if err != nil {
+		return fmt.Errorf("new flight: %v", err)
+	}
+	defer flight.Destroy()
+
+	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
 		OutputDir: outputDir,
 	})
 	if err != nil {

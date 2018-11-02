@@ -65,7 +65,7 @@ func (pm *machine) Reboot() error {
 }
 
 func (pm *machine) Destroy() {
-	if err := pm.cluster.api.DeleteDevice(pm.ID()); err != nil {
+	if err := pm.cluster.flight.api.DeleteDevice(pm.ID()); err != nil {
 		plog.Errorf("Error terminating device %v: %v", pm.ID(), err)
 	}
 

@@ -18,61 +18,13 @@ import (
 	"os"
 	"path/filepath"
 
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/conf"
-)
-
-const (
-	Platform platform.Name = "aws"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/aws")
 )
 
 type cluster struct {
 	*platform.BaseCluster
-	api *aws.API
-}
-
-// NewCluster creates an instance of a Cluster suitable for spawning
-// instances on Amazon Web Services' Elastic Compute platform.
-//
-// NewCluster will consume the environment variables $AWS_REGION,
-// $AWS_ACCESS_KEY_ID, and $AWS_SECRET_ACCESS_KEY to determine the region to
-// spawn instances in and the credentials to use to authenticate.
-func NewCluster(opts *aws.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	api, err := aws.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.EC2)
-	if err != nil {
-		return nil, err
-	}
-
-	ac := &cluster{
-		BaseCluster: bc,
-		api:         api,
-	}
-
-	if !rconf.NoSSHKeyInMetadata {
-		keys, err := ac.Keys()
-		if err != nil {
-			return nil, err
-		}
-
-		if err := api.AddKey(bc.Name(), keys[0].String()); err != nil {
-			return nil, err
-		}
-	}
-
-	return ac, nil
+	flight *flight
 }
 
 func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -88,7 +40,7 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	if !ac.RuntimeConf().NoSSHKeyInMetadata {
 		keyname = ac.Name()
 	}
-	instances, err := ac.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
+	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -127,10 +79,11 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 
 func (ac *cluster) Destroy() {
 	if !ac.RuntimeConf().NoSSHKeyInMetadata {
-		if err := ac.api.DeleteKey(ac.Name()); err != nil {
+		if err := ac.flight.api.DeleteKey(ac.Name()); err != nil {
 			plog.Errorf("Error deleting key %v: %v", ac.Name(), err)
 		}
 	}
 
 	ac.BaseCluster.Destroy()
+	ac.flight.DelCluster(ac)
 }

@@ -69,12 +69,12 @@ func (am *machine) Reboot() error {
 }
 
 func (am *machine) Destroy() {
-	origConsole, err := am.cluster.api.GetConsoleOutput(am.ID())
+	origConsole, err := am.cluster.flight.api.GetConsoleOutput(am.ID())
 	if err != nil {
 		plog.Warningf("Error retrieving console log for %v: %v", am.ID(), err)
 	}
 
-	if err := am.cluster.api.TerminateInstances([]string{am.ID()}); err != nil {
+	if err := am.cluster.flight.api.TerminateInstances([]string{am.ID()}); err != nil {
 		plog.Errorf("Error terminating instance %v: %v", am.ID(), err)
 	}
 
@@ -100,7 +100,7 @@ func (am *machine) saveConsole(origConsole string) error {
 	// logs are different from the pre-termination logs.
 	err := util.WaitUntilReady(5*time.Minute, 5*time.Second, func() (bool, error) {
 		var err error
-		am.console, err = am.cluster.api.GetConsoleOutput(am.ID())
+		am.console, err = am.cluster.flight.api.GetConsoleOutput(am.ID())
 		if err != nil {
 			return false, err
 		}

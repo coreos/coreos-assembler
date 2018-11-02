@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/satori/go.uuid"
 
 	"github.com/coreos/mantle/platform"
@@ -34,29 +33,12 @@ import (
 	"github.com/coreos/mantle/system/ns"
 )
 
-const (
-	Platform platform.Name = "qemu"
-)
-
-// Options contains QEMU-specific options for the cluster.
-type Options struct {
-	// DiskImage is the full path to the disk image to boot in QEMU.
-	DiskImage string
-	Board     string
-
-	// BIOSImage is name of the BIOS file to pass to QEMU.
-	// It can be a plain name, or a full path.
-	BIOSImage string
-
-	*platform.Options
-}
-
 // Cluster is a local cluster of QEMU-based virtual machines.
 //
 // XXX: must be exported so that certain QEMU tests can access struct members
 // through type assertions.
 type Cluster struct {
-	opts *Options
+	flight *flight
 
 	mu sync.Mutex
 	*local.LocalCluster
@@ -73,27 +55,10 @@ type Disk struct {
 }
 
 var (
-	plog               = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/platform/machine/qemu")
 	ErrNeedSizeOrFile  = errors.New("Disks need either Size or BackingFile specified")
 	ErrBothSizeAndFile = errors.New("Only one of Size and BackingFile can be specified")
 	primaryDiskOptions = []string{"serial=primary-disk"}
 )
-
-// NewCluster creates a Cluster instance, suitable for running virtual
-// machines in QEMU.
-func NewCluster(opts *Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	lc, err := local.NewLocalCluster(opts.Options, rconf, Platform)
-	if err != nil {
-		return nil, err
-	}
-
-	qc := &Cluster{
-		opts:         opts,
-		LocalCluster: lc,
-	}
-
-	return qc, nil
-}
 
 func (d Disk) GetOpts() string {
 	if len(d.DeviceOpts) == 0 {
@@ -172,7 +137,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	}
 
 	var qmCmd []string
-	combo := runtime.GOARCH + "--" + qc.opts.Board
+	combo := runtime.GOARCH + "--" + qc.flight.opts.Board
 	switch combo {
 	case "amd64--amd64-usr":
 		qmCmd = []string{
@@ -208,7 +173,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 
 	qmMac := qm.netif.HardwareAddr.String()
 	qmCmd = append(qmCmd,
-		"-bios", qc.opts.BIOSImage,
+		"-bios", qc.flight.opts.BIOSImage,
 		"-smp", "1",
 		"-uuid", qm.id,
 		"-display", "none",
@@ -227,7 +192,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 
 	allDisks := append([]Disk{
 		{
-			BackingFile: qc.opts.DiskImage,
+			BackingFile: qc.flight.opts.DiskImage,
 			DeviceOpts:  primaryDiskOptions,
 		},
 	}, options.AdditionalDisks...)
@@ -294,13 +259,13 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 // configuration is the same. Use this to help construct device args.
 func (qc *Cluster) virtio(device, args string) string {
 	var suffix string
-	switch qc.opts.Board {
+	switch qc.flight.opts.Board {
 	case "amd64-usr":
 		suffix = "pci"
 	case "arm64-usr":
 		suffix = "device"
 	default:
-		panic(qc.opts.Board)
+		panic(qc.flight.opts.Board)
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
@@ -342,4 +307,9 @@ func setupDisk(additionalOptions ...string) (*os.File, error) {
 	}
 
 	return os.OpenFile(dstFileName, os.O_RDWR, 0)
+}
+
+func (qc *Cluster) Destroy() {
+	qc.LocalCluster.Destroy()
+	qc.flight.DelCluster(qc)
 }
