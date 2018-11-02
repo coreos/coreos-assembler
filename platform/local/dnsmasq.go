@@ -47,7 +47,7 @@ type Dnsmasq struct {
 
 const (
 	numInterfaces = 16
-	numSegments   = 3
+	numSegments   = 1
 
 	debugConfig = `
 log-queries
