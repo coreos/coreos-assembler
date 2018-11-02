@@ -92,7 +92,7 @@ EOF
 ) -extensions SAN'`, "$IP", ip, -1))
 	publicKey := c.MustSSH(server, "sudo cat /var/tls/server.crt")
 
-	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s TLSServe", c.Name()))
+	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s TLSServe", c.H.Name()))
 
 	client, err := c.NewMachine(localSecurityClient.Subst("$IP", ip).Subst("$KEY", dataurl.EncodeBytes(publicKey)))
 	if err != nil {

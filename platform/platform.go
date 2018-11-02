@@ -86,6 +86,9 @@ type Cluster interface {
 	// Platform returns the name of the platform.
 	Platform() Name
 
+	// Name returns a unique name for the Cluster.
+	Name() string
+
 	// NewMachine creates a new Container Linux machine.
 	NewMachine(userdata *conf.UserData) (Machine, error)
 
