@@ -16,13 +16,17 @@
 package platform
 
 import (
+	"fmt"
 	"sync"
+
+	"github.com/satori/go.uuid"
 )
 
 type BaseFlight struct {
 	clusterlock sync.Mutex
 	clustermap  map[string]Cluster
 
+	name       string
 	platform   Name
 	ctPlatform string
 	baseopts   *Options
@@ -31,12 +35,17 @@ type BaseFlight struct {
 func NewBaseFlight(opts *Options, platform Name, ctPlatform string) (*BaseFlight, error) {
 	bf := &BaseFlight{
 		clustermap: make(map[string]Cluster),
+		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.NewV4()),
 		platform:   platform,
 		ctPlatform: ctPlatform,
 		baseopts:   opts,
 	}
 
 	return bf, nil
+}
+
+func (bf *BaseFlight) Name() string {
+	return bf.name
 }
 
 func (bf *BaseFlight) Platform() Name {

@@ -117,6 +117,9 @@ type Flight interface {
 	// NewCluster creates a new Cluster.
 	NewCluster(rconf *RuntimeConfig) (Cluster, error)
 
+	// Name returns a unique name for the Flight.
+	Name() string
+
 	// Platform returns the name of the platform.
 	Platform() Name
 
