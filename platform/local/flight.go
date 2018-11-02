@@ -16,6 +16,9 @@
 package local
 
 import (
+	"fmt"
+	"sync/atomic"
+
 	"github.com/coreos/go-omaha/omaha"
 
 	"github.com/coreos/mantle/lang/destructor"
@@ -25,9 +28,14 @@ import (
 	"github.com/coreos/mantle/system/ns"
 )
 
+const (
+	listenPortBase = 30000
+)
+
 type LocalFlight struct {
 	destructor.MultiDestructor
 	*platform.BaseFlight
+	listenPort int32
 }
 
 func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalFlight, error) {
@@ -38,6 +46,7 @@ func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalF
 
 	lf := &LocalFlight{
 		BaseFlight: bf,
+		listenPort: listenPortBase,
 	}
 	lf.AddDestructor(lf.BaseFlight)
 
@@ -94,7 +103,7 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 	lc.AddCloser(lc.NTPServer)
 	go lc.NTPServer.Serve()
 
-	omahaServer, err := omaha.NewTrivialServer(":34567")
+	omahaServer, err := omaha.NewTrivialServer(fmt.Sprintf(":%d", lf.newListenPort()))
 	if err != nil {
 		lc.Destroy()
 		return nil, err
@@ -106,6 +115,10 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 	// does not lf.AddCluster() since we are not the top-level object
 
 	return lc, nil
+}
+
+func (lf *LocalFlight) newListenPort() int {
+	return int(atomic.AddInt32(&lf.listenPort, 1))
 }
 
 func (lf *LocalFlight) Destroy() {
