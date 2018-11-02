@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/coreos/go-omaha/omaha"
+	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/lang/destructor"
 	"github.com/coreos/mantle/network"
@@ -35,6 +36,10 @@ const (
 type LocalFlight struct {
 	destructor.MultiDestructor
 	*platform.BaseFlight
+	Dnsmasq    *Dnsmasq
+	SimpleEtcd *SimpleEtcd
+	NTPServer  *ntp.Server
+	nshandle   netns.NsHandle
 	listenPort int32
 }
 
@@ -50,6 +55,43 @@ func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalF
 	}
 	lf.AddDestructor(lf.BaseFlight)
 
+	lf.nshandle, err = ns.Create()
+	if err != nil {
+		lf.Destroy()
+		return nil, err
+	}
+	lf.AddCloser(&lf.nshandle)
+
+	// dnsmasq and etcd must be launched in the new namespace
+	nsExit, err := ns.Enter(lf.nshandle)
+	if err != nil {
+		lf.Destroy()
+		return nil, err
+	}
+	defer nsExit()
+
+	lf.Dnsmasq, err = NewDnsmasq()
+	if err != nil {
+		lf.Destroy()
+		return nil, err
+	}
+	lf.AddDestructor(lf.Dnsmasq)
+
+	lf.SimpleEtcd, err = NewSimpleEtcd()
+	if err != nil {
+		lf.Destroy()
+		return nil, err
+	}
+	lf.AddDestructor(lf.SimpleEtcd)
+
+	lf.NTPServer, err = ntp.NewServer(":123")
+	if err != nil {
+		lf.Destroy()
+		return nil, err
+	}
+	lf.AddCloser(lf.NTPServer)
+	go lf.NTPServer.Serve()
+
 	return lf, nil
 }
 
@@ -59,13 +101,7 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 	}
 
 	var err error
-	lc.nshandle, err = ns.Create()
-	if err != nil {
-		return nil, err
-	}
-	lc.AddCloser(&lc.nshandle)
-
-	nsdialer := network.NewNsDialer(lc.nshandle)
+	nsdialer := network.NewNsDialer(lf.nshandle)
 	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(lf.BaseFlight, rconf, nsdialer)
 	if err != nil {
 		lc.Destroy()
@@ -73,35 +109,13 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 	}
 	lc.AddDestructor(lc.BaseCluster)
 
-	// dnsmasq and etcd much be launched in the new namespace
-	nsExit, err := ns.Enter(lc.nshandle)
+	// Omaha server must be launched in the new namespace
+	nsExit, err := ns.Enter(lf.nshandle)
 	if err != nil {
 		lc.Destroy()
 		return nil, err
 	}
 	defer nsExit()
-
-	lc.Dnsmasq, err = NewDnsmasq()
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.Dnsmasq)
-
-	lc.SimpleEtcd, err = NewSimpleEtcd()
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.SimpleEtcd)
-
-	lc.NTPServer, err = ntp.NewServer(":123")
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddCloser(lc.NTPServer)
-	go lc.NTPServer.Serve()
 
 	omahaServer, err := omaha.NewTrivialServer(fmt.Sprintf(":%d", lf.newListenPort()))
 	if err != nil {

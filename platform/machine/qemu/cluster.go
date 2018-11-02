@@ -97,7 +97,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	// hacky solution for cloud config ip substitution
 	// NOTE: escaping is not supported
 	qc.mu.Lock()
-	netif := qc.Dnsmasq.GetInterface("br0")
+	netif := qc.flight.Dnsmasq.GetInterface("br0")
 	ip := strings.Split(netif.DHCPv4[0].String(), "/")[0]
 
 	conf, err := qc.RenderUserData(userdata, map[string]string{

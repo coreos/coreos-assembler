@@ -28,7 +28,6 @@ import (
 
 	"github.com/coreos/mantle/lang/destructor"
 	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/network/ntp"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
@@ -38,22 +37,18 @@ type LocalCluster struct {
 	destructor.MultiDestructor
 	*platform.BaseCluster
 	flight      *LocalFlight
-	Dnsmasq     *Dnsmasq
-	NTPServer   *ntp.Server
 	OmahaServer OmahaWrapper
-	SimpleEtcd  *SimpleEtcd
-	nshandle    netns.NsHandle
 }
 
 func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
-	cmd := ns.Command(lc.nshandle, name, arg...)
+	cmd := ns.Command(lc.flight.nshandle, name, arg...)
 	return cmd
 }
 
 func (lc *LocalCluster) hostIP() string {
 	// hackydoo
 	bridge := "br0"
-	for _, seg := range lc.Dnsmasq.Segments {
+	for _, seg := range lc.flight.Dnsmasq.Segments {
 		if bridge == seg.BridgeName {
 			return seg.BridgeIf.DHCPv4[0].IP.String()
 		}
@@ -62,13 +57,13 @@ func (lc *LocalCluster) hostIP() string {
 }
 
 func (lc *LocalCluster) etcdEndpoint() string {
-	return fmt.Sprintf("http://%s:%d", lc.hostIP(), lc.SimpleEtcd.Port)
+	return fmt.Sprintf("http://%s:%d", lc.hostIP(), lc.flight.SimpleEtcd.Port)
 }
 
 func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
 	baseURL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.etcdEndpoint(), rand.Int())
 
-	nsDialer := network.NewNsDialer(lc.nshandle)
+	nsDialer := network.NewNsDialer(lc.flight.nshandle)
 	tr := &http.Transport{
 		Dial: nsDialer.Dial,
 	}
@@ -99,7 +94,7 @@ func (lc *LocalCluster) GetOmahaHostPort() (string, error) {
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
-	nsExit, err := ns.Enter(lc.nshandle)
+	nsExit, err := ns.Enter(lc.flight.nshandle)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +124,7 @@ func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
 }
 
 func (lc *LocalCluster) GetNsHandle() netns.NsHandle {
-	return lc.nshandle
+	return lc.flight.nshandle
 }
 
 func (lc *LocalCluster) Destroy() {
