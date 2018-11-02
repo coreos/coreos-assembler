@@ -15,6 +15,7 @@
 package misc
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/coreos/go-omaha/omaha"
@@ -28,13 +29,10 @@ import (
 func init() {
 	register.Register(&register.Test{
 		Run:         OmahaPing,
-		ClusterSize: 1,
+		ClusterSize: 0,
 		Name:        "cl.omaha.ping",
 		Platforms:   []string{"qemu"},
-		UserData: conf.ContainerLinuxConfig(`update:
-  server: "http://10.0.0.1:34567/v1/update/"
-`),
-		Distros: []string{"cl"},
+		Distros:     []string{"cl"},
 	})
 }
 
@@ -62,7 +60,18 @@ func OmahaPing(c cluster.TestCluster) {
 
 	omahaserver.Updater = svc
 
-	m := c.Machines()[0]
+	hostport, err := qc.GetOmahaHostPort()
+	if err != nil {
+		c.Fatalf("couldn't get Omaha server address: %v", err)
+	}
+	config := fmt.Sprintf(`update:
+  server: "http://%s/v1/update/"
+`, hostport)
+
+	m, err := c.NewMachine(conf.ContainerLinuxConfig(config))
+	if err != nil {
+		c.Fatalf("couldn't start machine: %v", err)
+	}
 
 	out, stderr, err := m.SSH("update_engine_client -check_for_update")
 	if err != nil {
