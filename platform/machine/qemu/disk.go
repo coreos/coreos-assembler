@@ -135,14 +135,14 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	return
 }
 
-func (d Disk) GetOpts() string {
+func (d Disk) getOpts() string {
 	if len(d.DeviceOpts) == 0 {
 		return ""
 	}
 	return "," + strings.Join(d.DeviceOpts, ",")
 }
 
-func (d Disk) SetupFile() (*os.File, error) {
+func (d Disk) setupFile() (*os.File, error) {
 	if d.Size == "" && d.BackingFile == "" {
 		return nil, ErrNeedSizeOrFile
 	}

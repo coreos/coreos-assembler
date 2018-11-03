@@ -165,7 +165,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	fdset := 1
 
 	for _, disk := range allDisks {
-		optionsDiskFile, err := disk.SetupFile()
+		optionsDiskFile, err := disk.setupFile()
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +175,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 		id := fmt.Sprintf("d%d", fdnum)
 		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
 			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
-			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s%s", id, disk.GetOpts())))
+			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s%s", id, disk.getOpts())))
 		fdnum += 1
 		fdset += 1
 	}
