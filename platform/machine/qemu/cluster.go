@@ -15,9 +15,7 @@
 package qemu
 
 import (
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,7 +27,6 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/local"
-	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
 )
 
@@ -46,40 +43,6 @@ type Cluster struct {
 
 type MachineOptions struct {
 	AdditionalDisks []Disk
-}
-
-type Disk struct {
-	Size        string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
-	BackingFile string   // raw disk image to use. Incompatible with Size.
-	DeviceOpts  []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
-}
-
-var (
-	ErrNeedSizeOrFile  = errors.New("Disks need either Size or BackingFile specified")
-	ErrBothSizeAndFile = errors.New("Only one of Size and BackingFile can be specified")
-	primaryDiskOptions = []string{"serial=primary-disk"}
-)
-
-func (d Disk) GetOpts() string {
-	if len(d.DeviceOpts) == 0 {
-		return ""
-	}
-	return "," + strings.Join(d.DeviceOpts, ",")
-}
-
-func (d Disk) SetupFile() (*os.File, error) {
-	if d.Size == "" && d.BackingFile == "" {
-		return nil, ErrNeedSizeOrFile
-	}
-	if d.Size != "" && d.BackingFile != "" {
-		return nil, ErrBothSizeAndFile
-	}
-
-	if d.Size != "" {
-		return setupDisk(d.Size)
-	} else {
-		return setupDiskFromFile(d.BackingFile)
-	}
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -268,45 +231,6 @@ func (qc *Cluster) virtio(device, args string) string {
 		panic(qc.flight.opts.Board)
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
-}
-
-// Create a nameless temporary qcow2 image file backed by a raw image.
-func setupDiskFromFile(imageFile string) (*os.File, error) {
-	// a relative path would be interpreted relative to /tmp
-	backingFile, err := filepath.Abs(imageFile)
-	if err != nil {
-		return nil, err
-	}
-	// keep the COW image from breaking if the "latest" symlink changes
-	backingFile, err = filepath.EvalSymlinks(backingFile)
-	if err != nil {
-		return nil, err
-	}
-
-	qcowOpts := fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile)
-	return setupDisk("-o", qcowOpts)
-}
-
-func setupDisk(additionalOptions ...string) (*os.File, error) {
-	dstFile, err := ioutil.TempFile("", "mantle-qemu")
-	if err != nil {
-		return nil, err
-	}
-	dstFileName := dstFile.Name()
-	defer os.Remove(dstFileName)
-	dstFile.Close()
-
-	opts := []string{"create", "-f", "qcow2", dstFileName}
-	opts = append(opts, additionalOptions...)
-
-	qemuImg := exec.Command("qemu-img", opts...)
-	qemuImg.Stderr = os.Stderr
-
-	if err := qemuImg.Run(); err != nil {
-		return nil, err
-	}
-
-	return os.OpenFile(dstFileName, os.O_RDWR, 0)
 }
 
 func (qc *Cluster) Destroy() {
