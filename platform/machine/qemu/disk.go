@@ -175,13 +175,11 @@ func setupDiskFromFile(imageFile string) (*os.File, error) {
 }
 
 func setupDisk(additionalOptions ...string) (*os.File, error) {
-	dstFile, err := ioutil.TempFile("", "mantle-qemu")
+	dstFileName, err := mkpath("")
 	if err != nil {
 		return nil, err
 	}
-	dstFileName := dstFile.Name()
 	defer os.Remove(dstFileName)
-	dstFile.Close()
 
 	opts := []string{"create", "-f", "qcow2", dstFileName}
 	opts = append(opts, additionalOptions...)
@@ -194,4 +192,13 @@ func setupDisk(additionalOptions ...string) (*os.File, error) {
 	}
 
 	return os.OpenFile(dstFileName, os.O_RDWR, 0)
+}
+
+func mkpath(basedir string) (string, error) {
+	f, err := ioutil.TempFile(basedir, "mantle-qemu")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	return f.Name(), nil
 }
