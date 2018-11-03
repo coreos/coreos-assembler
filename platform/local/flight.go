@@ -44,22 +44,24 @@ type LocalFlight struct {
 }
 
 func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalFlight, error) {
-	bf, err := platform.NewBaseFlight(opts, platformName, "")
+	nshandle, err := ns.Create()
 	if err != nil {
+		return nil, err
+	}
+
+	nsdialer := network.NewNsDialer(nshandle)
+	bf, err := platform.NewBaseFlightWithDialer(opts, platformName, "", nsdialer)
+	if err != nil {
+		nshandle.Close()
 		return nil, err
 	}
 
 	lf := &LocalFlight{
 		BaseFlight: bf,
+		nshandle:   nshandle,
 		listenPort: listenPortBase,
 	}
 	lf.AddDestructor(lf.BaseFlight)
-
-	lf.nshandle, err = ns.Create()
-	if err != nil {
-		lf.Destroy()
-		return nil, err
-	}
 	lf.AddCloser(&lf.nshandle)
 
 	// dnsmasq and etcd must be launched in the new namespace
@@ -101,8 +103,7 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 	}
 
 	var err error
-	nsdialer := network.NewNsDialer(lf.nshandle)
-	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(lf.BaseFlight, rconf, nsdialer)
+	lc.BaseCluster, err = platform.NewBaseCluster(lf.BaseFlight, rconf)
 	if err != nil {
 		lc.Destroy()
 		return nil, err

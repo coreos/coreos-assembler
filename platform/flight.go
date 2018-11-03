@@ -20,6 +20,9 @@ import (
 	"sync"
 
 	"github.com/satori/go.uuid"
+	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/coreos/mantle/network"
 )
 
 type BaseFlight struct {
@@ -30,15 +33,27 @@ type BaseFlight struct {
 	platform   Name
 	ctPlatform string
 	baseopts   *Options
+
+	agent *network.SSHAgent
 }
 
 func NewBaseFlight(opts *Options, platform Name, ctPlatform string) (*BaseFlight, error) {
+	return NewBaseFlightWithDialer(opts, platform, ctPlatform, network.NewRetryDialer())
+}
+
+func NewBaseFlightWithDialer(opts *Options, platform Name, ctPlatform string, dialer network.Dialer) (*BaseFlight, error) {
+	agent, err := network.NewSSHAgent(dialer)
+	if err != nil {
+		return nil, err
+	}
+
 	bf := &BaseFlight{
 		clustermap: make(map[string]Cluster),
 		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.NewV4()),
 		platform:   platform,
 		ctPlatform: ctPlatform,
 		baseopts:   opts,
+		agent:      agent,
 	}
 
 	return bf, nil
@@ -74,9 +89,17 @@ func (bf *BaseFlight) DelCluster(c Cluster) {
 	delete(bf.clustermap, c.Name())
 }
 
-// Destroy destroys each Cluster in the Flight.
+func (bf *BaseFlight) Keys() ([]*agent.Key, error) {
+	return bf.agent.List()
+}
+
+// Destroy destroys each Cluster in the Flight and closes the SSH agent.
 func (bf *BaseFlight) Destroy() {
 	for _, c := range bf.Clusters() {
 		c.Destroy()
+	}
+
+	if err := bf.agent.Close(); err != nil {
+		plog.Errorf("Error closing agent: %v", err)
 	}
 }

@@ -26,14 +26,11 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
 type BaseCluster struct {
-	agent *network.SSHAgent
-
 	machlock   sync.Mutex
 	machmap    map[string]Machine
 	consolemap map[string]string
@@ -44,18 +41,8 @@ type BaseCluster struct {
 }
 
 func NewBaseCluster(bf *BaseFlight, rconf *RuntimeConfig) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(bf, rconf, network.NewRetryDialer())
-}
-
-func NewBaseClusterWithDialer(bf *BaseFlight, rconf *RuntimeConfig, dialer network.Dialer) (*BaseCluster, error) {
-	agent, err := network.NewSSHAgent(dialer)
-	if err != nil {
-		return nil, err
-	}
-
 	bc := &BaseCluster{
 		bf:         bf,
-		agent:      agent,
 		machmap:    make(map[string]Machine),
 		consolemap: make(map[string]string),
 		name:       fmt.Sprintf("%s-%s", bf.baseopts.BaseName, uuid.NewV4()),
@@ -66,7 +53,7 @@ func NewBaseClusterWithDialer(bf *BaseFlight, rconf *RuntimeConfig, dialer netwo
 }
 
 func (bc *BaseCluster) SSHClient(ip string) (*ssh.Client, error) {
-	sshClient, err := bc.agent.NewClient(ip)
+	sshClient, err := bc.bf.agent.NewClient(ip)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +62,7 @@ func (bc *BaseCluster) SSHClient(ip string) (*ssh.Client, error) {
 }
 
 func (bc *BaseCluster) UserSSHClient(ip, user string) (*ssh.Client, error) {
-	sshClient, err := bc.agent.NewUserClient(ip, user)
+	sshClient, err := bc.bf.agent.NewUserClient(ip, user)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +71,7 @@ func (bc *BaseCluster) UserSSHClient(ip, user string) (*ssh.Client, error) {
 }
 
 func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string) (*ssh.Client, error) {
-	sshClient, err := bc.agent.NewPasswordClient(ip, user, password)
+	sshClient, err := bc.bf.agent.NewPasswordClient(ip, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +129,7 @@ func (bc *BaseCluster) DelMach(m Machine) {
 }
 
 func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
-	return bc.agent.List()
+	return bc.bf.Keys()
 }
 
 func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
@@ -167,7 +154,7 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 	}
 
 	if !bc.rconf.NoSSHKeyInUserData {
-		keys, err := bc.Keys()
+		keys, err := bc.bf.Keys()
 		if err != nil {
 			return nil, err
 		}
@@ -178,15 +165,10 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 	return conf, nil
 }
 
-// Destroy destroys each machine in the cluster and closes the SSH agent.
+// Destroy destroys each machine in the cluster.
 func (bc *BaseCluster) Destroy() {
-
 	for _, m := range bc.Machines() {
 		m.Destroy()
-	}
-
-	if err := bc.agent.Close(); err != nil {
-		plog.Errorf("Error closing agent: %v", err)
 	}
 }
 

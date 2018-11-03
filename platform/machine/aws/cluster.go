@@ -38,7 +38,7 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 
 	var keyname string
 	if !ac.RuntimeConf().NoSSHKeyInMetadata {
-		keyname = ac.Name()
+		keyname = ac.flight.Name()
 	}
 	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
 	if err != nil {
@@ -78,12 +78,6 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (ac *cluster) Destroy() {
-	if !ac.RuntimeConf().NoSSHKeyInMetadata {
-		if err := ac.flight.api.DeleteKey(ac.Name()); err != nil {
-			plog.Errorf("Error deleting key %v: %v", ac.Name(), err)
-		}
-	}
-
 	ac.BaseCluster.Destroy()
 	ac.flight.DelCluster(ac)
 }

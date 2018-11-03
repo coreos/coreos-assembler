@@ -118,12 +118,6 @@ func (pc *cluster) vmname() string {
 }
 
 func (pc *cluster) Destroy() {
-	if pc.sshKeyID != "" {
-		if err := pc.flight.api.DeleteKey(pc.sshKeyID); err != nil {
-			plog.Errorf("Error deleting key %v: %v", pc.sshKeyID, err)
-		}
-	}
-
 	pc.BaseCluster.Destroy()
 	pc.flight.DelCluster(pc)
 }

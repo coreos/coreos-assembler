@@ -33,7 +33,8 @@ var (
 
 type flight struct {
 	*platform.BaseFlight
-	api *packet.API
+	api      *packet.API
+	sshKeyID string
 }
 
 func NewFlight(opts *packet.Options) (platform.Flight, error) {
@@ -52,6 +53,17 @@ func NewFlight(opts *packet.Options) (platform.Flight, error) {
 		api:        api,
 	}
 
+	keys, err := pf.Keys()
+	if err != nil {
+		pf.Destroy()
+		return nil, err
+	}
+	pf.sshKeyID, err = pf.api.AddKey(pf.Name(), keys[0].String())
+	if err != nil {
+		pf.Destroy()
+		return nil, err
+	}
+
 	return pf, nil
 }
 
@@ -61,26 +73,25 @@ func (pf *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 		return nil, err
 	}
 
-	var keyID string
-	if !rconf.NoSSHKeyInMetadata {
-		keys, err := bc.Keys()
-		if err != nil {
-			return nil, err
-		}
-
-		keyID, err = pf.api.AddKey(bc.Name(), keys[0].String())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	pc := &cluster{
 		BaseCluster: bc,
 		flight:      pf,
-		sshKeyID:    keyID,
+	}
+	if !rconf.NoSSHKeyInMetadata {
+		pc.sshKeyID = pf.sshKeyID
 	}
 
 	pf.AddCluster(pc)
 
 	return pc, nil
+}
+
+func (pf *flight) Destroy() {
+	if pf.sshKeyID != "" {
+		if err := pf.api.DeleteKey(pf.sshKeyID); err != nil {
+			plog.Errorf("Error deleting key %v: %v", pf.sshKeyID, err)
+		}
+	}
+
+	pf.BaseFlight.Destroy()
 }

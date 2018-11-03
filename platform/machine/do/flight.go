@@ -35,7 +35,9 @@ var (
 
 type flight struct {
 	*platform.BaseFlight
-	api *do.API
+	api          *do.API
+	sshKeyID     int
+	fakeSSHKeyID int
 }
 
 func NewFlight(opts *do.Options) (platform.Flight, error) {
@@ -49,10 +51,36 @@ func NewFlight(opts *do.Options) (platform.Flight, error) {
 		return nil, err
 	}
 
-	return &flight{
+	df := &flight{
 		BaseFlight: bf,
 		api:        api,
-	}, nil
+	}
+
+	keys, err := df.Keys()
+	if err != nil {
+		df.Destroy()
+		return nil, err
+	}
+	df.sshKeyID, err = df.api.AddKey(context.TODO(), df.Name(), keys[0].String())
+	if err != nil {
+		df.Destroy()
+		return nil, err
+	}
+
+	// The DO API requires us to provide an SSH key for Container Linux
+	// droplets.  Create one that can never authenticate.
+	key, err := do.GenerateFakeKey()
+	if err != nil {
+		df.Destroy()
+		return nil, err
+	}
+	df.fakeSSHKeyID, err = df.api.AddKey(context.TODO(), df.Name()+"-fake", key)
+	if err != nil {
+		df.Destroy()
+		return nil, err
+	}
+
+	return df, nil
 }
 
 func (df *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, error) {
@@ -61,34 +89,33 @@ func (df *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 		return nil, err
 	}
 
-	var key string
+	dc := &cluster{
+		BaseCluster: bc,
+		flight:      df,
+	}
 	if !rconf.NoSSHKeyInMetadata {
-		keys, err := bc.Keys()
-		if err != nil {
-			return nil, err
-		}
-		key = keys[0].String()
+		dc.sshKeyID = df.sshKeyID
 	} else {
 		// The DO API requires us to provide an SSH key for
 		// Container Linux droplets. Provide one that can never
 		// authenticate.
-		key, err = do.GenerateFakeKey()
-		if err != nil {
-			return nil, err
-		}
-	}
-	keyID, err := df.api.AddKey(context.TODO(), bc.Name(), key)
-	if err != nil {
-		return nil, err
-	}
-
-	dc := &cluster{
-		BaseCluster: bc,
-		flight:      df,
-		sshKeyID:    keyID,
+		dc.sshKeyID = df.fakeSSHKeyID
 	}
 
 	df.AddCluster(dc)
 
 	return dc, nil
+}
+
+func (df *flight) Destroy() {
+	for _, keyID := range []int{df.sshKeyID, df.fakeSSHKeyID} {
+		if keyID == 0 {
+			continue
+		}
+		if err := df.api.DeleteKey(context.TODO(), keyID); err != nil {
+			plog.Errorf("Error deleting key %v: %v", keyID, err)
+		}
+	}
+
+	df.BaseFlight.Destroy()
 }

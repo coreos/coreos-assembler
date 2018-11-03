@@ -58,6 +58,16 @@ func NewFlight(opts *aws.Options) (platform.Flight, error) {
 		api:        api,
 	}
 
+	keys, err := af.Keys()
+	if err != nil {
+		af.Destroy()
+		return nil, err
+	}
+	if err := api.AddKey(af.Name(), keys[0].String()); err != nil {
+		af.Destroy()
+		return nil, err
+	}
+
 	return af, nil
 }
 
@@ -74,18 +84,15 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 		flight:      af,
 	}
 
-	if !rconf.NoSSHKeyInMetadata {
-		keys, err := ac.Keys()
-		if err != nil {
-			return nil, err
-		}
-
-		if err := af.api.AddKey(bc.Name(), keys[0].String()); err != nil {
-			return nil, err
-		}
-	}
-
 	af.AddCluster(ac)
 
 	return ac, nil
+}
+
+func (af *flight) Destroy() {
+	if err := af.api.DeleteKey(af.Name()); err != nil {
+		plog.Errorf("Error deleting key %v: %v", af.Name(), err)
+	}
+
+	af.BaseFlight.Destroy()
 }
