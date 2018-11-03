@@ -16,6 +16,9 @@
 package qemu
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/platform"
@@ -36,12 +39,18 @@ type Options struct {
 	// It can be a plain name, or a full path.
 	BIOSImage string
 
+	// Don't modify CL disk images to add console logging
+	UseVanillaImage bool
+
 	*platform.Options
 }
 
 type flight struct {
 	*local.LocalFlight
 	opts *Options
+
+	diskImagePath string
+	diskImageFile *os.File
 }
 
 var (
@@ -55,8 +64,23 @@ func NewFlight(opts *Options) (platform.Flight, error) {
 	}
 
 	qf := &flight{
-		LocalFlight: lf,
-		opts:        opts,
+		LocalFlight:   lf,
+		opts:          opts,
+		diskImagePath: opts.DiskImage,
+	}
+
+	if opts.Distribution == "cl" && !opts.UseVanillaImage {
+		plog.Debug("enabling console logging in base disk")
+		qf.diskImageFile, err = makeCLDiskTemplate(opts.DiskImage)
+		if err != nil {
+			qf.Destroy()
+			return nil, err
+		}
+		// The template file has already been deleted, ensuring that
+		// it will be cleaned up on exit.  Use a path to it that
+		// will remain stable for the lifetime of the flight without
+		// extra effort to pass FDs to subprocesses.
+		qf.diskImagePath = fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), qf.diskImageFile.Fd())
 	}
 
 	return qf, nil
@@ -78,4 +102,11 @@ func (qf *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	qf.AddCluster(qc)
 
 	return qc, nil
+}
+
+func (qf *flight) Destroy() {
+	qf.LocalFlight.Destroy()
+	if qf.diskImageFile != nil {
+		qf.diskImageFile.Close()
+	}
 }

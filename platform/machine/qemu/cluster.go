@@ -155,7 +155,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 
 	allDisks := append([]Disk{
 		{
-			BackingFile: qc.flight.opts.DiskImage,
+			BackingFile: qc.flight.diskImagePath,
 			DeviceOpts:  primaryDiskOptions,
 		},
 	}, options.AdditionalDisks...)

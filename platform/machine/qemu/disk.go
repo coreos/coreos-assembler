@@ -39,14 +39,22 @@ var (
 	primaryDiskOptions = []string{"serial=primary-disk"}
 )
 
-// Copy input image to output and specialize output for running kola tests.
+// Copy Container Linux input image and specialize copy for running kola tests.
+// Return FD to the copy, which is a deleted file.
 // This is not mandatory; the tests will do their best without it.
-func MakeDiskTemplate(inputPath, outputPath string) (result error) {
+func makeCLDiskTemplate(inputPath string) (output *os.File, result error) {
 	seterr := func(err error) {
 		if result == nil {
 			result = err
 		}
 	}
+
+	// create output file
+	outputPath, err := mkpath("/var/tmp")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(outputPath)
 
 	// copy file
 	// cp is used since it supports sparse and reflink.
@@ -56,18 +64,13 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	cp.Stdout = os.Stdout
 	cp.Stderr = os.Stderr
 	if err := cp.Run(); err != nil {
-		return fmt.Errorf("copying file: %v", err)
+		return nil, fmt.Errorf("copying file: %v", err)
 	}
-	defer func() {
-		if result != nil {
-			os.Remove(outputPath)
-		}
-	}()
 
 	// create mount point
 	tmpdir, err := ioutil.TempDir("", "kola-qemu-")
 	if err != nil {
-		return fmt.Errorf("making temporary directory: %v", err)
+		return nil, fmt.Errorf("making temporary directory: %v", err)
 	}
 	defer func() {
 		if err := os.Remove(tmpdir); err != nil {
@@ -79,19 +82,19 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	cmd := exec.Command("losetup", "-Pf", "--show", outputPath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("getting stdout pipe: %v", err)
+		return nil, fmt.Errorf("getting stdout pipe: %v", err)
 	}
 	defer stdout.Close()
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("running losetup: %v", err)
+		return nil, fmt.Errorf("running losetup: %v", err)
 	}
 	buf, err := ioutil.ReadAll(stdout)
 	if err != nil {
 		cmd.Wait()
-		return fmt.Errorf("reading losetup output: %v", err)
+		return nil, fmt.Errorf("reading losetup output: %v", err)
 	}
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("setting up loop device: %v", err)
+		return nil, fmt.Errorf("setting up loop device: %v", err)
 	}
 	loopdev := strings.TrimSpace(string(buf))
 	defer func() {
@@ -109,12 +112,12 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 		return fmt.Errorf("timed out waiting for device node; did you specify a qcow image by mistake?")
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// mount OEM partition
 	if err := exec.Command("mount", oemdev, tmpdir).Run(); err != nil {
-		return fmt.Errorf("mounting OEM partition %s on %s: %v", oemdev, tmpdir, err)
+		return nil, fmt.Errorf("mounting OEM partition %s on %s: %v", oemdev, tmpdir, err)
 	}
 	defer func() {
 		if err := exec.Command("umount", tmpdir).Run(); err != nil {
@@ -125,13 +128,18 @@ func MakeDiskTemplate(inputPath, outputPath string) (result error) {
 	// write console settings to grub.cfg
 	f, err := os.OpenFile(filepath.Join(tmpdir, "grub.cfg"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("opening grub.cfg: %v", err)
+		return nil, fmt.Errorf("opening grub.cfg: %v", err)
 	}
 	defer f.Close()
 	if _, err = f.WriteString("set linux_console=\"console=ttyS0,115200\"\n"); err != nil {
-		return fmt.Errorf("writing grub.cfg: %v", err)
+		return nil, fmt.Errorf("writing grub.cfg: %v", err)
 	}
 
+	// return fd to output file
+	output, err = os.Open(outputPath)
+	if err != nil {
+		return nil, fmt.Errorf("opening %v: %v", outputPath, err)
+	}
 	return
 }
 
@@ -164,10 +172,14 @@ func setupDiskFromFile(imageFile string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	// keep the COW image from breaking if the "latest" symlink changes
-	backingFile, err = filepath.EvalSymlinks(backingFile)
-	if err != nil {
-		return nil, err
+	// Keep the COW image from breaking if the "latest" symlink changes.
+	// Ignore /proc/*/fd/* paths, since they look like symlinks but
+	// really aren't.
+	if !strings.HasPrefix(backingFile, "/proc/") {
+		backingFile, err = filepath.EvalSymlinks(backingFile)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	qcowOpts := fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile)
