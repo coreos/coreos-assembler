@@ -6,7 +6,7 @@ set -euo pipefail
 
 # docker/podman don't run through PAM, but we want this set for the privileged
 # (non-virtualized) path
-export USER=${USER:-$(id -nu)}
+export USER="${USER:-$(id -nu)}"
 
 # When trying to connect to libvirt we get "Failed to find user record
 # for uid" errors if there is no entry for our UID in /etc/passwd.
@@ -16,7 +16,7 @@ if ! whoami &> /dev/null; then
   # We need to make sure we set $HOME in the /etc/passwd file because
   # if we don't libvirt will try to use `/` and we will get permission
   # issues
-  export HOME="/var/tmp/${USER_NAME:-default}" && mkdir -p $HOME
+  export HOME="/var/tmp/${USER_NAME:-default}" && mkdir -p "$HOME"
   if [ -w /etc/passwd ]; then
       echo "${USER_NAME:-default}:x:$(id -u):0:${USER_NAME:-default} user:${HOME}:/sbin/nologin" >> /etc/passwd
   fi
@@ -26,7 +26,7 @@ fi
 # the later umount doesn't affect the host potentially
 if [ -e /sys/fs/selinux/status ]; then
     if [ -z "${coreos_assembler_unshared:-}" ]; then
-        exec sudo -- env coreos_assembler_unshared=1 unshare -m -- runuser -u ${USER} -- $0 "$@"
+        exec sudo -- env coreos_assembler_unshared=1 unshare -m -- runuser -u "${USER}" -- "$0" "$@"
     else
         # Work around https://github.com/containers/libpod/issues/1448
         sudo umount /sys/fs/selinux
@@ -34,7 +34,7 @@ if [ -e /sys/fs/selinux/status ]; then
 fi
 
 cmd=${1:-}
-build_commands="init fetch build run prune clean"
+build_commands="init fetch build buildextend-ec2 run prune clean"
 other_commands="shell"
 utility_commands="gf-oemid virt-install oscontainer"
 if [ -z "${cmd}" ]; then
@@ -59,7 +59,7 @@ shift
 
 target=/usr/lib/coreos-assembler/cmd-${cmd}
 if test -x "${target}"; then
-    exec ${target} "$@"
+    exec "${target}" "$@"
 fi
 
 echo "Unknown command: ${cmd}" 1>&2

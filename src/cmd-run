@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Forked from https://github.com/coreos/scripts/blob/master/build_library/qemu_template.sh
 # Changed to have command line arguments, drop non-x86_64/non-KVM support
 # Automatically uses `-snapshot` if the target disk isn't writable
@@ -7,8 +7,9 @@
 
 set -euo pipefail
 
-dn=$(dirname $0)
-. ${dn}/cmdlib.sh
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
 
 VM_DISK=
 VM_MEMORY=2048
@@ -35,8 +36,8 @@ for more details.
 "
 
 die(){
-	echo "${1}" 1>&2
-	exit 1
+    echo "${1}" 1>&2
+    exit 1
 }
 
 while [ $# -ge 1 ]; do
@@ -73,12 +74,13 @@ while [ $# -ge 1 ]; do
     esac
 done
 
+set -x
 preflight
 
 if [ -z "${VM_DISK}" ]; then
     if [ -L ./builds/latest ]; then
         latest_build=$(readlink builds/latest)
-        VM_DISK=$(ls builds/${latest_build}/*-qemu.qcow2)
+        VM_DISK=$(ls builds/"${latest_build}"/*-"${latest_build}"-qemu.qcow2)
     else
         die "No builds/latest, and no -d argument provided"
     fi
@@ -88,7 +90,7 @@ fi
 set -- -machine accel=kvm -cpu host -smp "${VM_NCPUS}" "$@"
 
 if [ -n "${VM_SRV_MNT}" ]; then
-    set -- --fsdev local,id=var-srv,path=${VM_SRV_MNT},security_model=mapped,readonly "$@"
+    set -- --fsdev local,id=var-srv,path="${VM_SRV_MNT}",security_model=mapped,readonly "$@"
     ign_var_srv_mount=',{
 "name": "var-srv.mount",
 "enabled": true,
@@ -100,7 +102,7 @@ fi
 
 if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     f=$(mktemp)
-    cat > ${f} <<EOF
+    cat > "${f}" <<EOF
 {
     "ignition": {
         "config": {},
@@ -136,7 +138,7 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
                 "dropins": [
                     {
                         "name": "autologin-core.conf",
-                        "contents": "[Service]\nTTYVTDisallocate=no\nExecStart=\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\n"
+                        "contents": "[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
                     }
                 ]
             }
@@ -145,11 +147,11 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     }
 }
 EOF
-    exec 3<>${f}
-    rm -f ${f}
+    exec 3<>"${f}"
+    rm -f "${f}"
     IGNITION_CONFIG_FILE=/proc/self/fd/3
 
-    if ! ignition-validate ${IGNITION_CONFIG_FILE}; then
+    if ! ignition-validate "${IGNITION_CONFIG_FILE}"; then
         cat "${IGNITION_CONFIG_FILE}"
         exit 1
     fi
@@ -157,7 +159,7 @@ fi
 set -- -fw_cfg name=opt/com.coreos/config,file="${IGNITION_CONFIG_FILE}" "$@"
 
 if [ -n "${SSH_PORT}" ]; then
-   hostfwd=",hostfwd=tcp::"${SSH_PORT}"-:22"
+   hostfwd=",hostfwd=tcp::${SSH_PORT}-:22"
 fi
 
 if [ "${VM_PERSIST}" = 0 ]; then
@@ -165,10 +167,10 @@ if [ "${VM_PERSIST}" = 0 ]; then
     vm_drive_args=",cache=unsafe"
 fi
 
-set -- -drive if=virtio${vm_drive_args:-},file=${VM_DISK} "$@"
+set -- -drive if=virtio"${vm_drive_args:-}",file="${VM_DISK}" "$@"
 
-exec qemu-kvm -name coreos -m ${VM_MEMORY} -nographic \
-              -netdev user,id=eth0,hostname=coreos${hostfwd:-} \
+exec qemu-kvm -name coreos -m "${VM_MEMORY}" -nographic \
+              -netdev user,id=eth0,hostname=coreos"${hostfwd:-}" \
               -device virtio-net-pci,netdev=eth0 \
               -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
               "$@"

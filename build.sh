@@ -1,6 +1,17 @@
-#!/usr/bin/bash
-set -xeuo pipefail
+#!/usr/bin/env bash
+set -euo pipefail
 
+if [ $# -eq 0 ]; then
+  echo Usage: "build.sh CMD"
+  echo "Supported commands:"
+  echo "    configure_user"
+  echo "    configure_yum_repos"
+  echo "    install_rpms"
+  echo "    make_and_makeinstall"
+  exit 1
+fi
+
+set -x
 srcdir=$(pwd)
 
 configure_yum_repos() {
@@ -14,12 +25,13 @@ configure_yum_repos() {
     # Until we fix https://github.com/rpm-software-management/libdnf/pull/149
     excludes='exclude=ostree ostree-libs ostree-grub2 rpm-ostree'
     for repo in /etc/yum.repos.d/fedora*.repo; do
-        cat ${repo} | (while read line; do if echo "$line" | grep -qE -e '^enabled=1'; then echo "${excludes}"; fi; echo $line; done) > ${repo}.new
-        mv ${repo}.new ${repo}
+        # reworked to remove useless `cat` - https://github.com/koalaman/shellcheck/wiki/SC2002
+        (while read -r line; do if echo "$line" | grep -qE -e '^enabled=1'; then echo "${excludes}"; fi; echo "$line"; done < "${repo}") > "${repo}".new
+        mv "${repo}".new "${repo}"
     done
 
     # enable `walters/buildtools-fedora` copr
-	# pulled from https://copr.fedorainfracloud.org/coprs/walters/buildtools-fedora/repo/fedora-28/walters-buildtools-fedora-fedora-28.repo
+    # pulled from https://copr.fedorainfracloud.org/coprs/walters/buildtools-fedora/repo/fedora-28/walters-buildtools-fedora-fedora-28.repo
     cat > /etc/yum.repos.d/walters-buildtools-fedora-fedora-28.repo  <<'EOF'
 [walters-buildtools-fedora]
 name=Copr repo for buildtools-fedora owned by walters
@@ -34,7 +46,7 @@ enabled_metadata=1
 EOF
 
     # enable `dustymabe/ignition` copr
-	# pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
+    # pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
     cat > /etc/yum.repos.d/dustymabe-ignition-fedora-28.repo <<'EOF'
 [dustymabe-ignition]
 name=Copr repo for ignition owned by dustymabe
@@ -65,10 +77,10 @@ install_rpms() {
     # to use the container as a development environment for itself.
     # Down the line we may strip these out, or have a separate
     # development version.
-    self_builddeps=$(grep -v '^#' ${srcdir}/build-deps.txt)
+    self_builddeps=$(grep -v '^#' "${srcdir}"/build-deps.txt)
 
     # Process our base dependencies + build dependencies
-    (echo ${self_builddeps} && grep -v '^#' ${srcdir}/deps.txt) | xargs dnf -y install
+    (echo "${self_builddeps}" && grep -v '^#' "${srcdir}"/deps.txt) | xargs dnf -y install
 
     # Commented out for now, see above
     #dnf remove -y ${self_builddeps}
@@ -90,7 +102,7 @@ make_and_makeinstall() {
     # TODO: install these as e.g.
     # /usr/bin/ostree-releng-script-rsync-repos
     mkdir -p /usr/app/
-    rsync -rlv ${srcdir}/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
+    rsync -rlv "${srcdir}"/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 
     if ! test -f mantle/README.md; then
         echo "Run: git submodule update --init" 1>&2

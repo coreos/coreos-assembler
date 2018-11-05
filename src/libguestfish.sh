@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Helper library for using libguestfs on CoreOS-style images.
 # A major assumption here is that the disk image uses OSTree
 # and also has `boot` and `root` filesystem labels.
@@ -15,7 +16,7 @@ coreos_gf_launch() {
     guestfish[3]="-a"
     guestfish[4]="${src}"
 
-    eval $("${guestfish[@]}")
+    eval "$("${guestfish[@]}")"
     if [ -z "$GUESTFISH_PID" ]; then
         fatal "guestfish didn't start up, see error messages above"
     fi
@@ -35,14 +36,17 @@ coreos_gf() {
 coreos_gf_run_mount() {
     coreos_gf_launch "$@"
     coreos_gf run
-    local root=$(coreos_gf findfs-label root)
+    local root
+    root=$(coreos_gf findfs-label root)
     coreos_gf mount "${root}" /
-    local boot=$(coreos_gf findfs-label boot)
+    local boot
+    boot=$(coreos_gf findfs-label boot)
     coreos_gf mount "${boot}" /boot
 
     # Export these variables for further use
     stateroot=/ostree/deploy/$(coreos_gf ls /ostree/deploy)
-    deploydir=${stateroot}/deploy/$(coreos_gf ls ${stateroot}/deploy | grep -v \.origin)
+    deploydir="${stateroot}"/deploy/$(coreos_gf ls "${stateroot}"/deploy | grep -v \.origin)
+    export stateroot deploydir
 }
 
 # Cleanly unmount all filesystems and terminate the helper VM.

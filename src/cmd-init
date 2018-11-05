@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dn=$(dirname $0)
-. ${dn}/cmdlib.sh
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
 
 # Initialize FORCE to 0
 FORCE=0
-SUBDIR=
 
 print_help() {
     cat 1>&2 <<'EOF'
@@ -62,7 +62,7 @@ fi
 
 # If the current working dir is not empty then error out
 # unless force provided
-if [ "$FORCE" != "1" -a ! -z "$(ls -A ./)" ]; then
+if [ "$FORCE" != "1" ] && [ ! -z "$(ls -A ./)" ]; then
    fatal "init: current directory is not empty, override with --force"
 fi
 
@@ -72,7 +72,7 @@ subdir=${1:-}
 preflight
 
 if has_privileges; then
-    sudo chown $USER: .
+    sudo chown "$USER:" .
 elif [ ! -w . ]; then
     fatal "init: running unprivileged, and current directory not writable"
 fi
@@ -89,7 +89,7 @@ mkdir -p src
          *) git clone "${source}" config
             if [ -n "${subdir}" ]; then
                 mv config config-git
-                ln -sr config-git/${subdir} config
+                ln -sr config-git/"${subdir}" config
             fi
             ;;
      esac
@@ -105,12 +105,13 @@ mkdir -p installer
  installer_bn=$(basename ${INSTALLER})
  if ! [ -f "${installer_bn}" ]; then
      mkdir -p tmp
+     (
      cd tmp
      curl -L --remote-name-all ${INSTALLER} ${INSTALLER_CHECKSUM}
      checksums_bn=$(basename ${INSTALLER_CHECKSUM})
-     sha256sum -c ${checksums_bn}
-     mv ${installer_bn} ${checksums_bn} ..
-     cd ..
+     sha256sum -c "${checksums_bn}"
+     mv "${installer_bn}" "${checksums_bn}" ..
+     )
      rm tmp -rf
  fi
 )
