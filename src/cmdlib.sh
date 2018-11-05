@@ -61,10 +61,14 @@ prepare_build() {
 
     echo "Using manifest: ${manifest}"
 
+    manifest_tmp_json=${workdir}/tmp/manifest.json
+    rpm-ostree compose tree --repo=repo --print-only ${manifest} > ${manifest_tmp_json}
+
     # Abuse the rojig/name as the name of the VM images
-    export name=$(manifest_get '["rojig"]["name"]')
+    export name=$(jq -r '.rojig.name' < ${manifest_tmp_json})
     # TODO - allow this to be unset
-    export ref=$(manifest_get '["ref"]')
+    export ref=$(jq -r '.ref' < ${manifest_tmp_json})
+    rm -f ${manifest_tmp_json}
 
     # This dir is no longer used
     rm builds/work -rf
@@ -88,11 +92,6 @@ prepare_build() {
     # variable for child processes like gf-oemid.
     mkdir tmp
     export TMPDIR=$(pwd)/tmp
-}
-
-# We'll rewrite this in a real language I promise
-manifest_get() {
-    python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))'"$1"')' "${manifest}"
 }
 
 runcompose() {
