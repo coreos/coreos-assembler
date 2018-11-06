@@ -49,8 +49,7 @@ prepare_build
 
 # But go back to the toplevel
 cd ${workdir}
-# Note we don't prune the cache/ dir or the objects
-# in the repos.  If you want that, just rm -rf them.
+# Note we don't prune the cache.qcow2 or the objects
+# in the repo.  If you want that, just rm -rf them.
 rm -rf repo/refs/heads/* builds/* tmp/*
 ostree --repo=repo summary -u
-sudo rm -rf repo-build/refs/heads/*

@@ -102,4 +102,3 @@ def ostree_prune(repo_name, sudo=False):
     subprocess.run(argv, check=True)
 
 ostree_prune('repo')
-ostree_prune('repo-build', sudo=True)
