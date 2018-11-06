@@ -2,7 +2,7 @@ language: go
 sudo: false
 matrix:
   include:
-    - go: "1.10"
+    - go: "1.11"
   allow_failures:
     - go: tip
 

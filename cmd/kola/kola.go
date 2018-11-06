@@ -192,8 +192,8 @@ func writeProps() error {
 			MachineType: kola.GCEOptions.MachineType,
 		},
 		Packet: Packet{
-			Facility: kola.PacketOptions.Facility,
-			Plan:     kola.PacketOptions.Plan,
+			Facility:              kola.PacketOptions.Facility,
+			Plan:                  kola.PacketOptions.Plan,
 			InstallerImageBaseURL: kola.PacketOptions.InstallerImageBaseURL,
 			ImageURL:              kola.PacketOptions.ImageURL,
 		},
