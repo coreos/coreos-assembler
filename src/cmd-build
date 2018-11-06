@@ -151,7 +151,8 @@ fi
 image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
 version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
-if [ "${previous_commit}" = "${commit}" ]; then
+# Add 1 to previous image genver if there was a completed build for the same commit
+if [ "${previous_commit}" = "${commit}" ] && [ -n "${previous_image_genver:-}" ]; then
     image_genver=$((${previous_image_genver} + 1))
     buildid=${version}-${image_genver}
 else
