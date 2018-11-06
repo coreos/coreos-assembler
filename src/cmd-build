@@ -145,13 +145,12 @@ else
 fi
 
 if [ -n "${previous_build}" ]; then
-    rpm-ostree --repo=${workdir}/repo-build db diff ${previous_commit} ${commit}
+    rpm-ostree --repo=${workdir}/repo db diff ${previous_commit} ${commit}
 fi
 
 image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
-version=$(ostree --repo=${workdir}/repo-build show --print-metadata-key=version ${commit} | sed -e "s,',,g")
-# Add 1 to previous image genver if there was a completed build for the same commit
+version=$(ostree --repo=${workdir}/repo show --print-metadata-key=version ${commit} | sed -e "s,',,g")
 if [ "${previous_commit}" = "${commit}" ] && [ -n "${previous_image_genver:-}" ]; then
     image_genver=$((${previous_image_genver} + 1))
     buildid=${version}-${image_genver}
@@ -160,15 +159,6 @@ else
     buildid=${version}
 fi
 echo "New build ID: ${buildid}"
-
-# https://github.com/ostreedev/ostree/issues/1562#issuecomment-385393872
-# The passwd files (among others) don't have world readability.  This won't
-# actually corrupt the repository as the *canonical* permissions are stored
-# as xattrs.  Probably what we should do is have an ostree option to specify
-# a permission mask for objects.
-sudo chmod -R a+rX ${workdir}/repo-build/objects
-ostree --repo=${workdir}/repo pull-local ${workdir}/repo-build "${ref:-${commit}}"
-ostree --repo=${workdir}/repo summary -u
 
 # Generate JSON
 if [ -n "${previous_commit}" ]; then

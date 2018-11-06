@@ -66,13 +66,16 @@ if [ "$FORCE" != "1" -a ! -z "$(ls -A ./)" ]; then
    fatal "init: current directory is not empty, override with --force"
 fi
 
-set -x
 source=$1; shift
 subdir=${1:-}
 
 preflight
 
-sudo chown $USER: .
+if has_privileges; then
+    sudo chown $USER: .
+elif [ ! -w . ]; then
+    fatal "init: running unprivileged, and current directory not writable"
+fi
 
 INSTALLER=https://download.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-28-1.1.iso
 INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-28-1.1-x86_64-CHECKSUM
@@ -116,4 +119,7 @@ mkdir -p cache
 mkdir -p builds
 mkdir -p tmp
 ostree --repo=repo init --mode=archive
-ostree --repo=repo-build init --mode=bare-user
+if ! has_privileges; then
+    qemu-img create -f qcow2 cache/cache.qcow2 10G
+    LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs -a cache/cache.qcow2
+fi

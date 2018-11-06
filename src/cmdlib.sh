@@ -1,7 +1,32 @@
 # Shared shell script library
 
+DIR=$(dirname $0)
+
+info() {
+    echo "info: $@" 1>&2
+}
+
 fatal() {
-    echo "error: $@" 1>&2; exit 1
+    info "$@"; exit 1
+}
+
+_privileged=
+has_privileges() {
+    if [ -z "${_privileged:-}" ]; then
+        if [ -n "${FORCE_UNPRIVILEGED:-}" ]; then
+            info "Detected FORCE_UNPRIVILEGED; using virt"
+            _privileged=0
+        elif ! capsh --print | grep -q 'Current.*cap_sys_admin'; then
+            info "Missing CAP_SYS_ADMIN; using virt"
+            _privileged=0
+        elif ! sudo true; then
+            info "Missing sudo privs; using virt"
+            _privileged=0
+        else
+            _privileged=1
+        fi
+    fi
+    [ ${_privileged} == 1 ]
 }
 
 preflight() {
@@ -28,20 +53,16 @@ preflight() {
         fatal "Unable to find /dev/kvm"
     fi
 
-    if ! capsh --print | grep -q 'Current.*cap_sys_admin'; then
-        fatal "This container must currently be run with --privileged"
-    fi
-
-    if ! sudo true; then
-        fatal "The user must currently have sudo privileges"
-    fi
-
     # permissions on /dev/kvm vary by (host) distro.  If it's
     # not writable, recreate it.
     if ! [ -w /dev/kvm ]; then
-        sudo rm -f /dev/kvm
-        sudo mknod /dev/kvm c 10 232
-        sudo setfacl -m u:$USER:rw /dev/kvm
+        if ! has_privileges; then
+            fatal "running unprivileged, and /dev/kvm not writable"
+        else
+            sudo rm -f /dev/kvm
+            sudo mknod /dev/kvm c 10 232
+            sudo setfacl -m u:$USER:rw /dev/kvm
+        fi
     fi
 }
 
@@ -49,6 +70,8 @@ prepare_build() {
     preflight
     if ! [ -d repo ]; then
         fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
+    elif ! has_privileges && [ ! -f cache/cache.qcow2 ]; then
+        fatal "No cache.qcow2 found; did you run coreos-assembler init?"
     fi
 
     export workdir=$(pwd)
@@ -95,10 +118,6 @@ prepare_build() {
 }
 
 runcompose() {
-    local treecompose_args=""
-    if ! grep -q '^# disable-unified-core' "${manifest}"; then
-        treecompose_args="${treecompose_args} --unified-core"
-    fi
     # Implement support for automatic local overrides:
     # https://github.com/coreos/coreos-assembler/issues/118
     local overridesdir=${workdir}/overrides/
@@ -126,10 +145,86 @@ EOF
     fi
 
     rm -f ${changed_stamp}
-    set -x
-    sudo rpm-ostree compose tree --repo=${workdir}/repo-build --cachedir=${workdir}/cache \
-         --touch-if-changed "${changed_stamp}" \
-         ${treecompose_args} \
-         ${TREECOMPOSE_FLAGS:-} ${manifest} "$@"
-    set +x
+
+    set - rpm-ostree compose tree --repo=${workdir}/repo \
+            --cachedir=${workdir}/cache --touch-if-changed "${changed_stamp}" \
+            ${manifest} "$@"
+
+    if ! grep -q '^# disable-unified-core' "${manifest}"; then
+        set - "$@" --unified-core
+    fi
+
+    echo "Running: $@"
+
+    # this is the heart of the privs vs no privs dual path
+    if has_privileges; then
+        sudo "$@"
+    else
+        runvm "$@"
+    fi
+}
+
+runvm() {
+    local vmpreparedir=${workdir}/tmp/supermin.prepare
+    local vmbuilddir=${workdir}/tmp/supermin.build
+
+    # use REBUILDVM=1 if e.g. hacking on rpm-ostree/ostree and wanting to get
+    # the new bits in the VM
+    if [ ! -f ${vmbuilddir}/.done ] || [ -n "${REBUILDVM:-}" ]; then
+        rm -rf ${vmpreparedir} ${vmbuilddir}
+        mkdir -p ${vmpreparedir} ${vmbuilddir}
+
+        local rpms=
+        # then add all the base deps
+        for dep in $(grep -v '^#' ${DIR}/vmdeps.txt); do
+            rpms+="$dep "
+        done
+
+        supermin --prepare --use-installed $rpms -o "${vmpreparedir}"
+
+        # the reason we do a heredoc here is so that the var substition takes
+        # place immediately instead of having to proxy them through to the VM
+        cat > "${vmpreparedir}/init" <<EOF
+#!/bin/bash
+set -xeuo pipefail
+workdir=${workdir}
+$(cat ${DIR}/supermin-init-prelude.sh)
+rc=0
+sh ${TMPDIR}/cmd.sh || rc=\$?
+echo \$rc > ${workdir}/tmp/rc
+/sbin/fstrim -v ${workdir}/cache
+/sbin/reboot -f
+EOF
+        chmod a+x ${vmpreparedir}/init
+        (cd ${vmpreparedir} && tar -czf init.tar.gz --remove-files init)
+        supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}"
+        touch "${vmbuilddir}/.done"
+    fi
+
+    echo "$@" > ${TMPDIR}/cmd.sh
+
+    # support local dev cases where src/config is a symlink
+    srcvirtfs=
+    if [ -L "${workdir}/src/config" ]; then
+        # qemu follows symlinks
+        srcvirtfs="-virtfs local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source"
+    fi
+
+    qemu-kvm -nodefaults -nographic -m 2048 -no-reboot \
+        -kernel "${vmbuilddir}/kernel" \
+        -initrd "${vmbuilddir}/initrd" \
+        -netdev user,id=eth0,hostname=supermin \
+        -device virtio-net-pci,netdev=eth0 \
+        -device virtio-scsi-pci,id=scsi0,bus=pci.0,addr=0x3 \
+        -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
+        -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
+        -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
+        -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
+        -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
+        ${srcvirtfs} -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
+
+    if [ ! -f ${workdir}/tmp/rc ]; then
+        fatal "Couldn't find rc file, something went terribly wrong!"
+    fi
+    return $(cat ${workdir}/tmp/rc)
 }

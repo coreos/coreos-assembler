@@ -2,7 +2,7 @@ FROM registry.fedoraproject.org/fedora:28
 WORKDIR /root/containerbuild
 
 # Only need a few of our scripts for the first few steps
-COPY ./build.sh ./deps.txt ./build-deps.txt /root/containerbuild/
+COPY ./build.sh ./deps.txt ./vmdeps.txt ./build-deps.txt /root/containerbuild/
 RUN ./build.sh configure_yum_repos
 RUN ./build.sh install_rpms
 

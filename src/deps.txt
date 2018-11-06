@@ -1,3 +1,6 @@
+# For privileged ops
+supermin
+
 # We default to builder user, but sudo where necessary
 sudo
 
