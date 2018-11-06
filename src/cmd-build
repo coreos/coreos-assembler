@@ -69,7 +69,7 @@ fi
 
 previous_commit=
 if [ -n "${ref:-}" ]; then
-    previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} || true)
+    previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} 2>/dev/null || true)
 fi
 # If the ref was unset or missing, look at the previous build
 if [ -z "${previous_commit}" ] && [ -n "${previous_build}" ]; then
