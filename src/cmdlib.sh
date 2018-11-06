@@ -147,11 +147,7 @@ EOF
 
     set - rpm-ostree compose tree --repo=${workdir}/repo \
             --cachedir=${workdir}/cache --touch-if-changed "${changed_stamp}" \
-            ${manifest} "$@"
-
-    if ! grep -q '^# disable-unified-core' "${manifest}"; then
-        set - "$@" --unified-core
-    fi
+            --unified-core ${manifest} "$@"
 
     echo "Running: $@"
 
