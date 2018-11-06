@@ -4,7 +4,8 @@ set -euo pipefail
 # Currently this just wraps the two binaries we have today
 # under a global entrypoint with subcommands.
 
-# docker/podman don't run through PAM, but we want this set
+# docker/podman don't run through PAM, but we want this set for the privileged
+# (non-virtualized) path
 export USER=${USER:-$(id -nu)}
 
 # When trying to connect to libvirt we get "Failed to find user record
@@ -12,6 +13,10 @@ export USER=${USER:-$(id -nu)}
 # This was taken from 'Support Arbitrary User IDs' section of:
 #   https://docs.openshift.com/container-platform/3.10/creating_images/guidelines.html
 if ! whoami &> /dev/null; then
+  # We need to make sure we set $HOME in the /etc/passwd file because
+  # if we don't libvirt will try to use `/` and we will get permission
+  # issues
+  export HOME="/var/tmp/${USER_NAME:-default}" && mkdir -p $HOME
   if [ -w /etc/passwd ]; then
       echo "${USER_NAME:-default}:x:$(id -u):0:${USER_NAME:-default} user:${HOME}:/sbin/nologin" >> /etc/passwd
   fi
