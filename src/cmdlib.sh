@@ -111,10 +111,9 @@ prepare_build() {
     cd ${tmp_builddir}
     # *This* tmp directory is truly temporary to this build, and
     # contains artifacts we definitely don't want to outlive it, unlike
-    # other things in ${workdir}/tmp.  We also export it as an environment
-    # variable for child processes like gf-oemid.
-    mkdir tmp
-    export TMPDIR=$(pwd)/tmp
+    # other things in ${workdir}/tmp. But we don't export it since e.g. if it's
+    # over an NFS mount (like a PVC in OCP), some apps might error out.
+    mkdir tmp && TMPDIR=$(pwd)/tmp
 }
 
 runcompose() {
