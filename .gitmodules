@@ -1,6 +1,6 @@
 [submodule "mantle"]
 	path = mantle
-	url = https://github.com/coreos/mantle
+	url = https://github.com/cgwalters/mantle
 [submodule "ostree-releng-scripts"]
 	path = ostree-releng-scripts
 	url = https://github.com/ostreedev/ostree-releng-scripts
