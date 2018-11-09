@@ -46,8 +46,8 @@ type Dnsmasq struct {
 }
 
 const (
-	numInterfaces = 16
-	numSegments   = 3
+	numInterfaces = 500 // affects dnsmasq startup time
+	numSegments   = 1
 
 	debugConfig = `
 log-queries
@@ -96,14 +96,14 @@ dhcp-host={{.HardwareAddr}}{{template "ips" .DHCPv4}}{{template "ips" .DHCPv6}}
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/local")
 
-func newInterface(s, i byte) *Interface {
+func newInterface(s byte, i uint16) *Interface {
 	return &Interface{
-		HardwareAddr: net.HardwareAddr{0x02, s, 0, 0, 0, i},
+		HardwareAddr: net.HardwareAddr{0x02, s, 0, 0, byte(i / 256), byte(i % 256)},
 		DHCPv4: []net.IPNet{{
-			IP:   net.IP{10, s, 0, i},
-			Mask: net.CIDRMask(24, 32)}},
+			IP:   net.IP{10, s, byte(i / 256), byte(i % 256)},
+			Mask: net.CIDRMask(16, 32)}},
 		DHCPv6: []net.IPNet{{
-			IP:   net.IP{0xfd, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, i},
+			IP:   net.IP{0xfd, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, byte(i / 256), byte(i % 256)},
 			Mask: net.CIDRMask(64, 128)}},
 	}
 }
@@ -114,7 +114,7 @@ func newSegment(s byte) (*Segment, error) {
 		BridgeIf:   newInterface(s, 1),
 	}
 
-	for i := byte(2); i < 2+numInterfaces; i++ {
+	for i := uint16(2); i < 2+numInterfaces; i++ {
 		seg.Interfaces = append(seg.Interfaces, newInterface(s, i))
 	}
 

@@ -21,65 +21,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/pkg/capnslog"
-
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/do"
 	"github.com/coreos/mantle/platform/conf"
-)
-
-const (
-	Platform platform.Name = "do"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/do")
 )
 
 type cluster struct {
 	*platform.BaseCluster
-	api      *do.API
+	flight   *flight
 	sshKeyID int
-}
-
-func NewCluster(opts *do.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	api, err := do.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.DO)
-	if err != nil {
-		return nil, err
-	}
-
-	var key string
-	if !rconf.NoSSHKeyInMetadata {
-		keys, err := bc.Keys()
-		if err != nil {
-			return nil, err
-		}
-		key = keys[0].String()
-	} else {
-		// The DO API requires us to provide an SSH key for
-		// Container Linux droplets. Provide one that can never
-		// authenticate.
-		key, err = do.GenerateFakeKey()
-		if err != nil {
-			return nil, err
-		}
-	}
-	keyID, err := api.AddKey(context.TODO(), bc.Name(), key)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cluster{
-		BaseCluster: bc,
-		api:         api,
-		sshKeyID:    keyID,
-	}, nil
 }
 
 func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -91,7 +40,7 @@ func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	droplet, err := dc.api.CreateDroplet(context.TODO(), dc.vmname(), dc.sshKeyID, conf.String())
+	droplet, err := dc.flight.api.CreateDroplet(context.TODO(), dc.vmname(), dc.sshKeyID, conf.String())
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +94,6 @@ func (dc *cluster) vmname() string {
 }
 
 func (dc *cluster) Destroy() {
-	if err := dc.api.DeleteKey(context.TODO(), dc.sshKeyID); err != nil {
-		plog.Errorf("Error deleting key %v: %v", dc.sshKeyID, err)
-	}
-
 	dc.BaseCluster.Destroy()
+	dc.flight.DelCluster(dc)
 }

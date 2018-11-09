@@ -20,59 +20,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/pkg/capnslog"
-
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/mantle/platform/conf"
 )
 
-const (
-	Platform platform.Name = "packet"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/packet")
-)
-
 type cluster struct {
 	*platform.BaseCluster
-	api      *packet.API
+	flight   *flight
 	sshKeyID string
-}
-
-func NewCluster(opts *packet.Options, rconf *platform.RuntimeConfig) (platform.Cluster, error) {
-	api, err := packet.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	bc, err := platform.NewBaseCluster(opts.Options, rconf, Platform, ctplatform.Packet)
-	if err != nil {
-		return nil, err
-	}
-
-	var keyID string
-	if !rconf.NoSSHKeyInMetadata {
-		keys, err := bc.Keys()
-		if err != nil {
-			return nil, err
-		}
-
-		keyID, err = api.AddKey(bc.Name(), keys[0].String())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	pc := &cluster{
-		BaseCluster: bc,
-		api:         api,
-		sshKeyID:    keyID,
-	}
-
-	return pc, nil
 }
 
 func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -104,7 +60,7 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	// CreateDevice unconditionally closes console when done with it
-	device, err := pc.api.CreateDevice(vmname, conf, pcons)
+	device, err := pc.flight.api.CreateDevice(vmname, conf, pcons)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +70,8 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		device:  device,
 		console: cons,
 	}
-	mach.publicIP = pc.api.GetDeviceAddress(device, 4, true)
-	mach.privateIP = pc.api.GetDeviceAddress(device, 4, false)
+	mach.publicIP = pc.flight.api.GetDeviceAddress(device, 4, true)
+	mach.privateIP = pc.flight.api.GetDeviceAddress(device, 4, false)
 	if mach.publicIP == "" || mach.privateIP == "" {
 		mach.Destroy()
 		return nil, fmt.Errorf("couldn't find IP addresses for device")
@@ -162,11 +118,6 @@ func (pc *cluster) vmname() string {
 }
 
 func (pc *cluster) Destroy() {
-	if pc.sshKeyID != "" {
-		if err := pc.api.DeleteKey(pc.sshKeyID); err != nil {
-			plog.Errorf("Error deleting key %v: %v", pc.sshKeyID, err)
-		}
-	}
-
 	pc.BaseCluster.Destroy()
+	pc.flight.DelCluster(pc)
 }

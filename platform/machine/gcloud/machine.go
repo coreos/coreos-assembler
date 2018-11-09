@@ -70,7 +70,7 @@ func (gm *machine) Destroy() {
 		plog.Errorf("Error saving console for instance %v: %v", gm.ID(), err)
 	}
 
-	if err := gm.gc.api.TerminateInstance(gm.name); err != nil {
+	if err := gm.gc.flight.api.TerminateInstance(gm.name); err != nil {
 		plog.Errorf("Error terminating instance %v: %v", gm.ID(), err)
 	}
 
@@ -87,7 +87,7 @@ func (gm *machine) ConsoleOutput() string {
 
 func (gm *machine) saveConsole() error {
 	var err error
-	gm.console, err = gm.gc.api.GetConsoleOutput(gm.name)
+	gm.console, err = gm.gc.flight.api.GetConsoleOutput(gm.name)
 	if err != nil {
 		return err
 	}

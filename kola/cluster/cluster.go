@@ -55,7 +55,7 @@ func (t *TestCluster) Run(name string, f func(c TestCluster)) bool {
 
 // RunNative runs a registered NativeFunc on a remote machine
 func (t *TestCluster) RunNative(funcName string, m platform.Machine) bool {
-	command := fmt.Sprintf("./kolet run %q %q", t.Name(), funcName)
+	command := fmt.Sprintf("./kolet run %q %q", t.H.Name(), funcName)
 	return t.Run(funcName, func(c TestCluster) {
 		client, err := m.SSHClient()
 		if err != nil {

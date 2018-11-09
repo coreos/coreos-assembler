@@ -22,60 +22,38 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform")
-)
-
 type BaseCluster struct {
-	agent *network.SSHAgent
-
 	machlock   sync.Mutex
 	machmap    map[string]Machine
 	consolemap map[string]string
 
-	name       string
-	rconf      *RuntimeConfig
-	platform   Name
-	ctPlatform string
-	baseopts   *Options
+	bf    *BaseFlight
+	name  string
+	rconf *RuntimeConfig
 }
 
-func NewBaseCluster(opts *Options, rconf *RuntimeConfig, platform Name, ctPlatform string) (*BaseCluster, error) {
-	return NewBaseClusterWithDialer(opts, rconf, platform, ctPlatform, network.NewRetryDialer())
-}
-
-func NewBaseClusterWithDialer(opts *Options, rconf *RuntimeConfig, platform Name, ctPlatform string, dialer network.Dialer) (*BaseCluster, error) {
-	agent, err := network.NewSSHAgent(dialer)
-	if err != nil {
-		return nil, err
-	}
-
+func NewBaseCluster(bf *BaseFlight, rconf *RuntimeConfig) (*BaseCluster, error) {
 	bc := &BaseCluster{
-		agent:      agent,
+		bf:         bf,
 		machmap:    make(map[string]Machine),
 		consolemap: make(map[string]string),
-		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.NewV4()),
+		name:       fmt.Sprintf("%s-%s", bf.baseopts.BaseName, uuid.NewV4()),
 		rconf:      rconf,
-		platform:   platform,
-		ctPlatform: ctPlatform,
-		baseopts:   opts,
 	}
 
 	return bc, nil
 }
 
 func (bc *BaseCluster) SSHClient(ip string) (*ssh.Client, error) {
-	sshClient, err := bc.agent.NewClient(ip)
+	sshClient, err := bc.bf.agent.NewClient(ip)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +62,7 @@ func (bc *BaseCluster) SSHClient(ip string) (*ssh.Client, error) {
 }
 
 func (bc *BaseCluster) UserSSHClient(ip, user string) (*ssh.Client, error) {
-	sshClient, err := bc.agent.NewUserClient(ip, user)
+	sshClient, err := bc.bf.agent.NewUserClient(ip, user)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +71,7 @@ func (bc *BaseCluster) UserSSHClient(ip, user string) (*ssh.Client, error) {
 }
 
 func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string) (*ssh.Client, error) {
-	sshClient, err := bc.agent.NewPasswordClient(ip, user, password)
+	sshClient, err := bc.bf.agent.NewPasswordClient(ip, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +129,7 @@ func (bc *BaseCluster) DelMach(m Machine) {
 }
 
 func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
-	return bc.agent.List()
+	return bc.bf.Keys()
 }
 
 func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
@@ -166,17 +144,17 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 		}
 	}
 
-	conf, err := userdata.Render(bc.ctPlatform)
+	conf, err := userdata.Render(bc.bf.ctPlatform)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, dropin := range bc.baseopts.SystemdDropins {
+	for _, dropin := range bc.bf.baseopts.SystemdDropins {
 		conf.AddSystemdUnitDropin(dropin.Unit, dropin.Name, dropin.Contents)
 	}
 
 	if !bc.rconf.NoSSHKeyInUserData {
-		keys, err := bc.Keys()
+		keys, err := bc.bf.Keys()
 		if err != nil {
 			return nil, err
 		}
@@ -187,15 +165,10 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 	return conf, nil
 }
 
-// Destroy destroys each machine in the cluster and closes the SSH agent.
+// Destroy destroys each machine in the cluster.
 func (bc *BaseCluster) Destroy() {
-
 	for _, m := range bc.Machines() {
 		m.Destroy()
-	}
-
-	if err := bc.agent.Close(); err != nil {
-		plog.Errorf("Error closing agent: %v", err)
 	}
 }
 
@@ -224,11 +197,11 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 }
 
 func (bc *BaseCluster) Distribution() string {
-	return bc.baseopts.Distribution
+	return bc.bf.baseopts.Distribution
 }
 
 func (bc *BaseCluster) Platform() Name {
-	return bc.platform
+	return bc.bf.Platform()
 }
 
 func (bc *BaseCluster) Name() string {

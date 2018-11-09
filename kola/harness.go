@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,20 +145,20 @@ var (
 // glue until kola does introspection.
 type NativeRunner func(funcName string, m platform.Machine) error
 
-func NewCluster(pltfrm string, rconf *platform.RuntimeConfig) (cluster platform.Cluster, err error) {
+func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 	switch pltfrm {
 	case "aws":
-		cluster, err = aws.NewCluster(&AWSOptions, rconf)
+		flight, err = aws.NewFlight(&AWSOptions)
 	case "do":
-		cluster, err = do.NewCluster(&DOOptions, rconf)
+		flight, err = do.NewFlight(&DOOptions)
 	case "esx":
-		cluster, err = esx.NewCluster(&ESXOptions, rconf)
+		flight, err = esx.NewFlight(&ESXOptions)
 	case "gce":
-		cluster, err = gcloud.NewCluster(&GCEOptions, rconf)
+		flight, err = gcloud.NewFlight(&GCEOptions)
 	case "packet":
-		cluster, err = packet.NewCluster(&PacketOptions, rconf)
+		flight, err = packet.NewFlight(&PacketOptions)
 	case "qemu":
-		cluster, err = qemu.NewCluster(&QEMUOptions, rconf)
+		flight, err = qemu.NewFlight(&QEMUOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
@@ -278,9 +277,15 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 		torcxManifestFile.Close()
 	}
 
+	flight, err := NewFlight(pltfrm)
+	if err != nil {
+		plog.Fatalf("Flight failed: %v", err)
+	}
+	defer flight.Destroy()
+
 	if !skipGetVersion {
 		plog.Info("Creating cluster to check semver...")
-		version, err := getClusterSemver(pltfrm, outputDir)
+		version, err := getClusterSemver(flight, outputDir)
 		if err != nil {
 			plog.Fatal(err)
 		}
@@ -306,7 +311,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 	for _, test := range tests {
 		test := test // for the closure
 		run := func(h *harness.H) {
-			runTest(h, test, pltfrm)
+			runTest(h, test, pltfrm, flight)
 		}
 		htests.Add(test.Name, run)
 	}
@@ -332,7 +337,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 
 // getClusterSemVer returns the CoreOS semantic version via starting a
 // machine and checking
-func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
+func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version, error) {
 	var err error
 
 	testDir := filepath.Join(outputDir, "get_cluster_semver")
@@ -340,7 +345,7 @@ func getClusterSemver(pltfrm, outputDir string) (*semver.Version, error) {
 		return nil, err
 	}
 
-	cluster, err := NewCluster(pltfrm, &platform.RuntimeConfig{
+	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
 		OutputDir: testDir,
 	})
 	if err != nil {
@@ -382,15 +387,8 @@ func parseCLVersion(input string) (*semver.Version, error) {
 // runTest is a harness for running a single test.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
-func runTest(h *harness.H, t *register.Test, pltfrm string) {
+func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flight) {
 	h.Parallel()
-
-	// don't go too fast, in case we're talking to a rate limiting api like AWS EC2.
-	// FIXME(marineam): API requests must do their own
-	// backoff due to rate limiting, this is unreliable.
-	max := int64(2 * time.Second)
-	splay := time.Duration(rand.Int63n(max))
-	time.Sleep(splay)
 
 	rconf := &platform.RuntimeConfig{
 		OutputDir:          h.OutputDir(),
@@ -398,7 +396,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string) {
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
 		NoEnableSelinux:    t.HasFlag(register.NoEnableSelinux),
 	}
-	c, err := NewCluster(pltfrm, rconf)
+	c, err := flight.NewCluster(rconf)
 	if err != nil {
 		h.Fatalf("Cluster failed: %v", err)
 	}

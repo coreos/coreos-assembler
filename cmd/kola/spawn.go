@@ -118,7 +118,15 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Setup failed: %v", err)
 	}
 
-	cluster, err := kola.NewCluster(kolaPlatform, &platform.RuntimeConfig{
+	flight, err := kola.NewFlight(kolaPlatform)
+	if err != nil {
+		return fmt.Errorf("Flight failed: %v", err)
+	}
+	if spawnRemove {
+		defer flight.Destroy()
+	}
+
+	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
 		OutputDir:        outputDir,
 		AllowFailedUnits: true,
 	})
@@ -145,7 +153,11 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		if err := qc.OmahaServer.AddPackage(updatePayload, "update.gz"); err != nil {
 			return fmt.Errorf("bad payload: %v", err)
 		}
-		updateConf = strings.NewReader("GROUP=developer\nSERVER=http://10.0.0.1:34567/v1/update/\n")
+		hostport, err := qc.GetOmahaHostPort()
+		if err != nil {
+			return fmt.Errorf("getting Omaha server address: %v", err)
+		}
+		updateConf = strings.NewReader(fmt.Sprintf("GROUP=developer\nSERVER=http://%s/v1/update/\n", hostport))
 	}
 
 	var someMach platform.Machine

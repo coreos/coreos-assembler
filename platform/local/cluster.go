@@ -17,18 +17,17 @@ package local
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
-	"github.com/coreos/go-omaha/omaha"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/lang/destructor"
 	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/network/ntp"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
@@ -37,93 +36,34 @@ import (
 type LocalCluster struct {
 	destructor.MultiDestructor
 	*platform.BaseCluster
-	Dnsmasq     *Dnsmasq
-	NTPServer   *ntp.Server
+	flight      *LocalFlight
 	OmahaServer OmahaWrapper
-	SimpleEtcd  *SimpleEtcd
-	nshandle    netns.NsHandle
-}
-
-func NewLocalCluster(opts *platform.Options, rconf *platform.RuntimeConfig, platformName platform.Name) (*LocalCluster, error) {
-	lc := &LocalCluster{}
-
-	var err error
-	lc.nshandle, err = ns.Create()
-	if err != nil {
-		return nil, err
-	}
-	lc.AddCloser(&lc.nshandle)
-
-	nsdialer := network.NewNsDialer(lc.nshandle)
-	lc.BaseCluster, err = platform.NewBaseClusterWithDialer(opts, rconf, platformName, "", nsdialer)
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.BaseCluster)
-
-	// dnsmasq and etcd much be launched in the new namespace
-	nsExit, err := ns.Enter(lc.nshandle)
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	defer nsExit()
-
-	lc.Dnsmasq, err = NewDnsmasq()
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.Dnsmasq)
-
-	lc.SimpleEtcd, err = NewSimpleEtcd()
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddDestructor(lc.SimpleEtcd)
-
-	lc.NTPServer, err = ntp.NewServer(":123")
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.AddCloser(lc.NTPServer)
-	go lc.NTPServer.Serve()
-
-	omahaServer, err := omaha.NewTrivialServer(":34567")
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.OmahaServer = OmahaWrapper{TrivialServer: omahaServer}
-	lc.AddDestructor(lc.OmahaServer)
-	go lc.OmahaServer.Serve()
-
-	return lc, nil
 }
 
 func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
-	cmd := ns.Command(lc.nshandle, name, arg...)
+	cmd := ns.Command(lc.flight.nshandle, name, arg...)
 	return cmd
 }
 
-func (lc *LocalCluster) etcdEndpoint() string {
+func (lc *LocalCluster) hostIP() string {
 	// hackydoo
 	bridge := "br0"
-	for _, seg := range lc.Dnsmasq.Segments {
+	for _, seg := range lc.flight.Dnsmasq.Segments {
 		if bridge == seg.BridgeName {
-			return fmt.Sprintf("http://%s:%d", seg.BridgeIf.DHCPv4[0].IP, lc.SimpleEtcd.Port)
+			return seg.BridgeIf.DHCPv4[0].IP.String()
 		}
 	}
 	panic("Not a valid bridge!")
 }
 
+func (lc *LocalCluster) etcdEndpoint() string {
+	return fmt.Sprintf("http://%s:%d", lc.hostIP(), lc.flight.SimpleEtcd.Port)
+}
+
 func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
 	baseURL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.etcdEndpoint(), rand.Int())
 
-	nsDialer := network.NewNsDialer(lc.nshandle)
+	nsDialer := network.NewNsDialer(lc.flight.nshandle)
 	tr := &http.Transport{
 		Dial: nsDialer.Dial,
 	}
@@ -145,8 +85,16 @@ func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
 	return baseURL, nil
 }
 
+func (lc *LocalCluster) GetOmahaHostPort() (string, error) {
+	_, port, err := net.SplitHostPort(lc.OmahaServer.Addr().String())
+	if err != nil {
+		return "", err
+	}
+	return net.JoinHostPort(lc.hostIP(), port), nil
+}
+
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
-	nsExit, err := ns.Enter(lc.nshandle)
+	nsExit, err := ns.Enter(lc.flight.nshandle)
 	if err != nil {
 		return nil, err
 	}
@@ -176,9 +124,10 @@ func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
 }
 
 func (lc *LocalCluster) GetNsHandle() netns.NsHandle {
-	return lc.nshandle
+	return lc.flight.nshandle
 }
 
 func (lc *LocalCluster) Destroy() {
+	// does not lc.flight.DelCluster() since we are not the top-level object
 	lc.MultiDestructor.Destroy()
 }

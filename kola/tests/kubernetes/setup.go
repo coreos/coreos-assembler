@@ -37,6 +37,15 @@ type kCluster struct {
 	workers []platform.Machine
 }
 
+// resolve ambiguity with TestCluster.Name()
+type clusterWrapper struct {
+	*cluster.TestCluster
+}
+
+func (cw clusterWrapper) Name() string {
+	return cw.Cluster.Name()
+}
+
 // Setup a multi-node cluster based on generic scrips from coreos-kubernetes repo.
 // https://github.com/coreos/coreos-kubernetes/tree/master/multi-node/generic
 func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kCluster {
@@ -73,7 +82,7 @@ func setupCluster(c cluster.TestCluster, nodes int, version, runtime string) *kC
 	}
 
 	// create worker nodes
-	workers, err := platform.NewMachines(c, conf.CloudConfig(""), nodes)
+	workers, err := platform.NewMachines(clusterWrapper{&c}, conf.CloudConfig(""), nodes)
 	if err != nil {
 		c.Fatalf("error creating workers: %v", err)
 	}
