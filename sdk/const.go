@@ -15,7 +15,7 @@
 package sdk
 
 import (
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 )
 
 // Partition UUIDs for CoreOS systems.

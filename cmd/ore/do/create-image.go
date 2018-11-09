@@ -20,7 +20,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 	"github.com/spf13/cobra"
 
 	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
@@ -81,7 +81,7 @@ func createImage() error {
 	if err != nil {
 		return err
 	}
-	keyID, err := API.AddKey(ctx, "ore-"+uuid.NewV4().String(), key)
+	keyID, err := API.AddKey(ctx, "ore-"+uuid.New(), key)
 	if err != nil {
 		return err
 	}

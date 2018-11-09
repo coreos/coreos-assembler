@@ -22,7 +22,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
@@ -50,9 +50,9 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options MachineOptions) (platform.Machine, error) {
-	id := uuid.NewV4()
+	id := uuid.New()
 
-	dir := filepath.Join(qc.RuntimeConf().OutputDir, id.String())
+	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
 	if err := os.Mkdir(dir, 0777); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 
 	qm := &machine{
 		qc:          qc,
-		id:          id.String(),
+		id:          id,
 		netif:       netif,
 		journal:     journal,
 		consolePath: filepath.Join(dir, "console.txt"),
