@@ -36,8 +36,6 @@ import:
   version: 80f62d78849dba04e42d8812329ee00558e37c5b
 - package: github.com/pborman/uuid
   version: v1.2.0
-- package: github.com/satori/go.uuid
-  version: 08f0718b61e95ddba0ade3346725fe0e4bf28ca6
 - package: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - package: github.com/spf13/pflag

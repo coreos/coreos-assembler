@@ -1,5 +1,5 @@
-hash: 00549af096b7b94a85b320b37e7ea82c603bcfcfb1d3217e79c21e88eaf29174
-updated: 2018-11-09T15:33:09.193602743-05:00
+hash: 8c64f8951f86ea2c61c59d001df1c31d9522b40573f2c0a07ff0ae8b8811a9a7
+updated: 2018-11-09T15:38:59.344185114-05:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -264,8 +264,6 @@ imports:
   - xfs
 - name: github.com/russross/blackfriday
   version: 4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c
-- name: github.com/satori/go.uuid
-  version: 08f0718b61e95ddba0ade3346725fe0e4bf28ca6
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
