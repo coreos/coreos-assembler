@@ -34,6 +34,8 @@ import:
   version: 21cb3784d9bda523911b96719efba02b7e983256
 - package: github.com/packethost/packngo
   version: 80f62d78849dba04e42d8812329ee00558e37c5b
+- package: github.com/pborman/uuid
+  version: v1.2.0
 - package: github.com/satori/go.uuid
   version: 08f0718b61e95ddba0ade3346725fe0e4bf28ca6
 - package: github.com/spf13/cobra

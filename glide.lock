@@ -1,5 +1,5 @@
-hash: cd1d1196b85d57be2c1b006a75c2166b6607aa8be729c9dc348e5aa2f75e38de
-updated: 2018-10-01T12:06:01.80855308-05:00
+hash: 00549af096b7b94a85b320b37e7ea82c603bcfcfb1d3217e79c21e88eaf29174
+updated: 2018-11-09T15:33:09.193602743-05:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -196,6 +196,8 @@ imports:
   version: 44c6ddd0a2342c386950e880b658017258da92fc
   subpackages:
   - query
+- name: github.com/google/uuid
+  version: 9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jmespath/go-jmespath
@@ -235,6 +237,8 @@ imports:
   - vhdcore/writer
 - name: github.com/packethost/packngo
   version: 80f62d78849dba04e42d8812329ee00558e37c5b
+- name: github.com/pborman/uuid
+  version: 8b1b92947f46224e3b97bb1a3a5b0382be00d31e
 - name: github.com/pin/tftp
   version: 9ea92f6b1029bc1bf3072bba195c84bb9b0370e3
   subpackages:
@@ -371,7 +375,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06
+  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
   subpackages:
   - internal
   - internal/app_identity
@@ -383,7 +387,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/cloud
-  version: ce3259d98fbcbe04db4ed502d169f519aada03b5
+  version: 3a581782808caff5f772ffa67dcf8890c369c62d
   subpackages:
   - compute/metadata
 - name: google.golang.org/genproto
