@@ -21,6 +21,29 @@ oemid="$3"
 set -x
 tmpd=$(mktemp -td gf-oemid.XXXXXX)
 tmp_dest=${tmpd}/box.img
+
+# Work around for https://github.com/coreos/coreos-assembler/issues/198
+# performance monitoring for nested virtualization doesn't work reliably on
+# different hypervisors (VMWare, VirtualBox, etc) so just disable the pmu
+qemu_wrapper=${tmpd}/qemu-wrapper.sh
+cat <<'EOF' > "${qemu_wrapper}"
+#!/usr/bin/bash -
+i=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -cpu)
+        shift 2;;
+    *)
+        args[i]="$1"
+        (( i++ ))
+        shift ;;
+    esac
+done
+exec qemu-kvm -cpu host,pmu=off "${args[@]}"
+EOF
+chmod +x "${qemu_wrapper}"
+export LIBGUESTFS_HV="${qemu_wrapper}"
+
 cp --reflink=auto "${src}" "${tmp_dest}"
 # <walters> I commonly chmod a-w VM images
 chmod u+w "${tmp_dest}"
