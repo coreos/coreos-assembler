@@ -30,21 +30,6 @@ configure_yum_repos() {
         mv "${repo}".new "${repo}"
     done
 
-    # enable `walters/buildtools-fedora` copr
-    # pulled from https://copr.fedorainfracloud.org/coprs/walters/buildtools-fedora/repo/fedora-28/walters-buildtools-fedora-fedora-28.repo
-    cat > /etc/yum.repos.d/walters-buildtools-fedora-fedora-28.repo  <<'EOF'
-[walters-buildtools-fedora]
-name=Copr repo for buildtools-fedora owned by walters
-baseurl=https://copr-be.cloud.fedoraproject.org/results/walters/buildtools-fedora/fedora-$releasever-$basearch/
-type=rpm-md
-skip_if_unavailable=True
-gpgcheck=1
-gpgkey=https://copr-be.cloud.fedoraproject.org/results/walters/buildtools-fedora/pubkey.gpg
-repo_gpgcheck=0
-enabled=1
-enabled_metadata=1
-EOF
-
     # enable `dustymabe/ignition` copr
     # pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
     cat > /etc/yum.repos.d/dustymabe-ignition-fedora-28.repo <<'EOF'
