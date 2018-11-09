@@ -12,6 +12,7 @@ Mantle is composed of many utilities:
  - `kolet` an agent for kola that runs on instances
  - `ore` for interfacing with cloud providers
  - `plume` for releasing Container Linux
+
 All of the utilities support the `help` command to get a full listing of their subcommands
 and options.
 
@@ -122,7 +123,7 @@ Groups of similar tests are registered in an init() function inside the
 kola package.  `Register(*Test)` is called per test. A kola `Test`
 struct requires a unique name, and a single function that is the entry
 point into the test. Additionally, userdata (such as a Container Linux
-Config) can be be supplied. See the `Test` struct in
+Config) can be supplied. See the `Test` struct in
 [kola/register/register.go](https://github.com/coreos/mantle/tree/master/kola/register/register.go)
 for a complete list of options.
 
@@ -165,7 +166,7 @@ kolet is run on kola instances to run native functions in tests. Generally kolet
 is not invoked manually.
 
 ### ore
-Ore provides a low level interface for each cloud provider. It has commands
+Ore provides a low-level interface for each cloud provider. It has commands
 related to launching instances on a variety of platforms (gcloud, aws,
 azure, esx, and packet) within the latest SDK image. Ore mimics the underlying
 api for each cloud provider closely, so the interface for each cloud provider
