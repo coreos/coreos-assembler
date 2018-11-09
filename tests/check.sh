@@ -1,11 +1,14 @@
 #!/usr/bin/bash
 set -euo pipefail
-dn=$(dirname $0)
-srcdir=$(cd ${dn}/.. && pwd)/src
+dn=$(dirname "$0")
+srcdir=$(cd "${dn}"/.. && pwd)/src
 
 # Verify syntax for sources
-for f in $(find ${srcdir} -type f -executable); do
-    shebang=$(head -1 $f)
+# see https://github.com/koalaman/shellcheck/wiki/SC2044
+# for explanation of this use of while
+while IFS= read -r -d '' f
+do
+    shebang=$(head -1 "$f")
     if [[ $shebang =~ ^#!/.*/python ]]; then
         python3 -m py_compile "${f}"
         echo "OK ${f}"
@@ -16,4 +19,4 @@ for f in $(find ${srcdir} -type f -executable); do
         echo "OK ${f}"
         continue
     fi
-done
+done <  <(find "${srcdir}" -type f -executable -print0)

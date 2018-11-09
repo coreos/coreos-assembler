@@ -4,8 +4,9 @@ set -euo pipefail
 # This is just a thin wrapper around prune_builds. That way we still get the
 # preflight checks to make sure the workdir looks sane.
 
-dn=$(dirname $0)
-. ${dn}/cmdlib.sh
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
 
 print_help() {
     cat 1>&2 <<'EOF'
@@ -18,7 +19,7 @@ EOF
 }
 
 # Parse options
-KEEP_LAST_N=
+KEEP_LAST_N="3"
 rc=0
 options=$(getopt --options h --longoptions help,keep: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
@@ -34,7 +35,7 @@ while true; do
             ;;
         --keep)
             shift
-            KEEP_LAST_N="--keep-last-n $1"
+            KEEP_LAST_N="$1"
             ;;
         --)
             shift
@@ -55,5 +56,4 @@ if [ $# -ne 0 ]; then
 fi
 
 prepare_build
-
-${dn}/prune_builds ${KEEP_LAST_N} --workdir ${workdir}
+"${dn}"/prune_builds --keep-last-n "${KEEP_LAST_N}" --workdir "${workdir:?}"

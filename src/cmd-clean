@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-set -xeuo pipefail
+set -euo pipefail
 
-dn=$(dirname $0)
-. ${dn}/cmdlib.sh
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
 
 print_help() {
     cat 1>&2 <<'EOF'
@@ -44,11 +45,12 @@ if [ $# -ne 0 ]; then
     exit 1
 fi
 
+set -x
 # This has some useful sanity checks
 prepare_build
 
 # But go back to the toplevel
-cd ${workdir}
+cd "${workdir:?}"
 # Note we don't prune the cache.qcow2 or the objects
 # in the repo.  If you want that, just rm -rf them.
 rm -rf repo/refs/heads/* builds/* tmp/*

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dn=$(dirname $0)
-. ${dn}/cmdlib.sh
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
 
 print_help() {
     cat 1>&2 <<'EOF'
@@ -61,15 +62,15 @@ ostree --version
 rpm-ostree --version
 
 previous_build=
-if [ -L ${workdir}/builds/latest ]; then
-    previous_build=$(readlink ${workdir}/builds/latest)
-    previous_builddir=${workdir}/builds/${previous_build}
+if [ -L "${workdir:?}"/builds/latest ]; then
+    previous_build=$(readlink "${workdir}"/builds/latest)
+    previous_builddir="${workdir}/builds/${previous_build}"
     echo "Previous build: ${previous_build}"
 fi
 
 previous_commit=
 if [ -n "${ref:-}" ]; then
-    previous_commit=$(ostree --repo=${workdir}/repo rev-parse ${ref} 2>/dev/null || true)
+    previous_commit=$(ostree --repo="${workdir}"/repo rev-parse "${ref}" 2>/dev/null || true)
 fi
 # If the ref was unset or missing, look at the previous build
 if [ -z "${previous_commit}" ] && [ -n "${previous_build}" ]; then
@@ -82,8 +83,8 @@ sha256sum_str() {
 }
 
 # Calculate kickstart checksum now and gather previous image build variables if any
-kickstart_input=${configdir}/image.ks
-kickstart_checksum=$(cat ${kickstart_input} | sha256sum_str)
+kickstart_input="${configdir:?}"/image.ks
+kickstart_checksum=$(< "${kickstart_input}" sha256sum_str)
 if [ -n "${previous_build}" ]; then
     previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
     previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
@@ -91,13 +92,13 @@ fi
 echo "Kickstart checksum: ${kickstart_checksum}"
 
 # Generate metadata that's *input* to the ostree commit
-config_gitrev=$(cd ${configdir} && git describe --tags --always --abbrev=42)
+config_gitrev=$(cd "${configdir}" && git describe --tags --always --abbrev=42)
 config_dirty=false
-if ! git -C ${configdir} diff --quiet --exit-code; then
+if ! git -C "${configdir}" diff --quiet --exit-code; then
     config_dirty=true
 fi
 commitmeta_input_json=$(pwd)/tmp/commit-metadata-input.json
-cat >${commitmeta_input_json} <<EOF
+cat >"${commitmeta_input_json}" <<EOF
 {
   "coreos-assembler.config-gitrev": "${config_gitrev}",
   "coreos-assembler.config-dirty": ${config_dirty}
@@ -106,19 +107,19 @@ EOF
 # These need to be absolute paths right now for rpm-ostree
 composejson=$(pwd)/tmp/compose.json
 # --cache-only is here since `fetch` is a separate verb.
-runcompose --cache-only ${FORCE} --add-metadata-from-json ${commitmeta_input_json} \
-           --write-composejson-to ${composejson}
+runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
+           --write-composejson-to "${composejson}"
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
-if [ -f "${changed_stamp}" ]; then
+if [ -f "${changed_stamp:?}" ]; then
     commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
     # Clean up prior versions
-    rm -f ${workdir}/tmp/compose-*.json
+    rm -f "${workdir}"/tmp/compose-*.json
     # Save this in case the image build fails
-    cp -a --reflink=auto ${composejson} ${workdir}/tmp/compose-${commit}.json
+    cp -a --reflink=auto "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
     commit=${previous_commit}
-    image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
+    image_input_checksum=$( (echo "${commit}" && echo "${kickstart_checksum}") | sha256sum_str)
     # Note we may not actually have a previous build in the case of
     # successfully composing an ostree but failing the image on the
     # first build.
@@ -129,10 +130,10 @@ else
 
     # Grab the previous treecompose JSON (local developer case: treecompose succeeded but
     # image build failed) if possible, otherwise grab the previous build
-    cached_previous_composejson=${workdir}/tmp/compose-${previous_commit}.json
+    cached_previous_composejson="${workdir}"/tmp/compose-"${previous_commit}".json
     if [ -f "${cached_previous_composejson}" ]; then
         echo "Resuming partial build from: ${commit}"
-        cp -a --reflink=auto ${cached_previous_composejson} ${composejson}
+        cp -a --reflink=auto "${cached_previous_composejson}" "${composejson}"
     else
         if [ -z "${previous_build}" ]; then
             fatal "compose tree had no changes, but no previous build or cached data"
@@ -140,51 +141,44 @@ else
         echo "Commit ${commit} unchanged; reusing previous build's rpm-ostree metadata"
         # This will have all of the data from the previous build, but we'll
         # overwrite things.
-        cp -a --reflink=auto ${previous_builddir}/meta.json ${composejson}
+        cp -a --reflink=auto "${previous_builddir}"/meta.json "${composejson}"
     fi
 fi
 
 if [ -n "${previous_build}" ]; then
-    rpm-ostree --repo=${workdir}/repo db diff ${previous_commit} ${commit}
+    rpm-ostree --repo="${workdir}"/repo db diff "${previous_commit}" "${commit}"
 fi
 
-image_input_checksum=$((echo ${commit} && echo ${kickstart_checksum}) | sha256sum_str)
+image_input_checksum=$( (echo "${commit}" && echo "${kickstart_checksum}") | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
-version=$(ostree --repo=${workdir}/repo show --print-metadata-key=version ${commit} | sed -e "s,',,g")
+version=$(ostree --repo="${workdir}"/repo show --print-metadata-key=version "${commit}" | sed -e "s,',,g")
 if [ "${previous_commit}" = "${commit}" ] && [ -n "${previous_image_genver:-}" ]; then
-    image_genver=$((${previous_image_genver} + 1))
-    buildid=${version}-${image_genver}
+    image_genver=$((previous_image_genver + 1))
+    buildid="${version}"-"${image_genver}"
 else
     image_genver=0
-    buildid=${version}
+    buildid="${version}"
 fi
 echo "New build ID: ${buildid}"
 
-# Generate JSON
-if [ -n "${previous_commit}" ]; then
-    previous_commit_json='"'"${previous_commit}"'"'
-else
-    previous_commit_json=null
-fi
-
-imageprefix=${name}-${buildid}
+imageprefix="${name:?}"-"${buildid}"
 # Make these two verbose
 set -x
 mkdir -p tmp/anaconda
 img_base=tmp/${imageprefix}-base.qcow2
 img_qemu=${imageprefix}-qemu.qcow2
-/usr/lib/coreos-assembler/virt-install --dest=$(pwd)/${img_base} \
-               --create-disk --kickstart ${kickstart_input} --kickstart-out $(pwd)/tmp/flattened.ks \
-               --ostree-remote=${name} --ostree-stateroot=${name} \
-               --ostree-ref=${ref:-${commit}} --ostree-repo=${workdir}/repo \
-               --location ${workdir}/installer/*.iso --console-log-file $(pwd)/install.log \
-               --logs $(pwd)/tmp/anaconda
-/usr/lib/coreos-assembler/gf-oemid $(pwd)/${img_base} $(pwd)/${img_qemu} qemu
+/usr/lib/coreos-assembler/virt-install --dest="$(pwd)"/"${img_base}" \
+               --create-disk --kickstart "${kickstart_input}" --kickstart-out "$(pwd)"/tmp/flattened.ks \
+               --ostree-remote="${name}" --ostree-stateroot="${name}" \
+               --ostree-ref="${ref:-${commit}}" --ostree-repo="${workdir}"/repo \
+               --location "${workdir}"/installer/*.iso --console-log-file "$(pwd)"/install.log \
+               --logs "$(pwd)"/tmp/anaconda
+/usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 set +x
 # make a version-less symlink to have a stable path
-ln -s ${img_qemu} ${name}-qemu.qcow2
+ln -s "${img_qemu}" "${name}"-qemu.qcow2
 
-img_qemu_sha256=$(sha256sum ${img_qemu} | cut -f 1 -d ' ')
+img_qemu_sha256=$(sha256sum "${img_qemu}" | cut -f 1 -d ' ')
 
 build_timestamp=$(date -u --iso-8601=seconds)
 
@@ -204,12 +198,12 @@ cat > tmp/meta.json <<EOF
 EOF
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat ${composejson} tmp/meta.json ${commitmeta_input_json} | jq -s add > meta.json
+cat "${composejson}" tmp/meta.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Clean up our temporary data
 rm tmp -rf
 # Back to the toplevel build directory, so we can rename this one
-cd ${workdir}/builds
+cd "${workdir}"/builds
 # We create a .build-commit file to note that we're in the
 # middle of a "commit".  This may be useful in the future
 # for having things be transactional.  If for example we
@@ -217,13 +211,16 @@ cd ${workdir}/builds
 # things would be inconsistent and future builds would fail
 # on the `mv`.
 touch .build-commit
-mv -T ${tmp_builddir} ${buildid}
+mv -T "${tmp_builddir:?}" "${buildid}"
 # Replace the latest link
 ln -Tsfr "${buildid}" latest
 # Update builds.json
-prune_args=""
-if [ ${SKIP_PRUNE} = 1 ]; then
-    prune_args="--insert-only ${buildid}"
+# the variables passed to `prune_builds` end up single quoted and
+# python treats them as literals, so we workaround this by duplicating
+# the command  ¯\_(ツ)_/¯
+if [ "${SKIP_PRUNE}" == 1 ]; then
+    "${dn}"/prune_builds --workdir "${workdir}" --insert-only "${buildid}"
+else
+    "${dn}"/prune_builds --workdir "${workdir}"
 fi
-${dn}/prune_builds --workdir ${workdir} ${prune_args}
 rm .build-commit

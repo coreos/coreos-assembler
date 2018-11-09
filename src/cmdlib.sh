@@ -1,9 +1,10 @@
+#!/usr/bin/env bash
 # Shared shell script library
 
-DIR=$(dirname $0)
+DIR=$(dirname "$0")
 
 info() {
-    echo "info: $@" 1>&2
+    echo "info: $*" 1>&2
 }
 
 fatal() {
@@ -31,21 +32,25 @@ has_privileges() {
 
 preflight() {
     # Verify we have all dependencies
-    local deps=$(grep -v '^#' /usr/lib/coreos-assembler/deps.txt)
+    local deps
+    deps=$(grep -v '^#' /usr/lib/coreos-assembler/deps.txt)
     # Explicitly check the packages in one rpm -q to avoid
     # overhead, only drop down to individual calls if that fails.
     # We use --whatprovides so we handle file paths too.
+    #
+    # We actually want this var to be split on words
+    # shellcheck disable=SC2086
     if ! rpm -q --whatprovides ${deps} &>/dev/null; then
         local missing=""
         for dep in ${deps}; do
-            if ! rpm -q --whatprovides "${dep}" &>/dev/null; then
+            if ! rpm -q --whatprovides ${dep} &>/dev/null; then
                 missing="$missing $dep"
             fi
         done
-        fatal "Failed to find expected dependencies:$missing"
+        fatal "Failed to find expected dependencies: $missing"
     fi
 
-    if [ $(stat -f --printf="%T" .) = "overlayfs" ]; then
+    if [ "$(stat -f --printf="%T" .)" = "overlayfs" ]; then
         fatal "$(pwd) must be a volume"
     fi
 
@@ -61,7 +66,7 @@ preflight() {
         else
             sudo rm -f /dev/kvm
             sudo mknod /dev/kvm c 10 232
-            sudo setfacl -m u:$USER:rw /dev/kvm
+            sudo setfacl -m u:"$USER":rw /dev/kvm
         fi
     fi
 }
@@ -74,9 +79,10 @@ prepare_build() {
         fatal "No cache.qcow2 found; did you run coreos-assembler init?"
     fi
 
-    export workdir=$(pwd)
-    export configdir=${workdir}/src/config
-    export manifest=${configdir}/manifest.yaml
+    workdir="$(pwd)"
+    configdir=${workdir}/src/config
+    manifest=${configdir}/manifest.yaml
+    export workdir configdir manifest
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"
@@ -85,30 +91,33 @@ prepare_build() {
     echo "Using manifest: ${manifest}"
 
     manifest_tmp_json=${workdir}/tmp/manifest.json
-    rpm-ostree compose tree --repo=repo --print-only ${manifest} > ${manifest_tmp_json}
+    rpm-ostree compose tree --repo=repo --print-only "${manifest}" > "${manifest_tmp_json}"
 
     # Abuse the rojig/name as the name of the VM images
-    export name=$(jq -r '.rojig.name' < ${manifest_tmp_json})
+    name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
     # TODO - allow this to be unset
-    export ref=$(jq -r '.ref' < ${manifest_tmp_json})
-    rm -f ${manifest_tmp_json}
+    ref=$(jq -r '.ref' < "${manifest_tmp_json}")
+    export name ref
+    rm -f "${manifest_tmp_json}"
 
     # This dir is no longer used
     rm builds/work -rf
 
     # Be nice to people who have older versions that
     # didn't create this in `init`.
-    mkdir -p ${workdir}/tmp
+    mkdir -p "${workdir}"/tmp
 
     # Needs to be absolute for rpm-ostree today
-    export changed_stamp=$(pwd)/tmp/treecompose.changed
+    changed_stamp=$(pwd)/tmp/treecompose.changed
+    export changed_stamp
 
     # Allocate temporary space for this build
     tmp_builddir=${workdir}/tmp/build
-    rm ${tmp_builddir} -rf
-    mkdir ${tmp_builddir}
+    rm "${tmp_builddir}" -rf
+    mkdir "${tmp_builddir}"
     # And everything after this assumes it's in the temp builddir
-    cd ${tmp_builddir}
+    # In case `cd` fails:  https://github.com/koalaman/shellcheck/wiki/SC2164
+    cd "${tmp_builddir}" || exit
     # *This* tmp directory is truly temporary to this build, and
     # contains artifacts we definitely don't want to outlive it, unlike
     # other things in ${workdir}/tmp. But we don't export it since e.g. if it's
@@ -119,13 +128,13 @@ prepare_build() {
 runcompose() {
     # Implement support for automatic local overrides:
     # https://github.com/coreos/coreos-assembler/issues/118
-    local overridesdir=${workdir}/overrides/
-    if [ -d ${overridesdir}/rpm ]; then
-        (cd ${overridesdir}/rpm && createrepo_c .)
+    local overridesdir=${workdir}/overrides
+    if [ -d "${overridesdir}"/rpm ]; then
+        (cd "${overridesdir}"/rpm && createrepo_c .)
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         local tmp_overridesdir=${TMPDIR}/override
-        mkdir ${tmp_overridesdir}
-        cat > ${tmp_overridesdir}/coreos-assembler-override-manifest.yaml <<EOF
+        mkdir "${tmp_overridesdir}"
+        cat > "${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml <<EOF
 include: ${workdir}/src/config/manifest.yaml
 repos:
   - coreos-assembler-local-overrides
@@ -133,8 +142,8 @@ EOF
         # Because right now rpm-ostree doesn't look for .repo files in
         # each included dir.
         # https://github.com/projectatomic/rpm-ostree/issues/1628
-        cp ${workdir}/src/config/*.repo ${tmp_overridesdir}/
-        cat > ${tmp_overridesdir}/coreos-assembler-local-overrides.repo <<EOF
+        cp "${workdir}"/src/config/*.repo "${tmp_overridesdir}"/
+        cat > "${tmp_overridesdir}"/coreos-assembler-local-overrides.repo <<EOF
 [coreos-assembler-local-overrides]
 name=coreos-assembler-local-overrides
 baseurl=file://${workdir}/overrides/rpm
@@ -143,13 +152,13 @@ EOF
         manifest=${tmp_overridesdir}/coreos-assembler-override-manifest.yaml
     fi
 
-    rm -f ${changed_stamp}
+    rm -f "${changed_stamp}"
 
-    set - rpm-ostree compose tree --repo=${workdir}/repo \
-            --cachedir=${workdir}/cache --touch-if-changed "${changed_stamp}" \
-            --unified-core ${manifest} "$@"
+    set - rpm-ostree compose tree --repo="${workdir}"/repo \
+            --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
+            --unified-core "${manifest}" "$@"
 
-    echo "Running: $@"
+    echo "Running: $*"
 
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
@@ -165,17 +174,16 @@ runvm() {
 
     # use REBUILDVM=1 if e.g. hacking on rpm-ostree/ostree and wanting to get
     # the new bits in the VM
-    if [ ! -f ${vmbuilddir}/.done ] || [ -n "${REBUILDVM:-}" ]; then
-        rm -rf ${vmpreparedir} ${vmbuilddir}
-        mkdir -p ${vmpreparedir} ${vmbuilddir}
+    if [ ! -f "${vmbuilddir}"/.done ] || [ -n "${REBUILDVM:-}" ]; then
+        rm -rf "${vmpreparedir}" "${vmbuilddir}"
+        mkdir -p "${vmpreparedir}" "${vmbuilddir}"
 
         local rpms=
         # then add all the base deps
-        for dep in $(grep -v '^#' ${DIR}/vmdeps.txt); do
-            rpms+="$dep "
-        done
+        # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
+        while IFS= read -r dep; do rpms+="$dep "; done < <(grep -v '^#' "${DIR}"/vmdeps.txt)
 
-        supermin --prepare --use-installed $rpms -o "${vmpreparedir}"
+        supermin --prepare --use-installed "$rpms" -o "${vmpreparedir}"
 
         # the reason we do a heredoc here is so that the var substition takes
         # place immediately instead of having to proxy them through to the VM
@@ -183,20 +191,20 @@ runvm() {
 #!/bin/bash
 set -xeuo pipefail
 workdir=${workdir}
-$(cat ${DIR}/supermin-init-prelude.sh)
+$(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
 sh ${TMPDIR}/cmd.sh || rc=\$?
 echo \$rc > ${workdir}/tmp/rc
 /sbin/fstrim -v ${workdir}/cache
 /sbin/reboot -f
 EOF
-        chmod a+x ${vmpreparedir}/init
-        (cd ${vmpreparedir} && tar -czf init.tar.gz --remove-files init)
+        chmod a+x "${vmpreparedir}"/init
+        (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
         supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}"
         touch "${vmbuilddir}/.done"
     fi
 
-    echo "$@" > ${TMPDIR}/cmd.sh
+    echo "$@" > "${TMPDIR}"/cmd.sh
 
     # support local dev cases where src/config is a symlink
     srcvirtfs=
@@ -216,10 +224,10 @@ EOF
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        ${srcvirtfs} -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
+        "${srcvirtfs}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
 
-    if [ ! -f ${workdir}/tmp/rc ]; then
+    if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
     fi
-    return $(cat ${workdir}/tmp/rc)
+    return "$(cat "${workdir}"/tmp/rc)"
 }

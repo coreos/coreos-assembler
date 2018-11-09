@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dn=$(dirname $0)
-. ${dn}/cmdlib.sh
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
 
 print_help() {
     cat 1>&2 <<'EOF'
