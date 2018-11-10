@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+# shellcheck source=src/libguestfish.sh
+. "${dn}"/libguestfish.sh
+
+src="$1"
+
+set -x
+coreos_gf_run_mount "${src}"
+
+# Both of these are written by Anaconda
+coreos_gf rm-rf "${deploydir}/etc/sysconfig/anaconda"
+coreos_gf rm-rf "${deploydir}/etc/systemd/system/default.target"
+# And blow away all of /var - we want systemd-tmpfiles to be
+# canonical
+coreos_gf rm-rf "${stateroot}/var/*"
+
+coreos_gf_shutdown
