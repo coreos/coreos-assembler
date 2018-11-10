@@ -109,6 +109,8 @@ composejson=$(pwd)/tmp/compose.json
 # --cache-only is here since `fetch` is a separate verb.
 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}"
+# Always update the summary, since we used to do so
+ostree --repo="${workdir}/repo" summary -u
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp:?}" ]; then
