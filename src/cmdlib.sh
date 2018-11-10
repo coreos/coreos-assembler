@@ -86,6 +86,7 @@ prepare_build() {
 
     manifest_tmp_json=${workdir}/tmp/manifest.json
     rpm-ostree compose tree --repo=repo --print-only ${manifest} > ${manifest_tmp_json}
+    ostree --repo=repo summary -u
 
     # Abuse the rojig/name as the name of the VM images
     export name=$(jq -r '.rojig.name' < ${manifest_tmp_json})
