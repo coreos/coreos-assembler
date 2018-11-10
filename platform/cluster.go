@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
@@ -45,7 +45,7 @@ func NewBaseCluster(bf *BaseFlight, rconf *RuntimeConfig) (*BaseCluster, error) 
 		bf:         bf,
 		machmap:    make(map[string]Machine),
 		consolemap: make(map[string]string),
-		name:       fmt.Sprintf("%s-%s", bf.baseopts.BaseName, uuid.NewV4()),
+		name:       fmt.Sprintf("%s-%s", bf.baseopts.BaseName, uuid.New()),
 		rconf:      rconf,
 	}
 

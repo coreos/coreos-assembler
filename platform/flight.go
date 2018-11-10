@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/coreos/mantle/network"
@@ -49,7 +49,7 @@ func NewBaseFlightWithDialer(opts *Options, platform Name, ctPlatform string, di
 
 	bf := &BaseFlight{
 		clustermap: make(map[string]Cluster),
-		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.NewV4()),
+		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.New()),
 		platform:   platform,
 		ctPlatform: ctPlatform,
 		baseopts:   opts,

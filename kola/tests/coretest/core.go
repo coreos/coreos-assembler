@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 
 	"github.com/coreos/mantle/kola/register"
 )
@@ -308,16 +308,13 @@ func TestFsRandomUUID() error {
 		return fmt.Errorf("findmnt: %v", err)
 	}
 
-	got := bytes.TrimSpace(out)
-
-	var id uuid.UUID
-
-	if err := id.UnmarshalText(got); err != nil {
+	got, err := uuid.ParseBytes(bytes.TrimSpace(out))
+	if err != nil {
 		return fmt.Errorf("malformed GUID: %v", err)
 	}
 
-	defaultGUID := []byte("00000000-0000-0000-0000-000000000001")
-	if bytes.Equal(defaultGUID, got) {
+	defaultGUID := uuid.Parse("00000000-0000-0000-0000-000000000001")
+	if uuid.Equal(defaultGUID, got) {
 		return fmt.Errorf("unexpected default GUID found")
 	}
 
