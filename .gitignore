@@ -2,3 +2,4 @@
 /target
 **/*.rs.bk
 src/__pycache__/*
+.gocache

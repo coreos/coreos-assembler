@@ -1,0 +1,7 @@
+#!/bin/bash
+
+pushd /host/src/ || exit 1
+sudo ./build.sh make_and_makeinstall
+popd || exit 1
+
+exec /usr/bin/coreos-assembler "$@"
