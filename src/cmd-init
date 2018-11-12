@@ -5,13 +5,14 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-# Initialize FORCE to 0
+# Initialize FORCE to 0 and INSTALLER_DIR to null
 FORCE=0
+INSTALLER_DIR=""
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
-       coreos-assembler init [--force] GITCONFIG [SUBDIR]
+       coreos-assembler init [--force] [--installerdir INSTALLER_DIR] GITCONFIG [SUBDIR]
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
@@ -20,12 +21,15 @@ Usage: coreos-assembler init --help
 
   If specified, SUBDIR is a subdirectory of the git repository that should
   contain manifest.yaml and image.ks.
+
+  If you have the required install ISO and sha256sums already availble,
+  you can specify the location of the those files with the `--installerdir` flag.
 EOF
 }
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hf --longoptions help,force -- "$@") || rc=$?
+options=$(getopt --options hfi: --longoptions help,force,installerdir: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -39,6 +43,15 @@ while true; do
         ;;
     -f | --force)
         FORCE=1
+        ;;
+    -i | --installerdir)
+        case "$2" in
+            "")
+                shift ;;
+            *)
+                INSTALLER_DIR="$2"
+                shift ;;
+        esac
         ;;
     --)
         shift
@@ -100,20 +113,31 @@ mkdir -p src
      fi
  fi)
 
+
+installer_bn=$(basename ${INSTALLER})
+checksums_bn=$(basename ${INSTALLER_CHECKSUM})
 mkdir -p installer
+
+if [ -n "${INSTALLER_DIR}" ] && [ "${FORCE}" != "1" ]; then
+    if (cd "${INSTALLER_DIR}" && sha256sum -c "${checksums_bn}"); then
+        (cd installer
+         cp --reflink=auto "${INSTALLER_DIR}"/"${installer_bn}" .
+         cp --reflink=auto "${INSTALLER_DIR}"/"${checksums_bn}" .
+        )
+    fi
+fi
+
 (cd installer
- installer_bn=$(basename ${INSTALLER})
  if ! [ -f "${installer_bn}" ]; then
-     mkdir -p tmp
-     (
+    mkdir -p tmp
+    (
      cd tmp
      curl -L --remote-name-all ${INSTALLER} ${INSTALLER_CHECKSUM}
-     checksums_bn=$(basename ${INSTALLER_CHECKSUM})
      sha256sum -c "${checksums_bn}"
      mv "${installer_bn}" "${checksums_bn}" ..
-     )
-     rm tmp -rf
- fi
+    )
+    rm tmp -rf
+  fi
 )
 
 mkdir -p cache
