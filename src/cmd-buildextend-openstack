@@ -39,7 +39,7 @@ def generate_openstack():
     checksum = sha256sum_file(tmp_img_openstack)
     buildmeta_images['openstack'] = {
         'path': openstack_name,
-        'checksum': checksum
+        'sha256': checksum
     }
     os.rename(tmp_img_openstack, f"{builddir}/{openstack_name}")
     write_json(buildmeta_path, buildmeta)
