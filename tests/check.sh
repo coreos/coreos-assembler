@@ -15,6 +15,7 @@ do
         continue
     fi
     if [[ $shebang =~ ^#!/.*/bash.* ]] || [[ $shebang =~ ^#!/.*/env\ bash ]]; then
+        shellcheck -x "$f"
         bash -n "$f"
         echo "OK ${f}"
         continue
