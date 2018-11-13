@@ -163,6 +163,7 @@ EOF
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
         sudo "$@"
+        sudo chown -R -h "${USER}":"${USER}" "${workdir}"/repo
     else
         runvm "$@"
     fi
