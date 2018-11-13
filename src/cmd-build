@@ -181,7 +181,9 @@ set +x
 # make a version-less symlink to have a stable path
 ln -s "${img_qemu}" "${name}"-qemu.qcow2
 
-img_qemu_sha256=$(sha256sum "${img_qemu}" | cut -f 1 -d ' ')
+img_qemu_sha256_file="${img_qemu}.sha256sum"
+sha256sum "${img_qemu}" > "${img_qemu_sha256_file}"
+img_qemu_sha256="$(awk '{print $1}' < "${img_qemu_sha256_file}")"
 
 build_timestamp=$(date -u --iso-8601=seconds)
 
@@ -195,7 +197,8 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.kickstart-checksum": "${kickstart_checksum}",
  "images": {
     "qemu": { "path": "${img_qemu}",
-              "sha256": "${img_qemu_sha256}" }
+              "sha256": "${img_qemu_sha256}",
+              "sha256file": "${img_qemu_sha256_file}" }
  }
 }
 EOF
