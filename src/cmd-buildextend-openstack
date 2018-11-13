@@ -19,6 +19,7 @@ with open('src/config/manifest.yaml') as f:
 base_name = manifest['rojig']['name']
 img_prefix = f'{base_name}-{args.build}'
 openstack_name = f'{img_prefix}-openstack.qcow2'
+openstack_sha256_file = f'{openstack_name}.sha256sum'
 
 builddir = f'builds/{args.build}'
 buildmeta_path = f'{builddir}/meta.json'
@@ -39,9 +40,12 @@ def generate_openstack():
     checksum = sha256sum_file(tmp_img_openstack)
     buildmeta_images['openstack'] = {
         'path': openstack_name,
-        'sha256': checksum
+        'sha256': checksum,
+        'sha256file': openstack_sha256_file
     }
     os.rename(tmp_img_openstack, f"{builddir}/{openstack_name}")
+    write_sha256_file(f"{builddir}/{openstack_sha256_file}",
+                        openstack_name, checksum)
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
 
