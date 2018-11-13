@@ -19,3 +19,10 @@ def sha256sum_file(filename):
         for b in iter(lambda: f.read(128 * 1024), b''):
             h.update(b)
     return h.hexdigest()
+
+def write_sha256_file(path, img, sha256):
+    dn = os.path.dirname(path)
+    f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
+    f.write(f"{sha256}  {img}")
+    os.fchmod(f.file.fileno(), 0o644)
+    os.rename(f.name, path)
