@@ -175,6 +175,7 @@ img_qemu=${imageprefix}-qemu.qcow2
                --ostree-ref="${ref:-${commit}}" --ostree-repo="${workdir}"/repo \
                --location "${workdir}"/installer/*.iso --console-log-file "$(pwd)"/install.log \
                --logs "$(pwd)"/tmp/anaconda
+/usr/lib/coreos-assembler/gf-anaconda-cleanup "$(pwd)"/"${img_base}"
 /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 set +x
 # make a version-less symlink to have a stable path
