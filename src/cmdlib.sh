@@ -208,10 +208,10 @@ EOF
     echo "$@" > "${TMPDIR}"/cmd.sh
 
     # support local dev cases where src/config is a symlink
-    srcvirtfs=
+    srcvirtfs=()
     if [ -L "${workdir}/src/config" ]; then
         # qemu follows symlinks
-        srcvirtfs="-virtfs local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source"
+        srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
     qemu-kvm -nodefaults -nographic -m 2048 -no-reboot \
@@ -225,7 +225,7 @@ EOF
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
+        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
