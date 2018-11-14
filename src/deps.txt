@@ -38,3 +38,6 @@ ignition
 
 # For parsing ISO8601 dates
 python3-dateutil
+
+# shellcheck for test
+ShellCheck
