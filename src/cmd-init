@@ -137,7 +137,7 @@ installer_bn=$(basename "${INSTALLER}")
 checksums_bn=$(basename "${INSTALLER_CHECKSUM}")
 mkdir -p installer
 
-if [ -n "${INSTALLER_DIR}" ] && [ "${FORCE}" != "1" ]; then
+if [ -n "${INSTALLER_DIR}" ]; then
     if (cd "${INSTALLER_DIR}" && sha256sum -c "${checksums_bn}"); then
         (cd installer
          cp --reflink=auto "${INSTALLER_DIR}"/"${installer_bn}" .
