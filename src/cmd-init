@@ -49,7 +49,10 @@ while true; do
             "")
                 shift ;;
             *)
-                INSTALLER_DIR="$2"
+                INSTALLER_DIR=$(readlink -f "$2")
+                if [ ! -d "$INSTALLER_DIR" ]; then
+                    fatal "installer must exist and be accessible: ${INSTALLER_DIR}"
+                fi
                 shift ;;
         esac
         ;;
