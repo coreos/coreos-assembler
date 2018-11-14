@@ -90,8 +90,24 @@ elif [ ! -w . ]; then
     fatal "init: running unprivileged, and current directory not writable"
 fi
 
-INSTALLER=https://download.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-28-1.1.iso
-INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/fedora/linux/releases/28/Everything/x86_64/iso/Fedora-Everything-28-1.1-x86_64-CHECKSUM
+# Get target architecture
+arch=$(uname -m)
+release="28"
+
+# Download url is different for primary and secondary fedora
+# Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
+# Secondary Fedora - https://download.fedoraproject.org/pub/fedora-secondary/releases/
+declare -A repository_dirs
+repository_dirs[aarch64]=fedora/linux
+repository_dirs[armhfp]=fedora/linux
+repository_dirs[x86_64]=fedora/linux
+repository_dirs[i386]=fedora-secondary
+repository_dirs[ppc64le]=fedora-secondary
+repository_dirs[s390x]=fedora-secondary
+
+repository_dir=${repository_dirs[$arch]}
+INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$release-1.1.iso
+INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-$release-1.1-$arch-CHECKSUM
 
 # Initialize sources (git)
 mkdir -p src
@@ -114,8 +130,8 @@ mkdir -p src
  fi)
 
 
-installer_bn=$(basename ${INSTALLER})
-checksums_bn=$(basename ${INSTALLER_CHECKSUM})
+installer_bn=$(basename "${INSTALLER}")
+checksums_bn=$(basename "${INSTALLER_CHECKSUM}")
 mkdir -p installer
 
 if [ -n "${INSTALLER_DIR}" ] && [ "${FORCE}" != "1" ]; then
@@ -132,7 +148,7 @@ fi
     mkdir -p tmp
     (
      cd tmp
-     curl -L --remote-name-all ${INSTALLER} ${INSTALLER_CHECKSUM}
+     curl -L --remote-name-all "${INSTALLER}" "${INSTALLER_CHECKSUM}"
      sha256sum -c "${checksums_bn}"
      mv "${installer_bn}" "${checksums_bn}" ..
     )
