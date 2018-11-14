@@ -183,8 +183,8 @@ runvm() {
         # then add all the base deps
         # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
         while IFS= read -r dep; do rpms+="$dep "; done < <(grep -v '^#' "${DIR}"/vmdeps.txt)
-
-        supermin --prepare --use-installed "$rpms" -o "${vmpreparedir}"
+        # shellcheck disable=SC2086
+        supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
 
         # the reason we do a heredoc here is so that the var substition takes
         # place immediately instead of having to proxy them through to the VM
