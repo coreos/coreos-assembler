@@ -73,12 +73,12 @@ else:
     ks_tmp = tempfile.NamedTemporaryFile(mode='w', prefix="coreos-virtinstall", suffix=".ks")
 run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
 
-# This is an implementation detail of https://github.com/dustymabe/ignition-dracut
+# This is an implementation detail of https://github.com/coreos/ignition-dracut
 # So we hardcode it here.
-# See: https://github.com/dustymabe/ignition-dracut/pull/12
+# See: https://github.com/coreos/ignition-dracut/pull/12
 ks_tmp.write("""
 %post --erroronfail
-touch /boot/coreos-firstboot
+touch /boot/ignition.firstboot
 %end
 """)
 if args.ostree_repo:
