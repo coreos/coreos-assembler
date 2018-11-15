@@ -42,7 +42,7 @@ coreos_gf_run_mount() {
     local boot
     boot=$(coreos_gf findfs-label boot)
     coreos_gf mount "${boot}" /boot
-    var=$(coreos_gf -findfs-label var || true)
+    var=$(coreos_gf -findfs-label var 2>/dev/null || true)
 
     # Export these variables for further use
     stateroot=/ostree/deploy/$(coreos_gf ls /ostree/deploy)
