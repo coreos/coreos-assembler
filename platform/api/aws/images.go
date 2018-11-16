@@ -36,6 +36,14 @@ var (
 
 type EC2ImageType string
 
+// The size of Container Linux on AWS, in GiB. See discussion in
+// https://github.com/coreos/mantle/pull/944
+// This is used if the provided size is less than 8, to ensure
+// compatibility with CL which has 4.5GiB disks right now but
+// wants 8GiB in AWS.  Otherwise, if a larger disk is provided,
+// its size will be honored.
+const containerLinuxDiskSize = 8
+
 const (
 	EC2ImageTypeHVM EC2ImageType = "hvm"
 	EC2ImageTypePV  EC2ImageType = "paravirtual"
@@ -350,18 +358,18 @@ func (a *API) CreateImportRole(bucket string) error {
 	return nil
 }
 
-func (a *API) CreateHVMImage(snapshotID string, name string, description string) (string, error) {
-	params := registerImageParams(snapshotID, name, description, "xvd", EC2ImageTypeHVM)
+func (a *API) CreateHVMImage(snapshotID string, name string, sizeGiB uint32, description string) (string, error) {
+	params := registerImageParams(snapshotID, name, sizeGiB, description, "xvd", EC2ImageTypeHVM)
 	params.EnaSupport = aws.Bool(true)
 	params.SriovNetSupport = aws.String("simple")
 	return a.createImage(params)
 }
 
-func (a *API) CreatePVImage(snapshotID string, name string, description string) (string, error) {
+func (a *API) CreatePVImage(snapshotID string, name string, sizeGiB uint32, description string) (string, error) {
 	if !RegionSupportsPV(a.opts.Region) {
 		return "", NoRegionPVSupport
 	}
-	params := registerImageParams(snapshotID, name, description, "sd", EC2ImageTypePV)
+	params := registerImageParams(snapshotID, name, sizeGiB, description, "sd", EC2ImageTypePV)
 	params.KernelId = aws.String(akis[a.opts.Region])
 	return a.createImage(params)
 }
@@ -403,9 +411,12 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	return imageID, nil
 }
 
-const diskSize = 8 // GB
-
-func registerImageParams(snapshotID, name, description string, diskBaseName string, imageType EC2ImageType) *ec2.RegisterImageInput {
+func registerImageParams(snapshotID string, name string, sizeGiB uint32, description string, diskBaseName string, imageType EC2ImageType) *ec2.RegisterImageInput {
+	// See comments around the containerLinuxDiskSize constant above; this
+	// basically converts the 4.5 Container Linux disk to 8 for AWS.
+	if sizeGiB < containerLinuxDiskSize {
+		sizeGiB = containerLinuxDiskSize
+	}
 	return &ec2.RegisterImageInput{
 		Name:               aws.String(name),
 		Description:        aws.String(description),
@@ -418,7 +429,7 @@ func registerImageParams(snapshotID, name, description string, diskBaseName stri
 				Ebs: &ec2.EbsBlockDevice{
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
-					VolumeSize:          aws.Int64(diskSize),
+					VolumeSize:          aws.Int64(int64(sizeGiB)),
 					VolumeType:          aws.String("gp2"),
 				},
 			},

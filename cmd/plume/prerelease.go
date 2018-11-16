@@ -407,12 +407,12 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 	plog.Printf("Creating AMIs from %v...", snapshot.SnapshotID)
 
-	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, imageName+"-hvm", imageDescription+" (HVM)")
+	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, imageName+"-hvm", 0, imageDescription+" (HVM)")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create HVM image: %v", err)
 	}
 
-	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, imageName, imageDescription+" (PV)")
+	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, imageName, 0, imageDescription+" (PV)")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
 	}
