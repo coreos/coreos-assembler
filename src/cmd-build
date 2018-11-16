@@ -61,6 +61,9 @@ prepare_build
 ostree --version
 rpm-ostree --version
 
+# RFC3339 formatter
+RFC3339="%Y-%m-%dT%H:%M:%SZ"
+
 previous_build=
 if [ -L "${workdir:?}"/builds/latest ]; then
     previous_build=$(readlink "${workdir}"/builds/latest)
@@ -183,7 +186,7 @@ ln -s "${img_qemu}" "${name}"-qemu.qcow2
 
 img_qemu_sha256=$(sha256sum "${img_qemu}" | cut -f 1 -d ' ')
 
-build_timestamp=$(date -u --iso-8601=seconds)
+build_timestamp=$(date -u +$RFC3339)
 
 cat > tmp/meta.json <<EOF
 {
