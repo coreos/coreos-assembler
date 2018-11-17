@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/local"
+	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -69,7 +70,24 @@ func NewFlight(opts *Options) (platform.Flight, error) {
 		diskImagePath: opts.DiskImage,
 	}
 
-	if opts.Distribution == "cl" && !opts.UseVanillaImage {
+	if opts.Distribution != "cl" {
+		// don't apply CL-specific mangling
+		opts.UseVanillaImage = true
+	}
+	if !opts.UseVanillaImage {
+		info, err := util.GetImageInfo(opts.DiskImage)
+		if err != nil {
+			qf.Destroy()
+			return nil, err
+		}
+		if info.Format != "raw" {
+			// makeCLDiskTemplate() needs to be able to mount
+			// partitions
+			plog.Debug("disk image is in qcow format; not enabling console logging")
+			opts.UseVanillaImage = true
+		}
+	}
+	if !opts.UseVanillaImage {
 		plog.Debug("enabling console logging in base disk")
 		qf.diskImageFile, err = makeCLDiskTemplate(opts.DiskImage)
 		if err != nil {
