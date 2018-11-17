@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -123,31 +122,6 @@ func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.UR
 	return s3URL, nil
 }
 
-type qemuInfo struct {
-	VirtualSize uint64 `json:"virtual-size"`
-}
-
-func getDiskSizeGiB(path string) (uint32, error) {
-	out, err := exec.Command("qemu-img", "info", "--output=json", path).Output()
-	if err != nil {
-		return 0, err
-	}
-
-	var info qemuInfo
-	err = json.Unmarshal(out, &info)
-	if err != nil {
-		return 0, err
-	}
-
-	const GiB = 1024 * 1024 * 1024
-	quotient, remainder := info.VirtualSize/GiB, info.VirtualSize%GiB
-	// Round up if there's leftover
-	if remainder > 0 {
-		quotient = quotient + 1
-	}
-	return uint32(quotient), nil
-}
-
 func runUpload(cmd *cobra.Command, args []string) error {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in aws upload cmd: %v\n", args)
@@ -157,13 +131,6 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
 		os.Exit(2)
 	}
-
-	imageSizeGiB, err := getDiskSizeGiB(uploadFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to query size of disk: %v\n", err)
-		os.Exit(1)
-	}
-	plog.Debugf("Image size: %v\n", imageSizeGiB)
 
 	// if an image name is unspecified try to use version.txt
 	imageName := uploadImageName
@@ -188,6 +155,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	var s3URL *url.URL
+	var err error
 	if uploadSourceObject != "" {
 		s3URL, err = url.Parse(uploadSourceObject)
 		if err != nil {
@@ -257,7 +225,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", imageSizeGiB, uploadAMIDescription)
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
@@ -289,7 +257,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	var pvID string
 	if uploadCreatePV {
-		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, imageSizeGiB, uploadAMIDescription)
+		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create PV image: %v\n", err)
 			os.Exit(1)
