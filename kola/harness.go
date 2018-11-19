@@ -121,6 +121,11 @@ var (
 			match: regexp.MustCompile("ignition\\[[0-9]+\\]: failed to fetch config: context canceled"),
 		},
 		{
+			// https://github.com/coreos/bugs/issues/2526
+			desc:  "initrd-cleanup.service terminated",
+			match: regexp.MustCompile("initrd-cleanup\\.service: Main process exited, code=killed, status=15/TERM"),
+		},
+		{
 			// kernel 4.14.11
 			desc:  "bad page table",
 			match: regexp.MustCompile("mm/pgtable-generic.c:\\d+: bad (p.d|pte)"),
