@@ -1,0 +1,27 @@
+#!/usr/bin/python3 -u
+
+import argparse
+import gi
+import sys
+
+gi.require_version('OSTree', '1.0')
+gi.require_version('Json', '1.0')
+from gi.repository import GLib, Gio, OSTree, Json
+
+parser = argparse.ArgumentParser()
+parser.add_argument("repo", help="OSTree repo")
+parser.add_argument("rev", help="Revision to inspect")
+args = parser.parse_args()
+
+r = OSTree.Repo.new(Gio.File.new_for_path(args.repo))
+r.open(None)
+
+[_, rev] = r.resolve_rev(args.rev, True)
+[_, commit, _] = r.load_commit(rev)
+commitmeta = commit.get_child_value(0)
+
+g = Json.Generator.new()
+g.set_root(Json.gvariant_serialize(commitmeta))
+stdout = Gio.UnixOutputStream.new(sys.stdout.fileno(), False)
+g.set_pretty(True)
+g.to_stream(stdout)
