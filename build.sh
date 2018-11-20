@@ -75,6 +75,24 @@ install_rpms() {
 
 }
 
+# Store Anaconda (boot.iso + split vmlinuz/initrd.img) as used
+# by virt-install.
+install_anaconda() {
+    major=29
+    # This doesn't always match the pungi/rpm arch
+    arch=$(arch)
+    baseurl=https://dl.fedoraproject.org/pub/fedora/linux/releases/${major}/Everything/${arch}/os/
+
+    anaconda_dir=/usr/lib/coreos-assembler/anaconda
+    mkdir -p "${anaconda_dir}"
+    (cd "${anaconda_dir}"
+     mkdir -p images/pxeboot
+     curl -L --remote-name-all "${baseurl}"/.treeinfo "${baseurl}"/images/{install.img,pxeboot/vmlinuz,pxeboot/initrd.img}
+     mv install.img images
+     mv vmlinuz initrd.img images/pxeboot
+    )
+}
+
 make_and_makeinstall() {
 
     # Work around https://github.com/coreos/coreos-assembler/issues/27

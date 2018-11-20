@@ -158,7 +158,7 @@ try:
         vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.ostree_repo))
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
-                          "--os-variant=rhel7", "--rng=/dev/urandom",
+                          "--os-variant=rhel7.5", "--rng=/dev/urandom",
                           "--check", "path_in_use=off",
                           "--network=none",  # We want predictablity, disable networking
                           "--disk=path={},cache=unsafe".format(args.dest),

@@ -166,6 +166,15 @@ else
 fi
 echo "New build ID: ${buildid}"
 
+# Default to embedded boot.iso, but use provided iso if one exists
+installer="/usr/lib/coreos-assembler/anaconda"
+for f in "${workdir}"/installer/*.iso; do
+    if [ -f "${f}" ]; then
+        installer="${f}"
+        break
+    fi
+done
+
 imageprefix="${name:?}"-"${buildid}"
 # Make these two verbose
 set -x
@@ -176,7 +185,7 @@ img_qemu=${imageprefix}-qemu.qcow2
                --create-disk --kickstart "${kickstart_input}" --kickstart-out "$(pwd)"/tmp/flattened.ks \
                --ostree-remote="${name}" --ostree-stateroot="${name}" \
                --ostree-ref="${ref:-${commit}}" --ostree-repo="${workdir}"/repo \
-               --location "${workdir}"/installer/*.iso --console-log-file "$(pwd)"/install.log \
+               --location "${installer}" --console-log-file "$(pwd)"/install.log \
                --logs "$(pwd)"/tmp/anaconda
 /usr/lib/coreos-assembler/gf-anaconda-cleanup "$(pwd)"/"${img_base}"
 /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu

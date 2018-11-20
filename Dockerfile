@@ -5,6 +5,7 @@ WORKDIR /root/containerbuild
 COPY ./build.sh ./deps.txt ./vmdeps.txt ./build-deps.txt /root/containerbuild/
 RUN ./build.sh configure_yum_repos
 RUN ./build.sh install_rpms
+RUN ./build.sh install_anaconda
 
 # Ok copy in the rest of them for the next few steps
 COPY ./ /root/containerbuild/
