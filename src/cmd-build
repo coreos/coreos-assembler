@@ -209,6 +209,10 @@ EOF
 # since we may be overriding data from a previous build.
 cat ${composejson} tmp/meta.json ${commitmeta_input_json} | jq -s add > meta.json
 
+# And add the commit metadata itself, which includes notably the rpmdb pkglist
+# in a format that'd be easy to generate diffs out of for higher level tools
+"${dn}"/commitmeta_to_json "${workdir}/repo" "${commit}" > commitmeta.json
+
 # Clean up our temporary data
 rm tmp -rf
 # Back to the toplevel build directory, so we can rename this one
