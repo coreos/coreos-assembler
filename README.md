@@ -67,6 +67,14 @@ repository.
 Performing a build
 ---
 
+First, we fetch all the metadata and packages:
+
+```
+$ coreos-assembler fetch
+```
+
+And now we can build from these inputs:
+
 ```
 $ coreos-assembler build
 ```
@@ -76,7 +84,7 @@ as generate VM images in `/srv/coreos/builds/`.
 
 Next, rerun `coreos-assembler build` and notice the system correctly
 deduces that nothing changed.  You can run `coreos-assembler fetch`
-to check for updated RPMs.
+again to check for updated RPMs.
 
 Running
 ---
