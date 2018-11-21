@@ -19,6 +19,8 @@ r.open(None)
 [_, rev] = r.resolve_rev(args.rev, True)
 [_, commit, _] = r.load_commit(rev)
 commitmeta = commit.get_child_value(0)
+if sys.byteorder != 'big':
+    commitmeta = commitmeta.byteswap()
 
 g = Json.Generator.new()
 g.set_root(Json.gvariant_serialize(commitmeta))
