@@ -37,14 +37,14 @@ any directory you like.  You should run these commands as `root`.
 ```
 $ mkdir /srv/coreos
 $ cd /srv/coreos
-$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler'
+$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv --workdir /srv quay.io/coreos-assembler/coreos-assembler'
 ```
 
 If you need access to CA certificates on your host (for example, when you need to access
 a git repo that is not on the public Internet), you can mount in the host certificates
 as read-only.  For example, on a Fedora host the alias would change to:
 
-`$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v /etc/pki:/etc/pki:ro -v $(pwd):/srv --workdir /srv quay.io/cgwalters/coreos-assembler'`
+`$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v /etc/pki:/etc/pki:ro -v $(pwd):/srv --workdir /srv quay.io/coreos-assembler/coreos-assembler'`
 
 See this [Stack Overflow question](https://stackoverflow.com/questions/26028971/docker-container-ssl-certificates) for additional discussion.
 
