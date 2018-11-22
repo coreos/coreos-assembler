@@ -141,6 +141,11 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
                         "contents": "[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
                     }
                 ]
+            },
+            {
+                "name": "serial-getty-motd.service",
+                "enabled": true,
+                "contents": "[Unit]\\nDescription=Helper message to exit QEMU monitor to /etc/motd\\nBefore=getty.target\\n[Service]\\nType=oneshot\\nExecStart=/bin/sh -c '/usr/bin/echo \\"To exit, press Ctrl-A and then X.\\\\n\\" >> /etc/motd'\\n[Install]\\nWantedBy=getty.target\\n"
             }
             ${ign_var_srv_mount}
         ]
