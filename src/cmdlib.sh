@@ -173,22 +173,19 @@ runvm() {
     local vmpreparedir=${workdir}/tmp/supermin.prepare
     local vmbuilddir=${workdir}/tmp/supermin.build
 
-    # use REBUILDVM=1 if e.g. hacking on rpm-ostree/ostree and wanting to get
-    # the new bits in the VM
-    if [ ! -f "${vmbuilddir}"/.done ] || [ -n "${REBUILDVM:-}" ]; then
-        rm -rf "${vmpreparedir}" "${vmbuilddir}"
-        mkdir -p "${vmpreparedir}" "${vmbuilddir}"
+    rm -rf "${vmpreparedir}" "${vmbuilddir}"
+    mkdir -p "${vmpreparedir}" "${vmbuilddir}"
 
-        local rpms=
-        # then add all the base deps
-        # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
-        while IFS= read -r dep; do rpms+="$dep "; done < <(grep -v '^#' "${DIR}"/vmdeps.txt)
-        # shellcheck disable=SC2086
-        supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
+    local rpms=
+    # then add all the base deps
+    # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
+    while IFS= read -r dep; do rpms+="$dep "; done < <(grep -v '^#' "${DIR}"/vmdeps.txt)
+    # shellcheck disable=SC2086
+    supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
 
-        # the reason we do a heredoc here is so that the var substition takes
-        # place immediately instead of having to proxy them through to the VM
-        cat > "${vmpreparedir}/init" <<EOF
+    # the reason we do a heredoc here is so that the var substition takes
+    # place immediately instead of having to proxy them through to the VM
+    cat > "${vmpreparedir}/init" <<EOF
 #!/bin/bash
 set -xeuo pipefail
 workdir=${workdir}
@@ -199,11 +196,9 @@ echo \$rc > ${workdir}/tmp/rc
 /sbin/fstrim -v ${workdir}/cache
 /sbin/reboot -f
 EOF
-        chmod a+x "${vmpreparedir}"/init
-        (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
-        supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}"
-        touch "${vmbuilddir}/.done"
-    fi
+    chmod a+x "${vmpreparedir}"/init
+    (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
+    supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}"
 
     echo "$@" > "${TMPDIR}"/cmd.sh
 
