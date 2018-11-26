@@ -122,3 +122,21 @@ Development
 ---
 
 The container image is built in [OpenShift CI](https://api.ci.openshift.org/console/project/rhcos/browse/builds/coreos-assembler?tab=history).
+
+When editing a script, a quick way to use the locally-modified script in
+`coreos-assembler` is to volume-mount the path to the script, for example:
+
+```
+$ alias coreos-assembler= podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv -v /path/to/coreos-assembler/src/cmd-run:/usr/lib/coreos-assembler/cmd-run --workdir /srv quay.io/coreos-assembler/coreos-assembler
+```
+
+To completely rebuild the coreos-assembler container image locally, execute
+`$ podman build .` from the `coreos-assembler` repository. You can upload your
+built image to a registry such as quay.io by doing the following:
+
+```
+$ podman push <image id> quay.io/<account name>/coreos-assembler
+```
+
+Replacing the container image argument in the `coreos-assembler` alias with
+`quay.io/<account name>/coreos-assembler` will pull your container image instead.
