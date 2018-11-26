@@ -19,7 +19,7 @@ func init() {
 	register.Register(&register.Test{
 		Run:              TestTLSFetchURLs,
 		ClusterSize:      1,
-		Name:             "rhcos.tls.fetch-urls",
+		Name:             "coreos.tls.fetch-urls",
 		ExcludePlatforms: []string{"qemu"},  // Networking outside cluster required
 		ExcludeDistros:   []string{"rhcos"}, // wget not included in RHCOS
 	})
