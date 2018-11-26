@@ -90,7 +90,7 @@ make_and_makeinstall() {
     rsync -rlv "${srcdir}"/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 
     if ! test -f mantle/README.md; then
-        echo "Run: git submodule update --init" 1>&2
+        echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
         exit 1
     fi
 
