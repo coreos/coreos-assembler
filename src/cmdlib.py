@@ -1,6 +1,7 @@
 # Python version of cmdlib.sh
 
-import os,json,tempfile,subprocess,hashlib
+import os,json,tempfile,subprocess,hashlib,sys
+from datetime import datetime
 
 def run_verbose(args, **kwargs):
     print("+ {}".format(subprocess.list2cmdline(args)))
@@ -19,3 +20,10 @@ def sha256sum_file(filename):
         for b in iter(lambda: f.read(128 * 1024), b''):
             h.update(b)
     return h.hexdigest()
+
+def fatal(msg):
+    print('error: {}'.format(msg), file=sys.stderr)
+    raise SystemExit(1)
+
+def rfc3339_time():
+    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
