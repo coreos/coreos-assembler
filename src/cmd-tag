@@ -1,0 +1,154 @@
+#!/usr/bin/python3 -u
+# Allows users to operate on the tags in `builds.json`
+#
+# Examples:
+#
+#   $ coreos-assembler tag update --tag smoketested --build 47.152
+#   $ coreos-assembler tag delete --tag beta
+#   $ coreos-assembler tag list
+#
+import argparse
+import json
+import os
+import sys
+
+sys.path.insert(0, '/usr/lib/coreos-assembler')
+from cmdlib import fatal, rfc3339_time, write_json
+
+
+# Default location of build metadata; perhaps customizable in
+# the future?
+BUILDS_JSON = "builds/builds.json"
+
+
+def main():
+    """Main entry point"""
+
+    args = parse_args()
+    args.func(args)
+
+
+def parse_args():
+    """Parse args and dispatch"""
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="cmd", title="Tag actions")
+    subparsers.required = True
+
+    delete = subparsers.add_parser("delete",
+                                   help="Delete a tag from the metadata")
+    delete.add_argument("--tag", help="Tag to delete from metadata",
+                        required=True)
+    delete.set_defaults(func=cmd_delete)
+
+    list_tags = subparsers.add_parser("list", help="List available tags in "
+                                                   "the metadata")
+    list_tags.set_defaults(func=cmd_list)
+
+    update = subparsers.add_parser("update", help="Update existing tag or "
+                                                  "create a new tag")
+    update.add_argument("--tag", help="Tag to be updated", required=True)
+    update.add_argument("--build", help="Build to update tag with",
+                        required=True)
+    update.add_argument("--force", help="Force the update of a tag",
+                        action="store_true")
+    update.set_defaults(func=cmd_update)
+
+    return parser.parse_args()
+
+
+def init_build_data():
+    """Initialize build metadata"""
+
+    if os.path.isfile(BUILDS_JSON):
+        with open(BUILDS_JSON) as json_file:
+            build_data = json.load(json_file)
+    else:
+        print("INFO: Did not find existing builds.json; starting with empty "
+              "build list and tags list")
+        build_data = {"builds": [], "tags": []}
+
+    return build_data
+
+
+def finalize_json(build_data):
+    """Wrapper around cmdlib.write_json()"""
+
+    build_data['timestamp'] = rfc3339_time()
+    write_json(BUILDS_JSON, build_data)
+
+
+def available_tags(build_data):
+    """Returns the available tag names from build metadata"""
+
+    return [t.get("name") for t in build_data.get("tags", {})]
+
+
+def cmd_list(args):
+    """List available tags in build metadata"""
+
+    build_data = init_build_data()
+    avail_tags = available_tags(build_data)
+    if not avail_tags:
+        print("No tags found")
+        return
+
+    for tag in build_data["tags"]:
+        print(f"name: {tag['name']}\n"
+              f"created: {tag['created']}\n"
+              f"target: {tag['target']}\n")
+
+
+def cmd_update(args):
+    """Create or update a tag to new build ID"""
+
+    build_data = init_build_data()
+    avail_tags = available_tags(build_data)
+    avail_builds = build_data["builds"]
+
+    if "tags" not in build_data:
+        build_data["tags"] = []
+
+    # if the build doesn't exist, check for the force flag and bail out
+    # if it is not used.
+    if args.build not in avail_builds:
+        if not args.force:
+            fatal("Cannot operate on a tag with a build that does not exist")
+        print(f"INFO: Operating on a tag ({args.tag}) with a build "
+              f"({args.build}) that does not exist")
+
+    # we've got a build (either forced or not), so time to make/update a tag
+    created = rfc3339_time()
+    if args.tag not in avail_tags:
+        build_data["tags"].append({"name": args.tag,
+                                   "created": created,
+                                   "target": args.build})
+    else:
+        build_data["tags"] = [{"name": args.tag,
+                               "created": created,
+                               "target": args.build}
+                              if t.get("name") == args.tag
+                              else t for t in build_data["tags"]]
+    finalize_json(build_data)
+
+
+def cmd_delete(args):
+    """Delete a tag from build metadata"""
+
+    # To delete a tag, iterate through existing tags list, and
+    # drop the entry we want
+    build_data = init_build_data()
+    avail_tags = available_tags(build_data)
+
+    if args.tag not in avail_tags:
+        fatal("Cannot delete a tag that does not exist")
+
+    build_data["tags"] = [t for t in build_data["tags"]
+                          if t["name"] != args.tag]
+
+    # Write out JSON
+    finalize_json(build_data)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
