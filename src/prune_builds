@@ -15,10 +15,8 @@ import subprocess
 
 import dateutil.parser
 
-from datetime import datetime
-
 sys.path.insert(0, '/usr/lib/coreos-assembler')
-from cmdlib import write_json
+from cmdlib import write_json, rfc3339_time
 
 # Let's just hardcode this here for now
 DEFAULT_KEEP_LAST_N = 3
@@ -43,19 +41,16 @@ if os.path.isfile(builds_json):
 else:
     builddata = {'builds': []}
 
-# generate RFC3339 timestamp
-now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-
 # handle --timestamp-only
 if args.timestamp_only:
-    builddata['timestamp'] = now
+    builddata['timestamp'] = rfc3339_time()
     write_json(builds_json, builddata)
     sys.exit(0)
 
 # Handle --insert-only
 if args.insert_only:
     builddata['builds'].insert(0, args.insert_only)
-    builddata['timestamp'] = now
+    builddata['timestamp'] = rfc3339_time()
     write_json(builds_json, builddata)
     sys.exit(0)
 
@@ -93,12 +88,12 @@ if not skip_pruning and len(builds) > args.keep_last_n:
     del builds[args.keep_last_n:]
 
 builddata['builds'] = [x[0] for x in builds]
-builddata['timestamp'] = now
+builddata['timestamp'] = rfc3339_time()
 write_json(builds_json, builddata)
 
 # if we're not pruning, then we're done!
 if skip_pruning:
-    sys.exit()
+    sys.exit(0)
 
 # now delete other build dirs not in the manifest
 
