@@ -25,9 +25,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--workdir", required=True, help="Path to workdir")
 parser.add_argument("--keep-last-n", type=int, default=DEFAULT_KEEP_LAST_N,
                     help="Number of builds to keep (0 for all)")
-parser.add_argument("--insert-only", help="Append a new latest build, do not prune",
+parser.add_argument("--insert-only",
+                    help="Append a new latest build, do not prune",
                     action='store')
-parser.add_argument("--timestamp-only", help="Update timestamp on builds.json",
+parser.add_argument("--timestamp-only",
+                    help="Update timestamp on builds.json",
                     action='store_true')
 args = parser.parse_args()
 
@@ -100,6 +102,7 @@ if skip_pruning:
 for build_dir, _ in builds_to_delete:
     shutil.rmtree(os.path.join(builds_dir, build_dir))
 
+
 # and finally prune OSTree repos
 def ostree_prune(repo_name, sudo=False):
     repo = os.path.join(args.workdir, repo_name)
@@ -108,7 +111,8 @@ def ostree_prune(repo_name, sudo=False):
         argv.extend(['sudo', '--'])
     print(f"Pruning {repo_name}")
     argv.extend(["ostree", "prune", "--repo", repo, "--refs-only",
-                    f"--depth={args.keep_last_n-1}"])
+                f"--depth={args.keep_last_n-1}"])
     subprocess.run(argv, check=True)
+
 
 ostree_prune('repo')
