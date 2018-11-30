@@ -1,11 +1,18 @@
 # Python version of cmdlib.sh
 
-import os,json,tempfile,subprocess,hashlib,sys
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
 from datetime import datetime
+
 
 def run_verbose(args, **kwargs):
     print("+ {}".format(subprocess.list2cmdline(args)))
     subprocess.check_call(args, **kwargs)
+
 
 def write_json(path, data):
     dn = os.path.dirname(path)
@@ -14,6 +21,7 @@ def write_json(path, data):
     os.fchmod(f.file.fileno(), 0o644)
     os.rename(f.name, path)
 
+
 def sha256sum_file(filename):
     h = hashlib.sha256()
     with open(filename, 'rb', buffering=0) as f:
@@ -21,9 +29,11 @@ def sha256sum_file(filename):
             h.update(b)
     return h.hexdigest()
 
+
 def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
     raise SystemExit(1)
+
 
 def rfc3339_time():
     return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
