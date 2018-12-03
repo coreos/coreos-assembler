@@ -1,5 +1,5 @@
 hash: 8c64f8951f86ea2c61c59d001df1c31d9522b40573f2c0a07ff0ae8b8811a9a7
-updated: 2018-11-09T15:38:59.344185114-05:00
+updated: 2018-12-03T13:49:13.288130309-08:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -373,7 +373,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
+  version: a37df1387b4521194676d88c79230c613610d5f4
   subpackages:
   - internal
   - internal/app_identity
@@ -385,7 +385,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/cloud
-  version: 3a581782808caff5f772ffa67dcf8890c369c62d
+  version: 56d3f5bc07d0a73b6643844c715d22ff2d097797
   subpackages:
   - compute/metadata
 - name: google.golang.org/genproto
