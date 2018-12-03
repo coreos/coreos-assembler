@@ -64,6 +64,9 @@ var (
 	ErrUnrecognizedRaidLevel       = errors.New("unrecognized raid level")
 	ErrShouldNotExistWithOthers    = errors.New("shouldExist specified false with other options also specified")
 	ErrZeroesWithShouldNotExist    = errors.New("shouldExist is false for a partition and other partition(s) has start or size 0")
+	ErrPartitionsUnitsMismatch     = errors.New("cannot mix MBs and sectors within a disk")
+	ErrSizeDeprecated              = errors.New("size is deprecated; use sizeMB instead")
+	ErrStartDeprecated             = errors.New("start is deprecated; use startMB instead")
 
 	// Passwd section errors
 	ErrPasswdCreateDeprecated      = errors.New("the create object has been deprecated in favor of user-level options")
@@ -91,6 +94,9 @@ var (
 	ErrHashWrongSize       = errors.New("incorrect size for hash sum")
 	ErrHashUnrecognized    = errors.New("unrecognized hash function")
 	ErrEngineConfiguration = errors.New("engine incorrectly configured")
+
+	// AWS S3 specific errors
+	ErrInvalidS3ObjectVersionId = errors.New("invalid S3 object VersionId")
 )
 
 // NewNoInstallSectionError produces an error indicating the given unit, named

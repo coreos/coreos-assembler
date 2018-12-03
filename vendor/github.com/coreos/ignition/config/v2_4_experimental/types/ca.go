@@ -1,4 +1,4 @@
-// Copyright 2017 CoreOS, Inc.
+// Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,16 +18,10 @@ import (
 	"github.com/coreos/ignition/config/validate/report"
 )
 
-func (s LinkEmbedded1) ValidateTarget() report.Report {
-	r := report.Report{}
-	if !s.Hard {
-		err := validatePath(s.Target)
-		if err != nil {
-			r.Add(report.Entry{
-				Message: err.Error(),
-				Kind:    report.EntryError,
-			})
-		}
+func (c CaReference) ValidateSource() report.Report {
+	err := validateURL(c.Source)
+	if err != nil {
+		return report.ReportFromError(err, report.EntryError)
 	}
-	return r
+	return report.Report{}
 }
