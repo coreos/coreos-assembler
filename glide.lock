@@ -1,5 +1,5 @@
-hash: 8c64f8951f86ea2c61c59d001df1c31d9522b40573f2c0a07ff0ae8b8811a9a7
-updated: 2018-11-09T15:38:59.344185114-05:00
+hash: 31d923eadfbe59a92020365502d284be743092e1e0ab3c29a90dc61f7ffd8914
+updated: 2018-12-03T14:07:46.657913577-08:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -130,12 +130,12 @@ imports:
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd
-  version: 39ca1b05acc7ad1220e09f133283b8859a8b71ab
+  version: 9002847aa1425fb6ac49077c0a630b3b67e0fbfd
   subpackages:
   - journal
   - unit
 - name: github.com/coreos/ignition
-  version: f7079129b8651ac51dba14c3af65692bb413c1dd
+  version: 2a88cd95b6812a70a7dad150f4cb18c5f028bc22
   subpackages:
   - config/shared/errors
   - config/shared/validations
@@ -148,7 +148,9 @@ imports:
   - config/v2_1/types
   - config/v2_2
   - config/v2_2/types
-  - config/v2_3_experimental/types
+  - config/v2_3
+  - config/v2_3/types
+  - config/v2_4_experimental/types
   - config/validate
   - config/validate/astjson
   - config/validate/astnode
@@ -173,7 +175,7 @@ imports:
   subpackages:
   - context
 - name: github.com/go-ini/ini
-  version: c787282c39ac1fc618827141a1f762240def08a3
+  version: 300e940a926eb277d3901b20bdfcc54928ad3642
 - name: github.com/godbus/dbus
   version: a5942dec6340eb0d57f43f2003c190ce06e43dea
 - name: github.com/gogo/protobuf
@@ -201,7 +203,7 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jmespath/go-jmespath
-  version: c2b33e8439af944379acbdd9c3a5fe0bc44bd8a5
+  version: 0b12d6b521d83fc7f755e7cfc1b1fbdd35a01a74
 - name: github.com/jonboulle/clockwork
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
 - name: github.com/kballard/go-shellquote
@@ -373,7 +375,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
+  version: a37df1387b4521194676d88c79230c613610d5f4
   subpackages:
   - internal
   - internal/app_identity
@@ -385,7 +387,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/cloud
-  version: 3a581782808caff5f772ffa67dcf8890c369c62d
+  version: 022eb1645b78acb655755a0c1e185c68cd5c8eb3
   subpackages:
   - compute/metadata
 - name: google.golang.org/genproto
