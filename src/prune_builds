@@ -10,13 +10,17 @@ import sys
 import json
 import shutil
 import argparse
-import tempfile
 import subprocess
+import collections
 
 import dateutil.parser
+from datetime import timedelta
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
 from cmdlib import write_json, rfc3339_time
+
+Build = collections.namedtuple('Build', ['id', 'timestamp',
+                                         'ostree_timestamp'])
 
 # Let's just hardcode this here for now
 DEFAULT_KEEP_LAST_N = 3
@@ -24,7 +28,7 @@ DEFAULT_KEEP_LAST_N = 3
 parser = argparse.ArgumentParser()
 parser.add_argument("--workdir", required=True, help="Path to workdir")
 parser.add_argument("--keep-last-n", type=int, default=DEFAULT_KEEP_LAST_N,
-                    help="Number of builds to keep (0 for all)")
+                    help="Number of untagged builds to keep (0 for all)")
 parser.add_argument("--insert-only",
                     help="Append a new latest build, do not prune",
                     action='store')
@@ -58,7 +62,10 @@ if args.insert_only:
 
 skip_pruning = (args.keep_last_n == 0)
 
-# first, regen builds.json
+# collect all builds being pointed to by tags
+tagged_builds = set([tag['target'] for tag in builddata.get('tags', [])])
+
+# first, pick up all the builds from the dir itself
 with os.scandir(builds_dir) as it:
     for entry in it:
 
@@ -81,15 +88,44 @@ with os.scandir(builds_dir) as it:
         # Older versions only had ostree-timestamp
         ts = j.get('build-timestamp') or j['ostree-timestamp']
         t = dateutil.parser.parse(ts)
-        builds.append((entry.name, t))
+        ostree_ts = j['ostree-timestamp']
+        ostree_t = dateutil.parser.parse(ostree_ts)
+        builds.append(Build(id=entry.name, timestamp=t,
+                            ostree_timestamp=ostree_t))
 
-builds = sorted(builds, key=lambda x: x[1], reverse=True)
+# just get the trivial case out of the way
+if len(builds) == 0:
+    print("No builds to prune!")
+    sys.exit(0)
+
+# sort by timestamp, newest first
+builds = sorted(builds, key=lambda x: x.timestamp, reverse=True)
+
+new_builds = []
 builds_to_delete = []
-if not skip_pruning and len(builds) > args.keep_last_n:
-    builds_to_delete = builds[args.keep_last_n:]
-    del builds[args.keep_last_n:]
 
-builddata['builds'] = [x[0] for x in builds]
+if skip_pruning:
+    new_builds = builds
+else:
+    n = args.keep_last_n
+    assert(n > 0)
+    for build in builds:
+        # skip tagged builds and don't count them towards the limit
+        if build.id in tagged_builds:
+            print(f"Skipping tagged build {build.id}")
+            new_builds.append(build)
+            continue
+
+        if n == 0:
+            builds_to_delete.append(build)
+        else:
+            new_builds.append(build)
+            n = n - 1
+
+# either we didn't prune so it's the same builds, or we did, and keep_last_n>0
+assert(len(new_builds) > 0)
+
+builddata['builds'] = [x.id for x in new_builds]
 builddata['timestamp'] = rfc3339_time()
 write_json(builds_json, builddata)
 
@@ -99,20 +135,22 @@ if skip_pruning:
 
 # now delete other build dirs not in the manifest
 
-for build_dir, _ in builds_to_delete:
-    shutil.rmtree(os.path.join(builds_dir, build_dir))
-
+for build in builds_to_delete:
+    shutil.rmtree(os.path.join(builds_dir, build.id))
 
 # and finally prune OSTree repos
-def ostree_prune(repo_name, sudo=False):
-    repo = os.path.join(args.workdir, repo_name)
-    argv = []
-    if sudo:
-        argv.extend(['sudo', '--'])
-    print(f"Pruning {repo_name}")
-    argv.extend(["ostree", "prune", "--repo", repo, "--refs-only",
-                f"--depth={args.keep_last_n-1}"])
-    subprocess.run(argv, check=True)
+print(f"Pruning repo")
+repo = os.path.join(args.workdir, 'repo')
 
-
-ostree_prune('repo')
+# For now, we just use the --keep-younger-than CLI here. Doing this more
+# accurately would require enhancing the `prune` CLI (or just use the API
+# directly?). Or we could also manually figure out the depth of the oldest
+# build and then use that as the arg to `--depth`.
+oldest_ostree_t = new_builds[-1].ostree_timestamp
+# In a quick test, it seems like --keep-younger-than=x actually keeps commits
+# with timestamps exactly equal to x, but the name is a bit tricky so let's
+# be safe and just pick a time 1h before that so we're doubly sure. It might
+# keep a few other older commits, but meh...
+younger_than = rfc3339_time(oldest_ostree_t - timedelta(hours=1))
+subprocess.run(["ostree", "prune", "--repo", repo, "--refs-only",
+               f"--keep-younger-than={younger_than}"], check=True)

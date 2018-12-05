@@ -7,7 +7,7 @@ dn=$(dirname "$0")
 
 print_help() {
     cat 1>&2 <<'EOF'
-Usage: coreos-assembler restamp
+Usage: coreos-assembler bump-timestamp
 
   Update the `timestamp` key of `builds.json`.
 EOF

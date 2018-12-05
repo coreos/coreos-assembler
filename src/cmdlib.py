@@ -35,5 +35,7 @@ def fatal(msg):
     raise SystemExit(1)
 
 
-def rfc3339_time():
-    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+def rfc3339_time(t=None):
+    if t is None:
+        t = datetime.utcnow()
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")

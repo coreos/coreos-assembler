@@ -13,8 +13,8 @@ print_help() {
 Usage: coreos-assembler prune --help
        coreos-assembler prune [--keep=N]
 
-  Delete older build artifacts. By default, only the last 3 builds are kept.
-  This can be overridden with the `--keep` option.
+  Delete older untagged build artifacts. By default, only the last 3 untagged
+  builds are kept.  This can be overridden with the `--keep` option.
 EOF
 }
 
