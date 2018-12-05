@@ -11,21 +11,17 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler prune --help
-       coreos-assembler prune [--keep=N] [--timestamp-only]
+       coreos-assembler prune [--keep=N]
 
   Delete older build artifacts. By default, only the last 3 builds are kept.
   This can be overridden with the `--keep` option.
-
-  The `--timestamp-only` option will just update the `timestamp` key of
-  `builds.json`
 EOF
 }
 
 # Parse options
 KEEP_LAST_N="3"
-TIMESTAMP=0
 rc=0
-options=$(getopt --options h --longoptions help,keep:,timestamp-only -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,keep: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -40,9 +36,6 @@ while true; do
         --keep)
             shift
             KEEP_LAST_N="$1"
-            ;;
-        --timestamp-only)
-            TIMESTAMP=1
             ;;
         --)
             shift
@@ -63,10 +56,5 @@ if [ $# -ne 0 ]; then
 fi
 
 prepare_build
-
-if [ "${TIMESTAMP}" == 1 ]; then
-    "${dn}"/prune_builds --timestamp-only --workdir "${workdir:?}"
-    exit 0
-fi
 
 "${dn}"/prune_builds --keep-last-n "${KEEP_LAST_N}" --workdir "${workdir:?}"

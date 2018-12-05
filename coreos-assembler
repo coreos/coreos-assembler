@@ -34,7 +34,7 @@ if [ -e /sys/fs/selinux/status ]; then
 fi
 
 cmd=${1:-}
-build_commands="init fetch build buildextend-ec2 buildextend-openstack tag run prune clean"
+build_commands="init fetch build buildextend-ec2 buildextend-openstack tag restamp run prune clean"
 other_commands="shell"
 utility_commands="gf-oemid virt-install oscontainer"
 if [ -z "${cmd}" ]; then
