@@ -39,3 +39,10 @@ def rfc3339_time(t=None):
     if t is None:
         t = datetime.utcnow()
     return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def rm_allow_noent(path):
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
