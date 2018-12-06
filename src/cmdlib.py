@@ -17,7 +17,7 @@ def run_verbose(args, **kwargs):
 def write_json(path, data):
     dn = os.path.dirname(path)
     f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
-    json.dump(data, f)
+    json.dump(data, f, indent=4)
     os.fchmod(f.file.fileno(), 0o644)
     os.rename(f.name, path)
 
