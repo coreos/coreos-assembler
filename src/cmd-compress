@@ -1,0 +1,77 @@
+#!/usr/bin/python3 -u
+# Compresses all images in a build.
+
+import os
+import sys
+import json
+import shutil
+import argparse
+
+sys.path.insert(0, '/usr/lib/coreos-assembler')
+from cmdlib import run_verbose, write_json, sha256sum_file, rm_allow_noent
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", help="Build ID")
+args = parser.parse_args()
+
+# default to latest build if not specified
+if args.build:
+    build = args.build
+else:
+    with open('builds/builds.json') as f:
+        j = json.load(f)
+        build = j['builds'][0]
+
+print(f"Targeting build: {build}")
+
+buildmeta_path = f'builds/{build}/meta.json'
+with open(buildmeta_path) as f:
+    buildmeta = json.load(f)
+
+tmpdir = 'tmp/compress'
+if os.path.isdir(tmpdir):
+    shutil.rmtree(tmpdir)
+os.mkdir(tmpdir)
+
+# Note we mutate the build dir in place, similarly to the buildextend commands.
+# One cool approach here might be to `cp -al` the whole build dir, mutate it,
+# then RENAME_EXCHANGE the two... though it doesn't seem Python exposes it yet
+# so that'd require some hacking around. For now, we just guarantee that
+# `compress` is idempotent and can resume from failures.
+
+at_least_one = False
+imgs_to_compress = []
+for img_format in buildmeta['images']:
+    img = buildmeta['images'][img_format]
+    file = img['path']
+    filepath = f'builds/{build}/{file}'
+    if not file.endswith('.gz'):
+        tmpfile = f'{tmpdir}/{file}.gz'
+        with open(tmpfile, 'wb') as f:
+            run_verbose(['gzip', '-c', f'builds/{build}/{file}'], stdout=f)
+        file_gz = file + '.gz'
+        filepath_gz = filepath + '.gz'
+        img['path'] = file_gz
+        img['sha256'] = sha256sum_file(tmpfile)
+
+        # just flush out after every image type, but unlink after writing.
+        # Then, we should be able to interrupt and restart from the last type.
+        os.rename(tmpfile, filepath_gz)
+        write_json(buildmeta_path, buildmeta)
+        os.unlink(filepath)
+        at_least_one = True
+    else:
+        # try to delete the original file if it's somehow still around
+        rm_allow_noent(filepath[:-3])
+
+# finally, also update the unversioned qemu symlink
+symlink_src = f'{buildmeta["name"]}-{build}-qemu.qcow2.gz'
+symlink_dest = f'builds/{build}/{buildmeta["name"]}-qemu.qcow2.gz'
+if not os.path.islink(symlink_dest):
+    os.symlink(symlink_src, symlink_dest)
+rm_allow_noent(symlink_dest[:-3])
+
+if at_least_one:
+    print(f"Updated: {buildmeta_path}")
+else:
+    print(f"All builds already compressed")
