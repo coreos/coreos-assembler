@@ -34,25 +34,33 @@ if [ -e /sys/fs/selinux/status ]; then
 fi
 
 cmd=${1:-}
-build_commands="init fetch build buildextend-ec2 buildextend-openstack tag compress bump-timestamp run prune clean"
+# commands we'd expect to use in the local dev path
+build_commands="init fetch build run prune clean"
+# commands more likely to be used in a prod pipeline only
+advanced_build_commands="buildextend-ec2 buildextend-openstack oscontainer"
+utility_commands="tag compress bump-timestamp"
 other_commands="shell"
-utility_commands="gf-oemid virt-install oscontainer"
 if [ -z "${cmd}" ]; then
-    echo usage: "coreos-assembler CMD ..."
+    echo Usage: "coreos-assembler CMD ..."
     echo "Build commands:"
     for bin in ${build_commands}; do
         echo "  ${bin}"
-    done
+    done # don't sort these ones, they're roughly in the order they're used
 
-    echo "Other commands:"
-    for bin in ${other_commands}; do
+    echo "Advanced build commands:"
+    for bin in ${advanced_build_commands}; do
         echo "  ${bin}"
-    done
+    done | sort
 
     echo "Utility commands:"
     for bin in ${utility_commands}; do
         echo "  ${bin}"
-    done
+    done | sort
+
+    echo "Other commands:"
+    for bin in ${other_commands}; do
+        echo "  ${bin}"
+    done | sort
     exit 1
 fi
 shift
