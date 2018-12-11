@@ -6,6 +6,9 @@ bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules
 # for composes
 rpm-ostree distribution-gpg-keys jq
 
+# for artifacts
+squashfs-tools
+
 # for clean reboot
 systemd
 

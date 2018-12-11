@@ -28,7 +28,7 @@ libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt
 rsync python2-gobject-base python3-gobject-base
 
 # To support recursive containerization and manipulating images
-podman buildah skopeo
+podman buildah skopeo squashfs-tools
 
 # Miscellaneous tools
 jq awscli
