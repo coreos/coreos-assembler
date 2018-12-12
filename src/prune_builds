@@ -29,12 +29,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--workdir", required=True, help="Path to workdir")
 parser.add_argument("--keep-last-n", type=int, default=DEFAULT_KEEP_LAST_N,
                     help="Number of untagged builds to keep (0 for all)")
-parser.add_argument("--insert-only",
-                    help="Append a new latest build, do not prune",
-                    action='store')
 parser.add_argument("--timestamp-only",
                     help="Update timestamp on builds.json",
                     action='store_true')
+parser.add_argument("--insert-only", metavar="BUILDID", action='store',
+                    help="Append a new latest build, do not prune")
 args = parser.parse_args()
 
 builds = []
