@@ -37,7 +37,7 @@ jq awscli
 ignition
 
 # For parsing ISO8601 dates
-python3-dateutil
+python3-dateutil python3-pytz
 
 # shellcheck for test
 ShellCheck
