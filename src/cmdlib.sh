@@ -8,7 +8,7 @@ info() {
 }
 
 fatal() {
-    info "$@"; exit 1
+    echo "fatal: $*" 1>&2; exit 1
 }
 
 _privileged=
