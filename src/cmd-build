@@ -18,7 +18,7 @@ EOF
 FORCE=
 SKIP_PRUNE=0
 rc=0
-options=$(getopt --options hf --longoptions help,force,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hf --longoptions help,force,force-nocache,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -30,7 +30,7 @@ while true; do
             print_help
             exit 0
             ;;
-        -f | --force)
+        -f | --force | --force-nocache)
             FORCE="--force-nocache"
             ;;
         --skip-prune)
