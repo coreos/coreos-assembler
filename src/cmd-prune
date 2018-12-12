@@ -11,7 +11,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler prune --help
-       coreos-assembler prune [--keep=N]
+       coreos-assembler prune [--keep=N] [--keep-last-days=N]
 
   Delete older untagged build artifacts. By default, only the last 3 untagged
   builds are kept.  This can be overridden with the `--keep` option.
@@ -19,9 +19,10 @@ EOF
 }
 
 # Parse options
-KEEP_LAST_N="3"
+KEEP_LAST_N=
+KEEP_LAST_DAYS=
 rc=0
-options=$(getopt --options h --longoptions help,keep: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,keep:,keep-last-days: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -36,6 +37,10 @@ while true; do
         --keep)
             shift
             KEEP_LAST_N="$1"
+            ;;
+        --keep-last-days)
+            shift
+            KEEP_LAST_DAYS="$1"
             ;;
         --)
             shift
@@ -55,6 +60,19 @@ if [ $# -ne 0 ]; then
     exit 1
 fi
 
+# just support one of the two for now
+if [ -n "${KEEP_LAST_N:-}" ] && [ -n "${KEEP_LAST_DAYS:-}" ]; then
+    fatal "ERROR: Only one of --keep or --keep-last-days allowed"
+elif [ -z "${KEEP_LAST_N:-}" ] && [ -z "${KEEP_LAST_DAYS:-}" ]; then
+    KEEP_LAST_N=3
+fi
+
+if [ -n "${KEEP_LAST_DAYS:-}" ]; then
+    set -- --keep-last-days "${KEEP_LAST_DAYS}"
+else
+    set -- --keep-last-n "${KEEP_LAST_N}"
+fi
+
 prepare_build
 
-"${dn}"/prune_builds --keep-last-n "${KEEP_LAST_N}" --workdir "${workdir:?}"
+"${dn}"/prune_builds --workdir "${workdir:?}" "$@"

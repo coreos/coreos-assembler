@@ -13,8 +13,9 @@ import argparse
 import subprocess
 import collections
 
+import pytz
 import dateutil.parser
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
 from cmdlib import write_json, rfc3339_time
@@ -27,14 +28,26 @@ DEFAULT_KEEP_LAST_N = 3
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--workdir", required=True, help="Path to workdir")
-parser.add_argument("--keep-last-n", type=int, default=DEFAULT_KEEP_LAST_N,
-                    help="Number of untagged builds to keep (0 for all)")
-parser.add_argument("--timestamp-only",
-                    help="Update timestamp on builds.json",
+parser.add_argument("--timestamp-only", help="Update timestamp on builds.json",
                     action='store_true')
 parser.add_argument("--insert-only", metavar="BUILDID", action='store',
                     help="Append a new latest build, do not prune")
+keep_options = parser.add_mutually_exclusive_group()
+keep_options.add_argument("--keep-last-n", type=int, metavar="N",
+                          default=DEFAULT_KEEP_LAST_N,
+                          help="Number of untagged builds to keep (0 for all)")
+keep_options.add_argument("--keep-last-days", metavar="N", type=int,
+                          help="Keep untagged builds within number of days")
 args = parser.parse_args()
+
+keep_younger_than = None
+if args.keep_last_days is not None:
+    if args.keep_last_days <= 0:
+        raise argparse.ArgumentTypeError("value must be positive: %d" %
+                                         args.keep_last_days)
+    keep_younger_than = (datetime.now(pytz.utc) -
+                         timedelta(days=args.keep_last_days))
+
 
 builds = []
 builds_dir = os.path.join(args.workdir, "builds")
@@ -59,7 +72,7 @@ if args.insert_only:
     write_json(builds_json, builddata)
     sys.exit(0)
 
-skip_pruning = (args.keep_last_n == 0)
+skip_pruning = (not keep_younger_than and args.keep_last_n == 0)
 
 # collect all builds being pointed to by tags
 tagged_builds = set([tag['target'] for tag in builddata.get('tags', [])])
@@ -106,23 +119,32 @@ builds_to_delete = []
 if skip_pruning:
     new_builds = builds
 else:
-    n = args.keep_last_n
-    assert(n > 0)
-    for build in builds:
-        # skip tagged builds and don't count them towards the limit
-        if build.id in tagged_builds:
-            print(f"Skipping tagged build {build.id}")
-            new_builds.append(build)
-            continue
+    if keep_younger_than:
+        for build in builds:
+            if build.id in tagged_builds:
+                print(f"Skipping tagged build {build.id}")
+                new_builds.append(build)
+                continue
 
-        if n == 0:
-            builds_to_delete.append(build)
-        else:
-            new_builds.append(build)
-            n = n - 1
+            if build.timestamp < keep_younger_than:
+                builds_to_delete.append(build)
+            else:
+                new_builds.append(build)
+    else:
+        n = args.keep_last_n
+        assert(n > 0)
+        for build in builds:
+            # skip tagged builds and don't count them towards the limit
+            if build.id in tagged_builds:
+                print(f"Skipping tagged build {build.id}")
+                new_builds.append(build)
+                continue
 
-# either we didn't prune so it's the same builds, or we did, and keep_last_n>0
-assert(len(new_builds) > 0)
+            if n == 0:
+                builds_to_delete.append(build)
+            else:
+                new_builds.append(build)
+                n = n - 1
 
 builddata['builds'] = [x.id for x in new_builds]
 builddata['timestamp'] = rfc3339_time()
