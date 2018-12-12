@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/sdk"
+	"github.com/coreos/mantle/util"
 	"github.com/spf13/cobra"
 )
 
@@ -45,20 +46,22 @@ After a successful run, the final line of output will be a line of JSON describi
 		RunE: runUpload,
 	}
 
-	uploadSourceObject   string
-	uploadBucket         string
-	uploadImageName      string
-	uploadBoard          string
-	uploadFile           string
-	uploadDeleteObject   bool
-	uploadForce          bool
-	uploadSourceSnapshot string
-	uploadObjectFormat   aws.EC2ImageFormat
-	uploadAMIName        string
-	uploadAMIDescription string
-	uploadGrantUsers     []string
-	uploadCreatePV       bool
-	uploadTags           []string
+	uploadSourceObject    string
+	uploadBucket          string
+	uploadImageName       string
+	uploadBoard           string
+	uploadFile            string
+	uploadDiskSizeGiB     uint
+	uploadDiskSizeInspect bool
+	uploadDeleteObject    bool
+	uploadForce           bool
+	uploadSourceSnapshot  string
+	uploadObjectFormat    aws.EC2ImageFormat
+	uploadAMIName         string
+	uploadAMIDescription  string
+	uploadGrantUsers      []string
+	uploadCreatePV        bool
+	uploadTags            []string
 )
 
 func init() {
@@ -70,6 +73,8 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
 		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
+	cmdUpload.Flags().UintVarP(&uploadDiskSizeGiB, "disk-size-gib", "", aws.ContainerLinuxDiskSizeGiB, "AMI disk size in GiB")
+	cmdUpload.Flags().BoolVar(&uploadDiskSizeInspect, "disk-size-inspect", false, "set AMI disk size to size of local file")
 	cmdUpload.Flags().BoolVar(&uploadDeleteObject, "delete-object", true, "delete uploaded S3 object after snapshot is created")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object rather than reusing")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
@@ -131,6 +136,10 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
 		os.Exit(2)
 	}
+	if uploadDiskSizeInspect && (uploadSourceObject != "" || uploadSourceSnapshot != "") {
+		fmt.Fprintf(os.Stderr, "--disk-size-inspect cannot be used with --source-object or --source-snapshot.\n")
+		os.Exit(2)
+	}
 
 	// if an image name is unspecified try to use version.txt
 	imageName := uploadImageName
@@ -141,6 +150,21 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 		imageName = ver.Version
+	}
+
+	if uploadDiskSizeInspect {
+		imageInfo, err := util.GetImageInfo(uploadFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to query size of disk: %v\n", err)
+			os.Exit(1)
+		}
+		plog.Debugf("Image size: %v\n", imageInfo.VirtualSize)
+		const GiB = 1024 * 1024 * 1024
+		uploadDiskSizeGiB = uint(imageInfo.VirtualSize / GiB)
+		// Round up if there's leftover
+		if imageInfo.VirtualSize%GiB > 0 {
+			uploadDiskSizeGiB += 1
+		}
 	}
 
 	amiName := uploadAMIName
@@ -225,7 +249,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	hvmID, err := API.CreateHVMImage(sourceSnapshot, amiName+"-hvm", uploadAMIDescription)
+	hvmID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, amiName+"-hvm", uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
@@ -257,7 +281,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	var pvID string
 	if uploadCreatePV {
-		pvImageID, err := API.CreatePVImage(sourceSnapshot, amiName, uploadAMIDescription)
+		pvImageID, err := API.CreatePVImage(sourceSnapshot, uploadDiskSizeGiB, amiName, uploadAMIDescription)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create PV image: %v\n", err)
 			os.Exit(1)

@@ -20,7 +20,8 @@ import (
 )
 
 type ImageInfo struct {
-	Format string `json:"format"`
+	Format      string `json:"format"`
+	VirtualSize uint64 `json:"virtual-size"`
 }
 
 func GetImageInfo(path string) (*ImageInfo, error) {
