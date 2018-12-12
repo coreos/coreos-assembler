@@ -38,6 +38,10 @@ def fatal(msg):
 def rfc3339_time(t=None):
     if t is None:
         t = datetime.utcnow()
+    else:
+        # if the need arises, we can convert to UTC, but let's just enforce
+        # this doesn't slip by for now
+        assert t.tzname() == 'UTC', "Timestamp must be in UTC format"
     return t.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
