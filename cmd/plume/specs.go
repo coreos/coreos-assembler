@@ -197,13 +197,13 @@ var (
 						// partition with a single region
 						Name:         "AWS East",
 						Profile:      "coreos-cl",
-						Bucket:       "coreos-dev-ami-import-us-east-2",
-						BucketRegion: "us-east-2",
+						Bucket:       "coreos-dev-ami-import-us-east-1",
+						BucketRegion: "us-east-1",
 						LaunchPermissions: []string{
 							"595879546273", // prod account, to test LaunchPermissions
 						},
 						Regions: []string{
-							"us-east-2",
+							"us-east-1",
 						},
 					},
 				},
