@@ -58,6 +58,7 @@ def run_ore():
                 '--name', ami_name_version,
                 '--ami-description', f"{manifest['rojig']['summary']} {args.build}",
                 '--file', tmp_img_ec2_vmdk,
+                '--disk-size-inspect',
                 '--delete-object']
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
