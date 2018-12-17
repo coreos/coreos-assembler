@@ -19,12 +19,14 @@ example pipeline.
 Getting started - prerequisites
 ---
 
-You can use `podman` or `docker`. These examples use `podman`. Note the
-container must be privileged, as the build process uses container functionality
-itself - we're using [recursive containers](https://github.com/projectatomic/bubblewrap/issues/284).
+You can use `podman` or `docker`. These examples use `podman`. If using
+the latter, you may run it fully unprivileged. When using `docker`, the
+container must be privileged, as the build process uses container
+functionality itself - we're using
+[recursive containers](https://github.com/projectatomic/bubblewrap/issues/284).
 
-Secondly, in order to build VM images, the container must have access to
-`/dev/kvm`.  If you're running this in a VM, you must enable
+Secondly, the container must have access to `/dev/kvm`.  If you're
+running this in a VM, you must enable
 [nested virt](https://docs.fedoraproject.org/en-US/quick-docs/using-nested-virtualization-in-kvm/).
 See also [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances).
 
@@ -32,13 +34,25 @@ Setup
 ---
 
 Here we store data in `/srv/coreos` on our host system.  You can choose
-any directory you like.  You should run these commands as `root`.
+any directory you like.
+
+If running as root (or with `sudo` access):
 
 ```
 $ mkdir /srv/coreos
 $ cd /srv/coreos
-$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv --workdir /srv quay.io/coreos-assembler/coreos-assembler'
+$ alias coreos-assembler='sudo podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv --workdir /srv quay.io/coreos-assembler/coreos-assembler'
 ```
+
+If running rootless, the alias looks like this:
+
+```
+$ alias coreos-assembler='podman run -ti --rm --security-opt=label=disable --user=root -v $(pwd):/srv --workdir /srv --device /dev/kvm --device /dev/fuse quay.io/coreos-assembler/coreos-assembler'
+```
+
+(This requires disabling labeling so that we can access `/dev/kvm` from the
+container. Note also we don't use `--net=host` here due to
+https://github.com/containers/libpod/issues/1448).
 
 If you need access to CA certificates on your host (for example, when you need to access
 a git repo that is not on the public Internet), you can mount in the host certificates
