@@ -47,6 +47,8 @@ for img_format in buildmeta['images']:
     filepath = f'builds/{build}/{file}'
     if not file.endswith('.gz'):
         tmpfile = f'{tmpdir}/{file}.gz'
+        # SHA256 for uncompressed image was already calculated during 'build'
+        img['uncompressed-sha256'] = img['sha256']
         with open(tmpfile, 'wb') as f:
             run_verbose(['gzip', '-c', f'builds/{build}/{file}'], stdout=f)
         file_gz = file + '.gz'
