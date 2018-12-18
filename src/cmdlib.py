@@ -24,7 +24,10 @@ def run_verbose(args, **kwargs):
     :raises: CalledProcessError
     """
     print("+ {}".format(subprocess.list2cmdline(args)))
-    subprocess.check_call(args, **kwargs)
+    try:
+        subprocess.check_call(args, **kwargs)
+    except subprocess.CalledProcessError:
+        fatal("Error running command " + args[0])
 
 
 def write_json(path, data):
