@@ -21,6 +21,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/management/location"
 )
 
+const (
+	computeService = "Compute"
+)
+
 var (
 	azureImageReplicateURL   = "services/images/%s/replicate"
 	azureImageUnreplicateURL = "services/images/%s/unreplicate"
@@ -34,7 +38,8 @@ type ReplicationInput struct {
 	Version         string   `xml:"ComputeImageAttributes>Version"`
 }
 
-// Locations returns a slice of Azure Locations, useful for replicating to all Locations.
+// Locations returns a slice of Azure Locations which offer the Compute
+// service, useful for replicating to all Locations.
 func (a *API) Locations() ([]string, error) {
 	lc := location.NewClient(a.client)
 
@@ -46,7 +51,19 @@ func (a *API) Locations() ([]string, error) {
 	var locations []string
 
 	for _, l := range llr.Locations {
-		locations = append(locations, l.Name)
+		haveCompute := false
+		for _, svc := range l.AvailableServices {
+			if svc == computeService {
+				haveCompute = true
+				break
+			}
+		}
+
+		if haveCompute {
+			locations = append(locations, l.Name)
+		} else {
+			plog.Infof("Skipping location %q without %s service", l.Name, computeService)
+		}
 	}
 
 	return locations, nil
