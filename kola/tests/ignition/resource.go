@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/pin/tftp"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -154,6 +155,7 @@ func init() {
 		Name:        "coreos.ignition.v2_1.resource.s3.versioned",
 		Run:         resourceS3Versioned,
 		ClusterSize: 1,
+		MinVersion:  semver.Version{Major: 1995},
 		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "2.1.0"
