@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -52,6 +51,7 @@ func init() {
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	AddSpecFlags(cmdRelease.Flags())
+	AddFedoraSpecFlags(cmdRelease.Flags())
 	root.AddCommand(cmdRelease)
 }
 
@@ -64,6 +64,24 @@ func runRelease(cmd *cobra.Command, args []string) {
 	default:
 		plog.Fatalf("Unknown distro %q:", selectedDistro)
 	}
+}
+
+func runFedoraRelease(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		plog.Fatal("No args accepted")
+	}
+
+	spec, err := ChannelFedoraSpec()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	client := &http.Client{}
+
+	// Make AWS images public.
+	doAWS(ctx, client, nil, &spec)
+
+	return nil
 }
 
 func runCLRelease(cmd *cobra.Command, args []string) error {
@@ -383,8 +401,12 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
-	imageName := fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
-	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
+	awsImageMetadata, err := getSpecAWSImageMetadata(spec)
+	if err != nil {
+		return
+	}
+
+	imageName := awsImageMetadata["imageName"]
 
 	for _, part := range spec.AWS.Partitions {
 		for _, region := range part.Regions {
