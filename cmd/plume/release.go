@@ -47,6 +47,7 @@ var (
 
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
+	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "cl", "system to release")
 	cmdRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
@@ -55,6 +56,17 @@ func init() {
 }
 
 func runRelease(cmd *cobra.Command, args []string) {
+	switch selectedDistro {
+	case "cl":
+		if err := runCLRelease(cmd, args); err != nil {
+			plog.Fatal(err)
+		}
+	default:
+		plog.Fatalf("Unknown distro %q:", selectedDistro)
+	}
+}
+
+func runCLRelease(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		plog.Fatal("No args accepted")
 	}
@@ -140,6 +152,8 @@ func runRelease(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func sanitizeVersion() string {

@@ -63,6 +63,7 @@ var (
 	platformList []string
 
 	selectedPlatforms  []string
+	selectedDistro     string
 	azureProfile       string
 	awsCredentialsFile string
 	verifyKeyFile      string
@@ -86,6 +87,7 @@ func init() {
 	sort.Sort(sort.StringSlice(platformList))
 
 	cmdPreRelease.Flags().StringSliceVar(&selectedPlatforms, "platform", platformList, "platform to pre-release")
+	cmdPreRelease.Flags().StringVar(&selectedDistro, "system", "cl", "system to pre-release")
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdPreRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
@@ -100,12 +102,27 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		return errors.New("no args accepted")
 	}
+
 	for _, platformName := range selectedPlatforms {
 		if _, ok := platforms[platformName]; !ok {
 			return fmt.Errorf("Unknown platform %q", platformName)
 		}
 	}
 
+	switch selectedDistro {
+	case "cl":
+		if err := runCLPreRelease(cmd); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("Unknown distro %q", selectedDistro)
+	}
+	plog.Printf("Pre-release complete, run `plume release` to finish.")
+
+	return nil
+}
+
+func runCLPreRelease(cmd *cobra.Command) error {
 	spec := ChannelSpec()
 	ctx := context.Background()
 	client, err := getGoogleClient()
@@ -129,18 +146,7 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	var imageInfo imageInfo
-	for _, platformName := range platformList {
-		run := false
-		for _, v := range selectedPlatforms {
-			if v == platformName {
-				run = true
-				break
-			}
-		}
-		if !run {
-			continue
-		}
-
+	for _, platformName := range selectedPlatforms {
 		platform := platforms[platformName]
 		plog.Printf("Running %v pre-release...", platform.displayName)
 		if err := platform.handler(ctx, client, src, &spec, &imageInfo); err != nil {
@@ -162,14 +168,21 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	plog.Printf("Pre-release complete, run `plume release` to finish.")
-
 	return nil
 }
 
 // getImageFile downloads a bzipped CoreOS image, verifies its signature,
 // decompresses it, and returns the decompressed path.
 func getImageFile(client *http.Client, src *storage.Bucket, fileName string) (string, error) {
+	switch selectedDistro {
+	case "cl":
+		return getCLImageFile(client, src, fileName)
+	default:
+		return "", fmt.Errorf("Invalid system: %v", selectedDistro)
+	}
+}
+
+func getCLImageFile(client *http.Client, src *storage.Bucket, fileName string) (string, error) {
 	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specBoard, specVersion)
 	bzipPath := filepath.Join(cacheDir, fileName)
 	imagePath := strings.TrimSuffix(bzipPath, filepath.Ext(bzipPath))
