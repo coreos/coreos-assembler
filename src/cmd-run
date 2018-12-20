@@ -145,7 +145,7 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
             {
                 "name": "serial-getty-motd.service",
                 "enabled": true,
-                "contents": "[Unit]\\nDescription=Helper message to exit QEMU monitor to /etc/motd\\nBefore=getty.target\\n[Service]\\nType=oneshot\\nExecStart=/bin/sh -c '/usr/bin/echo \\"To exit, press Ctrl-A and then X.\\\\n\\" >> /etc/motd'\\n[Install]\\nWantedBy=getty.target\\n"
+                "contents": "[Unit]\\nDescription=Helper message to exit QEMU monitor to /etc/motd\\nBefore=getty.target\\n[Service]\\nType=oneshot\\nExecStart=/bin/sh -c '/usr/bin/echo \\"ICMP traffic (ping) does not work with QEMU and user mode networking.\\\\nTo exit, press Ctrl-A and then X.\\\\n\\" >> /etc/motd'\\n[Install]\\nWantedBy=getty.target\\n"
             }
             ${ign_var_srv_mount}
         ]
