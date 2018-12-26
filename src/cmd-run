@@ -90,7 +90,8 @@ fi
 set -- -machine accel=kvm -cpu host -smp "${VM_NCPUS}" "$@"
 
 if [ -n "${VM_SRV_MNT}" ]; then
-    set -- --fsdev local,id=var-srv,path="${VM_SRV_MNT}",security_model=mapped,readonly "$@"
+    set -- --fsdev local,id=var-srv,path="${VM_SRV_MNT}",security_model=mapped,readonly \
+        -device virtio-9p-pci,fsdev=var-srv,mount_tag=/var/srv "$@"
     ign_var_srv_mount=',{
 "name": "var-srv.mount",
 "enabled": true,
