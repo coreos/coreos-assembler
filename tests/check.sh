@@ -1,4 +1,12 @@
 #!/usr/bin/bash
+
+# Check if shellcheck is available. If not, disable shellcheck usage.
+command -v shellcheck
+HASSHELLCHECK=$?
+if [[ ${HASSHELLCHECK} -ne 0 ]]; then
+    echo "WARNING: shellcheck is not available. Shell script checking is disabled."
+fi
+
 set -euo pipefail
 dn=$(dirname "$0")
 srcdir=$(cd "${dn}"/.. && pwd)/src
@@ -14,10 +22,14 @@ do
         echo "OK ${f}"
         continue
     fi
-    if [[ $shebang =~ ^#!/.*/bash.* ]] || [[ $shebang =~ ^#!/.*/env\ bash ]]; then
-        shellcheck -x "$f"
-        bash -n "$f"
-        echo "OK ${f}"
-        continue
+
+    # Only use shellcheck if we know the system has it installed
+    if [[ ${HASSHELLCHECK} == 0 ]]; then
+        if [[ $shebang =~ ^#!/.*/bash.* ]] || [[ $shebang =~ ^#!/.*/env\ bash ]]; then
+            shellcheck -x "$f"
+            bash -n "$f"
+            echo "OK ${f}"
+            continue
+        fi
     fi
 done <  <(find "${srcdir}" -type f -executable -print0)
