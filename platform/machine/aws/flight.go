@@ -33,7 +33,8 @@ var (
 
 type flight struct {
 	*platform.BaseFlight
-	api *aws.API
+	api      *aws.API
+	keyAdded bool
 }
 
 // NewFlight creates an instance of a Flight suitable for spawning
@@ -67,6 +68,7 @@ func NewFlight(opts *aws.Options) (platform.Flight, error) {
 		af.Destroy()
 		return nil, err
 	}
+	af.keyAdded = true
 
 	return af, nil
 }
@@ -90,8 +92,10 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 }
 
 func (af *flight) Destroy() {
-	if err := af.api.DeleteKey(af.Name()); err != nil {
-		plog.Errorf("Error deleting key %v: %v", af.Name(), err)
+	if af.keyAdded {
+		if err := af.api.DeleteKey(af.Name()); err != nil {
+			plog.Errorf("Error deleting key %v: %v", af.Name(), err)
+		}
 	}
 
 	af.BaseFlight.Destroy()
