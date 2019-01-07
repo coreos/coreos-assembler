@@ -31,8 +31,8 @@ base_name = manifest['rojig']['name']
 img_prefix = f'{base_name}-{args.build}'
 openstack_name = f'{img_prefix}-openstack.qcow2'
 
-builddir = f'builds/{args.build}'
-buildmeta_path = f'{builddir}/meta.json'
+builddir = os.path.join('builds', args.build)
+buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
@@ -45,7 +45,7 @@ os.mkdir(tmpdir)
 def generate_openstack():
     buildmeta_images = buildmeta['images']
     img_qemu = os.path.join(builddir, buildmeta_images['qemu']['path'])
-    tmp_img_openstack = f'{tmpdir}/{openstack_name}'
+    tmp_img_openstack = os.path.join(tmpdir, openstack_name)
     run_verbose(['/usr/lib/coreos-assembler/gf-oemid',
                  img_qemu, tmp_img_openstack, 'openstack'])
     checksum = sha256sum_file(tmp_img_openstack)

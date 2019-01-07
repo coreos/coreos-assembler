@@ -26,8 +26,8 @@ with open('src/config/manifest.yaml') as f:
 base_name = manifest['rojig']['name']
 ami_name_version = f'{base_name}-{args.build}'
 
-builddir = f'builds/{args.build}'
-buildmeta_path = f'{builddir}/meta.json'
+builddir = os.path.join('builds', args.build)
+buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
@@ -38,8 +38,8 @@ os.mkdir(tmpdir)
 
 def generate_ec2_vmdk():
     img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
-    tmp_img_ec2 = f'{tmpdir}/{ami_name_version}.qcow2'
-    tmp_img_ec2_vmdk = f'{tmpdir}/{ami_name_version}.vmdk'
+    tmp_img_ec2 = os.path.join(tmpdir, (ami_name_version + '.qcow2'))
+    tmp_img_ec2_vmdk = os.path.join(tmpdir, (ami_name_version + '.vmdk'))
     run_verbose(['/usr/lib/coreos-assembler/gf-oemid',
                  img_qemu, tmp_img_ec2, 'ec2'])
     run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vmdk',

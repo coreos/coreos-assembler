@@ -48,7 +48,7 @@ def oscontainer_extract(containers_storage, src, dest,
     cid = run_get_string(['podman', rootarg, 'create', '--entrypoint=/enoent', iid])
     mnt = run_get_string(['podman', rootarg, 'mount', cid])
     try:
-        src_repo = mnt+'/srv/repo'
+        src_repo = os.path.join(mnt, 'srv/repo')
         run_verbose(["ostree", "--repo="+dest, "pull-local", src_repo, commit])
     finally:
         subprocess.call(['podman', rootarg, 'umount', cid])
@@ -79,7 +79,7 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
     bid = run_get_string(['buildah', rootarg, 'from', base_image])
     mnt = run_get_string(['buildah', rootarg, 'mount', bid])
     try:
-        dest_repo = mnt+'/srv/repo'
+        dest_repo = os.path.join(mnt, 'srv/repo')
         subprocess.check_call(['mkdir', '-p', dest_repo])
         subprocess.check_call(["ostree", "--repo="+dest_repo, "init", "--mode=archive"])
         # Note that oscontainers don't have refs
@@ -136,7 +136,7 @@ parser_build.add_argument("--push", help="Push to registry",
                           action='store_true')
 args = parser.parse_args()
 
-containers_storage=args.workdir+'/containers-storage'
+containers_storage = os.path.join(args.workdir, 'containers-storage')
 if os.path.exists(containers_storage):
     shutil.rmtree(containers_storage)
 
