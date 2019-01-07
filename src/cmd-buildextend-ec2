@@ -24,10 +24,10 @@ with open('src/config/manifest.yaml') as f:
     manifest = yaml.safe_load(f)
 
 base_name = manifest['rojig']['name']
-ami_name_version = f'{base_name}-{args.build}'
+ami_name_version = base_name + '-' + args.build
 
-builddir = f'builds/{args.build}'
-buildmeta_path = f'{builddir}/meta.json'
+builddir = 'builds/' + args.build
+buildmeta_path = builddir + '/meta.json'
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
@@ -38,8 +38,8 @@ os.mkdir(tmpdir)
 
 def generate_ec2_vmdk():
     img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
-    tmp_img_ec2 = f'{tmpdir}/{ami_name_version}.qcow2'
-    tmp_img_ec2_vmdk = f'{tmpdir}/{ami_name_version}.vmdk'
+    tmp_img_ec2 = tmpdir + '/' + ami_name_version + '.qcow2'
+    tmp_img_ec2_vmdk = tmpdir + '/' + ami_name_version + '.vmdk'
     run_verbose(['/usr/lib/coreos-assembler/gf-oemid',
                  img_qemu, tmp_img_ec2, 'ec2'])
     run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vmdk',
@@ -56,7 +56,7 @@ def run_ore():
                 '--bucket', args.bucket,
                 '--ami-name', ami_name_version,
                 '--name', ami_name_version,
-                '--ami-description', f"{manifest['rojig']['summary']} {args.build}",
+                '--ami-description', manifest['rojig']['summary'] + " " + args.build,
                 '--file', tmp_img_ec2_vmdk,
                 '--disk-size-inspect',
                 '--delete-object']
@@ -71,7 +71,7 @@ def run_ore():
                 'hvm': ore_data['HVM']}
     buildmeta['amis'] = [ami_data]
     write_json(buildmeta_path, buildmeta)
-    print(f"Updated: {buildmeta_path}")
+    print('Updated: ' + buildmeta_path)
 
 # Do it!
 run_ore()

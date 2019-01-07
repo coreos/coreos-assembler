@@ -85,13 +85,13 @@ with os.scandir(builds_dir) as it:
         if not entry.is_dir(follow_symlinks=False):
             # those are really the only three non-dir things we expect there
             if entry.name not in ['builds.json', 'latest']:
-                print(f"Ignoring non-directory {entry.name}")
+                print('Ignoring non-directory ' + entry.name)
             continue
 
         # ignore dirs missing meta.json
         meta_file = os.path.join(entry.path, 'meta.json')
         if not os.path.isfile(meta_file):
-            print(f"Ignoring directory {entry.name}")
+            print('Ignoring directory ' + entry.name)
             continue
 
         # collect dirs and timestamps
@@ -122,7 +122,7 @@ else:
     if keep_younger_than:
         for build in builds:
             if build.id in tagged_builds:
-                print(f"Skipping tagged build {build.id}")
+                print('Skipping tagged build ' + build.id)
                 new_builds.append(build)
                 continue
 
@@ -136,7 +136,7 @@ else:
         for build in builds:
             # skip tagged builds and don't count them towards the limit
             if build.id in tagged_builds:
-                print(f"Skipping tagged build {build.id}")
+                print('Skipping tagged build ' + build.id)
                 new_builds.append(build)
                 continue
 
@@ -160,7 +160,7 @@ for build in builds_to_delete:
     shutil.rmtree(os.path.join(builds_dir, build.id))
 
 # and finally prune OSTree repos
-print(f"Pruning repo")
+print('Pruning repo')
 repo = os.path.join(args.workdir, 'repo')
 
 # For now, we just use the --keep-younger-than CLI here. Doing this more
@@ -174,4 +174,4 @@ oldest_ostree_t = new_builds[-1].ostree_timestamp
 # keep a few other older commits, but meh...
 younger_than = rfc3339_time(oldest_ostree_t - timedelta(hours=1))
 subprocess.run(["ostree", "prune", "--repo", repo, "--refs-only",
-               f"--keep-younger-than={younger_than}"], check=True)
+               '--keep-younger-than={}'.format(younger_than)], check=True)

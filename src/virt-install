@@ -85,13 +85,13 @@ if args.ostree_repo:
     assert args.ostree_stateroot
     assert args.ostree_remote
     assert args.ostree_ref
-    ks_tmp.write(f"""
-ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=file:///mnt/ostree-repo --ref="{args.ostree_ref}"
+    ks_tmp.write("""
+ostreesetup --nogpg --osname={} --remote={} --url=file:///mnt/ostree-repo --ref="{}"
 %pre
 mkdir -p /mnt/ostree-repo
 mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
 %end
-    """)
+    """.format(args.ostree_stateroot, args.ostree_remote, args.ostree_ref))
 # Hacky bits to copy out all of the Anaconda logs on shutdown
 if args.logs:
     ks_tmp.write("""

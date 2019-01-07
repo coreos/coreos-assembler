@@ -94,9 +94,12 @@ def cmd_list(args):
         return
 
     for tag in build_data["tags"]:
-        print(f"name: {tag['name']}\n"
-              f"created: {tag['created']}\n"
-              f"target: {tag['target']}\n")
+        print("name: {}\n"
+              "created: {}\n"
+              "target: {}\n".format(
+                tag['name'],
+                tag['created'],
+                tag['target']))
 
 
 def cmd_update(args):
@@ -114,8 +117,8 @@ def cmd_update(args):
     if args.build not in avail_builds:
         if not args.force:
             fatal("Cannot operate on a tag with a build that does not exist")
-        print(f"INFO: Operating on a tag ({args.tag}) with a build "
-              f"({args.build}) that does not exist")
+        print("INFO: Operating on a tag ({}) with a build "
+              "({}) that does not exist".format(args.tag, args.build))
 
     # we've got a build (either forced or not), so time to make/update a tag
     created = rfc3339_time()
