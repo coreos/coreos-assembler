@@ -38,7 +38,7 @@ type Pending struct {
 func (a *API) NewPending(desc string, do doable) *Pending {
 	pending := &Pending{
 		Interval: 10 * time.Second,
-		Timeout:  5 * time.Minute,
+		Timeout:  10 * time.Minute,
 		desc:     desc,
 		do:       do,
 	}
