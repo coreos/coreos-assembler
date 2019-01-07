@@ -3,3 +3,4 @@
 **/*.rs.bk
 src/__pycache__/*
 .gocache
+maipo/

@@ -131,8 +131,11 @@ $ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=h
 ```
 
 To completely rebuild the coreos-assembler container image locally, execute
-`$ podman build .` from the `coreos-assembler` repository. You can upload your
-built image to a registry such as quay.io by doing the following:
+`$ podman build .` or `$ podman build -f Dockerfile.rhel` from the `coreos-assembler` repository.
+If building the RHEL version please note you will need a maipo directory with references to
+proper repositories.
+
+You can upload your built image to a registry such as quay.io by doing the following:
 
 ```
 $ podman push <image id> quay.io/<account name>/coreos-assembler
