@@ -24,7 +24,7 @@ else:
 
 print(f"Targeting build: {build}")
 
-buildmeta_path = f'builds/{build}/meta.json'
+buildmeta_path = os.path.join('builds', build, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
@@ -44,13 +44,13 @@ imgs_to_compress = []
 for img_format in buildmeta['images']:
     img = buildmeta['images'][img_format]
     file = img['path']
-    filepath = f'builds/{build}/{file}'
+    filepath = os.path.join('builds', build, file)
     if not file.endswith('.gz'):
-        tmpfile = f'{tmpdir}/{file}.gz'
+        tmpfile = os.path.join(tmpdir, (file + '.gz'))
         # SHA256 for uncompressed image was already calculated during 'build'
         img['uncompressed-sha256'] = img['sha256']
         with open(tmpfile, 'wb') as f:
-            run_verbose(['gzip', '-c', f'builds/{build}/{file}'], stdout=f)
+            run_verbose(['gzip', '-c', filepath], stdout=f)
         file_gz = file + '.gz'
         filepath_gz = filepath + '.gz'
         img['path'] = file_gz
@@ -68,7 +68,7 @@ for img_format in buildmeta['images']:
 
 # finally, also update the unversioned qemu symlink
 symlink_src = f'{buildmeta["name"]}-{build}-qemu.qcow2.gz'
-symlink_dest = f'builds/{build}/{buildmeta["name"]}-qemu.qcow2.gz'
+symlink_dest = os.path.join('builds', build, (buildmeta["name"] + '-qemu.qcow2.gz'))
 if not os.path.islink(symlink_dest):
     os.symlink(symlink_src, symlink_dest)
 rm_allow_noent(symlink_dest[:-3])

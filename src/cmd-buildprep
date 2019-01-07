@@ -26,9 +26,10 @@ def main():
 
     # now create the build dir itself
     buildid = buildmeta['buildid']
-    builddir = f'builds/{buildid}'
+    builddir = os.path.join('builds', buildid)
+    buildmeta_path = os.path.join(builddir, 'meta.json')
     os.makedirs(f'{builddir}', exist_ok=True)
-    write_json(f'{builddir}/meta.json', buildmeta)
+    write_json(buildmeta_path, buildmeta)
 
     if args.ostree_only or not args.buildmeta_only:
         fetch_ostree(args.url, args.full_ostree_commit, buildmeta)
@@ -76,7 +77,8 @@ def fetch_buildmeta(url):
         return (builds, None)
 
     buildid = builds['builds'][0]
-    buildmeta = fetch_json(url, f"builds/{buildid}/meta.json")
+    buildmeta_path = os.path.join('builds', buildid, 'meta.json')
+    buildmeta = fetch_json(url, buildmeta_path)
     return (builds, buildmeta)
 
 
