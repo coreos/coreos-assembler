@@ -29,6 +29,7 @@ var (
 	outputDir          string
 	kolaPlatform       string
 	defaultTargetBoard = sdk.DefaultBoard()
+	kolaArchitectures  = []string{"amd64"}
 	kolaPlatforms      = []string{"aws", "do", "esx", "gce", "openstack", "packet", "qemu"}
 	kolaDistros        = []string{"cl", "fcos", "rhcos"}
 	kolaDefaultImages  = map[string]string{
