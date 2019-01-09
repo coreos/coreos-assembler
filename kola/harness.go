@@ -37,11 +37,13 @@ import (
 	doapi "github.com/coreos/mantle/platform/api/do"
 	esxapi "github.com/coreos/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
+	openstackapi "github.com/coreos/mantle/platform/api/openstack"
 	packetapi "github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/mantle/platform/machine/aws"
 	"github.com/coreos/mantle/platform/machine/do"
 	"github.com/coreos/mantle/platform/machine/esx"
 	"github.com/coreos/mantle/platform/machine/gcloud"
+	"github.com/coreos/mantle/platform/machine/openstack"
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/system"
@@ -50,13 +52,14 @@ import (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
-	Options       = platform.Options{}
-	AWSOptions    = awsapi.Options{Options: &Options}    // glue to set platform options from main
-	DOOptions     = doapi.Options{Options: &Options}     // glue to set platform options from main
-	ESXOptions    = esxapi.Options{Options: &Options}    // glue to set platform options from main
-	GCEOptions    = gcloudapi.Options{Options: &Options} // glue to set platform options from main
-	PacketOptions = packetapi.Options{Options: &Options} // glue to set platform options from main
-	QEMUOptions   = qemu.Options{Options: &Options}      // glue to set platform options from main
+	Options          = platform.Options{}
+	AWSOptions       = awsapi.Options{Options: &Options}       // glue to set platform options from main
+	DOOptions        = doapi.Options{Options: &Options}        // glue to set platform options from main
+	ESXOptions       = esxapi.Options{Options: &Options}       // glue to set platform options from main
+	GCEOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
+	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
+	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
+	QEMUOptions      = qemu.Options{Options: &Options}         // glue to set platform options from main
 
 	TestParallelism   int    //glue var to set test parallelism from main
 	TAPFile           string // if not "", write TAP results here
@@ -160,6 +163,8 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = esx.NewFlight(&ESXOptions)
 	case "gce":
 		flight, err = gcloud.NewFlight(&GCEOptions)
+	case "openstack":
+		flight, err = openstack.NewFlight(&OpenStackOptions)
 	case "packet":
 		flight, err = packet.NewFlight(&PacketOptions)
 	case "qemu":

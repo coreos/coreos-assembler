@@ -56,7 +56,7 @@ Ideally, all software needed for a test should be included by building
 it into the image from the SDK.
 
 Kola supports running tests on multiple platforms, currently QEMU, GCE,
-AWS, VMware VSphere, and Packet. In the future systemd-nspawn and other
+AWS, VMware VSphere, Packet, and OpenStack. In the future systemd-nspawn and other
 platforms may be added.
 Local platforms do not rely on access to the Internet as a design
 principle of kola, minimizing external dependencies. Any network
@@ -260,6 +260,25 @@ you can paste in. This will populate the `.boto` file.
 
 See [Google Cloud Platform's Documentation](https://cloud.google.com/storage/docs/boto-gsutil)
 for more information about the `.boto` file.
+
+### openstack
+`openstack` uses `~/.config/openstack.json`. This can be configured manually:
+```
+{
+    "default": {
+        "auth_url": "auth url here",
+        "tenant_id": "tenant id here",
+        "tenant_name": "tenant name here",
+        "username": "username here",
+        "password": "password here",
+        "user_domain": "domain id here",
+        "floating_ip_pool": "floating ip pool here",
+        "region_name": "region here"
+    }
+}
+```
+
+`user_domain` is required on some newer versions of OpenStack using Keystone V3 but is optional on older versions. `floating_ip_pool` and `region_name` can be optionally specified here to be used as a default if not specified on the command line.
 
 ### packet
 `packet` uses `~/.config/packet.json`. This can be configured manually:

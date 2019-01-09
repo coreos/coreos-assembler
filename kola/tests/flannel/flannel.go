@@ -30,82 +30,31 @@ import (
 )
 
 var (
-	flannelConf = conf.Ignition(`{
-  "ignition": { "version": "2.0.0" },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd-member.service",
-        "enable": true,
-        "dropins": [{
-          "name": "metadata.conf",
-          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379 --listen-peer-urls=http://$private_ipv4:2380"
-        }]
-      },
-      {
-        "name": "flanneld.service",
-        "enable": true,
-        "dropins": [{
-          "name": "50-network-config.conf",
-          "contents": "[Service]\nExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ \"Network\": \"10.254.0.0/16\", \"Backend\": {\"Type\": \"$type\"} }'"
-        }]
-      },
-      {
-        "name": "flannel-docker-opts.service",
-        "dropins": [{
-          "name": "retry.conf",
-          "contents": "[Service]\nTimeoutStartSec=300\nExecStart=\nExecStart=/bin/sh -exc 'for try in 1 2 3 4 5 6 ; do /usr/lib/coreos/flannel-wrapper -d /run/flannel/flannel_docker_opts.env -i && break || sleep 10 ; try=fail ; done ; [ $try != fail ]'"
-        }]
-      },
-      {
-        "name": "docker.service",
-        "enable": true
-      }
-    ]
-  }
-}`)
-
-	flannelConfEtcd2 = conf.Ignition(`{
-  "ignition": { "version": "2.0.0" },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd2.service",
-        "enable": true,
-        "dropins": [{
-          "name": "metadata.conf",
-          "contents": "[Unit]\nWants=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=-/run/metadata/coreos\nExecStart=\nExecStart=/usr/bin/etcd2 --discovery=$discovery --advertise-client-urls=http://$private_ipv4:2379 --initial-advertise-peer-urls=http://$private_ipv4:2380 --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001 --listen-peer-urls=http://$private_ipv4:2380,http://$private_ipv4:7001"
-        }]
-      },
-      {
-        "name": "flanneld.service",
-        "enable": true,
-        "dropins": [{
-          "name": "50-network-config.conf",
-          "contents": "[Service]\nExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ \"Network\": \"10.254.0.0/16\", \"Backend\": {\"Type\": \"$type\"} }'"
-        }]
-      },
-      {
-        "name": "flannel-docker-opts.service",
-        "dropins": [{
-          "name": "retry.conf",
-          "contents": "[Service]\nTimeoutStartSec=300\nExecStart=\nExecStart=/bin/sh -exc 'for try in 1 2 3 4 5 6 ; do /usr/lib/coreos/flannel-wrapper -d /run/flannel/flannel_docker_opts.env -i && break || sleep 10 ; try=fail ; done ; [ $try != fail ]'"
-        }]
-      },
-      {
-        "name": "docker.service",
-        "enable": true
-      },
-      {
-        "name": "coreos-metadata.service",
-        "dropins": [{
-          "name": "qemu.conf",
-          "contents": "[Unit]\nConditionKernelCommandLine=coreos.oem.id"
-        }]
-      }
-    ]
-  }
-}`)
+	flannelConf = conf.ContainerLinuxConfig(`etcd:
+  discovery:                   $discovery
+  listen_client_urls:          http://0.0.0.0:2379
+  advertise_client_urls:       http://{PRIVATE_IPV4}:2379
+  initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
+  listen_peer_urls:            http://{PRIVATE_IPV4}:2380
+systemd:
+  units:
+    - name: flannel-docker-opts.service
+      dropins:
+        - name: retry.conf
+          contents: |
+            [Service]
+            TimeoutStartSec=300
+            ExecStart=
+            ExecStart=/bin/sh -exc 'for try in 1 2 3 4 5 6 ; do /usr/lib/coreos/flannel-wrapper -d /run/flannel/flannel_docker_opts.env -i && break  || sleep 10 ; try=fail ; done ; [ $try != fail ]'
+    - name: docker.service
+      enabled: true
+    - name: flanneld.service
+      enabled: true
+      dropins:
+        - name: 50-network-config.conf
+          contents: |
+            [Service]
+            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ \"Network\": \"10.254.0.0/16\", \"Backend\": {\"Type\": \"$type\"} }'`)
 )
 
 func init() {
