@@ -1,2 +1,5 @@
 # Used by mantle
-golang
+golang 
+
+# pull in these on EL7
+#EL7 golang-bin golang-src

@@ -1,4 +1,0 @@
-#!/usr/bin/dumb-init /bin/bash
-# See: https://access.redhat.com/solutions/527703
-source scl_source enable rh-python36
-coreos-assembler $@

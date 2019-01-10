@@ -24,8 +24,13 @@ libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt
 # And we process kickstarts
 /usr/bin/ksflatten
 
+# scl and python36 For EL7
+#EL7 scl-utils rh-python36
+
 # ostree-releng-scripts dependencies
-rsync python2-gobject-base python3-gobject-base
+rsync python2-gobject-base 
+#FEDORA python3-gobject-base
+#EL7 python34-gobject-base
 
 # To support recursive containerization and manipulating images
 podman buildah skopeo

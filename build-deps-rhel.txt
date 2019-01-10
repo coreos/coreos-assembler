@@ -1,2 +1,0 @@
-# Used by mantle
-golang golang-bin golang-src
