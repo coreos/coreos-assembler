@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Forked from https://github.com/coreos/scripts/blob/master/build_library/qemu_template.sh
 # Changed to have command line arguments, drop non-x86_64/non-KVM support
 # Automatically uses `-snapshot` if the target disk isn't writable
 # Uses -nographic by default, and most importantly, contains a default
 # Ignition config that auto-logins on the console
 
-set -euo pipefail
 
 dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh

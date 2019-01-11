@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 dn=$(dirname "$0")
 srcdir=$(cd "${dn}"/.. && pwd)/src

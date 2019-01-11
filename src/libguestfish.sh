@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Helper library for using libguestfs on CoreOS-style images.
 # A major assumption here is that the disk image uses OSTree
 # and also has `boot` and `root` filesystem labels.
