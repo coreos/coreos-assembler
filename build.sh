@@ -90,7 +90,10 @@ install_rpms() {
 
     # Commented out for now, see above
     #dnf remove -y $builddeps}
-    rpm -q grubby && yum remove -y grubby
+    # can't remove grubby on el7 because libguestfs-tools depends on it
+    if [ -n "${ISFEDORA}" ]; then
+        rpm -q grubby && yum remove -y grubby
+    fi
 
     # Further cleanup
     yum clean all
