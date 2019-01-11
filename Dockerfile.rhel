@@ -25,4 +25,4 @@ RUN chmod g=u /etc/passwd
 
 # run as `builder` user
 USER builder
-ENTRYPOINT ["/usr/bin/dumb-init", "scl", "enable", "rh-python36", "/usr/bin/coreos-assembler"]
+ENTRYPOINT ["/usr/bin/dumb-init", "scl", "enable", "rh-python36", "--", "/usr/bin/coreos-assembler"]
