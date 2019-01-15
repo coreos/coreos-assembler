@@ -23,8 +23,6 @@ make git rpm-build
 
 # virt-install dependencies
 libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
-# On EL7 we need libguestfs-xfs for virt-make-fs with xfs FS
-#EL7 libguestfs-xfs
 
 # And we process kickstarts
 /usr/bin/ksflatten

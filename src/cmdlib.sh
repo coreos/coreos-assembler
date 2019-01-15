@@ -83,6 +83,10 @@ preflight() {
             sudo setfacl -m u:"$USER":rw /dev/kvm
         fi
     fi
+
+    if ! has_privileges && [ -n "${ISEL}" ]; then
+        fatal "running on EL requires privileged mode"
+    fi
 }
 
 prepare_build() {
