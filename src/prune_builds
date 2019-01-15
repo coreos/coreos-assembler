@@ -113,7 +113,7 @@ with os.scandir(builds_dir) as it:
         with open(meta_file) as f:
             j = json.load(f)
         # Older versions only had ostree-timestamp
-        ts = j.get('build-timestamp') or j['ostree-timestamp']
+        ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
         t = parse_date_string(ts)
         ostree_ts = j['ostree-timestamp']
         ostree_t = parse_date_string(ostree_ts)
@@ -172,6 +172,7 @@ if skip_pruning:
 # now delete other build dirs not in the manifest
 
 for build in builds_to_delete:
+    print(f"Pruning build {build.id}")
     shutil.rmtree(os.path.join(builds_dir, build.id))
 
 # and finally prune OSTree repos
