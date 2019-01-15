@@ -5,11 +5,11 @@ DIR=$(dirname "$0")
 
 # Detect what platform we are on
 if grep -q '^Fedora' /etc/redhat-release; then
-    ISFEDORA=1
-    ISEL=''
+    export ISFEDORA=1
+    export ISEL=''
 elif grep -q '^Red Hat' /etc/redhat-release; then
-    ISFEDORA=''
-    ISEL=1
+    export ISFEDORA=''
+    export ISEL=1
 else
     echo 1>&2 "should be on either RHEL or Fedora"
     exit 1
