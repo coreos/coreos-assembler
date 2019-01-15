@@ -1,4 +1,6 @@
-#!/usr/bin/python3 -u
+#!/usr/bin/env python3
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+#
 # Allows users to operate on the tags in `builds.json`
 #
 # Examples:

@@ -1,4 +1,7 @@
 #!/usr/bin/python3 -u
+# DO NOT CONVERT ABOVE LINE TO /usr/bin/env
+# Need to use system python here because the SCL in EL7 doesn't have
+# gobject so we can't 'import gi' below.
 
 import argparse
 import gi

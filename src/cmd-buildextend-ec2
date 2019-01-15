@@ -1,4 +1,6 @@
-#!/usr/bin/python3 -u
+#!/usr/bin/env python3
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+#
 # An operation that mutates a build by uploading to EC2,
 # extending the meta.json with AMI information.
 
