@@ -175,12 +175,23 @@ set -x
 mkdir -p tmp/anaconda
 img_base=tmp/${imageprefix}-base.qcow2
 img_qemu=${imageprefix}-qemu.qcow2
+
+# These options don't work for EL7 so don't pass for now
+# virt-install --console=log.file doesn't work for qemu in EL7
+# 9pfs isn't an option for EL7 so copying out anaconda logs doesn't work
+if [ -n "${ISFEDORA}" ]; then
+    extraargs="--console-log-file $(pwd)/install.log --logs $(pwd)/tmp/anaconda"
+fi
+
+# We want extraargs var to be split on words
+# shellcheck disable=SC2086
 /usr/lib/coreos-assembler/virt-install --dest="$(pwd)"/"${img_base}" \
                --create-disk --kickstart "${kickstart_input}" --kickstart-out "$(pwd)"/tmp/flattened.ks \
                --ostree-remote="${name}" --ostree-stateroot="${name}" \
-               --ostree-ref="${ref:-${commit}}" --ostree-repo="${workdir}"/repo \
-               --location "${workdir}"/installer/*.iso --console-log-file "$(pwd)"/install.log \
-               --logs "$(pwd)"/tmp/anaconda
+               --ostree-ref="${ref:-${commit}}" \
+               --location "${workdir}"/installer/*.iso \
+               --ostree-repo="${workdir}"/repo ${extraargs-}
+
 /usr/lib/coreos-assembler/gf-anaconda-cleanup "$(pwd)"/"${img_base}"
 /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 set +x
