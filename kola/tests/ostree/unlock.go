@@ -25,20 +25,20 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:              ostreeUnlockTest,
-		ClusterSize:      1,
-		Name:             "ostree.unlock",
-		Distros:          []string{"rhcos", "fcos"},
-		ExcludePlatforms: []string{"qemu"}, // need network to pull RPM
-		FailFast:         true,
+		Run:         ostreeUnlockTest,
+		ClusterSize: 1,
+		Name:        "ostree.unlock",
+		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
+		Distros:     []string{"rhcos", "fcos"},
+		FailFast:    true,
 	})
 	register.Register(&register.Test{
-		Run:              ostreeHotfixTest,
-		ClusterSize:      1,
-		Name:             "ostree.hotfix",
-		Distros:          []string{"rhcos", "fcos"},
-		ExcludePlatforms: []string{"qemu"}, // need network to pull RPM
-		FailFast:         true,
+		Run:         ostreeHotfixTest,
+		ClusterSize: 1,
+		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
+		Name:        "ostree.hotfix",
+		Distros:     []string{"rhcos", "fcos"},
+		FailFast:    true,
 	})
 
 }

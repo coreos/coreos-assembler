@@ -23,11 +23,11 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:              dnfInstall,
-		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"}, // Network access for toolbox
-		Name:             "cl.toolbox.dnf-install",
-		Distros:          []string{"cl"},
+		Run:         dnfInstall,
+		ClusterSize: 1,
+		Name:        "cl.toolbox.dnf-install",
+		Flags:       []register.Flag{register.RequiresInternetAccess}, // Network access for toolbox
+		Distros:     []string{"cl"},
 	})
 }
 

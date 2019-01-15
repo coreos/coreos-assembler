@@ -147,18 +147,19 @@ var crioContainerTemplate = `{
 // init runs when the package is imported and takes care of registering tests
 func init() {
 	register.Register(&register.Test{
-		Run:              crioBaseTests,
-		ClusterSize:      1,
-		Name:             `crio.base`,
-		ExcludePlatforms: []string{"qemu"}, // crio pods require fetching a kubernetes pause image
-		Distros:          []string{"rhcos"},
+		Run:         crioBaseTests,
+		ClusterSize: 1,
+		Name:        `crio.base`,
+		// crio pods require fetching a kubernetes pause image
+		Flags:   []register.Flag{register.RequiresInternetAccess},
+		Distros: []string{"rhcos"},
 	})
 	register.Register(&register.Test{
-		Run:              crioNetwork,
-		ClusterSize:      2,
-		Name:             "crio.network",
-		ExcludePlatforms: []string{"qemu"},
-		Distros:          []string{"rhcos"},
+		Run:         crioNetwork,
+		ClusterSize: 2,
+		Name:        "crio.network",
+		Flags:       []register.Flag{register.RequiresInternetAccess},
+		Distros:     []string{"rhcos"},
 	})
 }
 

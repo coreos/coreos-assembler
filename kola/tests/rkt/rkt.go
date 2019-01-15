@@ -41,12 +41,12 @@ var config = conf.Ignition(`{
 
 func init() {
 	register.Register(&register.Test{
-		Run:              rktEtcd,
-		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"},
-		Distros:          []string{"cl"},
-		Name:             "cl.rkt.etcd3",
-		UserData:         config,
+		Name:        "cl.rkt.etcd3",
+		Run:         rktEtcd,
+		ClusterSize: 1,
+		Flags:       []register.Flag{register.RequiresInternetAccess}, // etcdctl health-check requires networking
+		Distros:     []string{"cl"},
+		UserData:    config,
 	})
 
 	register.Register(&register.Test{

@@ -45,8 +45,8 @@ etcd:
   initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
   listen_peer_urls:            http://{PRIVATE_IPV4}:2380
   discovery:                   $discovery`),
-		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
-		Distros:          []string{"cl"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // etcdctl health-check requires networking
+		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.locksmith.reboot",
@@ -100,8 +100,8 @@ etcd:
     ]
   }
 }`),
-		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
-		Distros:          []string{"cl"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // Networking required
+		Distros: []string{"cl"},
 	})
 }
 

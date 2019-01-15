@@ -75,8 +75,8 @@ func init() {
   }
 }`),
 
-		Distros:          []string{"rhcos"},
-		ExcludePlatforms: []string{"qemu"}, // these need network to retrieve bits
+		Distros: []string{"rhcos"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // these need network to retrieve bits
 	})
 }
 

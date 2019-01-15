@@ -52,8 +52,8 @@ systemd:
       [Install]
       WantedBy=multi-user.target
 `),
-		ExcludePlatforms: []string{"qemu"}, // network access for hyperkube
-		Distros:          []string{"cl"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // network access for hyperkube
+		Distros: []string{"cl"},
 	})
 }
 
