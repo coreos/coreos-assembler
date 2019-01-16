@@ -28,7 +28,7 @@ libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt
 /usr/bin/ksflatten
 
 # scl and python36 For EL7
-#EL7 scl-utils rh-python36
+#EL7 scl-utils rh-python36 rh-python36-PyYAML
 
 # ostree-releng-scripts dependencies
 rsync
