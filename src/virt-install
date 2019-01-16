@@ -1,4 +1,6 @@
-#!/usr/bin/python3 -u
+#!/usr/bin/env python3
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+#
 # Wrapper for virt-install designed to run in a container
 # environment, and using defaults targeted for CoreOS.
 # https://github.com/cgwalters/coreos-assembler/issues/7
@@ -31,7 +33,7 @@ parser.add_argument("--console-log-file", help="Console log file",
 parser.add_argument("--logs", help="Copy Anaconda logs to DIR",
                     action='store', metavar="DIR")
 # Note https://bugzilla.redhat.com/show_bug.cgi?id=1379389
-parser.add_argument("--ostree-repo", help="Pass through OSTree repo via 9p",
+parser.add_argument("--ostree-repo", help="Path to OSTree repo",
                     action='store', required=True)
 parser.add_argument("--ostree-stateroot", help="OSTree stateroot",
                     action='store')
@@ -81,16 +83,18 @@ ks_tmp.write("""
 touch /boot/ignition.firstboot
 %end
 """)
+
+
+# Grab the ipv4 address of the container
+output = subprocess.check_output(['ip', '-4', '-oneline', 'addr', 'show', 'eth0'])
+ipv4 = re.match('.*inet ([\d.]+)/\d\d.*', str(output)).group(1)
+
 if args.ostree_repo:
     assert args.ostree_stateroot
     assert args.ostree_remote
     assert args.ostree_ref
     ks_tmp.write(f"""
-ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=file:///mnt/ostree-repo --ref="{args.ostree_ref}"
-%pre
-mkdir -p /mnt/ostree-repo
-mount -t 9p -o ro,trans=virtio,version=9p2000.L /mnt/ostree-repo /mnt/ostree-repo
-%end
+ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=http://{ipv4}:8000/ --ref="{args.ostree_ref}"
     """)
 # Hacky bits to copy out all of the Anaconda logs on shutdown
 if args.logs:
@@ -145,22 +149,28 @@ for x in range(10):
 # Doesn't need to be truly unique, let's just use our pid+time
 domain="coreos-inst-{}-{}".format(os.getpid(),int(time.time()))
 tail_proc = None
+http_proc = None
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
-                     "--name={}".format(domain),
-                     "--noautoconsole"]
+                     "--name={}".format(domain)]
+    # use noautoconsole for fedora since we will use console=log.file
+    # for el7 just use the serial console
+    if os.environ['ISFEDORA'] != '':
+        vinstall_args.append('--noautoconsole')
+    else:
+        vinstall_args.append('--nographics')
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
         tail_proc = subprocess.Popen(['tail', '-F', args.console_log_file])
+    # Start webserver to serve the ostree content to be retrieved during install
+    http_proc = subprocess.Popen(['python3', '-m', 'http.server', '--bind', ipv4, '8000'], cwd=args.ostree_repo)
     if args.logs:
         vinstall_args.append("--filesystem=source={},target=/mnt/logs,accessmode=mapped".format(args.logs))
-    if args.ostree_repo:
-        vinstall_args.append("--filesystem=source={},target=/mnt/ostree-repo,accessmode=mapped".format(args.ostree_repo))
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7", "--rng=/dev/urandom",
                           "--check", "path_in_use=off",
-                          "--network=none",  # We want predictablity, disable networking
+                          "--network=user",  # user mode networking
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--location={}".format(args.location),
                           "--initrd-inject={}".format(ks_tmp.name),
@@ -170,4 +180,6 @@ finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
     if tail_proc is not None:
         tail_proc.terminate()
+    if http_proc is not None:
+        http_proc.terminate()
 print("Completed install to disk image: {}".format(args.dest))

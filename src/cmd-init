@@ -132,7 +132,10 @@ mkdir -p src
          /*) ln -sr "${source}/${subdir}" config;;
          *) git clone "${source}" config
             if [ -n "${BRANCH}" ]; then
+                # On EL7 git doesn't support -C option so use pushd/popd
+                pushd config >/dev/null
                 git -C config checkout "${BRANCH}"
+                popd
             fi
             if [ -n "${subdir}" ]; then
                 mv config config-git

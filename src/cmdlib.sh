@@ -3,6 +3,23 @@
 
 DIR=$(dirname "$0")
 
+# Set PYTHONUNBUFFERED=1 so that we get unbuffered output. We should
+# be able to do this on the shebang lines but env doesn't support args
+# right now. In Fedora we should be able to use the `env -S` option.
+export PYTHONUNBUFFERED=1
+
+# Detect what platform we are on
+if grep -q '^Fedora' /etc/redhat-release; then
+    export ISFEDORA=1
+    export ISEL=''
+elif grep -q '^Red Hat' /etc/redhat-release; then
+    export ISFEDORA=''
+    export ISEL=1
+else
+    echo 1>&2 "should be on either RHEL or Fedora"
+    exit 1
+fi
+
 info() {
     echo "info: $*" 1>&2
 }
@@ -33,7 +50,9 @@ has_privileges() {
 preflight() {
     # Verify we have all dependencies
     local deps
-    deps=$(grep -v '^#' /usr/lib/coreos-assembler/deps.txt)
+    [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
+    [ -n "${ISEL}" ]     && filter='^#EL7 '
+    deps=$(sed "s/${filter}//" /usr/lib/coreos-assembler/deps.txt | grep -v '^#')
     # Explicitly check the packages in one rpm -q to avoid
     # overhead, only drop down to individual calls if that fails.
     # We use --whatprovides so we handle file paths too.
@@ -68,6 +87,10 @@ preflight() {
             sudo mknod /dev/kvm c 10 232
             sudo setfacl -m u:"$USER":rw /dev/kvm
         fi
+    fi
+
+    if ! has_privileges && [ -n "${ISEL}" ]; then
+        fatal "running on EL requires privileged mode"
     fi
 }
 

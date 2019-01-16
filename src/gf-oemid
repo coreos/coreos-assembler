@@ -47,7 +47,12 @@ done
 exec qemu-kvm -cpu host,pmu=off "${args[@]}"
 EOF
 chmod +x "${qemu_wrapper}"
-export LIBGUESTFS_HV="${qemu_wrapper}"
+
+# This qemu wrapper doesn't work for some reason on EL7, so just skip
+# it on EL7 for now
+if [ -n "${ISFEDORA}" ]; then
+    export LIBGUESTFS_HV="${qemu_wrapper}"
+fi
 
 cp --reflink=auto "${src}" "${tmp_dest}"
 # <walters> I commonly chmod a-w VM images

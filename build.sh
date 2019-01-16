@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Detect what platform we are on
+if grep -q '^Fedora' /etc/redhat-release; then
+    ISFEDORA=1
+    ISEL=''
+elif grep -q '^Red Hat' /etc/redhat-release; then
+    ISFEDORA=''
+    ISEL=1
+else
+    echo 1>&2 "should be on either RHEL or Fedora"
+    exit 1
+fi
+
 if [ $# -eq 0 ]; then
   echo Usage: "build.sh CMD"
   echo "Supported commands:"
@@ -16,23 +28,27 @@ srcdir=$(pwd)
 
 configure_yum_repos() {
 
-    # Enable FAHC https://pagure.io/fedora-atomic-host-continuous
-    # so we have ostree/rpm-ostree git master for our :latest
-    # NOTE: The canonical copy of this code lives in rpm-ostree's CI:
-    # https://github.com/projectatomic/rpm-ostree/blob/d2b0e42bfce972406ac69f8e2136c98f22b85fb2/ci/build.sh#L13
-    # Please edit there first
-    echo -e '[fahc]\nmetadata_expire=1m\nbaseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/rdgo/build/\ngpgcheck=0\n' > /etc/yum.repos.d/fahc.repo
+    # Disable pulling ostree/rpm-ostree rpms from distribution repos
     # Until we fix https://github.com/rpm-software-management/libdnf/pull/149
     excludes='exclude=ostree ostree-libs ostree-grub2 rpm-ostree'
-    for repo in /etc/yum.repos.d/fedora*.repo; do
+    for repo in /etc/yum.repos.d/*.repo; do
         # reworked to remove useless `cat` - https://github.com/koalaman/shellcheck/wiki/SC2002
         (while read -r line; do if echo "$line" | grep -qE -e '^enabled=1'; then echo "${excludes}"; fi; echo "$line"; done < "${repo}") > "${repo}".new
         mv "${repo}".new "${repo}"
     done
 
-    # enable `dustymabe/ignition` copr
-    # pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
-    cat > /etc/yum.repos.d/dustymabe-ignition-fedora-28.repo <<'EOF'
+    # For Fedora we'll add a FAHC and COPR repo
+    if [ -n "${ISFEDORA}" ]; then  
+        # Enable FAHC https://pagure.io/fedora-atomic-host-continuous
+        # so we have ostree/rpm-ostree git master for our :latest
+        # NOTE: The canonical copy of this code lives in rpm-ostree's CI:
+        # https://github.com/projectatomic/rpm-ostree/blob/d2b0e42bfce972406ac69f8e2136c98f22b85fb2/ci/build.sh#L13
+        # Please edit there first
+        echo -e '[fahc]\nmetadata_expire=1m\nbaseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/rdgo/build/\ngpgcheck=0\n' > /etc/yum.repos.d/fahc.repo
+
+        # enable `dustymabe/ignition` copr
+        # pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
+        cat > /etc/yum.repos.d/dustymabe-ignition-fedora-28.repo <<'EOF'
 [dustymabe-ignition]
 name=Copr repo for ignition owned by dustymabe
 baseurl=https://copr-be.cloud.fedoraproject.org/results/dustymabe/ignition/fedora-$releasever-$basearch/
@@ -44,39 +60,46 @@ repo_gpgcheck=0
 enabled=1
 enabled_metadata=1
 EOF
-
+    fi
 }
 
 install_rpms() {
-
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
-    dnf -y distro-sync
+    yum -y distro-sync
 
     # xargs is part of findutils, which may not be installed
-    dnf -y install /usr/bin/xargs
+    yum -y install /usr/bin/xargs
+
+    # define the filter we want to use to filter out deps that don't
+    # apply to the platform we are on
+    [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
+    [ -n "${ISEL}" ]     && filter='^#EL7 '
 
     # These are only used to build things in here.  Today
     # we ship these in the container too to make it easier
     # to use the container as a development environment for itself.
     # Down the line we may strip these out, or have a separate
     # development version.
-    self_builddeps=$(grep -v '^#' "${srcdir}"/build-deps.txt)
+    builddeps=$(sed "s/${filter}//" "${srcdir}"/build-deps.txt | grep -v '^#')
 
-    # Process our base dependencies + build dependencies
-    (echo "${self_builddeps}" && grep -v '^#' "${srcdir}"/deps.txt) | xargs dnf -y install
+    # Process our base dependencies + build dependencies and install
+    deps=$(sed "s/${filter}//" "${srcdir}"/deps.txt | grep -v '^#')
+    echo "${builddeps}" "${deps}" | xargs yum -y install
 
     # Commented out for now, see above
-    #dnf remove -y ${self_builddeps}
-    rpm -q grubby && dnf remove -y grubby
-    # Further cleanup
-    dnf clean all
+    #dnf remove -y $builddeps}
+    # can't remove grubby on el7 because libguestfs-tools depends on it
+    if [ -n "${ISFEDORA}" ]; then
+        rpm -q grubby && yum remove -y grubby
+    fi
 
+    # Further cleanup
+    yum clean all
 }
 
-make_and_makeinstall() {
-
+_prep_make_and_make_install() {
     # Work around https://github.com/coreos/coreos-assembler/issues/27
     if ! test -d .git; then
         (git config --global user.email dummy@example.com
@@ -93,10 +116,18 @@ make_and_makeinstall() {
         echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
         exit 1
     fi
-
-    # And the main scripts
-    make && make check && make install
 }
+
+make_and_makeinstall() {
+    _prep_make_and_make_install
+    # And the main scripts
+    if [ -n "${ISEL}" ]; then  
+        echo "make && make check && make install" | scl enable rh-python36 bash
+    else
+        make && make check && make install
+    fi
+}
+
 
 configure_user(){
 
