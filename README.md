@@ -127,7 +127,7 @@ When editing a script, a quick way to use the locally-modified script in
 `coreos-assembler` is to volume-mount the path to the script, for example:
 
 ```
-$ alias coreos-assembler= podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv -v /path/to/coreos-assembler/src/cmd-run:/usr/lib/coreos-assembler/cmd-run --workdir /srv quay.io/coreos-assembler/coreos-assembler
+$ alias coreos-assembler='podman run --rm --net=host -ti --privileged --userns=host -v $(pwd):/srv -v /path/to/coreos-assembler/src/cmd-run:/usr/lib/coreos-assembler/cmd-run --workdir /srv quay.io/coreos-assembler/coreos-assembler'
 ```
 
 To completely rebuild the coreos-assembler container image locally, execute
