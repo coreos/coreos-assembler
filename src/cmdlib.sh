@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Shared shell script library
 
 DIR=$(dirname "$0")

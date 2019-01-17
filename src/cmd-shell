@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 if [ $# -eq 0 ]; then
     # If no arguments then offer user bash prompt inside the container
