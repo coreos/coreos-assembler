@@ -177,6 +177,7 @@ try:
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7", "--rng=/dev/urandom",
+                          "--cpu=host-passthrough",
                           "--check", "path_in_use=off",
                           "--network=user",  # user mode networking
                           "--disk=path={},cache=unsafe".format(args.dest),
