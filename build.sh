@@ -130,12 +130,22 @@ make_and_makeinstall() {
 
 
 configure_user(){
+    # /dev/kvm might be bound in, but will have the gid from the host, and not all distros
+    # a+rw permissions on /dev/kvm. create groups for all the common kvm gids and then add
+    # builder to them.
+    # systemd defaults to 0666 but other packages like qemu sometimes override this with 0660.
+    # Adding the user to the kvm group should always work.
+
+    # fedora uses gid 36 for kvm
+    groupadd -g 78 -o -r kvm78   # arch, gentoo
+    groupadd -g 124 -o -r kvm124 # debian
+    groupadd -g 232 -o -r kvm232 # ubuntu
 
     # We want to run what builds we can as an unprivileged user;
     # running as non-root is much better for the libvirt stack in particular
     # for the cases where we have --privileged in the container run for other reasons.
     # At some point we may make this the default.
-    useradd builder -G wheel
+    useradd builder -G wheel,kvm,kvm78,kvm124,kvm232
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
 }
 
