@@ -14,7 +14,7 @@ rpm-ostree createrepo_c openssh-clients
 #EL7 yum-utils
 
 # We expect people to use these explicitly in their repo configurations.
-distribution-gpg-keys
+#FEDORA distribution-gpg-keys
 # We need these for rojig
 selinux-policy-targeted rpm-build
 
@@ -33,7 +33,7 @@ libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt
 # ostree-releng-scripts dependencies
 rsync
 #FEDORA python2-gobject-base python3-gobject-base
-#EL7 python34-gobject-base
+#EL7 python-gobject
 
 # To support recursive containerization and manipulating images
 podman buildah skopeo
@@ -45,4 +45,4 @@ jq awscli
 ignition
 
 # shellcheck for test
-ShellCheck
+#FEDORA ShellCheck
