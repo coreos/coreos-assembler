@@ -101,4 +101,4 @@ fi
 
 # we actually want work splitting here since $volumes is multiple args
 # shellcheck disable=SC2086
-$runtime run --rm --net=host -ti --privileged --userns=host $volumes --workdir /srv $entrypoint "$container" "$@"
+$runtime run --rm -ti --privileged --userns=host $volumes --workdir /srv $entrypoint "$container" "$@"
