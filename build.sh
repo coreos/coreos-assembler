@@ -116,6 +116,11 @@ _prep_make_and_make_install() {
         echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
         exit 1
     fi
+
+    # Can only (easily) get gobject-introspection in Python2 on EL7
+    if [ -n "${ISEL}" ]; then
+      sed -i 's|^#!/usr/bin/python3|#!/usr/bin/python2|' src/commitmeta_to_json
+    fi
 }
 
 make_and_makeinstall() {
