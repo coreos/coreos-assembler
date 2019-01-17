@@ -51,6 +51,14 @@ def get_libvirt_smp_arg():
     See e.g. https://www.redhat.com/archives/libvirt-users/2017-June/msg00025.html
     We want to match the number of host physical cores.
     """
+
+    # When running under K8S, the scehduling may be much more restrictive than
+    # physical core count, and the code below will assign that count, leading
+    # to a VM hang. (e.g. 64 vcpu's to a 1 cpu assignment...)
+    p1c = open("/proc/1/cgroup")
+    if re.search(r'.*kubepods.*', p1c.read()):
+        return '--vcpus=sockets=1,cores=1,threads=1'
+
     # We may be run in a cgroup with fewer cores available than physical.
     available_cpu = int(subprocess.check_output(['nproc']).strip())
     # https://stackoverflow.com/questions/6481005/how-to-obtain-the-number-of-cpus-cores-in-linux-from-the-command-line
