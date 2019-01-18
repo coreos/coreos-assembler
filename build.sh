@@ -120,6 +120,7 @@ _prep_make_and_make_install() {
     # Can only (easily) get gobject-introspection in Python2 on EL7
     if [ -n "${ISEL}" ]; then
       sed -i 's|^#!/usr/bin/python3|#!/usr/bin/python2|' src/commitmeta_to_json
+      sed -i 's|^#!/usr/bin/env python3|#!/usr/bin/python2|' src/cmd-oscontainer
     fi
 }
 
