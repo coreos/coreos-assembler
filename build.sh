@@ -151,7 +151,7 @@ configure_user(){
     # running as non-root is much better for the libvirt stack in particular
     # for the cases where we have --privileged in the container run for other reasons.
     # At some point we may make this the default.
-    useradd builder -G wheel,kvm,kvm78,kvm124,kvm232
+    useradd builder --uid 1000 -G wheel,kvm,kvm78,kvm124,kvm232
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
 }
 
