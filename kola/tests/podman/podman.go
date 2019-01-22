@@ -41,12 +41,12 @@ func init() {
 		Distros:     []string{"rhcos"},
 	})
 	register.Register(&register.Test{
-		Run:              podmanWorkflow,
-		ClusterSize:      1,
-		Name:             `podman.workflow`,
-		ExcludePlatforms: []string{"qemu"}, // Requires internet for pulling nginx
-		Distros:          []string{"rhcos"},
-		FailFast:         true,
+		Run:         podmanWorkflow,
+		ClusterSize: 1,
+		Name:        `podman.workflow`,
+		Flags:       []register.Flag{register.RequiresInternetAccess}, // For pulling nginx
+		Distros:     []string{"rhcos"},
+		FailFast:    true,
 	})
 	register.Register(&register.Test{
 		Run:         podmanNetworkTest,

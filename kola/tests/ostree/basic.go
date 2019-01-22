@@ -39,12 +39,12 @@ func init() {
 	})
 
 	register.Register(&register.Test{
-		Run:              ostreeRemoteTest,
-		ClusterSize:      1,
-		Name:             "ostree.remote",
-		Distros:          []string{"rhcos", "fcos"},
-		ExcludePlatforms: []string{"qemu"}, // need network to contact remote
-		FailFast:         true,
+		Run:         ostreeRemoteTest,
+		ClusterSize: 1,
+		Name:        "ostree.remote",
+		Distros:     []string{"rhcos", "fcos"},
+		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to contact remote
+		FailFast:    true,
 	})
 }
 

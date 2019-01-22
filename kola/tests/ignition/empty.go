@@ -21,7 +21,8 @@ import (
 )
 
 // These tests require the kola key to be passed to the instance via cloud
-// provider metadata since it will not be injected into the config.
+// provider metadata since it will not be injected into the config. Platforms
+// where the cloud provider metadata system is not available have been excluded.
 func init() {
 	// Tests for https://github.com/coreos/bugs/issues/1184
 	register.Register(&register.Test{

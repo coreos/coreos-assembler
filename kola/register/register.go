@@ -26,10 +26,18 @@ import (
 type Flag int
 
 const (
-	NoSSHKeyInUserData    Flag = iota // don't inject SSH key into Ignition/cloud-config
-	NoSSHKeyInMetadata                // don't add SSH key to platform metadata
-	NoEmergencyShellCheck             // don't check console output for emergency shell invocation
-	NoEnableSelinux                   // don't enable selinux when starting or rebooting a machine
+	NoSSHKeyInUserData     Flag = iota // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata                 // don't add SSH key to platform metadata
+	NoEmergencyShellCheck              // don't check console output for emergency shell invocation
+	NoEnableSelinux                    // don't enable selinux when starting or rebooting a machine
+	RequiresInternetAccess             // run the test only if the platform supports Internet access
+)
+
+var (
+	// platforms that have no Internet access
+	PlatformsNoInternet = []string{
+		"qemu",
+	}
 )
 
 // Test provides the main test abstraction for kola. The run function is

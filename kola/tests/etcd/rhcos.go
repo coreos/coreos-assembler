@@ -47,8 +47,8 @@ func init() {
     ]
   }
 }`),
-		ExcludePlatforms: []string{"qemu"}, // fetching etcd requires networking
-		Distros:          []string{"rhcos"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // fetching etcd requires networking
+		Distros: []string{"rhcos"},
 	})
 	register.Register(&register.Test{
 		Run:         rhcosClusterTLS,
@@ -80,8 +80,8 @@ func init() {
     ]
   }
 }`),
-		ExcludePlatforms: []string{"qemu"}, // fetching etcd requires networking
-		Distros:          []string{"rhcos"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // fetching etcd requires networking
+		Distros: []string{"rhcos"},
 	})
 }
 

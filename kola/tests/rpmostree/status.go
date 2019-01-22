@@ -109,6 +109,5 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 
 	if rpmOstreeVersion != status.Deployments[0].Version {
 		c.Fatalf(`The version numbers did not match -> from JSON: %q; from stdout: %q`, status.Deployments[0].Version, rpmOstreeVersion)
-
 	}
 }

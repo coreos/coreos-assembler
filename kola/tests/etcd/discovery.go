@@ -37,8 +37,8 @@ func init() {
   listen_peer_urls:            http://{PRIVATE_IPV4}:2380
   initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
   discovery:                   $discovery`),
-		ExcludePlatforms: []string{"qemu"}, // etcd-member requires networking
-		Distros:          []string{"cl"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // etcd-member requires networking
+		Distros: []string{"cl"},
 	})
 
 	register.Register(&register.Test{
@@ -54,7 +54,8 @@ etcd:
   initial_advertise_peer_urls: http://{PRIVATE_IPV4}:2380
   discovery:                   $discovery
 `),
-		ExcludePlatforms: []string{"qemu", "esx"}, // etcd-member requires networking and ct rendering
+		Flags:            []register.Flag{register.RequiresInternetAccess}, // etcd-member requires networking
+		ExcludePlatforms: []string{"esx"},                                  // etcd-member requires ct rendering
 		Distros:          []string{"cl"},
 	})
 
@@ -72,8 +73,8 @@ etcd:
   listen_peer_urls:            http://0.0.0.0:2380
   initial_advertise_peer_urls: http://127.0.0.1:2380
 `),
-		ExcludePlatforms: []string{"qemu"}, // networking to download etcd image
-		Distros:          []string{"cl"},
+		Flags:   []register.Flag{register.RequiresInternetAccess}, // networking to download etcd image
+		Distros: []string{"cl"},
 	})
 }
 
@@ -159,7 +160,7 @@ EOF
 `)
 }
 
-// etcdmemberEtcdctlV3 tests the basic operatoin of the ETCDCTL_API=3 behavior
+// etcdmemberEtcdctlV3 tests the basic operation of the ETCDCTL_API=3 behavior
 // of the etcdctl we ship.
 func etcdmemberEtcdctlV3(c cluster.TestCluster) {
 	m := c.Machines()[0]
