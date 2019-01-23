@@ -217,6 +217,9 @@ fi
 /usr/lib/coreos-assembler/gf-anaconda-cleanup "$(pwd)"/"${img_base}"
 /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 set +x
+# Clear the MCS SELinux labels
+# See https://github.com/coreos/coreos-assembler/issues/292
+chcon -vl s0 "${img_qemu}"
 # make a version-less symlink to have a stable path
 ln -s "${img_qemu}" "${name}"-qemu.qcow2
 
