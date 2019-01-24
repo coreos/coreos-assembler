@@ -94,7 +94,8 @@ touch /boot/ignition.firstboot
 
 
 # Grab the ipv4 address of the container
-output = subprocess.check_output(['ip', '-4', '-oneline', 'addr', 'show', 'eth0'])
+default_iface = subprocess.check_output(['ip', '-4', 'route', 'list', '0/0']).split()[4]
+output = subprocess.check_output(['ip', '-4', '-oneline', 'addr', 'show', default_iface])
 ipv4 = re.match('.*inet ([\d.]+)/\d\d.*', str(output)).group(1)
 
 if args.ostree_repo:
