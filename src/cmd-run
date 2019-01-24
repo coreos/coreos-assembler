@@ -101,6 +101,17 @@ else
     ign_var_srv_mount=""
 fi
 
+
+coreos_assembler_sysctl=$(cat << 'EOF' | base64 --wrap 0
+# Written during `coreos-assembler run`.
+
+# Right now, we're running at the default log level, which is DEBUG (7).
+# The text gets interspersed with user input/program output on the tty.
+# Bump the default to ERROR (3).
+kernel.printk = 3 4 1 7
+EOF
+)
+
 if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     f=$(mktemp)
     cat > "${f}" <<EOF
@@ -126,8 +137,8 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
         "files": [
             {
                 "filesystem": "root",
-                "path": "/etc/sysctl.d/10-coreos.conf",
-                "contents": { "source": "data:,kernel.printk%20=%203%204%201%207%0A" },
+                "path": "/etc/sysctl.d/10-coreos-assembler.conf",
+                "contents": { "source": "data:text/plain;base64,${coreos_assembler_sysctl}" },
                 "mode": 420
             }
         ]
