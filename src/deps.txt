@@ -49,3 +49,9 @@ ignition
 
 # for grub install when creating images without anaconda
 grub2
+
+# Mantle suite
+#FEDORA mantle-kola
+#FEDORA mantle-kolet
+#FEDORA mantle-plume
+#FEDORA mantle-ore
