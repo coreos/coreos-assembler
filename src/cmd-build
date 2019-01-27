@@ -86,13 +86,28 @@ sha256sum_str() {
 }
 
 # Calculate kickstart checksum now and gather previous image build variables if any
-kickstart_input="${configdir:?}"/image.ks
-kickstart_checksum=$(< "${kickstart_input}" sha256sum_str)
+image_config_path="${configdir:?}"/image.yaml
+image_config=true
+if [ -f "${image_config_path}" ]; then
+    image_input="${image_config_path}"
+else
+    ks_path="${configdir:?}"/image.ks
+    if [ -f "${ks_path}" ]; then
+        echo 1>&2 "WARNING: Kickstart support is deprecated; migrate to image.yaml"
+        echo "Sleeping for 10 seconds."
+        sleep 10
+        image_input="${configdir:?}"/image.ks
+        image_config=false
+    else
+        fatal "Failed to find image.yaml in configdir"
+    fi
+fi
+image_config_checksum=$(< "${image_input}" sha256sum_str)
 if [ -n "${previous_build}" ]; then
     previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
     previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
 fi
-echo "Kickstart checksum: ${kickstart_checksum}"
+echo "Image Config checksum: ${image_config_checksum}"
 
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd "${configdir}" && git describe --tags --always --abbrev=42)
@@ -127,7 +142,7 @@ if [ -f "${changed_stamp:?}" ]; then
     cp -a --reflink=auto "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
     commit=${previous_commit}
-    image_input_checksum=$( (echo "${commit}" && echo "${kickstart_checksum}") | sha256sum_str)
+    image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
     # Note we may not actually have a previous build in the case of
     # successfully composing an ostree but failing the image on the
     # first build.
@@ -157,7 +172,7 @@ if [ -n "${previous_build}" ]; then
     rpm-ostree --repo="${workdir}"/repo db diff "${previous_commit}" "${commit}"
 fi
 
-image_input_checksum=$( (echo "${commit}" && echo "${kickstart_checksum}") | sha256sum_str)
+image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
 version=$(ostree --repo="${workdir}"/repo show --print-metadata-key=version "${commit}" | sed -e "s,',,g")
 if [ "${previous_commit}" = "${commit}" ] && [ -n "${previous_image_genver:-}" ]; then
@@ -179,14 +194,21 @@ img_qemu=${imageprefix}-qemu.qcow2
 # These options don't work for EL7 so don't pass for now
 # virt-install --console=log.file doesn't work for qemu in EL7
 # 9pfs isn't an option for EL7 so copying out anaconda logs doesn't work
+extraargs=
 if [ -n "${ISFEDORA}" ]; then
-    extraargs="--console-log-file $(pwd)/install.log --logs $(pwd)/tmp/anaconda"
+    extraargs="${extraargs} --console-log-file $(pwd)/install.log --logs $(pwd)/tmp/anaconda"
+fi
+
+if ${image_config}; then
+    extraargs="${extraargs} --image-config ${image_input}"
+else
+    extraargs="${extraargs} --kickstart ${image_input}"
 fi
 
 # We want extraargs var to be split on words
 # shellcheck disable=SC2086
 /usr/lib/coreos-assembler/virt-install --dest="$(pwd)"/"${img_base}" \
-               --create-disk --kickstart "${kickstart_input}" --kickstart-out "$(pwd)"/tmp/flattened.ks \
+               --create-disk --kickstart-out "$(pwd)"/tmp/flattened.ks \
                --ostree-remote="${name}" --ostree-stateroot="${name}" \
                --ostree-ref="${ref:-${commit}}" \
                --location "${workdir}"/installer/*.iso \
@@ -209,7 +231,7 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
- "coreos-assembler.kickstart-checksum": "${kickstart_checksum}",
+ "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "images": {
     "qemu": { "path": "${img_qemu}",
               "sha256": "${img_qemu_sha256}" }

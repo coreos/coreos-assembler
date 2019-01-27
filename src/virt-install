@@ -9,7 +9,7 @@
 # one or both.
 
 import os,sys,argparse,subprocess,io,time,re,multiprocessing
-import tempfile
+import tempfile,shutil,yaml
 
 def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
@@ -20,8 +20,10 @@ parser.add_argument("--dest", help="Destination disk",
                     action='store', required=True)
 parser.add_argument("--create-disk", help="Automatically create disk as qcow2, parsing kickstart for size",
                     action='store_true')
+parser.add_argument("--image-config", help="coreos-assembler image.yaml",
+                    action='store')
 parser.add_argument("--kickstart", help="Kickstart path",
-                    action='store', required=True)
+                    action='store')
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
                     action='store')
 parser.add_argument("--location", help="Installer location",
@@ -81,7 +83,20 @@ if args.kickstart_out:
     ks_tmp = open(args.kickstart_out, 'w')
 else:
     ks_tmp = tempfile.NamedTemporaryFile(mode='w', prefix="coreos-virtinstall", suffix=".ks")
-run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
+
+disk_size = None
+
+if args.image_config:
+    with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
+        shutil.copyfileobj(basef, ks_tmp)
+    image_conf = None
+    with open(args.image_config) as f:
+        image_conf = yaml.safe_load(f)
+    disk_size = int(image_conf['size'])
+elif args.kickstart:
+    run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
+else:
+    raise SystemExit("Either --kickstart or --image-conf must be specified")
 
 # This is an implementation detail of https://github.com/coreos/ignition-dracut
 # So we hardcode it here.
@@ -91,7 +106,6 @@ ks_tmp.write("""
 touch /boot/ignition.firstboot
 %end
 """)
-
 
 # Grab the ipv4 address of the container
 default_iface = subprocess.check_output(['ip', '-4', 'route', 'list', '0/0']).split()[4]
@@ -127,10 +141,9 @@ systemctl start coreos-virtinstall-logs
 ks_tmp.flush()
 
 # This is an "extension" to kickstart files that we implement as a comment.
-if args.create_disk:
+if args.create_disk and args.kickstart:
     magic_virt_install_size_str = '#--coreos-virt-install-disk-size-gb:'
     disk_re = re.compile(r'^' + magic_virt_install_size_str + ' *([0-9]+)$')
-    disk_size = None
     with open(args.kickstart) as f:
         for line in f:
             m = disk_re.search(line)
@@ -140,6 +153,8 @@ if args.create_disk:
             break
     if disk_size is None:
         fatal("--create-disk specified, but failed to find '{}' in kickstart".format(magic_virt_install_size_str))
+
+if args.create_disk:
     run_sync_verbose(['qemu-img', 'create', '-f', 'qcow2', args.dest, '{}G'.format(disk_size)])
     print("Created initial disk: {} with size {}G".format(args.dest, disk_size))
 
