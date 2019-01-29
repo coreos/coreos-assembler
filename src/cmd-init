@@ -22,7 +22,7 @@ Usage: coreos-assembler init --help
   You can specify a branch of a git repo with the `--branch` flag.
 
   If specified, SUBDIR is a subdirectory of the git repository that should
-  contain manifest.yaml and image.ks.
+  contain manifest.yaml and image.yaml (or image.ks).
 
   If you have the required install ISO and sha256sums already availble,
   you can specify the location of the those files with the `--installerdir` flag.
