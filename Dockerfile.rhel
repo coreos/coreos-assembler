@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/rhel7:latest
+FROM registry.redhat.io/rhel7:latest
 WORKDIR /root/containerbuild
 
 # Only need a few of our scripts for the first few steps
