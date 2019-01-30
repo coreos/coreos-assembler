@@ -22,8 +22,10 @@ clearpart --initlabel --all
 # Add the following to kernel boot args:
 #  - ip=dhcp           # how to get network
 #  - rd.neednet=1      # tell dracut we need network
+#  - rootflags=defaults,prjquota # enable prjquota for quota enablement for containers
+#                                # https://bugzilla.redhat.com/show_bug.cgi?id=1658386
 #  - $ignition_firstboot # This is actually a GRUB variable
-bootloader --timeout=1 --append="no_timer_check console=ttyS0,115200n8 console=tty0 net.ifnames=0 biosdevname=0 ip=dhcp rd.neednet=1 rw $ignition_firstboot"
+bootloader --timeout=1 --append="no_timer_check console=ttyS0,115200n8 console=tty0 net.ifnames=0 biosdevname=0 ip=dhcp rd.neednet=1 rw rootflags=defaults,prjquota $ignition_firstboot"
 
 # https://github.com/coreos/fedora-coreos-tracker/issues/18
 # See also coreos-growpart.service defined in fedora-coreos-base.yaml
