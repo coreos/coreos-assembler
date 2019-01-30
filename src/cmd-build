@@ -231,7 +231,7 @@ ln -s "${img_qemu}" "${name}"-qemu.qcow2
 img_qemu_sha256=$(sha256sum "${img_qemu}" | cut -f 1 -d ' ')
 img_qemu_size=$(stat --format=%s "${img_qemu}")
 build_timestamp=$(date -u +$RFC3339)
-kickstart_checksum=$(awk '/SHA256.*iso/{print$NF}' "${workdir}"/installer/*CHECKSUM)
+vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${workdir}"/installer/*CHECKSUM)
 
 cat > tmp/meta.json <<EOF
 {
@@ -242,7 +242,7 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
- "coreos-assembler.kickstart-checksum": "${kickstart_checksum}",
+ "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}",
  "images": {
     "qemu": { "path": "${img_qemu}",
               "sha256": "${img_qemu_sha256}",
