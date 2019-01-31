@@ -13,6 +13,9 @@ rpm-ostree createrepo_c openssh-clients
 #FEDORA dnf-utils
 #EL7 yum-utils
 
+# For generating ISO images
+genisoimage syslinux-nonlinux
+
 # We expect people to use these explicitly in their repo configurations.
 #FEDORA distribution-gpg-keys
 # We need these for rojig

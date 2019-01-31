@@ -44,6 +44,11 @@ os.mkdir(tmpdir)
 at_least_one = False
 imgs_to_compress = []
 for img_format in buildmeta['images']:
+
+    # Don't try to compress ISO images
+    if img_format == 'iso':
+        continue
+
     img = buildmeta['images'][img_format]
     file = img['path']
     filepath = os.path.join('builds', build, file)
