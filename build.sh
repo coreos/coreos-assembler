@@ -155,7 +155,7 @@ configure_user(){
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
 }
 
-write_repo() {
+write_archive_info() {
     # shellcheck source=src/cmdlib.sh
     . "${srcdir}/src/cmdlib.sh"
     mkdir -p /lib/coreos-assembler/src
