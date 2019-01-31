@@ -57,12 +57,6 @@ from the `coreos-assembler` repository. If building the RHEL version please
 note you will need a maipo directory with references to
 proper repositories.
 
-You can optionally upload your built image to a registry such as quay.io by
-doing the following:
-
-```
-$ sudo podman push <image id> example.com/<account name>/coreos-assembler
-```
 
 ### Setup
 ---
