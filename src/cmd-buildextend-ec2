@@ -22,16 +22,14 @@ parser.add_argument("--grant-user", help="Grant user launch permission",
                     nargs="*", default=[])
 args = parser.parse_args()
 
-with open('src/config/manifest.yaml') as f:
-    manifest = yaml.safe_load(f)
-
-base_name = manifest['rojig']['name']
-ami_name_version = f'{base_name}-{args.build}'
 
 builddir = os.path.join('builds', args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
+
+base_name = buildmeta['name']
+ami_name_version = f'{base_name}-{args.build}'
 
 tmpdir='tmp/buildpost-ec2'
 if os.path.isdir(tmpdir):
@@ -58,7 +56,7 @@ def run_ore():
                 '--bucket', args.bucket,
                 '--ami-name', ami_name_version,
                 '--name', ami_name_version,
-                '--ami-description', f"{manifest['rojig']['summary']} {args.build}",
+                '--ami-description', f"{buildmeta['summary']} {args.build}",
                 '--file', tmp_img_ec2_vmdk,
                 '--disk-size-inspect',
                 '--delete-object']

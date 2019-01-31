@@ -26,17 +26,14 @@ if not args.build:
 
 print(f"Targeting build: {args.build}")
 
-with open('src/config/manifest.yaml') as f:
-    manifest = yaml.safe_load(f)
-
-base_name = manifest['rojig']['name']
-img_prefix = f'{base_name}-{args.build}'
-openstack_name = f'{img_prefix}-openstack.qcow2'
-
 builddir = os.path.join('builds', args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
+
+base_name = buildmeta['name']
+img_prefix = f'{base_name}-{args.build}'
+openstack_name = f'{img_prefix}-openstack.qcow2'
 
 tmpdir = 'tmp/buildpost-openstack'
 if os.path.isdir(tmpdir):

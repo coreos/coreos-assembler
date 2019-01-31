@@ -231,6 +231,7 @@ cat > tmp/meta.json <<EOF
 {
  "buildid": "${buildid}",
  "name": "${name}",
+ "summary": "${summary}",
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
