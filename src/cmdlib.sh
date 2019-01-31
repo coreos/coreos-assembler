@@ -118,10 +118,12 @@ prepare_build() {
     rpm-ostree compose tree --repo=repo --print-only "${manifest}" > "${manifest_tmp_json}"
 
     # Abuse the rojig/name as the name of the VM images
+    # Also grab rojig summary for image upload descriptions
     name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
+    summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
     # TODO - allow this to be unset
     ref=$(jq -r '.ref' < "${manifest_tmp_json}")
-    export name ref
+    export name ref summary
     rm -f "${manifest_tmp_json}"
 
     # This dir is no longer used
