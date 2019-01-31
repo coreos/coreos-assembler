@@ -17,6 +17,7 @@ Usage: coreos-assembler build --help
   Valid image types:
 
     - qemu
+    - metal-bios
 EOF
 }
 
@@ -227,23 +228,38 @@ else
     extraargs="${extraargs} --kickstart ${image_input}"
 fi
 
-# This generates the "base image"; not specific to a platform.
-# We want extraargs var to be split on words
-# shellcheck disable=SC2086
-/usr/lib/coreos-assembler/virt-install --dest="${PWD}"/"${img_base}" \
-               --create-disk --kickstart-out "${PWD}"/tmp/flattened.ks \
-               --ostree-remote="${name}" --ostree-stateroot="${name}" \
-               --ostree-ref="${ref:-${commit}}" \
-               --location "${workdir}"/installer/*.iso \
-               --ostree-repo="${workdir}"/repo ${extraargs-}
-/usr/lib/coreos-assembler/gf-anaconda-cleanup "$(pwd)"/"${img_base}"
 set +x
+# This generates the "base image"; not specific to a platform.
+run_virtinstall() {
+    dest=$1
+    shift
+    tmpdest="${dest}.tmp"
+    # We want extraargs var to be split on words
+    # shellcheck disable=SC2086
+    /usr/lib/coreos-assembler/virt-install --create-disk --dest=${tmpdest} \
+                                           --kickstart-out "${PWD}"/tmp/flattened.ks \
+                                           --ostree-remote="${name}" --ostree-stateroot="${name}" \
+                                           --ostree-ref="${ref:-${commit}}" \
+                                           --location "${workdir}"/installer/*.iso \
+                                           --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
+    # And strip out all of the Anaconda stuff in /var
+    /usr/lib/coreos-assembler/gf-anaconda-cleanup "${dest}"
+    mv "${tmpdest}" "${dest}"
+}
+
+build_cloud_base() {
+    if [ -f "${PWD}/${img_base}" ]; then
+        return
+    fi
+    run_virtinstall "${PWD}"/"${img_base}" --variant=cloud
+}
 
 declare -A images
 for itype in "${IMAGE_TYPES[@]}"; do
     case $itype in
         qemu) img_qemu=${imageprefix}-qemu.qcow2
               images[$itype]="${img_qemu}"
+              build_cloud_base
               /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
               # Clear the MCS SELinux labels
               # See https://github.com/coreos/coreos-assembler/issues/292
@@ -252,6 +268,11 @@ for itype in "${IMAGE_TYPES[@]}"; do
               # TODO: Remove this, things should be parsing the metadata
               ln -s "${img_qemu}" "${name}"-qemu.qcow2
               ;;
+        metal-bios)
+            img_metalbios=${imageprefix}-metal-bios.raw
+            images[$itype]="${img_metalbios}"
+            run_virtinstall "$(pwd)"/"${img_metalbios}" --variant=metal
+            ;;
         *) fatal "Unrecognized image type: $itype"
            ;;
     esac

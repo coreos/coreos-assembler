@@ -22,6 +22,8 @@ parser.add_argument("--create-disk", help="Automatically create disk as qcow2, p
                     action='store_true')
 parser.add_argument("--image-config", help="coreos-assembler image.yaml",
                     action='store')
+parser.add_argument("--variant", help="Use an internal (kickstart) config",
+                    choices=('metal', 'cloud'), default=None)
 parser.add_argument("--kickstart", help="Kickstart path",
                     action='store')
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
@@ -85,6 +87,10 @@ else:
     ks_tmp = tempfile.NamedTemporaryFile(mode='w', prefix="coreos-virtinstall", suffix=".ks")
 
 disk_size = None
+
+if args.variant is not None:
+    with open(f'/usr/lib/coreos-assembler/image-{args.variant}.ks') as f:
+        shutil.copyfileobj(f, ks_tmp)
 
 if args.image_config:
     with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
@@ -155,7 +161,11 @@ if args.create_disk and args.kickstart:
         fatal("--create-disk specified, but failed to find '{}' in kickstart".format(magic_virt_install_size_str))
 
 if args.create_disk:
-    run_sync_verbose(['qemu-img', 'create', '-f', 'qcow2', args.dest, '{}G'.format(disk_size)])
+    if args.variant == 'metal':
+        fmt = 'raw'
+    else:
+        fmt = 'qcow2'
+    run_sync_verbose(['qemu-img', 'create', '-f', fmt, args.dest, '{}G'.format(disk_size)])
     print("Created initial disk: {} with size {}G".format(args.dest, disk_size))
 
 # Now a hack to avoid libvirt race conditions; it's
