@@ -151,7 +151,7 @@ download an installer image (used to make VMs).
 $ coreos-assembler init https://github.com/coreos/fedora-coreos-config
 ```
 
-The specified git repository will be cloned into `/srv/coreos/src/config`.
+The specified git repository will be cloned into `$PWD/src/config/`.
 
 If you're doing something custom, you likely want to fork that upstream
 repository.
@@ -171,8 +171,8 @@ And now we can build from these inputs:
 $ coreos-assembler build
 ```
 
-Each build will write an OSTree commit into `/srv/coreos/repo` as well
-as generate VM images in `/srv/coreos/builds/`.
+Each build will write an OSTree commit into `$PWD/repo/` as well
+as generate VM images in `$PWD/builds/`.
 
 Next, rerun `coreos-assembler build` and notice the system correctly
 deduces that nothing changed.  You can run `coreos-assembler fetch`
