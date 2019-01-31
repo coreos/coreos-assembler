@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+#
+# An operation that creates an ISO image for installing CoreOS
+
+import os
+import sys
+import json
+import yaml
+import shutil
+import argparse
+
+sys.path.insert(0, '/usr/lib/coreos-assembler')
+from cmdlib import run_verbose, write_json, sha256sum_file
+
+# Parse args and dispatch
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", help="Build ID")
+parser.add_argument("--force", action='store_true', default=False,
+                    help="Overwrite previously generated installer")
+args = parser.parse_args()
+
+# default to latest build if not specified
+if not args.build:
+    with open('builds/builds.json') as f:
+        j = json.load(f)
+        args.build = j['builds'][0]
+
+print(f"Targeting build: {args.build}")
+
+builddir = os.path.join('builds', args.build)
+buildmeta_path = os.path.join(builddir, 'meta.json')
+with open(buildmeta_path) as f:
+    buildmeta = json.load(f)
+
+# Don't run if it's already been done, unless forced
+if 'iso' in buildmeta['images'] and not args.force:
+    print(f"Installer has already been built for {args.build}. Skipping.")
+    print("You can force a rebuild with '--force'.")
+    sys.exit(0)
+
+base_name = buildmeta['name']
+img_prefix = f'{base_name}-{args.build}'
+iso_name = f'{img_prefix}.iso'
+
+tmpdir = 'tmp/buildpost-installer'
+if os.path.isdir(tmpdir):
+    shutil.rmtree(tmpdir)
+
+tmpisoroot = os.path.join(tmpdir, 'isolinux')
+
+os.mkdir(tmpdir)
+os.mkdir(tmpisoroot)
+
+def generate_iso():
+    tmpisofile = os.path.join(tmpdir, iso_name)
+
+    # Grab the commit hash for this build
+    buildmeta_commit = buildmeta['ostree-commit']
+
+    # Find the directory under `/usr/lib/modules/<kver>` where the
+    # kernel/initrd live. It will be the 2nd entity output by
+    # `ostree ls <commit> /usr/lib/modules`
+    process = run_verbose(['/usr/bin/ostree', '--repo=./repo', 'ls',
+                           '--nul-filenames-only', f"{buildmeta_commit}",
+                           '/usr/lib/modules'], capture_output=True)
+    moduledir = process.stdout.decode().split('\0')[1]
+
+    # copy those files out of the ostree into the iso root dir
+    for file in ['initramfs.img', 'vmlinuz']:
+        run_verbose(['/usr/bin/ostree', '--repo=./repo', 'checkout',
+                     '--user-mode', '--subpath', os.path.join(moduledir, file),
+                     f"{buildmeta_commit}", tmpisoroot])
+
+    # Grab all the contents from the isolinux dir from the configs
+    run_verbose(["rsync", "-a", "src/config/isolinux/", f"{tmpisoroot}/"])
+
+    # Install binaries from syslinux package
+    isolinuxfiles = [('/usr/share/syslinux/isolinux.bin', 0o755),
+                     ('/usr/share/syslinux/ldlinux.c32',  0o755),
+                     ('/usr/share/syslinux/libcom32.c32', 0o755),
+                     ('/usr/share/syslinux/libutil.c32',  0o755),
+                     ('/usr/share/syslinux/vesamenu.c32', 0o755)]
+    for src, mode in isolinuxfiles:
+        dst = os.path.join(tmpisoroot, os.path.basename(src))
+        shutil.copyfile(src, dst)
+        os.chmod(dst, mode)
+
+    # Generate the ISO image
+    run_verbose(['/usr/bin/genisoimage', '-b', 'isolinux.bin', '-c', 'boot.cat',
+                 '-no-emul-boot', '-boot-load-size', '4', '-boot-info-table',
+                 '-rock', '-J', '--verbose', '-o', tmpisofile, tmpisoroot])
+    checksum = sha256sum_file(tmpisofile)
+    buildmeta['images']['iso'] = {
+        'path': iso_name,
+        'sha256': checksum
+    }
+    os.rename(tmpisofile, f"{builddir}/{iso_name}")
+    write_json(buildmeta_path, buildmeta)
+    print(f"Updated: {buildmeta_path}")
+
+
+# Do it!
+generate_iso()
