@@ -123,11 +123,16 @@ cat > "${commitmeta_input_json}" <<EOF
 }
 EOF
 
-# Generate an archive metadata about the config GIT checkout, but
-# only if the build is from a Git Recipe.
+set -x
 if [ -e "${workdir}/src/config-git" ]; then
-    prepare_git_artifacts "${workdir}/src/config-git" "$(pwd)/config.tar.gz" "$(pwd)/config-git.json"
+    config_git_dir="${workdir}/src/config-git"
+elif [ -e "${workdir}/src/config" ]; then
+    config_git_dir="${workdir}/src/config"
+else
+    fatal "Git config directory doesn't exist"
 fi
+
+prepare_git_artifacts "${config_git_dir}" "$(pwd)/coreos-assembler-config.tar.gz" "$(pwd)/coreos-assembler-config-git.json"
 
 # These need to be absolute paths right now for rpm-ostree
 composejson=$(pwd)/tmp/compose.json
@@ -233,6 +238,16 @@ img_qemu_size=$(stat --format=%s "${img_qemu}")
 build_timestamp=$(date -u +$RFC3339)
 vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${workdir}"/installer/*CHECKSUM)
 
+src_location="container"
+if [ ! -f /lib/coreos-assembler/.clean ]; then
+    info "This version of coreos-assembler is running code from outside the container."
+    src_location="bind mount"
+fi
+
+# Record locations for code sources.
+# If the following condition is true, then /lib/coreos-assembler has been bind
+# mounted in and is using a different build tree.
+# shellcheck disable=SC2046
 cat > tmp/meta.json <<EOF
 {
  "buildid": "${buildid}",
@@ -242,7 +257,10 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
+ "coreos-assembler.code-source": "${src_location}",
  "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}",
+ "coreos-assembler.container-config-git": $(jq -M '.git' $(pwd)/coreos-assembler-config-git.json),
+ "coreos-assembler.image-git": $(jq -M '.git' /cosa/coreos-assembler-git.json),
  "images": {
     "qemu": { "path": "${img_qemu}",
               "sha256": "${img_qemu_sha256}",
@@ -252,19 +270,9 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
-# Record locations for code sources.
-# shellcheck disable=SC2046
-cat > tmp/git.json <<EOF
-{
-  "coreos-assembler.image-git": $(jq -M '.git' /lib/coreos-assembler/src/git.json),
-  "coreos-assembler.config-git": $(jq -M '.git' $(pwd)/config-git.json)
-}
-EOF
-
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" tmp/meta.json "${commitmeta_input_json}" tmp/git.json \
-    | tee | jq -s add > meta.json
+cat "${composejson}" tmp/meta.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # And add the commit metadata itself, which includes notably the rpmdb pkglist
 # in a format that'd be easy to generate diffs out of for higher level tools

@@ -158,8 +158,9 @@ configure_user(){
 write_archive_info() {
     # shellcheck source=src/cmdlib.sh
     . "${srcdir}/src/cmdlib.sh"
-    mkdir -p /lib/coreos-assembler/src
-    prepare_git_artifacts /root/containerbuild /lib/coreos-assembler/src/archive.tar.gz /lib/coreos-assembler/src/git.json
+    mkdir -p /cosa /lib/coreos-assembler
+    touch -f /lib/coreos-assembler/.clean
+    prepare_git_artifacts /root/containerbuild /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
 }
 
 # Run the function specified by the calling script
