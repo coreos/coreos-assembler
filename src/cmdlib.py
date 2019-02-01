@@ -24,10 +24,21 @@ def run_verbose(args, **kwargs):
     :raises: CalledProcessError
     """
     print("+ {}".format(subprocess.list2cmdline(args)))
+
+    # default to throwing exception
+    if 'check' not in kwargs.keys():
+        kwargs['check'] = True
+    # capture_output is only on python 3.7+. Provide convenience here
+    # until 3.7 is a baseline:
+    if kwargs.pop('capture_output', False):
+        kwargs['stdout'] = subprocess.PIPE
+        kwargs['stderr'] = subprocess.PIPE
+
     try:
-        subprocess.check_call(args, **kwargs)
+        process = subprocess.run(args, **kwargs)
     except subprocess.CalledProcessError:
         fatal("Error running command " + args[0])
+    return process
 
 
 def write_json(path, data):
