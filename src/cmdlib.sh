@@ -268,11 +268,11 @@ prepare_git_artifacts() {
     local head_url="unknown"
 
     local gc="git --git-dir=${gitd}/.git"
-    local gc_state="clean"
+    local is_dirty="false"
 
     # shellcheck disable=SC2086
     if ! ${gc} diff --quiet --exit-code; then
-        gc_state="dirty"
+        is_dirty="true"
     fi
 
     tar -C "${gitd}" -czf "${tarball}" --exclude-vcs .
@@ -296,7 +296,7 @@ prepare_git_artifacts() {
         "branch": "$(${gc} symbolic-ref -q HEAD --short)",
         "commit": "$(${gc} rev-parse HEAD)",
         "origin": "${head_url}",
-        "state": "${gc_state}"
+        "dirty": "${is_dirty}"
     },
     "file": {
         "checksum": "$(sha256sum ${tarball} | awk '{print$1}')",

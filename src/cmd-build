@@ -261,7 +261,7 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.code-source": "${src_location}",
  "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}",
  "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json),
- "coreos-assembler.image-git": $(jq -M '.git' /cosa/coreos-assembler-git.json),
+ "coreos-assembler.container-image-git": $(jq -M '.git' /cosa/coreos-assembler-git.json),
  "images": {
     "qemu": { "path": "${img_qemu}",
               "sha256": "${img_qemu_sha256}",
