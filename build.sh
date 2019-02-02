@@ -38,7 +38,7 @@ configure_yum_repos() {
     done
 
     # For Fedora we'll add a FAHC and COPR repo
-    if [ -n "${ISFEDORA}" ]; then  
+    if [ -n "${ISFEDORA}" ]; then
         # Enable FAHC https://pagure.io/fedora-atomic-host-continuous
         # so we have ostree/rpm-ostree git master for our :latest
         # NOTE: The canonical copy of this code lives in rpm-ostree's CI:
@@ -127,7 +127,7 @@ _prep_make_and_make_install() {
 make_and_makeinstall() {
     _prep_make_and_make_install
     # And the main scripts
-    if [ -n "${ISEL}" ]; then  
+    if [ -n "${ISEL}" ]; then
         echo "make && make check && make install" | scl enable rh-python36 bash
     else
         make && make check && make install
@@ -153,6 +153,14 @@ configure_user(){
     # At some point we may make this the default.
     useradd builder --uid 1000 -G wheel,kvm,kvm78,kvm124,kvm232
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
+}
+
+write_archive_info() {
+    # shellcheck source=src/cmdlib.sh
+    . "${srcdir}/src/cmdlib.sh"
+    mkdir -p /cosa /lib/coreos-assembler
+    touch -f /lib/coreos-assembler/.clean
+    prepare_git_artifacts /root/containerbuild /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
 }
 
 # Run the function specified by the calling script

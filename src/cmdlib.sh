@@ -3,6 +3,7 @@ set -euo pipefail
 # Shared shell script library
 
 DIR=$(dirname "$0")
+RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
 # Set PYTHONUNBUFFERED=1 so that we get unbuffered output. We should
 # be able to do this on the shebang lines but env doesn't support args
@@ -252,4 +253,66 @@ EOF
         fatal "Couldn't find rc file, something went terribly wrong!"
     fi
     return "$(cat "${workdir}"/tmp/rc)"
+}
+
+prepare_git_artifacts() {
+    # prepare_git_artifacts prepares two artifacts from a GIT repo:
+    #   1. JSON describing the GIT tree.
+    #   2. A tarball of the source.
+    local gitd="${1:?first argument must be the git directory}"; shift;
+    local tarball="${1:?second argument me be the tarball name}"; shift;
+    local json="${1:?third argument must be the json file name to emit}"; shift;
+
+    local head_ref="unknown"
+    local head_remote="unknown"
+    local head_url="unknown"
+
+    local gc="git --git-dir=${gitd}/.git"
+    local is_dirty="false"
+
+    # shellcheck disable=SC2086
+    if ! ${gc} diff --quiet --exit-code; then
+        is_dirty="true"
+    fi
+
+    tar -C "${gitd}" -czf "${tarball}" --exclude-vcs .
+    chmod 0444 "${tarball}"
+
+    # Find the git reference name for HEAD, e.g. refs/head/meta.
+    # shellcheck disable=SC2086
+    head_ref="$($gc symbolic-ref -q HEAD)"
+    # Find the remote name, e.g. origin.
+    # shellcheck disable=SC2086
+    head_remote="$($gc for-each-ref --format='%(upstream:remotename)' ${head_ref} || echo unknown)"
+    # Find the URL for the remote name, eg. https://github.com/coreos/coreos-assembler
+    # shellcheck disable=SC2086
+    head_url="$($gc remote get-url ${head_remote} || echo unknown)" # get the URL for the remote
+
+    # shellcheck disable=SC2046 disable=SC2086
+    cat > "${json}" <<EOC
+{
+    "date": "$(date -u +$RFC3339)",
+    "git": {
+        "branch": "$(${gc} symbolic-ref -q HEAD --short)",
+        "commit": "$(${gc} rev-parse HEAD)",
+        "origin": "${head_url}",
+        "dirty": "${is_dirty}"
+    },
+    "file": {
+        "checksum": "$(sha256sum ${tarball} | awk '{print$1}')",
+        "checksum_type": "sha256",
+        "format": "tar.gz",
+        "name": "$(basename ${tarball})",
+        "size": "$(stat --format=%s ${tarball})"
+    }
+}
+EOC
+    chmod 0444 "${json}"
+}
+
+jq_git() {
+    # jq_git extracts JSON elements generated using prepare_git_artifacts.
+    # ARG1 is the element name, and ARG2 is the location of the
+    # json document.
+    jq -rM ".git.$1" "${2}"
 }
