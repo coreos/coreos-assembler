@@ -307,7 +307,6 @@ prepare_git_artifacts() {
 {
     "date": "$(date -u +$RFC3339)",
     "git": {
-        "branch": "${branch}",
         "commit": "${rev}",
         "origin": "${head_url}",
         "dirty": "${is_dirty}"
