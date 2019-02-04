@@ -146,7 +146,7 @@ mkdir -p src
             if [ -n "${BRANCH}" ]; then
                 # On EL7 git doesn't support -C option so use pushd/popd
                 pushd config >/dev/null
-                git -C config checkout "${BRANCH}"
+                git checkout "${BRANCH}"
                 popd
             fi
             if [ -n "${subdir}" ]; then
