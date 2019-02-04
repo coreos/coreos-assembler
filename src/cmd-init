@@ -106,7 +106,7 @@ fi
 
 # Get target architecture
 arch=$(uname -m)
-release="28"
+release="29"
 
 # Download url is different for primary and secondary fedora
 # Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
@@ -120,8 +120,8 @@ repository_dirs[ppc64le]=fedora-secondary
 repository_dirs[s390x]=fedora-secondary
 
 repository_dir=${repository_dirs[$arch]}
-INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$release-1.1.iso
-INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-$release-1.1-$arch-CHECKSUM
+INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$release-1.2.iso
+INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-$release-1.2-$arch-CHECKSUM
 
 # Overriding install URL
 if [ -n "${INSTALLER_URL_OVERRIDE-}" ]; then
