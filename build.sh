@@ -88,6 +88,14 @@ install_rpms() {
     deps=$(sed "s/${filter}//" "${srcdir}"/deps.txt | grep -v '^#')
     echo "${builddeps}" "${deps}" | xargs yum -y install
 
+    # grab virt-install from updates testing for now
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1659242
+    # can delete once https://bodhi.fedoraproject.org/updates/FEDORA-2019-c38a307cd5
+    # is stable
+    if [ -n "${ISFEDORA}" ]; then
+        yum upgrade -y virt-install --enablerepo=updates-testing
+    fi
+
     # Commented out for now, see above
     #dnf remove -y $builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
