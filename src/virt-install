@@ -174,6 +174,12 @@ for x in range(10):
 domain="coreos-inst-{}-{}".format(os.getpid(),int(time.time()))
 tail_proc = None
 http_proc = None
+
+# See the use of this below; also note virt-install also output the version to
+# stderr and not stdout.
+have_virtinstall_2 = int(subprocess.check_output(['virt-install', '--version'],
+                                                 stderr=subprocess.STDOUT).strip().decode('UTF-8').split('.')[0]) >= 2
+
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
                      "--name={}".format(domain)]
@@ -193,14 +199,20 @@ try:
                                  stderr=subprocess.DEVNULL)
     if args.logs:
         vinstall_args.append("--filesystem=source={},target=/mnt/logs,accessmode=mapped".format(args.logs))
+    location_arg = f"--location={args.location}"
+    if have_virtinstall_2:
+        # This way we don't go through libosinfo.  This is hardcoding the layout of the
+        # ISO, but that's fine since we pin a version of it.
+        # https://bugzilla.redhat.com/show_bug.cgi?id=1659242
+        location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7", "--rng=/dev/urandom",
                           "--cpu=host-passthrough",
                           "--check", "path_in_use=off",
                           "--network=user",  # user mode networking
+                          location_arg,
                           "--disk=path={},cache=unsafe".format(args.dest),
-                          "--location={}".format(args.location),
                           "--initrd-inject={}".format(ks_tmp.name),
                           "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name))])
     run_sync_verbose(vinstall_args)
