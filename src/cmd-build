@@ -261,7 +261,6 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.code-source": "${src_location}",
  "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}",
  "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json),
- "coreos-assembler.container-image-git": $(jq -M '.git' /cosa/coreos-assembler-git.json),
  "images": {
     "qemu": { "path": "${img_qemu}",
               "sha256": "${img_qemu_sha256}",
@@ -271,9 +270,19 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
+# And the build information about our container, if we are executing
+# from a container.
+if [ -d /cosa ]; then
+    cat > tmp/cosa-image.json <<EOF
+{ "coreos-assembler.container-image-git": $(jq -M '.git' /cosa/coreos-assembler-git.json) }
+EOF
+else
+    echo '{}' > tmp/cosa-image.json
+fi
+
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" tmp/meta.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" tmp/meta.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # And add the commit metadata itself, which includes notably the rpmdb pkglist
 # in a format that'd be easy to generate diffs out of for higher level tools
