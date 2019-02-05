@@ -48,4 +48,4 @@ ignition
 #FEDORA ShellCheck
 
 # for grub install when creating images without anaconda
-grub2-pc
+grub2
