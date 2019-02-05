@@ -207,7 +207,7 @@ try:
         location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
-                          "--os-variant=rhel7", "--rng=/dev/urandom",
+                          "--os-variant=rhel7.6", "--rng=/dev/urandom",
                           "--cpu=host-passthrough",
                           "--check", "path_in_use=off",
                           "--network=user",  # user mode networking
