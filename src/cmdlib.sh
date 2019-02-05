@@ -255,6 +255,7 @@ EOF
     return "$(cat "${workdir}"/tmp/rc)"
 }
 
+
 prepare_git_artifacts() {
     # prepare_git_artifacts prepares two artifacts from a GIT repo:
     #   1. JSON describing the GIT tree.
@@ -263,12 +264,11 @@ prepare_git_artifacts() {
     local tarball="${1:?second argument me be the tarball name}"; shift;
     local json="${1:?third argument must be the json file name to emit}"; shift;
 
+    local is_dirty="false"
     local head_ref="unknown"
     local head_remote="unknown"
     local head_url="unknown"
-
-    local gc="git --git-dir=${gitd}/.git"
-    local is_dirty="false"
+    local gc="git --work-tree=${gitd} --git-dir=${gitd}/.git"
 
     # shellcheck disable=SC2086
     if ! ${gc} diff --quiet --exit-code; then
@@ -278,23 +278,36 @@ prepare_git_artifacts() {
     tar -C "${gitd}" -czf "${tarball}" --exclude-vcs .
     chmod 0444 "${tarball}"
 
-    # Find the git reference name for HEAD, e.g. refs/head/meta.
+    local rev
+    local branch
     # shellcheck disable=SC2086
-    head_ref="$($gc symbolic-ref -q HEAD)"
-    # Find the remote name, e.g. origin.
-    # shellcheck disable=SC2086
-    head_remote="$($gc for-each-ref --format='%(upstream:remotename)' ${head_ref} || echo unknown)"
-    # Find the URL for the remote name, eg. https://github.com/coreos/coreos-assembler
-    # shellcheck disable=SC2086
-    head_url="$($gc remote get-url ${head_remote} || echo unknown)" # get the URL for the remote
+    rev="$($gc rev-parse HEAD)"
+    branch="$($gc rev-parse --abbrev-ref HEAD)"
+
+    if [[ -f "${gitd}"/.git/shallow || "${branch}" == "HEAD" ]]; then
+        # When the checkout is shallow or a detached HEAD, assume the origin is the remote
+        # shellcheck disable=SC2086
+        head_url="$($gc remote get-url origin || echo unknown)"
+    else
+        # Get the ref name, e.g. remote/origin/master
+        # shellcheck disable=SC2086
+        head_ref="$($gc symbolic-ref -q HEAD)"
+        # Find the remote name, e.g. origin.
+        # shellcheck disable=SC2086
+        head_remote="$($gc for-each-ref --format='%(upstream:remotename)' ${head_ref} || echo unknown)"
+        # Find the URL for the remote name, eg. https://github.com/coreos/coreos-assembler
+        # shellcheck disable=SC2086
+        head_url="$($gc remote get-url ${head_remote} || echo unknown)" # get the URL for the remote
+    fi
+
+    info "Directory ${gitd}, is from branch ${branch}, commit ${rev}"
 
     # shellcheck disable=SC2046 disable=SC2086
     cat > "${json}" <<EOC
 {
     "date": "$(date -u +$RFC3339)",
     "git": {
-        "branch": "$(${gc} symbolic-ref -q HEAD --short)",
-        "commit": "$(${gc} rev-parse HEAD)",
+        "commit": "${rev}",
         "origin": "${head_url}",
         "dirty": "${is_dirty}"
     },
