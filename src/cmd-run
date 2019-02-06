@@ -186,7 +186,8 @@ fi
 
 set -- -drive if=virtio"${vm_drive_args:-}",file="${VM_DISK}" "$@"
 
-exec qemu-kvm -name coreos -m "${VM_MEMORY}" -nographic \
+# shellcheck disable=SC2086
+exec ${QEMU_KVM} -name coreos -m "${VM_MEMORY}" -nographic \
               -netdev user,id=eth0,hostname=coreos"${hostfwd:-}" \
               -device virtio-net-pci,netdev=eth0 \
               -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
