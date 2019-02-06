@@ -322,17 +322,17 @@ prepare_git_artifacts() {
     if [[ -f "${gitd}"/.git/shallow || "${branch}" == "HEAD" ]]; then
         # When the checkout is shallow or a detached HEAD, assume the origin is the remote
         # shellcheck disable=SC2086
-        head_url="$($gc remote get-url origin || echo unknown)"
+        head_url="$($gc remote get-url origin 2> /dev/null || echo unknown)"
     else
         # Get the ref name, e.g. remote/origin/master
         # shellcheck disable=SC2086
         head_ref="$($gc symbolic-ref -q HEAD)"
         # Find the remote name, e.g. origin.
         # shellcheck disable=SC2086
-        head_remote="$($gc for-each-ref --format='%(upstream:remotename)' ${head_ref} || echo unknown)"
+        head_remote="$($gc for-each-ref --format='%(upstream:remotename)' ${head_ref} 2> /dev/null || echo unknown)"
         # Find the URL for the remote name, eg. https://github.com/coreos/coreos-assembler
         # shellcheck disable=SC2086
-        head_url="$($gc remote get-url ${head_remote} || echo unknown)" # get the URL for the remote
+        head_url="$($gc remote get-url ${head_remote} 2> /dev/null || echo unknown)" # get the URL for the remote
     fi
 
     info "Directory ${gitd}, is from branch ${branch}, commit ${rev}"
