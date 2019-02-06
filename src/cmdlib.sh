@@ -236,6 +236,12 @@ EOF
     fi
 }
 
+if [ -x /usr/libexec/qemu-kvm ]; then
+    QEMU_KVM="/usr/libexec/qemu-kvm"
+else
+    QEMU_KVM="qemu-system-$(arch) -accel kvm"
+fi
+
 runvm() {
     local vmpreparedir=${workdir}/tmp/supermin.prepare
     local vmbuilddir=${workdir}/tmp/supermin.build
@@ -276,7 +282,7 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
-    qemu-kvm -nodefaults -nographic -m 2048 -no-reboot \
+    ${QEMU_KVM} -nodefaults -nographic -m 2048 -no-reboot \
         -kernel "${vmbuilddir}/kernel" \
         -initrd "${vmbuilddir}/initrd" \
         -netdev user,id=eth0,hostname=supermin \

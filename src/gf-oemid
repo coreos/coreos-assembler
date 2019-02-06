@@ -44,8 +44,10 @@ while [ $# -gt 0 ]; do
         shift ;;
     esac
 done
-exec qemu-kvm -cpu host,pmu=off "${args[@]}"
 EOF
+# Expand QEMU_KVM
+# shellcheck disable=SC2086 disable=SC2016
+echo "exec ${QEMU_KVM} "'-cpu host,pmu=off "${args[@]}"' >> "${qemu_wrapper}"
 chmod +x "${qemu_wrapper}"
 
 # This qemu wrapper doesn't work for some reason on EL7, so just skip
