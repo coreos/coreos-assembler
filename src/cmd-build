@@ -58,12 +58,15 @@ while true; do
 done
 
 declare -a IMAGE_TYPES
-for itype in "$@"; do
-    IMAGE_TYPES[]="$itype"
+IMAGE_TYPES=()
+# shellcheck disable=SC2068
+for itype in $@; do
+    IMAGE_TYPES+=("$itype")
 done
-if [ "${IMAGE_TYPES[*]}" == 0 ]; then
+if [ "${#IMAGE_TYPES[@]}" == 0 ]; then
     IMAGE_TYPES=(qemu)
 fi
+echo "Image types: ${IMAGE_TYPES[*]}"
 
 export LIBGUESTFS_BACKEND=direct
 
