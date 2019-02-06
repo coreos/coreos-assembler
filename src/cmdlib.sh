@@ -258,6 +258,36 @@ EOF
     return "$(cat "${workdir}"/tmp/rc)"
 }
 
+openshift_git_hack() {
+    # When OPENSHIFT_GIT_HACK is defined as a build environment variable,
+    # this will fetch the missing .git into the directory where its expected.
+
+    # Some versions of Openshift do not include the GIT repo in the checkout.
+    # This may be needed for Openshift versions 3.9 and earlier.
+    # See https://github.com/coreos/coreos-assembler/issues/320.
+
+    # $OPENSHIFT_GIT_HACK, $GIT_REF and $GIT_URL are environment variables,
+    # provided by Openshift or the container run time. See
+    # https://github.com/coreos/coreos-assembler/pull/324 for an example.
+
+    local gitd=${1}; shift;
+
+    if [ "${OPENSHIFT_GIT_HACK:-x}" == "x" ]; then
+        return
+    fi
+
+    if [ -d "${gitd}/.git" ]; then
+        return
+    fi
+
+    info "NOTICE: using workaround for Openshift missing .git"
+
+    if [ "${GIT_URL:-x}" == "x" ] ||  [ "${GIT_REF:-x}" ]; then
+        info "Checking out bare git of ${GIT_URL} to ${gitd}/.git, ref ${GIT_REF}"
+        git clone --depth 1 --bare -b "${GIT_REF}" "${GIT_URL}" "${gitd}/.git"
+    fi
+}
+
 
 prepare_git_artifacts() {
     # prepare_git_artifacts prepares two artifacts from a GIT repo:
@@ -266,6 +296,8 @@ prepare_git_artifacts() {
     local gitd="${1:?first argument must be the git directory}"; shift;
     local tarball="${1:?second argument me be the tarball name}"; shift;
     local json="${1:?third argument must be the json file name to emit}"; shift;
+
+    openshift_git_hack "${gitd}"
 
     local is_dirty="false"
     local head_ref="unknown"
