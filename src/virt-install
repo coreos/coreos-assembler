@@ -23,7 +23,7 @@ parser.add_argument("--create-disk", help="Automatically create disk as qcow2, p
 parser.add_argument("--image-config", help="coreos-assembler image.yaml",
                     action='store')
 parser.add_argument("--variant", help="Use an internal (kickstart) config",
-                    choices=('metal', 'cloud'), default=None)
+                    choices=('metal', 'metal-uefi', 'cloud'), default=None)
 parser.add_argument("--kickstart", help="Kickstart path",
                     action='store')
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
@@ -89,7 +89,11 @@ else:
 disk_size = None
 
 if args.variant is not None:
-    with open(f'/usr/lib/coreos-assembler/image-{args.variant}.ks') as f:
+    if args.variant == 'metal-uefi':
+        variant_ks = 'metal'
+    else:
+        variant_ks = args.variant
+    with open(f'/usr/lib/coreos-assembler/image-{variant_ks}.ks') as f:
         shutil.copyfileobj(f, ks_tmp)
 
 if args.image_config:
@@ -161,7 +165,7 @@ if args.create_disk and args.kickstart:
         fatal("--create-disk specified, but failed to find '{}' in kickstart".format(magic_virt_install_size_str))
 
 if args.create_disk:
-    if args.variant == 'metal':
+    if args.variant in ('metal', 'metal-uefi'):
         fmt = 'raw'
     else:
         fmt = 'qcow2'
@@ -225,6 +229,8 @@ try:
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--initrd-inject={}".format(ks_tmp.name),
                           "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name))])
+    if args.variant == 'metal-uefi':
+        vinstall_args.append('--boot=uefi')
     run_sync_verbose(vinstall_args)
     # And strip out all of the Anaconda stuff in /var; this uses libguestfs
     # to ensure we fully control the code.
