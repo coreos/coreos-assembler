@@ -228,7 +228,10 @@ try:
     run_sync_verbose(vinstall_args)
     # And strip out all of the Anaconda stuff in /var; this uses libguestfs
     # to ensure we fully control the code.
-    run_sync_verbose(['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest])
+    cleanup_argv = ['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest]
+    if args.image_config is None:
+        cleanup_argv.append('--skip-partition-fixups')
+    run_sync_verbose(cleanup_argv)
 finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
     if tail_proc is not None:

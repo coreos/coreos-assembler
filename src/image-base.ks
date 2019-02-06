@@ -18,13 +18,13 @@ firewall --disabled
 network --bootproto=dhcp --onboot=on
 
 zerombr
-clearpart --initlabel --all
+clearpart --initlabel --all --disklabel=gpt
 
 # https://github.com/coreos/fedora-coreos-tracker/issues/18
 # See also coreos-growpart.service defined in fedora-coreos-base.yaml
 # You can change this partition layout, but note that the `boot` and `root`
 # filesystem labels are currently mandatory (they're interpreted by coreos-assembler).
-part /boot --size=300 --fstype="xfs" --label=boot
+reqpart --add-boot
 # Note no reflinks for /boot since the bootloader may not understand them
 part / --size=3000 --fstype="xfs" --label=root --grow --mkfsoptions="-m reflink=1"
 
