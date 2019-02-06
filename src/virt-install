@@ -226,6 +226,9 @@ try:
                           "--initrd-inject={}".format(ks_tmp.name),
                           "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name))])
     run_sync_verbose(vinstall_args)
+    # And strip out all of the Anaconda stuff in /var; this uses libguestfs
+    # to ensure we fully control the code.
+    run_sync_verbose(['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest])
 finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
     if tail_proc is not None:

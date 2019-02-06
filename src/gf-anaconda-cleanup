@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# This runs after virt-install to undo things leftover from Anaconda.
 set -euo pipefail
 
 dn=$(dirname "$0")

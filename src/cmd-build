@@ -242,8 +242,6 @@ run_virtinstall() {
                                            --ostree-ref="${ref:-${commit}}" \
                                            --location "${workdir}"/installer/*.iso \
                                            --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
-    # And strip out all of the Anaconda stuff in /var
-    /usr/lib/coreos-assembler/gf-anaconda-cleanup "${dest}"
     mv "${tmpdest}" "${dest}"
 }
 
