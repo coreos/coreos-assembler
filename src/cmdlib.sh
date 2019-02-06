@@ -100,8 +100,11 @@ prepare_build() {
     preflight
     if ! [ -d repo ]; then
         fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
-    elif ! has_privileges && [ ! -f cache/cache.qcow2 ]; then
-        fatal "No cache.qcow2 found; did you run coreos-assembler init?"
+    elif ! has_privileges; then
+        if [ ! -f cache/cache.qcow2 ]; then
+            qemu-img create -f qcow2 cache/cache.qcow2 10G
+            LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs -a cache/cache.qcow2
+        fi
     fi
 
     workdir="$(pwd)"

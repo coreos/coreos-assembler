@@ -193,7 +193,3 @@ mkdir -p cache
 mkdir -p builds
 mkdir -p tmp
 ostree --repo=repo init --mode=archive
-if ! has_privileges && [ ! -f cache/cache.qcow2 ]; then
-    qemu-img create -f qcow2 cache/cache.qcow2 10G
-    LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs -a cache/cache.qcow2
-fi
