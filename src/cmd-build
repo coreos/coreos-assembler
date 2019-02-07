@@ -240,6 +240,7 @@ run_virtinstall() {
     # We want extraargs var to be split on words
     # shellcheck disable=SC2086
     /usr/lib/coreos-assembler/virt-install --create-disk --dest=${tmpdest} \
+                                           --tmpdir "${PWD}/tmp" \
                                            --kickstart-out "${PWD}"/tmp/flattened.ks \
                                            --ostree-remote="${name}" --ostree-stateroot="${name}" \
                                            --ostree-ref="${ref:-${commit}}" \
