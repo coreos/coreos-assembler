@@ -230,7 +230,8 @@ else
 fi
 
 # forgive me for this sin
-location="${workdir}/installer/$(basename "${INSTALLER}")"
+iso_location="${workdir}/installer/$(basename "${INSTALLER}")"
+checksum_location="${workdir}/installer/$(basename "${INSTALLER_CHECKSUM}")"
 
 set +x
 # This generates the "base image"; not specific to a platform.
@@ -244,7 +245,7 @@ run_virtinstall() {
                                            --kickstart-out "${PWD}"/tmp/flattened.ks \
                                            --ostree-remote="${name}" --ostree-stateroot="${name}" \
                                            --ostree-ref="${ref:-${commit}}" \
-                                           --location "${location}" \
+                                           --location "${iso_location}" \
                                            --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
     mv "${tmpdest}" "${dest}"
 }
@@ -286,7 +287,7 @@ for itype in "${IMAGE_TYPES[@]}"; do
 done
 
 build_timestamp=$(date -u +$RFC3339)
-vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${workdir}"/installer/*CHECKSUM)
+vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
 
 src_location="container"
 if [ ! -f /lib/coreos-assembler/.clean ]; then
