@@ -229,6 +229,9 @@ else
     extraargs="${extraargs} --kickstart ${image_input}"
 fi
 
+# forgive me for this sin
+location="${workdir}/installer/$(basename "${INSTALLER}")"
+
 set +x
 # This generates the "base image"; not specific to a platform.
 run_virtinstall() {
@@ -241,7 +244,7 @@ run_virtinstall() {
                                            --kickstart-out "${PWD}"/tmp/flattened.ks \
                                            --ostree-remote="${name}" --ostree-stateroot="${name}" \
                                            --ostree-ref="${ref:-${commit}}" \
-                                           --location "${workdir}"/installer/*.iso \
+                                           --location "${location}" \
                                            --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
     mv "${tmpdest}" "${dest}"
 }
