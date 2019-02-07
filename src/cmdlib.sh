@@ -48,8 +48,10 @@ repository_dirs[ppc64le]=fedora-secondary
 repository_dirs[s390x]=fedora-secondary
 
 repository_dir=${repository_dirs[$arch]}
-INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$release-1.2.iso
-INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-$release-1.2-$arch-CHECKSUM
+INSTALLER_MIRROR="${INSTALLER_MIRROR:-https://download.fedoraproject.org}"
+INSTALLER_URL="${INSTALLER_MIRROR}/pub/$repository_dir/releases/$release/Everything/$arch/iso"
+INSTALLER="${INSTALLER_URL}/Fedora-Everything-netinst-$arch-$release-1.2.iso"
+INSTALLER_CHECKSUM="${INSTALLER//.iso/-CHECKSUM}"
 
 # Overriding install URL
 if [ -n "${INSTALLER_URL_OVERRIDE-}" ]; then
