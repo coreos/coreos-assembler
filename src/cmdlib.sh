@@ -30,6 +30,41 @@ fatal() {
     echo "fatal: $*" 1>&2; exit 1
 }
 
+# Get target architecture
+arch=$(uname -m)
+release="29"
+export arch
+export release
+
+# Download url is different for primary and secondary fedora
+# Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
+# Secondary Fedora - https://download.fedoraproject.org/pub/fedora-secondary/releases/
+declare -A repository_dirs
+repository_dirs[aarch64]=fedora/linux
+repository_dirs[armhfp]=fedora/linux
+repository_dirs[x86_64]=fedora/linux
+repository_dirs[i386]=fedora-secondary
+repository_dirs[ppc64le]=fedora-secondary
+repository_dirs[s390x]=fedora-secondary
+
+repository_dir=${repository_dirs[$arch]}
+INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$release-1.2.iso
+INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-$release-1.2-$arch-CHECKSUM
+
+# Overriding install URL
+if [ -n "${INSTALLER_URL_OVERRIDE-}" ]; then
+    INSTALLER="${INSTALLER_URL_OVERRIDE}"
+    info "Overriding the install URL with contents of INSTALLER_URL_OVERRIDE"
+fi
+# Overriding install checksum URL
+if [ -n "${INSTALLER_CHECKSUM_URL_OVERRIDE-}" ]; then
+    INSTALLER_CHECKSUM="${INSTALLER_CHECKSUM_URL_OVERRIDE}"
+    info "Overriding the install checksum URL with contents of INSTALLER_CHECKSUM_URL_OVERRIDE"
+fi
+
+export INSTALLER
+export INSTALLER_CHECKSUM
+
 _privileged=
 has_privileges() {
     if [ -z "${_privileged:-}" ]; then
