@@ -298,12 +298,16 @@ fi
 # The base metadata, plus locations for code sources.
 # If the following condition is true, then /lib/coreos-assembler has been bind
 # mounted in and is using a different build tree.
+#
+# notice need to backslash escape double quotes in summary since the
+# summary could have double quotes: https://github.com/coreos/coreos-assembler/issues/327
+#
 # shellcheck disable=SC2046 disable=SC2086
 cat > tmp/meta.json <<EOF
 {
  "buildid": "${buildid}",
  "name": "${name}",
- "summary": "${summary}",
+ "summary": "${summary//\"/\\\"}",
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "coreos-assembler.image-genver": "${image_genver}",
