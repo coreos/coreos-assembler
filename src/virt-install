@@ -9,7 +9,10 @@
 # one or both.
 
 import os,sys,argparse,subprocess,io,time,re,multiprocessing
-import tempfile,shutil,yaml,platform
+import tempfile,shutil,yaml,platform,json
+
+# Soon we should create the filesystem outside of anaconda
+ANACONDA_BOOT_SIZE_MB = 1024
 
 def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
@@ -20,6 +23,8 @@ IMAGE_CONF_KEYS = ['size', 'postprocess-script']
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dest", help="Destination disk",
+                    action='store', required=True)
+parser.add_argument("--tmpdir", help="Temporary directory",
                     action='store', required=True)
 parser.add_argument("--create-disk", help="Automatically create disk as qcow2, parsing kickstart for size",
                     action='store_true')
@@ -174,10 +179,22 @@ ostree refs --delete {args.ostree_remote}:{args.ostree_ref}
 if args.create_disk:
     if args.variant in ('metal', 'metal-uefi'):
         fmt = 'raw'
+        size_estimate_path = os.path.join(args.tmpdir, 'ostree-size.json')
+        # The OSTree size is shared among disk images, so we compute it once per build
+        if not os.path.exists(size_estimate_path):
+            subprocess.check_call(['/usr/lib/coreos-assembler/estimate-commit-disk-size',
+                                   f"--repo={args.ostree_repo}", args.ostree_ref],
+                                  stdout=open(size_estimate_path, 'w'))
+        with open(size_estimate_path) as f:
+            size_estimate = json.load(f)
+        print(f"OSTree commit size:\n{size_estimate}")
+        final_size_mb = size_estimate['estimate-mb']['final'] + ANACONDA_BOOT_SIZE_MB
+        size = f"{final_size_mb}M"
     else:
         fmt = 'qcow2'
-    run_sync_verbose(['qemu-img', 'create', '-f', fmt, args.dest, '{}G'.format(disk_size)])
-    print("Created initial disk: {} with size {}G".format(args.dest, disk_size))
+        size = f'{disk_size}G'
+    run_sync_verbose(['qemu-img', 'create', '-f', fmt, args.dest, size])
+    print(f"Created initial disk: {args.dest} with size {size}")
 
 # Now a hack to avoid libvirt race conditions; it's
 # activated by the cmdline (and exits after 30s), and in virt-install the daemon

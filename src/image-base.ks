@@ -25,8 +25,13 @@ clearpart --initlabel --all --disklabel=gpt
 # You can change this partition layout, but note that the `boot` and `root`
 # filesystem labels are currently mandatory (they're interpreted by coreos-assembler).
 reqpart --add-boot
-# Note no reflinks for /boot since the bootloader may not understand them
-part / --size=3000 --fstype="xfs" --label=root --grow --mkfsoptions="-m reflink=1"
+# Explicitly enable reflinks since at least as of Fedora 29 it wasn't enabled by default
+# The 1000 here doesn't matter too much, the disk size is either defined by
+# image.yaml, or for bare metal the size is calculated to fit in virt-install.
+# Either way we use --grow to expand to the outer size.  And then when the system
+# boots for real, the coreos-growpart.service will run to fit the provisioned space
+# (e.g. in AWS the root volume size, on bare metal the size of the physical disk, etc.)
+part / --size=1000 --fstype="xfs" --label=root --grow --mkfsoptions="-m reflink=1"
 
 reboot
 

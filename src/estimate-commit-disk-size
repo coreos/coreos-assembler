@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+#
+# Given an OSTree commit, estimate how much disk space it will take
+# Derived from ostree-releng-scripts/print-commitsize
+#
+# Copyright 2018 Red Hat, Inc
+# Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
+
+import argparse,json
+import gi
+gi.require_version('OSTree', '1.0')
+import sys,os
+from gi.repository import GLib, Gio, OSTree
+
+parser = argparse.ArgumentParser()
+# Current XFS defaults as of RHEL8.0
+parser.add_argument("--isize", type=int, default=512)
+parser.add_argument("--blksize", type=int, default=4096)
+# This is fairly arbitrary
+parser.add_argument("--metadata-overhead-percent", type=int, default=5)
+# This is an arbitrary number of course.  We need enough to not trip e.g. ostree's min-free-space-percent
+# checks etc.
+parser.add_argument("--add-percent", help="Additional space (integer percentage) to reserve", type=int, default=15)
+parser.add_argument("--repo", help="Repository", required=True)
+parser.add_argument("ref", help="Ref")
+args = parser.parse_args()
+
+r = OSTree.Repo.new(Gio.File.new_for_path(args.repo))
+r.open(None)
+
+[_,rev] = r.resolve_rev(args.ref, False)
+
+[_,reachable] = r.traverse_commit(rev, 0, None)
+n_meta = 0
+blks_meta = 0
+n_regfiles = 0
+blks_regfiles = 0
+n_symlinks = 0
+blks_symlinks = 0
+for k,v in reachable.iteritems():
+    csum,objtype = k.unpack()
+    if objtype == OSTree.ObjectType.FILE:
+        [_,_,finfo,_] = r.load_file(csum, None)
+        if finfo.get_file_type() == Gio.FileType.REGULAR:
+            n_regfiles += 1
+            sz = finfo.get_size()
+            blks_regfiles += (sz // args.blksize) + 1
+        else:
+            n_symlinks += 1
+            sz = len(finfo.get_symlink_target())
+            blks_symlinks += (sz // args.blksize) + 1
+    else:
+        [_,sz] = r.query_object_storage_size(objtype, csum, None)
+        n_meta += 1
+        blks_meta += (sz // args.blksize) + 1
+
+blks_per_mb = (1024*1024) // args.blksize
+total_data_mb = (blks_meta + blks_regfiles + blks_symlinks) // blks_per_mb
+add_percent = args.metadata_overhead_percent + args.add_percent
+add_percent_modifier = (100.0+add_percent)/100.0
+estimate_mb = int(total_data_mb * add_percent_modifier) + 1
+res = {
+    'meta': {'count': n_meta,
+             'blocks': blks_meta,},
+    'regfiles': {'count': n_regfiles,
+                 'blocks': blks_regfiles,},
+    'symlinks': {'count': n_symlinks,
+                 'blocks': blks_symlinks,},
+    'estimate-mb': {'base': total_data_mb,
+                    'final': estimate_mb },
+}
+json.dump(res, sys.stdout, indent=4)
