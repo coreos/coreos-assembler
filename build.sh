@@ -27,39 +27,15 @@ set -x
 srcdir=$(pwd)
 
 configure_yum_repos() {
-
-    # Disable pulling ostree/rpm-ostree rpms from distribution repos
-    # Until we fix https://github.com/rpm-software-management/libdnf/pull/149
-    excludes='exclude=ostree ostree-libs ostree-grub2 rpm-ostree'
-    for repo in /etc/yum.repos.d/*.repo; do
-        # reworked to remove useless `cat` - https://github.com/koalaman/shellcheck/wiki/SC2002
-        (while read -r line; do if echo "$line" | grep -qE -e '^enabled=1'; then echo "${excludes}"; fi; echo "$line"; done < "${repo}") > "${repo}".new
-        mv "${repo}".new "${repo}"
-    done
-
-    # For Fedora we'll add a FAHC and COPR repo
     if [ -n "${ISFEDORA}" ]; then
-        # Enable FAHC https://pagure.io/fedora-atomic-host-continuous
-        # so we have ostree/rpm-ostree git master for our :latest
+        # Add FAHC https://pagure.io/fedora-atomic-host-continuous
+        # but as disabled.  Today FAHC isn't multi-arch.  But let's
+        # add it so that anyone on x86_64 who wants to test the latest
+        # ostree/rpm-ostree can easily do so.
         # NOTE: The canonical copy of this code lives in rpm-ostree's CI:
         # https://github.com/projectatomic/rpm-ostree/blob/d2b0e42bfce972406ac69f8e2136c98f22b85fb2/ci/build.sh#L13
         # Please edit there first
-        echo -e '[fahc]\nmetadata_expire=1m\nbaseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/rdgo/build/\ngpgcheck=0\n' > /etc/yum.repos.d/fahc.repo
-
-        # enable `dustymabe/ignition` copr
-        # pulled from https://copr.fedorainfracloud.org/coprs/dustymabe/ignition/repo/fedora-28/dustymabe-ignition-fedora-28.repo
-        cat > /etc/yum.repos.d/dustymabe-ignition-fedora-28.repo <<'EOF'
-[dustymabe-ignition]
-name=Copr repo for ignition owned by dustymabe
-baseurl=https://copr-be.cloud.fedoraproject.org/results/dustymabe/ignition/fedora-$releasever-$basearch/
-type=rpm-md
-skip_if_unavailable=True
-gpgcheck=1
-gpgkey=https://copr-be.cloud.fedoraproject.org/results/dustymabe/ignition/pubkey.gpg
-repo_gpgcheck=0
-enabled=1
-enabled_metadata=1
-EOF
+        echo -e '[fahc]\nenabled=0\nmetadata_expire=1m\nbaseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/rdgo/build/\ngpgcheck=0\n' > /etc/yum.repos.d/fahc.repo
     fi
 }
 
