@@ -84,13 +84,6 @@ install_rpms() {
 }
 
 _prep_make_and_make_install() {
-    # Work around https://github.com/coreos/coreos-assembler/issues/27
-    if ! test -d .git; then
-        (git config --global user.email dummy@example.com
-         git init && git add . && git commit -a -m 'dummy commit'
-         git tag -m tag dummy-tag) >/dev/null
-    fi
-
     # TODO: install these as e.g.
     # /usr/bin/ostree-releng-script-rsync-repos
     mkdir -p /usr/app/
