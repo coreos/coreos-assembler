@@ -299,11 +299,21 @@ openshift_git_hack() {
 
     # Some versions of Openshift do not include the GIT repo in the checkout.
     # This may be needed for Openshift versions 3.9 and earlier.
-    # See https://github.com/coreos/coreos-assembler/issues/320.
+    # See https://github.com/coreos/coreos-assembler/issues/320 and
+    #      https://github.com/coreos/coreos-assembler/pull/341
+    #
+    # Due to limitations in RHEL 7, using "GIT_WORK_TREE" options does not work with
+    # submodules. As a result, a new checkout is done, which is rsynced into the
+    # source; rsync is less than ideal, but it allows a work-around for the combination
+    # of RHEL 7 and problematic Openshift versions.
 
-    # $OPENSHIFT_GIT_HACK, $GIT_REF and $GIT_URL are environment variables,
-    # provided by Openshift or the container run time. See
-    # https://github.com/coreos/coreos-assembler/pull/324 for an example.
+    # This hack SHOULD ONLY BE HIT WHEN RUNNING IN A CI SITUATION, under
+    # the following assumptions:
+    #  - The source being built originated from a clean git checkout.
+    #  - The `.git` repository has been stripped out by CI.
+    #  - The envVar parameters of $OPENSHIFT_GIT_HACK, $GIT_REF, and $GIT_URL are
+    #    defined, signalling that this code is intended to run. See
+    #    https://github.com/coreos/coreos-assembler/pull/324 for an example.
 
     local gitd=${1}; shift;
 
@@ -318,8 +328,21 @@ openshift_git_hack() {
     info "NOTICE: using workaround for Openshift missing .git"
 
     if [ "${GIT_URL:-x}" == "x" ] ||  [ "${GIT_REF:-x}" ]; then
-        info "Checking out bare git of ${GIT_URL} to ${gitd}/.git, ref ${GIT_REF}"
-        git clone --depth 1 --bare -b "${GIT_REF}" "${GIT_URL}" "${gitd}/.git"
+        tmpgit="$(mktemp -d)"
+        trap 'rm -rf ${tmpgit}; unset tmpgit;' EXIT
+
+        info "Re-creating git tree in ${gitd} from ${GIT_URL}, ref ${GIT_REF}"
+        git clone --depth 1 -b "${GIT_REF}" "${GIT_URL}" "${tmpgit}/clone"
+
+        if test -f "${gitd}/.gitmodules"; then
+            pushd "${tmpgit}/clone"
+            info "Ensuring git modules exists too"
+            git submodule update --init --force
+            popd
+        fi
+
+        # For more context see the discussion in https://github.com/coreos/coreos-assembler/pull/341
+        rsync -av --ignore-existing "${tmpgit}/clone/" "${gitd}"/
     fi
 }
 
