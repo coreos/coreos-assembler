@@ -73,6 +73,10 @@ install_rpms() {
 
     # Further cleanup
     yum clean all
+
+    # shellcheck source=src/cmdlib.sh
+    . "${srcdir}/cmdlib.sh"
+    depcheck "${deps}"
 }
 
 _prep_make_and_make_install() {
@@ -126,7 +130,7 @@ configure_user(){
 
 write_archive_info() {
     # shellcheck source=src/cmdlib.sh
-    . "${srcdir}/src/cmdlib.sh"
+    . "${srcdir}/cmdlib.sh"
     mkdir -p /cosa /lib/coreos-assembler
     touch -f /lib/coreos-assembler/.clean
     prepare_git_artifacts /root/containerbuild /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
