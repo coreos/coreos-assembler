@@ -84,19 +84,12 @@ install_rpms() {
 }
 
 _prep_make_and_make_install() {
-    # Work around https://github.com/coreos/coreos-assembler/issues/27
-    if ! test -d .git; then
-        (git config --global user.email dummy@example.com
-         git init && git add . && git commit -a -m 'dummy commit'
-         git tag -m tag dummy-tag) >/dev/null
-    fi
-
     # TODO: install these as e.g.
     # /usr/bin/ostree-releng-script-rsync-repos
     mkdir -p /usr/app/
     rsync -rlv "${srcdir}"/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
 
-    if ! test -f mantle/README.md; then
+    if [ "$(git submodule status mantle | head -c1)" == "-" ]; then
         echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
         exit 1
     fi
