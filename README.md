@@ -1,5 +1,7 @@
-This container aggregates various tools used to build [Fedora CoreOS](https://coreos.fedoraproject.org)
-style systems.
+This is the CoreOS Assembler (often abbreviated COSA) build environment. It is 
+a collection of various tools used to build 
+[Fedora CoreOS](https://coreos.fedoraproject.org) style systems.
+
 
 It reuses various upstream tools, such as:
 
@@ -50,7 +52,7 @@ compose. This is known as [recursive containers](https://github.com/projectatomi
 ### Container Build
 ---
 
-To completely rebuild the coreos-assembler container image locally, execute
+To completely rebuild the COSA container image locally, execute
 `$ sudo podman build -t localhost/coreos-assembler .` or
 `$ sudo podman build -t localhost/coreos-assembler -f Dockerfile.rhel .`
 from the `coreos-assembler` repository. If building the RHEL version please 
@@ -84,10 +86,10 @@ Now we'll define a bash function that we can use to call the assembler
 container:
 
 ```
-$ coreos-assembler() {
+$ cosa() {
     env | grep COREOS_ASSEMBLER
     set -x # so we can see what command gets run
-    sudo podman run --rm -ti -v ${PWD}:/srv/ --userns=host --device /dev/kvm --name coreos-assembler \
+    sudo podman run --rm -ti -v ${PWD}:/srv/ --userns=host --device /dev/kvm --name cosa \
                ${COREOS_ASSEMBLER_PRIVILEGED:+--privileged}                                          \
                ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
                ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
@@ -97,6 +99,8 @@ $ coreos-assembler() {
 }
 ```
 
+**NOTE**: We're using `cosa` here as it is much easier to type than `coreos-assembler`.
+
 This is a bit more complicated than a simple alias, but it allows for
 hacking on the assembler or the configs and prints out the environment and
 the command that ultimately gets run. Let's step through each part:
@@ -105,7 +109,7 @@ the command that ultimately gets run. Let's step through each part:
 - `-v ${PWD}:/srv/`: mount local working dir under `/srv/` in container
 - `--userns=host`: the default for podman anyway, but required for docker
 - `--device /dev/kvm`: needed for creating VMs
-- `--name coreos-assembler`: just a name, feel free to change it
+- `--name cosa`: just a name, feel free to change it
 
 
 The environment variables are special purpose:
@@ -148,7 +152,7 @@ configuration repo, create various directories and also
 download an installer image (used to make VMs).
 
 ```
-$ coreos-assembler init https://github.com/coreos/fedora-coreos-config
+$ cosa init https://github.com/coreos/fedora-coreos-config
 ```
 
 The specified git repository will be cloned into `$PWD/src/config/`.
@@ -162,27 +166,27 @@ repository.
 First, we fetch all the metadata and packages:
 
 ```
-$ coreos-assembler fetch
+$ cosa fetch
 ```
 
 And now we can build from these inputs:
 
 ```
-$ coreos-assembler build
+$ cosa build
 ```
 
 Each build will write an OSTree commit into `$PWD/repo/` as well
 as generate VM images in `$PWD/builds/`.
 
-Next, rerun `coreos-assembler build` and notice the system correctly
-deduces that nothing changed.  You can run `coreos-assembler fetch`
+Next, rerun `cosa build` and notice the system correctly
+deduces that nothing changed.  You can run `cosa fetch`
 again to check for updated RPMs.
 
 ### Running
 ---
 
 ```
-$ coreos-assembler run
+$ cosa run
 ```
 
 This invokes QEMU on the image in `builds/latest`.  It uses `-snapshot`,
@@ -200,8 +204,8 @@ We can hack on some local input configs by exporting them in the
 
 ```
 $ export COREOS_ASSEMBLER_CONFIG_GIT=/path/to/github.com/coreos/fedora-coreos-config/
-$ coreos-assembler init --force /dev/null
-$ coreos-assembler fetch && coreos-assembler build
+$ cosa init --force /dev/null
+$ cosa fetch && cosa build
 ```
 
 Currently, the assembler only takes two input files that are from `src/config`:
@@ -214,9 +218,9 @@ Currently, the assembler only takes two input files that are from `src/config`:
    file.  Use this to define the base disk image output.
 
 Let's try editing the file `src/config/image.ks`.  Change the root
-storage line `logvol /` for example.  Rerun `coreos-assembler build`, and notice
+storage line `logvol /` for example.  Rerun `cosa build`, and notice
 that the OSTree commit didn't change, but a new image is generated in `builds`.
-When you `coreos-assembler run`, you'll get it.
+When you `cosa run`, you'll get it.
 
 Another thing to try is editing `src/config/manifest.yaml` - add or
 remove entries from `packages`.  You can also add local rpm-md `file:///`
@@ -231,8 +235,8 @@ the `COREOS_ASSEMBLER_GIT` env var.
 
 ```
 $ export COREOS_ASSEMBLER_GIT=/path/to/github.com/coreos/coreos-assembler/
-$ coreos-assembler init https://github.com/coreos/fedora-coreos-config.git
-$ coreos-assembler fetch && coreos-assembler build
+$ cosa init https://github.com/coreos/fedora-coreos-config.git
+$ cosa fetch && cosa build
 ```
 
 #### Running in privileged mode
@@ -242,8 +246,8 @@ you can use the `COREOS_ASSEMBLER_PRIVILEGED` env var:
 
 ```
 $ export COREOS_ASSEMBLER_PRIVILEGED=true
-$ coreos-assembler init https://github.com/coreos/fedora-coreos-config.git
-$ coreos-assembler fetch && coreos-assembler build
+$ cosa init https://github.com/coreos/fedora-coreos-config.git
+$ cosa fetch && cosa build
 ```
 
 
@@ -255,8 +259,8 @@ by setting the `COREOS_ASSEMBLER_CONTAINER` env var:
 
 ```
 $ export COREOS_ASSEMBLER_CONTAINER=localhost/coreos-assembler
-$ coreos-assembler init https://github.com/coreos/fedora-coreos-config.git
-$ coreos-assembler fetch && coreos-assembler build
+$ cosa init https://github.com/coreos/fedora-coreos-config.git
+$ cosa fetch && cosa build
 ```
 
 #### Using different CA certificates
@@ -267,7 +271,7 @@ using the `COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS` variable.
 
 ```
 $ export COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS='-v /etc/pki:/etc/pki:ro'
-$ coreos-assembler init https://github.com/coreos/fedora-coreos-config.git
-$ coreos-assembler fetch && coreos-assembler build
+$ cosa init https://github.com/coreos/fedora-coreos-config.git
+$ cosa fetch && cosa build
 ```
 See this [Stack Overflow question](https://stackoverflow.com/questions/26028971/docker-container-ssl-certificates) for additional discussion.
