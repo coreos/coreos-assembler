@@ -265,12 +265,16 @@ $ cosa fetch && cosa build
 
 #### Using different CA certificates
 
+
 If you need access to CA certificates on your host (for example, when you need to access
 a git repo that is not on the public Internet), you can mount in the host certificates
 using the `COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS` variable.
 
+**NOTE** Sharing the `/etc/pki/ca-trust` directory may be blocked by SELinux so you may
+         have to use a directory with the `system_u:object_r:container_file_t:s0` file context.
+
 ```
-$ export COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS='-v /etc/pki:/etc/pki:ro'
+$ export COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS='-v /etc/pki/ca-trust:/etc/pki/ca-trust:ro'
 $ cosa init https://github.com/coreos/fedora-coreos-config.git
 $ cosa fetch && cosa build
 ```
