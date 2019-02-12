@@ -25,7 +25,9 @@ selinux-policy-targeted rpm-build
 make git rpm-build
 
 # virt-install dependencies
-libvirt libguestfs-tools qemu-kvm /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
+libvirt libguestfs-tools /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
+#FEDORA qemu-kvm
+#EL7 qemu-kvm-rhev
 
 # And we process kickstarts
 /usr/bin/ksflatten
