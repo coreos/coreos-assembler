@@ -8,17 +8,20 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--skip-prune] [IMAGETYPES]
+       coreos-assembler build [--force] [--skip-prune] [TARGETS]
 
   Build OSTree and image artifacts from previously fetched packages.
-  The IMAGETYPES argument is a list of image types; if unspecified it defaults
-  to "qemu".
+  The TARGETS argument is a list of artifact types to build; if unspecified it
+  defaults to "qemu".
 
-  Valid image types:
+  Valid targets:
 
+    - ostree
     - qemu
     - metal-bios
     - metal-uefi
+
+  Note that all image targets also require the "ostree" target.
 EOF
 }
 
@@ -59,16 +62,21 @@ while true; do
     shift
 done
 
+if [ $# -eq 0 ]; then
+    set -- qemu
+fi
+
 declare -a IMAGE_TYPES
 IMAGE_TYPES=()
 # shellcheck disable=SC2068
-for itype in $@; do
-    IMAGE_TYPES+=("$itype")
+for target in $@; do
+    if [[ $target != ostree ]]; then
+        IMAGE_TYPES+=("$target")
+    fi
 done
-if [ "${#IMAGE_TYPES[@]}" == 0 ]; then
-    IMAGE_TYPES=(qemu)
+if [ "${#IMAGE_TYPES[@]}" != 0 ]; then
+    echo "Image types: ${IMAGE_TYPES[*]}"
 fi
-echo "Image types: ${IMAGE_TYPES[*]}"
 
 export LIBGUESTFS_BACKEND=direct
 
