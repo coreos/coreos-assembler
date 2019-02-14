@@ -53,8 +53,9 @@ func NTP(c cluster.TestCluster) {
 			return fmt.Errorf("systemctl: %v", err)
 		}
 
-		if !bytes.Contains(out, []byte(`Status: "Synchronized to time server 10.0.0.1:123 (10.0.0.1)."`)) {
-			return fmt.Errorf("unexpected systemd-timesyncd status: %v", out)
+		if !bytes.Contains(out, []byte(`Status: "Synchronized to time server for the first time 10.0.0.1:123 (10.0.0.1)."`)) && // systemd >= 241
+			!bytes.Contains(out, []byte(`Status: "Synchronized to time server 10.0.0.1:123 (10.0.0.1)."`)) {
+			return fmt.Errorf("unexpected systemd-timesyncd status: %q", out)
 		}
 
 		return nil
