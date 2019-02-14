@@ -9,7 +9,7 @@
 # one or both.
 
 import os,sys,argparse,subprocess,io,time,re,multiprocessing
-import tempfile,shutil,yaml
+import tempfile,shutil,yaml,platform
 
 def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
@@ -218,7 +218,20 @@ try:
         # This way we don't go through libosinfo.  This is hardcoding the layout of the
         # ISO, but that's fine since we pin a version of it.
         # https://bugzilla.redhat.com/show_bug.cgi?id=1659242
-        location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
+
+        # set correct location of the kernel image and initrd
+        arch = platform.machine()
+        if arch == "x86_64" or arch == "i386":
+            location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
+        elif arch == "ppc64le":
+            location_arg += ",kernel=ppc/ppc64/vmlinuz,initrd=ppc/ppc64/initrd.img"
+        elif arch == "aarch64":
+            location_arg += ",kernel=images/pxeboot/vmlinuz,initrd=images/pxeboot/initrd.img"
+        elif arch == "s390x":
+            location_arg += ",kernel=images/kernel.img,initrd=images/initrd.img"
+        else:
+            raise SystemExit("Unknown machine architecture "+arch+" can't determine the kernel and initrd location")
+
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7.6", "--rng=/dev/urandom",
