@@ -47,7 +47,7 @@ tmpdir = 'tmp/buildpost-installer'
 if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 
-tmpisoroot = os.path.join(tmpdir, 'isolinux')
+tmpisoroot = os.path.join(tmpdir, 'installer')
 
 os.mkdir(tmpdir)
 os.mkdir(tmpisoroot)
@@ -72,8 +72,8 @@ def generate_iso():
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
                      f"{buildmeta_commit}", tmpisoroot])
 
-    # Grab all the contents from the isolinux dir from the configs
-    run_verbose(["rsync", "-a", "src/config/isolinux/", f"{tmpisoroot}/"])
+    # Grab all the contents from the installer dir from the configs
+    run_verbose(["rsync", "-a", "src/config/installer/", f"{tmpisoroot}/"])
 
     # Install binaries from syslinux package
     isolinuxfiles = [('/usr/share/syslinux/isolinux.bin', 0o755),
