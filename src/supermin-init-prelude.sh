@@ -22,7 +22,7 @@ if [ -L "${workdir}"/src/config ]; then
     mkdir -p "$(readlink "${workdir}"/src/config)"
     mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
-mkdir -p "${workdir}"/cache
+mkdir -p "${workdir}"/cache "${workdir}/cache/container-work"
 mount /dev/sdb1 "${workdir}"/cache
 
 # https://github.com/koalaman/shellcheck/wiki/SC2164

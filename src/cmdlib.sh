@@ -267,11 +267,15 @@ runvm() {
     # shellcheck disable=SC2086
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
 
+    # include COSA in the image
+    find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
+
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
     cat > "${vmpreparedir}/init" <<EOF
 #!/bin/bash
 set -xeuo pipefail
+export PATH=/usr/sbin:$PATH
 workdir=${workdir}
 $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
