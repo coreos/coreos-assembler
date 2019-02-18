@@ -80,7 +80,7 @@ fi
 
 script_dir=$(dirname "$(readlink -f "$0")")
 
-volumes="-v $build_dir:/srv "
+volumes="-v $build_dir:/srv --device /dev/kvm"
 
 entrypoint=""
 
@@ -101,4 +101,4 @@ fi
 
 # we actually want work splitting here since $volumes is multiple args
 # shellcheck disable=SC2086
-$runtime run --rm -ti --privileged --userns=host $volumes --workdir /srv $entrypoint "$container" "$@"
+$runtime run --rm -ti --net=host --userns=host $volumes --workdir /srv $entrypoint "$container" "$@"
