@@ -14,3 +14,6 @@ dhcp-client bind-export-libs iproute
 
 # SELinux
 selinux-policy selinux-policy-targeted policycoreutils
+
+# for building disk images
+gdisk xfsprogs e2fsprogs grub2 dosfstools
