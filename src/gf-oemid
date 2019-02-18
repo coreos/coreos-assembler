@@ -66,7 +66,7 @@ coreos_gf_run_mount "${tmp_dest}"
 # * grub config
 # * BLS config (for subsequent config regeneration)
 # First, the grub config.
-grubcfg_path=/boot/loader/grub.cfg
+grubcfg_path=/boot/grub2/grub.cfg
 coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
 # Remove any oemid currently there
 sed -i -e 's, coreos.oem.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
