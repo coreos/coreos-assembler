@@ -251,6 +251,9 @@ echo \$rc > ${workdir}/tmp/rc
 /sbin/reboot -f
 EOF
     chmod a+x "${vmpreparedir}"/init
+    echo "/usr/lib/coreos-assembler/create_disk.sh" > "${vmpreparedir}/hostfiles"
+    echo "/usr/lib/coreos-assembler/grub.cfg" >> "${vmpreparedir}/hostfiles"
+
     (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
     supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}"
 
@@ -263,9 +266,17 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
+    # add the diskimage if it exists
+    diskimage=()
+    if [ -f "$(pwd)/diskimage.raw" ]; then
+    	diskimage=("-drive" "if=virtio,id=target,format=raw,file=$(pwd)/diskimage.raw")
+    fi
+
     ${QEMU_KVM} -nodefaults -nographic -m 2048 -no-reboot \
         -kernel "${vmbuilddir}/kernel" \
         -initrd "${vmbuilddir}/initrd" \
+	-append "root=/dev/sda init=/usr/lib/systemd/systemd console=ttyS0 selinux=1 enforcing=0 autorelabel=1" \
+	-serial stdio \
         -netdev user,id=eth0,hostname=supermin \
         -device virtio-net-pci,netdev=eth0 \
         -device virtio-scsi-pci,id=scsi0,bus=pci.0,addr=0x3 \
@@ -274,7 +285,8 @@ EOF
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
+	"${diskimage[@]}" \
+        "${srcvirtfs[@]}"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
