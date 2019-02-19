@@ -24,7 +24,9 @@ clearpart --initlabel --all --disklabel=gpt
 # See also coreos-growpart.service defined in fedora-coreos-base.yaml
 # You can change this partition layout, but note that the `boot` and `root`
 # filesystem labels are currently mandatory (they're interpreted by coreos-assembler).
-reqpart --add-boot
+reqpart
+# Keep explicitly labeled boot partition as it is not norm on all architectures.
+part /boot --size=300 --fstype="xfs" --label=boot
 # Note no reflinks for /boot since the bootloader may not understand them
 part / --size=3000 --fstype="xfs" --label=root --grow --mkfsoptions="-m reflink=1"
 
