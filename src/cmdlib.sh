@@ -231,15 +231,16 @@ EOF
 
     rm -f "${changed_stamp}"
 
+    # shellcheck disable=SC2086
     set - rpm-ostree compose tree --repo="${workdir}"/repo \
             --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
-            --unified-core "${manifest}" "$@"
+            --unified-core "${manifest}" ${RPMOSTREE_EXTRA_ARGS:-} "$@"
 
     echo "Running: $*"
 
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
-        sudo "$@"
+        sudo -E "$@"
         sudo chown -R -h "${USER}":"${USER}" "${workdir}"/repo
     else
         runvm "$@"
