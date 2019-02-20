@@ -250,7 +250,13 @@ EOF
 if [ -x /usr/libexec/qemu-kvm ]; then
     QEMU_KVM="/usr/libexec/qemu-kvm"
 else
-    QEMU_KVM="qemu-system-$(arch) -accel kvm"
+    # Enable arch-specific options for qemu
+    case "$(arch)" in
+        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"         ;;
+        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt" ;;
+        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"           ;;
+        *)         fatal "Architecture $(arch) not supported"
+    esac
 fi
 
 runvm() {
@@ -293,7 +299,7 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
-    ${QEMU_KVM} -nodefaults -nographic -m 2048 -no-reboot \
+    ${QEMU_KVM} -nodefaults -nographic -m 2048 -no-reboot -cpu host \
         -kernel "${vmbuilddir}/kernel" \
         -initrd "${vmbuilddir}/initrd" \
         -netdev user,id=eth0,hostname=supermin \
