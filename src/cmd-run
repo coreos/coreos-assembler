@@ -186,6 +186,10 @@ fi
 
 set -- -drive if=virtio"${vm_drive_args:-}",file="${VM_DISK}" "$@"
 
+if [ "$(arch)" == "aarch64" ]; then
+    set -- -bios /usr/share/AAVMF/AAVMF_CODE.fd "$@"
+fi
+
 # shellcheck disable=SC2086
 exec ${QEMU_KVM} -name coreos -m "${VM_MEMORY}" -nographic \
               -netdev user,id=eth0,hostname=coreos"${hostfwd:-}" \
