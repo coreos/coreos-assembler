@@ -47,7 +47,12 @@ done
 EOF
 # Expand QEMU_KVM
 # shellcheck disable=SC2086 disable=SC2016
-echo "exec ${QEMU_KVM} "'-cpu host,pmu=off "${args[@]}"' >> "${qemu_wrapper}"
+# Only x86_64 supports pmu=off option
+if [ "$(arch)" == "x86_64" ]; then
+    echo "exec ${QEMU_KVM} "'-cpu host,pmu=off "${args[@]}"' >> "${qemu_wrapper}"
+else
+    echo "exec ${QEMU_KVM} "'-cpu host "${args[@]}"' >> "${qemu_wrapper}"
+fi
 chmod +x "${qemu_wrapper}"
 
 # This qemu wrapper doesn't work for some reason on EL7, so just skip
