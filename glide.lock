@@ -1,5 +1,5 @@
-hash: 5475c3d087b7babe6ca84b095ca35202a7d093f3ad93873ff673855acb18e501
-updated: 2019-01-08T15:50:26.470658939-06:00
+hash: 93fe9c00159dbaaa5622e6fbd847b5ac2938e81198c6f24a35ff41a7576eeff4
+updated: 2019-02-20T14:09:48.036859051-08:00
 imports:
 - name: github.com/ajeddeloh/go-json
   version: 73d058cf8437a1989030afe571eeab9f90eebbbd
@@ -135,7 +135,7 @@ imports:
   - journal
   - unit
 - name: github.com/coreos/ignition
-  version: 2a88cd95b6812a70a7dad150f4cb18c5f028bc22
+  version: f59a653629be8b1825ed4ff2f9e3d21aa87bd85a
   subpackages:
   - config/shared/errors
   - config/shared/validations
@@ -395,7 +395,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: e9657d882bb81064595ca3b56cbe2546bbabf7b1
+  version: 54a98f90d1c46b7731eb8fb305d2a321c30ef610
   subpackages:
   - internal
   - internal/app_identity
@@ -407,7 +407,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/cloud
-  version: 23e89d0c751acbfd91a6342a2a3cdba1e90928a5
+  version: cbb15e60dc6dd0655c41678164648bca47401047
   subpackages:
   - compute/metadata
 - name: google.golang.org/genproto
