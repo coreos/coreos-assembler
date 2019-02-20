@@ -299,12 +299,18 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
+    # 'pci' bus doesn't work on aarch64
+    pcibus=pci.0
+    if [ "$(arch)" = "aarch64" ]; then
+        pcibus=pcie.0
+    fi
+
     ${QEMU_KVM} -nodefaults -nographic -m 2048 -no-reboot -cpu host \
         -kernel "${vmbuilddir}/kernel" \
         -initrd "${vmbuilddir}/initrd" \
         -netdev user,id=eth0,hostname=supermin \
         -device virtio-net-pci,netdev=eth0 \
-        -device virtio-scsi-pci,id=scsi0,bus=pci.0,addr=0x3 \
+        -device virtio-scsi-pci,id=scsi0,bus=${pcibus},addr=0x3 \
         -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
