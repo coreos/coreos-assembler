@@ -14,3 +14,6 @@ dhcp-client bind-export-libs iproute
 
 # SELinux
 selinux-policy selinux-policy-targeted policycoreutils
+
+# coreos-assembler
+#FEDORA python3 python3-gobject-base buildah podman skopeo iptables iptables-libs
