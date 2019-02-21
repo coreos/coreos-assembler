@@ -14,6 +14,7 @@ RUN ./build.sh configure_user
 
 # clean up scripts (it will get cached in layers, but oh well)
 WORKDIR /srv/
+RUN chown builder: /srv
 RUN rm -rf /root/containerbuild
 
 # allow writing to /etc/passwd from arbitrary UID
