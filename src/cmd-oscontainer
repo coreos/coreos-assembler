@@ -19,7 +19,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 if has_privileges; then
-    "$@"
+    exec "${osc}" "$@"
 else
     info "Required privileges not detected; running via supermin appliance"
     runvm "${osc}" --workdir /host/container-work "$@"
