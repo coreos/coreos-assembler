@@ -263,8 +263,29 @@ $ cosa init https://github.com/coreos/fedora-coreos-config.git
 $ cosa fetch && cosa build
 ```
 
-#### Using different CA certificates
+#### Running the most recent CoreOS image
 
+You have built a qcow using the assembler and now you want to
+easily run it? You can use `cosa run` for that. It will start up
+a VM using qemu and automatically log you in on the serial console
+of the machine. The login message will also tell you how to destroy
+the VM.
+
+```
+$ cosa build
+$ cosa run
+```
+
+Want SSH access? We can pass port 2222 from the host into the
+container and also tell `run` to map SSH to it.
+
+```
+$ export COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS='-p 2222:2222'
+$ cosa build
+$ cosa run -p 2222
+```
+
+#### Using different CA certificates
 
 If you need access to CA certificates on your host (for example, when you need to access
 a git repo that is not on the public Internet), you can mount in the host certificates
