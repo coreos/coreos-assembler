@@ -200,7 +200,8 @@ func (e *enter) MountGnupgHome() error {
 	// gpg gets confused when GNUPGHOME isn't ~/.gnupg, so mount it there.
 	// Additionally, set the GNUPGHOME variable so commands run with sudo
 	// can also use it.
-	newHome := filepath.Join(e.Chroot, e.User.HomeDir, ".gnupg")
+	newHomeInChroot := filepath.Join("/home", e.User.Username, ".gnupg")
+	newHome := filepath.Join(e.Chroot, newHomeInChroot)
 	if err := os.Mkdir(newHome, 0700); err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -209,7 +210,7 @@ func (e *enter) MountGnupgHome() error {
 		return err
 	}
 
-	return os.Setenv("GNUPGHOME", filepath.Join(e.User.HomeDir, ".gnupg"))
+	return os.Setenv("GNUPGHOME", newHomeInChroot)
 }
 
 func (e *enter) MountGnupgAgent() error {
