@@ -31,7 +31,8 @@ parser.add_argument("--kickstart-out", help="Save flattened kickstart",
 parser.add_argument("--location", help="Installer location",
                     action='store', required=True)
 parser.add_argument("--memory", help="Memory size in MB",
-                    action='store', type=int, default=2048)
+                    action='store', type=int,
+                    default=os.environ.get("VIRT_INSTALL_MEMORY", 2048))
 parser.add_argument("--console-log-file", help="Console log file",
                     action='store')
 parser.add_argument("--logs", help="Copy Anaconda logs to DIR",
@@ -46,7 +47,8 @@ parser.add_argument("--ostree-ref", help="OSTree ref",
 parser.add_argument("--ostree-remote", help="OSTree remote",
                     action='store')
 parser.add_argument("--wait", help="Number of minutes to wait",
-                    action='store', type=int, default=10)
+                    action='store', type=int,
+                    default=os.environ.get("VIRT_INSTALL_WAIT", 10))
 args = parser.parse_args()
 
 # Copy of bits from https://pagure.io/standard-test-roles/pull-request/223
