@@ -15,6 +15,9 @@ LANG=C /sbin/load_policy  -i
 # set up networking
 /usr/sbin/dhclient eth0
 
+# set the umask so that anyone in the group can rwx
+umask 002
+
 # set up workdir
 mkdir -p "${workdir:?}"
 mount -t 9p -o rw,trans=virtio,version=9p2000.L workdir "${workdir}"
@@ -24,6 +27,10 @@ if [ -L "${workdir}"/src/config ]; then
 fi
 mkdir -p "${workdir}"/cache /host/container-work
 mount /dev/sdb1 "${workdir}"/cache
+
+if [ -f "${workdir}/tmp/supermin/supermin.env" ]; then
+    source "${workdir}/tmp/supermin/supermin.env";
+fi
 
 # /usr/sbin/ip{,6}tables is installed as a symlink to /etc/alternatives/ip{,6}tables but
 # the /etc/alternatives symlink to /usr/sbin/ip{,6}tables-legacy is missing.  This recreates
