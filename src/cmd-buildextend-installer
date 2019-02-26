@@ -71,6 +71,8 @@ def generate_iso():
         run_verbose(['/usr/bin/ostree', '--repo=./repo', 'checkout',
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
                      f"{buildmeta_commit}", tmpisoroot])
+        # initramfs isn't world readable by default so let's open up perms
+        os.chmod(os.path.join(tmpisoroot, file), 0o755)
 
     # Grab all the contents from the installer dir from the configs
     run_verbose(["rsync", "-a", "src/config/installer/", f"{tmpisoroot}/"])
