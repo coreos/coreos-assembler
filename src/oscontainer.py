@@ -28,15 +28,23 @@ def run_verbose(args, **kwargs):
 # Given a container reference, pull the latest version, then extract the ostree
 # repo a new directory dest/repo.
 def oscontainer_extract(containers_storage, src, dest,
-                        tls_verify=True, ref=None):
+                        tls_verify=True, ref=None, cert_dir=""):
     dest = os.path.realpath(dest)
     subprocess.check_call(["ostree", "--repo="+dest, "refs"])
     rootarg = '--root='+containers_storage
+    podCmd = ['podman', rootarg, 'pull']
+
     if not tls_verify:
         tls_arg = '--tls-verify=false'
     else:
         tls_arg = '--tls-verify'
-    run_verbose(['podman', rootarg, 'pull', tls_arg, src])
+    podCmd.append(tls_arg)
+
+    if cert_dir != "":
+        podCmd.append("--cert-dir={}".format(cert_dir))
+    podCmd.append(src)
+
+    run_verbose(podCmd)
     inspect = run_get_json(['podman', rootarg, 'inspect', src])[0]
     commit = inspect['Labels'].get(OSCONTAINER_COMMIT_LABEL)
     if commit is None:
@@ -61,7 +69,7 @@ def oscontainer_extract(containers_storage, src, dest,
 # Given an OSTree repository at src (and exactly one ref) generate an oscontainer
 # with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
-                      base_image, push=False, tls_verify=True,
+                      base_image, push=False, tls_verify=True, cert_dir="",
                       inspect_out=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
@@ -104,11 +112,18 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
 
     if push:
         print("Pushing container")
+        podCmd = ['podman', rootarg, 'push']
         if not tls_verify:
             tls_arg = '--tls-verify=false'
         else:
             tls_arg = '--tls-verify'
-        run_verbose(['podman', rootarg, 'push', tls_arg, image_name_and_tag])
+        podCmd.append(tls_arg)
+
+        if cert_dir != "":
+            podCmd.append("--cert-dir={}".format(cert_dir))
+        podCmd.append(image_name_and_tag)
+
+        run_verbose(podCmd)
         inspect = run_get_json(['skopeo', 'inspect', "docker://"+image_name_and_tag])
     else:
         inspect = run_get_json(['podman', rootarg, 'inspect', image_name_and_tag])[0]
@@ -122,6 +137,8 @@ parser.add_argument("--workdir", help="Temporary working directory",
                     required=True)
 parser.add_argument("--disable-tls-verify", help="Disable TLS for pushes and pulls",
                     action="store_true")
+parser.add_argument("--cert-dir", help="Extra certificate directories",
+                    default=os.environ.get("OSCONTAINER_CERT_DIR", ''))
 subparsers = parser.add_subparsers(dest='action')
 parser_extract = subparsers.add_parser('extract', help='Extract an oscontainer')
 parser_extract.add_argument("src", help="Image reference")
@@ -145,10 +162,12 @@ if os.path.exists(containers_storage):
 if args.action == 'extract':
     oscontainer_extract(containers_storage, args.src, args.dest,
                         tls_verify=not args.disable_tls_verify,
+                        cert_dir=args.cert_dir,
                         ref=args.ref)
 elif args.action == 'build':
     oscontainer_build(containers_storage, args.src, args.rev, args.name,
                       getattr(args, 'from'),
                       inspect_out=args.inspect_out,
                       push=args.push,
-                      tls_verify=not args.disable_tls_verify)
+                      tls_verify=not args.disable_tls_verify,
+                      cert_dir=args.cert_dir)
