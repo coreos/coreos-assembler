@@ -36,7 +36,7 @@ func init() {
 
 var (
 	// Regex to extract version number from "rpm-ostree status"
-	rpmOstreeVersionRegex string = `^Version: (\d+\.\d+\.?\d*).*`
+	rpmOstreeVersionRegex string = `^Version: ([\d.]+).*`
 )
 
 // rpmOstreeCleanup calls 'rpm-ostree cleanup -rpmb' on a host and verifies
