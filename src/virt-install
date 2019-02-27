@@ -91,6 +91,7 @@ else:
 disk_size = None
 
 if args.variant is not None:
+    assert args.kickstart is None
     if args.variant == 'metal-uefi':
         variant_ks = 'metal'
     else:
