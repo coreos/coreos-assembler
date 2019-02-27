@@ -262,7 +262,12 @@ build_cloud_base() {
     if [ -f "${PWD}/${img_base}" ]; then
         return
     fi
-    run_virtinstall "${PWD}"/"${img_base}" --variant=cloud
+    local args=""
+    if ${image_config}; then
+        args="$args --variant=cloud"
+    fi
+    # shellcheck disable=SC2046 disable=SC2086
+    run_virtinstall "${PWD}"/"${img_base}" $args
 }
 
 declare -A images
