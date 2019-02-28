@@ -363,7 +363,9 @@ cat "${composejson}" tmp/meta.json tmp/images.json tmp/cosa-image.json "${commit
 "${dn}"/commitmeta_to_json "${workdir}/repo" "${commit}" > commitmeta.json
 
 # Clean up our temporary data
-rm tmp -rf
+saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
+rm -rf "${saved_build_tmpdir}"
+mv -T tmp "${saved_build_tmpdir}"
 # Back to the toplevel build directory, so we can rename this one
 cd "${workdir}"/builds
 # We create a .build-commit file to note that we're in the
