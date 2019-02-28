@@ -238,8 +238,8 @@ else
 fi
 
 # forgive me for this sin
-iso_location="${workdir}/installer/$(basename "${INSTALLER}")"
-checksum_location="${workdir}/installer/$(basename "${INSTALLER_CHECKSUM}")"
+iso_location=$(find "${workdir}/installer/" -name '*.iso' | head -1)
+checksum_location=$(find "${workdir}/installer/" -name '*CHECKSUM' | head -1)
 
 set +x
 # This generates the "base image"; not specific to a platform.
