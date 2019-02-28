@@ -237,6 +237,10 @@ else
     extraargs="${extraargs} --kickstart ${image_input}"
 fi
 
+if [ -n "${ref_is_temp}" ]; then
+    extraargs="${extraargs} --delete-ostree-ref"
+fi
+
 # forgive me for this sin
 iso_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*.iso' | head -1)
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)

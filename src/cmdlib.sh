@@ -141,8 +141,12 @@ prepare_build() {
     # Also grab rojig summary for image upload descriptions
     name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
     summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
-    # TODO - allow this to be unset
     ref=$(jq -r '.ref' < "${manifest_tmp_json}")
+    ref_is_temp=""
+    if [ "${ref}" = "null" ]; then
+        ref="tmpref-${name}"
+        ref_is_temp=1
+    fi
     export name ref summary
     rm -f "${manifest_tmp_json}"
 
@@ -175,27 +179,36 @@ runcompose() {
     # Implement support for automatic local overrides:
     # https://github.com/coreos/coreos-assembler/issues/118
     local overridesdir=${workdir}/overrides
-    if [ -d "${overridesdir}"/rpm ]; then
-        (cd "${overridesdir}"/rpm && createrepo_c .)
-        echo "Using RPM overrides from: ${overridesdir}/rpm"
-        local tmp_overridesdir=${TMPDIR}/override
+    local tmp_overridesdir=${TMPDIR}/override
+    local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
+    if [ -d "${overridesdir}"/rpm ] || [ -n "${ref_is_temp}" ]; then
         mkdir "${tmp_overridesdir}"
-        cat > "${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml <<EOF
+        cat > "${override_manifest}" <<EOF
 include: ${workdir}/src/config/manifest.yaml
-repos:
-  - coreos-assembler-local-overrides
 EOF
         # Because right now rpm-ostree doesn't look for .repo files in
         # each included dir.
         # https://github.com/projectatomic/rpm-ostree/issues/1628
         cp "${workdir}"/src/config/*.repo "${tmp_overridesdir}"/
+        manifest=${override_manifest}
+    fi
+    if [ -n "${ref_is_temp}" ]; then
+        echo 'ref: "'"${ref}"'"' >> "${override_manifest}"
+    fi
+    if [ -d "${overridesdir}"/rpm ]; then
+        (cd "${overridesdir}"/rpm && createrepo_c .)
+        echo "Using RPM overrides from: ${overridesdir}/rpm"
+        local tmp_overridesdir=${TMPDIR}/override
+        cat >> "${override_manifest}" <<EOF
+repos:
+  - coreos-assembler-local-overrides
+EOF
         cat > "${tmp_overridesdir}"/coreos-assembler-local-overrides.repo <<EOF
 [coreos-assembler-local-overrides]
 name=coreos-assembler-local-overrides
 baseurl=file://${workdir}/overrides/rpm
 gpgcheck=0
 EOF
-        manifest=${tmp_overridesdir}/coreos-assembler-override-manifest.yaml
     fi
 
     rm -f "${changed_stamp}"
