@@ -237,6 +237,10 @@ else
     extraargs="${extraargs} --kickstart ${image_input}"
 fi
 
+if [ -n "${ref_is_temp}" ]; then
+    extraargs="${extraargs} --delete-ostree-ref"
+fi
+
 # forgive me for this sin
 iso_location="${workdir}/installer/$(basename "${INSTALLER}")"
 checksum_location="${workdir}/installer/$(basename "${INSTALLER_CHECKSUM}")"

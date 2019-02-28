@@ -44,6 +44,8 @@ parser.add_argument("--ostree-stateroot", help="OSTree stateroot",
                     action='store')
 parser.add_argument("--ostree-ref", help="OSTree ref",
                     action='store')
+parser.add_argument("--delete-ostree-ref", help="Delete the OSTree ref after installation",
+                    action='store_true')
 parser.add_argument("--ostree-remote", help="OSTree remote",
                     action='store')
 parser.add_argument("--wait", help="Number of minutes to wait",
@@ -151,7 +153,15 @@ systemctl daemon-reload
 systemctl start coreos-virtinstall-logs
 %end
     """)
-ks_tmp.flush()
+
+# Support using commits only
+if args.delete_ostree_ref:
+    print("virt-install: Will remove ostree ref")
+    ks_tmp.write(f"""
+%post --erroronfail
+ostree refs --delete ${args.ostree_remote}:${args.ostree_ref}
+%end
+""")
 
 # This is an "extension" to kickstart files that we implement as a comment.
 if args.create_disk and args.kickstart:
@@ -196,6 +206,8 @@ http_proc = None
 # stderr and not stdout.
 have_virtinstall_2 = int(subprocess.check_output(['virt-install', '--version'],
                                                  stderr=subprocess.STDOUT).strip().decode('UTF-8').split('.')[0]) >= 2
+
+ks_tmp.flush()
 
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
