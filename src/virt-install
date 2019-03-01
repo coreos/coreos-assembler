@@ -159,7 +159,7 @@ if args.delete_ostree_ref:
     print("virt-install: Will remove ostree ref")
     ks_tmp.write(f"""
 %post --erroronfail
-ostree refs --delete ${args.ostree_remote}:${args.ostree_ref}
+ostree refs --delete {args.ostree_remote}:{args.ostree_ref}
 %end
 """)
 
