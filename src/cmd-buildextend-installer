@@ -9,6 +9,7 @@ import json
 import yaml
 import shutil
 import argparse
+import tempfile
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
 from cmdlib import run_verbose, write_json, sha256sum_file
@@ -42,6 +43,7 @@ if 'iso' in buildmeta['images'] and not args.force:
 base_name = buildmeta['name']
 img_prefix = f'{base_name}-{args.build}'
 iso_name = f'{img_prefix}.iso'
+name_version = f'{base_name}-{args.build}'
 
 tmpdir = 'tmp/buildpost-installer'
 if os.path.isdir(tmpdir):
@@ -78,8 +80,11 @@ def generate_iso():
         # initramfs isn't world readable by default so let's open up perms
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
+    # TODO ignore EFI dir
     # Grab all the contents from the installer dir from the configs
     run_verbose(["rsync", "-a", "src/config/installer/", f"{tmpisoroot}/"])
+
+    ### For x86_64 legacy boot (BIOS) booting 
 
     # Install binaries from syslinux package
     isolinuxfiles = [('/usr/share/syslinux/isolinux.bin', 0o755),
@@ -92,16 +97,45 @@ def generate_iso():
         shutil.copyfile(src, dst)
         os.chmod(dst, mode)
 
-    # Generate the ISO image
-    run_verbose(['/usr/bin/genisoimage',
-                 '-b', 'isolinux/isolinux.bin',
-                 '-c', 'isolinux/boot.cat',
+    ### For x86_64 UEFI booting
+
+    # Create the efiboot.img file. This is a fat32 formatted
+    # filesystem that contains all the files needed for EFI boot
+    # from an ISO.
+    with tempfile.TemporaryDirectory() as tmpefidir:
+        # Install binaries from the grub2-efi and shim rpms (installed
+        # in our COSA container
+        run_verbose(["rsync", "-a",
+                     "/boot/efi/EFI/", f"{tmpefidir}/EFI/"])
+
+        # Grab all the contents from the installer EFI dir from the configs
+        run_verbose(["rsync", "-a",
+                     "src/config/installer/EFI/", f"{tmpefidir}/EFI/"])
+
+        # Create the efiboot.img file (a fat filesystem) in the images/ dir
+        # Note: virt-make-fs lets us do this as non-root
+        efibootfile = os.path.join(tmpisoimages, 'efiboot.img')
+        run_verbose(['virt-make-fs', '--type=vfat',
+                     tmpefidir, efibootfile])
+
+    # Generate the ISO image. Lots of good info here:
+    # https://fedoraproject.org/wiki/User:Pjones/BootableCDsForBIOSAndUEFI
+    run_verbose(['/usr/bin/genisoimage', '-verbose',
+                 '-volset', f"{name_version}",
+                 # For  greater portability, consider using both
+                 # Joliet and Rock Ridge extensions. Umm, OK :)
+                 '-rock', '-J', '-joliet-long',
+                 # for legacy bios boot AKA eltorito boot
+                 '-eltorito-boot', 'isolinux/isolinux.bin',
+                 '-eltorito-catalog', 'isolinux/boot.cat',
                  '-no-emul-boot',
                  '-boot-load-size', '4',
                  '-boot-info-table',
-                 '-rock',
-                 '-J',
-                 '--verbose',
+                 # for EFI boot
+                 '-eltorito-alt-boot',
+                 '-efi-boot', 'images/efiboot.img',
+                 '-no-emul-boot',
+                 # Define inputs and outputs
                  '-o', tmpisofile, tmpisoroot])
     checksum = sha256sum_file(tmpisofile)
     buildmeta['images']['iso'] = {
