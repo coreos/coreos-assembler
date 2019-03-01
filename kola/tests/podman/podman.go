@@ -130,7 +130,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 
 		cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s", string(dir), wwwRoot, image)
 		out := c.MustSSH(m, cmd)
-		id = string(out)
+		id = string(out)[0:12]
 
 		podIsRunning := func() error {
 			b, err := c.SSH(m, `curl -f http://localhost 2>/dev/null`)
@@ -150,7 +150,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 
 	// Test: Execute command in container
 	c.Run("exec", func(c cluster.TestCluster) {
-		cmd := fmt.Sprintf("sudo podman exec %s echo hello", id[0:12])
+		cmd := fmt.Sprintf("sudo podman exec %s echo hello", id)
 		out := c.MustSSH(m, cmd)
 
 		if string(out) != "hello" {
@@ -160,7 +160,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 
 	// Test: Stop container
 	c.Run("stop", func(c cluster.TestCluster) {
-		cmd := fmt.Sprintf("sudo podman stop %s", id[0:12])
+		cmd := fmt.Sprintf("sudo podman stop %s", id)
 		c.MustSSH(m, cmd)
 		psInfo, err := getSimplifiedPsInfo(c, m)
 		if err != nil {
@@ -171,7 +171,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 		for _, container := range psInfo.containers {
 			if container.ID == id {
 				found = true
-				if container.Status != "exited" {
+				if !strings.Contains(strings.ToLower(container.Status), "exited") {
 					c.Fatalf("Container %s was not stopped. Current status: %s", id, container.Status)
 				}
 			}
@@ -184,7 +184,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 
 	// Test: Remove container
 	c.Run("remove", func(c cluster.TestCluster) {
-		cmd := fmt.Sprintf("sudo podman rm %s", id[0:12])
+		cmd := fmt.Sprintf("sudo podman rm %s", id)
 		c.MustSSH(m, cmd)
 		psInfo, err := getSimplifiedPsInfo(c, m)
 		if err != nil {
@@ -199,7 +199,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 		}
 
 		if found == true {
-			c.Fatalf("Container %s should be removed. %v", id[0:12], psInfo.containers)
+			c.Fatalf("Container %s should be removed. %v", id, psInfo.containers)
 		}
 	})
 
