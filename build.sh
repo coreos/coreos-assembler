@@ -126,23 +126,12 @@ install_anaconda() {
         info "Overriding the install checksum URL with contents of INSTALLER_CHECKSUM_URL_OVERRIDE"
     fi
 
-    installer_bn=$(basename "${INSTALLER}")
-    checksums_bn=$(basename "${INSTALLER_CHECKSUM}")
-
-    anacondadir=/usr/lib/coreos-assembler/anaconda
-    if ! [ -f "${anacondadir}/${installer_bn}" ]; then
-        (
-            mkdir -p $anacondadir
-            cd $anacondadir
-            rm tmp -rf && mkdir -p tmp
-            cd tmp
-            curl -L --remote-name-all "${INSTALLER}" "${INSTALLER_CHECKSUM}"
-            sha256sum -c "${checksums_bn}"
-            mv "${installer_bn}" "${checksums_bn}" ..
-            cd ..
-            rmdir tmp
-        )
-    fi
+    anacondadir=/usr/lib/coreos-assembler-anaconda-iso/
+    mkdir -p $anacondadir
+    pushd $anacondadir
+    curl -L --remote-name-all "${INSTALLER}" "${INSTALLER_CHECKSUM}"
+    sha256sum -c "$(basename "${INSTALLER_CHECKSUM}")"
+    popd 
 }
 
 make_and_makeinstall() {
