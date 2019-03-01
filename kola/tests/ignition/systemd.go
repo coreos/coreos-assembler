@@ -27,7 +27,8 @@ func init() {
 		Name:        "coreos.ignition.systemd.enable-service",
 		Run:         enableSystemdService,
 		ClusterSize: 1,
-		// enable nfs-server & touch /etc/exports as it doesn't exist by default on Container Linux
+		// enable nfs-server, touch /etc/exports as it doesn't exist by default on Container Linux,
+		// and touch /var/lib/nfs/etab (https://bugzilla.redhat.com/show_bug.cgi?id=1394395) for RHCOS
 		UserData: conf.Ignition(`{
     "ignition": {"version": "2.2.0"},
     "systemd": {
@@ -40,6 +41,10 @@ func init() {
         "files": [{
             "filesystem":"root",
             "path":"/etc/exports"
+        },
+        {
+            "filesystem":"root",
+            "path":"/var/lib/nfs/etab"
         }]
     }
 }`),
