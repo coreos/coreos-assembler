@@ -15,7 +15,9 @@
 package misc
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -49,10 +51,20 @@ func init() {
 	})
 }
 
+// cmdCheckOutput is used by `testSelinuxCmds()`. It contains a
+// command to run, a bool indicating if output should be matched,
+// and the regex used for the match
 type cmdCheckOutput struct {
 	cmdline     string // command to run
 	checkoutput bool   // should output be checked
 	match       string // regex used to match output from command
+}
+
+// seBooleanState is used by `getSelinuxBooleanState()` to store the
+// original value of the boolean and the flipped value of the boolean
+type seBooleanState struct {
+	originalValue string // original boolean value from `getseboolean`
+	newValue      string // new, opposite boolean value
 }
 
 // testSelinuxCmds will run a list of commands, optionally check their output, and
@@ -73,6 +85,40 @@ func testSelinuxCmds(c cluster.TestCluster, m platform.Machine, cmds []cmdCheckO
 	if err != nil {
 		c.Fatalf("failed to reboot machine: %v", err)
 	}
+}
+
+// getSelinuxBooleanState checks the original value of a provided SELinux boolean
+// and returns a seBooleanState struct with original + opposite/new value
+func getSelinuxBooleanState(c cluster.TestCluster, m platform.Machine, seBool string) (seBooleanState, error) {
+	boolState := seBooleanState{}
+
+	// get original value of boolean
+	reString := seBool + " --> (on|off)"
+	reBool, _ := regexp.Compile(reString)
+	origOut, err := c.SSH(m, "getsebool "+seBool)
+	if err != nil {
+		return boolState, fmt.Errorf(`Could not get SELinux boolean: %v`, err)
+	}
+
+	match := reBool.FindStringSubmatch(string(origOut))
+
+	if match == nil {
+		return boolState, fmt.Errorf(`failed to match regexp %q, from output %q`, reString, origOut)
+	}
+
+	origBool := match[1]
+
+	if string(origBool) == "off" {
+		boolState.originalValue = "off"
+		boolState.newValue = "on"
+	} else if string(origBool) == "on" {
+		boolState.originalValue = "on"
+		boolState.newValue = "off"
+	} else {
+		return boolState, fmt.Errorf(`failed to match boolean value; expected "on" or "off", got %q`, string(origBool))
+	}
+
+	return boolState, nil
 }
 
 // SelinuxEnforce checks that some basic things work after `setenforce 1`
@@ -101,42 +147,61 @@ func SelinuxEnforce(c cluster.TestCluster) {
 
 // SelinuxBoolean checks that you can tweak a boolean in the current session
 func SelinuxBoolean(c cluster.TestCluster) {
-	cmdList := []cmdCheckOutput{
-		{"getsebool virt_use_nfs", true, ".*off"},
-		{"sudo setsebool virt_use_nfs 1", false, ""},
-		{"getsebool virt_use_nfs", true, ".*on"},
-	}
+	seBoolean := "virt_use_nfs"
 
 	m := c.Machines()[0]
+
+	tempBoolState, err := getSelinuxBooleanState(c, m, seBoolean)
+	if err != nil {
+		c.Fatalf(`Failed to gather SELinux boolean state: %v`, err)
+	}
+
+	// construct a regexp that looks like ".*off" or ".*on"
+	tempBoolRegexp := ".*" + tempBoolState.newValue
+	cmdList := []cmdCheckOutput{
+		{fmt.Sprintf("sudo setsebool %s %s", seBoolean, tempBoolState.newValue), false, ""},
+		{"getsebool " + seBoolean, true, tempBoolRegexp},
+	}
 
 	testSelinuxCmds(c, m, cmdList)
 
 	// since we didn't persist the change, should return to default value
-	output := c.MustSSH(m, "getsebool virt_use_nfs")
+	postOut := c.MustSSH(m, "getsebool "+seBoolean)
+	postBool := strings.Split(string(postOut), " ")[2]
 
-	if string(output) != "virt_use_nfs --> off" {
-		c.Fatalf(`The SELinux boolean "virt_use_nfs" is incorrectly configured: want %q, got %q`, "virt_use_nfs --> off", string(output))
+	// newBool[0] contains the original value of the boolean
+	if postBool != tempBoolState.originalValue {
+		c.Fatalf(`The SELinux boolean "%q" is incorrectly configured: wanted %q, got %q`, seBoolean, tempBoolState.originalValue, postBool)
 	}
 }
 
 // SelinuxBooleanPersist checks that you can tweak a boolean and have it
 // persist across reboots
 func SelinuxBooleanPersist(c cluster.TestCluster) {
-	cmdList := []cmdCheckOutput{
-		{"getsebool virt_use_nfs", true, ".*off"},
-		{"sudo setsebool -P virt_use_nfs 1", false, ""},
-		{"getsebool virt_use_nfs", true, ".*on"},
-	}
+	seBoolean := "virt_use_nfs"
 
 	m := c.Machines()[0]
+
+	persistBoolState, err := getSelinuxBooleanState(c, m, seBoolean)
+	if err != nil {
+		c.Fatalf(`Failed to gather SELinux boolean state: %v`, err)
+	}
+
+	// construct a regexp that looks like ".*off" or ".*on"
+	persistBoolRegexp := ".*" + persistBoolState.newValue
+	cmdList := []cmdCheckOutput{
+		{fmt.Sprintf("sudo setsebool -P %s %s", seBoolean, persistBoolState.newValue), false, ""},
+		{"getsebool " + seBoolean, true, persistBoolRegexp},
+	}
 
 	testSelinuxCmds(c, m, cmdList)
 
 	// the change should be persisted after a reboot
-	output := c.MustSSH(m, "getsebool virt_use_nfs")
+	postOut := c.MustSSH(m, "getsebool "+seBoolean)
+	postBool := strings.Split(string(postOut), " ")[2]
 
-	if string(output) != "virt_use_nfs --> on" {
-		c.Fatalf(`The SELinux boolean "virt_use_nfs" is incorrectly configured: want %q, got %q`, "virt_use_nfs --> on", string(output))
+	if postBool != persistBoolState.newValue {
+		c.Fatalf(`The SELinux boolean "%q" is incorrectly configured: wanted %q, got %q`, seBoolean, persistBoolState.newValue, postBool)
 	}
 }
 
