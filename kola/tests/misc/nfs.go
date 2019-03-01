@@ -38,6 +38,9 @@ var (
       contents:
         inline: "/tmp  *(ro,insecure,all_squash,no_subtree_check,fsid=0)"
       mode: 0644
+    - filesystem: "root"
+      path: "/var/lib/nfs/etab"
+      mode: 0644
 systemd:
   units:
     - name: "nfs-server.service"
