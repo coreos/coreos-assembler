@@ -48,9 +48,13 @@ if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 
 tmpisoroot = os.path.join(tmpdir, 'installer')
+tmpisoimages = os.path.join(tmpisoroot, 'images')
+tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
 
 os.mkdir(tmpdir)
 os.mkdir(tmpisoroot)
+os.mkdir(tmpisoimages)
+os.mkdir(tmpisoisolinux)
 
 def generate_iso():
     tmpisofile = os.path.join(tmpdir, iso_name)
@@ -70,9 +74,9 @@ def generate_iso():
     for file in ['initramfs.img', 'vmlinuz']:
         run_verbose(['/usr/bin/ostree', '--repo=./repo', 'checkout',
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
-                     f"{buildmeta_commit}", tmpisoroot])
+                     f"{buildmeta_commit}", tmpisoimages])
         # initramfs isn't world readable by default so let's open up perms
-        os.chmod(os.path.join(tmpisoroot, file), 0o755)
+        os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
     # Grab all the contents from the installer dir from the configs
     run_verbose(["rsync", "-a", "src/config/installer/", f"{tmpisoroot}/"])
@@ -84,14 +88,21 @@ def generate_iso():
                      ('/usr/share/syslinux/libutil.c32',  0o755),
                      ('/usr/share/syslinux/vesamenu.c32', 0o755)]
     for src, mode in isolinuxfiles:
-        dst = os.path.join(tmpisoroot, os.path.basename(src))
+        dst = os.path.join(tmpisoisolinux, os.path.basename(src))
         shutil.copyfile(src, dst)
         os.chmod(dst, mode)
 
     # Generate the ISO image
-    run_verbose(['/usr/bin/genisoimage', '-b', 'isolinux.bin', '-c', 'boot.cat',
-                 '-no-emul-boot', '-boot-load-size', '4', '-boot-info-table',
-                 '-rock', '-J', '--verbose', '-o', tmpisofile, tmpisoroot])
+    run_verbose(['/usr/bin/genisoimage',
+                 '-b', 'isolinux/isolinux.bin',
+                 '-c', 'isolinux/boot.cat',
+                 '-no-emul-boot',
+                 '-boot-load-size', '4',
+                 '-boot-info-table',
+                 '-rock',
+                 '-J',
+                 '--verbose',
+                 '-o', tmpisofile, tmpisoroot])
     checksum = sha256sum_file(tmpisofile)
     buildmeta['images']['iso'] = {
         'path': iso_name,
