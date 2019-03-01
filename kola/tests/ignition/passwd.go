@@ -271,12 +271,12 @@ func usersRhcos(c cluster.TestCluster) {
 		},
 		{
 			user:           "user1",
-			passwdRecord:   "user1:x:1001:1001::/home/user1:/bin/bash",
+			passwdRecord:   "user1:x:1001:1001::/var/home/user1:/bin/bash",
 			shadowPassword: "*",
 		},
 		{
 			user:           "user2",
-			passwdRecord:   "user2:x:1010:1010::/home/user2:/bin/bash",
+			passwdRecord:   "user2:x:1010:1010::/var/home/user2:/bin/bash",
 			shadowPassword: "*",
 		},
 	}
