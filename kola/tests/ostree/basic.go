@@ -54,6 +54,20 @@ type ostreeAdminStatus struct {
 	Version  string
 }
 
+// getOstreeRemotes returns the current number of ostree remotes on a machine
+func getOstreeRemotes(c cluster.TestCluster, m platform.Machine) (int, []string) {
+	remoteListOut := string(c.MustSSH(m, "ostree remote list"))
+	numRemotes := 0
+	// If we get anything other than an empty string calculate the results
+	// NOTE: This is needed as splitting "" ends up providing a count of 1
+	//       when the count should be 0
+	remoteListRaw := strings.Split(remoteListOut, "\n")
+	if remoteListOut != "" {
+		numRemotes = len(remoteListRaw)
+	}
+	return numRemotes, remoteListRaw
+}
+
 // getOstreeAdminStatus stuffs the important output of `ostree admin status`
 // into an `ostreeAdminStatus` struct
 func getOstreeAdminStatus(c cluster.TestCluster, m platform.Machine) (ostreeAdminStatus, error) {
@@ -178,6 +192,9 @@ func ostreeBasicTest(c cluster.TestCluster) {
 func ostreeRemoteTest(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
+	// Get the initial amount of remotes configured
+	initialRemotesNum, _ := getOstreeRemotes(c, m)
+
 	// TODO: if this remote ever changes, update the `refMatch` regexp
 	// in the `ostree remote summary` test below
 	remoteName := "custom"
@@ -195,8 +212,8 @@ func ostreeRemoteTest(c cluster.TestCluster) {
 
 		osRemoteListSplit := strings.Split(string(osRemoteListOut), "\n")
 		// should have original remote + newly added remote
-		if len(osRemoteListSplit) != 2 {
-			c.Fatalf(`Did not find expected amount of ostree remotes: %q`, string(osRemoteListOut))
+		if len(osRemoteListSplit) != initialRemotesNum+1 {
+			c.Fatalf(`Did not find expected amount of ostree remotes: %q. Expected %d`, string(osRemoteListOut), osRemoteListSplit)
 		}
 
 		var remoteFound bool = false
@@ -277,16 +294,16 @@ func ostreeRemoteTest(c cluster.TestCluster) {
 	c.Run("delete", func(c cluster.TestCluster) {
 		preRemotesOut := c.MustSSH(m, "ostree remote list")
 		preNumRemotes := len(strings.Split(string(preRemotesOut), "\n"))
+
 		if preNumRemotes < 1 {
 			c.Fatalf(`No remotes configured on host: %q`, string(preRemotesOut))
 		}
 
 		c.MustSSH(m, ("sudo ostree remote delete " + remoteName))
 
-		delRemoteListOut := c.MustSSH(m, "ostree remote list")
-		delNumRemotes := len(strings.Split(string(delRemoteListOut), "\n"))
+		delNumRemotes, delRemoteListOut := getOstreeRemotes(c, m)
 		if delNumRemotes >= preNumRemotes {
-			c.Fatalf(`Number of remotes did not decrease after "ostree delete": %v`, string(delRemoteListOut))
+			c.Fatalf(`Number of remotes did not decrease after "ostree delete": %s`, delRemoteListOut)
 		}
 	})
 }
