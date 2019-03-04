@@ -18,6 +18,7 @@ parser.add_argument("--region", help="EC2 region",
                     required=True)
 parser.add_argument("--bucket", help="S3 Bucket",
                     required=True)
+parser.add_argument("--name-suffix", help="Suffix for name")
 parser.add_argument("--grant-user", help="Grant user launch permission",
                     nargs="*", default=[])
 args = parser.parse_args()
@@ -29,7 +30,10 @@ with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
 base_name = buildmeta['name']
-ami_name_version = f'{base_name}-{args.build}'
+if args.name_suffix:
+    ami_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
+else:
+    ami_name_version = f'{base_name}-{args.build}'
 
 tmpdir='tmp/buildpost-ec2'
 if os.path.isdir(tmpdir):
