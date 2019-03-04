@@ -113,12 +113,20 @@ elif args.kickstart:
 else:
     raise SystemExit("Either --kickstart or --image-conf must be specified")
 
+
 # This is an implementation detail of https://github.com/coreos/ignition-dracut
 # So we hardcode it here.
 # See: https://github.com/coreos/ignition-dracut/pull/12
-ks_tmp.write("""
+# 
+# if uefi we need to put the file in the efi partition
+# https://github.com/coreos/coreos-assembler/issues/383
+if args.variant == 'metal-uefi':
+    firstboot_file = '/boot/efi/ignition.firstboot'
+else:
+    firstboot_file = '/boot/ignition.firstboot'
+ks_tmp.write(f"""
 %post --erroronfail
-touch /boot/ignition.firstboot
+touch {firstboot_file}
 %end
 """)
 
