@@ -56,7 +56,7 @@ func checkReplace(t *testing.T, ops []*metadata.InstallOperation, source, source
 	}
 
 	if len(op.DstExtents) != 1 {
-		t.Fatalf("unexpected extents: %d", op.GetDstExtents())
+		t.Fatalf("unexpected extents: %v", op.GetDstExtents())
 	}
 
 	ext := op.DstExtents[0]
@@ -88,7 +88,7 @@ func checkReplaceBZ(t *testing.T, ops []*metadata.InstallOperation, source, sour
 	}
 
 	if len(op.DstExtents) != 1 {
-		t.Fatalf("unexpected extents: %d", op.GetDstExtents())
+		t.Fatalf("unexpected extents: %v", op.GetDstExtents())
 	}
 
 	ext := op.DstExtents[0]
