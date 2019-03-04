@@ -20,6 +20,7 @@ parser.add_argument("--bucket", help="S3 Bucket",
                     required=True)
 parser.add_argument("--grant-user", help="Grant user launch permission",
                     nargs="*", default=[])
+parser.add_argument("--prefix", help="String to prepend to AMI filename")
 args = parser.parse_args()
 
 
@@ -30,6 +31,8 @@ with open(buildmeta_path) as f:
 
 base_name = buildmeta['name']
 ami_name_version = f'{base_name}-{args.build}'
+if args.prefix:
+    ami_name_version = f'{prefix}-{base_name}-{args.build}'
 
 tmpdir='tmp/buildpost-ec2'
 if os.path.isdir(tmpdir):
