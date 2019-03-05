@@ -283,7 +283,7 @@ for itype in "${IMAGE_TYPES[@]}"; do
               /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
               # Clear the MCS SELinux labels
               # See https://github.com/coreos/coreos-assembler/issues/292
-              chcon -vl s0 "${img_qemu}"
+              chcon -vl s0 "${img_qemu}" || echo "chcon failed. This is expected if SELinux is not enabled"
               # make a version-less symlink to have a stable path
               # TODO: Remove this, things should be parsing the metadata
               ln -s "${img_qemu}" "${name}"-qemu.qcow2
