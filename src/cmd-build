@@ -281,9 +281,6 @@ for itype in "${IMAGE_TYPES[@]}"; do
               images[$itype]="${img_qemu}"
               build_cloud_base
               /usr/lib/coreos-assembler/gf-oemid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
-              # Clear the MCS SELinux labels
-              # See https://github.com/coreos/coreos-assembler/issues/292
-              chcon -vl s0 "${img_qemu}"
               # make a version-less symlink to have a stable path
               # TODO: Remove this, things should be parsing the metadata
               ln -s "${img_qemu}" "${name}"-qemu.qcow2
