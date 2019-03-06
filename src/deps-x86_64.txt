@@ -1,0 +1,6 @@
+# For generating ISO images
+#FEDORA syslinux-nonlinux
+#EL7 syslinux
+
+# For creating bootable UEFI media on x86_64
+shim-x64 grub2-efi-x64
