@@ -84,8 +84,10 @@ preflight() {
     [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
     [ -n "${ISEL}" ]     && filter='^#EL7 '
     deps=$(sed "s/${filter}//" /usr/lib/coreos-assembler/deps.txt | grep -v '^#')
+    archdeps=$(sed "s/${filter}//" /usr/lib/coreos-assembler/deps-"$(arch)".txt | grep -v '^#')
 
     depcheck "${deps}"
+    depcheck "${archdeps}"
 
     if [ "$(stat -f --printf="%T" .)" = "overlayfs" ]; then
         fatal "$(pwd) must be a volume"

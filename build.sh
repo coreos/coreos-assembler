@@ -62,7 +62,8 @@ install_rpms() {
 
     # Process our base dependencies + build dependencies and install
     deps=$(sed "s/${filter}//" "${srcdir}"/deps.txt | grep -v '^#')
-    echo "${builddeps}" "${deps}" | xargs yum -y install
+    archdeps=$(sed "s/${filter}//" "${srcdir}/deps-$(arch)".txt | grep -v '^#')
+    echo "${builddeps}" "${deps}" "${archdeps}" | xargs yum -y install
 
     # Commented out for now, see above
     #dnf remove -y $builddeps}

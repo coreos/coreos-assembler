@@ -15,8 +15,6 @@ rpm-ostree createrepo_c openssh-clients
 
 # For generating ISO images
 genisoimage
-#FEDORA syslinux-nonlinux
-#EL7 syslinux
 
 # We expect people to use these explicitly in their repo configurations.
 #FEDORA distribution-gpg-keys
@@ -56,6 +54,3 @@ ignition
 
 # for grub install when creating images without anaconda
 grub2
-
-# For creating bootable UEFI media on x86_64
-shim-x64 grub2-efi-x64
