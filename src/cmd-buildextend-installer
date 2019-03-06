@@ -10,6 +10,7 @@ import yaml
 import shutil
 import argparse
 import tempfile
+import platform
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
 from cmdlib import run_verbose, write_json, sha256sum_file
@@ -59,6 +60,12 @@ os.mkdir(tmpisoimages)
 os.mkdir(tmpisoisolinux)
 
 def generate_iso():
+    arch = platform.machine()
+
+    if arch in ("s390", "s390x"):
+        print(f"{arch} ISO generation is not supported at the moment")
+        sys.exit(1)
+
     tmpisofile = os.path.join(tmpdir, iso_name)
 
     # Grab the commit hash for this build
@@ -84,59 +91,70 @@ def generate_iso():
     # Grab all the contents from the installer dir from the configs
     run_verbose(["rsync", "-a", "src/config/installer/", f"{tmpisoroot}/"])
 
-    ### For x86_64 legacy boot (BIOS) booting 
-
-    # Install binaries from syslinux package
-    isolinuxfiles = [('/usr/share/syslinux/isolinux.bin', 0o755),
-                     ('/usr/share/syslinux/ldlinux.c32',  0o755),
-                     ('/usr/share/syslinux/libcom32.c32', 0o755),
-                     ('/usr/share/syslinux/libutil.c32',  0o755),
-                     ('/usr/share/syslinux/vesamenu.c32', 0o755)]
-    for src, mode in isolinuxfiles:
-        dst = os.path.join(tmpisoisolinux, os.path.basename(src))
-        shutil.copyfile(src, dst)
-        os.chmod(dst, mode)
-
-    ### For x86_64 UEFI booting
-
-    # Create the efiboot.img file. This is a fat32 formatted
-    # filesystem that contains all the files needed for EFI boot
-    # from an ISO.
-    with tempfile.TemporaryDirectory() as tmpefidir:
-        # Install binaries from the grub2-efi and shim rpms (installed
-        # in our COSA container
-        run_verbose(["rsync", "-a",
-                     "/boot/efi/EFI/", f"{tmpefidir}/EFI/"])
-
-        # Grab all the contents from the installer EFI dir from the configs
-        run_verbose(["rsync", "-a",
-                     "src/config/installer/EFI/", f"{tmpefidir}/EFI/"])
-
-        # Create the efiboot.img file (a fat filesystem) in the images/ dir
-        # Note: virt-make-fs lets us do this as non-root
-        efibootfile = os.path.join(tmpisoimages, 'efiboot.img')
-        run_verbose(['virt-make-fs', '--type=vfat',
-                     tmpefidir, efibootfile])
+    # These sections are based on lorax templates
+    # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
 
     # Generate the ISO image. Lots of good info here:
     # https://fedoraproject.org/wiki/User:Pjones/BootableCDsForBIOSAndUEFI
-    run_verbose(['/usr/bin/genisoimage', '-verbose',
-                 '-volset', f"{name_version}",
-                 # For  greater portability, consider using both
-                 # Joliet and Rock Ridge extensions. Umm, OK :)
-                 '-rock', '-J', '-joliet-long',
-                 # for legacy bios boot AKA eltorito boot
-                 '-eltorito-boot', 'isolinux/isolinux.bin',
-                 '-eltorito-catalog', 'isolinux/boot.cat',
-                 '-no-emul-boot',
-                 '-boot-load-size', '4',
-                 '-boot-info-table',
-                 # for EFI boot
-                 '-eltorito-alt-boot',
-                 '-efi-boot', 'images/efiboot.img',
-                 '-no-emul-boot',
-                 # Define inputs and outputs
-                 '-o', tmpisofile, tmpisoroot])
+    genisoargs = ['/usr/bin/genisoimage', '-verbose',
+                  '-volset', f"{name_version}",
+                  # For  greater portability, consider using both
+                  # Joliet and Rock Ridge extensions. Umm, OK :)
+                  '-rock', '-J', '-joliet-long']
+
+    ### For x86_64 legacy boot (BIOS) booting
+    if arch == "x86_64":
+        # Install binaries from syslinux package
+        isolinuxfiles = [('/usr/share/syslinux/isolinux.bin', 0o755),
+                         ('/usr/share/syslinux/ldlinux.c32',  0o755),
+                         ('/usr/share/syslinux/libcom32.c32', 0o755),
+                         ('/usr/share/syslinux/libutil.c32',  0o755),
+                         ('/usr/share/syslinux/vesamenu.c32', 0o755)]
+        for src, mode in isolinuxfiles:
+            dst = os.path.join(tmpisoisolinux, os.path.basename(src))
+            shutil.copyfile(src, dst)
+            os.chmod(dst, mode)
+
+        # for legacy bios boot AKA eltorito boot
+        genisoargs += ['-eltorito-boot', 'isolinux/isolinux.bin',
+                       '-eltorito-catalog', 'isolinux/boot.cat',
+                       '-no-emul-boot',
+                       '-boot-load-size', '4',
+                       '-boot-info-table']
+
+    elif arch == "ppc64le":
+        genisoargs += ['-r', '-l', '-sysid', 'PPC',
+                       '-chrp-boot', '-graft-points']
+
+    ### For x86_64 and aarch64 UEFI booting
+    if arch in ("x86_64", "aarch64"):
+        # Create the efiboot.img file. This is a fat32 formatted
+        # filesystem that contains all the files needed for EFI boot
+        # from an ISO.
+        with tempfile.TemporaryDirectory() as tmpefidir:
+            # Install binaries from the grub2-efi and shim rpms (installed
+            # in our COSA container)
+            run_verbose(["rsync", "-a",
+                         "/boot/efi/EFI/", f"{tmpefidir}/EFI/"])
+
+            # Grab all the contents from the installer EFI dir from the configs
+            run_verbose(["rsync", "-a",
+                         "src/config/installer/EFI/", f"{tmpefidir}/EFI/"])
+
+            # Create the efiboot.img file (a fat filesystem) in the images/ dir
+            # Note: virt-make-fs lets us do this as non-root
+            efibootfile = os.path.join(tmpisoimages, 'efiboot.img')
+            run_verbose(['virt-make-fs', '--type=vfat',
+                         tmpefidir, efibootfile])
+
+        genisoargs += ['-eltorito-alt-boot',
+                       '-efi-boot', 'images/efiboot.img',
+                       '-no-emul-boot']
+
+    # Define inputs and outputs
+    genisoargs += ['-o', tmpisofile, tmpisoroot]
+
+    run_verbose(genisoargs)
     checksum = sha256sum_file(tmpisofile)
     buildmeta['images']['iso'] = {
         'path': iso_name,
