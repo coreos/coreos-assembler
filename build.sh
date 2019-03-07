@@ -82,7 +82,7 @@ install_rpms() {
 
     # shellcheck source=src/cmdlib.sh
     . "${srcdir}/cmdlib.sh"
-    depcheck "${deps}"
+    depcheck "${deps} ${archdeps}"
 }
 
 _prep_make_and_make_install() {
