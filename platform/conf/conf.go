@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/url"
+	"os"
 	"strings"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
@@ -34,6 +36,7 @@ import (
 	v23 "github.com/coreos/ignition/config/v2_3"
 	v23types "github.com/coreos/ignition/config/v2_3/types"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/crypto/ssh/agent"
 )
 
@@ -290,6 +293,81 @@ func (c *Conf) WriteFile(name string) error {
 // Bytes returns the serialized userdata in Conf.
 func (c *Conf) Bytes() []byte {
 	return []byte(c.String())
+}
+
+func (c *Conf) addFileV2(path, filesystem, contents string, mode int) {
+	u, err := url.Parse(dataurl.EncodeBytes([]byte(contents)))
+	if err != nil {
+		plog.Warningf("parsing dataurl contents: %v", err)
+		return
+	}
+	c.ignitionV2.Storage.Files = append(c.ignitionV2.Storage.Files, v2types.File{
+		Filesystem: filesystem,
+		Path:       v2types.Path(path),
+		Contents: v2types.FileContents{
+			Source: v2types.Url(*u),
+		},
+		Mode: v2types.FileMode(os.FileMode(mode)),
+	})
+}
+
+func (c *Conf) addFileV21(path, filesystem, contents string, mode int) {
+	c.ignitionV21.Storage.Files = append(c.ignitionV21.Storage.Files, v21types.File{
+		Node: v21types.Node{
+			Filesystem: filesystem,
+			Path:       path,
+		},
+		FileEmbedded1: v21types.FileEmbedded1{
+			Contents: v21types.FileContents{
+				Source: dataurl.EncodeBytes([]byte(contents)),
+			},
+			Mode: mode,
+		},
+	})
+}
+
+func (c *Conf) addFileV22(path, filesystem, contents string, mode int) {
+	c.ignitionV22.Storage.Files = append(c.ignitionV22.Storage.Files, v22types.File{
+		Node: v22types.Node{
+			Filesystem: filesystem,
+			Path:       path,
+		},
+		FileEmbedded1: v22types.FileEmbedded1{
+			Contents: v22types.FileContents{
+				Source: dataurl.EncodeBytes([]byte(contents)),
+			},
+			Mode: &mode,
+		},
+	})
+}
+
+func (c *Conf) addFileV23(path, filesystem, contents string, mode int) {
+	c.ignitionV23.Storage.Files = append(c.ignitionV23.Storage.Files, v23types.File{
+		Node: v23types.Node{
+			Filesystem: filesystem,
+			Path:       path,
+		},
+		FileEmbedded1: v23types.FileEmbedded1{
+			Contents: v23types.FileContents{
+				Source: dataurl.EncodeBytes([]byte(contents)),
+			},
+			Mode: &mode,
+		},
+	})
+}
+
+func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
+	if c.ignitionV2 != nil {
+		c.addFileV2(path, filesystem, contents, mode)
+	} else if c.ignitionV21 != nil {
+		c.addFileV21(path, filesystem, contents, mode)
+	} else if c.ignitionV22 != nil {
+		c.addFileV22(path, filesystem, contents, mode)
+	} else if c.ignitionV23 != nil {
+		c.addFileV23(path, filesystem, contents, mode)
+	} else if c.ignitionV1 != nil || c.cloudconfig != nil {
+		panic("conf: AddFile does not support ignition v1 or cloudconfig")
+	}
 }
 
 func (c *Conf) addSystemdUnitV1(name, contents string, enable bool) {

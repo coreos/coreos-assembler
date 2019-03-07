@@ -162,6 +162,28 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 		conf.CopyKeys(keys)
 	}
 
+	if bc.bf.baseopts.OSContainer != "" {
+		if bc.Distribution() != "rhcos" {
+			return nil, fmt.Errorf("oscontainer is only supported on the rhcos distribution")
+		}
+		conf.AddSystemdUnitDropin("pivot.service", "00-before-sshd.conf", `[Unit]
+Before=sshd.service`)
+		conf.AddSystemdUnit("pivot.service", "", true)
+		conf.AddSystemdUnit("pivot-write-reboot-needed.service", `[Unit]
+Description=Touch /run/pivot/reboot-needed
+ConditionFirstBoot=true
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mkdir -p /run/pivot
+ExecStart=/usr/bin/touch /run/pivot/reboot-needed
+
+[Install]
+WantedBy=multi-user.target
+`, true)
+		conf.AddFile("/etc/pivot/image-pullspec", "root", bc.bf.baseopts.OSContainer, 0644)
+	}
+
 	return conf, nil
 }
 
