@@ -214,13 +214,16 @@ Currently, the assembler only takes two input files that are from `src/config`:
    down to a list of RPMs and a set of rpm-md repositories
    they come from.  It also supports `postprocess` to make
    arbitrary changes.  See the [upstream docs](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/treefile.md).
- - `image.ks`: An [Anaconda  Kickstart](https://pykickstart.readthedocs.io/en/latest/)
-   file.  Use this to define the base disk image output.
+ - `image.yaml`: At present, this YAML file may only contain a `size` member in GB.
+   It's likely in the future we will extend this to support e.g. a separate `/var`
+   partition or configuring the filesystem types.  If you want to do anything like
+   that today it requires forking the assembler and rebuilding it.
+   See the fedora-coreos-config for an example.
 
-Let's try editing the file `src/config/image.ks`.  Change the root
-storage line `logvol /` for example.  Rerun `cosa build`, and notice
-that the OSTree commit didn't change, but a new image is generated in `builds`.
-When you `cosa run`, you'll get it.
+First you can expand the size of the image; edit `src/config/image.yaml` and
+e.g. change `8` to `9`. Rerun `cosa build`, and notice that the OSTree commit
+didn't change, but a new image is generated in `builds`. When you `cosa run`,
+you'll get it.
 
 Another thing to try is editing `src/config/manifest.yaml` - add or
 remove entries from `packages`.  You can also add local rpm-md `file:///`
