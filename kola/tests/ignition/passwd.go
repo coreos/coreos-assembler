@@ -26,7 +26,7 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v1.groups",
+		Name:        "cl.ignition.v1.groups",
 		Run:         groups,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
@@ -51,7 +51,7 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"cl", "rhcos", "fcos"},
+		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.groups",
@@ -148,34 +148,6 @@ func init() {
 		             }
 		           }`),
 		Distros: []string{"cl"},
-	})
-	register.Register(&register.Test{
-		Name:        "rhcos.ignition.v1.users",
-		Run:         usersRhcos,
-		ClusterSize: 1,
-		UserData: conf.Ignition(`{
-		             "ignitionVersion": 1,
-		             "passwd": {
-		               "users": [
-		                 {
-		                   "name": "core",
-		                   "passwordHash": "foobar"
-		                 },
-		                 {
-		                   "name": "user1",
-		                   "create": {}
-		                 },
-		                 {
-		                   "name": "user2",
-		                   "create": {
-		                     "uid": 1010,
-		                     "groups": [ "sudo" ]
-		                   }
-		                 }
-		               ]
-		             }
-		           }`),
-		Distros: []string{"rhcos", "fcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "rhcos.ignition.v2.users",

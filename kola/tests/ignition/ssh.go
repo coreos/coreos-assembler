@@ -23,13 +23,13 @@ func init() {
 	// verify that SSH key injection works correctly through Ignition,
 	// without injecting via platform metadata
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v1.ssh.key",
+		Name:             "cl.ignition.v1.ssh.key",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
-		Distros:          []string{"cl", "rhcos"},
+		Distros:          []string{"cl"},
 	})
 	register.Register(&register.Test{
 		Name:             "coreos.ignition.v2.ssh.key",

@@ -79,7 +79,7 @@ func getOstreeAdminStatus(c cluster.TestCluster, m platform.Machine) (ostreeAdmi
 	}
 
 	oasSplit := strings.Split(string(oasOutput), "\n")
-	if len(oasSplit) != 3 {
+	if len(oasSplit) < 3 {
 		return oaStatus, fmt.Errorf(`Unexpected output from "ostree admin status": %v`, string(oasOutput))
 	}
 

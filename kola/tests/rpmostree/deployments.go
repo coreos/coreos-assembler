@@ -117,9 +117,9 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 			c.Fatal(err)
 		}
 
-		// should have two deployments
-		if len(postUpgradeStatus.Deployments) != 2 {
-			c.Fatalf("Expected two deployments; found %d deployments", len(postUpgradeStatus.Deployments))
+		// should have an additional deployment
+		if len(postUpgradeStatus.Deployments) != len(originalStatus.Deployments)+1 {
+			c.Fatalf("Expected %d deployments; found %d deployments", len(originalStatus.Deployments)+1, len(postUpgradeStatus.Deployments))
 		}
 
 		// reboot into new deployment
@@ -134,9 +134,9 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 			c.Fatal(err)
 		}
 
-		// should still have 2 deployments
+		// should have 2 deployments, the previously booted deployment and the test deployment due to rpm-ostree pruning
 		if len(postRebootStatus.Deployments) != 2 {
-			c.Fatalf("Expected two deployments; found %d deployment", len(postRebootStatus.Deployments))
+			c.Fatalf("Expected %d deployments; found %d deployment", 2, len(postRebootStatus.Deployments))
 		}
 
 		// origin should be new branch
@@ -176,7 +176,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 
 		// still 2 deployments...
 		if len(rollbackStatus.Deployments) != 2 {
-			c.Fatalf("Expected two deployments; found %d deployments", len(rollbackStatus.Deployments))
+			c.Fatalf("Expected %d deployments; found %d deployments", 2, len(rollbackStatus.Deployments))
 		}
 
 		// validate we are back to the original deployment by comparing the
@@ -291,7 +291,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 		// check the metadata to make sure everything went well
 		if len(postUninstallStatus.Deployments) != 2 {
-			c.Fatal("Expected two deployments, got %d", len(postUninstallStatus.Deployments))
+			c.Fatal("Expected %d deployments, got %d", 2, len(postUninstallStatus.Deployments))
 		}
 
 		if postUninstallStatus.Deployments[0].Checksum != originalCsum {
