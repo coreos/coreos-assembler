@@ -10,6 +10,7 @@ RUN ./build.sh install_rpms
 COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info
 RUN ./build.sh install_anaconda
+RUN git submodule update --init
 RUN ./build.sh make_and_makeinstall
 RUN ./build.sh configure_user
 
