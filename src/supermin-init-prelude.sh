@@ -3,6 +3,10 @@ mount -t proc /proc /proc
 mount -t sysfs /sys /sys
 mount -t devtmpfs devtmpfs /dev
 
+# need /dev/shm for podman
+mkdir -p /dev/shm
+mount -t tmpfs tmpfs /dev/shm
+
 # load selinux policy
 LANG=C /sbin/load_policy  -i
 
