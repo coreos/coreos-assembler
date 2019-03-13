@@ -59,6 +59,9 @@ func init() {
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Specify multiple times for multiple units.")
 	sv(&kola.UpdatePayloadFile, "update-payload", "", "Path to an update payload that should be made available to tests")
 
+	// rhcos-specific options
+	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
+
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
 	if defaultRegion == "" {
@@ -165,6 +168,10 @@ func syncOptions() error {
 			Name:     "10-debug.conf",
 			Contents: "[Service]\nEnvironment=SYSTEMD_LOG_LEVEL=debug",
 		})
+	}
+
+	if kola.Options.OSContainer != "" && kola.Options.Distribution != "rhcos" {
+		return fmt.Errorf("oscontainer is only supported on rhcos")
 	}
 
 	return nil

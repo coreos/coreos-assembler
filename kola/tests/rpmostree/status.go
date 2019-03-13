@@ -78,14 +78,13 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 		c.Fatalf(`The "rpm-ostreed" service is not active: got %v`, string(statusOut))
 	}
 
-	// should only have one deployment
-	if len(status.Deployments) != 1 {
-		c.Fatalf("Expected one deployment; found %d deployments", len(status.Deployments))
+	// a deployment should be booted (duh!)
+	var deploymentBooted bool
+	for _, deployment := range status.Deployments {
+		deploymentBooted = deploymentBooted || deployment.Booted
 	}
-
-	// deployment should be booted (duh!)
-	if !status.Deployments[0].Booted {
-		c.Fatalf(`Deployment does not report as being booted`)
+	if !deploymentBooted {
+		c.Fatalf(`No deployment reports as being booted`)
 	}
 
 	// let's validate that the version from the JSON matches the normal output
@@ -107,7 +106,11 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 		c.Fatalf(`Unable to determine version from "rpm-ostree status"`)
 	}
 
-	if rpmOstreeVersion != status.Deployments[0].Version {
-		c.Fatalf(`The version numbers did not match -> from JSON: %q; from stdout: %q`, status.Deployments[0].Version, rpmOstreeVersion)
+	var deployedVersionFound bool
+	for _, deployment := range status.Deployments {
+		deployedVersionFound = deployedVersionFound || (deployment.Version == rpmOstreeVersion)
+	}
+	if !deployedVersionFound {
+		c.Fatalf(`The version reported by stdout %q was not found in JSON output`, rpmOstreeVersion)
 	}
 }
