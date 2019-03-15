@@ -142,13 +142,14 @@ prepare_build() {
     # Also grab rojig summary for image upload descriptions
     name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
     summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
+    license=$(jq -r '.rojig.license' < "${manifest_tmp_json}")
     ref=$(jq -r '.ref' < "${manifest_tmp_json}")
     ref_is_temp=""
     if [ "${ref}" = "null" ]; then
         ref="tmpref-${name}"
         ref_is_temp=1
     fi
-    export name ref summary
+    export name ref summary license
     rm -f "${manifest_tmp_json}"
 
     # This dir is no longer used
@@ -182,7 +183,7 @@ runcompose() {
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
-    if [ -d "${overridesdir}"/rpm ] || [ -n "${ref_is_temp}" ]; then
+    if [ -d "${overridesdir}"/rpm ] || [ -n "${ref_is_temp}" ] || [ -d "${configdir}/overlay" ]; then
         mkdir "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${workdir}/src/config/manifest.yaml
@@ -195,6 +196,14 @@ EOF
     fi
     if [ -n "${ref_is_temp}" ]; then
         echo 'ref: "'"${ref}"'"' >> "${override_manifest}"
+    fi
+    if [ -d "${configdir}/overlay" ]; then
+        cat >> "${override_manifest}" <<EOF
+packages:
+  - ${name}-overlay
+EOF
+        mkdir tmp/overlay-build
+        (cd tmp/overlay-build && "${DIR}"/build_rpm_from_dir "${configdir}/overlay" "${name}-overlay" "${workdir}/overrides/rpm")
     fi
     if [ -d "${overridesdir}"/rpm ]; then
         (cd "${overridesdir}"/rpm && createrepo_c .)
