@@ -124,12 +124,12 @@ install_anaconda() {
     # Overriding install URL
     if [ -n "${INSTALLER_URL_OVERRIDE-}" ]; then
         INSTALLER="${INSTALLER_URL_OVERRIDE}"
-        info "Overriding the install URL with contents of INSTALLER_URL_OVERRIDE"
+        echo "info: Overriding the install URL with contents of INSTALLER_URL_OVERRIDE"
     fi
     # Overriding install checksum URL
     if [ -n "${INSTALLER_CHECKSUM_URL_OVERRIDE-}" ]; then
         INSTALLER_CHECKSUM="${INSTALLER_CHECKSUM_URL_OVERRIDE}"
-        info "Overriding the install checksum URL with contents of INSTALLER_CHECKSUM_URL_OVERRIDE"
+        echo "info: Overriding the install checksum URL with contents of INSTALLER_CHECKSUM_URL_OVERRIDE"
     fi
 
     installer_bn=$(basename "${INSTALLER}")
