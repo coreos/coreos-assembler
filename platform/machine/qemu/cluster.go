@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -41,15 +40,11 @@ type Cluster struct {
 	*local.LocalCluster
 }
 
-type MachineOptions struct {
-	AdditionalDisks []Disk
-}
-
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
-	return qc.NewMachineWithOptions(userdata, MachineOptions{})
+	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{})
 }
 
-func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options MachineOptions) (platform.Machine, error) {
+func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
 	id := uuid.New()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
@@ -99,86 +94,15 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 		consolePath: filepath.Join(dir, "console.txt"),
 	}
 
-	var qmCmd []string
-	combo := runtime.GOARCH + "--" + qc.flight.opts.Board
-	switch combo {
-	case "amd64--amd64-usr":
-		qmCmd = []string{
-			"qemu-system-x86_64",
-			"-machine", "accel=kvm",
-			"-cpu", "host",
-			"-m", "1024",
-		}
-	case "amd64--arm64-usr":
-		qmCmd = []string{
-			"qemu-system-aarch64",
-			"-machine", "virt",
-			"-cpu", "cortex-a57",
-			"-m", "2048",
-		}
-	case "arm64--amd64-usr":
-		qmCmd = []string{
-			"qemu-system-x86_64",
-			"-machine", "pc-q35-2.8",
-			"-cpu", "kvm64",
-			"-m", "1024",
-		}
-	case "arm64--arm64-usr":
-		qmCmd = []string{
-			"qemu-system-aarch64",
-			"-machine", "virt,accel=kvm,gic-version=3",
-			"-cpu", "host",
-			"-m", "2048",
-		}
-	default:
-		panic("host-guest combo not supported: " + combo)
+	qmCmd, extraFiles, err := platform.CreateQEMUCommand(qc.flight.opts.Board, qm.id, qc.flight.opts.BIOSImage, qm.consolePath, confPath, qc.flight.diskImagePath, conf.IsIgnition(), options)
+	if err != nil {
+		return nil, err
 	}
 
+	for _, file := range extraFiles {
+		defer file.Close()
+	}
 	qmMac := qm.netif.HardwareAddr.String()
-	qmCmd = append(qmCmd,
-		"-bios", qc.flight.opts.BIOSImage,
-		"-smp", "1",
-		"-uuid", qm.id,
-		"-display", "none",
-		"-chardev", "file,id=log,path="+qm.consolePath,
-		"-serial", "chardev:log",
-	)
-
-	if conf.IsIgnition() {
-		qmCmd = append(qmCmd,
-			"-fw_cfg", "name=opt/com.coreos/config,file="+confPath)
-	} else {
-		qmCmd = append(qmCmd,
-			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+confPath,
-			"-device", qc.virtio("9p", "fsdev=cfg,mount_tag=config-2"))
-	}
-
-	allDisks := append([]Disk{
-		{
-			BackingFile: qc.flight.diskImagePath,
-			DeviceOpts:  primaryDiskOptions,
-		},
-	}, options.AdditionalDisks...)
-
-	var extraFiles []*os.File
-	fdnum := 3 // first additional file starts at position 3
-	fdset := 1
-
-	for _, disk := range allDisks {
-		optionsDiskFile, err := disk.setupFile()
-		if err != nil {
-			return nil, err
-		}
-		defer optionsDiskFile.Close()
-		extraFiles = append(extraFiles, optionsDiskFile)
-
-		id := fmt.Sprintf("d%d", fdnum)
-		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
-			"-device", qc.virtio("blk", fmt.Sprintf("drive=%s%s", id, disk.getOpts())))
-		fdnum += 1
-		fdset += 1
-	}
 
 	qc.mu.Lock()
 
@@ -188,12 +112,13 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 		return nil, err
 	}
 	defer tap.Close()
+	fdnum := 3 + len(extraFiles)
 	qmCmd = append(qmCmd, "-netdev", fmt.Sprintf("tap,id=tap,fd=%d", fdnum),
-		"-device", qc.virtio("net", "netdev=tap,mac="+qmMac))
+		"-device", platform.Virtio(qc.flight.opts.Board, "net", "netdev=tap,mac="+qmMac))
 	fdnum += 1
 	extraFiles = append(extraFiles, tap.File)
 
-	plog.Debugf("NewMachine: (%s) %q", combo, qmCmd)
+	plog.Debugf("NewMachine: %q", qmCmd)
 
 	qm.qemu = qm.qc.NewCommand(qmCmd[0], qmCmd[1:]...)
 
@@ -216,21 +141,6 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options Machin
 	qc.AddMach(qm)
 
 	return qm, nil
-}
-
-// The virtio device name differs between machine types but otherwise
-// configuration is the same. Use this to help construct device args.
-func (qc *Cluster) virtio(device, args string) string {
-	var suffix string
-	switch qc.flight.opts.Board {
-	case "amd64-usr":
-		suffix = "pci"
-	case "arm64-usr":
-		suffix = "device"
-	default:
-		panic(qc.flight.opts.Board)
-	}
-	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
 func (qc *Cluster) Destroy() {

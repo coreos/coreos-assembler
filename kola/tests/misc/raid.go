@@ -105,8 +105,8 @@ systemd:
 }
 
 func RootOnRaid(c cluster.TestCluster) {
-	options := qemu.MachineOptions{
-		AdditionalDisks: []qemu.Disk{
+	options := platform.MachineOptions{
+		AdditionalDisks: []platform.Disk{
 			{Size: "520M", DeviceOpts: []string{"serial=secondary"}},
 		},
 	}
