@@ -267,7 +267,7 @@ try:
         cleanup_argv.append('--skip-partition-fixups')
     run_sync_verbose(cleanup_argv)
 finally:
-    subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', domain])
+    subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', '--nvram', domain])
     if tail_proc is not None:
         tail_proc.terminate()
     if http_proc is not None:
