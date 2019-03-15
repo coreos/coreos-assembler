@@ -32,7 +32,8 @@ hostname: "core1"
 write_files:
   - path: "/foo"
     content: bar`),
-		Distros: []string{"cl"},
+		Distros:          []string{"cl"},
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 	register.Register(&register.Test{
 		Run:         CloudInitScript,
@@ -47,7 +48,8 @@ EOF
 chown -R core.core ~core/.ssh
 chmod 700 ~core/.ssh
 chmod 600 ~core/.ssh/authorized_keys`),
-		Distros: []string{"cl"},
+		Distros:          []string{"cl"},
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 }
 

@@ -59,6 +59,9 @@ func init() {
 		ClusterSize: 2,
 		Name:        "docker.network",
 		Distros:     []string{"cl"},
+
+		// qemu-unpriv machines cannot communicate
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 	register.Register(&register.Test{
 		Run:         dockerOldClient,
@@ -96,6 +99,9 @@ storage:
 passwd:
   users:
   - name: dockremap`),
+
+		// qemu-unpriv machines cannot communicate
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 
 	// This test covers all functionality that should be quick to run and can be
@@ -206,6 +212,12 @@ systemd:
   units:
    - name: docker.service
      enable: true`),
+
+		// https://github.com/coreos/mantle/issues/999
+		// On the qemu-unpriv platform the DHCP provides no data, pre-systemd 241 the DHCP server sending
+		// no routes to the link to spin in the configuring state. docker.service pulls in the network-online
+		// target which causes the basic machine checks to fail
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 }
 
