@@ -113,6 +113,16 @@ elif args.kickstart:
 else:
     raise SystemExit("Either --kickstart or --image-conf must be specified")
 
+# To support different distro builds using Fedora anaconda,
+# installclass must be explicit for anaconda to find the correct directory.
+if subprocess.call(['ostree', f"--repo={args.ostree_repo}", 'ls', args.ostree_ref, "/usr/lib/ostree-boot/efi/EFI/redhat"], stderr=subprocess.DEVNULL) == 0:
+    print("Detected /usr/lib/ostree-boot/efi/EFI/redhat, adding Red Hat Enterprise Linux installclass.")
+    ks_tmp.write("""
+    %anaconda
+    installclass --name="Red Hat Enterprise Linux"
+    %end
+    """)
+
 # This is an implementation detail of https://github.com/coreos/ignition-dracut
 # So we hardcode it here.
 # See: https://github.com/coreos/ignition-dracut/pull/12
