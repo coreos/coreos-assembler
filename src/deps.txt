@@ -10,8 +10,7 @@ dumb-init
 
 # For composes
 rpm-ostree createrepo_c openssh-clients
-#FEDORA dnf-utils
-#EL7 yum-utils
+dnf-utils
 
 # For generating ISO images
 genisoimage
@@ -26,19 +25,14 @@ make git rpm-build
 
 # virt-install dependencies
 libvirt libguestfs-tools /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
-#FEDORA qemu-kvm
-#EL7 qemu-kvm-rhev
+qemu-kvm
 
 # And we process kickstarts
 /usr/bin/ksflatten
 
-# scl and python36 For EL7
-#EL7 scl-utils rh-python36 rh-python36-PyYAML
-
 # ostree-releng-scripts dependencies
 rsync
-#FEDORA python2-gobject-base python3-gobject-base
-#EL7 python-gobject
+python2-gobject-base python3-gobject-base
 
 # To support recursive containerization and manipulating images
 podman buildah skopeo
@@ -50,7 +44,7 @@ jq awscli
 ignition
 
 # shellcheck for test
-#FEDORA ShellCheck
+ShellCheck
 
 # for grub install when creating images without anaconda
 grub2
