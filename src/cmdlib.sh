@@ -2,7 +2,19 @@
 set -euo pipefail
 # Shared shell script library
 
-DIR=$(dirname "$0")
+# Set the workdir default to the current path.
+workdir="${PWD}"
+export workdir
+
+# Prevent this script from being sourced multiple times.
+export COSA_CMDLIB_SOURCED="${COSA_CMDLIB_SOURCED:-0}"
+if [ "${COSA_CMDLIB_SOURCED}" == 1 ]; then
+    return
+fi
+
+# shellcheck disable=SC2086
+COSA_DIR="${COSA_DIR:-$(dirname $0)}"
+COSA_VM_DEPS="${COSA_DIR}/vmdeps.txt"
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
 # Set PYTHONUNBUFFERED=1 so that we get unbuffered output. We should
@@ -51,6 +63,38 @@ has_privileges() {
         fi
     fi
     [ ${_privileged} == 1 ]
+}
+
+# requires_vm checks if the target command should run in a Supermin VM.
+# To control the behavior, use the FORCE_VM envVar, where:
+#    0 uses the default logic
+#   -1 will cause this to report false
+#    1 will report true
+requires_vm() {
+    local target
+    local vm_required
+    vm_required="${FORCE_VM:-0}"
+    target="${1:?must call requires_vm with target name}"; shift;
+
+    if [[ "${target}" == "oscontainer" ]] && ! has_privileges; then
+        vm_required=1
+    fi
+
+    # If `--help` is in the arguments then skip running in a vm.
+    if [ "$#" -ne 0 ]; then
+        case ${1:-} in
+               --help) vm_required=0;;
+            --workdir) export workdir=${1:-}; shift;;
+                    *) shift;;
+        esac
+    fi
+
+    if [[ "${FORCE_VM:-0}" -eq -1 && "${vm_required}" -eq 1 ]]; then
+        info "${target} under these runtime conditions should be run in Supermin."
+        info "Please consider unsetting FORCE_VM if this command fails."
+        vm_required=0
+    fi
+    [ ${vm_required} == 1 ]
 }
 
 depcheck() {
@@ -203,7 +247,7 @@ packages:
   - ${name}-overlay
 EOF
         mkdir tmp/overlay-build
-        (cd tmp/overlay-build && "${DIR}"/build_rpm_from_dir "${configdir}/overlay" "${name}-overlay" "${workdir}/overrides/rpm")
+        (cd tmp/overlay-build && "${COSA_DIR}"/build_rpm_from_dir "${configdir}/overlay" "${name}-overlay" "${workdir}/overrides/rpm")
     fi
     if [ -d "${overridesdir}"/rpm ]; then
         (cd "${overridesdir}"/rpm && createrepo_c .)
@@ -261,9 +305,7 @@ runvm() {
     local rpms
     # then add all the base deps
     # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
-    [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
-    [ -n "${ISEL}" ]     && filter='^#EL7 '
-    rpms=$(sed "s/${filter}//" "${DIR}"/vmdeps.txt | grep -v '^#')
+    rpms=$(grep -v '^#' "${COSA_VM_DEPS}")
     # shellcheck disable=SC2086
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
 
@@ -285,7 +327,7 @@ export USER=$(id -u)
 # ensure the user of files created do not have root ownership
 trap 'chown -h -R ${USER}:${USER} ${workdir}' EXIT
 
-$(cat "${DIR}"/supermin-init-prelude.sh)
+$(cat "${COSA_DIR}"/supermin-init-prelude.sh)
 rc=0
 sh ${TMPDIR}/cmd.sh || rc=\$?
 echo \$rc > ${workdir}/tmp/rc

@@ -34,6 +34,12 @@ if [ -e /sys/fs/selinux/status ]; then
 fi
 
 cmd=${1:-}
+rn=$(readlink -f "${0}")
+COSA_DIR=$(dirname "${rn}")
+export COSA_DIR
+# shellcheck source=src/cmdlib.sh
+. "${COSA_DIR}"/cmdlib.sh
+
 # commands we'd expect to use in the local dev path
 build_commands="init fetch build run prune clean"
 # commands more likely to be used in a prod pipeline only
@@ -67,6 +73,11 @@ shift
 
 target=/usr/lib/coreos-assembler/cmd-${cmd}
 if test -x "${target}"; then
+    if requires_vm "${cmd}" "$@"; then
+        info "environment or runtime parameter requires ${cmd} to be executed in supermin"
+        export COSA_VM_DEPS="${COSA_DIR}/deps.txt"
+        runvm "${target}" "${@}"
+    fi
     exec "${target}" "$@"
 fi
 

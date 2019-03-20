@@ -29,7 +29,7 @@ if [ -L "${workdir}"/src/config ]; then
     mkdir -p "$(readlink "${workdir}"/src/config)"
     mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
-mkdir -p "${workdir}"/cache /host/container-work
+mkdir -p "${workdir}"/cache
 mount /dev/sdb1 "${workdir}"/cache
 
 if [ -f "${workdir}/tmp/supermin/supermin.env" ]; then
