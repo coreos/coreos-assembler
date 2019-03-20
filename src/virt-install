@@ -20,7 +20,7 @@ parser.add_argument("--dest", help="Destination disk",
                     action='store', required=True)
 parser.add_argument("--create-disk", help="Automatically create disk as qcow2, parsing kickstart for size",
                     action='store_true')
-parser.add_argument("--image-config", help="coreos-assembler image.yaml",
+parser.add_argument("--configdir", help="coreos-assembler configdir",
                     action='store', required=True)
 parser.add_argument("--variant", help="Use an internal (kickstart) config",
                     choices=('metal', 'metal-uefi', 'cloud'), default=None)
@@ -101,7 +101,7 @@ if args.variant is not None:
 with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
     shutil.copyfileobj(basef, ks_tmp)
 image_conf = None
-with open(args.image_config) as f:
+with open(args.configdir + '/image.yaml') as f:
     image_conf = yaml.safe_load(f)
 disk_size = int(image_conf['size'])
 
@@ -252,6 +252,14 @@ try:
     # to ensure we fully control the code.
     cleanup_argv = ['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest]
     run_sync_verbose(cleanup_argv)
+
+    # This one is part of the "API" we provide to config repositories.  At least
+    # RHEL CoreOS will use it to change the OS to appear to have been provisioned
+    # from an oscontainer.
+    config_image_post = image_conf.get("postprocess-script")
+    if config_image_post is not None:
+        run_sync_verbose([os.path.join(args.configdir, config_image_post), args.dest])
+
 finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', '--nvram', domain])
     if tail_proc is not None:
