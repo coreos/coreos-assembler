@@ -244,7 +244,7 @@ run_virtinstall() {
                                            --ostree-remote="${name}" --ostree-stateroot="${name}" \
                                            --ostree-ref="${ref:-${commit}}" \
                                            --location "${iso_location}" \
-                                           --image-config "${image_input}" \
+                                           --configdir="${configdir}" \
                                            --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
     mv "${tmpdest}" "${dest}"
 }
