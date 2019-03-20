@@ -10,19 +10,12 @@ dn=$(dirname "$0")
 
 src="$1"
 shift
-skip_partition_fixups=
-if [ "${1:-}" = "--skip-partition-fixups" ]; then
-   skip_partition_fixups=1
-   shift
-fi
 
 set -x
-if [ "${skip_partition_fixups}" != 1 ]; then
-    coreos_gf_run "${src}"
-    # We don't have a way to do this with Anaconda/kickstart right now.
-    # This bootstraps us to be able to do all of the mounts.
-    coreos_gf set-label /dev/sda2 boot
-fi
+coreos_gf_run "${src}"
+# We don't have a way to do this with Anaconda/kickstart right now.
+# This bootstraps us to be able to do all of the mounts.
+coreos_gf set-label /dev/sda2 boot
 coreos_gf_run_mount "${src}"
 
 # Both of these are written by Anaconda
