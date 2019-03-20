@@ -21,11 +21,9 @@ parser.add_argument("--dest", help="Destination disk",
 parser.add_argument("--create-disk", help="Automatically create disk as qcow2, parsing kickstart for size",
                     action='store_true')
 parser.add_argument("--image-config", help="coreos-assembler image.yaml",
-                    action='store')
+                    action='store', required=True)
 parser.add_argument("--variant", help="Use an internal (kickstart) config",
                     choices=('metal', 'metal-uefi', 'cloud'), default=None)
-parser.add_argument("--kickstart", help="Kickstart path",
-                    action='store')
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
                     action='store')
 parser.add_argument("--location", help="Installer location",
@@ -93,7 +91,6 @@ else:
 disk_size = None
 
 if args.variant is not None:
-    assert args.kickstart is None
     if args.variant == 'metal-uefi':
         variant_ks = 'metal'
     else:
@@ -101,17 +98,12 @@ if args.variant is not None:
     with open(f'/usr/lib/coreos-assembler/image-{variant_ks}.ks') as f:
         shutil.copyfileobj(f, ks_tmp)
 
-if args.image_config:
-    with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
-        shutil.copyfileobj(basef, ks_tmp)
-    image_conf = None
-    with open(args.image_config) as f:
-        image_conf = yaml.safe_load(f)
-    disk_size = int(image_conf['size'])
-elif args.kickstart:
-    run_sync_verbose(['ksflatten', '-c', args.kickstart], stdout=ks_tmp)
-else:
-    raise SystemExit("Either --kickstart or --image-conf must be specified")
+with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
+    shutil.copyfileobj(basef, ks_tmp)
+image_conf = None
+with open(args.image_config) as f:
+    image_conf = yaml.safe_load(f)
+disk_size = int(image_conf['size'])
 
 # To support different distro builds using Fedora anaconda,
 # installclass must be explicit for anaconda to find the correct directory.
@@ -172,20 +164,6 @@ if args.delete_ostree_ref:
 ostree refs --delete {args.ostree_remote}:{args.ostree_ref}
 %end
 """)
-
-# This is an "extension" to kickstart files that we implement as a comment.
-if args.create_disk and args.kickstart:
-    magic_virt_install_size_str = '#--coreos-virt-install-disk-size-gb:'
-    disk_re = re.compile(r'^' + magic_virt_install_size_str + ' *([0-9]+)$')
-    with open(args.kickstart) as f:
-        for line in f:
-            m = disk_re.search(line)
-            if not m:
-                continue
-            disk_size = int(m.group(1))
-            break
-    if disk_size is None:
-        fatal("--create-disk specified, but failed to find '{}' in kickstart".format(magic_virt_install_size_str))
 
 if args.create_disk:
     if args.variant in ('metal', 'metal-uefi'):
@@ -273,8 +251,6 @@ try:
     # And strip out all of the Anaconda stuff in /var; this uses libguestfs
     # to ensure we fully control the code.
     cleanup_argv = ['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest]
-    if args.image_config is None:
-        cleanup_argv.append('--skip-partition-fixups')
     run_sync_verbose(cleanup_argv)
 finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', '--nvram', domain])

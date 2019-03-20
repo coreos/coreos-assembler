@@ -106,22 +106,14 @@ sha256sum_str() {
     sha256sum | cut -f 1 -d ' '
 }
 
-# Calculate kickstart checksum now and gather previous image build variables if any
-image_config_path="${configdir:?}"/image.yaml
-image_config=true
-if [ -f "${image_config_path}" ]; then
-    image_input="${image_config_path}"
-else
-    ks_path="${configdir:?}"/image.ks
-    if [ -f "${ks_path}" ]; then
-        echo 1>&2 "WARNING: Kickstart support is deprecated; migrate to image.yaml"
-        echo "Sleeping for 10 seconds."
-        sleep 10
-        image_input="${configdir:?}"/image.ks
-        image_config=false
-    else
-        fatal "Failed to find image.yaml in configdir"
-    fi
+# Calculate image input checksum now and gather previous image build variables if any
+ks_path="${configdir:?}"/image.ks
+if [ -f "${ks_path}" ]; then
+    fatal "Kickstart support was removed; migrate to image.yaml"
+fi
+image_input="${configdir:?}"/image.yaml
+if ! [ -f "${image_input}" ]; then
+    fatal "Failed to find ${image_input}"
 fi
 image_config_checksum=$(< "${image_input}" sha256sum_str)
 if [ -n "${previous_build}" ]; then
@@ -231,12 +223,6 @@ if [ -n "${ISFEDORA}" ]; then
     extraargs="${extraargs} --console-log-file ${PWD}/install.log --logs ${PWD}/tmp/anaconda"
 fi
 
-if ${image_config}; then
-    extraargs="${extraargs} --image-config ${image_input}"
-else
-    extraargs="${extraargs} --kickstart ${image_input}"
-fi
-
 if [ -n "${ref_is_temp}" ]; then
     extraargs="${extraargs} --delete-ostree-ref"
 fi
@@ -258,6 +244,7 @@ run_virtinstall() {
                                            --ostree-remote="${name}" --ostree-stateroot="${name}" \
                                            --ostree-ref="${ref:-${commit}}" \
                                            --location "${iso_location}" \
+                                           --image-config "${image_input}" \
                                            --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
     mv "${tmpdest}" "${dest}"
 }
@@ -267,9 +254,7 @@ build_cloud_base() {
         return
     fi
     local args=""
-    if ${image_config}; then
-        args="$args --variant=cloud"
-    fi
+    args="$args --variant=cloud"
     # shellcheck disable=SC2046 disable=SC2086
     run_virtinstall "${PWD}"/"${img_base}" $args
 }
