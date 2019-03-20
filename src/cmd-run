@@ -125,14 +125,6 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
         "version": "2.2.0"
     },
     "networkd": {},
-    "passwd": {
-        "users": [
-            {
-                "groups": ["sudo"],
-                "name": "core"
-            }
-        ]
-    },
     "storage": {
         "files": [
             {
@@ -150,7 +142,7 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
                 "dropins": [
                     {
                         "name": "autologin-core.conf",
-                        "contents": "[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
+                        "contents": "[Unit]\\nAfter=coreos-useradd-core.service\n[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
                     }
                 ]
             },
