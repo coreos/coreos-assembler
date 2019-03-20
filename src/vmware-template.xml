@@ -87,9 +87,14 @@
       <Vendor>{vsphere_product_vendor_name}</Vendor>
       <Version>{vsphere_product_version}</Version>
       <Property ovf:userConfigurable="true" ovf:type="string"
-                ovf:key="guestinfo.coreos.config.data" ovf:value="">
-        <Label>CoreOS config data</Label>
-        <Description>Inline cloud-config data</Description>
+                ovf:key="guestinfo.ignition.config.data" ovf:value="">
+        <Label>Ignition config data</Label>
+        <Description>Inline Ignition config data</Description>
+      </Property>
+      <Property ovf:userConfigurable="true" ovf:type="string"
+                ovf:key="guestinfo.ignition.config.data.encoding" ovf:value="">
+        <Label>Ignition config data encoding</Label>
+        <Description>Encoding for Ignition config data</Description>
       </Property>
     </ProductSection>
   </VirtualSystem>
