@@ -202,6 +202,7 @@ EOF
 packages:
   - ${name}-overlay
 EOF
+        mkdir -p "${overridesdir}"/rpm
         mkdir tmp/overlay-build
         (cd tmp/overlay-build && "${DIR}"/build_rpm_from_dir "${configdir}/overlay" "${name}-overlay" "${workdir}/overrides/rpm")
     fi
