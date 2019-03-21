@@ -115,7 +115,7 @@ else:
 
 # To support different distro builds using Fedora anaconda,
 # installclass must be explicit for anaconda to find the correct directory.
-if subprocess.call(['ostree', f"--repo={args.ostree_repo}", 'ls', args.ostree_ref, "/usr/lib/ostree-boot/efi/EFI/redhat"], stderr=subprocess.DEVNULL) == 0:
+if subprocess.call(['ostree', f"--repo={args.ostree_repo}", 'ls', args.ostree_ref, "/usr/lib/ostree-boot/efi/EFI/redhat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
     print("Detected /usr/lib/ostree-boot/efi/EFI/redhat, adding Red Hat Enterprise Linux installclass.")
     ks_tmp.write("""
     %anaconda
