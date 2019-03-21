@@ -208,7 +208,6 @@ EOF
     if [ -d "${overridesdir}"/rpm ]; then
         (cd "${overridesdir}"/rpm && createrepo_c .)
         echo "Using RPM overrides from: ${overridesdir}/rpm"
-        local tmp_overridesdir=${TMPDIR}/override
         cat >> "${override_manifest}" <<EOF
 repos:
   - coreos-assembler-local-overrides
