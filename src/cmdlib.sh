@@ -244,9 +244,9 @@ if [ -x /usr/libexec/qemu-kvm ]; then
 else
     # Enable arch-specific options for qemu
     case "$(arch)" in
-        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"         ;;
-        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt" ;;
-        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"           ;;
+        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
+        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
+        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
         *)         fatal "Architecture $(arch) not supported"
     esac
 fi
