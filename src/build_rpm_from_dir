@@ -49,4 +49,7 @@ rpmbuild -ba \
   --define "_srcrpmdir $PWD/rpms" \
   --define "_rpmdir $PWD/rpms" \
   --define "_buildrootdir $PWD/.buildroot" "$name.spec"
+
+# delete any older RPMs first
+rm -f "$outdir/$name"-*.rpm
 cp rpms/noarch/*.rpm "$outdir"
