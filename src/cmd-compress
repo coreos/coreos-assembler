@@ -54,14 +54,17 @@ for img_format in buildmeta['images']:
     filepath = os.path.join('builds', build, file)
     if not file.endswith('.gz'):
         tmpfile = os.path.join(tmpdir, (file + '.gz'))
-        # SHA256 for uncompressed image was already calculated during 'build'
+        # SHA256 + size for uncompressed image was already calculated during 'build'
         img['uncompressed-sha256'] = img['sha256']
+        img['uncompressed-size'] = img['size']
         with open(tmpfile, 'wb') as f:
             run_verbose(['gzip', '-c', filepath], stdout=f)
         file_gz = file + '.gz'
         filepath_gz = filepath + '.gz'
+        compressed_size = os.path.getsize(tmpfile)
         img['path'] = file_gz
         img['sha256'] = sha256sum_file(tmpfile)
+        img['size'] = str(compressed_size)
 
         # just flush out after every image type, but unlink after writing.
         # Then, we should be able to interrupt and restart from the last type.

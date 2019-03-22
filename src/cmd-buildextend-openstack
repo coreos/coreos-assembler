@@ -48,9 +48,11 @@ def generate_openstack():
     run_verbose(['/usr/lib/coreos-assembler/gf-oemid',
                  img_qemu, tmp_img_openstack, 'openstack'])
     checksum = sha256sum_file(tmp_img_openstack)
+    size = os.path.getsize(tmp_img_openstack)
     buildmeta_images['openstack'] = {
         'path': openstack_name,
-        'sha256': checksum
+        'sha256': checksum,
+        'size': str(size)
     }
     os.rename(tmp_img_openstack, f"{builddir}/{openstack_name}")
     write_json(buildmeta_path, buildmeta)

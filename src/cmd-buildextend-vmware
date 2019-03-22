@@ -113,10 +113,12 @@ def generate_ova_from_template():
 
     # update the build meta.json with info about the ova
     checksum = sha256sum_file(ova_file)
+    size = os.path.getsize(ova_file)
     buildmeta_images = buildmeta['images']
     buildmeta_images['vmware'] = {
         'path': ova_name,
-        'sha256': checksum
+        'sha256': checksum,
+        'size': str(size)
     }
 
     write_json(buildmeta_path, buildmeta)
