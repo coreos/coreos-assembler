@@ -87,7 +87,7 @@ def generate_ova_from_template():
     template_file = '/usr/lib/coreos-assembler/vmware-template.xml'
 
     # create vmware_qemu with vmware platformid
-    run_verbose(['/usr/lib/coreos-assembler/gf-oemid',
+    run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
                  img_qemu, vmware_qemu, 'vmware'])
 
     # convert vmware_qemu to vmdk
