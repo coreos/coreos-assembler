@@ -10,7 +10,7 @@ dn=$(dirname "$0")
 # Usage: gf-platformid <input image> <output image> PLATFORMID
 # Example: gf-platformid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 ec2
 #
-# This will add the coreos.platform.id=ec2 to the bootloader arguments. Intended to
+# This will add the ignition.platform.id=ec2 to the bootloader arguments. Intended to
 # be used for Ignition. It's much faster to do this than generate a fresh image
 # for each provider (and also helps ensure the images are otherwise identical).
 
@@ -20,7 +20,7 @@ platformid="$3"
 
 if [[ $src == *.gz ]]; then
     img="$(basename "$src")"
-    fatal "Cannot change coreos.platform.id on $img; not an uncompressed image"
+    fatal "Cannot change ignition.platform.id on $img; not an uncompressed image"
 fi
 
 set -x
@@ -78,16 +78,16 @@ else
 fi
 coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
 # Remove any platformid currently there
-sed -i -e 's, coreos.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
+sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
 # Insert our new platformid
-sed -i -e 's,^\(linux16 .*\),\1 coreos.platform.id='"${platformid}"',' "${tmpd}"/grub.cfg
+sed -i -e 's,^\(linux16 .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/grub.cfg
 coreos_gf upload "${tmpd}"/grub.cfg "${grubcfg_path}"
 # Now the BLS version
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download "${blscfg_path}" "${tmpd}"/bls.conf
 # Remove any platformid currently there
-sed -i -e 's, coreos.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
-sed -i -e 's,^\(options .*\),\1 coreos.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
+sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
+sed -i -e 's,^\(options .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
 coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
 coreos_gf_shutdown
