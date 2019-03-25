@@ -15,6 +15,9 @@ def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
     raise SystemExit(1)
 
+# Set of valid keys in image.yaml
+IMAGE_CONF_KEYS = ['size', 'inject-core-user', 'postprocess-script']
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--dest", help="Destination disk",
                     action='store', required=True)
@@ -103,6 +106,9 @@ with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
 image_conf = None
 with open(args.configdir + '/image.yaml') as f:
     image_conf = yaml.safe_load(f)
+for k in image_conf:
+    if not k in IMAGE_CONF_KEYS:
+        fatal(f"Unknown key '{k}' in image.yaml")
 disk_size = int(image_conf['size'])
 
 # To support different distro builds using Fedora anaconda,
