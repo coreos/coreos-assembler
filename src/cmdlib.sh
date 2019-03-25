@@ -307,7 +307,7 @@ EOF
 
     # 'pci' bus doesn't work on aarch64
     pcibus=pci.0
-    if [ "$(arch)" = "aarch64" ]; then
+    if [ "$(arch)" == "aarch64" ]; then
         pcibus=pcie.0
     fi
 
