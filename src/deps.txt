@@ -41,7 +41,7 @@ podman buildah skopeo
 jq awscli
 
 # For ignition file validation in cmd-run
-ignition
+/usr/bin/ignition-validate
 
 # shellcheck for test
 ShellCheck
