@@ -306,15 +306,16 @@ EOF
     fi
 
     pcibus=pci.0
-    arch_args=''
+    arch_args=
     if [ "$(arch)" = "aarch64" ]; then
         # 'pci' bus doesn't work on aarch64
         pcibus=pcie.0
-
         arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
     fi
 
-    ${QEMU_KVM} -nodefaults -nographic -m 2048 -no-reboot -cpu host \
+    #shellcheck disable=SC2086
+    ${QEMU_KVM} ${arch_args:-} \
+        -nodefaults -nographic -m 2048 -no-reboot -cpu host \
         -kernel "${vmbuilddir}/kernel" \
         -initrd "${vmbuilddir}/initrd" \
         -netdev user,id=eth0,hostname=supermin \
@@ -326,8 +327,7 @@ EOF
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1" \
-        "${arch_args}"
+        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
