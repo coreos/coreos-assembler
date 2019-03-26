@@ -320,6 +320,7 @@ EOF
         -netdev user,id=eth0,hostname=supermin \
         -device virtio-net-pci,netdev=eth0 \
         -device virtio-scsi-pci,id=scsi0,bus=${pcibus},addr=0x3 \
+        -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
         -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
