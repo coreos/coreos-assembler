@@ -43,10 +43,12 @@ os.mkdir(tmpdir)
 
 at_least_one = False
 imgs_to_compress = []
+imgs_to_skip = ["iso", "vmware"]
+
 for img_format in buildmeta['images']:
 
     # Don't try to compress ISO images
-    if img_format == 'iso':
+    if img_format in imgs_to_skip:
         continue
 
     img = buildmeta['images'][img_format]
