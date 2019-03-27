@@ -117,14 +117,8 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     cat > "${f}" <<EOF
 {
     "ignition": {
-        "config": {},
-        "security": {
-            "tls": {}
-        },
-        "timeouts": {},
         "version": "2.2.0"
     },
-    "networkd": {},
     "storage": {
         "files": [
             {
