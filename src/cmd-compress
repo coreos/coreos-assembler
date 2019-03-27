@@ -43,12 +43,13 @@ os.mkdir(tmpdir)
 
 at_least_one = False
 imgs_to_compress = []
-imgs_to_skip = ["iso", "vmware"]
+imgs_to_skip = ["iso", "vmware", "initramfs", "kernel"]
 
 for img_format in buildmeta['images']:
 
-    # Don't try to compress ISO images
+    # Don't compress certain images
     if img_format in imgs_to_skip:
+        print(f"Skipping {img_format}")
         continue
 
     img = buildmeta['images'][img_format]

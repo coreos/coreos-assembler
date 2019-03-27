@@ -169,11 +169,32 @@ def generate_iso():
     genisoargs += ['-o', tmpisofile, tmpisoroot]
 
     run_verbose(genisoargs)
+
+    kernel_name = f'{base_name}-{args.build}-installer-kernel'
+    initramfs_name = f'{base_name}-{args.build}-installer-initramfs.img'
+    kernel_file = os.path.join(builddir, kernel_name)
+    initramfs_file = os.path.join(builddir, initramfs_name)
+    shutil.copyfile(os.path.join(tmpisoimages, "vmlinuz"), kernel_file)
+    shutil.copyfile(os.path.join(tmpisoimages, "initramfs.img"), initramfs_file)
+
+    kernel_checksum = sha256sum_file(kernel_file)
+    initramfs_checksum = sha256sum_file(initramfs_file)
     checksum = sha256sum_file(tmpisofile)
-    buildmeta['images']['iso'] = {
-        'path': iso_name,
-        'sha256': checksum
-    }
+
+    buildmeta['images'].update({
+        'iso': {
+            'path': iso_name,
+            'sha256': checksum
+        },
+        'kernel': {
+            'path': kernel_name,
+            'sha256': kernel_checksum
+        },
+        'initramfs': {
+            'path': initramfs_name,
+            'sha256': initramfs_checksum
+        }
+    })
     os.rename(tmpisofile, f"{builddir}/{iso_name}")
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
