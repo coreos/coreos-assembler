@@ -3,14 +3,14 @@
 #
 # An operation that creates an ISO image for installing CoreOS
 
-import os
-import sys
-import json
-import yaml
-import shutil
 import argparse
-import tempfile
+import json
+import os
 import platform
+import shutil
+import sys
+import tarfile
+import tempfile
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
 from cmdlib import run_verbose, write_json, sha256sum_file
@@ -30,7 +30,8 @@ if not args.build:
 
 print(f"Targeting build: {args.build}")
 
-builddir = os.path.join('builds', args.build)
+workdir = os.path.abspath(os.getcwd())
+builddir = os.path.join(workdir, 'builds', args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
@@ -46,7 +47,7 @@ img_prefix = f'{base_name}-{args.build}'
 iso_name = f'{img_prefix}.iso'
 name_version = f'{base_name}-{args.build}'
 
-tmpdir = 'tmp/buildpost-installer'
+tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-installer")
 if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 
@@ -89,7 +90,7 @@ def generate_iso():
 
     # TODO ignore EFI dir
     # Grab all the contents from the installer dir from the configs
-    run_verbose(["rsync", "-a", "src/config/installer/", f"{tmpisoroot}/"])
+    run_verbose(["rsync", "-av", "src/config/installer/", f"{tmpisoroot}/"])
 
     # These sections are based on lorax templates
     # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
@@ -132,20 +133,33 @@ def generate_iso():
         # filesystem that contains all the files needed for EFI boot
         # from an ISO.
         with tempfile.TemporaryDirectory() as tmpefidir:
-            # Install binaries from the grub2-efi and shim rpms (installed
-            # in our COSA container)
-            run_verbose(["rsync", "-a",
-                         "/boot/efi/EFI/", f"{tmpefidir}/EFI/"])
 
-            # Grab all the contents from the installer EFI dir from the configs
-            run_verbose(["rsync", "-a",
-                         "src/config/installer/EFI/", f"{tmpefidir}/EFI/"])
+            # In restrictive environments, setgid, setuid and ownership changes
+            # may be restricted. This sets the file ownership to root and
+            # removes the setgid and setuid bits in the tarball.
+            def strip(tarinfo):
+                tarinfo.uid = 0
+                tarinfo.gid = 0
+                if tarinfo.isdir():
+                    tarinfo.mode = 0o755
+                elif tarinfo.isfile():
+                    tarinfo.mode = 0o0644
+                return tarinfo
+
+            # Install binaries from the grub2-efi and shim rpms (installed
+            # in our COSA container). Manually construct the tarball to ensure
+            # proper permissions and ownership
+            efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
+            with tarfile.open(efitarfile.name, "w:") as tar:
+                tar.add('/boot/efi/EFI/', arcname="/EFI", filter=strip)
+                tar.add('src/config/installer/EFI/', arcname='/EFI',
+                        filter=strip)
 
             # Create the efiboot.img file (a fat filesystem) in the images/ dir
             # Note: virt-make-fs lets us do this as non-root
             efibootfile = os.path.join(tmpisoimages, 'efiboot.img')
-            run_verbose(['virt-make-fs', '--type=vfat',
-                         tmpefidir, efibootfile])
+            run_verbose(['virt-make-fs', '--type=vfat', efitarfile.name,
+                         efibootfile])
 
         genisoargs += ['-eltorito-alt-boot',
                        '-efi-boot', 'images/efiboot.img',
