@@ -117,12 +117,11 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     cat > "${f}" <<EOF
 {
     "ignition": {
-        "version": "2.2.0"
+        "version": "3.0.0"
     },
     "storage": {
         "files": [
             {
-                "filesystem": "root",
                 "path": "/etc/sysctl.d/10-coreos-assembler.conf",
                 "contents": { "source": "data:text/plain;base64,${coreos_assembler_sysctl}" },
                 "mode": 420
