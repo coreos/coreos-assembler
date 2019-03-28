@@ -43,8 +43,7 @@ if 'iso' in buildmeta['images'] and not args.force:
     sys.exit(0)
 
 base_name = buildmeta['name']
-img_prefix = f'{base_name}-{args.build}'
-iso_name = f'{img_prefix}.iso'
+iso_name = f'{base_name}-{args.build}-installer.iso'
 name_version = f'{base_name}-{args.build}'
 
 tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-installer")
