@@ -35,7 +35,7 @@ if args.name_suffix:
 else:
     ami_name_version = f'{base_name}-{args.build}'
 
-tmpdir='tmp/buildpost-ec2'
+tmpdir='tmp/buildpost-aws'
 if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 os.mkdir(tmpdir)
@@ -45,7 +45,7 @@ def generate_aws_vmdk():
     tmp_img_aws = os.path.join(tmpdir, (ami_name_version + '.qcow2'))
     tmp_img_aws_vmdk = os.path.join(tmpdir, (ami_name_version + '.vmdk'))
     run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
-                 img_qemu, tmp_img_aws, 'ec2'])
+                 img_qemu, tmp_img_aws, 'aws'])
     run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vmdk',
                  tmp_img_aws,
                  '-o', 'adapter_type=lsilogic,subformat=streamOptimized,compat6',
