@@ -135,7 +135,7 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
                 "dropins": [
                     {
                         "name": "autologin-core.conf",
-                        "contents": "[Unit]\\nAfter=coreos-useradd-core.service\n[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
+                        "contents": "[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
                     }
                 ]
             },
