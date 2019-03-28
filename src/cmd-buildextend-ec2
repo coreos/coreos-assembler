@@ -40,28 +40,28 @@ if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 os.mkdir(tmpdir)
 
-def generate_ec2_vmdk():
+def generate_aws_vmdk():
     img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
-    tmp_img_ec2 = os.path.join(tmpdir, (ami_name_version + '.qcow2'))
-    tmp_img_ec2_vmdk = os.path.join(tmpdir, (ami_name_version + '.vmdk'))
+    tmp_img_aws = os.path.join(tmpdir, (ami_name_version + '.qcow2'))
+    tmp_img_aws_vmdk = os.path.join(tmpdir, (ami_name_version + '.vmdk'))
     run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
-                 img_qemu, tmp_img_ec2, 'ec2'])
+                 img_qemu, tmp_img_aws, 'ec2'])
     run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vmdk',
-                 tmp_img_ec2,
+                 tmp_img_aws,
                  '-o', 'adapter_type=lsilogic,subformat=streamOptimized,compat6',
-                 tmp_img_ec2_vmdk])
-    os.unlink(tmp_img_ec2)
-    return tmp_img_ec2_vmdk
+                 tmp_img_aws_vmdk])
+    os.unlink(tmp_img_aws)
+    return tmp_img_aws_vmdk
 
 def run_ore():
-    tmp_img_ec2_vmdk = generate_ec2_vmdk()
+    tmp_img_aws_vmdk = generate_aws_vmdk()
     ore_args = ['ore', 'aws', 'upload',
                 '--region', args.region,
                 '--bucket', args.bucket,
                 '--ami-name', ami_name_version,
                 '--name', ami_name_version,
                 '--ami-description', f"{buildmeta['summary']} {args.build}",
-                '--file', tmp_img_ec2_vmdk,
+                '--file', tmp_img_aws_vmdk,
                 '--disk-size-inspect',
                 '--delete-object']
     for user in args.grant_user:
