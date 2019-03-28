@@ -8,9 +8,9 @@ dn=$(dirname "$0")
 . "${dn}"/libguestfish.sh
 
 # Usage: gf-platformid <input image> <output image> PLATFORMID
-# Example: gf-platformid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 ec2
+# Example: gf-platformid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 aws
 #
-# This will add both ignition.platform.id=ec2 and coreos.oem.id=ec2 to the bootloader arguments. Intended to
+# This will add both ignition.platform.id=aws and coreos.oem.id=aws to the bootloader arguments. Intended to
 # be used for Ignition. It's much faster to do this than generate a fresh image
 # for each provider (and also helps ensure the images are otherwise identical).
 
