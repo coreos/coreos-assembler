@@ -79,3 +79,22 @@ coreos_gf_shutdown() {
     coreos_gf umount-all
     coreos_gf exit
 }
+
+# Relabel the provided file paths. You must use this when creating files that
+# don't already exist, otherwise they will be `unlabeled_t`.
+#
+# Note that this doesn't correctly handle relabeling anything actually
+# underneath the ${deploydir} because we'd need a way to strip the deploydir
+# path prefix.
+#
+# Rather than using this function, a good trick is to `coreos_gf cp-a /path/to/existing/file /path/to/new-file`
+# and then truncate/rewrite that existing file.
+#
+# An even better thing to do is to create the files on first boot via Ignition,
+# which will handle labeling too.
+#
+# So basically, only create files via libguestfs that are needed to prepare
+# for Ignition.
+coreos_gf_relabel() {
+    coreos_gf selinux-relabel ${deploydir}/etc/selinux/targeted/contexts/files/file_contexts "$@"
+}
