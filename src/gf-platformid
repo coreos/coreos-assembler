@@ -10,7 +10,7 @@ dn=$(dirname "$0")
 # Usage: gf-platformid <input image> <output image> PLATFORMID
 # Example: gf-platformid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 aws
 #
-# This will add both ignition.platform.id=aws and coreos.oem.id=aws to the bootloader arguments. Intended to
+# This will add ignition.platform.id=aws to the bootloader arguments. Intended to
 # be used for Ignition. It's much faster to do this than generate a fresh image
 # for each provider (and also helps ensure the images are otherwise identical).
 
@@ -77,12 +77,6 @@ else
     grubcfg_path=/boot/loader/grub.cfg
 fi
 coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
-# Generate both coreos.oem.id and ignition.platform.id for compatibility, 
-# see: https://github.com/coreos/coreos-assembler/pull/433
-# Remove any oemid currently there
-sed -i -e 's, coreos.oem.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
-# Insert our new oemid
-sed -i -e 's,^\(linux16 .*\),\1 coreos.oem.id='"${platformid}"',' "${tmpd}"/grub.cfg
 # Remove any platformid currently there
 sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
 # Insert our new platformid
@@ -91,9 +85,6 @@ coreos_gf upload "${tmpd}"/grub.cfg "${grubcfg_path}"
 # Now the BLS version
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download "${blscfg_path}" "${tmpd}"/bls.conf
-# Remove any oemid currently there
-sed -i -e 's, coreos.oem.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
-sed -i -e 's,^\(options .*\),\1 coreos.oem.id='"${platformid}"',' "${tmpd}"/bls.conf
 # Remove any platformid currently there
 sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
 sed -i -e 's,^\(options .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
