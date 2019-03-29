@@ -451,7 +451,7 @@ prepare_git_artifacts() {
         "checksum_type": "sha256",
         "format": "tar.gz",
         "name": "$(basename ${tarball})",
-        "size": "$(stat --format=%s ${tarball})"
+        "size": $(stat --format=%s ${tarball})
     }
 }
 EOC

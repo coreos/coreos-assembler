@@ -67,7 +67,7 @@ for img_format in buildmeta['images']:
         compressed_size = os.path.getsize(tmpfile)
         img['path'] = file_gz
         img['sha256'] = sha256sum_file(tmpfile)
-        img['size'] = str(compressed_size)
+        img['size'] = compressed_size
 
         # just flush out after every image type, but unlink after writing.
         # Then, we should be able to interrupt and restart from the last type.
