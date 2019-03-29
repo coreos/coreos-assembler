@@ -8,7 +8,7 @@ import os,sys,json,yaml,shutil,argparse,subprocess,re,collections
 import tempfile,hashlib,gzip
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
-from cmdlib import run_verbose, write_json
+from cmdlib import run_verbose, write_json, sha256sum_file
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -34,6 +34,7 @@ if args.name_suffix:
     ami_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
 else:
     ami_name_version = f'{base_name}-{args.build}'
+aws_vmdk_name = f'{ami_name_version}-aws.vmdk'
 
 tmpdir='tmp/buildpost-aws'
 if os.path.isdir(tmpdir):
@@ -68,12 +69,22 @@ def run_ore():
         ore_args.extend(['--grant-user', user])
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
     ore_data = json.loads(subprocess.check_output(ore_args))
+    checksum = sha256sum_file(tmp_img_aws_vmdk)
+    size = os.path.getsize(tmp_img_aws_vmdk)
+    os.rename(tmp_img_aws_vmdk, f"{builddir}/{aws_vmdk_name}")
     shutil.rmtree(tmpdir)
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
     ami_data = {'name': args.region,
                 'hvm': ore_data['HVM']}
     buildmeta['amis'] = [ami_data]
+    buildmeta['images'].update({
+        'aws': {
+            'path': aws_vmdk_name,
+            'sha256': checksum,
+            'size': size
+        }
+    })
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
 
