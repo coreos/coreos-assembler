@@ -52,7 +52,7 @@ def generate_openstack():
     buildmeta_images['openstack'] = {
         'path': openstack_name,
         'sha256': checksum,
-        'size': str(size)
+        'size': size
     }
     os.rename(tmp_img_openstack, f"{builddir}/{openstack_name}")
     write_json(buildmeta_path, buildmeta)

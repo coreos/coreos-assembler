@@ -118,7 +118,7 @@ def generate_ova_from_template():
     buildmeta_images['vmware'] = {
         'path': ova_name,
         'sha256': checksum,
-        'size': str(size)
+        'size': size
     }
 
     write_json(buildmeta_path, buildmeta)

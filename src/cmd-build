@@ -325,7 +325,7 @@ first=true
      checksum=$(sha256sum "${path}" | cut -f 1 -d ' ')
      size=$(stat -c '%s' "${path}")
      if ${first}; then first=false; else echo ','; fi
-     echo '"'"${image}"'": {"path": "'"${path}"'", "sha256": "'"${checksum}"'", "size": "'"${size}"'"}'
+     echo '"'"${image}"'": {"path": "'"${path}"'", "sha256": "'"${checksum}"'", "size": '"${size}"'}'
  done
  echo "}}"
 ) > tmp/images.json
