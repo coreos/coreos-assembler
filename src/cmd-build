@@ -286,6 +286,8 @@ for itype in "${IMAGE_TYPES[@]}"; do
     esac
 done
 
+"${dn}"/write-commit-object "${workdir}/repo" "${commit}" "$(pwd)"
+
 build_timestamp=$(date -u +$RFC3339)
 vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
 
