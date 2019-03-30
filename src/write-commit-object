@@ -1,0 +1,26 @@
+#!/usr/bin/python3 -u
+# Utility to stash the raw commit object in the builddir;
+# it can be useful to provide the previous commit during
+# builds, and this avoids a need for the full OSTree repo.
+
+import argparse
+import gi
+import sys
+
+gi.require_version('OSTree', '1.0')
+gi.require_version('Json', '1.0')
+from gi.repository import GLib, Gio, OSTree, Json
+
+parser = argparse.ArgumentParser()
+parser.add_argument("repo", help="repo")
+parser.add_argument("rev", help="Revision to inspect")
+parser.add_argument("builddir", help="builddir")
+args = parser.parse_args()
+
+r = OSTree.Repo.new(Gio.File.new_for_path(args.repo))
+r.open(None)
+
+[_, rev] = r.resolve_rev(args.rev, True)
+[_, commit, _] = r.load_commit(rev)
+with open(args.builddir + '/ostree-commit', 'wb') as f:
+    f.write(commit.get_data_as_bytes().get_data())
