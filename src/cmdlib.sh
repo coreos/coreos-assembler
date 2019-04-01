@@ -40,7 +40,7 @@ has_privileges() {
         if [ -n "${FORCE_UNPRIVILEGED:-}" ]; then
             info "Detected FORCE_UNPRIVILEGED; using virt"
             _privileged=0
-        elif ! capsh --print | grep -q 'Current.*cap_sys_admin'; then
+        elif ! capsh --print | grep -q 'Bounding.*cap_sys_admin'; then
             info "Missing CAP_SYS_ADMIN; using virt"
             _privileged=0
         elif ! sudo true; then
