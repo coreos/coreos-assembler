@@ -72,7 +72,7 @@ coreos_gf_run_mount "${tmp_dest}"
 # * BLS config (for subsequent config regeneration)
 # First, the grub config.
 if [ "$(coreos_gf exists '/boot/efi')" == 'true' ]; then
-    grubcfg_path=/boot/efi/EFI/fedora/grub.cfg
+    grubcfg_path=$(coreos_gf glob-expand /boot/efi/EFI/*/grub.cfg)
 else
     grubcfg_path=/boot/loader/grub.cfg
 fi
