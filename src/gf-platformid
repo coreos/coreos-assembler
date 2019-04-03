@@ -31,36 +31,6 @@ set -x
 tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-platformid.XXXXXX)
 tmp_dest=${tmpd}/box.img
 
-# Work around for https://github.com/coreos/coreos-assembler/issues/198
-# performance monitoring for nested virtualization doesn't work reliably on
-# different hypervisors (VMWare, VirtualBox, etc) so just disable the pmu
-qemu_wrapper=${tmpd}/qemu-wrapper.sh
-cat <<'EOF' > "${qemu_wrapper}"
-#!/usr/bin/bash -
-i=0
-while [ $# -gt 0 ]; do
-    case "$1" in
-    -cpu)
-        shift 2;;
-    *)
-        args[i]="$1"
-        (( i++ ))
-        shift ;;
-    esac
-done
-EOF
-# Expand QEMU_KVM
-# shellcheck disable=SC2086 disable=SC2016
-# Only x86_64 supports pmu=off option
-if [ "$(arch)" == "x86_64" ]; then
-    echo "exec ${QEMU_KVM} "'-cpu host,pmu=off "${args[@]}"' >> "${qemu_wrapper}"
-else
-    echo "exec ${QEMU_KVM} "'-cpu host "${args[@]}"' >> "${qemu_wrapper}"
-fi
-chmod +x "${qemu_wrapper}"
-
-export LIBGUESTFS_HV="${qemu_wrapper}"
-
 cp --reflink=auto "${src}" "${tmp_dest}"
 # <walters> I commonly chmod a-w VM images
 chmod u+w "${tmp_dest}"
