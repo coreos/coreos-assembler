@@ -78,4 +78,6 @@ coreos_gf_run_mount() {
 coreos_gf_shutdown() {
     coreos_gf umount-all
     coreos_gf exit
+    GUESTFISH_RUNNING=
+    GUESTFISH_PID=
 }
