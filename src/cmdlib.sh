@@ -444,6 +444,7 @@ prepare_git_artifacts() {
     "git": {
         "commit": "${rev}",
         "origin": "${head_url}",
+        "branch": "${branch}",
         "dirty": "${is_dirty}"
     },
     "file": {
