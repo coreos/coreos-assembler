@@ -17,7 +17,7 @@ VM_PERSIST=0
 VM_NCPUS="${VM_NCPUS:-$(nproc)}"
 VM_SRV_MNT=
 SSH_PORT=${SSH_PORT:-}
-USAGE="Usage: $0 /path/to/disk.qcow2 [--] [qemu options...]
+USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
     -d DISK     Root disk drive (won't be changed by default)
     --persist   Don't create a temporary snapshot
@@ -29,7 +29,8 @@ Options:
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
 it will auto-log you into the console, and by default for read-only disk
-images makes a transient snapshot.
+images makes a transient snapshot. Unless a disk image is passed with -d, it
+will launch the latest build.
 
 Any arguments after -- will be passed through to qemu. See the qemu(1) man page
 for more details.
