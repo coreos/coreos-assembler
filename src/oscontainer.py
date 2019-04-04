@@ -28,7 +28,8 @@ def run_verbose(args, **kwargs):
 # Given a container reference, pull the latest version, then extract the ostree
 # repo a new directory dest/repo.
 def oscontainer_extract(containers_storage, src, dest,
-                        tls_verify=True, ref=None, cert_dir=""):
+                        tls_verify=True, ref=None, cert_dir="",
+                        authfile=""):
     dest = os.path.realpath(dest)
     subprocess.check_call(["ostree", "--repo="+dest, "refs"])
     rootarg = '--root='+containers_storage
@@ -39,6 +40,9 @@ def oscontainer_extract(containers_storage, src, dest,
     else:
         tls_arg = '--tls-verify'
     podCmd.append(tls_arg)
+
+    if authfile != "":
+        podCmd.append("--authfile={}".format(authfile))
 
     if cert_dir != "":
         podCmd.append("--cert-dir={}".format(cert_dir))
@@ -70,7 +74,7 @@ def oscontainer_extract(containers_storage, src, dest,
 # with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True, cert_dir="",
-                      inspect_out=None):
+                      authfile="", inspect_out=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -119,12 +123,21 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
             tls_arg = '--tls-verify'
         podCmd.append(tls_arg)
 
+        if authfile != "":
+            podCmd.append("--authfile={}".format(authfile))
+
         if cert_dir != "":
             podCmd.append("--cert-dir={}".format(cert_dir))
         podCmd.append(image_name_and_tag)
 
         run_verbose(podCmd)
-        inspect = run_get_json(['skopeo', 'inspect', "docker://"+image_name_and_tag])
+
+        skopeoCmd = ['skopeo', 'inspect']
+        if authfile != "":
+            skopeoCmd.append("--authfile={}".format(authfile))
+
+        skopeoCmd.append("docker://"+image_name_and_tag)
+        inspect = run_get_json(skopeoCmd)
     else:
         inspect = run_get_json(['podman', rootarg, 'inspect', image_name_and_tag])[0]
     if inspect_out is not None:
@@ -139,6 +152,8 @@ parser.add_argument("--disable-tls-verify", help="Disable TLS for pushes and pul
                     action="store_true")
 parser.add_argument("--cert-dir", help="Extra certificate directories",
                     default=os.environ.get("OSCONTAINER_CERT_DIR", ''))
+parser.add_argument("--authfile", help="Path to authentication file",
+                    action="store", default=os.environ.get("REGISTRY_AUTH_FILE", ''))
 subparsers = parser.add_subparsers(dest='action')
 parser_extract = subparsers.add_parser('extract', help='Extract an oscontainer')
 parser_extract.add_argument("src", help="Image reference")
@@ -163,11 +178,13 @@ if args.action == 'extract':
     oscontainer_extract(containers_storage, args.src, args.dest,
                         tls_verify=not args.disable_tls_verify,
                         cert_dir=args.cert_dir,
-                        ref=args.ref)
+                        ref=args.ref,
+                        authfile=args.authfile)
 elif args.action == 'build':
     oscontainer_build(containers_storage, args.src, args.rev, args.name,
                       getattr(args, 'from'),
                       inspect_out=args.inspect_out,
                       push=args.push,
                       tls_verify=not args.disable_tls_verify,
-                      cert_dir=args.cert_dir)
+                      cert_dir=args.cert_dir,
+                      authfile=args.authfile)
