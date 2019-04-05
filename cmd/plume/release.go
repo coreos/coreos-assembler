@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -47,14 +46,45 @@ var (
 
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
+	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "cl", "system to release")
 	cmdRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	AddSpecFlags(cmdRelease.Flags())
+	AddFedoraSpecFlags(cmdRelease.Flags())
 	root.AddCommand(cmdRelease)
 }
 
 func runRelease(cmd *cobra.Command, args []string) {
+	switch selectedDistro {
+	case "cl":
+		if err := runCLRelease(cmd, args); err != nil {
+			plog.Fatal(err)
+		}
+	default:
+		plog.Fatalf("Unknown distro %q:", selectedDistro)
+	}
+}
+
+func runFedoraRelease(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		plog.Fatal("No args accepted")
+	}
+
+	spec, err := ChannelFedoraSpec()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	client := &http.Client{}
+
+	// Make AWS images public.
+	doAWS(ctx, client, nil, &spec)
+
+	return nil
+}
+
+func runCLRelease(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		plog.Fatal("No args accepted")
 	}
@@ -140,6 +170,8 @@ func runRelease(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func sanitizeVersion() string {
@@ -369,8 +401,12 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 		return
 	}
 
-	imageName := fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
-	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
+	awsImageMetadata, err := getSpecAWSImageMetadata(spec)
+	if err != nil {
+		return
+	}
+
+	imageName := awsImageMetadata["imageName"]
 
 	for _, part := range spec.AWS.Partitions {
 		for _, region := range part.Regions {

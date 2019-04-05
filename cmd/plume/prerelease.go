@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"os"
@@ -63,11 +64,21 @@ var (
 	platformList []string
 
 	selectedPlatforms  []string
+	selectedDistro     string
 	azureProfile       string
 	awsCredentialsFile string
 	verifyKeyFile      string
 	imageInfoFile      string
 )
+
+type imageMetadataAbstract struct {
+	Env       string
+	Version   string
+	Timestamp string
+	Respin    string
+	ImageType string
+	Arch      string
+}
 
 type platform struct {
 	displayName string
@@ -86,6 +97,7 @@ func init() {
 	sort.Sort(sort.StringSlice(platformList))
 
 	cmdPreRelease.Flags().StringSliceVar(&selectedPlatforms, "platform", platformList, "platform to pre-release")
+	cmdPreRelease.Flags().StringVar(&selectedDistro, "system", "cl", "system to pre-release")
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdPreRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
@@ -93,6 +105,7 @@ func init() {
 	cmdPreRelease.Flags().StringVar(&imageInfoFile, "write-image-list", "", "optional output file describing uploaded images")
 
 	AddSpecFlags(cmdPreRelease.Flags())
+	AddFedoraSpecFlags(cmdPreRelease.Flags())
 	root.AddCommand(cmdPreRelease)
 }
 
@@ -100,12 +113,52 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		return errors.New("no args accepted")
 	}
+
 	for _, platformName := range selectedPlatforms {
 		if _, ok := platforms[platformName]; !ok {
 			return fmt.Errorf("Unknown platform %q", platformName)
 		}
 	}
 
+	switch selectedDistro {
+	case "cl":
+		if err := runCLPreRelease(cmd); err != nil {
+			return err
+		}
+	case "fedora":
+		if err := runFedoraPreRelease(cmd); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("Unknown distro %q", selectedDistro)
+	}
+	plog.Printf("Pre-release complete, run `plume release` to finish.")
+
+	return nil
+}
+
+func runFedoraPreRelease(cmd *cobra.Command) error {
+	spec, err := ChannelFedoraSpec()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	client := http.Client{}
+
+	var imageInfo imageInfo
+
+	for _, platformName := range selectedPlatforms {
+		platform := platforms[platformName]
+		plog.Printf("Running %v pre-release...", platform.displayName)
+		if err := platform.handler(ctx, &client, nil, &spec, &imageInfo); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runCLPreRelease(cmd *cobra.Command) error {
 	spec := ChannelSpec()
 	ctx := context.Background()
 	client, err := getGoogleClient()
@@ -129,18 +182,7 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	var imageInfo imageInfo
-	for _, platformName := range platformList {
-		run := false
-		for _, v := range selectedPlatforms {
-			if v == platformName {
-				run = true
-				break
-			}
-		}
-		if !run {
-			continue
-		}
-
+	for _, platformName := range selectedPlatforms {
 		platform := platforms[platformName]
 		plog.Printf("Running %v pre-release...", platform.displayName)
 		if err := platform.handler(ctx, client, src, &spec, &imageInfo); err != nil {
@@ -162,14 +204,30 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	plog.Printf("Pre-release complete, run `plume release` to finish.")
-
 	return nil
 }
 
 // getImageFile downloads a bzipped CoreOS image, verifies its signature,
 // decompresses it, and returns the decompressed path.
-func getImageFile(client *http.Client, src *storage.Bucket, fileName string) (string, error) {
+func getImageFile(client *http.Client, spec *channelSpec, src *storage.Bucket, fileName string) (string, error) {
+	switch selectedDistro {
+	case "cl":
+		return getCLImageFile(client, src, fileName)
+	case "fedora":
+		return getFedoraImageFile(client, spec, src, fileName)
+	default:
+		return "", fmt.Errorf("Invalid system: %v", selectedDistro)
+	}
+}
+
+func getImageTypeURI() string {
+	if specImageType == "Cloud-Base" {
+		return "Cloud"
+	}
+	return specImageType
+}
+
+func getCLImageFile(client *http.Client, src *storage.Bucket, fileName string) (string, error) {
 	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specBoard, specVersion)
 	bzipPath := filepath.Join(cacheDir, fileName)
 	imagePath := strings.TrimSuffix(bzipPath, filepath.Ext(bzipPath))
@@ -195,6 +253,35 @@ func getImageFile(client *http.Client, src *storage.Bucket, fileName string) (st
 	// decompress it
 	plog.Printf("Decompressing %q...", bzipPath)
 	if err := util.Bunzip2File(imagePath, bzipPath); err != nil {
+		return "", err
+	}
+	return imagePath, nil
+}
+
+func getFedoraImageFile(client *http.Client, spec *channelSpec, src *storage.Bucket, fileName string) (string, error) {
+	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specVersion)
+	rawxzPath := filepath.Join(cacheDir, fileName)
+	imagePath := strings.TrimSuffix(rawxzPath, ".xz")
+
+	if _, err := os.Stat(imagePath); err == nil {
+		plog.Printf("Reusing existing image %q", imagePath)
+		return imagePath, nil
+	}
+
+	rawxzURI, err := url.Parse(fmt.Sprintf("%v/%v/compose/%v/%v/images/%v", spec.BaseURL, specComposeID, getImageTypeURI(), specBoard, fileName))
+	if err != nil {
+		return "", err
+	}
+
+	plog.Printf("Downloading image %q to %q", rawxzURI, rawxzPath)
+
+	if err := sdk.UpdateFile(rawxzPath, rawxzURI.String(), client); err != nil {
+		return "", err
+	}
+
+	// decompress it
+	plog.Printf("Decompressing %q...", rawxzPath)
+	if err := util.XZ2File(imagePath, rawxzPath); err != nil {
 		return "", err
 	}
 	return imagePath, nil
@@ -288,7 +375,7 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 	}
 
 	// download azure vhd image and unzip it
-	vhdfile, err := getImageFile(client, src, spec.Azure.Image)
+	vhdfile, err := getImageFile(client, spec, src, spec.Azure.Image)
 	if err != nil {
 		return err
 	}
@@ -359,6 +446,43 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 	return nil
 }
 
+func getSpecAWSImageMetadata(spec *channelSpec) (map[string]string, error) {
+	imageFileName := spec.AWS.Image
+	imageMetadata := imageMetadataAbstract{
+		Env:       specEnv,
+		Version:   specVersion,
+		Timestamp: specTimestamp,
+		Respin:    specRespin,
+		ImageType: specImageType,
+		Arch:      specBoard,
+	}
+	t := template.Must(template.New("filename").Parse(imageFileName))
+	buffer := &bytes.Buffer{}
+	if err := t.Execute(buffer, imageMetadata); err != nil {
+		return nil, err
+	}
+	imageFileName = buffer.String()
+
+	var imageName string
+	switch selectedDistro {
+	case "cl":
+		imageName = fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
+		imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
+	case "fedora":
+		imageName = strings.TrimSuffix(imageFileName, ".raw.xz")
+	}
+
+	imageDescription := fmt.Sprintf("%v %v %v", spec.AWS.BaseDescription, specChannel, specVersion)
+
+	awsImageMetaData := map[string]string{
+		"imageFileName":    imageFileName,
+		"imageName":        imageName,
+		"imageDescription": imageDescription,
+	}
+
+	return awsImageMetaData, nil
+}
+
 func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, map[string]string, error) {
 	plog.Printf("Connecting to %v...", part.Name)
 	api, err := aws.New(&aws.Options{
@@ -376,7 +500,22 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	}
 	defer f.Close()
 
-	s3ObjectPath := fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(spec.AWS.Image, filepath.Ext(spec.AWS.Image)))
+	awsImageMetadata, err := getSpecAWSImageMetadata(spec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not generate the image metadata: %v", err)
+	}
+
+	imageFileName := awsImageMetadata["imageFileName"]
+	imageName = awsImageMetadata["imageName"]
+	imageDescription = awsImageMetadata["imageDescription"]
+
+	var s3ObjectPath string
+	switch selectedDistro {
+	case "cl":
+		s3ObjectPath = fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(imageFileName, filepath.Ext(imageFileName)))
+	case "fedora":
+		s3ObjectPath = fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(imageFileName, filepath.Ext(imageFileName)))
+	}
 	s3ObjectURL := fmt.Sprintf("s3://%s/%s", part.Bucket, s3ObjectPath)
 
 	snapshot, err := api.FindSnapshot(imageName)
@@ -392,7 +531,16 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		}
 
 		plog.Printf("Creating EBS snapshot...")
-		snapshot, err = api.CreateSnapshot(imageName, s3ObjectURL, aws.EC2ImageFormatVmdk)
+
+		var format aws.EC2ImageFormat
+		switch selectedDistro {
+		case "cl":
+			format = aws.EC2ImageFormatVmdk
+		case "fedora":
+			format = aws.EC2ImageFormatRaw
+		}
+
+		snapshot, err = api.CreateSnapshot(imageName, s3ObjectURL, format)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to create snapshot: %v", err)
 		}
@@ -411,18 +559,35 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create HVM image: %v", err)
 	}
+	resources := []string{snapshot.SnapshotID, hvmImageID}
 
-	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, aws.ContainerLinuxDiskSizeGiB, imageName, imageDescription+" (PV)")
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
+	var pvImageID string
+	if selectedDistro == "cl" {
+		pvImageID, err = api.CreatePVImage(snapshot.SnapshotID, aws.ContainerLinuxDiskSizeGiB, imageName, imageDescription+" (PV)")
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
+		}
+		resources = append(resources, pvImageID)
 	}
 
-	err = api.CreateTags([]string{snapshot.SnapshotID, hvmImageID, pvImageID}, map[string]string{
-		"Channel": specChannel,
-		"Version": specVersion,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
+	switch selectedDistro {
+	case "cl":
+		err = api.CreateTags(resources, map[string]string{
+			"Channel": specChannel,
+			"Version": specVersion,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
+		}
+	case "fedora":
+		err = api.CreateTags(resources, map[string]string{
+			"Channel":   specChannel,
+			"Version":   specVersion,
+			"ComposeID": specComposeID,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
+		}
 	}
 
 	postprocess := func(imageID string, pv bool) (map[string]string, error) {
@@ -469,9 +634,12 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		return nil, nil, fmt.Errorf("processing HVM images: %v", err)
 	}
 
-	pvAmis, err := postprocess(pvImageID, true)
-	if err != nil {
-		return nil, nil, fmt.Errorf("processing PV images: %v", err)
+	var pvAmis map[string]string
+	if selectedDistro == "cl" {
+		pvAmis, err = postprocess(pvImageID, true)
+		if err != nil {
+			return nil, nil, fmt.Errorf("processing PV images: %v", err)
+		}
 	}
 
 	return hvmAmis, pvAmis, nil
@@ -581,11 +749,16 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 		return nil
 	}
 
-	imageName := fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
-	imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
-	imageDescription := fmt.Sprintf("%v %v %v", spec.AWS.BaseDescription, specChannel, specVersion)
+	awsImageMetadata, err := getSpecAWSImageMetadata(spec)
+	if err != nil {
+		return fmt.Errorf("Could not generate the image filname: %v", err)
+	}
 
-	imagePath, err := getImageFile(client, src, spec.AWS.Image)
+	imageFileName := awsImageMetadata["imageFileName"]
+	imageName := awsImageMetadata["imageName"]
+	imageDescription := awsImageMetadata["imageDescription"]
+
+	imagePath, err := getImageFile(client, spec, src, imageFileName)
 	if err != nil {
 		return err
 	}
@@ -606,8 +779,10 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 		}
 	}
 
-	if err := awsUploadAmiLists(ctx, src, spec, &amis); err != nil {
-		return fmt.Errorf("uploading AMI IDs: %v", err)
+	if selectedDistro == "cl" {
+		if err := awsUploadAmiLists(ctx, src, spec, &amis); err != nil {
+			return fmt.Errorf("uploading AMI IDs: %v", err)
+		}
 	}
 
 	imageInfo.AWS = &amis
