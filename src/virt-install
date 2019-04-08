@@ -9,7 +9,13 @@
 # one or both.
 
 import os,sys,argparse,subprocess,io,time,re,multiprocessing
-import tempfile,shutil,yaml,platform,json
+import tempfile,shutil,yaml,platform,json,threading
+import http.server
+import socketserver
+
+# Currently we spin up a temporary webserver, but we could also
+# do something more custom over a virtio-serial channel or so.
+PORT = 8000
 
 # Soon we should create the filesystem outside of anaconda
 ANACONDA_BOOT_SIZE_MB = 1024
@@ -137,11 +143,10 @@ if args.ostree_repo:
     assert args.ostree_remote
     assert args.ostree_ref
     ks_tmp.write(f"""
-ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=http://{ipv4}:8000/ --ref="{args.ostree_ref}"
+ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=http://{ipv4}:{PORT}/ --ref="{args.ostree_ref}"
     """)
 
 if args.fs9p:
-
     ks_tmp.write("""
 %pre
 set -euo pipefail
@@ -219,6 +224,21 @@ have_virtinstall_2 = int(subprocess.check_output(['virt-install', '--version'],
 
 ks_tmp.flush()
 
+n_requests = 0
+
+class RequestHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *myargs, **kwargs):
+        super().__init__(*myargs, directory=args.ostree_repo, **kwargs)
+
+    def log_request(code, size):
+        global n_requests
+        n_requests += 1
+
+def run_webserver():
+    print(f"Listening on {ipv4}:{PORT}")
+    server = http.server.ThreadingHTTPServer((ipv4, PORT), RequestHandler)
+    server.serve_forever()
+
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
                      "--name={}".format(domain)]
@@ -229,16 +249,17 @@ try:
     else:
         vinstall_args.append('--nographics')
     if args.console_log_file:
-        vinstall_args.append("--console=log.file={}".format(args.console_log_file))
         tail_proc = subprocess.Popen(f"tail -F {args.console_log_file} | grep anaconda", shell=True)
-    # Start webserver to serve the ostree content to be retrieved during install
-    # Sadly this logs to stderr by default, so let's silence it.  Also this is currently
-    # racy, we need to at some point poll for the webserver to be up.
-    http_proc = subprocess.Popen(['python3', '-m', 'http.server', '--bind', ipv4, '8000'], cwd=args.ostree_repo,
-                                 stderr=subprocess.DEVNULL)
+
+    # Note this is racy, we should be waiting for the webserver to be up
+    # (Or switch to doing this over virtio)
+    http_thread = threading.Thread(target=run_webserver, daemon=True)
+    http_thread.start()
+
     if args.fs9p:
         vinstall_args.append(f"--filesystem=source={args.tmpdir}/anaconda,target=/mnt/logs,accessmode=mapped")
         vinstall_args.append(f"--filesystem=source={args.ostree_repo},target=/install/ostree/repo,accessmode=mapped")
+
     location_arg = f"--location={args.location}"
     if have_virtinstall_2:
         # This way we don't go through libosinfo.  This is hardcoding the layout of the
@@ -271,6 +292,7 @@ try:
     if args.variant == 'metal-uefi':
         vinstall_args.append('--boot=uefi')
     run_sync_verbose(vinstall_args)
+    print(f"virt-install: Served {n_requests} requests via internal webserver")
     # And strip out all of the Anaconda stuff in /var; this uses libguestfs
     # to ensure we fully control the code.
     cleanup_argv = ['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest]
@@ -287,6 +309,4 @@ finally:
     subprocess.call(['virsh', '--connect=qemu:///session', 'undefine', '--nvram', domain])
     if tail_proc is not None:
         tail_proc.terminate()
-    if http_proc is not None:
-        http_proc.terminate()
 print("Completed install to disk image: {}".format(args.dest))
