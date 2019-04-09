@@ -12,28 +12,16 @@ set -e
 
 cd $(dirname $0)
 
-# A replacement for `go fmt` that calls gofmt without -w
-gofmt-l() {
-    pushd "${GOPATH}/src" >/dev/null
-    c=$(gofmt -l "$@" | tee /dev/stderr | wc -c)
-    popd >/dev/null
-    if [[ $c -ne 0 ]]; then
-        echo "gofmt check failed" >&2
-        return 1
-    fi
-}
-
 source ./env
 # Use an alternate bin to avoid clobbering output from ./build
-export GOBIN="${GOPATH}/_testbin"
-# cd via the symlink so ./... and so on resolves correctly.
-cd gopath/src/${REPO_PATH}
+export GOBIN="$(pwd)/_testbin"
 
 # PKG may be passed in from ./cover
 [[ -z "$PKG" ]] && PKG="./..."
 
 # Expand PKG, excluding the vendor directory.
 pkgs=$(go list $PKG | grep -v /vendor/)
+src=$(find . -name '*.go' -not -path "./vendor/*")
 
 echo "Building tests..."
 go test -i "$@" $pkgs
@@ -43,10 +31,11 @@ echo "Running tests..."
 go test -cover "$@" $pkgs
 
 echo "Checking gofmt..."
-if [[ "$@" == "-v" ]]; then
-	gofmt-l -d $pkgs
-else
-	gofmt-l $pkgs
+res=$(gofmt -d -e $src)
+if [ -n "${res}" ]; then
+    echo "${res}"
+    echo "gofmt check failed" >&2
+    exit 1
 fi
 
 echo "Checking govet..."

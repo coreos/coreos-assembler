@@ -12,7 +12,7 @@ between multiple Credentials, Sessions or service clients.
 Assume Role
 
 To assume an IAM role using STS with the SDK you can create a new Credentials
-with the SDKs's stscreds package. 
+with the SDKs's stscreds package.
 
 	// Initial credentials loaded from SDK's default credential chain. Such as
 	// the environment, shared credentials (~/.aws/credentials), or EC2 Instance
@@ -80,6 +80,7 @@ package stscreds
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -89,7 +90,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 )
 
-// StdinTokenProvider will prompt on stdout and read from stdin for a string value.
+// StdinTokenProvider will prompt on stderr and read from stdin for a string value.
 // An error is returned if reading from stdin fails.
 //
 // Use this function go read MFA tokens from stdin. The function makes no attempt
@@ -102,7 +103,7 @@ import (
 // Will wait forever until something is provided on the stdin.
 func StdinTokenProvider() (string, error) {
 	var v string
-	fmt.Printf("Assume Role MFA token code: ")
+	fmt.Fprintf(os.Stderr, "Assume Role MFA token code: ")
 	_, err := fmt.Scanln(&v)
 
 	return v, err
