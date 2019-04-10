@@ -195,10 +195,17 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 
 // rpmOstreeInstallUninstall verifies that we can install a package
 // and then uninstall it
-// we've hardcoded 'fpaste' throughout the test because it should be
-// a package that a) will be around a long time and b) is small +
-// well-defined
+//
+// 'bcrypt' is available in EPEL and installs on Fedora 29 and RHEL 8
+//
+// NOTE: we could be churning on the package choice going forward as
+// we need something that is a) small, b) has no dependencies, and c)
+// can be installed on Fedora + RHEL from the EPEL repo that we are
+// currently using.  We've already had to swap from `fpaste` to `bcrypt`
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
+	var installPkgName = "bcrypt"
+	var installPkgBin = "/bin/bcrypt"
+
 	m := c.Machines()[0]
 
 	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
@@ -213,8 +220,8 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	originalCsum := originalStatus.Deployments[0].Checksum
 
 	c.Run("install", func(c cluster.TestCluster) {
-		// install fpaste and reboot
-		c.MustSSH(m, "sudo rpm-ostree install fpaste")
+		// install package and reboot
+		c.MustSSH(m, "sudo rpm-ostree install "+installPkgName)
 
 		installRebootErr := m.Reboot()
 		if installRebootErr != nil {
@@ -231,42 +238,40 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		}
 
 		// check the command is present, in the rpmdb, and usable
-		cmdOut := c.MustSSH(m, "command -v fpaste")
-		if string(cmdOut) != "/bin/fpaste" {
-			c.Fatalf(`fpaste binary in unexpected location. expectd %q, got %q`, "/bin/fpaste", string(cmdOut))
+		cmdOut := c.MustSSH(m, "command -v "+installPkgName)
+		if string(cmdOut) != installPkgBin {
+			c.Fatalf(`%q binary in unexpected location. expectd %q, got %q`, installPkgName, installPkgBin, string(cmdOut))
 		}
 
-		// e.g. fpaste-0.3.7.4.1-2.el7.noarch
-		rpmOut := c.MustSSH(m, "rpm -q fpaste")
-		rpmMatch := regexp.MustCompile("^fpaste.*noarch").MatchString(string(rpmOut))
+		rpmOut := c.MustSSH(m, "rpm -q "+installPkgName)
+		// forcing use of x86_64; may need to adapt this in the future
+		rpmRegex := "^" + installPkgName + ".*x86_64"
+		rpmMatch := regexp.MustCompile(rpmRegex).MatchString(string(rpmOut))
 		if !rpmMatch {
 			c.Fatalf(`Output from "rpm -q" was unexpected: %q`, string(rpmOut))
 		}
 
-		// just verify the command runs
-		c.MustSSH(m, "fpaste --version")
-
 		// package should be in the metadata
 		var reqPkg bool = false
 		for _, pkg := range postInstallStatus.Deployments[0].RequestedPackages {
-			if pkg == "fpaste" {
+			if pkg == installPkgName {
 				reqPkg = true
 				break
 			}
 		}
 		if !reqPkg {
-			c.Fatalf(`Unable to find "fpaste" in requested-packages: %v`, postInstallStatus.Deployments[0].RequestedPackages)
+			c.Fatalf(`Unable to find "%q" in requested-packages: %v`, installPkgName, postInstallStatus.Deployments[0].RequestedPackages)
 		}
 
 		var installPkg bool = false
 		for _, pkg := range postInstallStatus.Deployments[0].Packages {
-			if pkg == "fpaste" {
+			if pkg == installPkgName {
 				installPkg = true
 				break
 			}
 		}
 		if !installPkg {
-			c.Fatalf(`Unable to find "fpaste" in packages: %v`, postInstallStatus.Deployments[0].Packages)
+			c.Fatalf(`Unable to find "%q" in packages: %v`, installPkgName, postInstallStatus.Deployments[0].Packages)
 		}
 
 		// checksum should be different
@@ -277,7 +282,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 	// uninstall the package
 	c.Run("uninstall", func(c cluster.TestCluster) {
-		c.MustSSH(m, "sudo rpm-ostree uninstall fpaste")
+		c.MustSSH(m, "sudo rpm-ostree uninstall "+installPkgName)
 
 		uninstallRebootErr := m.Reboot()
 		if uninstallRebootErr != nil {
