@@ -14,6 +14,10 @@ rootpw --lock --iscrypted locked
 # We don't want Anaconda to touch the firewall
 firewall --disabled
 
+# prjquota is for quota enablement for containers: https://bugzilla.redhat.com/show_bug.cgi?id=1658386
+# rw and $ignition_firstboot are used by https://github.com/coreos/ignition-dracut/
+# Console settings are so we see output everywhere
+bootloader --timeout=1 --append="console=ttyS0,115200n8 console=tty0 rootflags=defaults,prjquota rw $ignition_firstboot"
 # Anaconda currently writes out configs for this which we don't want to persist; see below
 network --bootproto=dhcp --onboot=on
 

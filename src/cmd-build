@@ -268,15 +268,13 @@ for itype in "${IMAGE_TYPES[@]}"; do
               build_cloud_base
               /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
               ;;
-        metal-bios)
-            img_metalbios=${imageprefix}-metal-bios.raw
-            images[$itype]="${img_metalbios}"
-            run_virtinstall "$(pwd)"/"${img_metalbios}" --variant=metal
-            ;;
-        metal-uefi)
-            img_metaluefi=${imageprefix}-metal-uefi.raw
-            images[$itype]="${img_metaluefi}"
-            run_virtinstall "$(pwd)"/"${img_metaluefi}" --variant=metal-uefi
+        metal-bios|metal-uefi)
+            iname=${imageprefix}-${itype}.raw
+            images[$itype]="${iname}"
+            path="$(pwd)"/"${iname}"
+            run_virtinstall "${path}".tmp --variant="${itype}"
+            /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
+            rm -f "${path}".tmp
             ;;
         *) fatal "Unrecognized image type: $itype"
            ;;

@@ -30,8 +30,8 @@ parser.add_argument("--create-disk", help="Automatically create disk as qcow2, p
                     action='store_true')
 parser.add_argument("--configdir", help="coreos-assembler configdir",
                     action='store', required=True)
-parser.add_argument("--variant", help="Use an internal (kickstart) config",
-                    choices=('metal', 'metal-uefi', 'cloud'), default=None)
+parser.add_argument("--variant", help="Configure image variant",
+                    choices=('metal-bios', 'metal-uefi', 'cloud'), default=None)
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
                     action='store')
 parser.add_argument("--location", help="Installer location",
@@ -97,14 +97,6 @@ else:
     ks_tmp = tempfile.NamedTemporaryFile(mode='w', prefix="coreos-virtinstall", suffix=".ks")
 
 disk_size = None
-
-if args.variant is not None:
-    if args.variant == 'metal-uefi':
-        variant_ks = 'metal'
-    else:
-        variant_ks = args.variant
-    with open(f'/usr/lib/coreos-assembler/image-{variant_ks}.ks') as f:
-        shutil.copyfileobj(f, ks_tmp)
 
 with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
     shutil.copyfileobj(basef, ks_tmp)
@@ -184,7 +176,7 @@ ostree refs --delete {args.ostree_remote}:{args.ostree_ref}
 """)
 
 if args.create_disk:
-    if args.variant in ('metal', 'metal-uefi'):
+    if args.variant.startswith('metal-'):
         fmt = 'raw'
         size_estimate_path = os.path.join(args.tmpdir, 'ostree-size.json')
         # The OSTree size is shared among disk images, so we compute it once per build
