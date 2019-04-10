@@ -79,13 +79,6 @@ for img_format in buildmeta['images']:
         # try to delete the original file if it's somehow still around
         rm_allow_noent(filepath[:-3])
 
-# finally, also update the unversioned qemu symlink
-symlink_src = f'{buildmeta["name"]}-{build}-qemu.qcow2.gz'
-symlink_dest = os.path.join('builds', build, (buildmeta["name"] + '-qemu.qcow2.gz'))
-if not os.path.islink(symlink_dest):
-    os.symlink(symlink_src, symlink_dest)
-rm_allow_noent(symlink_dest[:-3])
-
 if at_least_one:
     print(f"Updated: {buildmeta_path}")
 else:
