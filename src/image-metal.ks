@@ -2,4 +2,4 @@
 # ignition.platform.id=metal is from https://github.com/coreos/fedora-coreos-tracker/issues/142
 # prjquota is for quota enablement for containers: https://bugzilla.redhat.com/show_bug.cgi?id=1658386
 # rw and $ignition_firstboot are used by https://github.com/coreos/ignition-dracut/
-bootloader --append="ignition.platform.id=metal rootflags=defaults,prjquota rw $ignition_firstboot"
+bootloader --append="ignition.platform.id=metal console=ttyS0,115200n8 console=tty0 rootflags=defaults,prjquota rw $ignition_firstboot"
