@@ -69,9 +69,9 @@ def run_ore():
         ore_args.extend(['--grant-user', user])
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
     ore_data = json.loads(subprocess.check_output(ore_args))
-    checksum = sha256sum_file(tmp_img_aws_vmdk)
-    size = os.path.getsize(tmp_img_aws_vmdk)
-    os.rename(tmp_img_aws_vmdk, f"{builddir}/{aws_vmdk_name}")
+    checksum = sha256sum_file(tmp_img_ec2_vmdk)
+    size = os.path.getsize(tmp_img_ec2_vmdk)
+    os.rename(tmp_img_ec2_vmdk, f"{builddir}/{aws_vmdk_name}")
     shutil.rmtree(tmpdir)
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
