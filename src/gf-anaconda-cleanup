@@ -18,9 +18,11 @@ coreos_gf_run "${src}"
 coreos_gf set-label /dev/sda2 boot
 coreos_gf_run_mount "${src}"
 
-# Both of these are written by Anaconda
-coreos_gf rm-rf "${deploydir}/etc/sysconfig/anaconda"
-coreos_gf rm-rf "${deploydir}/etc/systemd/system/default.target"
+# Remove some things written by anaconda; eventually
+# we want to reset /etc except we also need /etc/fstab right now e.g.
+for x in "/etc/sysconfig/anaconda" "/etc/resolv.conf" "/etc/systemd/system/default.target"; do
+    coreos_gf rm-rf "${deploydir}${x}"
+done
 # And blow away all of /var - we want systemd-tmpfiles to be
 # canonical
 coreos_gf rm-rf "${stateroot}/var/*"
