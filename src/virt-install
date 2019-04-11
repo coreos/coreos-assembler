@@ -238,7 +238,7 @@ try:
         vinstall_args.append('--nographics')
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
-        tail_proc = subprocess.Popen(['tail', '-F', args.console_log_file])
+        tail_proc = subprocess.Popen(f"tail -F {args.console_log_file} | grep anaconda", shell=True)
     # Start webserver to serve the ostree content to be retrieved during install
     # Sadly this logs to stderr by default, so let's silence it.  Also this is currently
     # racy, we need to at some point poll for the webserver to be up.
