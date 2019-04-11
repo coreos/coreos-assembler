@@ -41,8 +41,8 @@ parser.add_argument("--memory", help="Memory size in MB",
                     default=os.environ.get("VIRT_INSTALL_MEMORY", 1024))
 parser.add_argument("--console-log-file", help="Console log file",
                     action='store')
-parser.add_argument("--logs", help="Copy Anaconda logs to DIR",
-                    action='store', metavar="DIR")
+parser.add_argument("--fs9p", help="Make use of 9p",
+                    action='store_true')
 # Note https://bugzilla.redhat.com/show_bug.cgi?id=1379389
 parser.add_argument("--ostree-repo", help="Path to OSTree repo",
                     action='store', required=True)
@@ -147,11 +147,13 @@ if args.ostree_repo:
     ks_tmp.write(f"""
 ostreesetup --nogpg --osname={args.ostree_stateroot} --remote={args.ostree_remote} --url=http://{ipv4}:8000/ --ref="{args.ostree_ref}"
     """)
-# Hacky bits to copy out all of the Anaconda logs on shutdown
-if args.logs:
+
+if args.fs9p:
+
     ks_tmp.write("""
 %pre
 set -euo pipefail
+# Hacky bits to copy out all of the Anaconda logs on shutdown
 mkdir -p /mnt/logs
 mount -t 9p -o rw,trans=virtio,version=9p2000.L /mnt/logs /mnt/logs
 cat >/etc/systemd/system/coreos-virtinstall-logs.service <<EOF
@@ -162,6 +164,11 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStop=/bin/sh -c 'cp /tmp/*.log /mnt/logs'
 EOF
+
+# And accelerate the ostree pulls
+mkdir -p /install/ostree/repo
+mount -t 9p -o ro,trans=virtio,version=9p2000.L /install/ostree/repo /install/ostree/repo
+
 systemctl daemon-reload
 systemctl start coreos-virtinstall-logs
 %end
@@ -237,8 +244,9 @@ try:
     # racy, we need to at some point poll for the webserver to be up.
     http_proc = subprocess.Popen(['python3', '-m', 'http.server', '--bind', ipv4, '8000'], cwd=args.ostree_repo,
                                  stderr=subprocess.DEVNULL)
-    if args.logs:
-        vinstall_args.append("--filesystem=source={},target=/mnt/logs,accessmode=mapped".format(args.logs))
+    if args.fs9p:
+        vinstall_args.append(f"--filesystem=source={args.tmpdir}/anaconda,target=/mnt/logs,accessmode=mapped")
+        vinstall_args.append(f"--filesystem=source={args.ostree_repo},target=/install/ostree/repo,accessmode=mapped")
     location_arg = f"--location={args.location}"
     if have_virtinstall_2:
         # This way we don't go through libosinfo.  This is hardcoding the layout of the
