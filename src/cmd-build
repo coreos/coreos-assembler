@@ -219,7 +219,7 @@ img_base=tmp/${imageprefix}-base.qcow2
 # 9pfs isn't an option for EL7 so copying out anaconda logs doesn't work
 extraargs=
 if [ -n "${ISFEDORA}" ]; then
-    extraargs="${extraargs} --logs ${PWD}/tmp/anaconda"
+    extraargs="${extraargs} --fs9p"
 fi
 
 if [ -n "${ref_is_temp}" ]; then
