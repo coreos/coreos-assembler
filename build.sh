@@ -26,11 +26,11 @@ fi
 set -x
 srcdir=$(pwd)
 
-release="29"
+release="30"
 
 configure_yum_repos() {
     if [ -n "${ISFEDORA}" ]; then
-        # Add f29-coreos-continuous tag for latest build tools
+        # Add continuous tag for latest build tools
         echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\n" > /etc/yum.repos.d/coreos.repo
 
     fi
@@ -104,6 +104,10 @@ _prep_make_and_make_install() {
     fi
 }
 
+# For now keep using the f29 anaconda. There's no golden f30 image yet and it
+# doesn't support the installclass stuff and hopefully we'll stop using it soon.
+installer_release=29
+
 arch=$(uname -m)
 # Download url is different for primary and secondary fedora
 # Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
@@ -117,8 +121,8 @@ repository_dirs[ppc64le]=fedora-secondary
 repository_dirs[s390x]=fedora-secondary
 
 repository_dir=${repository_dirs[$arch]}
-INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$release-1.2.iso
-INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$release/Everything/$arch/iso/Fedora-Everything-$release-1.2-$arch-CHECKSUM
+INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$installer_release-1.2.iso
+INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-$installer_release-1.2-$arch-CHECKSUM
 
 install_anaconda() {
     # Overriding install URL
