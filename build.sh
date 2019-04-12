@@ -26,16 +26,13 @@ fi
 set -x
 srcdir=$(pwd)
 
+release="29"
+
 configure_yum_repos() {
     if [ -n "${ISFEDORA}" ]; then
-        # Add FAHC https://pagure.io/fedora-atomic-host-continuous
-        # but as disabled.  Today FAHC isn't multi-arch.  But let's
-        # add it so that anyone on x86_64 who wants to test the latest
-        # ostree/rpm-ostree can easily do so.
-        # NOTE: The canonical copy of this code lives in rpm-ostree's CI:
-        # https://github.com/projectatomic/rpm-ostree/blob/d2b0e42bfce972406ac69f8e2136c98f22b85fb2/ci/build.sh#L13
-        # Please edit there first
-        echo -e '[fahc]\nenabled=0\nmetadata_expire=1m\nbaseurl=https://ci.centos.org/artifacts/sig-atomic/fahc/rdgo/build/\ngpgcheck=0\n' > /etc/yum.repos.d/fahc.repo
+        # Add f29-coreos-continuous tag for latest build tools
+        echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\n" > /etc/yum.repos.d/coreos.repo
+
     fi
 }
 
@@ -108,7 +105,6 @@ _prep_make_and_make_install() {
 }
 
 arch=$(uname -m)
-release="29"
 # Download url is different for primary and secondary fedora
 # Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
 # Secondary Fedora - https://download.fedoraproject.org/pub/fedora-secondary/releases/
