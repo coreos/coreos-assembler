@@ -288,7 +288,7 @@ try:
                           location_arg,
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--initrd-inject={}".format(ks_tmp.name),
-                          "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name))])
+                          "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux numa=off noapic acpi=off elevator=deadline".format(os.path.basename(ks_tmp.name))])
     if args.variant == 'metal-uefi':
         vinstall_args.append('--boot=uefi')
     run_sync_verbose(vinstall_args)
