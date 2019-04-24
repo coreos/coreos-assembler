@@ -92,7 +92,10 @@ def get_libvirt_smp_arg():
 
 def run(fn, argv, **kwargs):
     print("cmd: {}".format(subprocess.list2cmdline(argv)))
-    return fn(argv, **kwargs)
+    try:
+        return fn(argv, **kwargs)
+    except subprocess.CalledProcessError as e:
+        raise SystemExit(f"{e}")
 
 def run_sync_verbose(argv, **kwargs):
     run(subprocess.check_call, argv, **kwargs)

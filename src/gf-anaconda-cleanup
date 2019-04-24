@@ -18,6 +18,18 @@ coreos_gf_run "${src}"
 coreos_gf set-label /dev/sda2 boot
 coreos_gf_run_mount "${src}"
 
+fb=/boot/ignition.firstboot
+exists=$(coreos_gf exists "${fb}")
+if [ "${exists}" = false ]; then
+    cat << EOF
+---------
+  error: Couldn't find ${fb} - most likely Anaconda failed."
+  error: If 9pfs is available, you can find logs in: tmp/build/tmp/anaconda"
+---------
+EOF
+    exit 1
+fi
+
 # Remove some things written by anaconda; eventually
 # we want to reset /etc except we also need /etc/fstab right now e.g.
 for x in "/etc/sysconfig/anaconda" "/etc/resolv.conf" "/etc/systemd/system/default.target"; do
