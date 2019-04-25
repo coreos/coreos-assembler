@@ -37,7 +37,7 @@ for x in "/etc/sysconfig/anaconda" "/etc/resolv.conf" "/etc/systemd/system/defau
 done
 # And blow away all of /var - we want systemd-tmpfiles to be
 # canonical
-coreos_gf rm-rf "${stateroot}/var/*"
+coreos_gf glob rm-rf "${stateroot}/var/*"
 # And finally, remove cruft from the *physical* root as nothing should be
 # using those; Anaconda is creating them today.
 for x in $(coreos_gf glob-expand '/*'); do
