@@ -238,9 +238,14 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         n_requests += 1
 
 def run_webserver():
-    print(f"Listening on {ipv4}:{PORT}")
-    server = http.server.ThreadingHTTPServer((ipv4, PORT), RequestHandler)
-    server.serve_forever()
+    try:
+        print(f"Listening on {ipv4}:{PORT}")
+        server = http.server.ThreadingHTTPServer((ipv4, PORT), RequestHandler)
+        server.serve_forever()
+    except Exception as e:
+        sys.stderr.write(f"Http thread failed:\n{e}\n")
+        sys.stderr.flush()
+        os._exit(1)
 
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
