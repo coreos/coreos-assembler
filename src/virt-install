@@ -252,7 +252,7 @@ try:
     else:
         vinstall_args.append('--nographics')
     if args.console_log_file:
-        tail_proc = subprocess.Popen(f"tail -F {args.console_log_file} | grep anaconda", shell=True)
+        tail_proc = subprocess.Popen(["setpriv", "--pdeathsig", "term", "--", "/bin/sh", "-c", f"tail -F {args.console_log_file} | grep anaconda"])
 
     # Note this is racy, we should be waiting for the webserver to be up
     # (Or switch to doing this over virtio)
