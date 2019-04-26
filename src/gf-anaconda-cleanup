@@ -30,11 +30,23 @@ EOF
     exit 1
 fi
 
-# Remove some things written by anaconda; eventually
-# we want to reset /etc except we also need /etc/fstab right now e.g.
-for x in "/etc/sysconfig/anaconda" "/etc/resolv.conf" "/etc/systemd/system/default.target"; do
-    coreos_gf rm-rf "${deploydir}${x}"
+# Remove most things written by anaconda in /etc, except
+# for /etc/fstab mainly.  We also keep /etc/hostname and /etc/locale.conf as otherwise
+# systemd-firstboot triggers.
+for x in "sysconfig/anaconda" "sysconfig/network" "crypttab" "resolv.conf" "X11" "systemd/system/default.target" "shadow-"; do
+    coreos_gf rm-rf "${deploydir}/etc/${x}"
 done
+for x in $(coreos_gf glob-expand "${deploydir}/etc/sysconfig/network-scripts/"'*'); do
+    coreos_gf rm-rf "${x}"
+done
+for x in $(coreos_gf find "${deploydir}/etc/ostree/remotes.d/"); do
+    e=$(coreos_gf exists "${deploydir}/usr/etc/${x}")
+    if [ "${e}" = "true" ]; then
+        continue
+    fi
+    coreos_gf rm "${deploydir}/etc/ostree/remotes.d/${x}"
+done
+
 # And blow away all of /var - we want systemd-tmpfiles to be
 # canonical
 coreos_gf glob rm-rf "${stateroot}/var/*"
