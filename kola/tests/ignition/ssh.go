@@ -32,12 +32,13 @@ func init() {
 		Distros:          []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:             "coreos.ignition.v2.ssh.key",
+		Name:             "coreos.ignition.ssh.key",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
-		Distros:          []string{"cl", "rhcos"},
+		UserDataV3:       conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
+		Distros:          []string{"cl", "fcos", "rhcos"},
 	})
 }

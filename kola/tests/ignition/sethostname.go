@@ -59,6 +59,23 @@ func init() {
 		              ]
 		          }
 		      }`)
+	configV3 := conf.Ignition(`{
+		          "ignition": {
+		              "version": "3.0.0"
+		          },
+		          "storage": {
+		              "files": [
+		                  {
+		                      "path": "/etc/hostname",
+		                      "mode": 420,
+							  "overwrite": true,
+		                      "contents": {
+		                          "source": "data:,core1"
+		                      }
+		                  }
+		              ]
+		          }
+		      }`)
 	register.Register(&register.Test{
 		Name:        "cl.ignition.v1.sethostname",
 		Run:         setHostname,
@@ -67,11 +84,12 @@ func init() {
 		Distros:     []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.sethostname",
+		Name:        "coreos.ignition.sethostname",
 		Run:         setHostname,
 		ClusterSize: 1,
 		UserData:    configV2,
-		Distros:     []string{"cl", "rhcos", "fcos"},
+		UserDataV3:  configV3,
+		Distros:     []string{"cl", "fcos", "rhcos"},
 	})
 }
 

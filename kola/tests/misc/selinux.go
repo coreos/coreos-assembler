@@ -29,25 +29,25 @@ func init() {
 		Run:         SelinuxEnforce,
 		ClusterSize: 1,
 		Name:        "coreos.selinux.enforce",
-		Distros:     []string{"cl", "rhcos", "fcos"},
+		Distros:     []string{"cl", "fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Run:         SelinuxBoolean,
 		ClusterSize: 1,
 		Name:        "coreos.selinux.boolean",
-		Distros:     []string{"cl", "rhcos", "fcos"},
+		Distros:     []string{"cl", "fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Run:         SelinuxBooleanPersist,
 		ClusterSize: 1,
 		Name:        "rhcos.selinux.boolean.persist",
-		Distros:     []string{"rhcos", "fcos"},
+		Distros:     []string{"fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Run:         SelinuxManage,
 		ClusterSize: 1,
 		Name:        "rhcos.selinux.manage",
-		Distros:     []string{"rhcos", "fcos"},
+		Distros:     []string{"rhcos"},
 	})
 }
 
