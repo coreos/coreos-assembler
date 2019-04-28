@@ -39,6 +39,7 @@ import (
 	gcloudapi "github.com/coreos/mantle/platform/api/gcloud"
 	openstackapi "github.com/coreos/mantle/platform/api/openstack"
 	packetapi "github.com/coreos/mantle/platform/api/packet"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/aws"
 	"github.com/coreos/mantle/platform/machine/do"
 	"github.com/coreos/mantle/platform/machine/esx"
@@ -439,7 +440,12 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}()
 
 	if t.ClusterSize > 0 {
-		userdata := t.UserData
+		var userdata *conf.UserData
+		if Options.IgnitionVersion == "v2" {
+			userdata = t.UserData
+		} else if Options.IgnitionVersion == "v3" {
+			userdata = t.UserDataV3
+		}
 		if userdata != nil && userdata.Contains("$discovery") {
 			url, err := c.GetDiscoveryURL(t.ClusterSize)
 			if err != nil {

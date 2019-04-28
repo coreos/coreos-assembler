@@ -168,24 +168,26 @@ func writeProps() error {
 		Mangled bool   `json:"mangled"`
 	}
 	return enc.Encode(&struct {
-		Cmdline     []string  `json:"cmdline"`
-		Platform    string    `json:"platform"`
-		Distro      string    `json:"distro"`
-		Board       string    `json:"board"`
-		OSContainer string    `json:"oscontainer"`
-		AWS         AWS       `json:"aws"`
-		DO          DO        `json:"do"`
-		ESX         ESX       `json:"esx"`
-		GCE         GCE       `json:"gce"`
-		OpenStack   OpenStack `json:"openstack"`
-		Packet      Packet    `json:"packet"`
-		QEMU        QEMU      `json:"qemu"`
+		Cmdline         []string  `json:"cmdline"`
+		Platform        string    `json:"platform"`
+		Distro          string    `json:"distro"`
+		IgnitionVersion string    `json:"ignitionversion"`
+		Board           string    `json:"board"`
+		OSContainer     string    `json:"oscontainer"`
+		AWS             AWS       `json:"aws"`
+		DO              DO        `json:"do"`
+		ESX             ESX       `json:"esx"`
+		GCE             GCE       `json:"gce"`
+		OpenStack       OpenStack `json:"openstack"`
+		Packet          Packet    `json:"packet"`
+		QEMU            QEMU      `json:"qemu"`
 	}{
-		Cmdline:     os.Args,
-		Platform:    kolaPlatform,
-		Distro:      kola.Options.Distribution,
-		Board:       kola.QEMUOptions.Board,
-		OSContainer: kola.Options.OSContainer,
+		Cmdline:         os.Args,
+		Platform:        kolaPlatform,
+		Distro:          kola.Options.Distribution,
+		IgnitionVersion: kola.Options.IgnitionVersion,
+		Board:           kola.QEMUOptions.Board,
+		OSContainer:     kola.Options.OSContainer,
 		AWS: AWS{
 			Region:       kola.AWSOptions.Region,
 			AMI:          kola.AWSOptions.AMI,

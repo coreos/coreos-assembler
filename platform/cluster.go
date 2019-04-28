@@ -134,7 +134,14 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 
 func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
 	if userdata == nil {
-		userdata = conf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
+		switch bc.IgnitionVersion() {
+		case "v2":
+			userdata = conf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
+		case "v3":
+			userdata = conf.Ignition(`{"ignition": {"version": "3.0.0"}}`)
+		default:
+			return nil, fmt.Errorf("unknown ignition version")
+		}
 	}
 
 	// hacky solution for unified ignition metadata variables
@@ -184,6 +191,12 @@ WantedBy=multi-user.target
 		conf.AddFile("/etc/pivot/image-pullspec", "root", bc.bf.baseopts.OSContainer, 0644)
 	}
 
+	if conf.IsIgnition() {
+		if !conf.ValidConfig() {
+			return nil, fmt.Errorf("invalid ignition config")
+		}
+	}
+
 	return conf, nil
 }
 
@@ -220,6 +233,10 @@ func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
 
 func (bc *BaseCluster) Distribution() string {
 	return bc.bf.baseopts.Distribution
+}
+
+func (bc *BaseCluster) IgnitionVersion() string {
+	return bc.bf.baseopts.IgnitionVersion
 }
 
 func (bc *BaseCluster) Platform() Name {
