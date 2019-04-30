@@ -15,7 +15,7 @@ and to keep them as similar as possible:
  - Local development ("test a kernel change")
  - Be a production build system orchestrated by an external tool (e.g. Jenkins)
 
-See [fedora-coreos-ci](https://github.com/dustymabe/fedora-coreos-ci) as an
+See [fedora-coreos-pipeline](https://github.com/coreos/fedora-coreos-pipeline) as an
 example pipeline.
 
 ### Getting started - prerequisites
