@@ -3,7 +3,7 @@
 #
 # Wrapper for virt-install designed to run in a container
 # environment, and using defaults targeted for CoreOS.
-# https://github.com/cgwalters/coreos-assembler/issues/7
+# https://github.com/coreos/coreos-assembler/issues/7
 # Today, this requires a Kickstart (and an installer ISO path);
 # we might change things down the line to have defaults for
 # one or both.
