@@ -48,3 +48,6 @@ ShellCheck
 
 # for grub install when creating images without anaconda
 grub2
+
+# Support for Koji uploads.
+krb5-libs krb5-workstation python2-koji python2-krbv
