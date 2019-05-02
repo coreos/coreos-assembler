@@ -224,9 +224,9 @@ EOF
     rm -f "${changed_stamp}"
 
     # shellcheck disable=SC2086
-    set - rpm-ostree compose tree --repo="${workdir}"/repo \
+    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${workdir}"/repo \
             --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
-            --unified-core "${manifest}" ${RPMOSTREE_EXTRA_ARGS:-} "$@"
+            --unified-core "${manifest}" ${COSA_RPMOSTREE_ARGS:-} "$@"
 
     echo "Running: $*"
 
