@@ -1,0 +1,739 @@
+#!/usr/bin/python -u
+# pylint: disable=C0103
+
+"""
+cmd-archive performs the required steps to make COSA a Koji Content Generator.
+When running this in an automated fashion, you will need a Kerberos keytab file
+for a service account.
+
+Dependencies:
+ - python-koji, krb5-workstation and python-krbV
+ - Kerberos credentials against Koji _in_ keytab format
+ - content generator permissions for your user or service account
+
+See cli() for usage information.
+"""
+import argparse
+import datetime
+import hashlib
+import json
+import logging as log
+import os.path
+import platform
+import shutil
+import subprocess
+import tempfile
+
+import koji
+import koji_cli.lib as klib
+
+try:
+    # Available in Koji v1.17, https://pagure.io/koji/issue/975
+    from koji_cli.lib import unique_path
+    from koji_cli.lib import progress_callback as cb
+except ImportError:
+    from koji_cli.lib import _unique_path as unique_path
+    from koji_cli.lib import _progress_callback as cb
+
+try:
+    with open("/etc/redhat-release", "r") as f:
+        HOST_OS = str(f.read()).strip()
+except IOError:
+    HOST_OS = "unknown"
+
+# ARCH is the current machine architecture
+ARCH = platform.machine()
+
+# COSA_INPATH is the _in container_ path for the image build source
+COSA_INPATH = "/cosa"
+
+# Content generator types as defined in:
+# https://pagure.io/koji/blob/master/f/docs/schema.sql
+KOJI_CG_TYPES = {
+    # key: (description, extension, architecture, type)
+    "iso": ("CD/DVD Image", "iso", ARCH, "image"),
+    "json": ("JSON data", "json", "noarch", "source"),
+    "log": ("log file", "log", "noarch", "log"),
+    "ova": ("Open Virtualization Archive", "ova", ARCH, "image"),
+    "qcow": ("QCOW image", "qcow", ARCH, "image"),
+    "qcow2": ("QCOW2 image", "qcow2", ARCH, "image"),
+    "raw": ("Raw disk image", "raw", ARCH, "image"),
+    "tar": ("Tar file", "tar", "noarch", "source"),
+    "vdi": ("VirtualBox Virtual Disk Image", "vdi", ARCH, "image"),
+    "vhd": ("Hyper-V image", "vhd", ARCH, "image"),
+    "vhdx": ("Hyper-V Virtual Hard Disk v2 image", "vhdx", ARCH, "image"),
+    "vmdk": ("vSphere image", "vmdk", ARCH, "image"),
+    "yaml": ("YAML data", "yaml", "noarch", "source")
+}
+
+# These artifacts need to be renamed on upload. Koji file extension matching
+# against content types.
+RENAME_RAW = ['initramfs.img', '-kernel', "ostree-commit"]
+
+
+def set_logger(level):
+    """
+    Set the log level
+    @param str: name of the log level
+    """
+    sl = log.DEBUG
+    if level == "error":
+        sl = log.ERROR
+    elif level == "warn":
+        sl = log.WARN
+    elif level == "info":
+        sl = log.INFO
+
+    log.basicConfig(format='[%(asctime)s  %(levelname)s]: %(message)s',
+                    level=sl)
+
+
+def kinit(keytab, principle):
+    """
+    Execute the Kerberos Auth using the provided keytab
+    @param str: the name of the keytab file
+    @param str: the principle name, e.g you@example.com. The principle
+                should match the Koji user name.
+    """
+    if keytab is None:
+        raise Exception("keytab file is not defined")
+
+    log.info("using kerberos auth via %s", keytab)
+    try:
+        _ = subprocess.check_output([
+            "kinit", "-f", "-t", keytab, "-k", principle])
+        klist_out = subprocess.check_output(["klist", "-a"])
+        log.debug("authenticated: \n%s", klist_out.decode("utf-8"))
+    except Exception as err:
+        raise Exception("failed to auth: ", err)
+
+
+def get_koji_fileinfo(fname):
+    """
+    Get archive_info is a helper to get the content generator parts
+    @param str: file name to check as a string
+    """
+    ext = (os.path.splitext(fname)[1]).replace(".", "")
+    if ext == "gz":
+        ext = fname.split(".")[-2]
+
+    _, force_extension = special_name(fname)
+    if force_extension is not None:
+        ext = force_extension
+
+    try:
+        return KOJI_CG_TYPES[ext]
+    except KeyError:
+        log.debug("file type %s was not found in lookup", ext)
+        return None, None, None, None
+
+
+def special_name(fname):
+    """
+    Helper for handling special files such as unlabeled raw files. Files
+    that need have their names mangled should be handled here. Koji has strict
+    rules that ensure the file-type to match a specific extension.
+    @param str: file name to parse
+    """
+
+    # koji doesn't understand raw.gz, so swap 'em
+    # request filed with Koji maintainers to fix this.
+    if fname.endswith("raw.gz"):
+        return fname.replace("raw.gz", "gz.raw"), "raw"
+
+    # handle special files such as installers kernels.
+    for ending in RENAME_RAW:
+        if fname.endswith(ending):
+            return "%s.raw" % fname, "raw"
+
+    return fname, None
+
+
+def koji_upload(fname):
+    """
+    Helper to return if a file should be uploaded
+    @param str: name of file to check against Koji table for uploading.
+    """
+    found, _, _, _ = get_koji_fileinfo(fname)
+    if found:
+        return True
+    return False
+
+
+def md5sum_file(path):
+    """
+    Calculates the md5 sum from a path.
+
+    @param str: path to the file to checksum
+    """
+    h = hashlib.md5()
+    with open(path, 'rb', buffering=0) as data:
+        for b in iter(lambda: data.read(128 * 1024), b''):
+            h.update(b)
+    return h.hexdigest()
+
+
+def load_json(path):
+    """
+    Shortcut for loading json from a file path.
+    This is cmdlib, but cmdlib is py3 and we have to use py2.
+    @param str: path to the json to import
+    """
+    with open(path) as data:
+        return json.load(data)
+
+
+class Build:
+    """
+    The Build Class handles the reading in and return of build JSON emitted
+    as part of the build process.
+    """
+
+    def __init__(self, build_dir, build="latest"):
+        """
+        init loads the builds.json which lists the builds, loads the relevant
+        meta-data from JSON and finally, locates the build artifacts.
+        @param str: the root of the build directory
+        @param str: the build number or "latest"
+        """
+
+        log.info('Evaluating builds.json')
+        builds = load_json('%s/builds.json' % build_dir)
+        if build != "latest":
+            if build not in builds['builds']:
+                raise Exception("Build was not found in builds.json")
+        else:
+            build = builds['builds'][0]
+
+        log.info("Targeting build: %s", build)
+        self._build_root = os.path.abspath("%s/%s" % (build_dir, build))
+
+        self._build_json = {
+            "commit": None,
+            "config": None,
+            "image": None,
+            "meta": None
+        }
+        self._found_files = {}
+
+        emsg = "was not read in properly or is not defined"
+        if self.commit is None:
+            raise Exception("%s %s" % self.__file("commit"), emsg)
+        if self.config is None:
+            raise Exception("%s %s" % self.__file("config"), emsg)
+        if self.image is None:
+            raise Exception("%s %s" % self.__file("image"), emsg)
+        if self.meta is None:
+            raise Exception("%s %s" % self.__file("meta"), emsg)
+
+        self.build_artifacts()
+        log.info("Proccessed build for: %s (%s-%s) %s",
+                 self.summary, self.build_name.upper(), self.arch,
+                 self.build_id)
+
+    @property
+    def arch(self):
+        """ get the build arch """
+        return ARCH
+
+    @property
+    def build_id(self):
+        """ get the build id, e.g. 99.33 """
+        return self.get_meta_key("meta", "buildid")
+
+    @property
+    def build_root(self):
+        """ return the actual path for the build root """
+        return self._build_root
+
+    @property
+    def build_name(self):
+        """ get the name of the build """
+        ref = str(self.get_meta_key("meta", "ref")).split('-')
+        return ref[-1]
+
+    @property
+    def summary(self):
+        """ get the summary of the build """
+        return self.get_meta_key("meta", "summary")
+
+    @property
+    def commit(self):
+        """ get the commitmeta.json dict """
+        if self._build_json["commit"] is None:
+            self._build_json["commit"] = self.__get_json("commit")
+        return self._build_json["commit"]
+
+    @property
+    def config(self):
+        """ get the the meta-data about the config recipe """
+        if self._build_json["config"] is None:
+            self._build_json["config"] = self.__get_json("config")
+        return self._build_json["config"]
+
+    @property
+    def image(self):
+        """ get the meta-data about the COSA image """
+        if self._build_json["image"] is None:
+            self._build_json["image"] = self.__get_json("image")
+        return self._build_json["image"]
+
+    @property
+    def meta(self):
+        """ get the meta.json dict """
+        if self._build_json["meta"] is None:
+            self._build_json["meta"] = self.__get_json("meta")
+        return self._build_json["meta"]
+
+    @staticmethod
+    def ckey(var):
+        """
+        Short-hand helper to get coreos-assembler values from json.
+        @param str: value to add to `coreos-assembler.`
+        """
+        return "coreos-assembler.%s" % var
+
+    def __file(self, var):
+        """
+        Look up the file location for specific files.
+        The lookup is performed against the specific build root.
+        @param str: name of file to return
+        """
+        lookup = {
+            "commit": "%s/commitmeta.json" % self.build_root,
+            "config": ("%s/coreos-assembler-config-git.json" %
+                       self.build_root),
+            "image": "/cosa/coreos-assembler-git.json",
+            "meta": "%s/meta.json" % self.build_root,
+        }
+        return lookup[var]
+
+    def __get_json(self, name):
+        """
+        Read in the json file in, and decode it.
+        @param str: name of the file read in.
+        """
+        file_path = self.__file(name)
+        log.debug("Reading in %s", file_path)
+        return load_json(file_path)
+
+    def get_obj(self, key):
+        """ Return the backing object
+        @param str: get specifc meta data
+        """
+        lookup = {
+            "commit": self.commit,
+            "config": self.config,
+            "image": self.image,
+            "meta": self.meta,
+        }
+        try:
+            return lookup[key]
+        except:
+            raise Exception("invalid key %s, valid keys are %s" %
+                            (key, lookup.keys()))
+
+    def get_meta_key(self, obj, key):
+        """
+        Look up a the key in a dict
+        @param dict: reference to the dictionary
+        @param str: key in dictionary to return
+        """
+        try:
+            data = self.get_obj(obj)
+            return data[key]
+        except KeyError as err:
+            log.warning("lookup for key '%s' returned: %s", key, str(err))
+            return None
+
+    def get_sub_obj(self, obj, key, sub):
+        """
+        Return the sub-element sub of key in a nested dic
+        @param dict: the parent dict
+        @param str: key of the sub element
+        @param str: the sub key to return
+        """
+        if isinstance(obj, str):
+            obj = self.get_obj(obj)
+            return self.get_sub_obj(obj, key, sub)
+        try:
+            return obj[key][sub]
+        except KeyError:
+            log.warning(obj)
+
+    def build_artifacts(self):
+        """
+        Walk the build root and prepare a list of files in it. While
+        commitmeta.json provides these artifacts, the information about the
+        individual files is not compatible with the Koji upload (e.g. SHA,
+        type has to be translated, strict filename conventions)
+        """
+        log.info("Processing the build artifacts")
+
+        # locate all the build artifacts
+        files = []
+        for ffile in os.listdir(self.build_root):
+            files.append(os.path.join(self.build_root, ffile))
+            if os.path.islink(ffile):
+                log.debug(" * EXCLUDING symlink '%s'", ffile)
+                log.debug(" *    target '%s'", os.path.realpath(ffile))
+                continue
+
+        # add the coreos assembler files
+        for ffile in os.listdir(COSA_INPATH):
+            files.append(os.path.join(COSA_INPATH, ffile))
+
+        # process the files that were found
+        for ffile in files:
+            log.debug("Considering file file '%s'", ffile)
+            short_path = os.path.basename(ffile)
+
+            if not koji_upload(short_path):
+                log.debug(" * EXCLUDING file '%s'", ffile)
+                log.debug("   File type is not supported by Koji")
+                continue
+
+            # os.path.getsize returns an incorrect value, so use stat
+            fsize = subprocess.check_output(["stat", "--format", '%s', ffile])
+            log.debug(" * calculating checksum")
+            self._found_files[ffile] = {
+                "local_path": os.path.abspath(ffile),
+                "path": short_path,
+                "md5": md5sum_file(ffile),
+                "size": int(fsize)
+            }
+
+            log.debug(" * size is %s", self._found_files[ffile]["size"])
+            log.debug(" * md5 is %s", self._found_files[ffile]["md5"])
+
+    def get_artifacts(self):
+        """ Iterator for the meta-data about artifacts in the build root """
+        for name in self._found_files:
+            yield (name, self._found_files[name])
+
+
+class Upload():
+    """ Upload generates the manifest for a build and uploads to a
+        Koji Server. Upload treats each instance as a separate build; multiple
+        innovations of the Upload should be separate instances.
+    """
+
+    def __init__(self, in_build, owner, tag, profile, login_now=False):
+        """ Initialize an instance of the Upload object.
+
+        @param Build: build object to upload
+        @param str: username of the upload
+        @param str: how to tag the build
+        @param str: which instance of Koji should be used
+        @param str: the profile name to use for the upload
+        @param bool: login during init, throws Exception if it fails.
+        """
+        self._build = in_build
+        self._manifest = None
+        self._owner = owner.split('@')[0]
+        self._profile = profile
+        self._remote_directory = None
+        self._session = None
+        self._tag = tag
+        self._image_files = None
+        self._uploaded = False
+
+        if self._tag is None:
+            raise Exception("build tag must be set")
+        if self._owner is None:
+            raise Exception("owner must be set")
+        if self.build is None:
+            raise Exception("Build object must be provided")
+        if self._profile is None:
+            raise Exception("profile must not be None")
+
+        if login_now:
+            try:
+                _ = self.session
+            except Exception as err:
+                raise Exception("failed to login into Koji instance", err)
+            self.verify_tag(self._tag)
+
+    @property
+    def build(self):
+        """ get the Build that Upload will act on """
+        return self._build
+
+    @staticmethod
+    def get_file_meta(obj):
+        """
+        Generate the required dict for specific types of files.
+        @param dict: meta-data for parsing
+
+        HERE BE DRAGONS: YOU MUST TEST ANY CHANGES AGAINST KOJI. CHANGING
+        THIS STRUCTURE CAN AND WILL BREAK UPLOADS. THE STRUCTURE FOR A
+        CONTENT GENERATOR IS NOT DOCUMENTED.
+        """
+        if not isinstance(obj, dict):
+            raise Exception("cannot parse file meta-data, invalid type")
+
+        (description, ext, arch, etype) = get_koji_fileinfo(obj['path'])
+        fname, _ = special_name(obj['path'])
+
+        file_meta = {
+            "arch": arch,
+            "buildroot_id": 1,
+            "checksum": obj["md5"],
+            "checksum_type": "md5",
+            "filename": fname,
+            "filesize": obj["size"],
+            "type": ext,
+            "extra": {"image": {"arch": arch}}
+        }
+
+        if etype not in ["image", "source"]:
+            del file_meta['extra']
+            file_meta['type'] = etype
+
+        if description is None:
+            return None
+
+        return file_meta
+
+    @property
+    def image_files(self):
+        """ Generate outputs prepares the output listing. """
+        if self._image_files is not None:
+            return self._image_files
+
+        outputs = []
+        for _, value in (self.build).get_artifacts():
+            file_output = Upload.get_file_meta(value)
+            if file_output is not None:
+                outputs.append(file_output)
+        self._image_files = outputs
+        return self._image_files
+
+    @property
+    def manifest(self):
+        """
+        Generate the core json used to tell Koji what the build looks like
+        """
+        if self._manifest is not None:
+            return self._manifest
+
+        source = self.build.get_meta_key(
+            "meta", self.build.ckey("container-config-git"))
+
+        now = datetime.datetime.utcnow()
+        stamp = now.strftime("%s")
+
+        log.debug("Preparing manfiest for %s files", len(self.image_files))
+        self._manifest = {
+            "metadata_version": 0,
+            "build": {
+                "end_time": stamp,
+                "extra": {
+                    "typeinfo": {
+                        "image": {
+                            "arch": ARCH
+                        }
+                    }
+                },
+                "name": self.build.build_name,
+                "release": now.strftime("%H%M%S"),
+                "owner": self._owner,
+                "source": source['origin'],
+                "start_time": stamp,
+                "version": "%s" % self.build.build_id
+            },
+            "buildroots": [{
+                "id": 1,
+                "host": {
+                    "os": HOST_OS,
+                    "arch": self.build.arch
+                },
+                "content_generator": {
+                    "name": "coreos-assembler",
+                    "version": self.build.get_sub_obj(
+                        "meta",
+                        self.build.ckey("container-config-git"), "commit")
+                },
+                "container": {
+                    "type": "docker",
+                    "arch": self.build.arch,
+                    "name": "coreos-assembler"
+                },
+                "components": "",
+                "extra": {
+                    "coreos-assembler": {
+                        "build_id": 1,
+                        "builder_image_id": 1
+                    }
+                },
+                "type": "image",
+                "tools": [
+                    {
+                        "name": "coreos-assembler",
+                        "version": self.build.get_sub_obj(
+                            "meta",
+                            self.build.ckey("container-config-git"), "commit")
+                    }
+                ]
+            }],
+            "output": self.image_files
+        }
+        return self._manifest
+
+    @property
+    def session(self):
+        """
+        Return an authenticated Koji session
+        """
+
+        if self._session is not None:
+            return self._session
+
+        mykoji = koji.get_profile_module(self._profile)
+        opts = mykoji.grab_session_options(mykoji.config)
+        session = mykoji.ClientSession(mykoji.config.server, opts)
+
+        try:
+            klib.activate_session(session, mykoji.config)
+            assert session.logged_in
+            log.info("logged into koji server")
+        except Exception as e:
+            raise Exception("failed to authenticate to koji: %s" % e)
+
+        if session is None:
+            raise Exception("failed to get session from koji server")
+
+        self._session = session
+        return session
+
+    def verify_tag(self, tag):
+        """ Verify that a tag exists in this Koji instance """
+        taginfo = self._session.getTag(tag)
+        if not taginfo:
+            raise RuntimeError('tag %s is not present in Koji' % tag)
+
+    def upload(self):
+        """
+        Upload all files to a remote directory in Koji.
+
+        The Koji Python lib maintains the filename in the upload; there is no
+        option to upload with a different name. If the name needs to be changed
+        a symlink is created in temporary directory and is used as the upload
+        file.
+        """
+        serverdir = unique_path("%s-cosa" % self.build.build_id)
+        callback = cb
+
+        log.debug('uploading files to %s', serverdir)
+        for _, meta in (self.build).get_artifacts():
+            fpath = meta['local_path']
+            lpath, rename = special_name(meta['path'])
+            try:
+                tdir = None
+                if rename:
+                    tdir = tempfile.mkdtemp(prefix="koji-staging")
+                    slink = "%s/%s" % (tdir, lpath)
+                    log.debug("creating symlink from %s to %s", fpath, slink)
+                    os.symlink(fpath, slink)
+                    fpath = slink
+
+                log.info("Uploading %s to %s/%s", fpath, serverdir, fpath)
+                self.session.uploadWrapper(fpath, serverdir, callback=callback)
+                if callback:
+                    print('')
+            finally:
+                if tdir is not None:
+                    shutil.rmtree(tdir)
+
+        self._uploaded = True
+        self._remote_directory = serverdir
+        cginfo = self.session.CGImport(self.manifest, serverdir)
+        log.info(json.dumps(cginfo, sort_keys=True, indent=3))
+        log.info("recorded build %s", cginfo['nvr'])
+        return cginfo
+
+
+def cli():
+    """ cli implements command-line innovation """
+
+    parser = argparse.ArgumentParser(
+        prog="CoreOS Assembler Build Archiver",
+        description='Archive build artifacts, logs, and metadata in Koji.',
+        usage="""
+Upload a CoreOS Assembler (COSA) reated Build to a Koji Server.
+
+Note: the typical use case for this program is in an automated fashion, and
+running from within the COSA container yourself. Unless you are debugging COSA,
+this is likely not what are looking for.
+
+To use this program, you will need:
+    1) An account on the Koji Server
+    2) A Keytab file with your Kerberos Credentials
+    3) A completed build.
+
+Example:
+    $ cmd-archive \
+        --build_root=/src/build \
+        --keytab keytab \
+        --owner me@FEDORA.COM \
+        --tag rhaos-4.1-rhel-8-build \
+        --profile koji
+
+Environment variables are supported:
+    - KOJI_USERNAME will set the owner
+    - KOJI_TAG will set the tag for the build
+    - KOJI_PROFILE is the configuration in /etc/koji.confi.d that will be used
+    - KEYTAB will set the location for the keytab file"""
+    )
+
+    parser.add_argument("--log-level",
+                        default=os.environ.get("COSA_LOG_LEVEL", "info"),
+                        choices=["warn", "error", "debug", "info"],
+                        help="Set the log level")
+
+    # Options for finding the build.
+    parser.add_argument("--build", default="latest",
+                        help="Override build id, defaults to latest")
+    parser.add_argument("--buildroot", default="builds",
+                        help="Build diretory")
+    parser.add_argument("--dump", default=False, action='store_true',
+                        help="Dump the manfiest and exit")
+    parser.add_argument("--no-upload", default=False, action='store_true',
+                        help="Do not upload, just parse the build")
+
+    # Koji specific options
+    parser.add_argument("--no-auth", action='store_false', dest="auth",
+                        help="Skip Kerberos auth, use if already auth'd")
+    parser.add_argument("--keytab",
+                        default=os.environ.get("KOJI_KEYTAB", None),
+                        help="location of the keytab file to use for auth")
+    parser.add_argument('--owner', required=True,
+                        default=os.environ.get("KOJI_USERNAME", None),
+                        help='koji user name that owns this build')
+    parser.add_argument('--tag', required=True,
+                        default=os.environ.get("KOJI_TAG", None),
+                        help='tag this build, eg. awesome-candidate')
+    parser.add_argument('--profile', required=True,
+                        default=os.environ.get("KOJI_PROFILE", None),
+                        help='profile to use, e.g. prod, stage, test')
+    args = parser.parse_args()
+
+    set_logger(args.log_level)
+
+    build = Build(args.buildroot, args.build)
+    if args.auth:
+        kinit(args.keytab, args.owner)
+
+    upload = Upload(build, args.owner, args.tag, args.profile)
+    if args.dump:
+        print(json.dumps(upload.manifest, sort_keys=True, indent=3))
+        return
+
+    if args.no_upload is False:
+        upload = Upload(build, args.owner, args.tag, args.profile)
+
+    cg_info = upload.upload()
+
+
+if __name__ == '__main__':
+    cli()
