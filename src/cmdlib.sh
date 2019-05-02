@@ -206,7 +206,7 @@ EOF
         mkdir tmp/overlay-build
         (cd tmp/overlay-build && "${DIR}"/build_rpm_from_dir "${configdir}/overlay" "${name}-overlay" "${workdir}/overrides/rpm")
     fi
-    if [ -d "${overridesdir}"/rpm ]; then
+    if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && createrepo_c .)
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         cat >> "${override_manifest}" <<EOF
