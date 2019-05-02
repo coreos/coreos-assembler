@@ -69,6 +69,10 @@ install_rpms() {
         rpm -q grubby && yum remove -y grubby
     fi
 
+    # Allow Kerberos Auth to work from a keytab. The keyring is not
+    # available in a Container.
+    sed -e "s/^.*default_ccache_name/#    default_ccache_name/g" -i /etc/krb5.conf
+
     # Open up permissions on /boot/efi files so we can copy them
     # for our ISO installer image
     find /boot/efi -type f -print0 | xargs -r -0 chmod +r
