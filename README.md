@@ -1,7 +1,8 @@
 This is the CoreOS Assembler (often abbreviated COSA) build environment. It is 
 a collection of various tools used to build 
-[Fedora CoreOS](https://coreos.fedoraproject.org) style systems.
-
+[Fedora CoreOS](https://coreos.fedoraproject.org) style systems.  You
+can use this to create Ignition + OSTree based operating systems with
+custom components and manage updates yourself, etc.
 
 It reuses various upstream tools, such as:
 
@@ -27,7 +28,7 @@ below). Regardless of whether you are using privileged or unprivileged
 mode you'll need access to `/dev/kvm` as the build process runs a
 virtual machine in order to generate the target image. If you're running
 this in a VM, you must enable [nested virt](https://docs.fedoraproject.org/en-US/quick-docs/using-nested-virtualization-in-kvm/).
-See also [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances).
+There are various public cloud options that provide bare metal, such as [Packet](https://www.packet.com/), [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances), EC2 `i3.metal` instances, [IBM Bare Metal](https://www.ibm.com/cloud/bare-metal-servers), etc.
 
 #### Unprivileged Mode
 
@@ -49,38 +50,33 @@ In privileged mode the rpm-ostree compose uses container features
 itself, thus requires a privileged container in order to perform the
 compose. This is known as [recursive containers](https://github.com/projectatomic/bubblewrap/issues/284).
 
-### Container Build
+### Building the cosa container image locally
 ---
 
-To completely rebuild the COSA container image locally, execute
-`$ sudo podman build -t localhost/coreos-assembler .` or
-`$ sudo podman build -t localhost/coreos-assembler -f Dockerfile.rhel .`
-from the `coreos-assembler` repository. If building the RHEL version please 
-note you will need a maipo directory with references to
-proper repositories.
-
+To completely rebuild the COSA container image locally, use e.g.
+`$ sudo podman build -t localhost/coreos-assembler .`
 
 ### Setup
 ---
 
-Let's set up our working directory first. We'll create and use `./srv-coreos`
+Let's set up our working directory first. We'll create and use `./fcos`
 on our host system. You can choose any directory you like. 
 
 ```
-$ mkdir ./srv-coreos
-$ setfacl -m u:1000:rwx ./srv-coreos
-$ setfacl -d -m u:1000:rwx ./srv-coreos
-$ chcon system_u:object_r:container_file_t:s0 ./srv-coreos
-$ cd ./srv-coreos
+$ mkdir ./fcos
+$ setfacl -m u:1000:rwx ./fcos
+$ setfacl -d -m u:1000:rwx ./fcos
+$ chcon system_u:object_r:container_file_t:s0 ./fcos
+$ cd ./fcos
 ```
 
 In the above commands we:
 
-- created the `./srv-coreos` directory
+- created the `./fcos` directory
 - set file ACLs so that the `builder` user (uid `1000` inside the container) can write files
 - set file ACLs so that new files get created with ACLs that allow the `builder` user
 - gave the directory an SELinux file context for sharing with containers
-- changed our working directory into `./srv-coreos`
+- changed our working directory into `./fcos`
 
 Now we'll define a bash function that we can use to call the assembler
 container:
@@ -148,8 +144,9 @@ variables:
 ---
 
 You only need to do this once; it will clone the specified
-configuration repo, create various directories and also
-download an installer image (used to make VMs).
+configuration repo, and create various directories/state such
+as the OSTree repository.  (For production, you will want to
+sync this repository out so clients can get updates).
 
 ```
 $ cosa init https://github.com/coreos/fedora-coreos-config
@@ -267,7 +264,6 @@ $ cosa fetch && cosa build
 ```
 
 #### Using different CA certificates
-
 
 If you need access to CA certificates on your host (for example, when you need to access
 a git repo that is not on the public Internet), you can mount in the host certificates
