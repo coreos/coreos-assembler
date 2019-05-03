@@ -102,10 +102,6 @@ if [ -z "${previous_commit}" ] && [ -n "${previous_build}" ]; then
 fi
 echo "Previous commit: ${previous_commit:-none}"
 
-sha256sum_str() {
-    sha256sum | cut -f 1 -d ' '
-}
-
 # Calculate image input checksum now and gather previous image build variables if any
 ks_path="${configdir}"/image.ks
 if [ -f "${ks_path}" ]; then

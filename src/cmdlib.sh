@@ -471,3 +471,7 @@ jq_git() {
     # json document.
     jq -rM ".git.$1" "${2}"
 }
+
+sha256sum_str() {
+    sha256sum | cut -f 1 -d ' '
+}
