@@ -18,8 +18,6 @@ Usage: coreos-assembler build --help
 
     - ostree
     - qemu
-    - metal-bios
-    - metal-uefi
 
   Note that all image targets also require the "ostree" target.
 EOF
@@ -64,18 +62,6 @@ done
 
 if [ $# -eq 0 ]; then
     set -- qemu
-fi
-
-declare -a IMAGE_TYPES
-IMAGE_TYPES=()
-# shellcheck disable=SC2068
-for target in $@; do
-    if [[ $target != ostree ]]; then
-        IMAGE_TYPES+=("$target")
-    fi
-done
-if [ "${#IMAGE_TYPES[@]}" != 0 ]; then
-    echo "Image types: ${IMAGE_TYPES[*]}"
 fi
 
 export LIBGUESTFS_BACKEND=direct
@@ -205,36 +191,9 @@ img_base=tmp/${imageprefix}-base.qcow2
 # forgive me for this sin
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
-build_cloud_base() {
-    if [ -f "${PWD}/${img_base}" ]; then
-        return
-    fi
-    local args=""
-    args="$args --variant=cloud"
-    # shellcheck disable=SC2046 disable=SC2086
-    run_virtinstall "${ref:-${commit}}" "${PWD}"/"${img_base}" $args
-}
-
-declare -A images
-for itype in "${IMAGE_TYPES[@]}"; do
-    case $itype in
-        qemu) img_qemu=${imageprefix}-qemu.qcow2
-              images[$itype]="${img_qemu}"
-              build_cloud_base
-              /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
-              ;;
-        metal-bios|metal-uefi)
-            iname=${imageprefix}-${itype}.raw
-            images[$itype]="${iname}"
-            path="$(pwd)"/"${iname}"
-            run_virtinstall "${ref:-${commit}}" "${path}".tmp --variant="${itype}"
-            /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
-            rm -f "${path}".tmp
-            ;;
-        *) fatal "Unrecognized image type: $itype"
-           ;;
-    esac
-done
+img_qemu=${imageprefix}-qemu.qcow2
+run_virtinstall "${ref:-${commit}}" "${PWD}"/"${img_base}" --variant=cloud
+/usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 
 "${dn}"/write-commit-object "${workdir}/repo" "${commit}" "$(pwd)"
 
@@ -270,18 +229,17 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
-# The `images:` section
-first=true
-(echo '{ "images": {'
- for image in "${!images[@]}"; do
-     path=${images[${image}]}
-     checksum=$(sha256sum "${path}" | cut -f 1 -d ' ')
-     size=$(stat -c '%s' "${path}")
-     if ${first}; then first=false; else echo ','; fi
-     echo '"'"${image}"'": {"path": "'"${path}"'", "sha256": "'"${checksum}"'", "size": '"${size}"'}'
- done
- echo "}}"
-) > tmp/images.json
+cat > tmp/images.json <<EOF
+{
+    "images": {
+        "qemu": {
+            "path": "${img_qemu}",
+            "sha256": "$(sha256sum_str < "${img_qemu}")",
+            "size": $(stat -c '%s' "${img_qemu}")
+        }
+    }
+}
+EOF
 
 # And the build information about our container, if we are executing
 # from a container.
