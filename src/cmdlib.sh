@@ -135,6 +135,12 @@ prepare_build() {
 
     echo "Using manifest: ${manifest}"
 
+    configdir_gitrepo=${configdir}
+    if [ -e "${workdir}/src/config-git" ]; then
+        configdir_gitrepo="${workdir}/src/config-git"
+    fi
+    export configdir_gitrepo
+
     manifest_tmp_json=${workdir}/tmp/manifest.json
     rpm-ostree compose tree --repo=repo --print-only "${manifest}" > "${manifest_tmp_json}"
 
