@@ -13,6 +13,8 @@ import tempfile,shutil,yaml,platform,json,threading
 import http.server
 import socketserver
 
+PID = os.getpid()
+
 # Currently we spin up a temporary webserver, but we could also
 # do something more custom over a virtio-serial channel or so.
 PORT = 8000
@@ -258,7 +260,7 @@ try:
         vinstall_args.append('--nographics')
     if args.console_log_file:
         vinstall_args.append("--console=log.file={}".format(args.console_log_file))
-        tail_proc = subprocess.Popen(["setpriv", "--pdeathsig", "term", "--", "/bin/sh", "-c", f"tail -F {args.console_log_file} | grep anaconda"])
+        tail_proc = subprocess.Popen(["/bin/sh", "-c", f"tail --pid={PID} -F {args.console_log_file} | grep anaconda"])
 
     # Note this is racy, we should be waiting for the webserver to be up
     # (Or switch to doing this over virtio)
