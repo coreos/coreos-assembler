@@ -37,7 +37,8 @@ cmd=${1:-}
 # commands we'd expect to use in the local dev path
 build_commands="init fetch build run prune clean"
 # commands more likely to be used in a prod pipeline only
-advanced_build_commands="buildprep buildextend-aws buildextend-openstack buildextend-installer buildextend-vmware oscontainer"
+advanced_build_commands="buildprep oscontainer"
+buildextend_commands="aws openstack installer vmware"
 utility_commands="tag compress bump-timestamp"
 other_commands="shell"
 if [ -z "${cmd}" ]; then
@@ -50,6 +51,8 @@ if [ -z "${cmd}" ]; then
     echo "Advanced build commands:"
     for bin in ${advanced_build_commands}; do
         echo "  ${bin}"
+    done && for bin in ${buildextend_commands}; do
+        echo "  buildextend-${bin}"
     done | sort
 
     echo "Utility commands:"
