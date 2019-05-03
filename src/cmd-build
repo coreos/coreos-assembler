@@ -202,40 +202,8 @@ set -x
 mkdir -p tmp/anaconda
 img_base=tmp/${imageprefix}-base.qcow2
 
-# These options don't work for EL7 so don't pass for now
-# 9pfs isn't an option for EL7 so copying out anaconda logs doesn't work
-extraargs=
-if [ -n "${ISFEDORA}" ]; then
-    extraargs="${extraargs} --fs9p"
-fi
-
-if [ -n "${ref_is_temp}" ]; then
-    extraargs="${extraargs} --delete-ostree-ref"
-fi
-
 # forgive me for this sin
-iso_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*.iso' | head -1)
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
-
-set +x
-# This generates the "base image"; not specific to a platform.
-run_virtinstall() {
-    dest=$1
-    shift
-    tmpdest="${dest}.tmp"
-    # We want extraargs var to be split on words
-    # shellcheck disable=SC2086
-    /usr/lib/coreos-assembler/virt-install --create-disk --dest=${tmpdest} \
-                                           --tmpdir "${PWD}/tmp" \
-                                           --kickstart-out "${PWD}"/tmp/flattened.ks \
-                                           --console-log-file ${PWD}/install.log \
-                                           --ostree-remote="${name}" --ostree-stateroot="${name}" \
-                                           --ostree-ref="${ref:-${commit}}" \
-                                           --location "${iso_location}" \
-                                           --configdir="${configdir}" \
-                                           --ostree-repo="${workdir}"/repo ${extraargs-} "$@"
-    mv "${tmpdest}" "${dest}"
-}
 
 build_cloud_base() {
     if [ -f "${PWD}/${img_base}" ]; then
@@ -244,7 +212,7 @@ build_cloud_base() {
     local args=""
     args="$args --variant=cloud"
     # shellcheck disable=SC2046 disable=SC2086
-    run_virtinstall "${PWD}"/"${img_base}" $args
+    run_virtinstall "${ref:-${commit}}" "${PWD}"/"${img_base}" $args
 }
 
 declare -A images
@@ -259,7 +227,7 @@ for itype in "${IMAGE_TYPES[@]}"; do
             iname=${imageprefix}-${itype}.raw
             images[$itype]="${iname}"
             path="$(pwd)"/"${iname}"
-            run_virtinstall "${path}".tmp --variant="${itype}"
+            run_virtinstall "${ref:-${commit}}" "${path}".tmp --variant="${itype}"
             /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
             rm -f "${path}".tmp
             ;;

@@ -475,3 +475,29 @@ jq_git() {
 sha256sum_str() {
     sha256sum | cut -f 1 -d ' '
 }
+
+# This generates the "base image"; not specific to a platform.
+run_virtinstall() {
+    local ostree_rev=$1; shift
+    local dest=$1; shift
+    local tmpdest="${dest}.tmp"
+
+    # forgive me for this sin
+    local iso_location
+    iso_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*.iso' | head -1)
+
+    if [ -n "${ref_is_temp}" ]; then
+        set -- "$@" --delete-ostree-ref
+    fi
+
+    /usr/lib/coreos-assembler/virt-install --create-disk --dest="${tmpdest}" \
+                                           --tmpdir "${PWD}/tmp" --fs9p \
+                                           --kickstart-out "${PWD}"/tmp/flattened.ks \
+                                           --console-log-file "${PWD}/install.log" \
+                                           --ostree-remote="${name}" --ostree-stateroot="${name}" \
+                                           --ostree-ref="${ostree_rev}" \
+                                           --location "${iso_location}" \
+                                           --configdir="${configdir}" \
+                                           --ostree-repo="${workdir}"/repo "$@"
+    mv "${tmpdest}" "${dest}"
+}
