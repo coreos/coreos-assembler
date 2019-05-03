@@ -86,7 +86,7 @@ ostree --version
 rpm-ostree --version
 
 previous_build=
-if [ -L "${workdir:?}"/builds/latest ]; then
+if [ -L "${workdir}"/builds/latest ]; then
     previous_build=$(readlink "${workdir}"/builds/latest)
     previous_builddir="${workdir}/builds/${previous_build}"
     echo "Previous build: ${previous_build}"
@@ -107,11 +107,11 @@ sha256sum_str() {
 }
 
 # Calculate image input checksum now and gather previous image build variables if any
-ks_path="${configdir:?}"/image.ks
+ks_path="${configdir}"/image.ks
 if [ -f "${ks_path}" ]; then
     fatal "Kickstart support was removed; migrate to image.yaml"
 fi
-image_input="${configdir:?}"/image.yaml
+image_input="${configdir}"/image.yaml
 if ! [ -f "${image_input}" ]; then
     fatal "Failed to find ${image_input}"
 fi
@@ -147,7 +147,7 @@ runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_js
 ostree --repo="${workdir}/repo" summary -u
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
-if [ -f "${changed_stamp:?}" ]; then
+if [ -f "${changed_stamp}" ]; then
     commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
     # Clean up prior versions
     rm -f "${workdir}"/tmp/compose-*.json
@@ -197,7 +197,7 @@ else
 fi
 echo "New build ID: ${buildid}"
 
-imageprefix="${name:?}"-"${buildid}"
+imageprefix="${name}"-"${buildid}"
 # Make these two verbose
 set -x
 mkdir -p tmp/anaconda
@@ -347,7 +347,7 @@ cd "${workdir}"/builds
 # things would be inconsistent and future builds would fail
 # on the `mv`.
 touch .build-commit
-mv -T "${tmp_builddir:?}" "${buildid}"
+mv -T "${tmp_builddir}" "${buildid}"
 # Replace the latest link
 ln -Tsfr "${buildid}" latest
 # Update builds.json
