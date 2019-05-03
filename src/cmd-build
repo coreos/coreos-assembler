@@ -172,7 +172,10 @@ else
         cp -a --reflink=auto "${cached_previous_composejson}" "${composejson}"
     else
         if [ -z "${previous_build}" ]; then
-            fatal "compose tree had no changes, but no previous build or cached data"
+            # This can happen if building the OSTree worked on the first time,
+            # but image creation failed, and then tmp/ was nuked before trying a
+            # second time. Just recommend re-running with --force.
+            fatal "compose tree had no changes, but no previous build or cached data; try rerunning with --force"
         fi
         echo "Commit ${commit} unchanged; reusing previous build's rpm-ostree metadata"
         # This will have all of the data from the previous build, but we'll
