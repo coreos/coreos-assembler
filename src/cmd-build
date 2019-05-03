@@ -136,16 +136,7 @@ cat > "${commitmeta_input_json}" <<EOF
 }
 EOF
 
-set -x
-if [ -e "${workdir}/src/config-git" ]; then
-    config_git_dir="${workdir}/src/config-git"
-elif [ -e "${workdir}/src/config" ]; then
-    config_git_dir="${workdir}/src/config"
-else
-    fatal "Git config directory doesn't exist"
-fi
-
-prepare_git_artifacts "${config_git_dir}" "${PWD}/coreos-assembler-config.tar.gz" "${PWD}/coreos-assembler-config-git.json"
+prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar.gz" "${PWD}/coreos-assembler-config-git.json"
 
 # These need to be absolute paths right now for rpm-ostree
 composejson=${PWD}/tmp/compose.json
