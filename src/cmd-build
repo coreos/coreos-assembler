@@ -125,12 +125,9 @@ echo "Image Config checksum: ${image_config_checksum}"
 # Generate metadata that's *input* to the ostree commit
 config_gitrev=$(cd "${configdir}" && git describe --tags --always --abbrev=42)
 config_dirty=false
-# On EL7 git doesn't support -C option so use pushd/popd
-pushd "${configdir}" >/dev/null
-if ! git diff --quiet --exit-code; then
+if ! git -C "${configdir}" diff --quiet --exit-code; then
     config_dirty=true
 fi
-popd
 commitmeta_input_json=${PWD}/tmp/commit-metadata-input.json
 cat > "${commitmeta_input_json}" <<EOF
 {
