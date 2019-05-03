@@ -191,6 +191,7 @@ if args.create_disk:
         size_estimate_path = os.path.join(args.tmpdir, 'ostree-size.json')
         # The OSTree size is shared among disk images, so we compute it once per build
         if not os.path.exists(size_estimate_path):
+            print(f"Estimating OSTree commit size...")
             subprocess.check_call(['/usr/lib/coreos-assembler/estimate-commit-disk-size',
                                    f"--repo={args.ostree_repo}", args.ostree_ref],
                                   stdout=open(size_estimate_path, 'w'))
