@@ -26,7 +26,7 @@ cross_build() {
 		echo "Building $a/$1"
 		mkdir -p "bin/$a"
 		CGO_ENABLED=0 GOARCH=$a \
-			go build -ldflags "${ldflags}" \
+			go build -mod=vendor -ldflags "${ldflags}" \
 			-o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
 	done
 }
