@@ -54,7 +54,7 @@ func init() {
 		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.groups",
+		Name:        "coreos.ignition.groups",
 		Run:         groups,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
@@ -79,7 +79,29 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"cl", "rhcos", "fcos"},
+		UserDataV3: conf.Ignition(`{
+		             "ignition": { "version": "3.0.0" },
+		             "systemd": {
+		               "units": [{
+		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
+		                 "mask": true
+		               }]
+		             },
+		             "passwd": {
+		               "groups": [
+		                 {
+		                   "name": "group1",
+		                   "gid":  501
+		                 },
+		                 {
+		                   "name": "group2",
+		                   "gid":  502,
+		                   "passwordHash": "foobar"
+		                 }
+		               ]
+		             }
+		           }`),
+		Distros: []string{"cl", "fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "cl.ignition.v1.users",
@@ -150,7 +172,7 @@ func init() {
 		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "rhcos.ignition.v2.users",
+		Name:        "coreos.ignition.v2.users",
 		Run:         usersRhcos,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
@@ -175,7 +197,29 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"rhcos", "fcos"},
+		UserDataV3: conf.Ignition(`{
+		             "ignition": { "version": "3.0.0" },
+		             "passwd": {
+		               "users": [
+		                 {
+		                   "name": "core",
+		                   "passwordHash": "foobar"
+		                 },
+		                 {
+		                   "name": "user1",
+		                   "create": {}
+		                 },
+		                 {
+		                   "name": "user2",
+		                   "create": {
+		                     "uid": 1010,
+		                     "groups": [ "sudo" ]
+		                   }
+		                 }
+		               ]
+		             }
+		           }`),
+		Distros: []string{"rhcos"},
 	})
 }
 

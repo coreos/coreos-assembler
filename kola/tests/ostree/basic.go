@@ -42,7 +42,7 @@ func init() {
 		Run:         ostreeRemoteTest,
 		ClusterSize: 1,
 		Name:        "ostree.remote",
-		Distros:     []string{"rhcos", "fcos"},
+		Distros:     []string{"fcos", "rhcos"},
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to contact remote
 		FailFast:    true,
 	})

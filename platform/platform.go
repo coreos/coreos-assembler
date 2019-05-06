@@ -110,6 +110,10 @@ type Cluster interface {
 	// JournalOutput returns a map of journal output from destroyed
 	// cluster machines.
 	JournalOutput() map[string]string
+
+	// IgnitionVersion returns the version of Ignition supported by the
+	// cluster
+	IgnitionVersion() string
 }
 
 // Flight represents a group of Clusters within a single platform.
@@ -141,9 +145,10 @@ type SystemdDropin struct {
 
 // Options contains the base options for all clusters.
 type Options struct {
-	BaseName       string
-	Distribution   string
-	SystemdDropins []SystemdDropin
+	BaseName        string
+	Distribution    string
+	IgnitionVersion string
+	SystemdDropins  []SystemdDropin
 
 	// OSContainer is an image pull spec that can be given to the pivot service
 	// in RHCOS machines to perform machine content upgrades.

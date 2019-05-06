@@ -5,13 +5,7 @@ PROJ="mantle"
 REPO_PATH="${ORG_PATH}/${PROJ}"
 
 export GOBIN=${PWD}/bin
-export GOPATH=${PWD}/gopath
 export GO15VENDOREXPERIMENT=1
+export GO111MODULE=on
 
 eval $(go env)
-
-if [ ! -h gopath/src/${REPO_PATH} ]; then
-	mkdir -p gopath/src/${ORG_PATH}
-	ln -s ../../../.. gopath/src/${REPO_PATH} || exit 255
-fi
-

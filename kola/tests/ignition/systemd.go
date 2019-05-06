@@ -48,6 +48,23 @@ func init() {
         }]
     }
 }`),
+		UserDataV3: conf.Ignition(`{
+    "ignition": {"version": "3.0.0"},
+    "systemd": {
+        "units": [{
+            "name":"nfs-server.service",
+            "enabled":true
+        }]
+    },
+    "storage": {
+        "files": [{
+            "path":"/etc/exports"
+        },
+        {
+            "path":"/var/lib/nfs/etab"
+        }]
+    }
+}`),
 	})
 }
 

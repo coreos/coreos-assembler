@@ -49,20 +49,38 @@ var (
             }
         }
     }`)
+	localSecurityClientV3 = conf.Ignition(`{
+        "ignition": {
+            "version": "3.0.0",
+            "config": {
+                "merge": [{
+                    "source": "https://$IP"
+                }]
+            },
+            "security": {
+                "tls": {
+                    "certificateAuthorities": [{
+                        "source": "$KEY"
+                    }]
+                }
+            }
+        }
+    }`)
 )
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_2.security.tls",
+		Name:        "coreos.ignition.security.tls",
 		Run:         securityTLS,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{
-			"TLSServe": TLSServe,
+			"TLSServe":   TLSServe,
+			"TLSServeV3": TLSServeV3,
 		},
 		// DO: https://github.com/coreos/bugs/issues/2205
 		// Packet & QEMU: https://github.com/coreos/ignition/issues/645
 		ExcludePlatforms: []string{"do", "packet", "qemu"},
-		Distros:          []string{"cl", "rhcos", "fcos"},
+		Distros:          []string{"cl", "fcos", "rhcos"},
 	})
 }
 
@@ -92,9 +110,22 @@ EOF
 ) -extensions SAN'`, "$IP", ip, -1))
 	publicKey := c.MustSSH(server, "sudo cat /var/tls/server.crt")
 
-	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s TLSServe", c.H.Name()))
+	var serveFunc string
+	var conf *conf.UserData
+	switch c.IgnitionVersion() {
+	case "v2":
+		serveFunc = "TLSServe"
+		conf = localSecurityClient
+	case "v3":
+		serveFunc = "TLSServeV3"
+		conf = localSecurityClientV3
+	default:
+		c.Fatal("unknown ignition version")
+	}
 
-	client, err := c.NewMachine(localSecurityClient.Subst("$IP", ip).Subst("$KEY", dataurl.EncodeBytes(publicKey)))
+	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s %s", c.H.Name(), serveFunc))
+
+	client, err := c.NewMachine(conf.Subst("$IP", ip).Subst("$KEY", dataurl.EncodeBytes(publicKey)))
 	if err != nil {
 		c.Fatalf("starting client: %v", err)
 	}
@@ -104,7 +135,7 @@ EOF
 	})
 }
 
-func TLSServe() error {
+func ServeTLS(customFile []byte) error {
 	publicKey, err := ioutil.ReadFile("/var/tls/server.crt")
 	if err != nil {
 		return fmt.Errorf("reading public key: %v", err)
@@ -114,17 +145,6 @@ func TLSServe() error {
 	if err != nil {
 		return fmt.Errorf("reading private key: %v", err)
 	}
-
-	customFile := []byte(`{
-        "ignition": { "version": "2.1.0" },
-        "storage": {
-            "files": [{
-                "filesystem": "root",
-                "path": "/var/resource/data",
-                "contents": { "source": "data:,kola-data" }
-            }]
-        }
-    }`)
 
 	cer, err := tls.X509KeyPair(publicKey, privateKey)
 	if err != nil {
@@ -148,4 +168,31 @@ func TLSServe() error {
 	caserver.StartTLS()
 
 	select {}
+}
+
+func TLSServe() error {
+	customFile := []byte(`{
+        "ignition": { "version": "2.1.0" },
+        "storage": {
+            "files": [{
+                "filesystem": "root",
+                "path": "/var/resource/data",
+                "contents": { "source": "data:,kola-data" }
+            }]
+        }
+    }`)
+	return ServeTLS(customFile)
+}
+
+func TLSServeV3() error {
+	customFileV3 := []byte(`{
+        "ignition": { "version": "3.0.0" },
+        "storage": {
+            "files": [{
+                "path": "/var/resource/data",
+                "contents": { "source": "data:,kola-data" }
+            }]
+        }
+    }`)
+	return ServeTLS(customFileV3)
 }

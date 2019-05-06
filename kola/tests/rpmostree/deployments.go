@@ -29,7 +29,7 @@ func init() {
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
 		Name:        "rpmostree.upgrade-rollback",
-		Distros:     []string{"rhcos", "fcos"},
+		Distros:     []string{"fcos", "rhcos"},
 		FailFast:    true,
 	})
 	register.Register(&register.Test{
@@ -74,8 +74,43 @@ func init() {
     ]
   }
 }`),
+		UserDataV3: conf.Ignition(`{
+  "ignition": {
+    "version": "3.0.0"
+  },
+  "storage": {
+    "files": [
+      {
+        "group": {
+          "name": "root"
+        },
+        "path": "/etc/yum.repos.d/epel.repo",
+        "user": {
+          "name": "root"
+        },
+        "contents": {
+          "source": "data:,%5Bepel%5D%0Aname%3DExtra%20Packages%20for%20Enterprise%20Linux%207%20-%20%24basearch%0Ametalink%3Dhttps%3A%2F%2Fmirrors.fedoraproject.org%2Fmetalink%3Frepo%3Depel-7%26arch%3D%24basearch%0Afailovermethod%3Dpriority%0Aenabled%3D1%0Agpgcheck%3D1%0Agpgkey%3Dfile%3A%2F%2F%2Fetc%2Fpki%2Frpm-gpg%2FRPM-GPG-KEY-EPEL-7%0A"
+        },
+        "mode": 420
+      },
+      {
+        "group": {
+          "name": "root"
+        },
+        "path": "/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7",
+        "user": {
+          "name": "root"
+        },
+        "contents": {
+          "source": "data:,-----BEGIN%20PGP%20PUBLIC%20KEY%20BLOCK-----%0AVersion%3A%20GnuPG%20v1.4.11%20(GNU%2FLinux)%0A%0AmQINBFKuaIQBEAC1UphXwMqCAarPUH%2FZsOFslabeTVO2pDk5YnO96f%2BrgZB7xArB%0AOSeQk7B90iqSJ85%2Fc72OAn4OXYvT63gfCeXpJs5M7emXkPsNQWWSju99lW%2BAqSNm%0AjYWhmRlLRGl0OO7gIwj776dIXvcMNFlzSPj00N2xAqjMbjlnV2n2abAE5gq6VpqP%0AvFXVyfrVa%2FualogDVmf6h2t4Rdpifq8qTHsHFU3xpCz%2BT6%2FdGWKGQ42ZQfTaLnDM%0AjToAsmY0AyevkIbX6iZVtzGvanYpPcWW4X0RDPcpqfFNZk643xI4lsZ%2BY2Er9Yu5%0AS%2F8x0ly%2BtmmIokaE0wwbdUu740YTZjCesroYWiRg5zuQ2xfKxJoV5E%2BEh%2BtYwGDJ%0An6HfWhRgnudRRwvuJ45ztYVtKulKw8QQpd2STWrcQQDJaRWmnMooX%2FPATTjCBExB%0A9dkz38Druvk7IkHMtsIqlkAOQMdsX1d3Tov6BE2XDjIG0zFxLduJGbVwc%2F6rIc95%0AT055j36Ez0HrjxdpTGOOHxRqMK5m9flFbaxxtDnS7w77WqzW7HjFrD0VeTx2vnjj%0AGqchHEQpfDpFOzb8LTFhgYidyRNUflQY35WLOzLNV%2BpV3eQ3Jg11UFwelSNLqfQf%0AuFRGc%2BzcwkNjHh5yPvm9odR1BIfqJ6sKGPGbtPNXo7ERMRypWyRz0zi0twARAQAB%0AtChGZWRvcmEgRVBFTCAoNykgPGVwZWxAZmVkb3JhcHJvamVjdC5vcmc%2BiQI4BBMB%0AAgAiBQJSrmiEAhsPBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRBqL66iNSxk%0A5cfGD%2F4spqpsTjtDM7qpytKLHKruZtvuWiqt5RfvT9ww9GUUFMZ4ZZGX4nUXg49q%0AixDLayWR8ddG%2Fs5kyOi3C0uX%2F6inzaYyRg%2BBh70brqKUK14F1BrrPi29eaKfG%2BGu%0AMFtXdBG2a7OtPmw3yuKmq9Epv6B0mP6E5KSdvSRSqJWtGcA6wRS%2FwDzXJENHp5re%0A9Ism3CYydpy0GLRA5wo4fPB5uLdUhLEUDvh2KK%2F%2FfMjja3o0L%2BSNz8N0aDZyn5Ax%0ACU9RB3EHcTecFgoy5umRj99BZrebR1NO%2B4gBrivIfdvD4fJNfNBHXwhSH9ACGCNv%0AHnXVjHQF9iHWApKkRIeh8Fr2n5dtfJEF7SEX8GbX7FbsWo29kXMrVgNqHNyDnfAB%0AVoPubgQdtJZJkVZAkaHrMu8AytwT62Q4eNqmJI1aWbZQNI5jWYqc6RKuCK6%2FF99q%0AthFT9gJO17%2ByRuL6Uv2%2FvgzVR1RGdwVLKwlUjGPAjYflpCQwWMAASxiv9uPyYPHc%0AErSrbRG0wjIfAR3vus1OSOx3xZHZpXFfmQTsDP7zVROLzV98R3JwFAxJ4%2FxqeON4%0AvCPFU6OsT3lWQ8w7il5ohY95wmujfr6lk89kEzJdOTzcn7DBbUru33CQMGKZ3Evt%0ARjsC7FDbL017qxS%2BZVA%2FHGkyfiu4cpgV8VUnbql5eAZ%2B1Ll6Dw%3D%3D%0A%3DhdPa%0A-----END%20PGP%20PUBLIC%20KEY%20BLOCK-----%0A"
+        },
+        "mode": 420
+      }
+    ]
+  }
+}`),
 
-		Distros: []string{"rhcos"},
+		Distros: []string{"fcos", "rhcos"},
 		Flags:   []register.Flag{register.RequiresInternetAccess}, // these need network to retrieve bits
 	})
 }

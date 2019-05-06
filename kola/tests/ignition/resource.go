@@ -64,11 +64,41 @@ var (
 		      ]
 		  }
 	      }`)
+	localClientV3 = conf.Ignition(`{
+		  "ignition": {
+		      "version": "3.0.0"
+		  },
+		  "storage": {
+		      "files": [
+			  {
+			      "path": "/var/resource/data",
+			      "contents": {
+				  "source": "data:,kola-data"
+			      },
+			      "mode": 420
+			  },
+			  {
+			      "path": "/var/resource/http",
+			      "contents": {
+				  "source": "http://$IP/http"
+			      },
+			      "mode": 420
+			  },
+			  {
+			      "path": "/var/resource/tftp",
+			      "contents": {
+				  "source": "tftp://$IP/tftp"
+			      },
+			      "mode": 420
+			  }
+		      ]
+		  }
+	      }`)
 )
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.resource.local",
+		Name:        "coreos.ignition.resource.local",
 		Run:         resourceLocal,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{
@@ -76,10 +106,10 @@ func init() {
 		},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do"},
-		Distros:          []string{"cl", "rhcos", "fcos"},
+		Distros:          []string{"cl", "fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.resource.remote",
+		Name:        "coreos.ignition.resource.remote",
 		Run:         resourceRemote,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
@@ -118,10 +148,40 @@ func init() {
 		      ]
 		  }
 	      }`),
-		Distros: []string{"cl", "rhcos"},
+		UserDataV3: conf.Ignition(`{
+		  "ignition": {
+		      "version": "3.0.0"
+		  },
+		  "storage": {
+		      "files": [
+			  {
+			      "path": "/var/resource/http",
+			      "contents": {
+				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
+			      },
+			      "mode": 420
+			  },
+			  {
+			      "path": "/var/resource/https",
+			      "contents": {
+				  "source": "https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
+			      },
+			      "mode": 420
+			  },
+			  {
+			      "path": "/var/resource/s3-anon",
+			      "contents": {
+				  "source": "s3://kola-fixtures/resources/anonymous"
+			      },
+			      "mode": 420
+			  }
+		      ]
+		  }
+	      }`),
+		Distros: []string{"cl", "fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.resource.s3",
+		Name:        "coreos.ignition.resource.s3",
 		Run:         resourceS3,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
@@ -147,13 +207,34 @@ func init() {
 		      ]
 		  }
 	      }`),
-		Distros: []string{"cl", "rhcos"},
+		UserDataV3: conf.Ignition(`{
+		  "ignition": {
+		      "version": "3.0.0",
+		      "config": {
+		          "merge": [{
+		              "source": "s3://kola-fixtures/resources/authenticated-var-v3.ign"
+		          }]
+		      }
+		  },
+		  "storage": {
+		      "files": [
+			  {
+			      "path": "/var/resource/s3-auth",
+			      "contents": {
+				  "source": "s3://kola-fixtures/resources/authenticated"
+			      },
+			      "mode": 420
+			  }
+		      ]
+		  }
+	      }`),
+		Distros: []string{"cl", "fcos", "rhcos"},
 	})
 	// TODO: once Ignition supports this on all channels/distros
-	//       this test should be rolled into coreos.ignition.v2_1.resources.remote
+	//       this test should be rolled into coreos.ignition.resources.remote
 	// Test specifically for versioned s3 objects
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2_1.resource.s3.versioned",
+		Name:        "coreos.ignition.resource.s3.versioned",
 		Run:         resourceS3Versioned,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
@@ -185,6 +266,29 @@ func init() {
 		      ]
 		  }
 	      }`),
+		UserDataV3: conf.Ignition(`{
+		  "ignition": {
+		      "version": "3.0.0"
+		  },
+		  "storage": {
+		      "files": [
+			  {
+			      "path": "/var/resource/original",
+			      "contents": {
+				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=null"
+			      },
+			      "mode": 420
+			  },
+			  {
+			      "path": "/var/resource/latest",
+			      "contents": {
+				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=RDWqxfnlcJOSDf1.5jy6ZP.oK9Bt7_Id"
+			      },
+			      "mode": 420
+			  }
+		      ]
+		  }
+	      }`),
 		Distros: []string{"cl", "rhcos"},
 	})
 }
@@ -199,7 +303,18 @@ func resourceLocal(c cluster.TestCluster) {
 		// private IP not configured in the initramfs
 		ip = server.IP()
 	}
-	client, err := c.NewMachine(localClient.Subst("$IP", ip))
+
+	var conf *conf.UserData
+	switch c.IgnitionVersion() {
+	case "v2":
+		conf = localClient
+	case "v3":
+		conf = localClientV3
+	default:
+		c.Fatal("unknown ignition version")
+	}
+
+	client, err := c.NewMachine(conf.Subst("$IP", ip))
 	if err != nil {
 		c.Fatalf("starting client: %v", err)
 	}

@@ -46,7 +46,7 @@ func init() {
 		Distros: []string{"cl"},
 	})
 	register.Register(&register.Test{
-		Name:        "coreos.ignition.v2.once",
+		Name:        "coreos.ignition.once",
 		Run:         runsOnce,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
@@ -64,7 +64,21 @@ func init() {
                                ]
                              }
                            }`),
-		Distros: []string{"cl", "rhcos", "fcos"},
+		UserDataV3: conf.Ignition(`{
+                             "ignition": { "version": "3.0.0" },
+                             "storage": {
+                               "files": [
+                                 {
+                                   "path": "/etc/ignition-ran",
+                                   "contents": {
+                                     "source": "data:,Ignition%20ran."
+                                   },
+                                   "mode": 420
+                                 }
+                               ]
+                             }
+                           }`),
+		Distros: []string{"cl", "fcos", "rhcos"},
 	})
 }
 
