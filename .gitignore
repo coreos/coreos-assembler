@@ -1,3 +1,4 @@
 *.sw?
 /bin/
 /gopath/
+_kola_temp/

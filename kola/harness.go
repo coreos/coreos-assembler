@@ -202,7 +202,7 @@ func filterTests(tests map[string]*register.Test, pattern, platform string, vers
 		}
 
 		if existsIn(platform, register.PlatformsNoInternet) && t.HasFlag(register.RequiresInternetAccess) {
-			plog.Debugf("skipping test %s: Internet required but not supported by platform %s", t.Name, platform)
+			plog.Infof("skipping test %s: Internet required but not supported by platform %s", t.Name, platform)
 			continue
 		}
 
