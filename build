@@ -17,7 +17,11 @@ ldflags="-X ${REPO_PATH}/version.Version=${version}"
 
 host_build() {
 	echo "Building $1"
-	go build -i -ldflags "${ldflags}" -o "bin/$1" "${REPO_PATH}/cmd/$1"
+	go build -i \
+		-ldflags "${ldflags}" \
+		-mod vendor \
+		-o "bin/$1" \
+		"${REPO_PATH}/cmd/$1"
 }
 
 cross_build() {
