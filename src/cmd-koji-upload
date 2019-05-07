@@ -2,9 +2,16 @@
 # pylint: disable=C0103
 
 """
-cmd-archive performs the required steps to make COSA a Koji Content Generator.
+cmd-koji-upload performs the required steps to make COSA a Koji Content Generator.
 When running this in an automated fashion, you will need a Kerberos keytab file
 for a service account.
+
+Python2: due to an issue with Kerberos Auth issue which returns errors like:
+[auth_gssapi:error] NO AUTH DATA Client did not send any authentication headers
+[auth_gssapi:error] GSS ERROR gss_localname() failed:...
+We are unable to use Python3. After inquiring with the Koji team, we were
+advised to use Python2. This code should port rather cleanly to Python3 once
+the Kerberos issue is cleared.
 
 Dependencies:
  - python-koji, krb5-workstation and python-krbV
@@ -49,6 +56,8 @@ COSA_INPATH = "/cosa"
 
 # Content generator types as defined in:
 # https://pagure.io/koji/blob/master/f/docs/schema.sql
+#   DO NOT add arbitrary types or extensions here. If the archive type
+#   is unknown to Koji, then the upload will fail.
 KOJI_CG_TYPES = {
     # key: (description, extension, architecture, type)
     "iso": ("CD/DVD Image", "iso", ARCH, "image"),
@@ -74,7 +83,8 @@ RENAME_RAW = ['initramfs.img', '-kernel', "ostree-commit"]
 def set_logger(level):
     """
     Set the log level
-    @param str: name of the log level
+    :param level: set the log level
+    :type str
     """
     sl = log.DEBUG
     if level == "error":
@@ -90,10 +100,11 @@ def set_logger(level):
 
 def kinit(keytab, principle):
     """
-    Execute the Kerberos Auth using the provided keytab
-    @param str: the name of the keytab file
-    @param str: the principle name, e.g you@example.com. The principle
-                should match the Koji user name.
+    Execute the Kerberos Auth using the provided keytab:
+    :param keytab: file name of the keytab used for Kerberos Authentication
+    :type str
+    :param principle: name of the keytab's principle
+    :type str
     """
     if keytab is None:
         raise Exception("keytab file is not defined")
@@ -110,8 +121,16 @@ def kinit(keytab, principle):
 
 def get_koji_fileinfo(fname):
     """
-    Get archive_info is a helper to get the content generator parts
-    @param str: file name to check as a string
+    get_koji_fileinfo is a helper to get the content generator parts
+    :param fname: file name to check for Koji content type
+    :type str
+    :returns str, str, str, str
+
+    The return coresponds to the KOJI_CG_TYPES dict, which, gives you
+        description: human friendly description of what the upload is
+        extension: the _Koji_ expected extensions
+        architecture: the build arch or no-arch
+        type: source or image, which is used to set the meta-data
     """
     ext = (os.path.splitext(fname)[1]).replace(".", "")
     if ext == "gz":
@@ -133,7 +152,14 @@ def special_name(fname):
     Helper for handling special files such as unlabeled raw files. Files
     that need have their names mangled should be handled here. Koji has strict
     rules that ensure the file-type to match a specific extension.
-    @param str: file name to parse
+
+    :param fname: name of file to check if it needs to be renamed
+    :type str
+    :returns str, str
+
+    Returns are:
+        New name of the file
+        The Koji type that the file if renamed
     """
 
     # koji doesn't understand raw.gz, so swap 'em
@@ -152,7 +178,11 @@ def special_name(fname):
 def koji_upload(fname):
     """
     Helper to return if a file should be uploaded
-    @param str: name of file to check against Koji table for uploading.
+    :param fname: name of file to check against Koji table for uploading.
+    :type str
+    :returns bool
+
+    Returns true if the file is known to Koji.
     """
     found, _, _, _ = get_koji_fileinfo(fname)
     if found:
@@ -163,8 +193,12 @@ def koji_upload(fname):
 def md5sum_file(path):
     """
     Calculates the md5 sum from a path.
+    Py3 TODO: use md5sum_file in cmdlib.py, when porting to Python3.
 
-    @param str: path to the file to checksum
+    :param path: file name to checksum
+    :returns str
+
+    Returns the hexdigest of the file.
     """
     h = hashlib.md5()
     with open(path, 'rb', buffering=0) as data:
@@ -176,8 +210,12 @@ def md5sum_file(path):
 def load_json(path):
     """
     Shortcut for loading json from a file path.
-    This is cmdlib, but cmdlib is py3 and we have to use py2.
-    @param str: path to the json to import
+    Py3 TODO: use load_json in cmdlib.py when porting to Python3.
+    :param path: file name to load json from
+    :returns dict
+    :raises json.JSONDecodeError
+
+    Returns a dict of the json as read in.
     """
     with open(path) as data:
         return json.load(data)
@@ -193,8 +231,14 @@ class Build:
         """
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
-        @param str: the root of the build directory
-        @param str: the build number or "latest"
+        :param build_dir: name of directory to find the builds
+        :type str
+        :param build: build id or "latest" to parse
+        :type str
+        :raises Exception
+
+        If the build meta-data fails to parse, then a generic exception is
+        raised.
         """
 
         log.info('Evaluating builds.json')
@@ -216,6 +260,7 @@ class Build:
         }
         self._found_files = {}
 
+        # Check to make sure that the build and it's meta-data can be parsed.
         emsg = "was not read in properly or is not defined"
         if self.commit is None:
             raise Exception("%s %s" % self.__file("commit"), emsg)
@@ -289,7 +334,9 @@ class Build:
     def ckey(var):
         """
         Short-hand helper to get coreos-assembler values from json.
-        @param str: value to add to `coreos-assembler.`
+        :param var: postfix string to append
+        :type str
+        :return str
         """
         return "coreos-assembler.%s" % var
 
@@ -297,7 +344,10 @@ class Build:
         """
         Look up the file location for specific files.
         The lookup is performed against the specific build root.
-        @param str: name of file to return
+        :param var: name of file to return
+        :type str
+        :return string
+        :raises KeyError
         """
         lookup = {
             "commit": "%s/commitmeta.json" % self.build_root,
@@ -311,7 +361,9 @@ class Build:
     def __get_json(self, name):
         """
         Read in the json file in, and decode it.
-        @param str: name of the file read in.
+        :param name: name of the json file to read-in
+        :type str
+        :return dict
         """
         file_path = self.__file(name)
         log.debug("Reading in %s", file_path)
@@ -319,7 +371,12 @@ class Build:
 
     def get_obj(self, key):
         """ Return the backing object
-        @param str: get specifc meta data
+        :param key: name of the meta-data key to return
+        :type str
+        :returns dict
+        :raises Exception
+
+        Returns the meta-data dict of the parsed JSON.
         """
         lookup = {
             "commit": self.commit,
@@ -336,8 +393,15 @@ class Build:
     def get_meta_key(self, obj, key):
         """
         Look up a the key in a dict
-        @param dict: reference to the dictionary
-        @param str: key in dictionary to return
+        :param obj: name of meta-data key to check
+        :type str
+        :param key: key to look up
+        :type str
+        :returns dict/str
+        :raises KeyError
+
+        Returns the object from the meta-data dict. For example, calling
+        get_meta_key("meta", "ref") will give you the build ref from.
         """
         try:
             data = self.get_obj(obj)
@@ -348,10 +412,15 @@ class Build:
 
     def get_sub_obj(self, obj, key, sub):
         """
-        Return the sub-element sub of key in a nested dic
-        @param dict: the parent dict
-        @param str: key of the sub element
-        @param str: the sub key to return
+        Return the sub-element sub of key in a nested dict, using get_meta_key.
+        This function help exploring nested dicts in meta-data.
+        :param obj: name of the meta-data object to lookup
+        :type str
+        :param key: name of nested dict to lookup
+        :type str
+        :param sub: name of the key in nested dict to lookup
+        :type str
+        :returns obj
         """
         if isinstance(obj, str):
             obj = self.get_obj(obj)
@@ -370,7 +439,7 @@ class Build:
         """
         log.info("Processing the build artifacts")
 
-        # locate all the build artifacts
+        # locate all the build artifacts in the build directory.
         files = []
         for ffile in os.listdir(self.build_root):
             files.append(os.path.join(self.build_root, ffile))
@@ -388,12 +457,13 @@ class Build:
             log.debug("Considering file file '%s'", ffile)
             short_path = os.path.basename(ffile)
 
+            # any file that is known as Koji archive is included.
             if not koji_upload(short_path):
                 log.debug(" * EXCLUDING file '%s'", ffile)
                 log.debug("   File type is not supported by Koji")
                 continue
 
-            # os.path.getsize returns an incorrect value, so use stat
+            # os.path.getsize uses 1kB instead of 1KB. So we use stat instead.
             fsize = subprocess.check_output(["stat", "--format", '%s', ffile])
             log.debug(" * calculating checksum")
             self._found_files[ffile] = {
@@ -420,13 +490,21 @@ class Upload():
 
     def __init__(self, in_build, owner, tag, profile, login_now=False):
         """ Initialize an instance of the Upload object.
+        :param in_build: build object to process for uploading
+        :type Build
+        :param owner: name of the upload owner
+        :type str
+        :param tag: name of the tag to apply to the upload
+        :type str
+        :param profile: Koji profile name in /etc/koji.conf.d
+        :type str
+        :param login_now: authenticate via kerberos immediately
+        :type bool
+        :raises Exception
 
-        @param Build: build object to upload
-        @param str: username of the upload
-        @param str: how to tag the build
-        @param str: which instance of Koji should be used
-        @param str: the profile name to use for the upload
-        @param bool: login during init, throws Exception if it fails.
+        During the init of the Upload object, we check to make sure that an
+        upload is likely to be succeed. We want to fail early in-case there is
+        missing required information.
         """
         self._build = in_build
         self._manifest = None
@@ -614,7 +692,9 @@ class Upload():
 
     def upload(self):
         """
-        Upload all files to a remote directory in Koji.
+        Upload all files to a remote directory in Koji. Content generators
+        upload all the artifacts first and then imports them based on the
+        manifest output.
 
         The Koji Python lib maintains the filename in the upload; there is no
         option to upload with a different name. If the name needs to be changed
@@ -657,10 +737,10 @@ def cli():
     """ cli implements command-line innovation """
 
     parser = argparse.ArgumentParser(
-        prog="CoreOS Assembler Build Archiver",
+        prog="CoreOS Assembler Koji Uploader",
         description='Archive build artifacts, logs, and metadata in Koji.',
         usage="""
-Upload a CoreOS Assembler (COSA) reated Build to a Koji Server.
+Upload a CoreOS Assembler (COSA) created Build to a Koji Server.
 
 Note: the typical use case for this program is in an automated fashion, and
 running from within the COSA container yourself. Unless you are debugging COSA,
@@ -672,7 +752,7 @@ To use this program, you will need:
     3) A completed build.
 
 Example:
-    $ cmd-archive \
+    $ cmd-koji-upload \
         --build_root=/src/build \
         --keytab keytab \
         --owner me@FEDORA.COM \
