@@ -22,5 +22,5 @@ r.open(None)
 
 [_, rev] = r.resolve_rev(args.rev, True)
 [_, commit, _] = r.load_commit(rev)
-with open(args.builddir + '/ostree-commit', 'wb') as f:
+with open(args.builddir + '/ostree-commit-object', 'wb') as f:
     f.write(commit.get_data_as_bytes().get_data())
