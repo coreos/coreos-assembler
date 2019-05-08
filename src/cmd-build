@@ -255,6 +255,12 @@ fi
 # since we may be overriding data from a previous build.
 cat "${composejson}" tmp/meta.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
+# Filter out `ref` if it's temporary
+if [ -n "${ref_is_temp}" ]; then
+    jq 'del(.ref)' < meta.json > meta.json.new
+    mv meta.json{.new,}
+fi
+
 # And add the commit metadata itself, which includes notably the rpmdb pkglist
 # in a format that'd be easy to generate diffs out of for higher level tools
 "${dn}"/commitmeta_to_json "${workdir}/repo" "${commit}" > commitmeta.json
