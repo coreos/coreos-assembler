@@ -140,6 +140,8 @@ To see test examples look under
 [kola/tests](https://github.com/coreos/mantle/tree/master/kola/tests) in the
 mantle codebase.
 
+For a quickstart see [kola/README.md](/kola/README.md).
+
 #### kola native code
 For some tests, the `Cluster` interface is limited and it is desirable to
 run native go code directly on one of the Container Linux machines. This is
