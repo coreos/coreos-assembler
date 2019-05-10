@@ -1,3 +1,8 @@
+# Adding/Updating kola Tests in coreos-assembler
+
+For adding tests to `kola` for use in `coreos-assembler` please see the [kola test quickstart](https://github.com/coreos/mantle/blob/master/kola/README.md). After adding/updating tests in `kola` follow the `Updating Mantle` section in this document to pull in your new or updated tests into `coreos-assembler`.
+
+
 # Updating Mantle
 
 Mantle houses a number of tools used within `coreos-assembler`. As an example, `kola` is part of mantle. Because of this it's required that `kola` tests are added in the upstream `kola` repo first, then synced into `coreos-assembler`. For more information on what tools are used please see the [README.md](README.md).
