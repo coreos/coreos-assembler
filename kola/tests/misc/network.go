@@ -39,14 +39,16 @@ func init() {
   units:
     - name: docker.service
       enabled: true`),
-		MinVersion: semver.Version{Major: 1967},
+		MinVersion:       semver.Version{Major: 1967},
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 	register.Register(&register.Test{
-		Run:         NetworkListeners,
-		ClusterSize: 1,
-		Name:        "cl.network.listeners.legacy",
-		Distros:     []string{"cl"},
-		EndVersion:  semver.Version{Major: 1967},
+		Run:              NetworkListeners,
+		ClusterSize:      1,
+		Name:             "cl.network.listeners.legacy",
+		Distros:          []string{"cl"},
+		EndVersion:       semver.Version{Major: 1967},
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 	register.Register(&register.Test{
 		Run:              NetworkInitramfsSecondBoot,

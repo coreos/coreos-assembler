@@ -1,4 +1,4 @@
-// Copyright 2017 CoreOS, Inc.
+// Copyright 2019 Red Hat
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package qemu
+package platform
 
 import (
 	"errors"
@@ -20,12 +20,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 )
+
+type MachineOptions struct {
+	AdditionalDisks []Disk
+}
 
 type Disk struct {
 	Size        string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
@@ -42,7 +47,7 @@ var (
 // Copy Container Linux input image and specialize copy for running kola tests.
 // Return FD to the copy, which is a deleted file.
 // This is not mandatory; the tests will do their best without it.
-func makeCLDiskTemplate(inputPath string) (output *os.File, result error) {
+func MakeCLDiskTemplate(inputPath string) (output *os.File, result error) {
 	seterr := func(err error) {
 		if result == nil {
 			result = err
@@ -213,4 +218,108 @@ func mkpath(basedir string) (string, error) {
 	}
 	defer f.Close()
 	return f.Name(), nil
+}
+
+func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImagePath string, isIgnition bool, options MachineOptions) ([]string, []*os.File, error) {
+	var qmCmd []string
+
+	// As we expand this list of supported native + board
+	// archs combos we should coordinate with the
+	// coreos-assembler folks as they utilize something
+	// similar in cosa run
+	combo := runtime.GOARCH + "--" + board
+	switch combo {
+	case "amd64--amd64-usr":
+		qmCmd = []string{
+			"qemu-system-x86_64",
+			"-machine", "accel=kvm",
+			"-cpu", "host",
+			"-m", "1024",
+		}
+	case "amd64--arm64-usr":
+		qmCmd = []string{
+			"qemu-system-aarch64",
+			"-machine", "virt",
+			"-cpu", "cortex-a57",
+			"-m", "2048",
+		}
+	case "arm64--amd64-usr":
+		qmCmd = []string{
+			"qemu-system-x86_64",
+			"-machine", "pc-q35-2.8",
+			"-cpu", "kvm64",
+			"-m", "1024",
+		}
+	case "arm64--arm64-usr":
+		qmCmd = []string{
+			"qemu-system-aarch64",
+			"-machine", "virt,accel=kvm,gic-version=3",
+			"-cpu", "host",
+			"-m", "2048",
+		}
+	default:
+		panic("host-guest combo not supported: " + combo)
+	}
+
+	qmCmd = append(qmCmd,
+		"-bios", biosImage,
+		"-smp", "1",
+		"-uuid", uuid,
+		"-display", "none",
+		"-chardev", "file,id=log,path="+consolePath,
+		"-serial", "chardev:log",
+	)
+
+	if isIgnition {
+		qmCmd = append(qmCmd,
+			"-fw_cfg", "name=opt/com.coreos/config,file="+confPath)
+	} else {
+		qmCmd = append(qmCmd,
+			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+confPath,
+			"-device", Virtio(board, "9p", "fsdev=cfg,mount_tag=config-2"))
+	}
+
+	allDisks := append([]Disk{
+		{
+			BackingFile: diskImagePath,
+			DeviceOpts:  primaryDiskOptions,
+		},
+	}, options.AdditionalDisks...)
+
+	var extraFiles []*os.File
+	fdnum := 3 // first additional file starts at position 3
+	fdset := 1
+
+	for _, disk := range allDisks {
+		optionsDiskFile, err := disk.setupFile()
+		if err != nil {
+			return nil, nil, err
+		}
+		//defer optionsDiskFile.Close()
+		extraFiles = append(extraFiles, optionsDiskFile)
+
+		id := fmt.Sprintf("d%d", fdnum)
+		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
+			"-device", Virtio(board, "blk", fmt.Sprintf("drive=%s%s", id, disk.getOpts())))
+		fdnum += 1
+		fdset += 1
+	}
+
+	return qmCmd, extraFiles, nil
+}
+
+// The virtio device name differs between machine types but otherwise
+// configuration is the same. Use this to help construct device args.
+func Virtio(board, device, args string) string {
+	var suffix string
+	switch board {
+	case "amd64-usr":
+		suffix = "pci"
+	case "arm64-usr":
+		suffix = "device"
+	default:
+		panic(board)
+	}
+	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }

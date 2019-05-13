@@ -81,7 +81,7 @@ func NewFlight(opts *Options) (platform.Flight, error) {
 			return nil, err
 		}
 		if info.Format != "raw" {
-			// makeCLDiskTemplate() needs to be able to mount
+			// platform.MakeCLDiskTemplate() needs to be able to mount
 			// partitions
 			plog.Debug("disk image is in qcow format; not enabling console logging")
 			opts.UseVanillaImage = true
@@ -89,7 +89,7 @@ func NewFlight(opts *Options) (platform.Flight, error) {
 	}
 	if !opts.UseVanillaImage {
 		plog.Debug("enabling console logging in base disk")
-		qf.diskImageFile, err = makeCLDiskTemplate(opts.DiskImage)
+		qf.diskImageFile, err = platform.MakeCLDiskTemplate(opts.DiskImage)
 		if err != nil {
 			qf.Destroy()
 			return nil, err

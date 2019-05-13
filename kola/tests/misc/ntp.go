@@ -26,11 +26,12 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         NTP,
-		ClusterSize: 0,
-		Name:        "linux.ntp",
-		Platforms:   []string{"qemu"},
-		Distros:     []string{"cl"},
+		Run:              NTP,
+		ClusterSize:      0,
+		Name:             "linux.ntp",
+		Platforms:        []string{"qemu"},
+		ExcludePlatforms: []string{"qemu-unpriv"},
+		Distros:          []string{"cl"},
 	})
 }
 

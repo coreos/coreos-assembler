@@ -174,7 +174,7 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("Could not read machine options: %v", err)
 			}
 
-			var machineOpts qemu.MachineOptions
+			var machineOpts platform.MachineOptions
 			err = json.Unmarshal(b, &machineOpts)
 			if err != nil {
 				return fmt.Errorf("Could not unmarshal machine options: %v", err)

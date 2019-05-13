@@ -35,6 +35,12 @@ systemd:
     enable: true
 `),
 		Distros: []string{"cl"},
+
+		// https://github.com/coreos/mantle/issues/999
+		// On the qemu-unpriv platform the DHCP provides no data, pre-systemd 241 the DHCP server sending
+		// no routes to the link to spin in the configuring state. docker.service pulls in the network-online
+		// target which causes the basic machine checks to fail
+		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 }
 

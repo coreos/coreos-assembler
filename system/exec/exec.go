@@ -43,6 +43,9 @@ type Cmd interface {
 
 	// Simplified wrapper for Process.Kill + Wait
 	Kill() error
+
+	// Simplified wrapper for Process.Pid
+	Pid() int
 }
 
 // Basic Cmd implementation based on exec.Cmd
@@ -78,6 +81,10 @@ func (cmd *ExecCmd) Kill() error {
 	}
 
 	return err
+}
+
+func (cmd *ExecCmd) Pid() int {
+	return cmd.Process.Pid
 }
 
 // IsCmdNotFound reports true if the underlying error was exec.ErrNotFound.

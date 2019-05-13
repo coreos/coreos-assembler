@@ -28,11 +28,12 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         OmahaPing,
-		ClusterSize: 0,
-		Name:        "cl.omaha.ping",
-		Platforms:   []string{"qemu"},
-		Distros:     []string{"cl"},
+		Run:              OmahaPing,
+		ClusterSize:      0,
+		Name:             "cl.omaha.ping",
+		Platforms:        []string{"qemu"},
+		ExcludePlatforms: []string{"qemu-unpriv"},
+		Distros:          []string{"cl"},
 	})
 }
 
