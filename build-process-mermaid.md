@@ -1,6 +1,6 @@
 # Guide to update build process svg
 
-![Alt build process](./build-process.svg)
+<img src="./build-process.svg?sanitize=true">
 
 
 ## Update Build Process Svg
