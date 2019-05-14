@@ -239,7 +239,7 @@ runcompose() {
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
-    if [ -d "${overridesdir}"/rpm ] || [ -n "${ref_is_temp}" ] || [ -d "${configdir}/overlay" ]; then
+    if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${configdir}/overlay" ]; then
         mkdir "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${workdir}/src/config/manifest.yaml
@@ -274,6 +274,16 @@ EOF
 name=coreos-assembler-local-overrides
 baseurl=file://${workdir}/overrides/rpm
 gpgcheck=0
+EOF
+    fi
+    rootfs_overlay="${overridesdir}/rootfs"
+    if [ -d "${rootfs_overlay}" ]; then
+        echo "Committing ${rootfs_overlay}"
+        sudo ostree commit --repo="${workdir}/tmp/repo" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
+          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none
+          cat >> "${override_manifest}" << EOF
+ostree-override-layers:
+  - cosa-bin-overlay
 EOF
     fi
 
