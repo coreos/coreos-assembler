@@ -1,6 +1,6 @@
 # Guide to update build process svg
 
-![build process](build-process.svg)
+![build process](build-process.svg?sanitize=true)
 
 
 ## Update Build Process Svg
