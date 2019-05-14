@@ -101,8 +101,9 @@ else
     ign_var_srv_mount=""
 fi
 
+if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
 
-coreos_assembler_sysctl=$(cat << 'EOF' | base64 --wrap 0
+    coreos_assembler_sysctl=$(cat << 'EOF' | base64 --wrap 0
 # Written during `coreos-assembler run`.
 
 # Right now, we're running at the default log level, which is DEBUG (7).
@@ -110,9 +111,8 @@ coreos_assembler_sysctl=$(cat << 'EOF' | base64 --wrap 0
 # Bump the default to ERROR (3).
 kernel.printk = 3 4 1 7
 EOF
-)
+    )
 
-if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
     f=$(mktemp)
     cat > "${f}" <<EOF
 {
