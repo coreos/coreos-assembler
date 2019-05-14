@@ -113,6 +113,13 @@ kernel.printk = 3 4 1 7
 EOF
     )
 
+    coreos_assembler_motd=$(cat << 'EOF' | base64 --wrap 0
+ICMP traffic (ping) does not work with QEMU and user mode networking.
+To exit, press Ctrl-A and then X.
+
+EOF
+    )
+
     f=$(mktemp)
     cat > "${f}" <<EOF
 {
@@ -124,6 +131,13 @@ EOF
             {
                 "path": "/etc/sysctl.d/10-coreos-assembler.conf",
                 "contents": { "source": "data:text/plain;base64,${coreos_assembler_sysctl}" },
+                "mode": 420
+            },
+            {
+                "path": "/etc/motd",
+                "append": [
+                    { "source": "data:text/plain;base64,${coreos_assembler_motd}" }
+                ],
                 "mode": 420
             }
         ]
@@ -138,11 +152,6 @@ EOF
                         "contents": "[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
                     }
                 ]
-            },
-            {
-                "name": "serial-getty-motd.service",
-                "enabled": true,
-                "contents": "[Unit]\\nDescription=Helper message to exit QEMU monitor to /etc/motd\\nBefore=getty.target\\n[Service]\\nType=oneshot\\nExecStart=/bin/sh -c '/usr/bin/echo \\"ICMP traffic (ping) does not work with QEMU and user mode networking.\\\\nTo exit, press Ctrl-A and then X.\\\\n\\" >> /etc/motd'\\n[Install]\\nWantedBy=getty.target\\n"
             }
             ${ign_var_srv_mount}
         ]
