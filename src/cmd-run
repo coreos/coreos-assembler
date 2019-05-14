@@ -75,7 +75,6 @@ while [ $# -ge 1 ]; do
     esac
 done
 
-set -x
 preflight
 
 if [ -z "${VM_DISK}" ]; then
