@@ -25,7 +25,7 @@ For development information, including how to add new tests, please see [README-
 =======
 ### Build Process
 
-![build process](build-process.svg?sanitize=true)
+![Alt build process](./build-process.svg)
 
 See [update build process svg](build-process-mermaid.md)
 >>>>>>> 7f9a85a... Add build process svg and process to update the svg
