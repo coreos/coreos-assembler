@@ -19,16 +19,14 @@ and to keep them as similar as possible:
 See [fedora-coreos-pipeline](https://github.com/coreos/fedora-coreos-pipeline) as an
 example pipeline.
 
-<<<<<<< HEAD
 ## Development
 For development information, including how to add new tests, please see [README-devel.md](README-devel.md).
-=======
+
 ### Build Process
 
 <img src="./build-process.svg?sanitize=true">
 
 See [update build process svg](build-process-mermaid.md)
->>>>>>> 7f9a85a... Add build process svg and process to update the svg
 
 ### Getting started - prerequisites
 ---
