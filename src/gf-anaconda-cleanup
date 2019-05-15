@@ -31,9 +31,8 @@ EOF
 fi
 
 # Remove most things written by anaconda in /etc, except
-# for /etc/fstab mainly.  We also keep /etc/hostname and /etc/locale.conf as otherwise
-# systemd-firstboot triggers.
-for x in "sysconfig/anaconda" "sysconfig/network" "crypttab" "resolv.conf" "X11" "systemd/system/default.target" "shadow-"; do
+# for /etc/fstab mainly.
+for x in "sysconfig/anaconda" "sysconfig/network" "hostname" "crypttab" "resolv.conf" "X11" "systemd/system/default.target" "shadow-"; do
     coreos_gf rm-rf "${deploydir}/etc/${x}"
 done
 for x in $(coreos_gf glob-expand "${deploydir}/etc/sysconfig/network-scripts/"'*'); do
