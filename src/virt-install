@@ -9,7 +9,7 @@
 # one or both.
 
 import os,sys,argparse,subprocess,io,time,re,multiprocessing
-import tempfile,shutil,yaml,platform,json,threading
+import tempfile,yaml,platform,json,threading
 import http.server
 import socketserver
 
@@ -27,7 +27,7 @@ def fatal(msg):
     raise SystemExit(1)
 
 # Set of valid keys in image.yaml
-IMAGE_CONF_KEYS = ['size', 'postprocess-script']
+IMAGE_CONF_KEYS = ['size', 'postprocess-script', 'extra-kargs']
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dest", help="Destination disk",
@@ -107,17 +107,18 @@ if args.kickstart_out:
 else:
     ks_tmp = tempfile.NamedTemporaryFile(mode='w', prefix="coreos-virtinstall", suffix=".ks")
 
-disk_size = None
-
-with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
-    shutil.copyfileobj(basef, ks_tmp)
-image_conf = None
 with open(args.configdir + '/image.yaml') as f:
     image_conf = yaml.safe_load(f)
 for k in image_conf:
     if not k in IMAGE_CONF_KEYS:
         fatal(f"Unknown key '{k}' in image.yaml")
 disk_size = int(image_conf['size'])
+extra_kargs = image_conf.get('extra-kargs', [])
+
+with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
+    buf = basef.read()
+    buf = buf.replace('%%KARGS%%', ' '.join(extra_kargs))
+    ks_tmp.write(buf)
 
 # To support different distro builds using Fedora anaconda,
 # installclass must be explicit for anaconda to find the correct directory.
