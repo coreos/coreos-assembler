@@ -116,4 +116,3 @@ mkdir -p cache
 mkdir -p builds
 mkdir -p tmp
 mkdir -p overrides/rpm
-ostree --repo=repo init --mode=archive
