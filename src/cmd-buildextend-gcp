@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+# pylint: disable=C0103
+"""
+An operation that mutates a build by uploading to GCP,
+extending the meta.json with GCP image name.
+"""
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+
+import argparse
+import json
+import os
+import shutil
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+# pylint: disable=C0413
+from cmdlib import (
+        run_verbose,
+        sha256sum_file,
+        write_json)
+
+# Parse args and dispatch
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", help="Build ID", required=True)
+parser.add_argument("--bucket", help="Storage account to write image to",
+                    default=os.environ.get("GCP_BUCKET"))
+parser.add_argument("--gce", help="Use GCE as the platform ID instead of GCP",
+                    action="store_true",
+                    default=bool(os.environ.get("GCP_GCE_PLATFORM_ID", False)))
+parser.add_argument("--force", help="Replace existing images and upload",
+                    action="store_true",
+                    default=bool(os.environ.get("GCP_FORCE", False)))
+parser.add_argument("--json-key", help="GCP Service Account JSON Auth",
+                    default=os.environ.get("GCP_JSON_AUTH"))
+parser.add_argument("--name-suffix", help="Append suffix to name",
+                    required=False)
+parser.add_argument("--project", help="GCP Project name",
+                    default=os.environ.get("GCP_PROJECT_NAME"))
+args = parser.parse_args()
+
+# Argument checks for environment strings that are required
+arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
+if args.bucket is None:
+    raise Exception(arg_exp_str.format("bucket", "GCP_BUCKET"))
+if args.json_key is None:
+    raise Exception(arg_exp_str.format("json-key", "GCP_JSON_AUTH"))
+if args.project is None:
+    raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
+
+# Identify the builds
+builddir = os.path.join('builds', args.build)
+buildmeta_path = os.path.join(builddir, 'meta.json')
+with open(buildmeta_path) as f:
+    buildmeta = json.load(f)
+
+if 'gcp' in buildmeta['images'] and not args.force:
+  print("GCP image already built; use --force to rebuild")
+  sys.exit(0)
+
+# Name the base build and tarball name
+base_name = buildmeta['name']
+if args.name_suffix:
+    gcp_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
+else:
+    gcp_name_version = f'{base_name}-{args.build}'
+gcp_tarball_name = f'{gcp_name_version}-gcp.tar.gz'
+
+# Setup the tempdir
+tmpdir = 'tmp/buildpost-gcp'
+if os.path.isdir(tmpdir):
+    shutil.rmtree(tmpdir)
+os.mkdir(tmpdir)
+tmpdir = os.path.abspath(tmpdir)
+
+def generate_gcp_tar():
+    """ Set the Ignition ID to GCP/GCE and create a tarball for upload """
+    plat_id = 'gcp'
+    if args.gce:
+        plat_id = 'gce'
+    img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
+    tmp_img_gcp = os.path.join(tmpdir, (gcp_name_version + '.qcow2'))
+    tmp_img_gcp_raw = os.path.join(tmpdir, 'disk.raw')
+    tmp_img_gcp_tar = os.path.join(tmpdir, gcp_tarball_name)
+    run_verbose([f"{cosa_dir}/gf-platformid", img_qemu, tmp_img_gcp, plat_id])
+    run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'raw',
+                 tmp_img_gcp, tmp_img_gcp_raw])
+    run_verbose(['tar', '-C', f"{tmpdir}", '-Sczf', f"{tmp_img_gcp_tar}",
+                 f"disk.raw"])
+    os.unlink(tmp_img_gcp)
+    os.unlink(tmp_img_gcp_raw)
+    return tmp_img_gcp_tar
+
+def run_ore():
+    """ Execute ore to upload the tarball and register the image """
+    build_tarball = f"{builddir}/{gcp_tarball_name}"
+    tmp_img_gcp_tarball = generate_gcp_tar()
+    ore_args = ['ore', 'gcloud',
+                '--project', args.project,
+                '--basename', base_name,
+                'upload',
+                '--board=""',
+                '--bucket', f'gs://{args.bucket}/{base_name}',
+                '--json-key', args.json_key,
+                '--name', f'{args.build}',
+                '--file', tmp_img_gcp_tarball
+               ]
+    if args.force:
+        ore_args.append('--force')
+
+    run_verbose(ore_args)
+    os.rename(tmp_img_gcp_tarball, build_tarball)
+    checksum = sha256sum_file(build_tarball)
+    size = os.path.getsize(build_tarball)
+
+    buildmeta['gcp'] = {'image': f"{base_name}-{args.build.replace('.', '-')}"}
+    buildmeta['images'].update({
+        'gcp': {
+            'path': build_tarball,
+            'sha256': checksum,
+            'size': size
+        }
+    })
+    write_json(buildmeta_path, buildmeta)
+    print(f"Updated: {buildmeta_path}")
+    shutil.rmtree(tmpdir)
+
+
+# Do it!
+run_ore()
