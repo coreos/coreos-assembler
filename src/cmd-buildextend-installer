@@ -14,6 +14,7 @@ import tempfile
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
 from cmdlib import run_verbose, write_json, sha256sum_file
+from cmdlib import import_ostree_commit
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -35,6 +36,11 @@ builddir = os.path.join(workdir, 'builds', args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
+
+# Grab the commit hash for this build
+buildmeta_commit = buildmeta['ostree-commit']
+
+repo = os.path.join(workdir, 'tmp/repo')
 
 # Don't run if it's already been done, unless forced
 if 'iso' in buildmeta['images'] and not args.force:
@@ -68,20 +74,17 @@ def generate_iso():
 
     tmpisofile = os.path.join(tmpdir, iso_name)
 
-    # Grab the commit hash for this build
-    buildmeta_commit = buildmeta['ostree-commit']
-
     # Find the directory under `/usr/lib/modules/<kver>` where the
     # kernel/initrd live. It will be the 2nd entity output by
     # `ostree ls <commit> /usr/lib/modules`
-    process = run_verbose(['/usr/bin/ostree', '--repo=./repo', 'ls',
+    process = run_verbose(['/usr/bin/ostree', 'ls', '--repo', repo,
                            '--nul-filenames-only', f"{buildmeta_commit}",
                            '/usr/lib/modules'], capture_output=True)
     moduledir = process.stdout.decode().split('\0')[1]
 
     # copy those files out of the ostree into the iso root dir
     for file in ['initramfs.img', 'vmlinuz']:
-        run_verbose(['/usr/bin/ostree', '--repo=./repo', 'checkout',
+        run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
                      f"{buildmeta_commit}", tmpisoimages])
         # initramfs isn't world readable by default so let's open up perms
@@ -198,6 +201,9 @@ def generate_iso():
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
 
+
+commit_tar = os.path.join(builddir, 'ostree-commit.tar')
+import_ostree_commit(repo, buildmeta_commit, commit_tar)
 
 # Do it!
 generate_iso()

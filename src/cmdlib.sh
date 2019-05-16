@@ -115,8 +115,8 @@ preflight() {
 
 prepare_build() {
     preflight
-    if ! [ -d repo ]; then
-        fatal "No $(pwd)/repo found; did you run coreos-assembler init?"
+    if ! [ -d builds ]; then
+        fatal "No $(pwd)/builds found; did you run coreos-assembler init?"
     elif ! has_privileges; then
         if [ ! -f cache/cache.qcow2 ]; then
             qemu-img create -f qcow2 cache/cache.qcow2 10G
@@ -135,6 +135,17 @@ prepare_build() {
 
     echo "Using manifest: ${manifest}"
 
+    tmprepo=${workdir}/tmp/repo
+    if [ ! -d "${tmprepo}" ]; then
+        # backcompat: just move the toplevel repo/
+        if [ -d "${workdir}/repo" ]; then
+            mv -T "${workdir}/repo" "${tmprepo}"
+            rm -f "${tmprepo}/summary"
+        else
+            ostree init --repo="${tmprepo}" --mode=archive
+        fi
+    fi
+
     configdir_gitrepo=${configdir}
     if [ -e "${workdir}/src/config-git" ]; then
         configdir_gitrepo="${workdir}/src/config-git"
@@ -142,7 +153,7 @@ prepare_build() {
     export configdir_gitrepo
 
     manifest_tmp_json=${workdir}/tmp/manifest.json
-    rpm-ostree compose tree --repo=repo --print-only "${manifest}" > "${manifest_tmp_json}"
+    rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${manifest_tmp_json}"
 
     # Abuse the rojig/name as the name of the VM images
     # Also grab rojig summary for image upload descriptions
@@ -230,16 +241,16 @@ EOF
     rm -f "${changed_stamp}"
 
     # shellcheck disable=SC2086
-    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${workdir}"/repo \
+    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${tmprepo}" \
             --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
-            --unified-core "${manifest}" ${COSA_RPMOSTREE_ARGS:-} "$@"
+            --unified-core --no-parent "${manifest}" ${COSA_RPMOSTREE_ARGS:-} "$@"
 
     echo "Running: $*"
 
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
         sudo -E "$@"
-        sudo chown -R -h "${USER}":"${USER}" "${workdir}"/repo
+        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
         runvm "$@"
     fi

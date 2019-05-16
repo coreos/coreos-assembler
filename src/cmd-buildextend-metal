@@ -98,6 +98,25 @@ if [ "${ref}" = "null" ]; then
     ref="tmpref-${name}"
     ref_is_temp=1
 fi
+commit=$(json_key ostree-commit)
+
+ostree_repo=${tmprepo}
+rev_parsed=$(ostree rev-parse --repo="${ostree_repo}" "${ref}" 2>/dev/null || :)
+if [ "${rev_parsed}" != "${commit}" ]; then
+    # Probably an older commit or tmp/ was wiped. Let's extract it to a separate
+    # temporary repo (not to be confused with ${tmprepo}...) so we can feed it
+    # as a ref (if not temp) to Anaconda.
+    echo "Cache for build ${build} is gone"
+    echo "Importing commit ${commit} into temporary OSTree repo"
+    mkdir -p tmp/repo
+    tar -C tmp/repo -xf "${builddir}/ostree-commit.tar"
+    ostree_repo=$PWD/tmp/repo
+    if [ -n "${ref_is_temp}" ]; then
+        # this gets promptly "dereferenced" back in run_virtinstall, but it
+        # keeps the code below simple so it can work in both temp/not temp cases
+        ostree refs --repo="${ostree_repo}" "${commit}" --create "${ref}"
+    fi # otherwise, the repo already has a ref, so no need to create
+fi
 
 # for anaconda logs
 mkdir -p tmp/anaconda
@@ -110,7 +129,7 @@ for itype in ${BIOS:+metal-bios} ${UEFI:+metal-uefi}; do
     fi
 
     path=${PWD}/${img}
-    run_virtinstall "${workdir}/repo" "${ref}" "${path}.tmp" --variant="${itype}"
+    run_virtinstall "${ostree_repo}" "${ref}" "${path}.tmp" --variant="${itype}"
     /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
     rm -f "${path}".tmp
 

@@ -174,20 +174,3 @@ if skip_pruning:
 for build in builds_to_delete:
     print(f"Pruning build {build.id}")
     shutil.rmtree(os.path.join(builds_dir, build.id))
-
-# and finally prune OSTree repos
-print(f"Pruning repo")
-repo = os.path.join(args.workdir, 'repo')
-
-# For now, we just use the --keep-younger-than CLI here. Doing this more
-# accurately would require enhancing the `prune` CLI (or just use the API
-# directly?). Or we could also manually figure out the depth of the oldest
-# build and then use that as the arg to `--depth`.
-oldest_ostree_t = new_builds[-1].ostree_timestamp
-# In a quick test, it seems like --keep-younger-than=x actually keeps commits
-# with timestamps exactly equal to x, but the name is a bit tricky so let's
-# be safe and just pick a time 1h before that so we're doubly sure. It might
-# keep a few other older commits, but meh...
-younger_than = rfc3339_time(oldest_ostree_t - timedelta(hours=1))
-subprocess.run(["ostree", "prune", "--repo", repo, "--refs-only",
-               f"--keep-younger-than={younger_than}"], check=True)

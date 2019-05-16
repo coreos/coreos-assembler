@@ -53,5 +53,4 @@ prepare_build
 cd "${workdir:?}"
 # Note we don't prune the cache.qcow2 or the objects
 # in the repo.  If you want that, just rm -rf them.
-rm -rf repo/refs/heads/* builds/* tmp/*
-ostree --repo=repo summary -u
+rm -rf builds/* tmp/*

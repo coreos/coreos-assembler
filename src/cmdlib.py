@@ -98,6 +98,7 @@ def fatal(msg):
     print('fatal: {}'.format(msg), file=sys.stderr)
     raise SystemExit(1)
 
+
 def info(msg):
     """
     Prints info messages.
@@ -137,3 +138,22 @@ def rm_allow_noent(path):
         os.unlink(path)
     except FileNotFoundError:
         pass
+
+
+def import_ostree_commit(repo, commit, tarfile):
+    # create repo in case e.g. tmp/ was cleared out; idempotent
+    subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
+
+    # in the common case where we're operating on a recent build, the OSTree
+    # commit should already be in the tmprepo
+    commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
+    if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL) == 0
+            and not os.path.isfile(commitpartial)):
+        return
+
+    with tempfile.TemporaryDirectory(dir=f'{repo}/tmp') as d:
+        subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
+        subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
+                               d, commit])
