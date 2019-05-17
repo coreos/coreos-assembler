@@ -1,120 +1,103 @@
 #!/usr/bin/env python3
 # NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
 #
-# Fetches the bare minimum from external servers to create the next build.
+# Fetches the bare minimum from external servers to create the next build. May
+# require configured AWS credentials if bucket and objects are not public.
 
-import os
-import sys
-import json
-import shutil
 import argparse
+import os
+import subprocess
+import sys
 import urllib
 import urllib.request
 
 sys.path.insert(0, '/usr/lib/coreos-assembler')
-from cmdlib import run_verbose, write_json
+from cmdlib import load_json, rm_allow_noent  # noqa: E402
 
 
 def main():
     args = parse_args()
 
-    if args.buildmeta_only or not args.ostree_only:
-        (builds, buildmeta) = fetch_buildmeta(args.url)
-        write_json('builds/builds.json', builds)
+    if args.url.startswith("s3://"):
+        fetcher = S3Fetcher(args.url)
+    elif args.url.startswith("http://") or args.url.startswith("https://"):
+        fetcher = HTTPFetcher(args.url)
+    else:
+        raise Exception("Invalid scheme: only s3:// and http(s):// supported")
 
-    if buildmeta is None:
+    builds = fetcher.fetch_json('builds.json')
+    if len(builds) == 0:
         print("Remote has no builds!")
         return
 
-    # now create the build dir itself
-    buildid = buildmeta['buildid']
-    builddir = os.path.join('builds', buildid)
-    buildmeta_path = os.path.join(builddir, 'meta.json')
-    os.makedirs(f'{builddir}', exist_ok=True)
-    write_json(buildmeta_path, buildmeta)
+    buildid = builds['builds'][0]
+    os.makedirs(f'builds/{buildid}', exist_ok=True)
+    for f in ['meta.json', 'ostree-commit-object']:
+        fetcher.fetch(f'{buildid}/{f}')
 
-    if args.ostree_only or not args.buildmeta_only:
-        fetch_ostree(args.url, args.full_ostree_commit, buildmeta)
+    # and finally the symlink
+    rm_allow_noent('builds/latest')
+    os.symlink(buildid, 'builds/latest')
+
+    # also nuke the any local matching OStree ref, since we want to build on
+    # top of this new one
+    buildmeta = load_json('builds/latest/meta.json')
+    if 'ref' in buildmeta and os.path.isdir('tmp/repo'):
+        subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo',
+                               '--delete', buildmeta['ref']],
+                              stdout=subprocess.DEVNULL)
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", metavar='URL',
                         help="URL from which to fetch metadata")
-    only = parser.add_mutually_exclusive_group()
-    only.add_argument("--buildmeta-only", action='store_true',
-                      help="Only fetch builds/ metadata, not ostree/")
-    only.add_argument("--ostree-only", action='store_true',
-                      help="Only fetch ostree/ metadata, not builds/")
-    parser.add_argument("--full-ostree-commit",
-                        action='store_true', default=False,
-                        help="Fetch full OSTree, not just commit object")
     return parser.parse_args()
 
 
-def fetch_url(url, *subpaths):
-    # NB: `urllib.parse.urljoin()` does not do what one thinks it does. Using
-    # `os.path.join()` is a hack, but eh... we're not planning to run on
-    # Windows anytime soon.
-    url = os.path.join(url, *subpaths)
-    print(f"Fetching {url}")
-    with urllib.request.urlopen(url) as response:
-        rc = response.getcode()
-        if rc != 200:
-            raise Exception(f"Received rc {rc} for {url}")
-        return response.read()
+class Fetcher(object):
+
+    def __init__(self, url_base):
+        self.url_base = url_base
+
+    def fetch(self, path, dest=None):
+        # if no specific dest given, assume it's a path under builds/
+        if dest is None:
+            dest = f'builds/{path}'
+        # NB: `urllib.parse.urljoin()` does not do what one thinks it does.
+        # Using `os.path.join()` is a hack, but eh... we're not planning to run
+        # on Windows anytime soon.
+        url = os.path.join(self.url_base, path)
+        print(f"Fetching: {url}")
+        self.fetch_impl(url, dest)
+        return dest
+
+    def fetch_json(self, path):
+        return load_json(self.fetch(path))
 
 
-def fetch_json(url, *subpaths):
-    return json.loads(fetch_url(url, *subpaths))
+class HTTPFetcher(Fetcher):
+
+    def __init__(self, url_base):
+        super().__init__(url_base)
+
+    def fetch_impl(self, url, dest):
+        with urllib.request.urlopen(url) as response:
+            rc = response.getcode()
+            if rc != 200:
+                raise Exception(f"Received rc {rc} for {url}")
+            with open(dest, mode='wb') as f:
+                f.write(response.read())
 
 
-def fetch_buildmeta(url):
-    # XXX: add s3:// support
-    if not url.startswith("http://") and not url.startswith("https://"):
-        raise Exception("Only http(s):// scheme supported for now")
+class S3Fetcher(Fetcher):
 
-    builds = fetch_json(url, "builds/builds.json")
-    if len(builds.get('builds', [])) == 0:
-        return (builds, None)
+    def __init__(self, url_base):
+        super().__init__(url_base)
 
-    buildid = builds['builds'][0]
-    buildmeta_path = os.path.join('builds', buildid, 'meta.json')
-    buildmeta = fetch_json(url, buildmeta_path)
-    return (builds, buildmeta)
-
-
-def fetch_ostree(url, full_ostree_commit, buildmeta):
-    # XXX: add oscontainer:// support
-    if not url.startswith("http://") and not url.startswith("https://"):
-        raise Exception("Only http(s):// scheme supported for now")
-
-    csum = buildmeta['ostree-commit']
-
-    # XXX: should enhance `pull` to not require a configured remote
-    run_verbose(['ostree', 'remote', 'delete', '--repo=repo',
-                 'buildprep', '--if-exists'])
-    run_verbose(['ostree', 'remote', 'add', '--repo=repo', '--no-gpg-verify',
-                 'buildprep', f'{url}/repo'])
-
-    pull_args = ['ostree', 'pull', '--repo=repo', 'buildprep', csum]
-    if not full_ostree_commit:
-        pull_args.append('--commit-metadata-only')
-    run_verbose(pull_args)
-
-    run_verbose(['ostree', 'remote', 'delete', '--repo=repo',
-                 'buildprep', '--if-exists'])
-
-    if 'ref' not in buildmeta:
-        return
-    ref = buildmeta['ref']
-
-    if os.path.isfile(f'repo/refs/heads/{ref}'):
-        run_verbose(['ostree', '--repo=repo', 'reset', buildmeta['ref'], csum])
-    else:
-        run_verbose(['ostree', '--repo=repo', 'refs', csum, f'--create={ref}'])
-
-    run_verbose(['ostree', '--repo=repo', 'summary', '-u'])
+    def fetch_impl(self, url, dest):
+        subprocess.check_call(['aws', 's3', 'cp', url, dest],
+                              stdout=subprocess.DEVNULL)
 
 
 if __name__ == '__main__':
