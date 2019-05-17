@@ -71,6 +71,7 @@ def load_json(path):
     with open(path) as f:
         return json.load(f)
 
+
 def sha256sum_file(path):
     """
     Calculates the sha256 sum from a path.
