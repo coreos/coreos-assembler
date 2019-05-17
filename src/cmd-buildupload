@@ -1,0 +1,104 @@
+#!/usr/bin/python3
+
+# The inverse of cmd-buildprep (i.e. we upload a build which later can be
+# partially re-downloaded with cmd-buildprep).
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+sys.path.insert(0, '/usr/lib/coreos-assembler')
+from cmdlib import load_json  # noqa: E402
+
+
+def main():
+    args = parse_args()
+    args.func(args)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--build", help="Build ID", default='latest')
+    parser.add_argument("--freshen", help="Only push builds.json",
+                        action='store_true')
+
+    subparsers = parser.add_subparsers(dest='cmd', title='subcommands')
+    subparsers.required = True
+
+    s3 = subparsers.add_parser('s3', help='upload an image')
+    s3.add_argument("url", metavar='<BUCKET>[/PREFIX]',
+                    help="Bucket and path prefix in which to upload")
+    s3.add_argument("--acl", help="ACL for objects",
+                    action='store', default='private')
+    s3.add_argument("--enable-gz-peel", help="Auto-peel .gz extensions "
+                    "and set Content-Disposition names", action='store_true')
+    s3.set_defaults(func=cmd_upload_s3)
+
+    return parser.parse_args()
+
+
+def cmd_upload_s3(args):
+    if not args.freshen:
+        s3_upload_build(args)
+    s3_cp(args, 'builds/builds.json', 'builds.json',
+          '--cache-control=max-age=60')
+
+
+def s3_upload_build(args):
+    builddir = f'builds/{args.build}'
+    build = load_json(f'{builddir}/meta.json')
+    buildid = build['buildid']
+
+    print(f"Targeting build: {buildid}")
+    print(f"  OSTree commit: {build['ostree-commit']}")
+
+    # Upload images with special handling for gzipped data.
+    uploaded = set()
+    for imgname in build['images']:
+        img = build['images'][imgname]
+        bn = img['path']
+        path = os.path.join(builddir, bn)
+        # Don't use the Content-Disposition trick with bare-metal images since
+        # the installer expects them gzipped. (This is a trick used to allow
+        # recommending `curl -J --compressed` so that images are stored
+        # compressed, but uncompressed on-the-fly at download time.)
+        if (bn.endswith('.gz') and not bn.endswith('.raw.gz') and
+                args.enable_gz_peel):
+            nogz = bn[:-3]
+            img['path'] = nogz
+            s3_cp(args, path, f'{buildid}/{nogz}',
+                  '--content-encoding=gzip',
+                  f'--content-disposition=inline; filename={nogz}')
+        else:
+            s3_cp(args, path, f'{buildid}/{bn}')
+        uploaded.add(bn)
+
+    for f in os.listdir(builddir):
+        # we do meta.json right after
+        if f in uploaded or f == 'meta.json':
+            continue
+        path = os.path.join(builddir, f)
+        s3_cp(args, path, f'{buildid}/{f}')
+
+    # Now upload a modified version of the meta.json which has the fixed
+    # filenames without the .gz suffixes. We don't want to modify the local
+    # build dir.
+    with tempfile.NamedTemporaryFile('w') as f:
+        json.dump(build, f, indent=4)
+        f.flush()
+        s3_cp(args, f.name, f'{buildid}/meta.json')
+
+
+def s3_cp(args, src, dest, *s3_args):
+    acl = f'--acl={args.acl}'
+    dest = f's3://{args.url}/{dest}'
+    print(f"Uploading: {dest}")
+    subprocess.check_call(['aws', 's3', 'cp', acl, src, dest, *s3_args],
+                          stdout=subprocess.DEVNULL)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
