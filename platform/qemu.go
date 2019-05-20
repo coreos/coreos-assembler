@@ -20,9 +20,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
@@ -227,9 +230,11 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 	// archs combos we should coordinate with the
 	// coreos-assembler folks as they utilize something
 	// similar in cosa run
+	var qmBinary string
 	combo := runtime.GOARCH + "--" + board
 	switch combo {
 	case "amd64--amd64-usr":
+		qmBinary = "qemu-system-x86_64"
 		qmCmd = []string{
 			"qemu-system-x86_64",
 			"-machine", "accel=kvm",
@@ -237,6 +242,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-m", "1024",
 		}
 	case "amd64--arm64-usr":
+		qmBinary = "qemu-system-aarch64"
 		qmCmd = []string{
 			"qemu-system-aarch64",
 			"-machine", "virt",
@@ -244,6 +250,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-m", "2048",
 		}
 	case "arm64--amd64-usr":
+		qmBinary = "qemu-system-x86_64"
 		qmCmd = []string{
 			"qemu-system-x86_64",
 			"-machine", "pc-q35-2.8",
@@ -251,6 +258,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-m", "1024",
 		}
 	case "arm64--arm64-usr":
+		qmBinary = "qemu-system-aarch64"
 		qmCmd = []string{
 			"qemu-system-aarch64",
 			"-machine", "virt,accel=kvm,gic-version=3",
@@ -279,6 +287,26 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-device", Virtio(board, "9p", "fsdev=cfg,mount_tag=config-2"))
 	}
 
+	// auto-read-only is only available in 3.1.0 & greater versions of QEMU
+	var autoReadOnly string
+	version, err := exec.Command(qmBinary, "--version").CombinedOutput()
+	if err != nil {
+		return nil, nil, fmt.Errorf("retrieving qemu version: %v", err)
+	}
+	pat := regexp.MustCompile(`version (\d+\.\d+\.\d+)`)
+	vNum := pat.FindSubmatch(version)
+	if len(vNum) < 2 {
+		return nil, nil, fmt.Errorf("unable to parse qemu version number")
+	}
+	qmSemver, err := semver.NewVersion(string(vNum[1]))
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing qemu semver: %v", err)
+	}
+	if !qmSemver.LessThan(*semver.New("3.1.0")) {
+		autoReadOnly = ",auto-read-only=off"
+		plog.Debugf("disabling auto-read-only for QEMU drives")
+	}
+
 	allDisks := append([]Disk{
 		{
 			BackingFile: diskImagePath,
@@ -300,7 +328,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 
 		id := fmt.Sprintf("d%d", fdnum)
 		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d", id, fdset),
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d%s", id, fdset, autoReadOnly),
 			"-device", Virtio(board, "blk", fmt.Sprintf("drive=%s%s", id, disk.getOpts())))
 		fdnum += 1
 		fdset += 1
