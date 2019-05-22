@@ -20,7 +20,7 @@ BIOS=
 UEFI=
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build,bios,uefi -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,build:,bios,uefi -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
