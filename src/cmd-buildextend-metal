@@ -98,7 +98,6 @@ if [ "${ref}" = "null" ]; then
     ref="tmpref-${name}"
     ref_is_temp=1
 fi
-commit=$(json_key ostree-commit)
 
 # for anaconda logs
 mkdir -p tmp/anaconda
@@ -111,7 +110,7 @@ for itype in ${BIOS:+metal-bios} ${UEFI:+metal-uefi}; do
     fi
 
     path=${PWD}/${img}
-    run_virtinstall "${commit}" "${path}.tmp" --variant="${itype}"
+    run_virtinstall "${ref}" "${path}.tmp" --variant="${itype}"
     /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
     rm -f "${path}".tmp
 

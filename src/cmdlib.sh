@@ -486,8 +486,10 @@ run_virtinstall() {
     local iso_location
     iso_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*.iso' | head -1)
 
+    # if the ref is temporary, then we want a checksum refspec
     if [ -n "${ref_is_temp}" ]; then
         set -- "$@" --delete-ostree-ref
+        ostree_rev=$(ostree rev-parse --repo="${ostree_repo}" "${ostree_rev}")
     fi
 
     /usr/lib/coreos-assembler/virt-install --create-disk --dest="${tmpdest}" \
