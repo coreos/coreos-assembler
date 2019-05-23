@@ -478,6 +478,7 @@ sha256sum_str() {
 
 # This generates the "base image"; not specific to a platform.
 run_virtinstall() {
+    local ostree_repo=$1; shift
     local ostree_rev=$1; shift
     local dest=$1; shift
     local tmpdest="${dest}.tmp"
@@ -500,6 +501,6 @@ run_virtinstall() {
                                            --ostree-ref="${ostree_rev}" \
                                            --location "${iso_location}" \
                                            --configdir="${configdir}" \
-                                           --ostree-repo="${workdir}"/repo "$@"
+                                           --ostree-repo="${ostree_repo}" "$@"
     mv "${tmpdest}" "${dest}"
 }

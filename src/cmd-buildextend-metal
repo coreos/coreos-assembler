@@ -110,7 +110,7 @@ for itype in ${BIOS:+metal-bios} ${UEFI:+metal-uefi}; do
     fi
 
     path=${PWD}/${img}
-    run_virtinstall "${ref}" "${path}.tmp" --variant="${itype}"
+    run_virtinstall "${workdir}/repo" "${ref}" "${path}.tmp" --variant="${itype}"
     /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
     rm -f "${path}".tmp
 
