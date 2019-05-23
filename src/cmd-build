@@ -192,7 +192,7 @@ img_base=tmp/${imageprefix}-base.qcow2
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
 img_qemu=${imageprefix}-qemu.qcow2
-run_virtinstall "${ref:-${commit}}" "${PWD}"/"${img_base}" --variant=cloud
+run_virtinstall "${ref}" "${PWD}"/"${img_base}" --variant=cloud
 /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 
 "${dn}"/write-commit-object "${workdir}/repo" "${commit}" "$(pwd)"
