@@ -64,6 +64,15 @@ if [ $# -eq 0 ]; then
     set -- qemu
 fi
 
+build_qemu=
+for target in "$@"; do
+    case $target in
+        ostree) ;;
+        qemu) build_qemu=1;;
+        *) fatal "Unrecognized target: $target";;
+    esac
+done
+
 export LIBGUESTFS_BACKEND=direct
 
 prepare_build
@@ -221,9 +230,11 @@ img_base=tmp/${imageprefix}-base.qcow2
 # forgive me for this sin
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
-img_qemu=${imageprefix}-qemu.qcow2
-run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
-/usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
+if [ -n "${build_qemu}" ]; then
+    img_qemu=${imageprefix}-qemu.qcow2
+    run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
+    /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
+fi
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 
@@ -259,7 +270,8 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
-cat > tmp/images.json <<EOF
+if [ -n "${build_qemu}" ]; then
+    cat > tmp/images.json <<EOF
 {
     "images": {
         "qemu": {
@@ -270,6 +282,9 @@ cat > tmp/images.json <<EOF
     }
 }
 EOF
+else
+    echo '{ "images": {} }' > tmp/images.json
+fi
 
 # And the build information about our container, if we are executing
 # from a container.
