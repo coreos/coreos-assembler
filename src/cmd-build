@@ -196,6 +196,8 @@ if [ -n "${previous_build}" ]; then
     rpm-ostree --repo="${tmprepo}" db diff --format=json \
             "${previous_commit}" "${commit}" | \
         jq '{pkgdiff: .pkgdiff}' > tmp/diff.json
+else
+    echo '{}' > tmp/diff.json
 fi
 
 image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
