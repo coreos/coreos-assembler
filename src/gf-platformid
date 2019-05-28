@@ -50,8 +50,9 @@ coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
 # Remove any platformid currently there
 sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
 # Insert our new platformid
-# Match both linux16 and linux since only the latter is available on aarch64
-sed -i -e 's,^\(linux\(16\)\? .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/grub.cfg
+# Match linux16, linux and linuxefi since only linux is available on aarch64
+# and linuxefi is available in grub2.cfg for UEFI
+sed -i -e 's,^\(linux\(16\|efi\)\? .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/grub.cfg
 coreos_gf upload "${tmpd}"/grub.cfg "${grubcfg_path}"
 # Now the BLS version
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
