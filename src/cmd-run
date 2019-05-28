@@ -10,6 +10,8 @@ set -euo pipefail
 dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
+# shellcheck source=src/libguestfish.sh
+. "${dn}"/libguestfish.sh
 
 VM_DISK=
 VM_MEMORY=2048
@@ -87,20 +89,6 @@ fi
 # make sure disk path is absolute
 VM_DISK=$(realpath "${VM_DISK}")
 
-if [ -z "${VM_PERSIST_IMG}" ]; then
-    f=$(mktemp -p "${TMPDIR:-/var/tmp}")
-    exec 4<> "${f}"
-    rm -f "${f}"
-    VM_PERSIST_IMG=/proc/self/fd/4
-fi
-
-if [ ! -s "${VM_PERSIST_IMG}" ]; then
-    echo "Creating temporary image"
-    qemu-img create -q -f qcow2 -b "${VM_DISK}" "${VM_PERSIST_IMG}"
-else
-    echo "Re-using existing ${VM_PERSIST_IMG}"
-fi
-
 # Emulate the host CPU closely in both features and cores.
 set -- -machine accel=kvm -cpu host -smp "${VM_NCPUS}" "$@"
 
@@ -160,7 +148,7 @@ EOF
     "systemd": {
         "units": [
             {
-                "name": "serial-getty@ttyS0.service",
+                "name": "serial-getty@${VM_TERMINAL}.service",
                 "dropins": [
                     {
                         "name": "autologin-core.conf",
@@ -182,13 +170,38 @@ EOF
         exit 1
     fi
 fi
-set -- -fw_cfg name=opt/com.coreos/config,file="${IGNITION_CONFIG_FILE}" "$@"
+
+if [ -z "${VM_PERSIST_IMG}" ]; then
+    echo "Creating temporary image"
+    VM_IMG=$(mktemp -p "${TMPDIR:-/var/tmp}")
+    qemu-img create -q -f qcow2 -b "${VM_DISK}" "${VM_IMG}"
+else
+    echo "Re-using existing ${VM_PERSIST_IMG}"
+    VM_IMG=${VM_PERSIST_IMG}
+fi
+
+if [ "$(arch)" == "ppc64le" ] || [ "$(arch)" == "s390x" ]; then
+    echo "fw_cfg is not supported, injecting config.ign via guestfish"
+    coreos_gf_run_mount "${VM_IMG}"
+    coreos_gf mkdir-p /boot/ignition
+    coreos_gf upload ${IGNITION_CONFIG_FILE} /boot/ignition/config.ign
+    #TODO coreos_gf_relabel /boot/ignition/config.ign
+    coreos_gf_shutdown
+else
+    set -- -fw_cfg name=opt/com.coreos/config,file="${IGNITION_CONFIG_FILE}" "$@"
+fi
+
+if [ -z "${VM_PERSIST_IMG}" ]; then
+    exec 4<> "${VM_IMG}"
+    rm -f "${VM_IMG}"
+    VM_IMG=/proc/self/fd/4
+fi
 
 if [ -n "${SSH_PORT}" ]; then
    hostfwd=",hostfwd=tcp::${SSH_PORT}-:22"
 fi
 
-set -- -drive if=virtio,file="${VM_PERSIST_IMG}" "$@"
+set -- -drive if=virtio,file="${VM_IMG}" "$@"
 
 # There is no BIOS on aarch64, so we need a firmware to boot the system
 if [ "$(arch)" == "aarch64" ]; then

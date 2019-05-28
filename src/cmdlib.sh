@@ -34,6 +34,29 @@ fatal() {
 arch=$(uname -m)
 export arch
 
+case $arch in
+    "x86_64")  VM_TERMINAL="ttyS0"    ;;
+    "ppc64le") VM_TERMINAL="hvc0"     ;;
+    "aarch64") VM_TERMINAL="ttyAMA0"  ;;
+    "s390x")   VM_TERMINAL="ttysclp0" ;;
+    *)         fatal "Architecture $(arch) not supported"
+esac
+export VM_TERMINAL
+
+if [ -x /usr/libexec/qemu-kvm ]; then
+    QEMU_KVM="/usr/libexec/qemu-kvm"
+else
+    # Enable arch-specific options for qemu
+    case "$(arch)" in
+        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
+        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
+        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
+        "s390x")   QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
+        *)         fatal "Architecture $(arch) not supported"
+    esac
+fi
+export QEMU_KVM
+
 _privileged=
 has_privileges() {
     if [ -z "${_privileged:-}" ]; then
@@ -255,18 +278,6 @@ EOF
         runvm "$@"
     fi
 }
-
-if [ -x /usr/libexec/qemu-kvm ]; then
-    QEMU_KVM="/usr/libexec/qemu-kvm"
-else
-    # Enable arch-specific options for qemu
-    case "$(arch)" in
-        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
-        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
-        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
-        *)         fatal "Architecture $(arch) not supported"
-    esac
-fi
 
 runvm() {
     local vmpreparedir=${workdir}/tmp/supermin.prepare
