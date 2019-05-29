@@ -12,7 +12,7 @@ import sys
 import tarfile
 import tempfile
 
-sys.path.insert(0, '/usr/lib/coreos-assembler')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import run_verbose, write_json, sha256sum_file
 from cmdlib import import_ostree_commit
 

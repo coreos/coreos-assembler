@@ -11,7 +11,7 @@ import sys
 import urllib
 import urllib.request
 
-sys.path.insert(0, '/usr/lib/coreos-assembler')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import load_json, rm_allow_noent  # noqa: E402
 
 
