@@ -116,7 +116,7 @@ def run_ore():
     buildmeta['gcp'] = {'image': f"{base_name}-{args.build.replace('.', '-')}"}
     buildmeta['images'].update({
         'gcp': {
-            'path': build_tarball,
+            'path': gcp_tarball_name,
             'sha256': checksum,
             'size': size
         }
