@@ -12,18 +12,22 @@ fi
 
 # XXX: teach to kola to auto-detect based on prefix; see discussions in
 # https://github.com/coreos/coreos-assembler/pull/85
-distro=
+args=
 bn=$(basename "${latest_qcow}")
 if [[ ${bn} = fedora-coreos-* ]]; then
-    distro="-b fcos"
+    args="-b fcos"
 elif [[ ${bn} = rhcos-* ]]; then
-    distro="-b rhcos --ignition-version v2"
+    args="-b rhcos"
 else
-    echo "WARNING: Failed to detect distro, use -b to specify"
+    echo "WARNING: Failed to detect args, use -b to specify"
+fi
+ignition_version=$(disk_ignition_version "${latest_qcow}")
+if [ "${ignition_version}" = "2.2.0" ]; then
+    args="${args} --ignition-version v2"
 fi
 
 # let's print out the actual exec() call we do
 set -x
 
 # shellcheck disable=SC2086
-exec kola $distro --output-dir tmp/kola --qemu-image "${latest_qcow}" "$@"
+exec kola $args --output-dir tmp/kola --qemu-image "${latest_qcow}" "$@"
