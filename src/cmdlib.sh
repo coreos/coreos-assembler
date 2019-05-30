@@ -136,6 +136,22 @@ preflight() {
     fi
 }
 
+# Obviously this is a hack but...we need to know this before
+# launching, and I don't think we have structured metadata in e.g. qcow2.
+# There are other alternatives but we'll carry this hack for now.
+# But if you're reading this comment 10 years in the future, I won't be
+# too surprised either ;)  Oh and hey if you are please send me an email, it'll
+# be like a virtual time capsule!  If they still use email then...
+disk_ignition_version() {
+    local bn
+    bn=$(basename "$1")
+    if [[ ${bn} = rhcos-4[12]0.8* ]]; then
+        echo "2.2.0"
+    else
+        echo "3.0.0"
+    fi
+}
+
 prepare_build() {
     preflight
     if ! [ -d builds ]; then
