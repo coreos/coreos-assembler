@@ -46,9 +46,24 @@ for x in $(coreos_gf find "${deploydir}/etc/ostree/remotes.d/"); do
     coreos_gf rm "${deploydir}/etc/ostree/remotes.d/${x}"
 done
 
-# And blow away all of /var - we want systemd-tmpfiles to be
-# canonical
-coreos_gf glob rm-rf "${stateroot}/var/*"
+# We'd like to remove all of /var, but SELinux issues prevent that.
+# see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
+# For now we retain just /var/lib/systemd (for the random seed) and /var/log
+# for the journal, which init before systemd-tmpfiles.
+var="${stateroot}/var"
+coreos_gf ls "${var}" | while read -r x; do
+  case "$x" in 
+    log|lib) continue;;
+    *) coreos_gf rm-rf "${var}/${x}"
+  esac
+done
+coreos_gf ls "${var}/lib" | while read -r x; do
+  if [ "${x}" = "systemd" ]; then continue; fi
+  coreos_gf rm-rf "${var}/lib/${x}"
+done
+for x in "lib/systemd" "log"; do
+  coreos_gf glob rm-rf "${var}/${x}/*"
+done
 # And finally, remove cruft from the *physical* root as nothing should be
 # using those; Anaconda is creating them today.
 for x in $(coreos_gf glob-expand '/*'); do
