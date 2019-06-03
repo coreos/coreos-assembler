@@ -172,7 +172,6 @@ EOF
 fi
 
 if [ -z "${VM_PERSIST_IMG}" ]; then
-    echo "Creating temporary image"
     VM_IMG=$(mktemp -p "${TMPDIR:-/var/tmp}")
     qemu-img create -q -f qcow2 -b "${VM_DISK}" "${VM_IMG}"
 else
