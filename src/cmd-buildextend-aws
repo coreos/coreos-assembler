@@ -24,16 +24,12 @@ parser.add_argument("--grant-user", help="Grant user launch permission",
 args = parser.parse_args()
 
 
-builddir = os.path.join('builds', args.build)
-buildmeta_path = os.path.join(builddir, 'meta.json')
-with open(buildmeta_path) as f:
-    buildmeta = json.load(f)
+buildmeta = BuildMeta(args.build)
 
-base_name = buildmeta['name']
 if args.name_suffix:
-    ami_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
+    ami_name_version = f"{bm['name']}-{args.name_suffix}-{args.build}"
 else:
-    ami_name_version = f'{base_name}-{args.build}'
+    ami_name_version = f"{bm['name']}-{args.build}"
 aws_vmdk_name = f'{ami_name_version}-aws.vmdk'
 
 tmpdir='tmp/buildpost-aws'
@@ -42,7 +38,7 @@ if os.path.isdir(tmpdir):
 os.mkdir(tmpdir)
 
 def generate_aws_vmdk():
-    img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
+    img_qemu = os.path.join(buildmeta.builddir, buildmeta['images']['qemu']['path'])
     tmp_img_aws = os.path.join(tmpdir, (ami_name_version + '.qcow2'))
     tmp_img_aws_vmdk = os.path.join(tmpdir, (ami_name_version + '.vmdk'))
     run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
@@ -71,7 +67,7 @@ def run_ore():
     ore_data = json.loads(subprocess.check_output(ore_args))
     checksum = sha256sum_file(tmp_img_aws_vmdk)
     size = os.path.getsize(tmp_img_aws_vmdk)
-    os.rename(tmp_img_aws_vmdk, f"{builddir}/{aws_vmdk_name}")
+    os.rename(tmp_img_aws_vmdk, f"{buildmeta.builddir}/{aws_vmdk_name}")
     shutil.rmtree(tmpdir)
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
@@ -85,8 +81,8 @@ def run_ore():
             'size': size
         }
     })
-    write_json(buildmeta_path, buildmeta)
-    print(f"Updated: {buildmeta_path}")
+    buildmeta.write()
+    print(f"Updated: {buildmeta.buildmeta_path}")
 
 # Do it!
 run_ore()

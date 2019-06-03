@@ -158,3 +158,42 @@ def import_ostree_commit(repo, commit, tarfile):
         subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
         subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
                                d, commit])
+
+
+class BuildMeta(dict):
+    """
+    Interface for reading and writing meta.json.
+    """
+
+    def __init__(self, build, builddir_prefix=None):
+        """
+        Initializes a new instance of BuildMeta
+
+        :param build: The build to load.
+        :type build: str
+        """
+        self.build = build
+        self.builddir = os.path.join('builds', build)
+        if builddir_prefix is not None:
+            self.builddir = os.path.join(builddir_prefix, 'builds', build)
+        self.buildmeta_path = os.path.join(self.builddir, 'meta.json')
+        super(BuildMeta, self)
+        self.load()
+
+    def load(self):
+        """
+        Loads the meta.json for a specific build.
+
+        :raises: FileNotFoundError
+        """
+        with open(self.buildmeta_path) as f:
+            self.update(json.load(f))
+
+    def write(self):
+        """
+        Writes out the buildmeta back to the original file
+
+        :type data: dict or list
+        :raises: ValueError, OSError
+        """
+        write_json(self.buildmeta_path, self.buildmeta)
