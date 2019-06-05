@@ -23,7 +23,7 @@ github.com/Microsoft/azure-vhd-utils/vhdcore/header
 github.com/Microsoft/azure-vhd-utils/vhdcore/reader
 github.com/Microsoft/azure-vhd-utils/vhdcore/writer
 github.com/Microsoft/azure-vhd-utils/vhdcore/header/parentlocator
-# github.com/ajeddeloh/go-json v0.0.0-20160803184958-73d058cf8437
+# github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083
 github.com/ajeddeloh/go-json
 # github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd
 github.com/ajeddeloh/yaml
@@ -155,30 +155,32 @@ github.com/coreos/ignition/config/v2_2
 github.com/coreos/ignition/config/v2_2/types
 github.com/coreos/ignition/config/v2_3
 github.com/coreos/ignition/config/v2_3/types
+github.com/coreos/ignition/config/validate
 github.com/coreos/ignition/config/shared/validations
 github.com/coreos/ignition/config/validate/report
-github.com/coreos/ignition/config/validate
 github.com/coreos/ignition/config/validate/astnode
 github.com/coreos/ignition/config/util
 github.com/coreos/ignition/config/validate/astjson
 github.com/coreos/ignition/config/v2_4_experimental/types
-# github.com/coreos/ignition/v2 v2.0.0-beta
+# github.com/coreos/ignition/v2 v2.0.0
 github.com/coreos/ignition/v2/config/shared/errors
 github.com/coreos/ignition/v2/config/v3_0
 github.com/coreos/ignition/v2/config/v3_0/types
+github.com/coreos/ignition/v2/config/validate
 github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/util
-github.com/coreos/ignition/v2/config/validate
-github.com/coreos/ignition/v2/config/validate/report
 github.com/coreos/ignition/v2/config/shared/validations
-github.com/coreos/ignition/v2/config/validate/util
-github.com/coreos/ignition/v2/config/validate/astjson
-github.com/coreos/ignition/v2/config/validate/astnode
 # github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 github.com/coreos/ioprogress
 # github.com/coreos/pkg v0.0.0-20161026222926-447b7ec906e5
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
+# github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068
+github.com/coreos/vcontext/report
+github.com/coreos/vcontext/path
+github.com/coreos/vcontext/json
+github.com/coreos/vcontext/tree
+github.com/coreos/vcontext/validate
 # github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269
 github.com/coreos/yaml
 # github.com/cpuguy83/go-md2man v1.0.4
