@@ -16,7 +16,7 @@ require (
 	github.com/coreos/go-omaha v0.0.0-20170526203809-f8acb2d7b76c
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/ignition v0.31.0
-	github.com/coreos/ignition/v2 v2.0.0-beta
+	github.com/coreos/ignition/v2 v2.0.0
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20161026222926-447b7ec906e5
 	github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269 // indirect
@@ -34,7 +34,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
-	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
 	github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983 // indirect
