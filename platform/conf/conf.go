@@ -316,7 +316,7 @@ func (c *Conf) ValidConfig() bool {
 	}
 	val := c.getIgnitionValidateValue()
 	if c.ignitionV3 != nil {
-		rpt := ign3validate.ValidateWithoutSource(val)
+		rpt := ign3validate.ValidateWithContext(c.ignitionV3, nil)
 		return !rpt.IsFatal()
 	} else {
 		rpt := ignvalidate.ValidateWithoutSource(val)
