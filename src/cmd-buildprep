@@ -8,8 +8,7 @@ import argparse
 import os
 import subprocess
 import sys
-import urllib
-import urllib.request
+import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import load_json, rm_allow_noent  # noqa: E402
@@ -82,12 +81,12 @@ class HTTPFetcher(Fetcher):
         super().__init__(url_base)
 
     def fetch_impl(self, url, dest):
-        with urllib.request.urlopen(url) as response:
-            rc = response.getcode()
-            if rc != 200:
-                raise Exception(f"Received rc {rc} for {url}")
+        # notice we don't use `stream=True` here; the stuff we're fetching for
+        # now is super small
+        with requests.get(url) as r:
+            r.raise_for_status()
             with open(dest, mode='wb') as f:
-                f.write(response.read())
+                f.write(r.content)
 
 
 class S3Fetcher(Fetcher):

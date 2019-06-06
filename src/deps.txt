@@ -40,6 +40,9 @@ podman buildah skopeo
 # Miscellaneous tools
 jq awscli
 
+# For interacting with HTTP
+python3-requests
+
 # For ignition file validation in cmd-run
 /usr/bin/ignition-validate
 
