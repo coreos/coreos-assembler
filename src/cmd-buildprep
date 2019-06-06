@@ -25,12 +25,12 @@ def main():
     else:
         raise Exception("Invalid scheme: only s3:// and http(s):// supported")
 
-    builds = fetcher.fetch_json('builds.json')
+    builds = fetcher.fetch_json('builds.json')['builds']
     if len(builds) == 0:
         print("Remote has no builds!")
         return
 
-    buildid = builds['builds'][0]
+    buildid = builds[0]
     os.makedirs(f'builds/{buildid}', exist_ok=True)
     for f in ['meta.json', 'ostree-commit-object']:
         fetcher.fetch(f'{buildid}/{f}')
