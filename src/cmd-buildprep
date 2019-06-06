@@ -119,6 +119,8 @@ class S3Fetcher(Fetcher):
         assert url.startswith("s3://")
         bucket, key = url[len("s3://"):].split('/', 1)
         s3 = boto3.client('s3')
+        # sanity check that the bucket exists and we have access to it
+        s3.head_bucket(Bucket=bucket)
         try:
             s3.head_object(Bucket=bucket, Key=key)
         except botocore.exceptions.ClientError as e:
