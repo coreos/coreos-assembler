@@ -38,10 +38,10 @@ python2-gobject-base python3-gobject-base
 podman buildah skopeo
 
 # Miscellaneous tools
-jq awscli
+jq
 
-# For interacting with HTTP
-python3-requests
+# For interacting with AWS/HTTP
+awscli python3-boto3 python3-requests
 
 # For ignition file validation in cmd-run
 /usr/bin/ignition-validate
