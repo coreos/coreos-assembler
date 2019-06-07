@@ -598,6 +598,7 @@ Environment variables are supported:
     if args.no_upload is False:
         upload = Upload(build, args.owner, args.tag, args.profile)
 
+    build.build_artifacts()
     upload.upload()
 
 
