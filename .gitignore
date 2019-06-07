@@ -4,3 +4,5 @@
 src/__pycache__/*
 .gocache
 maipo/
+*.pyc
+*.pyo
