@@ -35,7 +35,7 @@ import tempfile
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
-from cosalib.build import _Build
+from cosalib.build import _Build, md5sum_file
 
 import koji
 import koji_cli.lib as klib
@@ -83,23 +83,6 @@ KOJI_CG_TYPES = {
 # These artifacts need to be renamed on upload. Koji file extension matching
 # against content types.
 RENAME_RAW = ['initramfs.img', '-kernel', "ostree-commit"]
-
-
-def md5sum_file(path):
-    """
-    Calculates the md5 sum from a path.
-    Py3 TODO: use md5sum_file in cmdlib.py, when porting to Python3.
-
-    :param path: file name to checksum
-    :returns str
-
-    Returns the hexdigest of the file.
-    """
-    h = hashlib.md5()
-    with open(path, 'rb', buffering=0) as data:
-        for b in iter(lambda: data.read(128 * 1024), b''):
-            h.update(b)
-    return h.hexdigest()
 
 
 class Build(_Build):

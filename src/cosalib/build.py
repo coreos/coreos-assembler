@@ -54,6 +54,24 @@ def write_json(path, data):
     os.fchmod(f.file.fileno(), 0o644)
     os.rename(f.name, path)
 
+
+def md5sum_file(path):
+    """
+    Calculates the md5 sum from a path.
+    Py3 TODO: use md5sum_file in cmdlib.py, when porting to Python3.
+
+    :param path: file name to checksum
+    :returns str
+
+    Returns the hexdigest of the file.
+    """
+    h = hashlib.md5()
+    with open(path, 'rb', buffering=0) as data:
+        for b in iter(lambda: data.read(128 * 1024), b''):
+            h.update(b)
+    return h.hexdigest()
+
+
 class _Build:
     """
     The Build Class handles the reading in and return of build JSON emitted
