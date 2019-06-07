@@ -6,6 +6,7 @@ import json
 import logging as log
 import os.path
 import platform
+import tempfile
 
 # COSA_INPATH is the _in container_ path for the image build source
 COSA_INPATH = "/cosa"
@@ -35,6 +36,23 @@ def load_json(path):
     with open(path) as f:
         return json.load(f)
 
+
+def write_json(path, data):
+    """
+    Shortcut for writing a structure as json to the file system.
+    TODO: When porting to py3, use cmdlib's write_json
+
+    :param path: The full path to the file to write
+    :type: path: str
+    :param data:  structure to write out as json
+    :type data: dict or list
+    :raises: ValueError, OSError
+    """
+    dn = os.path.dirname(path)
+    f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
+    json.dump(data, f, indent=4)
+    os.fchmod(f.file.fileno(), 0o644)
+    os.rename(f.name, path)
 
 class _Build:
     """
@@ -253,6 +271,21 @@ class _Build:
             return obj[key][sub]
         except KeyError:
             log.warning(obj)
+
+    def meta_append(self, update_dict):
+        """
+        Updates the internal meta structure.
+
+        :param update_dict: The dictionary to append into meta.
+        :type update_dict: dict
+        """
+        self._build_json["meta"].update(update_dict)
+
+    def meta_write(self):
+        """
+        Writes out the meta.json file based on the internal structure.
+        """
+        write_json(self.__file("meta"), self._build_json["meta"])
 
     def build_artifacts(self, *args, **kwargs):
         """
