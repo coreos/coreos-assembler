@@ -14,6 +14,13 @@ COSA_INPATH = "/cosa"
 ARCH = platform.machine()
 
 
+class BuildError(Exception):
+    """
+    Base error for build issues.
+    """
+    pass
+
+
 def load_json(path):
     """
     Shortcut for loading json from a file path.
@@ -47,7 +54,7 @@ class _Build:
         :type build_dir: str
         :param build: build id or "latest" to parse
         :type build: str
-        :raises: Exception
+        :raises: BuildError
 
         If the build meta-data fails to parse, then a generic exception is
         raised.
@@ -56,7 +63,7 @@ class _Build:
         builds = load_json('%s/builds.json' % build_dir)
         if build != "latest":
             if build not in builds['builds']:
-                raise Exception("Build was not found in builds.json")
+                raise BuildError("Build was not found in builds.json")
         else:
             build = builds['builds'][0]
 
@@ -74,13 +81,13 @@ class _Build:
         # Check to make sure that the build and it's meta-data can be parsed.
         emsg = "was not read in properly or is not defined"
         if self.commit is None:
-            raise Exception("%s %s" % self.__file("commit"), emsg)
+            raise BuildError("%s %s" % self.__file("commit"), emsg)
         if self.config is None:
-            raise Exception("%s %s" % self.__file("config"), emsg)
+            raise BuildError("%s %s" % self.__file("config"), emsg)
         if self.image is None:
-            raise Exception("%s %s" % self.__file("image"), emsg)
+            raise BuildError("%s %s" % self.__file("image"), emsg)
         if self.meta is None:
-            raise Exception("%s %s" % self.__file("meta"), emsg)
+            raise BuildError("%s %s" % self.__file("meta"), emsg)
 
         self.build_artifacts()
         log.info("Proccessed build for: %s (%s-%s) %s",
@@ -190,7 +197,7 @@ class _Build:
         :param key: name of the meta-data key to return
         :type key: str
         :returns: dict
-        :raises: Exception
+        :raises: BuildError
 
         Returns the meta-data dict of the parsed JSON.
         """
@@ -203,7 +210,7 @@ class _Build:
         try:
             return lookup[key]
         except:
-            raise Exception(
+            raise BuildError(
                 "invalid key %s, valid keys are %s" % (key, lookup.keys()))
 
     def get_meta_key(self, obj, key):
@@ -215,7 +222,6 @@ class _Build:
         :param key: key to look up
         :type key: str
         :returns: dict or str
-        :raises: KeyError
 
         Returns the object from the meta-data dict. For example, calling
         get_meta_key("meta", "ref") will give you the build ref from.
