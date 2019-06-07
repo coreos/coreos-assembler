@@ -107,7 +107,6 @@ class _Build:
         if self.meta is None:
             raise BuildError("%s %s" % self.__file("meta"), emsg)
 
-        self.build_artifacts()
         log.info("Proccessed build for: %s (%s-%s) %s",
                  self.summary, self.build_name.upper(), self.arch,
                  self.build_id)
