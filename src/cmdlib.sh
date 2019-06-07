@@ -34,6 +34,30 @@ fatal() {
 arch=$(uname -m)
 export arch
 
+case $arch in
+    "x86_64")  VM_TERMINAL="ttyS0"    ;;
+    "ppc64le") VM_TERMINAL="hvc0"     ;;
+    "aarch64") VM_TERMINAL="ttyAMA0"  ;;
+    "s390x")   VM_TERMINAL="ttysclp0" ;;
+    *)         fatal "Architecture $(arch) not supported"
+esac
+export VM_TERMINAL
+
+if [ -x /usr/libexec/qemu-kvm ]; then
+    QEMU_KVM="/usr/libexec/qemu-kvm"
+else
+    # Enable arch-specific options for qemu
+    case "$(arch)" in
+        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
+        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
+        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
+        "s390x")   QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
+        *)         fatal "Architecture $(arch) not supported"
+    esac
+fi
+export QEMU_KVM
+
+
 _privileged=
 has_privileges() {
     if [ -z "${_privileged:-}" ]; then
@@ -239,18 +263,6 @@ EOF
     fi
 }
 
-if [ -x /usr/libexec/qemu-kvm ]; then
-    QEMU_KVM="/usr/libexec/qemu-kvm"
-else
-    # Enable arch-specific options for qemu
-    case "$(arch)" in
-        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
-        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
-        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
-        *)         fatal "Architecture $(arch) not supported"
-    esac
-fi
-
 runvm() {
     local vmpreparedir=${workdir}/tmp/supermin.prepare
     local vmbuilddir=${workdir}/tmp/supermin.build
@@ -327,7 +339,7 @@ EOF
         -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=ttyS0 selinux=1 enforcing=0 autorelabel=1"
+        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${VM_TERMINAL} selinux=1 enforcing=0 autorelabel=1"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
