@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+# pylint: disable=C0103
+"""
+An operation that mutates a build by uploading to Azure,
+extending the meta.json with Azure image name.
+"""
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+
+import argparse
+import logging as log
+import os
+import shutil
+import subprocess
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+# pylint: disable=C0413
+from cmdlib import (
+        run_verbose,
+        sha256sum_file)
+from cosalib.build import _Build, md5sum_file
+
+# Temporary directory used for this command
+# TODO not sure if this is actually needed for Azure
+TMPDIR = os.path.abspath('tmp/buildpost-azure')
+
+
+class Build(_Build):
+    """
+    Azure implementation of Build.
+    """
+
+    def _build_artifacts(self, *args, **kwargs):
+        """
+        Implements the building of artifacts. Walk the build root and
+        prepare a list of files in it.
+
+        :param args: All non-keyword arguments
+        :type args: list
+        :param kwargs: All keyword arguments
+        :type kwargs: dict
+        """
+        # Setup the tempdir
+        if os.path.isdir(TMPDIR):
+            shutil.rmtree(TMPDIR)
+        os.mkdir(TMPDIR)
+
+        # Name the base build and tarball name
+        base_name = self.meta['name']
+        if args.name_suffix:
+            azure_nv = f'{base_name}-{args[0].name_suffix}-{args.build}'
+        else:
+            azure_nv = f'{base_name}-{args[0].build}'
+        # Used in uploading
+        self.azure_vhd_name = f'{azure_nv}-azure.vhd'
+
+        img_qemu = os.path.join(
+            self.build_root, self.meta['images']['qemu']['path'])
+        tmp_img_azure = os.path.join(TMPDIR, (azure_nv + '.qcow2'))
+        tmp_img_azure_vhd = os.path.join(TMPDIR, self.azure_vhd_name)
+        run_verbose([f"{cosa_dir}/gf-platformid",
+                     img_qemu, tmp_img_azure, "azure"])
+        run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vhd',
+                    tmp_img_azure, tmp_img_azure_vhd])
+        os.unlink(tmp_img_azure)
+
+        fsize = subprocess.check_output([
+            "stat", "--format", '%s', tmp_img_azure_vhd])
+        log.debug(" * calculating checksum")
+        self._found_files[tmp_img_azure_vhd] = {
+                "local_path": os.path.abspath(tmp_img_azure_vhd),
+                "path": os.path.basename(tmp_img_azure_vhd),
+                "md5": md5sum_file(tmp_img_azure_vhd),
+                "size": int(fsize)
+        }
+        log.debug(" * size is %s", self._found_files[tmp_img_azure_vhd]["size"])
+        log.debug(" * md5 is %s", self._found_files[tmp_img_azure_vhd]["md5"])
+
+
+def cli():
+    """
+    Parse args and dispatch
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--azure-profile", help="Azure Profile json file.", required=True)
+    parser.add_argument("--azure-subscription", help="Azure subscription name. If unset, the first is used",
+                        required=False)
+    parser.add_argument("--container", help="Azure blob container.", required=True)
+    parser.add_argument("--force", help="Replace existing images and upload",
+                        action="store_true",
+                        default=bool(os.environ.get("AZURE_FORCE", False)))
+    parser.add_argument("--name-suffix", help="Append suffix to name",
+                        required=False)
+    parser.add_argument("--storage_account", help="Azure storage account.", required=True)
+
+    args = parser.parse_args()
+
+    # Identify the builds
+    build = Build(os.path.join('builds', args.build), args.build)
+
+    if 'azure' in build.meta['images'] and not args.force:
+        print("Azure image already built; use --force to rebuild")
+        sys.exit(0)
+
+    build.build_artifacts()
+    run_ore(args, build)
+
+
+def run_ore(args, build):
+    """
+    Execute ore to upload a Azure compatible VHD with corresponding metadata
+
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    :param build: Build instance to use
+    :type build: Build
+    """
+    vhd_file = f"{build.build_root}/{build.azure_vhd_name}"
+    tmp_img_azure_vhd = build.get_artifacts()[0]["local_path"]
+    base_name = build.meta['name']
+    # upload-blob storage-account container blob-name file
+    ore_args = ['ore', 'azure',
+                'upload-blob',
+                args.storage_account,
+                args.container,
+                base_name,
+                tmp_img_azure_vhd]
+
+    if args.force:
+        ore_args.append('--force')
+
+    run_verbose(ore_args)
+    os.rename(tmp_img_azure_vhd, vhd_file)
+    checksum = sha256sum_file(vhd_file)
+    size = os.path.getsize(vhd_file)
+
+    # Update the meta to include our new output
+    build.meta['azure'] = {
+        'image': f"{base_name}-{args.build.replace('.', '-')}",
+    }
+    build.meta['images']['azure'] = {
+        'path': build.azure_vhd_name,
+        'sha256': checksum,
+        'size': size,
+    }
+    # And write it out
+    build.meta_write()
+    print("Updated: {}".format(os.path.join(build.build_root, 'meta.json')))
+    shutil.rmtree(TMPDIR)
+
+
+if __name__ == '__main__':
+    cli()
