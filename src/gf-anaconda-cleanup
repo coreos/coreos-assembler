@@ -46,6 +46,17 @@ for x in $(coreos_gf find "${deploydir}/etc/ostree/remotes.d/"); do
     coreos_gf rm "${deploydir}/etc/ostree/remotes.d/${x}"
 done
 
+# Next remove cruft from the *physical* root as nothing should be using those;
+# Anaconda is creating them today.
+for x in $(coreos_gf glob-expand '/*'); do
+  case $x in
+    /ostree/|/boot/) continue;;
+    *) coreos_gf rm-rf "${x}"
+  esac
+done
+
+var="${stateroot}/var"
+
 # We'd like to remove all of /var, but SELinux issues prevent that.
 # see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
 # For now we retain just /var/lib/systemd (for the random seed) and /var/log
@@ -67,14 +78,6 @@ coreos_gf ls "${var}/lib" | while read -r x; do
 done
 for x in "lib/systemd" "log"; do
   coreos_gf glob rm-rf "${var}/${x}/*"
-done
-# And finally, remove cruft from the *physical* root as nothing should be
-# using those; Anaconda is creating them today.
-for x in $(coreos_gf glob-expand '/*'); do
-  case $x in
-    /ostree/|/boot/) continue;;
-    *) coreos_gf rm-rf "${x}"
-  esac
 done
 
 coreos_gf_shutdown
