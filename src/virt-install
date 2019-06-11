@@ -27,7 +27,8 @@ def fatal(msg):
     raise SystemExit(1)
 
 # Set of valid keys in image.yaml
-IMAGE_CONF_KEYS = ['size', 'postprocess-script', 'extra-kargs']
+IMAGE_CONF_KEYS = ['size', 'postprocess-script', 'extra-kargs',
+                   'save-var-subdirs-for-selabel-workaround']
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dest", help="Destination disk",
@@ -309,6 +310,8 @@ try:
     # And strip out all of the Anaconda stuff in /var; this uses libguestfs
     # to ensure we fully control the code.
     cleanup_argv = ['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest]
+    if image_conf.get('save-var-subdirs-for-selabel-workaround'):
+        cleanup_argv += ['--save-var-subdirs-for-selabel-workaround']
     run_sync_verbose(cleanup_argv)
 
     # This one is part of the "API" we provide to config repositories.  At least

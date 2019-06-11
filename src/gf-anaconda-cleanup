@@ -8,6 +8,17 @@ dn=$(dirname "$0")
 # shellcheck source=src/libguestfish.sh
 . "${dn}"/libguestfish.sh
 
+SAVE_VAR=
+options=$(getopt --options '' --longoptions save-var-subdirs-for-selabel-workaround -- "$@")
+eval set -- "$options"
+while true; do
+    case "$1" in
+        --save-var-subdirs-for-selabel-workaround) SAVE_VAR=1;;
+        --) shift; break;;
+    esac
+    shift
+done
+
 src="$1"
 shift
 
@@ -57,14 +68,22 @@ done
 
 var="${stateroot}/var"
 
-# We'd like to remove all of /var, but SELinux issues prevent that.
+# By default, we nuke all of /var unless explicitly requested not to. Anaconda
+# creates stuff in there, but we want the canonical source to be
+# systemd-tmpfiles and Ignition.
+if [ -z "${SAVE_VAR}" ]; then
+    coreos_gf glob rm-rf "${var}/*"
+    coreos_gf_shutdown
+    exit 0
+fi
+
+# /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
 # see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
 # For now we retain just /var/lib/systemd (for the random seed) and /var/log
 # for the journal, which init before systemd-tmpfiles.
 # Also just leave /var/home and /var/roothome; this allows early Ignition in
 # RHCOS to add users and drop files in /root.  (On FCOS, we don't strictly
 # *need* this because we run systemd-tmpfiles).
-var="${stateroot}/var"
 coreos_gf ls "${var}" | while read -r x; do
   case "$x" in 
     log|lib) continue;;
