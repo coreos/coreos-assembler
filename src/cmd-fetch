@@ -8,14 +8,15 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
-       coreos-assembler fetch
+       coreos-assembler fetch [--update-lockfile]
 
   Fetch and import the latest packages.
 EOF
 }
 
+UPDATE_LOCKFILE=
 rc=0
-options=$(getopt --options h --longoptions help -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -26,6 +27,9 @@ while true; do
         -h | --help)
             print_help
             exit 0
+            ;;
+        --update-lockfile)
+            UPDATE_LOCKFILE=1
             ;;
         --)
             shift
@@ -46,4 +50,21 @@ if [ $# -ne 0 ]; then
 fi
 
 prepare_build
-runcompose --download-only
+
+lock_arg=
+if [ -n "${UPDATE_LOCKFILE}" ]; then
+    # Put this under tmprepo so it gets automatically chown'ed if needed
+    lock_arg="--ex-write-lockfile-to=${tmprepo}/tmp/manifest-lock.json"
+elif [ -f "${manifest_lock}" ]; then
+    lock_arg="--ex-lockfile=${manifest_lock}"
+    echo "Fetching RPMs from lockfile ${manifest_lock}"
+    sleep 1
+fi
+
+# shellcheck disable=SC2086
+runcompose --download-only ${lock_arg}
+
+if [ -n "${UPDATE_LOCKFILE}" ]; then
+    mv "${tmprepo}/tmp/manifest-lock.json" "${manifest_lock}"
+    echo "Updated lockfile ${manifest_lock}"
+fi
