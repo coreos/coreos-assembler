@@ -26,6 +26,10 @@ if [ "${ignition_version}" = "2.2.0" ]; then
     args="${args} --ignition-version v2"
 fi
 
+if [ "$(id -u)" != "0" ]; then
+    args="${args} -p qemu-unpriv"
+fi
+
 # let's print out the actual exec() call we do
 set -x
 
