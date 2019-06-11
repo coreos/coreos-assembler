@@ -151,11 +151,23 @@ EOF
 
 prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar.gz" "${PWD}/coreos-assembler-config-git.json"
 
+lock_arg=
+if [ -f "${manifest_lock}" ]; then
+    lock_arg="--ex-lockfile=${manifest_lock}"
+    echo "Building from lockfile ${manifest_lock}"
+    sleep 1
+fi
+
 # These need to be absolute paths right now for rpm-ostree
 composejson=${PWD}/tmp/compose.json
+# Put this under tmprepo so it gets automatically chown'ed if needed
+lockfile_out=${tmprepo}/tmp/manifest-lock.generated.json
 # --cache-only is here since `fetch` is a separate verb.
+# shellcheck disable=SC2086
 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
-           --write-composejson-to "${composejson}"
+           --write-composejson-to "${composejson}" \
+           --ex-write-lockfile-to "${lockfile_out}" \
+           ${lock_arg}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
@@ -305,6 +317,9 @@ if [ -n "${ref_is_temp}" ]; then
     jq 'del(.ref)' < meta.json > meta.json.new
     mv meta.json{.new,}
 fi
+
+# Move lockfile into build dir
+mv "${lockfile_out}" .
 
 # And add the commit metadata itself, which includes notably the rpmdb pkglist
 # in a format that'd be easy to generate diffs out of for higher level tools

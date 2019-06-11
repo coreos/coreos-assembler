@@ -166,7 +166,8 @@ prepare_build() {
     workdir="$(pwd)"
     configdir=${workdir}/src/config
     manifest=${configdir}/manifest.yaml
-    export workdir configdir manifest
+    manifest_lock=${configdir}/manifest-lock.json
+    export workdir configdir manifest manifest_lock
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"
