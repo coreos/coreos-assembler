@@ -254,13 +254,13 @@ EOF
         echo 'ref: "'"${ref}"'"' >> "${override_manifest}"
     fi
     if [ -d "${configdir}/overlay" ]; then
+        echo -n "Committing ${configdir}/overlay... "
+        ostree commit --repo="${tmprepo}" --tree=dir="${configdir}/overlay" -b "${name}-config-overlay" \
+          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none
         cat >> "${override_manifest}" <<EOF
-packages:
-  - ${name}-overlay
+ostree-layers:
+  - ${name}-config-overlay
 EOF
-        mkdir -p "${overridesdir}"/rpm
-        mkdir tmp/overlay-build
-        (cd tmp/overlay-build && "${DIR}"/build_rpm_from_dir "${configdir}/overlay" "${name}-overlay" "${workdir}/overrides/rpm")
     fi
     if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && createrepo_c .)
