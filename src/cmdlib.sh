@@ -279,7 +279,7 @@ EOF
     rootfs_overlay="${overridesdir}/rootfs"
     if [ -d "${rootfs_overlay}" ]; then
         echo "Committing ${rootfs_overlay}"
-        sudo ostree commit --repo="${workdir}/tmp/repo" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
+        ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
           --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
