@@ -239,6 +239,11 @@ runcompose() {
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
+
+    local git_timestamp="January 1 1970"
+    if [ -d "${configdir_gitrepo}/.git" ]; then
+        git_timestamp=$(git -C "${configdir_gitrepo}" show -s --format=%ci HEAD)
+    fi
     if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${configdir}/overlay" ]; then
         mkdir "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
@@ -256,7 +261,8 @@ EOF
     if [ -d "${configdir}/overlay" ]; then
         echo -n "Committing ${configdir}/overlay... "
         ostree commit --repo="${tmprepo}" --tree=dir="${configdir}/overlay" -b "${name}-config-overlay" \
-          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none
+          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
+          --timestamp "${git_timestamp}"
         cat >> "${override_manifest}" <<EOF
 ostree-layers:
   - ${name}-config-overlay
@@ -280,7 +286,8 @@ EOF
     if [ -d "${rootfs_overlay}" ]; then
         echo -n "Committing ${rootfs_overlay}... "
         ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
-          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none
+          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
+          --timestamp "${git_timestamp}"
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
   - cosa-bin-overlay
