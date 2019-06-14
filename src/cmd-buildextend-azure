@@ -120,8 +120,8 @@ def run_ore(args, build):
     vhd_file = f"{build.build_root}/{build.azure_vhd_name}"
     tmp_img_azure_vhd = build.get_artifacts()[0]["local_path"]
     base_name = build.meta['name']
-    # upload-blob storage-account container blob-name file
-    ore_args = ['ore', 'azure',
+    # first, upload the vhd to Azure
+    ore_args_upload = ['ore', 'azure',
                 'upload-blob',
                 args.storage_account,
                 args.container,
@@ -129,9 +129,35 @@ def run_ore(args, build):
                 tmp_img_azure_vhd]
 
     if args.force:
-        ore_args.append('--force')
+        ore_args_upload.append('--force')
 
-    run_verbose(ore_args)
+    run_verbose(ore_args_upload)
+
+    # next, make an Azure compatible vhd from it
+    # TODO fill out params
+    ore_args_create_image = ['ore', 'azure',
+                'create-image', #image
+                '--name', #name
+                '--label', #label
+                '--description', #description
+                '--blob', #previous uploaded blob
+                '--family', #family
+                '--published-date', #can be empty, defaults to today()
+                '--recommended-vm-size', #can be empty, default to medium
+                '--icon-uri', #icon
+                '--small-icon-uri',] #smallicon
+
+    run_verbose(ore_args_create_image)
+
+    # next, make the image public
+    # TODO check the params
+    ore_args_share_image = ['ore', 'azure',
+                'share-image',
+                base_name,
+                '--permission', 'public']
+
+    run_verbose(ore_args_share_image)
+
     os.rename(tmp_img_azure_vhd, vhd_file)
     checksum = sha256sum_file(vhd_file)
     size = os.path.getsize(vhd_file)
