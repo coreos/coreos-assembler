@@ -17,6 +17,9 @@ package aws
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/url"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -43,7 +46,7 @@ func s3IsNotFound(err error) bool {
 }
 
 // UploadObject uploads an object to S3
-func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
+func (a *API) UploadObject(r io.Reader, bucket, path string, force bool, policy string) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
 
 	if !force {
@@ -66,6 +69,7 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
 		Body:   r,
 		Bucket: aws.String(bucket),
 		Key:    aws.String(path),
+		ACL:    aws.String(policy),
 	})
 	if err != nil {
 		return fmt.Errorf("error uploading s3://%v/%v: %v", bucket, path, err)
@@ -97,4 +101,105 @@ func (a *API) InitializeBucket(bucket string) error {
 		}
 	}
 	return err
+}
+
+// This will modify the ACL on Objects to one of the canned ACL policies
+func (a *API) PutObjectAcl(bucket, path, policy string) error {
+	_, err := a.s3.PutObjectAcl(&s3.PutObjectAclInput{
+		ACL:    aws.String(policy),
+		Bucket: aws.String(bucket),
+		Key:    aws.String(path),
+	})
+	if err != nil {
+		return fmt.Errorf("setting object ACL: %v", err)
+	}
+	return nil
+}
+
+// Copy an Object to a new location with a given canned ACL policy
+func (a *API) CopyObject(srcBucket, srcPath, destBucket, destPath, policy string) error {
+	err := a.InitializeBucket(destBucket)
+	if err != nil {
+		return fmt.Errorf("creating destination bucket: %v", err)
+	}
+	_, err = a.s3.CopyObject(&s3.CopyObjectInput{
+		ACL:        aws.String(policy),
+		CopySource: aws.String(url.QueryEscape(fmt.Sprintf("%s/%s", srcBucket, srcPath))),
+		Bucket:     aws.String(destBucket),
+		Key:        aws.String(destPath),
+	})
+	if err != nil {
+		if awserr, ok := err.(awserr.Error); ok {
+			if awserr.Code() == alreadyExistsErr {
+				return nil
+			}
+		}
+	}
+	return err
+}
+
+// Copies all objects in srcBucket to destBucket with a given canned ACL policy
+func (a *API) CopyBucket(srcBucket, prefix, destBucket, policy string) error {
+	objects, err := a.s3.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(srcBucket),
+		Prefix: aws.String(prefix),
+	})
+	if err != nil {
+		return fmt.Errorf("listing bucket: %v", err)
+	}
+
+	err = a.InitializeBucket(destBucket)
+	if err != nil {
+		return fmt.Errorf("creating destination bucket: %v", err)
+	}
+
+	for _, object := range objects.Contents {
+		path := *object.Key
+		err = a.CopyObject(srcBucket, path, destBucket, path, policy)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// TODO: bikeshed this name
+// modifies the ACL of all objects of a given prefix in srcBucket to a given canned ACL policy
+func (a *API) UpdateBucketObjectsACL(srcBucket, prefix, policy string) error {
+	objects, err := a.s3.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(srcBucket),
+		Prefix: aws.String(prefix),
+	})
+	if err != nil {
+		return fmt.Errorf("listing bucket: %v", err)
+	}
+
+	for _, object := range objects.Contents {
+		path := *object.Key
+		err = a.PutObjectAcl(srcBucket, path, policy)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Downloads a file from S3 to a temporary file. This file must be closed by the caller.
+func (a *API) DownloadFile(srcBucket, srcPath string) (*os.File, error) {
+	f, err := ioutil.TempFile("", "mantle-file")
+	if err != nil {
+		return nil, err
+	}
+	downloader := s3manager.NewDownloader(a.session)
+	_, err = downloader.Download(f, &s3.GetObjectInput{
+		Bucket: aws.String(srcBucket),
+		Key:    aws.String(srcPath),
+	})
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
 }

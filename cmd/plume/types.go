@@ -78,3 +78,25 @@ type channelSpec struct {
 	Azure        azureSpec
 	AWS          awsSpec
 }
+
+type fcosChannelSpec struct {
+	Bucket  string
+	Profile string
+	Region  string
+}
+
+type ReleaseMetadata struct {
+	Note     string          `json:"note"` // used to note to users not to consume the release metadata index
+	Releases []BuildMetadata `json:"releases"`
+	Metadata Metadata        `json:"metadata"`
+}
+
+type BuildMetadata struct {
+	CommitHash string `json:"commit"`
+	Version    string `json:"version"`
+	Endpoint   string `json:"endpoint"`
+}
+
+type Metadata struct {
+	LastModified string `json:"last-modified"`
+}
