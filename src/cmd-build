@@ -242,9 +242,23 @@ img_base=tmp/${imageprefix}-base.qcow2
 # forgive me for this sin
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
+build_image() {
+	local size kargs
+	size="$(python3 -c 'import sys, yaml; print(yaml.load(sys.stdin, Loader=yaml.CLoader)["size"])' < "$configdir/image.yaml")G"
+	kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin, Loader=yaml.CLoader).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
+	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8"
+
+	qemu-img create -f qcow2 "$img_base" "$size"
+	runvm_with_disk "$img_base" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+}
+
 if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
-    run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
+    if [ "$arch" == "x86_64" ]; then
+        build_image
+    else
+        run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
+    fi
     /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 fi
 
