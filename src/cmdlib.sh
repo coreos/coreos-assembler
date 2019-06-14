@@ -314,6 +314,12 @@ EOF
 }
 
 runvm() {
+    runvm_with_disk "" "$@"
+}
+
+runvm_with_disk() {
+    local disk="$1"
+    shift
     local vmpreparedir=${workdir}/tmp/supermin.prepare
     local vmbuilddir=${workdir}/tmp/supermin.build
 
@@ -381,6 +387,12 @@ EOF
         arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
     fi
 
+    # if a disk image exists, attach it too
+    extradisk=()
+    if [ -n "$disk" ]; then
+        extradisk=("-drive" "if=virtio,id=target,format=qcow2,file=$disk")
+    fi
+
     #shellcheck disable=SC2086
     ${QEMU_KVM} ${arch_args:-} \
         -nodefaults -nographic -m 2048 -no-reboot -cpu host \
@@ -394,7 +406,8 @@ EOF
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${VM_TERMINAL} selinux=1 enforcing=0 autorelabel=1"
+        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${VM_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
+	"${extradisk[@]}"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
