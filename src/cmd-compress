@@ -12,9 +12,19 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import run_verbose, write_json, sha256sum_file, rm_allow_noent
 
+DEFAULT_COMPRESSION_ALGO = 'gzip'
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
+parser.add_argument("--algorithm",
+                    choices=['xz', 'gzip'],
+                    default=DEFAULT_COMPRESSION_ALGO,
+                    help="Compression algorithm to use, default is gzip")
 args = parser.parse_args()
+
+# find extension for --algorithm
+ext_dict = {'xz': '.xz', 'gzip': '.gz'}
+ext = ext_dict[args.algorithm]
 
 # default to latest build if not specified
 if args.build:
@@ -55,23 +65,26 @@ for img_format in buildmeta['images']:
     img = buildmeta['images'][img_format]
     file = img['path']
     filepath = os.path.join('builds', build, file)
-    if not file.endswith('.gz'):
-        tmpfile = os.path.join(tmpdir, (file + '.gz'))
+    if not file.endswith(ext):
+        tmpfile = os.path.join(tmpdir, (file + ext))
         # SHA256 + size for uncompressed image was already calculated during 'build'
         img['uncompressed-sha256'] = img['sha256']
         img['uncompressed-size'] = img['size']
         with open(tmpfile, 'wb') as f:
-            run_verbose(['gzip', '-c', filepath], stdout=f)
-        file_gz = file + '.gz'
-        filepath_gz = filepath + '.gz'
+            if ext == '.xz':
+                run_verbose(['xz', '-c9', filepath], stdout=f)
+            else:
+                run_verbose(['gzip', '-c', filepath], stdout=f)
+        file_with_ext = file + ext
+        filepath_with_ext = filepath + ext
         compressed_size = os.path.getsize(tmpfile)
-        img['path'] = file_gz
+        img['path'] = file_with_ext
         img['sha256'] = sha256sum_file(tmpfile)
         img['size'] = compressed_size
 
         # just flush out after every image type, but unlink after writing.
         # Then, we should be able to interrupt and restart from the last type.
-        os.rename(tmpfile, filepath_gz)
+        os.rename(tmpfile, filepath_with_ext)
         write_json(buildmeta_path, buildmeta)
         os.unlink(filepath)
         at_least_one = True
