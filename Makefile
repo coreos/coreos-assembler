@@ -14,6 +14,8 @@ mantle:
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler $$(find src/ -maxdepth 1 -type f)
+	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib
+	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib $$(find src/cosalib/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa

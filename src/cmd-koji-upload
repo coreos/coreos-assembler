@@ -33,6 +33,7 @@ import sys
 import tempfile
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ("%s/cosalib" % cosa_dir))
 sys.path.insert(0, cosa_dir)
 
 from cosalib.build import _Build
