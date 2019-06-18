@@ -59,6 +59,15 @@ grub2-install \
 	--boot-directory rootfs/boot \
 	$disk
 
+# install uefi grub
+mkdir -p rootfs/boot/efi/EFI/boot
+grub2-mkimage \
+	--format x86_64-efi \
+	--output rootfs/boot/efi/EFI/boot/bootx64.efi \
+	--prefix '(hd0,gpt1)/grub2' \
+	normal fat part_gpt gzio terminal configfile echo ext2
+cp -r /usr/lib/grub/x86_64-efi rootfs/boot/grub2/
+
 # copy the grub config and any other files we might need
 cp $grub_script rootfs/boot/grub2/grub.cfg
 touch rootfs/boot/ignition.firstboot
