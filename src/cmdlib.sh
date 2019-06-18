@@ -360,6 +360,12 @@ EOF
 
     echo "$@" > "${TMPDIR}"/cmd.sh
 
+    cachedisk=()
+    if [ -f "${workdir}/cache/cache.qcow2" ]; then
+        cachedisk=("-drive" "if=none,id=drive-scsi0-0-0-1,discard=unmap,file=${workdir}/cache/cache.qcow2" \
+                   "-device" "scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1")
+    fi
+
     # support local dev cases where src/config is a symlink
     srcvirtfs=()
     if [ -L "${workdir}/src/config" ]; then
@@ -386,8 +392,7 @@ EOF
         -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
         -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
-        -drive if=none,id=drive-scsi0-0-0-1,discard=unmap,file="${workdir}/cache/cache.qcow2" \
-        -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1 \
+        "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
         "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${VM_TERMINAL} selinux=1 enforcing=0 autorelabel=1"
 
