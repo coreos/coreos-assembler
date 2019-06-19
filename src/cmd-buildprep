@@ -11,6 +11,7 @@ import sys
 import requests
 import botocore
 import boto3
+import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import load_json, rm_allow_noent  # noqa: E402
@@ -23,8 +24,10 @@ def main():
         fetcher = S3Fetcher(args.url)
     elif args.url.startswith("http://") or args.url.startswith("https://"):
         fetcher = HTTPFetcher(args.url)
+    elif args.url.startswith("file://") or args.url.startswith("/"):
+        fetcher = LocalFetcher(args.url)
     else:
-        raise Exception("Invalid scheme: only s3:// and http(s):// supported")
+        raise Exception("Invalid scheme: only file://, s3://, and http(s):// supported")
 
     builds = []
     if fetcher.exists('builds.json'):
@@ -128,6 +131,20 @@ class S3Fetcher(Fetcher):
                 return False
             raise e
         return True
+
+
+class LocalFetcher(Fetcher):
+
+    def __init__(self, url_base):
+        if url_base.startswith("file://"):
+            url_base = url_base[len("file://"):]
+        super().__init__(url_base)
+
+    def fetch_impl(self, url, dest):
+        shutil.copyfile(url, dest)
+
+    def exists_impl(self, url):
+        return os.path.exists(url)
 
 
 if __name__ == '__main__':
