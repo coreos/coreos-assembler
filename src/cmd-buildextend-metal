@@ -8,19 +8,16 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler buildextend-metal --help
-       coreos-assembler buildextend-metal [--build ID] [--bios] [--uefi]
+       coreos-assembler buildextend-metal [--build ID]
 
-  Build raw metal images for bios or metal. If neither switches are provided,
-  both targets are built.
+  Build a bare metal image.
 EOF
 }
 
 # Parse options
-BIOS=
-UEFI=
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build:,bios,uefi -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,build: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -31,12 +28,6 @@ while true; do
         -h | --help)
             print_help
             exit 0
-            ;;
-        --bios)
-            BIOS=1
-            ;;
-        --uefi)
-            UEFI=1
             ;;
         --build)
             build=$2
@@ -62,11 +53,15 @@ if [ $# -ne 0 ]; then
     fatal "Too many arguments passed"
 fi
 
-# default to both of them
-if [ -z "${BIOS}" ] && [ -z "${UEFI}" ]; then
-    BIOS=1
-    UEFI=1
-fi
+case "$arch" in
+    "x86_64"|"aarch64")
+        ## fall through to the rest of the file
+	;;
+    *)
+        echo "$arch is not supported for this command"
+        exit 1
+        ;;
+esac
 
 export LIBGUESTFS_BACKEND=direct
 
@@ -118,26 +113,45 @@ if [ "${rev_parsed}" != "${commit}" ]; then
     fi # otherwise, the repo already has a ref, so no need to create
 fi
 
+
+itype=metal
+img=${name}-${build}-${itype}.raw
+if [ -f "${builddir}/${img}" ]; then
+    echo "Bare metal image already exists"
+    exit
+fi
+
+path=${PWD}/${img}
 # for anaconda logs
 mkdir -p tmp/anaconda
 
-for itype in ${BIOS:+metal-bios} ${UEFI:+metal-uefi}; do
-    img=${name}-${build}-${itype}.raw
-    if [ -f "${builddir}/${img}" ]; then
-        echo "Image $itype already exists"
-        continue
-    fi
-
-    path=${PWD}/${img}
-    run_virtinstall "${ostree_repo}" "${ref}" "${path}.tmp" --variant="${itype}"
+if [ "$arch" == "aarch64" ]; then
+    run_virtinstall "${ostree_repo}" "${ref}" "${path}.tmp" --variant="${itype}-uefi"
     /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
     rm -f "${path}".tmp
+else
+    if [ ! -e "$PWD/tmp/ostree-size.json" ]; then
+        echo "Estimating disk size..."
+        /usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" > "$PWD/tmp/ostree-size.json"
+    fi
+    size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
+    # 384M is the non-ostree partitions
+    size="$(( size + 384 ))M"
+    echo "Disk size estimated to $size"
+    kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
+    kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
 
-    # flush it out before going to the next one so we don't have to redo both if
-    # the next one fails
+    qemu-img create -f qcow2 "${path}.qcow2" "$size"
+    runvm_with_disk "${path}.qcow2" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+    qemu-img convert "${path}.qcow2" "$path"
+    rm "${path}.qcow2"
+fi
 
-    # there's probably a jq one-liner for this...
-    python3 -c "
+# flush it out before going to the next one so we don't have to redo both if
+# the next one fails
+
+# there's probably a jq one-liner for this...
+python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['$itype'] = {
@@ -148,7 +162,6 @@ j['images']['$itype'] = {
 json.dump(j, sys.stdout, indent=4)
 " < "${builddir}/meta.json" > meta.json.new
 
-    # and now the crucial bit
-    mv -T meta.json.new "${builddir}/meta.json"
-    mv -T "${img}" "${builddir}/${img}"
-done
+# and now the crucial bit
+mv -T meta.json.new "${builddir}/meta.json"
+mv -T "${img}" "${builddir}/${img}"
