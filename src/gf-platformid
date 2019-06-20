@@ -41,7 +41,7 @@ coreos_gf_run_mount "${tmp_dest}"
 # * grub config
 # * BLS config (for subsequent config regeneration)
 # First, the grub config.
-if [ "$arch" != "x86_64" ] || [ "$platformid" == "metal" ]; then
+if [ "$arch" != "x86_64" ]; then
     if [ "$(coreos_gf exists '/boot/efi')" == 'true' ]; then
         grubcfg_path=$(coreos_gf glob-expand /boot/efi/EFI/*/grub.cfg)
     else
