@@ -36,7 +36,12 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ("%s/cosalib" % cosa_dir))
 sys.path.insert(0, cosa_dir)
 
-from cosalib.build import _Build
+try:
+   from cosalib.build import _Build
+except ImportError:
+   # We're in the container and can't sense the cosa path
+   sys.path.insert(0, '/usr/lib/coreos-assembler/cosalib')
+   from cosalib.build import _Build
 
 import koji
 import koji_cli.lib as klib
