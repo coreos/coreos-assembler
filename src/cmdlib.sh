@@ -357,7 +357,9 @@ $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
 sh ${TMPDIR}/cmd.sh || rc=\$?
 echo \$rc > ${workdir}/tmp/rc
-/sbin/fstrim -v ${workdir}/cache
+if [ -b /dev/sdb1 ]; then
+    /sbin/fstrim -v ${workdir}/cache
+fi
 /sbin/reboot -f
 EOF
     chmod a+x "${vmpreparedir}"/init

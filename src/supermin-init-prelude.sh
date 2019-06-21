@@ -30,7 +30,9 @@ if [ -L "${workdir}"/src/config ]; then
     mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
 mkdir -p "${workdir}"/cache /host/container-work
-mount /dev/sdb1 "${workdir}"/cache
+if [ -b /dev/sdb1 ]; then
+    mount /dev/sdb1 "${workdir}"/cache
+fi
 
 if [ -f "${workdir}/tmp/supermin/supermin.env" ]; then
     source "${workdir}/tmp/supermin/supermin.env";
