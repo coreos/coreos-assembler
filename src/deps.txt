@@ -50,7 +50,7 @@ awscli python3-boto3 python3-requests
 ShellCheck
 
 # for grub install when creating images without anaconda
-grub2 grub2-efi-x64-modules
+grub2
 
 # Support for Koji uploads.
 krb5-libs krb5-workstation python2-koji python2-krbv
