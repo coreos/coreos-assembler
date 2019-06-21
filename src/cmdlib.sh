@@ -350,9 +350,6 @@ workdir=${workdir}
 # chmod will set ownership to root, not builder
 export USER=$(id -u)
 
-# ensure the user of files created do not have root ownership
-trap 'chown -h -R ${USER}:${USER} ${workdir}' EXIT
-
 $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
 sh ${TMPDIR}/cmd.sh || rc=\$?
