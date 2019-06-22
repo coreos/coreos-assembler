@@ -6,3 +6,4 @@ src/__pycache__/*
 maipo/
 *.pyc
 *.pyo
+*.shellchecked
