@@ -1,12 +1,25 @@
 PREFIX ?= /usr
 DESTDIR ?=
 
-.PHONY: all mantle install
+.PHONY: all mantle install check clean
 
 all: mantle
 
-check:
-	./tests/check.sh
+src:=$(shell find src -maxdepth 1 -type f -executable -print)
+src_checked:=$(patsubst src/%,src/.%.shellchecked,${src})
+tests:=$(shell find tests -maxdepth 1 -type f -executable -print)
+tests_checked:=$(patsubst tests/%,tests/.%.shellchecked,${tests})
+cwd:=$(shell find . -maxdepth 1 -type f -executable -print)
+cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
+
+.%.shellchecked: %
+	./tests/check_one.sh $< $@
+
+check: ${src_checked} ${tests_checked} ${cwd_checked}
+	echo OK
+
+clean:
+	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
 
 mantle:
 	cd mantle && ./build ore kola kolet
