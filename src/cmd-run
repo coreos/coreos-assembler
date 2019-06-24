@@ -19,6 +19,8 @@ VM_PERSIST_IMG=
 VM_NCPUS="${VM_NCPUS:-$(nproc)}"
 VM_SRV_MNT=
 SSH_PORT=${SSH_PORT:-}
+UEFI=0
+SECURE=0
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
     -d DISK               Root disk drive (won't be changed by default)
@@ -28,6 +30,8 @@ Options:
     -m MB                 RAM size in MB (2048)
     -p PORT               The port on localhost to map to the VM's sshd. [2222]
     -h                    this ;-)
+    --uefi                Boot using uefi (x86_64 only, implied on arm)
+    --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
 it will auto-log you into the console, and by default for read-only disk
@@ -66,6 +70,12 @@ while [ $# -ge 1 ]; do
         -v|--verbose)
             set -x
             shift ;;
+        --uefi)
+            UEFI=1
+            shift ;;
+        --uefi-secure)
+            SECURE=1
+            shift ;;
         -h|--help)
             echo "$USAGE"
             exit ;;
@@ -78,6 +88,10 @@ while [ $# -ge 1 ]; do
 done
 
 preflight
+
+if [ "$UEFI" == 1 ] && [ "$SECURE" == 1 ]; then
+	die "cannot specify --uefi and --uefi-secure"
+fi
 
 if [ -z "${VM_DISK}" ]; then
     VM_DISK=$(get_latest_qemu)
@@ -220,6 +234,24 @@ set -- -drive if=virtio,file="${VM_IMG}" "$@"
 # There is no BIOS on aarch64, so we need a firmware to boot the system
 if [ "$(arch)" == "aarch64" ]; then
     set -- -bios /usr/share/AAVMF/AAVMF_CODE.fd "$@"
+fi
+
+if [ "$UEFI" == "1" ]; then
+    cp /usr/share/edk2/ovmf/OVMF_VARS.fd /tmp/vars.fd
+    exec 5<> /tmp/vars.fd
+    rm /tmp/vars.fd
+    set -- -drive file=/usr/share/edk2/ovmf/OVMF_CODE.fd,if=pflash,format=raw,unit=0,readonly=on "$@"
+    set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
+    set -- -machine q35 "$@"
+fi
+
+if [ "$SECURE" == "1" ]; then
+    cp /usr/share/edk2/ovmf/OVMF_VARS.secboot.fd /tmp/vars.fd
+    exec 5<> /tmp/vars.fd
+    rm /tmp/vars.fd
+    set -- -drive file=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd,if=pflash,format=raw,unit=0,readonly=on "$@"
+    set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
+    set -- -machine q35 "$@"
 fi
 
 # shellcheck disable=SC2086
