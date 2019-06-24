@@ -23,8 +23,8 @@ sgdisk -Z $disk \
 	-n 4:0:0     -c 4:root       -t 4:4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
 sgdisk -p "$disk"
 
-# HACK ALERT - wait for partition rescans
-sleep 2
+udevadm trigger
+udevadm settle
 
 mkfs.ext4 "${disk}1" -L boot
 mkfs.fat "${disk}2" -n EFI-SYSTEM
@@ -51,7 +51,7 @@ for karg in $allkargs
 do
 	kargsargs+="--karg-append=$karg "
 done
-ostree admin deploy "$ref" --sysroot rootfs --os fedora-coreos $kargsargs
+ostree admin deploy "$ref" --sysroot rootfs --os "$os_name" $kargsargs
 
 # install bios grub
 grub2-install \
