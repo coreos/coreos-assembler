@@ -17,7 +17,7 @@ script:
     - tar --xz -xvf shellcheck-${SCVERSION}.linux.x86_64.tar.xz
     - sudo cp shellcheck-${SCVERSION}/shellcheck /usr/bin/
     - shellcheck --version
-    - tests/check.sh
+    - make check
 
 notifications:
   email: false
