@@ -7,6 +7,7 @@ import logging as log
 import os.path
 import platform
 import tempfile
+import shutil
 
 # COSA_INPATH is the _in container_ path for the image build source
 COSA_INPATH = "/cosa"
@@ -63,7 +64,7 @@ class _Build:
       - _build_artifacts(*args, **kwargs)
     """
 
-    def __init__(self, build_dir, build="latest"):
+    def __init__(self, build_dir, build="latest", workdir=None):
         """
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
@@ -72,10 +73,14 @@ class _Build:
         :type build_dir: str
         :param build: build id or "latest" to parse
         :type build: str
+        :param workdir: Temporary directory to ensure exists and is clean
+        :type workdir: None or str
         :raises: BuildError
 
         If the build meta-data fails to parse, then a generic exception is
         raised.
+
+        If workdir is None then no temporary work directory is created.
         """
         log.info('Evaluating builds.json')
         builds = load_json('%s/builds.json' % build_dir)
@@ -95,6 +100,8 @@ class _Build:
             "meta": None
         }
         self._found_files = {}
+        self._workdir = workdir
+        self._create_work_dir()
 
         # Check to make sure that the build and it's meta-data can be parsed.
         emsg = "was not read in properly or is not defined"
@@ -110,6 +117,32 @@ class _Build:
         log.info("Proccessed build for: %s (%s-%s) %s",
                  self.summary, self.build_name.upper(), self.arch,
                  self.build_id)
+
+    def _create_work_dir(self):
+        """
+        Ensures the temp work directory is created and clean.
+        """
+        # Setup the work directory
+        if self._workdir is not None:
+            if os.path.isdir(self._workdir):
+                shutil.rmtree(self._workdir)
+            os.mkdir(self._workdir)
+            log.info(
+                'Created temporary work directory at {}'.format(self.workdir))
+
+    def clean(self):
+        """
+        Removes the temporary work directory.
+        """
+        if self._workdir is not None:
+            shutil.rmtree(self._workdir)
+            log.info(
+                'Removed temporary work directory at {}'.format(self.workdir))
+
+    @property
+    def workdir(self):
+        """ get the temporary work directory """
+        return self._workdir
 
     @property
     def arch(self):
