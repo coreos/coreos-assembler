@@ -518,25 +518,62 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("unmarshaling release metadata json: %v", err)
 	}
 
-	url, err := url.Parse(fmt.Sprintf("https://%s.s3.amazonaws.com/prod/streams/%s/builds/%s/release.json", spec.Bucket, specChannel, specVersion))
+	releasePath := filepath.Join("prod", "streams", specChannel, "builds", specVersion, "release.json")
+	url, err := url.Parse(fmt.Sprintf("https://%s.s3.amazonaws.com/%s", spec.Bucket, releasePath))
 	if err != nil {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
 
+	releaseFile, err := api.DownloadFile(spec.Bucket, releasePath)
+	if err != nil {
+		plog.Fatalf("downloading release metadata: %v", err)
+	}
+	defer releaseFile.Close()
+
+	releaseData, err := ioutil.ReadAll(releaseFile)
+	if err != nil {
+		plog.Fatalf("reading release metadata: %v", err)
+	}
+
+	var im IndividualReleaseMetadata
+	err = json.Unmarshal(releaseData, &im)
+	if err != nil {
+		plog.Fatalf("unmarshaling release metadata: %v", err)
+	}
+
+	var commits []Commit
+	for arch, vals := range im.Architectures {
+		commits = append(commits, Commit{
+			Architecture: arch,
+			Checksum:     vals.Commit,
+		})
+	}
+
 	newRel := BuildMetadata{
-		CommitHash: specCommitId,
+		CommitHash: commits,
 		Version:    specVersion,
 		Endpoint:   url.String(),
 	}
 
 	for i, rel := range m.Releases {
-		if rel == newRel {
+		if compareStaticReleaseInfo(rel, newRel) {
 			if i != (len(m.Releases) - 1) {
 				plog.Fatalf("build is already present and is not the latest release")
 			}
 
-			// the build is already the latest release, exit
-			return
+			comp := compareCommits(rel.CommitHash, newRel.CommitHash)
+			if comp == 0 {
+				// the build is already the latest release, exit
+				return
+			} else if comp == -1 {
+				// the build is present and contains a subset of the new release data,
+				// pop the old entry and add the new version
+				m.Releases = m.Releases[:len(m.Releases)-1]
+				break
+			} else {
+				// the commit hash of the new build is not a superset of the current release
+				plog.Fatalf("build is present but commit hashes are not a superset of latest release")
+			}
 		}
 	}
 
@@ -554,4 +591,35 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}
+}
+
+func compareStaticReleaseInfo(a, b BuildMetadata) bool {
+	if a.Version != b.Version || a.Endpoint != b.Endpoint {
+		return false
+	}
+	return true
+}
+
+// returns -1 if a is a subset of b, 0 if equal, 1 if a is not a subset of b
+func compareCommits(a, b []Commit) int {
+	if len(a) > len(b) {
+		return 1
+	}
+	sameLength := len(a) == len(b)
+	for _, aHash := range a {
+		found := false
+		for _, bHash := range b {
+			if aHash.Architecture == bHash.Architecture && aHash.Checksum == bHash.Checksum {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return 1
+		}
+	}
+	if sameLength {
+		return 0
+	}
+	return -1
 }

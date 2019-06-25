@@ -31,7 +31,6 @@ var (
 
 func AddFcosSpecFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&specPolicy, "policy", "public-read", "Canned ACL policy")
-	flags.StringVar(&specCommitId, "commit-id", "", "OSTree Commit ID")
 }
 
 func FcosValidateArguments() {
@@ -40,9 +39,6 @@ func FcosValidateArguments() {
 	}
 	if specChannel == "" {
 		plog.Fatal("--channel is required")
-	}
-	if specCommitId == "" {
-		plog.Fatal("--commit-id is required")
 	}
 }
 

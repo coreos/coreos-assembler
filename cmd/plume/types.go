@@ -92,11 +92,24 @@ type ReleaseMetadata struct {
 }
 
 type BuildMetadata struct {
-	CommitHash string `json:"commit"`
-	Version    string `json:"version"`
-	Endpoint   string `json:"endpoint"`
+	CommitHash []Commit `json:"commits"`
+	Version    string   `json:"version"`
+	Endpoint   string   `json:"metadata"`
 }
 
 type Metadata struct {
 	LastModified string `json:"last-modified"`
+}
+
+type IndividualReleaseMetadata struct {
+	Architectures map[string]Architecture `json:"architectures"`
+}
+
+type Architecture struct {
+	Commit string `json:"commit"`
+}
+
+type Commit struct {
+	Architecture string `json:"architecture"`
+	Checksum     string `json:"checksum"`
 }
