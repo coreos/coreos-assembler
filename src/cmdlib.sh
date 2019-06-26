@@ -55,6 +55,10 @@ else
         *)         fatal "Architecture $(arch) not supported"
     esac
 fi
+
+# only use 1 core on kubernetes since we can't determine how much we can actually use
+grep -q 'kubepods' /proc/1/cgroup && procs=1 || procs="$(nproc)"
+QEMU_KVM+=" -smp $procs"
 export QEMU_KVM
 
 _privileged=
