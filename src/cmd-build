@@ -249,17 +249,19 @@ build_image() {
 
 if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
-    if [ "$arch" == "x86_64" ]; then
-        build_image "$img_qemu"
-    else
-        mkdir -p tmp/anaconda
-        # forgive me for this sin
-        checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
-        vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
-        img_base=tmp/${imageprefix}-base.qcow2
-        run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
-        /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
-    fi
+    case "$arch" in
+        "x86_64"|"aarch64")
+            build_image "$img_qemu" ;;
+        *)
+            mkdir -p tmp/anaconda
+            # forgive me for this sin
+            checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
+            vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
+            img_base=tmp/${imageprefix}-base.qcow2
+            run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
+            /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
+            ;;
+    esac
 fi
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
