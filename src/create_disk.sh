@@ -8,6 +8,8 @@ fi
 
 export PATH=$PATH:/sbin:/usr/sbin
 
+arch="$(uname -m)"
+
 disk="$1" && shift
 ostree="$1" && shift
 ref="$1" && shift
@@ -53,16 +55,22 @@ do
 done
 ostree admin deploy "$ref" --sysroot rootfs --os "$os_name" $kargsargs
 
-# install bios grub
-grub2-install \
-	--target i386-pc \
-	--boot-directory rootfs/boot \
-	$disk
+if [ "$arch" == "x86_64" ]; then
+	# install bios grub
+	grub2-install \
+		--target i386-pc \
+		--boot-directory rootfs/boot \
+		$disk
+	ext="X64"
+else
+	mkdir -p rootfs/boot/grub2
+	ext="AA64"
+fi
 
 # install uefi grub
 mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
-cp /boot/efi/EFI/BOOT/BOOTX64.EFI rootfs/boot/efi/EFI/BOOT/BOOTX64.EFI
-cp /boot/efi/EFI/fedora/grubx64.efi rootfs/boot/efi/EFI/BOOT/grubx64.efi
+cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
+cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
 cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
 search --label boot --set prefix
 set prefix=($prefix)/grub2
