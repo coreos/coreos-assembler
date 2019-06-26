@@ -17,9 +17,9 @@ extrakargs="$1" && shift
 
 # partition and create fs
 sgdisk -Z $disk \
-	-n 1:0:+128M -c 1:boot \
-	-n 2:0:+128M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
-	-n 3:0:+128M -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
+	-n 1:0:+384M -c 1:boot \
+	-n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
+	-n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
 	-n 4:0:0     -c 4:root       -t 4:4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
 sgdisk -p "$disk"
 
