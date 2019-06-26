@@ -2,6 +2,7 @@
 Provides a base abstration class for build reuse.
 """
 
+import hashlib
 import json
 import logging as log
 import os.path
@@ -36,6 +37,26 @@ def load_json(path):
     """
     with open(path) as f:
         return json.load(f)
+
+
+def hashsum_file(path, hash_name):
+    """
+    Calculates the hash sum from a path.
+    Py3 TODO: reuse cmdlib.py, when porting to Python3.
+
+    :param path: file name to checksum
+    :type path: str
+    :param hash_name: The hash type to use
+    :type hash_name: str
+    :returns: Returns the hexdigest of the file.
+    :rtype: str
+    :raises: ValueError
+    """
+    h = hashlib.new(hash_name)
+    with open(path, 'rb', buffering=0) as data:
+        for b in iter(lambda: data.read(128 * 1024), b''):
+            h.update(b)
+    return h.hexdigest()
 
 
 def write_json(path, data):
@@ -99,6 +120,9 @@ class _Build:
             "image": None,
             "meta": None
         }
+        # Should house all files produced by the build
+        self._produced_files = []
+        # Populated based on _produced_files
         self._found_files = {}
         self._workdir = workdir
         self._create_work_dir()
@@ -138,6 +162,31 @@ class _Build:
             shutil.rmtree(self._workdir)
             log.info(
                 'Removed temporary work directory at {}'.format(self.workdir))
+
+    def _populate_found_files(self, hashes=None):
+        """
+        Uses _produced_files to populate the _found_files structure.
+        """
+        if hashes is None:
+            hashes = []
+        for ffile in self._produced_files:
+            fsize = os.stat(ffile).st_size
+            log.debug(' * calculating checksum for {}'.format(ffile))
+            self._found_files[ffile] = {
+                    "local_path": os.path.abspath(ffile),
+                    "path": os.path.basename(ffile),
+                    "size": int(fsize)
+            }
+            log.debug(
+                " * size is %s",
+                self._found_files[ffile]["size"])
+
+            for hash_type in hashes:
+                self._found_files[ffile][hash_type] = hashsum_file(
+                    ffile, hash_type)
+                log.debug(
+                    " * %s is %s",
+                    hash_type, self._found_files[ffile][hash_type])
 
     @property
     def workdir(self):
@@ -323,6 +372,10 @@ class _Build:
         """
         Wraps and executes _build_artifacts.
 
+        To enable hashing the _found_files add the
+        keyword argument `hashes` with a list to use.
+        Example: hashes=['sha1', 'md5']
+
         :param args: All non-keyword arguments
         :type args: list
         :param kwargs: All keyword arguments
@@ -332,6 +385,9 @@ class _Build:
         log.info("Processing the build artifacts")
         self._build_artifacts(*args, **kwargs)
         log.info("Finished building artifacts")
+        # populate found_files with content based off the
+        # _produced_files list
+        self._populate_found_files(kwargs.get('hashes'))
         if len(self._found_files.keys()) == 0:
             log.warn("There were no files found after building")
 
@@ -339,7 +395,7 @@ class _Build:
         """
         Implements the building of artifacts.
         Must be overriden by child class and must populate the
-        _found_files dictionary.
+        _produced_files list.
 
         :param args: All non-keyword arguments
         :type args: list
