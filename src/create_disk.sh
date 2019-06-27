@@ -29,7 +29,7 @@ udevadm settle
 mkfs.ext4 "${disk}1" -L boot
 mkfs.fat "${disk}2" -n EFI-SYSTEM
 # partition 3 has no FS, its for bios grub
-mkfs.xfs "${disk}4"  -L root
+mkfs.xfs "${disk}4"  -L root -m reflink=1
 
 # mount the partitions
 rm -rf rootfs
