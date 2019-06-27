@@ -236,36 +236,35 @@ echo "New build ID: ${buildid}"
 imageprefix="${name}"-"${buildid}"
 # Make these two verbose
 set -x
-mkdir -p tmp/anaconda
-img_base=tmp/${imageprefix}-base.qcow2
-
-# forgive me for this sin
-checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
 build_image() {
 	local size kargs
 	size="$(python3 -c 'import sys, yaml; print(yaml.load(sys.stdin, Loader=yaml.CLoader)["size"])' < "$configdir/image.yaml")G"
 	kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin, Loader=yaml.CLoader).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
-	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8"
+	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=qemu"
 
-	qemu-img create -f qcow2 "$img_base" "$size"
-	runvm_with_disk "$img_base" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+	qemu-img create -f qcow2 "$1" "$size"
+	runvm_with_disk "$1" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
 }
 
 if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
     if [ "$arch" == "x86_64" ]; then
-        build_image
+        build_image "$img_qemu"
     else
+        mkdir -p tmp/anaconda
+        # forgive me for this sin
+        checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
+        vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
+        img_base=tmp/${imageprefix}-base.qcow2
         run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
+        /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
     fi
-    /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
 fi
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 
 build_timestamp=$(date -u +$RFC3339)
-vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
 
 src_location="container"
 if [ ! -f /lib/coreos-assembler/.clean ]; then
@@ -291,7 +290,7 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.image-genver": "${image_genver}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.code-source": "${src_location}",
- "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}",
+ ${vm_iso_checksum:+\"coreos-assembler.vm-iso-checksum\": \"$vm_iso_checksum\",}
  "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json)
 }
 EOF
