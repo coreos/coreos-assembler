@@ -176,7 +176,7 @@ prepare_build() {
     fi
 
     workdir="$(pwd)"
-    configdir=${workdir}/src/config
+    configdir=${COSA_CONFIG_GIT:-${workdir}/src/config}
     manifest=${configdir}/manifest.yaml
     manifest_lock=${configdir}/manifest-lock.${basearch}.json
     export workdir configdir manifest manifest_lock
