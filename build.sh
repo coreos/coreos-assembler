@@ -127,6 +127,10 @@ INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$insta
 INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-$installer_release-1.2-$arch-CHECKSUM
 
 install_anaconda() {
+    if [ "$arch" == "x86_64" ]; then
+        return
+    fi
+
     # Overriding install URL
     if [ -n "${INSTALLER_URL_OVERRIDE-}" ]; then
         INSTALLER="${INSTALLER_URL_OVERRIDE}"
