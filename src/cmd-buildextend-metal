@@ -114,38 +114,27 @@ if [ "${rev_parsed}" != "${commit}" ]; then
 fi
 
 
-itype=metal
-img=${name}-${build}-${itype}.raw
+img=${name}-${build}-metal.raw
 if [ -f "${builddir}/${img}" ]; then
     echo "Bare metal image already exists"
     exit
 fi
 
 path=${PWD}/${img}
-# for anaconda logs
-mkdir -p tmp/anaconda
 
-if [ "$arch" == "aarch64" ]; then
-    run_virtinstall "${ostree_repo}" "${ref}" "${path}.tmp" --variant="${itype}-uefi"
-    /usr/lib/coreos-assembler/gf-platformid "${path}"{.tmp,} metal
-    rm -f "${path}".tmp
-else
-    if [ ! -e "$PWD/tmp/ostree-size.json" ]; then
-        echo "Estimating disk size..."
-        /usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" > "$PWD/tmp/ostree-size.json"
-    fi
-    size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
-    # 384M is the non-ostree partitions
-    size="$(( size + 384 ))M"
-    echo "Disk size estimated to $size"
-    kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
-    kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
+echo "Estimating disk size..."
+/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" > "$PWD/tmp/ostree-size.json"
+size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
+# extra size is the non-ostree partitions, see create_disk.sh
+size="$(( size + 384 ))M"
+echo "Disk size estimated to $size"
+kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
+kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
 
-    qemu-img create -f qcow2 "${path}.qcow2" "$size"
-    runvm_with_disk "${path}.qcow2" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
-    qemu-img convert "${path}.qcow2" "$path"
-    rm "${path}.qcow2"
-fi
+qemu-img create -f qcow2 "${path}.qcow2" "$size"
+runvm_with_disk "${path}.qcow2" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+qemu-img convert "${path}.qcow2" "$path"
+rm "${path}.qcow2"
 
 # flush it out before going to the next one so we don't have to redo both if
 # the next one fails
@@ -154,7 +143,7 @@ fi
 python3 -c "
 import sys, json
 j = json.load(sys.stdin)
-j['images']['$itype'] = {
+j['images']['metal'] = {
     'path': '${img}',
     'sha256': '$(sha256sum_str < "${img}")',
     'size': $(stat -c '%s' "${img}")
