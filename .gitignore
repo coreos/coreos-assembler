@@ -7,3 +7,4 @@ maipo/
 *.pyc
 *.pyo
 *.shellchecked
+.coverage

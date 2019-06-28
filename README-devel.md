@@ -34,3 +34,36 @@ $ git push origin $YOURBRANCH
 ```
 
 You can test the results by doing a build. See `Building the cosa container image locally` in [README.md](README.md#building-the-cosa-container-image-locally)
+
+# Running Unit Tests
+
+1. Ensure that `pytest` and `pytest-cov` are installed:
+
+```
+$ pip3 install --user -r test-requirements.txt
+```
+
+2. Run `pytest` on the `tests` directory
+
+```
+$ pytest tests/
+============================= test session starts ==============================
+platform linux -- Python 3.7.3, pytest-4.6.3, py-1.8.0, pluggy-0.12.0
+rootdir: /var/home/steve/Tech/GITHUB/coreos-assembler, inifile: pytest.ini
+plugins: cov-2.7.1
+collected 3 items
+
+tests/test_cli.py ...                                                    [100%]
+
+----------- coverage: platform linux, python 3.7.3-final-0 -----------
+Name                      Stmts   Miss  Cover
+---------------------------------------------
+src/cosalib/__init__.py       0      0   100%
+src/cosalib/build.py        127    127     0%
+src/cosalib/cli.py           28      0   100%
+---------------------------------------------
+TOTAL                       155    127    18%
+
+
+=========================== 3 passed in 0.05 seconds ===========================
+```
