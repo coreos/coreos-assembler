@@ -149,7 +149,7 @@ preflight() {
 disk_ignition_version() {
     local bn
     bn=$(basename "$1")
-    if [[ ${bn} = rhcos-4[12]0.8* ]]; then
+    if [[ ${bn} = rhcos-4[12]0*.8* ]]; then
         echo "2.2.0"
     else
         echo "3.0.0"
