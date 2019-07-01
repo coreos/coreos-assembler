@@ -51,8 +51,8 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
-if 'gcp' in buildmeta['images'] and not args.force:
-  print("GCP image already built; use --force to rebuild")
+if 'gcp' in buildmeta['images']:
+  print("GCP image already built")
   sys.exit(0)
 
 # Name the base build and tarball name
@@ -103,8 +103,6 @@ def run_ore():
                 '--name', f'{args.build}',
                 '--file', tmp_img_gcp_tarball
                ]
-    if args.force:
-        ore_args.append('--force')
 
     run_verbose(ore_args)
     os.rename(tmp_img_gcp_tarball, build_tarball)
