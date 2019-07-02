@@ -22,6 +22,8 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--build", help="Build ID", default='latest')
+    parser.add_argument("--dry-run", help="Just print and exit",
+                        action='store_true')
     parser.add_argument("--freshen", help="Only push builds.json",
                         action='store_true')
 
@@ -96,9 +98,11 @@ def s3_upload_build(args):
 def s3_cp(args, src, dest, *s3_args):
     acl = f'--acl={args.acl}'
     dest = f's3://{args.url}/{dest}'
-    print(f"Uploading: {dest}")
-    subprocess.check_call(['aws', 's3', 'cp', acl, src, dest, *s3_args],
-                          stdout=subprocess.DEVNULL)
+    s3_args = ['aws', 's3', 'cp', acl, src, dest, *s3_args]
+    print("%s: %s" % ("Would run" if args.dry_run else "Running",
+                      subprocess.list2cmdline(s3_args)))
+    if not args.dry_run:
+        subprocess.check_call(s3_args, stdout=subprocess.DEVNULL)
 
 
 if __name__ == '__main__':
