@@ -22,7 +22,6 @@ See cli() for usage information.
 """
 import argparse
 import datetime
-import hashlib
 import json
 import logging as log
 import os.path
@@ -91,22 +90,6 @@ KOJI_CG_TYPES = {
 RENAME_RAW = ['initramfs.img', '-kernel', "ostree-commit"]
 
 
-def md5sum_file(path):
-    """
-    Calculates the md5 sum from a path.
-    Py3 TODO: use md5sum_file in cmdlib.py, when porting to Python3.
-
-    :param path: file name to checksum
-    :returns str
-
-    Returns the hexdigest of the file.
-    """
-    h = hashlib.md5()
-    with open(path, 'rb', buffering=0) as data:
-        for b in iter(lambda: data.read(128 * 1024), b''):
-            h.update(b)
-    return h.hexdigest()
-
 
 class Build(_Build):
     """
@@ -126,42 +109,23 @@ class Build(_Build):
         :param kwargs: All keyword arguments
         :type kwargs: dict
         """
-        # locate all the build artifacts in the build directory.
-        files = []
-        for ffile in os.listdir(self.build_root):
-            files.append(os.path.join(self.build_root, ffile))
-            if os.path.islink(ffile):
-                log.debug(" * EXCLUDING symlink '%s'", ffile)
-                log.debug(" *    target '%s'", os.path.realpath(ffile))
-                continue
-
-        # add the coreos assembler files
-        for ffile in os.listdir(COSA_INPATH):
-            files.append(os.path.join(COSA_INPATH, ffile))
-
-        # process the files that were found
-        for ffile in files:
-            log.debug("Considering file file '%s'", ffile)
-            short_path = os.path.basename(ffile)
-
-            # any file that is known as Koji archive is included.
-            if not koji_upload(short_path):
-                log.debug(" * EXCLUDING file '%s'", ffile)
-                log.debug("   File type is not supported by Koji")
-                continue
-
-            # os.path.getsize uses 1kB instead of 1KB. So we use stat instead.
-            fsize = subprocess.check_output(["stat", "--format", '%s', ffile])
-            log.debug(" * calculating checksum")
-            self._found_files[ffile] = {
-                "local_path": os.path.abspath(ffile),
-                "path": short_path,
-                "md5": md5sum_file(ffile),
-                "size": int(fsize)
-            }
-
-            log.debug(" * size is %s", self._found_files[ffile]["size"])
-            log.debug(" * md5 is %s", self._found_files[ffile]["md5"])
+        # locate all the build artifacts in the build directory
+        # as well as locating the coreos assembler files
+        for scan_path in (self.build_root, COSA_INPATH):
+            for ffile in os.listdir(scan_path):
+                short_path = os.path.basename(ffile)
+                # Don't add symlinks
+                if os.path.islink(ffile):
+                    log.debug(" * EXCLUDING symlink '%s'", ffile)
+                    log.debug(" *    target '%s'", os.path.realpath(ffile))
+                    continue
+                # Don't add files Koji doesn't support
+                elif not koji_upload(short_path):
+                    log.debug(" * EXCLUDING file '%s'", ffile)
+                    log.debug("   File type is not supported by Koji")
+                    continue
+                # If we get here, then it's good to be used!
+                self._produced_files.append(os.path.join(scan_path, ffile))
 
 
 def set_logger(level):
@@ -604,7 +568,7 @@ Environment variables are supported:
     if args.no_upload is False:
         upload = Upload(build, args.owner, args.tag, args.profile)
 
-    build.build_artifacts()
+    build.build_artifacts(hashes=['md5'])
     upload.upload()
 
 
