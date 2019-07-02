@@ -170,3 +170,52 @@ def get_basearch():
     except AttributeError:
         get_basearch.saved = RpmOstree.get_basearch()
         return get_basearch.saved
+
+
+class Builds:
+    def __init__(self, workdir=None):
+        self._workdir = workdir
+        self._fn = self._path("builds/builds.json")
+        if not os.path.isdir(self._path("builds")):
+            raise Exception("No builds/ dir found!")
+        elif os.path.isfile(self._fn):
+            self._data = load_json(self._fn)
+        else:
+            # must be a new workdir
+            self._data = {
+                'builds': []
+            }
+            self.flush()
+
+    def _path(self, path):
+        if not self._workdir:
+            return path
+        return os.path.join(self._workdir, path)
+
+    def has(self, build_id):
+        return build_id in self._data['builds']
+
+    def is_empty(self):
+        return len(self._data['builds']) == 0
+
+    def get_latest(self):
+        # just let throw if there are none
+        return self._data['builds'][0]
+
+    def get_build_dir(self, build_id):
+        if build_id == 'latest':
+            build_id = self.get_latest()
+        return self._path(f"builds/{build_id}")
+
+    def insert_build(self, build_id):
+        self._data['builds'].insert(0, build_id)
+
+    def bump_timestamp(self):
+        self._data['timestamp'] = rfc3339_time()
+        self.flush()
+
+    def raw(self):
+        return self._data
+
+    def flush(self):
+        write_json(self._fn, self._data)

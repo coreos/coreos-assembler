@@ -591,16 +591,27 @@ run_virtinstall() {
 }
 
 get_latest_build() {
-    if [ -L builds/latest ]; then
-        readlink builds/latest
+    if [ -L "${workdir:-$(pwd)}/builds/latest" ]; then
+        readlink "${workdir:-$(pwd)}/builds/latest"
     fi
 }
 
+get_build_dir() {
+    local buildid=$1; shift
+    # yup, this is happening
+    (python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cmdlib import Builds
+print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
+}
+
 get_latest_qemu() {
-    local latest
+    local latest builddir
     latest=$(get_latest_build)
+    builddir=$(get_build_dir "$latest")
     if [ -n "$latest" ]; then
         # shellcheck disable=SC2086
-        ls builds/${latest}/*-qemu.qcow2
+        ls ${builddir}/*-qemu.qcow2*
     fi
 }
