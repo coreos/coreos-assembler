@@ -89,7 +89,8 @@ def s3_upload_build(args):
     with tempfile.NamedTemporaryFile('w') as f:
         json.dump(build, f, indent=4)
         f.flush()
-        s3_cp(args, f.name, f'{buildid}/meta.json')
+        s3_cp(args, f.name, f'{buildid}/meta.json',
+              '--content-type=application/json')
 
 
 def s3_cp(args, src, dest, *s3_args):
