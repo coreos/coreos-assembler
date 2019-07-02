@@ -9,6 +9,10 @@ import os
 import subprocess
 import sys
 import tempfile
+import gi
+
+gi.require_version("RpmOstree", "1.0")
+from gi.repository import RpmOstree
 
 from datetime import datetime
 
@@ -158,3 +162,11 @@ def import_ostree_commit(repo, commit, tarfile):
         subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
         subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
                                d, commit])
+
+
+def get_basearch():
+    try:
+        return get_basearch.saved
+    except AttributeError:
+        get_basearch.saved = RpmOstree.get_basearch()
+        return get_basearch.saved

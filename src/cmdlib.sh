@@ -30,6 +30,14 @@ fatal() {
     echo "fatal: $*" 1>&2; exit 1
 }
 
+# Get target base architecture
+basearch=$(python3 -c '
+import gi
+gi.require_version("RpmOstree", "1.0")
+from gi.repository import RpmOstree
+print(RpmOstree.get_basearch())')
+export basearch
+
 # Get target architecture
 arch=$(uname -m)
 export arch
