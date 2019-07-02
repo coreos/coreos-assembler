@@ -339,7 +339,8 @@ mv "${lockfile_out}" .
 "${dn}"/commitmeta_to_json "${tmprepo}" "${commit}" > commitmeta.json
 
 # And create the ostree repo tarball containing the commit
-if [ "${commit}" == "${previous_commit}" ]; then
+if [ "${commit}" == "${previous_commit}" ] && \
+    [ -f "${previous_builddir}/ostree-commit.tar" ]; then
     cp -a --reflink=auto "${previous_builddir}/ostree-commit.tar" .
 else
     ostree init --repo=repo --mode=archive
