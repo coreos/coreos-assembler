@@ -128,8 +128,8 @@ class Build(_Build):
         """
         # locate all the build artifacts in the build directory.
         files = []
-        for ffile in os.listdir(self.build_root):
-            files.append(os.path.join(self.build_root, ffile))
+        for ffile in os.listdir(self.build_dir):
+            files.append(os.path.join(self.build_dir, ffile))
             if os.path.islink(ffile):
                 log.debug(" * EXCLUDING symlink '%s'", ffile)
                 log.debug(" *    target '%s'", os.path.realpath(ffile))
