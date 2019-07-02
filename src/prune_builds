@@ -11,7 +11,6 @@ import sys
 import json
 import shutil
 import argparse
-import subprocess
 import collections
 
 from datetime import timedelta, datetime, timezone
@@ -35,8 +34,7 @@ def parse_date_string(date_string):
     return dt.replace(tzinfo=timezone.utc)
 
 
-Build = collections.namedtuple('Build', ['id', 'timestamp',
-                                         'ostree_timestamp'])
+Build = collections.namedtuple('Build', ['id', 'timestamp'])
 
 # Let's just hardcode this here for now
 DEFAULT_KEEP_LAST_N = 3
@@ -115,10 +113,7 @@ with os.scandir(builds_dir) as it:
         # Older versions only had ostree-timestamp
         ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
         t = parse_date_string(ts)
-        ostree_ts = j['ostree-timestamp']
-        ostree_t = parse_date_string(ostree_ts)
-        builds.append(Build(id=entry.name, timestamp=t,
-                            ostree_timestamp=ostree_t))
+        builds.append(Build(id=entry.name, timestamp=t))
 
 # just get the trivial case out of the way
 if len(builds) == 0:
