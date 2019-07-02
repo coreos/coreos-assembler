@@ -51,6 +51,5 @@ prepare_build
 
 # But go back to the toplevel
 cd "${workdir:?}"
-# Note we don't prune the cache.qcow2 or the objects
-# in the repo.  If you want that, just rm -rf them.
+# Note we don't prune the cache.  If you want that, just rm -rf them.
 rm -rf builds/* tmp/*
