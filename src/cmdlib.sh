@@ -282,7 +282,7 @@ ostree-layers:
 EOF
     fi
     if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
-        (cd "${overridesdir}"/rpm && createrepo_c .)
+        (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         cat >> "${override_manifest}" <<EOF
 repos:
