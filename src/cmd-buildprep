@@ -79,6 +79,12 @@ class Fetcher(object):
         self.fetch_impl(url, dest)
         return dest
 
+    def fetch_impl(self, url, dest):
+        raise NotImplementedError
+
+    def exists_impl(self, url):
+        raise NotImplementedError
+
     def fetch_json(self, path):
         return load_json(self.fetch(path))
 
