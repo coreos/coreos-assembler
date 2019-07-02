@@ -14,7 +14,7 @@ import boto3
 import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, rm_allow_noent  # noqa: E402
+from cmdlib import load_json, rm_allow_noent, Builds  # noqa: E402
 
 
 def main():
@@ -29,18 +29,26 @@ def main():
     else:
         raise Exception("Invalid scheme: only file://, s3://, and http(s):// supported")
 
-    builds = []
+    builds = None
     if fetcher.exists('builds.json'):
-        builds = fetcher.fetch_json('builds.json')['builds']
+        fetcher.fetch_json('builds.json')
+        builds = Builds()
 
-    if len(builds) == 0:
+    if not builds or builds.is_empty():
         print("Remote has no builds!")
         return
 
-    buildid = builds[0]
-    os.makedirs(f'builds/{buildid}', exist_ok=True)
+
+    buildid = builds.get_latest()
+    builddir = builds.get_build_dir(buildid)
+    os.makedirs(builddir, exist_ok=True)
+
+    # trim out the leading builds/
+    assert builddir.startswith("builds/")
+    builddir = builddir[len("builds/"):]
+
     for f in ['meta.json', 'ostree-commit-object']:
-        fetcher.fetch(f'{buildid}/{f}')
+        fetcher.fetch(f'{builddir}/{f}')
 
     # and finally the symlink
     rm_allow_noent('builds/latest')
@@ -48,7 +56,7 @@ def main():
 
     # also nuke the any local matching OStree ref, since we want to build on
     # top of this new one
-    buildmeta = load_json('builds/latest/meta.json')
+    buildmeta = load_json(f'builds/{builddir}/meta.json')
     if 'ref' in buildmeta and os.path.isdir('tmp/repo'):
         subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo',
                                '--delete', buildmeta['ref']],

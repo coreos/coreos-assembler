@@ -16,7 +16,7 @@ import collections
 from datetime import timedelta, datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import write_json, rfc3339_time
+from cmdlib import Builds
 
 
 def parse_date_string(date_string):
@@ -61,76 +61,77 @@ if args.keep_last_days is not None:
     keep_younger_than = (datetime.now(timezone.utc) -
                          timedelta(days=args.keep_last_days))
 
+builds = Builds(args.workdir)
 
-builds = []
+scanned_builds = []
 builds_dir = os.path.join(args.workdir, "builds")
-builds_json = os.path.join(builds_dir, "builds.json")
-
-if os.path.isfile(builds_json):
-    with open(builds_json) as f:
-        builddata = json.load(f)
-else:
-    builddata = {'builds': []}
 
 # handle --timestamp-only
 if args.timestamp_only:
-    builddata['timestamp'] = rfc3339_time()
-    write_json(builds_json, builddata)
+    builds.bump_timestamp()
     sys.exit(0)
 
 # Handle --insert-only
 if args.insert_only:
-    builddata['builds'].insert(0, args.insert_only)
-    builddata['timestamp'] = rfc3339_time()
-    write_json(builds_json, builddata)
+    builds.insert_build(args.insert_only)
+    builds.flush()
     sys.exit(0)
 
 skip_pruning = (not keep_younger_than and args.keep_last_n == 0)
 
 # collect all builds being pointed to by tags
-tagged_builds = set([tag['target'] for tag in builddata.get('tags', [])])
+tagged_builds = set([tag['target'] for tag in builds.raw().get('tags', [])])
+
+
+def get_timestamp(entry):
+
+    # ignore dirs missing meta.json
+    meta_file = os.path.join(entry.path, 'meta.json')
+    if not os.path.isfile(meta_file):
+        print(f"Ignoring directory {entry.name}")
+        return None
+
+    # collect dirs and timestamps
+    with open(meta_file) as f:
+        j = json.load(f)
+    # Older versions only had ostree-timestamp
+    ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
+    return parse_date_string(ts)
+
 
 # first, pick up all the builds from the dir itself
 with os.scandir(builds_dir) as it:
     for entry in it:
-
         # ignore non-dirs
         if not entry.is_dir(follow_symlinks=False):
-            # those are really the only three non-dir things we expect there
+            # those are really the only two non-dir things we expect there
             if entry.name not in ['builds.json', 'latest']:
-                print(f"Ignoring non-directory {entry.name}")
+                print(f"Ignoring non-directory {entry.path}")
             continue
 
-        # ignore dirs missing meta.json
-        meta_file = os.path.join(entry.path, 'meta.json')
-        if not os.path.isfile(meta_file):
-            print(f"Ignoring directory {entry.name}")
-            continue
+        ts = get_timestamp(entry)
+        if ts:
+            scanned_builds.append(Build(id=entry.name, timestamp=ts))
 
-        # collect dirs and timestamps
-        with open(meta_file) as f:
-            j = json.load(f)
-        # Older versions only had ostree-timestamp
-        ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
-        t = parse_date_string(ts)
-        builds.append(Build(id=entry.name, timestamp=t))
 
 # just get the trivial case out of the way
-if len(builds) == 0:
+if len(scanned_builds) == 0:
     print("No builds to prune!")
     sys.exit(0)
 
 # sort by timestamp, newest first
-builds = sorted(builds, key=lambda x: x.timestamp, reverse=True)
+scanned_builds = sorted(scanned_builds,
+                        key=lambda x: x.timestamp,
+                        reverse=True)
 
 new_builds = []
 builds_to_delete = []
 
 if skip_pruning:
-    new_builds = builds
+    new_builds = scanned_builds
 else:
     if keep_younger_than:
-        for build in builds:
+        for build in scanned_builds:
             if build.id in tagged_builds:
                 print(f"Skipping tagged build {build.id}")
                 new_builds.append(build)
@@ -143,7 +144,7 @@ else:
     else:
         n = args.keep_last_n
         assert(n > 0)
-        for build in builds:
+        for build in scanned_builds:
             # skip tagged builds and don't count them towards the limit
             if build.id in tagged_builds:
                 print(f"Skipping tagged build {build.id}")
@@ -156,9 +157,10 @@ else:
                 new_builds.append(build)
                 n = n - 1
 
-builddata['builds'] = [x.id for x in new_builds]
-builddata['timestamp'] = rfc3339_time()
-write_json(builds_json, builddata)
+builds.raw()['builds'] = []
+for build in reversed(new_builds):
+    builds.insert_build(build.id)
+builds.bump_timestamp()
 
 # if we're not pruning, then we're done!
 if skip_pruning:

@@ -80,10 +80,9 @@ prepare_build
 ostree --version
 rpm-ostree --version
 
-previous_build=
-if [ -L "${workdir}"/builds/latest ]; then
-    previous_build=$(readlink "${workdir}"/builds/latest)
-    previous_builddir="${workdir}/builds/${previous_build}"
+previous_build=$(get_latest_build)
+if [ -n "${previous_build}" ]; then
+    previous_builddir=$(get_build_dir "${previous_build}")
     echo "Previous build: ${previous_build}"
 fi
 
@@ -363,18 +362,20 @@ saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
 rm -rf "${saved_build_tmpdir}"
 mv -T tmp "${saved_build_tmpdir}"
 ostree prune --repo="${tmprepo}" --refs-only
-# Back to the toplevel build directory, so we can rename this one
-cd "${workdir}"/builds
+# Back to the toplevel work directory, so we can rename this one
+cd "${workdir}"
 # We create a .build-commit file to note that we're in the
 # middle of a "commit".  This may be useful in the future
 # for having things be transactional.  If for example we
 # were interrupted between the rename() and linkat() below,
 # things would be inconsistent and future builds would fail
 # on the `mv`.
-touch .build-commit
-mv -T "${tmp_builddir}" "${buildid}"
+touch builds/.build-commit
+builddir=$(get_build_dir "${buildid}")
+mkdir -p "${builddir}"
+mv -T "${tmp_builddir}" "${builddir}"
 # Replace the latest link
-ln -Tsfr "${buildid}" latest
+ln -Tsf "${buildid}" builds/latest
 # Update builds.json
 # the variables passed to `prune_builds` end up single quoted and
 # python treats them as literals, so we workaround this by duplicating
@@ -384,4 +385,4 @@ if [ "${SKIP_PRUNE}" == 1 ]; then
 else
     "${dn}"/prune_builds --workdir "${workdir}"
 fi
-rm .build-commit
+rm builds/.build-commit

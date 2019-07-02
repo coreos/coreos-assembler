@@ -10,7 +10,8 @@ import shutil
 import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file, rm_allow_noent
+from cmdlib import run_verbose, write_json, sha256sum_file
+from cmdlib import rm_allow_noent, Builds
 
 DEFAULT_COMPRESSOR = 'gzip'
 
@@ -26,73 +27,83 @@ args = parser.parse_args()
 ext_dict = {'xz': '.xz', 'gzip': '.gz'}
 ext = ext_dict[args.compressor]
 
+builds = Builds()
+
 # default to latest build if not specified
 if args.build:
     build = args.build
 else:
-    with open('builds/builds.json') as f:
-        j = json.load(f)
-        build = j['builds'][0]
+    build = builds.get_latest()
 
 print(f"Targeting build: {build}")
 
-buildmeta_path = os.path.join('builds', build, 'meta.json')
-with open(buildmeta_path) as f:
-    buildmeta = json.load(f)
-
-tmpdir = 'tmp/compress'
-if os.path.isdir(tmpdir):
-    shutil.rmtree(tmpdir)
-os.mkdir(tmpdir)
-
-# Note we mutate the build dir in place, similarly to the buildextend commands.
-# One cool approach here might be to `cp -al` the whole build dir, mutate it,
-# then RENAME_EXCHANGE the two... though it doesn't seem Python exposes it yet
-# so that'd require some hacking around. For now, we just guarantee that
-# `compress` is idempotent and can resume from failures.
-
-at_least_one = False
-imgs_to_compress = []
+# Don't compress certain images
 imgs_to_skip = ["iso", "vmware", "initramfs", "kernel"]
 
-for img_format in buildmeta['images']:
 
-    # Don't compress certain images
-    if img_format in imgs_to_skip:
-        print(f"Skipping {img_format}")
-        continue
+def compress_one_builddir(builddir):
+    print(f"Compressing: {builddir}")
+    buildmeta_path = os.path.join(builddir, 'meta.json')
+    with open(buildmeta_path) as f:
+        buildmeta = json.load(f)
 
-    img = buildmeta['images'][img_format]
-    file = img['path']
-    filepath = os.path.join('builds', build, file)
-    if not file.endswith(ext):
-        tmpfile = os.path.join(tmpdir, (file + ext))
-        # SHA256 + size for uncompressed image was already calculated during 'build'
-        img['uncompressed-sha256'] = img['sha256']
-        img['uncompressed-size'] = img['size']
-        with open(tmpfile, 'wb') as f:
-            if args.compressor == 'xz':
-                run_verbose(['xz', '-c9', filepath], stdout=f)
-            else:
-                run_verbose(['gzip', '-c', filepath], stdout=f)
-        file_with_ext = file + ext
-        filepath_with_ext = filepath + ext
-        compressed_size = os.path.getsize(tmpfile)
-        img['path'] = file_with_ext
-        img['sha256'] = sha256sum_file(tmpfile)
-        img['size'] = compressed_size
+    tmpdir = 'tmp/compress'
+    if os.path.isdir(tmpdir):
+        shutil.rmtree(tmpdir)
+    os.mkdir(tmpdir)
 
-        # just flush out after every image type, but unlink after writing.
-        # Then, we should be able to interrupt and restart from the last type.
-        os.rename(tmpfile, filepath_with_ext)
-        write_json(buildmeta_path, buildmeta)
-        os.unlink(filepath)
-        at_least_one = True
-    else:
-        # try to delete the original file if it's somehow still around
-        rm_allow_noent(filepath[:-3])
+    # Note we mutate the build dir in place, similarly to the buildextend
+    # commands.  One cool approach here might be to `cp -al` the whole build
+    # dir, mutate it, then RENAME_EXCHANGE the two... though it doesn't seem
+    # Python exposes it yet so that'd require some hacking around. For now, we
+    # just guarantee that `compress` is idempotent and can resume from
+    # failures.
 
-if at_least_one:
-    print(f"Updated: {buildmeta_path}")
-else:
+    at_least_one = False
+
+    for img_format in buildmeta['images']:
+        if img_format in imgs_to_skip:
+            print(f"Skipping {img_format}")
+            continue
+
+        img = buildmeta['images'][img_format]
+        file = img['path']
+        filepath = os.path.join(builddir, file)
+        if not file.endswith(ext):
+            tmpfile = os.path.join(tmpdir, (file + ext))
+            # SHA256 + size for uncompressed image was already calculated
+            # during 'build'
+            img['uncompressed-sha256'] = img['sha256']
+            img['uncompressed-size'] = img['size']
+            with open(tmpfile, 'wb') as f:
+                if args.compressor == 'xz':
+                    run_verbose(['xz', '-c9', filepath], stdout=f)
+                else:
+                    run_verbose(['gzip', '-c', filepath], stdout=f)
+            file_with_ext = file + ext
+            filepath_with_ext = filepath + ext
+            compressed_size = os.path.getsize(tmpfile)
+            img['path'] = file_with_ext
+            img['sha256'] = sha256sum_file(tmpfile)
+            img['size'] = compressed_size
+
+            # Just flush out after every image type, but unlink after writing.
+            # Then, we should be able to interrupt and restart from the last
+            # type.
+            os.rename(tmpfile, filepath_with_ext)
+            write_json(buildmeta_path, buildmeta)
+            os.unlink(filepath)
+            at_least_one = True
+        else:
+            # try to delete the original file if it's somehow still around
+            rm_allow_noent(filepath[:-3])
+
+    if at_least_one:
+        print(f"Updated: {buildmeta_path}")
+    return at_least_one
+
+
+changed = compress_one_builddir(builds.get_build_dir(build))
+
+if not changed:
     print(f"All builds already compressed")

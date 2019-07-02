@@ -10,17 +10,11 @@
 #   $ coreos-assembler tag list
 #
 import argparse
-import json
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import fatal, rfc3339_time, write_json
-
-
-# Default location of build metadata; perhaps customizable in
-# the future?
-BUILDS_JSON = "builds/builds.json"
+from cmdlib import fatal, rfc3339_time, Builds  # noqa: E402
 
 
 def main():
@@ -59,27 +53,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def init_build_data():
-    """Initialize build metadata"""
-
-    if os.path.isfile(BUILDS_JSON):
-        with open(BUILDS_JSON) as json_file:
-            build_data = json.load(json_file)
-    else:
-        print("INFO: Did not find existing builds.json; starting with empty "
-              "build list and tags list")
-        build_data = {"builds": [], "tags": []}
-
-    return build_data
-
-
-def finalize_json(build_data):
-    """Wrapper around cmdlib.write_json()"""
-
-    build_data['timestamp'] = rfc3339_time()
-    write_json(BUILDS_JSON, build_data)
-
-
 def available_tags(build_data):
     """Returns the available tag names from build metadata"""
 
@@ -89,7 +62,8 @@ def available_tags(build_data):
 def cmd_list(args):
     """List available tags in build metadata"""
 
-    build_data = init_build_data()
+    builds = Builds()
+    build_data = builds.raw()
     avail_tags = available_tags(build_data)
     if not avail_tags:
         print("No tags found")
@@ -104,16 +78,17 @@ def cmd_list(args):
 def cmd_update(args):
     """Create or update a tag to new build ID"""
 
-    build_data = init_build_data()
+    builds = Builds()
+    build_data = builds.raw()
+
     avail_tags = available_tags(build_data)
-    avail_builds = build_data["builds"]
 
     if "tags" not in build_data:
         build_data["tags"] = []
 
     # if the build doesn't exist, check for the force flag and bail out
     # if it is not used.
-    if args.build not in avail_builds:
+    if not builds.has(args.build):
         if not args.force:
             fatal("Cannot operate on a tag with a build that does not exist")
         print(f"INFO: Operating on a tag ({args.tag}) with a build "
@@ -131,7 +106,7 @@ def cmd_update(args):
                                "target": args.build}
                               if t.get("name") == args.tag
                               else t for t in build_data["tags"]]
-    finalize_json(build_data)
+    builds.flush()
 
 
 def cmd_delete(args):
@@ -139,7 +114,8 @@ def cmd_delete(args):
 
     # To delete a tag, iterate through existing tags list, and
     # drop the entry we want
-    build_data = init_build_data()
+    builds = Builds()
+    build_data = builds.raw()
     avail_tags = available_tags(build_data)
 
     if args.tag not in avail_tags:
@@ -147,9 +123,7 @@ def cmd_delete(args):
 
     build_data["tags"] = [t for t in build_data["tags"]
                           if t["name"] != args.tag]
-
-    # Write out JSON
-    finalize_json(build_data)
+    builds.flush()
 
 
 if __name__ == "__main__":
