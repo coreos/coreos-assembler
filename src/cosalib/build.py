@@ -9,6 +9,9 @@ import platform
 import tempfile
 import shutil
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from cmdlib import Builds
+
 # COSA_INPATH is the _in container_ path for the image build source
 COSA_INPATH = "/cosa"
 
@@ -83,16 +86,15 @@ class _Build:
 
         If workdir is None then no temporary work directory is created.
         """
-        log.info('Evaluating builds.json')
-        builds = load_json('%s/builds.json' % builds_dir)
+        builds = Builds(os.path.dirname(builds_dir))
         if build != "latest":
-            if build not in builds['builds']:
+            if not builds.has(build):
                 raise BuildError("Build was not found in builds.json")
         else:
-            build = builds['builds'][0]
+            build = builds.get_latest()
 
         log.info("Targeting build: %s", build)
-        self._build_dir = os.path.abspath("%s/%s" % (builds_dir, build))
+        self._build_dir = builds.get_build_dir(build)
 
         self._build_json = {
             "commit": None,

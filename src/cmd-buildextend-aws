@@ -8,7 +8,7 @@ import os,sys,json,yaml,shutil,argparse,subprocess,re,collections
 import tempfile,hashlib,gzip
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file
+from cmdlib import run_verbose, write_json, sha256sum_file, Builds
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -23,8 +23,8 @@ parser.add_argument("--grant-user", help="Grant user launch permission",
                     nargs="*", default=[])
 args = parser.parse_args()
 
-
-builddir = os.path.join('builds', args.build)
+builds = Builds()
+builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)

@@ -11,22 +11,22 @@ import shutil
 import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file
+from cmdlib import run_verbose, write_json, sha256sum_file, Builds
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 args = parser.parse_args()
 
+builds = Builds()
+
 # default to latest build if not specified
 if not args.build:
-    with open('builds/builds.json') as f:
-        j = json.load(f)
-        args.build = j['builds'][0]
+    args.build = builds.get_latest()
 
 print(f"Targeting build: {args.build}")
 
-builddir = os.path.join('builds', args.build)
+builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)

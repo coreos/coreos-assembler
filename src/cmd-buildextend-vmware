@@ -11,19 +11,20 @@ import argparse
 import tarfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, load_json, write_json, sha256sum_file
+from cmdlib import run_verbose, load_json, write_json, sha256sum_file, Builds
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID",
                     required=False)
 args = parser.parse_args()
 
+builds = Builds()
+
 # default to latest build if not specified
 if not args.build:
-    j = load_json('builds/builds.json')
-    args.build = j['builds'][0]
+    args.build = builds.get_latest()
 
-builddir = os.path.join('builds', args.build)
+builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 buildmeta = load_json(buildmeta_path)
 base_name = buildmeta['name']

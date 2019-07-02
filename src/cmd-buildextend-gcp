@@ -18,7 +18,8 @@ sys.path.insert(0, cosa_dir)
 from cmdlib import (
         run_verbose,
         sha256sum_file,
-        write_json)
+        write_json,
+        Builds)
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -46,7 +47,8 @@ if args.project is None:
     raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
 
 # Identify the builds
-builddir = os.path.join('builds', args.build)
+builds = Builds()
+builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)

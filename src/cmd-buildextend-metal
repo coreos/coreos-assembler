@@ -68,14 +68,13 @@ export LIBGUESTFS_BACKEND=direct
 prepare_build
 
 if [ -z "${build}" ]; then
-    if [ -L "${workdir}"/builds/latest ]; then
-        build=$(readlink "${workdir}"/builds/latest)
-    else
+    build=$(get_latest_build)
+    if [ -z "${build}" ]; then
         fatal "No build found."
     fi
 fi
 
-builddir="${workdir}/builds/${build}"
+builddir=$(get_build_dir "$build")
 if [ ! -d "${builddir}" ]; then
     fatal "Build dir ${builddir} does not exist."
 fi
