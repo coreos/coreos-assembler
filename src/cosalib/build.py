@@ -55,6 +55,7 @@ def write_json(path, data):
     os.fchmod(f.file.fileno(), 0o644)
     os.rename(f.name, path)
 
+
 class _Build:
     """
     The Build Class handles the reading in and return of build JSON emitted
@@ -64,13 +65,13 @@ class _Build:
       - _build_artifacts(*args, **kwargs)
     """
 
-    def __init__(self, build_dir, build="latest", workdir=None):
+    def __init__(self, builds_dir, build="latest", workdir=None):
         """
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
 
-        :param build_dir: name of directory to find the builds
-        :type build_dir: str
+        :param builds_dir: name of directory to find the builds
+        :type builds_dir: str
         :param build: build id or "latest" to parse
         :type build: str
         :param workdir: Temporary directory to ensure exists and is clean
@@ -83,7 +84,7 @@ class _Build:
         If workdir is None then no temporary work directory is created.
         """
         log.info('Evaluating builds.json')
-        builds = load_json('%s/builds.json' % build_dir)
+        builds = load_json('%s/builds.json' % builds_dir)
         if build != "latest":
             if build not in builds['builds']:
                 raise BuildError("Build was not found in builds.json")
@@ -91,7 +92,7 @@ class _Build:
             build = builds['builds'][0]
 
         log.info("Targeting build: %s", build)
-        self._build_root = os.path.abspath("%s/%s" % (build_dir, build))
+        self._build_dir = os.path.abspath("%s/%s" % (builds_dir, build))
 
         self._build_json = {
             "commit": None,
@@ -155,9 +156,9 @@ class _Build:
         return self.get_meta_key("meta", "buildid")
 
     @property
-    def build_root(self):
+    def build_dir(self):
         """ return the actual path for the build root """
-        return self._build_root
+        return self._build_dir
 
     @property
     def build_name(self):
@@ -220,11 +221,10 @@ class _Build:
         :raises: KeyError
         """
         lookup = {
-            "commit": "%s/commitmeta.json" % self.build_root,
-            "config": ("%s/coreos-assembler-config-git.json" %
-                       self.build_root),
+            "commit": "%s/commitmeta.json" % self.build_dir,
+            "config": ("%s/coreos-assembler-config-git.json" % self.build_dir),
             "image": "/cosa/coreos-assembler-git.json",
-            "meta": "%s/meta.json" % self.build_root,
+            "meta": "%s/meta.json" % self.build_dir,
         }
         return lookup[var]
 
