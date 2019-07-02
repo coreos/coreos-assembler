@@ -63,9 +63,10 @@ grub2-install \
 mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
 cp /boot/efi/EFI/BOOT/BOOTX64.EFI rootfs/boot/efi/EFI/BOOT/BOOTX64.EFI
 cp /boot/efi/EFI/fedora/grubx64.efi rootfs/boot/efi/EFI/BOOT/grubx64.efi
-cat > rootfs/boot/efi/EFI/fedora/grub.cfg << EOF
-set prefix="(hd0,gpt1)/grub2"
-source "(hd0,gpt1)/grub2/grub.cfg"
+cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
+search --label boot --set prefix
+set prefix=($prefix)/grub2
+source $prefix/grub.cfg
 EOF
 
 # copy the grub config and any other files we might need
