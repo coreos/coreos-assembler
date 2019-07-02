@@ -74,7 +74,7 @@ cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,
 cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
 search --label boot --set prefix
 set prefix=($prefix)/grub2
-source $prefix/grub.cfg
+normal
 EOF
 
 # copy the grub config and any other files we might need
