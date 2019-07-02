@@ -145,7 +145,8 @@ commitmeta_input_json=${PWD}/tmp/commit-metadata-input.json
 cat > "${commitmeta_input_json}" <<EOF
 {
   "coreos-assembler.config-gitrev": "${config_gitrev}",
-  "coreos-assembler.config-dirty": "${config_dirty}"
+  "coreos-assembler.config-dirty": "${config_dirty}",
+  "coreos-assembler.basearch": "${basearch}"
 }
 EOF
 
