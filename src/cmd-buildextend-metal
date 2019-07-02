@@ -128,7 +128,7 @@ size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # extra size is the non-ostree partitions, see create_disk.sh
 size="$(( size + 513 ))M"
 echo "Disk size estimated to $size"
-kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
+kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
 kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
 
 qemu-img create -f qcow2 "${path}.qcow2" "$size"
