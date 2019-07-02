@@ -38,6 +38,8 @@ def main():
         print("Remote has no builds!")
         return
 
+    # NB: We only buildprep for the arch we're on for now. Could probably make
+    # this a switch in the future.
 
     buildid = builds.get_latest()
     builddir = builds.get_build_dir(buildid)
