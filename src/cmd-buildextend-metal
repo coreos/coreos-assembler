@@ -123,10 +123,10 @@ fi
 path=${PWD}/${img}
 
 echo "Estimating disk size..."
-/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" > "$PWD/tmp/ostree-size.json"
+/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 20 > "$PWD/tmp/ostree-size.json"
 size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # extra size is the non-ostree partitions, see create_disk.sh
-size="$(( size + 512 ))M"
+size="$(( size + 513 ))M"
 echo "Disk size estimated to $size"
 kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
 kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
