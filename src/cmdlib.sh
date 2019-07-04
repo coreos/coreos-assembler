@@ -178,7 +178,7 @@ prepare_build() {
     workdir="$(pwd)"
     configdir=${workdir}/src/config
     manifest=${configdir}/manifest.yaml
-    manifest_lock=${configdir}/manifest-lock.json
+    manifest_lock=${configdir}/manifest-lock.${basearch}.json
     export workdir configdir manifest manifest_lock
 
     if ! [ -f "${manifest}" ]; then
