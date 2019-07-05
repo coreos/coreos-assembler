@@ -1,7 +1,7 @@
 # Base deps for a viable VM environment.
 
 # bare essentials
-bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules
+bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules attr
 
 # for composes
 rpm-ostree distribution-gpg-keys jq
