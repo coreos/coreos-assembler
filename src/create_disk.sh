@@ -19,9 +19,9 @@ extrakargs="$1" && shift
 
 # partition and create fs
 sgdisk -Z $disk \
-	-n 1:0:+384M -c 1:boot \
-	-n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
-	-n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
+	-n 1:0:+128M -c 1:boot \
+	-n 2:0:+128M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
+	-n 3:0:+128M -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
 	-n 4:0:0     -c 4:root       -t 4:4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
 sgdisk -p "$disk"
 
@@ -36,7 +36,7 @@ mkfs.xfs "${disk}4"  -L root -m reflink=1
 # mount the partitions
 rm -rf rootfs
 mkdir rootfs
-mount "${disk}4" rootfs
+mount "${disk}4" rootfs -o rootcontext="system_u:object_r:root_t:s0"
 mkdir rootfs/boot
 mount "${disk}1" rootfs/boot
 mkdir rootfs/boot/efi
@@ -55,6 +55,7 @@ do
 done
 ostree admin deploy "$ref" --sysroot rootfs --os "$os_name" $kargsargs
 
+<<<<<<< HEAD
 if [ "$arch" == "x86_64" ]; then
 	# install bios grub
 	grub2-install \
@@ -67,14 +68,25 @@ else
 	ext="AA64"
 fi
 
+# ensure that home is created with the correct SELinux context
+realvar=$(readlink -f rootfs/ostree/deploy/*/var)
+mkdir -p "${realvar}/home"
+setfattr -n "security.selinux system_u:object_r:home_root_t:so" "${realvar}/home"
+
+# install bios grub
+grub2-install \
+	--target i386-pc \
+	--boot-directory rootfs/boot \
+	$disk
+
 # install uefi grub
-mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
-cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
-cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
-cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
-search --label boot --set prefix
-set prefix=($prefix)/grub2
-normal
+mkdir -p rootfs/boot/efi/EFI/{BOOT,"${os_name}"}
+find /boot/efi/EFI/BOOT/ -type f -iname "*efi" -exec cp -v {} rootfs/boot/efi/EFI/BOOT/ \;
+find /boot/efi/EFI/"${os_name}" -type f -iname "*efi" -exec cp -v {} rootfs/boot/efi/EFI/BOOT/ \;
+chown -R 0:0 rootfs/boot/efi/EFI
+cat > rootfs/boot/efi/EFI/"${os_name}"/grub.cfg << EOF
+set prefix="(hd0,gpt1)/grub2"
+source "(hd0,gpt1)/grub2/grub.cfg"
 EOF
 
 # copy the grub config and any other files we might need
