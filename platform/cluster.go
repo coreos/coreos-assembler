@@ -169,6 +169,14 @@ func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[
 		conf.CopyKeys(keys)
 	}
 
+	// disable Zincati & Pinger by default
+	if bc.Distribution() == "fcos" {
+		conf.AddFile("/etc/fedora-coreos-pinger/config.d/90-disable-reporting.toml", "root", `[reporting]
+enabled = false`, 0644)
+		conf.AddFile("/etc/zincati/config.d/90-disable-auto-updates.toml", "root", `[updates]
+enabled = false`, 0644)
+	}
+
 	if bc.bf.baseopts.OSContainer != "" {
 		if bc.Distribution() != "rhcos" {
 			return nil, fmt.Errorf("oscontainer is only supported on the rhcos distribution")
