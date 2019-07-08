@@ -519,7 +519,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	}
 
 	releasePath := filepath.Join("prod", "streams", specChannel, "builds", specVersion, "release.json")
-	url, err := url.Parse(fmt.Sprintf("https://%s.s3.amazonaws.com/%s", spec.Bucket, releasePath))
+	url, err := url.Parse(fmt.Sprintf("https://builds.coreos.fedoraproject.org/%s", releasePath))
 	if err != nil {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
