@@ -580,7 +580,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	m.Releases = append(m.Releases, newRel)
 
 	m.Metadata.LastModified = time.Now().UTC().Format("2006-01-02T15:04:05Z")
-	m.Note = "not for general usage"
+	m.Note = "For use only by Fedora CoreOS internal tooling.  All other applications should obtain release info from stream metadata endpoints."
 
 	out, err := json.Marshal(m)
 	if err != nil {
