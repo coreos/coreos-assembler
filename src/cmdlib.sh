@@ -326,11 +326,13 @@ EOF
 }
 
 runvm() {
-    runvm_with_disk "" "$@"
+    runvm_with_disk "" "" "$@"
 }
 
 runvm_with_disk() {
     local disk="$1"
+    shift
+    local disk_fmt="$1"
     shift
     local vmpreparedir=${workdir}/tmp/supermin.prepare
     local vmbuilddir=${workdir}/tmp/supermin.build
@@ -401,7 +403,7 @@ EOF
     # if a disk image exists, attach it too
     extradisk=()
     if [ -n "$disk" ]; then
-        extradisk=("-drive" "if=virtio,id=target,format=qcow2,file=$disk")
+        extradisk=("-drive" "if=virtio,id=target,format=$disk_fmt,file=$disk")
     fi
 
     #shellcheck disable=SC2086

@@ -244,7 +244,7 @@ build_image() {
 	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=qemu"
 
 	qemu-img create -f qcow2 "$1" "$size"
-	runvm_with_disk "$1" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+	runvm_with_disk "$1" qcow2 /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
 }
 
 echo '{}' > tmp/vm-iso-checksum.json
