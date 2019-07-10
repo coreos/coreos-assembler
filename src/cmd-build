@@ -251,15 +251,22 @@ if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
     case "$arch" in
         "x86_64"|"aarch64")
-            build_image "$img_qemu" ;;
+            build_image "$img_qemu"
+            echo '{}' > tmp/vm-iso-checksum.json
+            ;;
         *)
             mkdir -p tmp/anaconda
             # forgive me for this sin
             checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
-            vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
             img_base=tmp/${imageprefix}-base.qcow2
             run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
             /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
+            vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
+            cat > tmp/vm-iso-checksum.json <<EOF
+{
+    "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}"
+}
+EOF
             ;;
     esac
 fi
@@ -292,7 +299,6 @@ cat > tmp/meta.json <<EOF
  "coreos-assembler.image-genver": "${image_genver}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.code-source": "${src_location}",
- ${vm_iso_checksum:+\"coreos-assembler.vm-iso-checksum\": \"$vm_iso_checksum\",}
  "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json)
 }
 EOF
@@ -325,7 +331,7 @@ fi
 
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/vm-iso-checksum.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Filter out `ref` if it's temporary
 if [ -n "${ref_is_temp}" ]; then
