@@ -519,7 +519,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	}
 
 	releasePath := filepath.Join("prod", "streams", specChannel, "builds", specVersion, "release.json")
-	url, err := url.Parse(fmt.Sprintf("https://%s.s3.amazonaws.com/%s", spec.Bucket, releasePath))
+	url, err := url.Parse(fmt.Sprintf("https://builds.coreos.fedoraproject.org/%s", releasePath))
 	if err != nil {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
@@ -581,6 +581,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 
 	m.Metadata.LastModified = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	m.Note = "For use only by Fedora CoreOS internal tooling.  All other applications should obtain release info from stream metadata endpoints."
+	m.Stream = specChannel
 
 	out, err := json.Marshal(m)
 	if err != nil {
