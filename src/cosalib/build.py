@@ -165,7 +165,7 @@ class _Build:
     @property
     def build_name(self):
         """ get the name of the build """
-        return str(self.get_meta_key("meta", "name")
+        return str(self.get_meta_key("meta", "name"))
 
     @property
     def summary(self):
