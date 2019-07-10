@@ -247,12 +247,12 @@ build_image() {
 	runvm_with_disk "$1" /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
 }
 
+echo '{}' > tmp/vm-iso-checksum.json
 if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
     case "$arch" in
         "x86_64"|"aarch64")
             build_image "$img_qemu"
-            echo '{}' > tmp/vm-iso-checksum.json
             ;;
         *)
             mkdir -p tmp/anaconda
