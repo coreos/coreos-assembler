@@ -13,6 +13,8 @@ else
     exit 1
 fi
 
+arch=$(uname -m)
+
 if [ $# -eq 0 ]; then
   echo Usage: "build.sh CMD"
   echo "Supported commands:"
@@ -76,10 +78,11 @@ install_rpms() {
     sed -e "s/^.*default_ccache_name/#    default_ccache_name/g" -i /etc/krb5.conf
 
     # Open up permissions on /boot/efi files so we can copy them
-    # for our ISO installer image
-    find /boot/efi -type f -print0 | xargs -r -0 chmod +r
-    find /boot/efi -type d -print0 | xargs -r -0 chmod +rx
-
+    # for our ISO installer image, skip if not present
+    if [ -e /boot/efi ]; then
+        find /boot/efi -type f -print0 | xargs -r -0 chmod +r
+        find /boot/efi -type d -print0 | xargs -r -0 chmod +rx
+    fi
     # Further cleanup
     yum clean all
 
@@ -110,7 +113,6 @@ _prep_make_and_make_install() {
 # doesn't support the installclass stuff and hopefully we'll stop using it soon.
 installer_release=29
 
-arch=$(uname -m)
 # Download url is different for primary and secondary fedora
 # Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
 # Secondary Fedora - https://download.fedoraproject.org/pub/fedora-secondary/releases/
