@@ -1,3 +1,6 @@
+# For grub install when creating images without anaconda
+grub2
+
 # For generating ISO images
 syslinux-nonlinux
 
