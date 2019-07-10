@@ -165,8 +165,7 @@ class _Build:
     @property
     def build_name(self):
         """ get the name of the build """
-        ref = str(self.get_meta_key("meta", "ref")).split('-')
-        return ref[-1]
+        return str(self.get_meta_key("meta", "name")
 
     @property
     def summary(self):
