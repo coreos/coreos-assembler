@@ -164,7 +164,12 @@ prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar
 lock_arg=
 if [ -f "${manifest_lock}" ]; then
     lock_arg="--ex-lockfile=${manifest_lock}"
-    echo "Building from lockfile ${manifest_lock}"
+    echo -n "Building from lockfile ${manifest_lock}"
+    if [ -f "${manifest_lock_overrides}" ]; then
+        lock_arg="${lock_arg} --ex-lockfile=${manifest_lock_overrides}"
+        echo -n " and overrides ${manifest_lock_overrides}"
+    fi
+    echo
     sleep 1
 fi
 

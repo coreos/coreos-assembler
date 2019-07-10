@@ -55,9 +55,18 @@ lock_arg=
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Put this under tmprepo so it gets automatically chown'ed if needed
     lock_arg="--ex-write-lockfile-to=${tmprepo}/tmp/manifest-lock.json"
+    if [ -f "${manifest_lock_overrides}" ]; then
+        echo "NB: ignoring overrides ${manifest_lock_overrides}"
+        sleep 1
+    fi
 elif [ -f "${manifest_lock}" ]; then
     lock_arg="--ex-lockfile=${manifest_lock}"
-    echo "Fetching RPMs from lockfile ${manifest_lock}"
+    echo -n "Fetching RPMs from lockfile ${manifest_lock}"
+    if [ -f "${manifest_lock_overrides}" ]; then
+        lock_arg="${lock_arg} --ex-lockfile=${manifest_lock_overrides}"
+        echo -n " and overrides ${manifest_lock_overrides}"
+    fi
+    echo
     sleep 1
 fi
 
