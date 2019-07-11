@@ -15,9 +15,13 @@
 package azure
 
 import (
+	"bufio"
 	"encoding/xml"
 	"fmt"
+	"net/http"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/arm/compute"
 	"github.com/Azure/azure-sdk-for-go/management"
 )
 
@@ -65,4 +69,56 @@ func (a *API) ShareImage(image, permission string) error {
 func IsConflictError(err error) bool {
 	azerr, ok := err.(management.AzureError)
 	return ok && azerr.Code == "ConflictError"
+}
+
+func (a *API) CreateImage(name, resourceGroup, blobURI string) (compute.Image, error) {
+	_, err := a.imgClient.CreateOrUpdate(resourceGroup, name, compute.Image{
+		Name:     &name,
+		Location: &a.opts.Location,
+		ImageProperties: &compute.ImageProperties{
+			StorageProfile: &compute.ImageStorageProfile{
+				OsDisk: &compute.ImageOSDisk{
+					OsType:  compute.Linux,
+					OsState: compute.Generalized,
+					BlobURI: &blobURI,
+				},
+			},
+		},
+	}, nil)
+	if err != nil {
+		return compute.Image{}, err
+	}
+
+	return a.imgClient.Get(resourceGroup, name, "")
+}
+
+// resolveImage is used to ensure that either a Version or DiskURI
+// are provided present for a run. If neither is given via arguments
+// it attempts to parse the Version from the version.txt in the Sku's
+// release bucket.
+func (a *API) resolveImage() error {
+	// immediately return if the version has been set or if the channel
+	// is not set via the Sku (this happens in ore)
+	if a.opts.DiskURI != "" || a.opts.Version != "" || a.opts.Sku == "" {
+		return nil
+	}
+
+	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://%s.release.core-os.net/amd64-usr/current/version.txt", a.opts.Sku))
+	if err != nil {
+		return fmt.Errorf("unable to fetch release bucket %v version: %v", a.opts.Sku, err)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := strings.SplitN(scanner.Text(), "=", 2)
+		if len(line) != 2 {
+			continue
+		}
+		if line[0] == "COREOS_VERSION" {
+			a.opts.Version = line[1]
+			return nil
+		}
+	}
+
+	return fmt.Errorf("couldn't find COREOS_VERSION in version.txt")
 }

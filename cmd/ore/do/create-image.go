@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
-	"github.com/coreos/mantle/platform/api/do"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
@@ -77,7 +77,7 @@ func createImage() error {
 
 	ctx := context.Background()
 
-	key, err := do.GenerateFakeKey()
+	key, err := platform.GenerateFakeKey()
 	if err != nil {
 		return err
 	}

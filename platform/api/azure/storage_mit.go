@@ -29,6 +29,7 @@ package azure
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/Microsoft/azure-vhd-utils/upload"
@@ -41,6 +42,30 @@ import (
 const pageBlobPageSize int64 = 2 * 1024 * 1024
 
 type BlobExistsError string
+
+func (a *API) ListStorageContainers(storageaccount, storagekey, prefix string) (storage.ContainerListResponse, error) {
+	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
+	if err != nil {
+		return storage.ContainerListResponse{}, err
+	}
+
+	bsc := sc.GetBlobService()
+
+	return bsc.ListContainers(storage.ListContainersParameters{
+		Prefix: prefix,
+	})
+}
+
+func (a *API) TerminateStorageContainer(storageaccount, storagekey, name string) error {
+	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
+	if err != nil {
+		return err
+	}
+
+	bsc := sc.GetBlobService()
+
+	return bsc.DeleteContainer(name)
+}
 
 func (be BlobExistsError) Error() string {
 	return fmt.Sprintf("blob %q already exists", string(be))
@@ -55,6 +80,20 @@ func (a *API) BlobExists(storageaccount, storagekey, container, blob string) (bo
 	bsc := sc.GetBlobService()
 
 	return bsc.BlobExists(container, blob)
+}
+
+func (a *API) GetBlob(storageaccount, storagekey, container, name string) (io.ReadCloser, error) {
+	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
+	if err != nil {
+		return nil, err
+	}
+
+	bsc := sc.GetBlobService()
+	if _, err = bsc.CreateContainerIfNotExists(container, storage.ContainerAccessTypePrivate); err != nil {
+		return nil, err
+	}
+
+	return bsc.GetBlob(container, name)
 }
 
 // UploadBlob uploads vhd to the given storage account, container, and blob name.

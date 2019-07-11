@@ -73,7 +73,9 @@ func verifyAWS(c cluster.TestCluster) {
 }
 
 func verifyAzure(c cluster.TestCluster) {
-	verify(c, "COREOS_AZURE_IPV4_DYNAMIC", "COREOS_AZURE_IPV4_VIRTUAL")
+	verify(c, "COREOS_AZURE_IPV4_DYNAMIC")
+	// kola tests do not spawn machines behind a load balancer on Azure
+	// which is required for COREOS_AZURE_IPV4_VIRTUAL to be present
 }
 
 func verifyPacket(c cluster.TestCluster) {

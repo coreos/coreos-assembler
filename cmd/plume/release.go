@@ -31,7 +31,6 @@ import (
 	"google.golang.org/api/compute/v1"
 	gs "google.golang.org/api/storage/v1"
 
-	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/api/azure"
 	"github.com/coreos/mantle/platform/api/gcloud"
@@ -387,21 +386,14 @@ func doAzure(ctx context.Context, client *http.Client, src *storage.Bucket, spec
 		return
 	}
 
-	prof, err := auth.ReadAzureProfile(azureProfile)
-	if err != nil {
-		plog.Fatalf("failed reading Azure profile: %v", err)
-	}
-
 	// channel name should be caps for azure image
 	imageName := fmt.Sprintf("%s-%s-%s", spec.Azure.Offer, strings.Title(specChannel), specVersion)
 
 	for _, environment := range spec.Azure.Environments {
-		opt := prof.SubscriptionOptions(environment.SubscriptionName)
-		if opt == nil {
-			plog.Fatalf("couldn't find subscription %q", environment.SubscriptionName)
-		}
-
-		api, err := azure.New(opt)
+		api, err := azure.New(&azure.Options{
+			AzureProfile:      azureProfile,
+			AzureSubscription: environment.SubscriptionName,
+		})
 		if err != nil {
 			plog.Fatalf("failed to create Azure API: %v", err)
 		}

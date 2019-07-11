@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/arm/storage"
 	"github.com/Azure/azure-sdk-for-go/management"
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 )
@@ -30,6 +32,10 @@ var (
 
 func (a *API) GetStorageServiceKeys(account string) (storageservice.GetStorageServiceKeysResponse, error) {
 	return storageservice.NewClient(a.client).GetStorageServiceKeys(account)
+}
+
+func (a *API) GetStorageServiceKeysARM(account, resourceGroup string) (storage.AccountListKeysResult, error) {
+	return a.accClient.ListKeys(resourceGroup, account)
 }
 
 // https://msdn.microsoft.com/en-us/library/azure/jj157192.aspx
@@ -77,4 +83,21 @@ func (a *API) UrlOfBlob(account, container, blob string) *url.URL {
 		Host:   fmt.Sprintf("%s.blob.%s", account, a.opts.StorageEndpointSuffix),
 		Path:   path.Join(container, blob),
 	}
+}
+
+func (a *API) CreateStorageAccount(resourceGroup string) (string, error) {
+	// Only lower-case letters & numbers allowed in storage account names
+	name := strings.Replace(randomName("kolasa"), "-", "", -1)
+	parameters := storage.AccountCreateParameters{
+		Sku: &storage.Sku{
+			Name: "Standard_LRS",
+		},
+		Kind:     "Storage",
+		Location: &a.opts.Location,
+	}
+	_, err := a.accClient.Create(resourceGroup, name, parameters, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating storage account: %v", err)
+	}
+	return name, nil
 }

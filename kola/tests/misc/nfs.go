@@ -54,8 +54,10 @@ func init() {
 		Name:        "linux.nfs.v3",
 		Distros:     []string{"cl"},
 
+		// Disabled on Azure because setting hostname
+		// is required at the instance creation level
 		// qemu-unpriv machines cannot communicate
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		ExcludePlatforms: []string{"azure", "qemu-unpriv"},
 	})
 	// TODO: enable FCOS when FCCT exists
 	register.Register(&register.Test{
@@ -64,8 +66,10 @@ func init() {
 		Name:           "linux.nfs.v4",
 		ExcludeDistros: []string{"fcos"},
 
+		// Disabled on Azure because setting hostname
+		// is required at the instance creation level
 		// qemu-unpriv machines cannot communicate
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		ExcludePlatforms: []string{"azure", "qemu-unpriv"},
 	})
 }
 
