@@ -22,7 +22,7 @@ clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
 
 mantle:
-	cd mantle && ./build ore kola kolet
+	cd mantle && ./build ore kola kolet plume
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -32,6 +32,6 @@ install:
 	install -d $(DESTDIR)$(PREFIX)/bin
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
-	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola}
+	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola,plume}
 	install -d $(DESTDIR)$(PREFIX)/lib/kola/amd64
 	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/amd64 mantle/bin/amd64/kolet
