@@ -1,5 +1,8 @@
 PREFIX ?= /usr
 DESTDIR ?=
+# E402 module level import not at top of file
+# E722 do not use bare 'except'
+PYIGNORE ?= E402,E722
 
 .PHONY: all mantle install check clean
 
@@ -17,6 +20,13 @@ cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
 
 check: ${src_checked} ${tests_checked} ${cwd_checked}
 	echo OK
+
+flake8:
+	flake8 --ignore=$(PYIGNORE) src/cosalib
+	# The following lines will verify python files that are not modules
+	# but are commented out as the files are not ready for checking yet
+	# grep -r "^\#\!/usr/bin/py" src/ | cut -d : -f 1 | xargs flake8 --ignore=$(PYIGNORE)
+	# find src -maxdepth 1 -name "*.py" | xargs flake8 --ignore=$(PYIGNORE)
 
 unittest:
 	PYTHONPATH=`pwd`/src pytest tests/
