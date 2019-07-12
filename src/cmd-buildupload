@@ -54,6 +54,13 @@ def cmd_upload_s3(args):
             for arch in builds.get_build_arches(args.build):
                 s3_upload_build(args, builds.get_build_dir(args.build, arch),
                                 f'{args.build}/{arch}')
+            # if there's anything else in the build dir, just upload it too, e.g. pipelines
+            # might inject additional metadata
+            for f in os.listdir(f'builds/{args.build}'):
+                # arches already uploaded higher up
+                if f in builds.get_build_arches(args.build):
+                    continue
+                s3_cp(args, f'builds/{args.build}/{f}', f'{args.build}/{f}')
     s3_cp(args, 'builds/builds.json', 'builds.json',
           '--cache-control=max-age=60')
 
