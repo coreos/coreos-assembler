@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--skip-prune] [TARGETS]
+       coreos-assembler build [--force] [--skip-prune] [--version VERSION] [TARGETS]
 
   Build OSTree and image artifacts from previously fetched packages.
   The TARGETS argument is a list of artifact types to build; if unspecified it
@@ -26,8 +26,9 @@ EOF
 # Parse options
 FORCE=
 SKIP_PRUNE=0
+VERSION=
 rc=0
-options=$(getopt --options hf --longoptions help,force,force-nocache,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hf --longoptions help,force,version:,force-nocache,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -44,6 +45,10 @@ while true; do
             ;;
         --skip-prune)
             SKIP_PRUNE=1
+            ;;
+        --version)
+            shift
+            VERSION=$1
             ;;
         --)
             shift
@@ -158,6 +163,14 @@ if [ -f "${manifest_lock}" ]; then
     sleep 1
 fi
 
+# We'll pass this directly to rpm-ostree instead of through
+# commitmeta_input_json since that one also gets injected into meta.json, where
+# there's already ostree-version.
+version_arg=
+if [ -n "${VERSION}" ]; then
+    version_arg="--add-metadata-string=version=${VERSION}"
+fi
+
 # These need to be absolute paths right now for rpm-ostree
 composejson=${PWD}/tmp/compose.json
 # Put this under tmprepo so it gets automatically chown'ed if needed
@@ -167,7 +180,7 @@ lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}" \
-           ${lock_arg}
+           ${lock_arg} ${version_arg}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
