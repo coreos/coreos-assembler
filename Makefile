@@ -18,6 +18,9 @@ cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
 check: ${src_checked} ${tests_checked} ${cwd_checked}
 	echo OK
 
+unittest:
+	PYTHONPATH=`pwd`/src pytest tests/
+
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
 	find . -name "*.py[co]" -type f | xargs rm -f
