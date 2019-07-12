@@ -26,6 +26,8 @@ grub_script="$1" && shift
 os_name="$1" && shift
 extrakargs="$1" && shift
 
+set -x
+
 # partition and create fs
 sgdisk -Z $disk \
 	-n 1:0:+384M -c 1:boot \
