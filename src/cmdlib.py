@@ -173,7 +173,8 @@ def get_basearch():
         return get_basearch.saved
 
 
-class Builds:
+# FIXME: Add tests
+class Builds:  # pragma: nocover
     def __init__(self, workdir=None):
         self._workdir = workdir
         self._fn = self._path("builds/builds.json")
