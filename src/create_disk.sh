@@ -10,8 +10,8 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
-if [ "$#" -ne 6 ]; then
-	echo 'create_disk <device> <ostree-repo> <ostree-ref> <grub-script> <os-name> <space separated kargs>'
+if [ "$#" -ne 7 ]; then
+	echo 'create_disk <device> <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <space separated kargs>'
 	exit 1
 fi
 
@@ -22,6 +22,7 @@ arch="$(uname -m)"
 disk="$1" && shift
 ostree="$1" && shift
 ref="$1" && shift
+remote_name="$1" && shift
 grub_script="$1" && shift
 os_name="$1" && shift
 extrakargs="$1" && shift
@@ -55,7 +56,13 @@ mount "${disk}2" rootfs/boot/efi
 
 # init the ostree
 ostree admin init-fs rootfs
-ostree pull-local "$ostree" "$ref" --repo rootfs/ostree/repo
+remote_arg=
+deploy_ref="${ref}"
+if [ "${remote_name}" != NONE ]; then
+    remote_arg="--remote=${remote_name}"
+    deploy_ref="${remote_name}:${ref}"
+fi
+ostree pull-local "$ostree" "$ref" --repo rootfs/ostree/repo $remote_arg
 ostree admin os-init "$os_name" --sysroot rootfs
 allkargs='root=/dev/disk/by-label/root rootflags=defaults,prjquota rw $ignition_firstboot'
 allkargs="$allkargs $extrakargs"
@@ -64,7 +71,7 @@ for karg in $allkargs
 do
 	kargsargs+="--karg-append=$karg "
 done
-ostree admin deploy "$ref" --sysroot rootfs --os "$os_name" $kargsargs
+ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
 
 if [ "$arch" == "x86_64" ]; then
 	# install bios grub

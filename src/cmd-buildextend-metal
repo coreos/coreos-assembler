@@ -129,9 +129,10 @@ size="$(( size + 513 ))M"
 echo "Disk size estimated to $size"
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "$configdir/image.yaml")"
 kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
+ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 
 qemu-img create -f raw "${path}.tmp" "$size"
-runvm_with_disk "${path}.tmp" raw /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+runvm_with_disk "${path}.tmp" raw /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
 mv "${path}.tmp" "$path"
 
 # flush it out before going to the next one so we don't have to redo both if
