@@ -1,4 +1,13 @@
 #!/bin/sh
+# This script is run in supermin to create a Fedora CoreOS style
+# disk image, very much in the spirit of the original
+# Container Linux (orig CoreOS) disk layout, although adapted
+# for OSTree, and using XFS for /, among other things.
+# Some more background in https://github.com/coreos/fedora-coreos-tracker/issues/18
+# The layout is intentionally not very configurable at this time,
+# although see also https://github.com/coreos/coreos-assembler/pull/298
+# For people building "derived"/custom FCOS-like systems, feel free to file
+# an issue and we can discuss configuration needs.
 set -euo pipefail
 
 if [ "$#" -ne 6 ]; then
