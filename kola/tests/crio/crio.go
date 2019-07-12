@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 // simplifiedCrioInfo represents the results from crio info
@@ -144,6 +145,35 @@ var crioContainerTemplate = `{
 	}
 }`
 
+// RHCOS has the crio service disabled by default, so use Ignition to enable it
+var enableCrioIgn = conf.Ignition(`{
+  "ignition": {
+    "version": "2.2.0"
+  },
+  "systemd": {
+    "units": [
+      {
+        "enabled": true,
+        "name": "crio.service"
+      }
+    ]
+  }
+}`)
+
+var enableCrioIgnV3 = conf.Ignition(`{
+  "ignition": {
+    "version": "3.0.0"
+  },
+  "systemd": {
+    "units": [
+      {
+        "enabled": true,
+        "name": "crio.service"
+      }
+    ]
+  }
+}`)
+
 // init runs when the package is imported and takes care of registering tests
 func init() {
 	register.Register(&register.Test{
@@ -151,8 +181,10 @@ func init() {
 		ClusterSize: 1,
 		Name:        `crio.base`,
 		// crio pods require fetching a kubernetes pause image
-		Flags:   []register.Flag{register.RequiresInternetAccess},
-		Distros: []string{"rhcos"},
+		Flags:      []register.Flag{register.RequiresInternetAccess},
+		Distros:    []string{"rhcos"},
+		UserData:   enableCrioIgn,
+		UserDataV3: enableCrioIgnV3,
 	})
 	register.Register(&register.Test{
 		Run:         crioNetwork,
@@ -160,6 +192,8 @@ func init() {
 		Name:        "crio.network",
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		Distros:     []string{"rhcos"},
+		UserData:    enableCrioIgn,
+		UserDataV3:  enableCrioIgnV3,
 	})
 }
 
