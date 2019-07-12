@@ -20,6 +20,8 @@ check: ${src_checked} ${tests_checked} ${cwd_checked}
 
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
+	find . -name "*.py[co]" -type f | xargs rm -f
+	find . -name "__pycache__" -type d | xargs rm -rf
 
 mantle:
 	cd mantle && ./build ore kola kolet plume
