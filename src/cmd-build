@@ -239,8 +239,8 @@ set -x
 
 build_image() {
 	local size kargs
-	size="$(python3 -c 'import sys, yaml; print(yaml.load(sys.stdin, Loader=yaml.CLoader)["size"])' < "$configdir/image.yaml")G"
-	kargs="$(python3 -c 'import sys, yaml; args = yaml.load(sys.stdin, Loader=yaml.CLoader).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
+	size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+	kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=qemu"
 
 	qemu-img create -f qcow2 "$1" "$size"
