@@ -8,7 +8,7 @@ env:
     - SCVERSION="stable"
 
 before_install:
-    - sudo apt-get install -y xz-utils python3-gi
+    - sudo apt-get install -y xz-utils libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0
 
 script:
     - python3 -V
@@ -19,6 +19,7 @@ script:
     - shellcheck --version
     - make check
     - pip install -U -r test-requirements.txt
+    - pip install PyGObject semver
     - make flake8
     - make unittest
 
