@@ -79,8 +79,9 @@ func New(opts *Options) (*API, error) {
 	}
 
 	sess, err := session.NewSessionWithOptions(session.Options{
-		Profile: opts.Profile,
-		Config:  awsCfg,
+		SharedConfigState: session.SharedConfigEnable,
+		Profile:           opts.Profile,
+		Config:            awsCfg,
 	})
 	if err != nil {
 		return nil, err
