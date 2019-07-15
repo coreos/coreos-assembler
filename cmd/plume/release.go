@@ -569,6 +569,28 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		}
 	}
 
+	for _, archs := range im.Architectures {
+		for name, media := range archs.Media {
+			if name == "aws" {
+				for region, ami := range media.Images {
+					aws_api, err := aws.New(&aws.Options{
+						CredentialsFile: awsCredentialsFile,
+						Profile:         specProfile,
+						Region:          region,
+					})
+					if err != nil {
+						plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
+					}
+
+					err = aws_api.PublishImage(ami.Image)
+					if err != nil {
+						plog.Fatalf("couldn't publish image in %v: %v", region, err)
+					}
+				}
+			}
+		}
+	}
+
 	m.Releases = append(m.Releases, newRel)
 
 	m.Metadata.LastModified = time.Now().UTC().Format("2006-01-02T15:04:05Z")
