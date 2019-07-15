@@ -15,8 +15,7 @@ import collections
 
 from datetime import timedelta, datetime, timezone
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import get_basearch, Builds
+from cosalib.builds import get_basearch, Builds
 
 
 def parse_date_string(date_string):

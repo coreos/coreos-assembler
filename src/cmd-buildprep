@@ -13,8 +13,8 @@ import botocore
 import boto3
 import shutil
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, rm_allow_noent, Builds  # noqa: E402
+from cosalib.cmdlib import load_json, rm_allow_noent  # noqa: E402
+from cosalib.builds import Builds
 
 
 def main():

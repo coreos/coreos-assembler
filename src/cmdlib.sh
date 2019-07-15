@@ -604,7 +604,7 @@ get_build_dir() {
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
-from cmdlib import Builds
+from cosalib.builds import Builds
 print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
 }
 

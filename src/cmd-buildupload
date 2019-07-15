@@ -10,8 +10,8 @@ import subprocess
 import sys
 import tempfile
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, Builds  # noqa: E402
+from cosalib.cmdlib import load_json  # noqa: E402
+from cosalib.builds import Builds
 
 
 def main():

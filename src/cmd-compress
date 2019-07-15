@@ -9,9 +9,10 @@ import json
 import shutil
 import argparse
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file
-from cmdlib import rm_allow_noent, Builds
+from cosalib.cmdlib import run_verbose, write_json,
+from cosalib.cmdlib import sha256sum_file, rm_allow_noent
+from cosalib.builds import Builds
+
 
 DEFAULT_COMPRESSOR = 'gzip'
 

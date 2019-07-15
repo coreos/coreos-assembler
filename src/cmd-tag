@@ -13,8 +13,8 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import fatal, rfc3339_time, Builds  # noqa: E402
+from cosalib.cmdlib import fatal, rfc3339_time  # noqa: E402
+from cosalib.builds import Builds
 
 
 def main():
