@@ -1,5 +1,8 @@
 dist: xenial
 
+services:
+    - docker
+
 language: python
 python:
     - "3.6"
@@ -8,16 +11,12 @@ env:
     - SCVERSION="stable"
 
 before_install:
-    - sudo apt-get install -y xz-utils
+    - docker pull quay.io/coreos-assembler/coreos-assembler:latest
+    - docker build -t coreos-assembler-test -f Dockerfile.dev .
 
 script:
-    - python3 -V
-    - sudo rm $(command -v shellcheck)
-    - wget https://storage.googleapis.com/shellcheck/shellcheck-${SCVERSION}.linux.x86_64.tar.xz
-    - tar --xz -xvf shellcheck-${SCVERSION}.linux.x86_64.tar.xz
-    - sudo cp shellcheck-${SCVERSION}/shellcheck /usr/bin/
-    - shellcheck --version
-    - make check
+    - docker run -ti --rm --entrypoint "/usr/bin/sudo" coreos-assembler-test:latest su -c "cd /root/containerbuild/; make check"
+    - docker run -ti --rm --entrypoint "/usr/bin/sudo" coreos-assembler-test:latest su -c "cd /root/containerbuild/; make unittest"
 
 notifications:
   email: false
