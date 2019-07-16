@@ -20,7 +20,6 @@ RUN ./build.sh write_archive_info
 RUN ./build.sh make_and_makeinstall
 
 WORKDIR /srv/
-RUN rm -rf /root/containerbuild
 
 # run as `builder` user
 USER builder
