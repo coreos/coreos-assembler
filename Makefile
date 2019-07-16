@@ -4,7 +4,7 @@ DESTDIR ?=
 # E722 do not use bare 'except'
 PYIGNORE ?= E402,E722
 
-.PHONY: all mantle install check clean
+.PHONY: all check flake8 unittest clean mantle install 
 
 all: mantle
 
