@@ -85,6 +85,9 @@ else
 	ext="AA64"
 fi
 
+# we use pure BLS, so don't need grub2-mkconfig
+ostree config --repo rootfs/ostree/repo set sysroot.bootloader none
+
 # install uefi grub
 mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
 cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
