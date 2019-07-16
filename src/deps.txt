@@ -52,5 +52,8 @@ python3-semver
 # shellcheck for test
 ShellCheck
 
+# For python testing
+python3-flake8 python3-pytest python3-pytest-cov
+
 # Support for Koji uploads.
 krb5-libs krb5-workstation python2-koji python2-krbv
