@@ -18,18 +18,18 @@ cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked}
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8
 	echo OK
 
 flake8:
-	flake8 --ignore=$(PYIGNORE) src/cosalib
+	python3 -m flake8 --ignore=$(PYIGNORE) src/cosalib
 	# The following lines will verify python files that are not modules
 	# but are commented out as the files are not ready for checking yet
 	# grep -r "^\#\!/usr/bin/py" src/ | cut -d : -f 1 | xargs flake8 --ignore=$(PYIGNORE)
 	# find src -maxdepth 1 -name "*.py" | xargs flake8 --ignore=$(PYIGNORE)
 
 unittest:
-	PYTHONPATH=`pwd`/src pytest tests/
+	PYTHONPATH=`pwd`/src python3 -m pytest tests/
 
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
