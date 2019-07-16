@@ -22,7 +22,6 @@ RUN ./build.sh make_and_makeinstall
 RUN make clean
 
 WORKDIR /srv/
-RUN rm -rf /root/containerbuild
 
 # run as `builder` user
 USER builder
