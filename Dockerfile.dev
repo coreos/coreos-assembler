@@ -6,7 +6,7 @@
 # This moves the build time from ~15 minutes to ~3-5 minutes.
 # Example: buildah bud -f Dockerfile.dev -t localhost/cosa-test .
 
-FROM quay.io/coreos-assembler/coreos-assembler:latest
+FROM quay.io/coreos-assembler/coreos-assembler:rhcos-4.2
 WORKDIR /root/containerbuild
 
 USER root

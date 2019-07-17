@@ -11,7 +11,7 @@ env:
     - SCVERSION="stable"
 
 before_install:
-    - docker pull quay.io/coreos-assembler/coreos-assembler:latest
+    - docker pull quay.io/coreos-assembler/coreos-assembler:rhcos-4.2
     - docker build -t coreos-assembler-test -f Dockerfile.dev .
 
 script:
