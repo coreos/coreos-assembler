@@ -74,7 +74,7 @@ def oscontainer_extract(containers_storage, src, dest,
 # with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True, cert_dir="",
-                      authfile="", inspect_out=None):
+                      authfile="", inspect_out=None, dump=False):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -112,6 +112,8 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         print("{} {}".format(image_name_and_tag, iid))
     finally:
         subprocess.call(['buildah', rootarg, 'umount', bid], stdout=subprocess.DEVNULL)
+        if dump:
+            run_verbose(['podman', rootarg, 'save', '--compress', '--format', 'oci-archive', '-o', iid[:13]+'.tar', iid[:13]])
         subprocess.call(['buildah', rootarg, 'rm', bid], stdout=subprocess.DEVNULL)
 
     if push:
@@ -168,6 +170,8 @@ parser_build.add_argument("--inspect-out", help="Write image JSON to file",
                           action='store', metavar='FILE')
 parser_build.add_argument("--push", help="Push to registry",
                           action='store_true')
+parser_build.add_argument("--dump", help="Dump the container in to the workdir",
+                          action='store_true')
 args = parser.parse_args()
 
 containers_storage = os.path.join(args.workdir, 'containers-storage')
@@ -187,4 +191,5 @@ elif args.action == 'build':
                       push=args.push,
                       tls_verify=not args.disable_tls_verify,
                       cert_dir=args.cert_dir,
-                      authfile=args.authfile)
+                      authfile=args.authfile,
+                      dump=args.dump)
