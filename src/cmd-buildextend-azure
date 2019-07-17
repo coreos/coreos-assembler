@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+# pylint: disable=C0103
+"""
+An operation that mutates a build by uploading to Azure,
+extending the meta.json with the Azure image name.
+"""
+# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+
+import argparse
+import logging as log
+import os
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+try:
+    from cosalib.build import _Build
+except ImportError:
+    # We're in the container and can't sense the cosa path
+    sys.path.insert(0, '/usr/lib/coreos-assembler/cosalib')
+    from cosalib.build import _Build
+
+# pylint: disable=C0413
+from cmdlib import (
+        run_verbose,
+        sha256sum_file,
+        write_json)
+
+# Identifier for azure platform
+PLATFORM_AZURE = 'azure'
+
+
+class Build(_Build):
+    """
+    Azure implementation of Build.
+    """
+
+    def _build_artifacts(self, *args, **kwargs):
+        """
+        Implements the building of artifacts. Walk the build root and
+        prepare a list of files in it.
+        :param args: All non-keyword arguments
+        :type args: list
+        :param kwargs: All keyword arguments
+        :type kwargs: dict
+        """
+        self._create_tmp_dir()
+
+        # Name the base build and tarball name
+        base_name = self.meta['name']
+        azure_nv = f'{base_name}-{self.build_id}'
+
+        # Used in referencing
+        self.azure_vhd_name = f'{azure_nv}.vhd'
+
+        # Generate path locations
+        img_qemu = os.path.join(
+            self.build_root, self.meta['images']['qemu']['path'])
+
+        tmp_img_azure = os.path.join(self.workdir, (azure_nv + '.qcow2'))
+        tmp_img_azure_vhd = os.path.join(self.workdir, self.azure_vhd_name)
+
+        # Execute system commands
+        run_verbose([f"{cosa_dir}/gf-platformid",
+                     img_qemu, tmp_img_azure, PLATFORM_AZURE])
+        # Convert the qcow2 to a raw image
+        # See: https://docs.openstack.org/image-guide/convert-images.html
+        run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vpc',
+                    tmp_img_azure, tmp_img_azure_vhd])
+        # Clean up the intermediate files
+        os.unlink(tmp_img_azure)
+
+        # TODO: This can be pulled out into a _Build method.
+        fsize = os.stat(tmp_img_azure_vhd).st_size
+        log.debug(" * calculating checksum")
+        self._found_files[tmp_img_azure_vhd] = {
+                "local_path": os.path.abspath(tmp_img_azure_vhd),
+                "path": os.path.basename(tmp_img_azure_vhd),
+                "size": int(fsize)
+        }
+        log.debug(
+            " * size is %s",
+            self._found_files[tmp_img_azure_vhd]["size"])
+        # ---
+
+
+def cli():
+    """
+    Parse args and dispatch
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--auth', help='Path to Azure auth file',
+        required=True, default=os.environ.get("AZURE_AUTH"))
+    parser.add_argument('--build', help='Build ID', required=True)
+    parser.add_argument(
+        '--container', help='Storage location to write to',
+        required=True, default=os.environ.get("AZURE_CONTAINER"))
+    parser.add_argument(
+        '--force', help='Replace existing images and upload',
+        action='store_true',
+        default=bool(os.environ.get('AZURE_FORCE', False)))
+    parser.add_argument(
+        '--location', help='Azure location (default westus)',
+        required=false)
+    parser.add_argument(
+        '--profile', help='Path to Azure profile',
+        required=True, default=os.environ.get('AZURE_PROFILE'))
+    parser.add_argument(
+        '--resource-group', help='Resource group', required=True,
+        default=os.environ.get('AZURE_RESOURCE_GROUP'))
+    parser.add_argument(
+        '--storage-account', help='Storage account', required=True,
+        default=os.environ.get('AZURE_STORAGE_ACCOUNT'))
+    args = parser.parse_args()
+
+    # Argument checks for environment strings that are required
+    arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
+    if args.auth is None:
+        raise Exception(arg_exp_str.format('auth', 'AZURE_AUTH'))
+    if args.container is None:
+        raise Exception(arg_exp_str.format('container', 'AZURE_CONTAINER'))
+    if args.profile is None:
+        raise Exception(arg_exp_str.format('profile', 'AZURE_PROFILE'))
+    if args.resouce_group is None:
+        raise Exception(arg_exp_str.format('resource_group', 'AZURE_RESOURCE_GROUP'))
+    if args.storage_account is None:
+        raise Exception(arg_exp_str.format('storage_account', 'AZURE_STORAGE_ACCOUNT'))
+
+    # Identify the builds
+    build = Build(
+        os.path.join('builds', args.build),
+        args.build,
+        workdir=os.path.abspath('tmp/buildpost-azure'))
+
+    if 'azure' in build.meta['images'] and not args.force:
+        print('Azure image already built; use --force to rebuild')
+        raise SystemExit()
+
+    build.build_artifacts(cli_args=args)
+    run_ore(args, build)
+
+
+def run_ore(args, build):
+    """
+    Execute ore to upload the vhd image in blob format
+    See:
+      - https://github.com/coreos/mantle/#azure
+      - https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction
+    TODO: Move to using an _Upload subclass.
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    :param build: Build instance to use
+    :type build: Build
+    """
+    blob_url = f'https://{args.storage_account}.blob.core.windows.net/{args.container}/{build.azure_vhd_name}'
+    azure_vhd_path = os.path.join(build.workdir, build.azure_vhd_name)
+    ore_upload_args = [
+        'ore', 'azure', 'upload-blob-arm',
+        '--storage-account', args.storage_account, '--resource-group', args.resource_group,
+        '--container', args.container, '--blob-name', build.azure_vhd_name,
+        '--file', azure_vhd_path,
+        '--azure-profile', args.profile, '--azure-auth', args.azure_auth]
+    if args.force:
+        ore_upload_args.append('--overwrite')
+    if args.location:
+        ore_upload_args.append('--location', args.location)
+    run_verbose(ore_upload_args)
+
+    checksum = sha256sum_file(azure_vhd_path)
+    size = os.path.getsize(azure_vhd_path)
+
+    build.meta['azure'] = {'image': build.azure_vhd_name}
+    build.meta['images'].update({
+        'azure': {
+            'path': build.azure_vhd_name,
+            'sha256': checksum,
+            'size': size
+        }
+    })
+    write_json(build.meta_path, build.meta)
+    print(f"Updated: {build.meta_path}")
+    build.clean()
+
+
+if __name__ == '__main__':
+    cli()
