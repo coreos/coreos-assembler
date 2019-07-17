@@ -43,6 +43,9 @@ jq
 # For interacting with AWS/HTTP
 awscli python3-boto3 python3-requests
 
+# For metadata versioning
+python3-semver
+
 # For ignition file validation in cmd-run
 /usr/bin/ignition-validate
 
