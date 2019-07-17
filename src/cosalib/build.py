@@ -54,6 +54,7 @@ def write_json(path, data):
     os.fchmod(f.file.fileno(), 0o644)
     os.rename(f.name, path)
 
+
 class _Build:
     """
     The Build Class handles the reading in and return of build JSON emitted
