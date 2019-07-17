@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import gi
+import semver
 
 gi.require_version("RpmOstree", "1.0")
 from gi.repository import RpmOstree
