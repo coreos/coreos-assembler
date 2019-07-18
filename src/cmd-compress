@@ -4,10 +4,13 @@
 # Compresses all images in a build.
 
 import os
+import re
 import sys
+import math
 import json
 import shutil
 import argparse
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import run_verbose, write_json, sha256sum_file
@@ -39,6 +42,26 @@ print(f"Targeting build: {build}")
 
 # Don't compress certain images
 imgs_to_skip = ["iso", "vmware", "initramfs", "kernel"]
+
+
+def get_cpu_param(param):
+    with open(f'/sys/fs/cgroup/cpu/cpu.{param}') as f:
+        return int(f.read().strip())
+
+
+# XXX: should dedupe this with logic in virt-install and put in the shared lib
+def xz_threads():
+    with open("/proc/1/cgroup") as f:
+        in_k8s = re.search(r'.*kubepods.*', f.read())
+    if in_k8s:
+        # see similar code in OpenJKD HotSpot:
+        # https://hg.openjdk.java.net/jdk/jdk/file/7b671e6b0d5b/src/hotspot/os/linux/osContainer_linux.cpp#l595
+        quota = get_cpu_param('cfs_quota_us')
+        period = get_cpu_param('cfs_period_us')
+        # are k8s limits enforced?
+        if quota != -1 and period > 0:
+            return math.ceil(quota/period)
+    return 0  # no limits, let xz choose what it wants
 
 
 def compress_one_builddir(builddir):
@@ -77,7 +100,8 @@ def compress_one_builddir(builddir):
             img['uncompressed-size'] = img['size']
             with open(tmpfile, 'wb') as f:
                 if args.compressor == 'xz':
-                    run_verbose(['xz', '-c9', filepath], stdout=f)
+                    t = xz_threads()
+                    run_verbose(['xz', '-c9', f'-T{t}', filepath], stdout=f)
                 else:
                     run_verbose(['gzip', '-c', filepath], stdout=f)
             file_with_ext = file + ext
