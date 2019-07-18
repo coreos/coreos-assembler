@@ -80,8 +80,7 @@ install_rpms() {
     # Open up permissions on /boot/efi files so we can copy them
     # for our ISO installer image, skip if not present
     if [ -e /boot/efi ]; then
-        find /boot/efi -type f -print0 | xargs -r -0 chmod +r
-        find /boot/efi -type d -print0 | xargs -r -0 chmod +rx
+        chmod -R a+rX /boot/efi
     fi
     # Further cleanup
     yum clean all
