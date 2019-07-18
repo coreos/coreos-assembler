@@ -27,8 +27,9 @@ EOF
 FORCE=
 SKIP_PRUNE=0
 VERSION=
+PARENT=
 rc=0
-options=$(getopt --options hf --longoptions help,force,version:,force-nocache,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hf --longoptions help,force,version:,parent:,force-nocache,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -49,6 +50,10 @@ while true; do
         --version)
             shift
             VERSION=$1
+            ;;
+        --parent)
+            shift
+            PARENT=$1
             ;;
         --)
             shift
@@ -171,6 +176,14 @@ if [ -n "${VERSION}" ]; then
     version_arg="--add-metadata-string=version=${VERSION}"
 fi
 
+# Builds are independent of each other. Higher-level pipelines may want to force
+# a specific parent, but otherwise we default to none. This is completely
+# separate from pkg diffing, change detection, etc.
+parent_arg=--no-parent
+if [ -n "${PARENT}" ]; then
+    parent_arg="--parent=${PARENT}"
+fi
+
 # These need to be absolute paths right now for rpm-ostree
 composejson=${PWD}/tmp/compose.json
 # Put this under tmprepo so it gets automatically chown'ed if needed
@@ -180,7 +193,7 @@ lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}" \
-           ${lock_arg} ${version_arg}
+           ${lock_arg} ${version_arg} ${parent_arg}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
