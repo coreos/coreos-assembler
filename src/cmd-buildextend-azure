@@ -172,7 +172,7 @@ def run_ore(args, build):
     if args.force:
         ore_upload_args.append('--overwrite')
     if args.location:
-        ore_upload_args.append('--location', args.location)
+        ore_upload_args.extend(['--location', args.location])
     run_verbose(ore_upload_args)
 
     checksum = sha256sum_file(azure_vhd_path)
