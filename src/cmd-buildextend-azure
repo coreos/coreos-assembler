@@ -9,6 +9,7 @@ extending the meta.json with the Azure image name.
 import argparse
 import logging as log
 import os
+import shutil
 import sys
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
@@ -36,6 +37,10 @@ class Build(_Build):
     Azure implementation of Build.
     """
 
+    def __init__(self, build_dir, build, tmpbuilddir):
+        self.tmpbuilddir = tmpbuilddir
+        _Build.__init__(self, build_dir, build)
+
     def _build_artifacts(self, *args, **kwargs):
         """
         Implements the building of artifacts. Walk the build root and
@@ -45,7 +50,10 @@ class Build(_Build):
         :param kwargs: All keyword arguments
         :type kwargs: dict
         """
-        self._create_tmp_dir()
+
+        if os.path.isdir(self.tmpbuilddir):
+            shutil.rmtree(self.tmpbuilddir)
+        os.mkdir(self.tmpbuilddir)
 
         # Name the base build and tarball name
         base_name = self.meta['name']
@@ -58,8 +66,8 @@ class Build(_Build):
         img_qemu = os.path.join(
             self.build_root, self.meta['images']['qemu']['path'])
 
-        tmp_img_azure = os.path.join(self.workdir, (azure_nv + '.qcow2'))
-        tmp_img_azure_vhd = os.path.join(self.workdir, self.azure_vhd_name)
+        tmp_img_azure = os.path.join(self.tmpbuilddir, (azure_nv + '.qcow2'))
+        tmp_img_azure_vhd = os.path.join(self.tmpbuilddir, self.azure_vhd_name)
 
         # Execute system commands
         run_verbose([f"{cosa_dir}/gf-platformid",
@@ -103,7 +111,7 @@ def cli():
         default=bool(os.environ.get('AZURE_FORCE', False)))
     parser.add_argument(
         '--location', help='Azure location (default westus)',
-        required=false)
+        required=False)
     parser.add_argument(
         '--profile', help='Path to Azure profile',
         required=True, default=os.environ.get('AZURE_PROFILE'))
@@ -123,16 +131,16 @@ def cli():
         raise Exception(arg_exp_str.format('container', 'AZURE_CONTAINER'))
     if args.profile is None:
         raise Exception(arg_exp_str.format('profile', 'AZURE_PROFILE'))
-    if args.resouce_group is None:
+    if args.resource_group is None:
         raise Exception(arg_exp_str.format('resource_group', 'AZURE_RESOURCE_GROUP'))
     if args.storage_account is None:
         raise Exception(arg_exp_str.format('storage_account', 'AZURE_STORAGE_ACCOUNT'))
 
     # Identify the builds
     build = Build(
-        os.path.join('builds', args.build),
+        os.path.join('builds'),
         args.build,
-        workdir=os.path.abspath('tmp/buildpost-azure'))
+        tmpbuilddir=os.path.abspath('tmp/buildpost-azure'))
 
     if 'azure' in build.meta['images'] and not args.force:
         print('Azure image already built; use --force to rebuild')
@@ -154,14 +162,13 @@ def run_ore(args, build):
     :param build: Build instance to use
     :type build: Build
     """
-    blob_url = f'https://{args.storage_account}.blob.core.windows.net/{args.container}/{build.azure_vhd_name}'
-    azure_vhd_path = os.path.join(build.workdir, build.azure_vhd_name)
+    azure_vhd_path = os.path.join(build.tmpbuilddir, build.azure_vhd_name)
     ore_upload_args = [
         'ore', 'azure', 'upload-blob-arm',
         '--storage-account', args.storage_account, '--resource-group', args.resource_group,
         '--container', args.container, '--blob-name', build.azure_vhd_name,
         '--file', azure_vhd_path,
-        '--azure-profile', args.profile, '--azure-auth', args.azure_auth]
+        '--azure-profile', args.profile, '--azure-auth', args.auth]
     if args.force:
         ore_upload_args.append('--overwrite')
     if args.location:
@@ -179,10 +186,10 @@ def run_ore(args, build):
             'size': size
         }
     })
-    write_json(build.meta_path, build.meta)
-    print(f"Updated: {build.meta_path}")
-    build.clean()
-
+    buildmeta_path = os.path.join('builds', args.build, 'meta.json')
+    write_json(buildmeta_path, build.meta)
+    print(f"Updated: {buildmeta_path}")
+    shutil.rmtree(build.tmpbuilddir)
 
 if __name__ == '__main__':
     cli()
