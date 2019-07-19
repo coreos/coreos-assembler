@@ -28,7 +28,7 @@ def fatal(msg):
 
 # Set of valid keys in image.yaml
 IMAGE_CONF_KEYS = ['size', 'postprocess-script', 'extra-kargs',
-                   'save-var-subdirs-for-selabel-workaround']
+                   'save-var-subdirs-for-selabel-workaround', 'ostree-remote']
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dest", help="Destination disk",
