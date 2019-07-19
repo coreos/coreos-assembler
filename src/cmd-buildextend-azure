@@ -112,9 +112,8 @@ def cli():
         '--force', help='Replace existing images and upload',
         action='store_true',
         default=bool(os.environ.get('AZURE_FORCE', False)))
-    parser.add_argument(
-        '--location', help='Azure location (default westus)',
-        required=False)
+    parser.add_argument('--location', help='Azure location (default westus)',
+        default=os.environ.get("AZURE_LOCATION", "westus"))
     parser.add_argument(
         '--profile', help='Path to Azure profile',
         required=True, default=os.environ.get('AZURE_PROFILE'))
@@ -168,14 +167,16 @@ def run_ore(args, build):
     azure_vhd_path = os.path.join(build.build_root, build.azure_vhd_name)
     ore_upload_args = [
         'ore', 'azure', 'upload-blob-arm',
-        '--storage-account', args.storage_account, '--resource-group', args.resource_group,
-        '--container', args.container, '--blob-name', build.azure_vhd_name,
+        '--azure-auth', args.auth,
+        '--azure-location', args.location,
+        '--azure-profile', args.profile,
+        '--blob-name', build.azure_vhd_name,
+        '--container', args.container,
         '--file', azure_vhd_path,
-        '--azure-profile', args.profile, '--azure-auth', args.auth]
+        '--resource-group', args.resource_group,
+        '--storage-account', args.storage_account]
     if args.force:
         ore_upload_args.append('--overwrite')
-    if args.location:
-        ore_upload_args.extend(['--location', args.location])
     run_verbose(ore_upload_args)
 
     checksum = sha256sum_file(azure_vhd_path)
