@@ -117,10 +117,11 @@ set -- -machine accel=kvm -cpu host -smp "${VM_NCPUS}" "$@"
 if [ -n "${VM_SRV_MNT}" ]; then
     set -- --fsdev local,id=var-srv,path="${VM_SRV_MNT}",security_model=mapped,readonly \
         -device virtio-9p-pci,fsdev=var-srv,mount_tag=/var/srv "$@"
+    # The dependency changes are hacks around https://github.com/coreos/fedora-coreos-tracker/issues/223
     ign_var_srv_mount=',{
 "name": "var-srv.mount",
 "enabled": true,
-"contents": "[Mount]\nWhat=/var/srv\nWhere=/var/srv\nType=9p\nOptions=ro,trans=virtio,version=9p2000.L\n[Install]\nWantedBy=multi-user.target\n"
+"contents": "[Unit]\nDefaultDependencies=no\nAfter=systemd-tmpfiles-setup.service\nBefore=basic.target\n[Mount]\nWhat=/var/srv\nWhere=/var/srv\nType=9p\nOptions=ro,trans=virtio,version=9p2000.L\n[Install]\nWantedBy=multi-user.target\n"
 }'
 else
     ign_var_srv_mount=""
