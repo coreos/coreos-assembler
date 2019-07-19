@@ -76,20 +76,23 @@ class Build(_Build):
         # See: https://docs.openstack.org/image-guide/convert-images.html
         run_verbose(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'vpc',
                     tmp_img_azure, tmp_img_azure_vhd])
-        # Clean up the intermediate files
-        os.unlink(tmp_img_azure)
+
+        # place the VHD into is final place
+        final_vhd = os.path.basename(tmp_img_azure_vhd)
+        final_vhd_path = f"{self.build_root}/{final_vhd}"
+        os.rename(tmp_img_azure_vhd, final_vhd_path)
 
         # TODO: This can be pulled out into a _Build method.
-        fsize = os.stat(tmp_img_azure_vhd).st_size
+        fsize = os.stat(final_vhd_path).st_size
         log.debug(" * calculating checksum")
-        self._found_files[tmp_img_azure_vhd] = {
-                "local_path": os.path.abspath(tmp_img_azure_vhd),
-                "path": os.path.basename(tmp_img_azure_vhd),
+        self._found_files[final_vhd_path] = {
+                "local_path": final_vhd_path,
+                "path": final_vhd,
                 "size": int(fsize)
         }
         log.debug(
             " * size is %s",
-            self._found_files[tmp_img_azure_vhd]["size"])
+            self._found_files[final_vhd_path]["size"])
         # ---
 
 
@@ -162,7 +165,7 @@ def run_ore(args, build):
     :param build: Build instance to use
     :type build: Build
     """
-    azure_vhd_path = os.path.join(build.tmpbuilddir, build.azure_vhd_name)
+    azure_vhd_path = os.path.join(build.build_root, build.azure_vhd_name)
     ore_upload_args = [
         'ore', 'azure', 'upload-blob-arm',
         '--storage-account', args.storage_account, '--resource-group', args.resource_group,
