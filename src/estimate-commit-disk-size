@@ -20,7 +20,8 @@ parser.add_argument("--blksize", type=int, default=4096)
 parser.add_argument("--metadata-overhead-percent", type=int, default=5)
 # This is an arbitrary number of course.  We need enough to not trip e.g. ostree's min-free-space-percent
 # checks etc.
-parser.add_argument("--add-percent", help="Additional space (integer percentage) to reserve", type=int, default=15)
+parser.add_argument("--add-percent", help="Additional space (integer percentage) to reserve", type=int, default=20)
+parser.add_argument("--add-mb", help="Additional space in MB to reserve", type=int, default=0)
 parser.add_argument("--repo", help="Repository", required=True)
 parser.add_argument("ref", help="Ref")
 args = parser.parse_args()
@@ -58,7 +59,7 @@ blks_per_mb = (1024*1024) // args.blksize
 total_data_mb = (blks_meta + blks_regfiles + blks_symlinks) // blks_per_mb
 add_percent = args.metadata_overhead_percent + args.add_percent
 add_percent_modifier = (100.0+add_percent)/100.0
-estimate_mb = int(total_data_mb * add_percent_modifier) + 1
+estimate_mb = int(total_data_mb * add_percent_modifier) + args.add_mb + 1
 res = {
     'meta': {'count': n_meta,
              'blocks': blks_meta,},
