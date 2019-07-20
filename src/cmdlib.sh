@@ -247,18 +247,32 @@ prepare_build() {
     mkdir tmp && TMPDIR=$(pwd)/tmp
 }
 
+commit_overlay() {
+    local name path respath
+    name=$1
+    path=$2
+    respath=$(realpath "${path}")
+    echo -n "Committing ${name}: ${path} ... "
+    ostree commit --repo="${tmprepo}" --tree=dir="${respath}" -b "${name}" \
+        --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
+        --timestamp "${git_timestamp}"
+}
+
 runcompose() {
     # Implement support for automatic local overrides:
     # https://github.com/coreos/coreos-assembler/issues/118
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
-
+    local ovl="${configdir}/overlay"
+    local ovld="${configdir}/overlay.d"
     local git_timestamp="January 1 1970"
+    local layers=""
     if [ -d "${configdir_gitrepo}/.git" ]; then
         git_timestamp=$(git -C "${configdir_gitrepo}" show -s --format=%ci HEAD)
     fi
-    if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${configdir}/overlay" ]; then
+
+    if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovl}" ] || [ -d "${ovld}" ]; then
         mkdir "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${workdir}/src/config/manifest.yaml
@@ -272,15 +286,30 @@ EOF
     if [ -n "${ref_is_temp}" ]; then
         echo 'ref: "'"${ref}"'"' >> "${override_manifest}"
     fi
-    if [ -d "${configdir}/overlay" ]; then
-        echo -n "Committing ${configdir}/overlay... "
-        ostree commit --repo="${tmprepo}" --tree=dir="${configdir}/overlay" -b "${name}-config-overlay" \
-          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
-          --timestamp "${git_timestamp}"
-        cat >> "${override_manifest}" <<EOF
-ostree-layers:
-  - ${name}-config-overlay
-EOF
+
+    if [ -d "${ovl}" ]; then
+        (echo "NOTICE: overlay/ directory is deprecated, use overlay.d/"
+         echo "NOTICE: https://github.com/coreos/coreos-assembler/pull/639") 1>&2
+        sleep 2
+        local ovlname="${name}-config-overlay"
+        commit_overlay "${ovlname}" "${ovl}"
+        layers="${layers} ${ovlname}"
+    fi
+    if [ -d "${ovld}" ]; then
+        for n in "${ovld}"/*; do
+            local bn ovlname
+            bn=$(basename "${n}")
+            ovlname="${name}-config-overlay-${bn}"
+            commit_overlay "${ovlname}" "${n}"
+            layers="${layers} ${ovlname}"
+        done
+    fi
+
+    if [ -n "${layers}" ]; then
+        echo "ostree-layers:" >> "${override_manifest}"
+        for layer in ${layers}; do
+            echo "  - ${layer}" >> "${override_manifest}"
+        done
     fi
     if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
