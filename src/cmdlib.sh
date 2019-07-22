@@ -164,6 +164,24 @@ disk_ignition_version() {
     fi
 }
 
+init_build_env() {
+    workdir="$(pwd)"
+    configdir=${COSA_CONFIG_GIT:-${workdir}/src/config}
+    manifest=${configdir}/manifest.yaml
+    manifest_tmp_json=${workdir}/tmp/manifest.json
+    manifest_lock=${configdir}/manifest-lock.${basearch}.json
+    manifest_lock_overrides=${configdir}/manifest-lock.overrides.${basearch}.json
+    tmprepo=${workdir}/tmp/repo
+    export workdir configdir manifest_tmp_json
+    export manifest_lock manifest_lock_overrides tmprepo
+
+    configdir_gitrepo=${configdir}
+    if [ -e "${workdir}/src/config-git" ]; then
+        configdir_gitrepo="${workdir}/src/config-git"
+    fi
+    export configdir_gitrepo
+}
+
 prepare_build() {
     preflight
     if ! [ -d builds ]; then
@@ -175,12 +193,7 @@ prepare_build() {
         fi
     fi
 
-    workdir="$(pwd)"
-    configdir=${COSA_CONFIG_GIT:-${workdir}/src/config}
-    manifest=${configdir}/manifest.yaml
-    manifest_lock=${configdir}/manifest-lock.${basearch}.json
-    manifest_lock_overrides=${configdir}/manifest-lock.overrides.${basearch}.json
-    export workdir configdir manifest manifest_lock manifest_lock_overrides
+    init_build_env
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"
@@ -188,7 +201,6 @@ prepare_build() {
 
     echo "Using manifest: ${manifest}"
 
-    tmprepo=${workdir}/tmp/repo
     if [ ! -d "${tmprepo}" ]; then
         # backcompat: just move the toplevel repo/
         if [ -d "${workdir}/repo" ]; then
@@ -199,13 +211,7 @@ prepare_build() {
         fi
     fi
 
-    configdir_gitrepo=${configdir}
-    if [ -e "${workdir}/src/config-git" ]; then
-        configdir_gitrepo="${workdir}/src/config-git"
-    fi
-    export configdir_gitrepo
 
-    manifest_tmp_json=${workdir}/tmp/manifest.json
     rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${manifest_tmp_json}"
 
     # Abuse the rojig/name as the name of the VM images

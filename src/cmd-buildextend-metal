@@ -17,6 +17,8 @@ EOF
 # Parse options
 rc=0
 build=
+# Used by cmd-build to invoke "directly"
+internal_tmp_builddir="${internal_tmp_builddir:-}"
 options=$(getopt --options h --longoptions help,build: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
@@ -65,23 +67,32 @@ esac
 
 export LIBGUESTFS_BACKEND=direct
 
-prepare_build
+json_key() {
+    jq -r ".[\"$1\"]" < "${builddir}/meta.json"
+}
 
-if [ -z "${build}" ]; then
+if [ -z "${internal_tmp_builddir}" ]; then
+    prepare_build
+else
+    init_build_env
+    builddir="${internal_tmp_builddir}"
+    build=$(json_key buildid)
+    TMPDIR="${internal_tmp_builddir}/tmp"
+fi
+
+if [ -z "${build}" ] && [ -z "${internal_tmp_builddir}" ]; then
     build=$(get_latest_build)
     if [ -z "${build}" ]; then
         fatal "No build found."
     fi
 fi
 
-builddir=$(get_build_dir "$build")
-if [ ! -d "${builddir}" ]; then
-    fatal "Build dir ${builddir} does not exist."
+if [ -z "${internal_tmp_builddir}" ]; then
+    builddir=$(get_build_dir "$build")
+    if [ ! -d "${builddir}" ]; then
+        fatal "Build dir ${builddir} does not exist."
+    fi
 fi
-
-json_key() {
-    jq -r ".[\"$1\"]" < "${builddir}/meta.json"
-}
 
 # reread these values from the build itself rather than rely on the ones loaded
 # by prepare_build since the config might've changed since then

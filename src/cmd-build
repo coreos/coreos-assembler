@@ -18,6 +18,7 @@ Usage: coreos-assembler build --help
 
     - ostree
     - qemu
+    - metal
 
   Note that all image targets also require the "ostree" target.
 EOF
@@ -74,11 +75,12 @@ if [ $# -eq 0 ]; then
     set -- qemu
 fi
 
-build_qemu=
+build_derived=
 for target in "$@"; do
     case $target in
         ostree) ;;
-        qemu) build_qemu=1;;
+        qemu) build_derived=qemu;;
+        metal) build_derived=metal;;
         *) fatal "Unrecognized target: $target";;
     esac
 done
@@ -281,7 +283,7 @@ build_image() {
 }
 
 echo '{}' > tmp/vm-iso-checksum.json
-if [ -n "${build_qemu}" ]; then
+if [ "${build_derived}" = "qemu" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
     case "$arch" in
         "x86_64"|"aarch64")
@@ -336,7 +338,7 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
-if [ -n "${build_qemu}" ]; then
+if [ "${build_derived}" = "qemu" ]; then
     cat > tmp/images.json <<EOF
 {
     "images": {
@@ -370,6 +372,13 @@ cat "${composejson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/vm-iso-chec
 if [ -n "${ref_is_temp}" ]; then
     jq 'del(.ref)' < meta.json > meta.json.new
     mv meta.json{.new,}
+fi
+
+if [ "${build_derived}" = "metal" ]; then
+    # This internal_tmp_builddir is a special way to pass the `builddir` down
+    # across a separate process.  Ideally in the future both this and buildextend-metal
+    # are rewritten in a real programming language, and we can call helper functions.
+    (tmpbuilddir=$(pwd); cd "${workdir}" && env "internal_tmp_builddir=${tmpbuilddir}" cosa buildextend-metal)
 fi
 
 # Move lockfile into build dir
