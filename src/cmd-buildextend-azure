@@ -64,7 +64,7 @@ class Build(_Build):
 
         # Generate path locations
         img_qemu = os.path.join(
-            self.build_root, self.meta['images']['qemu']['path'])
+            self.build_dir, self.meta['images']['qemu']['path'])
 
         tmp_img_azure = os.path.join(self.tmpbuilddir, (azure_nv + '.qcow2'))
         tmp_img_azure_vhd = os.path.join(self.tmpbuilddir, self.azure_vhd_name)
@@ -79,7 +79,7 @@ class Build(_Build):
 
         # place the VHD into is final place
         final_vhd = os.path.basename(tmp_img_azure_vhd)
-        final_vhd_path = f"{self.build_root}/{final_vhd}"
+        final_vhd_path = f"{self.build_dir}/{final_vhd}"
         os.rename(tmp_img_azure_vhd, final_vhd_path)
 
         # TODO: This can be pulled out into a _Build method.
@@ -164,7 +164,7 @@ def run_ore(args, build):
     :param build: Build instance to use
     :type build: Build
     """
-    azure_vhd_path = os.path.join(build.build_root, build.azure_vhd_name)
+    azure_vhd_path = os.path.join(build.build_dir, build.azure_vhd_name)
     ore_upload_args = [
         'ore', 'azure', 'upload-blob-arm',
         '--azure-auth', args.auth,
