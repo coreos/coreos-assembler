@@ -148,12 +148,32 @@ def generate_iso():
                     tarinfo.mode = 0o0644
                 return tarinfo
 
-            # Install binaries from the grub2-efi and shim rpms (installed
-            # in our COSA container). Manually construct the tarball to ensure
-            # proper permissions and ownership
+            tmpimageefidir = os.path.join(tmpdir, "efi")
+            os.makedirs(tmpimageefidir)
+            ostreeefidir="/usr/lib/ostree-boot/efi/EFI"
+
+            # Fetch a list of folders in ostree EFI dir
+            process = run_verbose(['/usr/bin/ostree', 'ls', '--repo', repo,
+                                '--nul-filenames-only', f"{buildmeta_commit}",
+                                ostreeefidir], capture_output=True)
+            ostreeefidirfiles = process.stdout.decode().split('\0')[1:]
+            ostreeefisubdirs = [x.replace(f"{ostreeefidir}/", '') for x in ostreeefidirfiles]
+
+            for folder in ostreeefisubdirs:
+                if not folder:
+                    continue
+                folderfullpath = os.path.join(ostreeefidir, folder)
+                # copy files to a temporary directory
+                destdir = os.path.join(tmpimageefidir, folder)
+                run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
+                            '--user-mode', '--subpath', folderfullpath,
+                            f"{buildmeta_commit}", destdir])
+
+            # Install binaries from boot partition and configs from installer/EFI
+            # Manually construct the tarball to ensure proper permissions and ownership
             efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
-            with tarfile.open(efitarfile.name, "w:") as tar:
-                tar.add('/boot/efi/EFI/', arcname="/EFI", filter=strip)
+            with tarfile.open(efitarfile.name, "w:", dereference=True) as tar:
+                tar.add(tmpimageefidir, arcname="/EFI", filter=strip)
                 tar.add('src/config/installer/EFI/', arcname='/EFI',
                         filter=strip)
 
