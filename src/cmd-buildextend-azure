@@ -11,6 +11,7 @@ import logging as log
 import os
 import shutil
 import sys
+import urllib.parse
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
@@ -182,7 +183,14 @@ def run_ore(args, build):
     checksum = sha256sum_file(azure_vhd_path)
     size = os.path.getsize(azure_vhd_path)
 
-    build.meta['azure'] = {'image': build.azure_vhd_name}
+    url_path = urllib.parse.quote((
+        f"{args.storage_account}.blob.core.windows.net/"
+        f"{args.container}/{build.azure_vhd_name}"
+    ))
+    build.meta['azure'] = {
+        'image': build.azure_vhd_name,
+        'url': f"https://{url_path}",
+    }
     build.meta['images'].update({
         'azure': {
             'path': build.azure_vhd_name,
