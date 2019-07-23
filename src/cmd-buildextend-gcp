@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import sys
+import urllib.parse
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
@@ -111,7 +112,15 @@ def run_ore():
     checksum = sha256sum_file(build_tarball)
     size = os.path.getsize(build_tarball)
 
-    buildmeta['gcp'] = {'image': f"{base_name}-{args.build.replace('.', '-')}"}
+    gcp_name = f"{base_name}-{args.build.replace('.', '-')}"
+    url_path = urllib.parse.quote((
+        "storage.googleapis.com/"
+        f"{args.bucket}/{base_name}/{args.build}.tar.gz"
+    ))
+    buildmeta['gcp'] = {
+            'image': gcp_name,
+            'url': f"https://{url_path}",
+    }
     buildmeta['images'].update({
         'gcp': {
             'path': gcp_tarball_name,
