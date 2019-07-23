@@ -274,7 +274,7 @@ build_image() {
 	kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 	# use NONE here instead of empty string because this has to survive through various string processing
 	ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
-	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=qemu"
+	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8"
 
 	qemu-img create -f qcow2 "$1" "$size"
 	runvm_with_disk "$1" qcow2 /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
