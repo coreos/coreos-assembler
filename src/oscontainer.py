@@ -10,8 +10,9 @@
 import gi
 
 gi.require_version('OSTree', '1.0')
+gi.require_version('RpmOstree', '1.0')
 
-from gi.repository import GLib, Gio, OSTree
+from gi.repository import GLib, Gio, OSTree, RpmOstree
 
 import argparse
 import json
@@ -88,8 +89,8 @@ def oscontainer_extract(containers_storage, src, dest,
 # Given an OSTree repository at src (and exactly one ref) generate an
 # oscontainer with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
-                      base_image, push=False, tls_verify=True, cert_dir="",
-                      authfile="", inspect_out=None):
+                      base_image, push=False, tls_verify=True,
+                      cert_dir="", authfile="", inspect_out=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -116,6 +117,14 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         # Note that oscontainers don't have refs
         print("Copying ostree commit into container: {} ...".format(rev))
         run_verbose(["ostree", "--repo=" + dest_repo, "pull-local", src, rev])
+
+        # Generate pkglist.txt in to the oscontainer at /
+        pkg_list_dest = os.path.join(mnt, 'pkglist.txt')
+        pkgs = RpmOstree.db_query_all(r, rev, None)
+        with open(pkg_list_dest, 'w') as f:
+            for pkg in sorted(pkgs):
+                f.write(pkg.get_nevra())
+                f.write('\n')
 
         # We use /noentry to trick `podman create` into not erroring out
         # on a container with no cmd/entrypoint.  It won't actually be run.
