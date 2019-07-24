@@ -22,7 +22,7 @@ check: ${src_checked} ${tests_checked} ${cwd_checked} flake8
 	echo OK
 
 flake8:
-	python3 -m flake8 --ignore=$(PYIGNORE) src/cosalib
+	python3 -m flake8 --ignore=$(PYIGNORE) src/cosalib src/oscontainer.py
 	# The following lines will verify python files that are not modules
 	# but are commented out as the files are not ready for checking yet
 	# grep -r "^\#\!/usr/bin/py" src/ | cut -d : -f 1 | xargs flake8 --ignore=$(PYIGNORE)
