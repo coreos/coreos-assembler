@@ -1,0 +1,7 @@
+#!/usr/bin/python3
+# Convenient wrapper for getting the base architecture; will
+# likely be used by the FCOS pipeline at least.
+import gi
+gi.require_version("RpmOstree", "1.0")
+from gi.repository import RpmOstree
+print(RpmOstree.get_basearch())
