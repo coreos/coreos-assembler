@@ -13,6 +13,8 @@ RUN ./build.sh install_anaconda
 RUN ./build.sh make_and_makeinstall
 RUN ./build.sh configure_user
 
+RUN make check
+RUN make unittest
 RUN make clean
 
 # clean up scripts (it will get cached in layers, but oh well)
