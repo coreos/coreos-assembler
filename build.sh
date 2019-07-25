@@ -143,8 +143,7 @@ install_anaconda() {
 
 make_and_makeinstall() {
     _prep_make_and_make_install
-    # And the main scripts
-    make && make check && make install
+    make && make install
 }
 
 configure_user(){
