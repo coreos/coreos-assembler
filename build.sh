@@ -2,14 +2,8 @@
 set -euo pipefail
 
 # Detect what platform we are on
-if grep -q '^Fedora' /etc/redhat-release; then
-    ISFEDORA=1
-    ISEL=''
-elif grep -q '^Red Hat' /etc/redhat-release; then
-    ISFEDORA=''
-    ISEL=1
-else
-    echo 1>&2 "should be on either RHEL or Fedora"
+if ! grep -q '^Fedora' /etc/redhat-release; then
+    echo 1>&2 "should be on either Fedora"
     exit 1
 fi
 
@@ -31,13 +25,11 @@ srcdir=$(pwd)
 release="30"
 
 configure_yum_repos() {
-    if [ -n "${ISFEDORA}" ]; then
-        # Add continuous tag for latest build tools and mark as required so we
-        # can depend on those latest tools being available in all container
-        # builds.
-        echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
+    # Add continuous tag for latest build tools and mark as required so we
+    # can depend on those latest tools being available in all container
+    # builds.
+    echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
 
-    fi
 }
 
 install_rpms() {
@@ -49,29 +41,22 @@ install_rpms() {
     # xargs is part of findutils, which may not be installed
     yum -y install /usr/bin/xargs
 
-    # define the filter we want to use to filter out deps that don't
-    # apply to the platform we are on
-    [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
-    [ -n "${ISEL}" ]     && filter='^#EL7 '
-
     # These are only used to build things in here.  Today
     # we ship these in the container too to make it easier
     # to use the container as a development environment for itself.
     # Down the line we may strip these out, or have a separate
     # development version.
-    builddeps=$(sed "s/${filter}//" "${srcdir}"/build-deps.txt | grep -v '^#')
+    builddeps=$(grep -v '^#' "${srcdir}"/build-deps.txt)
 
     # Process our base dependencies + build dependencies and install
-    deps=$(sed "s/${filter}//" "${srcdir}"/deps.txt | grep -v '^#')
-    archdeps=$(sed "s/${filter}//" "${srcdir}/deps-$(arch)".txt | grep -v '^#')
+    deps=$(grep -v '^#' "${srcdir}"/deps.txt)
+    archdeps=$(grep -v '^#' "${srcdir}/deps-$(arch)".txt)
     echo "${builddeps}" "${deps}" "${archdeps}" | xargs yum -y install
 
     # Commented out for now, see above
-    #dnf remove -y $builddeps}
+    #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
-    if [ -n "${ISFEDORA}" ]; then
-        rpm -q grubby && yum remove -y grubby
-    fi
+    rpm -q grubby && yum remove -y grubby
 
     # Allow Kerberos Auth to work from a keytab. The keyring is not
     # available in a Container.
@@ -99,12 +84,6 @@ _prep_make_and_make_install() {
     if [ "$(git submodule status mantle | head -c1)" == "-" ]; then
         echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
         exit 1
-    fi
-
-    # Can only (easily) get gobject-introspection in Python2 on EL7
-    if [ -n "${ISEL}" ]; then
-      sed -i 's|^#!/usr/bin/python3|#!/usr/bin/python2|' src/commitmeta_to_json
-      sed -i 's|^#!/usr/bin/env python3|#!/usr/bin/python2|' src/cmd-oscontainer
     fi
 }
 
@@ -165,11 +144,7 @@ install_anaconda() {
 make_and_makeinstall() {
     _prep_make_and_make_install
     # And the main scripts
-    if [ -n "${ISEL}" ]; then
-        echo "make && make check && make install" | scl enable rh-python36 bash
-    else
-        make && make check && make install
-    fi
+    make && make check && make install
 }
 
 configure_user(){
