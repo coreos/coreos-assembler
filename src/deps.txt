@@ -16,7 +16,7 @@ dnf-utils
 genisoimage
 
 # We expect people to use these explicitly in their repo configurations.
-#FEDORA distribution-gpg-keys
+distribution-gpg-keys
 # We need these for rojig
 selinux-policy-targeted rpm-build
 
