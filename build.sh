@@ -71,7 +71,7 @@ install_rpms() {
     yum clean all
 
     # shellcheck source=src/cmdlib.sh
-    . "${srcdir}/cmdlib.sh"
+    . "${srcdir}/src/cmdlib.sh"
     depcheck "${deps} ${archdeps}"
 }
 
@@ -171,7 +171,7 @@ write_archive_info() {
     . "${srcdir}/src/cmdlib.sh"
     mkdir -p /cosa /lib/coreos-assembler
     touch -f /lib/coreos-assembler/.clean
-    prepare_git_artifacts /root/containerbuild /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
+    prepare_git_artifacts "${srcdir}" /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
 }
 
 # Run the function specified by the calling script
