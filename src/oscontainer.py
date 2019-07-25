@@ -121,9 +121,11 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         # Generate pkglist.txt in to the oscontainer at /
         pkg_list_dest = os.path.join(mnt, 'pkglist.txt')
         pkgs = RpmOstree.db_query_all(r, rev, None)
+        # should already be sorted, but just re-sort to be sure
+        nevras = sorted([pkg.get_nevra() for pkg in pkgs])
         with open(pkg_list_dest, 'w') as f:
-            for pkg in sorted(pkgs):
-                f.write(pkg.get_nevra())
+            for nevra in nevras:
+                f.write(nevra)
                 f.write('\n')
 
         # We use /noentry to trick `podman create` into not erroring out
