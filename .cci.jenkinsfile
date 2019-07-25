@@ -1,0 +1,54 @@
+stage("Init") {
+    node {
+        checkout scm
+        pod = readFile(file: "ci/pod.yaml")
+    }
+}
+
+def label = "pod-${UUID.randomUUID().toString()}"
+podTemplate(cloud: 'openshift', yaml: pod, label: label, defaultContainer: 'jnlp') {
+    node(label) { container('fedora') {
+      checkout scm
+
+      stage("Build") {
+          shwrap("""
+            dnf install -y git
+            git submodule update --init
+            ./build.sh
+          """)
+      }
+
+      stage("Test") {
+          parallel check: {
+              shwrap("""
+                make check
+                make unittest
+              """)
+          },
+          fcos: {
+              shwrap("chown builder: /srv")
+              // just split into separate invocations to make it easier to see where it fails
+              cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
+              cosa_cmd("fetch")
+              cosa_cmd("build")
+              cosa_cmd("kola run")
+              cosa_cmd("buildextend-metal")
+              cosa_cmd("buildextend-installer")
+              cosa_cmd("buildextend-openstack")
+              cosa_cmd("buildextend-vmware")
+              cosa_cmd("compress")
+          }
+      }
+}}}
+
+// XXX: move to shared lib
+def shwrap(cmds) {
+    sh """
+        set -xeuo pipefail
+        ${cmds}
+    """
+}
+
+def cosa_cmd(args) {
+    shwrap("cd /srv && sudo -u builder cosa ${args}")
+}
