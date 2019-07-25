@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+spec:
+  # XXX: tmp hack to get anyuid SCC; need to ask to get jenkins SA added
+  serviceAccountName: papr
+  containers:
+   - name: jnlp
+     image: jenkins-slave-base-centos7:latest
+     args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
+   - name: fedora
+     image: registry.fedoraproject.org/fedora:30
+     imagePullPolicy: Always
+     command: ['/usr/bin/sleep', 'infinity']
+     securityContext:
+       runAsUser: 0
+     nodeSelector:
+       oci_kvm_hook: allowed
