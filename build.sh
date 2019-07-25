@@ -9,8 +9,8 @@ fi
 
 arch=$(uname -m)
 
-if [ $# -eq 0 ]; then
-  echo Usage: "build.sh CMD"
+if [ $# -gt 1 ]; then
+  echo Usage: "build.sh [CMD]"
   echo "Supported commands:"
   echo "    configure_user"
   echo "    configure_yum_repos"
@@ -174,5 +174,15 @@ write_archive_info() {
     prepare_git_artifacts "${srcdir}" /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
 }
 
-# Run the function specified by the calling script
-${1}
+if [ $# -ne 0 ]; then
+  # Run the function specified by the calling script
+  ${1}
+else
+  # Otherwise, just run all the steps
+  configure_yum_repos
+  install_rpms
+  write_archive_info
+  install_anaconda
+  make_and_makeinstall
+  configure_user
+fi
