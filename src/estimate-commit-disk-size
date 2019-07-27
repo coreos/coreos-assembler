@@ -54,11 +54,15 @@ for k,v in reachable.iteritems():
         n_meta += 1
         blks_meta += (sz // args.blksize) + 1
 
-blks_per_mb = (1024*1024) // args.blksize
+mb = 1024 * 1024
+blks_per_mb = mb // args.blksize
 total_data_mb = (blks_meta + blks_regfiles + blks_symlinks) // blks_per_mb
+n_inodes = n_meta + n_regfiles + n_symlinks
+total_inode_mb = 1 + ((n_inodes * args.isize) // mb)
+total_mb = total_data_mb + total_inode_mb
 add_percent = args.metadata_overhead_percent + args.add_percent
 add_percent_modifier = (100.0+add_percent)/100.0
-estimate_mb = int(total_data_mb * add_percent_modifier) + 1
+estimate_mb = int(total_mb * add_percent_modifier) + 1
 res = {
     'meta': {'count': n_meta,
              'blocks': blks_meta,},
@@ -66,7 +70,9 @@ res = {
                  'blocks': blks_regfiles,},
     'symlinks': {'count': n_symlinks,
                  'blocks': blks_symlinks,},
-    'estimate-mb': {'base': total_data_mb,
+    'inodes': {'count': n_inodes,
+               'mb': total_inode_mb,},
+    'estimate-mb': {'base': total_mb,
                     'final': estimate_mb },
 }
 json.dump(res, sys.stdout, indent=4)
