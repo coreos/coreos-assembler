@@ -11,7 +11,8 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, Builds  # noqa: E402
+import cosalib.builds as Builds
+from cosalib.cmdlib import load_json  # noqa: E402
 
 
 def main():
@@ -44,7 +45,7 @@ def parse_args():
 
 def cmd_upload_s3(args):
     if not args.freshen:
-        builds = Builds()
+        builds = Builds.Builds()
         if args.build == 'latest':
             args.build = builds.get_latest()
         print(f"Targeting build: {args.build}")

@@ -14,7 +14,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import fatal, rfc3339_time, Builds  # noqa: E402
+from cosalib.cmdlib import fatal, rfc3339_time, Builds  # noqa: E402
 
 
 def main():
@@ -62,7 +62,7 @@ def available_tags(build_data):
 def cmd_list(args):
     """List available tags in build metadata"""
 
-    builds = Builds()
+    builds = Builds.Builds()
     build_data = builds.raw()
     avail_tags = available_tags(build_data)
     if not avail_tags:
@@ -78,7 +78,7 @@ def cmd_list(args):
 def cmd_update(args):
     """Create or update a tag to new build ID"""
 
-    builds = Builds()
+    builds = Builds.Builds()
     build_data = builds.raw()
 
     avail_tags = available_tags(build_data)
@@ -114,7 +114,7 @@ def cmd_delete(args):
 
     # To delete a tag, iterate through existing tags list, and
     # drop the entry we want
-    builds = Builds()
+    builds = Builds.Builds()
     build_data = builds.raw()
     avail_tags = available_tags(build_data)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Shared shell script library
+# Se,red shell script library
 
 DIR=$(dirname "$0")
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
@@ -634,7 +634,7 @@ get_build_dir() {
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
-from cmdlib import Builds
+import cosalib.builds as Builds
 print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
 }
 

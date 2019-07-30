@@ -14,7 +14,8 @@ import boto3
 import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, rm_allow_noent, Builds  # noqa: E402
+import cosalib.builds as Builds
+from cosalib.cmdlib import load_json, rm_allow_noent  # noqa: E402
 
 
 def main():
@@ -32,7 +33,7 @@ def main():
     builds = None
     if fetcher.exists('builds.json'):
         fetcher.fetch_json('builds.json')
-        builds = Builds()
+        builds = Builds.Builds()
 
     if not builds or builds.is_empty():
         print("Remote has no builds!")

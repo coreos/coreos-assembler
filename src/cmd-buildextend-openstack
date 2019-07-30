@@ -11,14 +11,15 @@ import shutil
 import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file, Builds
+import cosalib.builds as Builds
+from cosalib.cmdlib import run_verbose, write_json, sha256sum_file
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 args = parser.parse_args()
 
-builds = Builds()
+builds = Builds.Builds()
 
 # default to latest build if not specified
 if not args.build:

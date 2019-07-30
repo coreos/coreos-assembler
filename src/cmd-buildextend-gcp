@@ -16,11 +16,11 @@ import urllib.parse
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 # pylint: disable=C0413
-from cmdlib import (
+import cosalib.builds as Builds
+from cosalib.cmdlib import (
         run_verbose,
         sha256sum_file,
-        write_json,
-        Builds)
+        write_json)
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -48,7 +48,7 @@ if args.project is None:
     raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
 
 # Identify the builds
-builds = Builds()
+builds = Builds.Builds()
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:

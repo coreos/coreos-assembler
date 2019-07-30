@@ -13,8 +13,12 @@ import argparse
 import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file
-from cmdlib import rm_allow_noent, Builds
+import cosalib.builds as Builds
+from cosalib.cmdlib import (
+    rm_allow_noent,
+    run_verbose,
+    sha256sum_file,
+    write_json)
 
 DEFAULT_COMPRESSOR = 'gzip'
 
@@ -30,7 +34,7 @@ args = parser.parse_args()
 ext_dict = {'xz': '.xz', 'gzip': '.gz'}
 ext = ext_dict[args.compressor]
 
-builds = Builds()
+builds = Builds.Builds()
 
 # default to latest build if not specified
 if args.build:
