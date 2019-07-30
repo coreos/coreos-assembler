@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+
+"""
+    cmd-meta is a helper for interacting with a builds meta.json
+"""
+
+import argparse
+import tempfile
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.cli import BuildCli
+from cosalib.meta import GenericBuildMeta as Meta
+
+def new_cli():
+    args = BuildCli()
+    args.add_argument("--get", help="get commit id", action="store_true")
+    args.parse_args()
+
+    meta = Meta(args.buildroot, args.build)
+    print(meta.dump())
+
+if __name__ == '__main__':
+    new_cli()
