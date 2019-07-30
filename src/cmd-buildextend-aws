@@ -3,6 +3,7 @@
 #
 # An operation that mutates a build by uploading to EC2,
 # extending the meta.json with AMI information.
+# See doc/aws.md for a bit more information.
 
 import os,sys,json,yaml,shutil,argparse,subprocess,re,collections
 import tempfile,hashlib,gzip
