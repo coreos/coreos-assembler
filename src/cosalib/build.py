@@ -10,9 +10,6 @@ import tempfile
 import shutil
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from cmdlib import Builds
-
 # COSA_INPATH is the _in container_ path for the image build source
 COSA_INPATH = "/cosa"
 
