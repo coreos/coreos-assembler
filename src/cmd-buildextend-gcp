@@ -16,11 +16,11 @@ import urllib.parse
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 # pylint: disable=C0413
-from cmdlib import (
+from cosalib.builds import Builds
+from cosalib.cmdlib import (
         run_verbose,
         sha256sum_file,
-        write_json,
-        Builds)
+        write_json)
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()

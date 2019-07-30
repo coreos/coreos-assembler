@@ -17,8 +17,9 @@ import tempfile
 import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file
-from cmdlib import import_ostree_commit, Builds
+from cosalib.builds import Builds
+from cosalib.cmdlib import run_verbose, write_json, sha256sum_file
+from cosalib.cmdlib import import_ostree_commit
 
 live_exclude_kargs = set([
     '$ignition_firstboot',	# unsubstituted variable in grub config

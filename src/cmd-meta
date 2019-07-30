@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""
+cmd-meta is a helper for interacting with a builds meta.json
+"""
+
+import argparse
+import tempfile
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.meta import GenericBuildMeta as Meta
+
+
+def new_cli():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--workdir', default=os.getcwd())
+    parser.add_argument('--build', default='latest')
+    sub_parser = parser.add_mutually_exclusive_group(required=True)
+    sub_parser.add_argument('--get', help='get a field', action='append')
+    sub_parser.add_argument('--set', help='set a field', action='append')
+    sub_parser.add_argument(
+        '--dump', help='dumps the entire structure', action='store_true')
+    args = parser.parse_args()
+
+    meta = Meta(args.workdir, args.build)
+
+    # Get keys
+    if args.get is not None:
+        dotpath = args.get[0]
+        keypath = dotpath.split('.')
+        loc = meta.get(*keypath)
+        print(f'{dotpath}: {loc}')
+    # Set keys
+    elif args.set is not None:
+        for item in args.set:
+            k, v = item.split('=')
+            keypath = k.split('.')
+            meta.set(keypath, v)
+        meta.write()
+    elif args.dump is True:
+        print(meta)
+
+
+if __name__ == '__main__':
+    new_cli()

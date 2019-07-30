@@ -8,7 +8,7 @@ import uuid
 
 sys.path.insert(0, 'src')
 
-import cmdlib
+from cosalib import cmdlib
 
 PY_MAJOR, PY_MINOR, PY_PATCH = platform.python_version_tuple()
 

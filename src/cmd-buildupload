@@ -13,7 +13,6 @@ from botocore.exceptions import ClientError
 from tenacity import retry
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, Builds, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
 
 # set image artifact caching at 1y; it'll probably get evicted before that...
 # see also: https://stackoverflow.com/questions/2970938
@@ -21,6 +20,8 @@ CACHE_MAX_AGE_ARTIFACT = 60 * 60 * 24 * 365
 
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
+from cosalib.builds import Builds
+from cosalib.cmdlib import load_json, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
 
 
 def main():
