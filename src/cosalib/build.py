@@ -2,16 +2,11 @@
 Provides a base abstration class for build reuse.
 """
 
-import json
 import logging as log
 import os.path
 import platform
-import tempfile
 import shutil
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from cmdlib import Builds
 
 # COSA_INPATH is the _in container_ path for the image build source
 COSA_INPATH = "/cosa"
@@ -19,45 +14,18 @@ COSA_INPATH = "/cosa"
 # ARCH is the current machine architecture
 ARCH = platform.machine()
 
+from cosalib.cmdlib import (
+    load_json,
+    write_json)
+
+from cosalib.builds import Builds
+
 
 class BuildError(Exception):
     """
     Base error for build issues.
     """
     pass
-
-
-def load_json(path):
-    """
-    Shortcut for loading json from a file path.
-    TODO: When porting to py3, use cmdlib's load_json
-
-    :param path: The full path to the file
-    :type: path: str
-    :returns: loaded json
-    :rtype: dict
-    :raises: IOError, ValueError
-    """
-    with open(path) as f:
-        return json.load(f)
-
-
-def write_json(path, data):
-    """
-    Shortcut for writing a structure as json to the file system.
-    TODO: When porting to py3, use cmdlib's write_json
-
-    :param path: The full path to the file to write
-    :type: path: str
-    :param data:  structure to write out as json
-    :type data: dict or list
-    :raises: ValueError, OSError
-    """
-    dn = os.path.dirname(path)
-    f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
-    json.dump(data, f, indent=4)
-    os.fchmod(f.file.fileno(), 0o644)
-    os.rename(f.name, path)
 
 
 class _Build:

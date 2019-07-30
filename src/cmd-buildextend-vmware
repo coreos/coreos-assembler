@@ -11,7 +11,8 @@ import argparse
 import tarfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, load_json, write_json, sha256sum_file, Builds
+from cosalib.builds import Builds
+from cosalib.cmdlib import run_verbose, load_json, write_json, sha256sum_file
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")

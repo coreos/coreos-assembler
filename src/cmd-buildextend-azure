@@ -13,18 +13,12 @@ import shutil
 import sys
 import urllib.parse
 
-cosa_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, cosa_dir)
-
-try:
-    from cosalib.build import _Build
-except ImportError:
-    # We're in the container and can't sense the cosa path
-    sys.path.insert(0, '/usr/lib/coreos-assembler/cosalib')
-    from cosalib.build import _Build
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.build import _Build
+from cosalib.builds import Builds
 
 # pylint: disable=C0413
-from cmdlib import (
+from cosalib.cmdlib import (
         run_verbose,
         sha256sum_file,
         write_json)

@@ -157,7 +157,7 @@ disk_ignition_version() {
     python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
-from cmdlib import disk_ignition_version
+from cosalib.cmdlib import disk_ignition_version
 print(disk_ignition_version('${path}}'))"
 }
 
@@ -675,7 +675,7 @@ get_build_dir() {
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
-from cmdlib import Builds
+from cosalib.builds import Builds
 print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
 }
 

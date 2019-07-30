@@ -13,8 +13,12 @@ import argparse
 import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import run_verbose, write_json, sha256sum_file
-from cmdlib import rm_allow_noent, Builds
+from cosalib.builds import Builds
+from cosalib.cmdlib import (
+    rm_allow_noent,
+    run_verbose,
+    sha256sum_file,
+    write_json)
 
 DEFAULT_COMPRESSOR = 'gzip'
 

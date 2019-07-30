@@ -9,7 +9,9 @@ import sys
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
-import cmdlib
+from cosalib import cmdlib
+from cosalib.builds import Builds
+
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -19,7 +21,7 @@ parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
                     default=['run'])
 args = parser.parse_args()
 
-builds = cmdlib.Builds()
+builds = Builds()
 if args.build is None:
     args.build = builds.get_latest()
 builddir = builds.get_build_dir(args.build)
