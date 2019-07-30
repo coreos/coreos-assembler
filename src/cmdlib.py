@@ -146,6 +146,20 @@ def rm_allow_noent(path):
         pass
 
 
+# Obviously this is a hack but...we need to know this before
+# launching, and I don't think we have structured metadata in e.g. qcow2.
+# There are other alternatives but we'll carry this hack for now.
+# But if you're reading this comment 10 years in the future, I won't be
+# too surprised either ;)  Oh and hey if you are please send me an email, it'll
+# be like a virtual time capsule!  If they still use email then...
+def disk_ignition_version(path):
+    bn = os.path.basename(path)
+    if bn.startswith(("rhcos-41", "rhcos-42")):
+        return "2.2.0"
+    else:
+        return "3.0.0"
+
+
 def import_ostree_commit(repo, commit, tarfile):
     # create repo in case e.g. tmp/ was cleared out; idempotent
     subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])

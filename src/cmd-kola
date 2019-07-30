@@ -1,37 +1,57 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env python3
 
-dn=$(dirname "$0")
-# shellcheck source=src/cmdlib.sh
-. "${dn}"/cmdlib.sh
+import argparse
+import subprocess
+import json
+import os
+import sys
 
-latest_qcow=$(get_latest_qemu)
-if [ -z "${latest_qcow}" ]; then
-    fatal "No latest build"
-fi
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+import cmdlib
+
+# Parse args and dispatch
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", help="Build ID")
+parser.add_argument("--output-dir", help="Output directory")
+parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
+                    default=['run'])
+args = parser.parse_args()
+
+builds = cmdlib.Builds()
+if args.build is None:
+    args.build = builds.get_latest()
+builddir = builds.get_build_dir(args.build)
+with open(os.path.join(builddir, "meta.json")) as f:
+    buildmeta = json.load(f)
+
+qemuimg = buildmeta['images'].get('qemu')
+if qemuimg is None:
+    raise SystemExit(f"No qemu image in build: {args.build}")
+qemupath = os.path.join(builddir, qemuimg['path'])
 
 # XXX: teach to kola to auto-detect based on prefix; see discussions in
 # https://github.com/coreos/coreos-assembler/pull/85
-args=
-bn=$(basename "${latest_qcow}")
-if [[ ${bn} = fedora-coreos-* ]]; then
-    args="-b fcos"
-elif [[ ${bn} = rhcos-* ]]; then
-    args="-b rhcos"
-else
-    echo "WARNING: Failed to detect args, use -b to specify"
-fi
-ignition_version=$(disk_ignition_version "${latest_qcow}")
-if [ "${ignition_version}" = "2.2.0" ]; then
-    args="${args} --ignition-version v2"
-fi
+kolaargs = ['kola']
+bn = os.path.basename(qemupath)
+if not any([x in args.subargs for x in ["-b", "--distro"]]):
+    if bn.startswith("rhcos-"):
+        kolaargs.extend(['-b', 'rhcos'])
+    else:
+        kolaargs.extend(['-b', 'fcos'])
 
-if [ "$(id -u)" != "0" ]; then
-    args="${args} -p qemu-unpriv"
-fi
+ignition_version = cmdlib.disk_ignition_version(qemupath)
 
-# let's print out the actual exec() call we do
-set -x
+if ignition_version == "2.2.0":
+    kolaargs.extend(["--ignition-version", "v2"])
+
+if os.getuid() != 0 and not ('-p' in args.subargs):
+    kolaargs.extend(['-p', 'qemu-unpriv'])
 
 # shellcheck disable=SC2086
-exec kola $args --output-dir tmp/kola --qemu-image "${latest_qcow}" "$@"
+kolaargs.extend(['--qemu-image', qemupath])
+outputdir = args.output_dir or "tmp/kola"
+kolaargs.extend(args.subargs)
+print(subprocess.list2cmdline(kolaargs))
+os.execvp('kola', kolaargs)
