@@ -32,6 +32,8 @@ podTemplate(cloud: 'openshift', yaml: pod, label: label, defaultContainer: 'jnlp
               cosa_cmd("fetch")
               cosa_cmd("build")
               cosa_cmd("kola run")
+              // sanity check kola actually ran and dumped its output in tmp/
+              shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
               cosa_cmd("buildextend-installer")
               cosa_cmd("buildextend-openstack")
