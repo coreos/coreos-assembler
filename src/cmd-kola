@@ -52,6 +52,7 @@ if os.getuid() != 0 and not ('-p' in args.subargs):
 # shellcheck disable=SC2086
 kolaargs.extend(['--qemu-image', qemupath])
 outputdir = args.output_dir or "tmp/kola"
+kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs)
 print(subprocess.list2cmdline(kolaargs))
 os.execvp('kola', kolaargs)
