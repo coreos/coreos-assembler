@@ -54,5 +54,6 @@ kolaargs.extend(['--qemu-image', qemupath])
 outputdir = args.output_dir or "tmp/kola"
 kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs)
-print(subprocess.list2cmdline(kolaargs))
+# flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
+print(subprocess.list2cmdline(kolaargs), flush=True)
 os.execvp('kola', kolaargs)
