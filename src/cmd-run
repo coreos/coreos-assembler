@@ -15,6 +15,7 @@ dn=$(dirname "$0")
 
 VM_DISK=
 VM_MEMORY=2048
+VM_DISKSIZE=
 VM_PERSIST_IMG=
 VM_NCPUS="${VM_NCPUS:-$(nproc)}"
 VM_SRV_MNT=
@@ -28,6 +29,7 @@ Options:
     -i FILE               File containing an Ignition config
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
+    --size GB             Disk size in GB (matches base by default)
     -p PORT               The port on localhost to map to the VM's sshd. [2222]
     -h                    this ;-)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
@@ -63,6 +65,9 @@ while [ $# -ge 1 ]; do
             shift 2 ;;
         -m)
             VM_MEMORY="$2"
+            shift 2 ;;
+        --size)
+            VM_DISKSIZE="${2}G"
             shift 2 ;;
         -p|--ssh-port)
             SSH_PORT="$2"
@@ -203,7 +208,8 @@ fi
 
 if [ -z "${VM_PERSIST_IMG}" ]; then
     VM_IMG=$(mktemp -p "${TMPDIR:-/var/tmp}")
-    qemu-img create -q -f qcow2 -b "${VM_DISK}" "${VM_IMG}"
+    # shellcheck disable=SC2086
+    qemu-img create -q -f qcow2 -b "${VM_DISK}" "${VM_IMG}" ${VM_DISKSIZE}
 else
     echo "Re-using existing ${VM_PERSIST_IMG}"
     VM_IMG=${VM_PERSIST_IMG}
