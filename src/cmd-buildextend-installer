@@ -192,6 +192,10 @@ def generate_iso():
 
     run_verbose(genisoargs)
 
+    # Add MBR for x86_64 legacy (BIOS) boot when ISO is copied to a USB stick
+    if arch == "x86_64":
+        run_verbose(['/usr/bin/isohybrid', tmpisofile])
+
     kernel_name = f'{base_name}-{args.build}-installer-kernel'
     initramfs_name = f'{base_name}-{args.build}-installer-initramfs.img'
     kernel_file = os.path.join(builddir, kernel_name)
