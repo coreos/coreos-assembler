@@ -528,7 +528,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 
 	releaseFile, err := api.DownloadFile(spec.Bucket, releasePath)
 	if err != nil {
-		plog.Fatalf("downloading release metadata: %v", err)
+		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
 	}
 	defer releaseFile.Close()
 
