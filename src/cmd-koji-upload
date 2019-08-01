@@ -76,8 +76,14 @@ KOJI_CG_TYPES = {
     "ova": ("Open Virtualization Archive", "ova", ARCH, "image"),
     "qcow": ("QCOW image", "qcow", ARCH, "image"),
     "qcow2": ("QCOW2 image", "qcow2", ARCH, "image"),
+    "qcow2.gz": ("Compressed QCOW2", "qcow2.gz", ARCH, "image"),
+    "qcow2.xz": ("Compressed QCOW2", "qcow2.gz", ARCH, "image"),
     "raw": ("Raw disk image", "raw", ARCH, "image"),
+    "raw.gz": ("Compressed Raw", "raw.gz", ARCH, "image"),
+    "raw.xz": ("Compressed Raw", "raw.xz", ARCH, "image"),
     "tar": ("Tar file", "tar", "noarch", "source"),
+    "tar.gz": ("Tar file", "tar.gz", "noarch", "source"),
+    "tar.xz": ("Tar file", "tar.xz", "noarch", "source"),
     "vdi": ("VirtualBox Virtual Disk Image", "vdi", ARCH, "image"),
     "vhd": ("Hyper-V image", "vhd", ARCH, "image"),
     "vhdx": ("Hyper-V Virtual Hard Disk v2 image", "vhdx", ARCH, "image"),
@@ -244,13 +250,6 @@ def special_name(fname):
         New name of the file
         The Koji type that the file if renamed
     """
-
-    # koji doesn't understand raw.gz, so swap 'em
-    # request filed with Koji maintainers to fix this.
-    if fname.endswith("raw.gz"):
-        return fname.replace("raw.gz", "gz.raw"), "raw"
-
-    # handle special files such as installers kernels.
     for ending in RENAME_RAW:
         if fname.endswith(ending):
             return "%s.raw" % fname, "raw"
