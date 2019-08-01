@@ -26,7 +26,7 @@ USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
     -d DISK               Root disk drive (won't be changed by default)
     --persist-to-img IMG  Persist changes to a separate image
-    -i FILE               File containing an Ignition config
+    -i FILE               File containing an Ignition config to merge into the default config
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
     --size GB             Disk size in GB (matches base by default)
@@ -132,9 +132,21 @@ else
     ign_var_srv_mount=""
 fi
 
-if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
+if [ -n "${IGNITION_CONFIG_FILE:-}" ]; then
+    user_config=$(base64 --wrap 0 "${IGNITION_CONFIG_FILE}")
+    user_config=$(cat << EOF
+,"config": {
+    "merge": [{
+        "source": "data:text/plain;base64,$user_config"
+    }]
+}
+EOF
+    )
+else
+    user_config=""
+fi
 
-    coreos_assembler_sysctl=$(cat << 'EOF' | base64 --wrap 0
+coreos_assembler_sysctl=$(cat << 'EOF' | base64 --wrap 0
 # Written during `coreos-assembler run`.
 
 # Right now, we're running at the default log level, which is DEBUG (7).
@@ -142,20 +154,20 @@ if [ -z "${IGNITION_CONFIG_FILE:-}" ]; then
 # Bump the default to ERROR (3).
 kernel.printk = 3 4 1 7
 EOF
-    )
+)
 
-    coreos_assembler_motd=$(cat << 'EOF' | base64 --wrap 0
+coreos_assembler_motd=$(cat << 'EOF' | base64 --wrap 0
 ICMP traffic (ping) does not work with QEMU and user mode networking.
 To exit, press Ctrl-A and then X.
 
 EOF
-    )
+)
 
-    f=$(mktemp)
-    cat > "${f}" <<EOF
+f=$(mktemp)
+cat > "${f}" <<EOF
 {
     "ignition": {
-        "version": "3.0.0"
+        "version": "3.0.0"${user_config}
     },
     "storage": {
         "files": [
@@ -189,21 +201,20 @@ EOF
     }
 }
 EOF
-    if [ "${ignition_version}" = "2.2.0" ]; then
-        ign_validate="true"
-        spec2f=$(mktemp)
-        /usr/lib/coreos-assembler/incomplete-hack-ign-3to2 "${f}" > "${spec2f}"
-        mv "${spec2f}" "${f}"
-    fi
+if [ "${ignition_version}" = "2.2.0" ]; then
+    ign_validate="true"
+    spec2f=$(mktemp)
+    /usr/lib/coreos-assembler/incomplete-hack-ign-3to2 "${f}" > "${spec2f}"
+    mv "${spec2f}" "${f}"
+fi
 
-    exec 3<>"${f}"
-    rm -f "${f}"
-    IGNITION_CONFIG_FILE=/proc/self/fd/3
+exec 3<>"${f}"
+rm -f "${f}"
+IGNITION_CONFIG_FILE=/proc/self/fd/3
 
-    if ! ${ign_validate} "${IGNITION_CONFIG_FILE}"; then
-        jq . < "${IGNITION_CONFIG_FILE}"
-        exit 1
-    fi
+if ! ${ign_validate} "${IGNITION_CONFIG_FILE}"; then
+    jq . < "${IGNITION_CONFIG_FILE}"
+    exit 1
 fi
 
 if [ -z "${VM_PERSIST_IMG}" ]; then
