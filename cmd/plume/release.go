@@ -612,7 +612,9 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("marshalling release metadata json: %v", err)
 	}
 
-	err = api.UploadObjectExt(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON, -1)
+	// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
+	var releases_max_age = 60 * 5
+	err = api.UploadObjectExt(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}
