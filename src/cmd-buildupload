@@ -13,6 +13,13 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import load_json, Builds  # noqa: E402
 
+# set image artifact caching at 1y; it'll probably get evicted before that...
+# see also: https://stackoverflow.com/questions/2970938
+CACHE_MAX_AGE_ARTIFACT = 60 * 60 * 24 * 365
+
+# set metadata caching to 5m
+CACHE_MAX_AGE_METADATA = 60 * 5
+
 
 def main():
     args = parse_args()
@@ -54,15 +61,16 @@ def cmd_upload_s3(args):
             for arch in builds.get_build_arches(args.build):
                 s3_upload_build(args, builds.get_build_dir(args.build, arch),
                                 f'{args.build}/{arch}')
-            # if there's anything else in the build dir, just upload it too, e.g. pipelines
-            # might inject additional metadata
+            # if there's anything else in the build dir, just upload it too,
+            # e.g. pipelines might inject additional metadata
             for f in os.listdir(f'builds/{args.build}'):
                 # arches already uploaded higher up
                 if f in builds.get_build_arches(args.build):
                     continue
-                s3_cp(args, f'builds/{args.build}/{f}', f'{args.build}/{f}')
-    s3_cp(args, 'builds/builds.json', 'builds.json',
-          '--cache-control=max-age=60')
+                # assume it's metadata
+                s3_cp(args, CACHE_MAX_AGE_METADATA,
+                      f'builds/{args.build}/{f}', f'{args.build}/{f}')
+    s3_cp(args, CACHE_MAX_AGE_METADATA, 'builds/builds.json', 'builds.json')
 
 
 def s3_upload_build(args, builddir, dest):
@@ -82,11 +90,11 @@ def s3_upload_build(args, builddir, dest):
                 args.enable_gz_peel):
             nogz = bn[:-3]
             img['path'] = nogz
-            s3_cp(args, path, f'{dest}/{nogz}',
+            s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, f'{dest}/{nogz}',
                   '--content-encoding=gzip',
                   f'--content-disposition=inline; filename={nogz}')
         else:
-            s3_cp(args, path, f'{dest}/{bn}')
+            s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, f'{dest}/{bn}')
         uploaded.add(bn)
 
     for f in os.listdir(builddir):
@@ -94,7 +102,7 @@ def s3_upload_build(args, builddir, dest):
         if f in uploaded or f == 'meta.json':
             continue
         path = os.path.join(builddir, f)
-        s3_cp(args, path, f'{dest}/{f}')
+        s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, f'{dest}/{f}')
 
     # Now upload a modified version of the meta.json which has the fixed
     # filenames without the .gz suffixes. We don't want to modify the local
@@ -102,14 +110,15 @@ def s3_upload_build(args, builddir, dest):
     with tempfile.NamedTemporaryFile('w') as f:
         json.dump(build, f, indent=4)
         f.flush()
-        s3_cp(args, f.name, f'{dest}/meta.json',
+        s3_cp(args, CACHE_MAX_AGE_METADATA, f.name, f'{dest}/meta.json',
               '--content-type=application/json')
 
 
-def s3_cp(args, src, dest, *s3_args):
+def s3_cp(args, max_age, src, dest, *s3_args):
     acl = f'--acl={args.acl}'
+    max_age = f'--cache-control=max-age={max_age}'
     dest = f's3://{args.url}/{dest}'
-    s3_args = ['aws', 's3', 'cp', acl, src, dest, *s3_args]
+    s3_args = ['aws', 's3', 'cp', acl, src, dest, max_age, *s3_args]
     print("%s: %s" % ("Would run" if args.dry_run else "Running",
                       subprocess.list2cmdline(s3_args)))
     if not args.dry_run:

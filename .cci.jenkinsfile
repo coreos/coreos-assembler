@@ -39,6 +39,7 @@ podTemplate(cloud: 'openshift', yaml: pod, label: label, defaultContainer: 'jnlp
               cosa_cmd("buildextend-openstack")
               cosa_cmd("buildextend-vmware")
               cosa_cmd("compress")
+              cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
           }
       }
 }}}
