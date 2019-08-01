@@ -163,6 +163,10 @@ To exit, press Ctrl-A and then X.
 EOF
 )
 
+# generate a string like rows XX columns XX for stty
+rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
+rowcol=$(echo "stty ${rowcol}" | base64 --wrap 0)
+
 f=$(mktemp)
 cat > "${f}" <<EOF
 {
@@ -182,6 +186,12 @@ cat > "${f}" <<EOF
                     { "source": "data:text/plain;base64,${coreos_assembler_motd}" }
                 ],
                 "mode": 420
+            },
+            {
+                "path": "/home/core/.bashrc",
+                "append": [
+                    { "source": "data:text/plain;base64,${rowcol}" }
+                ]
             }
         ]
     },
