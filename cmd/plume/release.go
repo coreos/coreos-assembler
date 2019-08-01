@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/api/compute/v1"
@@ -492,16 +493,25 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	}
 
 	path := filepath.Join("prod", "streams", specChannel, "releases.json")
-
-	f, err := api.DownloadFile(spec.Bucket, path)
+	data, err := func() ([]byte, error) {
+		f, err := api.DownloadFile(spec.Bucket, path)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				if awsErr.Code() == "NoSuchKey" {
+					return []byte("{}"), nil
+				}
+			}
+			return []byte{}, fmt.Errorf("downloading release metadata index: %v", err)
+		}
+		defer f.Close()
+		d, err := ioutil.ReadAll(f)
+		if err != nil {
+			return []byte{}, fmt.Errorf("reading release metadata index: %v", err)
+		}
+		return d, nil
+	}()
 	if err != nil {
-		plog.Fatalf("downloading release metadata index: %v", err)
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		plog.Fatalf("reading release metadata index: %v", err)
+		plog.Fatal(err)
 	}
 
 	var m ReleaseMetadata
