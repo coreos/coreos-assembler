@@ -24,6 +24,8 @@ import argparse
 import datetime
 import hashlib
 import json
+import koji
+import koji_cli.lib as klib
 import logging as log
 import os.path
 import platform
@@ -37,14 +39,11 @@ sys.path.insert(0, ("%s/cosalib" % cosa_dir))
 sys.path.insert(0, cosa_dir)
 
 try:
-   from cosalib.build import _Build
+    from cosalib.build import _Build
 except ImportError:
-   # We're in the container and can't sense the cosa path
-   sys.path.insert(0, '/usr/lib/coreos-assembler/cosalib')
-   from cosalib.build import _Build
-
-import koji
-import koji_cli.lib as klib
+    # We're in the container and can't sense the cosa path
+    sys.path.insert(0, '/usr/lib/coreos-assembler/cosalib')
+    from cosalib.build import _Build
 
 try:
     # Available in Koji v1.17, https://pagure.io/koji/issue/975
