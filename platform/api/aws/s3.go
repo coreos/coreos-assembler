@@ -49,7 +49,12 @@ func s3IsNotFound(err error) bool {
 }
 
 // UploadObject uploads an object to S3
-func (a *API) UploadObject(r io.Reader, bucket, path string, force bool, policy string, contentType string) error {
+func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
+	return a.UploadObjectExt(r, bucket, path, force, "", "")
+}
+
+// UploadObjectExt uploads an object to S3 with more control over options.
+func (a *API) UploadObjectExt(r io.Reader, bucket, path string, force bool, policy string, contentType string) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
 
 	if !force {

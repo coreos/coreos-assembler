@@ -612,7 +612,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("marshalling release metadata json: %v", err)
 	}
 
-	err = api.UploadObject(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON)
+	err = api.UploadObjectExt(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON)
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}

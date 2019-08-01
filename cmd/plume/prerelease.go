@@ -516,7 +516,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 	if snapshot == nil {
 		plog.Printf("Creating S3 object %v...", s3ObjectURL)
-		err = api.UploadObject(f, part.Bucket, s3ObjectPath, false, "", "")
+		err = api.UploadObject(f, part.Bucket, s3ObjectPath, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error uploading: %v", err)
 		}
