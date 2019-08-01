@@ -35,7 +35,7 @@ func init() {
 		ClusterSize:    1,
 		Name:           "coreos.tls.fetch-urls",
 		Flags:          []register.Flag{register.RequiresInternetAccess}, // Networking outside cluster required
-		ExcludeDistros: []string{"rhcos"},                                // wget not included in RHCOS
+		ExcludeDistros: []string{"rhcos", "fcos"},                        // wget not included in *COS
 	})
 }
 
