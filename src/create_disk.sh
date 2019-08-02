@@ -29,8 +29,11 @@ extrakargs="$1" && shift
 
 set -x
 
-# partition and create fs
+# Partition and create fs's. The 0...4...a...1 uuid is a sentinal used by coreos-gpt-setup
+# in ignition-dracut. It signals that the disk needs to have it's uuid randomized and the
+# backup header moved to the end of the disk.
 sgdisk -Z $disk \
+	-U 00000000-0000-4000-a000-000000000001 \
 	-n 1:0:+384M -c 1:boot \
 	-n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
 	-n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
