@@ -49,7 +49,12 @@ func s3IsNotFound(err error) bool {
 }
 
 // UploadObject uploads an object to S3
-func (a *API) UploadObject(r io.Reader, bucket, path string, force bool, policy string, contentType string) error {
+func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
+	return a.UploadObjectExt(r, bucket, path, force, "", "", -1)
+}
+
+// UploadObjectExt uploads an object to S3 with more control over options.
+func (a *API) UploadObjectExt(r io.Reader, bucket, path string, force bool, policy string, contentType string, max_age int) error {
 	s3uploader := s3manager.NewUploaderWithClient(a.s3)
 
 	if !force {
@@ -72,6 +77,9 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, force bool, policy 
 		Bucket: aws.String(bucket),
 		Key:    aws.String(path),
 		ACL:    aws.String(policy),
+	}
+	if max_age >= 0 {
+		input.CacheControl = aws.String(fmt.Sprintf("max-age=%d", max_age))
 	}
 	if contentType != "" {
 		input.ContentType = aws.String(contentType)

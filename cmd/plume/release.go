@@ -528,7 +528,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 
 	releaseFile, err := api.DownloadFile(spec.Bucket, releasePath)
 	if err != nil {
-		plog.Fatalf("downloading release metadata: %v", err)
+		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
 	}
 	defer releaseFile.Close()
 
@@ -612,7 +612,9 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("marshalling release metadata json: %v", err)
 	}
 
-	err = api.UploadObject(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON)
+	// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
+	var releases_max_age = 60 * 5
+	err = api.UploadObjectExt(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}
