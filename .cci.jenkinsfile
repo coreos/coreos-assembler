@@ -1,17 +1,10 @@
-stage("Init") {
-    node {
-        checkout scm
-        pod = readFile(file: "ci/pod.yaml")
-    }
-}
+@Library('github.com/jlebon/coreos-ci-lib@master') _
 
-def label = "pod-${UUID.randomUUID().toString()}"
-podTemplate(cloud: 'openshift', yaml: pod, label: label, defaultContainer: 'jnlp') {
-    node(label) { container('fedora') {
+coreos.pod([image: 'registry.fedoraproject.org/fedora:30', privileged: true, kvm: true]) {
       checkout scm
 
       stage("Build") {
-          shwrap("""
+          coreos.shwrap("""
             dnf install -y git
             git submodule update --init
             ./build.sh
@@ -20,20 +13,20 @@ podTemplate(cloud: 'openshift', yaml: pod, label: label, defaultContainer: 'jnlp
 
       stage("Test") {
           parallel check: {
-              shwrap("""
+              coreos.shwrap("""
                 make check
                 make unittest
               """)
           },
           fcos: {
-              shwrap("chown builder: /srv")
+              coreos.shwrap("chown builder: /srv")
               // just split into separate invocations to make it easier to see where it fails
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
               cosa_cmd("build")
               cosa_cmd("kola run")
               // sanity check kola actually ran and dumped its output in tmp/
-              shwrap("test -d /srv/tmp/kola")
+              coreos.shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
               cosa_cmd("buildextend-installer")
               cosa_cmd("buildextend-openstack")
@@ -42,16 +35,8 @@ podTemplate(cloud: 'openshift', yaml: pod, label: label, defaultContainer: 'jnlp
               cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
           }
       }
-}}}
-
-// XXX: move to shared lib
-def shwrap(cmds) {
-    sh """
-        set -xeuo pipefail
-        ${cmds}
-    """
 }
 
 def cosa_cmd(args) {
-    shwrap("cd /srv && sudo -u builder cosa ${args}")
+    coreos.shwrap("cd /srv && sudo -u builder cosa ${args}")
 }
