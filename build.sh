@@ -67,6 +67,8 @@ install_rpms() {
     if [ -e /boot/efi ]; then
         chmod -R a+rX /boot/efi
     fi
+    # Similarly for kernel data and SELinux policy, which we want to inject into supermin
+    chmod -R a+rX /usr/lib/modules /usr/share/selinux/targeted
     # Further cleanup
     yum clean all
 

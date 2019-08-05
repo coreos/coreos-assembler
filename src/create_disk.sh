@@ -52,13 +52,23 @@ mkfs.xfs "${disk}4"  -L root -m reflink=1
 rm -rf rootfs
 mkdir rootfs
 mount "${disk}4" rootfs
+chcon $(matchpathcon -n /) rootfs
 mkdir rootfs/boot
+chcon $(matchpathcon -n /boot) rootfs/boot
 mount "${disk}1" rootfs/boot
+chcon $(matchpathcon -n /boot) rootfs/boot
 mkdir rootfs/boot/efi
+# FAT doesn't support SELinux labeling, it uses "genfscon", so we
+# don't need to give it a label manually.
 mount "${disk}2" rootfs/boot/efi
 
-# init the ostree
-ostree admin init-fs rootfs
+# Initialize the ostree setup; TODO replace this with
+# https://github.com/ostreedev/ostree/pull/1894
+# `ostree admin init-fs --modern`
+mkdir -p rootfs/ostree
+chcon $(matchpathcon -n /ostree) rootfs/ostree
+mkdir -p rootfs/ostree/{repo,deploy}
+ostree --repo=rootfs/ostree/repo init --mode=bare
 remote_arg=
 deploy_ref="${ref}"
 if [ "${remote_name}" != NONE ]; then
