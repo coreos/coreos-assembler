@@ -130,9 +130,10 @@ echo "Disk size estimated to $size"
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
+save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
 
 qemu-img create -f raw "${path}.tmp" "$size"
-runvm_with_disk "${path}.tmp" raw /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "\"$kargs\""
+runvm_with_disk "${path}.tmp" raw /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
 mv "${path}.tmp" "$path"
 
 # flush it out before going to the next one so we don't have to redo both if

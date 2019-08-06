@@ -77,6 +77,7 @@ if [ -z "${SAVE_VAR}" ]; then
     exit 0
 fi
 
+# See the equivalent code in create_disk.sh
 # /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
 # see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
 # For now we retain just /var/lib/systemd (for the random seed) and /var/log
@@ -85,7 +86,7 @@ fi
 # RHCOS to add users and drop files in /root.  (On FCOS, we don't strictly
 # *need* this because we run systemd-tmpfiles).
 coreos_gf ls "${var}" | while read -r x; do
-  case "$x" in 
+  case "$x" in
     log|lib) continue;;
     home|roothome) coreos_gf glob rm-rf "${var}/${x}/*";;
     *) coreos_gf rm-rf "${var}/${x}"
