@@ -10,8 +10,8 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
-if [ "$#" -ne 7 ]; then
-	echo 'create_disk <device> <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <space separated kargs>'
+if [ "$#" -ne 8 ]; then
+	echo 'create_disk <device> <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <save-var-subdirs> <space separated kargs>'
 	exit 1
 fi
 
@@ -25,6 +25,7 @@ ref="$1" && shift
 remote_name="$1" && shift
 grub_script="$1" && shift
 os_name="$1" && shift
+save_var_subdirs="$1" && shift
 extrakargs="$1" && shift
 
 set -x
@@ -85,6 +86,16 @@ do
 	kargsargs+="--karg-append=$karg "
 done
 ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
+
+# See the equivalent code in gf-anaconda-cleanup
+# /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
+# see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
+if [ "${save_var_subdirs}" != NONE ]; then
+	vardir=rootfs/ostree/deploy/${os_name}/var
+	mkdir -p ${vardir}/{home,log/journal,lib/systemd}
+	# And /home is the only one that doesn't have a filename transition today
+	chcon -h $(matchpathcon -n /home) ${vardir}/home
+fi
 
 if [ "$arch" == "x86_64" ]; then
 	# install bios grub
