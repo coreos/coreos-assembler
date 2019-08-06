@@ -293,6 +293,9 @@ EOF
     fi
     if [ -d "${ovld}" ]; then
         for n in "${ovld}"/*; do
+            if ! [ -d "${n}" ]; then
+                continue
+            fi
             local bn ovlname
             bn=$(basename "${n}")
             ovlname="${name}-config-overlay-${bn}"
