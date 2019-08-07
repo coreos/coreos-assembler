@@ -206,7 +206,11 @@ so any changes are thrown away after you exit qemu.  To exit, type
 ### Hacking
 ---
 
-#### Hacking on CoreOS Git Configs
+#### Understanding "config git"
+
+Conceptually, coreos-assembler ties together generating OSTree commits with disk images
+into a single "build schema".  The build target is defined by the "config git"
+which should be in `src/config` (relative to the build directory).
 
 We can hack on some local input configs by exporting them in the
 `COREOS_ASSEMBLER_CONFIG_GIT` env variable. For example:
@@ -217,17 +221,40 @@ $ cosa init --force /dev/null
 $ cosa fetch && cosa build
 ```
 
-Currently, the assembler only takes two input files that are from `src/config`:
+#### Components of "config git"
 
- - `manifest.yaml`: An rpm-ostree "manifest" or "treefile", which mostly boils
-   down to a list of RPMs and a set of rpm-md repositories
-   they come from.  It also supports `postprocess` to make
-   arbitrary changes.  See the [upstream docs](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/treefile.md).
- - `image.yaml`: At present, this YAML file may only contain a `size` member in GB.
-   It's likely in the future we will extend this to support e.g. a separate `/var`
-   partition or configuring the filesystem types.  If you want to do anything like
-   that today it requires forking the assembler and rebuilding it.
-   See the fedora-coreos-config for an example.
+`manifest.yaml`
+----
+
+For generating OSTree commits, cosa uses `manifest.yaml`: An rpm-ostree "manifest" or "treefile", which mostly boils
+down to a list of RPMs and a set of rpm-md repositories
+they come from.  It also supports `postprocess` to make
+arbitrary changes.  See the [upstream docs](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/treefile.md).
+
+`overlay.d/`
+----
+
+coreos-assembler also supports a generic way to embed architecture-independent
+configuration and scripts by creating subdirectories in `overlay.d/`.  Each subdirectory
+of the `overlay.d.` directory is added to the OSTree commit, in lexicographic order.
+It's recommended to name directories with a numeric prefix - e.g. `05core`, `10extras`.
+Non-directories are ignored.  For example, a good practice is to add a `README.md` file
+into your overlay directories describing their structure.
+
+`image.yaml`
+----
+
+This YAML file configures the output disk images.  Supported keys are:
+
+ - `size`: Size in GB for cloud images (OpenStack, AWS, etc.)  Required.
+ - `extra-kargs`: List of kernel arguments.
+
+It's likely in the future we will extend this to support e.g. a separate `/var`
+partition or configuring the filesystem types.  If you want to do anything like
+that today it requires forking the assembler and rebuilding it.
+See the fedora-coreos-config for an example.
+
+#### Hacking on config git
 
 First you can expand the size of the image; edit `src/config/image.yaml` and
 e.g. change `8` to `9`. Rerun `cosa build`, and notice that the OSTree commit
