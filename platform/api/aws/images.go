@@ -370,6 +370,63 @@ func (a *API) CreatePVImage(snapshotID string, diskSizeGiB uint, name string, de
 	return a.createImage(params)
 }
 
+func (a *API) deregisterImageIfExists(name string) error {
+	imageID, err := a.FindImage(name)
+	if err != nil {
+		return err
+	}
+	if imageID != "" {
+		_, err := a.ec2.DeregisterImage(&ec2.DeregisterImageInput{ImageId: &imageID})
+		if err != nil {
+			return err
+		}
+		plog.Infof("Deregistered existing image %s", imageID)
+	}
+	return nil
+}
+
+// Remove all uploaded data associated with an AMI.
+func (a *API) RemoveImage(name, s3BucketName, s3ObjectPath string) error {
+	err := a.DeleteObject(s3BucketName, s3ObjectPath)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			if awsErr.Code() != "NoSuchKey" {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		plog.Infof("Deleted existing S3 object bucket:%s path:%s", s3BucketName, s3ObjectPath)
+	}
+
+	err = a.deregisterImageIfExists(name + "-hvm")
+	if err != nil {
+		return err
+	}
+	err = a.deregisterImageIfExists(name)
+	if err != nil {
+		return err
+	}
+
+	snapshot, err := a.FindSnapshot(name)
+	if err != nil {
+		return err
+	}
+	if snapshot != nil {
+		// We explicitly ignore errors here in case somehow another AMI was based
+		// on that snapshot
+		_, err := a.ec2.DeleteSnapshot(&ec2.DeleteSnapshotInput{SnapshotId: &snapshot.SnapshotID})
+		if err != nil {
+			plog.Warningf("deleting snapshot %s: %v", snapshot.SnapshotID, err)
+		} else {
+			plog.Infof("Deleted existing snapshot %s", snapshot.SnapshotID)
+		}
+	}
+
+	return nil
+}
+
 func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	res, err := a.ec2.RegisterImage(params)
 
