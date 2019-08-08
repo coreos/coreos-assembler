@@ -334,8 +334,9 @@ runvm() {
     [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
     [ -n "${ISEL}" ]     && filter='^#EL7 '
     rpms=$(sed "s/${filter}//" "${DIR}"/vmdeps.txt | grep -v '^#')
+    archrpms=$(sed "s/${filter}//" "${DIR}"/vmdeps-"$(arch)".txt | grep -v '^#')
     # shellcheck disable=SC2086
-    supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
+    supermin --prepare --use-installed -o "${vmpreparedir}" $rpms $archrpms
 
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"

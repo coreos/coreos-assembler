@@ -1,0 +1,3 @@
+# Place-holder for s390x arch specific dependencies for the guest
+
+s390utils-base haveged
