@@ -77,7 +77,8 @@ def run_ore():
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
     ami_data = {'name': args.region,
-                'hvm': ore_data['HVM']}
+                'hvm': ore_data['HVM'],
+                'snapshot': ore_data['SnapshotID']}
     buildmeta['amis'] = [ami_data]
     buildmeta['images'].update({
         'aws': {
