@@ -65,7 +65,8 @@ def run_ore():
                 '--ami-description', f"{buildmeta['summary']} {args.build}",
                 '--file', tmp_img_aws_vmdk,
                 '--disk-size-inspect',
-                '--delete-object']
+                '--delete-object',
+                '--force']
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
