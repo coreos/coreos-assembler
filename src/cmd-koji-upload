@@ -22,6 +22,7 @@ See cli() for usage information.
 """
 import argparse
 import datetime
+import gzip
 import hashlib
 import json
 import koji
@@ -95,6 +96,10 @@ KOJI_CG_TYPES = {
 # against content types.
 RENAME_RAW = ['initramfs.img', '-kernel', "ostree-commit"]
 
+# These are compressed extensions that are used to determine if name managling
+# might be needed.
+COMPRESSION_EXT = ["gz", "xz"]
+
 
 def md5sum_file(path):
     """
@@ -117,6 +122,110 @@ class Build(_Build):
     """
     Koji implementation of Build.
     """
+    def __init__(self, *args, **kwargs):
+        self._tmpdir = tempfile.mkdtemp(prefix="koji-build")
+        _Build.__init__(self, *args, **kwargs)
+
+    def __del__(self):
+        try:
+            shutil.rmtree(self._tmpdir)
+        except Exception as e:
+            raise Exception("failed to remove temporary directory: %s",
+                            self._tmpdir, e)
+
+    def rename_mutator(self, fname):
+        """
+        If a file needs to be renamed because of a Koji rule, rename
+        the file to a `.raw`. For some types, its technically incorrect.
+
+        :param fname: file name to check if it needs to be renamed
+        :type str
+        :return srt
+        """
+        for ending in RENAME_RAW:
+            if fname.endswith(ending):
+                return "%s.raw", True
+        return fname, None
+
+    def decompress_mutator(self, fname):
+        """
+        Calculate the mutated name and return a file object suitable
+        for reading the file. If the file is supported as is by Koji,
+        the original file is returned.
+
+        :param fname: name of the local file
+        :type str
+        :return str
+        :return file
+        """
+        for x in COMPRESSION_EXT:
+            if not fname.endswith(x):
+                continue
+
+            base_name = os.path.basename(fname)
+            base = os.path.splitext(base_name)[0]
+            ftype = (os.path.splitext(base)[1]).replace(".", "")
+            ctype = "%s.%s" % (ftype, x)
+            if ctype not in KOJI_CG_TYPES and ftype in KOJI_CG_TYPES:
+                if x == "gz":
+                    compressor = gzip
+                elif x == "xz":
+                    raise Exception("not supported yet")
+
+                new_path = os.path.join(self._tmpdir, base)
+                try:
+                    infile = compressor.open(fname)
+                    outfile = open(new_path, 'wb+')
+                    log.info("using %s module to mutate %s to %s",
+                             compressor.__name__, base_name, new_path)
+                    shutil.copyfileobj(infile, outfile)
+                except Exception as e:
+                    raise Exception("failed to decompress file %s to %s: %s",
+                                    fname, new_path, e)
+                finally:
+                    infile.close()
+                    outfile.close()
+
+                return new_path, True
+
+        return fname, True
+
+    def mutate_for_koji(self, fname):
+        """
+        Koji is _so_ pendantic about the naming of files and their extensions,
+        such that "vhd.gz" is not allowed, but "vhd" is. In the event that a
+        file needs to be mutated, this function will do that.
+
+        :param fname: name of the file to mutate
+        :type str
+
+        :Returns: location of fname or the name of the mutated file
+        """
+        (new_name, _) = self.decompress_mutator(fname)
+        (new_name, _) = self.rename_mutator(new_name)
+        if fname != new_name:
+            return new_name
+        return fname
+
+    def supported_upload(self, fname):
+        """
+        Helper to return if a file should be uploaded
+        :param fname: name of file to check against Koji table for uploading.
+        :type str
+        :returns bool
+
+        Returns true if the file is known to Koji.
+        """
+        base = os.path.basename(fname)
+        check_extension = base.split(".")[-1]
+        for extension in COMPRESSION_EXT:
+            if fname.endswith(extension):
+                check_extension = base.split(".")[-2]
+
+        found = KOJI_CG_TYPES.get(check_extension)
+        if found:
+            return True
+        return False
 
     def _build_artifacts(self, *args, **kwargs):
         """
@@ -146,27 +255,34 @@ class Build(_Build):
 
         # process the files that were found
         for ffile in files:
-            log.debug("Considering file file '%s'", ffile)
-            short_path = os.path.basename(ffile)
+            lpath = os.path.abspath(ffile)
+            log.debug("Considering file file '%s'", lpath)
 
-            # any file that is known as Koji archive is included.
-            if not koji_upload(short_path):
+            # if the file is mutated (renamed, uncompressed, etc)
+            # we want to use that file name instead
+            mutated_path = self.mutate_for_koji(lpath)
+            if mutated_path != lpath:
+                lpath = mutated_path
+            log.debug(" * using %s for upload name", lpath)
+
+            # and check that a file should be uploaded
+            upload_path = os.path.basename(lpath)
+            if not self.supported_upload(lpath):
                 log.debug(" * EXCLUDING file '%s'", ffile)
                 log.debug("   File type is not supported by Koji")
                 continue
 
             # os.path.getsize uses 1kB instead of 1KB. So we use stat instead.
-            fsize = subprocess.check_output(["stat", "--format", '%s', ffile])
+            fsize = subprocess.check_output(["stat", "--format", '%s', lpath])
             log.debug(" * calculating checksum")
-            self._found_files[ffile] = {
-                "local_path": os.path.abspath(ffile),
-                "path": short_path,
-                "md5": md5sum_file(ffile),
+            self._found_files[lpath] = {
+                "local_path": lpath,
+                "upload_path": upload_path,
+                "md5": md5sum_file(lpath),
                 "size": int(fsize)
             }
-
-            log.debug(" * size is %s", self._found_files[ffile]["size"])
-            log.debug(" * md5 is %s", self._found_files[ffile]["md5"])
+            log.debug(" * size is %s", self._found_files[lpath]["size"])
+            log.debug(" * md5 is %s", self._found_files[lpath]["md5"])
 
 
 def set_logger(level):
@@ -206,70 +322,6 @@ def kinit(keytab, principle):
         log.debug("authenticated: \n%s", klist_out.decode("utf-8"))
     except Exception as err:
         raise Exception("failed to auth: ", err)
-
-
-def get_koji_fileinfo(fname):
-    """
-    get_koji_fileinfo is a helper to get the content generator parts
-    :param fname: file name to check for Koji content type
-    :type str
-    :returns str, str, str, str
-
-    The return coresponds to the KOJI_CG_TYPES dict, which, gives you
-        description: human friendly description of what the upload is
-        extension: the _Koji_ expected extensions
-        architecture: the build arch or no-arch
-        type: source or image, which is used to set the meta-data
-    """
-    ext = (os.path.splitext(fname)[1]).replace(".", "")
-    if ext == "gz":
-        ext = fname.split(".")[-2]
-
-    _, force_extension = special_name(fname)
-    if force_extension is not None:
-        ext = force_extension
-
-    try:
-        return KOJI_CG_TYPES[ext]
-    except KeyError:
-        log.debug("file type %s was not found in lookup", ext)
-        return None, None, None, None
-
-
-def special_name(fname):
-    """
-    Helper for handling special files such as unlabeled raw files. Files
-    that need have their names mangled should be handled here. Koji has strict
-    rules that ensure the file-type to match a specific extension.
-
-    :param fname: name of file to check if it needs to be renamed
-    :type str
-    :returns str, str
-
-    Returns are:
-        New name of the file
-        The Koji type that the file if renamed
-    """
-    for ending in RENAME_RAW:
-        if fname.endswith(ending):
-            return "%s.raw" % fname, "raw"
-
-    return fname, None
-
-
-def koji_upload(fname):
-    """
-    Helper to return if a file should be uploaded
-    :param fname: name of file to check against Koji table for uploading.
-    :type str
-    :returns bool
-
-    Returns true if the file is known to Koji.
-    """
-    found, _, _, _ = get_koji_fileinfo(fname)
-    if found:
-        return True
-    return False
 
 
 class Upload():
@@ -340,15 +392,24 @@ class Upload():
         if not isinstance(obj, dict):
             raise Exception("cannot parse file meta-data, invalid type")
 
-        (description, ext, arch, etype) = get_koji_fileinfo(obj['path'])
-        fname, _ = special_name(obj['path'])
+        ext = os.path.splitext(obj.get("upload_path"))[-1]
+        ext = ext.lstrip('.')
+        if ext in COMPRESSION_EXT:
+            # find sub extension, e.g. "tar" in "tar.gz"
+            sub_ext = os.path.splitext(obj.get("upload_path"))[0].lstrip('.')
+            ext = "%s.%s" % (sub_ext, ext)
+
+        log.debug("File %s should be of type %s: %s ", obj.get("upload_path"),
+                  ext, obj)
+        (description, ext, arch, etype) = KOJI_CG_TYPES.get(
+            ext, [None, None, None, None])
 
         file_meta = {
             "arch": arch,
             "buildroot_id": 1,
             "checksum": obj["md5"],
             "checksum_type": "md5",
-            "filename": fname,
+            "filename": obj['upload_path'],
             "filesize": obj["size"],
             "type": ext,
             "extra": {"image": {"arch": arch}}
@@ -391,7 +452,7 @@ class Upload():
         now = datetime.datetime.utcnow()
         stamp = now.strftime("%s")
 
-        log.debug("Preparing manfiest for %s files", len(self.image_files))
+        log.debug("Preparing manifest for %s files", len(self.image_files))
         self._manifest = {
             "metadata_version": 0,
             "build": {
@@ -496,24 +557,14 @@ class Upload():
 
         log.debug('uploading files to %s', serverdir)
         for _, meta in (self.build).get_artifacts():
-            fpath = meta['local_path']
-            lpath, rename = special_name(meta['path'])
-            try:
-                tdir = None
-                if rename:
-                    tdir = tempfile.mkdtemp(prefix="koji-staging")
-                    slink = "%s/%s" % (tdir, lpath)
-                    log.debug("creating symlink from %s to %s", fpath, slink)
-                    os.symlink(fpath, slink)
-                    fpath = slink
-
-                log.info("Uploading %s to %s/%s", fpath, serverdir, fpath)
-                self.session.uploadWrapper(fpath, serverdir, callback=callback)
-                if callback:
-                    print('')
-            finally:
-                if tdir is not None:
-                    shutil.rmtree(tdir)
+            local_path = meta['local_path']    # the local file to upload
+            remote_path = meta['upload_path']  # the name of the file to upload
+            log.info("Uploading %s to %s/%s", local_path, serverdir,
+                     remote_path)
+            self.session.uploadWrapper(local_path, serverdir, name=remote_path,
+                                       callback=callback)
+            if callback:
+                print('')
 
         self._uploaded = True
         self._remote_directory = serverdir
@@ -594,6 +645,7 @@ Environment variables are supported:
     if args.auth:
         kinit(args.keytab, args.owner)
 
+    build.build_artifacts()
     upload = Upload(build, args.owner, args.tag, args.profile)
     if args.dump:
         print(json.dumps(upload.manifest, sort_keys=True, indent=3))
@@ -602,7 +654,6 @@ Environment variables are supported:
     if args.no_upload is False:
         upload = Upload(build, args.owner, args.tag, args.profile)
 
-    build.build_artifacts()
     upload.upload()
 
 
