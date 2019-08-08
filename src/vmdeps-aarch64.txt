@@ -1,0 +1,3 @@
+# Place-holder for aarch64 arch specific dependencies for the guest
+
+grub2 grub2-efi

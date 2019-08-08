@@ -18,4 +18,4 @@ selinux-policy selinux-policy-targeted policycoreutils
 # coreos-assembler
 python3 python3-gobject-base buildah podman skopeo iptables iptables-libs
 
-gdisk xfsprogs e2fsprogs grub2 dosfstools shim grub2-efi
+gdisk xfsprogs e2fsprogs dosfstools shim

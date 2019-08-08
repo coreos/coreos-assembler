@@ -1,0 +1,3 @@
+# Place-holder for ppc64le arch specific dependencies for the guest
+
+grub2 grub2-efi
