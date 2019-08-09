@@ -76,7 +76,7 @@ func init() {
 	cmdUpload.Flags().UintVarP(&uploadDiskSizeGiB, "disk-size-gib", "", aws.ContainerLinuxDiskSizeGiB, "AMI disk size in GiB")
 	cmdUpload.Flags().BoolVar(&uploadDiskSizeInspect, "disk-size-inspect", false, "set AMI disk size to size of local file")
 	cmdUpload.Flags().BoolVar(&uploadDeleteObject, "delete-object", true, "delete uploaded S3 object after snapshot is created")
-	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing S3 object rather than reusing")
+	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite any existing S3 object, snapshot, and AMI")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
@@ -196,6 +196,10 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	plog.Debugf("S3 object: %v\n", s3URL)
 	s3BucketName := s3URL.Host
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
+
+	if uploadForce {
+		API.RemoveImage(amiName, s3BucketName, s3ObjectPath)
+	}
 
 	// if no snapshot was specified, check for an existing one or a
 	// snapshot task in progress
