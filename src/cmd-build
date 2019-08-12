@@ -285,7 +285,7 @@ echo '{}' > tmp/vm-iso-checksum.json
 if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
     case "$arch" in
-        "x86_64"|"aarch64")
+        "x86_64"|"aarch64"|"s390x")
             build_image "$img_qemu"
             ;;
         *)
