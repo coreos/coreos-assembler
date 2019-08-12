@@ -100,6 +100,11 @@ type Snapshot struct {
 	SnapshotID string
 }
 
+type ImageData struct {
+	AMI        string `json:"ami"`
+	SnapshotID string `json:"snapshot"`
+}
+
 // Look up a Snapshot by name. Return nil if not found.
 func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 	// Look for an existing snapshot with this image name.
@@ -507,11 +512,11 @@ func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
 	return nil
 }
 
-func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]string, error) {
+func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]ImageData, error) {
 	type result struct {
-		region  string
-		imageID string
-		err     error
+		region string
+		data   ImageData
+		err    error
 	}
 
 	image, err := a.describeImage(sourceImageID)
@@ -561,7 +566,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 		go func() {
 			defer wg.Done()
 			res := result{region: aa.opts.Region}
-			res.imageID, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
+			res.data, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
 				*image.Name, *image.Description,
 				image.Tags, snapshot.Tags,
 				launchPermissions)
@@ -571,10 +576,10 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	wg.Wait()
 	close(ch)
 
-	amis := make(map[string]string)
+	amis := make(map[string]ImageData)
 	for res := range ch {
-		if res.imageID != "" {
-			amis[res.region] = res.imageID
+		if res.data.AMI != "" {
+			amis[res.region] = res.data
 		}
 		if err == nil {
 			err = res.err
@@ -583,10 +588,10 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]stri
 	return amis, err
 }
 
-func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission) (string, error) {
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission) (ImageData, error) {
 	imageID, err := a.FindImage(name)
 	if err != nil {
-		return "", err
+		return ImageData{}, err
 	}
 
 	if imageID == "" {
@@ -597,7 +602,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 			Description:   aws.String(description),
 		})
 		if err != nil {
-			return "", fmt.Errorf("couldn't initiate image copy to %v: %v", a.opts.Region, err)
+			return ImageData{}, fmt.Errorf("couldn't initiate image copy to %v: %v", a.opts.Region, err)
 		}
 		imageID = *copyRes.ImageId
 	}
@@ -610,7 +615,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		w.Delay = request.ConstantWaiterDelay(30 * time.Second)
 	})
 	if err != nil {
-		return "", fmt.Errorf("couldn't copy image to %v: %v", a.opts.Region, err)
+		return ImageData{}, fmt.Errorf("couldn't copy image to %v: %v", a.opts.Region, err)
 	}
 
 	if len(imageTags) > 0 {
@@ -619,21 +624,26 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 			Tags:      imageTags,
 		})
 		if err != nil {
-			return "", fmt.Errorf("couldn't create image tags: %v", err)
+			return ImageData{}, fmt.Errorf("couldn't create image tags: %v", err)
 		}
 	}
 
+	var snapshotID string
+	image, err := a.describeImage(imageID)
+	if err != nil {
+		return ImageData{}, err
+	}
+	if image.BlockDeviceMappings[0].Ebs.SnapshotId != nil {
+		snapshotID = *image.BlockDeviceMappings[0].Ebs.SnapshotId
+	}
+
 	if len(snapshotTags) > 0 {
-		image, err := a.describeImage(imageID)
-		if err != nil {
-			return "", err
-		}
 		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
-			Resources: []*string{image.BlockDeviceMappings[0].Ebs.SnapshotId},
+			Resources: []*string{&snapshotID},
 			Tags:      snapshotTags,
 		})
 		if err != nil {
-			return "", fmt.Errorf("couldn't create snapshot tags: %v", err)
+			return ImageData{}, fmt.Errorf("couldn't create snapshot tags: %v", err)
 		}
 	}
 
@@ -646,7 +656,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 			},
 		})
 		if err != nil {
-			return "", fmt.Errorf("couldn't grant launch permissions: %v", err)
+			return ImageData{}, fmt.Errorf("couldn't grant launch permissions: %v", err)
 		}
 	}
 
@@ -660,10 +670,13 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 	// plume release.
 	_, err = a.FindImage(name)
 	if err != nil {
-		return "", fmt.Errorf("checking for duplicate images: %v", err)
+		return ImageData{}, fmt.Errorf("checking for duplicate images: %v", err)
 	}
 
-	return imageID, nil
+	return ImageData{
+		AMI:        imageID,
+		SnapshotID: snapshotID,
+	}, nil
 }
 
 // Find an image we own with the specified name. Return ID or "".
