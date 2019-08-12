@@ -104,7 +104,7 @@ if [ "$arch" == "x86_64" ]; then
 		--boot-directory rootfs/boot \
 		$disk
 	ext="X64"
-else
+elif [ "$arch" == "aarch64" ]; then
 	mkdir -p rootfs/boot/grub2
 	ext="AA64"
 fi
@@ -112,18 +112,48 @@ fi
 # we use pure BLS, so don't need grub2-mkconfig
 ostree config --repo rootfs/ostree/repo set sysroot.bootloader none
 
-# install uefi grub
-mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
-cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
-cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
-cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
+if [ "$arch" != "s390x" ]; then
+	# install uefi grub
+	mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
+	cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
+	cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
+	cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
 search --label boot --set prefix
 set prefix=($prefix)/grub2
 normal
 EOF
 
-# copy the grub config and any other files we might need
-cp $grub_script rootfs/boot/grub2/grub.cfg
+	# copy the grub config and any other files we might need
+	cp $grub_script rootfs/boot/grub2/grub.cfg
+else
+	# current zipl expects 'title' to be first line, and no blank lines in BLS file
+	# see https://github.com/ibm-s390-tools/s390-tools/issues/64
+	blsfile=$(find rootfs/boot/loader/entries/*.conf)
+	tmpfile=$(mktemp)
+	for f in title version linux initrd; do
+		echo $(grep $f $blsfile) >> $tmpfile
+	done
+	# we force firstboot in building base image on s390x, ignition-dracut hook will remove
+	# this and update zipl for second boot
+	# this is only a temporary solution until we are able to do firstboot check at bootloader
+	# stage on s390x, either through zipl->grub2-emu or zipl standalone.
+	# See https://github.com/coreos/ignition-dracut/issues/84
+	options="$(grep options $blsfile | cut -d' ' -f2-) ignition.firstboot rd.neednet=1 ip=dhcp"
+	echo "options $options" >> $tmpfile
+	cat $tmpfile > $blsfile
+
+	# ideally we want to invoke zipl with bls and zipl.conf but we might need
+	# to chroot to rootfs/ to do so. We would also do that when FCOS boot on its own.
+	# without chroot we can use --target option in zipl but it requires kernel + initramfs
+	# pair instead
+	echo $options > $tmpfile
+	zipl --verbose \
+		--target rootfs/boot \
+		--image rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
+		--ramdisk rootfs/boot/"$(grep initrd $blsfile | cut -d' ' -f2)" \
+		--parmfile $tmpfile
+fi
+
 touch rootfs/boot/ignition.firstboot
 
 umount -R rootfs
