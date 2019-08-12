@@ -275,7 +275,10 @@ build_image() {
 	# use NONE here instead of empty string because this has to survive through various string processing
 	ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 	save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
-	kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=qemu"
+	tty="console=tty0 console=${VM_TERMINAL},115200n8"
+	# tty0 does not exist on s390x
+	[ "$arch" = "s390x" ] && tty="console=${VM_TERMINAL}"
+	kargs="$kargs $tty ignition.platform.id=qemu"
 
 	qemu-img create -f qcow2 "$1" "$size"
 	runvm_with_disk "$1" qcow2 /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""

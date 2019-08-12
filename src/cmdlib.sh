@@ -41,12 +41,13 @@ export basearch
 # Get target architecture
 arch=$(uname -m)
 export arch
+devtype=pci
 
 case $arch in
     "x86_64")  VM_TERMINAL="ttyS0"    ;;
     "ppc64le") VM_TERMINAL="hvc0"     ;;
     "aarch64") VM_TERMINAL="ttyAMA0"  ;;
-    "s390x")   VM_TERMINAL="ttysclp0" ;;
+    "s390x")   VM_TERMINAL="ttysclp0"; devtype=ccw ;;
     *)         fatal "Architecture $(arch) not supported"
 esac
 export VM_TERMINAL
@@ -59,7 +60,7 @@ else
         "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
         "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
         "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
-        "s390x")   QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
+        "s390x")   QEMU_KVM="qemu-system-$(arch) -accel kvm -M s390-ccw-virtio"       ;;
         *)         fatal "Architecture $(arch) not supported"
     esac
 fi
@@ -422,13 +423,17 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
-    pcibus=pci.0
+    pcibus="${devtype}.0"
+    scsibus="bus=${pcibus},addr=0x3"
     arch_args=
-    if [ "$(arch)" = "aarch64" ]; then
-        # 'pci' bus doesn't work on aarch64
-        pcibus=pcie.0
-        arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
-    fi
+    case $arch in
+        "aarch64")
+            # 'pci' bus doesn't work on aarch64
+            pcibus=pcie.0
+            arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
+	    ;;
+        "s390x") scsibus="devno=fe.0.0003" ;;
+    esac
 
     # if a disk image exists, attach it too
     extradisk=()
@@ -442,9 +447,9 @@ EOF
         -kernel "${vmbuilddir}/kernel" \
         -initrd "${vmbuilddir}/initrd" \
         -netdev user,id=eth0,hostname=supermin \
-        -device virtio-net-pci,netdev=eth0 \
-        -device virtio-scsi-pci,id=scsi0,bus=${pcibus},addr=0x3 \
-        -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
+        -device virtio-net-"${devtype}",netdev=eth0 \
+        -device virtio-scsi-"${devtype}",id=scsi0,"${scsibus}" \
+        -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
         -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         "${cachedisk[@]}" \
