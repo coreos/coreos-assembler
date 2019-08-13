@@ -18,6 +18,8 @@ src="$1"
 dest="$2"
 platformid="$3"
 
+arch=$(uname -m)
+
 if [[ $src == *.gz ]]; then
     img="$(basename "$src")"
     fatal "Cannot change ignition.platform.id on $img; not an uncompressed image"
@@ -46,7 +48,9 @@ if [ "$(coreos_gf exists '/boot/efi')" == 'true' ]; then
 else
     grubcfg_path=/boot/loader/grub.cfg
 fi
-coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
+
+if [ "$arch" != "s390x"  ]; then
+	coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
 # Remove any platformid currently there
 sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
 # Insert our new platformid
@@ -54,6 +58,7 @@ sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
 # and linuxefi is available in grub2.cfg for UEFI
 sed -i -e 's,^\(linux\(16\|efi\)\? .*\),\1 coreos.oem.id='"${platformid}"' ignition.platform.id='"${platformid}"',' "${tmpd}"/grub.cfg
 coreos_gf upload "${tmpd}"/grub.cfg "${grubcfg_path}"
+fi
 # Now the BLS version
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download "${blscfg_path}" "${tmpd}"/bls.conf
