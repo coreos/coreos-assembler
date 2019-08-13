@@ -144,7 +144,13 @@ class Build(_Build):
         """
         for ending in RENAME_RAW:
             if fname.endswith(ending):
-                return "%s.raw", True
+                lname = "%s.raw" % fname
+                try:
+                    os.symlink(fname, lname)
+                except Exception as e:
+                    raise Exception("failed create symlink: %s" % e)
+
+                return lname, True
         return fname, None
 
     def decompress_mutator(self, fname):
