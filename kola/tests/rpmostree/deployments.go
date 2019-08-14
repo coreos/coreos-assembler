@@ -239,7 +239,13 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // currently using.  We've already had to swap from `fpaste` to `bcrypt`
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	var installPkgName = "bcrypt"
-	var installPkgBin = "/bin/bcrypt"
+	var installPkgBin string
+
+	if c.Distribution() == "fcos" {
+		installPkgBin = "/usr/bin/bcrypt"
+	} else {
+		installPkgBin = "/bin/bcrypt"
+	}
 
 	m := c.Machines()[0]
 
