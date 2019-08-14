@@ -79,6 +79,19 @@ runs any tests whose registered names matches a glob pattern.
 
 `kola run <glob pattern>`
 
+`--blacklist-test` can be used if one or more tests in the pattern should be skipped.
+This switch may be provided once:
+
+`kola --blacklist-test linux.nfs.v3 run`
+
+multiple times:
+
+`kola --blacklist-test linux.nfs.v3 --blacklist-test linux.nfs.v4 run`
+
+and can also be used with glob patterns:
+
+`kola --blacklist-test linux.nfs* --blacklist-test crio.* run`
+
 #### kola list
 The list command lists all of the available tests.
 
