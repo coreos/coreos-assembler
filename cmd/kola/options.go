@@ -52,6 +52,7 @@ func init() {
 	sv := root.PersistentFlags().StringVar
 	bv := root.PersistentFlags().BoolVar
 	ss := root.PersistentFlags().StringSlice
+	ssv := root.PersistentFlags().StringSliceVar
 
 	// general options
 	sv(&outputDir, "output-dir", "", "Temporary output directory for test data and logs")
@@ -64,7 +65,7 @@ func init() {
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Specify multiple times for multiple units.")
 	sv(&kola.UpdatePayloadFile, "update-payload", "", "Path to an update payload that should be made available to tests")
 	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: v2, v3")
-
+	ssv(&kola.BlacklistedTests, "blacklist-test", []string{}, "List of tests to blacklist")
 	// rhcos-specific options
 	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
 

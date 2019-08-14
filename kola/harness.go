@@ -76,6 +76,8 @@ var (
 
 	UpdatePayloadFile string
 
+	BlacklistedTests []string // tests which are blacklisted
+
 	consoleChecks = []struct {
 		desc     string
 		match    *regexp.Regexp
@@ -194,7 +196,27 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 		checkPlatforms = append(checkPlatforms, "qemu")
 	}
 
+	var blacklisted bool
 	for name, t := range tests {
+		// Drop anything which is blacklisted directly or by pattern
+		blacklisted = false
+		for _, bl := range BlacklistedTests {
+			match, err := filepath.Match(bl, t.Name)
+			if err != nil {
+				return nil, err
+			}
+			// If it matched the pattern this test is blacklisted
+			if match {
+				blacklisted = true
+				break
+			}
+		}
+		// If the test is blacklisted, skip it and continue to the next test
+		if blacklisted {
+			plog.Debugf("Skipping blacklisted test %s", t.Name)
+			continue
+		}
+
 		match, err := filepath.Match(pattern, t.Name)
 		if err != nil {
 			return nil, err
