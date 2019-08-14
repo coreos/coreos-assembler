@@ -111,6 +111,9 @@ type Cluster interface {
 	// cluster machines.
 	JournalOutput() map[string]string
 
+	// Distribution returns the Distribution
+	Distribution() string
+
 	// IgnitionVersion returns the version of Ignition supported by the
 	// cluster
 	IgnitionVersion() string
