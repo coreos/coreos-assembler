@@ -265,18 +265,29 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-cpu", "host",
 			"-m", "2048",
 		}
+	case "s390x--s390x-usr":
+		qmBinary = "qemu-system-s390x"
+		qmCmd = []string{
+			"qemu-system-s390x",
+			"-machine", "s390-ccw-virtio,accel=kvm",
+			"-cpu", "host",
+			"-m", "2048",
+		}
 	default:
 		panic("host-guest combo not supported: " + combo)
 	}
 
 	qmCmd = append(qmCmd,
-		"-bios", biosImage,
 		"-smp", "1",
 		"-uuid", uuid,
 		"-display", "none",
 		"-chardev", "file,id=log,path="+consolePath,
 		"-serial", "chardev:log",
 	)
+
+	if board != "s390x-usr" {
+		qmCmd = append(qmCmd, "-bios", biosImage)
+	}
 
 	if isIgnition {
 		qmCmd = append(qmCmd,
@@ -346,6 +357,8 @@ func Virtio(board, device, args string) string {
 		suffix = "pci"
 	case "arm64-usr":
 		suffix = "device"
+	case "s390x-usr":
+		suffix = "ccw"
 	default:
 		panic(board)
 	}

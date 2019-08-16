@@ -29,7 +29,7 @@ func PortageArch() string {
 	case "arm":
 	case "arm64":
 	case "ppc64":
-
+	case "s390x":
 	// Gentoo doesn't have a little-endian PPC port.
 	case "ppc64le":
 		fallthrough
