@@ -1,2 +1,2 @@
-# Place-holder for s390x arch specific dependencies
-
+# For building iso image
+lorax xorriso
