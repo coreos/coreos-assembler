@@ -1,0 +1,2 @@
+# For building iso image
+lorax xorriso
