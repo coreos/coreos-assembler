@@ -67,11 +67,6 @@ os.mkdir(tmpisoisolinux)
 
 def generate_iso():
     arch = platform.machine()
-
-    if arch in ("s390", "s390x"):
-        print(f"{arch} ISO generation is not supported at the moment")
-        sys.exit(1)
-
     tmpisofile = os.path.join(tmpdir, iso_name)
 
     # Find the directory under `/usr/lib/modules/<kver>` where the
@@ -128,6 +123,18 @@ def generate_iso():
     elif arch == "ppc64le":
         genisoargs += ['-r', '-l', '-sysid', 'PPC',
                        '-chrp-boot', '-graft-points']
+    elif arch == "s390x":
+        # combine kernel, initramfs and cmdline using lorax/mk-s390-cdboot tool
+        run_verbose(['/usr/bin/mk-s390-cdboot',
+                     '-i', os.path.join(tmpisoimages, 'vmlinuz'),
+                     '-r', os.path.join(tmpisoimages, 'initramfs.img'),
+                     '-p', os.path.join(tmpisoroot, 'zipl.prm'),
+                     '-o', os.path.join(tmpisoimages, 'fcos.img')])
+        genisoargs = ['/usr/bin/xorrisofs', '-verbose',
+                      '-volset', f"{name_version}",
+                      '-rock', '-J', '-joliet-long',
+                      '-no-emul-boot', '-eltorito-boot',
+                      os.path.join(os.path.relpath(tmpisoimages, tmpisoroot), 'fcos.img')]
 
     ### For x86_64 and aarch64 UEFI booting
     if arch in ("x86_64", "aarch64"):
