@@ -4,7 +4,7 @@ DESTDIR ?=
 # E722 do not use bare 'except'
 PYIGNORE ?= E402,E722
 
-pysources = src/cosalib src/oscontainer.py src/cmd-kola
+pysources = src/cosalib src/oscontainer.py src/cmd-kola src/cmd-koji-upload
 
 .PHONY: all check flake8 unittest clean mantle install
 
