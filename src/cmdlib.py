@@ -9,11 +9,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import gi
-import semver
-
-gi.require_version("RpmOstree", "1.0")
-from gi.repository import RpmOstree
 
 from datetime import datetime
 
@@ -183,6 +178,9 @@ def get_basearch():
     try:
         return get_basearch.saved
     except AttributeError:
+        import gi
+        gi.require_version("RpmOstree", "1.0")
+        from gi.repository import RpmOstree
         get_basearch.saved = RpmOstree.get_basearch()
         return get_basearch.saved
 
@@ -190,6 +188,7 @@ def get_basearch():
 # FIXME: Add tests
 class Builds:  # pragma: nocover
     def __init__(self, workdir=None):
+        import semver
         self._workdir = workdir
         self._fn = self._path("builds/builds.json")
         if not os.path.isdir(self._path("builds")):
