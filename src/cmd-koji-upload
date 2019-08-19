@@ -279,7 +279,7 @@ class Build(_Build):
                 continue
 
             # os.path.getsize uses 1kB instead of 1KB. So we use stat instead.
-            fsize = subprocess.check_output(["stat", "--format", '%s', lpath])
+            fsize = subprocess.check_output(["stat", "--dereference",  "--format", '%s', lpath])
             log.debug(" * calculating checksum")
             self._found_files[lpath] = {
                 "local_path": lpath,
