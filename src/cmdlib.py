@@ -101,7 +101,7 @@ def fatal(msg):
     :type msg: str
     :raises: SystemExit
     """
-    print('fatal: {}'.format(msg), file=sys.stderr)
+    sys.stderr.write('fatal: {}\n'.format(msg))
     raise SystemExit(1)
 
 
@@ -112,7 +112,7 @@ def info(msg):
     :param msg: The message to show to output
     :type msg: str
     """
-    print('info: {}'.format(msg), file=sys.stderr)
+    print('info: {}'.format(msg))
 
 
 def rfc3339_time(t=None):
@@ -166,14 +166,14 @@ def import_ostree_commit(repo, commit, tarfile):
 
     # in the common case where we're operating on a recent build, the OSTree
     # commit should already be in the tmprepo
-    commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
-    if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL) == 0
-            and not os.path.isfile(commitpartial)):
+    commitpartial = os.path.join(repo, 'state/{}.commitpartial'.format(commit))
+    have_commit = subprocess.call(['ostree', 'show', '--repo', repo, commit],
+                                  stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL) == 0
+    if have_commit and not os.path.isfile(commitpartial):
         return
 
-    with tempfile.TemporaryDirectory(dir=f'{repo}/tmp') as d:
+    with tempfile.TemporaryDirectory(dir='{}/tmp'.format(repo)) as d:
         subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
         subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
                                d, commit])
@@ -242,11 +242,11 @@ class Builds:  # pragma: nocover
         if build_id == 'latest':
             build_id = self.get_latest()
         if self._legacy:
-            return self._path(f"builds/{build_id}")
+            return self._path("builds/" + build_id)
         if not basearch:
             # just assume caller wants build dir for current arch
             basearch = get_basearch()
-        return self._path(f"builds/{build_id}/{basearch}")
+        return self._path("builds/{}/{}".format(build_id, basearch))
 
     def insert_build(self, build_id, basearch=None):
         if self._legacy:

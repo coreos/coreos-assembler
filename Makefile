@@ -4,7 +4,8 @@ DESTDIR ?=
 # E722 do not use bare 'except'
 PYIGNORE ?= E402,E722
 
-pysources = src/cosalib src/oscontainer.py src/cmd-kola src/cmd-koji-upload
+pysources = src/cosalib src/oscontainer.py src/cmd-kola $(py2sources)
+py2sources = src/cmdlib.py src/cmd-koji-upload
 
 .PHONY: all check flake8 unittest clean mantle install
 
@@ -20,7 +21,7 @@ cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 py2syntax
 	echo OK
 
 flake8:
@@ -29,6 +30,9 @@ flake8:
 	# but are commented out as the files are not ready for checking yet
 	# grep -r "^\#\!/usr/bin/py" src/ | cut -d : -f 1 | xargs flake8 --ignore=$(PYIGNORE)
 	# find src -maxdepth 1 -name "*.py" | xargs flake8 --ignore=$(PYIGNORE)
+
+py2syntax:
+	python -m py_compile $(py2sources)
 
 unittest:
 	PYTHONPATH=`pwd`/src python3 -m pytest tests/
