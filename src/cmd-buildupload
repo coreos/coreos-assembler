@@ -87,6 +87,9 @@ def s3_upload_build(args, builddir, dest):
         img = build['images'][imgname]
         bn = img['path']
         path = os.path.join(builddir, bn)
+        s3_path = f'{dest}/{bn}'
+        set_content_disposition = False
+
         # Don't use the Content-Disposition trick with bare-metal images since
         # the installer expects them gzipped. (This is a trick used to allow
         # recommending `curl -J --compressed` so that images are stored
@@ -95,11 +98,21 @@ def s3_upload_build(args, builddir, dest):
                 args.enable_gz_peel):
             nogz = bn[:-3]
             img['path'] = nogz
-            s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, f'{dest}/{nogz}',
+            s3_path = f'{dest}/{nogz}'
+            set_content_disposition = True
+
+        if not os.path.exists(path):
+            if s3_check_exists(args, s3_path):
+                continue
+            else:
+                raise Exception(f"{path} not found locally or in the s3 destination!")
+
+        if set_content_disposition:
+            s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, s3_path,
                   '--content-encoding=gzip',
-                  f'--content-disposition=inline; filename={nogz}')
+                  f'--content-disposition=inline; filename={img["path"]}')
         else:
-            s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, f'{dest}/{bn}')
+            s3_cp(args, CACHE_MAX_AGE_ARTIFACT, path, s3_path)
         uploaded.add(bn)
 
     for f in os.listdir(builddir):
@@ -117,6 +130,13 @@ def s3_upload_build(args, builddir, dest):
         f.flush()
         s3_cp(args, CACHE_MAX_AGE_METADATA, f.name, f'{dest}/meta.json',
               '--content-type=application/json')
+
+
+def s3_check_exists(args, path):
+    path = f'{args.url}/{path}'
+    bucket, key = path.split("/", 1)
+    s3_args = ['aws', 's3api', 'head-object', '--bucket', bucket, '--key', key]
+    return subprocess.call(s3_args, stdout=subprocess.DEVNULL) == 0
 
 
 def s3_cp(args, max_age, src, dest, *s3_args):
