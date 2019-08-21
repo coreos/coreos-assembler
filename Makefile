@@ -14,6 +14,12 @@ tests:=$(shell find tests -maxdepth 1 -type f -executable -print)
 tests_checked:=$(patsubst tests/%,tests/.%.shellchecked,${tests})
 cwd:=$(shell find . -maxdepth 1 -type f -executable -print)
 cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
+GOARCH:=$(shell uname -m)
+ifeq ($(GOARCH),x86_64)
+        GOARCH="amd64"
+else ifeq ($(GOARCH),aarch64)
+        GOARCH="arm64"
+endif
 
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
@@ -37,7 +43,7 @@ clean:
 	find . -name "__pycache__" -type d | xargs rm -rf
 
 mantle:
-	cd mantle && ./build ore kola kolet
+	cd mantle && ./build ore kola kolet plume
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -47,6 +53,6 @@ install:
 	install -d $(DESTDIR)$(PREFIX)/bin
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
-	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola}
-	install -d $(DESTDIR)$(PREFIX)/lib/kola/amd64
-	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/amd64 mantle/bin/amd64/kolet
+	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola,plume}
+	install -d $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH)
+	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH) mantle/bin/$(GOARCH)/kolet
