@@ -1,8 +1,8 @@
 The CoreOS Assembler
 ====
 
-This is the CoreOS Assembler (often abbreviated COSA) build environment. It is 
-a collection of various tools used to build 
+This is the CoreOS Assembler (often abbreviated COSA) build environment. It is
+a collection of various tools used to build
 [Fedora CoreOS](https://coreos.fedoraproject.org) style systems.  You
 can use this to create Ignition + OSTree based operating systems with
 custom components and manage updates yourself, etc.
@@ -53,7 +53,7 @@ as a normal user as long as `/dev/kvm` is accessible (a prerequisite
 mentioned above) and thus we are able to perform a compose as a normal
 user. This allows us to run inside of a locked down OpenShift
 environment, which is where we are running our builds for Fedora
-CoreOS currently. 
+CoreOS currently.
 
 We recommend you use unprivileged mode when building locally if you
 are hacking on Fedora CoreOS so that you can mimic our build
@@ -75,7 +75,7 @@ To completely rebuild the COSA container image locally, use e.g.
 ---
 
 Let's set up our working directory first. We'll create and use `./fcos`
-on our host system. You can choose any directory you like. 
+on our host system. You can choose any directory you like.
 
 ```
 $ mkdir ./fcos
