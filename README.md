@@ -37,99 +37,93 @@ See [update build process svg](build-process-mermaid.md)
 ### Getting started - prerequisites
 ---
 
-You can use `podman` or `docker`. These examples use `podman`. Note
-that we support running in a privileged or unprivileged mode (detailed
-below). Regardless of whether you are using privileged or unprivileged
-mode you'll need access to `/dev/kvm` as the build process runs a
-virtual machine in order to generate the target image. If you're running
-this in a VM, you must enable [nested virt](https://docs.fedoraproject.org/en-US/quick-docs/using-nested-virtualization-in-kvm/).
-There are various public cloud options that provide bare metal, such as [Packet](https://www.packet.com/), [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances), EC2 `i3.metal` instances, [IBM Bare Metal](https://www.ibm.com/cloud/bare-metal-servers), etc.
+The default instructions here use `podman`, but it is also possible to use
+`docker`.
 
-#### Unprivileged Mode
+However, the most important prerequisite to understand is that
+coreos-assembler generates disk images, and creating those in a
+maintainable way requires access to virtualization - specifically
+`/dev/kvm`.
 
-Unprivileged mode is designed to work with very minimal privileges by
-doing all "privileged" operations inside of a VM. VMs can be started
-as a normal user as long as `/dev/kvm` is accessible (a prerequisite
-mentioned above) and thus we are able to perform a compose as a normal
-user. This allows us to run inside of a locked down OpenShift
-environment, which is where we are running our builds for Fedora
-CoreOS currently.
+If you're running in a local KVM VM, you can try enabling [nested virt](https://docs.fedoraproject.org/en-US/quick-docs/using-nested-virtualization-in-kvm/).
 
-We recommend you use unprivileged mode when building locally if you
-are hacking on Fedora CoreOS so that you can mimic our build
-environment as much as possible.
+There are various public cloud options that provide either bare metal or nested virt, such as:
 
-#### Privileged Mode
+- [Packet](https://www.packet.com/)
+- [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances)
+- EC2 `i3.metal` instances
+- [IBM Bare Metal](https://www.ibm.com/cloud/bare-metal-servers)
 
-In privileged mode the rpm-ostree compose uses container features
-itself, thus requires a privileged container in order to perform the
-compose. This is known as [recursive containers](https://github.com/projectatomic/bubblewrap/issues/284).
+etc.
 
-### Building the cosa container image locally
----
+Further, it is fully supported to run coreos-assembler inside Kubernetes;
+the Fedora CoreOS pipeline runs it inside OpenShift as an unprivileged pod
+on a bare metal cluster, with `/dev/kvm` mounted in.  See the
+[Fedora CoreOS pipeline](https://github.com/coreos/fedora-coreos-pipeline)
+source code.
 
-To completely rebuild the COSA container image locally, use e.g.
-`$ sudo podman build -t localhost/coreos-assembler .`
-
-### Setup
----
-
-Let's set up our working directory first. We'll create and use `./fcos`
-on our host system. You can choose any directory you like.
+### Downloading the container
 
 ```
-$ mkdir ./fcos
-$ setfacl -m u:1000:rwx ./fcos
-$ setfacl -d -m u:1000:rwx ./fcos
-$ chcon system_u:object_r:container_file_t:s0 ./fcos
-$ cd ./fcos
+$ podman pull quay.io/coreos-assembler/coreos-assembler
 ```
 
-In the above commands we:
+### Create a build working directory
+---
 
-- created the `./fcos` directory
-- set file ACLs so that the `builder` user (uid `1000` inside the container) can write files
-- set file ACLs so that new files get created with ACLs that allow the `builder` user
-- gave the directory an SELinux file context for sharing with containers
-- changed our working directory into `./fcos`
+coreos-assembler operates on a "build directory" which should be
+the current working directory.  This is much like how `git` works
+on a git repository.
+
+We'll create and use `./fcos` on our host system.
+You can choose any directory you like.
+
+```
+$ mkdir fcos
+$ cd fcos
+```
+
+### Define a bash alias to run cosa
 
 Now we'll define a bash function that we can use to call the assembler
-container:
+container.  There are a number of tweaks here on top of base `podman`.
+
+Note: *You should run this command as non-root*
+
+It's also fully supported to use `podman` as root, but some of the arguments
+here need to change for that.
 
 ```
-$ cosa() {
-    env | grep COREOS_ASSEMBLER
-    set -x # so we can see what command gets run
-    sudo podman run --rm -ti -v ${PWD}:/srv/ --userns=host --device /dev/kvm --name cosa \
-               ${COREOS_ASSEMBLER_PRIVILEGED:+--privileged}                                          \
-               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
-               ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
-               ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
-               ${COREOS_ASSEMBLER_CONTAINER:-quay.io/coreos-assembler/coreos-assembler:latest} $@
-    rc=$?; set +x; return $rc
+cosa() {
+   env | grep COREOS_ASSEMBLER
+   set -x # so we can see what command gets run
+   podman run --rm -ti --security-opt label=disable --privileged \
+              --uidmap=1000:0:1 --uidmap=0:1:1000 \
+              -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse \
+              --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa \
+              ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
+              ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
+              ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
+              ${COREOS_ASSEMBLER_CONTAINER:-quay.io/coreos-assembler/coreos-assembler:latest} $@
+   rc=$?; set +x; return $rc
 }
 ```
-
-**NOTE**: We're using `cosa` here as it is much easier to type than `coreos-assembler`.
 
 This is a bit more complicated than a simple alias, but it allows for
 hacking on the assembler or the configs and prints out the environment and
 the command that ultimately gets run. Let's step through each part:
 
-- `sudo podman run --rm -ti`: standard container invocation
+- `podman run --rm -ti`: standard container invocation
+- `--privileged`: Note we're running as non root, so this is still safe (from the host's perspective)
+- `--security-opt label:disable`: Disable SELinux isolation so we don't need to relabel the build directory
+- `--uidmap=1000:0:1 --uidmap=0:1:1000`: We need user namespaces configured for unprivileged mode; this bit was adapted from https://github.com/debarshiray/toolbox/blob/c6e37cdef37e2276207b34a42919f1e0ac4a04dc/toolbox#L809
+- `--device /dev/kvm --device /dev/fuse`: Bind in necessary devices
+- `--tmpfs`: We want /tmp to go away when the container restarts; it's part of the "ABI" of /tmp
+- `-v /var/tmp:/var/tmp`: Some cosa commands may allocate larger temporary files (e.g. supermin; forward this to the host)
 - `-v ${PWD}:/srv/`: mount local working dir under `/srv/` in container
-- `--userns=host`: the default for podman anyway, but required for docker
-- `--device /dev/kvm`: needed for creating VMs
 - `--name cosa`: just a name, feel free to change it
 
-
 The environment variables are special purpose:
-
-
-- `COREOS_ASSEMBLER_PRIVILEGED`
-
-Setting `COREOS_ASSEMBLER_PRIVILEGED=true` (or any value) will cause
-`--privileged` to get added on the command line.
 
 - `COREOS_ASSEMBLER_CONFIG_GIT`
 
@@ -154,6 +148,14 @@ currently `quay.io/coreos-assembler/coreos-assembler:latest`.
 See the [Hacking](#hacking) section below for examples of how to use these
 variables:
 
+### Running persistently
+
+At this point, try `cosa shell` to start a shell inside the container.
+From here, you can run `cosa ...` to invoke build commands.
+
+However, you can also choose to run the `cosa` bash alias above
+and create a transient new container for each command.  Either
+way, all data persists in the build directory.
 
 ### Initializing
 ---
@@ -208,6 +210,14 @@ so any changes are thrown away after you exit qemu.  To exit, type
 
 ### Hacking
 ---
+
+#### Building the cosa container image locally
+---
+
+To completely rebuild the COSA container image locally, use e.g.
+`$ podman build -t localhost/coreos-assembler .`  You should then set
+`COREOS_ASSEMBLER_CONTAINER=localhost/coreos-assembler` in the environment
+if you're using the bash alias `cosa`.
 
 #### Understanding "config git"
 
