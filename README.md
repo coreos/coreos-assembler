@@ -9,15 +9,15 @@ custom components and manage updates yourself, etc.
 
 It reuses various upstream tools, such as:
 
- - [mantle](https://github.com/coreos/mantle)
- - [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
- - [libvirt](https://github.com/libvirt/libvirt)
+- [mantle](https://github.com/coreos/mantle)
+- [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
+- [libvirt](https://github.com/libvirt/libvirt)
 
 A high level goal of this tool is to support two highly related use cases,
 and to keep them as similar as possible:
 
- - Local development ("test a kernel change")
- - Be a production build system orchestrated by an external tool (e.g. Jenkins)
+- Local development ("test a kernel change")
+- Be a production build system orchestrated by an external tool (e.g. Jenkins)
 
 See [fedora-coreos-pipeline](https://github.com/coreos/fedora-coreos-pipeline) as an
 example pipeline.
