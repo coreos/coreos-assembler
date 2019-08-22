@@ -88,6 +88,6 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
     else
         outfile=$manifest_lock
     fi
-    mv "${tmprepo}/tmp/manifest-lock.json" "${outfile}"
+    mv -f "${tmprepo}/tmp/manifest-lock.json" "${outfile}"
     echo "Wrote out lockfile ${outfile}"
 fi
