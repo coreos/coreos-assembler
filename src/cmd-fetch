@@ -15,8 +15,9 @@ EOF
 }
 
 UPDATE_LOCKFILE=
+OUTPUT_LOCKFILE=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,write-lockfile-to: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -30,6 +31,11 @@ while true; do
             ;;
         --update-lockfile)
             UPDATE_LOCKFILE=1
+            ;;
+        --write-lockfile-to)
+            shift;
+            UPDATE_LOCKFILE=1
+            OUTPUT_LOCKFILE=$1
             ;;
         --)
             shift
@@ -74,6 +80,14 @@ fi
 runcompose --download-only ${lock_arg}
 
 if [ -n "${UPDATE_LOCKFILE}" ]; then
-    mv "${tmprepo}/tmp/manifest-lock.json" "${manifest_lock}"
-    echo "Updated lockfile ${manifest_lock}"
+    # Write out to the lockfile specified by the user or to the
+    # existing manifest lockfile if none was specified by the user
+    if [ -n "${OUTPUT_LOCKFILE}" ]; then
+        # assume given path is relative to toplevel workdir
+        outfile="${workdir}/${OUTPUT_LOCKFILE}" 
+    else
+        outfile=$manifest_lock
+    fi
+    mv "${tmprepo}/tmp/manifest-lock.json" "${outfile}"
+    echo "Wrote out lockfile ${outfile}"
 fi
