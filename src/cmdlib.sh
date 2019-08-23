@@ -423,13 +423,12 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
-    pcibus="${devtype}.0"
-    scsibus="bus=${pcibus},addr=0x3"
+    scsibus="bus=pci.0,addr=0x3"
     arch_args=
     case $arch in
         "aarch64")
             # 'pci' bus doesn't work on aarch64
-            pcibus=pcie.0
+            scsibus="bus=pcie.0,addr=0x3"
             arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
 	    ;;
         "s390x") scsibus="devno=fe.0.0003" ;;
