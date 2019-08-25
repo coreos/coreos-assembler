@@ -123,6 +123,22 @@ set prefix=($prefix)/grub2
 normal
 EOF
 
+# copy the boot binaries needed for Raspberry pi support
+if  [ -d "/usr/share/uboot/" ]; then
+	if [ "$arch" == "aarch64" ]; then
+		cp -P /boot/efi/*.bin rootfs/boot/efi/
+		cp -P /boot/efi/*.dat rootfs/boot/efi/
+		cp -P /boot/efi/*.dtb rootfs/boot/efi/
+		cp -P /boot/efi/*.elf rootfs/boot/efi/
+		cp -rP /boot/efi/overlays/ rootfs/boot/efi/
+		cp -P /usr/share/uboot/rpi_3/u-boot.bin rootfs/boot/efi/rpi3-u-boot.bin
+		# rpi4 is only supported in Fedora 31 and on
+		if [ -f "/usr/share/uboot/rpi_4/u-boot.bin" ]; then
+			cp -P /usr/share/uboot/rpi_4/u-boot.bin rootfs/boot/efi/rpi4-u-boot.bin
+		fi
+	fi
+fi
+
 	# copy the grub config and any other files we might need
 	cp $grub_script rootfs/boot/grub2/grub.cfg
 else

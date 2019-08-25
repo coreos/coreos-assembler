@@ -1,1 +1,4 @@
 grub2 grub2-efi-aa64
+
+# firmware for booting raspberry pi
+bcm283x-firmware uboot-images-armv8
