@@ -42,8 +42,8 @@ github.com/ajeddeloh/yaml
 # github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
 github.com/alecthomas/units
 # github.com/aws/aws-sdk-go v1.19.11
-github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
+github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/client
 github.com/aws/aws-sdk-go/aws/credentials
 github.com/aws/aws-sdk-go/aws/endpoints
@@ -291,7 +291,7 @@ github.com/ulikunitz/xz/lzma
 github.com/ulikunitz/xz/internal/hash
 # github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
 github.com/vincent-petithory/dataurl
-# github.com/vishvananda/netlink v0.0.0-20150217221648-2e9d285a7160
+# github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
