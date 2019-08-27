@@ -176,6 +176,8 @@ github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb h1:lyL3z
 github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb/go.mod h1:FHafX5vmDzyP+1CQATJn7WFKc9CvnvxyvZy6I1MrG/U=
 github.com/vishvananda/netlink v0.0.0-20150217221648-2e9d285a7160 h1:bIW5hzk/ElzcgxEsZQUxFZLh/nZ3PlYU4ZDd+6fD15w=
 github.com/vishvananda/netlink v0.0.0-20150217221648-2e9d285a7160/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
+github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893 h1:aa5mTO5h2yn1zhd6HH0IJDBRZdwocPbqrf3ci22Ni1U=
+github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8 h1:MmJ82dMUwQ+0jmeFg/iWripmd3D+GlYUu/CV2m7hJto=
 github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8/go.mod h1:ZjcWmFBXmLKZu9Nxj3WKYEafiSqer2rnvPr0en9UNpI=
 github.com/vmware/govmomi v0.15.0 h1:fVMjwFASkUIGenwURwP0ruAzTjka0l2AV9wtARwkJLI=

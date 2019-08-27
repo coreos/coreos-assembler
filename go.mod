@@ -60,7 +60,7 @@ require (
 	github.com/ugorji/go v0.0.0-20171019201919-bdcc60b419d1 // indirect
 	github.com/ulikunitz/xz v0.5.4
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
-	github.com/vishvananda/netlink v0.0.0-20150217221648-2e9d285a7160
+	github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
 	github.com/vmware/govmomi v0.15.0
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
