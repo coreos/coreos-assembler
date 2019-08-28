@@ -1,20 +1,11 @@
-#!/usr/bin/python -u
-# pylint: disable=C0103
-
+#!/usr/bin/python3 -u
 """
 cmd-koji-upload performs the required steps to make COSA a Koji Content
 Generator. When running this in an automated fashion, you will need a Kerberos
 keytab file for a service account.
 
-Python2: due to an issue with Kerberos Auth issue which returns errors like:
-[auth_gssapi:error] NO AUTH DATA Client did not send any authentication headers
-[auth_gssapi:error] GSS ERROR gss_localname() failed:...
-We are unable to use Python3. After inquiring with the Koji team, we were
-advised to use Python2. This code should port rather cleanly to Python3 once
-the Kerberos issue is cleared.
-
 Dependencies:
- - python-koji, krb5-workstation and python-krbV
+ - python3-koji, koji-utils,  krb5-workstation and python3-koji-cli-plugins
  - Kerberos credentials against Koji _in_ keytab format
  - content generator permissions for your user or service account
 
@@ -45,14 +36,6 @@ except ImportError:
     # We're in the container and can't sense the cosa path
     sys.path.insert(0, '/usr/lib/coreos-assembler/cosalib')
     from cosalib.build import _Build
-
-try:
-    # Available in Koji v1.17, https://pagure.io/koji/issue/975
-    from koji_cli.lib import unique_path
-    from koji_cli.lib import progress_callback as cb
-except ImportError:
-    from koji_cli.lib import _unique_path as unique_path
-    from koji_cli.lib import _progress_callback as cb
 
 try:
     with open("/etc/redhat-release", "r") as f:
@@ -278,8 +261,7 @@ class Build(_Build):
                 log.debug("   File type is not supported by Koji")
                 continue
 
-            # os.path.getsize uses 1kB instead of 1KB. So we use stat instead.
-            fsize = subprocess.check_output(["stat", "--dereference",  "--format", '%s', lpath])
+            fsize = '{}'.format(os.stat(lpath).st_size)
             log.debug(" * calculating checksum")
             self._found_files[lpath] = {
                 "local_path": lpath,
@@ -558,15 +540,14 @@ class Upload():
         a symlink is created in temporary directory and is used as the upload
         file.
         """
-        serverdir = unique_path("%s-cosa" % self.build.build_id)
-        callback = cb
-
+        serverdir = klib.unique_path("%s-cosa" % self.build.build_id)
         log.debug('uploading files to %s', serverdir)
         for _, meta in (self.build).get_artifacts():
             local_path = meta['local_path']    # the local file to upload
             remote_path = meta['upload_path']  # the name of the file to upload
             log.info("Uploading %s to %s/%s", local_path, serverdir,
                      remote_path)
+            callback = klib._progress_callback
             self.session.uploadWrapper(local_path, serverdir, name=remote_path,
                                        callback=callback)
             if callback:
@@ -600,7 +581,7 @@ To use this program, you will need:
 
 Example:
     $ cmd-koji-upload \
-        --build_root=/src/build \
+        --buildroot=/src/build \
         --keytab keytab \
         --owner me@FEDORA.COM \
         --tag rhaos-4.1-rhel-8-build \
@@ -654,7 +635,7 @@ Environment variables are supported:
     build.build_artifacts()
     upload = Upload(build, args.owner, args.tag, args.profile)
     if args.dump:
-        print(json.dumps(upload.manifest, sort_keys=True, indent=3))
+        print((json.dumps(upload.manifest, sort_keys=True, indent=3)))
         return
 
     if args.no_upload is False:
