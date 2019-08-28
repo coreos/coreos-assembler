@@ -56,4 +56,4 @@ ShellCheck
 python3-flake8 python3-pytest python3-pytest-cov
 
 # Support for Koji uploads.
-krb5-libs krb5-workstation python2-koji python2-krbv
+krb5-libs krb5-workstation koji-utils python3-koji python3-koji-cli-plugins
