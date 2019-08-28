@@ -101,8 +101,7 @@ def fatal(msg):
     :type msg: str
     :raises: SystemExit
     """
-    print('fatal: {}'.format(msg), file=sys.stderr)
-    raise SystemExit(1)
+    raise SystemExit(msg)
 
 
 def info(msg):
@@ -112,7 +111,7 @@ def info(msg):
     :param msg: The message to show to output
     :type msg: str
     """
-    print('info: {}'.format(msg), file=sys.stderr)
+    sys.stderr.write(f"info: {msg}")
 
 
 def rfc3339_time(t=None):
