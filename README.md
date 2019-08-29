@@ -97,10 +97,10 @@ here need to change for that.
 cosa() {
    env | grep COREOS_ASSEMBLER
    set -x # so we can see what command gets run
-   podman run --rm -ti --security-opt label=disable --privileged \
-              --uidmap=1000:0:1 --uidmap=0:1:1000 \
-              -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse \
-              --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa \
+   podman run --rm -ti --security-opt label=disable --privileged                                    \
+              --uidmap=1000:0:1 --uidmap=0:1:1000                                                   \
+              -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse                                  \
+              --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa                                         \
               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
               ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
               ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
