@@ -42,6 +42,7 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
+img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 # Grab the commit hash for this build
 buildmeta_commit = buildmeta['ostree-commit']
 
@@ -89,6 +90,32 @@ def generate_iso():
                      f"{buildmeta_commit}", tmpisoimages])
         # initramfs isn't world readable by default so let's open up perms
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
+
+    if is_live:
+        initramfs = os.path.join(tmpisoimages, 'initramfs.img')
+        tmp_squashfs = os.path.join(tmpdir, 'root.squashfs')
+        tmp_cpio = os.path.join(tmpdir, 'root.cpio')
+        tmp_initramfs = os.path.join(tmpdir, 'initramfs')
+
+        run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
+                     img_qemu, tmp_squashfs])
+        run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
+                '--quiet', '--reproducible', '--force-local',
+                '-D', os.path.dirname(tmp_squashfs), '-O', tmp_cpio],
+                input=os.path.basename(tmp_squashfs).encode())
+        # Compression is redundant but the kernel requires it
+        run_verbose(['gzip', '-1', tmp_cpio])
+
+        # Append the root cpio to the initramfs.
+        # The initramfs image is a hardlink to the uncompressed objects
+        # cache, so we can't modify it in place.
+        with open(tmp_initramfs, 'wb') as fdst:
+            with open(initramfs, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
+            with open(tmp_cpio + '.gz', 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
+        os.rename(tmp_initramfs, initramfs)
+        os.unlink(tmp_squashfs)
 
     # TODO ignore EFI dir
     # Grab all the contents from the installer dir from the configs
