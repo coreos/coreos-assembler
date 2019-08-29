@@ -119,7 +119,7 @@ def generate_iso():
 
     # TODO ignore EFI dir
     # Grab all the contents from the installer dir from the configs
-    run_verbose(["rsync", "-av", "src/config/installer/", f"{tmpisoroot}/"])
+    run_verbose(["rsync", "-av", f"src/config/{image_type}/", f"{tmpisoroot}/"])
 
     # These sections are based on lorax templates
     # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
@@ -213,7 +213,7 @@ def generate_iso():
             efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
             with tarfile.open(efitarfile.name, "w:", dereference=True) as tar:
                 tar.add(tmpimageefidir, arcname="/EFI", filter=strip)
-                tar.add('src/config/installer/EFI/', arcname='/EFI',
+                tar.add(f'src/config/{image_type}/EFI/', arcname='/EFI',
                         filter=strip)
 
             # Create the efiboot.img file (a fat filesystem) in the images/ dir
