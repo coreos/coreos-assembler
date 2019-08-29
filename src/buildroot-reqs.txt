@@ -1,0 +1,29 @@
+# This is a list of basic buildrequires; it'd be a bit better to
+# yum -y install @buildsys-build but unfortunately that hits a bug:
+# https://fedoraproject.org/wiki/Common_F30_bugs#Conflicts_between_fedora-release_packages_when_installing_package_groups
+# So here we inline it, minus the -release package.
+bash
+bzip2
+coreutils
+cpio
+diffutils
+findutils
+gawk
+glibc-minimal-langpack
+grep
+gzip
+info
+make
+patch
+redhat-rpm-config
+rpm-build
+sed
+shadow-utils
+tar
+unzip
+util-linux
+which
+xz
+
+# Also, add clang since it's useful at least in CI for C/C++ projects
+clang
