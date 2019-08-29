@@ -31,6 +31,11 @@ if not args.build:
 
 print(f"Targeting build: {args.build}")
 
+# Hacky mode switch, until we can drop support for the installer images
+is_live = os.path.basename(sys.argv[0]).endswith('-live')
+image_type = 'live' if is_live else 'installer'
+meta_keys = {k: 'live-' + k if is_live else k for k in ('iso', 'kernel', 'initramfs')}
+
 workdir = os.path.abspath(os.getcwd())
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
@@ -43,20 +48,20 @@ buildmeta_commit = buildmeta['ostree-commit']
 repo = os.path.join(workdir, 'tmp/repo')
 
 # Don't run if it's already been done, unless forced
-if 'iso' in buildmeta['images'] and not args.force:
-    print(f"Installer has already been built for {args.build}. Skipping.")
+if meta_keys['iso'] in buildmeta['images'] and not args.force:
+    print(f"Image has already been built for {args.build}. Skipping.")
     print("You can force a rebuild with '--force'.")
     sys.exit(0)
 
 base_name = buildmeta['name']
-iso_name = f'{base_name}-{args.build}-installer.iso'
+iso_name = f'{base_name}-{args.build}-{image_type}.iso'
 name_version = f'{base_name}-{args.build}'
 
-tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-installer")
+tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-{image_type}")
 if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 
-tmpisoroot = os.path.join(tmpdir, 'installer')
+tmpisoroot = os.path.join(tmpdir, image_type)
 tmpisoimages = os.path.join(tmpisoroot, 'images')
 tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
 
@@ -203,8 +208,8 @@ def generate_iso():
     if arch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', tmpisofile])
 
-    kernel_name = f'{base_name}-{args.build}-installer-kernel'
-    initramfs_name = f'{base_name}-{args.build}-installer-initramfs.img'
+    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel'
+    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
     shutil.copyfile(os.path.join(tmpisoimages, "vmlinuz"), kernel_file)
@@ -215,15 +220,15 @@ def generate_iso():
     checksum = sha256sum_file(tmpisofile)
 
     buildmeta['images'].update({
-        'iso': {
+        meta_keys['iso']: {
             'path': iso_name,
             'sha256': checksum
         },
-        'kernel': {
+        meta_keys['kernel']: {
             'path': kernel_name,
             'sha256': kernel_checksum
         },
-        'initramfs': {
+        meta_keys['initramfs']: {
             'path': initramfs_name,
             'sha256': initramfs_checksum
         }
