@@ -98,7 +98,7 @@ cosa() {
    env | grep COREOS_ASSEMBLER
    set -x # so we can see what command gets run
    podman run --rm -ti --security-opt label=disable --privileged                                    \
-              --uidmap=1000:0:1 --uidmap=0:1:1000                                                   \
+              --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536                          \
               -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse                                  \
               --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa                                         \
               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
@@ -116,7 +116,7 @@ the command that ultimately gets run. Let's step through each part:
 - `podman run --rm -ti`: standard container invocation
 - `--privileged`: Note we're running as non root, so this is still safe (from the host's perspective)
 - `--security-opt label:disable`: Disable SELinux isolation so we don't need to relabel the build directory
-- `--uidmap=1000:0:1 --uidmap=0:1:1000`: We need user namespaces configured for unprivileged mode; this bit was adapted from https://github.com/debarshiray/toolbox/blob/c6e37cdef37e2276207b34a42919f1e0ac4a04dc/toolbox#L809
+- `--uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536`: map the `builder` user to root in the user namespace where root in the user namespace is mapped to the calling user from the host. See [this well formatted explanation](https://github.com/debarshiray/toolbox/commit/cfcf4eb31e14b3a300804840d315c62bc32e15ae) of the complexities of user namespaces in rootless podman.
 - `--device /dev/kvm --device /dev/fuse`: Bind in necessary devices
 - `--tmpfs`: We want /tmp to go away when the container restarts; it's part of the "ABI" of /tmp
 - `-v /var/tmp:/var/tmp`: Some cosa commands may allocate larger temporary files (e.g. supermin; forward this to the host)
