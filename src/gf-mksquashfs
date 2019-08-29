@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+# shellcheck source=src/libguestfish.sh
+. "${dn}"/libguestfish.sh
+
+# Usage: gf-mksquashfs <input image> <output image>
+# Example: gf-mksquashfs fedora-coreos.qcow2 fedora-coreos.squashfs
+#
+# This will generate a squashfs from the contents of the root partition.
+
+src="$1"
+dest="$2"
+
+if [[ $src == *.gz || $src == *.xz ]]; then
+    img="$(basename "$src")"
+    fatal "Cannot generate squashfs from $img; not an uncompressed image"
+fi
+
+set -x
+# Work in a tmpdir on the destination so that we don't inherit some MCS labeling
+# from the /tmp dir in the container. This also ensures that the final move is a
+# pure `rename()`.
+# See also:
+# https://github.com/coreos/coreos-assembler/issues/292
+# https://github.com/coreos/coreos-assembler/pull/394
+tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-mksquashfs.XXXXXX)
+tmp_dest=${tmpd}/image.squashfs
+
+coreos_gf_run "${src}" --ro
+
+root=$(coreos_gf findfs-label root)
+coreos_gf mount "${root}" /
+
+coreos_gf mksquashfs / "${tmp_dest}" compress:zstd
+
+coreos_gf_shutdown
+
+mv "${tmp_dest}" "${dest}"
+rm "${tmpd}" -rf
