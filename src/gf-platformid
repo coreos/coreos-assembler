@@ -18,7 +18,7 @@ src="$1"
 dest="$2"
 platformid="$3"
 
-if [[ $src == *.gz ]]; then
+if [[ $src == *.gz || $src == *.xz ]]; then
     img="$(basename "$src")"
     fatal "Cannot change ignition.platform.id on $img; not an uncompressed image"
 fi
