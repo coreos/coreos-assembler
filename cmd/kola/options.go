@@ -168,7 +168,7 @@ func syncOptions() error {
 	}
 
 	image, ok := kolaDefaultImages[kola.QEMUOptions.Board]
-	if !ok {
+	if kola.QEMUOptions.Distribution == "cl" && !ok {
 		return fmt.Errorf("unsupport board %q", kola.QEMUOptions.Board)
 	}
 
