@@ -378,6 +378,9 @@ s390x)
 esac
 
 ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
+# Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
+# https://github.com/ostreedev/ostree/issues/1265
+ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
 
 touch $rootfs/boot/ignition.firstboot
 
