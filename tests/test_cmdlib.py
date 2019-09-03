@@ -61,11 +61,11 @@ def test_fatal(capsys):
     Ensure that fatal does indeed attempt to exit
     """
     test_string = str(uuid.uuid4())
-    with pytest.raises(SystemExit):
+    err = None
+    with pytest.raises(SystemExit) as err:
         cmdlib.fatal(test_string)
     # Check that our test string is in stderr
-    captured = capsys.readouterr()
-    assert test_string in captured.err
+    assert test_string in str(err)
 
 
 def test_info(capsys):
