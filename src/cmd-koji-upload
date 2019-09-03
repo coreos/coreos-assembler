@@ -27,7 +27,7 @@ import sys
 import tempfile
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, ("%s/cosalib" % cosa_dir))
+sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
 
 try:
@@ -113,8 +113,8 @@ class Build(_Build):
         try:
             shutil.rmtree(self._tmpdir)
         except Exception as e:
-            raise Exception("failed to remove temporary directory: %s",
-                            self._tmpdir, e)
+            raise Exception(
+                f"failed to remove temporary directory: {self._tmpdir}", e)
 
     def rename_mutator(self, fname):
         """
@@ -127,11 +127,11 @@ class Build(_Build):
         """
         for ending in RENAME_RAW:
             if fname.endswith(ending):
-                lname = "%s.raw" % fname
+                lname = f"{fname}.raw"
                 try:
                     os.symlink(fname, lname)
                 except Exception as e:
-                    raise Exception("failed create symlink: %s" % e)
+                    raise Exception("failed create symlink for {lname}", e)
 
                 return lname, True
         return fname, None
@@ -154,7 +154,7 @@ class Build(_Build):
             base_name = os.path.basename(fname)
             base = os.path.splitext(base_name)[0]
             ftype = (os.path.splitext(base)[1]).replace(".", "")
-            ctype = "%s.%s" % (ftype, x)
+            ctype = f"{ftype}.{x}"
             if ctype not in KOJI_CG_TYPES and ftype in KOJI_CG_TYPES:
                 if x == "gz":
                     compressor = gzip
@@ -165,12 +165,13 @@ class Build(_Build):
                 try:
                     infile = compressor.open(fname)
                     outfile = open(new_path, 'wb+')
-                    log.info("using %s module to mutate %s to %s",
-                             compressor.__name__, base_name, new_path)
+                    log.info((f"using {compressor.__name__} module to mutate",
+                              f"{base_name} to {new_path}"))
                     shutil.copyfileobj(infile, outfile)
                 except Exception as e:
-                    raise Exception("failed to decompress file %s to %s: %s",
-                                    fname, new_path, e)
+                    raise Exception(
+                        f"failed to decompress file {fname} to {new_path}", e)
+
                 finally:
                     infile.close()
                     outfile.close()
@@ -234,8 +235,8 @@ class Build(_Build):
         for ffile in os.listdir(self.build_dir):
             files.append(os.path.join(self.build_dir, ffile))
             if os.path.islink(ffile):
-                log.debug(" * EXCLUDING symlink '%s'", ffile)
-                log.debug(" *    target '%s'", os.path.realpath(ffile))
+                log.debug(f" * EXCLUDING symlink {ffile}")
+                log.debug(f" *    target {os.path.realpath(ffile)}")
                 continue
 
         # add the coreos assembler files
@@ -245,19 +246,19 @@ class Build(_Build):
         # process the files that were found
         for ffile in files:
             lpath = os.path.abspath(ffile)
-            log.debug("Considering file file '%s'", lpath)
+            log.debug(f"Considering file file {lpath}")
 
             # if the file is mutated (renamed, uncompressed, etc)
             # we want to use that file name instead
             mutated_path = self.mutate_for_koji(lpath)
             if mutated_path != lpath:
                 lpath = mutated_path
-            log.debug(" * using %s for upload name", lpath)
+            log.debug(f" * using {lpath} for upload name")
 
             # and check that a file should be uploaded
             upload_path = os.path.basename(lpath)
             if not self.supported_upload(lpath):
-                log.debug(" * EXCLUDING file '%s'", ffile)
+                log.debug(f" * EXCLUDING file {ffile}")
                 log.debug("   File type is not supported by Koji")
                 continue
 
@@ -269,8 +270,8 @@ class Build(_Build):
                 "md5": md5sum_file(lpath),
                 "size": int(fsize)
             }
-            log.debug(" * size is %s", self._found_files[lpath]["size"])
-            log.debug(" * md5 is %s", self._found_files[lpath]["md5"])
+            log.debug(f" * size is {self._found_files[lpath]['size']}")
+            log.debug(f" * md5 is {self._found_files[lpath]['md5']}")
 
 
 def set_logger(level):
@@ -302,12 +303,12 @@ def kinit(keytab, principle):
     if keytab is None:
         raise Exception("keytab file is not defined")
 
-    log.info("using kerberos auth via %s", keytab)
+    log.info(f"using kerberos auth via {keytab}")
     try:
         _ = subprocess.check_output([
             "kinit", "-f", "-t", keytab, "-k", principle])
         klist_out = subprocess.check_output(["klist", "-a"])
-        log.debug("authenticated: \n%s", klist_out.decode("utf-8"))
+        log.debug(f"authenticated: \n{(klist_out.decode('utf-8'))}")
     except Exception as err:
         raise Exception("failed to auth: ", err)
 
@@ -385,10 +386,10 @@ class Upload():
         if ext in COMPRESSION_EXT:
             # find sub extension, e.g. "tar" in "tar.gz"
             sub_ext = os.path.splitext(obj.get("upload_path"))[0].lstrip('.')
-            ext = "%s.%s" % (sub_ext, ext)
+            ext = f"{sub_ext}.{ext}"
 
-        log.debug("File %s should be of type %s: %s ", obj.get("upload_path"),
-                  ext, obj)
+        log.debug((f"File {(obj.get('upload_path'))} should be of",
+                   f"type {ext}: {obj}"))
         (description, ext, arch, etype) = KOJI_CG_TYPES.get(
             ext, [None, None, None, None])
 
@@ -440,7 +441,7 @@ class Upload():
         now = datetime.datetime.utcnow()
         stamp = now.strftime("%s")
 
-        log.debug("Preparing manifest for %s files", len(self.image_files))
+        log.debug(f"Preparing manifest for {(len(self.image_files))} files")
         self._manifest = {
             "metadata_version": 0,
             "build": {
@@ -457,7 +458,7 @@ class Upload():
                 "owner": self._owner,
                 "source": source['origin'],
                 "start_time": stamp,
-                "version": "%s" % self.build.build_id
+                "version": f"{self.build.build_id}"
             },
             "buildroots": [{
                 "id": 1,
@@ -515,7 +516,7 @@ class Upload():
             assert session.logged_in
             log.info("logged into koji server")
         except Exception as e:
-            raise Exception("failed to authenticate to koji: %s" % e)
+            raise Exception(f"failed to authenticate to koji: {e}")
 
         if session is None:
             raise Exception("failed to get session from koji server")
@@ -527,7 +528,7 @@ class Upload():
         """ Verify that a tag exists in this Koji instance """
         taginfo = self._session.getTag(tag)
         if not taginfo:
-            raise RuntimeError('tag %s is not present in Koji' % tag)
+            raise RuntimeError(f"tag {tag} is not present in Koji")
 
     def upload(self):
         """
@@ -540,13 +541,12 @@ class Upload():
         a symlink is created in temporary directory and is used as the upload
         file.
         """
-        serverdir = klib.unique_path("%s-cosa" % self.build.build_id)
-        log.debug('uploading files to %s', serverdir)
+        serverdir = klib.unique_path(f"{self.build.build_id}-cosa")
+        log.debug(f"uploading files to {serverdir}")
         for _, meta in (self.build).get_artifacts():
             local_path = meta['local_path']    # the local file to upload
             remote_path = meta['upload_path']  # the name of the file to upload
-            log.info("Uploading %s to %s/%s", local_path, serverdir,
-                     remote_path)
+            log.info(f"Uploading {local_path} to {serverdir}/{remote_path}")
             callback = klib._progress_callback
             self.session.uploadWrapper(local_path, serverdir, name=remote_path,
                                        callback=callback)
@@ -557,7 +557,7 @@ class Upload():
         self._remote_directory = serverdir
         cginfo = self.session.CGImport(self.manifest, serverdir)
         log.info(json.dumps(cginfo, sort_keys=True, indent=3))
-        log.info("recorded build %s", cginfo['nvr'])
+        log.info(f"recorded build {cginfo['nvr']}")
         return cginfo
 
 
