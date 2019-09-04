@@ -15,7 +15,6 @@
 package platform
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -213,8 +212,7 @@ func setupDisk(confPath string, additionalOptions ...string) (*os.File, error) {
 		return nil, err
 	}
 	if len(confPath) > 0 {
-		err = setupIgnition(confPath, dstFileName)
-		if err != nil {
+		if err = setupIgnition(confPath, dstFileName); err != nil {
 			return nil, fmt.Errorf("ignition injection with guestfs failed: %v", err)
 		}
 	}
@@ -380,23 +378,26 @@ func Virtio(board, device, args string) string {
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
+const fileRemoteLocation = "/boot/ignition/config.ign"
+
+// setupIgnition copies the ignition file inside the disk image.
 func setupIgnition(confPath string, diskImagePath string) error {
-	fileRemoteLocation := "/boot/ignition/config.ign"
-
-	plog.Debugf("START guestfs")
-
+	// Set guestfish backend to direct in order to avoid libvirt as backend.
+	// Using libvirt can lead to permission denied issues if it does not have access
+	// rights to the qcow image
+	os.Setenv("LIBGUESTFS_BACKEND", "direct")
 	cmd := exec.Command("guestfish", "--listen", "-a", diskImagePath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("getting stdout pipe: %v", err)
 	}
 	defer stdout.Close()
+
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("running guestfish: %v", err)
 	}
 	buf, err := ioutil.ReadAll(stdout)
 	if err != nil {
-		cmd.Wait()
 		return fmt.Errorf("reading guestfish output: %v", err)
 	}
 	if err := cmd.Wait(); err != nil {
@@ -404,68 +405,72 @@ func setupIgnition(confPath string, diskImagePath string) error {
 	}
 	//GUESTFISH_PID=$PID; export GUESTFISH_PID
 	gfVarPid := strings.Split(string(buf), ";")
+	if len(gfVarPid) != 2 {
+		return fmt.Errorf("Failing parsing GUESTFISH_PID got: expecting length 2 got instead %d", len(gfVarPid))
+	}
 	gfVarPidArr := strings.Split(gfVarPid[0], "=")
-	os.Setenv(gfVarPidArr[0], gfVarPidArr[1])
-
-	if err := exec.Command("guestfish", "--remote", "--", "run").Run(); err != nil {
-		return fmt.Errorf("guestfish launch failed: %v", err)
+	if len(gfVarPidArr) != 2 {
+		return fmt.Errorf("Failing parsing GUESTFISH_PID got: expecting length 2 got instead %d", len(gfVarPid))
 	}
-
-	bootfs, err := findLabel("boot")
-	if err != nil {
-		return fmt.Errorf("guestfish command failed: %v", err)
-	}
-
-	rootfs, err := findLabel("root")
-	if err != nil {
-		return fmt.Errorf("guestfish command failed: %v", err)
-	}
+	pid := gfVarPidArr[1]
+	remote := fmt.Sprintf("--remote=%s", pid)
 
 	defer func() {
-		plog.Debugf("guestfish exit")
-		if err := exec.Command("guestfish", "--remote", "--", "exit").Run(); err != nil {
+		plog.Debugf("guestfish exit (PID:%s)", pid)
+		if err := exec.Command("guestfish", remote, "exit").Run(); err != nil {
 			plog.Errorf("guestfish exit failed: %v", err)
 		}
 	}()
 
-	if err := exec.Command("guestfish", "--remote", "--", "mount", rootfs, "/").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "run").Run(); err != nil {
+		return fmt.Errorf("guestfish launch failed: %v", err)
+	}
+
+	bootfs, err := findLabel("boot", pid)
+	if err != nil {
+		return fmt.Errorf("guestfish command failed to find boot label: %v", err)
+	}
+
+	rootfs, err := findLabel("root", pid)
+	if err != nil {
+		return fmt.Errorf("guestfish command failed to find root label: %v", err)
+	}
+
+	if err := exec.Command("guestfish", remote, "mount", rootfs, "/").Run(); err != nil {
 		return fmt.Errorf("guestfish root mount failed: %v", err)
 	}
 
-	if err := exec.Command("guestfish", "--remote", "--", "mount", bootfs, "/boot").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "mount", bootfs, "/boot").Run(); err != nil {
 		return fmt.Errorf("guestfish boot mount failed: %v", err)
 	}
 
-	if err := exec.Command("guestfish", "--remote", "--", "mkdir-p", "/boot/ignition").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "mkdir-p", "/boot/ignition").Run(); err != nil {
 		return fmt.Errorf("guestfish directory creation failed: %v", err)
 	}
 
-	if err := exec.Command("guestfish", "--remote", "--", "upload", confPath, fileRemoteLocation).Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "upload", confPath, fileRemoteLocation).Run(); err != nil {
 		return fmt.Errorf("guestfish upload failed: %v", err)
 	}
 
-	if err := exec.Command("guestfish", "--remote", "--", "umount-all").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "umount-all").Run(); err != nil {
 		return fmt.Errorf("guestfish umount failed: %v", err)
 	}
-
-	plog.Debugf("SUCCESS guestfs")
 	return nil
 }
 
-func findLabel(label string) (string, error) {
-	cmd := exec.Command("guestfish", "--remote", "findfs-label", label)
-	stdout, err := cmd.StdoutPipe()
+// findLabel finds the partition based on the label. The partition belongs to the image attached to the guestfish instance identified by pid.
+func findLabel(label, pid string) (string, error) {
+	if pid == "" {
+		return "", fmt.Errorf("The pid cannot be empty")
+	}
+	if label == "" {
+		return "", fmt.Errorf("The label cannot be empty")
+	}
+	remote := fmt.Sprintf("--remote=%s", pid)
+	cmd := exec.Command("guestfish", remote, "findfs-label", label)
+	stdout, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("get stdout for findfs-label failed: %v", err)
 	}
-	defer stdout.Close()
-
-	err = cmd.Start()
-	if err != nil {
-		return "", fmt.Errorf("start findfs-label command failed: %v", err)
-	}
-
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(stdout)
-	return strings.TrimSpace(buf.String()), nil
+	return strings.TrimSpace(string(stdout)), nil
 }
