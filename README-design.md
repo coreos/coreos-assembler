@@ -4,28 +4,38 @@ of the project.  It assumes some familiarity with the primary `README.md`.
 Builds
 ----
 
-Conceptually, each run of `coreos-assembler build` may generate a new "build".
+coreos-assembler operates on a "build directory", which can contain multiple
+builds.  A build is a pairing of an OSTree commit (stored as `ostree-commit.tar`)
+as well as an optional set of disk images.
 
-By default, a single build will generate both an OSTree commit and a `-qemu.qcow2`.
+This is in contrast to [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
+which just generates OSTree commits, and doesn't have anything to do with disk images.
+Another way to say this is that coreos-assembler ties together OSTree commits
+with disk images under a single build schema, and gives them the same version numbering
+for example.
+
+The default for `cosa build` is to generate a new OSTree commit and a `qemu` image.
+This supports e.g. `cosa run`.
+
 The OSTree commit data is generated via rpm-ostree, using `src/config/manifest.yaml`.
-The QEMU image uses the OSTree commit and the `src/config/image.ks` data, which
-defines the partition layout.
-
-There is a single OSTree repository created by `coreos-assembler init`. The new
-OSTree commit is written into `repo`; if you have configured a ref in the
-manifest, it will be updated.  For more information on OSTree and build systems,
-see [the libostree docs](https://ostree.readthedocs.io/en/latest/manual/buildsystem-and-repos/).
-
-The coreos-assembler concept of a "build" binds together an OSTree commit with
-one or more images that contain the filesystem tree represented by the commit.
+Image configuration uses `src/config/image.yaml`.
 
 Physically, a coreos-assembler build is represented primarily by a new
 subdirectory in `builds/$version`, and inside that directory there's a
 `meta.json` that contains a lot of relevant metadata, including the OSTree
 commit.
 
+There is also a `builds/builds.json` which maintains the list of builds.  The reason
+for this is that HTTP doesn't offer a way to enumerate a directory. 
+
+After a build is generated there are a variety of `buildextend-$x` commands, for example
+`buildextend-ec2` which can upload to AWS, and `buildextend-metal` which generates
+a bare metal disk image.
+
 By default, builds are pruned (as is the OSTree repository), although one can
 use `build --no-prune` to prevent this.
+
+For more information on OSTree and build systems, see [the libostree docs](https://ostree.readthedocs.io/en/latest/manual/buildsystem-and-repos/).
 
 Change detection
 ---
@@ -39,9 +49,9 @@ haven't edited the manifest, it will simply not generate a new build.
 You can detect this situation in a pipeline by comparing `readlink builds/latest`.
 
 However, coreos-assembler builds on top of rpm-ostree and also generates
-disk images.  Today, it uses Anaconda, and as mentioned above provides
-`image.ks` as input.  coreos-assembler simply checksums that file, and
-uses it to support change detection for images as well.
+disk images.  It uses supermin to run a virtual machine that runs
+code to write the ostree content along with the filesystem layout into a
+disk image.
 
 If you want to force a build, use `coreos-assembler build --force`.  A common
 reason to do this is when something changes in the tooling itself and you
@@ -50,6 +60,7 @@ want that change.
 Managing data
 ----
 
-For production pipelines, the suggested approach is to store data in e.g.
-an object store, and sync in the previous latest builds' `meta.json`.  This
-is enough for the change detection to kick in.
+cosa offers `buildprep` which downloads builds from `https://` or `s3://`,
+as well as a `buildupload` which is oriented around S3 today.  However,
+there are a wide variety of S3-compatible storage systems, so you are
+not tied to AWS.

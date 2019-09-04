@@ -25,6 +25,10 @@ example pipeline.
 The container itself is available on Quay.io at
 `quay.io/coreos-assembler/coreos-assembler`.
 
+## Design
+
+See [README-design.md](README-design.md) for more information about the overall design.
+
 ## Development
 For development information, including how to add new tests, please see [README-devel.md](README-devel.md).
 
