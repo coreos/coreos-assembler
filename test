@@ -21,12 +21,12 @@ trap "rm -rf _testbin/" EXIT
 [[ -z "$PKG" ]] && PKG="./..."
 
 # Expand PKG, excluding the vendor directory.
-pkgs=$(go list $PKG | grep -v /vendor/)
+pkgs=$(go list -mod=vendor $PKG | grep -v /vendor/)
 src=$(find . -name '*.go' -not -path "./vendor/*")
 
 echo "Building tests..."
 go test -mod=vendor -i "$@" $pkgs
-go install $pkgs
+go install -mod=vendor $pkgs
 
 echo "Running tests..."
 go test -mod=vendor -cover "$@" $pkgs
@@ -40,7 +40,7 @@ if [ -n "${res}" ]; then
 fi
 
 echo "Checking govet..."
-go vet $pkgs
+go vet -mod=vendor $pkgs
 
 echo "Running commands..."
 for cmd in ${GOBIN}/*; do
