@@ -54,7 +54,7 @@ if [ $# -ne 0 ]; then
 fi
 
 case "$arch" in
-    "x86_64"|"aarch64")
+    "x86_64"|"aarch64"|"s390x")
         ## fall through to the rest of the file
 	;;
     *)
@@ -128,7 +128,12 @@ size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 size="$(( size + 513 ))M"
 echo "Disk size estimated to $size"
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
-kargs="$kargs console=tty0 console=${VM_TERMINAL},115200n8 ignition.platform.id=metal"
+tty="console=tty0 console=${VM_TERMINAL},115200n8"
+# tty0 does not exist on s390x
+if [ "$arch" == "s390x" ]; then
+    tty="console=${VM_TERMINAL}"
+fi
+kargs="$kargs $tty ignition.platform.id=metal"
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
 
