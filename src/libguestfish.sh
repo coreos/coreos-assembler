@@ -12,15 +12,7 @@ coreos_gf_launch() {
     if [ -n "$GUESTFISH_PID" ]; then
         return
     fi
-    local src=$1
-    shift
-    local guestfish
-    guestfish[0]="guestfish"
-    guestfish[1]="--listen"
-    guestfish[3]="-a"
-    guestfish[4]="${src}"
-
-    eval "$("${guestfish[@]}")"
+    eval "$(guestfish --listen -a "$@")"
     if [ -z "$GUESTFISH_PID" ]; then
         fatal "guestfish didn't start up, see error messages above"
     fi
