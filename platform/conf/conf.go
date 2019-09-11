@@ -62,7 +62,6 @@ const (
 	NoState systemdUnitState = iota
 	Enable
 	Mask
-	EnableAndMask
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
@@ -538,9 +537,6 @@ func (c *Conf) addSystemdUnitCloudConfig(name, contents string, enable, mask boo
 func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 	enable, mask := false, false
 	switch state {
-	case EnableAndMask:
-		enable = true
-		mask = true
 	case Enable:
 		enable = true
 	case Mask:
