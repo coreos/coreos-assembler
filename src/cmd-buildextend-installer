@@ -7,7 +7,10 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
+import struct
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -71,6 +74,10 @@ os.mkdir(tmpisoroot)
 os.mkdir(tmpisoimages)
 os.mkdir(tmpisoisolinux)
 
+# Number of padding bytes at the end of the ISO initramfs for embedding
+# an Ignition config
+initrd_ignition_padding = 256 * 1024
+
 def generate_iso():
     arch = platform.machine()
     tmpisofile = os.path.join(tmpdir, iso_name)
@@ -114,6 +121,9 @@ def generate_iso():
                 shutil.copyfileobj(fsrc, fdst)
             with open(tmp_cpio + '.gz', 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
+            # Pad with NUL bytes for the ISO image.  We'll truncate the
+            # padding off again when copying the PXE initrd.
+            fdst.write(bytes(initrd_ignition_padding))
         os.rename(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
 
@@ -239,12 +249,65 @@ def generate_iso():
     if arch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', tmpisofile])
 
+    # We've already padded the initrd with initrd_ignition_padding bytes of
+    # zeroes.  Find the byte offset of that padding within the ISO image and
+    # write it into a custom header at the end of the ISO 9660 System Area,
+    # which is 32 KB at the start of the image "reserved for system use".
+    # The System Area usually contains partition tables and the like, and
+    # we're assuming that none of our platforms use the last 24 bytes of it.
+    #
+    # This allows an external tool, coreos-iso-embed-ignition, to modify
+    # an existing ISO image to embed a user's custom Ignition config.
+    # The tool wraps the Ignition config in a cpio.gz and uses our header
+    # to write it directly into the ISO image.  The cpio.gz will be read
+    # into the initramfs filesystem at runtime and ignition-dracut will
+    # ensure that the config is moved where Ignition will see it.
+    #
+    # Skip on s390x because that platform uses an embedded El Torito image
+    # with its own copy of the initramfs.
+    if is_live and arch != "s390x":
+        isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
+                stdout=subprocess.PIPE, text=True)
+        # -rw-rw-r--   1 1750 1750       553961457 Sep 18 2019 [   4733 00]  initramfs.img 
+        #                           match the logical block number ^^^^ ||
+        #                                          file type, always 00 ^^
+        matches = list(re.finditer(r'\[\s*([0-9]+) 00\]\s+initramfs\.img\s*$',
+                isoinfo.stdout, re.MULTILINE))
+        if len(matches) != 1:
+            raise Exception('Found {} copies of initramfs.img'.format(len(matches)))
+        # Start of the initramfs within the ISO
+        offset = int(matches[0].group(1)) * 2048  # assume 2 KB per logical block
+        # End of the initramfs within the ISO
+        offset += os.stat(os.path.join(tmpisoimages, "initramfs.img")).st_size
+        # Start of the initramfs padding
+        offset -= initrd_ignition_padding
+        with open(tmpisofile, 'r+b') as isofh:
+            # Verify that the calculated byte range is empty
+            isofh.seek(offset)
+            if isofh.read(initrd_ignition_padding) != bytes(initrd_ignition_padding):
+                raise Exception(f'ISO image {initrd_ignition_padding} bytes at {offset} are not zero')
+            # Write header at the end of the System Area
+            fmt = '<8s2Q'
+            isofh.seek(32768 - struct.calcsize(fmt))
+            # Magic number + offset + length
+            isofh.write(struct.pack(fmt, b'coreiso+', offset, initrd_ignition_padding))
+            print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
+
     kernel_name = f'{base_name}-{args.build}-{image_type}-kernel'
     initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
     shutil.copyfile(os.path.join(tmpisoimages, "vmlinuz"), kernel_file)
-    shutil.copyfile(os.path.join(tmpisoimages, "initramfs.img"), initramfs_file)
+    with open(os.path.join(tmpisoimages, "initramfs.img"), 'rb') as fsrc:
+        with open(initramfs_file, 'wb') as fdst:
+            shutil.copyfileobj(fsrc, fdst)
+            if is_live:
+                # Verify ISO initrd padding and truncate it away
+                pad_offset = fsrc.tell() - initrd_ignition_padding
+                fsrc.seek(pad_offset)
+                if fsrc.read() != bytes(initrd_ignition_padding):
+                    raise Exception(f"Expected {initrd_ignition_padding} bytes of trailing zeroes in initrd, didn't find it")
+                fdst.truncate(pad_offset)
 
     kernel_checksum = sha256sum_file(kernel_file)
     initramfs_checksum = sha256sum_file(initramfs_file)
