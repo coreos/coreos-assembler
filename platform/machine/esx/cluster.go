@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
+	platformConf "github.com/coreos/mantle/platform/conf"
 )
 
 type cluster struct {
@@ -35,7 +35,7 @@ func (ec *cluster) vmname() string {
 	return fmt.Sprintf("%s-%x", ec.Name(), b)
 }
 
-func (ec *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+func (ec *cluster) NewMachine(userdata *platformConf.UserData) (platform.Machine, error) {
 	conf, err := ec.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_ESX_IPV4_PUBLIC_0}",
 		"$private_ipv4": "${COREOS_ESX_IPV4_PRIVATE_0}",
@@ -51,7 +51,7 @@ Description=VMware metadata agent
 Type=oneshot
 Environment=OUTPUT=/run/metadata/coreos
 ExecStart=/usr/bin/mkdir --parent /run/metadata
-ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens192 | grep -Po "inet \K[\d.]+")\nCOREOS_ESX_IPV4_PUBLIC_0=$(ip addr show ens192 | grep -Po "inet \K[\d.]+")" > ${OUTPUT}'`, false)
+ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens192 | grep -Po "inet \K[\d.]+")\nCOREOS_ESX_IPV4_PUBLIC_0=$(ip addr show ens192 | grep -Po "inet \K[\d.]+")" > ${OUTPUT}'`, platformConf.NoState)
 
 	instance, err := ec.flight.api.CreateDevice(ec.vmname(), conf)
 	if err != nil {

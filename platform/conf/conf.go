@@ -56,6 +56,15 @@ const (
 	kindScript
 )
 
+type systemdUnitState int
+
+const (
+	NoState systemdUnitState = iota
+	Enable
+	Mask
+	EnableAndMask
+)
+
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
 
 // UserData is an immutable, unvalidated configuration for a Container Linux
@@ -453,47 +462,52 @@ func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 	}
 }
 
-func (c *Conf) addSystemdUnitV1(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitV1(name, contents string, enable, mask bool) {
 	c.ignitionV1.Systemd.Units = append(c.ignitionV1.Systemd.Units, v1types.SystemdUnit{
 		Name:     v1types.SystemdUnitName(name),
 		Contents: contents,
 		Enable:   enable,
+		Mask:     mask,
 	})
 }
 
-func (c *Conf) addSystemdUnitV2(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitV2(name, contents string, enable, mask bool) {
 	c.ignitionV2.Systemd.Units = append(c.ignitionV2.Systemd.Units, v2types.SystemdUnit{
 		Name:     v2types.SystemdUnitName(name),
 		Contents: contents,
 		Enable:   enable,
+		Mask:     mask,
 	})
 }
 
-func (c *Conf) addSystemdUnitV21(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitV21(name, contents string, enable, mask bool) {
 	c.ignitionV21.Systemd.Units = append(c.ignitionV21.Systemd.Units, v21types.Unit{
 		Name:     name,
 		Contents: contents,
 		Enabled:  &enable,
+		Mask:     mask,
 	})
 }
 
-func (c *Conf) addSystemdUnitV22(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitV22(name, contents string, enable, mask bool) {
 	c.ignitionV22.Systemd.Units = append(c.ignitionV22.Systemd.Units, v22types.Unit{
 		Name:     name,
 		Contents: contents,
 		Enabled:  &enable,
+		Mask:     mask,
 	})
 }
 
-func (c *Conf) addSystemdUnitV23(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitV23(name, contents string, enable, mask bool) {
 	c.ignitionV23.Systemd.Units = append(c.ignitionV23.Systemd.Units, v23types.Unit{
 		Name:     name,
 		Contents: contents,
 		Enabled:  &enable,
+		Mask:     mask,
 	})
 }
 
-func (c *Conf) addSystemdUnitV3(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitV3(name, contents string, enable, mask bool) {
 	newConfig := v3types.Config{
 		Ignition: v3types.Ignition{
 			Version: "3.0.0",
@@ -504,6 +518,7 @@ func (c *Conf) addSystemdUnitV3(name, contents string, enable bool) {
 					Name:     name,
 					Contents: &contents,
 					Enabled:  &enable,
+					Mask:     &mask,
 				},
 			},
 		},
@@ -511,29 +526,40 @@ func (c *Conf) addSystemdUnitV3(name, contents string, enable bool) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) addSystemdUnitCloudConfig(name, contents string, enable bool) {
+func (c *Conf) addSystemdUnitCloudConfig(name, contents string, enable, mask bool) {
 	c.cloudconfig.CoreOS.Units = append(c.cloudconfig.CoreOS.Units, cci.Unit{
 		Name:    name,
 		Content: contents,
 		Enable:  enable,
+		Mask:    mask,
 	})
 }
 
-func (c *Conf) AddSystemdUnit(name, contents string, enable bool) {
+func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
+	enable, mask := false, false
+	switch state {
+	case EnableAndMask:
+		enable = true
+		mask = true
+	case Enable:
+		enable = true
+	case Mask:
+		mask = true
+	}
 	if c.ignitionV1 != nil {
-		c.addSystemdUnitV1(name, contents, enable)
+		c.addSystemdUnitV1(name, contents, enable, mask)
 	} else if c.ignitionV2 != nil {
-		c.addSystemdUnitV2(name, contents, enable)
+		c.addSystemdUnitV2(name, contents, enable, mask)
 	} else if c.ignitionV21 != nil {
-		c.addSystemdUnitV21(name, contents, enable)
+		c.addSystemdUnitV21(name, contents, enable, mask)
 	} else if c.ignitionV22 != nil {
-		c.addSystemdUnitV22(name, contents, enable)
+		c.addSystemdUnitV22(name, contents, enable, mask)
 	} else if c.ignitionV23 != nil {
-		c.addSystemdUnitV23(name, contents, enable)
+		c.addSystemdUnitV23(name, contents, enable, mask)
 	} else if c.ignitionV3 != nil {
-		c.addSystemdUnitV3(name, contents, enable)
+		c.addSystemdUnitV3(name, contents, enable, mask)
 	} else if c.cloudconfig != nil {
-		c.addSystemdUnitCloudConfig(name, contents, enable)
+		c.addSystemdUnitCloudConfig(name, contents, enable, mask)
 	}
 }
 
