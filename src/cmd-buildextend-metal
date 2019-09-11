@@ -5,10 +5,18 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+# This script is used for creating both the bare metal and the canonical VM
+# image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
+case "$(basename "$0")" in
+    "cmd-buildextend-metal") image_type=metal;;
+    "cmd-buildextend-qemu") image_type=qemu;;
+    *) fatal "called as unexpected name $0";;
+esac
+
 print_help() {
-    cat 1>&2 <<'EOF'
-Usage: coreos-assembler buildextend-metal --help
-       coreos-assembler buildextend-metal [--build ID]
+    cat 1>&2 <<EOF
+Usage: coreos-assembler buildextend-${image_type} --help
+       coreos-assembler buildextend-${image_type} [--build ID]
 
   Build a bare metal image.
 EOF
@@ -54,12 +62,16 @@ if [ $# -ne 0 ]; then
 fi
 
 case "$arch" in
-    "x86_64"|"aarch64"|"s390x")
-        ## fall through to the rest of the file
-	;;
+    "x86_64"|"aarch64"|"s390x") use_anaconda=;;
     *)
-        echo "$arch is not supported for this command"
-        exit 1
+        # for qemu, we can fallback to Anaconda
+        if [[ ${image_type} == qemu ]]; then
+            use_anaconda=1
+        else
+            # otherwise, we don't know how to create bare metal images for this
+            # architecture
+            fatal "$arch is not supported for this command"
+        fi
         ;;
 esac
 
@@ -112,49 +124,75 @@ if [ "${rev_parsed}" != "${commit}" ]; then
     fi # otherwise, the repo already has a ref, so no need to create
 fi
 
+image_format=raw
+if [[ $image_type == qemu ]]; then
+    image_format=qcow2
+fi
 
-img=${name}-${build}-metal.raw
+img=${name}-${build}-${image_type}.${image_format}
 if [ -f "${builddir}/${img}" ]; then
-    echo "Bare metal image already exists"
+    echo "${image_type} image already exists"
     exit
 fi
 
 path=${PWD}/${img}
 
-echo "Estimating disk size..."
-/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 20 > "$PWD/tmp/ostree-size.json"
-size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
-# extra size is the non-ostree partitions, see create_disk.sh
-size="$(( size + 513 ))M"
-echo "Disk size estimated to $size"
+# For bare metal images, we estimate the disk size. For qemu, we get it from
+# image.yaml.
+if [[ $image_type == metal ]]; then
+    echo "Estimating disk size..."
+    /usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 20 > "$PWD/tmp/ostree-size.json"
+    size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
+    # extra size is the non-ostree partitions, see create_disk.sh
+    size="$(( size + 513 ))M"
+    echo "Disk size estimated to $size"
+else
+    size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+fi
+
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 tty="console=tty0 console=${VM_TERMINAL},115200n8"
 # tty0 does not exist on s390x
 if [ "$arch" == "s390x" ]; then
     tty="console=${VM_TERMINAL}"
 fi
-kargs="$kargs $tty ignition.platform.id=metal"
+kargs="$kargs $tty ignition.platform.id=$image_type"
+
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
 
-qemu-img create -f raw "${path}.tmp" "$size"
-runvm_with_disk "${path}.tmp" raw /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
-mv "${path}.tmp" "$path"
-
-# flush it out before going to the next one so we don't have to redo both if
-# the next one fails
+if [ -z "${use_anaconda}" ]; then
+    qemu-img create -f ${image_format} "${path}.tmp" "$size"
+    runvm_with_disk "${path}.tmp" ${image_format} /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
+    mv "${path}.tmp" "$path"
+    echo "{}" > tmp/vm-iso-checksum.json
+else
+    [ "${image_type}" == qemu ]
+    mkdir -p tmp/anaconda
+    # forgive me for this sin
+    checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
+    img_base=tmp/${name}-${build}-base.qcow2
+    run_virtinstall "${ostree_repo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
+    /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "${path}" qemu
+    vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
+    cat > tmp/vm-iso-checksum.json <<EOF
+{
+    "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}"
+}
+EOF
+fi
 
 # there's probably a jq one-liner for this...
 python3 -c "
 import sys, json
 j = json.load(sys.stdin)
-j['images']['metal'] = {
+j['images']['${image_type}'] = {
     'path': '${img}',
     'sha256': '$(sha256sum_str < "${img}")',
     'size': $(stat -c '%s' "${img}")
 }
 json.dump(j, sys.stdout, indent=4)
-" < "${builddir}/meta.json" > meta.json.new
+" < "${builddir}/meta.json" | cat - tmp/vm-iso-checksum.json | jq -s add > meta.json.new
 
 # and now the crucial bit
 mv -T meta.json.new "${builddir}/meta.json"
