@@ -120,6 +120,10 @@ def generate_iso():
     # TODO ignore EFI dir
     # Grab all the contents from the installer dir from the configs
     run_verbose(["rsync", "-av", f"src/config/{image_type}/", f"{tmpisoroot}/"])
+    # Skip the development readme to avoid confusing users
+    devel_readme = f"{tmpisoroot}/README-devel.md"
+    if os.path.exists(devel_readme):
+        os.unlink(devel_readme)
 
     # These sections are based on lorax templates
     # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
