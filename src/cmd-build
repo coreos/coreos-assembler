@@ -8,18 +8,17 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--skip-prune] [--version VERSION] [TARGETS]
+       coreos-assembler build [--force] [--skip-prune] [--version VERSION] [TARGET...]
 
-  Build OSTree and image artifacts from previously fetched packages.
-  The TARGETS argument is a list of artifact types to build; if unspecified it
-  defaults to "qemu".
+  Build OSTree and image base artifacts from previously fetched packages.
+  Accepted TARGET arguments:
 
-  Valid targets:
+  - ostree
+  - qemu
+  - metal
 
-    - ostree
-    - qemu
-
-  Note that all image targets also require the "ostree" target.
+  The "qemu" and "metal" targets imply "ostree". If unspecified, defaults to
+  "qemu". They are equivalent to manually running buildextend-[TARGET] after.
 EOF
 }
 
@@ -74,16 +73,24 @@ if [ $# -eq 0 ]; then
     set -- qemu
 fi
 
-build_qemu=
+# sanity check the targets and aggregate into a set
+declare -A targets=( )
 for target in "$@"; do
-    case $target in
-        ostree) ;;
-        qemu) build_qemu=1;;
-        *) fatal "Unrecognized target: $target";;
-    esac
+    if [[ $target != ostree ]]; then
+        case "$target" in
+            metal|qemu) ;;
+            *) fatal "Unrecognized target: $target" ;;
+        esac
+        targets[$target]=1
+    fi
 done
 
-export LIBGUESTFS_BACKEND=direct
+build_followup_targets() {
+    cd "${workdir}"
+    for target in "${!targets[@]}"; do
+        "/usr/lib/coreos-assembler/cmd-buildextend-${target}"
+    done
+}
 
 prepare_build
 
@@ -93,8 +100,8 @@ rpm-ostree --version
 previous_build=$(get_latest_build)
 if [ -n "${previous_build}" ]; then
     previous_builddir=$(get_build_dir "${previous_build}")
-    echo "Previous build: ${previous_build}"
 fi
+echo "Previous build: ${previous_build:-none}"
 
 previous_commit=
 if [ -n "${previous_build}" ]; then
@@ -218,6 +225,11 @@ else
     # first build.
     if [ -n "${previous_build}" ] && [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
+        # But still run through the follow-up targets. This allows us to have
+        # e.g. `cosa build metal` be idempotent even if the initial build failed
+        # for whatever reason. `buildextend-[metal|qemu]` should already be
+        # idempotent.
+        build_followup_targets
         exit 0
     fi
 
@@ -264,50 +276,6 @@ else
 fi
 echo "New build ID: ${buildid}"
 
-imageprefix="${name}"-"${buildid}"
-# Make these two verbose
-set -x
-
-build_image() {
-	local size kargs ostree_remote
-	size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
-	kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
-	# use NONE here instead of empty string because this has to survive through various string processing
-	ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
-	save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
-	tty="console=tty0 console=${VM_TERMINAL},115200n8"
-	# tty0 does not exist on s390x
-	[ "$arch" = "s390x" ] && tty="console=${VM_TERMINAL}"
-	kargs="$kargs $tty ignition.platform.id=qemu"
-
-	qemu-img create -f qcow2 "$1" "$size"
-	runvm_with_disk "$1" qcow2 /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$tmprepo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
-}
-
-echo '{}' > tmp/vm-iso-checksum.json
-if [ -n "${build_qemu}" ]; then
-    img_qemu=${imageprefix}-qemu.qcow2
-    case "$arch" in
-        "x86_64"|"aarch64"|"s390x")
-            build_image "$img_qemu"
-            ;;
-        *)
-            mkdir -p tmp/anaconda
-            # forgive me for this sin
-            checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
-            img_base=tmp/${imageprefix}-base.qcow2
-            run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
-            /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
-            vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
-            cat > tmp/vm-iso-checksum.json <<EOF
-{
-    "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}"
-}
-EOF
-            ;;
-    esac
-fi
-
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 
 build_timestamp=$(date -u +$RFC3339)
@@ -340,21 +308,7 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
-if [ -n "${build_qemu}" ]; then
-    cat > tmp/images.json <<EOF
-{
-    "images": {
-        "qemu": {
-            "path": "${img_qemu}",
-            "sha256": "$(sha256sum_str < "${img_qemu}")",
-            "size": $(stat -c '%s' "${img_qemu}")
-        }
-    }
-}
-EOF
-else
-    echo '{ "images": {} }' > tmp/images.json
-fi
+echo '{ "images": {} }' > tmp/images.json
 
 # And the build information about our container, if we are executing
 # from a container.
@@ -368,7 +322,7 @@ fi
 
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/vm-iso-checksum.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Filter out `ref` if it's temporary
 if [ -n "${ref_is_temp}" ]; then
@@ -429,3 +383,6 @@ else
     "${dn}"/prune_builds --workdir "${workdir}"
 fi
 rm builds/.build-commit
+
+# and finally, build the specified targets
+build_followup_targets
