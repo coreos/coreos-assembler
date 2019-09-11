@@ -163,7 +163,13 @@ save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin
 
 if [ -z "${use_anaconda}" ]; then
     qemu-img create -f ${image_format} "${path}.tmp" "$size"
-    runvm_with_disk "${path}.tmp" ${image_format} /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref-:${commit}}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
+    # In the anaconda path, run_virtinstall dereferences in the ref_is_temp
+    # case. Here, we need to dereference ourselves.
+    ref_arg=${ref}
+    if [ -n "${ref_is_temp}" ]; then
+        ref_arg=${commit}
+    fi
+    runvm_with_disk "${path}.tmp" ${image_format} /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref_arg}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
     mv "${path}.tmp" "$path"
     echo "{}" > tmp/vm-iso-checksum.json
 else
