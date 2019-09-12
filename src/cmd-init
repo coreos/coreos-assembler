@@ -94,7 +94,7 @@ mkdir -p src
 (cd src
  if ! test -e config; then
      case "${source}" in
-         /*) ln -sr "${source}/${subdir}" config;;
+         /*) ln -s "${source}/${subdir}" config;;
          *) git clone "${source}" config
             if [ -n "${BRANCH}" ]; then
                 git -C config checkout "${BRANCH}"

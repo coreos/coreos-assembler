@@ -173,7 +173,7 @@ prepare_build() {
     fi
 
     workdir="$(pwd)"
-    configdir=${COSA_CONFIG_GIT:-${workdir}/src/config}
+    configdir=${workdir}/src/config
     manifest=${configdir}/manifest.yaml
     manifest_lock=${configdir}/manifest-lock.${basearch}.json
     manifest_lock_overrides=${configdir}/manifest-lock.overrides.${basearch}.json
@@ -184,6 +184,13 @@ prepare_build() {
     fi
 
     echo "Using manifest: ${manifest}"
+
+    # backcompat for local setups that initialized with `ln -sr`
+    if [ -L "${configdir}" ]; then
+        if [[ $(readlink "${configdir}") != /* ]]; then
+            ln -sfn "$(realpath "${configdir}")" "${configdir}"
+        fi
+    fi
 
     tmprepo=${workdir}/tmp/repo
     if [ ! -d "${tmprepo}" ]; then
