@@ -13,6 +13,8 @@ dn=$(dirname "$0")
 # shellcheck source=src/libguestfish.sh
 . "${dn}"/libguestfish.sh
 
+BUILDID=latest
+IMAGE_TYPE=qemu
 VM_DISK=
 VM_MEMORY=2048
 VM_DISKSIZE=
@@ -25,6 +27,8 @@ BOOT_INJECT=0
 SECURE=0
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
+    -b --buildid          Target buildid (default latest)
+    -I --imgtype          Target image type (qemu, metal, etc.  Default qemu)
     -d DISK               Root disk drive (won't be changed by default)
     --persist-to-img IMG  Persist changes to a separate image
     -i FILE               File containing an Ignition config to merge into the default config
@@ -53,6 +57,12 @@ die(){
 
 while [ $# -ge 1 ]; do
     case "$1" in
+        -b|--buildid)
+            BUILDID="$2"
+            shift 2 ;;
+        -I|--imgtype)
+            IMAGE_TYPE="$2"
+            shift 2 ;;
         -d)
             VM_DISK="$2"
             shift 2 ;;
@@ -104,9 +114,20 @@ if [ "$UEFI" == 1 ] && [ "$SECURE" == 1 ]; then
 fi
 
 if [ -z "${VM_DISK}" ]; then
-    VM_DISK=$(get_latest_qemu)
-    if [ -z "${VM_DISK}" ]; then
-        die "No builds/latest, and no -d argument provided"
+    if ! [ -d "builds/${BUILDID}" ]; then
+        die "No builds/${BUILDID}"
+    fi
+    builddir=$(get_build_dir "${BUILDID}")
+    diskpath=$(jq -r '.["images"]["'"${IMAGE_TYPE}"'"]["path"]' < "${builddir}/meta.json")
+    if [ "${diskpath}" = "null" ]; then
+        die "No image ${IMAGE_TYPE} in build ${BUILDID}"
+    fi
+    VM_DISK=${builddir}/${diskpath}
+    # For other image types (most usefully for metal) force
+    # on injection into the /boot partition, since Ignition
+    # won't pull from qemu userdata.
+    if [ "${IMAGE_TYPE}" != qemu ]; then
+        BOOT_INJECT=1
     fi
 fi
 
