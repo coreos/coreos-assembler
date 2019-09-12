@@ -295,17 +295,6 @@ $ cosa init https://github.com/coreos/fedora-coreos-config.git
 $ cosa fetch && cosa build
 ```
 
-#### Running in privileged mode
-
-If you'd like to run the Assembler in [privileged mode](#privileged-mode)
-you can use the `COREOS_ASSEMBLER_PRIVILEGED` env var:
-
-```
-$ export COREOS_ASSEMBLER_PRIVILEGED=true
-$ cosa init https://github.com/coreos/fedora-coreos-config.git
-$ cosa fetch && cosa build
-```
-
 
 #### Using a locally built Assembler container
 
