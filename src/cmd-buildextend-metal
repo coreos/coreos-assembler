@@ -95,6 +95,14 @@ json_key() {
     jq -r ".[\"$1\"]" < "${builddir}/meta.json"
 }
 
+# check if the image already exists in the meta.json
+meta_img=$(jq -r ".[\"images\"][\"${image_type}\"]" < "${builddir}/meta.json")
+if [ "${meta_img}" != "null" ]; then
+    echo "${image_type} image already exists:"
+    echo "$meta_img"
+    exit 0
+fi
+
 # reread these values from the build itself rather than rely on the ones loaded
 # by prepare_build since the config might've changed since then
 name=$(json_key name)
@@ -130,11 +138,6 @@ if [[ $image_type == qemu ]]; then
 fi
 
 img=${name}-${build}-${image_type}.${image_format}
-if [ -f "${builddir}/${img}" ]; then
-    echo "${image_type} image already exists"
-    exit
-fi
-
 path=${PWD}/${img}
 
 # For bare metal images, we estimate the disk size. For qemu, we get it from
