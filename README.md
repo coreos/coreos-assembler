@@ -66,6 +66,8 @@ on a bare metal cluster, with `/dev/kvm` mounted in.  See the
 [Fedora CoreOS pipeline](https://github.com/coreos/fedora-coreos-pipeline)
 source code.
 
+See also a [guide to using nested virt with OpenShift in GCP](doc/openshift-gcp-nested-virt.md).
+
 ### Downloading the container
 
 ```
