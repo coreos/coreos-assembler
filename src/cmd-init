@@ -116,3 +116,4 @@ mkdir -p cache
 mkdir -p builds
 mkdir -p tmp
 mkdir -p overrides/rpm
+mkdir -p overrides/rootfs
