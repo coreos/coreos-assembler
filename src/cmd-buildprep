@@ -49,7 +49,11 @@ def main():
     assert builddir.startswith("builds/")
     builddir = builddir[len("builds/"):]
 
-    for f in ['meta.json', 'ostree-commit-object']:
+    objects = ['meta.json', 'ostree-commit-object']
+    if args.ostree:
+        objects += ['ostree-commit.tar']
+
+    for f in objects:
         fetcher.fetch(f'{builddir}/{f}')
 
     # and finally the symlink
@@ -69,6 +73,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", metavar='URL',
                         help="URL from which to fetch metadata")
+    parser.add_argument("--ostree", action='store_true',
+                        help="Also download full OSTree commit")
     return parser.parse_args()
 
 
