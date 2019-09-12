@@ -26,9 +26,8 @@ umask 002
 mkdir -p "${workdir:?}"
 mount -t 9p -o rw,trans=virtio,version=9p2000.L workdir "${workdir}"
 if [ -L "${workdir}"/src/config ]; then
-    tmpd=$(mktemp -d)
-    mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${tmpd}"
-    export COSA_CONFIG_GIT="${tmpd}"
+    mkdir -p "$(readlink "${workdir}"/src/config)"
+    mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
 mkdir -p "${workdir}"/cache /host/container-work
 if [ -b /dev/sdb1 ]; then
