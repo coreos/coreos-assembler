@@ -21,6 +21,7 @@ VM_NCPUS="${VM_NCPUS:-$(nproc)}"
 VM_SRV_MNT=
 SSH_PORT=${SSH_PORT:-}
 UEFI=0
+BOOT_INJECT=0
 SECURE=0
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
@@ -32,6 +33,7 @@ Options:
     --size GB             Disk size in GB (matches base by default)
     -p PORT               The port on localhost to map to the VM's sshd. [2222]
     -h                    this ;-)
+    -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
 
@@ -80,6 +82,9 @@ while [ $# -ge 1 ]; do
             shift ;;
         --uefi-secure)
             SECURE=1
+            shift ;;
+        -B|--boot-inject)
+            BOOT_INJECT=1
             shift ;;
         -h|--help)
             echo "$USAGE"
@@ -236,13 +241,14 @@ else
     VM_IMG=${VM_PERSIST_IMG}
 fi
 
-if [ "$(arch)" == "ppc64le" ] || [ "$(arch)" == "s390x" ]; then
-    echo "fw_cfg is not supported, injecting config.ign via guestfish"
+if [ "$(arch)" == "ppc64le" ] || [ "$(arch)" == "s390x" ] || [ "${BOOT_INJECT}" = 1 ]; then
+    echo "Injecting /boot/ignition/config.ign via libguestfs..."
     coreos_gf_run_mount "${VM_IMG}"
     coreos_gf mkdir-p /boot/ignition
     coreos_gf upload ${IGNITION_CONFIG_FILE} /boot/ignition/config.ign
     #TODO coreos_gf_relabel /boot/ignition/config.ign
     coreos_gf_shutdown
+    echo "done"
 else
     set -- -fw_cfg name=opt/com.coreos/config,file="${IGNITION_CONFIG_FILE}" "$@"
 fi
