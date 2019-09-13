@@ -46,6 +46,9 @@ awscli python3-boto3 python3-requests
 # For metadata versioning
 python3-semver
 
+# For python retries
+python3-tenacity
+
 # For ignition file validation in cmd-run
 /usr/bin/ignition-validate
 
