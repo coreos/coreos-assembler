@@ -9,12 +9,18 @@ import os
 import subprocess
 import sys
 import requests
-import botocore
 import boto3
 import shutil
+from botocore.exceptions import ClientError
+from tenacity import retry, stop_after_delay, stop_after_attempt, retry_if_exception_type
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import load_json, rm_allow_noent, Builds  # noqa: E402
+from cmdlib import load_json, rm_allow_noent, Builds, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
+
+retry_requests_exception = (retry_if_exception_type(requests.Timeout) | \
+                            retry_if_exception_type(requests.ReadTimeout) | \
+                            retry_if_exception_type(requests.ConnectTimeout) | \
+                            retry_if_exception_type(requests.ConnectionError))
 
 
 def main():
@@ -114,6 +120,7 @@ class HTTPFetcher(Fetcher):
     def __init__(self, url_base):
         super().__init__(url_base)
 
+    @retry(stop=retry_stop, retry=retry_requests_exception)
     def fetch_impl(self, url, dest):
         # notice we don't use `stream=True` here; the stuff we're fetching for
         # now is super small
@@ -122,6 +129,7 @@ class HTTPFetcher(Fetcher):
             with open(dest, mode='wb') as f:
                 f.write(r.content)
 
+    @retry(stop=retry_stop, retry=retry_requests_exception)
     def exists_impl(self, url):
         with requests.head(url) as r:
             if r.status_code == 200:
