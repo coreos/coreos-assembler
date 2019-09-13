@@ -119,6 +119,7 @@ extra_kargs = image_conf.get('extra-kargs', [])
 with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
     buf = basef.read()
     buf = buf.replace('%%KARGS%%', ' '.join(extra_kargs))
+    buf = buf.replace('%%TERM%%', os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))
     ks_tmp.write(buf)
 
 # To support different distro builds using Fedora anaconda,
@@ -302,7 +303,7 @@ try:
                           location_arg,
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--initrd-inject={}".format(ks_tmp.name),
-                          "--extra-args", "ks=file://{} console=tty0 console=ttyS0,115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name))])
+                          "--extra-args", "ks=file://{} console=tty0 console={},115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name),os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))])
     if args.variant == 'metal-uefi':
         vinstall_args.append('--boot=uefi')
     run_sync_verbose(vinstall_args)
