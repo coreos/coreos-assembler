@@ -27,7 +27,9 @@ set -x
 # Work in a tmpdir on the destination so that we don't inherit some MCS labeling
 # from the /tmp dir in the container. This also ensures that the final move is a
 # pure `rename()`.
-# See also: https://github.com/coreos/coreos-assembler/issues/292
+# See also:
+# https://github.com/coreos/coreos-assembler/issues/292
+# https://github.com/coreos/coreos-assembler/pull/394
 tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-platformid.XXXXXX)
 tmp_dest=${tmpd}/box.img
 
