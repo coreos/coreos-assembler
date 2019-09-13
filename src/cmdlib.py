@@ -11,11 +11,23 @@ import sys
 import tempfile
 import gi
 import semver
+from botocore.exceptions import ConnectionClosedError, ConnectTimeoutError, IncompleteReadError, ReadTimeoutError, SSLError
+from tenacity import stop_after_delay, stop_after_attempt, retry_if_exception_type
 
 gi.require_version("RpmOstree", "1.0")
 from gi.repository import RpmOstree
 
 from datetime import datetime
+
+retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
+retry_s3_exception = (retry_if_exception_type(ConnectionClosedError) |
+                      retry_if_exception_type(ConnectTimeoutError) |
+                      retry_if_exception_type(IncompleteReadError) |
+                      retry_if_exception_type(ReadTimeoutError))
+
+
+def retry_callback(retry_state):
+    print(f"Retrying after {retry_state.outcome.exception()}")
 
 
 def run_verbose(args, **kwargs):
