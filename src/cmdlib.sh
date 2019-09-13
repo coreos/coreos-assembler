@@ -333,7 +333,7 @@ gpgcheck=0
 EOF
     fi
     rootfs_overlay="${overridesdir}/rootfs"
-    if [ -d "${rootfs_overlay}" ]; then
+    if [[ -d "${rootfs_overlay}" && -n $(ls -A "${rootfs_overlay}") ]]; then
         echo -n "Committing ${rootfs_overlay}... "
         ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
           --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
