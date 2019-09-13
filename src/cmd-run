@@ -217,7 +217,8 @@ cat > "${f}" <<EOF
                 "path": "/home/core/.bashrc",
                 "append": [
                     { "source": "data:text/plain;base64,${rowcol}" }
-                ]
+                ],
+                "mode": 420
             }
         ]
     },
