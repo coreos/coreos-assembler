@@ -224,7 +224,7 @@ cat > "${f}" <<EOF
     "systemd": {
         "units": [
             {
-                "name": "serial-getty@${VM_TERMINAL}.service",
+                "name": "serial-getty@${DEFAULT_TERMINAL}.service",
                 "dropins": [
                     {
                         "name": "autologin-core.conf",

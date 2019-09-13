@@ -154,10 +154,10 @@ else
 fi
 
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
-tty="console=tty0 console=${VM_TERMINAL},115200n8"
+tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # tty0 does not exist on s390x
 if [ "$arch" == "s390x" ]; then
-    tty="console=${VM_TERMINAL}"
+    tty="console=${DEFAULT_TERMINAL}"
 fi
 kargs="$kargs $tty ignition.platform.id=$image_type"
 

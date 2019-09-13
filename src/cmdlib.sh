@@ -44,13 +44,13 @@ export arch
 devtype=pci
 
 case $arch in
-    "x86_64")  VM_TERMINAL="ttyS0"    ;;
-    "ppc64le") VM_TERMINAL="hvc0"     ;;
-    "aarch64") VM_TERMINAL="ttyAMA0"  ;;
-    "s390x")   VM_TERMINAL="ttysclp0"; devtype=ccw ;;
+    "x86_64")  DEFAULT_TERMINAL="ttyS0"    ;;
+    "ppc64le") DEFAULT_TERMINAL="hvc0"     ;;
+    "aarch64") DEFAULT_TERMINAL="ttyAMA0"  ;;
+    "s390x")   DEFAULT_TERMINAL="ttysclp0"; devtype=ccw ;;
     *)         fatal "Architecture $(arch) not supported"
 esac
-export VM_TERMINAL
+export DEFAULT_TERMINAL
 
 if [ -x /usr/libexec/qemu-kvm ]; then
     QEMU_KVM="/usr/libexec/qemu-kvm"
@@ -460,7 +460,7 @@ EOF
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${VM_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
+        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
 	"${extradisk[@]}"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
