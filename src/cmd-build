@@ -310,6 +310,13 @@ EOF
 
 echo '{ "images": {} }' > tmp/images.json
 
+overridesjson=tmp/overrides.json
+if [ -f "${overrides_active_stamp}" ]; then
+    echo '{ "coreos-assembler.overrides-active": true }' > "${overridesjson}"
+else
+    echo '{}' > "${overridesjson}"
+fi
+
 # And the build information about our container, if we are executing
 # from a container.
 if [ -d /cosa ]; then
@@ -322,7 +329,7 @@ fi
 
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Filter out `ref` if it's temporary
 if [ -n "${ref_is_temp}" ]; then

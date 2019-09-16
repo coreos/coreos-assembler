@@ -236,6 +236,8 @@ prepare_build() {
     # Needs to be absolute for rpm-ostree today
     changed_stamp=$(pwd)/tmp/treecompose.changed
     export changed_stamp
+    overrides_active_stamp=$(pwd)/tmp/overrides.stamp
+    export overrides_active_stamp
 
     # Allocate temporary space for this build
     tmp_builddir=${workdir}/tmp/build
@@ -279,7 +281,9 @@ runcompose() {
         (echo "ERROR: overlay/ directory is no longer supported, use overlay.d/"
          echo "ERROR: https://github.com/coreos/coreos-assembler/pull/639") 1>&2
         exit 1
-    fi    
+    fi
+
+    rm -vf "${overrides_active_stamp}"
 
     if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovld}" ]; then
         mkdir "${tmp_overridesdir}"
@@ -319,6 +323,7 @@ EOF
     if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
         echo "Using RPM overrides from: ${overridesdir}/rpm"
+        touch "${overrides_active_stamp}"
         cat >> "${override_manifest}" <<EOF
 repos:
   - coreos-assembler-local-overrides
@@ -333,6 +338,7 @@ EOF
     rootfs_overlay="${overridesdir}/rootfs"
     if [[ -d "${rootfs_overlay}" && -n $(ls -A "${rootfs_overlay}") ]]; then
         echo -n "Committing ${rootfs_overlay}... "
+        touch "${overrides_active_stamp}"
         ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
           --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
           --timestamp "${git_timestamp}"
