@@ -268,7 +268,6 @@ runcompose() {
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
-    local ovl="${configdir}/overlay"
     local ovld="${configdir}/overlay.d"
     local git_timestamp="January 1 1970"
     local layers=""
@@ -276,7 +275,13 @@ runcompose() {
         git_timestamp=$(git -C "${configdir_gitrepo}" show -s --format=%ci HEAD)
     fi
 
-    if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovl}" ] || [ -d "${ovld}" ]; then
+    if [ -d "${configdir}/overlay" ]; then
+        (echo "ERROR: overlay/ directory is no longer supported, use overlay.d/"
+         echo "ERROR: https://github.com/coreos/coreos-assembler/pull/639") 1>&2
+        exit 1
+    fi    
+
+    if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovld}" ]; then
         mkdir "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${workdir}/src/config/manifest.yaml
@@ -291,14 +296,7 @@ EOF
         echo 'ref: "'"${ref}"'"' >> "${override_manifest}"
     fi
 
-    if [ -d "${ovl}" ]; then
-        (echo "NOTICE: overlay/ directory is deprecated, use overlay.d/"
-         echo "NOTICE: https://github.com/coreos/coreos-assembler/pull/639") 1>&2
-        sleep 2
-        local ovlname="${name}-config-overlay"
-        commit_overlay "${ovlname}" "${ovl}"
-        layers="${layers} ${ovlname}"
-    fi
+
     if [ -d "${ovld}" ]; then
         for n in "${ovld}"/*; do
             if ! [ -d "${n}" ]; then
