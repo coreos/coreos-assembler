@@ -185,6 +185,10 @@ prepare_build() {
 
     echo "Using manifest: ${manifest}"
 
+    # Be nice to people who have older versions that
+    # didn't create this in `init`.
+    mkdir -p "${workdir}"/tmp
+
     # backcompat for local setups that initialized with `ln -sr`
     if [ -L "${configdir}" ]; then
         if [[ $(readlink "${configdir}") != /* ]]; then
@@ -228,10 +232,6 @@ prepare_build() {
 
     # This dir is no longer used
     rm builds/work -rf
-
-    # Be nice to people who have older versions that
-    # didn't create this in `init`.
-    mkdir -p "${workdir}"/tmp
 
     # Needs to be absolute for rpm-ostree today
     changed_stamp=$(pwd)/tmp/treecompose.changed
