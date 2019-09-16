@@ -233,12 +233,6 @@ prepare_build() {
     # This dir is no longer used
     rm builds/work -rf
 
-    # Needs to be absolute for rpm-ostree today
-    changed_stamp=$(pwd)/tmp/treecompose.changed
-    export changed_stamp
-    overrides_active_stamp=$(pwd)/tmp/overrides.stamp
-    export overrides_active_stamp
-
     # Allocate temporary space for this build
     tmp_builddir=${workdir}/tmp/build
     rm "${tmp_builddir}" -rf
@@ -251,6 +245,12 @@ prepare_build() {
     # other things in ${workdir}/tmp. But we don't export it since e.g. if it's
     # over an NFS mount (like a PVC in OCP), some apps might error out.
     mkdir tmp && TMPDIR=$(pwd)/tmp
+
+    # Needs to be absolute for rpm-ostree today
+    changed_stamp=${TMPDIR}/treecompose.changed
+    export changed_stamp
+    overrides_active_stamp=${TMPDIR}/overrides.stamp
+    export overrides_active_stamp
 }
 
 commit_overlay() {
@@ -282,8 +282,6 @@ runcompose() {
          echo "ERROR: https://github.com/coreos/coreos-assembler/pull/639") 1>&2
         exit 1
     fi
-
-    rm -vf "${overrides_active_stamp}"
 
     if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovld}" ]; then
         mkdir "${tmp_overridesdir}"
@@ -347,8 +345,6 @@ ostree-override-layers:
   - cosa-bin-overlay
 EOF
     fi
-
-    rm -f "${changed_stamp}"
 
     # shellcheck disable=SC2086
     set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${tmprepo}" \
