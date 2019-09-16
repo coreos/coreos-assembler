@@ -7,13 +7,14 @@ dn=$(dirname "$0")
 # shellcheck source=src/libguestfish.sh
 . "${dn}"/libguestfish.sh
 
-# Usage: gf-mksquashfs <input image> <output image>
-# Example: gf-mksquashfs fedora-coreos.qcow2 fedora-coreos.squashfs
+# Usage: gf-mksquashfs <input image> <output image> [compression]
+# Example: gf-mksquashfs fedora-coreos.qcow2 fedora-coreos.squashfs xz
 #
 # This will generate a squashfs from the contents of the root partition.
 
 src="$1"
 dest="$2"
+compression="${3:-zstd}"
 
 if [[ $src == *.gz || $src == *.xz ]]; then
     img="$(basename "$src")"
@@ -35,7 +36,7 @@ coreos_gf_run "${src}" --ro
 root=$(coreos_gf findfs-label root)
 coreos_gf mount "${root}" /
 
-coreos_gf mksquashfs / "${tmp_dest}" compress:zstd
+coreos_gf mksquashfs / "${tmp_dest}" "compress:${compression}"
 
 coreos_gf_shutdown
 
