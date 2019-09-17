@@ -358,19 +358,24 @@ EOF
         sudo -E "$@"
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        runvm "$@"
+        runvm -- "$@"
     fi
 }
 
 runvm() {
-    runvm_with_disk "" "" "$@"
-}
-
-runvm_with_disk() {
-    local disk="$1"
-    shift
-    local disk_fmt="$1"
-    shift
+    local qemu_args=()
+    while true; do
+        case "$1" in
+            --)
+                shift
+                break
+                ;;
+            *)
+                qemu_args+=("$1")
+                shift
+                ;;
+        esac
+    done
     local vmpreparedir=${workdir}/tmp/supermin.prepare
     local vmbuilddir=${workdir}/tmp/supermin.build
 
@@ -441,12 +446,6 @@ EOF
         "s390x") scsibus="devno=fe.0.0003" ;;
     esac
 
-    # if a disk image exists, attach it too
-    extradisk=()
-    if [ -n "$disk" ]; then
-        extradisk=("-drive" "if=virtio,id=target,format=$disk_fmt,file=$disk")
-    fi
-
     #shellcheck disable=SC2086
     ${QEMU_KVM} ${arch_args:-} \
         -nodefaults -nographic -m 2048 -no-reboot -cpu host \
@@ -461,7 +460,7 @@ EOF
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
         "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
-	"${extradisk[@]}"
+	"${qemu_args[@]}"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
