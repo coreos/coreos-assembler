@@ -47,7 +47,6 @@ coreos_gf_run_mount() {
     local boot
     boot=$(coreos_gf findfs-label boot)
     coreos_gf mount "${boot}" /boot
-    var=$(coreos_gf -findfs-label var 2>/dev/null || true)
     # As far as I can tell libguestfs doesn't have a "find partition by GPT type" API,
     # let's hack this and assume it's the first if present.
     EFI_SYSTEM_PARTITION_GUID="C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
@@ -58,11 +57,6 @@ coreos_gf_run_mount() {
     # Export these variables for further use
     stateroot=/ostree/deploy/$(coreos_gf ls /ostree/deploy)
     deploydir="${stateroot}"/deploy/$(coreos_gf ls "${stateroot}"/deploy | grep -v \.origin)
-    if [ -n "${var}" ]; then
-        # Since it doesn't look like libguestfs supports bind mounts, and other
-        # code processes the stateroot directory, let's mount it there.
-        coreos_gf mount "${var}" "${stateroot}"/var
-    fi
     export stateroot deploydir
 }
 
