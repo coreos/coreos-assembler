@@ -22,5 +22,5 @@ if has_privileges; then
     exec "${osc}" "$@"
 else
     info "Required privileges not detected; running via supermin appliance"
-    runvm "${osc}" --workdir /host/container-work "$@"
+    runvm -- "${osc}" --workdir /host/container-work "$@"
 fi
