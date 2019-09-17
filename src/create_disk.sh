@@ -10,8 +10,8 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
-if [ "$#" -ne 6 ]; then
-	echo 'create_disk <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <save-var-subdirs> <space separated kargs>'
+if [ "$#" -ne 4 ]; then
+	echo 'create_disk <ostree-repo> <ostree-ref> <os-name> <space separated kargs>'
 	exit 1
 fi
 
@@ -23,10 +23,11 @@ disk=/dev/vda
 
 ostree="$1" && shift
 ref="$1" && shift
-remote_name="$1" && shift
 os_name="$1" && shift
-save_var_subdirs="$1" && shift
 extrakargs="$1" && shift
+
+remote_name=$(jq -r '.["ostree-remote"]' < tmp/image.json)
+save_var_subdirs=$(jq -r '.["save-var-subdirs"]' < tmp/image.json)
 
 set -x
 
@@ -90,7 +91,7 @@ ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
 # See the equivalent code in gf-anaconda-cleanup
 # /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
 # see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
-if [ "${save_var_subdirs}" != NONE ]; then
+if [ "${save_var_subdirs}" != "null" ]; then
 	vardir=rootfs/ostree/deploy/${os_name}/var
 	mkdir -p ${vardir}/{home,log/journal,lib/systemd}
 	# And /home is the only one that doesn't have a filename transition today

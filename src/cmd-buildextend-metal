@@ -161,9 +161,6 @@ if [ "$arch" == "s390x" ]; then
 fi
 kargs="$kargs $tty ignition.platform.id=$image_type"
 
-ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
-save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
-
 if [ -z "${use_anaconda}" ]; then
     qemu-img create -f ${image_format} "${path}.tmp" "$size"
     # In the anaconda path, run_virtinstall dereferences in the ref_is_temp
@@ -173,8 +170,11 @@ if [ -z "${use_anaconda}" ]; then
         ref_arg=${commit}
     fi
 
-    runvm -drive "if=virtio,id=target,format=${image_format},file=${path}.tmp" -- /usr/lib/coreos-assembler/create_disk.sh "$ostree_repo" "${ref_arg}" "${ostree_remote}" "$name" "${save_var_subdirs}" "\"$kargs\""
+    # Transcode to JSON so it's easier to parse from shell script
+    python3 -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout)' < "${configdir}/image.yaml" > tmp/image.json
+    runvm -drive "if=virtio,id=target,format=${image_format},file=${path}.tmp" -- /usr/lib/coreos-assembler/create_disk.sh "$ostree_repo" "${ref_arg}" "$name" "\"$kargs\""
     mv "${path}.tmp" "$path"
+    rm tmp/image.json
     echo "{}" > tmp/vm-iso-checksum.json
 else
     [ "${image_type}" == qemu ]
