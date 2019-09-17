@@ -402,6 +402,7 @@ runvm() {
 set -xeuo pipefail
 export PATH=/usr/sbin:$PATH
 workdir=${workdir}
+builddir=$(pwd)
 
 # use the builder user's id, otherwise some operations like
 # chmod will set ownership to root, not builder
