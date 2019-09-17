@@ -10,8 +10,8 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
-if [ "$#" -ne 7 ]; then
-	echo 'create_disk <device> <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <save-var-subdirs> <space separated kargs>'
+if [ "$#" -ne 6 ]; then
+	echo 'create_disk <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <save-var-subdirs> <space separated kargs>'
 	exit 1
 fi
 
@@ -19,7 +19,8 @@ export PATH=$PATH:/sbin:/usr/sbin
 
 arch="$(uname -m)"
 
-disk="$1" && shift
+disk=/dev/vda
+
 ostree="$1" && shift
 ref="$1" && shift
 remote_name="$1" && shift
