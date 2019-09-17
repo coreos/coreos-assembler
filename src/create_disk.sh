@@ -10,7 +10,7 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
-if [ "$#" -ne 8 ]; then
+if [ "$#" -ne 7 ]; then
 	echo 'create_disk <device> <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <save-var-subdirs> <space separated kargs>'
 	exit 1
 fi
@@ -23,7 +23,6 @@ disk="$1" && shift
 ostree="$1" && shift
 ref="$1" && shift
 remote_name="$1" && shift
-grub_script="$1" && shift
 os_name="$1" && shift
 save_var_subdirs="$1" && shift
 extrakargs="$1" && shift
@@ -124,7 +123,7 @@ normal
 EOF
 
 	# copy the grub config and any other files we might need
-	cp $grub_script rootfs/boot/grub2/grub.cfg
+	cp /usr/lib/coreos-assembler/grub.cfg rootfs/boot/grub2/grub.cfg
 else
 	# current zipl expects 'title' to be first line, and no blank lines in BLS file
 	# see https://github.com/ibm-s390-tools/s390-tools/issues/64
