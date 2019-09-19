@@ -339,5 +339,6 @@ As an example, from your assembler directory:
 ```
 $ mkdir -p overrides/rpm
 $ cp /path/to/my/name-version-release.rpm ./overrides/rpm
+$ cosa fetch --update-lockfile
 $ cosa build
 ```
