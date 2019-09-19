@@ -133,7 +133,6 @@ def generate_iso():
         os.rename(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
 
-    # TODO ignore EFI dir
     # Grab all the contents from the installer dir from the configs
     run_verbose(["rsync", "-av", f"src/config/{image_type}/", f"{tmpisoroot}/"])
     # Skip the development readme to avoid confusing users
@@ -228,13 +227,11 @@ def generate_iso():
                             '--user-mode', '--subpath', folderfullpath,
                             f"{buildmeta_commit}", destdir])
 
-            # Install binaries from boot partition and configs from installer/EFI
+            # Install binaries from boot partition
             # Manually construct the tarball to ensure proper permissions and ownership
             efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
             with tarfile.open(efitarfile.name, "w:", dereference=True) as tar:
                 tar.add(tmpimageefidir, arcname="/EFI", filter=strip)
-                tar.add(f'src/config/{image_type}/EFI/', arcname='/EFI',
-                        filter=strip)
 
             # Create the efiboot.img file (a fat filesystem) in the images/ dir
             # Note: virt-make-fs lets us do this as non-root
