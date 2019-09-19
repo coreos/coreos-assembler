@@ -134,11 +134,25 @@ def generate_iso():
         os.unlink(tmp_squashfs)
 
     # Grab all the contents from the installer dir from the configs
-    run_verbose(["rsync", "-av", f"src/config/{image_type}/", f"{tmpisoroot}/"])
-    # Skip the development readme to avoid confusing users
-    devel_readme = f"{tmpisoroot}/README-devel.md"
-    if os.path.exists(devel_readme):
-        os.unlink(devel_readme)
+    srcdir_prefix=f"src/config/{image_type}/"
+    for srcdir, dirnames, filenames in os.walk(srcdir_prefix):
+        dir_suffix = srcdir.replace(srcdir_prefix, '', 1)
+        dstdir = os.path.join(tmpisoroot, dir_suffix)
+        if not os.path.exists(dstdir):
+            os.mkdir(dstdir)
+        for filename in filenames:
+            # Skip development readmes to avoid confusing users
+            if filename == 'README-devel.md':
+                continue
+            srcfile = os.path.join(srcdir, filename)
+            dstfile = os.path.join(dstdir, filename)
+            # Assumes all files are text
+            with open(srcfile) as fh:
+                buf = fh.read()
+            with open(dstfile, 'w') as fh:
+                fh.write(buf)
+            shutil.copystat(srcfile, dstfile)
+            print(f'{srcfile} -> {dstfile}')
 
     # These sections are based on lorax templates
     # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
