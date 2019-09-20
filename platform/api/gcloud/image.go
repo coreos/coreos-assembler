@@ -42,7 +42,7 @@ type ImageSpec struct {
 // CreateImage creates an image on GCE and returns operation details and
 // a Pending. If overwrite is true, an existing image will be overwritten
 // if it exists.
-func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, *Pending, error) {
+func (a *API) CreateImage(spec *ImageSpec, overwrite, fedora bool) (*compute.Operation, *Pending, error) {
 	licenses := make([]string, len(spec.Licenses))
 	for i, l := range spec.Licenses {
 		license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
@@ -70,16 +70,28 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		}
 	}
 
-	image := &compute.Image{
-		Family:      spec.Family,
-		Name:        spec.Name,
-		Description: spec.Description,
-		Licenses:    licenses,
-		GuestOsFeatures: []*compute.GuestOsFeature{
-			&compute.GuestOsFeature{
-				Type: "VIRTIO_SCSI_MULTIQUEUE",
-			},
+	features := []*compute.GuestOsFeature{
+		// https://cloud.google.com/compute/docs/images/create-delete-deprecate-private-images
+		{
+			Type: "VIRTIO_SCSI_MULTIQUEUE",
 		},
+	}
+	if fedora {
+		features = append(features,
+			&compute.GuestOsFeature{
+				Type: "UEFI_COMPATIBLE",
+			},
+			&compute.GuestOsFeature{
+				Type: "SECURE_BOOT",
+			})
+	}
+
+	image := &compute.Image{
+		Family:          spec.Family,
+		Name:            spec.Name,
+		Description:     spec.Description,
+		Licenses:        licenses,
+		GuestOsFeatures: features,
 		RawDisk: &compute.ImageRawDisk{
 			Source: spec.SourceImage,
 		},

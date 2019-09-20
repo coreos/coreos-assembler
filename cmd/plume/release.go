@@ -230,7 +230,7 @@ func gceUploadImage(spec *channelSpec, api *gcloud.API, obj *gs.Object, name, de
 		Name:        name,
 		Description: desc,
 		Licenses:    spec.GCE.Licenses,
-	}, false)
+	}, false, selectedDistro == "fcos")
 	if err != nil {
 		plog.Fatalf("GCE image creation failed: %v", err)
 	}

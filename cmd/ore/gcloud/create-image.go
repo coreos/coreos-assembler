@@ -41,6 +41,7 @@ var (
 	createImageRoot    string
 	createImageName    string
 	createImageForce   bool
+	createImageFcos    bool
 )
 
 func init() {
@@ -59,6 +60,7 @@ func init() {
 		"Storage image name")
 	cmdCreateImage.Flags().BoolVar(&createImageForce, "force",
 		false, "overwrite existing GCE images without prompt")
+	cmdCreateImage.Flags().BoolVar(&uploadFedora, "fcos", false, "Flag this is Fedora CoreOS (or a derivative); currently enables SECURE_BOOT and UEFI_COMPATIBLE")
 	GCloud.AddCommand(cmdCreateImage)
 }
 
@@ -116,7 +118,7 @@ func runCreateImage(cmd *cobra.Command, args []string) {
 	_, pending, err := api.CreateImage(&gcloud.ImageSpec{
 		Name:        imageNameGCE,
 		SourceImage: storageSrc,
-	}, createImageForce)
+	}, createImageForce, createImageFcos)
 	if err == nil {
 		err = pending.Wait()
 	}
