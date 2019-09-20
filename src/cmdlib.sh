@@ -320,6 +320,23 @@ EOF
     fi
     if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
+        # synthesize an override lockfile to force rpm-ostree to pick up our
+        # override RPMS -- we try to be nice here and allow multiple versions of
+        # the same RPMs: the `dnf repoquery` below is to pick the latest one
+        local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
+        dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
+            --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
+            --qf '%{NAME}\t%{EVR}\t%{ARCH}' --quiet | python3 -c '
+import sys, json
+lockfile = {"packages": {}}
+for line in sys.stdin:
+    name, evr, arch = line.strip().split("\t")
+    lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
+json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
+
+        # we need our overrides to be at the end of the list
+        set - "$@" --ex-lockfile="${local_overrides_lockfile}"
+
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         touch "${overrides_active_stamp}"
         cat >> "${override_manifest}" <<EOF
