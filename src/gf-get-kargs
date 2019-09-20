@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+# shellcheck source=src/libguestfish.sh
+. "${dn}"/libguestfish.sh
+
+# Usage: gf-get-kargs <input image>
+# Example: gf-get-kargs fedora-coreos.qcow2
+#
+# This will print the kernel arguments embedded in the specified image.
+
+src="$1"
+
+if [[ $src == *.gz || $src == *.xz ]]; then
+    img="$(basename "$src")"
+    fatal "Cannot read $img; not an uncompressed image"
+fi
+
+set -x
+
+coreos_gf_run_mount "${src}" --ro
+
+coreos_gf glob read-file /boot/loader/entries/ostree*conf | \
+    sed -e '/^options/!d' -e 's/^options\s*//'
+
+coreos_gf_shutdown

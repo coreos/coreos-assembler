@@ -20,6 +20,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import run_verbose, write_json, sha256sum_file
 from cmdlib import import_ostree_commit, Builds
 
+live_exclude_kargs = set([
+    '$ignition_firstboot',	# unsubstituted variable in grub config
+    'console',			# no serial console by default on ISO
+    'ignition.platform.id',	# we hardcode "metal"
+    'ostree',			# dracut finds the tree automatically
+    'root',			# we use root.squashfs
+    'rootflags',		# not needed
+    'rw',			# we have a read-only root
+])
+
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
@@ -133,6 +143,13 @@ def generate_iso():
         os.rename(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
 
+    # Read and filter kernel arguments for substituting into ISO bootloader
+    result = run_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
+            img_qemu], stdout=subprocess.PIPE, text=True)
+    kargs = ' '.join(karg for karg in result.stdout.split()
+            if karg.split('=')[0] not in live_exclude_kargs)
+    print(f'Substituting ISO kernel arguments: {kargs}')
+
     # Grab all the contents from the installer dir from the configs
     srcdir_prefix=f"src/config/{image_type}/"
     for srcdir, dirnames, filenames in os.walk(srcdir_prefix):
@@ -149,6 +166,7 @@ def generate_iso():
             # Assumes all files are text
             with open(srcfile) as fh:
                 buf = fh.read()
+            buf = buf.replace('@@KERNEL-ARGS@@', kargs)
             with open(dstfile, 'w') as fh:
                 fh.write(buf)
             shutil.copystat(srcfile, dstfile)
