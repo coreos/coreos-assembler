@@ -17,6 +17,8 @@ Fedora CoreOS style disk image from an OS Tree.
 
 Options:
     --disk: disk device to use
+    --buildid: buildid
+    --imgid: imageid
     --grub-script: grub script to install
     --help: show this helper
     --kargs: kernel CLI args
@@ -37,6 +39,8 @@ do
     flag="${1}"; shift;
     case "${flag}" in
         --disk)             disk="${1}"; shift;;
+        --buildid)          buildid="${1}"; shift;;
+        --imgid)            imgid="${1}"; shift;;
         --grub-script)      grub_script="${1}"; shift;;
         --help)             usage; exit;;
         --kargs)            extrakargs="${extrakargs} ${1}"; shift;;
@@ -53,6 +57,8 @@ done
 export PATH=$PATH:/sbin:/usr/sbin
 arch="$(uname -m)"
 disk="${disk:?--disk must be defined}"
+buildid="${buildid:?--buildid must be defined}"
+imgid="${imgid:?--imgid must be defined}"
 ostree="${ostree:?--ostree-repo must be defined}"
 ref="${ref:?--ostree-ref must be defined}"
 remote_name="${remote_name:?--ostree-remote must be defined}"
@@ -118,6 +124,31 @@ do
 	kargsargs+="--karg-append=$karg "
 done
 ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
+
+# This will allow us to track the version that an install
+# originally used; if we later need to understand something
+# like "exactly what mkfs.xfs version was used" we can do
+# that via looking at the upstream build and finding the
+# build logs for it, getting the coreos-assembler version,
+# and getting the `rpm -qa` from that.
+#
+# build:         The coreos-assembler build ID; today we support
+#                having the same ostree commit in different image builds.
+# ref:           The ostree ref used; useful for cross-checking.
+# ostree-commit: Similar to `ref`; one can derive this from looking
+#                at the coreos-assembler builds, but it's very
+#                convenient to have here as a strong cross-reference.
+# imgid:         The full image name, the same as will end up in the
+#                `images` dict in `meta.json`.
+ostree_commit=$(ostree --repo="${ostree}" rev-parse "${ref}")
+cat > rootfs/.coreos-aleph-version.json << EOF
+{
+	"build": "${buildid}",
+	"ref": "${ref}",
+	"ostree-commit": "${ostree_commit}",
+	"imgid": "${imgid}"
+}
+EOF
 
 # See the equivalent code in gf-anaconda-cleanup
 # /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
