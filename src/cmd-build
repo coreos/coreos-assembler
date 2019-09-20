@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--skip-prune] [--version VERSION] [TARGET...]
+       coreos-assembler build [--force] [--force-image] [--skip-prune] [--version VERSION] [TARGET...]
 
   Build OSTree and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
@@ -24,11 +24,12 @@ EOF
 
 # Parse options
 FORCE=
+FORCE_IMAGE=
 SKIP_PRUNE=0
 VERSION=
 PARENT=
 rc=0
-options=$(getopt --options hf --longoptions help,force,version:,parent:,force-nocache,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hf --longoptions help,force,version:,parent:,force-nocache,force-image,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -42,6 +43,9 @@ while true; do
             ;;
         -f | --force | --force-nocache)
             FORCE="--force-nocache"
+            ;;
+        --force-image)
+            FORCE_IMAGE=1
             ;;
         --skip-prune)
             SKIP_PRUNE=1
@@ -223,7 +227,8 @@ else
     # Note we may not actually have a previous build in the case of
     # successfully composing an ostree but failing the image on the
     # first build.
-    if [ -n "${previous_build}" ] && [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
+    # FORCE_IMAGE forces a build even if there were no ostree changes
+    if [ -z "$FORCE_IMAGE" ] && [ -n "${previous_build}" ] && [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
         echo "No changes in image inputs."
         # But still run through the follow-up targets. This allows us to have
         # e.g. `cosa build metal` be idempotent even if the initial build failed
