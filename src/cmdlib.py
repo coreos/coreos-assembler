@@ -153,7 +153,7 @@ def rm_allow_noent(path):
 # be like a virtual time capsule!  If they still use email then...
 def disk_ignition_version(path):
     bn = os.path.basename(path)
-    if bn.startswith(("rhcos-41", "rhcos-42")):
+    if bn.startswith(("rhcos-41", "rhcos-42", "rhcos-43")):
         return "2.2.0"
     else:
         return "3.0.0"

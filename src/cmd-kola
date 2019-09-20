@@ -41,7 +41,9 @@ if not any([x in args.subargs for x in ["-b", "--distro"]]):
     else:
         kolaargs.extend(['-b', 'fcos'])
 
+print(f"qemu path: {qemupath}")
 ignition_version = cmdlib.disk_ignition_version(qemupath)
+print(f"Using ignition version {ignition_version}")
 
 if ignition_version == "2.2.0":
     kolaargs.extend(["--ignition-version", "v2"])
@@ -54,6 +56,7 @@ kolaargs.extend(['--qemu-image', qemupath])
 outputdir = args.output_dir or "tmp/kola"
 kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs)
+
 # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
 print(subprocess.list2cmdline(kolaargs), flush=True)
 os.execvp('kola', kolaargs)
