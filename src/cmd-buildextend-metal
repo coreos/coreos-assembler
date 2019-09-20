@@ -175,6 +175,8 @@ if [ -z "${use_anaconda}" ]; then
     runvm -drive "if=virtio,id=target,format=${image_format},file=${path}.tmp" -- \
             /usr/lib/coreos-assembler/create_disk.sh \
                 --disk /dev/vda \
+                --buildid "${build}" \
+                --imgid "${img}" \
                 --grub-script /usr/lib/coreos-assembler/grub.cfg \
                 --kargs "\"${kargs}\"" \
                 --osname "${name}" \
