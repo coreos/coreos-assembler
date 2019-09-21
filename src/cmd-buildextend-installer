@@ -181,7 +181,7 @@ def generate_iso():
                   '-volset', f"{name_version}",
                   # For  greater portability, consider using both
                   # Joliet and Rock Ridge extensions. Umm, OK :)
-                  '-rock', '-J', '-joliet-long']
+                  '-rational-rock', '-J', '-joliet-long']
 
     ### For x86_64 legacy boot (BIOS) booting
     if arch == "x86_64":
@@ -215,7 +215,7 @@ def generate_iso():
                      '-o', os.path.join(tmpisoimages, 'fcos.img')])
         genisoargs = ['/usr/bin/xorrisofs', '-verbose',
                       '-volset', f"{name_version}",
-                      '-rock', '-J', '-joliet-long',
+                      '-rational-rock', '-J', '-joliet-long',
                       '-no-emul-boot', '-eltorito-boot',
                       os.path.join(os.path.relpath(tmpisoimages, tmpisoroot), 'fcos.img')]
 
