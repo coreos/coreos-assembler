@@ -338,9 +338,6 @@ for line in sys.stdin:
     lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
 json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
 
-        # we need our overrides to be at the end of the list
-        set - "$@" --ex-lockfile="${local_overrides_lockfile}"
-
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         touch "${overrides_active_stamp}"
         cat >> "${override_manifest}" <<EOF
@@ -373,6 +370,13 @@ EOF
 # `--unified-core` that we always want.  Also dispatches to supermin if
 # we're running without support for nested containerization.
 runcompose() {
+    local tmp_overridesdir=${TMPDIR}/override
+
+    if [ -f "${tmp_overridesdir}/local-overrides.json" ]; then
+        # we need our overrides to be at the end of the list
+        set - "$@" --ex-lockfile="${tmp_overridesdir}/local-overrides.json"
+    fi
+
     # shellcheck disable=SC2086
     set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${tmprepo}" \
             --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
