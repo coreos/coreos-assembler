@@ -22,6 +22,7 @@ parser.add_argument("--bucket", help="S3 Bucket",
 parser.add_argument("--name-suffix", help="Suffix for name")
 parser.add_argument("--grant-user", help="Grant user launch permission",
                     nargs="*", default=[])
+parser.add_argument("--log-level", help="ore log level")
 args = parser.parse_args()
 
 builds = Builds()
@@ -57,16 +58,19 @@ def generate_aws_vmdk():
 
 def run_ore():
     tmp_img_aws_vmdk = generate_aws_vmdk()
-    ore_args = ['ore', 'aws', 'upload',
-                '--region', args.region,
-                '--bucket', args.bucket,
-                '--ami-name', ami_name_version,
-                '--name', ami_name_version,
-                '--ami-description', f"{buildmeta['summary']} {args.build}",
-                '--file', tmp_img_aws_vmdk,
-                '--disk-size-inspect',
-                '--delete-object',
-                '--force']
+    ore_args = ['ore']
+    if args.log_level:
+        ore_args.extend(['--log-level', args.log_level])
+    ore_args.extend(['aws', 'upload',
+                     '--region', args.region,
+                     '--bucket', args.bucket,
+                     '--ami-name', ami_name_version,
+                     '--name', ami_name_version,
+                     '--ami-description', f"{buildmeta['summary']} {args.build}",
+                     '--file', tmp_img_aws_vmdk,
+                     '--disk-size-inspect',
+                     '--delete-object',
+                     '--force'])
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
     print("+ {}".format(subprocess.list2cmdline(ore_args)))

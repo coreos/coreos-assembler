@@ -36,6 +36,7 @@ parser.add_argument("--name-suffix", help="Append suffix to name",
                     required=False)
 parser.add_argument("--project", help="GCP Project name",
                     default=os.environ.get("GCP_PROJECT_NAME"))
+parser.add_argument("--log-level", help="ore log level")
 args = parser.parse_args()
 
 # Argument checks for environment strings that are required
@@ -95,17 +96,21 @@ def run_ore():
     """ Execute ore to upload the tarball and register the image """
     build_tarball = f"{builddir}/{gcp_tarball_name}"
     tmp_img_gcp_tarball = generate_gcp_tar()
-    ore_args = ['ore', 'gcloud',
-                '--project', args.project,
-                '--basename', base_name,
-                'upload',
-                '--force',  # We want to support restarting the pipeline
-                '--board=""',
-                '--bucket', f'gs://{args.bucket}/{base_name}',
-                '--json-key', args.json_key,
-                '--name', f'{args.build}',
-                '--file', tmp_img_gcp_tarball
-               ]
+    ore_args = ['ore']
+    if args.log_level:
+        ore_args.extend(['--log-level', args.log_level])
+    ore_args.extend([
+        'gcloud',
+        '--project', args.project,
+        '--basename', base_name,
+        'upload',
+        '--force',  # We want to support restarting the pipeline
+        '--board=""',
+        '--bucket', f'gs://{args.bucket}/{base_name}',
+        '--json-key', args.json_key,
+        '--name', f'{args.build}',
+        '--file', tmp_img_gcp_tarball
+    ])
 
     run_verbose(ore_args)
     os.rename(tmp_img_gcp_tarball, build_tarball)
