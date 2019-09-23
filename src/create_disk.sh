@@ -10,23 +10,55 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
-if [ "$#" -ne 8 ]; then
-	echo 'create_disk <device> <ostree-repo> <ostree-ref> <ostree-remote> <grub-script> <os-name> <save-var-subdirs> <space separated kargs>'
-	exit 1
-fi
+usage() {
+    cat <<EOC
+${0} create a supermin virtual machinge to create a
+Fedora CoreOS style disk image from an OS Tree.
+
+Options:
+    --disk: disk device to use
+    --grub-script: grub script to install
+    --help: show this helper
+    --kargs: kernel CLI args
+    --osname: the OS name to use, e.g. fedora
+    --ostree-ref: the OSTRee reference to install
+    --ostree-remote: the ostree remote
+    --ostree-repo: location of the ostree repo
+    --save-var-subdirs: "yes" to workaround selabel issue for RHCOS
+
+You probably don't want to run this script by hand. This script is
+run as part of 'coreos-assembler build'.
+EOC
+}
+
+extrakargs=""
+while [ $# -gt 0 ];
+do
+    flag="${1}"; shift;
+    case "${flag}" in
+        --disk)             disk="${1}"; shift;;
+        --grub-script)      grub_script="${1}"; shift;;
+        --help)             usage; exit;;
+        --kargs)            extrakargs="${extrakargs} ${1}"; shift;;
+        --osname)           os_name="${1}"; shift;;
+        --ostree-ref)       ref="${1}"; shift;;
+        --ostree-remote)    remote_name="${1}"; shift;;
+        --ostree-repo)      ostree="${1}"; shift;;
+        --save-var-subdirs) save_var_subdirs="${1}"; shift;;
+         *) echo "${flag}=${1} is not understood."; usage; exit 10;;
+         --) break;
+     esac;
+done
 
 export PATH=$PATH:/sbin:/usr/sbin
-
 arch="$(uname -m)"
-
-disk="$1" && shift
-ostree="$1" && shift
-ref="$1" && shift
-remote_name="$1" && shift
-grub_script="$1" && shift
-os_name="$1" && shift
-save_var_subdirs="$1" && shift
-extrakargs="$1" && shift
+disk="${disk:?--disk must be defined}"
+ostree="${ostree:?--ostree-repo must be defined}"
+ref="${ref:?--ostree-ref must be defined}"
+remote_name="${remote_name:?--ostree-remote must be defined}"
+grub_script="${grub_script:?--grub-script must be defined}"
+os_name="${os_name:?--os_name must be defined}"
+save_var_subdirs="${save_var_subdirs:?--save_var_subdirs must be defined}"
 
 set -x
 

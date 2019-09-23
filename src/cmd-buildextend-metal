@@ -172,8 +172,16 @@ if [ -z "${use_anaconda}" ]; then
     if [ -n "${ref_is_temp}" ]; then
         ref_arg=${commit}
     fi
-
-    runvm -drive "if=virtio,id=target,format=${image_format},file=${path}.tmp" -- /usr/lib/coreos-assembler/create_disk.sh /dev/vda "$ostree_repo" "${ref_arg}" "${ostree_remote}" /usr/lib/coreos-assembler/grub.cfg "$name" "${save_var_subdirs}" "\"$kargs\""
+    runvm -drive "if=virtio,id=target,format=${image_format},file=${path}.tmp" -- \
+            /usr/lib/coreos-assembler/create_disk.sh \
+                --disk /dev/vda \
+                --grub-script /usr/lib/coreos-assembler/grub.cfg \
+                --kargs "\"${kargs}\"" \
+                --osname "${name}" \
+                --ostree-ref "${ref_arg}" \
+                --ostree-remote "${ostree_remote}" \
+                --ostree-repo "${ostree_repo}" \
+                --save-var-subdirs "${save_var_subdirs}"
     mv "${path}.tmp" "$path"
     echo "{}" > tmp/vm-iso-checksum.json
 else
