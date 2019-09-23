@@ -124,6 +124,7 @@ def cli():
     parser.add_argument(
         '--storage-account', help='Storage account', required=True,
         default=os.environ.get('AZURE_STORAGE_ACCOUNT'))
+    parser.add_argument("--log-level", help="ore log level")
     args = parser.parse_args()
 
     # Argument checks for environment strings that are required
@@ -166,8 +167,11 @@ def run_ore(args, build):
     :type build: Build
     """
     azure_vhd_path = os.path.join(build.build_dir, build.azure_vhd_name)
-    ore_upload_args = [
-        'ore', 'azure', 'upload-blob-arm',
+    ore_upload_args = ['ore']
+    if args.log_level:
+        ore_upload_args.extend(['--log-level', args.log_level])
+    ore_upload_args.extend([
+        'azure', 'upload-blob-arm',
         '--azure-auth', args.auth,
         '--azure-location', args.location,
         '--azure-profile', args.profile,
