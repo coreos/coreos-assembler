@@ -168,7 +168,7 @@ func (d Disk) setupFile() (*os.File, error) {
 	}
 
 	if d.Size != "" {
-		return setupDisk(d.Size, d.ConfPath)
+		return setupDisk(d.ConfPath, d.Size)
 	} else {
 		return setupDiskFromFile(d.BackingFile, d.ConfPath)
 	}
