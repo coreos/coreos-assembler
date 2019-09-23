@@ -161,6 +161,8 @@ def s3_check_exists(bucket, key):
 
 @retry(stop=retry_stop, retry=retry_s3_exception, retry_error_callback=retry_callback)
 def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
+    if key.endswith('.json') and 'ContentType' not in extra_args:
+        extra_args['ContentType'] = 'application/json'
     upload_args = {
         'CacheControl': f'max-age={max_age}',
         'ACL': acl
