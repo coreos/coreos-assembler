@@ -264,9 +264,13 @@ commit_overlay() {
         --timestamp "${git_timestamp}"
 }
 
-runcompose() {
-    # Implement support for automatic local overrides:
-    # https://github.com/coreos/coreos-assembler/issues/118
+# Implement support for automatic local overrides:
+# https://github.com/coreos/coreos-assembler/issues/118
+#
+# This function commits the contents of overlay.d/ as well
+# as overrides/{rootfs} to OSTree commits, and also handles
+# overrides/rpm.
+prepare_compose_overlays() {
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
@@ -362,7 +366,13 @@ ostree-override-layers:
   - cosa-bin-overlay
 EOF
     fi
+}
 
+# Wrapper for `rpm-ostree compose tree` which adds some default options
+# such as `--repo` (which is auto-derived from the builddir) and
+# `--unified-core` that we always want.  Also dispatches to supermin if
+# we're running without support for nested containerization.
+runcompose() {
     # shellcheck disable=SC2086
     set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${tmprepo}" \
             --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
