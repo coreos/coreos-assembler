@@ -26,7 +26,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/coreos/mantle/platform/conf"
+	platformConf "github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
 
@@ -132,13 +132,13 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 	return bc.bf.Keys()
 }
 
-func (bc *BaseCluster) RenderUserData(userdata *conf.UserData, ignitionVars map[string]string) (*conf.Conf, error) {
+func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionVars map[string]string) (*platformConf.Conf, error) {
 	if userdata == nil {
 		switch bc.IgnitionVersion() {
 		case "v2":
-			userdata = conf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
+			userdata = platformConf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
 		case "v3":
-			userdata = conf.Ignition(`{"ignition": {"version": "3.0.0"}}`)
+			userdata = platformConf.Ignition(`{"ignition": {"version": "3.0.0"}}`)
 		default:
 			return nil, fmt.Errorf("unknown ignition version")
 		}
@@ -183,7 +183,7 @@ enabled = false`, 0644)
 		}
 		conf.AddSystemdUnitDropin("pivot.service", "00-before-sshd.conf", `[Unit]
 Before=sshd.service`)
-		conf.AddSystemdUnit("pivot.service", "", true)
+		conf.AddSystemdUnit("pivot.service", "", platformConf.Enable)
 		conf.AddSystemdUnit("pivot-write-reboot-needed.service", `[Unit]
 Description=Touch /run/pivot/reboot-needed
 ConditionFirstBoot=true
@@ -195,8 +195,13 @@ ExecStart=/usr/bin/touch /run/pivot/reboot-needed
 
 [Install]
 WantedBy=multi-user.target
-`, true)
+`, platformConf.Enable)
 		conf.AddFile("/etc/pivot/image-pullspec", "root", bc.bf.baseopts.OSContainer, 0644)
+	}
+
+	// mask tcsd on Packet for CL
+	if bc.Distribution() == "cl" && bc.Platform() == "packet" {
+		conf.AddSystemdUnit("tcsd.service", "", platformConf.Mask)
 	}
 
 	if conf.IsIgnition() {
