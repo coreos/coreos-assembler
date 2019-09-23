@@ -50,7 +50,6 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
-img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 # Grab the commit hash for this build
 buildmeta_commit = buildmeta['ostree-commit']
 
@@ -108,6 +107,7 @@ def generate_iso():
         tmp_squashfs = os.path.join(tmpdir, 'root.squashfs')
         tmp_cpio = os.path.join(tmpdir, 'root.cpio')
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
+        img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 
         print(f'Compressing squashfs with {squashfs_compression}')
         run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
