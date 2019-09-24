@@ -26,7 +26,12 @@ set -x
 coreos_gf_run "${src}"
 # We don't have a way to do this with Anaconda/kickstart right now.
 # This bootstraps us to be able to do all of the mounts.
-coreos_gf set-label /dev/sda2 boot
+if [ "$arch" != "s390x" ]; then
+    coreos_gf set-label /dev/sda2 boot
+else
+    coreos_gf set-label /dev/sda1 boot
+    coreos_gf set-label /dev/sda2 root
+fi
 coreos_gf_run_mount "${src}"
 
 fb=/boot/ignition.firstboot
