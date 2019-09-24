@@ -9,6 +9,7 @@ dn=$(dirname "$0")
 # image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
 case "$(basename "$0")" in
     "cmd-buildextend-metal") image_type=metal;;
+    "cmd-buildextend-dasd") image_type=dasd;;
     "cmd-buildextend-qemu") image_type=qemu;;
     *) fatal "called as unexpected name $0";;
 esac
@@ -142,15 +143,17 @@ path=${PWD}/${img}
 
 # For bare metal images, we estimate the disk size. For qemu, we get it from
 # image.yaml.
-if [[ $image_type == metal ]]; then
+if [[ $image_type == metal || $image_type == dasd ]]; then
     echo "Estimating disk size..."
     /usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 20 > "$PWD/tmp/ostree-size.json"
     size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
     # extra size is the non-ostree partitions, see create_disk.sh
     size="$(( size + 513 ))M"
     echo "Disk size estimated to $size"
+    ignition_platform_id="metal"
 else
     size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+    ignition_platform_id="$image_type"
 fi
 
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
@@ -159,7 +162,7 @@ tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 if [ "$arch" == "s390x" ]; then
     tty="console=${DEFAULT_TERMINAL}"
 fi
-kargs="$kargs $tty ignition.platform.id=$image_type"
+kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
@@ -174,7 +177,13 @@ if [ -z "${use_anaconda}" ]; then
     if [ -n "${ref_is_temp}" ]; then
         ref_arg=${commit}
     fi
-    runvm -drive "if=virtio,id=target,format=${image_format},file=${path}.tmp" -- \
+    target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp")
+    if [[ $image_format == raw && $image_type == dasd ]]; then
+        target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp" \
+                      # we need 4096 block size for ECKD DASD
+                      "-device" "virtio-blk-ccw,drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
+    fi
+    runvm "${target_drive[@]}" -- \
             /usr/lib/coreos-assembler/create_disk.sh \
                 --disk /dev/vda \
                 --buildid "${build}" \
