@@ -407,8 +407,7 @@ EOF
         -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
-	"${extradisk[@]}"
+        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
