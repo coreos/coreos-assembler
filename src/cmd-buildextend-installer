@@ -95,6 +95,7 @@ initrd_ignition_padding = 256 * 1024
 def generate_iso():
     arch = platform.machine()
     tmpisofile = os.path.join(tmpdir, iso_name)
+    img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 
     # Find the directory under `/usr/lib/modules/<kver>` where the
     # kernel/initrd live. It will be the 2nd entity output by
@@ -117,7 +118,6 @@ def generate_iso():
         tmp_squashfs = os.path.join(tmpdir, 'root.squashfs')
         tmp_cpio = os.path.join(tmpdir, 'root.cpio')
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
-        img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 
         print(f'Compressing squashfs with {squashfs_compression}')
         run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
