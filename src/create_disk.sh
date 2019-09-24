@@ -308,23 +308,21 @@ s390x)
 	# see https://github.com/ibm-s390-tools/s390-tools/issues/64
 	blsfile=$(find rootfs/boot/loader/entries/*.conf)
 	tmpfile=$(mktemp)
-	for f in title version linux initrd; do
+	for f in title version linux initrd options; do
 		echo $(grep $f $blsfile) >> $tmpfile
 	done
+	cat $tmpfile > $blsfile
 	# we force firstboot in building base image on s390x, ignition-dracut hook will remove
 	# this and update zipl for second boot
 	# this is only a temporary solution until we are able to do firstboot check at bootloader
 	# stage on s390x, either through zipl->grub2-emu or zipl standalone.
 	# See https://github.com/coreos/ignition-dracut/issues/84
-	options="$(grep options $blsfile | cut -d' ' -f2-) ignition.firstboot rd.neednet=1 ip=dhcp"
-	echo "options $options" >> $tmpfile
-	cat $tmpfile > $blsfile
+	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp" > $tmpfile
 
 	# ideally we want to invoke zipl with bls and zipl.conf but we might need
 	# to chroot to rootfs/ to do so. We would also do that when FCOS boot on its own.
 	# without chroot we can use --target option in zipl but it requires kernel + initramfs
 	# pair instead
-	echo $options > $tmpfile
 	zipl --verbose \
 		--target rootfs/boot \
 		--image rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
