@@ -118,6 +118,13 @@ extra_kargs = image_conf.get('extra-kargs', [])
 
 with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
     buf = basef.read()
+    # grub can detect /boot/ignition.firstboot file at first boot and add those parameters on the fly to $ignition_firstboot
+    # zipl requires those to be added and a re-run of zipl program at build time
+    if platform.machine() == "s390x":
+        extra_kargs.append("ignition.firstboot rd.neednet=1 ip=dhcp ignition.platform.id=qemu")
+        buf = buf.replace('%%DISKLABEL%%','')
+    else:
+        buf = buf.replace('%%DISKLABEL%%',' disklabel=gpt')
     buf = buf.replace('%%KARGS%%', ' '.join(extra_kargs))
     buf = buf.replace('%%TERM%%', os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))
     ks_tmp.write(buf)
