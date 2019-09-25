@@ -41,8 +41,8 @@ coreos_gf_run_mount "${tmp_dest}"
 # * grub config
 # * BLS config (for subsequent config regeneration)
 # First, the grub config.
-# Set grub.cfg in case the arch uses anaconda
-if [ "$arch" == "ppc64le" ]; then
+# No grub on s390x
+if [ "$arch" != "s390x" ]; then
     if [ "$(coreos_gf exists '/boot/efi')" == 'true' ]; then
         grubcfg_path=$(coreos_gf glob-expand /boot/efi/EFI/*/grub.cfg)
     else
