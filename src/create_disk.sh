@@ -27,13 +27,16 @@ Options:
     --ostree-remote: the ostree remote
     --ostree-repo: location of the ostree repo
     --save-var-subdirs: "yes" to workaround selabel issue for RHCOS
+    --luks-rootfs: place rootfs in a LUKS container
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
 EOC
 }
 
+luks_rootfs=""
 extrakargs=""
+
 while [ $# -gt 0 ];
 do
     flag="${1}"; shift;
@@ -49,10 +52,16 @@ do
         --ostree-remote)    remote_name="${1}"; shift;;
         --ostree-repo)      ostree="${1}"; shift;;
         --save-var-subdirs) save_var_subdirs="${1}"; shift;;
-         *) echo "${flag}=${1} is not understood."; usage; exit 10;;
+        --luks-rootfs)      luks_rootfs=1;;
+         *) echo "${flag} is not understood."; usage; exit 10;;
          --) break;
      esac;
 done
+
+udevtrig() {
+    udevadm trigger
+    udevadm settle
+}
 
 export PATH=$PATH:/sbin:/usr/sbin
 arch="$(uname -m)"
@@ -79,18 +88,56 @@ sgdisk -Z $disk \
 	-n 4:0:0     -c 4:root       -t 4:4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
 sgdisk -p "$disk"
 
-udevadm trigger
-udevadm settle
+udevtrig
+
+root_dev="${disk}4"
+if [ -n "${luks_rootfs}"  ]; then
+    root_dev=/dev/mapper/crypt_root
+    sgdisk -c 4:luk_root "${disk}"
+
+    touch tmp.key
+    # Create the LUKS partition using the null_cipher and a sentinal
+    # UUID similiar to the one used by coreos-gpt-setup. This is used
+    # by ignition-dracut-reecrypt.
+    cryptsetup luksFormat \
+        -q \
+        --label="crypt_rootfs" \
+        --cipher=cipher_null \
+        --key-file=tmp.key \
+        --uuid='00000000-0000-4000-a000-000000000002' \
+        "${disk}4"
+
+    # 'echo ""' acts as a test that you can use an empty
+    # password. You can actually use _any_ string.
+    echo "" | cryptsetup luksOpen \
+        --allow-discards \
+        "${disk}4" crypt_root \
+        --key-file=-
+
+    udevtrig
+
+    cryptsetup token import \
+        "${disk}4" \
+        --token-id 9 \
+        --key-slot=0 \
+        <<<'{"type": "coreos", "keyslots": ["0"], "key": "", "ostree_ref": "'${ref}'"}'
+
+    # This enabled discards, which is probably not a great idea for
+    # those avoiding three-letter acronyms. For the vast majority of users
+    # this is fine. See warning at:
+    # https://gitlab.com/cryptsetup/cryptsetup/wikis/FrequentlyAskedQuestions
+    extrakargs="${extrakargs} rd.luks.options=discard"
+fi
 
 mkfs.ext4 "${disk}1" -L boot
 mkfs.fat "${disk}2" -n EFI-SYSTEM
 # partition 3 has no FS, its for bios grub
-mkfs.xfs "${disk}4"  -L root -m reflink=1
+mkfs.xfs "${root_dev}" -L root -m reflink=1
 
 # mount the partitions
 rm -rf rootfs
 mkdir rootfs
-mount "${disk}4" rootfs
+mount -o discard "${root_dev}" rootfs
 chcon $(matchpathcon -n /) rootfs
 mkdir rootfs/boot
 chcon $(matchpathcon -n /boot) rootfs/boot
@@ -228,4 +275,5 @@ touch rootfs/boot/ignition.firstboot
 # else is in /sysroot it's probably by accident.
 chattr +i rootfs
 
+fstrim -a -v
 umount -R rootfs
