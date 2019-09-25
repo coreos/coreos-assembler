@@ -179,7 +179,7 @@ def run_ore(args, build):
         '--container', args.container,
         '--file', azure_vhd_path,
         '--resource-group', args.resource_group,
-        '--storage-account', args.storage_account]
+        '--storage-account', args.storage_account])
     if args.force:
         ore_upload_args.append('--overwrite')
     run_verbose(ore_upload_args)
