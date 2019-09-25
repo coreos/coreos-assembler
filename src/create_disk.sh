@@ -209,7 +209,7 @@ if [ "${remote_name}" != NONE ]; then
 fi
 ostree pull-local "$ostree" "$ref" --repo rootfs/ostree/repo $remote_arg
 ostree admin os-init "$os_name" --sysroot rootfs
-allkargs='root=/dev/disk/by-label/root rootflags=defaults,prjquota rw $ignition_firstboot'
+allkargs='$ignition_firstboot'
 allkargs="$allkargs $extrakargs"
 kargsargs=""
 for karg in $allkargs
