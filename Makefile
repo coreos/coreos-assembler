@@ -4,13 +4,14 @@ DESTDIR ?=
 # E722 do not use bare 'except'
 PYIGNORE ?= E402,E722
 
-pysources = src/cosalib src/oscontainer.py src/cmd-kola
+flake8sources = src/cosalib src/oscontainer.py src/cmd-kola
 
-.PHONY: all check flake8 unittest clean mantle install
+.PHONY: all check flake8 pycheck unittest clean mantle install
 
 all: mantle
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
+pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
 src_checked:=$(patsubst src/%,src/.%.shellchecked,${src})
 tests:=$(shell find tests -maxdepth 1 -type f -executable -print)
 tests_checked:=$(patsubst tests/%,tests/.%.shellchecked,${tests})
@@ -26,11 +27,14 @@ endif
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck
 	echo OK
 
+pycheck:
+	python3 -m py_compile $(pysources)
+
 flake8:
-	python3 -m flake8 --ignore=$(PYIGNORE) $(pysources)
+	python3 -m flake8 --ignore=$(PYIGNORE) $(flake8sources)
 	# The following lines will verify python files that are not modules
 	# but are commented out as the files are not ready for checking yet
 	# grep -r "^\#\!/usr/bin/py" src/ | cut -d : -f 1 | xargs flake8 --ignore=$(PYIGNORE)
