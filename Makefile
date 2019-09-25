@@ -2,7 +2,9 @@ PREFIX ?= /usr
 DESTDIR ?=
 # E402 module level import not at top of file
 # E722 do not use bare 'except'
-PYIGNORE ?= E402,E722
+# W503 line break before binary operator
+# W504 line break after binary operator
+PYIGNORE ?= E402,E722,W503,W504
 
 flake8sources = src/cosalib src/oscontainer.py src/cmd-kola
 
