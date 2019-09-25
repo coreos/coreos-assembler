@@ -163,6 +163,8 @@ kargs="$kargs $tty ignition.platform.id=$image_type"
 
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
+luks_flag="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("--luks-rootfs" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
+
 
 if [ -z "${use_anaconda}" ]; then
     qemu-img create -f ${image_format} "${path}.tmp" "$size"
@@ -183,7 +185,8 @@ if [ -z "${use_anaconda}" ]; then
                 --ostree-ref "${ref_arg}" \
                 --ostree-remote "${ostree_remote}" \
                 --ostree-repo "${ostree_repo}" \
-                --save-var-subdirs "${save_var_subdirs}"
+                --save-var-subdirs "${save_var_subdirs}" \
+                "${luks_flag}"
     mv "${path}.tmp" "$path"
     echo "{}" > tmp/vm-iso-checksum.json
 else
