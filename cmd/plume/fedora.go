@@ -34,7 +34,7 @@ var (
 		awsPartitionSpec{
 			Name:         "AWS",
 			Profile:      "default",
-			Bucket:       "fedora-s3-bucket-fedimg",
+			Bucket:       "fedora-cloud-plume-ami-vmimport",
 			BucketRegion: "us-east-1",
 			LaunchPermissions: []string{
 				"125523088429", // fedora production account
@@ -62,7 +62,7 @@ var (
 		awsPartitionSpec{
 			Name:         "AWS",
 			Profile:      "default",
-			Bucket:       "fedora-s3-bucket-fedimg-test",
+			Bucket:       "prod-account-match-fedora-cloud-plume-ami-vmimport",
 			BucketRegion: "us-east-1",
 			LaunchPermissions: []string{
 				"013116697141", // fedora community dev test account
