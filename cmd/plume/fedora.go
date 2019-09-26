@@ -30,7 +30,7 @@ var (
 		"x86_64",
 		"aarch64",
 	}
-	awsFedoraPartitions = []awsPartitionSpec{
+	awsFedoraProdAccountPartitions = []awsPartitionSpec{
 		awsPartitionSpec{
 			Name:         "AWS",
 			Profile:      "default",
@@ -58,7 +58,7 @@ var (
 			},
 		},
 	}
-	awsFedoraUserPartitions = []awsPartitionSpec{
+	awsFedoraDevAccountPartitions = []awsPartitionSpec{
 		awsPartitionSpec{
 			Name:         "AWS",
 			Profile:      "default",
@@ -82,7 +82,7 @@ var (
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora {{.ImageType}} AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 		"branched": channelSpec{
@@ -92,7 +92,7 @@ var (
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora {{.ImageType}} AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 		"updates": channelSpec{
@@ -102,7 +102,7 @@ var (
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora {{.ImageType}} AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 		"cloud": channelSpec{
@@ -112,7 +112,7 @@ var (
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 	}
@@ -145,6 +145,9 @@ func ChannelFedoraSpec() (channelSpec, error) {
 		return channelSpec{}, fmt.Errorf("Unknown channel: %q", specChannel)
 	}
 
+	if specEnv == "dev" {
+		spec.AWS.Partitions = awsFedoraDevAccountPartitions
+	}
 	boardOk := false
 	for _, board := range spec.Boards {
 		if specBoard == board {
