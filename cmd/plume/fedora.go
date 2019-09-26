@@ -81,7 +81,6 @@ var (
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora {{.ImageType}} AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
 			},
@@ -92,7 +91,6 @@ var (
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora {{.ImageType}} AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
 			},
@@ -103,7 +101,6 @@ var (
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora {{.ImageType}} AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
 			},
@@ -114,7 +111,6 @@ var (
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
 			},
