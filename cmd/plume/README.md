@@ -146,15 +146,30 @@ There are two sub-commands to do a Fedora Cloud Release: `pre-release` and `rele
 Here is an example of doing a Fedora Cloud pre-release with plume:
 
 ```
-./bin/plume pre-release \
-  --system fedora \
-  --channel cloud \
-  --version 30 \
-  --timestamp 20190819 \
-  --respin 0 \
-  --board x86_64 \
+./bin/plume pre-release                   \
+  --distro fedora                         \
+  --channel cloud                         \
+  --version 30                            \
+  --timestamp 20190819                    \
+  --respin 0                              \
+  --board x86_64                          \
   --compose-id Fedora-Cloud-30-20190819.0 \
-  --image-type Cloud-Base \
+  --image-type Cloud-Base                 \
+  --debug
+```
+
+Here is an example of doing a Fedora Cloud release with plume:
+
+```
+./bin/plume release                       \
+  --distro fedora                         \
+  --channel cloud                         \
+  --version 30                            \
+  --timestamp 20190819                    \
+  --respin 0                              \
+  --board x86_64                          \
+  --compose-id Fedora-Cloud-30-20190819.0 \
+  --image-type Cloud-Base                 \
   --debug
 ```
 
