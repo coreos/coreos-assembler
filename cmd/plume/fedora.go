@@ -119,11 +119,11 @@ var (
 )
 
 func AddFedoraSpecFlags(flags *pflag.FlagSet) {
-	flags.StringVarP(&specEnv, "environment", "E", "prod", "instance environment")
-	flags.StringVarP(&specImageType, "image-type", "I", "Cloud-Base", "type of image")
-	flags.StringVarP(&specTimestamp, "timestamp", "T", "", "compose timestamp")
-	flags.StringVarP(&specRespin, "respin", "R", "0", "compose respin")
-	flags.StringVarP(&specComposeID, "compose-id", "O", "", "compose id")
+	flags.StringVar(&specEnv, "environment", "prod", "AMI upload environment")
+	flags.StringVar(&specImageType, "image-type", "Cloud-Base", "type of image")
+	flags.StringVar(&specTimestamp, "timestamp", "", "compose timestamp")
+	flags.StringVar(&specRespin, "respin", "0", "compose respin")
+	flags.StringVar(&specComposeID, "compose-id", "", "compose id")
 }
 
 func ChannelFedoraSpec() (channelSpec, error) {
