@@ -80,7 +80,7 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora {{.ImageType}} AMI",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraProdAccountPartitions,
 			},
@@ -90,7 +90,7 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora {{.ImageType}} AMI",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraProdAccountPartitions,
 			},
@@ -100,7 +100,7 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora {{.ImageType}} AMI",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraProdAccountPartitions,
 			},
@@ -110,7 +110,7 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora AMI",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraProdAccountPartitions,
 			},
