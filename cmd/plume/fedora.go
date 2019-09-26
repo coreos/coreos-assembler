@@ -80,20 +80,9 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora AMI",
+				BaseDescription: "Fedora {{.ImageType}} AMI",
 				Prefix:          "fedora_{{.Env}}_ami_",
-				Image:           "Fedora-AtomicHost-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
-			},
-		},
-		"updates": channelSpec{
-			BaseURL: "https://koji.fedoraproject.org/compose/updates",
-			Boards:  awsFedoraBoards,
-			AWS: awsSpec{
-				BaseName:        "Fedora",
-				BaseDescription: "Fedora AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
-				Image:           "Fedora-AtomicHost-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
+				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
 			},
 		},
@@ -102,9 +91,20 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora AMI",
+				BaseDescription: "Fedora {{.ImageType}} AMI",
 				Prefix:          "fedora_{{.Env}}_ami_",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
+				Partitions:      awsFedoraPartitions,
+			},
+		},
+		"updates": channelSpec{
+			BaseURL: "https://koji.fedoraproject.org/compose/updates",
+			Boards:  awsFedoraBoards,
+			AWS: awsSpec{
+				BaseName:        "Fedora",
+				BaseDescription: "Fedora {{.ImageType}} AMI",
+				Prefix:          "fedora_{{.Env}}_ami_",
+				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
 			},
 		},
@@ -117,17 +117,6 @@ var (
 				Prefix:          "fedora_{{.Env}}_ami_",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
 				Partitions:      awsFedoraPartitions,
-			},
-		},
-		"user": channelSpec{
-			BaseURL: "https://koji.fedoraproject.org/compose/cloud",
-			Boards:  awsFedoraBoards,
-			AWS: awsSpec{
-				BaseName:        "Fedora",
-				BaseDescription: "Fedora AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
-				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraUserPartitions,
 			},
 		},
 	}

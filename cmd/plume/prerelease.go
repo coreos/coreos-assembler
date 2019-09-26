@@ -575,6 +575,8 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 			"Channel":   specChannel,
 			"Version":   specVersion,
 			"ComposeID": specComposeID,
+			"Date":      specTimestamp,
+			"Arch":      specBoard,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
