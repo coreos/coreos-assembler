@@ -71,6 +71,10 @@ func runRelease(cmd *cobra.Command, args []string) {
 		if err := runFcosRelease(cmd, args); err != nil {
 			plog.Fatal(err)
 		}
+	case "fedora":
+		if err := runFedoraRelease(cmd, args); err != nil {
+			plog.Fatal(err)
+		}
 	default:
 		plog.Fatalf("Unknown distro %q:", selectedDistro)
 	}
