@@ -282,7 +282,7 @@ func usersRhcos(c cluster.TestCluster) {
 	tests := []userTest{
 		{
 			user:           "core",
-			passwdRecord:   "core:x:1000:1000::/home/core:/bin/bash",
+			passwdRecord:   "core:x:1000:1000:CoreOS Admin:/home/core:/bin/bash",
 			shadowPassword: "foobar",
 		},
 		{
