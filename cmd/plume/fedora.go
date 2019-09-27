@@ -30,11 +30,11 @@ var (
 		"x86_64",
 		"aarch64",
 	}
-	awsFedoraPartitions = []awsPartitionSpec{
+	awsFedoraProdAccountPartitions = []awsPartitionSpec{
 		awsPartitionSpec{
 			Name:         "AWS",
 			Profile:      "default",
-			Bucket:       "fedora-s3-bucket-fedimg",
+			Bucket:       "fedora-cloud-plume-ami-vmimport",
 			BucketRegion: "us-east-1",
 			LaunchPermissions: []string{
 				"125523088429", // fedora production account
@@ -58,11 +58,11 @@ var (
 			},
 		},
 	}
-	awsFedoraUserPartitions = []awsPartitionSpec{
+	awsFedoraDevAccountPartitions = []awsPartitionSpec{
 		awsPartitionSpec{
 			Name:         "AWS",
 			Profile:      "default",
-			Bucket:       "fedora-s3-bucket-fedimg-test",
+			Bucket:       "prod-account-match-fedora-cloud-plume-ami-vmimport",
 			BucketRegion: "us-east-1",
 			LaunchPermissions: []string{
 				"013116697141", // fedora community dev test account
@@ -80,10 +80,9 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora {{.ImageType}} AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 		"branched": channelSpec{
@@ -91,10 +90,9 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora {{.ImageType}} AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.n.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 		"updates": channelSpec{
@@ -102,10 +100,9 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora {{.ImageType}} AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 		"cloud": channelSpec{
@@ -113,21 +110,20 @@ var (
 			Boards:  awsFedoraBoards,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
-				BaseDescription: "Fedora AMI",
-				Prefix:          "fedora_{{.Env}}_ami_",
+				BaseDescription: "Fedora Cloud Base AMI",
 				Image:           "Fedora-{{.ImageType}}-{{.Version}}-{{.Timestamp}}.{{.Respin}}.{{.Arch}}.raw.xz",
-				Partitions:      awsFedoraPartitions,
+				Partitions:      awsFedoraProdAccountPartitions,
 			},
 		},
 	}
 )
 
 func AddFedoraSpecFlags(flags *pflag.FlagSet) {
-	flags.StringVarP(&specEnv, "environment", "E", "prod", "instance environment")
-	flags.StringVarP(&specImageType, "image-type", "I", "Cloud-Base", "type of image")
-	flags.StringVarP(&specTimestamp, "timestamp", "T", "", "compose timestamp")
-	flags.StringVarP(&specRespin, "respin", "R", "0", "compose respin")
-	flags.StringVarP(&specComposeID, "compose-id", "O", "", "compose id")
+	flags.StringVar(&specEnv, "environment", "prod", "AMI upload environment")
+	flags.StringVar(&specImageType, "image-type", "Cloud-Base", "type of image")
+	flags.StringVar(&specTimestamp, "timestamp", "", "compose timestamp")
+	flags.StringVar(&specRespin, "respin", "0", "compose respin")
+	flags.StringVar(&specComposeID, "compose-id", "", "compose id")
 }
 
 func ChannelFedoraSpec() (channelSpec, error) {
@@ -149,6 +145,9 @@ func ChannelFedoraSpec() (channelSpec, error) {
 		return channelSpec{}, fmt.Errorf("Unknown channel: %q", specChannel)
 	}
 
+	if specEnv == "dev" {
+		spec.AWS.Partitions = awsFedoraDevAccountPartitions
+	}
 	boardOk := false
 	for _, board := range spec.Boards {
 		if specBoard == board {

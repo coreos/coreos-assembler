@@ -71,6 +71,10 @@ func runRelease(cmd *cobra.Command, args []string) {
 		if err := runFcosRelease(cmd, args); err != nil {
 			plog.Fatal(err)
 		}
+	case "fedora":
+		if err := runFedoraRelease(cmd, args); err != nil {
+			plog.Fatal(err)
+		}
 	default:
 		plog.Fatalf("Unknown distro %q:", selectedDistro)
 	}
@@ -456,8 +460,10 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 					}
 				}
 			}
-			if aws.RegionSupportsPV(region) {
-				publish(imageName)
+			if selectedDistro == "cl" {
+				if aws.RegionSupportsPV(region) {
+					publish(imageName)
+				}
 			}
 			publish(imageName + "-hvm")
 		}
