@@ -76,6 +76,10 @@ case "$arch" in
         ;;
 esac
 
+if [[ "$arch" != "s390x" && $image_type == dasd ]]; then
+    fatal "$arch is not supported for building dasd images"
+fi
+
 export LIBGUESTFS_BACKEND=direct
 
 prepare_build
