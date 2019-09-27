@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
-       coreos-assembler fetch [--update-lockfile]
+       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file]
 
   Fetch and import the latest packages.
 EOF
