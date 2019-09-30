@@ -76,6 +76,7 @@ class Build(_Build):
         final_vhd = os.path.basename(tmp_img_azure_vhd)
         final_vhd_path = f"{self.build_dir}/{final_vhd}"
         os.rename(tmp_img_azure_vhd, final_vhd_path)
+        shutil.rmtree(self.tmpbuilddir)
 
         # TODO: This can be pulled out into a _Build method.
         fsize = os.stat(final_vhd_path).st_size
@@ -88,7 +89,18 @@ class Build(_Build):
         log.debug(
             " * size is %s",
             self._found_files[final_vhd_path]["size"])
-        # ---
+
+        # Update the metadata with info about the built image
+        checksum = sha256sum_file(final_vhd_path)
+        size = os.path.getsize(final_vhd_path)
+
+        self.meta['images'].update({
+            'azure': {
+                'path': build.azure_vhd_name,
+                'sha256': checksum,
+                'size': size
+            }
+        })
 
 
 def cli():
@@ -98,11 +110,11 @@ def cli():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--auth', help='Path to Azure auth file',
-        required=True, default=os.environ.get("AZURE_AUTH"))
+        default=os.environ.get("AZURE_AUTH"))
     parser.add_argument('--build', help='Build ID')
     parser.add_argument(
         '--container', help='Storage location to write to',
-        required=True, default=os.environ.get("AZURE_CONTAINER"))
+        default=os.environ.get("AZURE_CONTAINER"))
     parser.add_argument(
         '--force', help='Replace existing images and upload',
         action='store_true',
@@ -111,41 +123,35 @@ def cli():
         default=os.environ.get("AZURE_LOCATION", "westus"))
     parser.add_argument(
         '--profile', help='Path to Azure profile',
-        required=True, default=os.environ.get('AZURE_PROFILE'))
+        default=os.environ.get('AZURE_PROFILE'))
     parser.add_argument(
-        '--resource-group', help='Resource group', required=True,
+        '--resource-group', help='Resource group',
         default=os.environ.get('AZURE_RESOURCE_GROUP'))
     parser.add_argument(
-        '--storage-account', help='Storage account', required=True,
+        '--storage-account', help='Storage account',
         default=os.environ.get('AZURE_STORAGE_ACCOUNT'))
     parser.add_argument("--log-level", help="ore log level")
+    parser.add_argument("--upload", action='store_true', default=False,
+                        help="Upload to Azure")
     args = parser.parse_args()
 
-    # Argument checks for environment strings that are required
-    arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
-    if args.auth is None:
-        raise Exception(arg_exp_str.format('auth', 'AZURE_AUTH'))
-    if args.container is None:
-        raise Exception(arg_exp_str.format('container', 'AZURE_CONTAINER'))
-    if args.profile is None:
-        raise Exception(arg_exp_str.format('profile', 'AZURE_PROFILE'))
-    if args.resource_group is None:
-        raise Exception(arg_exp_str.format('resource_group', 'AZURE_RESOURCE_GROUP'))
-    if args.storage_account is None:
-        raise Exception(arg_exp_str.format('storage_account', 'AZURE_STORAGE_ACCOUNT'))
+    if args.upload:
+        # Argument checks for environment strings that are required
+        arg_exp_str = "parameter '--{}' or envVar '{}' must be defined when uploading"
+        if args.auth is None:
+            raise Exception(arg_exp_str.format('auth', 'AZURE_AUTH'))
+        if args.container is None:
+            raise Exception(arg_exp_str.format('container', 'AZURE_CONTAINER'))
+        if args.profile is None:
+            raise Exception(arg_exp_str.format('profile', 'AZURE_PROFILE'))
+        if args.resource_group is None:
+            raise Exception(arg_exp_str.format('resource_group', 'AZURE_RESOURCE_GROUP'))
+        if args.storage_account is None:
+            raise Exception(arg_exp_str.format('storage_account', 'AZURE_STORAGE_ACCOUNT'))
 
-    # Identify the builds
-    build = Build(
-        os.path.join('builds'),
-        args.build or 'latest',
-        tmpbuilddir=os.path.abspath('tmp/buildpost-azure'))
 
-    if 'azure' in build.meta['images'] and not args.force:
-        print('Azure image already built; use --force to rebuild')
-        raise SystemExit()
+    return args
 
-    build.build_artifacts(cli_args=args)
-    run_ore(args, build)
 
 
 def run_ore(args, build):
@@ -178,9 +184,6 @@ def run_ore(args, build):
         ore_upload_args.append('--overwrite')
     run_verbose(ore_upload_args)
 
-    checksum = sha256sum_file(azure_vhd_path)
-    size = os.path.getsize(azure_vhd_path)
-
     url_path = urllib.parse.quote((
         f"{args.storage_account}.blob.core.windows.net/"
         f"{args.container}/{build.azure_vhd_name}"
@@ -189,16 +192,28 @@ def run_ore(args, build):
         'image': build.azure_vhd_name,
         'url': f"https://{url_path}",
     }
-    build.meta['images'].update({
-        'azure': {
-            'path': build.azure_vhd_name,
-            'sha256': checksum,
-            'size': size
-        }
-    })
-    build.meta_write()
-    print(f"Updated: Build Metadata")
-    shutil.rmtree(build.tmpbuilddir)
 
 if __name__ == '__main__':
-    cli()
+    # parse provided args
+    args = cli()
+
+    # Identify the builds
+    build = Build(
+        os.path.join('builds'),
+        args.build or 'latest',
+        tmpbuilddir=os.path.abspath('tmp/buildpost-azure'))
+
+    if 'azure' in build.meta['images'] and not args.force:
+        print('Azure image already built; use --force to rebuild')
+        raise SystemExit()
+
+    # Build the image artifacts
+    build.build_artifacts(cli_args=args)
+
+    # Do the upload if asked
+    if args.upload:
+        run_ore(args, build)
+
+    # Update the metadata
+    build.meta_write()
+    print(f"Updated: Build Metadata")
