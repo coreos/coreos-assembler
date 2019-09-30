@@ -37,16 +37,19 @@ parser.add_argument("--name-suffix", help="Append suffix to name",
 parser.add_argument("--project", help="GCP Project name",
                     default=os.environ.get("GCP_PROJECT_NAME"))
 parser.add_argument("--log-level", help="ore log level")
+parser.add_argument("--upload", action='store_true', default=False,
+                    help="Upload to GCP")
 args = parser.parse_args()
 
-# Argument checks for environment strings that are required
-arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
-if args.bucket is None:
-    raise Exception(arg_exp_str.format("bucket", "GCP_BUCKET"))
-if args.json_key is None:
-    raise Exception(arg_exp_str.format("json-key", "GCP_JSON_AUTH"))
-if args.project is None:
-    raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
+if args.upload:
+    # Argument checks for environment strings that are required
+    arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
+    if args.bucket is None:
+        raise Exception(arg_exp_str.format("bucket", "GCP_BUCKET"))
+    if args.json_key is None:
+        raise Exception(arg_exp_str.format("json-key", "GCP_JSON_AUTH"))
+    if args.project is None:
+        raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
 
 # Identify the builds and target the latest build if none provided
 builds = Builds()
@@ -70,6 +73,7 @@ if args.name_suffix:
 else:
     gcp_name_version = f'{base_name}-{args.build}'
 gcp_tarball_name = f'{gcp_name_version}-gcp.tar.gz'
+gcp_tarball_path = f"{builddir}/{gcp_tarball_name}"
 
 # Setup the tempdir
 tmpdir = 'tmp/buildpost-gcp'
@@ -94,12 +98,20 @@ def generate_gcp_tar():
                  f"disk.raw"])
     os.unlink(tmp_img_gcp)
     os.unlink(tmp_img_gcp_raw)
-    return tmp_img_gcp_tar
+    checksum = sha256sum_file(tmp_img_gcp_tar)
+    size = os.path.getsize(tmp_img_gcp_tar)
+    os.rename(tmp_img_gcp_tar, gcp_tarball_path)
+    shutil.rmtree(tmpdir)
+    buildmeta['images'].update({
+        'gcp': {
+            'path': gcp_tarball_name,
+            'sha256': checksum,
+            'size': size
+        }
+    })
 
 def run_ore():
     """ Execute ore to upload the tarball and register the image """
-    build_tarball = f"{builddir}/{gcp_tarball_name}"
-    tmp_img_gcp_tarball = generate_gcp_tar()
     ore_args = ['ore']
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
@@ -113,13 +125,10 @@ def run_ore():
         '--bucket', f'gs://{args.bucket}/{base_name}',
         '--json-key', args.json_key,
         '--name', f'{args.build}',
-        '--file', tmp_img_gcp_tarball
+        '--file', gcp_tarball_path
     ])
 
     run_verbose(ore_args)
-    os.rename(tmp_img_gcp_tarball, build_tarball)
-    checksum = sha256sum_file(build_tarball)
-    size = os.path.getsize(build_tarball)
 
     gcp_name = f"{base_name}-{args.build.replace('.', '-')}"
     url_path = urllib.parse.quote((
@@ -130,17 +139,11 @@ def run_ore():
             'image': gcp_name,
             'url': f"https://{url_path}",
     }
-    buildmeta['images'].update({
-        'gcp': {
-            'path': gcp_tarball_name,
-            'sha256': checksum,
-            'size': size
-        }
-    })
-    write_json(buildmeta_path, buildmeta)
-    print(f"Updated: {buildmeta_path}")
-    shutil.rmtree(tmpdir)
 
 
 # Do it!
-run_ore()
+generate_gcp_tar()
+if args.upload:
+    run_ore()
+write_json(buildmeta_path, buildmeta)
+print(f"Updated: {buildmeta_path}")
