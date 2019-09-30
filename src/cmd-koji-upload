@@ -20,7 +20,6 @@ import koji
 import koji_cli.lib as klib
 import logging as log
 import os.path
-import platform
 import shutil
 import subprocess
 import sys
@@ -29,6 +28,8 @@ import tempfile
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
+
+from cosalib.cmdlib import get_basearch
 
 try:
     from cosalib.build import _Build
@@ -44,7 +45,7 @@ except IOError:
     HOST_OS = "unknown"
 
 # ARCH is the current machine architecture
-ARCH = platform.machine()
+ARCH = get_basearch()
 
 COSA_INPATH = "/cosa"
 

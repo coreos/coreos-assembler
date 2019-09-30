@@ -4,21 +4,21 @@ Provides a base abstration class for build reuse.
 
 import logging as log
 import os.path
-import platform
 import shutil
 
 
 # COSA_INPATH is the _in container_ path for the image build source
 COSA_INPATH = "/cosa"
 
-# ARCH is the current machine architecture
-ARCH = platform.machine()
-
 from cosalib.cmdlib import (
+    get_basearch,
     load_json,
     write_json)
 
 from cosalib.builds import Builds
+
+# ARCH is the current machine architecture
+ARCH = get_basearch()
 
 
 class BuildError(Exception):

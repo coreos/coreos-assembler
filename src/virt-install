@@ -13,6 +13,9 @@ import tempfile,yaml,platform,json,threading
 import http.server
 import socketserver
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.cmdlib import get_basearch
+
 PID = os.getpid()
 
 # Currently we spin up a temporary webserver, but we could also
@@ -283,7 +286,7 @@ try:
         # https://bugzilla.redhat.com/show_bug.cgi?id=1659242
 
         # set correct location of the kernel image and initrd
-        arch = platform.machine()
+        arch = get_basearch()
         if arch == "x86_64" or arch == "i386":
             location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
         elif arch == "ppc64le":
