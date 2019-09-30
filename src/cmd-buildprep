@@ -98,6 +98,9 @@ class Fetcher(object):
         # on Windows anytime soon.
         url = os.path.join(self.url_base, path)
         print(f"Fetching: {url}")
+        # ensure the dir for dest file exists
+        # otherwise s3 download_file won't be able to write temp file
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
         self.fetch_impl(url, dest)
         return dest
 
