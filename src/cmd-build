@@ -292,6 +292,23 @@ if [ ! -f /lib/coreos-assembler/.clean ]; then
     src_location="bind mount"
 fi
 
+# And create the ostree repo tarball containing the commit
+if [ "${commit}" == "${previous_commit}" ] && \
+    [ -f "${previous_builddir}/ostree-commit.tar" ]; then
+    cp -a --reflink=auto "${previous_builddir}/ostree-commit.tar" .
+else
+    ostree init --repo=repo --mode=archive
+    ostree pull-local --repo=repo "${tmprepo}" "${ref}"
+    if [ -n "${ref_is_temp}" ]; then
+        ostree refs --repo=repo --delete "${ref}"
+    fi
+    # Don't compress; archive repos are already compressed individually and we'd
+    # gain ~20M at best. We could probably have better gains if we compress the
+    # whole repo in bare/bare-user mode, but that's a different story...
+    tar -cf ostree-commit.tar -C repo .
+    rm -rf repo
+fi
+
 # The base metadata, plus locations for code sources.
 # If the following condition is true, then /lib/coreos-assembler has been bind
 # mounted in and is using a different build tree.
@@ -349,23 +366,6 @@ mv "${lockfile_out}" .
 # And add the commit metadata itself, which includes notably the rpmdb pkglist
 # in a format that'd be easy to generate diffs out of for higher level tools
 "${dn}"/commitmeta_to_json "${tmprepo}" "${commit}" > commitmeta.json
-
-# And create the ostree repo tarball containing the commit
-if [ "${commit}" == "${previous_commit}" ] && \
-    [ -f "${previous_builddir}/ostree-commit.tar" ]; then
-    cp -a --reflink=auto "${previous_builddir}/ostree-commit.tar" .
-else
-    ostree init --repo=repo --mode=archive
-    ostree pull-local --repo=repo "${tmprepo}" "${ref}"
-    if [ -n "${ref_is_temp}" ]; then
-        ostree refs --repo=repo --delete "${ref}"
-    fi
-    # Don't compress; archive repos are already compressed individually and we'd
-    # gain ~20M at best. We could probably have better gains if we compress the
-    # whole repo in bare/bare-user mode, but that's a different story...
-    tar -cf ostree-commit.tar -C repo .
-    rm -rf repo
-fi
 
 # Clean up our temporary data
 saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
