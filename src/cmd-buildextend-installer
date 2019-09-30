@@ -37,12 +37,10 @@ parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
 args = parser.parse_args()
 
+# Identify the builds and target the latest build if none provided
 builds = Builds()
-
-# default to latest build if not specified
 if not args.build:
     args.build = builds.get_latest()
-
 print(f"Targeting build: {args.build}")
 
 with open('src/config/image.yaml') as fh:

@@ -24,7 +24,7 @@ from cmdlib import (
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
-parser.add_argument("--build", help="Build ID", required=True)
+parser.add_argument("--build", help="Build ID")
 parser.add_argument("--bucket", help="Storage account to write image to",
                     default=os.environ.get("GCP_BUCKET"))
 parser.add_argument("--gce", help="Use GCE as the platform ID instead of GCP",
@@ -48,8 +48,12 @@ if args.json_key is None:
 if args.project is None:
     raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
 
-# Identify the builds
+# Identify the builds and target the latest build if none provided
 builds = Builds()
+if not args.build:
+    args.build = builds.get_latest()
+print(f"Targeting build: {args.build}")
+
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
