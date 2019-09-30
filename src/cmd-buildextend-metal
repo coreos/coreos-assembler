@@ -146,7 +146,7 @@ if [[ $image_type == qemu ]]; then
     image_format=qcow2
 fi
 
-img=${name}-${build}-${image_type}.${image_format}
+img=${name}-${build}-${image_type}.${arch}.${image_format}
 path=${PWD}/${img}
 
 # For bare metal images, we estimate the disk size. For qemu, we get it from

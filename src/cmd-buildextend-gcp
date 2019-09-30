@@ -18,6 +18,7 @@ sys.path.insert(0, cosa_dir)
 # pylint: disable=C0413
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
+        get_basearch,
         run_verbose,
         sha256sum_file,
         write_json)
@@ -63,12 +64,13 @@ with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
 # Name the base build and tarball name
+arch = get_basearch()
 base_name = buildmeta['name']
 if args.name_suffix:
     gcp_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
 else:
     gcp_name_version = f'{base_name}-{args.build}'
-gcp_tarball_name = f'{gcp_name_version}-gcp.tar.gz'
+gcp_tarball_name = f'{gcp_name_version}-gcp.{arch}.tar.gz'
 gcp_tarball_path = f"{builddir}/{gcp_tarball_name}"
 
 # Setup the tempdir

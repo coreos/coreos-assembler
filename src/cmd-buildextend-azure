@@ -19,6 +19,7 @@ from cosalib.builds import Builds
 
 # pylint: disable=C0413
 from cosalib.cmdlib import (
+        get_basearch,
         run_verbose,
         sha256sum_file,
         write_json)
@@ -55,7 +56,8 @@ class Build(_Build):
         azure_nv = f'{base_name}-{self.build_id}'
 
         # Used in referencing
-        self.azure_vhd_name = f'{azure_nv}-azure.vhd'
+        arch = get_basearch()
+        self.azure_vhd_name = f'{azure_nv}-azure.{arch}.vhd'
 
         # Generate path locations
         img_qemu = os.path.join(
