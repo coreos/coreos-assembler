@@ -293,9 +293,15 @@ if [ ! -f /lib/coreos-assembler/.clean ]; then
 fi
 
 # And create the ostree repo tarball containing the commit
+ostree_tarfile_sha256=
 if [ "${commit}" == "${previous_commit}" ] && \
     [ -f "${previous_builddir}/ostree-commit.tar" ]; then
     cp -a --reflink=auto "${previous_builddir}/ostree-commit.tar" .
+    ostree_tarfile_sha256=$(jq -r '.images.ostree.sha256' < "${previous_builddir}/meta.json")
+    # backcompat: allow older build without this field
+    if [ "${ostree_tarfile_sha256}" = "null" ]; then
+        ostree_tarfile_sha256=
+    fi
 else
     ostree init --repo=repo --mode=archive
     ostree pull-local --repo=repo "${tmprepo}" "${ref}"
@@ -307,6 +313,10 @@ else
     # whole repo in bare/bare-user mode, but that's a different story...
     tar -cf ostree-commit.tar -C repo .
     rm -rf repo
+fi
+
+if [ -z "${ostree_tarfile_sha256:-}" ]; then
+    ostree_tarfile_sha256=$(sha256sum ostree-commit.tar | awk '{print$1}')
 fi
 
 # The base metadata, plus locations for code sources.
@@ -331,7 +341,17 @@ cat > tmp/meta.json <<EOF
 }
 EOF
 
-echo '{ "images": {} }' > tmp/images.json
+cat > tmp/images.json <<EOF
+{
+  "images": {
+    "ostree": {
+        "path": "ostree-commit.tar",
+        "sha256": "${ostree_tarfile_sha256}",
+        "size": $(stat --format=%s "${ostree_tarfile_path}")
+    }
+  }
+}
+EOF
 
 overridesjson=tmp/overrides.json
 if [ -f "${overrides_active_stamp}" ]; then
