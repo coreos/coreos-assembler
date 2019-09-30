@@ -14,15 +14,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cmdlib import run_verbose, load_json, write_json, sha256sum_file, Builds
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--build", help="Build ID",
-                    required=False)
+parser.add_argument("--build", help="Build ID")
 args = parser.parse_args()
 
+# Identify the builds and target the latest build if none provided
 builds = Builds()
-
-# default to latest build if not specified
 if not args.build:
     args.build = builds.get_latest()
+print(f"Targeting build: {args.build}")
 
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')

@@ -13,8 +13,7 @@ from cmdlib import run_verbose, write_json, sha256sum_file, Builds
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
-parser.add_argument("--build", help="Build ID",
-                    required=True)
+parser.add_argument("--build", help="Build ID")
 parser.add_argument("--region", help="EC2 region",
                     required=True)
 parser.add_argument("--bucket", help="S3 Bucket",
@@ -25,7 +24,12 @@ parser.add_argument("--grant-user", help="Grant user launch permission",
 parser.add_argument("--log-level", help="ore log level")
 args = parser.parse_args()
 
+# Identify the builds and target the latest build if none provided
 builds = Builds()
+if not args.build:
+    args.build = builds.get_latest()
+print(f"Targeting build: {args.build}")
+
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
