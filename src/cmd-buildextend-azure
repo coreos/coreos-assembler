@@ -25,7 +25,6 @@ except ImportError:
 
 # pylint: disable=C0413
 from cmdlib import (
-        Builds,
         run_verbose,
         sha256sum_file,
         write_json)
@@ -128,12 +127,6 @@ def cli():
     parser.add_argument("--log-level", help="ore log level")
     args = parser.parse_args()
 
-    # Identify the builds and target the latest build if none provided
-    builds = Builds()
-    if not args.build:
-        args.build = builds.get_latest()
-    print(f"Targeting build: {args.build}")
-
     # Argument checks for environment strings that are required
     arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
     if args.auth is None:
@@ -150,7 +143,7 @@ def cli():
     # Identify the builds
     build = Build(
         os.path.join('builds'),
-        args.build,
+        args.build or 'latest',
         tmpbuilddir=os.path.abspath('tmp/buildpost-azure'))
 
     if 'azure' in build.meta['images'] and not args.force:
@@ -209,7 +202,7 @@ def run_ore(args, build):
             'size': size
         }
     })
-    buildmeta_path = os.path.join('builds', args.build, 'meta.json')
+    buildmeta_path = os.path.join('builds', build.build_id, 'meta.json')
     write_json(buildmeta_path, build.meta)
     print(f"Updated: {buildmeta_path}")
     shutil.rmtree(build.tmpbuilddir)
