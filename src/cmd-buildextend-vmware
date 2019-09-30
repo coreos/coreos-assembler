@@ -12,7 +12,12 @@ import tarfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
-from cosalib.cmdlib import run_verbose, load_json, write_json, sha256sum_file
+from cosalib.cmdlib import (
+        get_basearch,
+        load_json,
+        run_verbose,
+        sha256sum_file,
+        write_json)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
@@ -24,11 +29,12 @@ if not args.build:
     args.build = builds.get_latest()
 print(f"Targeting build: {args.build}")
 
+arch = get_basearch()
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 buildmeta = load_json(buildmeta_path)
 base_name = buildmeta['name']
-vmware_prefix = f'{base_name}-{args.build}-vmware'
+vmware_prefix = f'{base_name}-{args.build}-vmware.{arch}'
 ova_name = f'{vmware_prefix}.ova'
 
 try:

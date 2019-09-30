@@ -12,7 +12,7 @@ import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
-from cosalib.cmdlib import run_verbose, write_json, sha256sum_file
+from cosalib.cmdlib import run_verbose, write_json, sha256sum_file, get_basearch
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -30,9 +30,10 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
+arch = get_basearch()
 base_name = buildmeta['name']
 img_prefix = f'{base_name}-{args.build}'
-openstack_name = f'{img_prefix}-openstack.qcow2'
+openstack_name = f'{img_prefix}-openstack.{arch}.qcow2'
 
 tmpdir = 'tmp/buildpost-openstack'
 if os.path.isdir(tmpdir):

@@ -70,8 +70,9 @@ if meta_keys['iso'] in buildmeta['images'] and not args.force:
     print("You can force a rebuild with '--force'.")
     sys.exit(0)
 
+arch = get_basearch()
 base_name = buildmeta['name']
-iso_name = f'{base_name}-{args.build}-{image_type}.iso'
+iso_name = f'{base_name}-{args.build}-{image_type}.{arch}.iso'
 name_version = f'{base_name}-{args.build}'
 
 tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-{image_type}")
@@ -92,7 +93,6 @@ os.mkdir(tmpisoisolinux)
 initrd_ignition_padding = 256 * 1024
 
 def generate_iso():
-    arch = get_basearch()
     tmpisofile = os.path.join(tmpdir, iso_name)
     img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 
@@ -327,8 +327,8 @@ def generate_iso():
             isofh.write(struct.pack(fmt, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
 
-    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel'
-    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.img'
+    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{arch}'
+    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{arch}.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
     shutil.copyfile(os.path.join(tmpisoimages, "vmlinuz"), kernel_file)

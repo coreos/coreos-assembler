@@ -298,7 +298,7 @@ if [ ! -f /lib/coreos-assembler/.clean ]; then
 fi
 
 # And create the ostree repo tarball containing the commit
-ostree_tarfile_path=${name}-${buildid}-ostree.tar
+ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
 ostree_tarfile_sha256=
 if [ "${commit}" == "${previous_commit}" ] && \
     [ -f "${previous_builddir}/${previous_ostree_tarfile_path}" ]; then
