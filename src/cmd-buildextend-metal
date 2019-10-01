@@ -62,7 +62,7 @@ if [ $# -ne 0 ]; then
     fatal "Too many arguments passed"
 fi
 
-case "$arch" in
+case "$basearch" in
     "x86_64"|"aarch64"|"s390x") use_anaconda=;;
     *)
         # for qemu, we can fallback to Anaconda
@@ -71,13 +71,13 @@ case "$arch" in
         else
             # otherwise, we don't know how to create bare metal images for this
             # architecture
-            fatal "$arch is not supported for this command"
+            fatal "$basearch is not supported for this command"
         fi
         ;;
 esac
 
-if [[ "$arch" != "s390x" && $image_type == dasd ]]; then
-    fatal "$arch is not supported for building dasd images"
+if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
+    fatal "$basearch is not supported for building dasd images"
 fi
 
 export LIBGUESTFS_BACKEND=direct
@@ -146,7 +146,7 @@ if [[ $image_type == qemu ]]; then
     image_format=qcow2
 fi
 
-img=${name}-${build}-${image_type}.${arch}.${image_format}
+img=${name}-${build}-${image_type}.${basearch}.${image_format}
 path=${PWD}/${img}
 
 # For bare metal images, we estimate the disk size. For qemu, we get it from
@@ -167,7 +167,7 @@ fi
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # tty0 does not exist on s390x
-if [ "$arch" == "s390x" ]; then
+if [ "$basearch" == "s390x" ]; then
     tty="console=${DEFAULT_TERMINAL}"
 fi
 kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"

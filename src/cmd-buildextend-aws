@@ -41,13 +41,13 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
-arch = get_basearch()
+basearch = get_basearch()
 base_name = buildmeta['name']
 if args.name_suffix:
     ami_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
 else:
     ami_name_version = f'{base_name}-{args.build}'
-aws_vmdk_name = f'{ami_name_version}-aws.{arch}.vmdk'
+aws_vmdk_name = f'{ami_name_version}-aws.{basearch}.vmdk'
 aws_vmdk_path = f"{builddir}/{aws_vmdk_name}"
 
 tmpdir='tmp/buildpost-aws'

@@ -45,7 +45,7 @@ except IOError:
     HOST_OS = "unknown"
 
 # ARCH is the current machine architecture
-ARCH = get_basearch()
+BASEARCH = get_basearch()
 
 COSA_INPATH = "/cosa"
 
@@ -55,24 +55,24 @@ COSA_INPATH = "/cosa"
 #   is unknown to Koji, then the upload will fail.
 KOJI_CG_TYPES = {
     # key: (description, extension, architecture, type)
-    "iso": ("CD/DVD Image", "iso", ARCH, "image"),
+    "iso": ("CD/DVD Image", "iso", BASEARCH, "image"),
     "json": ("JSON data", "json", "noarch", "source"),
     "log": ("log file", "log", "noarch", "log"),
     "ova": ("Open Virtualization Archive", "ova", ARCH, "image"),
-    "qcow": ("QCOW image", "qcow", ARCH, "image"),
-    "qcow2": ("QCOW2 image", "qcow2", ARCH, "image"),
-    "qcow2.gz": ("Compressed QCOW2", "qcow2.gz", ARCH, "image"),
-    "qcow2.xz": ("Compressed QCOW2", "qcow2.gz", ARCH, "image"),
-    "raw": ("Raw disk image", "raw", ARCH, "image"),
-    "raw.gz": ("Compressed Raw", "raw.gz", ARCH, "image"),
-    "raw.xz": ("Compressed Raw", "raw.xz", ARCH, "image"),
+    "qcow": ("QCOW image", "qcow", BASEARCH, "image"),
+    "qcow2": ("QCOW2 image", "qcow2", BASEARCH, "image"),
+    "qcow2.gz": ("Compressed QCOW2", "qcow2.gz", BASEARCH, "image"),
+    "qcow2.xz": ("Compressed QCOW2", "qcow2.gz", BASEARCH, "image"),
+    "raw": ("Raw disk image", "raw", BASEARCH, "image"),
+    "raw.gz": ("Compressed Raw", "raw.gz", BASEARCH, "image"),
+    "raw.xz": ("Compressed Raw", "raw.xz", BASEARCH, "image"),
     "tar": ("Tar file", "tar", "noarch", "source"),
     "tar.gz": ("Tar file", "tar.gz", "noarch", "source"),
     "tar.xz": ("Tar file", "tar.xz", "noarch", "source"),
-    "vdi": ("VirtualBox Virtual Disk Image", "vdi", ARCH, "image"),
-    "vhd": ("Hyper-V image", "vhd", ARCH, "image"),
-    "vhdx": ("Hyper-V Virtual Hard Disk v2 image", "vhdx", ARCH, "image"),
-    "vmdk": ("vSphere image", "vmdk", ARCH, "image"),
+    "vdi": ("VirtualBox Virtual Disk Image", "vdi", BASEARCH, "image"),
+    "vhd": ("Hyper-V image", "vhd", BASEARCH, "image"),
+    "vhdx": ("Hyper-V Virtual Hard Disk v2 image", "vhdx", BASEARCH, "image"),
+    "vmdk": ("vSphere image", "vmdk", BASEARCH, "image"),
     "yaml": ("YAML data", "yaml", "noarch", "source")
 }
 
@@ -450,7 +450,7 @@ class Upload():
                 "extra": {
                     "typeinfo": {
                         "image": {
-                            "arch": ARCH
+                            "arch": BASEARCH
                         }
                     }
                 },

@@ -286,17 +286,17 @@ try:
         # https://bugzilla.redhat.com/show_bug.cgi?id=1659242
 
         # set correct location of the kernel image and initrd
-        arch = get_basearch()
-        if arch == "x86_64" or arch == "i386":
+        basearch = get_basearch()
+        if basearch == "x86_64" or arch == "i386":
             location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
-        elif arch == "ppc64le":
+        elif basearch == "ppc64le":
             location_arg += ",kernel=ppc/ppc64/vmlinuz,initrd=ppc/ppc64/initrd.img"
-        elif arch == "aarch64":
+        elif basearch == "aarch64":
             location_arg += ",kernel=images/pxeboot/vmlinuz,initrd=images/pxeboot/initrd.img"
-        elif arch == "s390x":
+        elif basearch == "s390x":
             location_arg += ",kernel=images/kernel.img,initrd=images/initrd.img"
         else:
-            raise SystemExit("Unknown machine architecture "+arch+" can't determine the kernel and initrd location")
+            raise SystemExit("Unknown machine architecture "+basearch+" can't determine the kernel and initrd location")
 
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
