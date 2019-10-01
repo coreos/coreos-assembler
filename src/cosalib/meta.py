@@ -12,8 +12,8 @@ class GenericBuildMeta(dict):
     GenericBuildMeta interacts with a builds meta.json
     """
 
-    def __init__(self, workdir, build='latest'):
-        builds = Builds(os.path.dirname(workdir))
+    def __init__(self, workdir=None, build='latest'):
+        builds = Builds(workdir)
         if build != "latest":
             if not builds.has(build):
                 raise Exception('Build was not found in builds.json')
