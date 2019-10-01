@@ -40,18 +40,16 @@ def _create_test_files(tmpdir):
     os.makedirs(metadir, exist_ok=True)
     with open(os.path.join(metadir, 'meta.json'), 'w') as f:
         f.write(json.dumps(data))
-    return buildsdir
+    return tmpdir
 
 
 def test_init(tmpdir):
-    buildsdir = _create_test_files(tmpdir)
-    m = meta.GenericBuildMeta(buildsdir, '1.2.3')
+    m = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
     assert m['test'] is not None
 
 
 def test_get(tmpdir):
-    buildsdir = _create_test_files(tmpdir)
-    m = meta.GenericBuildMeta(buildsdir, '1.2.3')
+    m = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
     assert m.get('test') == 'data'
     assert m.get('a', 'b') == 'c'
     with pytest.raises(KeyError):
@@ -62,8 +60,7 @@ def test_set(tmpdir):
     """
     Verify setting works as expected.
     """
-    buildsdir = _create_test_files(tmpdir)
-    m = meta.GenericBuildMeta(buildsdir, '1.2.3')
+    m = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
     m.set('test', 'changed')
     m.write()
     assert m.get('test') == 'changed'
@@ -80,6 +77,5 @@ def test_str(tmpdir):
     Verifies the string representation is exactly the same as the
     instance dict.
     """
-    buildsdir = _create_test_files(tmpdir)
-    m = meta.GenericBuildMeta(buildsdir, '1.2.3')
+    m = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
     assert dict(m) == json.loads(str(m))
