@@ -18,7 +18,7 @@ from cosalib.cmdlib import (
 from cosalib.builds import Builds
 
 # ARCH is the current machine architecture
-ARCH = get_basearch()
+BASEARCH = get_basearch()
 
 
 class BuildError(Exception):
@@ -87,7 +87,7 @@ class _Build:
             raise BuildError("%s %s" % self.__file("meta"), emsg)
 
         log.info("Proccessed build for: %s (%s-%s) %s",
-                 self.summary, self.build_name.upper(), self.arch,
+                 self.summary, self.build_name.upper(), self.basearch,
                  self.build_id)
 
     def _create_work_dir(self):
@@ -117,9 +117,9 @@ class _Build:
         return self._workdir
 
     @property
-    def arch(self):
+    def basearch(self):
         """ get the build arch """
-        return ARCH
+        return BASEARCH
 
     @property
     def build_id(self):

@@ -29,12 +29,12 @@ if not args.build:
     args.build = builds.get_latest()
 print(f"Targeting build: {args.build}")
 
-arch = get_basearch()
+basearch = get_basearch()
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 buildmeta = load_json(buildmeta_path)
 base_name = buildmeta['name']
-vmware_prefix = f'{base_name}-{args.build}-vmware.{arch}'
+vmware_prefix = f'{base_name}-{args.build}-vmware.{basearch}'
 ova_name = f'{vmware_prefix}.ova'
 
 try:

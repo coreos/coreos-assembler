@@ -30,10 +30,10 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
-arch = get_basearch()
+basearch = get_basearch()
 base_name = buildmeta['name']
 img_prefix = f'{base_name}-{args.build}'
-openstack_name = f'{img_prefix}-openstack.{arch}.qcow2'
+openstack_name = f'{img_prefix}-openstack.{basearch}.qcow2'
 
 tmpdir = 'tmp/buildpost-openstack'
 if os.path.isdir(tmpdir):

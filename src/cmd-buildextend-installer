@@ -70,9 +70,9 @@ if meta_keys['iso'] in buildmeta['images'] and not args.force:
     print("You can force a rebuild with '--force'.")
     sys.exit(0)
 
-arch = get_basearch()
+basearch = get_basearch()
 base_name = buildmeta['name']
-iso_name = f'{base_name}-{args.build}-{image_type}.{arch}.iso'
+iso_name = f'{base_name}-{args.build}-{image_type}.{basearch}.iso'
 name_version = f'{base_name}-{args.build}'
 
 tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-{image_type}")
@@ -183,7 +183,7 @@ def generate_iso():
                   '-rational-rock', '-J', '-joliet-long']
 
     ### For x86_64 legacy boot (BIOS) booting
-    if arch == "x86_64":
+    if basearch == "x86_64":
         # Install binaries from syslinux package
         isolinuxfiles = [('/usr/share/syslinux/isolinux.bin', 0o755),
                          ('/usr/share/syslinux/ldlinux.c32',  0o755),
@@ -202,10 +202,10 @@ def generate_iso():
                        '-boot-load-size', '4',
                        '-boot-info-table']
 
-    elif arch == "ppc64le":
+    elif basearch == "ppc64le":
         genisoargs += ['-r', '-l', '-sysid', 'PPC',
                        '-chrp-boot', '-graft-points']
-    elif arch == "s390x":
+    elif basearch == "s390x":
         # combine kernel, initramfs and cmdline using lorax/mk-s390-cdboot tool
         run_verbose(['/usr/bin/mk-s390-cdboot',
                      '-i', os.path.join(tmpisoimages, 'vmlinuz'),
@@ -219,7 +219,7 @@ def generate_iso():
                       os.path.join(os.path.relpath(tmpisoimages, tmpisoroot), 'fcos.img')]
 
     ### For x86_64 and aarch64 UEFI booting
-    if arch in ("x86_64", "aarch64"):
+    if basearch in ("x86_64", "aarch64"):
         # Create the efiboot.img file. This is a fat32 formatted
         # filesystem that contains all the files needed for EFI boot
         # from an ISO.
@@ -280,7 +280,7 @@ def generate_iso():
     run_verbose(genisoargs)
 
     # Add MBR for x86_64 legacy (BIOS) boot when ISO is copied to a USB stick
-    if arch == "x86_64":
+    if basearch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', tmpisofile])
 
     # We've already padded the initrd with initrd_ignition_padding bytes of
@@ -299,7 +299,7 @@ def generate_iso():
     #
     # Skip on s390x because that platform uses an embedded El Torito image
     # with its own copy of the initramfs.
-    if is_live and arch != "s390x":
+    if is_live and basearch != "s390x":
         isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
                 stdout=subprocess.PIPE, text=True)
         # -rw-rw-r--   1 1750 1750       553961457 Sep 18 2019 [   4733 00]  initramfs.img 
@@ -327,8 +327,8 @@ def generate_iso():
             isofh.write(struct.pack(fmt, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
 
-    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{arch}'
-    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{arch}.img'
+    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{basearch}'
+    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{basearch}.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
     shutil.copyfile(os.path.join(tmpisoimages, "vmlinuz"), kernel_file)
