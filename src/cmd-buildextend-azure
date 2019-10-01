@@ -65,7 +65,7 @@ class Build(_Build):
         tmp_img_azure_vhd = os.path.join(self.tmpbuilddir, self.azure_vhd_name)
 
         # Execute system commands
-        run_verbose([f"{cosa_dir}/gf-platformid",
+        run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
                      img_qemu, tmp_img_azure, PLATFORM_AZURE])
         # Convert the qcow2 to a raw image
         # See: https://docs.openstack.org/image-guide/convert-images.html
