@@ -102,9 +102,17 @@ def run_ore():
                 'snapshot': ore_data['SnapshotID']}
     buildmeta['amis'] = [ami_data]
 
-# Do it!
-generate_aws_vmdk()
+
+# Generate the disk image to be uploaded
+if 'aws' not in buildmeta['images']:
+    generate_aws_vmdk()
+else:
+    print('AWS image already built. Skipping image creation')
+# Do the upload if asked
 if args.upload:
     run_ore()
+else:
+    print('--upload not passed. Skipping image upload to cloud')
+# Update the build metadata
 write_json(buildmeta_path, buildmeta)
 print(f"Updated: {buildmeta_path}")

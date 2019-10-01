@@ -203,16 +203,18 @@ if __name__ == '__main__':
         args.build or 'latest',
         tmpbuilddir=os.path.abspath('tmp/buildpost-azure'))
 
-    if 'azure' in build.meta['images'] and not args.force:
-        print('Azure image already built; use --force to rebuild')
-        raise SystemExit()
-
     # Build the image artifacts
-    build.build_artifacts(cli_args=args)
+    if 'azure' in build.meta['images'] and not args.force:
+        print('Azure image is already built. Re-using that image. '
+              'Use --force to override!')
+    else:
+        build.build_artifacts(cli_args=args)
 
     # Do the upload if asked
     if args.upload:
         run_ore(args, build)
+    else:
+        print('--upload not passed. Skipping image upload to cloud')
 
     # Update the metadata
     build.meta_write()
