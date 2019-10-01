@@ -196,9 +196,8 @@ def run_ore(args, build):
             'size': size
         }
     })
-    buildmeta_path = os.path.join('builds', build.build_id, 'meta.json')
-    write_json(buildmeta_path, build.meta)
-    print(f"Updated: {buildmeta_path}")
+    build.meta_write()
+    print(f"Updated: Build Metadata")
     shutil.rmtree(build.tmpbuilddir)
 
 if __name__ == '__main__':
