@@ -62,10 +62,6 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
-if 'gcp' in buildmeta['images']:
-  print("GCP image already built")
-  sys.exit(0)
-
 # Name the base build and tarball name
 base_name = buildmeta['name']
 if args.name_suffix:
@@ -141,9 +137,16 @@ def run_ore():
     }
 
 
-# Do it!
-generate_gcp_tar()
+# Generate the disk image to be uploaded
+if 'gcp' not in buildmeta['images']:
+    generate_gcp_tar()
+else:
+    print('GCP image already built. Skipping image creation')
+# Do the upload if asked
 if args.upload:
     run_ore()
+else:
+    print('--upload not passed. Skipping image upload to cloud')
+# Update the build metadata
 write_json(buildmeta_path, buildmeta)
 print(f"Updated: {buildmeta_path}")
