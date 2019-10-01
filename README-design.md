@@ -5,7 +5,7 @@ Builds
 ----
 
 coreos-assembler operates on a "build directory", which can contain multiple
-builds.  A build is a pairing of an OSTree commit (stored as `ostree-commit.tar`)
+builds.  A build is a pairing of an OSTree commit (stored as `*-ostree.tar`)
 as well as an optional set of disk images.
 
 This is in contrast to [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)

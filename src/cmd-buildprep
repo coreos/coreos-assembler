@@ -58,10 +58,15 @@ def main():
     builddir = builddir[len("builds/"):]
 
     objects = ['meta.json', 'ostree-commit-object']
-    if args.ostree:
-        objects += ['ostree-commit.tar']
-
     for f in objects:
+        fetcher.fetch(f'{builddir}/{f}')
+
+    buildmeta = load_json(f'builds/{builddir}/meta.json')
+
+    if args.ostree:
+        f = 'ostree-commit.tar'
+        if 'ostree' in buildmeta['images']:
+            f = buildmeta['images']['ostree']['path']
         fetcher.fetch(f'{builddir}/{f}')
 
     # and finally the symlink
@@ -70,7 +75,6 @@ def main():
 
     # also nuke the any local matching OStree ref, since we want to build on
     # top of this new one
-    buildmeta = load_json(f'builds/{builddir}/meta.json')
     if 'ref' in buildmeta and os.path.isdir('tmp/repo'):
         subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo',
                                '--delete', buildmeta['ref']],
