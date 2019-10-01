@@ -55,7 +55,7 @@ class Build(_Build):
         azure_nv = f'{base_name}-{self.build_id}'
 
         # Used in referencing
-        self.azure_vhd_name = f'{azure_nv}.vhd'
+        self.azure_vhd_name = f'{azure_nv}-azure.vhd'
 
         # Generate path locations
         img_qemu = os.path.join(
