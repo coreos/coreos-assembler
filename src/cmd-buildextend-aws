@@ -76,6 +76,7 @@ def generate_aws_vmdk():
             'size': size
         }
     })
+    write_json(buildmeta_path, buildmeta) # update build metadata
 
 def run_ore():
     ore_args = ['ore']
@@ -101,6 +102,7 @@ def run_ore():
                 'hvm': ore_data['HVM'],
                 'snapshot': ore_data['SnapshotID']}
     buildmeta['amis'] = [ami_data]
+    write_json(buildmeta_path, buildmeta) # update build metadata
 
 
 # Generate the disk image to be uploaded
@@ -113,6 +115,4 @@ if args.upload:
     run_ore()
 else:
     print('--upload not passed. Skipping image upload to cloud')
-# Update the build metadata
-write_json(buildmeta_path, buildmeta)
-print(f"Updated: {buildmeta_path}")
+print('buildextend-aws complete!')

@@ -101,6 +101,7 @@ class Build(_Build):
                 'size': size
             }
         })
+        self.meta_write() # update build metadata
 
 
 def cli():
@@ -192,6 +193,7 @@ def run_ore(args, build):
         'image': build.azure_vhd_name,
         'url': f"https://{url_path}",
     }
+    build.meta_write() # update build metadata
 
 if __name__ == '__main__':
     # parse provided args
@@ -215,7 +217,4 @@ if __name__ == '__main__':
         run_ore(args, build)
     else:
         print('--upload not passed. Skipping image upload to cloud')
-
-    # Update the metadata
-    build.meta_write()
-    print(f"Updated: Build Metadata")
+    print('buildextend-azure complete!')
