@@ -139,17 +139,10 @@ def cli():
     if args.upload:
         # Argument checks for environment strings that are required
         arg_exp_str = "parameter '--{}' or envVar '{}' must be defined when uploading"
-        if args.auth is None:
-            raise Exception(arg_exp_str.format('auth', 'AZURE_AUTH'))
-        if args.container is None:
-            raise Exception(arg_exp_str.format('container', 'AZURE_CONTAINER'))
-        if args.profile is None:
-            raise Exception(arg_exp_str.format('profile', 'AZURE_PROFILE'))
-        if args.resource_group is None:
-            raise Exception(arg_exp_str.format('resource_group', 'AZURE_RESOURCE_GROUP'))
-        if args.storage_account is None:
-            raise Exception(arg_exp_str.format('storage_account', 'AZURE_STORAGE_ACCOUNT'))
-
+        for attr in ['auth', 'container', 'profile',
+                     'resource_group', 'storage_account']:
+            if getattr(args, attr) is None:
+                raise Exception(arg_exp_str.format(attr, 'AZURE_' + attr.upper()))
 
     return args
 
