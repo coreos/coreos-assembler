@@ -128,8 +128,9 @@ func ensurePortSuffix(host string, port int) string {
 
 func (a *SSHAgent) newClient(host string, user string, auth []ssh.AuthMethod) (*ssh.Client, error) {
 	sshcfg := ssh.ClientConfig{
-		User: user,
-		Auth: auth,
+		User:            user,
+		Auth:            auth,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	addr := ensurePortSuffix(host, defaultPort)
 	tcpconn, err := a.Dial("tcp", addr)

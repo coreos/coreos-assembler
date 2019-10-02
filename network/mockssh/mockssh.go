@@ -106,6 +106,7 @@ func NewMockClient(handler SessionHandler) *ssh.Client {
 		Auth: []ssh.AuthMethod{
 			ssh.Password(""),
 		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	pipe := startMockServer(handler)
