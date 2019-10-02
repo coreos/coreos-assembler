@@ -8,6 +8,8 @@ require (
 	github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
+	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
+	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.19.11
 	github.com/beorn7/perks v1.0.0 // indirect
 	github.com/coreos/bbolt v1.3.1-coreos.6 // indirect
@@ -65,12 +67,11 @@ require (
 	github.com/vmware/govmomi v0.15.0
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
-	golang.org/x/crypto v0.0.0-20160913211104-119f50887f8f
-	golang.org/x/net v0.0.0-20190228165749-92fc7df08ae7
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae
 	golang.org/x/text v0.3.2
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	google.golang.org/api v0.1.0
 	google.golang.org/appengine v1.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20190611190212-a7e196e89fd3 // indirect
