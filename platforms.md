@@ -54,6 +54,10 @@ create images from the image file.
 
 # Existing Platforms
 
+## Aliyun
+
+ - The Aliyun platform wraps both [alibaba-cloud-sdk-go](https://github.com/aliyun/alibaba-cloud-sdk-go) as well as [aliyun-oss-go-sdk](https://github.com/aliyun/aliyun-oss-go-sdk).
+
 ## AWS
 
  - The AWS platform wraps [aws-sdk-go](https://github.com/aws/aws-sdk-go).
