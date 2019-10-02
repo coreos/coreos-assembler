@@ -38,7 +38,7 @@ cmd=${1:-}
 build_commands="init fetch build run prune clean"
 # commands more likely to be used in a prod pipeline only
 advanced_build_commands="buildprep buildupload oscontainer"
-buildextend_commands="qemu aws azure gcp openstack installer vmware metal"
+buildextend_commands="qemu aws azure gcp openstack installer live vmware metal"
 utility_commands="tag compress bump-timestamp koji-upload kola aws-replicate"
 other_commands="shell"
 if [ -z "${cmd}" ]; then
