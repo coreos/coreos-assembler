@@ -173,7 +173,7 @@ func init() {
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.users",
-		Run:         usersRhcos,
+		Run:         usersFcos,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
 		             "ignition": { "version": "2.0.0" },
@@ -211,15 +211,13 @@ func init() {
 		                 },
 		                 {
 		                   "name": "user2",
-		                   "create": {
-		                     "uid": 1010,
-		                     "groups": [ "sudo" ]
-		                   }
+		                   "uid": 1010,
+		                   "groups": [ "sudo" ]
 		                 }
 		               ]
 		             }
 		           }`),
-		Distros: []string{"rhcos"},
+		Distros: []string{"fcos", "rhcos"},
 	})
 }
 
@@ -276,13 +274,13 @@ func users(c cluster.TestCluster) {
 	testUser(c, m, tests)
 }
 
-func usersRhcos(c cluster.TestCluster) {
+func usersFcos(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	tests := []userTest{
 		{
 			user:           "core",
-			passwdRecord:   "core:x:1000:1000:CoreOS Admin:/home/core:/bin/bash",
+			passwdRecord:   "core:x:1000:1000:CoreOS Admin:/var/home/core:/bin/bash",
 			shadowPassword: "foobar",
 		},
 		{
