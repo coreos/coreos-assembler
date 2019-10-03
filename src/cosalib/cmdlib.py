@@ -191,7 +191,8 @@ def import_ostree_commit(repo, commit, tarfile, force=False):
             and not force):
         return
 
-    with tempfile.TemporaryDirectory(dir=f'{repo}/tmp') as d:
+    # extract in a new tmpdir inside the repo itself so we can still hardlink
+    with tempfile.TemporaryDirectory(dir=repo) as d:
         subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
         subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
                                d, commit])
