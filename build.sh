@@ -100,7 +100,6 @@ declare -A repository_dirs
 repository_dirs[aarch64]=fedora/linux
 repository_dirs[armhfp]=fedora/linux
 repository_dirs[x86_64]=fedora/linux
-repository_dirs[i386]=fedora-secondary
 repository_dirs[ppc64le]=fedora-secondary
 repository_dirs[s390x]=fedora-secondary
 
