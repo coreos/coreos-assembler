@@ -81,7 +81,8 @@ var crioPodTemplate = `{
 }`
 
 // crioContainerTemplate is a simple string template required for running a container
-// It takes three strings: the name (which will be expanded), the image, and the argument to run
+// It takes three strings: the name (which will be expanded), the image, and the argument to run.
+// For mounts see: https://godoc.org/k8s.io/cri-api/pkg/apis/runtime/v1alpha2#Mount
 var crioContainerTemplate = `{
 	"metadata": {
 		"name": "rhcos-crio-container-%s",
@@ -142,13 +143,27 @@ var crioContainerTemplate = `{
 				]
 			}
 		}
-	}
+	},
+	"mounts": [{
+		"container_path": "/tmp/test",
+		"host_path": "/tmp/test",
+		"read_only": false,
+		"selinux_relabel": true,
+		"propagation": 2
+	}]
 }`
 
 // RHCOS has the crio service disabled by default, so use Ignition to enable it
 var enableCrioIgn = conf.Ignition(`{
   "ignition": {
     "version": "2.2.0"
+  },
+  "storage": {
+	"directories": [{
+		"filesystem": "root",
+		"path": "/tmp/test",
+		"mode": 511
+	}]
   },
   "systemd": {
     "units": [
@@ -163,6 +178,12 @@ var enableCrioIgn = conf.Ignition(`{
 var enableCrioIgnV3 = conf.Ignition(`{
   "ignition": {
     "version": "3.0.0"
+  },
+  "storage": {
+	"directories": [{
+		"path": "/tmp/test",
+		"mode": 511
+	}]
   },
   "systemd": {
     "units": [
@@ -200,6 +221,7 @@ func init() {
 // crioBaseTests executes multiple tests under the "base" name
 func crioBaseTests(c cluster.TestCluster) {
 	c.Run("crio-info", testCrioInfo)
+	c.Run("pod-continues-during-service-restart", crioPodContinuesDuringServiceRestart)
 	c.Run("networks-reliably", crioNetworksReliably)
 }
 
@@ -247,7 +269,6 @@ func genContainer(c cluster.TestCluster, m platform.Machine, podName, imageName 
 	if err = c.DropFile(configPathContainer); err != nil {
 		return "", "", err
 	}
-
 	// Create the crio image used for testing, only if it doesn't exist already
 	output := c.MustSSH(m, "sudo podman images -n --format '{{.Repository}}'")
 	if !strings.Contains(string(output), "localhost/"+imageName) {
@@ -415,4 +436,32 @@ func testCrioInfo(c cluster.TestCluster) {
 		c.Errorf("unexpected cgroup driver: %v != %v", expectedCgroupDriver, info.CgroupDriver)
 	}
 
+}
+
+// crioPodContinuesDuringServiceRestart verifies that a crio pod does not
+// stop when the service is restarted
+func crioPodContinuesDuringServiceRestart(c cluster.TestCluster) {
+	m := c.Machines()[0]
+
+	crioConfigPod, crioConfigContainer, err := genContainer(
+		c, m, "restart-test", "sleep",
+		[]string{"bash", "sleep", "echo"}, []string{"bash"})
+	if err != nil {
+		c.Fatal(err)
+	}
+	cmdCreatePod := fmt.Sprintf("sudo crictl runp %s", crioConfigPod)
+	podID := c.MustSSH(m, cmdCreatePod)
+	containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create %s %s %s",
+		podID, crioConfigContainer, crioConfigPod))
+
+	cmd := fmt.Sprintf("sudo crictl exec %s bash -c \"sleep 25 && echo PASS > /tmp/test/restart-test\"", containerID)
+	c.MustSSH(m, cmd)
+	time.Sleep(3 * time.Second)
+	c.MustSSH(m, "sudo systemctl restart crio")
+	time.Sleep(25 * time.Second)
+	output := strings.TrimSuffix(string(c.MustSSH(m, "cat /tmp/test/restart-test")), "\n")
+
+	if output != "PASS" {
+		c.Fatalf("Pod did not continue during service restart. Output=%s, Command=%s", output, cmd)
+	}
 }
