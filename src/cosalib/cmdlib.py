@@ -177,7 +177,7 @@ def disk_ignition_version(path):
         return "3.0.0"
 
 
-def import_ostree_commit(repo, commit, tarfile):
+def import_ostree_commit(repo, commit, tarfile, force=False):
     # create repo in case e.g. tmp/ was cleared out; idempotent
     subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
 
@@ -187,7 +187,8 @@ def import_ostree_commit(repo, commit, tarfile):
     if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL) == 0
-            and not os.path.isfile(commitpartial)):
+            and not os.path.isfile(commitpartial)
+            and not force):
         return
 
     with tempfile.TemporaryDirectory(dir=f'{repo}/tmp') as d:
