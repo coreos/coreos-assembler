@@ -252,6 +252,10 @@ func (bc *BaseCluster) IgnitionVersion() string {
 	return bc.bf.baseopts.IgnitionVersion
 }
 
+func (bc *BaseCluster) SSHOnTestFailure() bool {
+	return bc.bf.baseopts.SSHOnTestFailure
+}
+
 func (bc *BaseCluster) Platform() Name {
 	return bc.bf.Platform()
 }

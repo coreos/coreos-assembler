@@ -23,6 +23,11 @@ import (
 
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/pkg/capnslog"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/cluster")
 )
 
 // TestCluster embedds a Cluster to provide platform independant helper
@@ -127,6 +132,10 @@ func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
 func (t *TestCluster) MustSSH(m platform.Machine, cmd string) []byte {
 	out, err := t.SSH(m, cmd)
 	if err != nil {
+		if t.SSHOnTestFailure() {
+			plog.Errorf("dropping to shell: %q failed: output %s, status %v", cmd, out, err)
+			platform.Manhole(m)
+		}
 		t.Fatalf("%q failed: output %s, status %v", cmd, out, err)
 	}
 	return out
