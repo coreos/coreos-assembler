@@ -287,7 +287,7 @@ try:
 
         # set correct location of the kernel image and initrd
         basearch = get_basearch()
-        if basearch == "x86_64" or arch == "i386":
+        if basearch == "x86_64":
             location_arg += ",kernel=isolinux/vmlinuz,initrd=isolinux/initrd.img"
         elif basearch == "ppc64le":
             location_arg += ",kernel=ppc/ppc64/vmlinuz,initrd=ppc/ppc64/initrd.img"
