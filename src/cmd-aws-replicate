@@ -12,7 +12,8 @@
 import os,sys,json,argparse,subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cmdlib import write_json, Builds
+from cosalib.builds import Builds
+from cosalib.cmdlib import write_json
 
 # default region list
 default_all_regions = [
