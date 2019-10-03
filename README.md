@@ -176,6 +176,9 @@ heavy use of the native code interface.
 The `platform.Manhole()` function creates an interactive SSH session which can
 be used to inspect a machine during a test.
 
+The `--ssh-on-test-failure` flag can be specified to have the kola runner
+automatically SSH into a machine when any `MustSSH` calls fail.
+
 ### kolet
 kolet is run on kola instances to run native functions in tests. Generally kolet
 is not invoked manually.

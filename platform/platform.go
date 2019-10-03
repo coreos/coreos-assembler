@@ -117,6 +117,10 @@ type Cluster interface {
 	// IgnitionVersion returns the version of Ignition supported by the
 	// cluster
 	IgnitionVersion() string
+
+	// SSHOnTestFailure returns whether the cluster should Manhole into
+	// a machine when a MustSSH call fails
+	SSHOnTestFailure() bool
 }
 
 // Flight represents a group of Clusters within a single platform.
@@ -158,6 +162,8 @@ type Options struct {
 	// When specified additional files & units will be automatically generated
 	// inside of RenderUserData
 	OSContainer string
+
+	SSHOnTestFailure bool
 }
 
 // RuntimeConfig contains cluster-specific configuration.
