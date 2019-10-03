@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, 'src')
 
 from cosalib import meta
+from cosalib.cmdlib import get_basearch
 
 
 def _create_test_files(tmpdir):
@@ -18,7 +19,7 @@ def _create_test_files(tmpdir):
             {
                 "id": "1.2.3",
                 "arches": [
-                    "x86_64"
+                    get_basearch()
                 ]
             }
         ],
@@ -36,7 +37,7 @@ def _create_test_files(tmpdir):
     with open(os.path.join(buildsdir, 'builds.json'), 'w') as f:
         f.write(json.dumps(builds))
     metadir = os.path.join(
-        tmpdir, 'builds', '1.2.3', 'x86_64')
+        tmpdir, 'builds', '1.2.3', get_basearch())
     os.makedirs(metadir, exist_ok=True)
     with open(os.path.join(metadir, 'meta.json'), 'w') as f:
         f.write(json.dumps(data))
