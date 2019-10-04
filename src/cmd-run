@@ -193,6 +193,22 @@ EOF
 rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
 rowcol=$(echo "stty ${rowcol}" | base64 --wrap 0)
 
+# if SSH port mapping is requested, automagically inject all the pubkeys
+ssh_pubkeys=""
+if [ -n "${SSH_PORT}" ]; then
+    for pubkey in ~/.ssh/*.pub; do
+        # in case there are no keys
+        if [ ! -f "${pubkey}" ]; then
+            break
+        fi
+        if [ -z "${ssh_pubkeys}" ]; then
+            ssh_pubkeys="\"$(cat "${pubkey}")\""
+        else
+            ssh_pubkeys="${ssh_pubkeys}, \"$(cat "${pubkey}")\""
+        fi
+    done
+fi
+
 f=$(mktemp)
 cat > "${f}" <<EOF
 {
@@ -217,6 +233,16 @@ cat > "${f}" <<EOF
                 "path": "/home/core/.bashrc",
                 "append": [
                     { "source": "data:text/plain;base64,${rowcol}" }
+                ]
+            }
+        ]
+    },
+    "passwd": {
+        "users": [
+            {
+                "name": "core",
+                "sshAuthorizedKeys": [
+                    ${ssh_pubkeys}
                 ]
             }
         ]
