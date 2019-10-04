@@ -22,6 +22,7 @@ VM_PERSIST_IMG=
 VM_NCPUS="${VM_NCPUS:-${QEMU_PROCS}}"
 VM_SRV_MNT=
 SSH_PORT=${SSH_PORT:-}
+SSH_CONFIG=
 UEFI=0
 BOOT_INJECT=0
 SECURE=0
@@ -36,6 +37,7 @@ Options:
     -m MB                 RAM size in MB (2048)
     --size GB             Disk size in GB (matches base by default)
     -p --ssh-port PORT    Map PORT on localhost to the VM's sshd.
+    --ssh-config FILE     Write SSH config to FILE. Useful with '-p 0'.
     -h                    this ;-)
     -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
@@ -83,6 +85,9 @@ while [ $# -ge 1 ]; do
             shift 2 ;;
         -p|--ssh-port)
             SSH_PORT="$2"
+            shift 2 ;;
+        --ssh-config)
+            SSH_CONFIG="$2"
             shift 2 ;;
         -v|--verbose)
             set -x
@@ -192,6 +197,11 @@ EOF
 # generate a string like rows XX columns XX for stty
 rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
 rowcol=$(echo "stty ${rowcol}" | base64 --wrap 0)
+
+# automatically turn on SSH if --ssh-config is given and default to port 0.
+if [ -n "${SSH_CONFIG}" ] && [ -z "${SSH_PORT}" ]; then
+    SSH_PORT=0
+fi
 
 # if SSH port mapping is requested, automagically inject all the pubkeys
 ssh_pubkeys=""
@@ -315,6 +325,17 @@ if [ -n "${SSH_PORT}" ]; then
         echo "SSH port: ${SSH_PORT}"
     fi
    hostfwd=",hostfwd=tcp::${SSH_PORT}-:22"
+fi
+
+if [ -n "${SSH_CONFIG}" ]; then
+    cat > "${SSH_CONFIG}" << EOF
+Host coreos
+    HostName localhost
+    Port ${SSH_PORT}
+    User core
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+EOF
 fi
 
 set -- -drive if=virtio,file="${VM_IMG}" "$@"
