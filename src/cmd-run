@@ -21,6 +21,7 @@ VM_DISKSIZE=
 VM_PERSIST_IMG=
 VM_NCPUS="${VM_NCPUS:-${QEMU_PROCS}}"
 VM_SRV_MNT=
+SSH_ATTACH=
 SSH_PORT=${SSH_PORT:-}
 SSH_CONFIG=
 UEFI=0
@@ -36,6 +37,7 @@ Options:
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
     --size GB             Disk size in GB (matches base by default)
+    --ssh                 Attach via SSH instead of console
     -p --ssh-port PORT    Map PORT on localhost to the VM's sshd.
     --ssh-config FILE     Write SSH config to FILE. Useful with '-p 0'.
     -h                    this ;-)
@@ -56,6 +58,9 @@ die(){
     echo "${1}" 1>&2
     exit 1
 }
+
+# remember in case we re-exec under ssh-agent
+args=("$0" "$@")
 
 while [ $# -ge 1 ]; do
     case "$1" in
@@ -89,6 +94,9 @@ while [ $# -ge 1 ]; do
         --ssh-config)
             SSH_CONFIG="$2"
             shift 2 ;;
+        --ssh)
+            SSH_ATTACH=1
+            shift ;;
         -v|--verbose)
             set -x
             shift ;;
@@ -111,6 +119,34 @@ while [ $# -ge 1 ]; do
             die "Unknown argument $1";;
     esac
 done
+
+# automatically turn on SSH if --ssh-config or --ssh is given and default
+# to port 0.
+if { [ -n "${SSH_CONFIG}" ] || [ -n "${SSH_ATTACH}" ]; } && [ -z "${SSH_PORT}" ]; then
+    SSH_PORT=0
+fi
+
+# check if we or the user will want to SSH and re-exec under ssh-agent if so
+ssh_pubkeys=""
+if [ -n "${SSH_PORT}" ]; then
+    if [ -z "${SSH_AUTH_SOCK:-}" ]; then
+        exec ssh-agent "${args[@]}"
+    fi
+
+    # if there are no keys, seed with defaults
+    if ( ssh-add -l || : ) | grep -q 'no identities'; then
+        ssh-add -q
+    fi
+
+    # and collect pubkeys to inject into the host
+    while read -r pubkey; do
+        if [ -z "${ssh_pubkeys}" ]; then
+            ssh_pubkeys="\"${pubkey}\""
+        else
+            ssh_pubkeys="${ssh_pubkeys}, \"${pubkey}\""
+        fi
+    done <<< "$(ssh-add -L)"
+fi
 
 preflight
 
@@ -150,17 +186,24 @@ ign_validate="ignition-validate"
 # We don't care about migration for this.
 set -- -machine accel=kvm -cpu host -smp "${VM_NCPUS}" "$@"
 
+systemd_units=
+append_systemd_unit() {
+    if [ -z "${systemd_units}" ]; then
+        systemd_units="${1}"
+    else
+        systemd_units="${systemd_units},$1"
+    fi
+}
+
 if [ -n "${VM_SRV_MNT}" ]; then
     set -- --fsdev local,id=var-srv,path="${VM_SRV_MNT}",security_model=mapped,readonly \
         -device virtio-9p-"${devtype}",fsdev=var-srv,mount_tag=/var/srv "$@"
     # The dependency changes are hacks around https://github.com/coreos/fedora-coreos-tracker/issues/223
-    ign_var_srv_mount=',{
+    append_systemd_unit '{
 "name": "var-srv.mount",
 "enabled": true,
 "contents": "[Unit]\nDefaultDependencies=no\nAfter=systemd-tmpfiles-setup.service\nBefore=basic.target\n[Mount]\nWhat=/var/srv\nWhere=/var/srv\nType=9p\nOptions=ro,trans=virtio,version=9p2000.L\n[Install]\nWantedBy=multi-user.target\n"
 }'
-else
-    ign_var_srv_mount=""
 fi
 
 if [ -n "${IGNITION_CONFIG_FILE:-}" ]; then
@@ -198,25 +241,16 @@ EOF
 rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
 rowcol=$(echo "stty ${rowcol}" | base64 --wrap 0)
 
-# automatically turn on SSH if --ssh-config is given and default to port 0.
-if [ -n "${SSH_CONFIG}" ] && [ -z "${SSH_PORT}" ]; then
-    SSH_PORT=0
-fi
-
-# if SSH port mapping is requested, automagically inject all the pubkeys
-ssh_pubkeys=""
-if [ -n "${SSH_PORT}" ]; then
-    for pubkey in ~/.ssh/*.pub; do
-        # in case there are no keys
-        if [ ! -f "${pubkey}" ]; then
-            break
-        fi
-        if [ -z "${ssh_pubkeys}" ]; then
-            ssh_pubkeys="\"$(cat "${pubkey}")\""
-        else
-            ssh_pubkeys="${ssh_pubkeys}, \"$(cat "${pubkey}")\""
-        fi
-    done
+if [ -z "${SSH_ATTACH}" ]; then
+    append_systemd_unit "{
+    \"name\": \"serial-getty@${DEFAULT_TERMINAL}.service\",
+    \"dropins\": [
+        {
+            \"name\": \"autologin-core.conf\",
+            \"contents\": \"[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n\"
+        }
+    ]
+}"
 fi
 
 f=$(mktemp)
@@ -259,16 +293,7 @@ cat > "${f}" <<EOF
     },
     "systemd": {
         "units": [
-            {
-                "name": "serial-getty@${DEFAULT_TERMINAL}.service",
-                "dropins": [
-                    {
-                        "name": "autologin-core.conf",
-                        "contents": "[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n"
-                    }
-                ]
-            }
-            ${ign_var_srv_mount}
+            ${systemd_units}
         ]
     }
 }
@@ -363,9 +388,25 @@ if [ "$SECURE" == "1" ]; then
     set -- -machine q35 "$@"
 fi
 
-# shellcheck disable=SC2086
-exec ${QEMU_KVM} -name coreos -m "${VM_MEMORY}" -nographic \
+set -- -name coreos -m "${VM_MEMORY}" -nographic \
               -netdev user,id=eth0,hostname=coreos"${hostfwd:-}" \
               -device virtio-net-"${devtype}",netdev=eth0 \
               -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
               "$@"
+
+if [ -z "${SSH_ATTACH}" ]; then
+    # shellcheck disable=SC2086
+    exec ${QEMU_KVM} "$@"
+fi
+
+# shellcheck disable=SC2086
+setpriv --pdeathsig SIGTERM -- ${QEMU_KVM} "$@" < /dev/null &
+# A dumber but simpler version of https://github.com/jlebon/files/blob/master/bin/sshwait
+while true; do
+    out=$(echo | nc -w 1 localhost "${SSH_PORT}" 2>&1 || :)
+    if grep -q SSH <<< "$out"; then
+        break
+    fi
+    sleep 1
+done
+exec ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no core@localhost -p "${SSH_PORT}"
