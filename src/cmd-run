@@ -35,7 +35,7 @@ Options:
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
     --size GB             Disk size in GB (matches base by default)
-    -p PORT               The port on localhost to map to the VM's sshd. [2222]
+    -p --ssh-port PORT    Map PORT on localhost to the VM's sshd.
     -h                    this ;-)
     -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
