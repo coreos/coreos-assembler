@@ -59,21 +59,18 @@ def cmd_upload_s3(args):
     if args.build == 'latest':
         args.build = builds.get_latest()
     print(f"Targeting build: {args.build}")
-    if builds.is_legacy():
-        s3_upload_build(args, builds.get_build_dir(args.build), bucket, f'{prefix}/{args.build}')
-    else:
-        for arch in builds.get_build_arches(args.build):
-            s3_upload_build(args, builds.get_build_dir(args.build, arch),
-                            bucket, f'{prefix}/{args.build}/{arch}')
-        # if there's anything else in the build dir, just upload it too,
-        # e.g. pipelines might inject additional metadata
-        for f in os.listdir(f'builds/{args.build}'):
-            # arches already uploaded higher up
-            if f in builds.get_build_arches(args.build):
-                continue
-            # assume it's metadata
-            s3_copy(f'builds/{args.build}/{f}', bucket, f'{prefix}/{args.build}/{f}',
-                    CACHE_MAX_AGE_METADATA, args.acl)
+    for arch in builds.get_build_arches(args.build):
+        s3_upload_build(args, builds.get_build_dir(args.build, arch),
+                        bucket, f'{prefix}/{args.build}/{arch}')
+    # if there's anything else in the build dir, just upload it too,
+    # e.g. pipelines might inject additional metadata
+    for f in os.listdir(f'builds/{args.build}'):
+        # arches already uploaded higher up
+        if f in builds.get_build_arches(args.build):
+            continue
+        # assume it's metadata
+        s3_copy(f'builds/{args.build}/{f}', bucket, f'{prefix}/{args.build}/{f}',
+                CACHE_MAX_AGE_METADATA, args.acl)
     if not args.skip_builds_json:
         s3_copy('builds/builds.json', bucket, f'{prefix}/builds.json',
                 CACHE_MAX_AGE_METADATA, args.acl, extra_args={}, dry_run=args.dry_run)
