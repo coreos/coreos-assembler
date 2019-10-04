@@ -38,21 +38,21 @@ func init() {
 		Run:         podmanBaseTest,
 		ClusterSize: 1,
 		Name:        `podman.base`,
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Run:         podmanWorkflow,
 		ClusterSize: 1,
 		Name:        `podman.workflow`,
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // For pulling nginx
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"fcos", "rhcos"},
 		FailFast:    true,
 	})
 	register.Register(&register.Test{
 		Run:         podmanNetworkTest,
 		ClusterSize: 2,
 		Name:        `podman.network`,
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"fcos", "rhcos"},
 	})
 }
 
