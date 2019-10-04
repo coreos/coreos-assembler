@@ -40,19 +40,27 @@ func init() {
 		Name:        `podman.base`,
 		Distros:     []string{"fcos", "rhcos"},
 	})
+	// These remaining tests use networking, and hence don't work reliably on RHCOS
+	// right now due to due to https://bugzilla.redhat.com/show_bug.cgi?id=1757572
 	register.Register(&register.Test{
 		Run:         podmanWorkflow,
 		ClusterSize: 1,
 		Name:        `podman.workflow`,
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // For pulling nginx
-		Distros:     []string{"fcos", "rhcos"},
+		Distros:     []string{"fcos"},
 		FailFast:    true,
+	})
+	register.Register(&register.Test{
+		Run:         podmanNetworksReliably,
+		ClusterSize: 1,
+		Name:        `podman.network-single`,
+		Distros:     []string{"fcos"},
 	})
 	register.Register(&register.Test{
 		Run:         podmanNetworkTest,
 		ClusterSize: 2,
-		Name:        `podman.network`,
-		Distros:     []string{"fcos", "rhcos"},
+		Name:        `podman.network-multi`,
+		Distros:     []string{"fcos"},
 	})
 }
 
@@ -111,7 +119,6 @@ func getPodmanInfo(c cluster.TestCluster, m platform.Machine) (simplifiedPodmanI
 func podmanBaseTest(c cluster.TestCluster) {
 	c.Run("info", podmanInfo)
 	c.Run("resources", podmanResources)
-	c.Run("network", podmanNetworksReliably)
 }
 
 // Test: Run basic podman commands
@@ -242,7 +249,7 @@ func podmanResources(c cluster.TestCluster) {
 
 	tutil.GenPodmanScratchContainer(c, m, "echo", []string{"echo"})
 
-	podmanFmt := "sudo podman run --rm %s echo echo 1"
+	podmanFmt := "sudo podman run --net=none --rm %s echo echo 1"
 
 	pCmd := func(arg string) string {
 		return fmt.Sprintf(podmanFmt, arg)

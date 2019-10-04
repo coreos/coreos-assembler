@@ -27,6 +27,6 @@ func GenPodmanScratchContainer(c cluster.TestCluster, m platform.Machine, name s
 	cmd := `tmpdir=$(mktemp -d); cd $tmpdir; echo -e "FROM scratch\nCOPY . /" > Dockerfile;
 	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
 			sudo rsync -av --relative --copy-links $b $libs ./;
-			sudo podman build --layers=false -t localhost/%s .`
+			sudo podman build --network host --layers=false -t localhost/%s .`
 	c.MustSSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
 }
