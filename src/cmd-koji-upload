@@ -44,7 +44,7 @@ try:
 except IOError:
     HOST_OS = "unknown"
 
-# ARCH is the current machine architecture
+# BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
 
 COSA_INPATH = "/cosa"
@@ -58,7 +58,7 @@ KOJI_CG_TYPES = {
     "iso": ("CD/DVD Image", "iso", BASEARCH, "image"),
     "json": ("JSON data", "json", "noarch", "source"),
     "log": ("log file", "log", "noarch", "log"),
-    "ova": ("Open Virtualization Archive", "ova", ARCH, "image"),
+    "ova": ("Open Virtualization Archive", "ova", BASEARCH, "image"),
     "qcow": ("QCOW image", "qcow", BASEARCH, "image"),
     "qcow2": ("QCOW2 image", "qcow2", BASEARCH, "image"),
     "qcow2.gz": ("Compressed QCOW2", "qcow2.gz", BASEARCH, "image"),
