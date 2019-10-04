@@ -163,7 +163,13 @@ func getAddress(pid string) (string, error) {
 		remoteAddress := fields[2]
 		inode := fields[9]
 
-		isLocalPat := regexp.MustCompile("0100007F:[[:xdigit:]]{4}")
+		var isLocalPat *regexp.Regexp
+		if util.HostEndianness == util.LITTLE {
+			isLocalPat = regexp.MustCompile("0100007F:[[:xdigit:]]{4}")
+		} else {
+			isLocalPat = regexp.MustCompile("7F000001:[[:xdigit:]]{4}")
+		}
+
 		if !isLocalPat.MatchString(localAddress) || remoteAddress != "00000000:0000" {
 			continue
 		}

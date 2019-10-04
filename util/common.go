@@ -14,6 +14,35 @@
 
 package util
 
+import (
+	"unsafe"
+)
+
+const (
+	LITTLE Endian = iota // little endian
+	BIG                  // big endian
+)
+
+// Endianness of the platform - big or little
+type Endian int
+
+var HostEndianness Endian
+
+func init() {
+	// Determine endianness - https://stackoverflow.com/questions/51332658/any-better-way-to-check-endianness-in-go
+	buf := [2]byte{}
+	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0x0100)
+
+	switch buf {
+	case [2]byte{0x00, 0x01}:
+		HostEndianness = LITTLE
+	case [2]byte{0x01, 0x00}:
+		HostEndianness = BIG
+	default:
+		HostEndianness = LITTLE
+	}
+}
+
 func StrToPtr(s string) *string {
 	return &s
 }
