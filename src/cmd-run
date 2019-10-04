@@ -307,6 +307,13 @@ if [ -z "${VM_PERSIST_IMG}" ]; then
 fi
 
 if [ -n "${SSH_PORT}" ]; then
+    # If SSH_PORT is 0, then let's pick one ourselves. There's an inherent race
+    # here; ideally qemu would do this, but with --ssh-config, there'd be no way
+    # to write it out before exec'ing.
+    if [ "${SSH_PORT}" == 0 ]; then
+        SSH_PORT=$(python3 -c "import socket; sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM); sock.bind(('', 0)); print(sock.getsockname()[1])")
+        echo "SSH port: ${SSH_PORT}"
+    fi
    hostfwd=",hostfwd=tcp::${SSH_PORT}-:22"
 fi
 
