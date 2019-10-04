@@ -17,7 +17,7 @@ from cosalib.cmdlib import (
 
 from cosalib.builds import Builds
 
-# ARCH is the current machine architecture
+# BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
 
 
