@@ -131,12 +131,9 @@ def compress_one_builddir(builddir):
 
 
 changed = []
-if builds.is_legacy():
-    changed.append(compress_one_builddir(builds.get_build_dir(build)))
-else:
-    for arch in builds.get_build_arches(build):
-        builddir = builds.get_build_dir(build, arch)
-        changed.append(compress_one_builddir(builddir))
+for arch in builds.get_build_arches(build):
+    builddir = builds.get_build_dir(build, arch)
+    changed.append(compress_one_builddir(builddir))
 
 if not any(changed):
     print(f"All builds already compressed")
