@@ -56,6 +56,7 @@ var (
 	spawnMachineOptions string
 	spawnSetSSHKeys     bool
 	spawnSSHKeys        []string
+	spawnJSONInfoFd     int
 )
 
 func init() {
@@ -66,7 +67,8 @@ func init() {
 	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", true, "spawn a shell in an instance before exiting")
 	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
 	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
-	cmdSpawn.Flags().StringVar(&spawnMachineOptions, "qemu-options", "", "experimental: path to QEMU machine options json")
+	cmdSpawn.Flags().StringVar(&spawnMachineOptions, "qemu-options", "", "experimental: path to QEMU machine options JSON")
+	cmdSpawn.Flags().IntVarP(&spawnJSONInfoFd, "json-info-fd", "", -1, "experimental: write JSON information about spawned machines")
 	cmdSpawn.Flags().BoolVarP(&spawnSetSSHKeys, "keys", "k", false, "add SSH keys from --key options")
 	cmdSpawn.Flags().StringSliceVar(&spawnSSHKeys, "key", nil, "path to SSH public key (default: SSH agent + ~/.ssh/id_{rsa,dsa,ecdsa,ed25519}.pub)")
 	root.AddCommand(cmdSpawn)
@@ -168,7 +170,17 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		updateConf = strings.NewReader(fmt.Sprintf("GROUP=developer\nSERVER=http://%s/v1/update/\n", hostport))
 	}
 
+	var jsonInfoFile *os.File
+	if spawnJSONInfoFd >= 0 {
+		jsonInfoFile = os.NewFile(uintptr(spawnJSONInfoFd), "json-info")
+		if jsonInfoFile == nil {
+			return fmt.Errorf("Failed to create *File from fd %d", spawnJSONInfoFd)
+		}
+		defer jsonInfoFile.Close()
+	}
+
 	var someMach platform.Machine
+	// XXX: should spawn in parallel
 	for i := 0; i < spawnNodeCount; i++ {
 		var mach platform.Machine
 		var err error
@@ -212,6 +224,11 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 
 		if spawnVerbose {
 			fmt.Printf("Machine %v spawned at %v\n", mach.ID(), mach.IP())
+		}
+		if jsonInfoFile != nil {
+			if err := platform.WriteJSONInfo(mach, jsonInfoFile); err != nil {
+				return fmt.Errorf("Failed writing JSON info: %v\n", err)
+			}
 		}
 
 		someMach = mach
