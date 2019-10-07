@@ -9,7 +9,7 @@ import sys
 
 gi.require_version('OSTree', '1.0')
 gi.require_version('Json', '1.0')
-from gi.repository import GLib, Gio, OSTree, Json
+from gi.repository import Gio, OSTree, Json
 
 parser = argparse.ArgumentParser()
 parser.add_argument("repo", help="OSTree repo")

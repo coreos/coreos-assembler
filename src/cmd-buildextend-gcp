@@ -18,10 +18,10 @@ sys.path.insert(0, cosa_dir)
 # pylint: disable=C0413
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
-        get_basearch,
-        run_verbose,
-        sha256sum_file,
-        write_json)
+    get_basearch,
+    run_verbose,
+    sha256sum_file,
+    write_json)
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -80,6 +80,7 @@ if os.path.isdir(tmpdir):
 os.mkdir(tmpdir)
 tmpdir = os.path.abspath(tmpdir)
 
+
 def generate_gcp_tar():
     """ Set the Ignition ID to GCP/GCE and create a tarball for upload """
     plat_id = 'gcp'
@@ -107,7 +108,8 @@ def generate_gcp_tar():
             'size': size
         }
     })
-    write_json(buildmeta_path, buildmeta) # update build metadata
+    write_json(buildmeta_path, buildmeta)  # update build metadata
+
 
 def run_ore():
     """ Execute ore to upload the tarball and register the image """
@@ -135,10 +137,10 @@ def run_ore():
         f"{args.bucket}/{base_name}/{args.build}.tar.gz"
     ))
     buildmeta['gcp'] = {
-            'image': gcp_name,
-            'url': f"https://{url_path}",
+        'image': gcp_name,
+        'url': f"https://{url_path}",
     }
-    write_json(buildmeta_path, buildmeta) # update build metadata
+    write_json(buildmeta_path, buildmeta)  # update build metadata
 
 
 # Generate the disk image to be uploaded

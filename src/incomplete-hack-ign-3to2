@@ -6,7 +6,6 @@
 # to maintain this tooling for other purposes, even if
 # we aren't yet ready to support it for broader uses
 # (such as targeting a spec3 Ignition config at both FCOS and CL, etc.)
-import os
 import sys
 import json
 import shutil
@@ -45,5 +44,3 @@ if merge is not None:
     ign['ignition']['append'] = merge
 
 json.dump(ign, sys.stdout)
-
-

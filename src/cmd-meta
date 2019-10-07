@@ -4,7 +4,6 @@ cmd-meta is a helper for interacting with a builds meta.json
 """
 
 import argparse
-import tempfile
 import os
 import sys
 

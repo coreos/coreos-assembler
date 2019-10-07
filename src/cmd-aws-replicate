@@ -9,7 +9,11 @@
 # to allow the initial upload to a single region for testing
 # purposes before replication to a list of regions.
 
-import os,sys,json,argparse,subprocess
+import os
+import sys
+import json
+import argparse
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -17,10 +21,10 @@ from cosalib.cmdlib import write_json
 
 # default region list
 default_all_regions = [
-        "us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1",
-        "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1",
-        "ap-south-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",
-        "ap-northeast-2", "sa-east-1", "ca-central-1"]
+    "us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1",
+    "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1",
+    "ap-south-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",
+    "ap-northeast-2", "sa-east-1", "ca-central-1"]
 
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
@@ -43,6 +47,7 @@ if args.name_suffix:
     ami_name_version = f'{base_name}-{args.name_suffix}-{args.build}'
 else:
     ami_name_version = f'{base_name}-{args.build}'
+
 
 def run_ore():
     if len(buildmeta['amis']) < 1:
@@ -75,6 +80,7 @@ def run_ore():
     buildmeta['amis'].extend(ami_data)
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
+
 
 # Do it!
 run_ore()

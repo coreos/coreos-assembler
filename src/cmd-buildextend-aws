@@ -5,8 +5,12 @@
 # extending the meta.json with AMI information.
 # See doc/aws.md for a bit more information.
 
-import os,sys,json,yaml,shutil,argparse,subprocess,re,collections
-import tempfile,hashlib,gzip
+import os
+import sys
+import json
+import shutil
+import argparse
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -50,10 +54,11 @@ else:
 aws_vmdk_name = f'{ami_name_version}-aws.{basearch}.vmdk'
 aws_vmdk_path = f"{builddir}/{aws_vmdk_name}"
 
-tmpdir='tmp/buildpost-aws'
+tmpdir = 'tmp/buildpost-aws'
 if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 os.mkdir(tmpdir)
+
 
 def generate_aws_vmdk():
     img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
@@ -77,7 +82,8 @@ def generate_aws_vmdk():
             'size': size
         }
     })
-    write_json(buildmeta_path, buildmeta) # update build metadata
+    write_json(buildmeta_path, buildmeta)  # update build metadata
+
 
 def run_ore():
     ore_args = ['ore']
@@ -103,7 +109,7 @@ def run_ore():
                 'hvm': ore_data['HVM'],
                 'snapshot': ore_data['SnapshotID']}
     buildmeta['amis'] = [ami_data]
-    write_json(buildmeta_path, buildmeta) # update build metadata
+    write_json(buildmeta_path, buildmeta)  # update build metadata
 
 
 # Generate the disk image to be uploaded
