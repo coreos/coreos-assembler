@@ -156,7 +156,6 @@ fi
 image_config_checksum=$(< "${image_input}" sha256sum_str)
 if [ -n "${previous_build}" ]; then
     previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
-    previous_image_genver=$(jq -r '.["coreos-assembler.image-genver"]' < "${previous_builddir}/meta.json")
 fi
 echo "Image Config checksum: ${image_config_checksum}"
 
@@ -277,14 +276,8 @@ fi
 
 image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
-version=$(ostree --repo="${tmprepo}" show --print-metadata-key=version "${commit}" | sed -e "s,',,g")
-if [ "${previous_commit}" = "${commit}" ] && [ -n "${previous_image_genver:-}" ]; then
-    image_genver=$((previous_image_genver + 1))
-    buildid="${version}"-"${image_genver}"
-else
-    image_genver=0
-    buildid="${version}"
-fi
+init_build_meta_json "${commit}" tmp/
+buildid=$(jq -r '.["buildid"]' < tmp/meta.json)
 echo "New build ID: ${buildid}"
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
@@ -333,14 +326,12 @@ fi
 # summary could have double quotes: https://github.com/coreos/coreos-assembler/issues/327
 #
 # shellcheck disable=SC2046 disable=SC2086
-cat > tmp/meta.json <<EOF
+cat > tmp/buildmeta.json <<EOF
 {
- "buildid": "${buildid}",
  "name": "${name}",
  "summary": "${summary//\"/\\\"}",
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
- "coreos-assembler.image-genver": "${image_genver}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.code-source": "${src_location}",
  "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json)
@@ -378,7 +369,7 @@ fi
 
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Filter out `ref` if it's temporary
 if [ -n "${ref_is_temp}" ]; then

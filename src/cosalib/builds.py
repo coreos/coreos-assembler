@@ -2,8 +2,13 @@
 Builds interacts with builds.json
 """
 
+import json
 import os
 import semver
+import gi
+
+gi.require_version('OSTree', '1.0')
+from gi.repository import Gio, OSTree
 
 from cosalib.cmdlib import (
     get_basearch,
@@ -83,6 +88,38 @@ class Builds:  # pragma: nocover
                     basearch
                 ]
             })
+
+    def init_build_meta_json(self, ostree_commit, destdir):
+        """
+        Given a new ostree version, initialize a new coreos-assembler
+        build by writing a `meta.json` in destdir.
+        """
+        repopath = os.path.join(self._workdir, 'tmp/repo')
+        r = OSTree.Repo.new(Gio.File.new_for_path(repopath))
+        r.open(None)
+        [_, rev] = r.resolve_rev(ostree_commit, True)
+        [_, commit, _] = r.load_commit(rev)
+        commitmeta = commit.get_child_value(0)
+        version = commitmeta.unpack()['version']
+        image_genver = 0
+        buildid = version
+        genver_key = 'coreos-assembler.image-genver'
+        if not self.is_empty():
+            previous_buildid = self.get_latest()
+            metapath = self.get_build_dir(previous_buildid) + '/meta.json'
+            with open(metapath) as f:
+                previous_buildmeta = json.load(f)
+            previous_commit = previous_buildmeta['ostree-commit']
+            previous_image_genver = int(previous_buildmeta[genver_key])
+            if previous_commit == ostree_commit:
+                image_genver = previous_image_genver + 1
+                buildid = f"{version}-{image_genver}"
+        meta = {
+            'buildid': buildid,
+            genver_key: image_genver
+        }
+        with open(destdir + '/meta.json', 'w') as f:
+            json.dump(meta, f)
 
     def bump_timestamp(self):
         self._data['timestamp'] = rfc3339_time()
