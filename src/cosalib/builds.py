@@ -134,6 +134,28 @@ class Builds:  # pragma: nocover
         self._data['timestamp'] = rfc3339_time()
         self.flush()
 
+    def set_build_in_progress(self, build_id):
+        data = { 'id': build_id }
+        # Pipelines should set this to some sort of "unique" identifier
+        # for this build.  Something like <HOST>-<JOB>-<BUILDID>-<ARCH>
+        # For the FCOS pipeline, a good identifier would be the
+        # name of the pod that the Jenkins Kubernetes plugin creates.
+        pipeline_instance_data = os.environ.get('COSA_PIPELINE_INSTANCE_ID')
+        if pipeline_instance_data:
+            data['pipeline'] = pipeline_instance_data
+        self._data['build-started'] = data
+
+    def set_build_failed(self, build_id):
+        started = self._data.get('build-started')
+        if started is None:
+            raise Exception("Tried to fail build {build_id},"
+                            " but no build-started key present in builds.json")
+        if started['id'] != build_id:
+            raise Exception("Tried to fail build {build_id},"
+                            " but active build is {started['id']}")
+        self._data['build-failed'] = started
+        del self._data['build-started']
+
     def raw(self):
         return self._data
 
