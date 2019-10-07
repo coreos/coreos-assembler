@@ -8,10 +8,18 @@
 # we might change things down the line to have defaults for
 # one or both.
 
-import os,sys,argparse,subprocess,io,time,re,multiprocessing
-import tempfile,yaml,platform,json,threading
+import os
+import sys
+import argparse
+import subprocess
+import io
+import time
+import re
+import tempfile
+import yaml
+import json
+import threading
 import http.server
-import socketserver
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.cmdlib import get_basearch
@@ -25,9 +33,11 @@ PORT = 8000
 # Soon we should create the filesystem outside of anaconda
 ANACONDA_BOOT_SIZE_MB = 1024
 
+
 def fatal(msg):
     print('error: {}'.format(msg), file=sys.stderr)
     raise SystemExit(1)
+
 
 # Set of valid keys in image.yaml
 IMAGE_CONF_KEYS = ['size', 'postprocess-script', 'extra-kargs',
@@ -72,6 +82,7 @@ parser.add_argument("--wait", help="Number of minutes to wait",
                     default=os.environ.get("VIRT_INSTALL_WAIT", 10))
 args = parser.parse_args()
 
+
 # Copy of bits from https://pagure.io/standard-test-roles/pull-request/223
 def get_libvirt_smp_arg():
     """Determine the number of CPUs that should be visible in the guest.
@@ -97,6 +108,7 @@ def get_libvirt_smp_arg():
     sockets = min(available_cpu, len(core_sockets))
     return '--vcpus=sockets={},cores=1,threads=1'.format(sockets)
 
+
 def run(fn, argv, **kwargs):
     print("cmd: {}".format(subprocess.list2cmdline(argv)))
     try:
@@ -104,8 +116,10 @@ def run(fn, argv, **kwargs):
     except subprocess.CalledProcessError as e:
         raise SystemExit(f"{e}")
 
+
 def run_sync_verbose(argv, **kwargs):
     run(subprocess.check_call, argv, **kwargs)
+
 
 if args.kickstart_out:
     ks_tmp = open(args.kickstart_out, 'w')
@@ -115,7 +129,7 @@ else:
 with open(args.configdir + '/image.yaml') as f:
     image_conf = yaml.safe_load(f)
 for k in image_conf:
-    if not k in IMAGE_CONF_KEYS:
+    if k not in IMAGE_CONF_KEYS:
         fatal(f"Unknown key '{k}' in image.yaml")
 disk_size = int(image_conf['size'])
 extra_kargs = image_conf.get('extra-kargs', [])
@@ -148,7 +162,7 @@ touch /boot/ignition.firstboot
 # Grab the ipv4 address of the container
 default_iface = subprocess.check_output(['ip', '-4', 'route', 'list', '0/0']).split()[4]
 output = subprocess.check_output(['ip', '-4', '-oneline', 'addr', 'show', default_iface])
-ipv4 = re.match('.*inet ([\d.]+)/\d\d.*', str(output)).group(1)
+ipv4 = re.match(r'.*inet ([\d.]+)/\d\d.*', str(output)).group(1)
 
 if args.ostree_repo:
     assert args.ostree_stateroot
@@ -226,7 +240,7 @@ for x in range(10):
     time.sleep(1)
 
 # Doesn't need to be truly unique, let's just use our pid+time
-domain="coreos-inst-{}-{}".format(os.getpid(),int(time.time()))
+domain = "coreos-inst-{}-{}".format(os.getpid(), int(time.time()))
 tail_proc = None
 http_proc = None
 
@@ -239,6 +253,7 @@ ks_tmp.flush()
 
 n_requests = 0
 
+
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *myargs, **kwargs):
         super().__init__(*myargs, directory=args.ostree_repo, **kwargs)
@@ -246,6 +261,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def log_request(code, size):
         global n_requests
         n_requests += 1
+
 
 def run_webserver():
     try:
@@ -256,6 +272,7 @@ def run_webserver():
         sys.stderr.write(f"Http thread failed:\n{e}\n")
         sys.stderr.flush()
         os._exit(1)
+
 
 try:
     vinstall_args = ["virt-install", "--connect=qemu:///session",
@@ -296,7 +313,7 @@ try:
         elif basearch == "s390x":
             location_arg += ",kernel=images/kernel.img,initrd=images/initrd.img"
         else:
-            raise SystemExit("Unknown machine architecture "+basearch+" can't determine the kernel and initrd location")
+            raise SystemExit("Unknown machine architecture " + basearch + " can't determine the kernel and initrd location")
 
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
@@ -307,7 +324,7 @@ try:
                           location_arg,
                           "--disk=path={},cache=unsafe".format(args.dest),
                           "--initrd-inject={}".format(ks_tmp.name),
-                          "--extra-args", "ks=file://{} console=tty0 console={},115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name),os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))])
+                          "--extra-args", "ks=file://{} console=tty0 console={},115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name), os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))])
     if args.variant == 'metal-uefi':
         vinstall_args.append('--boot=uefi')
     run_sync_verbose(vinstall_args)

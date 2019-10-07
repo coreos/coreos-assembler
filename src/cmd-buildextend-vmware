@@ -13,11 +13,11 @@ import tarfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
-        get_basearch,
-        load_json,
-        run_verbose,
-        sha256sum_file,
-        write_json)
+    get_basearch,
+    load_json,
+    run_verbose,
+    sha256sum_file,
+    write_json)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
@@ -39,7 +39,7 @@ ova_name = f'{vmware_prefix}.ova'
 
 try:
     img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
-except KeyError as e:
+except KeyError:
     print("meta.json does not contain key .images.qemu.path")
     sys.exit(1)
 
@@ -60,7 +60,7 @@ def generate_ovf_parameters(qemu, vmdk, cpu=2,
     qemu_info = run_verbose(["qemu-img", "info", qemu,
                              "--output", "json"], capture_output=True)
     disk_size = json.loads(qemu_info.stdout)['virtual-size']
-    vmdk_size = str(os.stat(vmdk).st_blocks*512)
+    vmdk_size = str(os.stat(vmdk).st_blocks * 512)
 
     image = buildmeta['summary']
     product = buildmeta['summary']

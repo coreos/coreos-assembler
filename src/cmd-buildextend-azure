@@ -15,14 +15,12 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.build import _Build
-from cosalib.builds import Builds
 
 # pylint: disable=C0413
 from cosalib.cmdlib import (
-        get_basearch,
-        run_verbose,
-        sha256sum_file,
-        write_json)
+    get_basearch,
+    run_verbose,
+    sha256sum_file)
 
 # Identifier for azure platform
 PLATFORM_AZURE = 'azure'
@@ -84,9 +82,9 @@ class Build(_Build):
         fsize = os.stat(final_vhd_path).st_size
         log.debug(" * calculating checksum")
         self._found_files[final_vhd_path] = {
-                "local_path": final_vhd_path,
-                "path": final_vhd,
-                "size": int(fsize)
+            "local_path": final_vhd_path,
+            "path": final_vhd,
+            "size": int(fsize)
         }
         log.debug(
             " * size is %s",
@@ -103,7 +101,7 @@ class Build(_Build):
                 'size': size
             }
         })
-        self.meta_write() # update build metadata
+        self.meta_write()  # update build metadata
 
 
 def cli():
@@ -149,7 +147,6 @@ def cli():
     return args
 
 
-
 def run_ore(args, build):
     """
     Execute ore to upload the vhd image in blob format
@@ -188,7 +185,8 @@ def run_ore(args, build):
         'image': build.azure_vhd_name,
         'url': f"https://{url_path}",
     }
-    build.meta_write() # update build metadata
+    build.meta_write()  # update build metadata
+
 
 if __name__ == '__main__':
     # parse provided args

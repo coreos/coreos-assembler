@@ -1,12 +1,13 @@
 PREFIX ?= /usr
 DESTDIR ?=
+# E128 continuation line under-indented for visual indent
+# E241 multiple spaces after ','
 # E402 module level import not at top of file
+# E501 line too long
 # E722 do not use bare 'except'
 # W503 line break before binary operator
 # W504 line break after binary operator
-PYIGNORE ?= E402,E722,W503,W504
-
-flake8sources = src/cosalib src/oscontainer.py src/cmd-kola
+PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
 .PHONY: all check flake8 pycheck unittest clean mantle install
 
@@ -36,7 +37,7 @@ pycheck:
 	python3 -m py_compile $(pysources)
 
 flake8:
-	python3 -m flake8 --ignore=$(PYIGNORE) $(flake8sources)
+	python3 -m flake8 --ignore=$(PYIGNORE) $(pysources)
 	# The following lines will verify python files that are not modules
 	# but are commented out as the files are not ready for checking yet
 	# grep -r "^\#\!/usr/bin/py" src/ | cut -d : -f 1 | xargs flake8 --ignore=$(PYIGNORE)

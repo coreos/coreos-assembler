@@ -10,7 +10,6 @@ import math
 import json
 import shutil
 import argparse
-import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -64,7 +63,7 @@ def xz_threads():
         period = get_cpu_param('cfs_period_us')
         # are k8s limits enforced?
         if quota != -1 and period > 0:
-            return math.ceil(quota/period)
+            return math.ceil(quota / period)
     return 0  # no limits, let xz choose what it wants
 
 

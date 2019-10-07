@@ -13,13 +13,12 @@
 
 import argparse
 import gi
-import sys, os
+import os
 import tempfile
-import subprocess
 
 gi.require_version('OSTree', '1.0')
 gi.require_version('Json', '1.0')
-from gi.repository import GLib, Gio, OSTree, Json
+from gi.repository import Gio, OSTree
 
 # This seems to not be exposed by Python which has its own wrappers,
 # It's also not exposed by GLib.  This is a Linux specific value
@@ -29,7 +28,7 @@ AT_FDCWD = -100
 parser = argparse.ArgumentParser()
 parser.add_argument("--repo", help="repo", required=True)
 parser.add_argument("--rev", help="Revision to override")
-#parser.add_argument("--add-rpm", help="Unpack literal RPM content (does not currently update rpm DB, replace older RPM, or run any scripts)")
+# parser.add_argument("--add-rpm", help="Unpack literal RPM content (does not currently update rpm DB, replace older RPM, or run any scripts)")
 parser.add_argument("--add-tree", help="Add local filesystem tree", default=[], action="append")
 parser.add_argument("--output-ref", help="Output ref (if unset, will just write new commit)")
 args = parser.parse_args()
@@ -40,12 +39,12 @@ repo.open(None)
 if args.rev is not None:
     rev = args.rev
 else:
-    [_,refs] = repo.list_refs(None, None)
+    [_, refs] = repo.list_refs(None, None)
     nrefs = len(refs)
     if nrefs > 1:
         raise SystemExit(f"No rev specified and repo has {nrefs} refs")
     rev = refs[0]
-[_,root,rev] = repo.read_commit(rev, None)
+[_, root, rev] = repo.read_commit(rev, None)
 [_, base_commit, _] = repo.load_commit(rev)
 # See https://github.com/ostreedev/ostree/pull/1643
 base_contents_checksum = OSTree.checksum_from_bytes_v(base_commit.get_child_value(6))
@@ -53,11 +52,15 @@ base_meta_checksum = OSTree.checksum_from_bytes_v(base_commit.get_child_value(7)
 mtree = OSTree.MutableTree.new_from_checksum(repo, base_contents_checksum, base_meta_checksum)
 
 tmpd = tempfile.TemporaryDirectory(dir=f"{args.repo}/tmp/", prefix="dev-overlay")
+
+
 def add_commit_filter(repo, path, finfo):
     # Canonicalize uid/gid to 0
     finfo.set_attribute_uint32("unix::uid", 0)
     finfo.set_attribute_uint32("unix::gid", 0)
     return OSTree.RepoCommitFilterResult.ALLOW
+
+
 add_modifier = OSTree.RepoCommitModifier.new(OSTree.RepoCommitModifierFlags.DEVINO_CANONICAL |
                                              OSTree.RepoCommitModifierFlags.SKIP_XATTRS, add_commit_filter)
 if root.get_child("usr/etc/selinux"):
@@ -71,8 +74,8 @@ if root.get_child("usr/etc/selinux"):
 for d in args.add_tree:
     repo.write_dfd_to_mtree(AT_FDCWD, d, mtree, add_modifier, None)
 
-[_,dir_tree] = repo.write_mtree(mtree, None)
-[_,new_commit] = repo.write_commit(None, None, None, None, dir_tree, None)
+[_, dir_tree] = repo.write_mtree(mtree, None)
+[_, new_commit] = repo.write_commit(None, None, None, None, dir_tree, None)
 if args.output_ref is not None:
     repo.set_ref_immediate(None, args.output_ref, new_commit)
     print(f"Wrote {args.output_ref} => {new_commit}")
