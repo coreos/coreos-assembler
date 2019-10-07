@@ -71,8 +71,8 @@ TOTAL                       155    127    18%
 # Using overrides
 
 Development speed is closely tied to the "edit-compile-debug" cycle.  coreos-assembler
-supports an `overrides/` directory to easily overlay locally-generated content
-on top of the base OS content.
+supports an `overrides/` sub-directory of the coreos-assembler working directory,
+which allows easily overlaying locally-generated content on top of the base OS content.
 
 There are two subdirectories of `overrides/`:
 
@@ -85,18 +85,26 @@ which added support for `make install DESTDIR=` to the latter.  In general
 most upstream build systems support something like this; if they don't
 it's a good idea to add.
 
-Concretely, after doing edits in a project, run a command like this:
+Concretely, if `/path/to/cosa-workdir` is where you ran `cosa init`,
+then after doing edits in a project, run a command like this from
+the source repository for the component:
 
-`$ make install DESTDIR=/path/to/cosa-buildroot/overrides/rootfs`
+`$ make install DESTDIR=/path/to/cosa-workdir/overrides/rootfs`
 
 This would then install files like
-`/path/to/cosa-buildroot/overrides/usr/bin/ostree`
+`/path/to/cosa-buildroot/overrides/rootfs/usr/bin/ostree`
 etc.
 
-If you then run `cosa build`, those overrides will be automatically
-incorporated.
+If you then run `cosa build` from the cosa workdir,
+those overrides will be automatically incorporated.
 
 You can also choose to use `overrides/rpm` - this accepts pre-built
-binary RPMs.  If any RPMs are present here, then coreos-assembler
+binary RPMs.  This can be convenient when you want to quickly test
+a binary RPM built elsewhere, or if you want to go through a more
+"official" build process.  If any RPMs are present here, then coreos-assembler
 will automatically run `createrepo_c` and ensure that they are used
 in the build.
+
+In the future, it's likely coreos-assembler will also support something
+like `overrides/src` which could be a directory of symlinks to local
+git repositories.
