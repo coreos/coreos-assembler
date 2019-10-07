@@ -67,3 +67,36 @@ TOTAL                       155    127    18%
 
 =========================== 3 passed in 0.05 seconds ===========================
 ```
+
+# Using overrides
+
+Development speed is closely tied to the "edit-compile-debug" cycle.  coreos-assembler
+supports an `overrides/` directory to easily overlay locally-generated content
+on top of the base OS content.
+
+There are two subdirectories of `overrides/`:
+
+- `overrides/rootfs`
+- `overrides/rpm`
+
+Let's say you want to hack on both ostree and ignition-dracut.  See
+for example [this PR](https://github.com/coreos/ignition-dracut/pull/106)
+which added support for `make install DESTDIR=` to the latter.  In general
+most upstream build systems support something like this; if they don't
+it's a good idea to add.
+
+Concretely, after doing edits in a project, run a command like this:
+
+`$ make install DESTDIR=/path/to/cosa-buildroot/overrides/rootfs`
+
+This would then install files like
+`/path/to/cosa-buildroot/overrides/usr/bin/ostree`
+etc.
+
+If you then run `cosa build`, those overrides will be automatically
+incorporated.
+
+You can also choose to use `overrides/rpm` - this accepts pre-built
+binary RPMs.  If any RPMs are present here, then coreos-assembler
+will automatically run `createrepo_c` and ensure that they are used
+in the build.
