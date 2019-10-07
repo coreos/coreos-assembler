@@ -465,7 +465,7 @@ class Upload():
                 "id": 1,
                 "host": {
                     "os": HOST_OS,
-                    "arch": self.build.arch
+                    "arch": self.build.basearch
                 },
                 "content_generator": {
                     "name": "coreos-assembler",
@@ -475,7 +475,7 @@ class Upload():
                 },
                 "container": {
                     "type": "docker",
-                    "arch": self.build.arch,
+                    "arch": self.build.basearch,
                     "name": "coreos-assembler"
                 },
                 "components": "",
