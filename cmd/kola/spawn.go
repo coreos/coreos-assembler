@@ -33,6 +33,7 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/qemu"
+	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/sdk/omaha"
 )
@@ -174,20 +175,29 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		if spawnVerbose {
 			fmt.Println("Spawning machine...")
 		}
-		if kolaPlatform == "qemu" && spawnMachineOptions != "" {
-			var b []byte
-			b, err = ioutil.ReadFile(spawnMachineOptions)
-			if err != nil {
-				return fmt.Errorf("Could not read machine options: %v", err)
-			}
-
+		// use qemu-specific interface only if needed
+		if strings.HasPrefix(kolaPlatform, "qemu") && (spawnMachineOptions != "" || !spawnRemove) {
 			var machineOpts platform.MachineOptions
-			err = json.Unmarshal(b, &machineOpts)
-			if err != nil {
-				return fmt.Errorf("Could not unmarshal machine options: %v", err)
+			if spawnMachineOptions != "" {
+				b, err := ioutil.ReadFile(spawnMachineOptions)
+				if err != nil {
+					return fmt.Errorf("Could not read machine options: %v", err)
+				}
+
+				err = json.Unmarshal(b, &machineOpts)
+				if err != nil {
+					return fmt.Errorf("Could not unmarshal machine options: %v", err)
+				}
 			}
 
-			mach, err = cluster.(*qemu.Cluster).NewMachineWithOptions(userdata, machineOpts)
+			switch qc := cluster.(type) {
+			case *qemu.Cluster:
+				mach, err = qc.NewMachineWithOptions(userdata, machineOpts, spawnRemove)
+			case *unprivqemu.Cluster:
+				mach, err = qc.NewMachineWithOptions(userdata, machineOpts, spawnRemove)
+			default:
+				plog.Fatalf("unreachable: qemu cluster %v unknown type", qc)
+			}
 		} else {
 			mach, err = cluster.NewMachine(userdata)
 		}
