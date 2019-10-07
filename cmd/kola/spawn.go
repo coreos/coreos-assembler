@@ -51,6 +51,7 @@ var (
 	spawnDetach         bool
 	spawnOmahaPackage   string
 	spawnShell          bool
+	spawnIdle           bool
 	spawnRemove         bool
 	spawnVerbose        bool
 	spawnMachineOptions string
@@ -65,6 +66,7 @@ func init() {
 	cmdSpawn.Flags().BoolVarP(&spawnDetach, "detach", "t", false, "-kv --shell=false --remove=false")
 	cmdSpawn.Flags().StringVar(&spawnOmahaPackage, "omaha-package", "", "add an update payload to the Omaha server, referenced by image version (e.g. 'latest')")
 	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", true, "spawn a shell in an instance before exiting")
+	cmdSpawn.Flags().BoolVarP(&spawnIdle, "idle", "", false, "idle after starting machines (implies --shell=false)")
 	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
 	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
 	cmdSpawn.Flags().StringVar(&spawnMachineOptions, "qemu-options", "", "experimental: path to QEMU machine options JSON")
@@ -89,6 +91,10 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		spawnVerbose = true
 		spawnShell = false
 		spawnRemove = false
+	}
+
+	if spawnIdle {
+		spawnShell = false
 	}
 
 	if spawnNodeCount <= 0 {
@@ -244,6 +250,8 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 		if err := platform.Manhole(someMach); err != nil {
 			return fmt.Errorf("Manhole failed: %v", err)
 		}
+	} else if spawnIdle {
+		select {}
 	}
 	return nil
 }
