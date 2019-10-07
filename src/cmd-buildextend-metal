@@ -63,7 +63,7 @@ if [ $# -ne 0 ]; then
 fi
 
 case "$basearch" in
-    "x86_64"|"aarch64"|"s390x") use_anaconda=;;
+    "x86_64"|"aarch64"|"s390x"|"ppc64le") use_anaconda=;;
     *)
         # for qemu, we can fallback to Anaconda
         if [[ ${image_type} == qemu ]]; then
