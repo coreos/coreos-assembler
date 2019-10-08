@@ -5,6 +5,7 @@ import subprocess
 import json
 import os
 import sys
+import shutil
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
@@ -61,4 +62,13 @@ kolaargs.extend(args.subargs)
 
 # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
 print(subprocess.list2cmdline(kolaargs), flush=True)
-os.execvp('kola', kolaargs)
+env = dict(os.environ)
+# By default, store ssh agent in tmp/ too so it can be
+# conveniently found.
+if args.output_dir is None:
+    kola_ssh_dir = 'tmp/kola-ssh'
+    if os.path.isdir(kola_ssh_dir):
+        shutil.rmtree(kola_ssh_dir)
+    os.mkdir(kola_ssh_dir)
+    env['MANTLE_SSH_DIR'] = kola_ssh_dir
+os.execvpe('kola', kolaargs, env)
