@@ -16,6 +16,7 @@ package platform
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -372,4 +373,22 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	}
 
 	return ctx.Err()
+}
+
+type machineInfo struct {
+	Id        string `json:"id"`
+	PublicIp  string `json:"public_ip"`
+	OutputDir string `json:"output_dir"`
+}
+
+func WriteJSONInfo(m Machine, w io.Writer) error {
+	info := machineInfo{
+		Id:        m.ID(),
+		PublicIp:  m.IP(),
+		OutputDir: filepath.Join(m.RuntimeConf().OutputDir, m.ID()),
+	}
+	e := json.NewEncoder(w)
+	// disable pretty printing, so we emit newline-delimited streaming JSON objects
+	e.SetIndent("", "")
+	return e.Encode(info)
 }

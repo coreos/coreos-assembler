@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -45,10 +46,10 @@ type Cluster struct {
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
-	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{})
+	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{}, true)
 }
 
-func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions, pdeathsig bool) (platform.Machine, error) {
 	id := uuid.New()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
@@ -111,6 +112,12 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 
 	cmd := qm.qemu.(*exec.ExecCmd)
 	cmd.Stderr = os.Stderr
+
+	if pdeathsig {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGTERM,
+		}
+	}
 
 	cmd.ExtraFiles = append(cmd.ExtraFiles, extraFiles...)
 

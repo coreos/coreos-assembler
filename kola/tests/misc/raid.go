@@ -118,9 +118,9 @@ func RootOnRaid(c cluster.TestCluster) {
 	// the golang compiler no longer checks that the individual types in the case have the
 	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
 	case *qemu.Cluster:
-		m, err = pc.NewMachineWithOptions(raidRootUserData, options)
+		m, err = pc.NewMachineWithOptions(raidRootUserData, options, true)
 	case *unprivqemu.Cluster:
-		m, err = pc.NewMachineWithOptions(raidRootUserData, options)
+		m, err = pc.NewMachineWithOptions(raidRootUserData, options, true)
 	default:
 		c.Fatal("unknown cluster type")
 	}
