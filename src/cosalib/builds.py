@@ -16,11 +16,20 @@ from cosalib.cmdlib import (
     load_json,
     write_json)
 
+BUILDFILES = {
+    # The list of builds.
+    'list': 'builds/builds.json',
+    # This copy of builds.json tracks what we last downloaded from the source
+    'sourcedata': 'tmp/builds-source.json',
+    # This tracks the URL passed to buildprep
+    'sourceurl': 'tmp/builds-source.txt',
+}
+
 
 class Builds:  # pragma: nocover
     def __init__(self, workdir=None):
         self._workdir = workdir
-        self._fn = self._path("builds/builds.json")
+        self._fn = self._path(BUILDFILES['list'])
         if not os.path.isdir(self._path("builds")):
             raise Exception("No builds/ dir found!")
         elif os.path.isfile(self._fn):
