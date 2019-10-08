@@ -41,6 +41,7 @@ var (
 	uploadImageName string
 	uploadBoard     string
 	uploadFile      string
+	uploadFedora    bool
 	uploadForce     bool
 )
 
@@ -52,6 +53,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
+	cmdUpload.Flags().BoolVar(&uploadFedora, "fcos", false, "Flag this is Fedora CoreOS (or a derivative); currently enables SECURE_BOOT and UEFI_COMPATIBLE")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	GCloud.AddCommand(cmdUpload)
 }
@@ -141,7 +143,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 	_, pending, err := api.CreateImage(&gcloud.ImageSpec{
 		Name:        imageNameGCE,
 		SourceImage: storageSrc,
-	}, uploadForce)
+	}, uploadForce, uploadFedora)
 	if err == nil {
 		err = pending.Wait()
 	}
@@ -160,7 +162,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 			_, pending, err = api.CreateImage(&gcloud.ImageSpec{
 				Name:        imageNameGCE,
 				SourceImage: storageSrc,
-			}, true)
+			}, true, uploadFedora)
 			if err == nil {
 				err = pending.Wait()
 			}
