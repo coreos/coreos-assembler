@@ -68,9 +68,15 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 		return nil, err
 	}
 
-	sockDir, err := ioutil.TempDir("", "mantle-ssh-")
-	if err != nil {
-		return nil, err
+	var sockDir string
+	var ok bool
+	// This will be set by at least `coreos-assembler kola` since
+	// we have an implicit workdir.
+	if sockDir, ok = os.LookupEnv("MANTLE_SSH_DIR"); !ok {
+		sockDir, err = ioutil.TempDir("", "mantle-ssh-")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Use a similar naming scheme to ssh-agent
