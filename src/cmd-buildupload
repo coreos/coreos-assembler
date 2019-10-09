@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import tempfile
+import subprocess
 import boto3
 from botocore.exceptions import ClientError
 from tenacity import retry
@@ -20,7 +21,7 @@ CACHE_MAX_AGE_ARTIFACT = 60 * 60 * 24 * 365
 
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
-from cosalib.builds import Builds
+from cosalib.builds import Builds, BUILDFILES
 from cosalib.cmdlib import load_json, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
 
 
@@ -56,6 +57,9 @@ def parse_args():
 def cmd_upload_s3(args):
     bucket, prefix = args.url.split('/', 1)
     builds = Builds()
+    # This can't be an error for backcompat reasons, but let's print something
+    if not os.path.isfile(BUILDFILES['sourceurl']):
+        print(f"NOTICE: No {BUILDFILES['sourceurl']} file; uploading without buildprep?")
     if args.build == 'latest':
         args.build = builds.get_latest()
     print(f"Targeting build: {args.build}")
@@ -72,8 +76,12 @@ def cmd_upload_s3(args):
         s3_copy(f'builds/{args.build}/{f}', bucket, f'{prefix}/{args.build}/{f}',
                 CACHE_MAX_AGE_METADATA, args.acl)
     if not args.skip_builds_json:
-        s3_copy('builds/builds.json', bucket, f'{prefix}/builds.json',
+        s3_copy(BUILDFILES['list'], bucket, f'{prefix}/builds.json',
                 CACHE_MAX_AGE_METADATA, args.acl, extra_args={}, dry_run=args.dry_run)
+        # And now update our cached copy to note we've successfully sync'd.
+        with open(BUILDFILES['sourceurl'], 'w') as f:
+            f.write(f"s3://{bucket}/{prefix}\n")
+        subprocess.check_call(['cp', '-pf', '--reflink=auto', BUILDFILES['list'], BUILDFILES['sourcedata']])
 
 
 def s3_upload_build(args, builddir, bucket, prefix):

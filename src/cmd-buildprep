@@ -16,7 +16,7 @@ from tenacity import retry, retry_if_exception_type
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from cosalib.builds import Builds
+from cosalib.builds import Builds, BUILDFILES
 from cosalib.cmdlib import load_json, rm_allow_noent, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
 
 retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
@@ -39,7 +39,22 @@ def main():
 
     builds = None
     if fetcher.exists('builds.json'):
-        fetcher.fetch_json('builds.json')
+        if not args.refresh:
+            if os.path.isfile(BUILDFILES['sourcedata']):
+                # If we have local builds, don't overwrite that by default.
+                if subprocess.call(['cmp', BUILDFILES['sourcedata'], BUILDFILES['list']],
+                                   stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL) != 0:
+                    raise SystemExit(f"{BUILDFILES['list']} modified locally, run with --refresh")
+            fetcher.fetch_json('builds.json')
+        else:
+            fetcher.fetch('builds.json', dest=BUILDFILES['sourcedata'])
+            print(f"Updated {BUILDFILES['sourcedata']}")
+            return
+        # Record the origin and original state
+        with open(BUILDFILES['sourceurl'], 'w') as f:
+            f.write(args.url + '\n')
+        subprocess.check_call(['cp', '-pf', '--reflink=auto', BUILDFILES['list'], BUILDFILES['sourcedata']])
         builds = Builds()
 
     if not builds or builds.is_empty():
@@ -87,6 +102,8 @@ def parse_args():
                         help="URL from which to fetch metadata")
     parser.add_argument("--ostree", action='store_true',
                         help="Also download full OSTree commit")
+    parser.add_argument("--refresh", action='store_true',
+                        help="Assuming local changes, only update {BUILDFILES['sourcedata']}")
     return parser.parse_args()
 
 

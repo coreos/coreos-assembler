@@ -1,1 +1,2 @@
-grub2
+# To support pseries in anacondaless installs
+grub2 powerpc-utils
