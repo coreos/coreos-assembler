@@ -56,12 +56,13 @@ func init() {
 		Name:        `podman.network-single`,
 		Distros:     []string{"fcos"},
 	})
-	register.Register(&register.Test{
-		Run:         podmanNetworkTest,
-		ClusterSize: 2,
-		Name:        `podman.network-multi`,
-		Distros:     []string{"fcos"},
-	})
+	// https://github.com/coreos/mantle/pull/1080
+	// register.Register(&register.Test{
+	// 	Run:         podmanNetworkTest,
+	// 	ClusterSize: 2,
+	// 	Name:        `podman.network-multi`,
+	// 	Distros:     []string{"fcos"},
+	// })
 }
 
 // simplifiedContainerPsInfo represents a container entry in podman ps -a
