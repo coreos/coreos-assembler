@@ -16,8 +16,9 @@ EOF
 
 UPDATE_LOCKFILE=
 OUTPUT_LOCKFILE=
+DRY_RUN=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile,write-lockfile-to: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,dry-run,write-lockfile-to: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -36,6 +37,9 @@ while true; do
             shift;
             UPDATE_LOCKFILE=1
             OUTPUT_LOCKFILE=$1
+            ;;
+        --dry-run)
+            DRY_RUN=1
             ;;
         --)
             shift
@@ -57,27 +61,31 @@ fi
 
 prepare_build
 
-lock_arg=
+args=
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Put this under tmprepo so it gets automatically chown'ed if needed
-    lock_arg="--ex-write-lockfile-to=${tmprepo}/tmp/manifest-lock.json"
+    args="--ex-write-lockfile-to=${tmprepo}/tmp/manifest-lock.json"
     if [ -f "${manifest_lock_overrides}" ]; then
         echo "NB: ignoring overrides ${manifest_lock_overrides}"
         sleep 1
     fi
 elif [ -f "${manifest_lock}" ]; then
-    lock_arg="--ex-lockfile=${manifest_lock}"
+    args="--ex-lockfile=${manifest_lock}"
     echo -n "Fetching RPMs from lockfile ${manifest_lock}"
     if [ -f "${manifest_lock_overrides}" ]; then
-        lock_arg="${lock_arg} --ex-lockfile=${manifest_lock_overrides}"
+        args="${args} --ex-lockfile=${manifest_lock_overrides}"
         echo -n " and overrides ${manifest_lock_overrides}"
     fi
     echo
     sleep 1
 fi
 
+if [ -n "${DRY_RUN}" ]; then
+    args="${args} --dry-run"
+fi
+
 # shellcheck disable=SC2086
-runcompose --download-only ${lock_arg}
+runcompose --download-only ${args}
 
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Write out to the lockfile specified by the user or to the
