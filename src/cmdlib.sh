@@ -82,6 +82,9 @@ has_privileges() {
         elif ! sudo true; then
             info "Missing sudo privs; using virt"
             _privileged=0
+        elif [ "$(stat -f --printf="%T" .)" = "overlayfs" ]; then
+            info "Detected overlayfs; using virt"
+            _privileged=0
         else
             _privileged=1
         fi
@@ -123,10 +126,6 @@ preflight() {
     archdeps=$(sed "s/${filter}//" /usr/lib/coreos-assembler/deps-"$(arch)".txt | grep -v '^#')
 
     depcheck "${deps} ${archdeps}"
-
-    if [ "$(stat -f --printf="%T" .)" = "overlayfs" ]; then
-        fatal "$(pwd) must be a volume"
-    fi
 
     if ! stat /dev/kvm >/dev/null; then
         fatal "Unable to find /dev/kvm"
