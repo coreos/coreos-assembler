@@ -6,13 +6,21 @@ set -euo pipefail
 
 # We don't want to use libvirt for this, it inhibits debugging
 export LIBGUESTFS_BACKEND=direct
+if [ -z "${LIBGUESTFS_MEMSIZE:-}" ]; then
+    # Unfortunate hack: we need a much larger RAM size in order to use dm-crypt
+    # for RHCOS.  See https://gitlab.com/cryptsetup/cryptsetup/issues/372
+    # Theoretically we could run with a small size, detect, then re-launch
+    # only if we detect this case, but eh.
+    export LIBGUESTFS_MEMSIZE=2048
+fi
 # http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
 GUESTFISH_PID=
 coreos_gf_launch() {
     if [ -n "$GUESTFISH_PID" ]; then
         return
     fi
-    eval "$(guestfish --listen -a "$@")"
+
+    eval "$(echo nokey | guestfish --listen --keys-from-stdin --key /dev/sda4:file:/dev/null -a "$@")"
     if [ -z "$GUESTFISH_PID" ]; then
         fatal "guestfish didn't start up, see error messages above"
     fi
@@ -41,7 +49,13 @@ coreos_gf_run() {
 # Export `stateroot` and `deploydir` variables.
 coreos_gf_run_mount() {
     coreos_gf_run "$@"
-    local root
+    # Detect the RHCOS LUKS case; first check if there's
+    # no visible "root" labeled filesystem
+    local part4name
+    part4name=$(coreos_gf part-get-name /dev/sda 4)
+    if [ "${part4name}" = "luk_root" ]; then
+        coreos_gf luks-open /dev/sda4 luks-00000000-0000-4000-a000-000000000002
+    fi
     root=$(coreos_gf findfs-label root)
     coreos_gf mount "${root}" /
     local boot
