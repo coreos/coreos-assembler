@@ -128,7 +128,7 @@ udevtrig
 root_dev="${disk}${ROOTPN}"
 if [ -n "${luks_rootfs}"  ]; then
     root_dev=/dev/mapper/crypt_root
-    sgdisk -c ${ROOTPN}:luk_root "${disk}"
+    sgdisk -c ${ROOTPN}:luks_root "${disk}"
 
     touch tmp.key
     # Create the LUKS partition using the null_cipher and a sentinal
