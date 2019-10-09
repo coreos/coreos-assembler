@@ -175,7 +175,7 @@ if [ ${EFIPN:+x} ]; then
        # partition $BIOPN has no FS, its for bios grub
        # partition $PREPPN has no FS, its for PowerPC PReP Boot
 fi
-mkfs.xfs "${disk}${ROOTPN}"  -L root -m reflink=1
+mkfs.xfs "${root_dev}" -L root -m reflink=1
 
 # mount the partitions
 rm -rf rootfs
