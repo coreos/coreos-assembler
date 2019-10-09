@@ -12,7 +12,10 @@ coreos_gf_launch() {
     if [ -n "$GUESTFISH_PID" ]; then
         return
     fi
-    eval "$(guestfish --listen -a "$@")"
+    eval "$(echo "nokey" \
+             | env LIBGUESTFS_MEMSIZE=2048M \
+                   LIBGUESTFS_DEBUG=1 \
+                   guestfish --listen --keys-from-stdin -a "$@")"
     if [ -z "$GUESTFISH_PID" ]; then
         fatal "guestfish didn't start up, see error messages above"
     fi
@@ -41,7 +44,13 @@ coreos_gf_run() {
 # Export `stateroot` and `deploydir` variables.
 coreos_gf_run_mount() {
     coreos_gf_run "$@"
-    local root
+    # Detect the RHCOS LUKS case; first check if there's
+    # no visible "root" labeled filesystem
+    local part4name
+    part4name=$(coreos_gf part-get-name /dev/sda 4)
+    if [ "${part4name}" = "luks_root" ]; then
+        coreos_gf luks-open /dev/sda4 crypt_root
+    fi
     root=$(coreos_gf findfs-label root)
     coreos_gf mount "${root}" /
     local boot
