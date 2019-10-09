@@ -267,6 +267,7 @@ def generate_iso():
             # Create the efiboot.img file (a fat filesystem) in the images/ dir
             # Note: virt-make-fs lets us do this as non-root
             efibootfile = os.path.join(tmpisoimages, 'efiboot.img')
+            os.environ["LIBGUESTFS_BACKEND"] = "direct"
             run_verbose(['virt-make-fs', '--type=vfat', efitarfile.name,
                          efibootfile])
 
