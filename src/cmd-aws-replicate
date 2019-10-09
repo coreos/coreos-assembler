@@ -71,8 +71,7 @@ def run_ore():
 
     upload_failed_in_region = ""
     for upload_region in region_list:
-        region_ore_args = ore_args.copy()
-        region_ore_args.append(upload_region)
+        region_ore_args = ore_args.copy() + [upload_region]
         print("+ {}".format(subprocess.list2cmdline(region_ore_args)))
         try:
             ore_data = json.loads(subprocess.check_output(region_ore_args))
