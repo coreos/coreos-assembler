@@ -133,9 +133,14 @@ if [ -n "${luks_rootfs}"  ]; then
     touch tmp.key
     # Create the LUKS partition using the null_cipher and a sentinal
     # UUID similiar to the one used by coreos-gpt-setup. This is used
-    # by ignition-dracut-reecrypt.
+    # by ignition-dracut-reecrypt.  We use argon2i as it's the cryptsetup
+    # default today, but explicitly specify just 512Mb in order to support
+    # booting on smaller systems.
     cryptsetup luksFormat \
         -q \
+        --type luks2 \
+        --pbkdf argon2i \
+        --pbkdf-memory 524288 \
         --label="crypt_rootfs" \
         --cipher=cipher_null \
         --key-file=tmp.key \
