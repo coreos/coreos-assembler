@@ -53,7 +53,7 @@ coreos_gf_run_mount() {
     # no visible "root" labeled filesystem
     local part4name
     part4name=$(coreos_gf part-get-name /dev/sda 4)
-    if [ "${part4name}" = "luk_root" ]; then
+    if [ "${part4name}" = "luks_root" ]; then
         coreos_gf luks-open /dev/sda4 luks-00000000-0000-4000-a000-000000000002
     fi
     root=$(coreos_gf findfs-label root)
