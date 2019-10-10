@@ -185,7 +185,7 @@ is not invoked manually.
 
 ### ore
 Ore provides a low-level interface for each cloud provider. It has commands
-related to launching instances on a variety of platforms (gcloud, aws,
+related to launching instances on a variety of platforms (gcloud, aliyun, aws,
 azure, esx, and packet) within the latest SDK image. Ore mimics the underlying
 api for each cloud provider closely, so the interface for each cloud provider
 is different. See each providers `help` command for the available actions.
@@ -215,12 +215,52 @@ Plume release handles this as well, so it does not need to be run as part of
 the release process.
 
 ## Platform Credentials
-Each platform reads the credentials it uses from different files. The `aws`, `azure`, `do`, `esx` and `packet`
+Each platform reads the credentials it uses from different files. The `aliyun`, `aws`, `azure`, `do`, `esx` and `packet`
 platforms support selecting from multiple configured credentials, call "profiles". The examples below
 are for the "default" profile, but other profiles can be specified in the credentials files and selected
 via the `--<platform-name>-profile` flag:
 ```
 kola spawn -p aws --aws-profile other_profile
+```
+
+### aliyun
+`aliyun` reads the `~/.aliyun/config.json` file used by Aliyun's aliyun command-line tool.
+It can be created using the `aliyun` command:
+```
+$ aliyun configure
+```
+To configure a different profile, use the `--profile` flag
+```
+$ aliyun configure --profile other_profile
+```
+
+The `~/.aliyun/config.json` file can also be populated manually:
+```
+{
+  "current": "",
+  "profiles": [
+    {
+      "name": "",
+      "mode": "AK",
+      "access_key_id": "ACCESS_KEY_ID",
+      "access_key_secret": "ACCESS_KEY_SECRET",
+      "sts_token": "",
+      "ram_role_name": "",
+      "ram_role_arn": "",
+      "ram_session_name": "",
+      "private_key": "",
+      "key_pair_name": "",
+      "expired_seconds": 0,
+      "verified": "",
+      "region_id": "eu-central-1",
+      "output_format": "json",
+      "language": "zh",
+      "site": "",
+      "retry_timeout": 0,
+      "retry_count": 0
+    }
+  ]
+}
 ```
 
 ### aws
