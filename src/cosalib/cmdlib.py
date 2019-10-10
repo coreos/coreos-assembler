@@ -26,7 +26,7 @@ from gi.repository import RpmOstree
 from datetime import datetime
 
 retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
-retry_s3_exception = (retry_if_exception_type(ConnectionClosedError) |
+retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
                       retry_if_exception_type(ConnectTimeoutError) |
                       retry_if_exception_type(IncompleteReadError) |
                       retry_if_exception_type(ReadTimeoutError))
