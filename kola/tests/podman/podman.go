@@ -258,7 +258,9 @@ func podmanResources(c cluster.TestCluster) {
 
 	for _, podmanCmd := range []string{
 		// must set memory when setting memory-swap
-		pCmd("--memory=10m --memory-swap=10m"),
+		// See https://github.com/opencontainers/runc/issues/1980 for
+		// why we use 128m for memory
+		pCmd("--memory=128m --memory-swap=128m"),
 		pCmd("--memory-reservation=10m"),
 		pCmd("--kernel-memory=10m"),
 		pCmd("--cpu-shares=100"),
@@ -267,7 +269,7 @@ func podmanResources(c cluster.TestCluster) {
 		pCmd("--cpuset-mems=0"),
 		pCmd("--cpu-quota=1000"),
 		pCmd("--blkio-weight=10"),
-		pCmd("--memory=10m --oom-kill-disable=true"),
+		pCmd("--memory=128m --oom-kill-disable=true"),
 		pCmd("--memory-swappiness=50"),
 		pCmd("--shm-size=1m"),
 	} {
