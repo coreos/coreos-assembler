@@ -138,7 +138,7 @@ if [ -n "${previous_commit}" ]; then
         fi
     fi
 
-    # and point the ref to it if there isn't one already (in which case it might be newer, but e.g. Anaconda failed)
+    # and point the ref to it if there isn't one already (in which case it might be newer, but e.g. creating disk failed)
     if ! ostree rev-parse --repo="${tmprepo}" "${ref}" &>/dev/null; then
         ostree refs --repo="${tmprepo}" --create "${ref}" "${previous_commit}"
     fi

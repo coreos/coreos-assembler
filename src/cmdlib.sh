@@ -650,35 +650,6 @@ sha256sum_str() {
     sha256sum | cut -f 1 -d ' '
 }
 
-# This generates the "base image"; not specific to a platform.
-run_virtinstall() {
-    local ostree_repo=$1; shift
-    local ostree_rev=$1; shift
-    local dest=$1; shift
-    local tmpdest="${dest}.tmp"
-
-    # forgive me for this sin
-    local iso_location
-    iso_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*.iso' | head -1)
-
-    # if the ref is temporary, then we want a checksum refspec
-    if [ -n "${ref_is_temp}" ]; then
-        set -- "$@" --delete-ostree-ref
-        ostree_rev=$(ostree rev-parse --repo="${ostree_repo}" "${ostree_rev}")
-    fi
-
-    /usr/lib/coreos-assembler/virt-install --create-disk --dest="${tmpdest}" \
-                                           --tmpdir "${PWD}/tmp" --fs9p \
-                                           --kickstart-out "${PWD}"/tmp/flattened.ks \
-                                           --console-log-file "${PWD}/install.log" \
-                                           --ostree-remote="${name}" --ostree-stateroot="${name}" \
-                                           --ostree-ref="${ostree_rev}" \
-                                           --location "${iso_location}" \
-                                           --configdir="${configdir}" \
-                                           --ostree-repo="${ostree_repo}" "$@"
-    mv "${tmpdest}" "${dest}"
-}
-
 get_latest_build() {
     if [ -L "${workdir:-$(pwd)}/builds/latest" ]; then
         readlink "${workdir:-$(pwd)}/builds/latest"

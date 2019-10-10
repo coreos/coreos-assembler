@@ -63,17 +63,8 @@ if [ $# -ne 0 ]; then
 fi
 
 case "$basearch" in
-    "x86_64"|"aarch64"|"s390x"|"ppc64le") use_anaconda=;;
-    *)
-        # for qemu, we can fallback to Anaconda
-        if [[ ${image_type} == qemu ]]; then
-            use_anaconda=1
-        else
-            # otherwise, we don't know how to create bare metal images for this
-            # architecture
-            fatal "$basearch is not supported for this command"
-        fi
-        ;;
+    "x86_64"|"aarch64"|"s390x"|"ppc64le") ;;
+    *) fatal "$basearch is not supported for this command" ;;
 esac
 
 if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
@@ -176,51 +167,33 @@ ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).g
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
 luks_flag="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("--luks-rootfs" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
 
-
-if [ -z "${use_anaconda}" ]; then
-    qemu-img create -f ${image_format} "${path}.tmp" "$size"
-    # In the anaconda path, run_virtinstall dereferences in the ref_is_temp
-    # case. Here, we need to dereference ourselves.
-    ref_arg=${ref}
-    if [ -n "${ref_is_temp}" ]; then
-        ref_arg=${commit}
-    fi
-    target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp")
-    if [[ $image_format == raw && $image_type == dasd ]]; then
-        target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp" \
-                      # we need 4096 block size for ECKD DASD
-                      "-device" "virtio-blk-ccw,drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
-    fi
-    runvm "${target_drive[@]}" -- \
-            /usr/lib/coreos-assembler/create_disk.sh \
-                --disk /dev/vda \
-                --buildid "${build}" \
-                --imgid "${img}" \
-                --grub-script /usr/lib/coreos-assembler/grub.cfg \
-                --kargs "\"${kargs}\"" \
-                --osname "${name}" \
-                --ostree-ref "${ref_arg}" \
-                --ostree-remote "${ostree_remote}" \
-                --ostree-repo "${ostree_repo}" \
-                --save-var-subdirs "${save_var_subdirs}" \
-                "${luks_flag}"
-    mv "${path}.tmp" "$path"
-    echo "{}" > tmp/vm-iso-checksum.json
-else
-    [ "${image_type}" == qemu ]
-    mkdir -p tmp/anaconda
-    # forgive me for this sin
-    checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
-    img_base=tmp/${name}-${build}-base.qcow2
-    run_virtinstall "${ostree_repo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
-    /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "${path}" qemu
-    vm_iso_checksum=$(awk '/SHA256.*iso/{print$NF}' "${checksum_location}")
-    cat > tmp/vm-iso-checksum.json <<EOF
-{
-    "coreos-assembler.vm-iso-checksum": "${vm_iso_checksum}"
-}
-EOF
+qemu-img create -f ${image_format} "${path}.tmp" "$size"
+# We support deploying a commit directly instead of a ref
+ref_arg=${ref}
+if [ -n "${ref_is_temp}" ]; then
+    ref_arg=${commit}
 fi
+target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp")
+if [[ $image_format == raw && $image_type == dasd ]]; then
+    target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp" \
+                    # we need 4096 block size for ECKD DASD
+                    "-device" "virtio-blk-ccw,drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
+fi
+runvm "${target_drive[@]}" -- \
+        /usr/lib/coreos-assembler/create_disk.sh \
+            --disk /dev/vda \
+            --buildid "${build}" \
+            --imgid "${img}" \
+            --grub-script /usr/lib/coreos-assembler/grub.cfg \
+            --kargs "\"${kargs}\"" \
+            --osname "${name}" \
+            --ostree-ref "${ref_arg}" \
+            --ostree-remote "${ostree_remote}" \
+            --ostree-repo "${ostree_repo}" \
+            --save-var-subdirs "${save_var_subdirs}" \
+            "${luks_flag}"
+mv "${path}.tmp" "$path"
+echo "{}" > tmp/vm-iso-checksum.json
 
 # there's probably a jq one-liner for this...
 python3 -c "

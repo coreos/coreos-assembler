@@ -89,59 +89,6 @@ _prep_make_and_make_install() {
     fi
 }
 
-# For now keep using the f29 anaconda. There's no golden f30 image yet and it
-# doesn't support the installclass stuff and hopefully we'll stop using it soon.
-installer_release=29
-
-# Download url is different for primary and secondary fedora
-# Primary Fedora - https://download.fedoraproject.org/pub/fedora/linux/releases/
-# Secondary Fedora - https://download.fedoraproject.org/pub/fedora-secondary/releases/
-declare -A repository_dirs
-repository_dirs[aarch64]=fedora/linux
-repository_dirs[armhfp]=fedora/linux
-repository_dirs[x86_64]=fedora/linux
-repository_dirs[ppc64le]=fedora-secondary
-repository_dirs[s390x]=fedora-secondary
-
-repository_dir=${repository_dirs[$arch]}
-INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$installer_release-1.2.iso
-INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-$installer_release-1.2-$arch-CHECKSUM
-
-install_anaconda() {
-    if [ "$arch" == "x86_64" ]; then
-        return
-    fi
-
-    # Overriding install URL
-    if [ -n "${INSTALLER_URL_OVERRIDE-}" ]; then
-        INSTALLER="${INSTALLER_URL_OVERRIDE}"
-        echo "info: Overriding the install URL with contents of INSTALLER_URL_OVERRIDE"
-    fi
-    # Overriding install checksum URL
-    if [ -n "${INSTALLER_CHECKSUM_URL_OVERRIDE-}" ]; then
-        INSTALLER_CHECKSUM="${INSTALLER_CHECKSUM_URL_OVERRIDE}"
-        echo "info: Overriding the install checksum URL with contents of INSTALLER_CHECKSUM_URL_OVERRIDE"
-    fi
-
-    installer_bn=$(basename "${INSTALLER}")
-    checksums_bn=$(basename "${INSTALLER_CHECKSUM}")
-
-    anacondadir=/usr/lib/coreos-assembler-anaconda
-    if ! [ -f "${anacondadir}/${installer_bn}" ]; then
-        (
-            mkdir -p $anacondadir
-            cd $anacondadir
-            rm tmp -rf && mkdir -p tmp
-            cd tmp
-            curl -L --remote-name-all "${INSTALLER}" "${INSTALLER_CHECKSUM}"
-            sha256sum -c "${checksums_bn}"
-            mv "${installer_bn}" "${checksums_bn}" ..
-            cd ..
-            rmdir tmp
-        )
-    fi
-}
-
 make_and_makeinstall() {
     _prep_make_and_make_install
     make && make install
@@ -183,7 +130,6 @@ else
   configure_yum_repos
   install_rpms
   write_archive_info
-  install_anaconda
   make_and_makeinstall
   configure_user
 fi

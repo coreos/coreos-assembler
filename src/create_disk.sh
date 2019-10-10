@@ -243,7 +243,6 @@ cat > rootfs/.coreos-aleph-version.json << EOF
 }
 EOF
 
-# See the equivalent code in gf-anaconda-cleanup
 # /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
 # see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
 if [ "${save_var_subdirs}" != NONE ]; then

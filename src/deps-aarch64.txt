@@ -1,4 +1,4 @@
-# For grub install when creating images without anaconda
+# For grub install when creating images
 grub2
 
 # For creating bootable UEFI media on aarch64
