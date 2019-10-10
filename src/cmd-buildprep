@@ -9,15 +9,14 @@ import os
 import subprocess
 import sys
 import requests
-import boto3
 import shutil
-from botocore.exceptions import ClientError
 from tenacity import retry, retry_if_exception_type
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from cosalib.builds import Builds, BUILDFILES
-from cosalib.cmdlib import load_json, rm_allow_noent, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
+from cosalib.cmdlib import load_json, rm_allow_noent, retry_stop, retry_callback
+from cosalib.s3 import download_file, head_bucket, head_object
 
 retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
                             retry_if_exception_type(requests.ReadTimeout) |
@@ -167,33 +166,19 @@ class HTTPFetcher(Fetcher):
 
 class S3Fetcher(Fetcher):
 
-    def __init__(self, url_base):
-        super().__init__(url_base)
-        self.s3 = boto3.client('s3')
-        self.s3config = boto3.s3.transfer.TransferConfig(
-            num_download_attempts=5
-        )
-
     def fetch_impl(self, url, dest):
         assert url.startswith("s3://")
         bucket, key = url[len("s3://"):].split('/', 1)
         # this function does not need to be retried with the decorator as download_file would
         # retry automatically based on s3config settings
-        self.s3.download_file(bucket, key, dest, Config=self.s3config)
+        download_file(bucket, key, dest)
 
-    @retry(stop=retry_stop, retry=retry_s3_exception, before_sleep=retry_callback)
     def exists_impl(self, url):
         assert url.startswith("s3://")
         bucket, key = url[len("s3://"):].split('/', 1)
         # sanity check that the bucket exists and we have access to it
-        self.s3.head_bucket(Bucket=bucket)
-        try:
-            self.s3.head_object(Bucket=bucket, Key=key)
-        except ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                return False
-            raise e
-        return True
+        head_bucket(bucket=bucket)
+        return head_object(bucket=bucket, key=key)
 
 
 class LocalFetcher(Fetcher):

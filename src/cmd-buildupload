@@ -22,7 +22,7 @@ CACHE_MAX_AGE_ARTIFACT = 60 * 60 * 24 * 365
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
 from cosalib.builds import Builds, BUILDFILES
-from cosalib.cmdlib import load_json, retry_stop, retry_s3_exception, retry_callback  # noqa: E402
+from cosalib.cmdlib import load_json, retry_stop, retry_boto_exception, retry_callback  # noqa: E402
 
 
 def main():
@@ -149,7 +149,7 @@ def s3_upload_build(args, builddir, bucket, prefix):
             dry_run=args.dry_run)
 
 
-@retry(stop=retry_stop, retry=retry_s3_exception, before_sleep=retry_callback)
+@retry(stop=retry_stop, retry=retry_boto_exception, before_sleep=retry_callback)
 def s3_check_exists(bucket, key):
     print(f"Checking if bucket '{bucket}' has key '{key}'")
     s3 = boto3.client('s3')
@@ -162,7 +162,7 @@ def s3_check_exists(bucket, key):
     return True
 
 
-@retry(stop=retry_stop, retry=retry_s3_exception, retry_error_callback=retry_callback)
+@retry(stop=retry_stop, retry=retry_boto_exception, retry_error_callback=retry_callback)
 def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
     if key.endswith('.json') and 'ContentType' not in extra_args:
         extra_args['ContentType'] = 'application/json'
