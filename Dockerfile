@@ -13,7 +13,6 @@ RUN ./build.sh install_rpms
 # Ok copy in the rest of them for the next few steps
 COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info
-RUN ./build.sh install_anaconda
 RUN ./build.sh make_and_makeinstall
 RUN ./build.sh configure_user
 

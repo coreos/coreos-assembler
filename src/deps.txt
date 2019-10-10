@@ -23,12 +23,8 @@ selinux-policy-targeted rpm-build
 # Standard build tools
 make git rpm-build
 
-# virt-install dependencies
-libvirt libguestfs-tools /usr/bin/qemu-img /usr/bin/virsh /usr/bin/virt-install
-qemu-kvm
-
-# And we process kickstarts
-/usr/bin/ksflatten
+# virt dependencies
+libguestfs-tools /usr/bin/qemu-img qemu-kvm
 
 # ostree-releng-scripts dependencies
 rsync

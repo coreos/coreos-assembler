@@ -52,7 +52,7 @@ def get_cpu_param(param):
         return int(f.read().strip())
 
 
-# XXX: should dedupe this with logic in virt-install and put in the shared lib
+# XXX: should dedupe this with logic in cmdlib and put in the shared lib
 def xz_threads():
     with open("/proc/1/cgroup") as f:
         in_k8s = re.search(r'.*kubepods.*', f.read())
