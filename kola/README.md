@@ -188,7 +188,6 @@ import (
         _ "github.com/coreos/mantle/kola/tests/rkt"
         _ "github.com/coreos/mantle/kola/tests/rpmostree"
         _ "github.com/coreos/mantle/kola/tests/systemd"
-        _ "github.com/coreos/mantle/kola/tests/torcx"
         _ "github.com/coreos/mantle/kola/tests/update"
 )
 ```
