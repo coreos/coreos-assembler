@@ -37,7 +37,6 @@ var (
 	// platforms that have no Internet access
 	PlatformsNoInternet = []string{
 		"qemu",
-		"qemu-unpriv",
 	}
 )
 
