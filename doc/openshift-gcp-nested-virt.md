@@ -64,10 +64,12 @@ spec:
     name: cosa
     resources:
       requests:
-        memory: "1Gi"
+        # Today COSA hardcodes 2048 for launching VMs.  We could
+        # probably shrink that in the future.
+        memory: "3Gi"
         devices.kubevirt.io/kvm: "1"
       limits:
-        memory: "1Gi"
+        memory: "3Gi"
         devices.kubevirt.io/kvm: "1"
     volumeMounts:
     - mountPath: /srv
