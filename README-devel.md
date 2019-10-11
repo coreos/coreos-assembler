@@ -108,3 +108,20 @@ in the build.
 In the future, it's likely coreos-assembler will also support something
 like `overrides/src` which could be a directory of symlinks to local
 git repositories.
+
+# Using cosa run --srv for even faster iteration
+
+If you're working on e.g. the kernel or Ignition (things that go into the initramfs),
+then you probably need a `cosa build` workflow.  However, let's say you want to
+test a change to something much later in the boot process - e.g. `podman`.  Rather
+than doing a full image build each time, a fast way to test out changes is to use
+something like this:
+
+```
+$ cosa run --srv ~/src/github/containers/libpod
+```
+
+Then in the booted VM, `/srv` will point to the `libpod` directory on your host,
+allowing you to directly execute binaries from there.  You can also use e.g.
+`rpm-ostree usroverlay` and then copy binaries from your host `/srv` into
+the VM's rootfs.
