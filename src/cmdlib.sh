@@ -65,10 +65,18 @@ else
     esac
 fi
 
+if grep -q 'kubepods' /proc/1/cgroup; then
 # only use 1 core on kubernetes since we can't determine how much we can actually use
-grep -q 'kubepods' /proc/1/cgroup && procs=1 || procs="$(nproc)"
-QEMU_KVM+=" -smp $procs"
+    QEMU_PROCS=1
+elif [ "$(nproc)" -gt 16 ]; then
+# cap qemu simp at some reasonable level to not exceed limitation of some platforms
+    QEMU_PROCS=16
+else
+    QEMU_PROCS="$(nproc)"
+fi
+QEMU_KVM+=" -smp ${QEMU_PROCS}"
 export QEMU_KVM
+export QEMU_PROCS
 
 _privileged=
 has_privileges() {
