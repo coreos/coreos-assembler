@@ -41,8 +41,6 @@ DEFAULT_KEEP_LAST_N = 3
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--workdir", required=True, help="Path to workdir")
-parser.add_argument("--timestamp-only", help="Update timestamp on builds.json",
-                    action='store_true')
 parser.add_argument("--insert-only", metavar="BUILDID", action='store',
                     help="Append a new latest build, do not prune")
 keep_options = parser.add_mutually_exclusive_group()
@@ -65,11 +63,6 @@ builds = Builds(args.workdir)
 
 scanned_builds = []
 builds_dir = os.path.join(args.workdir, "builds")
-
-# handle --timestamp-only
-if args.timestamp_only:
-    builds.bump_timestamp()
-    sys.exit(0)
 
 # Handle --insert-only
 if args.insert_only:
