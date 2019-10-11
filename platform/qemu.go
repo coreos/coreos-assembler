@@ -278,6 +278,13 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-cpu", "host",
 			"-m", "2048",
 		}
+	case "ppc64le--ppc64le-usr":
+		qmBinary = "qemu-system-ppc64"
+		qmCmd = []string{
+			"qemu-system-ppc64",
+			"-machine", "pseries,accel=kvm,kvm-type=HV",
+			"-m", "2048",
+		}
 	default:
 		panic("host-guest combo not supported: " + combo)
 	}
@@ -288,15 +295,17 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 		"-display", "none",
 		"-chardev", "file,id=log,path="+consolePath,
 		"-serial", "chardev:log",
+		"-object", "rng-random,filename=/dev/urandom,id=rng0",
+		"-device", Virtio(board, "rng", "rng=rng0"),
 	)
 
-	if board != "s390x-usr" {
+	if board != "s390x-usr" && board != "ppc64le-usr" {
 		qmCmd = append(qmCmd, "-bios", biosImage)
 	}
 
 	if isIgnition {
 		// -fw_cfg is not supported for s390x, instead guestfs utility is used
-		if board != "s390x-usr" {
+		if board != "s390x-usr" && board != "ppc64le-usr" {
 			qmCmd = append(qmCmd,
 				"-fw_cfg", "name=opt/com.coreos/config,file="+confPath)
 		}
@@ -332,7 +341,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 		ConfPath:    "",
 	}
 
-	if board == "s390x-usr" {
+	if board == "s390x-usr" || board == "ppc64le-usr" {
 		primaryDisk.ConfPath = confPath
 	}
 
@@ -366,7 +375,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 func Virtio(board, device, args string) string {
 	var suffix string
 	switch board {
-	case "amd64-usr":
+	case "amd64-usr", "ppc64le-usr":
 		suffix = "pci"
 	case "arm64-usr":
 		suffix = "device"
