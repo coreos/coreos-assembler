@@ -63,3 +63,6 @@ krb5-libs krb5-workstation koji-utils python3-koji python3-koji-cli-plugins
 
 # LUKS support
 cryptsetup
+
+# For communicating with RoboSignatory for signing requests
+fedora-messaging
