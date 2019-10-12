@@ -28,6 +28,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+
+	"github.com/coreos/mantle/util"
 )
 
 // The default size of Container Linux disks on AWS, in GiB. See discussion in
@@ -457,10 +459,19 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 		return "", fmt.Errorf("error creating AMI: %v", err)
 	}
 
-	// We do this even in the already-exists path in case the previous
-	// run was interrupted.
-	err = a.CreateTags([]string{imageID}, map[string]string{
-		"Name": *params.Name,
+	// Attempt to tag inside of a retry loop; AWS eventual consistency means that just because
+	// the FindImage call found the AMI it might not be found by the CreateTags call
+	err = util.RetryConditional(6, 5*time.Second, func(err error) bool {
+		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIID.NotFound" {
+			return true
+		}
+		return false
+	}, func() error {
+		// We do this even in the already-exists path in case the previous
+		// run was interrupted.
+		return a.CreateTags([]string{imageID}, map[string]string{
+			"Name": *params.Name,
+		})
 	})
 	if err != nil {
 		return "", fmt.Errorf("couldn't tag image name: %v", err)
