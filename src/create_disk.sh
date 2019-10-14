@@ -253,8 +253,9 @@ if [ "${save_var_subdirs}" != NONE ]; then
 	chcon -h $(matchpathcon -n /home) ${vardir}/home
 fi
 
-# we use pure BLS, so don't need grub2-mkconfig
-ostree config --repo rootfs/ostree/repo set sysroot.bootloader none
+# we use pure BLS on most architectures; this may
+# be overridden below
+bootloader_backend=none
 
 case "$arch" in
 x86_64)
@@ -303,6 +304,7 @@ ppc64le)
     cp $grub_script rootfs/boot/grub2/grub.cfg
     ;;
 s390x)
+    bootloader_backend=zipl
 	# current zipl expects 'title' to be first line, and no blank lines in BLS file
 	# see https://github.com/ibm-s390-tools/s390-tools/issues/64
 	blsfile=$(find rootfs/boot/loader/entries/*.conf)
@@ -331,6 +333,8 @@ s390x)
 		--parmfile $tmpfile
     ;;
 esac
+
+ostree config --repo rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
 
 touch rootfs/boot/ignition.firstboot
 
