@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/coreos/pkg/multierror"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
@@ -104,6 +105,7 @@ func getOSSEndpoint(region string) string {
 	return fmt.Sprintf("https://oss-%s.aliyuncs.com", region)
 }
 
+// CopyImage replicates an image to a new region
 func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms_key_id string, encrypted bool) (string, error) {
 	request := ecs.CreateCopyImageRequest()
 	request.Scheme = "https"
@@ -128,7 +130,21 @@ func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms
 }
 
 // ImportImage attempts to import an image from OSS returning the image_id & error
-func (a *API) ImportImage(format, bucket, object, image_size, device, name, description, architecture string) (string, error) {
+func (a *API) ImportImage(format, bucket, object, image_size, device, name, description, architecture string, force bool) (string, error) {
+	if force {
+		images, err := a.GetImages(name)
+		if err != nil {
+			return "", fmt.Errorf("getting images: %v", err)
+		}
+
+		for _, image := range images.Images.Image {
+			err = a.DeleteImage(image.ImageId, force)
+			if err != nil {
+				return "", fmt.Errorf("deleting image %v: %v", image.ImageId, err)
+			}
+		}
+	}
+
 	request := ecs.CreateImportImageRequest()
 	request.Scheme = "https"
 	request.DiskDeviceMapping = &[]ecs.ImportImageDiskDeviceMapping{
@@ -152,16 +168,62 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 	return response.ImageId, nil
 }
 
-func (a *API) DeleteImage(image string, force bool) error {
+// GetImages retrieves a list of images by ImageName
+func (a *API) GetImages(name string) (*ecs.DescribeImagesResponse, error) {
+	request := ecs.CreateDescribeImagesRequest()
+	request.Scheme = "https"
+	request.ImageName = name
+	return a.ecs.DescribeImages(request)
+}
+
+// GetImagesByID retrieves a list of images by ImageId
+func (a *API) GetImagesByID(id string) (*ecs.DescribeImagesResponse, error) {
+	request := ecs.CreateDescribeImagesRequest()
+	request.Scheme = "https"
+	request.ImageId = id
+	return a.ecs.DescribeImages(request)
+}
+
+// DeleteImage deletes an image and it's underlying snapshots
+func (a *API) DeleteImage(id string, force bool) error {
 	request := ecs.CreateDeleteImageRequest()
 	request.Scheme = "https"
-	request.ImageId = image
+	request.ImageId = id
 	request.Force = requests.NewBoolean(force)
 
-	_, err := a.ecs.DeleteImage(request)
+	images, err := a.GetImagesByID(id)
+	if err != nil {
+		return fmt.Errorf("getting image: %v", err)
+	}
+
+	_, err = a.ecs.DeleteImage(request)
+	if err != nil {
+		return fmt.Errorf("deleting image: %v", err)
+	}
+
+	var errs multierror.Error
+	for _, img := range images.Images.Image {
+		for _, mapping := range img.DiskDeviceMappings.DiskDeviceMapping {
+			err = a.DeleteSnapshot(mapping.SnapshotId, force)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("deleting snapshot %v: %v", mapping.SnapshotId, err))
+			}
+		}
+	}
+	return errs.AsError()
+}
+
+// DeleteSnapshot deletes a snapshot
+func (a *API) DeleteSnapshot(id string, force bool) error {
+	request := ecs.CreateDeleteSnapshotRequest()
+	request.Scheme = "https"
+	request.SnapshotId = id
+	request.Force = requests.NewBoolean(force)
+	_, err := a.ecs.DeleteSnapshot(request)
 	return err
 }
 
+// PutObject performs a singlepart upload into an OSS bucket
 func (a *API) PutObject(r io.Reader, bucket, path string, force bool) error {
 	bucketClient, err := a.oss.Bucket(bucket)
 	if err != nil {

@@ -91,7 +91,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	id, err := API.ImportImage(format, bucket, name, diskSize, device, name, description, architecture)
+	id, err := API.ImportImage(format, bucket, name, diskSize, device, name, description, architecture, force)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create image: %v\n", err)
 		os.Exit(1)
