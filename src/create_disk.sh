@@ -98,7 +98,7 @@ case "$arch" in
     aarch64)
         sgdisk -Z $disk \
         -U 00000000-0000-4000-a000-000000000001 \
-        -n ${BOOTPN}:0:+384M -c ${ROOTPN}:boot \
+        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${ROOTPN}:0:0     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
