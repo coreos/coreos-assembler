@@ -223,6 +223,31 @@ func (a *API) DeleteSnapshot(id string, force bool) error {
 	return err
 }
 
+// UploadFile is a multipart upload, use for larger files
+func (a *API) UploadFile(filepath, bucket, path string, force bool) error {
+	bucketClient, err := a.oss.Bucket(bucket)
+	if err != nil {
+		return fmt.Errorf("getting bucket %q: %v", bucket, err)
+	}
+
+	if !force {
+		// TODO: Switch to head object whenever the library actually adds the call :(
+		objects, err := bucketClient.ListObjects()
+		if err != nil {
+			return fmt.Errorf("listing objects in bucket: %v", err)
+		}
+
+		for _, object := range objects.Objects {
+			if object.Key == path {
+				return fmt.Errorf("object already exists and force is false")
+			}
+		}
+	}
+
+	// Use 1000K part size with 10 coroutines to speed up the upload
+	return bucketClient.UploadFile(path, filepath, 1000*1024, oss.Routines(10))
+}
+
 // PutObject performs a singlepart upload into an OSS bucket
 func (a *API) PutObject(r io.Reader, bucket, path string, force bool) error {
 	bucketClient, err := a.oss.Bucket(bucket)

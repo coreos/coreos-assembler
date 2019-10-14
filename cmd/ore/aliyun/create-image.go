@@ -78,14 +78,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		diskSize = fmt.Sprintf("%d", diskSizeGiB)
 	}
 
-	f, err := os.Open(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", path, err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	err = API.PutObject(f, bucket, name, force)
+	err := API.UploadFile(path, bucket, name, force)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Uploading image to object storage: %v\n", err)
 		os.Exit(1)
