@@ -69,12 +69,13 @@ if grep -q 'kubepods' /proc/1/cgroup; then
 # only use 1 core on kubernetes since we can't determine how much we can actually use
     QEMU_PROCS=1
 elif [ "$(nproc)" -gt 16 ]; then
-# cap qemu simp at some reasonable level to not exceed limitation of some platforms
+# cap qemu smp at some reasonable level to not exceed limitation of some platforms
     QEMU_PROCS=16
 else
     QEMU_PROCS="$(nproc)"
 fi
-QEMU_KVM+=" -smp ${QEMU_PROCS}"
+# cap smp and dissable VGA as it "eats" output from console on some platforms, ppc64le most notably
+QEMU_KVM+=" -smp ${QEMU_PROCS} -vga none"
 export QEMU_KVM
 export QEMU_PROCS
 
