@@ -63,9 +63,8 @@ var (
 		"arm64-usr": "https://alpha.release.core-os.net/arm64-usr/current/coreos_production_packet_image.bin.bz2",
 	}
 	defaultPlan = map[string]string{
-		"amd64-usr": "baremetal_0",
-		"arm64-usr": "baremetal_2a",
-		"s390x-usr": "baremetal_3a",
+		"amd64-usr": "t1.small.x86",
+		"arm64-usr": "c1.large.arm",
 	}
 	linuxConsole = map[string]string{
 		"amd64-usr":   "ttyS1,115200",
@@ -89,7 +88,7 @@ type Options struct {
 
 	// Packet location code
 	Facility string
-	// Slug of the device type (e.g. "baremetal_0")
+	// Slug of the device type (e.g. "t1.small.x86")
 	Plan string
 	// The Container Linux board name
 	Board string
