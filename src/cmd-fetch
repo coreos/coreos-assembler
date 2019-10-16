@@ -92,10 +92,11 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
     # existing manifest lockfile if none was specified by the user
     if [ -n "${OUTPUT_LOCKFILE}" ]; then
         # assume given path is relative to toplevel workdir
-        outfile="${workdir}/${OUTPUT_LOCKFILE}" 
+        outfile="${workdir}/${OUTPUT_LOCKFILE}"
     else
         outfile=$manifest_lock
     fi
+    strip_out_lockfile_digests "${tmprepo}/tmp/manifest-lock.json"
     mv -f "${tmprepo}/tmp/manifest-lock.json" "${outfile}"
     echo "Wrote out lockfile ${outfile}"
 fi
