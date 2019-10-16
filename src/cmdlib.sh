@@ -402,6 +402,13 @@ runcompose() {
     fi
 }
 
+# Strips out the digest field from lockfiles since they subtly conflict with
+# various workflows.
+strip_out_lockfile_digests() {
+    jq 'del(.packages[].digest)' "$1" > "$1.tmp"
+    mv "$1.tmp" "$1"
+}
+
 runvm() {
     local qemu_args=()
     while true; do

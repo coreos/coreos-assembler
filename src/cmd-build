@@ -215,6 +215,7 @@ runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_js
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}" \
            ${lock_arg} ${version_arg} ${parent_arg}
+strip_out_lockfile_digests "$lockfile_out"
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
