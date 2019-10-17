@@ -3,6 +3,8 @@
 ignition
 ostree
 rpm-ostree
+libdnf
+librepo
 kernel
 systemd
 dracut
