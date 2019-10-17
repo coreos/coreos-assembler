@@ -17,6 +17,7 @@ package aliyun
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
@@ -270,4 +271,22 @@ func (a *API) PutObject(r io.Reader, bucket, path string, force bool) error {
 	}
 
 	return bucketClient.PutObject(path, r)
+}
+
+// ListRegions lists the enabled regions in aliyun implicitly
+// by the Profile and Region options.
+func (a *API) ListRegions() ([]string, error) {
+	request := ecs.CreateDescribeRegionsRequest()
+	request.Scheme = "https"
+
+	response, err := a.ecs.DescribeRegions(request)
+	if err != nil {
+		return nil, fmt.Errorf("describing regions: %v", err)
+	}
+	ret := make([]string, 0, len(response.Regions.Region))
+	for _, region := range response.Regions.Region {
+		ret = append(ret, region.RegionId)
+	}
+	sort.Strings(ret)
+	return ret, nil
 }
