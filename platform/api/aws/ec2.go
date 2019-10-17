@@ -17,6 +17,7 @@ package aws
 import (
 	"encoding/base64"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,6 +27,21 @@ import (
 
 	"github.com/coreos/mantle/util"
 )
+
+// ListRegions lists the enabled regions in the AWS partition specified
+// implicitly by the CredentialsFile, Profile, and Region options.
+func (a *API) ListRegions() ([]string, error) {
+	output, err := a.ec2.DescribeRegions(nil)
+	if err != nil {
+		return nil, fmt.Errorf("describing regions: %v", err)
+	}
+	ret := make([]string, 0, len(output.Regions))
+	for _, region := range output.Regions {
+		ret = append(ret, *region.RegionName)
+	}
+	sort.Strings(ret)
+	return ret, nil
+}
 
 func (a *API) AddKey(name, key string) error {
 	_, err := a.ec2.ImportKeyPair(&ec2.ImportKeyPairInput{
