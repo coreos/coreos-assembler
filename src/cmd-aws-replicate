@@ -19,20 +19,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
 from cosalib.cmdlib import write_json
 
-# default region list
-default_all_regions = [
-    "us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1",
-    "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1",
-    "ap-south-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",
-    "ap-northeast-2", "sa-east-1", "ca-central-1"]
-
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID",
                     required=True)
 parser.add_argument("--name-suffix", help="Suffix for name")
-parser.add_argument("--regions", help="EC2 regions",
-                    default=default_all_regions, nargs='+')
+parser.add_argument("--regions", help="EC2 regions, default: all regions",
+                    default=[], nargs='+')
 parser.add_argument("--log-level", help="ore log level")
 args = parser.parse_args()
 
@@ -52,6 +45,8 @@ else:
 def run_ore():
     if len(buildmeta['amis']) < 1:
         raise SystemExit("buildmeta doesn't contain source AMIs. Run buildextend-aws first")
+    if not args.regions:
+        args.regions = subprocess.check_output(['ore', 'aws', 'list-regions']).decode().strip().split()
     # only replicate to regions that don't already exist
     existing_regions = [item['name'] for item in buildmeta['amis']]
     duplicates = list(set(args.regions).intersection(existing_regions))
