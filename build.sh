@@ -53,17 +53,6 @@ install_rpms() {
     archdeps=$(grep -v '^#' "${srcdir}/deps-$(arch)".txt)
     echo "${builddeps}" "${deps}" "${archdeps}" | xargs yum -y install
 
-    # XXX: import glibc in testing to work around statx issues:
-    # https://github.com/coreos/coreos-assembler/pull/853
-    # https://bugzilla.redhat.com/show_bug.cgi?id=1760300
-    basearch=$(python3 -c '
-import gi
-gi.require_version("RpmOstree", "1.0")
-from gi.repository import RpmOstree
-print(RpmOstree.get_basearch())')
-    # shellcheck disable=SC2086
-    yum -y install https://kojipkgs.fedoraproject.org//packages/coreutils/8.31/6.fc30/${basearch}/coreutils{,-common}-8.31-6.fc30.${basearch}.rpm
-
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
