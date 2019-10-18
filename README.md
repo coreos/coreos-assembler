@@ -297,7 +297,6 @@ $ cosa init https://github.com/coreos/fedora-coreos-config.git
 $ cosa fetch && cosa build
 ```
 
-
 #### Using a locally built Assembler container
 
 If you have [built a local assembler container](#container-build)
@@ -341,3 +340,10 @@ $ mkdir -p overrides/rpm
 $ cp /path/to/my/name-version-release.rpm ./overrides/rpm
 $ cosa build
 ```
+
+### Pulling in fixed packages into the COSA container
+
+To pull in fixed packages before they make it through Bodhi,
+you can simply tag them into the
+`f${releasever}-coreos-continuous` tag and trigger a
+rebuild.
