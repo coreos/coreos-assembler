@@ -19,6 +19,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/coreos/mantle/platform/api/aws"
 )
 
 var (
@@ -29,14 +31,25 @@ var (
 specified credentials file, profile, and region.`,
 		RunE: runListRegions,
 	}
+	disabledRegions bool
+	allRegions      bool
 )
 
 func init() {
 	AWS.AddCommand(cmdListRegions)
+	cmdListRegions.Flags().BoolVar(&disabledRegions, "disabled", false, "list disabled regions")
+	cmdListRegions.Flags().BoolVar(&allRegions, "all", false, "list all regions")
 }
 
 func runListRegions(cmd *cobra.Command, args []string) error {
-	regions, err := API.ListRegions()
+	var kind = aws.RegionEnabled
+	if allRegions {
+		kind = aws.RegionAny
+	} else if disabledRegions {
+		kind = aws.RegionDisabled
+	}
+
+	regions, err := API.ListRegions(kind)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not list regions: %v\n", err)
 		os.Exit(1)
