@@ -28,10 +28,31 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
+type RegionKind int
+
+const (
+	RegionEnabled RegionKind = iota
+	RegionDisabled
+	RegionAny
+)
+
 // ListRegions lists the enabled regions in the AWS partition specified
 // implicitly by the CredentialsFile, Profile, and Region options.
-func (a *API) ListRegions() ([]string, error) {
-	output, err := a.ec2.DescribeRegions(nil)
+func (a *API) ListRegions(kind RegionKind) ([]string, error) {
+	input := ec2.DescribeRegionsInput{}
+	switch kind {
+	case RegionDisabled:
+		input.AllRegions = aws.Bool(true)
+		input.Filters = []*ec2.Filter{
+			{
+				Name:   aws.String("opt-in-status"),
+				Values: []*string{aws.String("not-opted-in")},
+			},
+		}
+	case RegionAny:
+		input.AllRegions = aws.Bool(true)
+	}
+	output, err := a.ec2.DescribeRegions(&input)
 	if err != nil {
 		return nil, fmt.Errorf("describing regions: %v", err)
 	}
