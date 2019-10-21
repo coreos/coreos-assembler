@@ -285,8 +285,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		}
 
 		rpmOut := c.MustSSH(m, "rpm -q "+installPkgName)
-		// forcing use of x86_64; may need to adapt this in the future
-		rpmRegex := "^" + installPkgName + ".*x86_64"
+		rpmRegex := "^" + installPkgName
 		rpmMatch := regexp.MustCompile(rpmRegex).MatchString(string(rpmOut))
 		if !rpmMatch {
 			c.Fatalf(`Output from "rpm -q" was unexpected: %q`, string(rpmOut))
