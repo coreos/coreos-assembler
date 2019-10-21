@@ -45,8 +45,7 @@ def parse_args():
     update = subparsers.add_parser("update", help="Update existing tag or "
                                                   "create a new tag")
     update.add_argument("--tag", help="Tag to be updated", required=True)
-    update.add_argument("--build", help="Build to update tag with",
-                        required=True)
+    update.add_argument("--build", help="Build to update tag with")
     update.add_argument("--force", help="Force the update of a tag",
                         action="store_true")
     update.set_defaults(func=cmd_update)
@@ -80,6 +79,8 @@ def cmd_update(args):
     """Create or update a tag to new build ID"""
 
     builds = Builds()
+    if args.build is None:
+        args.build = builds.get_latest()
     build_data = builds.raw()
 
     avail_tags = available_tags(build_data)
