@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import shutil
+import yaml
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
@@ -28,6 +29,17 @@ if args.build is None:
 builddir = builds.get_build_dir(args.build)
 with open(os.path.join(builddir, "meta.json")) as f:
     buildmeta = json.load(f)
+
+# automatically add blacklisted tests specified in the src config
+blacklist_args = []
+blacklist_path = "src/config/kola-blacklist.yaml"
+if os.path.isfile(blacklist_path):
+    with open(blacklist_path) as f:
+        blacklist = yaml.safe_load(f)
+        for obj in blacklist:
+            print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
+            print(f"⚠️  {obj['tracker']}")
+            blacklist_args += ['--blacklist-test', obj['pattern']]
 
 qemuimg = buildmeta['images'].get('qemu')
 if qemuimg is None:
@@ -59,6 +71,8 @@ kolaargs.extend(['--qemu-image', qemupath])
 outputdir = args.output_dir or "tmp/kola"
 kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs)
+
+kolaargs.extend(blacklist_args)
 
 # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
 print(subprocess.list2cmdline(kolaargs), flush=True)
