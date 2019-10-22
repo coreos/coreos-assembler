@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 parser.add_argument("--region", help="Cloud Region")
 parser.add_argument("--bucket", help="OSS Bucket")
+parser.add_argument("--name-suffix", help="Suffix for uploaded image name")
 parser.add_argument("--log-level", help="ore log level")
 parser.add_argument("--upload", action='store_true', default=False,
                     help="Upload to Aliyun")
@@ -42,7 +43,10 @@ with open(buildmeta_path) as f:
 
 basearch = get_basearch()
 base_name = buildmeta['name']
-img_prefix = f'{base_name}-{args.build}'
+if args.name_suffix:
+    img_prefix = f'{base_name}-{args.name_suffix}-{args.build}'
+else:
+    img_prefix = f'{base_name}-{args.build}'
 aliyun_name = f'{img_prefix}-aliyun.{basearch}.qcow2'
 
 tmpdir = 'tmp/buildpost-aliyun'
