@@ -24,7 +24,10 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:30', privileged: true, kvm
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
               cosa_cmd("build")
-              cosa_cmd("kola run")
+              // This is known to fail right now. See:
+              // https://github.com/coreos/fedora-coreos-tracker/issues/280
+              // https://github.com/coreos/mantle/issues/1103
+              cosa_cmd("kola -- run --blacklist-test fcos.python")
               // sanity check kola actually ran and dumped its output in tmp/
               coreos.shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
