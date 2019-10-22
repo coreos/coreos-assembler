@@ -31,6 +31,10 @@ type AliyunProfile struct {
 	Region          string `json:"region_id"`
 }
 
+type AliyunConfig struct {
+	Profiles []AliyunProfile `json:"profiles"`
+}
+
 // ReadAliyunConfig decodes an aliyun config file
 //
 // If path is empty, $HOME/.aliyun/config.json is read.
@@ -49,16 +53,16 @@ func ReadAliyunConfig(path string) (map[string]AliyunProfile, error) {
 	}
 	defer f.Close()
 
-	var profiles []AliyunProfile
-	if err := json.NewDecoder(f).Decode(&profiles); err != nil {
+	var config AliyunConfig
+	if err := json.NewDecoder(f).Decode(&config); err != nil {
 		return nil, err
 	}
-	if len(profiles) == 0 {
+	if len(config.Profiles) == 0 {
 		return nil, fmt.Errorf("aliyun config %q contains no profiles", path)
 	}
 
 	retProfiles := make(map[string]AliyunProfile)
-	for _, p := range profiles {
+	for _, p := range config.Profiles {
 		retProfiles[p.Name] = p
 	}
 
