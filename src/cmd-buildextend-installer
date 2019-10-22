@@ -20,6 +20,15 @@ from cosalib.builds import Builds
 from cosalib.cmdlib import run_verbose, write_json, sha256sum_file
 from cosalib.cmdlib import import_ostree_commit, get_basearch
 
+
+def ostree_extract_efi(repo, commit, destdir):
+    """Given an OSTree commit, extract the EFI parts"""
+    ostreeefidir = "/usr/lib/ostree-boot/efi/EFI"
+    run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
+                 '--user-mode', '--subpath', ostreeefidir,
+                 commit, destdir])
+
+
 live_exclude_kargs = set([
     '$ignition_firstboot',   # unsubstituted variable in grub config
     'console',               # no serial console by default on ISO
@@ -274,25 +283,7 @@ def generate_iso():
                 return tarinfo
 
             tmpimageefidir = os.path.join(tmpdir, "efi")
-            os.makedirs(tmpimageefidir)
-            ostreeefidir = "/usr/lib/ostree-boot/efi/EFI"
-
-            # Fetch a list of folders in ostree EFI dir
-            process = run_verbose(['/usr/bin/ostree', 'ls', '--repo', repo,
-                                '--nul-filenames-only', f"{buildmeta_commit}",
-                                ostreeefidir], capture_output=True)
-            ostreeefidirfiles = process.stdout.decode().split('\0')[1:]
-            ostreeefisubdirs = [x.replace(f"{ostreeefidir}/", '') for x in ostreeefidirfiles]
-
-            for folder in ostreeefisubdirs:
-                if not folder:
-                    continue
-                folderfullpath = os.path.join(ostreeefidir, folder)
-                # copy files to a temporary directory
-                destdir = os.path.join(tmpimageefidir, folder)
-                run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
-                            '--user-mode', '--subpath', folderfullpath,
-                            f"{buildmeta_commit}", destdir])
+            ostree_extract_efi(repo, buildmeta_commit, tmpimageefidir)
 
             # Install binaries from boot partition
             # Manually construct the tarball to ensure proper permissions and ownership
