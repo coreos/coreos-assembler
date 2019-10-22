@@ -256,17 +256,14 @@ fi
 # be overridden below
 bootloader_backend=none
 
-case "$arch" in
-x86_64)
-    # install bios grub
-    grub2-install \
-    --target i386-pc \
-    --boot-directory rootfs/boot \
-    $disk
+# Helper to install UEFI on supported architectures
+install_uefi() {
+    mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
+    mkdir -p rootfs/boot/grub2
     ext="X64"
-
-	# install uefi grub
-	mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
+    if [ "${arch}" = aarch64 ]; then
+        ext="AA64"
+    fi
 	cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
 	cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
 	cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
@@ -274,26 +271,25 @@ search --label boot --set prefix
 set prefix=($prefix)/grub2
 normal
 EOF
-    mkdir -p rootfs/boot/grub2
     # copy the grub config and any other files we might need
     cp $grub_script rootfs/boot/grub2/grub.cfg
+}
+
+# Other arch-specific bootloader changes
+case "$arch" in
+x86_64)
+    # UEFI
+    install_uefi
+    # And BIOS grub in addition.  See also
+    # https://github.com/coreos/fedora-coreos-tracker/issues/32
+    grub2-install \
+    --target i386-pc \
+    --boot-directory rootfs/boot \
+    $disk
     ;;
 aarch64)
-    mkdir -p rootfs/boot/grub2
-    ext="AA64"
-
-    # install uefi grub
-    mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
-    cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
-    cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
-    cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
-search --label boot --set prefix
-set prefix=($prefix)/grub2
-normal
-EOF
-    mkdir -p rootfs/boot/grub2
-    # copy the grub config and any other files we might need
-    cp $grub_script rootfs/boot/grub2/grub.cfg
+    # Our aarch64 is UEFI only.
+    install_uefi
     ;;
 ppc64le)
     # to populate PReP Boot, i.e. support pseries
