@@ -1,6 +1,6 @@
 @Library('github.com/coreos/coreos-ci-lib@master') _
 
-coreos.pod([image: 'registry.fedoraproject.org/fedora:30', runAsUser: 0, kvm: true, memory: "9Gi"]) {
+coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memory: "9Gi"]) {
       checkout scm
 
       stage("Build") {
