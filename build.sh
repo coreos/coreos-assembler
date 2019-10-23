@@ -28,16 +28,13 @@ fi
 set -x
 srcdir=$(pwd)
 
-release="30"
-
 configure_yum_repos() {
-    if [ -n "${ISFEDORA}" ]; then
-        # Add continuous tag for latest build tools and mark as required so we
-        # can depend on those latest tools being available in all container
-        # builds.
-        echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
-
-    fi
+    local version_id
+    version_id=$(. /etc/os-release && echo ${VERSION_ID})
+    # Add continuous tag for latest build tools and mark as required so we
+    # can depend on those latest tools being available in all container
+    # builds.
+    echo -e "[f${version_id}-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f${version_id}-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
 }
 
 install_rpms() {
