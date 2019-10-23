@@ -139,6 +139,7 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 		}
 
 		for _, image := range images.Images.Image {
+			plog.Infof("deleting pre-existing image %v", image.ImageId)
 			err = a.DeleteImage(image.ImageId, force)
 			if err != nil {
 				return "", fmt.Errorf("deleting image %v: %v", image.ImageId, err)
@@ -161,6 +162,7 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 	request.Description = description
 	request.Architecture = architecture
 
+	plog.Infof("importing image")
 	response, err := a.ecs.ImportImage(request)
 	if err != nil {
 		return "", fmt.Errorf("importing image: %v", err)
@@ -246,6 +248,7 @@ func (a *API) UploadFile(filepath, bucket, path string, force bool) error {
 	}
 
 	// Use 1000K part size with 10 coroutines to speed up the upload
+	plog.Infof("uploading oss://%v/%v", bucket, path)
 	return bucketClient.UploadFile(path, filepath, 1000*1024, oss.Routines(10))
 }
 
@@ -256,6 +259,7 @@ func (a *API) DeleteFile(bucket, path string) error {
 		return fmt.Errorf("getting bucket %q: %v", bucket, err)
 	}
 
+	plog.Infof("deleting oss://%v/%v", bucket, path)
 	return bucketClient.DeleteObject(path)
 }
 
