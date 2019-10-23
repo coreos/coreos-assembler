@@ -39,8 +39,9 @@ for f in ign['storage'].get('files', []):
         f['contents'] = append[0]
 
 # replace the merge keyword with append
-merge = ign['ignition'].pop('merge', None)
+ignconfig = ign['ignition'].get('config', {})
+merge = ignconfig.pop('merge', None)
 if merge is not None:
-    ign['ignition']['append'] = merge
+    ignconfig['append'] = merge
 
 json.dump(ign, sys.stdout)
