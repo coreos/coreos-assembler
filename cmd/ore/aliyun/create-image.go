@@ -44,6 +44,7 @@ After a successful run, the final line of output will be the ID of the image.
 	architecture string
 	force        bool
 	sizeInspect  bool
+	deleteObject bool
 )
 
 func init() {
@@ -58,6 +59,7 @@ func init() {
 	cmdCreate.Flags().StringVar(&architecture, "architecture", "x86_64", "image architecture")
 	cmdCreate.Flags().StringVar(&name, "name", "", "image name")
 	cmdCreate.Flags().BoolVar(&force, "force", false, "overwrite any existing object storage")
+	cmdCreate.Flags().BoolVar(&deleteObject, "delete-object", true, "delete uploaded OSS object after image is created")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -89,6 +91,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Couldn't create image: %v\n", err)
 		os.Exit(1)
 	}
+
+	if deleteObject {
+		if err := API.DeleteFile(bucket, name); err != nil {
+			fmt.Fprintf(os.Stderr, "Deleting image from object storage: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	fmt.Println(id)
 	return nil
 }

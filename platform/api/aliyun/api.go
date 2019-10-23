@@ -249,6 +249,16 @@ func (a *API) UploadFile(filepath, bucket, path string, force bool) error {
 	return bucketClient.UploadFile(path, filepath, 1000*1024, oss.Routines(10))
 }
 
+// DeleteFile deletes a file from an OSS bucket
+func (a *API) DeleteFile(bucket, path string) error {
+	bucketClient, err := a.oss.Bucket(bucket)
+	if err != nil {
+		return fmt.Errorf("getting bucket %q: %v", bucket, err)
+	}
+
+	return bucketClient.DeleteObject(path)
+}
+
 // PutObject performs a singlepart upload into an OSS bucket
 func (a *API) PutObject(r io.Reader, bucket, path string, force bool) error {
 	bucketClient, err := a.oss.Bucket(bucket)
