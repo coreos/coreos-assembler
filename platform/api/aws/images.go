@@ -214,7 +214,8 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 }
 
 // Wait on a snapshot import task, post-process the snapshot (e.g. adding
-// tags), and return a Snapshot.
+// tags), and return a Snapshot. See also similar code in aliyun's
+// finishImportImageTask.
 func (a *API) finishSnapshotTask(snapshotTaskID, imageName string) (*Snapshot, error) {
 	snapshotDone := func(snapshotTaskID string) (bool, string, error) {
 		taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{
