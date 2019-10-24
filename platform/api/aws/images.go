@@ -555,6 +555,15 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 	}
 	snapshot := describeSnapshotRes.Snapshots[0]
 
+	describeSnapshotAttributeRes, err := a.ec2.DescribeSnapshotAttribute(&ec2.DescribeSnapshotAttributeInput{
+		Attribute:  aws.String("createVolumePermission"),
+		SnapshotId: aws.String(snapshotID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe createVolumePermission: %v", err)
+	}
+	createVolumePermissions := describeSnapshotAttributeRes.CreateVolumePermissions
+
 	describeAttributeRes, err := a.ec2.DescribeImageAttribute(&ec2.DescribeImageAttributeInput{
 		Attribute: aws.String("launchPermission"),
 		ImageId:   aws.String(sourceImageID),
@@ -580,7 +589,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 			res.data, res.err = aa.copyImageIn(a.opts.Region, sourceImageID,
 				*image.Name, *image.Description,
 				image.Tags, snapshot.Tags,
-				launchPermissions)
+				launchPermissions, createVolumePermissions)
 			ch <- res
 		}()
 	}
@@ -599,7 +608,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 	return amis, err
 }
 
-func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission) (ImageData, error) {
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission, createVolumePermissions []*ec2.CreateVolumePermission) (ImageData, error) {
 	imageID, err := a.FindImage(name)
 	if err != nil {
 		return ImageData{}, err
@@ -655,6 +664,19 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		})
 		if err != nil {
 			return ImageData{}, fmt.Errorf("couldn't create snapshot tags: %v", err)
+		}
+	}
+
+	if len(createVolumePermissions) > 0 {
+		_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
+			Attribute:  aws.String("createVolumePermission"),
+			SnapshotId: &snapshotID,
+			CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
+				Add: createVolumePermissions,
+			},
+		})
+		if err != nil {
+			return ImageData{}, fmt.Errorf("couldn't grant createVolumePermissions: %v", err)
 		}
 	}
 
