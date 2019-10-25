@@ -39,27 +39,7 @@ chmod u+w "${tmp_dest}"
 
 coreos_gf_run_mount "${tmp_dest}"
 
-# Inject PLATFORM label in all relevant places:
-# * grub config
-# * BLS config (for subsequent config regeneration)
-# First, the grub config.
-# Set grub.cfg in case the arch uses anaconda
-if [ "$arch" == "ppc64le" ]; then
-    if [ "$(coreos_gf exists '/boot/efi')" == 'true' ]; then
-        grubcfg_path=$(coreos_gf glob-expand /boot/efi/EFI/*/grub.cfg)
-    else
-        grubcfg_path=/boot/loader/grub.cfg
-    fi
-    coreos_gf download "${grubcfg_path}" "${tmpd}"/grub.cfg
-    # Remove any platformid currently there
-    sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/grub.cfg
-    # Insert our new platformid
-    # Match linux16, linux and linuxefi since only linux is available on aarch64
-    # and linuxefi is available in grub2.cfg for UEFI
-    sed -i -e 's,^\(linux\(16\|efi\)\? .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/grub.cfg
-    coreos_gf upload "${tmpd}"/grub.cfg "${grubcfg_path}"
-fi
-# Now the BLS version
+# Inject PLATFORM label in BLS config (for subsequent config regeneration)
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download "${blscfg_path}" "${tmpd}"/bls.conf
 # Remove any platformid currently there
