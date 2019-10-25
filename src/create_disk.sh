@@ -186,10 +186,10 @@ mkdir rootfs/boot
 chcon $(matchpathcon -n /boot) rootfs/boot
 mount "${disk}${BOOTPN}" rootfs/boot
 chcon $(matchpathcon -n /boot) rootfs/boot
-mkdir rootfs/boot/efi
 # FAT doesn't support SELinux labeling, it uses "genfscon", so we
 # don't need to give it a label manually.
 if [ ${EFIPN:+x} ]; then
+       mkdir rootfs/boot/efi
        mount "${disk}${EFIPN}" rootfs/boot/efi
 fi
 
