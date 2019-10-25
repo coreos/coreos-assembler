@@ -28,7 +28,8 @@ Options:
     --ostree-repo: location of the ostree repo
     --save-var-subdirs: "yes" to workaround selabel issue for RHCOS
     --rootfs-size: Create the root filesystem with specified size
-    --luks-rootfs: place rootfs in a LUKS container
+    --boot-verity: Provide this to enable ext4 fs-verity for /boot
+    --rootfs: xfs|ext4verity|luks
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -36,7 +37,8 @@ EOC
 }
 
 rootfs_size="0"
-luks_rootfs=""
+boot_verity=0
+rootfs="xfs"
 extrakargs=""
 
 while [ $# -gt 0 ];
@@ -55,7 +57,8 @@ do
         --ostree-repo)      ostree="${1}"; shift;;
         --save-var-subdirs) save_var_subdirs="${1}"; shift;;
         --rootfs-size)      rootfs_size="${1}"; shift;;
-        --luks-rootfs)      luks_rootfs=1;;
+        --boot-verity)      boot_verity=1;;
+        --rootfs)           rootfs="${1}" shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
          --) break;
      esac;
@@ -77,6 +80,11 @@ remote_name="${remote_name:?--ostree-remote must be defined}"
 grub_script="${grub_script:?--grub-script must be defined}"
 os_name="${os_name:?--os_name must be defined}"
 save_var_subdirs="${save_var_subdirs:?--save_var_subdirs must be defined}"
+
+case "${rootfs}" in
+    xfs|ext4verity|luks) ;;
+    *) echo "Invalid rootfs type: ${rootfs}" 1>&2; exit 1;;
+esac
 
 set -x
 
@@ -133,7 +141,7 @@ esac
 udevtrig
 
 root_dev="${disk}${ROOTPN}"
-if [ -n "${luks_rootfs}"  ]; then
+if [ "${rootfs}" = "luks" ]; then
     root_dev=/dev/mapper/crypt_root
     sgdisk -c ${ROOTPN}:luks_root "${disk}"
 
@@ -176,13 +184,32 @@ if [ -n "${luks_rootfs}"  ]; then
     extrakargs="${extrakargs} rd.luks.options=discard"
 fi
 
-mkfs.ext4 "${disk}${BOOTPN}" -L boot
+bootargs=
+if [ "${boot_verity}" = 1 ]; then
+    # Need 4k blocks to match host page size; TODO
+    # really mkfs.ext4 should know this.  This is arch-dependent probably.
+    bootargs="-b 4096 -O verity"
+fi
+mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot
 if [ ${EFIPN:+x} ]; then
        mkfs.fat "${disk}${EFIPN}" -n EFI-SYSTEM
        # partition $BIOPN has no FS, its for bios grub
        # partition $PREPPN has no FS, its for PowerPC PReP Boot
 fi
-mkfs.xfs "${root_dev}" -L root -m reflink=1
+if [ "${rootfs}" = "ext4verity" ]; then
+    # As of today, xfs doesn't support verity, so we have a choice of fs-verity or reflinks.
+    # Now, fs-verity doesn't in practice gain us a huge amount of security because
+    # there are other "persistence vectors".  See
+    # https://blog.verbum.org/2017/06/12/on-dm-verity-and-operating-systems/
+    # https://github.com/coreos/rpm-ostree/issues/702
+    # And reflinks are *very* useful for the container stack with overlayfs (and in general).
+    # So basically, we're choosing performance over half-implemented security.
+    # Eventually, we'd like both - once XFS gains verity (probably not too hard),
+    # we could unconditionally enable it there.
+    mkfs.ext4 -O verity -L root "${root_dev}"
+else
+    mkfs.xfs "${root_dev}" -L root -m reflink=1
+fi
 
 rootfs=$PWD/tmp/rootfs
 
@@ -211,6 +238,9 @@ mkdir -p $rootfs/ostree
 chcon $(matchpathcon -n /ostree) $rootfs/ostree
 mkdir -p $rootfs/ostree/{repo,deploy}
 ostree --repo=$rootfs/ostree/repo init --mode=bare
+if [ "${rootfs}" = "ext4verity" ]; then
+    ostree config --repo=$rootfs/ostree/repo set fsverity.required 'true'
+fi
 remote_arg=
 deploy_ref="${ref}"
 if [ "${remote_name}" != NONE ]; then

@@ -166,6 +166,27 @@ else
     rootfs_size="${rootfs_size}M"
 fi
 
+disk_args=()
+
+set -x
+# Extract the target kernel config, which may inform how we build disks.
+target_moduledir=$(ostree --repo="${tmprepo}" ls "${commit}" /usr/lib/modules | grep -o '/usr/lib/modules/.*')
+ostree --repo="${tmprepo}" cat "${commit}" "${target_moduledir}/config" > tmp/target-kernel.config
+# Part of: https://github.com/ostreedev/ostree/pull/1959
+# We need to support kernels that don't have this enabled yet, including RHEL8
+# and current Fedora 31.
+# https://bugzilla.redhat.com/show_bug.cgi?id=1765933
+# We unconditonally enable fs-verity for /boot if we have it,
+# because...integrity there is useful a bit and it will help
+# us prove this out even if we're not using it for the rootfs.
+if grep -Eq '^CONFIG_FS_VERITY=y' tmp/target-kernel.config; then
+    disk_args+=("--boot-verity")
+else
+    echo 'NOTE: Missing CONFIG_FS_VERITY from target kernel config'
+    sleep 1
+fi
+rm tmp/target-kernel.config
+
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # On each s390x hypervisor, a tty would be automatically detected by the kernel
@@ -178,7 +199,11 @@ kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
-luks_flag="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("--luks-rootfs" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
+# First parse the old luks_rootfs flag
+rootfs_type="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("luks" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
+if [ -z "${rootfs_type}" ]; then
+    rootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("rootfs", "xfs"))' < "$configdir/image.yaml")"
+fi
 
 qemu-img create -f ${image_format} "${path}.tmp" "${image_size}"
 # We support deploying a commit directly instead of a ref
@@ -205,7 +230,8 @@ runvm "${target_drive[@]}" -- \
             --ostree-repo "${ostree_repo}" \
             --save-var-subdirs "${save_var_subdirs}" \
             --rootfs-size "${rootfs_size}" \
-            "${luks_flag}"
+            --rootfs "${rootfs_type}" \
+            "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
 echo "{}" > tmp/vm-iso-checksum.json
 
