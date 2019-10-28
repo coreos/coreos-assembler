@@ -25,6 +25,7 @@ SSH_ATTACH=
 SSH_PORT=${SSH_PORT:-}
 SSH_CONFIG=
 UEFI=0
+SWTPM=1
 BOOT_INJECT=0
 SECURE=0
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
@@ -44,6 +45,7 @@ Options:
     -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
+    --no-swtpm            Don't create a temporary software TPM
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
 it will auto-log you into the console, and by default for read-only disk
@@ -105,6 +107,9 @@ while [ $# -ge 1 ]; do
             shift ;;
         --uefi-secure)
             SECURE=1
+            shift ;;
+        --no-swtpm)
+            SWTPM=0
             shift ;;
         -B|--boot-inject)
             BOOT_INJECT=1
@@ -393,6 +398,21 @@ set -- -name coreos -m "${VM_MEMORY}" -nographic \
               -device virtio-net-"${devtype}",netdev=eth0 \
               -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
               "$@"
+
+# We want to strongly emphasize use of TPM devices in CoreOS, so let's provision
+# one by default.  This would be nicer if we didn't need to pass a persistent
+# state directory to swtpm, and we could more conveniently "lifecycle bind"
+# the swtpm and qemu processes.
+if [ "${SWTPM}" = 1 ] && [ -x /usr/bin/swtpm ]; then
+    tpm_dir=$(mktemp -d -t cosa-tpmstate.XXXXXX)
+    setpriv --pdeathsig SIGTERM -- swtpm socket \
+        --terminate \
+        --tpmstate dir="${tpm_dir}" --tpm2 \
+        --ctrl type=unixio,path="${tpm_dir}/swtpm-sock" &
+    set -- -chardev socket,id=chrtpm,path="${tpm_dir}/swtpm-sock" \
+           -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0 "$@"
+    trap 'rm -rf ${tpm_dir}' EXIT
+fi
 
 if [ -z "${SSH_ATTACH}" ]; then
     # shellcheck disable=SC2086
