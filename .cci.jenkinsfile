@@ -24,7 +24,7 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:30', privileged: true, kvm
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
               cosa_cmd("build")
-              cosa_cmd("kola run")
+              cosa_cmd("kola run fcos.basic")
               // sanity check kola actually ran and dumped its output in tmp/
               coreos.shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
