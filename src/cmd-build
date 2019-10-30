@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--force-image] [--skip-prune] [--version VERSION] [TARGET...]
+       coreos-assembler build [--force] [--force-image] [--skip-prune] [--tag TAG] [--version VERSION] [TARGET...]
 
   Build OSTree and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
@@ -28,8 +28,9 @@ FORCE_IMAGE=
 SKIP_PRUNE=0
 VERSION=
 PARENT=
+TAG=
 rc=0
-options=$(getopt --options hf --longoptions help,force,version:,parent:,force-nocache,force-image,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -57,6 +58,10 @@ while true; do
         --parent)
             shift
             PARENT=$1
+            ;;
+        -t | --tag)
+            shift
+            TAG=$1
             ;;
         --)
             shift
@@ -414,6 +419,12 @@ else
     "${dn}"/prune_builds --workdir "${workdir}"
 fi
 rm builds/.build-commit
+
+if [ -n "${TAG}" ]; then
+    # ideally, we'd do this atomically before moving to builds/latest, but
+    # meh... not much can go wrong with `cosa tag`
+    /usr/lib/coreos-assembler/cmd-tag update --build "${buildid}" --tag "${TAG}"
+fi
 
 # and finally, build the specified targets
 build_followup_targets
