@@ -197,6 +197,7 @@ fi
 # Initialize the ostree setup; TODO replace this with
 # https://github.com/ostreedev/ostree/pull/1894
 # `ostree admin init-fs --modern`
+ostree_commit=$(ostree --repo="${ostree}" rev-parse "${ref}")
 mkdir -p rootfs/ostree
 chcon $(matchpathcon -n /ostree) rootfs/ostree
 mkdir -p rootfs/ostree/{repo,deploy}
@@ -219,6 +220,9 @@ do
 done
 ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
 
+deploy_root="rootfs/ostree/deploy/${os_name}/deploy/${ostree_commit}.0"
+test -d "${deploy_root}"
+
 # This will allow us to track the version that an install
 # originally used; if we later need to understand something
 # like "exactly what mkfs.xfs version was used" we can do
@@ -234,7 +238,6 @@ ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
 #                convenient to have here as a strong cross-reference.
 # imgid:         The full image name, the same as will end up in the
 #                `images` dict in `meta.json`.
-ostree_commit=$(ostree --repo="${ostree}" rev-parse "${ref}")
 cat > rootfs/.coreos-aleph-version.json << EOF
 {
 	"build": "${buildid}",
@@ -259,19 +262,26 @@ bootloader_backend=none
 
 # Helper to install UEFI on supported architectures
 install_uefi() {
-    mkdir -p rootfs/boot/efi/EFI/{BOOT,fedora}
-    mkdir -p rootfs/boot/grub2
-    ext="X64"
-    if [ "${arch}" = aarch64 ]; then
-        ext="AA64"
-    fi
-	cp "/boot/efi/EFI/BOOT/BOOT${ext}.EFI" "rootfs/boot/efi/EFI/BOOT/BOOT${ext}.EFI"
-	cp "/boot/efi/EFI/fedora/grub${ext,,}.efi" "rootfs/boot/efi/EFI/BOOT/grub${ext,,}.efi"
-	cat > rootfs/boot/efi/EFI/fedora/grub.cfg << 'EOF'
+    # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
+    # In the future it'd be better to get this stuff out of the OSTree commit and
+    # change our build process to download+extract it separately.
+    local source_efidir="${deploy_root}/usr/lib/ostree-boot/efi"
+    local target_efi="rootfs/boot/efi"
+    local target_efiboot="${target_efi}/EFI/BOOT"
+    mkdir -p "${target_efiboot}"
+    cp -a --reflink=auto "${source_efidir}/EFI/BOOT/BOOT"* "${target_efiboot}"
+    local src_grubefi=$(find "${source_efidir}"/EFI/ -name 'grub*.efi')
+    cp -a --reflink=auto "${src_grubefi}" "${target_efiboot}"
+
+    local vendor_id="$(basename $(dirname ${src_grubefi}))"
+    local vendordir="${target_efi}/EFI/${vendor_id}"
+    mkdir -p "${vendordir}"
+	cat > ${vendordir}/grub.cfg << 'EOF'
 search --label boot --set prefix
 set prefix=($prefix)/grub2
 normal
 EOF
+    mkdir -p rootfs/boot/grub2
     # copy the grub config and any other files we might need
     cp $grub_script rootfs/boot/grub2/grub.cfg
 }
