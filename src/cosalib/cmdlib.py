@@ -23,7 +23,7 @@ from tenacity import (
 gi.require_version("RpmOstree", "1.0")
 from gi.repository import RpmOstree
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
 retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
@@ -204,3 +204,33 @@ def get_basearch():
     except AttributeError:
         get_basearch.saved = RpmOstree.get_basearch()
         return get_basearch.saved
+
+
+def parse_date_string(date_string):
+    """
+    Parses the date strings expected from the build system. Returned
+    datetime instances will be in utc.
+    :param date_string: string to turn into date. Format: %Y-%m-%dT%H:%M:%SZ
+    :type date_string: str
+    :returns: datetime instance from the date string
+    :rtype: datetime.datetime
+    :raises: ValueError, TypeError
+    """
+    dt = datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%SZ')
+    return dt.replace(tzinfo=timezone.utc)
+
+
+def get_timestamp(entry):
+
+    # ignore dirs missing meta.json
+    meta_file = os.path.join(entry.path, 'meta.json')
+    if not os.path.isfile(meta_file):
+        print(f"Ignoring directory {entry.name}")
+        return None
+
+    # collect dirs and timestamps
+    with open(meta_file) as f:
+        j = json.load(f)
+    # Older versions only had ostree-timestamp
+    ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
+    return parse_date_string(ts)

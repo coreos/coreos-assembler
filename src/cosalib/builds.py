@@ -6,6 +6,7 @@ import json
 import os
 import semver
 import gi
+import collections
 
 gi.require_version('OSTree', '1.0')
 from gi.repository import Gio, OSTree
@@ -13,8 +14,11 @@ from gi.repository import Gio, OSTree
 from cosalib.cmdlib import (
     get_basearch,
     rfc3339_time,
+    get_timestamp,
     load_json,
     write_json)
+
+Build = collections.namedtuple('Build', ['id', 'timestamp', 'basearches'])
 
 BUILDFILES = {
     # The list of builds.
@@ -139,3 +143,38 @@ class Builds:  # pragma: nocover
 
     def flush(self):
         write_json(self._fn, self._data)
+
+
+def get_local_builds(builds_dir):
+    scanned_builds = []
+    with os.scandir(builds_dir) as it:
+        for entry in it:
+            # ignore non-dirs
+            if not entry.is_dir(follow_symlinks=False):
+                # those are really the only two non-dir things we expect there
+                if entry.name not in ['builds.json', 'latest']:
+                    print(f"Ignoring non-directory {entry.path}")
+                continue
+
+            # scan all per-arch builds, pick up the most recent build of those as
+            # the overall "build" timestamp for pruning purposes
+            with os.scandir(entry.path) as basearch_it:
+                multiarch_build = None
+                for basearch_entry in basearch_it:
+                    # ignore non-dirs
+                    if not basearch_entry.is_dir(follow_symlinks=False):
+                        print(f"Ignoring non-directory {basearch_entry.path}")
+                        continue
+                    ts = get_timestamp(basearch_entry)
+                    if not ts:
+                        continue
+                    if not multiarch_build:
+                        multiarch_build = Build(id=entry.name, timestamp=ts,
+                                                basearches=[basearch_entry.name])
+                    else:
+                        multiarch_build.basearches += [basearch_entry.name]
+                        multiarch_build.timestamp = max(
+                            multiarch_build.timestamp, ts)
+                if multiarch_build:
+                    scanned_builds.append(multiarch_build)
+    return scanned_builds

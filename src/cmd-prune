@@ -1,78 +1,114 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/python3 -u
 
-# This is just a thin wrapper around prune_builds. That way we still get the
-# preflight checks to make sure the workdir looks sane.
+'''
+    This script removes previous builds. DO NOT USE on production pipelines
+'''
 
-dn=$(dirname "$0")
-# shellcheck source=src/cmdlib.sh
-. "${dn}"/cmdlib.sh
+import argparse
+import os
+import sys
 
-print_help() {
-    cat 1>&2 <<'EOF'
-Usage: coreos-assembler prune --help
-       coreos-assembler prune [--keep=N] [--keep-last-days=N]
 
-  Delete older untagged build artifacts. By default, only the last 3 untagged
-  builds are kept.  This can be overridden with the `--keep` option.
-EOF
-}
+from datetime import timedelta, datetime, timezone
+from shutil import rmtree
 
-# Parse options
-KEEP_LAST_N=
-KEEP_LAST_DAYS=
-rc=0
-options=$(getopt --options h --longoptions help,keep:,keep-last-days: -- "$@") || rc=$?
-[ $rc -eq 0 ] || {
-    print_help
-    exit 1
-}
-eval set -- "$options"
-while true; do
-    case "$1" in
-        -h | --help)
-            print_help
-            exit 0
-            ;;
-        --keep)
-            shift
-            KEEP_LAST_N="$1"
-            ;;
-        --keep-last-days)
-            shift
-            KEEP_LAST_DAYS="$1"
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            fatal "$0: unrecognized option: $1"
-            exit 1
-            ;;
-    esac
-    shift
-done
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.builds import Builds, get_local_builds
 
-if [ $# -ne 0 ]; then
-    print_help
-    fatal "ERROR: Too many arguments"
-    exit 1
-fi
+# Let's just hardcode this here for now
+DEFAULT_KEEP_LAST_N = 3
+DEFAULT_KEEP_LAST_DAYS = 7
 
-# just support one of the two for now
-if [ -n "${KEEP_LAST_N:-}" ] && [ -n "${KEEP_LAST_DAYS:-}" ]; then
-    fatal "ERROR: Only one of --keep or --keep-last-days allowed"
-elif [ -z "${KEEP_LAST_N:-}" ] && [ -z "${KEEP_LAST_DAYS:-}" ]; then
-    KEEP_LAST_N=3
-fi
 
-if [ -n "${KEEP_LAST_DAYS:-}" ]; then
-    set -- --keep-last-days "${KEEP_LAST_DAYS}"
-else
-    set -- --keep-last-n "${KEEP_LAST_N}"
-fi
+parser = argparse.ArgumentParser(prog="coreos-assembler prune")
+parser.add_argument("--workdir", default='.', help="Path to workdir")
+parser.add_argument("--dry-run", help="Don't actually delete anything",
+                    action='store_true')
+keep_options = parser.add_mutually_exclusive_group()
+keep_options.add_argument("--keep-last-n", type=int, metavar="N",
+                          default=DEFAULT_KEEP_LAST_N,
+                          help="Number of untagged builds to keep (0 for all)")
+keep_options.add_argument("--keep-last-days", metavar="N", type=int,
+                          default=DEFAULT_KEEP_LAST_DAYS,
+                          help="Keep untagged builds within number of days")
+args = parser.parse_args()
 
-prepare_build
+keep_younger_than = None
+if args.keep_last_days != DEFAULT_KEEP_LAST_DAYS:
+    if args.keep_last_days <= 0:
+        raise argparse.ArgumentTypeError("value must be positive: %d" %
+                                         args.keep_last_days)
+    keep_younger_than = (datetime.now(timezone.utc) -
+                         timedelta(days=args.keep_last_days))
 
-"${dn}"/prune_builds --workdir "${workdir:?}" "$@"
+skip_pruning = (not keep_younger_than and args.keep_last_n == 0)
+
+builds = Builds(args.workdir)
+# collect all builds being pointed to by tags
+tagged_builds = set([tag['target'] for tag in builds.raw().get('tags', [])])
+
+builds_dir = os.path.join(args.workdir, "builds")
+scanned_builds = get_local_builds(builds_dir)
+
+# sort by timestamp, newest first
+scanned_builds = sorted(scanned_builds,
+                        key=lambda x: x.timestamp,
+                        reverse=True)
+
+new_builds = []
+builds_to_delete = []
+
+# Don't prune known builds
+if skip_pruning:
+    new_builds = scanned_builds
+else:
+    if keep_younger_than:
+        for build in scanned_builds:
+            if build.id in tagged_builds:
+                print(f"Skipping tagged build {build.id}")
+                new_builds.append(build)
+                continue
+
+            if build.timestamp < keep_younger_than:
+                builds_to_delete.append(build)
+            else:
+                new_builds.append(build)
+    else:
+        n = args.keep_last_n
+        assert(n > 0)
+        for build in scanned_builds:
+            if n == 0:
+                builds_to_delete.append(build)
+            else:
+                new_builds.append(build)
+                n = n - 1
+
+print(f"prune: new builds: {new_builds}")
+
+if args.dry_run:
+    print(f"prune: not removing any builds")
+    sys.exit(0)
+
+# create a new builds list
+builds.raw()['builds'] = []
+for build in reversed(new_builds):
+    for arch in build.basearches:
+        builds.insert_build(build.id, arch)
+
+builds.bump_timestamp()
+
+buildids = [x.id for x in builds_to_delete]
+print(f"prune: removing {' '.join(buildids)}")
+
+# now delete other build dirs not in the manifest
+error_during_pruning = False
+for build in builds_to_delete:
+    print(f"Pruning {build}")
+    try:
+        rmtree(os.path.join(builds_dir, build.id))
+    except Exception as e:
+        error_during_pruning = True
+        print(f"{e}")
+
+if error_during_pruning:
+    sys.exit(1)

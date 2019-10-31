@@ -409,14 +409,11 @@ mkdir -p "${builddir}"
 mv -T "${tmp_builddir}" "${builddir}"
 # Replace the latest link
 ln -Tsf "${buildid}" builds/latest
-# Update builds.json
-# the variables passed to `prune_builds` end up single quoted and
-# python treats them as literals, so we workaround this by duplicating
-# the command  ¯\_(ツ)_/¯
+
 if [ "${SKIP_PRUNE}" == 1 ]; then
-    "${dn}"/prune_builds --workdir "${workdir}" --insert-only "${buildid}"
+  insert_build "${buildid}" "${workdir}"
 else
-    "${dn}"/prune_builds --workdir "${workdir}"
+  "${dn}"/cmd-prune --workdir "${workdir}"
 fi
 rm builds/.build-commit
 
