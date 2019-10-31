@@ -685,3 +685,16 @@ get_latest_qemu() {
         ls ${builddir}/*-qemu.qcow2*
     fi
 }
+
+insert_build() {
+    local buildid=$1; shift
+    local dir=$1; shift
+    (python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cosalib.builds import Builds
+builds = Builds('${workdir:-$(pwd)}')
+builds.insert_build('${buildid}')
+builds.bump_timestamp()
+print('Build ${buildid} was inserted')")
+}
