@@ -1,4 +1,4 @@
-@Library('github.com/jlebon/coreos-ci-lib@master') _
+@Library('github.com/coreos/coreos-ci-lib@master') _
 
 coreos.pod([image: 'registry.fedoraproject.org/fedora:30', privileged: true, kvm: true]) {
       checkout scm
