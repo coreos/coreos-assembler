@@ -1,6 +1,6 @@
 @Library('github.com/coreos/coreos-ci-lib@master') _
 
-coreos.pod([image: 'registry.fedoraproject.org/fedora:30', runAsUser: 0, kvm: true]) {
+coreos.pod([image: 'registry.fedoraproject.org/fedora:30', runAsUser: 0, kvm: true, memory: "9Gi"]) {
       checkout scm
 
       stage("Build") {
@@ -24,7 +24,7 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:30', runAsUser: 0, kvm: tr
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
               cosa_cmd("build")
-              cosa_cmd("kola run fcos.basic")
+              cosa_cmd("kola run -- --parallel 8")
               // sanity check kola actually ran and dumped its output in tmp/
               coreos.shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
