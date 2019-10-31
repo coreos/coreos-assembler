@@ -1,0 +1,55 @@
+#!/usr/bin/python3 -u
+
+'''
+    This script removes unreferenced builds from s3 bucket
+'''
+
+import argparse
+import sys
+
+from cosalib.builds import Builds
+from cosalib.prune import fetch_build_meta, get_unreferenced_s3_builds, delete_build
+
+parser = argparse.ArgumentParser(prog="coreos-assembler remote-prune")
+parser.add_argument("--workdir", default='.', help="Path to workdir")
+parser.add_argument("--dry-run", help="Don't actually delete anything",
+                    action='store_true')
+
+subparsers = parser.add_subparsers(dest='cmd', title='subcommands')
+subparsers.required = True
+
+s3 = subparsers.add_parser('s3', help='Prune s3 buckets')
+s3.add_argument("--bucket", help="Bucket name")
+s3.add_argument("--prefix", help="Key prefix")
+
+args = parser.parse_args()
+
+builds = Builds(args.workdir)
+
+scanned_builds = []
+for build in builds.raw()["builds"]:
+    for arch in build['arches']:
+        build = fetch_build_meta(build['id'], arch)
+        if build:
+            scanned_builds.append(build)
+
+new_builds = []
+builds_to_delete = []
+
+# Find unreferenced builds in the bucket and remove them
+buildids = [x['id'] for x in scanned_builds]
+unreferenced_s3_builds = get_unreferenced_s3_builds(buildids, args.bucket, args.prefix)
+
+error_during_pruning = False
+for unmatched_build_id in unreferenced_s3_builds:
+    # TODO: fetch arches from s3
+    build = fetch_build_meta(unmatched_build_id, 'x86_64')
+    if build and not args.dry_run:
+        try:
+            delete_build(build)
+        except Exception as e:
+            error_during_pruning = True
+            print(f"{e}")
+
+if error_during_pruning:
+    sys.exit(1)
