@@ -24,7 +24,7 @@ selinux-policy-targeted rpm-build
 make git rpm-build
 
 # virt dependencies
-libguestfs-tools /usr/bin/qemu-img qemu-kvm
+libguestfs-tools /usr/bin/qemu-img qemu-kvm swtpm
 
 # ostree-releng-scripts dependencies
 rsync
