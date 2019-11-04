@@ -192,6 +192,9 @@ prepare_build() {
         fatal "Failed to find ${manifest}"
     fi
 
+    if [ -d "${configdir}/.git" ]; then
+        (cd "${configdir}" && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
+    fi
     echo "Using manifest: ${manifest}"
 
     # Be nice to people who have older versions that

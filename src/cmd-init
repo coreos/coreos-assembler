@@ -103,6 +103,7 @@ mkdir -p src
                 mv config config-git
                 ln -sr config-git/"${subdir}" config
             fi
+            (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
      esac
      manifest=config/manifest.yaml
