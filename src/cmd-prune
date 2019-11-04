@@ -83,10 +83,8 @@ else:
                 new_builds.append(build)
                 n = n - 1
 
-print(f"prune: new builds: {new_builds}")
-
 if args.dry_run:
-    print(f"prune: not removing any builds")
+    print(f"Not pruning any builds: --dry-run specified")
     sys.exit(0)
 
 # create a new builds list
@@ -97,13 +95,10 @@ for build in reversed(new_builds):
 
 builds.bump_timestamp()
 
-buildids = [x.id for x in builds_to_delete]
-print(f"prune: removing {' '.join(buildids)}")
-
 # now delete other build dirs not in the manifest
 error_during_pruning = False
 for build in builds_to_delete:
-    print(f"Pruning {build}")
+    print(f"Pruning build {build.id}")
     try:
         rmtree(os.path.join(builds_dir, build.id))
     except Exception as e:
