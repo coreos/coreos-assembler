@@ -35,7 +35,12 @@ cp --reflink=auto "${src}" "${tmp_dest}"
 # <walters> I commonly chmod a-w VM images
 chmod u+w "${tmp_dest}"
 
-coreos_gf_run_mount "${tmp_dest}"
+# if our image is a DASD, we need to add blocksize:4096 to coreos_gf_run
+if ! grep -q -i dasd <<< "$dest"; then
+    coreos_gf_run_mount "${tmp_dest}"
+else
+    coreos_gf_run_mount "${tmp_dest}" "blocksize:4096"
+fi
 
 # Inject PLATFORM label in all relevant places:
 # * grub config

@@ -40,7 +40,7 @@ parser.add_argument("--create-disk", help="Automatically create disk as qcow2, p
 parser.add_argument("--configdir", help="coreos-assembler configdir",
                     action='store', required=True)
 parser.add_argument("--variant", help="Configure image variant",
-                    choices=('metal-bios', 'metal-uefi', 'cloud'), default=None)
+                    choices=('metal-bios', 'metal-uefi', 'metal-dasd', 'cloud'), default=None)
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
                     action='store')
 parser.add_argument("--location", help="Installer location",
@@ -123,7 +123,12 @@ with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
     if platform.machine() == "s390x":
         # no grub for s390x, so gf-platform-id won't work. need to add it here
         if args.create_disk and args.variant.startswith('metal-'):
-            extra_kargs.append("ignition.firstboot rd.neednet=1 ip=dhcp ignition.platform.id=metal")
+            # Firstboot parameters put here would be inherited to BLS files later, not some thing we want
+            # rd.neednet=1 would be provided in rhcos-config/installer/zipl.prm
+            # ignition.firstboot would be provided in coreos-installer
+            # ip=dhcp or ip=<static-ip> must be entered by user when installing with coreos-installer.
+            # This is to allow s390x users who want to use static IP assignment.
+            extra_kargs.append("ignition.platform.id=metal")
         else:
             extra_kargs.append("ignition.firstboot rd.neednet=1 ip=dhcp ignition.platform.id=qemu")
         buf = buf.replace('%%DISKLABEL%%','')
@@ -305,6 +310,9 @@ try:
         else:
             raise SystemExit("Unknown machine architecture "+arch+" can't determine the kernel and initrd location")
 
+    dest_disk = "--disk=path={},cache=unsafe".format(args.dest)
+    if args.variant == 'metal-dasd':
+        dest_disk += ",physical_block_size=4096,logical_block_size=4096"
     vinstall_args.extend(["--wait={}".format(args.wait), "--noreboot", "--nographics",
                           "--memory={}".format(args.memory), get_libvirt_smp_arg(),
                           "--os-variant=rhel7.6", "--rng=/dev/urandom",
@@ -312,7 +320,7 @@ try:
                           "--check", "path_in_use=off",
                           "--network=user",  # user mode networking
                           location_arg,
-                          "--disk=path={},cache=unsafe".format(args.dest),
+                          "{}".format(dest_disk),
                           "--initrd-inject={}".format(ks_tmp.name),
                           "--extra-args", "ks=file://{} console=tty0 console={},115200n8 inst.cmdline inst.notmux".format(os.path.basename(ks_tmp.name),os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))])
     if args.variant == 'metal-uefi':
@@ -324,6 +332,8 @@ try:
     cleanup_argv = ['/usr/lib/coreos-assembler/gf-anaconda-cleanup', args.dest]
     if image_conf.get('save-var-subdirs-for-selabel-workaround'):
         cleanup_argv += ['--save-var-subdirs-for-selabel-workaround']
+    if args.variant == 'metal-dasd':
+        cleanup_argv += ['--blocksize', '4096']
     run_sync_verbose(cleanup_argv)
 
     # This one is part of the "API" we provide to config repositories.  At least
