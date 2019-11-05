@@ -9,11 +9,13 @@ dn=$(dirname "$0")
 . "${dn}"/libguestfish.sh
 
 SAVE_VAR=
-options=$(getopt --options '' --longoptions save-var-subdirs-for-selabel-workaround -- "$@")
+BLOCK_SIZE=
+options=$(getopt --options '' --longoptions save-var-subdirs-for-selabel-workaround --longoptions blocksize: -- "$@")
 eval set -- "$options"
 while true; do
     case "$1" in
         --save-var-subdirs-for-selabel-workaround) SAVE_VAR=1;;
+        --blocksize) BLOCK_SIZE="$2";;
         --) shift; break;;
     esac
     shift
@@ -23,7 +25,11 @@ src="$1"
 shift
 
 set -x
-coreos_gf_run "${src}"
+if [ -z "$BLOCK_SIZE" ]; then
+    coreos_gf_run "${src}"
+else
+    coreos_gf_run "${src}" "blocksize:$BLOCK_SIZE"
+fi
 # We don't have a way to do this with Anaconda/kickstart right now.
 # This bootstraps us to be able to do all of the mounts.
 if [ "$arch" != "s390x" ]; then

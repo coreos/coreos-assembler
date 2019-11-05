@@ -41,7 +41,12 @@ coreos_gf_run() {
         return
     fi
     coreos_gf_launch "$@"
-    coreos_gf run
+    # passing an empty string to guestfish's run command does not work
+    if ! grep -q -o 'blocksize:[^ :]*' <<< "$@"; then
+        coreos_gf run
+    else
+        coreos_gf run "$(grep -o 'blocksize:[^ :]*' <<< "$@")"
+    fi
     GUESTFISH_RUNNING=1
 }
 
