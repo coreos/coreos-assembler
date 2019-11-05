@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import platform
+import struct
 import shutil
 import sys
 import tarfile
@@ -67,6 +68,10 @@ os.mkdir(tmpisoisolinux)
 
 def generate_iso():
     arch = platform.machine()
+    # convention for kernel and initramfs names
+    kernel_img = 'vmlinuz'
+    initramfs_img = 'initramfs.img'
+
     tmpisofile = os.path.join(tmpdir, iso_name)
 
     # Find the directory under `/usr/lib/modules/<kver>` where the
@@ -78,7 +83,7 @@ def generate_iso():
     moduledir = process.stdout.decode().split('\0')[1]
 
     # copy those files out of the ostree into the iso root dir
-    for file in ['initramfs.img', 'vmlinuz']:
+    for file in [kernel_img, initramfs_img]:
         run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
                      f"{buildmeta_commit}", tmpisoimages])
@@ -124,17 +129,47 @@ def generate_iso():
         genisoargs += ['-r', '-l', '-sysid', 'PPC',
                        '-chrp-boot', '-graft-points']
     elif arch == "s390x":
+        INITRD_ADDRESS = '0x02000000'
+        lorax_templates = '/usr/share/lorax/templates.d/99-generic/config_files/s390'
+        shutil.copy(os.path.join(lorax_templates, 'redhat.exec'), tmpisoimages)
+        with open(os.path.join(lorax_templates, 'generic.ins'), 'r') as fp1:
+            with open(os.path.join(tmpisoroot, 'generic.ins'), 'w') as fp2:
+                [fp2.write(line.replace('@INITRD_LOAD_ADDRESS@', INITRD_ADDRESS)) for line in fp1]
+        for prmfile in ['cdboot.prm', 'genericdvd.prm', 'generic.prm']:
+            with open(os.path.join(tmpisoimages, prmfile), 'w') as fp1:
+                line1 = 'cio_ignore=all,!condev rd.cmdline=ask'
+                with open(os.path.join(tmpisoroot, 'zipl.prm'), 'r') as fp2:
+                    line1 += ' ' + ' '.join([line2.strip('\n') for line2 in fp2])
+                fp1.write(line1)
+
+        # s390x's z/VM CMS files are limited to 8 char for filenames and extensions
+        # Also it is nice to keep naming convetion with Fedora/RHEL for existing users and code
+        shutil.move(os.path.join(tmpisoimages, kernel_img), os.path.join(tmpisoimages, 'kernel.img'))
+        shutil.move(os.path.join(tmpisoimages, initramfs_img), os.path.join(tmpisoimages, 'initrd.img'))
+        kernel_img = 'kernel.img'
+        initramfs_img = 'initrd.img'
+
         # combine kernel, initramfs and cmdline using lorax/mk-s390-cdboot tool
         run_verbose(['/usr/bin/mk-s390-cdboot',
-                     '-i', os.path.join(tmpisoimages, 'vmlinuz'),
-                     '-r', os.path.join(tmpisoimages, 'initramfs.img'),
-                     '-p', os.path.join(tmpisoroot, 'zipl.prm'),
-                     '-o', os.path.join(tmpisoimages, 'fcos.img')])
+                     '-i', os.path.join(tmpisoimages, kernel_img),
+                     '-r', os.path.join(tmpisoimages, initramfs_img),
+                     '-p', os.path.join(tmpisoimages, 'cdboot.prm'),
+                     '-o', os.path.join(tmpisoimages, 'cdboot.img')])
+        # generate .addrsize file for LPAR
+        with open(os.path.join(tmpisoimages, 'initrd.addrsize'), 'wb') as addrsize:
+            addrsize_data = struct.pack(">iiii", 0, int(INITRD_ADDRESS, 16), 0,
+                                        os.stat(os.path.join(tmpisoimages, initramfs_img)).st_size)
+            addrsize.write(addrsize_data)
+
+        # safely remove things we don't need in the final ISO tree
+        for d in ['EFI', 'isolinux', 'zipl.prm']:
+            run_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
+
         genisoargs = ['/usr/bin/xorrisofs', '-verbose',
                       '-volset', f"{name_version}",
-                      '-rock', '-J', '-joliet-long',
+                      '-rational-rock', '-J', '-joliet-long',
                       '-no-emul-boot', '-eltorito-boot',
-                      os.path.join(os.path.relpath(tmpisoimages, tmpisoroot), 'fcos.img')]
+                      os.path.join(os.path.relpath(tmpisoimages, tmpisoroot), 'cdboot.img')]
 
     ### For x86_64 and aarch64 UEFI booting
     if arch in ("x86_64", "aarch64"):
@@ -203,8 +238,8 @@ def generate_iso():
     initramfs_name = f'{base_name}-{args.build}-installer-initramfs.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
-    shutil.copyfile(os.path.join(tmpisoimages, "vmlinuz"), kernel_file)
-    shutil.copyfile(os.path.join(tmpisoimages, "initramfs.img"), initramfs_file)
+    shutil.copyfile(os.path.join(tmpisoimages, kernel_img), kernel_file)
+    shutil.copyfile(os.path.join(tmpisoimages, initramfs_img), initramfs_file)
 
     kernel_checksum = sha256sum_file(kernel_file)
     initramfs_checksum = sha256sum_file(initramfs_file)
