@@ -43,6 +43,7 @@ def get_unreferenced_s3_builds(active_build_set, bucket, prefix):
 
 
 def fetch_build_meta(builds, buildid, arch, bucket, prefix):
+    print(f"Looking for meta.json for '{buildid}'")
     build_dir = builds.get_build_dir(buildid, arch)
 
     # Fetch missing meta.json paths
@@ -50,10 +51,11 @@ def fetch_build_meta(builds, buildid, arch, bucket, prefix):
     if not os.path.exists(meta_json_path):
         # Fetch it from s3
         os.makedirs(build_dir, exist_ok=True)
-        s3_key = f"{prefix}{buildid}/{arch}/meta.json"
+        s3_key = f"{prefix}/{buildid}/{arch}/meta.json"
+        print(f"Fetching meta.json for '{buildid}' from s3://{bucket}/{prefix} to {meta_json_path}")
         head_result = head_object(bucket, s3_key)
-        print(f"{s3_key}: {head_result}")
         if head_result:
+            print(f"Found s3 key at {s3_key}")
             download_file(bucket, s3_key, meta_json_path)
         else:
             print(f"Failed to find object at {s3_key}")
