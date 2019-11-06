@@ -132,6 +132,10 @@ with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
         else:
             extra_kargs.append("ignition.firstboot rd.neednet=1 ip=dhcp ignition.platform.id=qemu")
         buf = buf.replace('%%DISKLABEL%%','')
+        # set the bootloader backend to zipl
+        buf += ("\n%post --nochroot --erroronfail\n" +
+                "ostree config --repo /mnt/sysimage/ostree/repo set sysroot.bootloader zipl\n" +
+                "%end\n")
     else:
         buf = buf.replace('%%DISKLABEL%%',' --disklabel=gpt')
     buf = buf.replace('%%KARGS%%', ' '.join(extra_kargs))
