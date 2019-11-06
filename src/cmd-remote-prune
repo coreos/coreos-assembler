@@ -29,7 +29,7 @@ builds = Builds(args.workdir)
 scanned_builds = []
 for build in builds.raw()["builds"]:
     for arch in build['arches']:
-        build = fetch_build_meta(build['id'], arch)
+        build = fetch_build_meta(builds, build['id'], arch, args.bucket, args.prefix)
         if build:
             scanned_builds.append(build)
 
@@ -37,16 +37,22 @@ new_builds = []
 builds_to_delete = []
 
 # Find unreferenced builds in the bucket and remove them
-buildids = [x['id'] for x in scanned_builds]
+buildids = [x.id for x in scanned_builds]
 unreferenced_s3_builds = get_unreferenced_s3_builds(buildids, args.bucket, args.prefix)
+
+if args.dry_run:
+    print("Not removing anything: in dry-run mode")
+    sys.exit(0)
 
 error_during_pruning = False
 for unmatched_build_id in unreferenced_s3_builds:
     # TODO: fetch arches from s3
-    build = fetch_build_meta(unmatched_build_id, 'x86_64')
-    if build and not args.dry_run:
+    if not unmatched_build_id:
+        continue
+    build = fetch_build_meta(builds, unmatched_build_id, 'x86_64', args.bucket, args.prefix)
+    if build:
         try:
-            delete_build(build)
+            delete_build(build, args.bucket, args.prefix)
         except Exception as e:
             error_during_pruning = True
             print(f"{e}")
