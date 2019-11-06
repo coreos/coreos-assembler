@@ -24,12 +24,13 @@ def get_unreferenced_s3_builds(active_build_set, bucket, prefix):
     :param active_build_set: list of known builds
     :type active_build_set: list
     """
-    s3_prefixes = list_objects(bucket, prefix, result_key='CommonPrefixes')
+    print(f"Looking for unreferenced builds in s3://{bucket}/{prefix}")
+    s3_subdirs = list_objects(bucket, f"{prefix}/", result_key='CommonPrefixes')
     s3_matched = set()
     s3_unmatched = set()
-    for prefix in s3_prefixes:
-        prefix = prefix['Prefix']
-        buildid = prefix.replace(prefix, '').rstrip("/")
+    for prefixKey in s3_subdirs:
+        subdir = prefixKey['Prefix']
+        buildid = subdir.replace(prefix, '').strip("/")
         if buildid not in active_build_set:
             s3_unmatched.add(buildid)
         else:
@@ -37,6 +38,7 @@ def get_unreferenced_s3_builds(active_build_set, bucket, prefix):
     for buildid in active_build_set:
         if buildid not in s3_matched:
             print(f"WARNING: Failed to find build in S3: {buildid}")
+    print(f"Found {len(s3_unmatched)} builds")
     return s3_unmatched
 
 
