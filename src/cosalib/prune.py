@@ -78,15 +78,28 @@ def fetch_build_meta(builds, buildid, arch, bucket, prefix):
 
 
 def delete_build(build, bucket, prefix):
+    errors = []
     # Unregister AMIs and snapshots
     for ami in build.images['amis']:
         region_name = ami.get('name')
         ami_id = ami.get('hvm')
         snapshot_id = ami.get('snapshot')
         if ami_id and region_name:
-            deregister_ami(ami_id, region=region_name)
+            try:
+                deregister_ami(ami_id, region=region_name)
+            except Exception as e:
+                errors.append(e)
         if snapshot_id and region_name:
-            delete_snapshot(snapshot_id, region=region_name)
+            try:
+                delete_snapshot(snapshot_id, region=region_name)
+            except Exception as e:
+                errors.append(e)
+
+    if len(errors) != 0:
+        print(f"Found errors when removing build {build}:")
+        for e in errors:
+            print(e)
+        raise Exception()
 
     # Delete s3 bucket
     print(f"Deleting key {prefix}{build.id} from bucket {bucket}")
