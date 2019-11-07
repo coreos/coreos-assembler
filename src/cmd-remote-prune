@@ -47,8 +47,6 @@ if args.dry_run:
 error_during_pruning = False
 for unmatched_build_id in unreferenced_s3_builds:
     # TODO: fetch arches from s3
-    if not unmatched_build_id:
-        continue
     build = fetch_build_meta(builds, unmatched_build_id, 'x86_64', args.bucket, args.prefix)
     if build:
         try:
