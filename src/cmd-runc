@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Spawn the current build as a container.  This can be
+# very useful for "let me see the filesystem layout"
+# type things or `rpm -q`, however note today that the
+# /var/lib/rpm -> /usr/share/rpm symlink is made by systemd-tmpfiles,
+# so you'll currently need to do `rpm --dbpath=/usr/share/rpm -q kernel`
+# for example.
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+if ! has_privileges; then
+    # See https://github.com/kubernetes/enhancements/issues/127
+    # but even then what we really want in a pipeline is probably
+    # more to make a real container image and schedule it as
+    # a separate pod.
+    fatal "Must have privileges currently"
+fi
+
+BUILDID=latest
+if ! [ -d "builds/${BUILDID}" ]; then
+    die "No builds/${BUILDID}"
+fi
+builddir=$(get_build_dir "${BUILDID}")
+
+commit=$(jq -r '.["ostree-commit"]' < "${builddir}/meta.json")
+
+tmproot=tmp/run-bwrap
+tmprootcommit=tmp/run-bwrap/.commit
+if ! [ -f "${tmprootcommit}" ] || ! [ "$(cat ${tmprootcommit})" = "${commit}" ]; then
+    echo "Checking out ${commit}"
+    sudo rm "${tmproot}" -rf
+    sudo ostree --repo=cache/repo-build checkout -UH "${commit}" "${tmproot}"
+    echo "${commit}" | sudo tee "${tmprootcommit}"
+fi
+cd "${tmproot}"
+if [ "$#" = "0" ]; then
+    set -- bash
+fi
+set -x
+exec bwrap --unshare-all --dev /dev --proc /proc --chdir / \
+      --ro-bind usr /usr --ro-bind usr/etc /etc --dir /tmp \
+      --ro-bind / /host \
+      --tmpfs /var/tmp --tmpfs /run \
+      --symlink usr/lib /lib \
+      --symlink usr/lib64 /lib64 \
+      --symlink usr/bin /bin \
+      --symlink usr/sbin /sbin -- "$@"
