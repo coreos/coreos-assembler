@@ -72,6 +72,12 @@ if [ -z "${BIOS}" ] && [ -z "${UEFI}" ] && [ -z "${DASD}" ]; then
     UEFI=1
 fi
 
+if [ -n "${UEFI}" ] && [ "${arch}" = "s390x" ]; then
+    fatal "${arch} is not supported for building UEFI image"
+elif [ -n "${DASD}" ] && [ "${arch}" != "s390x" ]; then
+    fatal "${arch} is not supported for building DASD image"
+fi
+
 export LIBGUESTFS_BACKEND=direct
 
 prepare_build
