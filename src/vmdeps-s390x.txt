@@ -1,1 +1,1 @@
-s390utils-base haveged
+s390utils-base
