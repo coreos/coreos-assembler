@@ -16,6 +16,7 @@ dn=$(dirname "$0")
 BUILDID=latest
 IMAGE_TYPE=qemu
 VM_DISK=
+DISK_CHANNEL=virtio
 VM_MEMORY=2048
 VM_DISKSIZE=
 VM_PERSIST_IMG=
@@ -33,6 +34,7 @@ Options:
     -b --buildid          Target buildid (default latest)
     -I --imgtype          Target image type (qemu, metal, etc.  Default qemu)
     -d DISK               Root disk drive (won't be changed by default)
+    --disk-channel TYPE   Communication mechanism for root device: virtio, nvme
     --persist-to-img IMG  Persist changes to a separate image
     -i FILE               File containing an Ignition config to merge into the default config
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
@@ -74,6 +76,9 @@ while [ $# -ge 1 ]; do
             shift 2 ;;
         -d)
             VM_DISK="$2"
+            shift 2 ;;
+        --disk-channel)
+            DISK_CHANNEL="$2"
             shift 2 ;;
         --persist-to-img)
             VM_PERSIST_IMG="$2"
@@ -368,7 +373,11 @@ Host coreos
 EOF
 fi
 
-set -- -drive if=virtio,file="${VM_IMG}" "$@"
+case "${DISK_CHANNEL}" in
+    virtio) set -- -drive if=virtio,file="${VM_IMG}" "$@" ;;
+    nvme) set -- -device nvme,drive=D22,serial=1234 -drive file="${VM_IMG}",if=none,id=D22 "$@" ;;
+    *) die "Invalid --disk-channel ${DISK_CHANNEL}" ;;
+esac
 
 # There is no BIOS on aarch64, so we need a firmware to boot the system
 if [ "$(arch)" == "aarch64" ]; then
