@@ -14,6 +14,10 @@ from cosalib.aws import (
     delete_snapshot
 )
 
+from cosalib.aliyun import remove_aliyun_image
+from cosalib.gcp import remove_gcp_image
+
+
 Build = collections.namedtuple('Build', ['id', 'timestamp', 'images', 'arches'])
 
 
@@ -77,10 +81,11 @@ def fetch_build_meta(builds, buildid, arch, bucket, prefix):
         )
 
 
-def delete_build(build, bucket, prefix):
+def delete_build(build, bucket, prefix, cloud_config):
+    print(f"Deleting build {build.id}")
     errors = []
     # Unregister AMIs and snapshots
-    for ami in build.images['amis']:
+    for ami in build.images.get('amis', []):
         region_name = ami.get('name')
         ami_id = ami.get('hvm')
         snapshot_id = ami.get('snapshot')
@@ -95,8 +100,29 @@ def delete_build(build, bucket, prefix):
             except Exception as e:
                 errors.append(e)
 
+    aliyun = build.images.get('aliyun')
+    if aliyun:
+        region_name = aliyun.get('name')
+        aliyun_id = aliyun.get('hvm')
+        if region_name and aliyun_id:
+            try:
+                remove_aliyun_image(aliyun_id, region=region_name)
+            except Exception as e:
+                errors.append(e)
+
+    gcp = build.images.get('gcp')
+    if gcp:
+        gcp_image = gcp.get('image')
+        json_key = cloud_config.get('gcp', {}).get('json-key')
+        project = cloud_config.get('gcp', {}).get('project')
+        if gcp_image and json_key and project:
+            try:
+                remove_gcp_image(gcp_image, json_key, project)
+            except Exception as e:
+                errors.append(e)
+
     if len(errors) != 0:
-        print(f"Found errors when removing build {build}:")
+        print(f"Found errors when removing build {build.id}:")
         for e in errors:
             print(e)
         raise Exception()
