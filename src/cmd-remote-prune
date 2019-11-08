@@ -26,6 +26,8 @@ subparsers.required = True
 s3 = subparsers.add_parser('s3', help='Prune s3 buckets')
 s3.add_argument("--bucket", help="Bucket name")
 s3.add_argument("--prefix", help="Key prefix")
+s3.add_argument("--force", help="Wipe s3 key ignoring the errors",
+                action='store_true')
 
 args = parser.parse_args()
 
@@ -62,7 +64,7 @@ for unmatched_build_id in unreferenced_s3_builds:
     build = fetch_build_meta(builds, unmatched_build_id, 'x86_64', args.bucket, args.prefix)
     if build:
         try:
-            delete_build(build, args.bucket, args.prefix, cloud_config)
+            delete_build(build, args.bucket, args.prefix, cloud_config, args.force)
         except Exception as e:
             error_during_pruning = True
             print(f"{e}")

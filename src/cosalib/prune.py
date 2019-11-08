@@ -81,7 +81,7 @@ def fetch_build_meta(builds, buildid, arch, bucket, prefix):
         )
 
 
-def delete_build(build, bucket, prefix, cloud_config):
+def delete_build(build, bucket, prefix, cloud_config, force=False):
     print(f"Deleting build {build.id}")
     errors = []
     # Unregister AMIs and snapshots
@@ -125,7 +125,8 @@ def delete_build(build, bucket, prefix, cloud_config):
         print(f"Found errors when removing build {build.id}:")
         for e in errors:
             print(e)
-        raise Exception()
+        if not force:
+            raise Exception()
 
     # Delete s3 bucket
     print(f"Deleting key {prefix}{build.id} from bucket {bucket}")
