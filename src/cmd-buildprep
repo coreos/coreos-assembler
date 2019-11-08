@@ -64,6 +64,13 @@ def main():
     # this a switch in the future.
 
     buildid = builds.get_latest()
+
+    # Check if current arch exists in builds.json
+    if not builds.has_build_arch(buildid):
+        print("Remote has no builds for current architecture")
+        builds = None
+        return
+
     builddir = builds.get_build_dir(buildid)
     os.makedirs(builddir, exist_ok=True)
 

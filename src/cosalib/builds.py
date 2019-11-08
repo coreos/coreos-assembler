@@ -75,6 +75,11 @@ class Builds:  # pragma: nocover
                 return build['arches']
         assert False, "Build not found!"
 
+    def has_build_arch(self, build_id, basearch=None):
+        if not basearch:
+            basearch = get_basearch()
+        return (basearch in self.get_build_arches(build_id))
+
     def get_build_dir(self, build_id, basearch=None):
         if build_id == 'latest':
             build_id = self.get_latest()
