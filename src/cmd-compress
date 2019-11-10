@@ -121,6 +121,7 @@ def compress_one_builddir(builddir):
             write_json(buildmeta_path, buildmeta)
             os.unlink(filepath)
             at_least_one = True
+            print(f"Compressed: {file_with_ext}")
         else:
             # try to delete the original file if it's somehow still around
             rm_allow_noent(filepath[:-3])
