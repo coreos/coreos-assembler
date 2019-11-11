@@ -40,7 +40,6 @@ var offServices = []string{
 	"rpc-statd.service",
 	"rpcbind.service",
 	"rpcbind.socket",
-	"sssd.service",
 	"tcsd.service",
 }
 
