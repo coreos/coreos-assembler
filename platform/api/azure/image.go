@@ -122,3 +122,9 @@ func (a *API) resolveImage() error {
 
 	return fmt.Errorf("couldn't find COREOS_VERSION in version.txt")
 }
+
+// DeleteImage removes Azure image
+func (a *API) DeleteImage(name, resourceGroup string) error {
+	_, err := a.imgClient.Delete(resourceGroup, name, nil)
+	return err
+}
