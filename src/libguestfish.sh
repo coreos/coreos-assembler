@@ -51,9 +51,9 @@ coreos_gf_run_mount() {
     coreos_gf_run "$@"
     # Detect the RHCOS LUKS case; first check if there's
     # no visible "root" labeled filesystem
-    local part4name
-    part4name=$(coreos_gf part-get-name /dev/sda 4)
-    if [ "${part4name}" = "luks_root" ]; then
+    local fstype
+    fstype=$(coreos_gf vfs-type /dev/sda4)
+    if [ "${fstype}" = "crypto_LUKS" ]; then
         coreos_gf luks-open /dev/sda4 luks-00000000-0000-4000-a000-000000000002
     fi
     root=$(coreos_gf findfs-label root)
