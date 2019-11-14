@@ -140,19 +140,30 @@ fi
 img=${name}-${build}-${image_type}.${basearch}.${image_format}
 path=${PWD}/${img}
 
-# For bare metal images, we estimate the disk size. For qemu, we get it from
-# image.yaml.
-if [[ $image_type == metal || $image_type == dasd ]]; then
-    echo "Estimating disk size..."
-    /usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 20 > "$PWD/tmp/ostree-size.json"
-    size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
-    # extra size is the non-ostree partitions, see create_disk.sh
-    size="$(( size + 513 ))M"
-    echo "Disk size estimated to $size"
-    ignition_platform_id="metal"
+ignition_platform_id="${image_type}"
+# dasd is a different disk format, but it's still metal.  Just like
+# if in the future we introduce a 4k sector size x86_64 image type (metal-4k).
+if [ "${image_type}" = dasd ]; then
+    ignition_platform_id=metal
+fi
+
+echo "Estimating disk size..."
+# The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
+# and doing so has apparently negative performance implications.
+/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 35 > "$PWD/tmp/ostree-size.json"
+rootfs_size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
+# extra size is the non-ostree partitions, see create_disk.sh
+image_size="$(( rootfs_size + 513 ))M"
+echo "Disk size estimated to ${image_size}"
+
+# For bare metal images, we use the estimated image size. For IaaS/virt, we get it from
+# image.yaml because we want a "default" disk size that has some free space.
+if [ "${image_type}" = metal ]; then
+    # Unset the root size, which will inherit from the image size
+    rootfs_size=0
 else
-    size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
-    ignition_platform_id="$image_type"
+    image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+    rootfs_size="${rootfs_size}M"
 fi
 
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
@@ -167,7 +178,7 @@ ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).g
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
 luks_flag="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("--luks-rootfs" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
 
-qemu-img create -f ${image_format} "${path}.tmp" "$size"
+qemu-img create -f ${image_format} "${path}.tmp" "${image_size}"
 # We support deploying a commit directly instead of a ref
 ref_arg=${ref}
 if [ -n "${ref_is_temp}" ]; then
@@ -191,6 +202,7 @@ runvm "${target_drive[@]}" -- \
             --ostree-remote "${ostree_remote}" \
             --ostree-repo "${ostree_repo}" \
             --save-var-subdirs "${save_var_subdirs}" \
+            --rootfs-size "${rootfs_size}" \
             "${luks_flag}"
 mv "${path}.tmp" "$path"
 echo "{}" > tmp/vm-iso-checksum.json
