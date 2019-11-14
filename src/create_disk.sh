@@ -27,6 +27,7 @@ Options:
     --ostree-remote: the ostree remote
     --ostree-repo: location of the ostree repo
     --save-var-subdirs: "yes" to workaround selabel issue for RHCOS
+    --rootfs-size: Create the root filesystem with specified size
     --luks-rootfs: place rootfs in a LUKS container
 
 You probably don't want to run this script by hand. This script is
@@ -34,6 +35,7 @@ run as part of 'coreos-assembler build'.
 EOC
 }
 
+rootfs_size="0"
 luks_rootfs=""
 extrakargs=""
 
@@ -52,6 +54,7 @@ do
         --ostree-remote)    remote_name="${1}"; shift;;
         --ostree-repo)      ostree="${1}"; shift;;
         --save-var-subdirs) save_var_subdirs="${1}"; shift;;
+        --rootfs-size)      rootfs_size="${1}"; shift;;
         --luks-rootfs)      luks_rootfs=1;;
          *) echo "${flag} is not understood."; usage; exit 10;;
          --) break;
@@ -83,6 +86,10 @@ set -x
 # Pin /boot and / to the partition number 1 and 4 respectivelly
 BOOTPN=1
 ROOTPN=4
+# Make the size relative
+if [ "${rootfs_size}" != "0" ]; then
+    rootfs_size="+${rootfs_size}"
+fi
 case "$arch" in
     x86_64)
         sgdisk -Z $disk \
@@ -90,7 +97,7 @@ case "$arch" in
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
-        -n ${ROOTPN}:0:0     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         EFIPN=2
         BIOSPN=3
@@ -100,7 +107,7 @@ case "$arch" in
         -U 00000000-0000-4000-a000-000000000001 \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
-        -n ${ROOTPN}:0:0     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         EFIPN=2
         ;;
@@ -108,7 +115,7 @@ case "$arch" in
         sgdisk -Z $disk \
         -U 00000000-0000-4000-a000-000000000001 \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:0     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
     ppc64le)
@@ -117,7 +124,7 @@ case "$arch" in
         -U 00000000-0000-4000-a000-000000000001 \
         -n 2:0:+4M   -c 2:PowerPC-PReP-boot -t 2:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:0     -c ${ROOTPN}:root              -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root              -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         PREPPN=2
         ;;
