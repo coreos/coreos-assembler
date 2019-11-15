@@ -173,9 +173,9 @@ ref_arg=${ref}
 if [ -n "${ref_is_temp}" ]; then
     ref_arg=${commit}
 fi
-target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp")
+target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp,cache=unsafe")
 if [[ $image_format == raw && $image_type == dasd ]]; then
-    target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp" \
+    target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
                     # we need 4096 block size for ECKD DASD
                     "-device" "virtio-blk-ccw,drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
 fi
