@@ -16,6 +16,7 @@ from cosalib.aws import (
 
 from cosalib.aliyun import remove_aliyun_image
 from cosalib.gcp import remove_gcp_image
+from cosalib.azure import remove_azure_image
 
 
 Build = collections.namedtuple('Build', ['id', 'timestamp', 'images', 'arches'])
@@ -107,6 +108,18 @@ def delete_build(build, bucket, prefix, cloud_config, force=False):
         if region_name and aliyun_id:
             try:
                 remove_aliyun_image(aliyun_id, region=region_name)
+            except Exception as e:
+                errors.append(e)
+
+    azure = build.images.get('azure')
+    if azure:
+        image = azure.get('image')
+        resource_group = cloud_config.get('azure', {}).get('resource-group')
+        auth = cloud_config.get('azure', {}).get('auth')
+        profile = cloud_config.get('azure', {}).get('profile')
+        if image and resource_group and auth and profile:
+            try:
+                remove_azure_image(image, resource_group, auth, profile)
             except Exception as e:
                 errors.append(e)
 
