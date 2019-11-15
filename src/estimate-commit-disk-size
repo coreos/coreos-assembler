@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 #
 # Given an OSTree commit, estimate how much disk space it will take
 # Derived from ostree-releng-scripts/print-commitsize
@@ -38,7 +38,7 @@ n_regfiles = 0
 blks_regfiles = 0
 n_symlinks = 0
 blks_symlinks = 0
-for k, v in reachable.iteritems():
+for k, v in reachable.items():
     csum, objtype = k.unpack()
     if objtype == OSTree.ObjectType.FILE:
         [_, _, finfo, _] = r.load_file(csum, None)
