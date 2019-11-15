@@ -6,6 +6,7 @@ import (
 	_ "github.com/coreos/mantle/kola/tests/crio"
 	_ "github.com/coreos/mantle/kola/tests/docker"
 	_ "github.com/coreos/mantle/kola/tests/etcd"
+	_ "github.com/coreos/mantle/kola/tests/fips"
 	_ "github.com/coreos/mantle/kola/tests/flannel"
 	_ "github.com/coreos/mantle/kola/tests/ignition"
 	_ "github.com/coreos/mantle/kola/tests/kubernetes"
