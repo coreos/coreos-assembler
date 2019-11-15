@@ -208,7 +208,7 @@ if [ "${remote_name}" != NONE ]; then
     remote_arg="--remote=${remote_name}"
     deploy_ref="${remote_name}:${ref}"
 fi
-ostree pull-local "$ostree" "$ref" --repo rootfs/ostree/repo $remote_arg
+time ostree pull-local "$ostree" "$ref" --repo rootfs/ostree/repo $remote_arg
 ostree admin os-init "$os_name" --sysroot rootfs
 # Note that $ignition_firstboot is interpreted by grub at boot time,
 # *not* the shell here.  Hence the backslash escape.
