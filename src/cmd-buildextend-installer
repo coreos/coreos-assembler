@@ -82,6 +82,10 @@ basearch = get_basearch()
 base_name = buildmeta['name']
 iso_name = f'{base_name}-{args.build}-{image_type}.{basearch}.iso'
 name_version = f'{base_name}-{args.build}'
+# The short volume ID can only be 32 characters (bytes probably).  We may in the future want
+# to shorten this more intelligently, otherwise we truncate the
+# version which may impede uniqueness.
+volid = name_version[0:32]
 
 tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-{image_type}")
 if os.path.isdir(tmpdir):
@@ -158,8 +162,10 @@ def generate_iso():
     # Read and filter kernel arguments for substituting into ISO bootloader
     result = run_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
             img_qemu], stdout=subprocess.PIPE, text=True)
-    kargs = ' '.join(karg for karg in result.stdout.split()
-            if karg.split('=')[0] not in live_exclude_kargs)
+    kargs_array = [karg for karg in result.stdout.split()
+            if karg.split('=')[0] not in live_exclude_kargs]
+    kargs_array.append(f"coreos.liveiso={volid}")
+    kargs = ' '.join(kargs_array)
     print(f'Substituting ISO kernel arguments: {kargs}')
 
     # Grab all the contents from the installer dir from the configs
@@ -190,6 +196,7 @@ def generate_iso():
     # Generate the ISO image. Lots of good info here:
     # https://fedoraproject.org/wiki/User:Pjones/BootableCDsForBIOSAndUEFI
     genisoargs = ['/usr/bin/genisoimage', '-verbose',
+                  '-V', volid,
                   '-volset', f"{name_version}",
                   # For  greater portability, consider using both
                   # Joliet and Rock Ridge extensions. Umm, OK :)
@@ -258,6 +265,7 @@ def generate_iso():
             run_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
 
         genisoargs = ['/usr/bin/xorrisofs', '-verbose',
+                      '-volid', volid,
                       '-volset', f"{name_version}",
                       '-rational-rock', '-J', '-joliet-long',
                       '-no-emul-boot', '-eltorito-boot',
