@@ -58,7 +58,14 @@ squashfs_compression = image_yaml.get('squashfs-compression', 'zstd')
 
 # Hacky mode switch, until we can drop support for the installer images
 is_live = os.path.basename(sys.argv[0]).endswith('-live')
-image_type = 'live' if is_live else 'installer'
+is_fulliso = os.path.basename(sys.argv[0]).endswith('-fulliso')
+if is_fulliso:
+    is_live = True
+    image_type = 'fulliso'
+elif is_live:
+    image_type = 'live'
+else:
+    image_type = 'installer'
 meta_keys = {k: 'live-' + k if is_live else k for k in ('iso', 'kernel', 'initramfs')}
 
 workdir = os.path.abspath(os.getcwd())
@@ -74,7 +81,7 @@ repo = os.path.join(workdir, 'tmp/repo')
 
 # Don't run if it's already been done, unless forced
 if meta_keys['iso'] in buildmeta['images'] and not args.force:
-    print(f"Image has already been built for {args.build}. Skipping.")
+    print(f"'{image_type}' has already been built for {args.build}. Skipping.")
     print("You can force a rebuild with '--force'.")
     sys.exit(0)
 
@@ -111,7 +118,13 @@ def generate_iso():
     initramfs_img = 'initramfs.img'
 
     tmpisofile = os.path.join(tmpdir, iso_name)
-    img_qemu = os.path.join(builddir, buildmeta['images']['qemu']['path'])
+    img_metal_obj = buildmeta['images'].get('metal')
+    img_metal = None
+    if img_metal_obj is not None:
+        img_metal = os.path.join(builddir, img_metal_obj['path'])
+        img_src = img_metal
+    else:
+        img_src = os.path.join(builddir, buildmeta['images']['qemu']['path'])
 
     # Find the directory under `/usr/lib/modules/<kver>` where the
     # kernel/initrd live. It will be the 2nd entity output by
@@ -129,15 +142,55 @@ def generate_iso():
         # initramfs isn't world readable by default so let's open up perms
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
+    initramfs = os.path.join(tmpisoimages, 'initramfs.img')
+    live_initramfs_cpio = None
     if is_live:
-        initramfs = os.path.join(tmpisoimages, initramfs_img)
+        # This stamp file denotes we're in a "live" initramfs
+        live_initramfs_cpio = os.path.join(tmpdir, 'live-stamp-initramfs')
+        with tempfile.TemporaryDirectory(prefix='live-initramfs', dir=tmpdir) as livetmpd:
+            live_initramfs_stamp_path = 'etc/coreos-live-initramfs'
+            live_initramfs_stamp = os.path.join(livetmpd, live_initramfs_stamp_path)
+            os.makedirs(os.path.dirname(live_initramfs_stamp), exist_ok=True)
+            with open(live_initramfs_stamp, 'w') as f:
+                pass
+            run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
+                '--quiet', '--reproducible', '--force-local',
+                '-D', livetmpd, '-O', live_initramfs_cpio],
+                input=live_initramfs_stamp_path.encode())
+            run_verbose(['gzip', live_initramfs_cpio])
+            live_initramfs_cpio = live_initramfs_cpio + '.gz'
+    if is_fulliso:
+        tmp_initramfs = os.path.join(tmpdir, 'initramfs')
+
+        if img_metal is None:
+            raise Exception("fulliso requires `metal` image")
+        metal_dest_basename = os.path.basename(img_metal) + '.xz'
+        metal_dest = os.path.join(tmpisoroot, metal_dest_basename)
+        with open(metal_dest, 'wb') as f:
+            run_verbose(['xz', '-c9', '-T2', img_metal], stdout=f)
+        os.symlink(metal_dest_basename, os.path.join(tmpisoroot, 'image-metal.xz'))
+
+        # In the fulliso case, we copy the squashfs to the ISO root.
+        print(f'Compressing squashfs with {squashfs_compression}')
+        run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
+                    img_src, os.path.join(tmpisoroot, 'root.squashfs'), squashfs_compression])
+        # Just pad with NUL bytes for the ISO image.  We'll truncate the
+        # padding off again when copying the PXE initrd.
+        with open(tmp_initramfs, 'wb') as fdst:
+            with open(initramfs, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
+            with open(live_initramfs_cpio, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
+            fdst.write(bytes(initrd_ignition_padding))
+        os.rename(tmp_initramfs, initramfs)
+    elif is_live:
         tmp_squashfs = os.path.join(tmpdir, 'root.squashfs')
         tmp_cpio = os.path.join(tmpdir, 'root.cpio')
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
 
         print(f'Compressing squashfs with {squashfs_compression}')
         run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
-                     img_qemu, tmp_squashfs, squashfs_compression])
+                     img_src, tmp_squashfs, squashfs_compression])
         run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
                 '--quiet', '--reproducible', '--force-local',
                 '-D', os.path.dirname(tmp_squashfs), '-O', tmp_cpio],
@@ -151,17 +204,17 @@ def generate_iso():
         with open(tmp_initramfs, 'wb') as fdst:
             with open(initramfs, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
+            with open(live_initramfs_cpio, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
             with open(tmp_cpio + '.gz', 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
-            # Pad with NUL bytes for the ISO image.  We'll truncate the
-            # padding off again when copying the PXE initrd.
             fdst.write(bytes(initrd_ignition_padding))
         os.rename(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
     result = run_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
-            img_qemu], stdout=subprocess.PIPE, text=True)
+            img_src], stdout=subprocess.PIPE, text=True)
     kargs_array = [karg for karg in result.stdout.split()
             if karg.split('=')[0] not in live_exclude_kargs]
     kargs_array.append(f"coreos.liveiso={volid}")
@@ -169,7 +222,10 @@ def generate_iso():
     print(f'Substituting ISO kernel arguments: {kargs}')
 
     # Grab all the contents from the installer dir from the configs
-    srcdir_prefix = f"src/config/{image_type}/"
+    config_src = image_type
+    if image_type == 'fulliso':
+        config_src = 'live'
+    srcdir_prefix = f"src/config/{config_src}/"
     for srcdir, dirnames, filenames in os.walk(srcdir_prefix):
         dir_suffix = srcdir.replace(srcdir_prefix, '', 1)
         dstdir = os.path.join(tmpisoroot, dir_suffix)
