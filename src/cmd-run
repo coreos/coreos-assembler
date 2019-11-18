@@ -25,10 +25,10 @@ VM_SRV_MNT=
 SSH_ATTACH=
 SSH_PORT=${SSH_PORT:-}
 SSH_CONFIG=
-BOOT_TYPE=
-BOOT_TYPE_WAS_RANDOM=0
+UEFI=0
 SWTPM=1
 BOOT_INJECT=0
+SECURE=0
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
     -b --buildid          Target buildid (default latest)
@@ -45,7 +45,6 @@ Options:
     --ssh-config FILE     Write SSH config to FILE. Useful with '-p 0'.
     -h                    this ;-)
     -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
-    --bios                Boot using BIOS (x86_64 only)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
     --no-swtpm            Don't create a temporary software TPM
@@ -108,8 +107,11 @@ while [ $# -ge 1 ]; do
         -v|--verbose)
             set -x
             shift ;;
-        --bios|--uefi|--uefi-secure)
-            BOOT_TYPE="${1#--}"
+        --uefi)
+            UEFI=1
+            shift ;;
+        --uefi-secure)
+            SECURE=1
             shift ;;
         --no-swtpm)
             SWTPM=0
@@ -132,16 +134,6 @@ done
 # to port 0.
 if { [ -n "${SSH_CONFIG}" ] || [ -n "${SSH_ATTACH}" ]; } && [ -z "${SSH_PORT}" ]; then
     SSH_PORT=0
-fi
-
-# Randomly pick BIOS or UEFI on x86_64 so we're testing all cases
-if [ "${BOOT_TYPE}" = "" ] && [ "$(arch)" == "x86_64" ]; then
-    case "$((RANDOM % 3))" in
-        0) BOOT_TYPE=bios;;
-        1) BOOT_TYPE=uefi;;
-        2) BOOT_TYPE=uefi-secure;;
-    esac
-    BOOT_TYPE_WAS_RANDOM=1
 fi
 
 # check if we or the user will want to SSH and re-exec under ssh-agent if so
@@ -167,6 +159,10 @@ if [ -n "${SSH_PORT}" ]; then
 fi
 
 preflight
+
+if [ "$UEFI" == 1 ] && [ "$SECURE" == 1 ]; then
+	die "cannot specify --uefi and --uefi-secure"
+fi
 
 if [ -z "${VM_DISK}" ]; then
     if ! [ -d "builds/${BUILDID}" ]; then
@@ -244,19 +240,12 @@ kernel.printk = 3 4 1 7
 EOF
 )
 
-motd_tmpf=$(mktemp -t 'cosa-motd.XXXXXX')
-
-if [ "${BOOT_TYPE_WAS_RANDOM}" = "1" ]; then 
-    (echo "coreos-assembler: Used randomly chosen boot type: ${BOOT_TYPE}" && echo) >> "${motd_tmpf}"
-fi
-
-cat >> "${motd_tmpf}" << 'EOF'
+coreos_assembler_motd=$(cat << 'EOF' | base64 --wrap 0
 ICMP traffic (ping) does not work with QEMU and user mode networking.
 To exit, press Ctrl-A and then X.
 
 EOF
-coreos_assembler_motd=$(base64 --wrap 0 < "${motd_tmpf}")
-rm -f "${motd_tmpf}"
+)
 
 # generate a string like rows XX columns XX for stty
 rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
@@ -395,24 +384,23 @@ if [ "$(arch)" == "aarch64" ]; then
     set -- -bios /usr/share/AAVMF/AAVMF_CODE.fd "$@"
 fi
 
-firmware=
-case "${BOOT_TYPE}" in
-    uefi) firmware=/usr/share/edk2/ovmf/OVMF_CODE.fd ;;
-    uefi-secure) firmware=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd ;;
-esac
+if [ "$UEFI" == "1" ]; then
+    cp /usr/share/edk2/ovmf/OVMF_VARS.fd /tmp/vars.fd
+    exec 5<> /tmp/vars.fd
+    rm /tmp/vars.fd
+    set -- -drive file=/usr/share/edk2/ovmf/OVMF_CODE.fd,if=pflash,format=raw,unit=0,readonly=on "$@"
+    set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
+    set -- -machine q35 "$@"
+fi
 
-case "${BOOT_TYPE}" in
-    uefi*)
-        firmwaretmpf=$(mktemp)
-        vars=${firmware/_CODE/_VARS}
-        cp --reflink=auto ${vars} "${firmwaretmpf}"
-        exec 5<> "${firmwaretmpf}"
-        rm "${firmwaretmpf}"
-        set -- -drive file=${firmware},if=pflash,format=raw,unit=0,readonly=on "$@"
-        set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
-        set -- -machine q35 "$@"
-        ;;
-esac
+if [ "$SECURE" == "1" ]; then
+    cp /usr/share/edk2/ovmf/OVMF_VARS.secboot.fd /tmp/vars.fd
+    exec 5<> /tmp/vars.fd
+    rm /tmp/vars.fd
+    set -- -drive file=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd,if=pflash,format=raw,unit=0,readonly=on "$@"
+    set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
+    set -- -machine q35 "$@"
+fi
 
 set -- -name coreos -m "${VM_MEMORY}" -nographic \
               -netdev user,id=eth0,hostname=coreos"${hostfwd:-}" \
