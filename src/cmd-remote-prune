@@ -61,7 +61,7 @@ cloud_config = {
     'azure': {
         'auth': args.azure_auth,
         'profile': args.azure_profile,
-        'resource-group': args.azure_resouce_group,
+        'resource-group': args.azure_resource_group,
     },
     'gcp': {
         'json-key': args.gcp_json_key,
