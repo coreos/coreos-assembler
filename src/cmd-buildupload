@@ -132,7 +132,6 @@ def s3_upload_build(args, builddir, bucket, prefix):
         path = os.path.join(builddir, f)
         s3_copy(path, bucket, f'{prefix}/{f}',
             CACHE_MAX_AGE_ARTIFACT, args.acl,
-            extra_args={},
             dry_run=args.dry_run)
 
     # Now upload a modified version of the meta.json which has the fixed
@@ -143,9 +142,6 @@ def s3_upload_build(args, builddir, bucket, prefix):
         f.flush()
         s3_copy(f.name, bucket, f'{prefix}/meta.json',
             CACHE_MAX_AGE_METADATA, args.acl,
-            extra_args={
-                'ContentType': 'application/json'
-            },
             dry_run=args.dry_run)
 
 
@@ -164,8 +160,25 @@ def s3_check_exists(bucket, key):
 
 @retry(stop=retry_stop, retry=retry_boto_exception, retry_error_callback=retry_callback)
 def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
-    if key.endswith('.json') and 'ContentType' not in extra_args:
-        extra_args['ContentType'] = 'application/json'
+    extra_args = dict(extra_args)
+    if 'ContentType' not in extra_args:
+        if key.endswith('.json'):
+            extra_args['ContentType'] = 'application/json'
+        elif key.endswith('.tar'):
+            extra_args['ContentType'] = 'application/x-tar'
+        elif key.endswith('.xz'):
+            extra_args['ContentType'] = 'application/x-xz'
+        elif key.endswith('.gz'):
+            extra_args['ContentType'] = 'application/gzip'
+        elif key.endswith('.iso'):
+            extra_args['ContentType'] = 'application/x-iso9660-image'
+        else:
+            # use a standard MIME type for "binary blob" instead of the default
+            # 'binary/octet-stream' AWS slaps on
+            extra_args['ContentType'] = 'application/octet-stream'
+    if 'ContentEncoding' not in extra_args:
+        if key.endswith('.gz'):
+            extra_args['ContentEncoding'] = 'gzip'
     upload_args = {
         'CacheControl': f'max-age={max_age}',
         'ACL': acl
