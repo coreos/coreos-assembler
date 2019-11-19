@@ -170,6 +170,20 @@ from cosalib.cmdlib import disk_ignition_version
 print(disk_ignition_version('${path}}'))"
 }
 
+# Picks between yaml or json based on which version exists. If neither exist,
+# prefers YAML.
+pick_yaml_or_else_json() {
+    local f=$1; shift
+    if [ -f "${f}.json" ] && [ -f "${f}.yaml" ]; then
+        fatal "Found both ${f}.json and ${f}.yaml"
+    elif [ -f "${f}.json" ]; then
+        echo "${f}.json"
+    else
+        # prefer yaml
+        echo "${f}.yaml"
+    fi
+}
+
 prepare_build() {
     preflight
     if ! [ -d builds ]; then
@@ -184,8 +198,9 @@ prepare_build() {
     workdir="$(pwd)"
     configdir=${workdir}/src/config
     manifest=${configdir}/manifest.yaml
-    manifest_lock=${configdir}/manifest-lock.${basearch}.json
-    manifest_lock_overrides=${configdir}/manifest-lock.overrides.${basearch}.json
+    manifest_lock=$(pick_yaml_or_else_json "${configdir}/manifest-lock.${basearch}")
+    manifest_lock_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
+
     export workdir configdir manifest manifest_lock manifest_lock_overrides
 
     if ! [ -f "${manifest}" ]; then
