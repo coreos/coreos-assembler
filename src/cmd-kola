@@ -36,7 +36,7 @@ blacklist_path = "src/config/kola-blacklist.yaml"
 if os.path.isfile(blacklist_path):
     with open(blacklist_path) as f:
         blacklist = yaml.safe_load(f)
-        for obj in blacklist:
+        for obj in (blacklist or []):
             print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
             print(f"⚠️  {obj['tracker']}")
             blacklist_args += ['--blacklist-test', obj['pattern']]
