@@ -168,9 +168,11 @@ fi
 
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
-# tty0 does not exist on s390x
+# On each s390x hypervisor, a tty would be automatically detected by the kernel
+# and systemd, there is no need to specify one. However, we keep DEFAULT_TERMINAL
+# as ttysclp0, which is helpful for building/testing with KVM+virtio (cmd-run).
 if [ "$basearch" == "s390x" ]; then
-    tty="console=${DEFAULT_TERMINAL}"
+    tty=
 fi
 kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
