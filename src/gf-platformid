@@ -47,6 +47,14 @@ sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
 sed -i -e 's,^\(options .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
 coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
+if [ "$basearch" = "s390x" ] ; then
+    coreos_gf debug sh "mount -o bind /sysroot/boot /sysroot/${deploydir}/boot"
+    # zipl wants /proc
+    coreos_gf debug sh "mount -t proc none /sysroot/${deploydir}/proc"
+    coreos_gf debug sh "chroot /sysroot/${deploydir} /usr/sbin/zipl"
+    coreos_gf debug sh "umount /sysroot/${deploydir}/proc /sysroot/${deploydir}/boot"
+fi
+
 coreos_gf_shutdown
 
 mv "${tmp_dest}" "${dest}"
