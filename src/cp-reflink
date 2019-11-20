@@ -1,2 +1,4 @@
 #!/bin/bash
-exec cp -a --reflink=auto "$@"
+# XXX: disable reflinks for now due to possible corruption:
+# https://github.com/coreos/coreos-assembler/pull/935
+exec cp -a --reflink=never "$@"
