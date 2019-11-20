@@ -62,6 +62,7 @@ install:
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib $$(find src/cosalib/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
+	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola,plume}
 	install -d $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH)

@@ -53,7 +53,7 @@ def main():
         # Record the origin and original state
         with open(BUILDFILES['sourceurl'], 'w') as f:
             f.write(args.url + '\n')
-        subprocess.check_call(['cp', '-pf', '--reflink=auto', BUILDFILES['list'], BUILDFILES['sourcedata']])
+        subprocess.check_call(['cp-reflink', BUILDFILES['list'], BUILDFILES['sourcedata']])
         builds = Builds()
 
     if not builds or builds.is_empty():

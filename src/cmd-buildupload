@@ -81,7 +81,7 @@ def cmd_upload_s3(args):
         # And now update our cached copy to note we've successfully sync'd.
         with open(BUILDFILES['sourceurl'], 'w') as f:
             f.write(f"s3://{bucket}/{prefix}\n")
-        subprocess.check_call(['cp', '-pf', '--reflink=auto', BUILDFILES['list'], BUILDFILES['sourcedata']])
+        subprocess.check_call(['cp-reflink', BUILDFILES['list'], BUILDFILES['sourcedata']])
 
 
 def s3_upload_build(args, builddir, bucket, prefix):

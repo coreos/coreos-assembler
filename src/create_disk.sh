@@ -276,9 +276,9 @@ install_uefi() {
     local target_efi="rootfs/boot/efi"
     local target_efiboot="${target_efi}/EFI/BOOT"
     mkdir -p "${target_efiboot}"
-    cp -a --reflink=auto "${source_efidir}/EFI/BOOT/BOOT"* "${target_efiboot}"
+    /usr/lib/coreos-assembler/cp-reflink "${source_efidir}/EFI/BOOT/BOOT"* "${target_efiboot}"
     local src_grubefi=$(find "${source_efidir}"/EFI/ -name 'grub*.efi')
-    cp -a --reflink=auto "${src_grubefi}" "${target_efiboot}"
+    /usr/lib/coreos-assembler/cp-reflink "${src_grubefi}" "${target_efiboot}"
 
     local vendor_id="$(basename $(dirname ${src_grubefi}))"
     local vendordir="${target_efi}/EFI/${vendor_id}"
