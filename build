@@ -24,6 +24,7 @@ host_build() {
 		"${REPO_PATH}/cmd/$1"
 }
 
+# Unused now, but kept in case we want it in the future
 cross_build() {
 	local a
 	for a in amd64 arm64 s390x ppc64le; do
@@ -37,9 +38,5 @@ cross_build() {
 
 for cmd in "$@"; do
 	cmd=$(basename "${cmd}")
-	if [[ "${cmd}" == kolet ]]; then
-		cross_build kolet
-	else
-		host_build "${cmd}"
-	fi
+	host_build "${cmd}"
 done
