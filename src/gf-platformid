@@ -33,7 +33,7 @@ set -x
 tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-platformid.XXXXXX)
 tmp_dest=${tmpd}/box.img
 
-cp --reflink=auto "${src}" "${tmp_dest}"
+cp-reflink "${src}" "${tmp_dest}"
 # <walters> I commonly chmod a-w VM images
 chmod u+w "${tmp_dest}"
 

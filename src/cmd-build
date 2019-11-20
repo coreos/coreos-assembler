@@ -228,7 +228,7 @@ if [ -f "${changed_stamp}" ]; then
     # Clean up prior versions
     rm -f "${workdir}"/tmp/compose-*.json
     # Save this in case the image build fails
-    cp -a --reflink=auto "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
+    cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
     # Pick up from tmprepo; that's what rpm-ostree is comparing against. It may
     # be the same as previous_commit, or newer if a previous build failed image
@@ -254,7 +254,7 @@ else
     cached_previous_composejson=${workdir}/tmp/compose-${commit}.json
     if [ -f "${cached_previous_composejson}" ]; then
         echo "Resuming partial build from: ${commit}"
-        cp -a --reflink=auto "${cached_previous_composejson}" "${composejson}"
+        cp-reflink "${cached_previous_composejson}" "${composejson}"
     else
         if [ -z "${previous_build}" ]; then
             # This can happen if building the OSTree worked on the first time,
@@ -265,7 +265,7 @@ else
         echo "Commit ${commit} unchanged; reusing previous build's rpm-ostree metadata"
         # This will have all of the data from the previous build, but we'll
         # overwrite things.
-        cp -a --reflink=auto "${previous_builddir}"/meta.json "${composejson}"
+        cp-reflink "${previous_builddir}"/meta.json "${composejson}"
     fi
 fi
 
@@ -301,7 +301,7 @@ ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
 ostree_tarfile_sha256=
 if [ "${commit}" == "${previous_commit}" ] && \
     [ -f "${previous_builddir}/${previous_ostree_tarfile_path}" ]; then
-    cp -a --reflink=auto "${previous_builddir}/${previous_ostree_tarfile_path}" "${ostree_tarfile_path}"
+    cp-reflink "${previous_builddir}/${previous_ostree_tarfile_path}" "${ostree_tarfile_path}"
     ostree_tarfile_sha256=$(jq -r '.images.ostree.sha256' < "${previous_builddir}/meta.json")
     # backcompat: allow older build without this field
     if [ "${ostree_tarfile_sha256}" = "null" ]; then
