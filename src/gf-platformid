@@ -55,6 +55,12 @@ if [ "$basearch" = "s390x" ] ; then
     coreos_gf debug sh "umount /sysroot/${deploydir}/proc /sysroot/${deploydir}/boot"
 fi
 
+# fsck the boot partition, since we were seeing some corruption with a
+# reflink-backed file on the host https://github.com/coreos/coreos-assembler/pull/935
+# and this will verify whether it happened
+coreos_gf umount-all
+coreos_gf e2fsck /dev/sda1 correct:false forceall:true
+
 coreos_gf_shutdown
 
 mv "${tmp_dest}" "${dest}"
