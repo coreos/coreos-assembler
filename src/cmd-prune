@@ -31,8 +31,12 @@ args = parser.parse_args()
 skip_pruning = (args.keep_last_n == 0)
 
 builds = Builds(args.workdir)
-# collect all builds being pointed to by tags
-tagged_builds = set([tag['target'] for tag in builds.raw().get('tags', [])])
+
+# dict of id -> [tags]
+tagged_builds = {}
+for tag in builds.get_tags():
+    tagged_builds[tag['target']] = tagged_builds.get(tag['target'], [])
+    tagged_builds[tag['target']].append(tag['name'])
 
 builds_dir = os.path.join(args.workdir, "builds")
 scanned_builds = get_local_builds(builds_dir)
@@ -54,7 +58,8 @@ else:
 
     for build in scanned_builds:
         if build.id in tagged_builds:
-            print(f"Skipping tagged build {build.id}")
+            tags = ', '.join(tagged_builds[build.id])
+            print(f"Skipping tagged build {build.id} ({tags})")
             new_builds.append(build)
         elif n > 0:
             new_builds.append(build)

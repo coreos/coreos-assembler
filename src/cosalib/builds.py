@@ -83,6 +83,9 @@ class Builds:  # pragma: nocover
             basearch = get_basearch()
         return self._path(f"builds/{build_id}/{basearch}")
 
+    def get_tags(self):
+        return self._data.get('tags', [])
+
     def insert_build(self, build_id, basearch=None):
         if not basearch:
             basearch = get_basearch()
