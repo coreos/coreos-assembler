@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import subprocess
+import json
+import argparse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.builds import Builds
+from cosalib.cmdlib import sha256sum_file
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", help="Build ID")
+parser.add_argument("--image", help="Just verify given image type")
+parser.add_argument("--no-checksum", help="Skip validating checksum", action='store_true')
+args = parser.parse_args()
+
+
+def validate_checksum(builddir, imgtype, data):
+    path = os.path.join(builddir, data['path'])
+    if not args.no_checksum:
+        actual = sha256sum_file(path)
+        expected = data['sha256']
+        if actual != expected:
+            raise SystemExit(f"Corrupted image '{imgtype}'; found sha256={actual} expected={expected}")
+
+
+def validate_build(builddir):
+    buildmeta_path = os.path.join(builddir, 'meta.json')
+    with open(buildmeta_path) as f:
+        buildmeta = json.load(f)
+
+    found = args.image is None
+    for img_format, data in buildmeta['images'].items():
+        if args.image is not None and img_format != args.image:
+            continue
+        found = True
+        print(f"Validating artifact: {img_format}")
+        validate_checksum(builddir, img_format, data)
+        if img_format == 'ostree':
+            # In the future maybe we'll unpack and ostree fsck or so
+            continue
+        if img_format.endswith(('iso', 'kernel', 'initramfs')):
+            # And we could validate these too
+            continue
+        # Otherwise, assume it's a mountable disk image we can fsck
+        validate_image(builddir, img_format, data)
+    if not found:
+        raise SystemExit("Failed to find image type: {args.image}")
+
+
+def validate_image(builddir, imgtype, data):
+    path = os.path.join(builddir, data['path'])
+    rc = subprocess.call(['/usr/lib/coreos-assembler/gf-fsck', path])
+    if rc != 0:
+        raise SystemExit(f"Detected corrupted image: {imgtype}")
+    print(f"Validated image: {imgtype}")
+
+
+builds = Builds()
+
+# default to latest build if not specified
+if args.build:
+    build = args.build
+else:
+    build = builds.get_latest()
+
+for arch in builds.get_build_arches(build):
+    print(f"Validating build: {build}/{arch}")
+    builddir = builds.get_build_dir(build, arch)
+    validate_build(builddir)
