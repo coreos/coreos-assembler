@@ -9,7 +9,6 @@ import os
 import sys
 
 
-from datetime import timedelta, datetime, timezone
 from shutil import rmtree
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -17,7 +16,6 @@ from cosalib.builds import Builds, get_local_builds
 
 # Let's just hardcode this here for now
 DEFAULT_KEEP_LAST_N = 3
-DEFAULT_KEEP_LAST_DAYS = 7
 
 
 parser = argparse.ArgumentParser(prog="coreos-assembler prune")
@@ -28,20 +26,9 @@ keep_options = parser.add_mutually_exclusive_group()
 keep_options.add_argument("--keep-last-n", type=int, metavar="N",
                           default=DEFAULT_KEEP_LAST_N,
                           help="Number of untagged builds to keep (0 for all)")
-keep_options.add_argument("--keep-last-days", metavar="N", type=int,
-                          default=DEFAULT_KEEP_LAST_DAYS,
-                          help="Keep untagged builds within number of days")
 args = parser.parse_args()
 
-keep_younger_than = None
-if args.keep_last_days != DEFAULT_KEEP_LAST_DAYS:
-    if args.keep_last_days <= 0:
-        raise argparse.ArgumentTypeError("value must be positive: %d" %
-                                         args.keep_last_days)
-    keep_younger_than = (datetime.now(timezone.utc) -
-                         timedelta(days=args.keep_last_days))
-
-skip_pruning = (not keep_younger_than and args.keep_last_n == 0)
+skip_pruning = (args.keep_last_n == 0)
 
 builds = Builds(args.workdir)
 # collect all builds being pointed to by tags
@@ -62,26 +49,14 @@ builds_to_delete = []
 if skip_pruning:
     new_builds = scanned_builds
 else:
-    if keep_younger_than:
-        for build in scanned_builds:
-            if build.id in tagged_builds:
-                print(f"Skipping tagged build {build.id}")
-                new_builds.append(build)
-                continue
-
-            if build.timestamp < keep_younger_than:
-                builds_to_delete.append(build)
-            else:
-                new_builds.append(build)
-    else:
-        n = args.keep_last_n
-        assert(n > 0)
-        for build in scanned_builds:
-            if n == 0:
-                builds_to_delete.append(build)
-            else:
-                new_builds.append(build)
-                n = n - 1
+    n = args.keep_last_n
+    assert(n > 0)
+    for build in scanned_builds:
+        if n == 0:
+            builds_to_delete.append(build)
+        else:
+            new_builds.append(build)
+            n = n - 1
 
 if args.dry_run:
     print(f"Not pruning any builds: --dry-run specified")
