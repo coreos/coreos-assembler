@@ -45,6 +45,7 @@ def parse_args():
     update = subparsers.add_parser("update", help="Update existing tag or "
                                                   "create a new tag")
     update.add_argument("--tag", help="Tag to be updated", required=True)
+    update.add_argument("--description", help="Message to associate with tag")
     update.add_argument("--build", help="Build to update tag with")
     update.add_argument("--force", help="Force the update of a tag",
                         action="store_true")
@@ -72,7 +73,10 @@ def cmd_list(args):
     for tag in build_data["tags"]:
         print(f"name: {tag['name']}\n"
               f"created: {tag['created']}\n"
-              f"target: {tag['target']}\n")
+              f"target: {tag['target']}\n", end='')
+        if 'description' in tag:
+            print(f"description:\n\t{tag['description']}\n", end='')
+        print()
 
 
 def cmd_update(args):
@@ -98,15 +102,17 @@ def cmd_update(args):
 
     # we've got a build (either forced or not), so time to make/update a tag
     created = rfc3339_time()
+    new_tag = {
+        "name": args.tag,
+        "created": created,
+        "target": args.build,
+    }
+    if args.description:
+        new_tag['description'] = args.description
     if args.tag not in avail_tags:
-        build_data["tags"].append({"name": args.tag,
-                                   "created": created,
-                                   "target": args.build})
+        build_data["tags"].append(new_tag)
     else:
-        build_data["tags"] = [{"name": args.tag,
-                               "created": created,
-                               "target": args.build}
-                              if t.get("name") == args.tag
+        build_data["tags"] = [new_tag if t.get("name") == args.tag
                               else t for t in build_data["tags"]]
     builds.flush()
 
