@@ -387,7 +387,10 @@ func Virtio(board, device, args string) string {
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
-const fileRemoteLocation = "/boot/ignition/config.ign"
+// Note: This is misleading. We are NOT putting the ignition config in the root parition. We mount the boot partition on / just to get around the fact that
+// the root partition does not need to be mounted to inject ignition config. Now that we have LUKS , we have to do more work to detect a LUKS root partition
+// and it is not needed here.
+const fileRemoteLocation = "/ignition/config.ign"
 
 // setupIgnition copies the ignition file inside the disk image.
 func setupIgnition(confPath string, diskImagePath string) error {
@@ -440,20 +443,11 @@ func setupIgnition(confPath string, diskImagePath string) error {
 		return fmt.Errorf("guestfish command failed to find boot label: %v", err)
 	}
 
-	rootfs, err := findLabel("root", pid)
-	if err != nil {
-		return fmt.Errorf("guestfish command failed to find root label: %v", err)
-	}
-
-	if err := exec.Command("guestfish", remote, "mount", rootfs, "/").Run(); err != nil {
-		return fmt.Errorf("guestfish root mount failed: %v", err)
-	}
-
-	if err := exec.Command("guestfish", remote, "mount", bootfs, "/boot").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "mount", bootfs, "/").Run(); err != nil {
 		return fmt.Errorf("guestfish boot mount failed: %v", err)
 	}
 
-	if err := exec.Command("guestfish", remote, "mkdir-p", "/boot/ignition").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "mkdir-p", "/ignition").Run(); err != nil {
 		return fmt.Errorf("guestfish directory creation failed: %v", err)
 	}
 
