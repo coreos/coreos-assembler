@@ -50,13 +50,17 @@ if skip_pruning:
     new_builds = scanned_builds
 else:
     n = args.keep_last_n
-    assert(n > 0)
+    assert n > 0
+
     for build in scanned_builds:
-        if n == 0:
-            builds_to_delete.append(build)
-        else:
+        if build.id in tagged_builds:
+            print(f"Skipping tagged build {build.id}")
+            new_builds.append(build)
+        elif n > 0:
             new_builds.append(build)
             n = n - 1
+        else:
+            builds_to_delete.append(build)
 
 if args.dry_run:
     print(f"Not pruning any builds: --dry-run specified")
