@@ -63,7 +63,8 @@ else:
             builds_to_delete.append(build)
 
 if args.dry_run:
-    print(f"Not pruning any builds: --dry-run specified")
+    for build in builds_to_delete:
+        print(f"Would prune build {build.id}")
     sys.exit(0)
 
 # create a new builds list
