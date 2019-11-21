@@ -4,6 +4,8 @@ set -euo pipefail
 # A major assumption here is that the disk image uses OSTree
 # and also has `boot` and `root` filesystem labels.
 
+EFI_SYSTEM_PARTITION_GUID="C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+
 # We don't want to use libvirt for this, it inhibits debugging
 export LIBGUESTFS_BACKEND=direct
 if [ -z "${LIBGUESTFS_MEMSIZE:-}" ]; then
@@ -74,7 +76,6 @@ coreos_gf_run_mount() {
     coreos_gf ${mntarg} "${boot}" /boot
     # As far as I can tell libguestfs doesn't have a "find partition by GPT type" API,
     # let's hack this and assume it's the first if present.
-    EFI_SYSTEM_PARTITION_GUID="C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
     if [ "$(coreos_gf part-get-gpt-type /dev/sda 1)" = "${EFI_SYSTEM_PARTITION_GUID}" ]; then
         coreos_gf ${mntarg} /dev/sda1 /boot/efi
     fi
