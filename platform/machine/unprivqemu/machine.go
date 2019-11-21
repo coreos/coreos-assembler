@@ -16,6 +16,7 @@ package unprivqemu
 
 import (
 	"io/ioutil"
+	"os"
 
 	"golang.org/x/crypto/ssh"
 
@@ -27,6 +28,8 @@ type machine struct {
 	qc          *Cluster
 	id          string
 	qemu        exec.Cmd
+	swtpmTmpd   string
+	swtpm       exec.Cmd
 	journal     *platform.Journal
 	consolePath string
 	console     string
@@ -66,6 +69,12 @@ func (m *machine) Reboot() error {
 }
 
 func (m *machine) Destroy() {
+	if err := m.swtpm.Kill(); err != nil {
+		plog.Errorf("Error killing swtpm of %v: %v", m.ID(), err)
+	}
+	if err := os.RemoveAll(m.swtpmTmpd); err != nil {
+		plog.Errorf("Error removing swtpm dir: %v", err)
+	}
 	if err := m.qemu.Kill(); err != nil {
 		plog.Errorf("Error killing instance %v: %v", m.ID(), err)
 	}

@@ -91,6 +91,28 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		consolePath: filepath.Join(dir, "console.txt"),
 	}
 
+	qm.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
+	if err != nil {
+		return nil, err
+	}
+
+	swtpmSock := filepath.Join(qm.swtpmTmpd, "swtpm-sock")
+
+	qm.swtpm = exec.Command("swtpm", "socket", "--tpm2",
+		"--ctrl", fmt.Sprintf("type=unixio,path=%s", swtpmSock),
+		"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", qm.swtpmTmpd))
+	cmd := qm.swtpm.(*exec.ExecCmd)
+	cmd.Stderr = os.Stderr
+
+	if pdeathsig {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGTERM,
+		}
+	}
+	if err = qm.swtpm.Start(); err != nil {
+		return nil, err
+	}
+
 	qmCmd, extraFiles, err := platform.CreateQEMUCommand(qc.flight.opts.Board, qm.id, qc.flight.opts.BIOSImage, qm.consolePath, confPath, qc.flight.diskImagePath, conf.IsIgnition(), options)
 	if err != nil {
 		return nil, err
@@ -102,7 +124,10 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 
 	qc.mu.Lock()
 
+	// Default to user mode networking
 	qmCmd = append(qmCmd, "-netdev", "user,id=eth0,hostfwd=tcp:127.0.0.1:0-:22", "-device", platform.Virtio(qc.flight.opts.Board, "net", "netdev=eth0"))
+	// Bind the TPM device
+	qmCmd = append(qmCmd, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-tis,tpmdev=tpm0")
 
 	plog.Debugf("NewMachine: %q", qmCmd)
 
@@ -110,7 +135,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 
 	qc.mu.Unlock()
 
-	cmd := qm.qemu.(*exec.ExecCmd)
+	cmd = qm.qemu.(*exec.ExecCmd)
 	cmd.Stderr = os.Stderr
 
 	if pdeathsig {
