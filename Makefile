@@ -52,7 +52,7 @@ clean:
 	find . -name "__pycache__" -type d | xargs rm -rf
 
 mantle:
-	cd mantle && ./build ore kola kolet plume
+	cd mantle && make
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -64,6 +64,4 @@ install:
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
-	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola,plume}
-	install -d $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH)
-	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH) mantle/bin/$(GOARCH)/kolet
+	cd mantle && make install DESTDIR=$(DESTDIR)
