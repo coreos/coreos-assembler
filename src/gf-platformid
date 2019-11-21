@@ -37,7 +37,10 @@ qemu-img create -q -f qcow2 -b "$(realpath "${src}")" "${tmp_dest}"
 # <walters> I commonly chmod a-w VM images
 chmod u+w "${tmp_dest}"
 
-coreos_gf_run_mount "${tmp_dest}"
+# Mount everything read-only by default
+coreos_gf_run_mount ro "${tmp_dest}"
+# We just mount the boot partition writable
+coreos_gf remount /boot rw:true
 
 # Inject PLATFORM label in BLS config (for subsequent config regeneration)
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
