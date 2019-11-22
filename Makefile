@@ -66,4 +66,4 @@ install:
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -D -t $(DESTDIR)$(PREFIX)/bin mantle/bin/{ore,kola,plume}
 	install -d $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH)
-	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH) mantle/bin/$(GOARCH)/kolet
+	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$(GOARCH) mantle/bin/kolet
