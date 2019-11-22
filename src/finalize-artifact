@@ -1,0 +1,12 @@
+#!/bin/bash
+# We expect things we generate to be immutable; they
+# have checksums covering them.  This helps avoid
+# mutating them accidentally.  By default `cosa run`
+# uses `-snapshot` for example, but I recently learned
+# that qemu does have a magic flag to write back to disk.
+#
+# Ideally, there'd be kernel-level support for this;
+# see also https://marc.info/?l=linux-fsdevel&m=139963046823575&w=2
+# and the more recent fs-verity work.
+#
+exec chmod a-w "$@"
