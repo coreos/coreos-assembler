@@ -66,10 +66,14 @@ if [ $# -ne 0 ]; then
     fatal "Too many arguments passed"
 fi
 
-# default to both BIOS and UEFI
+# default to both BIOS and UEFI for non-s390x and BIOS DASD for s390x
 if [ -z "${BIOS}" ] && [ -z "${UEFI}" ] && [ -z "${DASD}" ]; then
     BIOS=1
-    UEFI=1
+    if [ "${arch}" != "s390x" ]; then
+        UEFI=1
+    else
+        DASD=1
+    fi
 fi
 
 if [ -n "${UEFI}" ] && [ "${arch}" = "s390x" ]; then
