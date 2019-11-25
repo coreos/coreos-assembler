@@ -35,8 +35,12 @@ configure_yum_repos() {
         # Add continuous tag for latest build tools and mark as required so we
         # can depend on those latest tools being available in all container
         # builds.
-        echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
-
+        echo -e "[f$release-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f$release-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo 
+        # Guestfish patch to support DASD devices. Needed for buildng DASD metal image for s390x zVM. Refer to: https://www.redhat.com/archives/libguestfs/2019-November/msg00025.html
+        # Patches are still in discussion, but this is needed to get the pipeline builds going for s390x. 
+        if [ "$arch" = "s390x" ]; then
+            echo -e "[guestfs-for-s390x-rpms]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://ausil.fedorapeople.org/libguestfs/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/guestfs.repo
+        fi
     fi
 }
 
@@ -124,9 +128,15 @@ repository_dirs[i386]=fedora-secondary
 repository_dirs[ppc64le]=fedora-secondary
 repository_dirs[s390x]=fedora-secondary
 
-repository_dir=${repository_dirs[$arch]}
-INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$installer_release-1.2.iso
-INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-$installer_release-1.2-$arch-CHECKSUM
+# Build of fedora with anaconda patched for s390x: https://bugzilla.redhat.com/show_bug.cgi?id=1741908
+if [ "$arch" = "s390x" ]; then
+    INSTALLER=https://ausil.fedorapeople.org/anaconda/Fedora-Everything-netinst-$arch-$installer_release-1.5.iso
+    INSTALLER_CHECKSUM=https://ausil.fedorapeople.org/anaconda/Fedora-Everything-$installer_release-1.5-$arch-CHECKSUM
+else
+    repository_dir=${repository_dirs[$arch]}
+    INSTALLER=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-netinst-$arch-$installer_release-1.2.iso
+    INSTALLER_CHECKSUM=https://download.fedoraproject.org/pub/$repository_dir/releases/$installer_release/Everything/$arch/iso/Fedora-Everything-$installer_release-1.2-$arch-CHECKSUM
+fi
 
 install_anaconda() {
     # Overriding install URL
