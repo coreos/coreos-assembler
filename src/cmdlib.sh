@@ -88,7 +88,7 @@ has_privileges() {
         elif ! capsh --print | grep -q 'Bounding.*cap_sys_admin'; then
             info "Missing CAP_SYS_ADMIN; using virt"
             _privileged=0
-        elif ! sudo true; then
+        elif [ "$(id -u)" != "0" ] && ! sudo true; then
             info "Missing sudo privs; using virt"
             _privileged=0
         else
