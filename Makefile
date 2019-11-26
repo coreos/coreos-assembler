@@ -52,7 +52,7 @@ clean:
 	find . -name "__pycache__" -type d | xargs rm -rf
 
 mantle:
-	cd mantle && make
+	cd mantle && $(MAKE)
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -64,4 +64,4 @@ install:
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
-	cd mantle && make install DESTDIR=$(DESTDIR)
+	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
