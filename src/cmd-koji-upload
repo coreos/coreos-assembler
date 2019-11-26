@@ -37,9 +37,11 @@ import koji_cli.lib as klib
 try:
     # Available in Koji v1.17, https://pagure.io/koji/issue/975
     from koji_cli.lib import unique_path
-    from koji_cli.lib import progress_callback as cb
 except ImportError:
     from koji_cli.lib import _unique_path as unique_path
+try:
+    from koji_cli.lib import progress_callback as cb
+except ImportError:
     from koji_cli.lib import _progress_callback as cb
 
 try:
