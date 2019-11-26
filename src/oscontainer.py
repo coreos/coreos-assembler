@@ -118,7 +118,7 @@ def oscontainer_extract(containers_storage, src, dest,
 # oscontainer with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True,
-                      cert_dir="", authfile="", inspect_out=None):
+                      add_directories=[], cert_dir="", authfile="", inspect_out=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -150,6 +150,13 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         # Note that oscontainers don't have refs
         print("Copying ostree commit into container: {} ...".format(rev))
         run_verbose(["ostree", "--repo=" + dest_repo, "pull-local", src, rev])
+
+        for d in add_directories:
+            with os.scandir(d) as it:
+                for entry in it:
+                    dest = os.path.join(mnt, entry.name)
+                    subprocess.check_call(['/usr/lib/coreos-assembler/cp-reflink', entry.path, dest])
+                print(f"Copied in content from: {d}")
 
         # Generate pkglist.txt in to the oscontainer at /
         pkg_list_dest = os.path.join(mnt, 'pkglist.txt')
@@ -232,6 +239,8 @@ def main():
     parser_build.add_argument("src", help="OSTree repository")
     parser_build.add_argument("rev", help="OSTree ref (or revision)")
     parser_build.add_argument("name", help="Image name")
+    parser_build.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
+                              metavar='DIR', action='append', default=[])
     parser_build.add_argument(
         "--inspect-out",
         help="Write image JSON to file",
@@ -261,6 +270,7 @@ def main():
             containers_storage, args.src, args.rev, args.name,
             getattr(args, 'from'),
             inspect_out=args.inspect_out,
+            add_directories=args.add_directory,
             push=args.push,
             tls_verify=not args.disable_tls_verify,
             cert_dir=args.cert_dir,
