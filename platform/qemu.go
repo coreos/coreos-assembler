@@ -23,12 +23,10 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/system/exec"
-	"github.com/coreos/mantle/util"
 )
 
 type MachineOptions struct {
@@ -47,110 +45,6 @@ var (
 	ErrBothSizeAndFile = errors.New("Only one of Size and BackingFile can be specified")
 	primaryDiskOptions = []string{"serial=primary-disk"}
 )
-
-// Copy Container Linux input image and specialize copy for running kola tests.
-// Return FD to the copy, which is a deleted file.
-// This is not mandatory; the tests will do their best without it.
-func MakeCLDiskTemplate(inputPath string) (output *os.File, result error) {
-	seterr := func(err error) {
-		if result == nil {
-			result = err
-		}
-	}
-
-	// create output file
-	outputPath, err := mkpath("/var/tmp")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(outputPath)
-
-	// copy file
-	// cp is used since it supports sparse and reflink.
-	cp := exec.Command("cp", "--force",
-		"--sparse=always", "--reflink=auto",
-		inputPath, outputPath)
-	cp.Stdout = os.Stdout
-	cp.Stderr = os.Stderr
-	if err := cp.Run(); err != nil {
-		return nil, fmt.Errorf("copying file: %v", err)
-	}
-
-	// create mount point
-	tmpdir, err := ioutil.TempDir("", "kola-qemu-")
-	if err != nil {
-		return nil, fmt.Errorf("making temporary directory: %v", err)
-	}
-	defer func() {
-		if err := os.Remove(tmpdir); err != nil {
-			seterr(fmt.Errorf("deleting directory %s: %v", tmpdir, err))
-		}
-	}()
-
-	// set up loop device
-	cmd := exec.Command("losetup", "-Pf", "--show", outputPath)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("getting stdout pipe: %v", err)
-	}
-	defer stdout.Close()
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("running losetup: %v", err)
-	}
-	buf, err := ioutil.ReadAll(stdout)
-	if err != nil {
-		cmd.Wait()
-		return nil, fmt.Errorf("reading losetup output: %v", err)
-	}
-	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("setting up loop device: %v", err)
-	}
-	loopdev := strings.TrimSpace(string(buf))
-	defer func() {
-		if err := exec.Command("losetup", "-d", loopdev).Run(); err != nil {
-			seterr(fmt.Errorf("tearing down loop device: %v", err))
-		}
-	}()
-
-	// wait for OEM block device
-	oemdev := loopdev + "p6"
-	err = util.Retry(1000, 5*time.Millisecond, func() error {
-		if _, err := os.Stat(oemdev); !os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("timed out waiting for device node; did you specify a qcow image by mistake?")
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// mount OEM partition
-	if err := exec.Command("mount", oemdev, tmpdir).Run(); err != nil {
-		return nil, fmt.Errorf("mounting OEM partition %s on %s: %v", oemdev, tmpdir, err)
-	}
-	defer func() {
-		if err := exec.Command("umount", tmpdir).Run(); err != nil {
-			seterr(fmt.Errorf("unmounting %s: %v", tmpdir, err))
-		}
-	}()
-
-	// write console settings to grub.cfg
-	f, err := os.OpenFile(filepath.Join(tmpdir, "grub.cfg"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("opening grub.cfg: %v", err)
-	}
-	defer f.Close()
-	if _, err = f.WriteString("set linux_console=\"console=ttyS0,115200\"\n"); err != nil {
-		return nil, fmt.Errorf("writing grub.cfg: %v", err)
-	}
-
-	// return fd to output file
-	output, err = os.Open(outputPath)
-	if err != nil {
-		return nil, fmt.Errorf("opening %v: %v", outputPath, err)
-	}
-	return
-}
 
 func (d Disk) getOpts() string {
 	if len(d.DeviceOpts) == 0 {

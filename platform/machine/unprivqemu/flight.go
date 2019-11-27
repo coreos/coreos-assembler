@@ -15,8 +15,6 @@
 package unprivqemu
 
 import (
-	"os"
-
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/platform"
@@ -30,9 +28,6 @@ const (
 type flight struct {
 	*platform.BaseFlight
 	opts *qemu.Options
-
-	diskImagePath string
-	diskImageFile *os.File
 }
 
 var (
@@ -46,9 +41,8 @@ func NewFlight(opts *qemu.Options) (platform.Flight, error) {
 	}
 
 	qf := &flight{
-		BaseFlight:    bf,
-		opts:          opts,
-		diskImagePath: opts.DiskImage,
+		BaseFlight: bf,
+		opts:       opts,
 	}
 
 	return qf, nil
@@ -70,10 +64,4 @@ func (qf *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	qf.AddCluster(qc)
 
 	return qc, nil
-}
-
-func (qf *flight) Destroy() {
-	if qf.diskImageFile != nil {
-		qf.diskImageFile.Close()
-	}
 }

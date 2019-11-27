@@ -113,7 +113,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		return nil, err
 	}
 
-	qmCmd, extraFiles, err := platform.CreateQEMUCommand(qc.flight.opts.Board, qm.id, qc.flight.opts.BIOSImage, qm.consolePath, confPath, qc.flight.diskImagePath, conf.IsIgnition(), options)
+	qmCmd, extraFiles, err := platform.CreateQEMUCommand(qc.flight.opts.Board, qm.id, qc.flight.opts.BIOSImage, qm.consolePath, confPath, qc.flight.opts.DiskImage, conf.IsIgnition(), options)
 	if err != nil {
 		return nil, err
 	}

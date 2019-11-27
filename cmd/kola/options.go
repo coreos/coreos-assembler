@@ -142,7 +142,6 @@ func init() {
 	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
 	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
-	bv(&kola.QEMUOptions.UseVanillaImage, "qemu-skip-mangle", false, "don't modify CL disk image to capture console log")
 }
 
 // Sync up the command line options if there is dependency
