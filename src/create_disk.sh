@@ -184,20 +184,22 @@ if [ ${EFIPN:+x} ]; then
 fi
 mkfs.xfs "${root_dev}" -L root -m reflink=1
 
+rootfs=$PWD/tmp/rootfs
+
 # mount the partitions
-rm -rf rootfs
-mkdir rootfs
-mount -o discard "${root_dev}" rootfs
-chcon $(matchpathcon -n /) rootfs
-mkdir rootfs/boot
-chcon $(matchpathcon -n /boot) rootfs/boot
-mount "${disk}${BOOTPN}" rootfs/boot
-chcon $(matchpathcon -n /boot) rootfs/boot
+rm -rf ${rootfs}
+mkdir -p ${rootfs}
+mount -o discard "${root_dev}" ${rootfs}
+chcon $(matchpathcon -n /) ${rootfs}
+mkdir ${rootfs}/boot
+chcon $(matchpathcon -n /boot) $rootfs/boot
+mount "${disk}${BOOTPN}" $rootfs/boot
+chcon $(matchpathcon -n /boot) $rootfs/boot
 # FAT doesn't support SELinux labeling, it uses "genfscon", so we
 # don't need to give it a label manually.
 if [ ${EFIPN:+x} ]; then
-       mkdir rootfs/boot/efi
-       mount "${disk}${EFIPN}" rootfs/boot/efi
+       mkdir $rootfs/boot/efi
+       mount "${disk}${EFIPN}" $rootfs/boot/efi
 fi
 
 
@@ -205,18 +207,18 @@ fi
 # https://github.com/ostreedev/ostree/pull/1894
 # `ostree admin init-fs --modern`
 ostree_commit=$(ostree --repo="${ostree}" rev-parse "${ref}")
-mkdir -p rootfs/ostree
-chcon $(matchpathcon -n /ostree) rootfs/ostree
-mkdir -p rootfs/ostree/{repo,deploy}
-ostree --repo=rootfs/ostree/repo init --mode=bare
+mkdir -p $rootfs/ostree
+chcon $(matchpathcon -n /ostree) $rootfs/ostree
+mkdir -p $rootfs/ostree/{repo,deploy}
+ostree --repo=$rootfs/ostree/repo init --mode=bare
 remote_arg=
 deploy_ref="${ref}"
 if [ "${remote_name}" != NONE ]; then
     remote_arg="--remote=${remote_name}"
     deploy_ref="${remote_name}:${ref}"
 fi
-time ostree pull-local "$ostree" "$ref" --repo rootfs/ostree/repo $remote_arg
-ostree admin os-init "$os_name" --sysroot rootfs
+time ostree pull-local "$ostree" "$ref" --repo $rootfs/ostree/repo $remote_arg
+ostree admin os-init "$os_name" --sysroot $rootfs
 # Note that $ignition_firstboot is interpreted by grub at boot time,
 # *not* the shell here.  Hence the backslash escape.
 allkargs="\$ignition_firstboot $extrakargs"
@@ -225,9 +227,9 @@ for karg in $allkargs
 do
 	kargsargs+="--karg-append=$karg "
 done
-ostree admin deploy "${deploy_ref}" --sysroot rootfs --os "$os_name" $kargsargs
+ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
 
-deploy_root="rootfs/ostree/deploy/${os_name}/deploy/${ostree_commit}.0"
+deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${ostree_commit}.0"
 test -d "${deploy_root}"
 
 # This will allow us to track the version that an install
@@ -245,7 +247,7 @@ test -d "${deploy_root}"
 #                convenient to have here as a strong cross-reference.
 # imgid:         The full image name, the same as will end up in the
 #                `images` dict in `meta.json`.
-cat > rootfs/.coreos-aleph-version.json << EOF
+cat > $rootfs/.coreos-aleph-version.json << EOF
 {
 	"build": "${buildid}",
 	"ref": "${ref}",
@@ -257,7 +259,7 @@ EOF
 # /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
 # see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
 if [ "${save_var_subdirs}" != NONE ]; then
-	vardir=rootfs/ostree/deploy/${os_name}/var
+	vardir=$rootfs/ostree/deploy/${os_name}/var
 	mkdir -p ${vardir}/{home,log/journal,lib/systemd}
 	# And /home is the only one that doesn't have a filename transition today
 	chcon -h $(matchpathcon -n /home) ${vardir}/home
@@ -273,7 +275,7 @@ install_uefi() {
     # In the future it'd be better to get this stuff out of the OSTree commit and
     # change our build process to download+extract it separately.
     local source_efidir="${deploy_root}/usr/lib/ostree-boot/efi"
-    local target_efi="rootfs/boot/efi"
+    local target_efi="$rootfs/boot/efi"
     local target_efiboot="${target_efi}/EFI/BOOT"
     mkdir -p "${target_efiboot}"
     /usr/lib/coreos-assembler/cp-reflink "${source_efidir}/EFI/BOOT/BOOT"* "${target_efiboot}"
@@ -288,9 +290,9 @@ search --label boot --set prefix
 set prefix=($prefix)/grub2
 normal
 EOF
-    mkdir -p rootfs/boot/grub2
+    mkdir -p $rootfs/boot/grub2
     # copy the grub config and any other files we might need
-    cp $grub_script rootfs/boot/grub2/grub.cfg
+    cp $grub_script $rootfs/boot/grub2/grub.cfg
 }
 
 # Other arch-specific bootloader changes
@@ -302,7 +304,7 @@ x86_64)
     # https://github.com/coreos/fedora-coreos-tracker/issues/32
     grub2-install \
     --target i386-pc \
-    --boot-directory rootfs/boot \
+    --boot-directory $rootfs/boot \
     $disk
     ;;
 aarch64)
@@ -311,16 +313,16 @@ aarch64)
     ;;
 ppc64le)
     # to populate PReP Boot, i.e. support pseries
-    grub2-install --target=powerpc-ieee1275 --boot-directory rootfs/boot --no-nvram "${disk}${PREPPN}"
-    mkdir -p rootfs/boot/grub2
+    grub2-install --target=powerpc-ieee1275 --boot-directory $rootfs/boot --no-nvram "${disk}${PREPPN}"
+    mkdir -p $rootfs/boot/grub2
     # copy the grub config and any other files we might need
-    cp $grub_script rootfs/boot/grub2/grub.cfg
+    cp $grub_script $rootfs/boot/grub2/grub.cfg
     ;;
 s390x)
     bootloader_backend=zipl
 	# current zipl expects 'title' to be first line, and no blank lines in BLS file
 	# see https://github.com/ibm-s390-tools/s390-tools/issues/64
-	blsfile=$(find rootfs/boot/loader/entries/*.conf)
+	blsfile=$(find $rootfs/boot/loader/entries/*.conf)
 	tmpfile=$(mktemp)
 	for f in title version linux initrd options; do
 		echo $(grep $f $blsfile) >> $tmpfile
@@ -334,20 +336,20 @@ s390x)
 	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp" > $tmpfile
 
 	# ideally we want to invoke zipl with bls and zipl.conf but we might need
-	# to chroot to rootfs/ to do so. We would also do that when FCOS boot on its own.
+	# to chroot to $rootfs/ to do so. We would also do that when FCOS boot on its own.
 	# without chroot we can use --target option in zipl but it requires kernel + initramfs
 	# pair instead
 	zipl --verbose \
-		--target rootfs/boot \
-		--image rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
-		--ramdisk rootfs/boot/"$(grep initrd $blsfile | cut -d' ' -f2)" \
+		--target $rootfs/boot \
+		--image $rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
+		--ramdisk $rootfs/boot/"$(grep initrd $blsfile | cut -d' ' -f2)" \
 		--parmfile $tmpfile
     ;;
 esac
 
-ostree config --repo rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
+ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
 
-touch rootfs/boot/ignition.firstboot
+touch $rootfs/boot/ignition.firstboot
 
 # Finally, add the immutable bit to the physical root; we don't
 # expect people to be creating anything there.  A use case for
@@ -356,7 +358,9 @@ touch rootfs/boot/ignition.firstboot
 # we have no reason not to enable it here.  Administrators should
 # generally expect that state data is in /etc and /var; if anything
 # else is in /sysroot it's probably by accident.
-chattr +i rootfs
+chattr +i $rootfs
 
 fstrim -a -v
-umount -R rootfs
+umount -R $rootfs
+
+rmdir $rootfs
