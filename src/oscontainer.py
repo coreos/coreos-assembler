@@ -70,8 +70,11 @@ def oscontainer_extract(containers_storage, src, dest,
                         authfile=""):
     dest = os.path.realpath(dest)
     subprocess.check_call(["ostree", "--repo=" + dest, "refs"])
-    rootarg = '--root=' + containers_storage
-    podCmd = ['podman', rootarg, 'pull']
+
+    podman_base_argv = ['podman']
+    if containers_storage is not None:
+        podman_base_argv.append(f"--root={containers_storage}")
+    podCmd = podman_base_argv + ['pull']
 
     if not tls_verify:
         tls_arg = '--tls-verify=false'
@@ -87,7 +90,7 @@ def oscontainer_extract(containers_storage, src, dest,
     podCmd.append(src)
 
     run_verbose(podCmd)
-    inspect = run_get_json(['podman', rootarg, 'inspect', src])[0]
+    inspect = run_get_json(podman_base_argv + ['inspect', src])[0]
     commit = inspect['Labels'].get(OSCONTAINER_COMMIT_LABEL)
     if commit is None:
         raise SystemExit(
@@ -98,15 +101,14 @@ def oscontainer_extract(containers_storage, src, dest,
     # does then for us is "materialize" the merged rootfs, so we can mount it.
     # In theory we shouldn't need --entrypoint=/enoent here, but
     # it works around a podman bug.
-    cid = run_get_string([
-        'podman', rootarg, 'create', '--entrypoint=/enoent', iid])
-    mnt = run_get_string(['podman', rootarg, 'mount', cid])
+    cid = run_get_string(podman_base_argv + ['create', '--entrypoint=/enoent', iid])
+    mnt = run_get_string(podman_base_argv + ['mount', cid])
     try:
         src_repo = os.path.join(mnt, 'srv/repo')
         run_verbose([
             "ostree", "--repo=" + dest, "pull-local", src_repo, commit])
     finally:
-        subprocess.call(['podman', rootarg, 'umount', cid])
+        subprocess.call(podman_base_argv + ['umount', cid])
     if ref is not None:
         run_verbose([
             "ostree", "--repo=" + dest, "refs", '--create=' + ref, commit])
@@ -132,9 +134,14 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
     else:
         ostree_version = None
 
-    rootarg = '--root=' + containers_storage
-    bid = run_get_string(['buildah', rootarg, 'from', base_image])
-    mnt = run_get_string(['buildah', rootarg, 'mount', bid])
+    podman_base_argv = ['podman']
+    buildah_base_argv = ['buildah']
+    if containers_storage is not None:
+        podman_base_argv.append(f"--root={containers_storage}")
+        buildah_base_argv.append(f"--root={containers_storage}")
+
+    bid = run_get_string(buildah_base_argv + ['from', base_image])
+    mnt = run_get_string(buildah_base_argv + ['mount', bid])
     try:
         dest_repo = os.path.join(mnt, 'srv/repo')
         subprocess.check_call(['mkdir', '-p', dest_repo])
@@ -160,20 +167,17 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                   '-l', OSCONTAINER_COMMIT_LABEL + '=' + rev]
         if ostree_version is not None:
             config += ['-l', 'version=' + ostree_version]
-        run_verbose(['buildah', rootarg, 'config'] + config + [bid])
+        run_verbose(buildah_base_argv + ['config'] + config + [bid])
         print("Committing container...")
-        iid = run_get_string([
-            'buildah', rootarg, 'commit', bid, image_name_and_tag])
+        iid = run_get_string(buildah_base_argv + ['commit', bid, image_name_and_tag])
         print("{} {}".format(image_name_and_tag, iid))
     finally:
-        subprocess.call([
-            'buildah', rootarg, 'umount', bid], stdout=subprocess.DEVNULL)
-        subprocess.call([
-            'buildah', rootarg, 'rm', bid], stdout=subprocess.DEVNULL)
+        subprocess.call(buildah_base_argv + ['umount', bid], stdout=subprocess.DEVNULL)
+        subprocess.call(buildah_base_argv + ['rm', bid], stdout=subprocess.DEVNULL)
 
     if push:
         print("Pushing container")
-        podCmd = ['podman', rootarg, 'push']
+        podCmd = podman_base_argv + ['push']
         if not tls_verify:
             tls_arg = '--tls-verify=false'
         else:
@@ -196,8 +200,7 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         skopeoCmd.append("docker://" + image_name_and_tag)
         inspect = run_get_json_retry(skopeoCmd)
     else:
-        inspect = run_get_json([
-            'podman', rootarg, 'inspect', image_name_and_tag])[0]
+        inspect = run_get_json(podman_base_argv + ['inspect', image_name_and_tag])[0]
     if inspect_out is not None:
         with open(inspect_out, 'w') as f:
             json.dump(inspect, f)
@@ -206,8 +209,7 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
 def main():
     # Parse args and dispatch
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workdir", help="Temporary working directory",
-                        required=True)
+    parser.add_argument("--workdir", help="Temporary working directory")
     parser.add_argument("--disable-tls-verify",
                         help="Disable TLS for pushes and pulls",
                         action="store_true")
@@ -241,9 +243,11 @@ def main():
         action='store_true')
     args = parser.parse_args()
 
-    containers_storage = os.path.join(args.workdir, 'containers-storage')
-    if os.path.exists(containers_storage):
-        shutil.rmtree(containers_storage)
+    containers_storage = None
+    if args.workdir is not None:
+        containers_storage = os.path.join(args.workdir, 'containers-storage')
+        if os.path.exists(containers_storage):
+            shutil.rmtree(containers_storage)
 
     if args.action == 'extract':
         oscontainer_extract(
