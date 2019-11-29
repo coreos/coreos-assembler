@@ -195,8 +195,8 @@ And now we can build from these inputs:
 $ cosa build
 ```
 
-Each build will write an OSTree commit into `$PWD/repo/` as well
-as generate VM images in `$PWD/builds/`.
+Each build will create a new directory in `$PWD/builds/`, containing the
+generated OSTree commit (as a tarball) and the qemu VM image.
 
 Next, rerun `cosa build` and notice the system correctly
 deduces that nothing changed.  You can run `cosa fetch`
