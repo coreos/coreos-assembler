@@ -225,6 +225,24 @@ To completely rebuild the COSA container image locally, use e.g.
 `COREOS_ASSEMBLER_CONTAINER=localhost/coreos-assembler` in the environment
 if you're using the bash alias `cosa`.
 
+#### Installing cosa inside an existing container
+---
+
+If you already have a pet container you'd like to keep using that
+matches the same Fedora release cosa uses, you can install cosa inside
+of it by doing:
+
+```
+sudo ./build.sh configure_yum_repos
+sudo ./build.sh install_rpms
+make
+sudo make install
+```
+
+From that point on, you only need to run `make && sudo make install` if
+you're hacking on cosa itself (unless there are new RPM requirements
+added).
+
 #### Understanding "config git"
 
 Conceptually, coreos-assembler ties together generating OSTree commits with disk images
