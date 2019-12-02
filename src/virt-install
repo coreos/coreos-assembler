@@ -40,7 +40,7 @@ parser.add_argument("--create-disk", help="Automatically create disk as qcow2, p
 parser.add_argument("--configdir", help="coreos-assembler configdir",
                     action='store', required=True)
 parser.add_argument("--variant", help="Configure image variant",
-                    choices=('metal-bios', 'metal-uefi', 'metal-dasd', 'cloud'), default=None)
+                    choices=('metal-bios', 'metal-uefi', 'metal-dasd', 'metal-zfcp', 'cloud'), default=None)
 parser.add_argument("--kickstart-out", help="Save flattened kickstart",
                     action='store')
 parser.add_argument("--location", help="Installer location",

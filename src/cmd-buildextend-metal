@@ -8,10 +8,11 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler buildextend-metal --help
-       coreos-assembler buildextend-metal [--build ID] [--bios] [--uefi] [--dasd]
+       coreos-assembler buildextend-metal [--build ID] [--bios] [--uefi] [--dasd] [--zfcp]
 
-  Build raw metal images for bios or uefi or dasd. If none of the switches are
-  provided, both bios and uefi are built.
+  Build raw metal images for bios or uefi or dasd or zfcp.
+  If none of the switches are provided, both bios and uefi are built on aarch64, ppc64le, x86_64.
+  If none of the switches are provided, both dasd and zfcp are built on s390x.
 EOF
 }
 
@@ -19,9 +20,10 @@ EOF
 BIOS=
 UEFI=
 DASD=
+ZFCP=
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build:,bios,uefi,dasd -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,build:,bios,uefi,dasd,zfcp -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -41,6 +43,9 @@ while true; do
             ;;
         --dasd)
             DASD=1
+            ;;
+        --zfcp)
+            ZFCP=1
             ;;
         --build)
             build=$2
@@ -67,19 +72,20 @@ if [ $# -ne 0 ]; then
 fi
 
 # default to both BIOS and UEFI for non-s390x and BIOS DASD for s390x
-if [ -z "${BIOS}" ] && [ -z "${UEFI}" ] && [ -z "${DASD}" ]; then
-    BIOS=1
+if [ -z "${BIOS}" ] && [ -z "${UEFI}" ] && [ -z "${DASD}" ] && [ -z "${ZFCP}" ]; then
     if [ "${arch}" != "s390x" ]; then
+        BIOS=1
         UEFI=1
     else
         DASD=1
+        ZFCP=1
     fi
 fi
 
-if [ -n "${UEFI}" ] && [ "${arch}" = "s390x" ]; then
-    fatal "${arch} is not supported for building UEFI image"
-elif [ -n "${DASD}" ] && [ "${arch}" != "s390x" ]; then
-    fatal "${arch} is not supported for building DASD image"
+if { [ -n "${BIOS}" ] || [ -n "${UEFI}" ]; } && [ "${arch}" = "s390x" ]; then
+    fatal "${arch} is not supported for building images: ${BIOS:+BIOS} ${UEFI:+UEFI}" 
+elif { [ -n "${DASD}" ] || [ -n "${ZFCP}" ]; } && [ "${arch}" != "s390x" ]; then
+    fatal "${arch} is not supported for building images: ${DASD:+DASD} ${ZFCP:+ZFCP}"
 fi
 
 export LIBGUESTFS_BACKEND=direct
@@ -135,7 +141,7 @@ fi
 # for anaconda logs
 mkdir -p tmp/anaconda
 
-for itype in ${BIOS:+metal-bios} ${UEFI:+metal-uefi} ${DASD:+metal-dasd}; do
+for itype in ${BIOS:+metal-bios} ${UEFI:+metal-uefi} ${DASD:+metal-dasd} ${ZFCP:+metal-zfcp}; do
     img=${name}-${build}-${itype}.raw
     if [ -f "${builddir}/${img}" ]; then
         echo "Image $itype already exists"
