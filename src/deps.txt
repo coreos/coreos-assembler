@@ -62,3 +62,6 @@ cryptsetup
 
 # For communicating with RoboSignatory for signing requests
 fedora-messaging
+
+# For debugging running processes in the pipelines
+strace
