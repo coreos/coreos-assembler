@@ -18,7 +18,7 @@ firewall --disabled
 # rw and $ignition_firstboot are used by https://github.com/coreos/ignition-dracut/
 # Console settings are so we see output everywhere
 # %%KARGS%% is for distro-specific arguments
-bootloader --timeout=1 --append="console=%%TERM%%,115200n8 console=tty0 rootflags=defaults,prjquota rw %%KARGS%% $ignition_firstboot"
+bootloader --timeout=1 --append="%%TERM%% rootflags=defaults,prjquota rw %%KARGS%% $ignition_firstboot"
 # Anaconda currently writes out configs for this which we don't want to persist; see below
 network --bootproto=dhcp --onboot=on
 
