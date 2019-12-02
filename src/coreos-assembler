@@ -4,6 +4,11 @@ set -euo pipefail
 # Currently this just wraps the two binaries we have today
 # under a global entrypoint with subcommands.
 
+# Set PYTHONUNBUFFERED=1 so that we get unbuffered output. We should
+# be able to do this on the shebang lines but env doesn't support args
+# right now. In Fedora we should be able to use the `env -S` option.
+export PYTHONUNBUFFERED=1
+
 # docker/podman don't run through PAM, but we want this set for the privileged
 # (non-virtualized) path
 export USER="${USER:-$(id -nu)}"

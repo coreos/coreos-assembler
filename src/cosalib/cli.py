@@ -1,4 +1,4 @@
-# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
 # pylint: disable=C0103
 
 import argparse

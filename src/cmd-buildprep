@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
 #
 # Fetches the bare minimum from external servers to create the next build. May
 # require configured AWS credentials if bucket and objects are not public.
