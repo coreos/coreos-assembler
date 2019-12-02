@@ -37,7 +37,7 @@ class _Build:
       - _build_artifacts(*args, **kwargs)
     """
 
-    def __init__(self, builds_dir, build="latest", workdir=None):
+    def __init__(self, builds_dir, build="latest", workdir=None, arch=BASEARCH):
         """
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
@@ -63,7 +63,7 @@ class _Build:
             build = builds.get_latest()
 
         log.info("Targeting build: %s", build)
-        self._build_dir = builds.get_build_dir(build)
+        self._build_dir = builds.get_build_dir(build, basearch=arch)
 
         self._build_json = {
             "commit": None,
@@ -117,11 +117,6 @@ class _Build:
         return self._workdir
 
     @property
-    def basearch(self):
-        """ get the build arch """
-        return BASEARCH
-
-    @property
     def build_id(self):
         """ get the build id, e.g. 99.33 """
         return self.get_meta_key("meta", "buildid")
@@ -168,6 +163,10 @@ class _Build:
         if self._build_json["meta"] is None:
             self._build_json["meta"] = self.__get_json("meta")
         return self._build_json["meta"]
+
+    @property
+    def basearch(self):
+        return self.meta.get(_Build.ckey("coreos-assembler.basearch"), BASEARCH)
 
     @staticmethod
     def ckey(var):
