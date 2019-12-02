@@ -136,10 +136,11 @@ with open('/usr/lib/coreos-assembler/image-base.ks') as basef:
         buf += ("\n%post --nochroot --erroronfail\n" +
                 "ostree config --repo /mnt/sysimage/ostree/repo set sysroot.bootloader zipl\n" +
                 "%end\n")
+        buf = buf.replace('%%TERM%%', '')
     else:
         buf = buf.replace('%%DISKLABEL%%',' --disklabel=gpt')
+        buf = buf.replace('%%TERM%%', 'console={},115200n8 console=tty0'.format(os.environ.get('DEFAULT_TERMINAL', 'ttyS0')))
     buf = buf.replace('%%KARGS%%', ' '.join(extra_kargs))
-    buf = buf.replace('%%TERM%%', os.environ.get('DEFAULT_TERMINAL', 'ttyS0'))
     ks_tmp.write(buf)
 
 # To support different distro builds using Fedora anaconda,
