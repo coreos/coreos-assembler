@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
 #
 # An operation that mutates a build by replicating an existing
 # aliyun image to additional regions, extending the meta.json with

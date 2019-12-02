@@ -4,7 +4,7 @@
 An operation that mutates a build by uploading to Azure,
 extending the meta.json with the Azure image name.
 """
-# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
 
 import argparse
 import logging as log

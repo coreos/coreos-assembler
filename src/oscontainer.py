@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
 #
 # An "oscontainer" is an ostree (archive) repository stuck inside
 # a Docker/OCI container at /srv/repo.  For more information,

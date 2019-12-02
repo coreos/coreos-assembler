@@ -5,11 +5,6 @@ set -euo pipefail
 DIR=$(dirname "$0")
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
-# Set PYTHONUNBUFFERED=1 so that we get unbuffered output. We should
-# be able to do this on the shebang lines but env doesn't support args
-# right now. In Fedora we should be able to use the `env -S` option.
-export PYTHONUNBUFFERED=1
-
 # Detect what platform we are on
 if grep -q '^Fedora' /etc/redhat-release; then
     export ISFEDORA=1
