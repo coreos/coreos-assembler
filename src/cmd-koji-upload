@@ -44,9 +44,6 @@ try:
 except IOError:
     HOST_OS = "unknown"
 
-# BASEARCH is the current machine architecture
-BASEARCH = get_basearch()
-
 COSA_INPATH = "/cosa"
 
 # Content generator types as defined in:
@@ -54,31 +51,27 @@ COSA_INPATH = "/cosa"
 #   DO NOT add arbitrary types or extensions here. If the archive type
 #   is unknown to Koji, then the upload will fail.
 KOJI_CG_TYPES = {
-    # key: (description, extension, architecture, type)
-    "iso": ("CD/DVD Image", "iso", BASEARCH, "image"),
+    # key: (description, extension, arch specific file, type)
+    "iso": ("CD/DVD Image", "iso", "arch", "image"),
     "json": ("JSON data", "json", "noarch", "source"),
     "log": ("log file", "log", "noarch", "log"),
-    "ova": ("Open Virtualization Archive", "ova", BASEARCH, "image"),
-    "qcow": ("QCOW image", "qcow", BASEARCH, "image"),
-    "qcow2": ("QCOW2 image", "qcow2", BASEARCH, "image"),
-    "qcow2.gz": ("Compressed QCOW2", "qcow2.gz", BASEARCH, "image"),
-    "qcow2.xz": ("Compressed QCOW2", "qcow2.gz", BASEARCH, "image"),
-    "raw": ("Raw disk image", "raw", BASEARCH, "image"),
-    "raw.gz": ("Compressed Raw", "raw.gz", BASEARCH, "image"),
-    "raw.xz": ("Compressed Raw", "raw.xz", BASEARCH, "image"),
+    "ova": ("Open Virtualization Archive", "ova", "arch", "image"),
+    "qcow": ("QCOW image", "qcow", "arch", "image"),
+    "qcow2": ("QCOW2 image", "qcow2", "arch", "image"),
+    "qcow2.gz": ("Compressed QCOW2", "qcow2.gz", "arch", "image"),
+    "qcow2.xz": ("Compressed QCOW2", "qcow2.gz", "arch", "image"),
+    "raw": ("Raw disk image", "raw", "arch", "image"),
+    "raw.gz": ("Compressed Raw", "raw.gz", "arch", "image"),
+    "raw.xz": ("Compressed Raw", "raw.xz", "arch", "image"),
     "tar": ("Tar file", "tar", "noarch", "source"),
     "tar.gz": ("Tar file", "tar.gz", "noarch", "source"),
     "tar.xz": ("Tar file", "tar.xz", "noarch", "source"),
-    "vdi": ("VirtualBox Virtual Disk Image", "vdi", BASEARCH, "image"),
-    "vhd": ("Hyper-V image", "vhd", BASEARCH, "image"),
-    "vhdx": ("Hyper-V Virtual Hard Disk v2 image", "vhdx", BASEARCH, "image"),
-    "vmdk": ("vSphere image", "vmdk", BASEARCH, "image"),
+    "vdi": ("VirtualBox Virtual Disk Image", "vdi", "arch", "image"),
+    "vhd": ("Hyper-V image", "vhd", "arch", "image"),
+    "vhdx": ("Hyper-V Virtual Hard Disk v2 image", "vhdx", "arch", "image"),
+    "vmdk": ("vSphere image", "vmdk", "arch", "image"),
     "yaml": ("YAML data", "yaml", "noarch", "source")
 }
-
-# These artifacts need to be renamed on upload. Koji file extension matching
-# against content types.
-RENAME_RAW = ['initramfs.img', '-kernel', "ostree-commit"]
 
 # These are compressed extensions that are used to determine if name managling
 # might be needed.
@@ -124,15 +117,23 @@ class Build(_Build):
 
         :param fname: file name to check if it needs to be renamed
         :type str
-        :return srt
+        :return str
         """
-        for ending in RENAME_RAW:
+
+        rename_raw = [
+            "ostree-commit"
+            f'-kernel-{self.basearch}',
+            f'installer-initramfs.{self.basearch}.img',
+        ]
+
+        for ending in rename_raw:
             if fname.endswith(ending):
                 lname = f"{fname}.raw"
-                try:
-                    os.symlink(fname, lname)
-                except Exception as e:
-                    raise Exception("failed create symlink for {lname}", e)
+                if not os.path.exists(lname):
+                    try:
+                        os.symlink(fname, lname)
+                    except Exception as e:
+                        raise Exception("failed create symlink for {lname}", e)
 
                 return lname, True
         return fname, None
@@ -203,9 +204,9 @@ class Build(_Build):
         Helper to return if a file should be uploaded
         :param fname: name of file to check against Koji table for uploading.
         :type str
-        :returns bool
+        :returns (bool, str)
 
-        Returns true if the file is known to Koji.
+        The return is tuple is used if the file is found and a message.
         """
         base = os.path.basename(fname)
         check_extension = base.split(".")[-1]
@@ -213,10 +214,19 @@ class Build(_Build):
             if fname.endswith(extension):
                 check_extension = base.split(".")[-2]
 
-        found = KOJI_CG_TYPES.get(check_extension)
+        (found, _, arch, _) = KOJI_CG_TYPES.get(
+            check_extension, [None, None, None, None])
+
+        if arch == "arch":
+            farch = os.path.abspath(fname).split('/')[-2]
+            if farch != self.basearch:
+                return (False,
+                        f'file arch {farch} mismatches build arch')
+
         if found:
-            return True
-        return False
+            return (True, f'{check_extension} is supported by Koji')
+
+        return (False, f'{check_extension} is not supported by Koji')
 
     def _build_artifacts(self, *args, **kwargs):
         """
@@ -254,13 +264,13 @@ class Build(_Build):
             mutated_path = self.mutate_for_koji(lpath)
             if mutated_path != lpath:
                 lpath = mutated_path
-            log.debug(f" * using {lpath} for upload name")
+            log.debug(f" * using {os.path.basename(lpath)} for upload name")
 
             # and check that a file should be uploaded
             upload_path = os.path.basename(lpath)
-            if not self.supported_upload(lpath):
-                log.debug(f" * EXCLUDING file {ffile}")
-                log.debug("   File type is not supported by Koji")
+            supported, msg = self.supported_upload(lpath)
+            if not supported:
+                log.debug(f" * EXCLUDING: {msg}")
                 continue
 
             fsize = '{}'.format(os.stat(lpath).st_size)
@@ -369,8 +379,7 @@ class Upload():
         """ get the Build that Upload will act on """
         return self._build
 
-    @staticmethod
-    def get_file_meta(obj):
+    def get_file_meta(self, obj):
         """
         Generate the required dict for specific types of files.
         @param dict: meta-data for parsing
@@ -386,26 +395,25 @@ class Upload():
         ext = ext.lstrip('.')
         if ext in COMPRESSION_EXT:
             # find sub extension, e.g. "tar" in "tar.gz"
-            sub_ext = os.path.splitext(obj.get("upload_path"))[0].lstrip('.')
+            sub_ext = obj.get("upload_path").split('.')[-2]
             ext = f"{sub_ext}.{ext}"
 
-        log.debug((f"File {(obj.get('upload_path'))} should be of",
-                   f"type {ext}: {obj}"))
+        log.debug(f"File {(obj.get('upload_path'))} is type '{ext}': {obj}")
         (description, ext, arch, etype) = KOJI_CG_TYPES.get(
             ext, [None, None, None, None])
 
         file_meta = {
-            "arch": arch,
+            "arch": self.build.basearch,
             "buildroot_id": 1,
             "checksum": obj["md5"],
             "checksum_type": "md5",
             "filename": obj['upload_path'],
             "filesize": obj["size"],
             "type": ext,
-            "extra": {"image": {"arch": arch}}
+            "extra": {"image": {"arch": self.build.basearch}}
         }
 
-        if etype not in ["image", "source"]:
+        if etype != "arch":
             del file_meta['extra']
             file_meta['type'] = etype
 
@@ -422,7 +430,7 @@ class Upload():
 
         outputs = []
         for _, value in (self.build).get_artifacts():
-            file_output = Upload.get_file_meta(value)
+            file_output = self.get_file_meta(value)
             if file_output is not None:
                 outputs.append(file_output)
         self._image_files = outputs
@@ -450,7 +458,7 @@ class Upload():
                 "extra": {
                     "typeinfo": {
                         "image": {
-                            "arch": BASEARCH
+                            "arch": self.build.basearch,
                         }
                     }
                 },
@@ -609,6 +617,8 @@ Environment variables are supported:
                         help="Dump the manfiest and exit")
     parser.add_argument("--no-upload", default=False, action='store_true',
                         help="Do not upload, just parse the build")
+    parser.add_argument("--arch", default=get_basearch(),
+                        help="Set the build architecture")
 
     # Koji specific options
     parser.add_argument("--no-auth", action='store_false', dest="auth",
@@ -629,7 +639,7 @@ Environment variables are supported:
 
     set_logger(args.log_level)
 
-    build = Build(args.buildroot, args.build)
+    build = Build(args.buildroot, args.build, arch=args.arch)
     if args.auth:
         kinit(args.keytab, args.owner)
 
