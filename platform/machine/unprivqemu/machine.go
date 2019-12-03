@@ -69,11 +69,13 @@ func (m *machine) Reboot() error {
 }
 
 func (m *machine) Destroy() {
-	if err := m.swtpm.Kill(); err != nil {
-		plog.Errorf("Error killing swtpm of %v: %v", m.ID(), err)
-	}
-	if err := os.RemoveAll(m.swtpmTmpd); err != nil {
-		plog.Errorf("Error removing swtpm dir: %v", err)
+	if m.swtpmTmpd != "" {
+		if err := m.swtpm.Kill(); err != nil {
+			plog.Errorf("Error killing swtpm of %v: %v", m.ID(), err)
+		}
+		if err := os.RemoveAll(m.swtpmTmpd); err != nil {
+			plog.Errorf("Error removing swtpm dir: %v", err)
+		}
 	}
 	if err := m.qemu.Kill(); err != nil {
 		plog.Errorf("Error killing instance %v: %v", m.ID(), err)
