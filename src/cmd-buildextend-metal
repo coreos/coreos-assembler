@@ -71,11 +71,14 @@ if [ $# -ne 0 ]; then
     fatal "Too many arguments passed"
 fi
 
-# default to both BIOS and UEFI for non-s390x and BIOS DASD for s390x
+# default to BIOS for ppc64le and DASD ZFCP for s390x
+# default to BIOS & UEFI for all other archs
 if [ -z "${BIOS}" ] && [ -z "${UEFI}" ] && [ -z "${DASD}" ] && [ -z "${ZFCP}" ]; then
     if [ "${arch}" != "s390x" ]; then
         BIOS=1
-        UEFI=1
+	if [ "${arch}" != "ppc64le" ]; then
+            UEFI=1
+	fi
     else
         DASD=1
         ZFCP=1
@@ -86,6 +89,8 @@ if { [ -n "${BIOS}" ] || [ -n "${UEFI}" ]; } && [ "${arch}" = "s390x" ]; then
     fatal "${arch} is not supported for building images: ${BIOS:+BIOS} ${UEFI:+UEFI}" 
 elif { [ -n "${DASD}" ] || [ -n "${ZFCP}" ]; } && [ "${arch}" != "s390x" ]; then
     fatal "${arch} is not supported for building images: ${DASD:+DASD} ${ZFCP:+ZFCP}"
+elif [ -n "${UEFI}" ] && [ "${arch}" = "ppc64le" ]; then
+    fatal "${arch} is not supported for building images: ${UEFI:+UEFI}"
 fi
 
 export LIBGUESTFS_BACKEND=direct
