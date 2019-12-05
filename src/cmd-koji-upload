@@ -639,7 +639,7 @@ Environment variables are supported:
 
     set_logger(args.log_level)
 
-    build = Build(args.buildroot, args.build, arch=args.arch)
+    build = Build(args.buildroot, build=args.build, arch=args.arch)
     if args.auth:
         kinit(args.keytab, args.owner)
 
