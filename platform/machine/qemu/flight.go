@@ -36,6 +36,9 @@ type Options struct {
 	// It can be a plain name, or a full path.
 	BIOSImage string
 
+	//Option to create a temporary software TPM - true by default
+	Swtpm bool
+
 	*platform.Options
 }
 

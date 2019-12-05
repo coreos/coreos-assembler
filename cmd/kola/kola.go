@@ -174,6 +174,7 @@ func writeProps() error {
 	}
 	type QEMU struct {
 		Image string `json:"image"`
+		Swtpm bool   `json:"swtpm"`
 	}
 	return enc.Encode(&struct {
 		Cmdline         []string  `json:"cmdline"`
@@ -237,6 +238,7 @@ func writeProps() error {
 		},
 		QEMU: QEMU{
 			Image: kola.QEMUOptions.DiskImage,
+			Swtpm: kola.QEMUOptions.Swtpm,
 		},
 	})
 }
