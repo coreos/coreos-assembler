@@ -38,9 +38,11 @@ if os.path.isfile(blacklist_path):
     with open(blacklist_path) as f:
         blacklist = yaml.safe_load(f)
         for obj in (blacklist or []):
-            print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
-            print(f"⚠️  {obj['tracker']}")
-            blacklist_args += ['--blacklist-test', obj['pattern']]
+            # if there are any arches specified, skip tests only for those arches. if not skip unconditionally.
+            if basearch in obj.get('arches', [basearch]):
+                print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
+                print(f"⚠️  {obj['tracker']}")
+                blacklist_args += ['--blacklist-test', obj['pattern']]
 
 qemuimg = buildmeta['images'].get('qemu')
 if qemuimg is None:
