@@ -15,13 +15,8 @@ import (
 )
 
 const (
-	CmdTimeout           = time.Second * 20
-	DbusTimeout          = time.Second * 20
-	DockerTimeout        = time.Second * 60
-	PortTimeout          = time.Second * 3
-	UpdateEnginePubKey   = "/usr/share/update_engine/update-payload-key.pub.pem"
-	UpdateEnginePubKeyV1 = "d410d94dc56a1cba8df71c94ea6925811e44b09416f66958ab7a453f0731d80e"
-	UpdateEnginePubKeyV2 = "a76a22e6afcdfbc55dd2953aa950c7ec93b254774fca02d13ec52c59672e5982"
+	DockerTimeout = time.Second * 60
+	PortTimeout   = time.Second * 3
 )
 
 // RHCOS services we expect disabled/inactive
@@ -45,25 +40,6 @@ var offServices = []string{
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "cl.basic",
-		Run:         LocalTests,
-		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"CloudConfig":      TestCloudinitCloudConfig,
-			"Script":           TestCloudinitScript,
-			"PortSSH":          TestPortSsh,
-			"DbusPerms":        TestDbusPerms,
-			"Symlink":          TestSymlinkResolvConf,
-			"UpdateEngineKeys": TestInstalledUpdateEngineRsaKeys,
-			"ServicesActive":   TestServicesActive,
-			"ReadOnly":         TestReadOnlyFs,
-			"RandomUUID":       TestFsRandomUUID,
-			"Useradd":          TestUseradd,
-			"MachineID":        TestMachineID,
-		},
-		Distros: []string{"cl"},
-	})
-	register.Register(&register.Test{
 		Name:        "rhcos.basic",
 		Run:         LocalTests,
 		ClusterSize: 1,
@@ -71,7 +47,7 @@ func init() {
 			"PortSSH":          TestPortSsh,
 			"DbusPerms":        TestDbusPerms,
 			"NetworkScripts":   TestNetworkScripts,
-			"ServicesActive":   TestServicesActiveCoreOS,
+			"ServicesActive":   TestServicesActive,
 			"ServicesDisabled": TestServicesDisabledRHCOS,
 			"ReadOnly":         TestReadOnlyFs,
 			"Useradd":          TestUseradd,
@@ -87,27 +63,25 @@ func init() {
 			"PortSSH":        TestPortSsh,
 			"DbusPerms":      TestDbusPerms,
 			"NetworkScripts": TestNetworkScripts,
-			"ServicesActive": TestServicesActiveCoreOS,
+			"ServicesActive": TestServicesActive,
 			"ReadOnly":       TestReadOnlyFs,
+			"RandomUUID":     TestFsRandomUUID,
 			"Useradd":        TestUseradd,
 			"MachineID":      TestMachineID,
 		},
 		Distros: []string{"fcos"},
 	})
-
-	// tests requiring network connection to internet
+	// TODO: enable DockerPing/DockerEcho once fixed
 	register.Register(&register.Test{
-		Name:        "cl.internet",
+		Name:        "fcos.internet",
 		Run:         InternetTests,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		NativeFuncs: map[string]func() error{
-			"UpdateEngine": TestUpdateEngine,
-			"DockerPing":   TestDockerPing,
-			"DockerEcho":   TestDockerEcho,
-			"NTPDate":      TestNTPDate,
+			"PodmanPing": TestPodmanPing,
+			"PodmanEcho": TestPodmanEcho,
 		},
-		Distros: []string{"cl"},
+		Distros: []string{"fcos"},
 	})
 }
 
@@ -118,29 +92,6 @@ func TestPortSsh() error {
 		return err
 	}
 	return nil
-}
-
-func TestUpdateEngine() error {
-	//t.Parallel()
-
-	errc := make(chan error, 1)
-	go func() {
-		c := exec.Command("update_engine_client", "-status")
-		err := c.Run()
-		errc <- err
-	}()
-
-	select {
-	case <-time.After(CmdTimeout):
-		return fmt.Errorf("update_engine_client timed out after %s.", CmdTimeout)
-	case err := <-errc:
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// FIXME(marineam): Test DBus directly
 }
 
 func TestDockerEcho() error {
@@ -181,17 +132,36 @@ func TestDockerPing() error {
 	}
 }
 
-func TestNTPDate() error {
+func TestPodmanEcho() error {
 	//t.Parallel()
 	errc := make(chan error, 1)
 	go func() {
-		c := exec.Command("ntpdate", "-d", "-s", "-u", "pool.ntp.org")
+		c := exec.Command("podman", "run", "busybox", "echo")
 		err := c.Run()
 		errc <- err
 	}()
 	select {
-	case <-time.After(CmdTimeout):
-		return fmt.Errorf("ntpdate timed out after %s.", CmdTimeout)
+	case <-time.After(DockerTimeout):
+		return fmt.Errorf("PodmanEcho timed out after %s.", DockerTimeout)
+	case err := <-errc:
+		if err != nil {
+			return fmt.Errorf("PodmanEcho: %v", err)
+		}
+		return nil
+	}
+}
+
+func TestPodmanPing() error {
+	//t.Parallel()
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("podman", "run", "busybox", "ping", "-c4", "coreos.com")
+		err := c.Run()
+		errc <- err
+	}()
+	select {
+	case <-time.After(DockerTimeout):
+		return fmt.Errorf("PodmanPing timed out after %s.", DockerTimeout)
 	case err := <-errc:
 		if err != nil {
 			return err
@@ -237,43 +207,7 @@ func TestDbusPerms() error {
 	return nil
 }
 
-func TestSymlinkResolvConf() error {
-	//t.Parallel()
-	f, err := os.Lstat("/etc/resolv.conf")
-	if err != nil {
-		return fmt.Errorf("SymlinkResolvConf: %v", err)
-	}
-	if !IsLink(f) {
-		return fmt.Errorf("/etc/resolv.conf is not a symlink.")
-	}
-	return nil
-}
-
-func TestInstalledUpdateEngineRsaKeys() error {
-	//t.Parallel()
-	fileHash, err := Sha256File(UpdateEnginePubKey)
-	if err != nil {
-		return err
-	}
-
-	switch string(fileHash) {
-	case UpdateEnginePubKeyV1, UpdateEnginePubKeyV2:
-		return nil
-	default:
-		return fmt.Errorf("%s:%s unexpected hash.", UpdateEnginePubKey, fileHash)
-	}
-}
-
 func TestServicesActive() error {
-	return servicesActive([]string{
-		"multi-user.target",
-		"docker.socket",
-		"systemd-timesyncd.service",
-		"update-engine.service",
-	})
-}
-
-func TestServicesActiveCoreOS() error {
 	return servicesActive([]string{
 		"multi-user.target",
 	})
@@ -385,7 +319,7 @@ func TestFsRandomUUID() error {
 		return fmt.Errorf("malformed GUID: %v", err)
 	}
 
-	defaultGUID := uuid.Parse("00000000-0000-0000-0000-000000000001")
+	defaultGUID := uuid.Parse("00000000-0000-4000-a000-000000000001")
 	if uuid.Equal(defaultGUID, got) {
 		return fmt.Errorf("unexpected default GUID found")
 	}

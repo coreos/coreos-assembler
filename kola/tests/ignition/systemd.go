@@ -65,15 +65,10 @@ func init() {
         }]
     }
 }`),
-		// https://github.com/coreos/mantle/issues/999
-		// On the qemu-unpriv platform the DHCP provides no data, pre-systemd 241 the DHCP server sending
-		// no routes to the link to spin in the configuring state. nfs-server.service pulls in the network-online
-		// target which causes the basic machine checks to fail
-		ExcludePlatforms: []string{"qemu-unpriv"},
 		// FCOS just ships the client (see
 		// https://github.com/coreos/fedora-coreos-tracker/issues/121).
 		// Should probably just pick a different unit to test with, though
-		// testing the NFS workflow is useful for RHCOS/CL.
+		// testing the NFS workflow is useful for RHCOS.
 		ExcludeDistros: []string{"fcos"},
 	})
 }

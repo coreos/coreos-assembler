@@ -24,68 +24,65 @@ import (
 
 func init() {
 	enableMetadataService := conf.Ignition(`{
-	    "ignitionVersion": 1,
-	    "systemd": {
-		"units": [
-		    {
-			"name": "coreos-metadata.service",
-			"enable": true
-		    },
-		    {
-			"name": "metadata.target",
-			"enable": true,
-			"contents": "[Install]\nWantedBy=multi-user.target"
-		    }
-		]
-	    }
+		"ignition": {"version": "3.0.0"},
+		"systemd": {
+			"units": [{
+				"name": "afterburn.service",
+				"enabled": true
+			}, {
+				"name": "metadata.target",
+				"enabled": true,
+				"contents": "[Install]\nWantedBy=multi-user.target"
+			}]
+		}
 	}`)
 
 	register.Register(&register.Test{
-		Name:        "cl.metadata.aws",
+		Name:        "fcos.metadata.aws",
 		Run:         verifyAWS,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
-		UserData:    enableMetadataService,
-		Distros:     []string{"cl"},
+		UserDataV3:  enableMetadataService,
+		Distros:     []string{"fcos"},
 	})
 
 	register.Register(&register.Test{
-		Name:        "cl.metadata.azure",
+		Name:        "fcos.metadata.azure",
 		Run:         verifyAzure,
 		ClusterSize: 1,
 		Platforms:   []string{"azure"},
-		UserData:    enableMetadataService,
-		Distros:     []string{"cl"},
+		UserDataV3:  enableMetadataService,
+		Distros:     []string{"fcos"},
 	})
 
 	register.Register(&register.Test{
-		Name:        "cl.metadata.packet",
+		Name:        "fcos.metadata.packet",
 		Run:         verifyPacket,
 		ClusterSize: 1,
 		Platforms:   []string{"packet"},
-		UserData:    enableMetadataService,
-		Distros:     []string{"cl"},
+		UserDataV3:  enableMetadataService,
+		Distros:     []string{"fcos"},
 	})
 }
 
 func verifyAWS(c cluster.TestCluster) {
-	verify(c, "COREOS_EC2_IPV4_LOCAL", "COREOS_EC2_IPV4_PUBLIC", "COREOS_EC2_HOSTNAME")
+	verify(c, "AFTERBURN_AWS_IPV4_LOCAL", "AFTERBURN_AWS_IPV4_PUBLIC", "AFTERBURN_AWS_HOSTNAME")
 }
 
 func verifyAzure(c cluster.TestCluster) {
-	verify(c, "COREOS_AZURE_IPV4_DYNAMIC")
+	verify(c, "AFTERBURN_AZURE_IPV4_DYNAMIC")
 	// kola tests do not spawn machines behind a load balancer on Azure
-	// which is required for COREOS_AZURE_IPV4_VIRTUAL to be present
+	// which is required for AFTERBURN_AZURE_IPV4_VIRTUAL to be present
 }
 
 func verifyPacket(c cluster.TestCluster) {
-	verify(c, "COREOS_PACKET_HOSTNAME", "COREOS_PACKET_PHONE_HOME_URL", "COREOS_PACKET_IPV4_PUBLIC_0", "COREOS_PACKET_IPV4_PRIVATE_0", "COREOS_PACKET_IPV6_PUBLIC_0")
+	verify(c, "AFTERBURN_PACKET_HOSTNAME", "AFTERBURN_PACKET_PHONE_HOME_URL", "AFTERBURN_PACKET_IPV4_PUBLIC_0", "AFTERBURN_PACKET_IPV4_PRIVATE_0", "AFTERBURN_PACKET_IPV6_PUBLIC_0")
 }
 
 func verify(c cluster.TestCluster, keys ...string) {
 	m := c.Machines()[0]
 
-	out := c.MustSSH(m, "cat /run/metadata/coreos")
+	out := c.MustSSH(m, "cat /run/metadata/afterburn")
 
 	for _, key := range keys {
 		if !strings.Contains(string(out), key) {

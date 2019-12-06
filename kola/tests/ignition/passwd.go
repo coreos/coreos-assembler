@@ -26,34 +26,6 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "cl.ignition.v1.groups",
-		Run:         groups,
-		ClusterSize: 1,
-		UserData: conf.Ignition(`{
-		             "ignitionVersion": 1,
-		             "systemd": {
-		               "units": [{
-		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
-		                 "mask": true
-		               }]
-		             },
-		             "passwd": {
-		               "groups": [
-		                 {
-		                   "name": "group1",
-		                   "gid":  501
-		                 },
-		                 {
-		                   "name": "group2",
-		                   "gid":  502,
-		                   "passwordHash": "foobar"
-		                 }
-		               ]
-		             }
-		           }`),
-		Distros: []string{"cl"},
-	})
-	register.Register(&register.Test{
 		Name:        "coreos.ignition.groups",
 		Run:         groups,
 		ClusterSize: 1,
@@ -101,79 +73,11 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"cl", "fcos", "rhcos"},
-	})
-	register.Register(&register.Test{
-		Name:        "cl.ignition.v1.users",
-		Run:         users,
-		ClusterSize: 1,
-		UserData: conf.Ignition(`{
-		             "ignitionVersion": 1,
-		             "systemd": {
-		               "units": [{
-		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
-		                 "mask": true
-		               }]
-		             },
-		             "passwd": {
-		               "users": [
-		                 {
-		                   "name": "core",
-		                   "passwordHash": "foobar"
-		                 },
-		                 {
-		                   "name": "user1",
-		                   "create": {}
-		                 },
-		                 {
-		                   "name": "user2",
-		                   "create": {
-		                     "uid": 1010,
-		                     "groups": [ "docker" ]
-		                   }
-		                 }
-		               ]
-		             }
-		           }`),
-		Distros: []string{"cl"},
-	})
-	register.Register(&register.Test{
-		Name:        "cl.ignition.v2.users",
-		Run:         users,
-		ClusterSize: 1,
-		UserData: conf.Ignition(`{
-		             "ignition": { "version": "2.0.0" },
-		             "systemd": {
-		               "units": [{
-		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
-		                 "mask": true
-		               }]
-		             },
-		             "passwd": {
-		               "users": [
-		                 {
-		                   "name": "core",
-		                   "passwordHash": "foobar"
-		                 },
-		                 {
-		                   "name": "user1",
-		                   "create": {}
-		                 },
-		                 {
-		                   "name": "user2",
-		                   "create": {
-		                     "uid": 1010,
-		                     "groups": [ "docker" ]
-		                   }
-		                 }
-		               ]
-		             }
-		           }`),
-		Distros: []string{"cl"},
+		Distros: []string{"fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.v2.users",
-		Run:         usersFcos,
+		Run:         users,
 		ClusterSize: 1,
 		UserData: conf.Ignition(`{
 		             "ignition": { "version": "2.0.0" },
@@ -252,29 +156,6 @@ func groups(c cluster.TestCluster) {
 }
 
 func users(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	tests := []userTest{
-		{
-			user:           "core",
-			passwdRecord:   "core:x:500:500:CoreOS Admin:/home/core:/bin/bash",
-			shadowPassword: "foobar",
-		},
-		{
-			user:           "user1",
-			passwdRecord:   "user1:x:1000:1000::/home/user1:/bin/bash",
-			shadowPassword: "*",
-		},
-		{
-			user:           "user2",
-			passwdRecord:   "user2:x:1010:1010::/home/user2:/bin/bash",
-			shadowPassword: "*",
-		},
-	}
-	testUser(c, m, tests)
-}
-
-func usersFcos(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	tests := []userTest{

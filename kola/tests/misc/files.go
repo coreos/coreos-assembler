@@ -26,13 +26,12 @@ func init() {
 	register.Register(&register.Test{
 		Run:         Filesystem,
 		ClusterSize: 1,
-		Name:        "cl.filesystem",
-		Distros:     []string{"cl"},
+		Name:        "fcos.filesystem",
+		Distros:     []string{"fcos"},
 	})
 }
 
 func Filesystem(c cluster.TestCluster) {
-	c.Run("deadlinks", DeadLinks)
 	c.Run("suid", SUIDFiles)
 	c.Run("sgid", SGIDFiles)
 	c.Run("writablefiles", WritableFiles)
@@ -45,7 +44,7 @@ func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
 	m := c.Machines()[0]
 	badfiles := make([]string, 0, 0)
 
-	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -%v -print", mode))
+	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /sysroot/ostree -prune -o -type f -perm -%v -print", mode))
 
 	if string(output) == "" {
 		return
@@ -70,32 +69,14 @@ func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
 	}
 }
 
-func DeadLinks(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	ignore := []string{
-		"/dev",
-		"/proc",
-		"/run/systemd",
-		"/run/udev/watch",
-		"/sys",
-		"/var/lib/docker",
-		"/var/lib/rkt",
-	}
-
-	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -xtype l -print", strings.Join(ignore, " -prune -o -path ")))
-
-	if string(output) != "" {
-		c.Fatalf("Dead symbolic links found: %v", strings.Split(string(output), "\n"))
-	}
-}
-
 func SUIDFiles(c cluster.TestCluster) {
 	validfiles := []string{
 		"/usr/bin/chage",
 		"/usr/bin/chfn",
 		"/usr/bin/chsh",
 		"/usr/bin/expiry",
+		"/usr/bin/fusermount",
+		"/usr/bin/fusermount3",
 		"/usr/bin/gpasswd",
 		"/usr/bin/ksu",
 		"/usr/bin/man",
@@ -114,13 +95,20 @@ func SUIDFiles(c cluster.TestCluster) {
 		"/usr/libexec/dbus-daemon-launch-helper",
 		"/usr/sbin/mount.nfs",
 		"/usr/sbin/unix_chkpwd",
+		"/usr/sbin/grub2-set-bootflag",
+		"/usr/sbin/mount.nfs",
+		"/usr/sbin/pam_timestamp_check",
 	}
 
 	sugidFiles(c, validfiles, "4000")
 }
 
 func SGIDFiles(c cluster.TestCluster) {
-	validfiles := []string{}
+	validfiles := []string{
+		"/usr/bin/write",
+		"/usr/libexec/openssh/ssh-keysign",
+		"/usr/libexec/utempter/utempter",
+	}
 
 	sugidFiles(c, validfiles, "2000")
 }
@@ -128,7 +116,7 @@ func SGIDFiles(c cluster.TestCluster) {
 func WritableFiles(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	output := c.MustSSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type f -perm -0002 -print")
+	output := c.MustSSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /sysroot/ostree -prune -o -type f -perm -0002 -print")
 
 	if string(output) != "" {
 		c.Fatalf("Unknown writable files found: %s", output)
@@ -138,7 +126,7 @@ func WritableFiles(c cluster.TestCluster) {
 func WritableDirs(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	output := c.MustSSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /var/lib/rkt -prune -o -type d -perm -0002 -a ! -perm -1000 -print")
+	output := c.MustSSH(m, "sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /sysroot/ostree -prune -o -type d -perm -0002 -a ! -perm -1000 -print")
 
 	if string(output) != "" {
 		c.Fatalf("Unknown writable directories found: %s", output)
@@ -155,7 +143,7 @@ func StickyDirs(c cluster.TestCluster) {
 		"/proc",
 		"/sys",
 		"/var/lib/docker",
-		"/var/lib/rkt",
+		"/sysroot/ostree",
 
 		// should be sticky, and may have sticky children
 		"/dev/mqueue",
@@ -163,6 +151,7 @@ func StickyDirs(c cluster.TestCluster) {
 		"/media",
 		"/tmp",
 		"/var/tmp",
+		"/run/user/1000/libpod",
 	}
 
 	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -type d -perm /1000 -print", strings.Join(ignore, " -prune -o -path ")))
@@ -180,7 +169,10 @@ func Blacklist(c cluster.TestCluster) {
 		"/proc",
 		"/sys",
 		"/var/lib/docker",
-		"/var/lib/rkt",
+		"/sysroot/ostree",
+		"/run/NetworkManager", // default connections include spaces
+		"/run/udev",
+		"/usr/lib/firmware",
 	}
 
 	blacklist := []string{

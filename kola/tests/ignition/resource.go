@@ -20,7 +20,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/pin/tftp"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -106,7 +105,7 @@ func init() {
 		},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do", "qemu-unpriv"},
-		Distros:          []string{"cl", "fcos", "rhcos"},
+		Distros:          []string{"fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.resource.remote",
@@ -178,7 +177,7 @@ func init() {
 		      ]
 		  }
 	      }`),
-		Distros: []string{"cl", "fcos", "rhcos"},
+		Distros: []string{"fcos", "rhcos"},
 	})
 	register.Register(&register.Test{
 		Name:        "coreos.ignition.resource.s3",
@@ -228,7 +227,7 @@ func init() {
 		      ]
 		  }
 	      }`),
-		Distros: []string{"cl", "fcos", "rhcos"},
+		Distros: []string{"fcos", "rhcos"},
 	})
 	// TODO: once Ignition supports this on all channels/distros
 	//       this test should be rolled into coreos.ignition.resources.remote
@@ -240,7 +239,6 @@ func init() {
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
-		MinVersion:       semver.Version{Major: 1995},
 		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "2.1.0"
@@ -289,7 +287,7 @@ func init() {
 		      ]
 		  }
 	      }`),
-		Distros: []string{"cl", "rhcos"},
+		Distros: []string{"rhcos"},
 	})
 }
 

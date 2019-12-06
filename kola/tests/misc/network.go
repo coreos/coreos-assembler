@@ -20,8 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -32,30 +30,22 @@ func init() {
 	register.Register(&register.Test{
 		Run:         NetworkListeners,
 		ClusterSize: 1,
-		Name:        "cl.network.listeners",
-		Distros:     []string{"cl"},
+		Name:        "fcos.network.listeners",
+		Distros:     []string{"fcos"},
 		// be sure to notice listeners in the docker stack
 		UserData: conf.ContainerLinuxConfig(`systemd:
   units:
     - name: docker.service
       enabled: true`),
-		MinVersion:       semver.Version{Major: 1967},
 		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
-	register.Register(&register.Test{
-		Run:              NetworkListeners,
-		ClusterSize:      1,
-		Name:             "cl.network.listeners.legacy",
-		Distros:          []string{"cl"},
-		EndVersion:       semver.Version{Major: 1967},
-		ExcludePlatforms: []string{"qemu-unpriv"},
-	})
+	// TODO: rewrite test for NetworkManager
 	register.Register(&register.Test{
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
-		Name:             "cl.network.initramfs.second-boot",
+		Name:             "coreos.network.initramfs.second-boot",
 		ExcludePlatforms: []string{"do"},
-		Distros:          []string{"cl"},
+		ExcludeDistros:   []string{"fcos", "rhcos"},
 	})
 }
 
@@ -126,9 +116,9 @@ NextProcess:
 
 func NetworkListeners(c cluster.TestCluster) {
 	expectedListeners := []listener{
-		{"tcp", "22", "systemd"},          // ssh
-		{"udp", "68", "systemd-network"},  // dhcp6-client
-		{"udp", "546", "systemd-network"}, // bootpc
+		{"tcp", "22", "sshd"},
+		{"udp", "68", "dhclient"},
+		{"udp", "323", "chronyd"},
 	}
 	checkList := func() error {
 		return checkListeners(c, expectedListeners)

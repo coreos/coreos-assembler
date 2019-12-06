@@ -26,8 +26,8 @@ func init() {
 		Run:              CheckUserShells,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"gce"},
-		Name:             "cl.users.shells",
-		Distros:          []string{"cl"},
+		Name:             "fcos.users.shells",
+		Distros:          []string{"fcos"},
 	})
 }
 
@@ -36,11 +36,13 @@ func CheckUserShells(c cluster.TestCluster) {
 	var badusers []string
 
 	ValidUsers := map[string]string{
-		"root":     "/bin/bash",
-		"sync":     "/bin/sync",
-		"shutdown": "/sbin/shutdown",
-		"halt":     "/sbin/halt",
-		"core":     "/bin/bash",
+		"root":                 "/bin/bash",
+		"sync":                 "/bin/sync",
+		"shutdown":             "/sbin/shutdown",
+		"halt":                 "/sbin/halt",
+		"core":                 "/bin/bash",
+		"fedora-coreos-pinger": "/usr/sbin/nologin",
+		"zincati":              "/usr/sbin/nologin",
 	}
 
 	output := c.MustSSH(m, "getent passwd")
