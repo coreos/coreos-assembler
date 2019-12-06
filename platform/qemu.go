@@ -122,66 +122,70 @@ func mkpath(basedir string) (string, error) {
 	return f.Name(), nil
 }
 
-func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImagePath string, isIgnition bool, options MachineOptions) ([]string, []*os.File, error) {
-	var qmCmd []string
-
-	// As we expand this list of supported native + board
-	// archs combos we should coordinate with the
-	// coreos-assembler folks as they utilize something
-	// similar in cosa run
-	var qmBinary string
+func baseQemuArgs(board string) []string {
 	combo := runtime.GOARCH + "--" + board
 	switch combo {
 	case "amd64--amd64-usr":
-		qmBinary = "qemu-system-x86_64"
-		qmCmd = []string{
+		return []string{
 			"qemu-system-x86_64",
 			"-machine", "accel=kvm",
 			"-cpu", "host",
-			"-m", "1024",
 		}
 	case "amd64--arm64-usr":
-		qmBinary = "qemu-system-aarch64"
-		qmCmd = []string{
+		return []string{
 			"qemu-system-aarch64",
 			"-machine", "virt",
 			"-cpu", "cortex-a57",
-			"-m", "2048",
-		}
-	case "arm64--amd64-usr":
-		qmBinary = "qemu-system-x86_64"
-		qmCmd = []string{
-			"qemu-system-x86_64",
-			"-machine", "pc-q35-2.8",
-			"-cpu", "kvm64",
-			"-m", "1024",
 		}
 	case "arm64--arm64-usr":
-		qmBinary = "qemu-system-aarch64"
-		qmCmd = []string{
+		return []string{
 			"qemu-system-aarch64",
 			"-machine", "virt,accel=kvm,gic-version=3",
 			"-cpu", "host",
-			"-m", "2048",
 		}
 	case "s390x--s390x-usr":
-		qmBinary = "qemu-system-s390x"
-		qmCmd = []string{
+		return []string{
 			"qemu-system-s390x",
 			"-machine", "s390-ccw-virtio,accel=kvm",
 			"-cpu", "host",
-			"-m", "2048",
 		}
 	case "ppc64le--ppc64le-usr":
-		qmBinary = "qemu-system-ppc64"
-		qmCmd = []string{
+		return []string{
 			"qemu-system-ppc64",
 			"-machine", "pseries,accel=kvm,kvm-type=HV",
-			"-m", "2048",
 		}
 	default:
 		panic("host-guest combo not supported: " + combo)
 	}
+}
+
+func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImagePath string, isIgnition bool, options MachineOptions) ([]string, []*os.File, error) {
+	// As we expand this list of supported native + board
+	// archs combos we should coordinate with the
+	// coreos-assembler folks as they utilize something
+	// similar in cosa run
+
+	qmCmd := baseQemuArgs(board)
+	// FIXME; Required memory should really be a property of the tests, and
+	// let's try to drop these arch-specific overrides.  ARM was bumped via
+	// commit 09391907c0b25726374004669fa6c2b161e3892f
+	// Commit:     Geoff Levand <geoff@infradead.org>
+	// CommitDate: Mon Aug 21 12:39:34 2017 -0700
+	//
+	// kola: More memory for arm64 qemu guest machines
+	//
+	// arm64 guest machines seem to run out of memory with 1024 MiB of
+	// RAM, so increase to 2048 MiB.
+
+	// Then later, other non-x86_64 seemed to just copy that.
+	memory := 1024
+	switch board {
+	case "arm64-usr":
+	case "s390x-usr":
+	case "ppc64le-usr":
+		memory = 2048
+	}
+	qmCmd = append(qmCmd, "-m", fmt.Sprintf("%d", memory))
 
 	qmCmd = append(qmCmd,
 		"-smp", "1",
@@ -211,7 +215,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 
 	// auto-read-only is only available in 3.1.0 & greater versions of QEMU
 	var autoReadOnly string
-	version, err := exec.Command(qmBinary, "--version").CombinedOutput()
+	version, err := exec.Command(qmCmd[0], "--version").CombinedOutput()
 	if err != nil {
 		return nil, nil, fmt.Errorf("retrieving qemu version: %v", err)
 	}
