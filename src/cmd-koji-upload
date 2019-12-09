@@ -402,6 +402,9 @@ class Upload():
         (description, ext, arch, etype) = KOJI_CG_TYPES.get(
             ext, [None, None, None, None])
 
+        if arch != "noarch":
+            arch = self.build.basearch
+
         file_meta = {
             "arch": self.build.basearch,
             "buildroot_id": 1,
@@ -410,10 +413,10 @@ class Upload():
             "filename": obj['upload_path'],
             "filesize": obj["size"],
             "type": ext,
-            "extra": {"image": {"arch": self.build.basearch}}
+            "extra": {"image": {"arch": arch}}
         }
 
-        if etype != "arch":
+        if etype not in ("image", "source"):
             del file_meta['extra']
             file_meta['type'] = etype
 
