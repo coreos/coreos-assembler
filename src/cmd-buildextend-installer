@@ -457,12 +457,5 @@ def generate_iso():
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
 
-
-commit_tar_name = 'ostree-commit.tar'
-if 'ostree' in buildmeta['images']:
-    commit_tar_name = buildmeta['images']['ostree']['path']
-commit_tar = os.path.join(builddir, commit_tar_name)
-import_ostree_commit(repo, buildmeta_commit, commit_tar)
-
 # Do it!
 generate_iso()
