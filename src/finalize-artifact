@@ -9,4 +9,6 @@
 # see also https://marc.info/?l=linux-fsdevel&m=139963046823575&w=2
 # and the more recent fs-verity work.
 #
-exec chmod a-w "$@"
+set -euo pipefail
+chmod a-w "$1"
+mv -fT "$1" "$2"

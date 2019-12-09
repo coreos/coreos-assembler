@@ -3,6 +3,7 @@
 # it can be useful to provide the previous commit during
 # builds, and this avoids a need for the full OSTree repo.
 
+import os
 import argparse
 import gi
 
@@ -22,4 +23,5 @@ r.open(None)
 [_, rev] = r.resolve_rev(args.rev, True)
 [_, commit, _] = r.load_commit(rev)
 with open(args.builddir + '/ostree-commit-object', 'wb') as f:
+    os.fchmod(f.fileno(), 0o444)
     f.write(commit.get_data_as_bytes().get_data())
