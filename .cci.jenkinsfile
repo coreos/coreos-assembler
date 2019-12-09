@@ -24,7 +24,12 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
               cosa_cmd("build")
-              cosa_cmd("kola run -- --parallel 8")
+              try {
+                cosa_cmd("kola run -- --parallel 8")
+              } finally {
+                coreos.shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
+                archiveArtifacts allowEmptyArchive: true, artifacts: 'kola.tar.xz'
+              }
               // sanity check kola actually ran and dumped its output in tmp/
               coreos.shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
