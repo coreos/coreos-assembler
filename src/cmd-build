@@ -218,9 +218,10 @@ prepare_compose_overlays
 # shellcheck disable=SC2086
 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
-           --ex-write-lockfile-to "${lockfile_out}" \
+           --ex-write-lockfile-to "${lockfile_out}".tmp \
            ${lock_arg} ${version_arg} ${parent_arg}
-strip_out_lockfile_digests "$lockfile_out"
+strip_out_lockfile_digests "$lockfile_out".tmp
+/usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
@@ -316,7 +317,8 @@ else
     # Don't compress; archive repos are already compressed individually and we'd
     # gain ~20M at best. We could probably have better gains if we compress the
     # whole repo in bare/bare-user mode, but that's a different story...
-    tar -cf "${ostree_tarfile_path}" -C repo .
+    tar -cf "${ostree_tarfile_path}".tmp -C repo .
+    /usr/lib/coreos-assembler/finalize-artifact "${ostree_tarfile_path}"{.tmp,}
     rm -rf repo
 fi
 
@@ -380,7 +382,7 @@ cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/dif
 # Filter out `ref` if it's temporary
 if [ -n "${ref_is_temp}" ]; then
     jq 'del(.ref)' < meta.json > meta.json.new
-    mv meta.json{.new,}
+    /usr/lib/coreos-assembler/finalize-artifact meta.json{.new,}
 fi
 
 # Move lockfile into build dir
@@ -388,7 +390,8 @@ mv "${lockfile_out}" .
 
 # And add the commit metadata itself, which includes notably the rpmdb pkglist
 # in a format that'd be easy to generate diffs out of for higher level tools
-"${dn}"/commitmeta_to_json "${tmprepo}" "${commit}" > commitmeta.json
+"${dn}"/commitmeta_to_json "${tmprepo}" "${commit}" > commitmeta.json.tmp
+/usr/lib/coreos-assembler/finalize-artifact commitmeta.json{.tmp,}
 
 # Clean up our temporary data
 saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
