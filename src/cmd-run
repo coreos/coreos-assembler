@@ -25,6 +25,7 @@ VM_SRV_MNT=
 SSH_ATTACH=
 SSH_PORT=${SSH_PORT:-}
 SSH_CONFIG=
+IPV6ONLY=0
 UEFI=0
 SWTPM=1
 BOOT_INJECT=0
@@ -47,6 +48,7 @@ Options:
     -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
+    --ipv6only            Don't enable IPv4
     --no-swtpm            Don't create a temporary software TPM
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
@@ -112,6 +114,9 @@ while [ $# -ge 1 ]; do
             shift ;;
         --uefi-secure)
             SECURE=1
+            shift ;;
+        --ipv6only)
+            IPV6ONLY=1
             shift ;;
         --no-swtpm)
             SWTPM=0
@@ -403,10 +408,14 @@ if [ "$SECURE" == "1" ]; then
 fi
 
 set -- -name coreos -m "${VM_MEMORY}" -nographic \
-              -netdev user,id=eth0,hostname=coreos"${hostfwd:-}" \
               -device virtio-net-"${devtype}",netdev=eth0 \
               -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
               "$@"
+netdevarg="user,id=eth0,hostname=coreos"${hostfwd:-}
+if [ "$IPV6ONLY" = 1 ]; then
+    netdevarg="${netdevarg},ipv4=off,ipv6=on"
+fi
+set -- -netdev "${netdevarg}" "$@"
 
 # We want to strongly emphasize use of TPM devices in CoreOS, so let's provision
 # one by default.  This would be nicer if we didn't need to pass a persistent
