@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
+	"github.com/pkg/errors"
 )
 
 // Cluster is a local cluster of QEMU-based virtual machines.
@@ -188,7 +189,7 @@ func (qc *Cluster) Destroy() {
 func getAddress(pid string) (string, error) {
 	data, err := ioutil.ReadFile("/proc/net/tcp")
 	if err != nil {
-		return "", fmt.Errorf("reading /proc/net/tcp: %v", err)
+		return "", errors.Wrap(err, "reading /proc/net/tcp")
 	}
 
 	for _, line := range strings.Split(string(data), "\n")[1:] {
@@ -231,7 +232,7 @@ func getAddress(pid string) (string, error) {
 					portHex := strings.Split(localAddress, ":")[1]
 					port, err := strconv.ParseInt(portHex, 16, 32)
 					if err != nil {
-						return "", fmt.Errorf("decoding port %q: %v", portHex, err)
+						return "", errors.Wrapf(err, "decoding port %q", portHex)
 					}
 					return fmt.Sprintf("127.0.0.1:%d", port), nil
 				}
