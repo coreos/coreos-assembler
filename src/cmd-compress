@@ -10,6 +10,7 @@ import math
 import json
 import shutil
 import argparse
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -43,7 +44,7 @@ else:
 
 print(f"Targeting build: {build}")
 
-# Don't compress certain images
+# Don't compress certain artifact types
 imgs_to_skip = ["ostree", "iso", "live-iso", "vmware", "initramfs", "live-initramfs", "kernel", "live-kernel"]
 
 
@@ -67,7 +68,37 @@ def xz_threads():
     return 0  # no limits, let xz choose what it wants
 
 
-def compress_one_builddir(builddir):
+# A while ago we chose to export it as "tarball of archive repo".
+# See the original commit in de8f556f3e125cec4500c09f9e9adc0e4427cee2
+def export_ostree_repo(buildarch, builddir, buildmeta, tmpdir):
+    ostree_tarfile_name = f"{buildmeta['name']}-{buildmeta['buildid']}-ostree.{buildarch}.tar"
+    destpath = os.path.join(builddir, ostree_tarfile_name)
+    ostree_tarfile_tmppath = f"{tmpdir}/{ostree_tarfile_name}"
+
+    tmprepo = 'tmp/exported-repo'
+    if os.path.isdir(tmprepo):
+        shutil.rmtree(tmprepo)
+    subprocess.check_call(['ostree', f'--repo={tmprepo}', 'init', '--mode=archive'])
+    commit = buildmeta['ostree-commit']
+    subprocess.check_call(['ostree', f'--repo={tmprepo}', 'pull-local', 'tmp/repo', commit])
+    ref = buildmeta.get('ref')
+    if ref is not None:
+        subprocess.check_call(['ostree', f'--repo={tmprepo}', 'refs', f"--create={ref}", commit])
+    subprocess.check_call(['tar', '-cf', ostree_tarfile_tmppath, '-C', tmprepo, '.'])
+    shutil.rmtree(tmprepo)
+
+    compressed_size = os.path.getsize(ostree_tarfile_tmppath)
+    sha256 = sha256sum_file(ostree_tarfile_tmppath)
+    buildmeta['images']['ostree'] = {
+        'path': ostree_tarfile_name,
+        'size': compressed_size,
+        'sha256': sha256,
+    }
+    os.rename(ostree_tarfile_tmppath, destpath)
+    return True
+
+
+def compress_one_builddir(arch, builddir):
     print(f"Compressing: {builddir}")
     buildmeta_path = os.path.join(builddir, 'meta.json')
     with open(buildmeta_path) as f:
@@ -86,6 +117,10 @@ def compress_one_builddir(builddir):
     # failures.
 
     at_least_one = False
+
+    if 'ostree' not in buildmeta['images']:
+        export_ostree_repo(arch, builddir, buildmeta, tmpdir)
+        print(f"Exported OSTree tarball")
 
     for img_format in buildmeta['images']:
         if img_format in imgs_to_skip:
@@ -134,7 +169,7 @@ def compress_one_builddir(builddir):
 changed = []
 for arch in builds.get_build_arches(build):
     builddir = builds.get_build_dir(build, arch)
-    changed.append(compress_one_builddir(builddir))
+    changed.append(compress_one_builddir(arch, builddir))
 
 if not any(changed):
     print(f"All builds already compressed")
