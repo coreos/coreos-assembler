@@ -194,10 +194,17 @@ def robosign_ostree(args, s3, cond):
         # ok, it's valid -- add it to the tarfile
         ostree_image = build['images']['ostree']
         commit_tarfile = os.path.join(builddir, ostree_image['path'])
-        with tarfile.open(commit_tarfile, 'a:') as t:
+        commit_tarfile_new = os.path.join(d, ostree_image['path'])
+        subprocess.check_call(['cp-reflink', commit_tarfile,
+                               commit_tarfile_new])
+        os.chmod(commit_tarfile_new, 0o660)
+        with tarfile.open(commit_tarfile_new, 'a:') as t:
             t.add(commitmeta_obj_path, arcname=commitmeta_obj_relpath)
-        ostree_image['size'] = os.path.getsize(commit_tarfile)
-        ostree_image['sha256'] = sha256sum_file(commit_tarfile)
+        ostree_image['size'] = os.path.getsize(commit_tarfile_new)
+        ostree_image['sha256'] = sha256sum_file(commit_tarfile_new)
+        # and the critical bits
+        shutil.copymode(commit_tarfile, commit_tarfile_new)
+        os.rename(commit_tarfile_new, commit_tarfile)
         build.write()
 
     # and finally add it to the tmprepo too so that buildextend-(qemu|metal)
