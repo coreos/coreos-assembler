@@ -10,12 +10,13 @@ import (
 
 func init() {
 	register.Register(&register.Test{
-		Run:         luksTPMTest,
-		ClusterSize: 1,
-		Name:        `rhcos.luks.tpm`,
-		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Run:                  luksTPMTest,
+		ClusterSize:          1,
+		Name:                 `rhcos.luks.tpm`,
+		Flags:                []register.Flag{},
+		Distros:              []string{"rhcos"},
+		Platforms:            []string{"qemu-unpriv"},
+		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
 		UserData: conf.Ignition(`{
 			"ignition": {
 				"version": "2.2.0"
