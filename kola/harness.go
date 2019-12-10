@@ -263,7 +263,7 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 				isExcluded = true
 				break
 			}
-			allowedArchitecture, _ := isAllowed(architecture(platform), t.Architectures, []string{})
+			allowedArchitecture, _ := isAllowed(architecture(platform), t.Architectures, t.ExcludeArchitectures)
 			allowed = allowed || (allowedPlatform && allowedArchitecture)
 		}
 		if isExcluded || !allowed {

@@ -251,6 +251,7 @@ func runList(cmd *cobra.Command, args []string) {
 			test.Platforms,
 			test.ExcludePlatforms,
 			test.Architectures,
+			test.ExcludeArchitectures,
 			test.Distros,
 			test.ExcludeDistros}
 		item.updateValues()
@@ -281,12 +282,13 @@ func runList(cmd *cobra.Command, args []string) {
 }
 
 type item struct {
-	Name             string
-	Platforms        []string
-	ExcludePlatforms []string `json:"-"`
-	Architectures    []string
-	Distros          []string
-	ExcludeDistros   []string `json:"-"`
+	Name                 string
+	Platforms            []string
+	ExcludePlatforms     []string `json:"-"`
+	Architectures        []string
+	ExcludeArchitectures []string `json:"-"`
+	Distros              []string
+	ExcludeDistros       []string `json:"-"`
 }
 
 func (i *item) updateValues() {

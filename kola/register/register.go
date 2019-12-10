@@ -45,18 +45,19 @@ var (
 // statically declare state of the platform.TestCluster before the test
 // function is run.
 type Test struct {
-	Name             string // should be unique
-	Run              func(cluster.TestCluster)
-	NativeFuncs      map[string]func() error
-	UserData         *conf.UserData
-	UserDataV3       *conf.UserData
-	ClusterSize      int
-	Platforms        []string // whitelist of platforms to run test against -- defaults to all
-	ExcludePlatforms []string // blacklist of platforms to ignore -- defaults to none
-	Distros          []string // whitelist of distributions to run test against -- defaults to all
-	ExcludeDistros   []string // blacklist of distributions to ignore -- defaults to none
-	Architectures    []string // whitelist of machine architectures supported -- defaults to all
-	Flags            []Flag   // special-case options for this test
+	Name                 string // should be unique
+	Run                  func(cluster.TestCluster)
+	NativeFuncs          map[string]func() error
+	UserData             *conf.UserData
+	UserDataV3           *conf.UserData
+	ClusterSize          int
+	Platforms            []string // whitelist of platforms to run test against -- defaults to all
+	ExcludePlatforms     []string // blacklist of platforms to ignore -- defaults to none
+	Distros              []string // whitelist of distributions to run test against -- defaults to all
+	ExcludeDistros       []string // blacklist of distributions to ignore -- defaults to none
+	Architectures        []string // whitelist of machine architectures supported -- defaults to all
+	ExcludeArchitectures []string // blacklist of architectures to ignore -- defaults to none
+	Flags                []Flag   // special-case options for this test
 
 	// FailFast skips any sub-test that occurs after a sub-test has
 	// failed.
