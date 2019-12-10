@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:31
+FROM localhost/mantle:latest
 WORKDIR /root/containerbuild
 
 # We split into multiple steps here so that local dev workflows which involve

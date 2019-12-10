@@ -9,9 +9,10 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check flake8 pycheck unittest clean mantle install
+.PHONY: all check flake8 pycheck unittest clean install
 
-all: mantle
+all:
+	@echo "No build step."
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -51,9 +52,6 @@ clean:
 	find . -name "*.py[co]" -type f | xargs rm -f
 	find . -name "__pycache__" -type d | xargs rm -rf
 
-mantle:
-	cd mantle && $(MAKE)
-
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler $$(find src/ -maxdepth 1 -type f)
@@ -64,4 +62,3 @@ install:
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
-	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)

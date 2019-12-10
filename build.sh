@@ -86,11 +86,6 @@ _prep_make_and_make_install() {
     # /usr/bin/ostree-releng-script-rsync-repos
     mkdir -p /usr/app/
     rsync -rlv "${srcdir}"/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
-
-    if [ "$(git submodule status mantle | head -c1)" == "-" ]; then
-        echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
-        exit 1
-    fi
 }
 
 make_and_makeinstall() {
