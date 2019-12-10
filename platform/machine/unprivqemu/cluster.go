@@ -23,14 +23,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/pborman/uuid"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
 )
@@ -92,72 +90,28 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		consolePath: filepath.Join(dir, "console.txt"),
 	}
 
-	swtpmSock := ""
-	if qc.flight.opts.Swtpm {
-		qm.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
-		if err != nil {
-			return nil, err
-		}
+	board := qc.flight.opts.Board
+	builder := platform.NewBuilder(board, confPath)
+	defer builder.Close()
+	builder.Uuid = qm.id
+	builder.ConsoleToFile(qm.consolePath)
 
-		swtpmSock = filepath.Join(qm.swtpmTmpd, "swtpm-sock")
-
-		qm.swtpm = exec.Command("swtpm", "socket", "--tpm2",
-			"--ctrl", fmt.Sprintf("type=unixio,path=%s", swtpmSock),
-			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", qm.swtpmTmpd))
-		cmd := qm.swtpm.(*exec.ExecCmd)
-		cmd.Stderr = os.Stderr
-
-		if pdeathsig {
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				Pdeathsig: syscall.SIGTERM,
-			}
-		}
-		if err = qm.swtpm.Start(); err != nil {
-			return nil, err
-		}
+	primaryDisk := platform.Disk{
+		BackingFile: qc.flight.opts.DiskImage,
 	}
 
-	qmCmd, extraFiles, err := platform.CreateQEMUCommand(qc.flight.opts.Board, qm.id, qm.consolePath, confPath, qc.flight.opts.DiskImage, conf.IsIgnition(), options)
+	builder.AddPrimaryDisk(&primaryDisk)
+	for _, disk := range options.AdditionalDisks {
+		builder.AddDisk(&disk)
+	}
+	builder.EnableUsermodeNetworking(22)
+
+	inst, err := builder.Exec()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, file := range extraFiles {
-		defer file.Close()
-	}
-
-	qc.mu.Lock()
-
-	// Default to user mode networking
-	qmCmd = append(qmCmd, "-netdev", "user,id=eth0,hostfwd=tcp:127.0.0.1:0-:22", "-device", platform.Virtio(qc.flight.opts.Board, "net", "netdev=eth0"))
-
-	// Bind the TPM device
-	if qc.flight.opts.Swtpm {
-		qmCmd = append(qmCmd, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-tis,tpmdev=tpm0")
-	}
-
-	plog.Debugf("NewMachine: %q", qmCmd)
-
-	qm.qemu = exec.Command(qmCmd[0], qmCmd[1:]...)
-
-	qc.mu.Unlock()
-
-	cmd := qm.qemu.(*exec.ExecCmd)
-	cmd.Stderr = os.Stderr
-
-	if pdeathsig {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGTERM,
-		}
-	}
-
-	cmd.ExtraFiles = append(cmd.ExtraFiles, extraFiles...)
-
-	if err = qm.qemu.Start(); err != nil {
-		return nil, err
-	}
-
-	pid := strconv.Itoa(qm.qemu.Pid())
+	pid := strconv.Itoa(inst.Pid())
 	err = util.Retry(6, 5*time.Second, func() error {
 		var err error
 		qm.ip, err = getAddress(pid)

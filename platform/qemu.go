@@ -15,16 +15,27 @@
 package platform
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/coreos/mantle/system/exec"
 )
+
+// boardSupportsFwCfg if the target system supports injecting
+// Ignition via the qemu -fw_cfg option.
+func boardSupportsFwCfg(board string) bool {
+	switch board {
+	case "s390x-usr":
+	case "ppc64le-usr":
+		return false
+	}
+	return true
+}
 
 type MachineOptions struct {
 	AdditionalDisks []Disk
@@ -34,89 +45,6 @@ type Disk struct {
 	Size        string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
 	BackingFile string   // raw disk image to use. Incompatible with Size.
 	DeviceOpts  []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
-	ConfPath    string   // path to ignition to be able to use it with guestfs for temporary qcow2 images
-}
-
-var (
-	ErrNeedSizeOrFile  = errors.New("Disks need either Size or BackingFile specified")
-	ErrBothSizeAndFile = errors.New("Only one of Size and BackingFile can be specified")
-	primaryDiskOptions = []string{"serial=primary-disk"}
-)
-
-func (d Disk) getOpts() string {
-	if len(d.DeviceOpts) == 0 {
-		return ""
-	}
-	return "," + strings.Join(d.DeviceOpts, ",")
-}
-
-func (d Disk) setupFile() (*os.File, error) {
-	if d.Size == "" && d.BackingFile == "" {
-		return nil, ErrNeedSizeOrFile
-	}
-	if d.Size != "" && d.BackingFile != "" {
-		return nil, ErrBothSizeAndFile
-	}
-
-	if d.Size != "" {
-		return setupDisk(d.ConfPath, d.Size)
-	} else {
-		return setupDiskFromFile(d.BackingFile, d.ConfPath)
-	}
-}
-
-// Create a nameless temporary qcow2 image file backed by a raw image.
-func setupDiskFromFile(imageFile string, confPath string) (*os.File, error) {
-	// a relative path would be interpreted relative to /tmp
-	backingFile, err := filepath.Abs(imageFile)
-	if err != nil {
-		return nil, err
-	}
-	// Keep the COW image from breaking if the "latest" symlink changes.
-	// Ignore /proc/*/fd/* paths, since they look like symlinks but
-	// really aren't.
-	if !strings.HasPrefix(backingFile, "/proc/") {
-		backingFile, err = filepath.EvalSymlinks(backingFile)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	qcowOpts := fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile)
-	return setupDisk(confPath, "-o", qcowOpts)
-}
-
-func setupDisk(confPath string, additionalOptions ...string) (*os.File, error) {
-	dstFileName, err := mkpath("")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(dstFileName)
-
-	opts := []string{"create", "-f", "qcow2", dstFileName}
-	opts = append(opts, additionalOptions...)
-
-	qemuImg := exec.Command("qemu-img", opts...)
-	qemuImg.Stderr = os.Stderr
-
-	if err := qemuImg.Run(); err != nil {
-		return nil, err
-	}
-	if len(confPath) > 0 {
-		if err = setupIgnition(confPath, dstFileName); err != nil {
-			return nil, fmt.Errorf("ignition injection with guestfs failed: %v", err)
-		}
-	}
-	return os.OpenFile(dstFileName, os.O_RDWR, 0)
-}
-
-func mkpath(basedir string) (string, error) {
-	f, err := ioutil.TempFile(basedir, "mantle-qemu")
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	return f.Name(), nil
 }
 
 func baseQemuArgs(board string) []string {
@@ -156,94 +84,308 @@ func baseQemuArgs(board string) []string {
 	}
 }
 
-func CreateQEMUCommand(board, uuid, consolePath, confPath, diskImagePath string, isIgnition bool, options MachineOptions) ([]string, []*os.File, error) {
-	// As we expand this list of supported native + board
-	// archs combos we should coordinate with the
-	// coreos-assembler folks as they utilize something
-	// similar in cosa run
+type QemuInstance struct {
+	qemu      exec.Cmd
+	swtpmTmpd string
+	swtpm     exec.Cmd
+}
 
-	qmCmd := baseQemuArgs(board)
-	// FIXME; Required memory should really be a property of the tests, and
-	// let's try to drop these arch-specific overrides.  ARM was bumped via
-	// commit 09391907c0b25726374004669fa6c2b161e3892f
-	// Commit:     Geoff Levand <geoff@infradead.org>
-	// CommitDate: Mon Aug 21 12:39:34 2017 -0700
-	//
-	// kola: More memory for arm64 qemu guest machines
-	//
-	// arm64 guest machines seem to run out of memory with 1024 MiB of
-	// RAM, so increase to 2048 MiB.
+func (inst *QemuInstance) Pid() int {
+	return inst.qemu.Pid()
+}
 
-	// Then later, other non-x86_64 seemed to just copy that.
-	memory := 1024
-	switch board {
-	case "arm64-usr":
-	case "s390x-usr":
-	case "ppc64le-usr":
-		memory = 2048
-	}
-	qmCmd = append(qmCmd, "-m", fmt.Sprintf("%d", memory))
-
-	qmCmd = append(qmCmd,
-		"-smp", "1",
-		"-uuid", uuid,
-		"-display", "none",
-		"-chardev", "file,id=log,path="+consolePath,
-		"-serial", "chardev:log",
-		"-object", "rng-random,filename=/dev/urandom,id=rng0",
-		"-device", Virtio(board, "rng", "rng=rng0"),
-	)
-
-	if isIgnition {
-		// -fw_cfg is not supported for s390x, instead guestfs utility is used
-		if board != "s390x-usr" && board != "ppc64le-usr" {
-			qmCmd = append(qmCmd,
-				"-fw_cfg", "name=opt/com.coreos/config,file="+confPath)
+func (inst *QemuInstance) Destroy() {
+	if inst.swtpmTmpd != "" {
+		if inst.swtpm != nil {
+			inst.swtpm.Kill() // Ignore errors
 		}
-	} else {
-		qmCmd = append(qmCmd,
-			"-fsdev", "local,id=cfg,security_model=none,readonly,path="+confPath,
-			"-device", Virtio(board, "9p", "fsdev=cfg,mount_tag=config-2"))
+		if err := os.RemoveAll(inst.swtpmTmpd); err != nil {
+			plog.Errorf("Error removing swtpm dir: %v", err)
+		}
 	}
-
-	primaryDisk := Disk{
-		BackingFile: diskImagePath,
-		DeviceOpts:  primaryDiskOptions,
-		ConfPath:    "",
+	if inst.qemu != nil {
+		if err := inst.qemu.Kill(); err != nil {
+			plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
+		}
 	}
+}
 
-	if board == "s390x-usr" || board == "ppc64le-usr" {
-		primaryDisk.ConfPath = confPath
+// QemuBuilder is a configurator that can then create a qemu instance
+type QemuBuilder struct {
+	Board string
+
+	// Config is a path to Ignition configuration
+	Config string
+
+	Memory     int
+	Processors int
+	Uuid       string
+	Swtpm      bool
+	Pdeathsig  bool
+	Argv       []string
+
+	primaryDiskAdded bool
+
+	finalized bool
+	diskId    uint
+	fds       []*os.File
+}
+
+func NewBuilder(board, config string) *QemuBuilder {
+	ret := QemuBuilder{
+		Board:     board,
+		Config:    config,
+		Swtpm:     true,
+		Pdeathsig: true,
+		Argv:      []string{},
 	}
+	return &ret
+}
 
-	allDisks := append([]Disk{primaryDisk}, options.AdditionalDisks...)
+// AddFd appends a file descriptor that will be passed to qemu,
+// returning a "/dev/fdset/<num>" argument that one can use with e.g.
+// -drive file=/dev/fdset/<num>.
+func (builder *QemuBuilder) AddFd(fd *os.File) string {
+	set := len(builder.fds) + 1
+	builder.fds = append(builder.fds, fd)
+	return fmt.Sprintf("/dev/fdset/%d", set)
+}
 
-	var extraFiles []*os.File
-	fdnum := 3 // first additional file starts at position 3
-	fdset := 1
+// AddQcow2Disk adds a disk image from a file descriptor,
+// mounted read-write, formatted qcow2.
+func (builder *QemuBuilder) AddQcow2DiskFd(fd *os.File, options []string) {
+	opts := ""
+	if len(options) > 0 {
+		opts = "," + strings.Join(options, ",")
+	}
+	fdset := builder.AddFd(fd)
+	id := fmt.Sprintf("d%d", builder.diskId)
+	builder.diskId += 1
+	builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=%s,auto-read-only=off", id, fdset),
+		"-device", virtio(builder.Board, "blk", fmt.Sprintf("drive=%s%s", id, opts)))
+}
 
-	for _, disk := range allDisks {
-		optionsDiskFile, err := disk.setupFile()
+func (builder *QemuBuilder) ConsoleToFile(path string) {
+	builder.Append("-display", "none", "-chardev", "file,id=log,path="+path, "-serial", "chardev:log")
+}
+
+func (builder *QemuBuilder) EnableUsermodeNetworking(forwardedPort uint) {
+	var forward string
+	if forwardedPort != 0 {
+		forward = fmt.Sprintf(",hostfwd=tcp:127.0.0.1:0-:%d", forwardedPort)
+	}
+	builder.Append("-netdev", "user,id=eth0"+forward, "-device", virtio(builder.Board, "net", "netdev=eth0"))
+}
+
+func resolveBackingFile(backingFile string) (string, error) {
+	backingFile, err := filepath.Abs(backingFile)
+	if err != nil {
+		return "", err
+	}
+	// Keep the COW image from breaking if the "latest" symlink changes.
+	// Ignore /proc/*/fd/* paths, since they look like symlinks but
+	// really aren't.
+	if !strings.HasPrefix(backingFile, "/proc/") {
+		backingFile, err = filepath.EvalSymlinks(backingFile)
 		if err != nil {
-			return nil, nil, err
+			return "", err
 		}
-		//defer optionsDiskFile.Close()
-		extraFiles = append(extraFiles, optionsDiskFile)
+	}
+	return backingFile, nil
+}
 
-		id := fmt.Sprintf("d%d", fdnum)
-		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d,auto-read-only=off", id, fdset),
-			"-device", Virtio(board, "blk", fmt.Sprintf("drive=%s%s", id, disk.getOpts())))
-		fdnum += 1
-		fdset += 1
+func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
+	dstFileName, err := mkpath("")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(dstFileName)
+
+	imgOpts := []string{"create", "-f", "qcow2", dstFileName}
+	if disk.BackingFile != "" {
+		backingFile, err := resolveBackingFile(disk.BackingFile)
+		if err != nil {
+			return err
+		}
+		imgOpts = append(imgOpts, "-o", fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile))
+	}
+	if disk.Size != "" {
+		imgOpts = append(imgOpts, disk.Size)
+	}
+	qemuImg := exec.Command("qemu-img", imgOpts...)
+	qemuImg.Stderr = os.Stderr
+
+	if err := qemuImg.Run(); err != nil {
+		return err
+	}
+	// If the board doesn't support -fw_cfg, inject via libguestfs on the
+	// primary disk.
+	if primary && builder.Config != "" && !boardSupportsFwCfg(builder.Board) {
+		if err = setupIgnition(builder.Config, dstFileName); err != nil {
+			return fmt.Errorf("ignition injection with guestfs failed: %v", err)
+		}
+	}
+	fd, err := os.OpenFile(dstFileName, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	diskOpts := disk.DeviceOpts
+	if primary {
+		diskOpts = append(diskOpts, "serial=primary-disk")
+	}
+	builder.AddQcow2DiskFd(fd, diskOpts)
+	return nil
+}
+
+func (builder *QemuBuilder) AddPrimaryDisk(disk *Disk) error {
+	if builder.primaryDiskAdded {
+		panic("Multiple primary disks specified")
+	}
+	builder.primaryDiskAdded = true
+	return builder.addDiskImpl(disk, true)
+}
+
+func (builder *QemuBuilder) AddDisk(disk *Disk) error {
+	return builder.addDiskImpl(disk, false)
+}
+
+func mkpath(basedir string) (string, error) {
+	f, err := ioutil.TempFile(basedir, "mantle-qemu")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	return f.Name(), nil
+}
+
+func (builder *QemuBuilder) finalize() {
+	if builder.finalized {
+		return
+	}
+	if builder.Processors == 0 {
+		builder.Processors = 1
+	}
+	if builder.Memory == 0 {
+		// FIXME; Required memory should really be a property of the tests, and
+		// let's try to drop these arch-specific overrides.  ARM was bumped via
+		// commit 09391907c0b25726374004669fa6c2b161e3892f
+		// Commit:     Geoff Levand <geoff@infradead.org>
+		// CommitDate: Mon Aug 21 12:39:34 2017 -0700
+		//
+		// kola: More memory for arm64 qemu guest machines
+		//
+		// arm64 guest machines seem to run out of memory with 1024 MiB of
+		// RAM, so increase to 2048 MiB.
+
+		// Then later, other non-x86_64 seemed to just copy that.
+		memory := 1024
+		switch builder.Board {
+		case "arm64-usr":
+		case "s390x-usr":
+		case "ppc64le-usr":
+			memory = 2048
+		}
+		builder.Memory = memory
+	}
+	builder.finalized = true
+}
+
+func (builder *QemuBuilder) Append(args ...string) {
+	builder.Argv = append(builder.Argv, args...)
+}
+
+func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
+	builder.finalize()
+	var err error
+
+	inst := QemuInstance{}
+
+	argv := baseQemuArgs(builder.Board)
+	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
+
+	// We always provide a random source
+	argv = append(argv, "-object", "rng-random,filename=/dev/urandom,id=rng0",
+		"-device", virtio(builder.Board, "rng", "rng=rng0"))
+	if builder.Uuid != "" {
+		argv = append(argv, "-uuid", builder.Uuid)
 	}
 
-	return qmCmd, extraFiles, nil
+	// Handle Ignition
+	if builder.Config != "" && boardSupportsFwCfg(builder.Board) {
+		builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.Config)
+	} else if !builder.primaryDiskAdded {
+		// Otherwise, we should have handled it in builder.AddPrimaryDisk
+		panic("Ignition specified but no primary disk")
+	}
+
+	if builder.Swtpm {
+		inst.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
+		if err != nil {
+			return nil, err
+		}
+
+		swtpmSock := filepath.Join(inst.swtpmTmpd, "swtpm-sock")
+
+		inst.swtpm = exec.Command("swtpm", "socket", "--tpm2",
+			"--ctrl", fmt.Sprintf("type=unixio,path=%s", swtpmSock),
+			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", inst.swtpmTmpd))
+		cmd := inst.swtpm.(*exec.ExecCmd)
+		cmd.Stderr = os.Stderr
+		if builder.Pdeathsig {
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Pdeathsig: syscall.SIGTERM,
+			}
+		}
+		if err = inst.swtpm.Start(); err != nil {
+			return nil, err
+		}
+		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock),
+			"-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-tis,tpmdev=tpm0")
+	}
+
+	fdnum := 3 // first additional file starts at position 3
+	for i, _ := range builder.fds {
+		fdset := i + 1 // Start at 1
+		argv = append(argv, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset))
+		fdnum += 1
+	}
+
+	// And the custom arguments
+	argv = append(argv, builder.Argv...)
+
+	inst.qemu = exec.Command(argv[0], argv[1:]...)
+
+	cmd := inst.qemu.(*exec.ExecCmd)
+	cmd.Stderr = os.Stderr
+
+	if builder.Pdeathsig {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGTERM,
+		}
+	}
+
+	cmd.ExtraFiles = append(cmd.ExtraFiles, builder.fds...)
+
+	if err = inst.qemu.Start(); err != nil {
+		return nil, err
+	}
+
+	return &inst, nil
+}
+
+func (builder *QemuBuilder) Close() {
+	if builder.fds == nil {
+		return
+	}
+	for _, f := range builder.fds {
+		f.Close()
+	}
+	builder.fds = nil
 }
 
 // The virtio device name differs between machine types but otherwise
 // configuration is the same. Use this to help construct device args.
-func Virtio(board, device, args string) string {
+func virtio(board, device, args string) string {
 	var suffix string
 	switch board {
 	case "amd64-usr", "ppc64le-usr":
