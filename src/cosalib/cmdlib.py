@@ -171,7 +171,7 @@ def rm_allow_noent(path):
 # be like a virtual time capsule!  If they still use email then...
 def disk_ignition_version(path):
     bn = os.path.basename(path)
-    ignition_spec2_openshift_releases = [1, 2, 3]
+    ignition_spec2_openshift_releases = [1, 2, 3, 4]
     # The output from the RHCOS pipeline names images like
     # rhcos-42.81.$datestamp.  The images are renamed when
     # placed at e.g. https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.2/4.2.0/
