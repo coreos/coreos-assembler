@@ -50,7 +50,8 @@ FEDORA_MESSAGING_TOPIC_PREFIX = {
     'prod': 'org.fedoraproject.prod.coreos.build.request',
     'stg': 'org.fedoraproject.stg.coreos.build.request',
 }
-ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 10
+# this is really the worst case scenario, it's usually pretty fast otherwise
+ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 60
 
 fedenv = 'prod'
 
