@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 )
 
@@ -374,8 +373,6 @@ func testMountDisks(c cluster.TestCluster) {
 	// These cases have to be separated because when put together to the same case statement
 	// the golang compiler no longer checks that the individual types in the case have the
 	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithOptions(ignConfig, options, true)
 	case *unprivqemu.Cluster:
 		m, err = pc.NewMachineWithOptions(ignConfig, options, true)
 	default:

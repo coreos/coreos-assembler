@@ -33,13 +33,6 @@ const (
 	RequiresInternetAccess             // run the test only if the platform supports Internet access
 )
 
-var (
-	// platforms that have no Internet access
-	PlatformsNoInternet = []string{
-		"qemu",
-	}
-)
-
 // Wrapper for the NativeFunc which includes an optional string of arches to exclude for each native test
 type NativeFuncWrap struct {
 	NativeFunc           func() error
