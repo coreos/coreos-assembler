@@ -156,9 +156,9 @@ rootfs_size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 image_size="$(( rootfs_size + 513 ))M"
 echo "Disk size estimated to ${image_size}"
 
-# For bare metal images, we use the estimated image size. For IaaS/virt, we get it from
+# For bare metal and dasd images, we use the estimated image size. For IaaS/virt, we get it from
 # image.yaml because we want a "default" disk size that has some free space.
-if [ "${image_type}" = metal ]; then
+if [[ "${image_type}" = metal || "${image_type}" = dasd ]]; then
     # Unset the root size, which will inherit from the image size
     rootfs_size=0
 else
