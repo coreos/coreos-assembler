@@ -24,7 +24,7 @@ func init() {
 		Run:         gshadowParser,
 		ClusterSize: 1,
 		Name:        "systemd.sysusers.gshadow",
-		Distros:     []string{"cl", "fcos"},
+		Distros:     []string{"fcos"},
 	})
 }
 

@@ -24,33 +24,22 @@ import (
 // provider metadata since it will not be injected into the config. Platforms
 // where the cloud provider metadata system is not available have been excluded.
 func init() {
-	// Tests for https://github.com/coreos/bugs/issues/1184
 	register.Register(&register.Test{
-		Name:             "cl.ignition.misc.empty",
+		Name:             "fcos.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
-		Distros:          []string{"cl"},
+		Distros:          []string{"fcos"},
 		UserData:         conf.Empty(),
 	})
-	// Tests for https://github.com/coreos/bugs/issues/1981
 	register.Register(&register.Test{
-		Name:             "cl.ignition.v1.noop",
+		Name:             "fcos.ignition.v3.noop",
 		Run:              empty,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx", "openstack"},
-		Distros:          []string{"cl"},
+		Distros:          []string{"fcos"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
-		UserData:         conf.Ignition(`{"ignitionVersion": 1}`),
-	})
-	register.Register(&register.Test{
-		Name:             "cl.ignition.v2.noop",
-		Run:              empty,
-		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu", "esx", "openstack"},
-		Distros:          []string{"cl"},
-		Flags:            []register.Flag{register.NoSSHKeyInUserData},
-		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
+		UserData:         conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
 	})
 }
 

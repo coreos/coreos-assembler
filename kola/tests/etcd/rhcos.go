@@ -20,11 +20,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/pkg/capnslog"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
 
 func init() {
 	register.Register(&register.Test{

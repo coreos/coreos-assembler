@@ -48,17 +48,6 @@ systemd:
 )
 
 func init() {
-	register.Register(&register.Test{
-		Run:         NFSv3,
-		ClusterSize: 0,
-		Name:        "linux.nfs.v3",
-		Distros:     []string{"cl"},
-
-		// Disabled on Azure because setting hostname
-		// is required at the instance creation level
-		// qemu-unpriv machines cannot communicate
-		ExcludePlatforms: []string{"azure", "qemu-unpriv"},
-	})
 	// TODO: enable FCOS when FCCT exists
 	register.Register(&register.Test{
 		Run:            NFSv4,
@@ -145,11 +134,6 @@ systemd:
 	}
 
 	c.MustSSH(m2, fmt.Sprintf("stat /var/mnt/%s", path.Base(string(tmp))))
-}
-
-// Test that the kernel NFS server and client work within CoreOS.
-func NFSv3(c cluster.TestCluster) {
-	testNFS(c, 3, "/tmp")
 }
 
 // Test that NFSv4 without security works.

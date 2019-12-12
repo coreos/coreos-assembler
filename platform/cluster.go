@@ -199,11 +199,6 @@ WantedBy=multi-user.target
 		conf.AddFile("/etc/pivot/image-pullspec", "root", bc.bf.baseopts.OSContainer, 0644)
 	}
 
-	// mask tcsd on Packet for CL
-	if bc.Distribution() == "cl" && bc.Platform() == "packet" {
-		conf.AddSystemdUnit("tcsd.service", "", platformConf.Mask)
-	}
-
 	if conf.IsIgnition() {
 		if !conf.ValidConfig() {
 			return nil, fmt.Errorf("invalid ignition config")

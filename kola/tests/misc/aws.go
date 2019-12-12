@@ -17,7 +17,6 @@ package misc
 import (
 	"fmt"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -28,10 +27,7 @@ func init() {
 		Platforms:   []string{"aws"},
 		Run:         awsVerifyDiskFriendlyName,
 		ClusterSize: 1,
-		// Previously broken on NVMe devices, see
-		// https://github.com/coreos/bugs/issues/2399
-		MinVersion: semver.Version{Major: 1828},
-		Distros:    []string{"cl", "rhcos"},
+		Distros:     []string{"rhcos"},
 	})
 }
 
