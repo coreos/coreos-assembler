@@ -20,38 +20,23 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/local"
+	"github.com/coreos/mantle/platform/machine/unprivqemu"
 )
 
 const (
 	Platform platform.Name = "qemu"
 )
 
-// Options contains QEMU-specific options for the flight.
-type Options struct {
-	// DiskImage is the full path to the disk image to boot in QEMU.
-	DiskImage string
-	Board     string
-
-	// BIOSImage is name of the BIOS file to pass to QEMU.
-	// It can be a plain name, or a full path.
-	BIOSImage string
-
-	//Option to create a temporary software TPM - true by default
-	Swtpm bool
-
-	*platform.Options
-}
-
 type flight struct {
 	*local.LocalFlight
-	opts *Options
+	opts *unprivqemu.Options
 }
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/qemu")
 )
 
-func NewFlight(opts *Options) (platform.Flight, error) {
+func NewFlight(opts *unprivqemu.Options) (platform.Flight, error) {
 	lf, err := local.NewLocalFlight(opts.Options, Platform)
 	if err != nil {
 		return nil, err

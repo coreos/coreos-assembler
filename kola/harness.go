@@ -61,7 +61,7 @@ var (
 	GCEOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
-	QEMUOptions      = qemu.Options{Options: &Options}         // glue to set platform options from main
+	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
