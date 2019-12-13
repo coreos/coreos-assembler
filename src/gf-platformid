@@ -33,8 +33,7 @@ set -x
 tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-platformid.XXXXXX)
 tmp_dest=${tmpd}/box.img
 
-qemu-img create -q -f qcow2 -b "$(realpath "${src}")" "${tmp_dest}"
-# <walters> I commonly chmod a-w VM images
+/usr/lib/coreos-assembler/cp-reflink "${src}" "${tmp_dest}"
 chmod u+w "${tmp_dest}"
 
 # Mount everything read-only by default
