@@ -40,23 +40,7 @@ var offServices = []string{
 
 func init() {
 	register.Register(&register.Test{
-		Name:        "rhcos.basic",
-		Run:         LocalTests,
-		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"PortSSH":          TestPortSsh,
-			"DbusPerms":        TestDbusPerms,
-			"NetworkScripts":   TestNetworkScripts,
-			"ServicesActive":   TestServicesActive,
-			"ServicesDisabled": TestServicesDisabledRHCOS,
-			"ReadOnly":         TestReadOnlyFs,
-			"Useradd":          TestUseradd,
-			"MachineID":        TestMachineID,
-		},
-		Distros: []string{"rhcos"},
-	})
-	register.Register(&register.Test{
-		Name:        "fcos.basic",
+		Name:        "basic",
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{
@@ -65,11 +49,10 @@ func init() {
 			"NetworkScripts": TestNetworkScripts,
 			"ServicesActive": TestServicesActive,
 			"ReadOnly":       TestReadOnlyFs,
-			"RandomUUID":     TestFsRandomUUID,
 			"Useradd":        TestUseradd,
 			"MachineID":      TestMachineID,
 		},
-		Distros: []string{"fcos"},
+		Distros: []string{"fcos", "rhcos"},
 	})
 	// TODO: enable DockerPing/DockerEcho once fixed
 	register.Register(&register.Test{
@@ -82,6 +65,25 @@ func init() {
 			"PodmanEcho": TestPodmanEcho,
 		},
 		Distros: []string{"fcos"},
+	})
+	register.Register(&register.Test{
+		Name:        "rootfs.uuid",
+		Run:         LocalTests,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"RandomUUID": TestFsRandomUUID,
+		},
+		// FIXME run on RHCOS once it has https://github.com/coreos/ignition-dracut/pull/93
+		Distros: []string{"fcos"},
+	})
+	register.Register(&register.Test{
+		Name:        "rhcos.services-disabled",
+		Run:         LocalTests,
+		ClusterSize: 1,
+		NativeFuncs: map[string]func() error{
+			"ServicesDisabled": TestServicesDisabledRHCOS,
+		},
+		Distros: []string{"rhcos"},
 	})
 }
 
