@@ -16,10 +16,8 @@
 package local
 
 import (
-	"fmt"
 	"sync/atomic"
 
-	"github.com/coreos/go-omaha/omaha"
 	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/lang/destructor"
@@ -109,23 +107,6 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 		return nil, err
 	}
 	lc.AddDestructor(lc.BaseCluster)
-
-	// Omaha server must be launched in the new namespace
-	nsExit, err := ns.Enter(lf.nshandle)
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	defer nsExit()
-
-	omahaServer, err := omaha.NewTrivialServer(fmt.Sprintf(":%d", lf.newListenPort()))
-	if err != nil {
-		lc.Destroy()
-		return nil, err
-	}
-	lc.OmahaServer = OmahaWrapper{TrivialServer: omahaServer}
-	lc.AddDestructor(lc.OmahaServer)
-	go lc.OmahaServer.Serve()
 
 	// does not lf.AddCluster() since we are not the top-level object
 
