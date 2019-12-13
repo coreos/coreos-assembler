@@ -156,7 +156,7 @@ func baseQemuArgs(board string) []string {
 	}
 }
 
-func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImagePath string, isIgnition bool, options MachineOptions) ([]string, []*os.File, error) {
+func CreateQEMUCommand(board, uuid, consolePath, confPath, diskImagePath string, isIgnition bool, options MachineOptions) ([]string, []*os.File, error) {
 	// As we expand this list of supported native + board
 	// archs combos we should coordinate with the
 	// coreos-assembler folks as they utilize something
@@ -193,10 +193,6 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 		"-object", "rng-random,filename=/dev/urandom,id=rng0",
 		"-device", Virtio(board, "rng", "rng=rng0"),
 	)
-
-	if board != "s390x-usr" && board != "ppc64le-usr" {
-		qmCmd = append(qmCmd, "-bios", biosImage)
-	}
 
 	if isIgnition {
 		// -fw_cfg is not supported for s390x, instead guestfs utility is used

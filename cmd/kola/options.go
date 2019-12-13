@@ -41,11 +41,6 @@ var (
 		"fcos":  "v3",
 		"rhcos": "v3",
 	}
-
-	kolaDefaultBIOS = map[string]string{
-		"amd64-usr": "bios-256k.bin",
-		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_qemu_uefi_efi_code.fd",
-	}
 )
 
 func init() {
@@ -141,7 +136,6 @@ func init() {
 	// QEMU-specific options
 	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
-	sv(&kola.QEMUOptions.BIOSImage, "qemu-bios", "", "BIOS to use for QEMU vm")
 	bv(&kola.QEMUOptions.Swtpm, "qemu-swtpm", true, "Create temporary software TPM")
 }
 
@@ -176,9 +170,6 @@ func syncOptions() error {
 		kola.QEMUOptions.DiskImage = image
 	}
 
-	if kola.QEMUOptions.BIOSImage == "" {
-		kola.QEMUOptions.BIOSImage = kolaDefaultBIOS[kola.QEMUOptions.Board]
-	}
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
 	for _, unit := range units {
 		kola.Options.SystemdDropins = append(kola.Options.SystemdDropins, platform.SystemdDropin{
