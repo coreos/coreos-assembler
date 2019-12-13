@@ -20,11 +20,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
-
-	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/mantle/system/exec"
 )
@@ -213,26 +210,6 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 			"-device", Virtio(board, "9p", "fsdev=cfg,mount_tag=config-2"))
 	}
 
-	// auto-read-only is only available in 3.1.0 & greater versions of QEMU
-	var autoReadOnly string
-	version, err := exec.Command(qmCmd[0], "--version").CombinedOutput()
-	if err != nil {
-		return nil, nil, fmt.Errorf("retrieving qemu version: %v", err)
-	}
-	pat := regexp.MustCompile(`version (\d+\.\d+\.\d+)`)
-	vNum := pat.FindSubmatch(version)
-	if len(vNum) < 2 {
-		return nil, nil, fmt.Errorf("unable to parse qemu version number")
-	}
-	qmSemver, err := semver.NewVersion(string(vNum[1]))
-	if err != nil {
-		return nil, nil, fmt.Errorf("parsing qemu semver: %v", err)
-	}
-	if !qmSemver.LessThan(*semver.New("3.1.0")) {
-		autoReadOnly = ",auto-read-only=off"
-		plog.Debugf("disabling auto-read-only for QEMU drives")
-	}
-
 	primaryDisk := Disk{
 		BackingFile: diskImagePath,
 		DeviceOpts:  primaryDiskOptions,
@@ -259,7 +236,7 @@ func CreateQEMUCommand(board, uuid, biosImage, consolePath, confPath, diskImageP
 
 		id := fmt.Sprintf("d%d", fdnum)
 		qmCmd = append(qmCmd, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset),
-			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d%s", id, fdset, autoReadOnly),
+			"-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=/dev/fdset/%d,auto-read-only=off", id, fdset),
 			"-device", Virtio(board, "blk", fmt.Sprintf("drive=%s%s", id, disk.getOpts())))
 		fdnum += 1
 		fdset += 1
