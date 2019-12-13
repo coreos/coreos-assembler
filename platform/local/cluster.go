@@ -17,7 +17,6 @@ package local
 import (
 	"fmt"
 	"math/rand"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -36,8 +35,7 @@ import (
 type LocalCluster struct {
 	destructor.MultiDestructor
 	*platform.BaseCluster
-	flight      *LocalFlight
-	OmahaServer OmahaWrapper
+	flight *LocalFlight
 }
 
 func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
@@ -83,14 +81,6 @@ func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
 	defer resp.Body.Close()
 
 	return baseURL, nil
-}
-
-func (lc *LocalCluster) GetOmahaHostPort() (string, error) {
-	_, port, err := net.SplitHostPort(lc.OmahaServer.Addr().String())
-	if err != nil {
-		return "", err
-	}
-	return net.JoinHostPort(lc.hostIP(), port), nil
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
