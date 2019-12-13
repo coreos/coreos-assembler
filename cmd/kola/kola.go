@@ -17,6 +17,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -61,7 +63,18 @@ will be ignored.
 		Run:   runList,
 	}
 
+	cmdHttpServer = &cobra.Command{
+		Use:   "http-server",
+		Short: "Run a static webserver",
+		Long: `Run a simple static webserver
+
+This can be useful for e.g. serving locally built OSTree repos to qemu.
+`,
+		Run: runHttpServer,
+	}
+
 	listJSON bool
+	httpPort int
 )
 
 func init() {
@@ -69,6 +82,9 @@ func init() {
 	root.AddCommand(cmdList)
 
 	cmdList.Flags().BoolVar(&listJSON, "json", false, "format output in JSON")
+
+	root.AddCommand(cmdHttpServer)
+	cmdHttpServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
 }
 
 func main() {
@@ -279,6 +295,15 @@ func runList(cmd *cobra.Command, args []string) {
 		}
 		fmt.Println(string(out))
 	}
+}
+
+func runHttpServer(cmd *cobra.Command, args []string) {
+	directory := "."
+
+	http.Handle("/", http.FileServer(http.Dir(directory)))
+
+	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
 }
 
 type item struct {
