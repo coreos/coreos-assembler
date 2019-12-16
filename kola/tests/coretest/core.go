@@ -43,14 +43,14 @@ func init() {
 		Name:        "basic",
 		Run:         LocalTests,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"PortSSH":        TestPortSsh,
-			"DbusPerms":      TestDbusPerms,
-			"NetworkScripts": TestNetworkScripts,
-			"ServicesActive": TestServicesActive,
-			"ReadOnly":       TestReadOnlyFs,
-			"Useradd":        TestUseradd,
-			"MachineID":      TestMachineID,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+			"NetworkScripts": register.CreateNativeFuncWrap(TestNetworkScripts, []string{"s390x"}...),
+			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
 		},
 		Distros: []string{"fcos", "rhcos"},
 	})
@@ -62,9 +62,9 @@ func init() {
 		Run:         InternetTests,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
-		NativeFuncs: map[string]func() error{
-			"PodmanEcho":     TestPodmanEcho,
-			"PodmanWgetHead": TestPodmanWgetHead,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PodmanEcho":     register.CreateNativeFuncWrap(TestPodmanEcho),
+			"PodmanWgetHead": register.CreateNativeFuncWrap(TestPodmanWgetHead),
 		},
 		Distros: []string{"fcos"},
 	})
@@ -72,8 +72,8 @@ func init() {
 		Name:        "rootfs.uuid",
 		Run:         LocalTests,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"RandomUUID": TestFsRandomUUID,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"RandomUUID": register.CreateNativeFuncWrap(TestFsRandomUUID),
 		},
 		// FIXME run on RHCOS once it has https://github.com/coreos/ignition-dracut/pull/93
 		Distros: []string{"fcos"},
@@ -82,8 +82,8 @@ func init() {
 		Name:        "rhcos.services-disabled",
 		Run:         LocalTests,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"ServicesDisabled": TestServicesDisabledRHCOS,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"ServicesDisabled": register.CreateNativeFuncWrap(TestServicesDisabledRHCOS),
 		},
 		Distros: []string{"rhcos"},
 	})

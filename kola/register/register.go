@@ -40,6 +40,17 @@ var (
 	}
 )
 
+// Wrapper for the NativeFunc which includes an optional string of arches to exclude for each native test
+type NativeFuncWrap struct {
+	NativeFunc           func() error
+	ExcludeArchitectures []string
+}
+
+// Simple constructor for returning NativeFuncWrap structure
+func CreateNativeFuncWrap(f func() error, excludearches ...string) NativeFuncWrap {
+	return NativeFuncWrap{f, excludearches}
+}
+
 // Test provides the main test abstraction for kola. The run function is
 // the actual testing function while the other fields provide ways to
 // statically declare state of the platform.TestCluster before the test
@@ -47,7 +58,7 @@ var (
 type Test struct {
 	Name                 string // should be unique
 	Run                  func(cluster.TestCluster)
-	NativeFuncs          map[string]func() error
+	NativeFuncs          map[string]NativeFuncWrap
 	UserData             *conf.UserData
 	UserDataV3           *conf.UserData
 	ClusterSize          int

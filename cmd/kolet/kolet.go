@@ -58,13 +58,13 @@ func main() {
 			Run: run,
 		}
 		for nativeName := range testObj.NativeFuncs {
-			nativeFunc := testObj.NativeFuncs[nativeName]
+			nativeFuncWrap := testObj.NativeFuncs[nativeName]
 			nativeRun := func(cmd *cobra.Command, args []string) {
 				if len(args) != 0 {
 					cmd.Usage()
 					os.Exit(2)
 				}
-				if err := nativeFunc(); err != nil {
+				if err := nativeFuncWrap.NativeFunc(); err != nil {
 					plog.Fatal(err)
 				}
 				// Explicitly exit successfully.

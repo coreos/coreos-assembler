@@ -73,9 +73,9 @@ func init() {
 		Name:        "coreos.ignition.security.tls",
 		Run:         securityTLS,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"TLSServe":   TLSServe,
-			"TLSServeV3": TLSServeV3,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"TLSServe":   register.CreateNativeFuncWrap(TLSServe),
+			"TLSServeV3": register.CreateNativeFuncWrap(TLSServeV3),
 		},
 		// DO: https://github.com/coreos/bugs/issues/2205
 		// Packet & QEMU: https://github.com/coreos/ignition/issues/645

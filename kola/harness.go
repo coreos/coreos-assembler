@@ -206,6 +206,25 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 				blacklisted = true
 				break
 			}
+
+			// Check if any native tests are blacklisted. To exclude native tests, specify the high level
+			// test and a "/" and then the glob pattern.
+			// - basic/TestNetworkScripts: excludes only TestNetworkScripts
+			// - basic/* - excludes all
+			// - If no pattern is specified after / , excludes none
+			nativeblacklistindex := strings.Index(bl, "/")
+			if nativeblacklistindex > -1 {
+				// Check native tests for arch specific exclusion
+				for nativetestname := range t.NativeFuncs {
+					match, err := filepath.Match(bl[nativeblacklistindex+1:], nativetestname)
+					if err != nil {
+						return nil, err
+					}
+					if match {
+						delete(t.NativeFuncs, nativetestname)
+					}
+				}
+			}
 		}
 		// If the test is blacklisted, skip it and continue to the next test
 		if blacklisted {
@@ -276,6 +295,14 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 
 		if allowed, excluded := isAllowed(Options.Distribution, t.Distros, t.ExcludeDistros); !allowed || excluded {
 			continue
+		}
+
+		// Check native tests for arch specific exclusion
+		for k, NativeFuncWrap := range t.NativeFuncs {
+			_, excluded := isAllowed(architecture(pltfrm), nil, NativeFuncWrap.ExcludeArchitectures)
+			if excluded {
+				delete(t.NativeFuncs, k)
+			}
 		}
 
 		r[name] = t
