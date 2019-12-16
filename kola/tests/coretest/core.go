@@ -54,15 +54,17 @@ func init() {
 		},
 		Distros: []string{"fcos", "rhcos"},
 	})
-	// TODO: enable DockerPing/DockerEcho once fixed
+	// TODO: Enable DockerPing/DockerEcho once fixed
+	// TODO: Only enable PodmanPing on non qemu-unpriv. Needs:
+	// https://github.com/coreos/mantle/issues/1132
 	register.Register(&register.Test{
 		Name:        "fcos.internet",
 		Run:         InternetTests,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		NativeFuncs: map[string]func() error{
-			"PodmanPing": TestPodmanPing,
-			"PodmanEcho": TestPodmanEcho,
+			"PodmanEcho":     TestPodmanEcho,
+			"PodmanWgetHead": TestPodmanWgetHead,
 		},
 		Distros: []string{"fcos"},
 	})
@@ -164,6 +166,25 @@ func TestPodmanPing() error {
 	select {
 	case <-time.After(DockerTimeout):
 		return fmt.Errorf("PodmanPing timed out after %s.", DockerTimeout)
+	case err := <-errc:
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func TestPodmanWgetHead() error {
+	//t.Parallel()
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("podman", "run", "busybox", "wget", "--spider", "http://fedoraproject.org/static/hotspot.txt")
+		err := c.Run()
+		errc <- err
+	}()
+	select {
+	case <-time.After(DockerTimeout):
+		return fmt.Errorf("PodmanWgetHead timed out after %s.", DockerTimeout)
 	case err := <-errc:
 		if err != nil {
 			return err
