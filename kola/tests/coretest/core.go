@@ -54,14 +54,15 @@ func init() {
 		},
 		Distros: []string{"fcos", "rhcos"},
 	})
-	// TODO: enable DockerPing/DockerEcho once fixed
+	// TODO: Enable DockerPing/DockerEcho once fixed
+	// TODO: Only enable PodmanPing on non qemu-unpriv. Needs:
+	// https://github.com/coreos/mantle/issues/1132
 	register.Register(&register.Test{
 		Name:        "fcos.internet",
 		Run:         InternetTests,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		NativeFuncs: map[string]func() error{
-			"PodmanPing": TestPodmanPing,
 			"PodmanEcho": TestPodmanEcho,
 		},
 		Distros: []string{"fcos"},
