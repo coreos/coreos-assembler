@@ -63,7 +63,8 @@ func init() {
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		NativeFuncs: map[string]func() error{
-			"PodmanEcho": TestPodmanEcho,
+			"PodmanEcho":     TestPodmanEcho,
+			"PodmanWgetHead": TestPodmanWgetHead,
 		},
 		Distros: []string{"fcos"},
 	})
@@ -165,6 +166,25 @@ func TestPodmanPing() error {
 	select {
 	case <-time.After(DockerTimeout):
 		return fmt.Errorf("PodmanPing timed out after %s.", DockerTimeout)
+	case err := <-errc:
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func TestPodmanWgetHead() error {
+	//t.Parallel()
+	errc := make(chan error, 1)
+	go func() {
+		c := exec.Command("podman", "run", "busybox", "wget", "--spider", "http://fedoraproject.org/static/hotspot.txt")
+		err := c.Run()
+		errc <- err
+	}()
+	select {
+	case <-time.After(DockerTimeout):
+		return fmt.Errorf("PodmanWgetHead timed out after %s.", DockerTimeout)
 	case err := <-errc:
 		if err != nil {
 			return err
