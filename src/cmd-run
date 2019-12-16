@@ -173,12 +173,7 @@ if [ -z "${VM_DISK}" ]; then
     if ! [ -d "builds/${BUILDID}" ]; then
         die "No builds/${BUILDID}"
     fi
-    builddir=$(get_build_dir "${BUILDID}")
-    diskpath=$(jq -r '.["images"]["'"${IMAGE_TYPE}"'"]["path"]' < "${builddir}/meta.json")
-    if [ "${diskpath}" = "null" ]; then
-        die "No image ${IMAGE_TYPE} in build ${BUILDID}"
-    fi
-    VM_DISK=${builddir}/${diskpath}
+    VM_DISK=$(cosa meta --build="${BUILDID}" --image-path="${IMAGE_TYPE}")
     # For other image types (most usefully for metal) force
     # on injection into the /boot partition, since Ignition
     # won't pull from qemu userdata.

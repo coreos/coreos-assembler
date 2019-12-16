@@ -24,6 +24,10 @@ class GenericBuildMeta(dict):
             builds.get_build_dir(build), 'meta.json')
         self.read()
 
+    @property
+    def path(self):
+        return self._meta_path
+
     def read(self):
         """
         Read the meta.json file into this object instance.
