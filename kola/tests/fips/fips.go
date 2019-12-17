@@ -18,6 +18,29 @@ func init() {
 			  	"version": "2.2.0"
 			},
 			"storage": {
+				"disks": [
+					{
+						"device": "/dev/vda",
+						"wipeTable": false,
+						"partitions": [
+							{
+								"label": "CONTR",
+								"size": 0,
+								"start": 0
+							}
+						]
+					}
+				],
+				"filesystems": [
+					{
+						"name": "CONTR",
+						"mount": {
+							"device": "/dev/disk/by-partlabel/CONTR",
+							"format": "xfs",
+							"wipeFilesystem": true
+						}
+					}
+				],
 				"files": [
 					{
 						"filesystem": "root",
@@ -33,6 +56,15 @@ func init() {
 							"verification": {}
 						},
 						"mode": 420
+					}
+				]
+			},
+			"systemd": {
+				"units": [
+					{
+						"name": "var-lib-containers.mount",
+						"enabled": true,
+						"contents": "[Mount]\nWhat=/dev/disk/by-partlabel/CONTR\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
 					}
 				]
 			}
