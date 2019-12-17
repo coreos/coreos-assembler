@@ -105,16 +105,16 @@ def cmd_robosignatory(args):
         key, val = keyval.split('=', 1)  # will throw exception if there's no =
         args.extra_keys[key] = val
 
+    # Add in a unique request id to the keys to pass
+    requestid = str(uuid.uuid4())
+    args.extra_keys['request_id'] = requestid
+
     request = 'ostree-sign' if args.ostree else 'artifacts-sign'
 
     global request_state
     request_state = {"status": "pending"}
     cond = threading.Condition()
-    start_consumer_thread(cond, request, {
-        'build_id': args.build,
-        'basearch': get_basearch(),
-        **args.extra_keys
-    })
+    start_consumer_thread(cond, request, requestid)
 
     # these two are different enough that they deserve separate handlers
     if args.ostree:
@@ -318,24 +318,21 @@ def validate_response(cond):
         assert request_state['status'].lower() == 'success', str(request_state)
 
 
-def start_consumer_thread(cond, request, filters):
+def start_consumer_thread(cond, request, requestid):
     registered = threading.Event()
     t = threading.Thread(target=watch_finished_messages,
-                         args=(cond, registered, request, filters),
+                         args=(cond, registered, request, requestid),
                          daemon=True)
     t.start()
     registered.wait()
     print(f"Successfully started consumer thread")
 
 
-def watch_finished_messages(cond, registered, request, filters):
+def watch_finished_messages(cond, registered, request, requestid):
     def callback(message):
-        # XXX: For now, we filter like this. In the future, we'll generate a
-        # request_id and just look for that:
-        # https://pagure.io/robosignatory/pull-request/37
-        for (k, v) in filters.items():
-            if k not in message.body or message.body[k] != v:
-                return
+        if 'request_id' not in message.body or \
+            message.body['request_id'] != requestid:
+            return
         with cond:
             global request_state
             request_state = message.body
