@@ -100,8 +100,8 @@ func init() {
 		Name:        "coreos.ignition.resource.local",
 		Run:         resourceLocal,
 		ClusterSize: 1,
-		NativeFuncs: map[string]func() error{
-			"Serve": Serve,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"Serve": register.CreateNativeFuncWrap(Serve),
 		},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do", "qemu-unpriv"},
