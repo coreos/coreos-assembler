@@ -242,10 +242,16 @@ img_base=tmp/${imageprefix}-base.qcow2
 # forgive me for this sin
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
+# Hack to force qemu to default to config drive based install on s390x
+platformid=qemu
+if [ "$arch" == "s390x" ]; then
+  platformid=openstack
+fi
+
 if [ -n "${build_qemu}" ]; then
     img_qemu=${imageprefix}-qemu.qcow2
     run_virtinstall "${tmprepo}" "${ref}" "${PWD}"/"${img_base}" --variant=cloud
-    /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" qemu
+    /usr/lib/coreos-assembler/gf-platformid "$(pwd)"/"${img_base}" "$(pwd)"/"${img_qemu}" ${platformid}
 fi
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
