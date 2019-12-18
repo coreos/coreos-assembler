@@ -243,6 +243,11 @@ img_base=tmp/${imageprefix}-base.qcow2
 checksum_location=$(find /usr/lib/coreos-assembler-anaconda/ -name '*CHECKSUM' | head -1)
 
 # Hack to force qemu to default to config drive based install on s390x
+# See these PRs for relevant discussion:
+#   Long term feature request          - https://github.com/coreos/ignition/issues/825
+#   Short term workaround in ignition  - https://github.com/coreos/ignition/pull/905
+#   Related/Alternative Hack to dracut - https://github.com/coreos/ignition-dracut/pull/145
+#   Multi-Arch 4.2 CoreOS workaround   - https://github.com/coreos/coreos-assembler/pull/1004
 platformid=qemu
 if [ "$arch" == "s390x" ]; then
   platformid=openstack
