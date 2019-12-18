@@ -45,7 +45,7 @@ build_commands="init fetch build run prune clean"
 advanced_build_commands="buildprep buildupload oscontainer"
 buildextend_commands="qemu aws azure gcp openstack installer live vmware metal"
 utility_commands="tag sign compress koji-upload kola aws-replicate remote-prune"
-other_commands="shell"
+other_commands="shell meta"
 if [ -z "${cmd}" ]; then
     echo Usage: "coreos-assembler CMD ..."
     echo "Build commands:"
