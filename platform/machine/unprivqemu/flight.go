@@ -30,10 +30,6 @@ type Options struct {
 	DiskImage string
 	Board     string
 
-	// BIOSImage is name of the BIOS file to pass to QEMU.
-	// It can be a plain name, or a full path.
-	BIOSImage string
-
 	//Option to create a temporary software TPM - true by default
 	Swtpm bool
 
