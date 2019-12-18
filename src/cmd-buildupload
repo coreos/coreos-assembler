@@ -176,9 +176,6 @@ def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
             # use a standard MIME type for "binary blob" instead of the default
             # 'binary/octet-stream' AWS slaps on
             extra_args['ContentType'] = 'application/octet-stream'
-    if 'ContentEncoding' not in extra_args:
-        if key.endswith('.gz'):
-            extra_args['ContentEncoding'] = 'gzip'
     upload_args = {
         'CacheControl': f'max-age={max_age}',
         'ACL': acl
