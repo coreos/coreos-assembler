@@ -87,10 +87,6 @@ if [ ! -d "${builddir}" ]; then
     fatal "Build dir ${builddir} does not exist."
 fi
 
-json_key() {
-    jq -r ".[\"$1\"]" < "${builddir}/meta.json"
-}
-
 # check if the image already exists in the meta.json
 meta_img=$(jq -r ".[\"images\"][\"${image_type}\"]" < "${builddir}/meta.json")
 if [ "${meta_img}" != "null" ]; then
