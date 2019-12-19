@@ -412,6 +412,10 @@ strip_out_lockfile_digests() {
     mv "$1.tmp" "$1"
 }
 
+json_key() {
+    jq -r ".[\"$1\"]" < "${builddir}/meta.json"
+}
+
 runvm() {
     local qemu_args=()
     while true; do

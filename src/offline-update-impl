@@ -1,0 +1,61 @@
+#!/bin/bash
+set -xeuo pipefail
+# See docs in cmd-offline-update.  This bit of code is run inside
+# a supermin VM; the cmd-offline-update is run outside.
+
+disk=/dev/vda
+
+udevadm trigger
+udevadm settle
+
+# We don't have systemd/udev running
+findlabel() {
+    local label=$1
+    local path=
+    for p in $(lsblk -nrp -o NAME ${disk}); do
+        if blkid -o export $p | grep -qe "LABEL=$label"; then
+            echo $p
+            return
+        fi
+    done
+    echo "Failed to find LABEL=$label" 1>&2
+    return 1
+}
+
+echo "mounting"
+sysroot=/mnt
+mkdir -p "${sysroot}"
+rootdev=$(findlabel root)
+bootdev=$(findlabel boot)
+mount "$rootdev" "${sysroot}"
+mount "$bootdev" "${sysroot}/boot"
+
+repo=$1
+shift
+ref=$1
+shift
+
+set -x
+ostree pull-local --repo="${sysroot}"/ostree/repo ${repo} ${ref}
+stateroot=$(basename $(ls -d ${sysroot}/ostree/deploy/* | head -1))
+# HACK for old systems that use grub2-mkconfig
+if ! grep -q bootloader=none "${sysroot}"/ostree/repo/config; then
+    cat >/usr/bin/dummy-mkconfig << 'EOF'
+    exec touch $2
+EOF
+    chmod a+x /usr/bin/dummy-mkconfig
+fi
+env OSTREE_DEBUG_GRUB2=1 OSTREE_GRUB2_EXEC=/usr/bin/dummy-mkconfig ostree admin --sysroot="${sysroot}" --os=${stateroot} deploy ${ref}
+# EVEN MORE tremendous hackery for old systems that use grub2-mkconfig
+if ! grep -q bootloader=none "${sysroot}"/ostree/repo/config; then
+    deploydir=$(ls -d ${sysroot}/ostree/deploy/*/deploy/* | grep -v '\.origin' | head -1)
+    mount -t proc /proc "${deploydir}/proc"
+    mount -t sysfs /sys "${deploydir}/sys"
+    mount -t devtmpfs devtmpfs "${deploydir}/dev"
+    mount -t tmpfs tmpfs "${deploydir}/var"
+    mount --bind "${sysroot}" "${deploydir}"/sysroot
+    mount -M "${sysroot}/boot" "${deploydir}"/boot
+    chroot "${deploydir}" env GRUB_DISABLE_OS_PROBER=true grub2-mkconfig -o /boot/loader/grub.cfg
+fi
+umount -R "${sysroot}"
+
