@@ -95,7 +95,10 @@ def compress_one_builddir(builddir):
         img = buildmeta['images'][img_format]
         file = img['path']
         filepath = os.path.join(builddir, file)
-        if not file.endswith(ext):
+        # check if it's not already compressed, even if with a different
+        # compressor (like for GCP, which needs .tar.gz, see:
+        # https://github.com/coreos/coreos-assembler/pull/1009)
+        if not file.endswith(tuple(ext_dict.values())):
             tmpfile = os.path.join(tmpdir, (file + ext))
             # SHA256 + size for uncompressed image was already calculated
             # during 'build'
