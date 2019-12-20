@@ -373,16 +373,16 @@ baseurl=file://${workdir}/overrides/rpm
 gpgcheck=0
 EOF
     fi
-    rootfs_overlay="${overridesdir}/rootfs"
-    if [[ -d "${rootfs_overlay}" && -n $(ls -A "${rootfs_overlay}") ]]; then
-        echo -n "Committing ${rootfs_overlay}... "
+    rootfs_overrides="${overridesdir}/rootfs"
+    if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
+        echo -n "Committing ${rootfs_overrides}... "
         touch "${overrides_active_stamp}"
-        ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overlay}" -b cosa-bin-overlay \
+        ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overrides}" -b cosa-overrides-rootfs \
           --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
           --timestamp "${git_timestamp}"
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
-  - cosa-bin-overlay
+  - cosa-overrides-rootfs
 EOF
     fi
 }
