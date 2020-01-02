@@ -63,7 +63,7 @@ def main():
     # NB: We only buildprep for the arch we're on for now. Could probably make
     # this a switch in the future.
 
-    buildid = builds.get_latest()
+    buildid = args.build or builds.get_latest()
     builddir = builds.get_build_dir(buildid)
     os.makedirs(builddir, exist_ok=True)
 
@@ -84,8 +84,9 @@ def main():
         fetcher.fetch(f'{builddir}/{f}')
 
     # and finally the symlink
-    rm_allow_noent('builds/latest')
-    os.symlink(buildid, 'builds/latest')
+    if args.build is None:
+        rm_allow_noent('builds/latest')
+        os.symlink(buildid, 'builds/latest')
 
     # also nuke the any local matching OStree ref, since we want to build on
     # top of this new one
@@ -99,6 +100,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", metavar='URL',
                         help="URL from which to fetch metadata")
+    parser.add_argument("-b", "--build", action='store',
+                        help="Fetch specified build instead of latest")
     parser.add_argument("--ostree", action='store_true',
                         help="Also download full OSTree commit")
     parser.add_argument("--refresh", action='store_true',
