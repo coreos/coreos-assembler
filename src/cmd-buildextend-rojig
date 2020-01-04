@@ -36,11 +36,7 @@ repo = os.path.join(workdir, 'tmp/repo')
 pkgcache_repo = os.path.join(workdir, 'cache/pkgcache-repo')
 
 with tempfile.TemporaryDirectory(prefix='rojig-', dir=f"{workdir}/tmp") as tmpd:
-    uid = os.getuid()
-    try:
-        run_verbose(['sudo', 'rpm-ostree', 'ex', 'commit2rojig', f"--repo={repo}", f"--pkgcache-repo={pkgcache_repo}", buildmeta_commit, 'src/config/manifest.yaml', os.path.abspath(tmpd)])
-    finally:
-        subprocess.check_call(['sudo', 'chown', '-Rh', f"{uid}:{uid}", tmpd])
+    run_verbose(['/usr/lib/coreos-assembler/buildextend-rojig-impl', buildmeta_commit, os.path.abspath(tmpd)])
     rojig_path = None
     arch_destdir = os.path.join(tmpd, get_basearch())
     if not os.path.isdir(arch_destdir):
