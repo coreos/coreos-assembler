@@ -38,10 +38,6 @@ install_rpms() {
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
     yum -y distro-sync
 
-    # XXX: Temporarily work around a bug in the way supermin creates ext2
-    # filesystems: https://bugzilla.redhat.com/show_bug.cgi?id=1770304
-    yum -y install https://kojipkgs.fedoraproject.org//packages/kernel/5.3.7/300.fc31/"${arch}"/kernel-core-5.3.7-300.fc31."${arch}".rpm
-
     # xargs is part of findutils, which may not be installed
     yum -y install /usr/bin/xargs
 
