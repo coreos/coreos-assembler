@@ -61,7 +61,7 @@ size = os.path.getsize(destpath)
 buildmeta['images']['rojig'] = {
     'path': os.path.basename(rojig_path),
     'size': size,
-    'checksum': checksum
+    'sha256': checksum
 }
 write_json(buildmeta_path, buildmeta)
 print(f"Updated: {buildmeta_path}")
