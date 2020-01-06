@@ -15,11 +15,6 @@ dnf-utils
 # For generating ISO images
 genisoimage
 
-# We expect people to use these explicitly in their repo configurations.
-distribution-gpg-keys
-# We need these for rojig
-selinux-policy-targeted rpm-build
-
 # Standard build tools
 make git rpm-build
 
