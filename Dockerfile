@@ -5,8 +5,8 @@ WORKDIR /root/containerbuild
 # rebuilding the container can leverage cached layers better.
 
 # Only need a few of our scripts for the first few steps
-COPY ./src/cmdlib.sh /root/containerbuild/src/
-COPY ./build.sh ./deps*.txt ./vmdeps*.txt ./build-deps.txt /root/containerbuild/
+COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
+COPY ./build.sh /root/containerbuild/
 RUN ./build.sh configure_yum_repos # nocache 20191205
 RUN ./build.sh install_rpms
 

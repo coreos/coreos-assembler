@@ -94,13 +94,8 @@ has_privileges() {
 }
 
 depcheck() {
-    # Verify we have all dependencies installed
-    if [ -z "$1" ]; then
-      fatal "Must provide a list of RPMs to verify"
-    fi
-
     local deps
-    deps=$1
+    deps=$(/usr/lib/coreos-assembler/print-dependencies.sh)
     # Explicitly check the packages in one rpm -q to avoid
     # overhead, only drop down to individual calls if that fails.
     # We use --whatprovides so we handle file paths too.
@@ -119,14 +114,7 @@ depcheck() {
 }
 
 preflight() {
-    # Verify we have all dependencies
-    local deps
-    [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
-    [ -n "${ISEL}" ]     && filter='^#EL7 '
-    deps=$(sed "s/${filter}//" /usr/lib/coreos-assembler/deps.txt | grep -v '^#')
-    archdeps=$(sed "s/${filter}//" /usr/lib/coreos-assembler/deps-"$(arch)".txt | grep -v '^#')
-
-    depcheck "${deps} ${archdeps}"
+    depcheck
 
     if [ "$(stat -f --printf="%T" .)" = "overlayfs" ]; then
         fatal "$(pwd) must be a volume"

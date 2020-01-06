@@ -46,12 +46,10 @@ install_rpms() {
     # to use the container as a development environment for itself.
     # Down the line we may strip these out, or have a separate
     # development version.
-    builddeps=$(grep -v '^#' "${srcdir}"/build-deps.txt)
+    builddeps=$(grep -v '^#' "${srcdir}"/src/build-deps.txt)
 
     # Process our base dependencies + build dependencies and install
-    deps=$(grep -v '^#' "${srcdir}"/deps.txt)
-    archdeps=$(grep -v '^#' "${srcdir}/deps-$(arch)".txt)
-    echo "${builddeps}" "${deps}" "${archdeps}" | xargs yum -y install
+    (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
@@ -71,10 +69,6 @@ install_rpms() {
     chmod -R a+rX /usr/lib/modules /usr/share/selinux/targeted
     # Further cleanup
     yum clean all
-
-    # shellcheck source=src/cmdlib.sh
-    . "${srcdir}/src/cmdlib.sh"
-    depcheck "${deps} ${archdeps}"
 }
 
 _prep_make_and_make_install() {

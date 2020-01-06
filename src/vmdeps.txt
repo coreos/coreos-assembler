@@ -5,12 +5,14 @@ bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules
 
 # for composes
 rpm-ostree distribution-gpg-keys jq
+# We need these for rojig
+rpm-build
 
 # for clean reboot
 systemd
 
 # networking
-dhcp-client bind-export-libs iproute
+dhcp-client iproute
 
 # SELinux
 selinux-policy selinux-policy-targeted policycoreutils

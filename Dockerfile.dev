@@ -12,8 +12,8 @@ WORKDIR /root/containerbuild
 USER root
 RUN rm -rfv /lib/coreos-assembler /usr/bin/coreos-assembler
 
-COPY ./src/cmdlib.sh /root/containerbuild/src/
-COPY ./build.sh ./deps*.txt ./vmdeps.txt ./build-deps.txt /root/containerbuild/
+COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
+COPY ./build.sh /root/containerbuild/
 RUN ./build.sh install_rpms
 
 COPY ./ /root/containerbuild/
