@@ -38,6 +38,11 @@ if [ -f "${workdir}/tmp/supermin/supermin.env" ]; then
     source "${workdir}/tmp/supermin/supermin.env";
 fi
 
+# Code can check this to see whether it's being run via supermin; in
+# some cases it may be convenient to have files wrap themselves, and
+# this disambiguates between container and supermin.
+touch /etc/cosa-supermin
+
 # /usr/sbin/ip{,6}tables is installed as a symlink to /etc/alternatives/ip{,6}tables but
 # the /etc/alternatives symlink to /usr/sbin/ip{,6}tables-legacy is missing.  This recreates
 # the missing link.  Hehe.
