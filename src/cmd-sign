@@ -20,7 +20,7 @@ import tempfile
 import threading
 import uuid
 
-from multiprocessing import Process
+import multiprocessing as mp
 
 import boto3
 
@@ -284,8 +284,10 @@ def send_message(args, request, body):
     # This is a bit hacky; we fork to publish the message here so that we can
     # load the publishing fedora-messaging config. The TL;DR is: we need auth
     # to publish, but we need to use the public endpoint for consuming so we
-    # can create temporary queues.
-    p = Process(target=send_message_impl, args=(args, request, body))
+    # can create temporary queues. We use the 'spawn' start method so we don't
+    # inherit anything by default (like the Twisted state).
+    ctx = mp.get_context('spawn')
+    p = ctx.Process(target=send_message_impl, args=(args, request, body))
     p.start()
     p.join()
 
