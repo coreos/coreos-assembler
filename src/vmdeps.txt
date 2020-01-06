@@ -1,4 +1,6 @@
-# Base deps for a viable VM environment.
+# These packages will be included in the VM image created by
+# supermin that we use via `runvm`, which currently is mostly
+# rpm-ostree runs (when run unprivileged) and create-disk.sh.
 
 # bare essentials
 bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules

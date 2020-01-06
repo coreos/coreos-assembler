@@ -1,3 +1,7 @@
+# These packages are what coreos-assembler needs; they will
+# be installed in the container image.  Note that anything
+# listed in vmdeps.txt will also be installed.
+
 # For privileged ops
 supermin
 
