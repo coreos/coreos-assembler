@@ -45,7 +45,6 @@ import (
 	"github.com/coreos/mantle/platform/machine/gcloud"
 	"github.com/coreos/mantle/platform/machine/openstack"
 	"github.com/coreos/mantle/platform/machine/packet"
-	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/system"
 )
@@ -172,8 +171,6 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = openstack.NewFlight(&OpenStackOptions)
 	case "packet":
 		flight, err = packet.NewFlight(&PacketOptions)
-	case "qemu":
-		flight, err = qemu.NewFlight(&QEMUOptions)
 	case "qemu-unpriv":
 		flight, err = unprivqemu.NewFlight(&QEMUOptions)
 	default:
@@ -242,20 +239,6 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 
 		// Check the test's min and end versions when running more than one test
 		if t.Name != pattern && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
-			continue
-		}
-
-		existsIn := func(item string, entries []string) bool {
-			for _, i := range entries {
-				if i == item {
-					return true
-				}
-			}
-			return false
-		}
-
-		if existsIn(pltfrm, register.PlatformsNoInternet) && t.HasFlag(register.RequiresInternetAccess) {
-			plog.Debugf("skipping test %s: Internet required but not supported by platform %s", t.Name, pltfrm)
 			continue
 		}
 

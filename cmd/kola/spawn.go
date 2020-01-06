@@ -31,7 +31,6 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/platform/machine/qemu"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 )
 
@@ -182,8 +181,6 @@ func doSpawn(cmd *cobra.Command, args []string) error {
 			}
 
 			switch qc := cluster.(type) {
-			case *qemu.Cluster:
-				mach, err = qc.NewMachineWithOptions(userdata, machineOpts, spawnRemove)
 			case *unprivqemu.Cluster:
 				mach, err = qc.NewMachineWithOptions(userdata, machineOpts, spawnRemove)
 			default:

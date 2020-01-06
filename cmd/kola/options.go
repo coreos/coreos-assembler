@@ -153,6 +153,12 @@ func syncOptions() error {
 		return fmt.Errorf("unsupported %v %q", name, item)
 	}
 
+	// There used to be a "privileged" qemu path, it is no longer supported.
+	// Alias qemu to qemu-unpriv.
+	if kolaPlatform == "qemu" {
+		kolaPlatform = "qemu-unpriv"
+	}
+
 	if err := validateOption("platform", kolaPlatform, kolaPlatforms); err != nil {
 		return err
 	}
