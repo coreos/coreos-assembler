@@ -1,5 +1,0 @@
-# For grub install when creating images
-grub2
-
-# For creating bootable UEFI media on aarch64
-shim-aa64 grub2-efi-aa64

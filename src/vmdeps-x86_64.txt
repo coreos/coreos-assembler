@@ -1,1 +1,5 @@
-grub2 grub2-efi-x64
+# For grub install when creating images without anaconda
+grub2
+
+# For creating bootable UEFI media on x86_64
+shim-x64 grub2-efi-x64
