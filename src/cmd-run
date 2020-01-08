@@ -18,40 +18,24 @@ IMAGE_TYPE=qemu
 VM_DISK=
 DISK_CHANNEL=virtio
 VM_MEMORY=2048
-VM_DISKSIZE=
-VM_PERSIST_IMG=
 VM_NCPUS="${VM_NCPUS:-${QEMU_PROCS}}"
 VM_SRV_MNT=
 TARGET_USER=core
-SSH_ATTACH=
-SSH_PORT=${SSH_PORT:-}
-SSH_CONFIG=
-IPV6ONLY=0
-UEFI=0
-SWTPM=1
-BOOT_INJECT=0
-SECURE=0
+FIRMWARE=bios
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
     -b --buildid          Target buildid (default latest)
     -I --imgtype          Target image type (qemu, metal, etc.  Default qemu)
     -d DISK               Root disk drive (won't be changed by default)
     --disk-channel TYPE   Communication mechanism for root device: virtio, nvme
-    --persist-to-img IMG  Persist changes to a separate image
     -i FILE               File containing an Ignition config to merge into the default config
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
     --size GB             Disk size in GB (matches base by default)
-    --ssh                 Attach via SSH instead of console
     --user USERNAME       Create user USERNAME via Ignition (if not already extant) and log in as that user
-    -p --ssh-port PORT    Map PORT on localhost to the VM's sshd.
-    --ssh-config FILE     Write SSH config to FILE. Useful with '-p 0'.
     -h                    this ;-)
-    -B --boot-inject      Force Ignition injection into /boot (useful for running metal images)
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
-    --ipv6only            Don't enable IPv4
-    --no-swtpm            Don't create a temporary software TPM
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
 it will auto-log you into the console, and by default for read-only disk
@@ -67,9 +51,6 @@ die(){
     exit 1
 }
 
-# remember in case we re-exec under ssh-agent
-args=("$0" "$@")
-
 while [ $# -ge 1 ]; do
     case "$1" in
         -b|--buildid)
@@ -84,9 +65,6 @@ while [ $# -ge 1 ]; do
         --disk-channel)
             DISK_CHANNEL="$2"
             shift 2 ;;
-        --persist-to-img)
-            VM_PERSIST_IMG="$2"
-            shift 2 ;;
         -i|--ignition-config)
             IGNITION_CONFIG_FILE="$2"
             shift 2 ;;
@@ -96,18 +74,6 @@ while [ $# -ge 1 ]; do
         -m)
             VM_MEMORY="$2"
             shift 2 ;;
-        --size)
-            VM_DISKSIZE="${2}G"
-            shift 2 ;;
-        -p|--ssh-port)
-            SSH_PORT="$2"
-            shift 2 ;;
-        --ssh-config)
-            SSH_CONFIG="$2"
-            shift 2 ;;
-        --ssh)
-            SSH_ATTACH=1
-            shift ;;
         --user)
             TARGET_USER="$2"
             shift 2 ;;
@@ -115,19 +81,10 @@ while [ $# -ge 1 ]; do
             set -x
             shift ;;
         --uefi)
-            UEFI=1
+            FIRMWARE=uefi
             shift ;;
         --uefi-secure)
-            SECURE=1
-            shift ;;
-        --ipv6only)
-            IPV6ONLY=1
-            shift ;;
-        --no-swtpm)
-            SWTPM=0
-            shift ;;
-        -B|--boot-inject)
-            BOOT_INJECT=1
+            FIRMWARE=uefi-secure
             shift ;;
         -h|--help)
             echo "$USAGE"
@@ -140,51 +97,15 @@ while [ $# -ge 1 ]; do
     esac
 done
 
-# automatically turn on SSH if --ssh-config or --ssh is given and default
-# to port 0.
-if { [ -n "${SSH_CONFIG}" ] || [ -n "${SSH_ATTACH}" ]; } && [ -z "${SSH_PORT}" ]; then
-    SSH_PORT=0
-fi
-
-# check if we or the user will want to SSH and re-exec under ssh-agent if so
-ssh_pubkeys=""
-if [ -n "${SSH_PORT}" ]; then
-    if [ -z "${SSH_AUTH_SOCK:-}" ]; then
-        exec ssh-agent "${args[@]}"
-    fi
-
-    # if there are no keys, seed with defaults
-    if ( ssh-add -l || : ) | grep -q 'no identities'; then
-        ssh-add -q
-    fi
-
-    # and collect pubkeys to inject into the host
-    while read -r pubkey; do
-        if [ -z "${ssh_pubkeys}" ]; then
-            ssh_pubkeys="\"${pubkey}\""
-        else
-            ssh_pubkeys="${ssh_pubkeys}, \"${pubkey}\""
-        fi
-    done <<< "$(ssh-add -L)"
-fi
+kola_args=( )
 
 preflight
-
-if [ "$UEFI" == 1 ] && [ "$SECURE" == 1 ]; then
-	die "cannot specify --uefi and --uefi-secure"
-fi
 
 if [ -z "${VM_DISK}" ]; then
     if ! [ -d "builds/${BUILDID}" ]; then
         die "No builds/${BUILDID}"
     fi
     VM_DISK=$(cosa meta --build="${BUILDID}" --image-path="${IMAGE_TYPE}")
-    # For other image types (most usefully for metal) force
-    # on injection into the /boot partition, since Ignition
-    # won't pull from qemu userdata.
-    if [ "${IMAGE_TYPE}" != qemu ]; then
-        BOOT_INJECT=1
-    fi
 fi
 
 # Make sure disk path is absolute; note we don't realpath
@@ -197,9 +118,8 @@ VM_DISK=$(realpath "${vmdiskdir}")/$(basename "${VM_DISK}")
 ignition_version=$(disk_ignition_version "${VM_DISK}")
 ign_validate="ignition-validate"
 
-# Emulate the host CPU closely in both features and cores.
-# We don't care about migration for this.
-set -- -machine accel=kvm -cpu host -smp "${VM_NCPUS}" "$@"
+# Set name to coreos to be shorter, and default CPUs to host
+set -- -name coreos -smp "${VM_NCPUS}" "$@"
 
 systemd_units=
 append_systemd_unit() {
@@ -256,8 +176,7 @@ EOF
 rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
 rowcol=$(echo "stty ${rowcol}" | base64 --wrap 0)
 
-if [ -z "${SSH_ATTACH}" ]; then
-    append_systemd_unit "{
+append_systemd_unit "{
     \"name\": \"serial-getty@${DEFAULT_TERMINAL}.service\",
     \"dropins\": [
         {
@@ -266,7 +185,6 @@ if [ -z "${SSH_ATTACH}" ]; then
         }
     ]
 }"
-fi
 
 f=$(mktemp)
 cat > "${f}" <<EOF
@@ -299,10 +217,7 @@ cat > "${f}" <<EOF
     "passwd": {
         "users": [
             {
-                "name": "${TARGET_USER}",
-                "sshAuthorizedKeys": [
-                    ${ssh_pubkeys}
-                ]
+                "name": "${TARGET_USER}"
             }
         ]
     },
@@ -320,127 +235,26 @@ if [ "${ignition_version}" = "2.2.0" ]; then
     mv "${spec2f}" "${f}"
 fi
 
-exec 3<>"${f}"
+# We're using fd 9 to avoid clashing with kola's internal qemu fd mappings;
+# this is a bug.
+exec 9<>"${f}"
 rm -f "${f}"
-IGNITION_CONFIG_FILE=/proc/self/fd/3
+IGNITION_CONFIG_FILE=/proc/self/fd/9
 
 if ! ${ign_validate} "${IGNITION_CONFIG_FILE}"; then
     jq . < "${IGNITION_CONFIG_FILE}"
     exit 1
 fi
 
-if [ -z "${VM_PERSIST_IMG}" ]; then
-    VM_IMG=$(mktemp -p "${TMPDIR:-/var/tmp}")
-    # shellcheck disable=SC2086
-    qemu-img create -q -f qcow2 -b "${VM_DISK}" "${VM_IMG}" ${VM_DISKSIZE}
-else
-    echo "Re-using existing ${VM_PERSIST_IMG}"
-    VM_IMG=${VM_PERSIST_IMG}
-fi
-
-if [ "$(arch)" == "ppc64le" ] || [ "$(arch)" == "s390x" ] || [ "${BOOT_INJECT}" = 1 ]; then
-    echo "Injecting /boot/ignition/config.ign via libguestfs..."
-    coreos_gf_run_mount "${VM_IMG}"
-    coreos_gf mkdir-p /boot/ignition
-    coreos_gf upload ${IGNITION_CONFIG_FILE} /boot/ignition/config.ign
-    #TODO coreos_gf_relabel /boot/ignition/config.ign
-    coreos_gf_shutdown
-    echo "done"
-else
-    set -- -fw_cfg name=opt/com.coreos/config,file="${IGNITION_CONFIG_FILE}" "$@"
-fi
-
-if [ -z "${VM_PERSIST_IMG}" ]; then
-    exec 4<> "${VM_IMG}"
-    rm -f "${VM_IMG}"
-    VM_IMG=/proc/self/fd/4
-fi
-
-if [ -n "${SSH_PORT}" ]; then
-    # If SSH_PORT is 0, then let's pick one ourselves. There's an inherent race
-    # here; ideally qemu would do this, but with --ssh-config, there'd be no way
-    # to write it out before exec'ing.
-    if [ "${SSH_PORT}" == 0 ]; then
-        SSH_PORT=$(python3 -c "import socket; sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM); sock.bind(('', 0)); print(sock.getsockname()[1])")
-        echo "SSH port: ${SSH_PORT}"
-    fi
-   hostfwd=",hostfwd=tcp:127.0.0.1:${SSH_PORT}-:22"
-fi
-
-if [ -n "${SSH_CONFIG}" ]; then
-    cat > "${SSH_CONFIG}" << EOF
-Host coreos
-    HostName localhost
-    Port ${SSH_PORT}
-    User core
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-EOF
-fi
-
 case "${DISK_CHANNEL}" in
-    virtio) set -- -drive if=virtio,file="${VM_IMG}" "$@" ;;
-    nvme) set -- -device nvme,drive=D22,serial=1234 -drive file="${VM_IMG}",if=none,id=D22 "$@" ;;
+    virtio) ;;
+    nvme) kola_args+=('--qemu-nvme');;
     *) die "Invalid --disk-channel ${DISK_CHANNEL}" ;;
 esac
 
-# There is no BIOS on aarch64, so we need a firmware to boot the system
-if [ "$(arch)" == "aarch64" ]; then
-    set -- -bios /usr/share/AAVMF/AAVMF_CODE.fd "$@"
-fi
+case "${FIRMWARE}" in
+    bios) ;;
+    *) kola_args+=("--qemu-firmware=${FIRMWARE}")
+esac
 
-if [ "$UEFI" == "1" ]; then
-    cp /usr/share/edk2/ovmf/OVMF_VARS.fd /tmp/vars.fd
-    exec 5<> /tmp/vars.fd
-    rm /tmp/vars.fd
-    set -- -drive file=/usr/share/edk2/ovmf/OVMF_CODE.fd,if=pflash,format=raw,unit=0,readonly=on "$@"
-    set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
-    set -- -machine q35 "$@"
-fi
-
-if [ "$SECURE" == "1" ]; then
-    cp /usr/share/edk2/ovmf/OVMF_VARS.secboot.fd /tmp/vars.fd
-    exec 5<> /tmp/vars.fd
-    rm /tmp/vars.fd
-    set -- -drive file=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd,if=pflash,format=raw,unit=0,readonly=on "$@"
-    set -- -drive file=/proc/self/fd/5,if=pflash,format=raw,unit=1,readonly=off "$@"
-    set -- -machine q35 "$@"
-fi
-
-set -- -name coreos -m "${VM_MEMORY}" -nographic \
-              -device virtio-net-"${devtype}",netdev=eth0 \
-              -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
-              "$@"
-netdevarg="user,id=eth0,hostname=coreos"${hostfwd:-}
-if [ "$IPV6ONLY" = 1 ]; then
-    netdevarg="${netdevarg},ipv4=off,ipv6=on"
-fi
-set -- -netdev "${netdevarg}" "$@"
-
-# We want to strongly emphasize use of TPM devices in CoreOS, so let's provision
-# one by default.  This would be nicer if we didn't need to pass a persistent
-# state directory to swtpm, and we could more conveniently "lifecycle bind"
-# the swtpm and qemu processes.
-if [ "${SWTPM}" = 1 ] && [ -x /usr/bin/swtpm ]; then
-    tpm_dir=$(mktemp -d -t cosa-tpmstate.XXXXXX)
-    setpriv --pdeathsig SIGTERM -- "${dn}"/swtpm-wrapper "${tpm_dir}" &
-    set -- -chardev socket,id=chrtpm,path="${tpm_dir}/swtpm-sock" \
-           -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0 "$@"
-fi
-
-if [ -z "${SSH_ATTACH}" ]; then
-    # shellcheck disable=SC2086
-    exec ${QEMU_KVM} "$@"
-fi
-
-# shellcheck disable=SC2086
-setpriv --pdeathsig SIGTERM -- ${QEMU_KVM} "$@" < /dev/null &
-# A dumber but simpler version of https://github.com/jlebon/files/blob/master/bin/sshwait
-while true; do
-    out=$(echo | nc -w 1 localhost "${SSH_PORT}" 2>&1 || :)
-    if grep -q SSH <<< "$out"; then
-        break
-    fi
-    sleep 1
-done
-exec ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no core@localhost -p "${SSH_PORT}"
+exec kola qemuexec --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
