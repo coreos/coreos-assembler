@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -167,8 +166,6 @@ func runFedoraPreRelease(cmd *cobra.Command) error {
 // decompresses it, and returns the decompressed path.
 func getImageFile(client *http.Client, spec *channelSpec, src *storage.Bucket, fileName string) (string, error) {
 	switch selectedDistro {
-	case "cl":
-		return getCLImageFile(client, src, fileName)
 	case "fedora":
 		return getFedoraImageFile(client, spec, src, fileName)
 	default:
@@ -413,9 +410,6 @@ func getSpecAWSImageMetadata(spec *channelSpec) (map[string]string, error) {
 
 	var imageName string
 	switch selectedDistro {
-	case "cl":
-		imageName = fmt.Sprintf("%v-%v-%v", spec.AWS.BaseName, specChannel, specVersion)
-		imageName = regexp.MustCompile(`[^A-Za-z0-9()\\./_-]`).ReplaceAllLiteralString(imageName, "_")
 	case "fedora":
 		imageName = strings.TrimSuffix(imageFileName, ".raw.xz")
 	}
@@ -459,8 +453,6 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 	var s3ObjectPath string
 	switch selectedDistro {
-	case "cl":
-		s3ObjectPath = fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(imageFileName, filepath.Ext(imageFileName)))
 	case "fedora":
 		s3ObjectPath = fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(imageFileName, filepath.Ext(imageFileName)))
 	}
@@ -482,8 +474,6 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 		var format aws.EC2ImageFormat
 		switch selectedDistro {
-		case "cl":
-			format = aws.EC2ImageFormatVmdk
 		case "fedora":
 			format = aws.EC2ImageFormatRaw
 		}
@@ -509,24 +499,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	}
 	resources := []string{snapshot.SnapshotID, hvmImageID}
 
-	var pvImageID string
-	if selectedDistro == "cl" {
-		pvImageID, err = api.CreatePVImage(snapshot.SnapshotID, aws.ContainerLinuxDiskSizeGiB, imageName, imageDescription+" (PV)")
-		if err != nil {
-			return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
-		}
-		resources = append(resources, pvImageID)
-	}
-
 	switch selectedDistro {
-	case "cl":
-		err = api.CreateTags(resources, map[string]string{
-			"Channel": specChannel,
-			"Version": specVersion,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
-		}
 	case "fedora":
 		err = api.CreateTags(resources, map[string]string{
 			"Channel":   specChannel,
@@ -589,12 +562,6 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	}
 
 	var pvAmis map[string]string
-	if selectedDistro == "cl" {
-		pvAmis, err = postprocess(pvImageID, true)
-		if err != nil {
-			return nil, nil, fmt.Errorf("processing PV images: %v", err)
-		}
-	}
 
 	return hvmAmis, pvAmis, nil
 }
@@ -730,12 +697,6 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 				PvAmi:  pvAmis[region],
 				HvmAmi: hvmAmis[region],
 			})
-		}
-	}
-
-	if selectedDistro == "cl" {
-		if err := awsUploadAmiLists(ctx, src, spec, &amis); err != nil {
-			return fmt.Errorf("uploading AMI IDs: %v", err)
 		}
 	}
 
