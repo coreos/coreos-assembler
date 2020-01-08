@@ -29,6 +29,7 @@ type Options struct {
 	// DiskImage is the full path to the disk image to boot in QEMU.
 	DiskImage string
 	Board     string
+	Firmware  string
 
 	//Option to create a temporary software TPM - true by default
 	Swtpm bool
