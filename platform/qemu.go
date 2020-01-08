@@ -16,6 +16,7 @@ package platform
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -135,6 +136,7 @@ type QemuBuilder struct {
 	Memory     int
 	Processors int
 	Uuid       string
+	Firmware   string
 	Swtpm      bool
 	Pdeathsig  bool
 	Argv       []string
@@ -150,6 +152,7 @@ func NewBuilder(board, config string) *QemuBuilder {
 	ret := QemuBuilder{
 		Board:     board,
 		Config:    config,
+		Firmware:  "bios",
 		Swtpm:     true,
 		Pdeathsig: true,
 		Argv:      []string{},
@@ -477,6 +480,35 @@ func baseQemuArgs(board string) []string {
 	}
 }
 
+func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
+	varsVariant := ""
+	if secureBoot {
+		varsVariant = ".secboot"
+	}
+	varsSrc, err := os.Open(fmt.Sprintf("/usr/share/edk2/ovmf/OVMF_VARS%s.fd", varsVariant))
+	if err != nil {
+		return err
+	}
+	defer varsSrc.Close()
+	vars, err := ioutil.TempFile("", "mantle-qemu")
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(vars, varsSrc); err != nil {
+		return err
+	}
+	_, err = vars.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	fdset := builder.AddFd(vars)
+	builder.Append("-drive", fmt.Sprintf("file=/usr/share/edk2/ovmf/OVMF_CODE%s.fd,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off", varsVariant))
+	builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
+	builder.Append("-machine", "q35")
+	return nil
+}
+
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
 	var err error
@@ -485,6 +517,18 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	argv := baseQemuArgs(builder.Board)
 	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
+
+	switch builder.Firmware {
+	case "bios":
+		break
+	case "uefi":
+		builder.setupUefi(false)
+	case "uefi-secure":
+		builder.setupUefi(true)
+		break
+	default:
+		panic(fmt.Sprintf("Unknown firmware: %s", builder.Firmware))
+	}
 
 	// We always provide a random source
 	argv = append(argv, "-object", "rng-random,filename=/dev/urandom,id=rng0",

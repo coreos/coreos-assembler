@@ -90,6 +90,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	builder := platform.NewBuilder(board, confPath)
 	defer builder.Close()
 	builder.Uuid = qm.id
+	builder.Firmware = qc.flight.opts.Firmware
 	builder.ConsoleToFile(qm.consolePath)
 
 	channel := "virtio"
