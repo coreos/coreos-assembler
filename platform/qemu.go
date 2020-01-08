@@ -19,11 +19,15 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/mantle/util"
+	"github.com/pkg/errors"
 )
 
 type MachineOptions struct {
@@ -44,6 +48,64 @@ type QemuInstance struct {
 
 func (inst *QemuInstance) Pid() int {
 	return inst.qemu.Pid()
+}
+
+// parse /proc/net/tcp to determine the port selected by QEMU
+func (inst *QemuInstance) SSHAddress() (string, error) {
+	pid := fmt.Sprintf("%d", inst.Pid())
+	data, err := ioutil.ReadFile("/proc/net/tcp")
+	if err != nil {
+		return "", errors.Wrap(err, "reading /proc/net/tcp")
+	}
+
+	for _, line := range strings.Split(string(data), "\n")[1:] {
+		fields := strings.Fields(line)
+		if len(fields) < 10 {
+			// at least 10 fields are neeeded for the local & remote address and the inode
+			continue
+		}
+		localAddress := fields[1]
+		remoteAddress := fields[2]
+		inode := fields[9]
+
+		var isLocalPat *regexp.Regexp
+		if util.HostEndianness == util.LITTLE {
+			isLocalPat = regexp.MustCompile("0100007F:[[:xdigit:]]{4}")
+		} else {
+			isLocalPat = regexp.MustCompile("7F000001:[[:xdigit:]]{4}")
+		}
+
+		if !isLocalPat.MatchString(localAddress) || remoteAddress != "00000000:0000" {
+			continue
+		}
+
+		dir := fmt.Sprintf("/proc/%s/fd/", pid)
+		fds, err := ioutil.ReadDir(dir)
+		if err != nil {
+			return "", fmt.Errorf("listing %s: %v", dir, err)
+		}
+
+		for _, f := range fds {
+			link, err := os.Readlink(filepath.Join(dir, f.Name()))
+			if err != nil {
+				continue
+			}
+			socketPattern := regexp.MustCompile("socket:\\[([0-9]+)\\]")
+			match := socketPattern.FindStringSubmatch(link)
+			if len(match) > 1 {
+				if inode == match[1] {
+					// this entry belongs to the QEMU pid, parse the port and return the address
+					portHex := strings.Split(localAddress, ":")[1]
+					port, err := strconv.ParseInt(portHex, 16, 32)
+					if err != nil {
+						return "", errors.Wrapf(err, "decoding port %q", portHex)
+					}
+					return fmt.Sprintf("127.0.0.1:%d", port), nil
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("didn't find an address")
 }
 
 func (inst *QemuInstance) Destroy() {
