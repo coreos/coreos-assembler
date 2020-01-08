@@ -32,6 +32,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 	"github.com/Microsoft/azure-vhd-utils/vhdcore/validator"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	gs "google.golang.org/api/storage/v1"
 
@@ -89,6 +90,14 @@ type imageInfo struct {
 	Azure *azureImageInfo `json:"azure,omitempty"`
 }
 
+// Common switches between Fedora Cloud and Fedora CoreOS
+func AddSpecFlags(flags *pflag.FlagSet) {
+	board := sdk.DefaultBoard()
+	flags.StringVarP(&specBoard, "board", "B", board, "target board")
+	flags.StringVarP(&specChannel, "channel", "C", "testing", "target channel")
+	flags.StringVarP(&specVersion, "version", "V", "", "release version")
+}
+
 func init() {
 	for k, _ := range platforms {
 		platformList = append(platformList, k)
@@ -96,13 +105,12 @@ func init() {
 	sort.Sort(sort.StringSlice(platformList))
 
 	cmdPreRelease.Flags().StringSliceVar(&selectedPlatforms, "platform", platformList, "platform to pre-release")
-	cmdPreRelease.Flags().StringVar(&selectedDistro, "distro", "cl", "system to pre-release")
+	cmdPreRelease.Flags().StringVar(&selectedDistro, "distro", "fedora", "system to pre-release")
 	cmdPreRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdPreRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdPreRelease.Flags().StringVar(&verifyKeyFile,
 		"verify-key", "", "path to ASCII-armored PGP public key to be used in verifying download signatures.  Defaults to CoreOS Buildbot (0412 7D0B FABE C887 1FFB  2CCE 50E0 8855 93D2 DCB4)")
 	cmdPreRelease.Flags().StringVar(&imageInfoFile, "write-image-list", "", "optional output file describing uploaded images")
-
 	AddSpecFlags(cmdPreRelease.Flags())
 	AddFedoraSpecFlags(cmdPreRelease.Flags())
 	root.AddCommand(cmdPreRelease)
@@ -120,10 +128,6 @@ func runPreRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	switch selectedDistro {
-	case "cl":
-		if err := runCLPreRelease(cmd); err != nil {
-			return err
-		}
 	case "fedora":
 		if err := runFedoraPreRelease(cmd); err != nil {
 			return err
@@ -151,55 +155,6 @@ func runFedoraPreRelease(cmd *cobra.Command) error {
 		plog.Printf("Running %v pre-release...", platform.displayName)
 		if err := platform.handler(ctx, &client, nil, &spec, &imageInfo); err != nil {
 			return err
-		}
-	}
-
-	return nil
-}
-
-func runCLPreRelease(cmd *cobra.Command) error {
-	spec := ChannelSpec()
-	ctx := context.Background()
-	client, err := getGoogleClient()
-	if err != nil {
-		plog.Fatal(err)
-	}
-
-	src, err := storage.NewBucket(client, spec.SourceURL())
-	if err != nil {
-		plog.Fatal(err)
-	}
-
-	if err := src.Fetch(ctx); err != nil {
-		plog.Fatal(err)
-	}
-
-	// Sanity check!
-	if vertxt := src.Object(src.Prefix() + "version.txt"); vertxt == nil {
-		verurl := src.URL().String() + "version.txt"
-		plog.Fatalf("File not found: %s", verurl)
-	}
-
-	var imageInfo imageInfo
-	for _, platformName := range selectedPlatforms {
-		platform := platforms[platformName]
-		plog.Printf("Running %v pre-release...", platform.displayName)
-		if err := platform.handler(ctx, client, src, &spec, &imageInfo); err != nil {
-			plog.Fatal(err)
-		}
-	}
-
-	if imageInfoFile != "" {
-		f, err := os.OpenFile(imageInfoFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-		if err != nil {
-			plog.Fatal(err)
-		}
-		defer f.Close()
-
-		encoder := json.NewEncoder(f)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(imageInfo); err != nil {
-			plog.Fatalf("couldn't encode image list: %v", err)
 		}
 	}
 
