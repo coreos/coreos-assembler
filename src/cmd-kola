@@ -8,6 +8,11 @@ import sys
 import shutil
 import yaml
 
+# Just test these boot to start with.  In the future we should at least
+# do ostree upgrades with uefi etc.  But we don't really need the *full*
+# suite...if podman somehow broke with nvme or uefi I'd be amazed and impressed.
+BASIC_SCENARIOS = ["nvme=true", "firmware=uefi", "firmware=uefi-secure"]
+
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
@@ -19,6 +24,7 @@ basearch = cmdlib.get_basearch()
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
+parser.add_argument("--basic-qemu-scenarios", help="Run the basic test across uefi-secure,nvme etc.", action='store_true')
 parser.add_argument("--output-dir", help="Output directory")
 parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
                     default=['run'])
@@ -81,8 +87,6 @@ kolaargs.extend(args.subargs)
 
 kolaargs.extend(blacklist_args)
 
-# flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
-print(subprocess.list2cmdline(kolaargs), flush=True)
 env = dict(os.environ)
 # By default, store ssh agent in tmp/ too so it can be
 # conveniently found.
@@ -92,4 +96,13 @@ if args.output_dir is None:
         shutil.rmtree(kola_ssh_dir)
     os.mkdir(kola_ssh_dir)
     env['MANTLE_SSH_DIR'] = kola_ssh_dir
-os.execvpe('kola', kolaargs, env)
+
+if args.basic_qemu_scenarios:
+    for scenario in BASIC_SCENARIOS:
+        subargs = kolaargs + ['--qemu-' + scenario, 'basic']
+        print(subprocess.list2cmdline(subargs), flush=True)
+        subprocess.check_call(subargs)
+else:
+    # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
+    print(subprocess.list2cmdline(kolaargs), flush=True)
+    os.execvpe('kola', kolaargs, env)
