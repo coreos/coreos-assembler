@@ -30,6 +30,8 @@ type Options struct {
 	DiskImage string
 	Board     string
 
+	Nvme bool
+
 	//Option to create a temporary software TPM - true by default
 	Swtpm bool
 
