@@ -1,0 +1,100 @@
+#!/bin/bash
+# Automate an end-to-end run of coreos-installer with the metal image, which then
+# boots and writes a success message to a virtio-serial port, which we read on the host.
+set -euo pipefail
+
+set -x
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+build=${1:-latest}
+
+arch=$(arch)
+
+builddir=builds/${build}/${arch}
+buildmeta=${builddir}/meta.json
+
+buildid=$(jq -er .buildid < ${buildmeta})
+metalimg=$(jq -er .images.metal.path < ${buildmeta})
+instkernel=$(jq -er .images.kernel.path < ${buildmeta})
+instinitramfs=$(jq -er .images.initramfs.path < ${buildmeta})
+
+ignition_version=$(disk_ignition_version "${metalimg}")
+
+# OK, we seem to have the images.  Launch our temporary webserver.
+statedir=tmp/coreos-installer-test
+rm -rf "${statedir}" && mkdir -p "${statedir}"
+tftpdir=${statedir}/tftp
+pxeconfigdir=${tftpdir}/pxelinux.cfg
+mkdir -p "${pxeconfigdir}"
+
+# FIXME when we rewrite this in mantle, use an auto-allocated port
+port=8723
+cd "${tftpdir}"
+setpriv --pdeathsig SIGTERM -- kola http-server --port "${port}" &
+cd -
+
+case "${metalimg}" in
+  *.raw) echo "NOTICE: Metal image is not compressed, doing so now temporarily"
+         gzip -1 < "${builddir}/${metalimg}" > "${tftpdir}/${metalimg}.gz"
+         metalimg=${metalimg}.gz ;;
+  *) ln "${builddir}/${metalimg}" "${tftpdir}" ;;
+esac
+
+for x in ${instkernel} ${instinitramfs}; do
+    ln "${builddir}/${x}" "${tftpdir}"
+done
+cat > ${pxeconfigdir}/default << EOF
+DEFAULT pxeboot
+TIMEOUT 20
+PROMPT 0
+LABEL pxeboot
+    KERNEL ${instkernel}
+    APPEND ip=dhcp rd.neednet=1 initrd=${instinitramfs} console=tty0 console=ttyS0 coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://192.168.76.2:${port}/${metalimg} coreos.inst.ignition_url=http://192.168.76.2:${port}/config.ign
+IPAPPEND 2
+EOF
+
+/usr/lib/coreos-assembler/cp-reflink /usr/share/syslinux/{pxelinux.0,ldlinux.c32} ${tftpdir}
+
+disk=${statedir}/disk.qcow2
+qemu-img create -f qcow2 ${disk} 12G
+
+ignition_path=${tftpdir}/config.ign
+# TODO - perhaps change kola to have `kola run --print-ignition basic` and concatenate
+# that with this.
+cat > "${ignition_path}" << EOF
+{
+  "ignition": { "version": "3.0.0" },
+  "systemd": {
+    "units": [{
+      "name": "coreos-test-installer.service",
+      "enabled": true,
+      "contents": "[Unit]\nRequires=dev-virtio\\\x2dports-completion.device\nOnFailure=emergency.target\nOnFailureJobMode=isolate\n[Service]\nType=oneshot\nExecStart=/bin/sh -c '/usr/bin/echo coreos-installer-test-OK >/dev/virtio-ports/completion && systemctl poweroff'\n\n[Install]\nRequiredBy=multi-user.target"
+    }]
+  }
+}
+EOF
+if [ "${ignition_version}" = "2.2.0" ]; then
+    spec2f="${tftpdir}/config.ign2"
+    /usr/lib/coreos-assembler/incomplete-hack-ign-3to2 "${ignition_path}" > "${spec2f}"
+    mv "${spec2f}" "${ignition_path}"
+fi
+
+completionf=${statedir}/completion.txt
+touch "${completionf}"
+setpriv --pdeathsig SIGTERM -- qemu-system-x86_64 -accel kvm -m 1536 -nographic \
+       -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
+       -boot once=n -option-rom /usr/share/qemu/pxe-rtl8139.rom \
+       -device e1000,netdev=mynet0,mac=52:54:00:12:34:56 -netdev user,id=mynet0,net=192.168.76.0/24,dhcpstart=192.168.76.9,tftp=${tftpdir},bootfile=/pxelinux.0 \
+       -drive if=virtio,file=${disk} \
+       -device virtio-serial -device virtserialport,chardev=completion,name=completion \
+       -chardev file,id=completion,path=${completionf}
+if ! grep -q 'coreos-installer-test-OK' ${completionf}; then 
+  echo "Failed to receive installer test completion"
+  cat ${completionf}
+  exit 1
+fi
+echo "ok metal+installer for ${buildid}"
+
