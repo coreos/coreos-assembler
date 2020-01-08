@@ -24,6 +24,9 @@ var (
 	specProfile  string
 	specPolicy   string
 	specCommitId string
+	specBoard    string
+	specChannel  string
+	specVersion  string
 )
 
 func AddFcosSpecFlags(flags *pflag.FlagSet) {

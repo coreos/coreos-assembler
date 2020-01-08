@@ -36,7 +36,6 @@ import (
 	"github.com/coreos/mantle/platform/api/azure"
 	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/storage"
-	"github.com/coreos/mantle/storage/index"
 )
 
 var (
@@ -51,7 +50,7 @@ var (
 
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
-	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "cl", "system to release")
+	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
 	cmdRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
@@ -63,10 +62,6 @@ func init() {
 
 func runRelease(cmd *cobra.Command, args []string) {
 	switch selectedDistro {
-	case "cl":
-		if err := runCLRelease(cmd, args); err != nil {
-			plog.Fatal(err)
-		}
 	case "fcos":
 		if err := runFcosRelease(cmd, args); err != nil {
 			plog.Fatal(err)
@@ -109,96 +104,6 @@ func runFedoraRelease(cmd *cobra.Command, args []string) error {
 
 	// Make AWS images public.
 	doAWS(ctx, client, nil, &spec)
-
-	return nil
-}
-
-func runCLRelease(cmd *cobra.Command, args []string) error {
-	if len(args) > 0 {
-		plog.Fatal("No args accepted")
-	}
-
-	spec := ChannelSpec()
-	ctx := context.Background()
-	client, err := getGoogleClient()
-	if err != nil {
-		plog.Fatalf("Authentication failed: %v", err)
-	}
-
-	src, err := storage.NewBucket(client, spec.SourceURL())
-	if err != nil {
-		plog.Fatal(err)
-	}
-	src.WriteDryRun(releaseDryRun)
-
-	if err := src.Fetch(ctx); err != nil {
-		plog.Fatal(err)
-	}
-
-	// Sanity check!
-	if vertxt := src.Object(src.Prefix() + "version.txt"); vertxt == nil {
-		verurl := src.URL().String() + "version.txt"
-		plog.Fatalf("File not found: %s", verurl)
-	}
-
-	// Register GCE image if needed.
-	doGCE(ctx, client, src, &spec)
-
-	// Make Azure images public.
-	doAzure(ctx, client, src, &spec)
-
-	// Make AWS images public.
-	doAWS(ctx, client, src, &spec)
-
-	for _, dSpec := range spec.Destinations {
-		dst, err := storage.NewBucket(client, dSpec.BaseURL)
-		if err != nil {
-			plog.Fatal(err)
-		}
-		dst.WriteDryRun(releaseDryRun)
-
-		// Fetch parent directories non-recursively to re-index it later.
-		for _, prefix := range dSpec.ParentPrefixes() {
-			if err := dst.FetchPrefix(ctx, prefix, false); err != nil {
-				plog.Fatal(err)
-			}
-		}
-
-		// Fetch and sync each destination directory.
-		for _, prefix := range dSpec.FinalPrefixes() {
-			if err := dst.FetchPrefix(ctx, prefix, true); err != nil {
-				plog.Fatal(err)
-			}
-
-			sync := index.NewSyncIndexJob(src, dst)
-			sync.DestinationPrefix(prefix)
-			sync.DirectoryHTML(dSpec.DirectoryHTML)
-			sync.IndexHTML(dSpec.IndexHTML)
-			sync.Delete(true)
-			if dSpec.Title != "" {
-				sync.Name(dSpec.Title)
-			}
-			if err := sync.Do(ctx); err != nil {
-				plog.Fatal(err)
-			}
-		}
-
-		// Now refresh the parent directory indexes.
-		for _, prefix := range dSpec.ParentPrefixes() {
-			parent := index.NewIndexJob(dst)
-			parent.Prefix(prefix)
-			parent.DirectoryHTML(dSpec.DirectoryHTML)
-			parent.IndexHTML(dSpec.IndexHTML)
-			parent.Recursive(false)
-			parent.Delete(true)
-			if dSpec.Title != "" {
-				parent.Name(dSpec.Title)
-			}
-			if err := parent.Do(ctx); err != nil {
-				plog.Fatal(err)
-			}
-		}
-	}
 
 	return nil
 }

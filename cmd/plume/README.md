@@ -1,6 +1,6 @@
 # plume
 
-Container Linux, Fedora CoreOS, Fedora Cloud release utility
+Fedora CoreOS and Fedora Cloud release utility
 
 ## Pre-flight
 
