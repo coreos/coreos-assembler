@@ -33,6 +33,7 @@ type MachineOptions struct {
 type Disk struct {
 	Size        string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
 	BackingFile string   // raw disk image to use. Incompatible with Size.
+	Channel     string   // virtio (default), nvme
 	DeviceOpts  []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
 }
 
@@ -119,9 +120,9 @@ func virtio(board, device, args string) string {
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
-// AddQcow2Disk adds a disk image from a file descriptor,
+// addQcow2Disk adds a disk image from a file descriptor,
 // mounted read-write, formatted qcow2.
-func (builder *QemuBuilder) AddQcow2DiskFd(fd *os.File, options []string) {
+func (builder *QemuBuilder) addQcow2DiskFd(fd *os.File, channel string, options []string) {
 	opts := ""
 	if len(options) > 0 {
 		opts = "," + strings.Join(options, ",")
@@ -129,8 +130,15 @@ func (builder *QemuBuilder) AddQcow2DiskFd(fd *os.File, options []string) {
 	fdset := builder.AddFd(fd)
 	id := fmt.Sprintf("d%d", builder.diskId)
 	builder.diskId += 1
-	builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=%s,auto-read-only=off", id, fdset),
-		"-device", virtio(builder.Board, "blk", fmt.Sprintf("drive=%s%s", id, opts)))
+	switch channel {
+	case "virtio":
+		builder.Append("-device", virtio(builder.Board, "blk", fmt.Sprintf("drive=%s%s", id, opts)))
+	case "nvme":
+		builder.Append("-device", fmt.Sprintf("nvme,drive=%s%s", id, opts))
+	default:
+		panic(fmt.Sprintf("Unhandled channel: %s", channel))
+	}
+	builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=%s,auto-read-only=off", id, fdset))
 }
 
 func (builder *QemuBuilder) ConsoleToFile(path string) {
@@ -312,7 +320,11 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if primary {
 		diskOpts = append(diskOpts, "serial=primary-disk")
 	}
-	builder.AddQcow2DiskFd(fd, diskOpts)
+	channel := disk.Channel
+	if channel == "" {
+		channel = "virtio"
+	}
+	builder.addQcow2DiskFd(fd, channel, diskOpts)
 	return nil
 }
 

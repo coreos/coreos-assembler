@@ -96,8 +96,13 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	builder.Uuid = qm.id
 	builder.ConsoleToFile(qm.consolePath)
 
+	channel := "virtio"
+	if qc.flight.opts.Nvme {
+		channel = "nvme"
+	}
 	primaryDisk := platform.Disk{
 		BackingFile: qc.flight.opts.DiskImage,
+		Channel:     channel,
 	}
 
 	builder.AddPrimaryDisk(&primaryDisk)
