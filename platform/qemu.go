@@ -110,6 +110,10 @@ func (inst *QemuInstance) SSHAddress() (string, error) {
 	return "", fmt.Errorf("didn't find an address")
 }
 
+func (inst *QemuInstance) Wait() error {
+	return inst.qemu.Wait()
+}
+
 func (inst *QemuInstance) Destroy() {
 	if inst.qemu != nil {
 		if err := inst.qemu.Kill(); err != nil {
@@ -143,6 +147,8 @@ type QemuBuilder struct {
 	Swtpm      bool
 	Pdeathsig  bool
 	Argv       []string
+
+	InheritConsole bool
 
 	primaryDiskAdded bool
 
@@ -550,12 +556,17 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		argv = append(argv, "-uuid", builder.Uuid)
 	}
 
+	// We never want a popup window
+	argv = append(argv, "-nographic")
+
 	// Handle Ignition
-	if builder.Config != "" && builder.supportsFwCfg() {
-		builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.Config)
-	} else if !builder.primaryDiskAdded {
-		// Otherwise, we should have handled it in builder.AddPrimaryDisk
-		panic("Ignition specified but no primary disk")
+	if builder.Config != "" {
+		if builder.supportsFwCfg() {
+			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.Config)
+		} else if !builder.primaryDiskAdded {
+			// Otherwise, we should have handled it in builder.AddPrimaryDisk
+			panic("Ignition specified but no primary disk")
+		}
 	}
 
 	if builder.Swtpm && builder.supportsSwtpm() {
@@ -606,6 +617,12 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	}
 
 	cmd.ExtraFiles = append(cmd.ExtraFiles, builder.fds...)
+
+	if builder.InheritConsole {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	if err = inst.qemu.Start(); err != nil {
 		return nil, err
