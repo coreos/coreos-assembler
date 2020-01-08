@@ -38,16 +38,28 @@ shift
 set -x
 ostree pull-local --repo="${sysroot}"/ostree/repo ${repo} ${ref}
 stateroot=$(basename $(ls -d ${sysroot}/ostree/deploy/* | head -1))
+# zipl needs special casing
+bootloader='unset'
+if grep -q bootloader=zipl "${sysroot}"/ostree/repo/config; then
+    bootloader=zipl
+    # Temporarily undo zipl, we take care of it manually
+    sed -i -e 's,bootloader=zipl,bootloader=none,' "${sysroot}"/ostree/repo/config
+else
+    if grep -q bootloader=none "${sysroot}"/ostree/repo/config; then
+        bootloader=none
+    fi
+fi
+
 # HACK for old systems that use grub2-mkconfig
-if ! grep -q bootloader=none "${sysroot}"/ostree/repo/config; then
+if [ "${bootloader}" = "unset" ]; then
     cat >/usr/bin/dummy-mkconfig << 'EOF'
     exec touch $2
 EOF
     chmod a+x /usr/bin/dummy-mkconfig
 fi
 env OSTREE_DEBUG_GRUB2=1 OSTREE_GRUB2_EXEC=/usr/bin/dummy-mkconfig ostree admin --sysroot="${sysroot}" --os=${stateroot} deploy ${ref}
-# EVEN MORE tremendous hackery for old systems that use grub2-mkconfig
-if ! grep -q bootloader=none "${sysroot}"/ostree/repo/config; then
+# EVEN MORE tremendous hackery for old systems that use grub2-mkconfig or zipl
+if [ "${bootloader}" != "none" ]; then
     deploydir=$(ls -d ${sysroot}/ostree/deploy/*/deploy/* | grep -v '\.origin' | head -1)
     mount -t proc /proc "${deploydir}/proc"
     mount -t sysfs /sys "${deploydir}/sys"
@@ -55,7 +67,15 @@ if ! grep -q bootloader=none "${sysroot}"/ostree/repo/config; then
     mount -t tmpfs tmpfs "${deploydir}/var"
     mount --bind "${sysroot}" "${deploydir}"/sysroot
     mount -M "${sysroot}/boot" "${deploydir}"/boot
-    chroot "${deploydir}" env GRUB_DISABLE_OS_PROBER=true grub2-mkconfig -o /boot/loader/grub.cfg
+    case "${bootloader}" in
+        unset) chroot "${deploydir}" env GRUB_DISABLE_OS_PROBER=true grub2-mkconfig -o /boot/loader/grub.cfg ;;
+        zipl) chroot "${deploydir}" zipl ;;
+        *) echo "Unhandled bootloader: ${bootloader}" 1>&2; exit 1 ;;
+    esac
+fi
+if [ "${bootloader}" = "zipl" ]; then
+    # Set it back now
+    sed -i -e 's,bootloader=none,bootloader=zipl,' "${sysroot}"/ostree/repo/config
 fi
 umount -R "${sysroot}"
 
