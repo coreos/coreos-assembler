@@ -95,6 +95,8 @@ func AddSpecFlags(flags *pflag.FlagSet) {
 	board := sdk.DefaultBoard()
 	flags.StringVarP(&specBoard, "board", "B", board, "target board")
 	flags.StringVarP(&specChannel, "channel", "C", "testing", "target channel")
+	flags.MarkDeprecated("channel", "use --stream instead")
+	flags.StringVarP(&specChannel, "stream", "S", "testing", "target stream")
 	flags.StringVarP(&specVersion, "version", "V", "", "release version")
 }
 
