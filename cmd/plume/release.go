@@ -365,11 +365,6 @@ func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 					}
 				}
 			}
-			if selectedDistro == "cl" {
-				if aws.RegionSupportsPV(region) {
-					publish(imageName)
-				}
-			}
 			publish(imageName + "-hvm")
 		}
 	}
