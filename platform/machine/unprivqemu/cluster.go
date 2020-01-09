@@ -100,6 +100,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	primaryDisk := platform.Disk{
 		BackingFile: qc.flight.opts.DiskImage,
 		Channel:     channel,
+		Size:        qc.flight.opts.DiskSize,
 	}
 
 	builder.AddPrimaryDisk(&primaryDisk)
