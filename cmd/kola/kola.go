@@ -189,8 +189,9 @@ func writeProps() error {
 		ImageURL              string `json:"image"`
 	}
 	type QEMU struct {
-		Image string `json:"image"`
-		Swtpm bool   `json:"swtpm"`
+		Image     string `json:"image"`
+		ImageSize string `json:"imageSize"`
+		Swtpm     bool   `json:"swtpm"`
 	}
 	return enc.Encode(&struct {
 		Cmdline         []string  `json:"cmdline"`
@@ -253,8 +254,9 @@ func writeProps() error {
 			ImageURL:              kola.PacketOptions.ImageURL,
 		},
 		QEMU: QEMU{
-			Image: kola.QEMUOptions.DiskImage,
-			Swtpm: kola.QEMUOptions.Swtpm,
+			Image:     kola.QEMUOptions.DiskImage,
+			ImageSize: kola.QEMUOptions.DiskSize,
+			Swtpm:     kola.QEMUOptions.Swtpm,
 		},
 	})
 }
