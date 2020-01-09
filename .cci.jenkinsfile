@@ -33,7 +33,7 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
               // sanity check kola actually ran and dumped its output in tmp/
               coreos.shwrap("test -d /srv/tmp/kola")
               cosa_cmd("buildextend-metal")
-              cosa_cmd("buildextend-installer")
+              cosa_cmd("buildextend-live")
               cosa_cmd("buildextend-openstack")
               cosa_cmd("buildextend-vmware")
               cosa_cmd("compress")
