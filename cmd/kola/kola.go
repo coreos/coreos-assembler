@@ -126,7 +126,7 @@ func runRun(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	runErr := kola.RunTests(pattern, kolaPlatform, outputDir)
+	runErr := kola.RunTests(pattern, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
