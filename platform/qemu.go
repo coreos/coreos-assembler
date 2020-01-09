@@ -545,7 +545,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		panic("Ignition specified but no primary disk")
 	}
 
-	if builder.Swtpm {
+	// TPM devices aren't on s390x/ppc64le at least
+	if builder.Swtpm && builder.Board == "amd64-usr" {
 		inst.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
 		if err != nil {
 			return nil, err
