@@ -132,19 +132,27 @@ func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms
 }
 
 // ImportImage attempts to import an image from OSS returning the image_id & error
+//
+// NOTE: this function will re-use existing images that share the same final name
+// if the name is not unique then provide force to pre-remove any images with the
+// specified name
 func (a *API) ImportImage(format, bucket, object, image_size, device, name, description, architecture string, force bool) (string, error) {
-	if force {
-		images, err := a.GetImages(name)
-		if err != nil {
-			return "", fmt.Errorf("getting images: %v", err)
-		}
+	images, err := a.GetImages(name)
+	if err != nil {
+		return "", fmt.Errorf("getting images: %v", err)
+	}
 
-		for _, image := range images.Images.Image {
+	for _, image := range images.Images.Image {
+		if force {
 			plog.Infof("deleting pre-existing image %v", image.ImageId)
 			err = a.DeleteImage(image.ImageId, force)
 			if err != nil {
 				return "", fmt.Errorf("deleting image %v: %v", image.ImageId, err)
 			}
+		} else {
+			// save time & re-use the existing image but inform the user
+			plog.Infof("reusing existing image %v", image.ImageId)
+			return image.ImageId, nil
 		}
 	}
 
@@ -275,6 +283,10 @@ func (a *API) DeleteSnapshot(id string, force bool) error {
 }
 
 // UploadFile is a multipart upload, use for larger files
+//
+// NOTE: this function will return early if an object already exists
+// at the specified path, if it might not be unique provide the force
+// option to skip these checks
 func (a *API) UploadFile(filepath, bucket, path string, force bool) error {
 	bucketClient, err := a.oss.Bucket(bucket)
 	if err != nil {
@@ -289,8 +301,10 @@ func (a *API) UploadFile(filepath, bucket, path string, force bool) error {
 		}
 
 		for _, object := range objects.Objects {
+			// Already exists, inform & re-use
 			if object.Key == path {
-				return fmt.Errorf("object already exists and force is false")
+				plog.Infof("object already exists and force is false")
+				return nil
 			}
 		}
 	}

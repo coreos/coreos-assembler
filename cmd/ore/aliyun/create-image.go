@@ -63,6 +63,20 @@ func init() {
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
+	// Check if image exists first when force not enabled
+	if !force {
+		images, err := API.GetImages(name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "getting images: %v", err)
+			os.Exit(1)
+		}
+
+		for _, image := range images.Images.Image {
+			fmt.Println(image.ImageId)
+			return nil
+		}
+	}
+
 	if sizeInspect {
 		imageInfo, err := util.GetImageInfo(path)
 		if err != nil {
