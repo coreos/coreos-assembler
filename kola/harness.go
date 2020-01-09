@@ -319,7 +319,7 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 // register tests in their init() function.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. If it already exists it will be erased!
-func RunTests(pattern, pltfrm, outputDir string) error {
+func RunTests(pattern, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -381,6 +381,10 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 
 	suite := harness.NewSuite(opts, htests)
 	err = suite.Run()
+	caughtTestError := err != nil
+	if !propagateTestErrors {
+		err = nil
+	}
 
 	if TAPFile != "" {
 		src := filepath.Join(outputDir, "test.tap")
@@ -389,7 +393,7 @@ func RunTests(pattern, pltfrm, outputDir string) error {
 		}
 	}
 
-	if err != nil {
+	if caughtTestError {
 		fmt.Printf("FAIL, output in %v\n", outputDir)
 	} else {
 		fmt.Printf("PASS, output in %v\n", outputDir)
