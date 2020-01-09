@@ -29,7 +29,7 @@ if vmajor == 2:
 elif vmajor != 3:
     raise SystemExit(f"Unsupported version {v}")
 ign['ignition']['version'] = '2.2.0'
-for f in ign['storage'].get('files', []):
+for f in ign.get('storage', {}).get('files', []):
     f['filesystem'] = "root"
     append = f.get('append')
     if append is not None:
