@@ -68,6 +68,14 @@ else:
     image_type = 'installer'
 meta_keys = {k: 'live-' + k if is_live else k for k in ('iso', 'kernel', 'initramfs')}
 
+config_src = image_type
+if image_type == 'fulliso':
+    config_src = 'live'
+srcdir_prefix = f"src/config/{config_src}/"
+
+if not os.path.isdir(srcdir_prefix):
+    raise Exception(f"missing directory {srcdir_prefix}")
+
 workdir = os.path.abspath(os.getcwd())
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
@@ -222,10 +230,6 @@ def generate_iso():
     print(f'Substituting ISO kernel arguments: {kargs}')
 
     # Grab all the contents from the installer dir from the configs
-    config_src = image_type
-    if image_type == 'fulliso':
-        config_src = 'live'
-    srcdir_prefix = f"src/config/{config_src}/"
     for srcdir, dirnames, filenames in os.walk(srcdir_prefix):
         dir_suffix = srcdir.replace(srcdir_prefix, '', 1)
         dstdir = os.path.join(tmpisoroot, dir_suffix)
