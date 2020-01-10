@@ -186,9 +186,9 @@ fi
 
 bootargs=
 if [ "${boot_verity}" = 1 ]; then
-    # Need 4k blocks to match host page size; TODO
-    # really mkfs.ext4 should know this.  This is arch-dependent probably.
-    bootargs="-b 4096 -O verity"
+    # Need blocks to match host page size; TODO
+    # really mkfs.ext4 should know this.
+    bootargs="-b $(getconf PAGE_SIZE) -O verity"
 fi
 mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot
 if [ ${EFIPN:+x} ]; then
@@ -206,7 +206,7 @@ if [ "${rootfs}" = "ext4verity" ]; then
     # So basically, we're choosing performance over half-implemented security.
     # Eventually, we'd like both - once XFS gains verity (probably not too hard),
     # we could unconditionally enable it there.
-    mkfs.ext4 -O verity -L root "${root_dev}"
+    mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}"
 else
     mkfs.xfs "${root_dev}" -L root -m reflink=1
 fi
