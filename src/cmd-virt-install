@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+
+# "install" a coreos system with libvirt.  This code in the future
+# ideally gets added to `virt-install`.  See also https://github.com/coreos/fedora-coreos-tracker/issues/235
+# It is inspired by https://coreos.com/os/docs/latest/booting-with-libvirt.html
+
+import argparse
+import subprocess
+import json
+import os
+import re
+import sys
+import random
+import string
+import tempfile
+
+import libvirt
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+from cosalib import cmdlib
+from cosalib.builds import Builds
+
+# Parse args and dispatch
+parser = argparse.ArgumentParser()
+parser.add_argument("--connect", "-c", help="libvirt URI", default="qemu:///system")
+parser.add_argument("--ignition", "-i", help="Ignition config", required=True)
+parser.add_argument("--build", help="Build ID")
+parser.add_argument("--pool", help="storage pool", default="default")
+parser.add_argument("--name", help="Prefix for libvirt resources")
+parser.add_argument("--instid", help="Suffix appended to libvirt resources")
+args, vinstall_args = parser.parse_known_args()
+
+builds = Builds()
+if args.build is None:
+    args.build = builds.get_latest()
+builddir = builds.get_build_dir(args.build)
+with open(os.path.join(builddir, "meta.json")) as f:
+    buildmeta = json.load(f)
+qemuimg = buildmeta.get('images', {}).get('qemu')
+if qemuimg is None:
+    raise SystemExit(f"No qemu image in build: {args.build}")
+qemupath = os.path.join(builddir, qemuimg['path'])
+
+if args.name is None:
+    args.name = buildmeta['name']
+
+if args.instid is None:
+    args.instid = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(8)])
+
+ignvol = f"{args.name}-ign-{args.instid}"
+ignsize = os.path.getsize(args.ignition)
+# TODO do conversion
+# ignition_version = cmdlib.disk_ignition_version(qemupath)
+
+vconn = libvirt.open(args.connect)
+if vconn is None:
+    raise Exception('Failed to connect to libvirt "{}"'.format(args.connect))
+
+basevolname = os.path.basename(qemupath)
+
+
+def virsh(*vargs):
+    subprocess.check_call(['virsh', '-c', args.connect] + list(vargs))
+
+
+pool = vconn.storagePoolLookupByName(args.pool)
+
+
+def get_pool_path(connect, pool):
+    poolxml = subprocess.check_output(['virsh', '-c', connect, 'pool-dumpxml', pool], encoding='UTF-8')
+    r = re.compile(re.escape("<path>") + "(.*)" + re.escape("</path>"))
+    for line in poolxml.split():
+        m = r.search(line)
+        if not m:
+            continue
+        return m.group(1)
+    raise Exception(f"Failed to find path for pool: {pool}")
+
+
+poolpath = get_pool_path(args.connect, args.pool)
+
+qemu_size = str(json.loads(subprocess.check_output(['qemu-img', 'info', '--output=json', qemupath]))['virtual-size'])
+
+if basevolname not in pool.listVolumes():
+    print(f"Uploading: {basevolname}")
+    virsh('vol-create-as', args.pool, basevolname, qemu_size, '--format=qcow2')
+    if qemupath.endswith('.gz'):
+        with tempfile.NamedTemporaryFile(prefix='cosa-libvrun', dir='/var/tmp') as t:
+            with open(qemupath) as inf:
+                subprocess.check_call(['gunzip'], stdin=inf, stdout=t)
+        virsh('vol-upload', f'--pool={args.pool}', basevolname, t.name)
+    else:
+        virsh('vol-upload', f'--pool={args.pool}', basevolname, qemupath)
+volname = f"{args.name}-{args.instid}"
+virsh('vol-create-as', args.pool, volname, qemu_size, '--format=qcow2', f'--backing-vol={basevolname}',
+      '--backing-vol-format=qcow2')
+
+with tempfile.NamedTemporaryFile(prefix='cosa-libvrun') as t:
+    # Create the volume via XML to make the mode 0644, so that it's readable
+    # by qemu.
+    t.write(f"""<volume type='file'>
+  <name>{ignvol}</name>
+  <capacity unit='bytes'>{ignsize}</capacity>
+  <target>
+    <format type='raw'/>
+    <permissions>
+      <mode>0644</mode>
+    </permissions>
+  </target>
+</volume>""".encode('UTF-8'))
+    t.flush()
+    virsh('vol-create', args.pool, t.name)
+virsh('vol-upload', f'--pool={args.pool}', ignvol, args.ignition)
+
+domname = f"{args.name}-{args.instid}"
+qemu_args = " ".join(['-fw_cfg', f'name=opt/com.coreos/config,file={poolpath}/{ignvol}'])
+basevinstall_args = ['virt-install', f"--connect={args.connect}",
+                     '--import', f'--disk=source.pool={args.pool},source.volume={volname}',
+                     f'--name={domname}', '--os-type=linux', '--os-variant=rhel8-unknown',
+                     f'--qemu-commandline={qemu_args}',
+                     '--noautoconsole']
+cmdlib.run_verbose(basevinstall_args + vinstall_args)
