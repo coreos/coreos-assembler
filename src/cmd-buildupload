@@ -181,10 +181,14 @@ def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
         'ACL': acl
     }
     upload_args.update(extra_args)
+
+    if dry_run:
+        print((f"{'Would upload' if dry_run else 'Uploading'} {src} to "
+               f"s3://{bucket}/{key} {extra_args if len(extra_args) else ''}"))
+        return
+
     s3 = boto3.client('s3')
-    print(f"{'Would upload' if dry_run else 'Uploading'} {src} to s3://{bucket}/{key} {extra_args if len(extra_args) else ''}")
-    if not dry_run:
-        s3.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
+    s3.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
 
 
 if __name__ == '__main__':
