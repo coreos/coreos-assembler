@@ -5,6 +5,44 @@ import argparse
 import logging as log
 import os
 
+from cosalib import (
+    aliyun,
+    aws,
+    azure,
+    gcp
+)
+
+CLOUD_CLI_TARGET = {
+    "aws":    (aws.aws_cli,
+               aws.aws_run_ore,
+               aws.aws_run_ore_replicate),
+    "aliyun": (aliyun.aliyun_cli,
+               aliyun.aliyun_run_ore,
+               aliyun.aliyun_run_ore_replicate),
+    "azure":  (azure.azure_cli,
+               azure.azure_run_ore,
+               azure.azure_run_ore_replicate),
+    "gcp":    (gcp.gcp_cli,
+               gcp.gcp_run_ore,
+               gcp.gcp_run_ore_replicate)
+}
+
+
+def cloud_clis():
+    return CLOUD_CLI_TARGET.keys()
+
+
+def get_cloud_ore_cmds(target):
+    _, orecmd, orerep = CLOUD_CLI_TARGET[target]
+    return orecmd, orerep
+
+
+def get_cloud_cli(target, parser=None):
+    if parser is None:
+        parser = BuildCli()
+    cli_func, _, _ = CLOUD_CLI_TARGET[target]
+    return cli_func(parser)
+
 
 class Cli(argparse.ArgumentParser):
     """
@@ -20,7 +58,7 @@ class Cli(argparse.ArgumentParser):
         """
         argparse.ArgumentParser.__init__(self, *args, **kwargs)
         self.add_argument(
-            '--log-level', env_var='COSA_LOG_LEVEL', default='info',
+            '--log-level', env_var='COSA_LOG_LEVEL', default='INFO',
             choices=log._nameToLevel.keys(), help='Set the log level')
 
     def add_argument(self, *args, **kwargs):
@@ -36,16 +74,17 @@ class Cli(argparse.ArgumentParser):
         """
         env_var = kwargs.pop('env_var', None)
         if env_var is not None:
-            if kwargs.get('help') is None:
-                kwargs['help'] = ''
-            kwargs['help'] = kwargs['help'] + ' (Env: {})'.format(env_var)
+            if not env_var.startswith('COSA_'):
+                env_var = f"COSA_{env_var}"
+            ka = kwargs.get("help", '')
+            kwargs['help'] = f"{ka} (Env: {env_var})"
             default = kwargs.pop('default', None)
             super().add_argument(
                 *args, default=os.environ.get(env_var, default), **kwargs)
         else:
             super().add_argument(*args, **kwargs)
 
-    def parse_args(self):
+    def parse_args(self, **kwargs):
         """
         Parses the arguments passed in, verifies inputs, sets the logger,
         and returns the arguments.
@@ -84,10 +123,11 @@ class BuildCli(Cli):
         Cli.__init__(self, *args, **kwargs)
         # Set common arguments
         self.add_argument(
-            '--build', default='latest',
+            '--build', env_var="BUILD", default='latest',
             help='Override build id, defaults to latest')
         self.add_argument(
-            '--buildroot', default='builds', help='Build diretory')
+            '--buildroot', env_var="BUILD_ROOT", default='builds',
+            help='Build diretory')
         self.add_argument(
             '--dump', default=False, action='store_true',
             help='Dump the manfiest and exit')

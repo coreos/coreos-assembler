@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
+#
+# This is a generic wrapper around 'ore' commands and serves
+# as a replacement for 'cmd-*-replicate' and 'cmd-buildextend-*'.
+
+import logging as log
+import sys
+
+from cosalib.cli import (
+    cloud_clis,
+    get_cloud_cli,
+    get_cloud_ore_cmds,
+    BuildCli
+)
+from cosalib.qemuvariants import get_qemu_variant
+
+if __name__ == '__main__':
+    log.basicConfig(
+        format='[%(asctime)s  %(levelname)s]: %(message)s',
+        level=log.INFO)
+
+    parser = BuildCli(
+        description="""interface for running commands against ore
+Each target has its own sub options. To access them us:
+    '--target <target> --help'
+""",
+        add_help=False,
+    )
+
+    # Determine if this a symlink, default to that.
+    sys_target = None
+    replicate = False
+    build_build = False
+
+    # Check if this is a legacy interface
+    if str(sys.argv[0]).endswith("-replicate"):
+        log.info("symlink is for a replication command")
+        replicate = True
+
+    if str(sys.argv[0]).startswith("cmd-buildextend-"):
+        log.info("symlink is for a build and publish command")
+        build_build = True
+
+    # previous cmd-buildextend-<target> used symlinks
+    for k in cloud_clis():
+        if k in sys.argv[0]:
+            sys_target = k
+            log.info(f"ore target {sys_target} found via symlink")
+            break
+    parser.add_argument("--target",
+                        default=sys_target,
+                        choices=cloud_clis(),
+                        help="Target type for ore command")
+    pre_args = parser.parse_known_args()[0]
+    target = pre_args.target
+    log.debug(f"extending cli for {target}")
+
+    # Check to make sure that a target has been chosen
+    if target is None:
+        parser.print_help()
+        log.fatal("--target is required")
+        sys.exit(1)
+
+    # Extend the CLI for the target
+    parser = get_cloud_cli(target, parser)
+    parser.add_argument("--build-artifact", "--build-if-missing",
+                        action='store_true', default=build_build,
+                        help="Build the artifact if missing")
+    parser.add_argument("--force", action='store_true',
+                        help="Force the operation if it has already happened")
+    parser.add_argument("--help", action='store_true',
+                        help="Print this message")
+    parser.add_argument("--upload", action='store_true',
+                        help="Upload the disk to the ore target")
+    parser.add_argument("--replicate", action='store_true',
+                        help="For specific clouds, replicate various regions")
+    parser.add_argument("--region", "--regions", dest="region",
+                        help="Upload/replicate to specific regions",
+                        nargs='+')
+
+    parser.description = (
+        f"'ore' interface for running ore commands for {target.upper()}"
+    )
+
+    args = parser.parse_args()
+    if args.help:
+        parser.print_help()
+        sys.exit()
+
+    # Now _extend the parser with the cloud targets_
+    build = get_qemu_variant(target, args)
+    log.info(f"operating on {build.image_name}")
+    if args.build_artifact:
+        if args.force:
+            build.build_artifacts()
+        else:
+            build.ensure_built()
+
+    if args.upload:
+        if not build.have_artifact:
+            raise Exception(f"Missing build artifact {build.image_path}")
+        log.info("executing upload commands for ore")
+        cmd, _ = get_cloud_ore_cmds(target)
+        cmd(build, args)
+
+    if args.replicate:
+        log.info("executing replicate commands for ore")
+        _, cmd = get_cloud_ore_cmds(target)
+        cmd(build, args)
+
+    log.info("finishing ore processing")
