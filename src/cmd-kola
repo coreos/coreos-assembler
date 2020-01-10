@@ -75,10 +75,6 @@ if ignition_version == "2.2.0":
 if os.getuid() != 0 and not ('-p' in args.subargs):
     kolaargs.extend(['-p', 'qemu-unpriv'])
 
-# tpm devices for qemu not supported on s390x/ppc
-if basearch in ["s390x", "ppc64le"]:
-    kolaargs.extend(['--qemu-swtpm=false'])
-
 # shellcheck disable=SC2086
 kolaargs.extend(['--qemu-image', qemupath])
 outputdir = args.output_dir or "tmp/kola"
