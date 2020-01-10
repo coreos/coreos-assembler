@@ -229,6 +229,18 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 	return true
 }
 
+// supportsSwtpm if the target system supports a virtual TPM device
+func (builder *QemuBuilder) supportsSwtpm() bool {
+	// Yes, this is the same as supportsFwCfg *currently* but
+	// might not be in the future.
+	switch builder.Board {
+	case "s390x-usr":
+	case "ppc64le-usr":
+		return false
+	}
+	return true
+}
+
 // fileRemoteLocation is a bit misleading. We are NOT putting the ignition config in the root parition. We mount the boot partition on / just to get around the fact that
 // the root partition does not need to be mounted to inject ignition config. Now that we have LUKS , we have to do more work to detect a LUKS root partition
 // and it is not needed here.
@@ -545,8 +557,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		panic("Ignition specified but no primary disk")
 	}
 
-	// TPM devices aren't on s390x/ppc64le at least
-	if builder.Swtpm && builder.Board == "amd64-usr" {
+	if builder.Swtpm && builder.supportsSwtpm() {
 		inst.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
 		if err != nil {
 			return nil, err
