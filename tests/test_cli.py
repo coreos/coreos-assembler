@@ -24,7 +24,7 @@ def test_cli_add_argument_with_env_var():
     """
     sys.argv = ['']
     expected = str(uuid.uuid4())
-    os.environ['ENVIRON_TEST'] = expected
+    os.environ['COSA_ENVIRON_TEST'] = expected
     parser = Cli()
     parser.add_argument(
         '-e', '--environ', env_var='ENVIRON_TEST')

@@ -1,0 +1,114 @@
+#!/usr/bin/python3 -u
+import logging as log
+import os.path
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, f"{cosa_dir}/cosalib")
+sys.path.insert(0, cosa_dir)
+
+from cosalib.build import BuildExistsError
+from cosalib.cli import BuildCli
+import cosalib.qemuvariants as QVariants
+import cosalib.vmware as VmwareOVA
+
+
+def get_builder(imgtype, build_root, build="latest", force=False):
+    args = [build_root, build]
+    kargs = {
+        "force": force,
+        "variant": imgtype
+    }
+
+    if imgtype in QVariants.VARIANTS:
+        log.info(f"Target '{imgtype.upper()}' is a Qemu Variant image")
+        return QVariants.QemuVariantImage(*args, **kargs)
+
+    if imgtype in VmwareOVA.VARIANTS:
+        return VmwareOVA.VmwareOVA(*args, **kargs)
+
+    raise Exception(f"{imgtype} is not supported by this command")
+
+
+def artifact_cli():
+    """ cli implements command-line innovation """
+    log.basicConfig(
+        format='[%(asctime)s  %(levelname)s]: %(message)s',
+        level=log.INFO)
+
+    targets = list(QVariants.VARIANTS.keys())
+    targets.extend(VmwareOVA.VARIANTS.keys())
+    targets.append("manual")
+
+    parser = BuildCli()
+    subparsers = parser.add_subparsers()
+
+    # Options for finding the build.
+    parser.add_argument("--force", action='store_true',
+                        help="Force rebuild of existing disk")
+
+    # Support for legacy cmd-buildextend-* targets
+    symlink = None
+    for k in targets:
+        if f"cmd-buildextend-{k}" in sys.argv[0]:
+            symlink = k
+            log.info(f"CLI is a symlink for cmd-buildextends-{k}")
+            break
+
+    # Predefined mode
+    target = subparsers.add_parser(name="target",
+                                   description="manually define build")
+    target.add_argument("target", default=None,
+                        help="name of predefined target",
+                        choices=targets)
+
+    # Manual mode for developers
+    manual = subparsers.add_parser(name="manual",
+                                   description="build new disk from cli args")
+    manual.add_argument("--image_format", required=True,
+                        help="qemu-img supported image format, i.e vpc")
+    manual.add_argument("--image_suffix", required=True,
+                        help="file name suffix")
+    manual.add_argument("--platform", required=True,
+                        help="Ignition platform to set image to")
+    manual.add_argument("--convert_options",
+                        help="qemu-img options")
+
+    args = parser.parse_args()
+
+    builder = None
+
+    # Figure out if the build target has been set
+    build_target = None
+    if "target" in args:
+        build_target = args.target
+    elif symlink:
+        build_target = symlink
+
+    if build_target:
+        builder = get_builder(build_target, args.buildroot, args.build,
+                              force=args.force)
+    elif "manual" in args:
+        kwargs = {
+            'force': args.force,
+            'image_format': args.image_format,
+            'image_suffix': args.image_suffix,
+            'platform': args.platform,
+        }
+        if args.convert_options:
+            kwargs["convert_options"] = {'-o': f'{args.convert_ooptions}'}
+
+        builder = QVariants.QemuVariantImage(args.buildroot,
+                                             args.build,
+                                             **kwargs)
+    else:
+        raise Exception("please see --help for correct invocation")
+
+    return builder
+
+
+if __name__ == '__main__':
+    try:
+        artifact_cli().build_artifacts()
+    except BuildExistsError as e:
+        log.warning(e)

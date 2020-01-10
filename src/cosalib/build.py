@@ -3,19 +3,18 @@ Provides a base abstration class for build reuse.
 """
 
 import logging as log
+import os
 import os.path
 import shutil
-
-
-# COSA_INPATH is the _in container_ path for the image build source
-COSA_INPATH = "/cosa"
+import tempfile
 
 from cosalib.cmdlib import (
     get_basearch,
     load_json,
+    sha256sum_file,
     write_json)
-
 from cosalib.builds import Builds
+
 
 # BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
@@ -24,6 +23,13 @@ BASEARCH = get_basearch()
 class BuildError(Exception):
     """
     Base error for build issues.
+    """
+    pass
+
+
+class BuildExistsError(BuildError):
+    """
+    Thrown when a build already exists
     """
     pass
 
@@ -37,7 +43,7 @@ class _Build:
       - _build_artifacts(*args, **kwargs)
     """
 
-    def __init__(self, builds_dir, build="latest", workdir=None, arch=BASEARCH):
+    def __init__(self, *args, **kwargs):
         """
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
@@ -55,7 +61,8 @@ class _Build:
 
         If workdir is None then no temporary work directory is created.
         """
-        builds = Builds(os.path.dirname(builds_dir))
+        build = kwargs.get("build", "latest")
+        builds = Builds(os.path.dirname(build))
         if build != "latest":
             if not builds.has(build):
                 raise BuildError("Build was not found in builds.json")
@@ -63,7 +70,10 @@ class _Build:
             build = builds.get_latest()
 
         log.info("Targeting build: %s", build)
-        self._build_dir = builds.get_build_dir(build, basearch=arch)
+        self._build_dir = builds.get_build_dir(
+            build,
+            basearch=kwargs.get("arch", BASEARCH)
+        )
 
         self._build_json = {
             "commit": None,
@@ -72,8 +82,11 @@ class _Build:
             "meta": None
         }
         self._found_files = {}
-        self._workdir = workdir
-        self._create_work_dir()
+        self._workdir = kwargs.get("workdir", os.getcwd())
+        self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd")
+
+        os.environ['workdir'] = self._workdir
+        os.environ['TMPDIR'] = os.path.join(self._workdir, "tmp")
 
         # Check to make sure that the build and it's meta-data can be parsed.
         emsg = "was not read in properly or is not defined"
@@ -86,21 +99,18 @@ class _Build:
         if self.meta is None:
             raise BuildError("%s %s" % self.__file("meta"), emsg)
 
+        self._image_name = None
+
         log.info("Proccessed build for: %s (%s-%s) %s",
                  self.summary, self.build_name.upper(), self.basearch,
                  self.build_id)
 
-    def _create_work_dir(self):
-        """
-        Ensures the temp work directory is created and clean.
-        """
-        # Setup the work directory
-        if self._workdir is not None:
-            if os.path.isdir(self._workdir):
-                shutil.rmtree(self._workdir)
-            os.mkdir(self._workdir)
-            log.info(
-                'Created temporary work directory at {}'.format(self.workdir))
+    def __del__(self):
+        try:
+            shutil.rmtree(self._tmpdir)
+        except Exception as e:
+            raise Exception(
+                f"failed to remove temporary directory: {self._tmpdir}", e)
 
     def clean(self):
         """
@@ -115,6 +125,11 @@ class _Build:
     def workdir(self):
         """ get the temporary work directory """
         return self._workdir
+
+    @property
+    def tmpdir(self):
+        """ get the tempdir for this build object """
+        return self._tmpdir
 
     @property
     def build_id(self):
@@ -144,6 +159,11 @@ class _Build:
         return self._build_json["commit"]
 
     @property
+    def ostree_commit(self):
+        """ get the builds' ostree commit """
+        return self.meta.get('ostree-commit')
+
+    @property
     def config(self):
         """ get the the meta-data about the config recipe """
         if self._build_json["config"] is None:
@@ -164,9 +184,32 @@ class _Build:
             self._build_json["meta"] = self.__get_json("meta")
         return self._build_json["meta"]
 
+    def refresh_meta(self):
+        """
+        Refresh the meta-data from disk. This is useful when the on-disk
+        meta-data may have been updated.
+        """
+        self._build_json["meta"] = self.__get_json("meta")
+
     @property
     def basearch(self):
-        return self.meta.get(_Build.ckey("coreos-assembler.basearch"), BASEARCH)
+        return self.meta.get(_Build.ckey("coreos-assembler.basearch"),
+                             BASEARCH)
+
+    def ensure_built(self):
+        if not self.have_artifact:
+            self.build_artifacts()
+
+    @property
+    def image_name_base(self):
+        """
+        Get the name of the image.
+        """
+        if self._image_name is not None:
+            return self._image_name
+
+        return (f'{self.build_name}-{self.build_id}'
+                f'-{self.platform}.{self.basearch}')
 
     @staticmethod
     def ckey(var):
@@ -317,6 +360,38 @@ class _Build:
         :raises: NotImplementedError
         """
         raise NotImplementedError("_build_artifacts must be overriden")
+
+    @property
+    def image_name(self):
+        if self._image_name is None:
+            raise NotImplementedError("image naming is not implmented here")
+        return self._image_name
+
+    @image_name.setter
+    def image_name(self, val):
+        self._image_name = val
+
+    @property
+    def image_path(self):
+        return os.path.join(self.build_dir, self.image_name)
+
+    @property
+    def have_artifact(self):
+        if os.path.exists(self.image_path):
+            return True
+        return False
+
+    def get_artifact_meta(self, fname=None):
+        fsize = '{}'.format(os.stat(self.image_path).st_size)
+        if fname is None:
+            fname = self.image_name
+        fpath = os.path.join(self.build_dir, fname)
+        log.info(f"Calculating metadata for {fname}")
+        return {
+            "path": fname,
+            "sha256sum": sha256sum_file(fpath),
+            "size": int(fsize)
+        }
 
     def get_artifacts(self):
         """ Iterator for the meta-data about artifacts in the build root """
