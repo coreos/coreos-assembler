@@ -143,10 +143,23 @@ if [ "${image_type}" = dasd ]; then
     ignition_platform_id=metal
 fi
 
+# First parse the old luks_rootfs flag
+rootfs_type="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("luks" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
+if [ -z "${rootfs_type}" ]; then
+    rootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("rootfs", "xfs"))' < "$configdir/image.yaml")"
+fi
+
+# fs-verity requires block size = page size. We need to take that into account
+# in the disk size estimation due to higher fragmentation on larger blocks.
+BLKSIZE=""
+if [ "${rootfs_type}" = "ext4verity" ]; then
+    BLKSIZE="$(getconf PAGE_SIZE)"
+fi
+
 echo "Estimating disk size..."
 # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
 # and doing so has apparently negative performance implications.
-/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ref" --add-percent 35 > "$PWD/tmp/ostree-size.json"
+/usr/lib/coreos-assembler/estimate-commit-disk-size ${BLKSIZE:+--blksize ${BLKSIZE}} --repo "$ostree_repo" "$ref" --add-percent 35 > "$PWD/tmp/ostree-size.json"
 rootfs_size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # extra size is the non-ostree partitions, see create_disk.sh
 image_size="$(( rootfs_size + 513 ))M"
@@ -195,11 +208,6 @@ kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
-# First parse the old luks_rootfs flag
-rootfs_type="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("luks" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
-if [ -z "${rootfs_type}" ]; then
-    rootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("rootfs", "xfs"))' < "$configdir/image.yaml")"
-fi
 
 qemu-img create -f ${image_format} "${path}.tmp" "${image_size}"
 # We support deploying a commit directly instead of a ref
