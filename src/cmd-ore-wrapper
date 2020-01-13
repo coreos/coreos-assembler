@@ -5,6 +5,7 @@
 # as a replacement for 'cmd-*-replicate' and 'cmd-buildextend-*'.
 
 import logging as log
+import os
 import sys
 
 from cosalib.cli import (
@@ -33,18 +34,20 @@ Each target has its own sub options. To access them us:
     replicate = False
     build_build = False
 
+    self_basename = os.path.basename(sys.argv[0])
+
     # Check if this is a legacy interface
-    if str(sys.argv[0]).endswith("-replicate"):
+    if str(self_basename).endswith("-replicate"):
         log.info("symlink is for a replication command")
         replicate = True
 
-    if str(sys.argv[0]).startswith("cmd-buildextend-"):
+    if str(self_basename).startswith("cmd-buildextend-"):
         log.info("symlink is for a build and publish command")
         build_build = True
 
     # previous cmd-buildextend-<target> used symlinks
     for k in cloud_clis():
-        if k in sys.argv[0]:
+        if k in self_basename:
             sys_target = k
             log.info(f"ore target {sys_target} found via symlink")
             break
