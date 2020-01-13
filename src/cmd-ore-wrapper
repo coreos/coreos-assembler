@@ -77,6 +77,7 @@ Each target has its own sub options. To access them us:
     parser.add_argument("--upload", action='store_true',
                         help="Upload the disk to the ore target")
     parser.add_argument("--replicate", action='store_true',
+                        default=replicate,
                         help="For specific clouds, replicate various regions")
     parser.add_argument("--region", "--regions", dest="region",
                         help="Upload/replicate to specific regions",
