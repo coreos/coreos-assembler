@@ -1,40 +1,40 @@
 # cloud.google.com/go v0.34.0
 cloud.google.com/go/compute/metadata
 # github.com/Azure/azure-sdk-for-go v8.1.0-beta+incompatible
-github.com/Azure/azure-sdk-for-go/management/storageservice
 github.com/Azure/azure-sdk-for-go/arm/compute
 github.com/Azure/azure-sdk-for-go/arm/network
 github.com/Azure/azure-sdk-for-go/arm/resources/resources
 github.com/Azure/azure-sdk-for-go/arm/storage
 github.com/Azure/azure-sdk-for-go/management
 github.com/Azure/azure-sdk-for-go/management/location
+github.com/Azure/azure-sdk-for-go/management/storageservice
 github.com/Azure/azure-sdk-for-go/storage
 # github.com/Azure/go-autorest v9.1.0+incompatible
-github.com/Azure/go-autorest/autorest/azure/auth
 github.com/Azure/go-autorest/autorest
+github.com/Azure/go-autorest/autorest/adal
 github.com/Azure/go-autorest/autorest/azure
+github.com/Azure/go-autorest/autorest/azure/auth
 github.com/Azure/go-autorest/autorest/date
 github.com/Azure/go-autorest/autorest/to
 github.com/Azure/go-autorest/autorest/validation
-github.com/Azure/go-autorest/autorest/adal
 # github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
-github.com/Microsoft/azure-vhd-utils/vhdcore/validator
 github.com/Microsoft/azure-vhd-utils/upload
+github.com/Microsoft/azure-vhd-utils/upload/concurrent
 github.com/Microsoft/azure-vhd-utils/upload/metadata
+github.com/Microsoft/azure-vhd-utils/upload/progress
+github.com/Microsoft/azure-vhd-utils/vhdcore
+github.com/Microsoft/azure-vhd-utils/vhdcore/bat
+github.com/Microsoft/azure-vhd-utils/vhdcore/block
+github.com/Microsoft/azure-vhd-utils/vhdcore/block/bitmap
 github.com/Microsoft/azure-vhd-utils/vhdcore/common
 github.com/Microsoft/azure-vhd-utils/vhdcore/diskstream
-github.com/Microsoft/azure-vhd-utils/vhdcore/vhdfile
-github.com/Microsoft/azure-vhd-utils/upload/concurrent
-github.com/Microsoft/azure-vhd-utils/upload/progress
-github.com/Microsoft/azure-vhd-utils/vhdcore/block/bitmap
 github.com/Microsoft/azure-vhd-utils/vhdcore/footer
-github.com/Microsoft/azure-vhd-utils/vhdcore
-github.com/Microsoft/azure-vhd-utils/vhdcore/block
-github.com/Microsoft/azure-vhd-utils/vhdcore/bat
 github.com/Microsoft/azure-vhd-utils/vhdcore/header
-github.com/Microsoft/azure-vhd-utils/vhdcore/reader
-github.com/Microsoft/azure-vhd-utils/vhdcore/writer
 github.com/Microsoft/azure-vhd-utils/vhdcore/header/parentlocator
+github.com/Microsoft/azure-vhd-utils/vhdcore/reader
+github.com/Microsoft/azure-vhd-utils/vhdcore/validator
+github.com/Microsoft/azure-vhd-utils/vhdcore/vhdfile
+github.com/Microsoft/azure-vhd-utils/vhdcore/writer
 # github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083
 github.com/ajeddeloh/go-json
 # github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd
@@ -42,172 +42,170 @@ github.com/ajeddeloh/yaml
 # github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
 github.com/alecthomas/units
 # github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests
-github.com/aliyun/alibaba-cloud-sdk-go/services/ecs
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/utils
 github.com/aliyun/alibaba-cloud-sdk-go/sdk
 github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/provider
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/responses
 github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/endpoints
+github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/provider
 github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/signers
+github.com/aliyun/alibaba-cloud-sdk-go/sdk/endpoints
+github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors
+github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests
+github.com/aliyun/alibaba-cloud-sdk-go/sdk/responses
+github.com/aliyun/alibaba-cloud-sdk-go/sdk/utils
+github.com/aliyun/alibaba-cloud-sdk-go/services/ecs
 # github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 github.com/aliyun/aliyun-oss-go-sdk/oss
 # github.com/aws/aws-sdk-go v1.25.14
-github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws
-github.com/aws/aws-sdk-go/aws/client
-github.com/aws/aws-sdk-go/aws/credentials
-github.com/aws/aws-sdk-go/aws/endpoints
-github.com/aws/aws-sdk-go/aws/request
-github.com/aws/aws-sdk-go/aws/session
-github.com/aws/aws-sdk-go/service/ec2
-github.com/aws/aws-sdk-go/service/iam
-github.com/aws/aws-sdk-go/service/s3
-github.com/aws/aws-sdk-go/service/s3/s3manager
-github.com/aws/aws-sdk-go/service/sts
-github.com/aws/aws-sdk-go/internal/sdkio
-github.com/aws/aws-sdk-go/aws/client/metadata
-github.com/aws/aws-sdk-go/internal/sdkrand
-github.com/aws/aws-sdk-go/internal/ini
-github.com/aws/aws-sdk-go/internal/shareddefaults
+github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
+github.com/aws/aws-sdk-go/aws/client
+github.com/aws/aws-sdk-go/aws/client/metadata
 github.com/aws/aws-sdk-go/aws/corehandlers
+github.com/aws/aws-sdk-go/aws/credentials
+github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
+github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
 github.com/aws/aws-sdk-go/aws/credentials/processcreds
 github.com/aws/aws-sdk-go/aws/credentials/stscreds
 github.com/aws/aws-sdk-go/aws/csm
 github.com/aws/aws-sdk-go/aws/defaults
+github.com/aws/aws-sdk-go/aws/ec2metadata
+github.com/aws/aws-sdk-go/aws/endpoints
+github.com/aws/aws-sdk-go/aws/request
+github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/aws/signer/v4
+github.com/aws/aws-sdk-go/internal/ini
+github.com/aws/aws-sdk-go/internal/s3err
+github.com/aws/aws-sdk-go/internal/sdkio
+github.com/aws/aws-sdk-go/internal/sdkmath
+github.com/aws/aws-sdk-go/internal/sdkrand
+github.com/aws/aws-sdk-go/internal/sdkuri
+github.com/aws/aws-sdk-go/internal/shareddefaults
 github.com/aws/aws-sdk-go/private/protocol
 github.com/aws/aws-sdk-go/private/protocol/ec2query
-github.com/aws/aws-sdk-go/private/protocol/query
-github.com/aws/aws-sdk-go/internal/s3err
 github.com/aws/aws-sdk-go/private/protocol/eventstream
 github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
+github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
+github.com/aws/aws-sdk-go/private/protocol/query
+github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/restxml
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
+github.com/aws/aws-sdk-go/service/ec2
+github.com/aws/aws-sdk-go/service/iam
+github.com/aws/aws-sdk-go/service/s3
 github.com/aws/aws-sdk-go/service/s3/s3iface
+github.com/aws/aws-sdk-go/service/s3/s3manager
+github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
-github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
-github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
-github.com/aws/aws-sdk-go/aws/ec2metadata
-github.com/aws/aws-sdk-go/internal/sdkmath
-github.com/aws/aws-sdk-go/private/protocol/query/queryutil
-github.com/aws/aws-sdk-go/internal/sdkuri
-github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
 # github.com/beorn7/perks v1.0.0
 github.com/beorn7/perks/quantile
 # github.com/coreos/bbolt v1.3.1-coreos.6
 github.com/coreos/bbolt
 # github.com/coreos/container-linux-config-transpiler v0.8.0
-github.com/coreos/container-linux-config-transpiler/config/platform
 github.com/coreos/container-linux-config-transpiler/config
 github.com/coreos/container-linux-config-transpiler/config/astyaml
-github.com/coreos/container-linux-config-transpiler/config/types
+github.com/coreos/container-linux-config-transpiler/config/platform
 github.com/coreos/container-linux-config-transpiler/config/templating
+github.com/coreos/container-linux-config-transpiler/config/types
 github.com/coreos/container-linux-config-transpiler/config/types/util
 github.com/coreos/container-linux-config-transpiler/internal/util
 # github.com/coreos/coreos-cloudinit v1.11.0
 github.com/coreos/coreos-cloudinit/config
 # github.com/coreos/etcd v3.3.9+incompatible
-github.com/coreos/etcd/etcdserver
-github.com/coreos/etcd/etcdserver/api/v2http
-github.com/coreos/etcd/pkg/types
 github.com/coreos/etcd/alarm
 github.com/coreos/etcd/auth
+github.com/coreos/etcd/auth/authpb
+github.com/coreos/etcd/client
 github.com/coreos/etcd/clientv3
 github.com/coreos/etcd/compactor
 github.com/coreos/etcd/discovery
+github.com/coreos/etcd/error
+github.com/coreos/etcd/etcdserver
 github.com/coreos/etcd/etcdserver/api
+github.com/coreos/etcd/etcdserver/api/etcdhttp
+github.com/coreos/etcd/etcdserver/api/v2http
 github.com/coreos/etcd/etcdserver/api/v2http/httptypes
 github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes
+github.com/coreos/etcd/etcdserver/auth
 github.com/coreos/etcd/etcdserver/etcdserverpb
 github.com/coreos/etcd/etcdserver/membership
 github.com/coreos/etcd/etcdserver/stats
 github.com/coreos/etcd/lease
 github.com/coreos/etcd/lease/leasehttp
+github.com/coreos/etcd/lease/leasepb
 github.com/coreos/etcd/mvcc
 github.com/coreos/etcd/mvcc/backend
 github.com/coreos/etcd/mvcc/mvccpb
+github.com/coreos/etcd/pkg/adt
 github.com/coreos/etcd/pkg/contention
+github.com/coreos/etcd/pkg/cpuutil
+github.com/coreos/etcd/pkg/crc
 github.com/coreos/etcd/pkg/fileutil
+github.com/coreos/etcd/pkg/httputil
 github.com/coreos/etcd/pkg/idutil
+github.com/coreos/etcd/pkg/ioutil
+github.com/coreos/etcd/pkg/logutil
 github.com/coreos/etcd/pkg/netutil
+github.com/coreos/etcd/pkg/pathutil
 github.com/coreos/etcd/pkg/pbutil
 github.com/coreos/etcd/pkg/runtime
 github.com/coreos/etcd/pkg/schedule
+github.com/coreos/etcd/pkg/srv
+github.com/coreos/etcd/pkg/tlsutil
 github.com/coreos/etcd/pkg/transport
+github.com/coreos/etcd/pkg/types
 github.com/coreos/etcd/pkg/wait
 github.com/coreos/etcd/raft
 github.com/coreos/etcd/raft/raftpb
 github.com/coreos/etcd/rafthttp
 github.com/coreos/etcd/snap
+github.com/coreos/etcd/snap/snappb
 github.com/coreos/etcd/store
 github.com/coreos/etcd/version
 github.com/coreos/etcd/wal
 github.com/coreos/etcd/wal/walpb
-github.com/coreos/etcd/error
-github.com/coreos/etcd/etcdserver/api/etcdhttp
-github.com/coreos/etcd/etcdserver/auth
-github.com/coreos/etcd/pkg/logutil
-github.com/coreos/etcd/auth/authpb
-github.com/coreos/etcd/pkg/adt
-github.com/coreos/etcd/client
-github.com/coreos/etcd/lease/leasepb
-github.com/coreos/etcd/pkg/httputil
-github.com/coreos/etcd/pkg/cpuutil
-github.com/coreos/etcd/pkg/tlsutil
-github.com/coreos/etcd/pkg/ioutil
-github.com/coreos/etcd/snap/snappb
-github.com/coreos/etcd/pkg/crc
-github.com/coreos/etcd/pkg/pathutil
-github.com/coreos/etcd/pkg/srv
-# github.com/coreos/go-omaha v0.0.0-20170526203809-f8acb2d7b76c
-github.com/coreos/go-omaha/omaha
 # github.com/coreos/go-semver v0.3.0
 github.com/coreos/go-semver/semver
 # github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142
 github.com/coreos/go-systemd/journal
 github.com/coreos/go-systemd/unit
 # github.com/coreos/ignition v0.31.0
-github.com/coreos/ignition/config/v2_0/types
 github.com/coreos/ignition/config/shared/errors
+github.com/coreos/ignition/config/shared/validations
+github.com/coreos/ignition/config/util
 github.com/coreos/ignition/config/v1
 github.com/coreos/ignition/config/v1/types
 github.com/coreos/ignition/config/v2_0
+github.com/coreos/ignition/config/v2_0/types
 github.com/coreos/ignition/config/v2_1
 github.com/coreos/ignition/config/v2_1/types
 github.com/coreos/ignition/config/v2_2
 github.com/coreos/ignition/config/v2_2/types
 github.com/coreos/ignition/config/v2_3
 github.com/coreos/ignition/config/v2_3/types
-github.com/coreos/ignition/config/validate
-github.com/coreos/ignition/config/shared/validations
-github.com/coreos/ignition/config/validate/report
-github.com/coreos/ignition/config/validate/astnode
-github.com/coreos/ignition/config/util
-github.com/coreos/ignition/config/validate/astjson
 github.com/coreos/ignition/config/v2_4_experimental/types
+github.com/coreos/ignition/config/validate
+github.com/coreos/ignition/config/validate/astjson
+github.com/coreos/ignition/config/validate/astnode
+github.com/coreos/ignition/config/validate/report
 # github.com/coreos/ignition/v2 v2.0.1
+github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/shared/errors
+github.com/coreos/ignition/v2/config/shared/validations
+github.com/coreos/ignition/v2/config/util
 github.com/coreos/ignition/v2/config/v3_0
 github.com/coreos/ignition/v2/config/v3_0/types
 github.com/coreos/ignition/v2/config/validate
-github.com/coreos/ignition/v2/config/merge
-github.com/coreos/ignition/v2/config/util
-github.com/coreos/ignition/v2/config/shared/validations
 # github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 github.com/coreos/ioprogress
 # github.com/coreos/pkg v0.0.0-20161026222926-447b7ec906e5
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
 # github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068
-github.com/coreos/vcontext/report
-github.com/coreos/vcontext/path
 github.com/coreos/vcontext/json
+github.com/coreos/vcontext/path
+github.com/coreos/vcontext/report
 github.com/coreos/vcontext/tree
 github.com/coreos/vcontext/validate
 # github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269
@@ -221,11 +219,9 @@ github.com/digitalocean/godo
 github.com/digitalocean/godo/context
 # github.com/dimchansky/utfbom v1.1.0
 github.com/dimchansky/utfbom
-# github.com/godbus/dbus v0.0.0-20181025153459-66d97aec3384
-github.com/godbus/dbus
 # github.com/gogo/protobuf v1.2.1
-github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/gogoproto
+github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 # github.com/golang/protobuf v1.3.1
 github.com/golang/protobuf/proto
@@ -241,23 +237,23 @@ github.com/google/go-querystring/query
 github.com/google/uuid
 # github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
 github.com/gophercloud/gophercloud
+github.com/gophercloud/gophercloud/internal
 github.com/gophercloud/gophercloud/openstack
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs
 github.com/gophercloud/gophercloud/openstack/compute/v2/flavors
 github.com/gophercloud/gophercloud/openstack/compute/v2/images
 github.com/gophercloud/gophercloud/openstack/compute/v2/servers
+github.com/gophercloud/gophercloud/openstack/identity/v2/tenants
+github.com/gophercloud/gophercloud/openstack/identity/v2/tokens
+github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
 github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata
 github.com/gophercloud/gophercloud/openstack/imageservice/v2/images
 github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups
 github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules
 github.com/gophercloud/gophercloud/openstack/networking/v2/networks
-github.com/gophercloud/gophercloud/pagination
-github.com/gophercloud/gophercloud/openstack/identity/v2/tokens
-github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
 github.com/gophercloud/gophercloud/openstack/utils
-github.com/gophercloud/gophercloud/internal
-github.com/gophercloud/gophercloud/openstack/identity/v2/tenants
+github.com/gophercloud/gophercloud/pagination
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
@@ -269,8 +265,8 @@ github.com/json-iterator/go
 # github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 github.com/kballard/go-shellquote
 # github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
-github.com/kylelemons/godebug/pretty
 github.com/kylelemons/godebug/diff
+github.com/kylelemons/godebug/pretty
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
@@ -284,6 +280,8 @@ github.com/pborman/uuid
 # github.com/pin/tftp v2.1.0+incompatible
 github.com/pin/tftp
 github.com/pin/tftp/netascii
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
 # github.com/prometheus/client_golang v0.9.2
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
@@ -292,8 +290,8 @@ github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.0.0-20181218105931-67670fe90761
 github.com/prometheus/common/expfmt
-github.com/prometheus/common/model
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
+github.com/prometheus/common/model
 # github.com/prometheus/procfs v0.0.2
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
@@ -309,9 +307,9 @@ github.com/tent/http-link-go
 github.com/ugorji/go/codec
 # github.com/ulikunitz/xz v0.5.4
 github.com/ulikunitz/xz
+github.com/ulikunitz/xz/internal/hash
 github.com/ulikunitz/xz/internal/xlog
 github.com/ulikunitz/xz/lzma
-github.com/ulikunitz/xz/internal/hash
 # github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
 github.com/vincent-petithory/dataurl
 # github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
@@ -322,54 +320,54 @@ github.com/vishvananda/netns
 # github.com/vmware/govmomi v0.15.0
 github.com/vmware/govmomi
 github.com/vmware/govmomi/find
+github.com/vmware/govmomi/list
 github.com/vmware/govmomi/object
 github.com/vmware/govmomi/ovf
+github.com/vmware/govmomi/property
+github.com/vmware/govmomi/session
+github.com/vmware/govmomi/task
 github.com/vmware/govmomi/vim25
+github.com/vmware/govmomi/vim25/debug
+github.com/vmware/govmomi/vim25/methods
 github.com/vmware/govmomi/vim25/mo
 github.com/vmware/govmomi/vim25/progress
 github.com/vmware/govmomi/vim25/soap
 github.com/vmware/govmomi/vim25/types
-github.com/vmware/govmomi/property
-github.com/vmware/govmomi/session
-github.com/vmware/govmomi/list
-github.com/vmware/govmomi/task
-github.com/vmware/govmomi/vim25/methods
-github.com/vmware/govmomi/vim25/debug
 github.com/vmware/govmomi/vim25/xml
 # github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18
 github.com/xiang90/probing
 # go4.org v0.0.0-20180809161055-417644f6feb5
 go4.org/errorutil
 # golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-golang.org/x/crypto/ssh
-golang.org/x/crypto/ssh/agent
-golang.org/x/crypto/ssh/terminal
-golang.org/x/crypto/openpgp
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
+golang.org/x/crypto/cast5
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/ed25519
+golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/chacha20
-golang.org/x/crypto/poly1305
-golang.org/x/crypto/pkcs12
+golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/openpgp
 golang.org/x/crypto/openpgp/armor
+golang.org/x/crypto/openpgp/elgamal
 golang.org/x/crypto/openpgp/errors
 golang.org/x/crypto/openpgp/packet
 golang.org/x/crypto/openpgp/s2k
-golang.org/x/crypto/ed25519/internal/edwards25519
-golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
-golang.org/x/crypto/bcrypt
-golang.org/x/crypto/cast5
-golang.org/x/crypto/openpgp/elgamal
-golang.org/x/crypto/blowfish
+golang.org/x/crypto/poly1305
+golang.org/x/crypto/ssh
+golang.org/x/crypto/ssh/agent
+golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20190311183353-d8887717615a
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
-golang.org/x/net/trace
-golang.org/x/net/internal/timeseries
+golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
-golang.org/x/net/http/httpguts
 golang.org/x/net/idna
+golang.org/x/net/internal/timeseries
+golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 golang.org/x/oauth2
 golang.org/x/oauth2/google
@@ -377,57 +375,55 @@ golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 # golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae
+golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-golang.org/x/sys/cpu
 # golang.org/x/text v0.3.2
-golang.org/x/text/encoding/unicode
-golang.org/x/text/transform
 golang.org/x/text/encoding
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/internal/identifier
+golang.org/x/text/encoding/unicode
 golang.org/x/text/internal/utf8internal
 golang.org/x/text/runes
 golang.org/x/text/secure/bidirule
+golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
 # google.golang.org/api v0.1.0
-google.golang.org/api/googleapi
-google.golang.org/api/storage/v1
 google.golang.org/api/compute/v1
-google.golang.org/api/googleapi/internal/uritemplates
 google.golang.org/api/gensupport
+google.golang.org/api/googleapi
+google.golang.org/api/googleapi/internal/uritemplates
+google.golang.org/api/storage/v1
 # google.golang.org/appengine v1.6.0
 google.golang.org/appengine
-google.golang.org/appengine/urlfetch
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/app_identity
-google.golang.org/appengine/internal/modules
-google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20190611190212-a7e196e89fd3
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.19.1
-google.golang.org/grpc/credentials
-google.golang.org/grpc/metadata
-google.golang.org/grpc/peer
 google.golang.org/grpc
-google.golang.org/grpc/codes
-google.golang.org/grpc/grpclog
-google.golang.org/grpc/health/grpc_health_v1
-google.golang.org/grpc/keepalive
-google.golang.org/grpc/status
-google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/balancer
+google.golang.org/grpc/balancer/base
 google.golang.org/grpc/balancer/roundrobin
+google.golang.org/grpc/binarylog/grpc_binarylog_v1
+google.golang.org/grpc/codes
 google.golang.org/grpc/connectivity
+google.golang.org/grpc/credentials
+google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/proto
+google.golang.org/grpc/grpclog
+google.golang.org/grpc/health/grpc_health_v1
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
 google.golang.org/grpc/internal/binarylog
@@ -435,15 +431,17 @@ google.golang.org/grpc/internal/channelz
 google.golang.org/grpc/internal/envconfig
 google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
+google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
+google.golang.org/grpc/keepalive
+google.golang.org/grpc/metadata
 google.golang.org/grpc/naming
+google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
 google.golang.org/grpc/resolver/dns
 google.golang.org/grpc/resolver/passthrough
 google.golang.org/grpc/stats
+google.golang.org/grpc/status
 google.golang.org/grpc/tap
-google.golang.org/grpc/balancer/base
-google.golang.org/grpc/binarylog/grpc_binarylog_v1
-google.golang.org/grpc/internal/syscall
 # gopkg.in/ini.v1 v1.42.0
 gopkg.in/ini.v1

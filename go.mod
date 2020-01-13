@@ -16,7 +16,6 @@ require (
 	github.com/coreos/container-linux-config-transpiler v0.8.0
 	github.com/coreos/coreos-cloudinit v1.11.0
 	github.com/coreos/etcd v3.3.9+incompatible
-	github.com/coreos/go-omaha v0.0.0-20170526203809-f8acb2d7b76c
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/ignition v0.31.0
 	github.com/coreos/ignition/v2 v2.0.1
@@ -27,7 +26,6 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/digitalocean/godo v1.1.3
 	github.com/dimchansky/utfbom v1.1.0 // indirect
-	github.com/godbus/dbus v0.0.0-20181025153459-66d97aec3384
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
 	github.com/golang/protobuf v1.3.1
