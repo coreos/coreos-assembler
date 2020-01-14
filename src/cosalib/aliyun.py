@@ -12,14 +12,16 @@ from tenacity import (
 def remove_aliyun_image(aliyun_id, region):
     print(f"aliyun: removing image {aliyun_id} in {region}")
     try:
-        run_verbose(['ore', 'aliyun', '--log-level', 'debug', 'delete-image',
-                     '--id', aliyun_id,
-                     '--force'])
+        run_verbose([
+            'ore',
+            'aliyun', '--log-level', 'debug', 'delete-image',
+            '--id', aliyun_id,
+            '--force'])
     except SystemExit:
         raise Exception("Failed to remove image")
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def aliyun_run_ore_replicate(build, args):
     build.refresh_meta()
     aliyun_img_data = build.meta.get('aliyun', [])
@@ -27,22 +29,23 @@ def aliyun_run_ore_replicate(build, args):
         raise SystemExit(("buildmeta doesn't contain source images. "
                          "Run buildextend-aliyun first"))
 
-    if not args.regions:
-        args.regions = subprocess.check_output([
-            'ore', 'aliyun', 'list-regions'
+    if not args.region:
+        args.region = subprocess.check_output([
+            'ore', f'--config-file={args.config}' if args.config else '',
+            'aliyun', 'list-regions'
         ]).decode().strip().split()
         log.info(("default: replicating to all regions. If this is not "
                  " desirable, use '--regions'"))
 
-    log.info("replicating to regions: ", args.regions)
+    log.info("replicating to regions: ", args.region)
 
     # only replicate to regions that don't already exist
     existing_regions = [item['name'] for item in aliyun_img_data]
-    duplicates = list(set(args.regions).intersection(existing_regions))
+    duplicates = list(set(args.region).intersection(existing_regions))
     if len(duplicates) > 0:
         print((f"Images already exist in {duplicates} region(s)"
                ", skipping listed region(s)..."))
-    region_list = list(set(args.regions) - set(duplicates))
+    region_list = list(set(args.region) - set(duplicates))
     if len(region_list) == 0:
         print("no new regions detected")
         sys.exit(0)
@@ -51,7 +54,7 @@ def aliyun_run_ore_replicate(build, args):
     source_region = aliyun_img_data[0]['name']
 
     ore_args = [
-        'ore',
+        'ore', f'--config-file={args.config}' if args.config else '',
         '--log-level', args.log_level,
         'aliyun', 'copy-image',
         '--image', source_image,
@@ -83,7 +86,7 @@ def aliyun_run_ore_replicate(build, args):
         raise Exception(f"Upload failed in {upload_failed_in_region} region")
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def aliyun_run_ore(build, args):
     build.refresh_meta()
     ore_args = ['ore']
@@ -95,6 +98,7 @@ def aliyun_run_ore(build, args):
         region = args.region[0]
 
     ore_args.extend([
+        f'--config-file={args.config}' if args.config else '',
         'aliyun', 'create-image',
         '--region', region,
         '--bucket', args.bucket,
@@ -105,6 +109,7 @@ def aliyun_run_ore(build, args):
         '--disk-size-inspect',
         '--force'
     ])
+
     print(ore_args)
     # convert the binary output to string and remove trailing white space
     ore_data = subprocess.check_output(ore_args).decode('utf-8').strip()

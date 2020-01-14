@@ -29,26 +29,26 @@ def delete_snapshot(snap_id, region):
     ec2.delete_snapshot(SnapshotId=snap_id)
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def aws_run_ore_replicate(build, args):
     build.refresh_meta()
     buildmeta = build.meta
     if len(buildmeta['amis']) < 1:
         raise SystemExit(("buildmeta doesn't contain source AMIs."
                          " Run buildextend-aws first"))
-    if not args.regions:
-        args.regions = subprocess.check_output(
-            ['ore', 'aws', 'list-regions']
-        ).decode().strip().split()
+    if not args.region:
+        args.region = subprocess.check_output([
+            'ore', 'aws', 'list-regions'
+        ]).decode().strip().split()
 
     # only replicate to regions that don't already exist
     existing_regions = [item['name'] for item in buildmeta['amis']]
-    duplicates = list(set(args.regions).intersection(existing_regions))
+    duplicates = list(set(args.region).intersection(existing_regions))
     if len(duplicates) > 0:
         print((f"AMIs already exist in {duplicates} region(s), "
                "skipping listed region(s)..."))
 
-    region_list = list(set(args.regions) - set(duplicates))
+    region_list = list(set(args.region) - set(duplicates))
     if len(region_list) == 0:
         raise Exception("no new regions detected")
 
@@ -57,10 +57,10 @@ def aws_run_ore_replicate(build, args):
     ore_args = ['ore']
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
-    ore_args.extend(
-        ['aws', 'copy-image', '--image',
-         source_image, '--region', source_region]
-    )
+    ore_args.extend([
+        'aws', 'copy-image', '--image',
+        source_image, '--region', source_region
+    ])
 
     upload_failed_in_region = None
     for upload_region in region_list:
@@ -73,20 +73,21 @@ def aws_run_ore_replicate(build, args):
             break
         # This matches the Container Linux schema:
         # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-        ami_data = [{'name': region,
+        ami_data = [{'name': name,
                      'hvm': vals['ami'],
                      'snapshot': vals['snapshot']}
-                    for region, vals in ore_data.items()]
+                    for name, vals in ore_data.items()]
         buildmeta['amis'].extend(ami_data)
-
-    build.meta["aws"] = ami_data
-    build.meta_write()
+        # Record the AMI's that have been replicated as they happen.
+        # When re-running the replication, we don't want to be lose
+        # what has been done.
+        build.meta_write()
 
     if upload_failed_in_region is not None:
         raise Exception(f"Upload failed in {upload_failed_in_region} region")
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def aws_run_ore(build, args):
     ore_args = ['ore']
     if args.log_level:
@@ -116,9 +117,9 @@ def aws_run_ore(build, args):
 
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-    ami_data = build.meta.get("aws", [])
+    ami_data = build.meta.get("amis", [])
     ami_data.append({
-        'name': args.region,
+        'name': region,
         'hvm': ore_data.get('HVM'),
         'snapshot': ore_data.get('SnapshotID')
     })
@@ -128,7 +129,7 @@ def aws_run_ore(build, args):
     if ore_data.get("SnapshotID") is None:
         raise Exception(f"Upload to {args.region} failed: no SnapshotID")
 
-    build.meta["aws"] = ami_data
+    build.meta['amis'] = ami_data
     build.meta_write()
 
 
