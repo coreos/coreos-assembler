@@ -111,17 +111,20 @@ func (inst *QemuInstance) SSHAddress() (string, error) {
 }
 
 func (inst *QemuInstance) Destroy() {
+	if inst.qemu != nil {
+		if err := inst.qemu.Kill(); err != nil {
+			plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
+		}
+		inst.qemu.Wait() // Ignore errors
+	}
 	if inst.swtpmTmpd != "" {
 		if inst.swtpm != nil {
 			inst.swtpm.Kill() // Ignore errors
 		}
+		// And ensure it's cleaned up
+		inst.swtpm.Wait()
 		if err := os.RemoveAll(inst.swtpmTmpd); err != nil {
 			plog.Errorf("Error removing swtpm dir: %v", err)
-		}
-	}
-	if inst.qemu != nil {
-		if err := inst.qemu.Kill(); err != nil {
-			plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
 		}
 	}
 }

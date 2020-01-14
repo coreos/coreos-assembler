@@ -114,6 +114,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if err != nil {
 		return nil, err
 	}
+	qm.inst = *inst
 
 	err = util.Retry(6, 5*time.Second, func() error {
 		var err error
