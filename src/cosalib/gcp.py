@@ -1,4 +1,5 @@
 import os
+import re
 import urllib
 from cosalib.cmdlib import run_verbose
 from tenacity import (
@@ -7,7 +8,13 @@ from tenacity import (
 )
 
 
-@retry(stop=stop_after_attempt(3))
+# This is the naming rule used by GCP and is used to check image
+# names during upload. See:
+# https://cloud.google.com/compute/docs/reference/rest/v1/images/insert
+GCP_NAMING_RE = r"[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}"
+
+
+@retry(reraise=True, stop=stop_after_attempt(3))
 def remove_gcp_image(gcp_id, json_key, project):
     print(f"GCP: removing image {gcp_id}")
     try:
@@ -20,7 +27,7 @@ def remove_gcp_image(gcp_id, json_key, project):
         raise Exception("Failed to remove image")
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def gcp_run_ore(build, args):
     """
     Execute ore to upload the tarball and register the image
@@ -37,6 +44,10 @@ def gcp_run_ore(build, args):
     if args.log_level == "DEBUG":
         ore_args.extend(['--log-level', "DEBUG"])
 
+    gcp_name = re.sub(r'[_\.]', '-', build.image_name_base)
+    if not re.fullmatch(GCP_NAMING_RE, gcp_name):
+        raise Exception(f"{gcp_name} does match the naming rule: file a bug")
+
     ore_args.extend([
         'gcloud',
         '--project', args.project,
@@ -46,13 +57,11 @@ def gcp_run_ore(build, args):
         '--board=""',
         '--bucket', f'gs://{args.bucket}/{build.build_name}',
         '--json-key', args.json_key,
-        '--name', f'{build.image_name_base}',
+        '--name', gcp_name,
         '--file', f"{build.image_path}",
     ])
 
     run_verbose(ore_args)
-
-    gcp_name = f"{build.build_name}-{args.build.replace('.', '-')}"
     url_path = urllib.parse.quote((
         "storage.googleapis.com/"
         f"{args.bucket}/{build.build_name}/{build.image_name}"
