@@ -6,7 +6,7 @@ from tenacity import (
 )
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def remove_azure_image(image, resource_group, auth, profile):
     print(f"Azure: removing image {image}")
     try:
@@ -22,7 +22,7 @@ def remove_azure_image(image, resource_group, auth, profile):
         raise Exception("Failed to remove image")
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def azure_run_ore(*args):
     print("""
 Azure currently does not produce virtual machine
@@ -30,7 +30,7 @@ registrations. This command is a place-holder only.
 """)
 
 
-@retry(stop=stop_after_attempt(3))
+@retry(reraise=True, stop=stop_after_attempt(3))
 def azure_run_ore_replicate(*args):
     print("""
 Azure currently does not produce virtual machine
