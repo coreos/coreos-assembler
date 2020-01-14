@@ -542,13 +542,11 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		amis := map[string]string{}
 		if len(destRegions) > 0 {
 			plog.Printf("Replicating AMI %v...", imageID)
-			copiedAmis, err := api.CopyImage(imageID, destRegions)
+			err := api.CopyImage(imageID, destRegions, func(region string, ami aws.ImageData) {
+				amis[region] = ami.AMI
+			})
 			if err != nil {
 				return nil, fmt.Errorf("couldn't copy image: %v", err)
-			}
-
-			for region, data := range copiedAmis {
-				amis[region] = data.AMI
 			}
 		}
 		amis[part.BucketRegion] = imageID

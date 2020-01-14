@@ -524,7 +524,7 @@ func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
 	return nil
 }
 
-func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]ImageData, error) {
+func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, ImageData)) error {
 	type result struct {
 		region string
 		data   ImageData
@@ -533,26 +533,26 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 
 	image, err := a.describeImage(sourceImageID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if *image.VirtualizationType == ec2.VirtualizationTypeParavirtual {
 		for _, region := range regions {
 			if !RegionSupportsPV(region) {
-				return nil, NoRegionPVSupport
+				return NoRegionPVSupport
 			}
 		}
 	}
 
 	snapshotID, err := getImageSnapshotID(image)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	describeSnapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
 		SnapshotIds: []*string{&snapshotID},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("couldn't describe snapshot: %v", err)
+		return fmt.Errorf("couldn't describe snapshot: %v", err)
 	}
 	snapshot := describeSnapshotRes.Snapshots[0]
 
@@ -561,7 +561,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 		SnapshotId: aws.String(snapshotID),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("couldn't describe createVolumePermission: %v", err)
+		return fmt.Errorf("couldn't describe createVolumePermission: %v", err)
 	}
 	createVolumePermissions := describeSnapshotAttributeRes.CreateVolumePermissions
 
@@ -570,7 +570,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 		ImageId:   aws.String(sourceImageID),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("couldn't describe launch permissions: %v", err)
+		return fmt.Errorf("couldn't describe launch permissions: %v", err)
 	}
 	launchPermissions := describeAttributeRes.LaunchPermissions
 
@@ -594,19 +594,21 @@ func (a *API) CopyImage(sourceImageID string, regions []string) (map[string]Imag
 			ch <- res
 		}()
 	}
-	wg.Wait()
-	close(ch)
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
 
-	amis := make(map[string]ImageData)
 	for res := range ch {
 		if res.data.AMI != "" {
-			amis[res.region] = res.data
+			cb(res.region, res.data)
 		}
 		if err == nil {
 			err = res.err
 		}
 	}
-	return amis, err
+
+	return err
 }
 
 func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission, createVolumePermissions []*ec2.CreateVolumePermission) (ImageData, error) {
