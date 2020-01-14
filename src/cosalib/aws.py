@@ -61,30 +61,31 @@ def aws_run_ore_replicate(build, args):
         'aws', 'copy-image', '--image',
         source_image, '--region', source_region
     ])
+    ore_args.extend(region_list)
+    print("+ {}".format(subprocess.list2cmdline(ore_args)))
 
-    upload_failed_in_region = None
-    for upload_region in region_list:
-        region_ore_args = ore_args.copy() + [upload_region]
-        print("+ {}".format(subprocess.list2cmdline(region_ore_args)))
-        try:
-            ore_data = json.loads(subprocess.check_output(region_ore_args))
-        except subprocess.CalledProcessError:
-            upload_failed_in_region = upload_region
-            break
-        # This matches the Container Linux schema:
-        # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-        ami_data = [{'name': name,
-                     'hvm': vals['ami'],
-                     'snapshot': vals['snapshot']}
-                    for name, vals in ore_data.items()]
-        buildmeta['amis'].extend(ami_data)
-        # Record the AMI's that have been replicated as they happen.
-        # When re-running the replication, we don't want to be lose
-        # what has been done.
-        build.meta_write()
+    try:
+        ore_data = subprocess.check_output(ore_args, encoding='utf-8')
+    except subprocess.CalledProcessError as e:
+        ore_data = e.output or ""
+        raise e
+    finally:
+        ore_data = ore_data.strip()
+        if len(ore_data) > 0:
+            for line in ore_data.split('\n'):
+                j = json.loads(line)
+                # This matches the Container Linux schema:
+                # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
+                ami_data = [{'name': region,
+                             'hvm': vals['ami'],
+                             'snapshot': vals['snapshot']}
+                            for region, vals in j.items()]
+                buildmeta['amis'].extend(ami_data)
 
-    if upload_failed_in_region is not None:
-        raise Exception(f"Upload failed in {upload_failed_in_region} region")
+            # Record the AMI's that have been replicated as they happen.
+            # When re-running the replication, we don't want to be lose
+            # what has been done.
+            build.meta_write()
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
