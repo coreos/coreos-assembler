@@ -1,7 +1,12 @@
 import boto3
+import logging as log
 import json
 import subprocess
 
+from multiprocessing import (
+    Manager,
+    Process
+)
 from cosalib.cmdlib import (
     retry_stop,
     retry_boto_exception,
@@ -29,7 +34,34 @@ def delete_snapshot(snap_id, region):
     ec2.delete_snapshot(SnapshotId=snap_id)
 
 
-@retry(reraise=True, stop=stop_after_attempt(3))
+@retry(stop=stop_after_attempt(3))
+def _replicate_worker(dest_region, shared_meta):
+    args = shared_meta.get('args')
+    ore_args = [
+        'ore',
+        f'--log-level={args.log_level}',
+        'aws', 'copy-image',
+        '--image', shared_meta['source_image'],
+        '--region', shared_meta['source_region'],
+        dest_region,
+    ]
+
+    try:
+        print("+ {}".format(ore_args))
+        ore_data = json.loads(subprocess.check_output(ore_args))
+    except subprocess.CalledProcessError as e:
+        log.critical(f"failed replication in {dest_region}: {e}")
+        shared_meta[dest_region] = e
+        # this should trigger a retry
+        raise e
+
+    shared_meta[dest_region] = [
+        {'name': name,
+         'hvm': vals['ami'],
+         'snapshot': vals['snapshot']}
+        for name, vals in ore_data.items()]
+
+
 def aws_run_ore_replicate(build, args):
     build.refresh_meta()
     buildmeta = build.meta
@@ -54,37 +86,47 @@ def aws_run_ore_replicate(build, args):
 
     source_image = buildmeta['amis'][0]['hvm']
     source_region = buildmeta['amis'][0]['name']
-    ore_args = ['ore']
-    if args.log_level:
-        ore_args.extend(['--log-level', args.log_level])
-    ore_args.extend([
-        'aws', 'copy-image', '--image',
-        source_image, '--region', source_region
-    ])
 
-    upload_failed_in_region = None
-    for upload_region in region_list:
-        region_ore_args = ore_args.copy() + [upload_region]
-        print("+ {}".format(subprocess.list2cmdline(region_ore_args)))
-        try:
-            ore_data = json.loads(subprocess.check_output(region_ore_args))
-        except subprocess.CalledProcessError:
-            upload_failed_in_region = upload_region
-            break
-        # This matches the Container Linux schema:
-        # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-        ami_data = [{'name': name,
-                     'hvm': vals['ami'],
-                     'snapshot': vals['snapshot']}
-                    for name, vals in ore_data.items()]
-        buildmeta['amis'].extend(ami_data)
-        # Record the AMI's that have been replicated as they happen.
-        # When re-running the replication, we don't want to be lose
-        # what has been done.
-        build.meta_write()
+    # Create a shared dict for writing values
+    # and passing values. We cannot put the build.meta['amis']
+    # here since the Manager does allow mutating nested lists.
+    manager = Manager()
+    shared_meta = manager.dict({
+        "source_region": source_region,
+        "source_image": source_image,
+        "args": args,
+    })
 
-    if upload_failed_in_region is not None:
-        raise Exception(f"Upload failed in {upload_failed_in_region} region")
+    # Create the workers to do the work.
+    workers = []
+    for region in region_list:
+        log.info(f"starting ore worker for {region}")
+        p = Process(target=_replicate_worker, args=(region, shared_meta))
+        workers.append(p)
+        p.start()
+
+    # wait for the workers to come back
+    log.info("waiting for ore workers to complete")
+    for worker in workers:
+        worker.join()
+
+    # check on the progress
+    failed_regions = []
+    for region in region_list:
+        ami_data = shared_meta.get(region, None)
+        if isinstance(ami_data, Exception):
+            log.critical(f" {region} failed with exception: {ami_data}")
+            failed_regions.append(region)
+        elif not ami_data:
+            log.critical(f" {region} failed to upload")
+            failed_regions.append(region)
+        else:
+            log.info(f" {region} uploaded successfully")
+            build.meta['amis'].extend(ami_data)
+            build.meta_write()
+
+    if len(failed_regions) > 0:
+        raise Exception(f"failed upload in regions {failed_regions}")
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
