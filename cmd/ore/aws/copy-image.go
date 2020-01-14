@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/coreos/mantle/platform/api/aws"
+
 	"github.com/spf13/cobra"
 )
 
@@ -47,16 +49,19 @@ func runCopyImage(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
-	amis, err := API.CopyImage(sourceImageID, args)
+	enc := json.NewEncoder(os.Stdout)
+	err := API.CopyImage(sourceImageID, args, func(region string, ami aws.ImageData) {
+		enc_err := enc.Encode(map[string]aws.ImageData{region: ami})
+		if enc_err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't encode result: %v\n", enc_err)
+			os.Exit(1)
+		}
+	})
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't copy images: %v\n", err)
 		os.Exit(1)
 	}
 
-	err = json.NewEncoder(os.Stdout).Encode(amis)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't encode result: %v\n", err)
-		os.Exit(1)
-	}
 	return nil
 }
