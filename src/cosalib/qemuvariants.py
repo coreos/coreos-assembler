@@ -148,7 +148,7 @@ class QemuVariantImage(_Build):
     @property
     def image_meta(self):
         try:
-            return self.meta["images"][self.platform]
+            return self.meta[self.platform]
         except Exception:
             return None
 
@@ -240,8 +240,7 @@ class QemuVariantImage(_Build):
                 f"{self.image_name} has already been built")
 
         self.mutate_image()
-        imgs = self.meta.get("images", {})
         img_meta = self.get_artifact_meta()
         self._found_files[self.image_name] = img_meta
-        imgs[self.platform] = img_meta
+        self.meta[self.platform] = img_meta
         self.meta_write()
