@@ -572,7 +572,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			"--ctrl", fmt.Sprintf("type=unixio,path=%s", swtpmSock),
 			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", inst.swtpmTmpd))
 		cmd := inst.swtpm.(*exec.ExecCmd)
-		cmd.Stderr = os.Stderr
+		// For now silence the swtpm stderr as it prints errors when
+		// disconnected, but that's normal.
 		if builder.Pdeathsig {
 			cmd.SysProcAttr = &syscall.SysProcAttr{
 				Pdeathsig: syscall.SIGTERM,
