@@ -11,10 +11,9 @@ udevadm settle
 # We don't have systemd/udev running
 findlabel() {
     local label=$1
-    local path=
     for p in $(lsblk -nrp -o NAME ${disk}); do
-        if blkid -o export $p | grep -qe "LABEL=$label"; then
-            echo $p
+        if blkid -o export "$p" | grep -qe "LABEL=$label"; then
+            echo "$p"
             return
         fi
     done
@@ -36,8 +35,9 @@ ref=$1
 shift
 
 set -x
-ostree pull-local --repo="${sysroot}"/ostree/repo ${repo} ${ref}
-stateroot=$(basename $(ls -d ${sysroot}/ostree/deploy/* | head -1))
+ostree pull-local --repo="${sysroot}"/ostree/repo "${repo}" "${ref}"
+# shellcheck disable=SC2012
+stateroot=$(basename "$(ls -d "${sysroot}/ostree/deploy/"* | head -1)")
 # zipl needs special casing
 bootloader='unset'
 if grep -q bootloader=zipl "${sysroot}"/ostree/repo/config; then
@@ -57,9 +57,10 @@ if [ "${bootloader}" = "unset" ]; then
 EOF
     chmod a+x /usr/bin/dummy-mkconfig
 fi
-env OSTREE_DEBUG_GRUB2=1 OSTREE_GRUB2_EXEC=/usr/bin/dummy-mkconfig ostree admin --sysroot="${sysroot}" --os=${stateroot} deploy ${ref}
+env OSTREE_DEBUG_GRUB2=1 OSTREE_GRUB2_EXEC=/usr/bin/dummy-mkconfig ostree admin --sysroot="${sysroot}" --os="${stateroot}" deploy "${ref}"
 # EVEN MORE tremendous hackery for old systems that use grub2-mkconfig or zipl
 if [ "${bootloader}" != "none" ]; then
+    # shellcheck disable=SC2010
     deploydir=$(ls -d ${sysroot}/ostree/deploy/*/deploy/* | grep -v '\.origin' | head -1)
     mount -t proc /proc "${deploydir}/proc"
     mount -t sysfs /sys "${deploydir}/sys"
