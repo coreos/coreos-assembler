@@ -28,7 +28,7 @@ parser.add_argument("--basic-qemu-scenarios", help="Run the basic test across ue
 parser.add_argument("--output-dir", help="Output directory")
 parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
                     default=['run'])
-args = parser.parse_args()
+args, unknown_args = parser.parse_known_args()
 
 builds = Builds()
 if args.build is None:
@@ -59,7 +59,7 @@ qemupath = os.path.join(builddir, qemuimg['path'])
 # https://github.com/coreos/coreos-assembler/pull/85
 kolaargs = ['kola']
 bn = os.path.basename(qemupath)
-if not any([x in args.subargs for x in ["-b", "--distro"]]):
+if not any([x in unknown_args for x in ["-b", "--distro"]]):
     if bn.startswith("rhcos-"):
         kolaargs.extend(['-b', 'rhcos'])
     else:
@@ -72,7 +72,7 @@ print(f"Using ignition version {ignition_version}")
 if ignition_version == "2.2.0":
     kolaargs.extend(["--ignition-version", "v2"])
 
-if os.getuid() != 0 and not ('-p' in args.subargs):
+if os.getuid() != 0 and not ('-p' in unknown_args):
     kolaargs.extend(['-p', 'qemu-unpriv'])
 
 # shellcheck disable=SC2086
@@ -80,6 +80,7 @@ kolaargs.extend(['--qemu-image', qemupath])
 outputdir = args.output_dir or "tmp/kola"
 kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs)
+kolaargs.extend(unknown_args)
 
 kolaargs.extend(blacklist_args)
 
