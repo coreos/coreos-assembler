@@ -470,7 +470,10 @@ class Upload():
                 "owner": self._owner,
                 "source": source['origin'],
                 "start_time": stamp,
-                "version": f"{self.build.build_id}"
+                # RHCOS wants to be semver-compatible, but Koji doesn't
+                # accept `-`.  See
+                # https://github.com/openshift/oc/pull/209#issuecomment-564876535
+                "version": f"{self.build.build_id.replace('-', '.')}"
             },
             "buildroots": [{
                 "id": 1,
