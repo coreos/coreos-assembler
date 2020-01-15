@@ -101,6 +101,10 @@ class Build(_Build):
     """
     def __init__(self, *args, **kwargs):
         self._tmpdir = tempfile.mkdtemp(prefix="koji-build")
+        kwargs.update({
+            "require_commit": True,
+            "require_cosa": True,
+        })
         _Build.__init__(self, *args, **kwargs)
 
     def __del__(self):

@@ -34,6 +34,20 @@ class BuildExistsError(BuildError):
     pass
 
 
+class COSAMetaRequired(BuildError):
+    """
+    Raised when the COSA meta-data is missing
+    """
+    pass
+
+
+class CommitMetaRequired(BuildError):
+    """
+    Raised when the Commit Metadata is missing
+    """
+
+
+
 class _Build:
     """
     The Build Class handles the reading in and return of build JSON emitted
@@ -48,13 +62,19 @@ class _Build:
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
 
-        :param builds_dir: name of directory to find the builds
-        :type builds_dir: str
-        :param build: build id or "latest" to parse
-        :type build: str
-        :param workdir: Temporary directory to ensure exists and is clean
-        :type workdir: None or str
+        :param args: All non-keyword arguments
+        :type args: list
+        :param kwargs: All keyword arguments
+        :type kwargs: dict
         :raises: BuildError
+
+        Keyword args:
+            arch:  the base architecture, defaults to the current arch.
+            build: the name of the build or latest
+            require_cosa: require the CoreOS Assembler data, such as
+                    coreos-assembler-config-git.json and the cosa tarball.
+            require_commit: require the commitmeta.json output.
+            workdir: the work directory, defaults current working dirvY
 
         If the build meta-data fails to parse, then a generic exception is
         raised.
@@ -75,6 +95,7 @@ class _Build:
             basearch=kwargs.get("arch", BASEARCH)
         )
 
+        # Setup the instance properties.
         self._build_json = {
             "commit": None,
             "config": None,
@@ -82,32 +103,36 @@ class _Build:
             "meta": None
         }
         self._found_files = {}
-        self._workdir = kwargs.get("workdir", os.getcwd())
+        self._workdir = kwargs.pop("workdir", os.getcwd())
         self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd")
+        self._image_name = None
 
         os.environ['workdir'] = self._workdir
         os.environ['TMPDIR'] = os.path.join(self._workdir, "tmp")
 
-        # Check to make sure that the build and it's meta-data can be parsed.
-        emsg = "was not read in properly or is not defined"
-        if self.commit is None:
-            raise BuildError("%s %s" % self.__file("commit"), emsg)
-        if self.config is None:
-            raise BuildError("%s %s" % self.__file("config"), emsg)
-        if self.image is None:
-            raise BuildError("%s %s" % self.__file("image"), emsg)
-        if self.meta is None:
-            raise BuildError("%s %s" % self.__file("meta"), emsg)
+        # Setup what is required for this Class.
+        #   require_cosa means that the COSA information is need
+        #   require_commit is usually only needed at build time
+        require_cosa = kwargs.get("require_cosa", False)
+        require_commit = kwargs.get("require_commit", False)
+        self._exceptions = {
+            "meta": FileNotFoundError,
+            "commit": CommitMetaRequired if require_commit else None,
+            "image":  COSAMetaRequired if require_cosa else None,
+            "config": COSAMetaRequired if require_cosa else None,
+        }
+        # Check the required meta-data by calling the properties.
+        (_, _, _, _) = (self.commit, self.meta, self.config, self.image)
 
-        self._image_name = None
-
-        log.info("Proccessed build for: %s (%s-%s) %s",
+        log.info("Processed build for: %s (%s-%s) %s",
                  self.summary, self.build_name.upper(), self.basearch,
                  self.build_id)
 
     def __del__(self):
         try:
-            shutil.rmtree(self._tmpdir)
+            tmpdir = getattr(self, "_tmpdir", None)
+            if tmpdir:
+                shutil.rmtree(tmpdir)
         except Exception as e:
             raise Exception(
                 f"failed to remove temporary directory: {self._tmpdir}", e)
@@ -248,9 +273,18 @@ class _Build:
         :type name: str
         :returns: dict
         """
+
         file_path = self.__file(name)
         log.debug("Reading in %s", file_path)
-        return load_json(file_path)
+        try:
+            return load_json(file_path)
+        except FileNotFoundError:
+            e = self._exceptions.get(name)
+            if e:
+                raise e(f"{file_path} is required")
+            else:
+                log.warn(f"{file_path} was not found, but is not required")
+                return {}
 
     def get_obj(self, key):
         """
@@ -271,7 +305,7 @@ class _Build:
         }
         try:
             return lookup[key]
-        except:
+        except Exception:
             raise BuildError(
                 "invalid key %s, valid keys are %s" % (key, lookup.keys()))
 
