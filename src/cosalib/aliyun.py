@@ -80,7 +80,7 @@ def aliyun_run_ore_replicate(build, args):
         ])
 
     build.meta['aliyun'] = aliyun_img_data
-    build.write_meta()
+    build.meta_write()
 
     if upload_failed_in_region is not None:
         raise Exception(f"Upload failed in {upload_failed_in_region} region")
@@ -97,12 +97,16 @@ def aliyun_run_ore(build, args):
     if args.region is not None:
         region = args.region[0]
 
+    upload_name = f"{build.build_name}-{build.build_id}"
+    if args.name_suffix:
+        upload_name = f"{build.build_name}-{args.name_suffix}-{build.build_id}"
+
     ore_args.extend([
         f'--config-file={args.config}' if args.config else '',
         'aliyun', 'create-image',
         '--region', region,
         '--bucket', args.bucket,
-        '--name', f"{build.build_name}-{build.build_id}",
+        '--name', upload_name,
         '--file', f"{build.image_path}",
         '--description', f'{build.summary} {build.build_id}',
         '--architecture', build.basearch,
@@ -117,9 +121,10 @@ def aliyun_run_ore(build, args):
         'name': args.region,
         'id': ore_data
     }]
-    build.write_meta()
+    build.meta_write()
 
 
 def aliyun_cli(parser):
     parser.add_argument("--bucket", help="OSS Bucket")
+    parser.add_argument("--name-suffix", help="Suffix for uploaded image name")
     return parser
