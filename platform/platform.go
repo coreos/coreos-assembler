@@ -158,6 +158,8 @@ type Options struct {
 	IgnitionVersion string
 	SystemdDropins  []SystemdDropin
 
+	CosaBuild string
+
 	NoTestExitError bool
 
 	// OSContainer is an image pull spec that can be given to the pivot service

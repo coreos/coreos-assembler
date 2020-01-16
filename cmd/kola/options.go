@@ -15,27 +15,26 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
 )
 
 var (
-	outputDir          string
-	kolaPlatform       string
-	defaultTargetBoard = sdk.DefaultBoard()
-	kolaArchitectures  = []string{"amd64"}
-	kolaPlatforms      = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv"}
-	kolaDistros        = []string{"fcos", "rhcos"}
-	kolaDefaultImages  = map[string]string{
-		"amd64-usr": sdk.BuildRoot() + "/images/amd64-usr/latest/coreos_production_image.bin",
-		"arm64-usr": sdk.BuildRoot() + "/images/arm64-usr/latest/coreos_production_image.bin",
-	}
+	outputDir                   string
+	kolaPlatform                string
+	defaultTargetBoard          = sdk.DefaultBoard()
+	kolaArchitectures           = []string{"amd64"}
+	kolaPlatforms               = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv"}
+	kolaDistros                 = []string{"fcos", "rhcos"}
 	kolaIgnitionVersionDefaults = map[string]string{
 		"cl":    "v2",
 		"fcos":  "v3",
@@ -62,6 +61,7 @@ func init() {
 	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: v2, v3")
 	ssv(&kola.BlacklistedTests, "blacklist-test", []string{}, "List of tests to blacklist")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
+	sv(&kola.Options.CosaBuild, "cosa-build", "", "File path for coreos-assembler meta.json")
 	// rhcos-specific options
 	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
 
@@ -171,13 +171,29 @@ func syncOptions() error {
 		return err
 	}
 
-	image, ok := kolaDefaultImages[kola.QEMUOptions.Board]
-	if kola.QEMUOptions.Distribution == "cl" && !ok {
-		return fmt.Errorf("unsupport board %q", kola.QEMUOptions.Board)
+	var cosaBuild *cosa.Build
+	if kola.Options.CosaBuild != "" {
+		f, err := os.Open(kola.Options.CosaBuild)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		dec := json.NewDecoder(f)
+		// FIXME enable this to prevent schema regressions https://github.com/coreos/coreos-assembler/pull/1059
+		// dec.DisallowUnknownFields()
+		var tmpBuild cosa.Build
+		if err := dec.Decode(&tmpBuild); err != nil {
+			return err
+		}
+		cosaBuild = &tmpBuild
 	}
 
 	if kola.QEMUOptions.DiskImage == "" {
-		kola.QEMUOptions.DiskImage = image
+		if cosaBuild != nil {
+			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), cosaBuild.Images.QEMU.Path)
+		} else {
+			return fmt.Errorf("No --qemu-image or --cosa-build provided")
+		}
 	}
 
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
@@ -194,6 +210,7 @@ func syncOptions() error {
 	}
 
 	if kola.Options.IgnitionVersion == "" {
+		var ok bool
 		kola.Options.IgnitionVersion, ok = kolaIgnitionVersionDefaults[kola.Options.Distribution]
 		if !ok {
 			return fmt.Errorf("Distribution %q has no default Ignition version", kola.Options.Distribution)
