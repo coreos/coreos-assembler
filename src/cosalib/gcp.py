@@ -70,6 +70,7 @@ def gcp_run_ore(build, args):
         'image': gcp_name,
         'url': f"https://{url_path}",
     }
+    build.meta_write()
 
 
 def gcp_run_ore_replicate(*args, **kwargs):
