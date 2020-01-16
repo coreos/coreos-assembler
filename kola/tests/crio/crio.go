@@ -305,7 +305,7 @@ func crioNetwork(c cluster.TestCluster) {
 			return err
 		}
 
-		containerID, err := c.SSH(dest, fmt.Sprintf("sudo crictl create %s %s %s",
+		containerID, err := c.SSH(dest, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
 		if err != nil {
 			return err
@@ -348,7 +348,7 @@ func crioNetwork(c cluster.TestCluster) {
 			return err
 		}
 
-		containerID, err := c.SSH(src, fmt.Sprintf("sudo crictl create %s %s %s",
+		containerID, err := c.SSH(src, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
 		if err != nil {
 			return err
@@ -389,9 +389,10 @@ func crioNetworksReliably(c cluster.TestCluster) {
 		if err != nil {
 			c.Fatal(err)
 		}
+
 		cmdCreatePod := fmt.Sprintf("sudo crictl runp %s", crioConfigPod)
 		podID := c.MustSSH(m, cmdCreatePod)
-		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create %s %s %s",
+		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
 		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec %s ping -i 0.2 10.88.0.1 -w 1 >/dev/null && echo PASS || echo FAIL", containerID)))
 	}
@@ -453,7 +454,7 @@ func crioPodContinuesDuringServiceRestart(c cluster.TestCluster) {
 	}
 	cmdCreatePod := fmt.Sprintf("sudo crictl runp %s", crioConfigPod)
 	podID := c.MustSSH(m, cmdCreatePod)
-	containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create %s %s %s",
+	containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
 		podID, crioConfigContainer, crioConfigPod))
 
 	cmd := fmt.Sprintf("sudo crictl exec %s bash -c \"sleep 25 && echo PASS > /tmp/test/restart-test\"", containerID)
