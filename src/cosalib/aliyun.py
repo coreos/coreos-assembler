@@ -118,7 +118,7 @@ def aliyun_run_ore(build, args):
     # convert the binary output to string and remove trailing white space
     ore_data = subprocess.check_output(ore_args).decode('utf-8').strip()
     build.meta['aliyun'] = [{
-        'name': args.region,
+        'name': region,
         'id': ore_data
     }]
     build.meta_write()
