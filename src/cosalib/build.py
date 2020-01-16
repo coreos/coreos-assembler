@@ -45,7 +45,7 @@ class CommitMetaRequired(BuildError):
     """
     Raised when the Commit Metadata is missing
     """
-
+    pass
 
 
 class _Build:
@@ -283,7 +283,6 @@ class _Build:
             if e:
                 raise e(f"{file_path} is required")
             else:
-                log.warn(f"{file_path} was not found, but is not required")
                 return {}
 
     def get_obj(self, key):
