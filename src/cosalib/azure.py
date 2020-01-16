@@ -1,4 +1,5 @@
 import os
+import urllib
 from cosalib.cmdlib import run_verbose
 from tenacity import (
     retry,
@@ -23,11 +24,44 @@ def remove_azure_image(image, resource_group, auth, profile):
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
-def azure_run_ore(*args):
-    print("""
-Azure currently does not produce virtual machine
-registrations. This command is a place-holder only.
-""")
+def azure_run_ore(build, args):
+    """
+    Execute ore to upload the vhd image in blob format
+    See:
+      - https://github.com/coreos/mantle/#azure
+      - https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    :param build: Build instance to use
+    :type build: Build
+    """
+    azure_vhd_name = f"{build.image_name_base}.vhd"
+    ore_args = [
+        'ore',
+        '--log-level', args.log_level,
+        'azure', 'upload-blob-arm',
+        '--azure-auth', args.auth,
+        '--azure-location', args.location,
+        '--azure-profile', args.profile,
+        '--blob-name', azure_vhd_name,
+        '--file', f"{build.image_path}",
+        '--container', args.container,
+        '--resource-group', args.resource_group,
+        '--storage-account', args.storage_account
+    ]
+    if args.force:
+        ore_args.append('--overwrite')
+    run_verbose(ore_args)
+
+    url_path = urllib.parse.quote((
+        f"{args.storage_account}.blob.core.windows.net/"
+        f"{args.container}/{azure_vhd_name}"
+    ))
+    build.meta['azure'] = {
+        'image': azure_vhd_name,
+        'url': f"https://{url_path}",
+    }
+    build.meta_write()  # update build metadata
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
