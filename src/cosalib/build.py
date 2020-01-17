@@ -11,8 +11,7 @@ import tempfile
 from cosalib.cmdlib import (
     get_basearch,
     load_json,
-    sha256sum_file,
-    write_json)
+    sha256sum_file)
 from cosalib.builds import Builds
 from cosalib.meta import GenericBuildMeta as Meta
 
