@@ -22,6 +22,7 @@ VM_DISKSIZE=
 VM_PERSIST_IMG=
 VM_NCPUS="${VM_NCPUS:-${QEMU_PROCS}}"
 VM_SRV_MNT=
+TARGET_USER=core
 SSH_ATTACH=
 SSH_PORT=${SSH_PORT:-}
 SSH_CONFIG=
@@ -42,6 +43,7 @@ Options:
     -m MB                 RAM size in MB (2048)
     --size GB             Disk size in GB (matches base by default)
     --ssh                 Attach via SSH instead of console
+    --user USERNAME       Create user USERNAME via Ignition (if not already extant) and log in as that user
     -p --ssh-port PORT    Map PORT on localhost to the VM's sshd.
     --ssh-config FILE     Write SSH config to FILE. Useful with '-p 0'.
     -h                    this ;-)
@@ -106,6 +108,9 @@ while [ $# -ge 1 ]; do
         --ssh)
             SSH_ATTACH=1
             shift ;;
+        --user)
+            TARGET_USER="$2"
+            shift 2 ;;
         -v|--verbose)
             set -x
             shift ;;
@@ -257,7 +262,7 @@ if [ -z "${SSH_ATTACH}" ]; then
     \"dropins\": [
         {
             \"name\": \"autologin-core.conf\",
-            \"contents\": \"[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin core --noclear %I \$TERM\\n\"
+            \"contents\": \"[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin ${TARGET_USER} --noclear %I \$TERM\\n\"
         }
     ]
 }"
@@ -294,7 +299,7 @@ cat > "${f}" <<EOF
     "passwd": {
         "users": [
             {
-                "name": "core",
+                "name": "${TARGET_USER}",
                 "sshAuthorizedKeys": [
                     ${ssh_pubkeys}
                 ]
