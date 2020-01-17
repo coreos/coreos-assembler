@@ -45,18 +45,31 @@ class GenericBuildMeta(dict):
 
     def get(self, *args):
         """
-        Returns the content of a key path.
+        Extend dict.get() to support nested valued. The first argument is a
+        list, then it will be treated as a nested get. For example:
+            Given: {'a': {'b': 'c'}}
+               self.get(['a','b'], None) will return 'c'
+               self.get('a') will return {'b': 'c'}
+               self.get(['a','b','c','d'], 'nope') will return 'nope'
 
         :param args: Ordered key path
         :type args: list
         :returns: The value of the key
         :rtype: any
-        :raises: TypeError, KeyError
         """
-        haystack = dict(self)
-        for arg in args:
-            haystack = haystack[arg]
-        return haystack
+        path = args[0]
+        default = None if len(args) == 1 else args[1]
+
+        if not isinstance(path, list):
+            return super().get(*args)
+
+        try:
+            haystack = dict(self)
+            for arg in path:
+                haystack = haystack[arg]
+            return haystack
+        except KeyError:
+            return default
 
     def set(self, pathing, value):
         """
@@ -69,7 +82,9 @@ class GenericBuildMeta(dict):
         :raises: IndexError, Exception
         """
         if not isinstance(pathing, list):
-            pathing = [pathing]
+            self[pathing] = value
+            return
+
         updated = False
         if len(pathing) == 1:
             self[pathing[0]] = value

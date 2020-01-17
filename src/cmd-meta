@@ -21,23 +21,33 @@ def new_cli():
     sub_parser.add_argument(
         '--dump', help='dumps the entire structure', action='store_true')
     sub_parser.add_argument(
-        '--image-path', help='Output path to artifact IMAGETYPE', action='store',
+        '--image-path', help='Output path to artifact IMAGETYPE',
+        action='store',
         metavar='IMAGETYPE')
     args = parser.parse_args()
 
     meta = Meta(args.workdir, args.build)
 
+    # support the coreos-assembler.* keys
+    def pather(val):
+        path = val.split('.')
+        if val.startswith("coreos-assembler."):
+            new_path = [f"{path[0]}.{path[1]}"]
+            new_path.extend(path[2:])
+            return new_path
+        return path
+
     # Get keys
     if args.get is not None:
         dotpath = args.get[0]
-        keypath = dotpath.split('.')
-        loc = meta.get(*keypath)
+        keypath = pather(dotpath)
+        loc = meta.get(keypath)
         print(f'{dotpath}: {loc}')
     # Set keys
     elif args.set is not None:
         for item in args.set:
             k, v = item.split('=')
-            keypath = k.split('.')
+            keypath = pather(k)
             meta.set(keypath, v)
         meta.write()
     elif args.dump is True:

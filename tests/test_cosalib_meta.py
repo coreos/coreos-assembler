@@ -3,7 +3,9 @@ import json
 import sys
 import pytest
 
-sys.path.insert(0, 'src')
+parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, f'{parent_path}/src')
+sys.path.insert(0, parent_path)
 
 from cosalib import meta
 from cosalib.cmdlib import get_basearch
@@ -52,9 +54,9 @@ def test_init(tmpdir):
 def test_get(tmpdir):
     m = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
     assert m.get('test') == 'data'
-    assert m.get('a', 'b') == 'c'
-    with pytest.raises(KeyError):
-        m.get('i', 'donot', 'exist')
+    assert m.get('nope', 'default') == 'default'
+    assert m.get(['a', 'b']) == 'c'
+    assert m.get(['a', 'd'], 'nope') == 'nope'
 
 
 def test_set(tmpdir):
@@ -67,7 +69,7 @@ def test_set(tmpdir):
     assert m.get('test') == 'changed'
     m.set(['a', 'b'], 'z')
     m.write()
-    assert m.get('a', 'b') == 'z'
+    assert m.get(['a', 'b']) == 'z'
     assert m['a']['b'] == 'z'
     with pytest.raises(Exception):
         m.set(['i', 'donot', 'exist'], 'boom')
