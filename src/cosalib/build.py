@@ -14,7 +14,7 @@ from cosalib.cmdlib import (
     sha256sum_file,
     write_json)
 from cosalib.builds import Builds
-
+from cosalib.meta import GenericBuildMeta as Meta
 
 # BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
@@ -95,17 +95,18 @@ class _Build:
             basearch=kwargs.get("arch", BASEARCH)
         )
 
+        self._found_files = {}
+        self._workdir = kwargs.pop("workdir", os.getcwd())
+        self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd")
+        self._image_name = None
+
         # Setup the instance properties.
         self._build_json = {
             "commit": None,
             "config": None,
             "image": None,
-            "meta": None
+            "meta": Meta(self.workdir, build)
         }
-        self._found_files = {}
-        self._workdir = kwargs.pop("workdir", os.getcwd())
-        self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd")
-        self._image_name = None
 
         os.environ['workdir'] = self._workdir
         os.environ['TMPDIR'] = os.path.join(self._workdir, "tmp")
@@ -116,7 +117,6 @@ class _Build:
         require_cosa = kwargs.get("require_cosa", False)
         require_commit = kwargs.get("require_commit", False)
         self._exceptions = {
-            "meta": FileNotFoundError,
             "commit": CommitMetaRequired if require_commit else None,
             "image":  COSAMetaRequired if require_cosa else None,
             "config": COSAMetaRequired if require_cosa else None,
@@ -205,8 +205,6 @@ class _Build:
     @property
     def meta(self):
         """ get the meta.json dict """
-        if self._build_json["meta"] is None:
-            self._build_json["meta"] = self.__get_json("meta")
         return self._build_json["meta"]
 
     def refresh_meta(self):
@@ -214,12 +212,11 @@ class _Build:
         Refresh the meta-data from disk. This is useful when the on-disk
         meta-data may have been updated.
         """
-        self._build_json["meta"] = self.__get_json("meta")
+        self.meta.read()
 
     @property
     def basearch(self):
-        return self.meta.get(_Build.ckey("coreos-assembler.basearch"),
-                             BASEARCH)
+        return self.meta.get("coreos-assembler.basearch", BASEARCH)
 
     def ensure_built(self):
         if not self.have_artifact:
@@ -261,7 +258,6 @@ class _Build:
             "commit": "%s/commitmeta.json" % self.build_dir,
             "config": ("%s/coreos-assembler-config-git.json" % self.build_dir),
             "image": "/cosa/coreos-assembler-git.json",
-            "meta": "%s/meta.json" % self.build_dir,
         }
         return lookup[var]
 
@@ -300,7 +296,7 @@ class _Build:
             "commit": self.commit,
             "config": self.config,
             "image": self.image,
-            "meta": self.meta,
+            "meta": self.meta
         }
         try:
             return lookup[key]
@@ -356,13 +352,13 @@ class _Build:
         :param update_dict: The dictionary to append into meta.
         :type update_dict: dict
         """
-        self._build_json["meta"].update(update_dict)
+        self.meta.update(update_dict)
 
     def meta_write(self):
         """
         Writes out the meta.json file based on the internal structure.
         """
-        write_json(self.__file("meta"), self._build_json["meta"])
+        self.meta.write()
 
     def build_artifacts(self, *args, **kwargs):
         """
