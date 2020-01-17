@@ -19,6 +19,8 @@ package cosa
 // https://github.com/openshift/installer/blob/a0350404997b0493d7bb16aa2875e5c42879b069/pkg/rhcos/builds.go
 // For now, copy-paste updates there.  Later, maybe consider making this a public API?
 type Build struct {
+	Ref           string `json:"ref"`
+	OSTreeVersion string `json:"ostree-version"`
 	AMIs          []struct {
 		Region string `json:"name"`
 		HVM    string `json:"hvm"`
@@ -44,5 +46,5 @@ type Build struct {
 			UncompressedSHA256 string `json:"uncompressed-sha256"`
 		} `json:"openstack"`
 	} `json:"images"`
-	OSTreeVersion string `json:"ostree-version"`
+	FedoraCoreOSParentVersion string `json:"fedora-coreos.parent-version"`
 }
