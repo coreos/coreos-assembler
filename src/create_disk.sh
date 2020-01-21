@@ -331,7 +331,7 @@ s390x)
 	# this is only a temporary solution until we are able to do firstboot check at bootloader
 	# stage on s390x, either through zipl->grub2-emu or zipl standalone.
 	# See https://github.com/coreos/ignition-dracut/issues/84
-	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp" > $tmpfile
+	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp,dhcp6" > $tmpfile
 
 	# ideally we want to invoke zipl with bls and zipl.conf but we might need
 	# to chroot to rootfs/ to do so. We would also do that when FCOS boot on its own.
