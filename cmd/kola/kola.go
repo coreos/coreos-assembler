@@ -295,15 +295,6 @@ func runList(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runHttpServer(cmd *cobra.Command, args []string) {
-	directory := "."
-
-	http.Handle("/", http.FileServer(http.Dir(directory)))
-
-	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
-}
-
 type item struct {
 	Name                 string
 	Platforms            []string
@@ -353,4 +344,13 @@ func (i *item) updateValues() {
 
 func (i item) String() string {
 	return fmt.Sprintf("%v\t%v\t%v\t%v", i.Name, i.Platforms, i.Architectures, i.Distros)
+}
+
+func runHttpServer(cmd *cobra.Command, args []string) {
+	directory := "."
+
+	http.Handle("/", http.FileServer(http.Dir(directory)))
+
+	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
 }
