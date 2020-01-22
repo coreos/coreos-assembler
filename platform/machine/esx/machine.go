@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -63,6 +64,10 @@ func (em *machine) SSH(cmd string) ([]byte, []byte, error) {
 
 func (em *machine) Reboot() error {
 	return platform.RebootMachine(em, em.journal)
+}
+
+func (em *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	return platform.WaitForMachineReboot(em, em.journal, timeout, oldBootId)
 }
 
 func (em *machine) Destroy() {

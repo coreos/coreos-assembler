@@ -17,6 +17,7 @@ package do
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/digitalocean/godo"
 	"golang.org/x/crypto/ssh"
@@ -62,6 +63,10 @@ func (dm *machine) SSH(cmd string) ([]byte, []byte, error) {
 
 func (dm *machine) Reboot() error {
 	return platform.RebootMachine(dm, dm.journal)
+}
+
+func (dm *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	return platform.WaitForMachineReboot(dm, dm.journal, timeout, oldBootId)
 }
 
 func (dm *machine) Destroy() {

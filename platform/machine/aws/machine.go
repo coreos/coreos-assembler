@@ -68,6 +68,10 @@ func (am *machine) Reboot() error {
 	return platform.RebootMachine(am, am.journal)
 }
 
+func (am *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	return platform.WaitForMachineReboot(am, am.journal, timeout, oldBootId)
+}
+
 func (am *machine) Destroy() {
 	origConsole, err := am.cluster.flight.api.GetConsoleOutput(am.ID())
 	if err != nil {

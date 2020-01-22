@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -115,6 +116,34 @@ func RebootMachine(m Machine, j *Journal) error {
 		return fmt.Errorf("machine %q failed to begin rebooting: %v", m.ID(), err)
 	}
 	return StartMachineAfterReboot(m, j, bootId)
+}
+
+// WaitForMachineReboot will wait for the machine to reboot, i.e. it is assumed
+// an action which will cause a reboot has already been initiated. Note the
+// timeout here is for how long to wait for the machine to seemingly go
+// *offline*, not for how long it takes to get back online. Journal.Start() has
+// its own timeouts for that.
+func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootId string) error {
+	// run a command we know will hold so we know approximately when the reboot happens
+	c := make(chan error)
+	go func() {
+		out, stderr, err := m.SSH("sudo sleep infinity")
+		if _, ok := err.(*ssh.ExitMissingError); ok {
+			c <- nil
+		} else {
+			c <- fmt.Errorf("waiting for reboot failed: %s: %s: %s", out, err, stderr)
+		}
+	}()
+
+	select {
+	case err := <-c:
+		if err != nil {
+			return err
+		}
+		return StartMachineAfterReboot(m, j, oldBootId)
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out after %v waiting for machine to reboot", timeout)
+	}
 }
 
 func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {

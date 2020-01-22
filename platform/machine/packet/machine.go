@@ -16,6 +16,7 @@ package packet
 
 import (
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -62,6 +63,10 @@ func (pm *machine) SSH(cmd string) ([]byte, []byte, error) {
 
 func (pm *machine) Reboot() error {
 	return platform.RebootMachine(pm, pm.journal)
+}
+
+func (pm *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	return platform.WaitForMachineReboot(pm, pm.journal, timeout, oldBootId)
 }
 
 func (pm *machine) Destroy() {
