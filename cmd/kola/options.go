@@ -67,7 +67,7 @@ func init() {
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
 	if defaultRegion == "" {
-		defaultRegion = "us-west-2"
+		defaultRegion = "us-east-1"
 	}
 	sv(&kola.AWSOptions.CredentialsFile, "aws-credentials-file", "", "AWS credentials file (default \"~/.aws/credentials\")")
 	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
