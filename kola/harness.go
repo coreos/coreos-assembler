@@ -65,8 +65,6 @@ var (
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
 
-	UpdatePayloadFile string
-
 	BlacklistedTests []string // tests which are blacklisted
 
 	consoleChecks = []struct {
