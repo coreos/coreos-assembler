@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform/api/aliyun"
 )
@@ -40,9 +39,6 @@ var (
 
 func init() {
 	defaultConfigPath := os.Getenv("ALIYUN_CONFIG_FILE")
-	if defaultConfigPath == "" {
-		defaultConfigPath = "~/" + auth.AliyunConfigPath
-	}
 
 	Aliyun.PersistentFlags().StringVar(&options.ConfigPath, "config-file", defaultConfigPath, "config file (default \""+defaultConfigPath+"\")")
 	Aliyun.PersistentFlags().StringVar(&options.Profile, "profile", "", "profile (default \"default\")")
