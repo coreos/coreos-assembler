@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -170,26 +169,17 @@ func syncOptions() error {
 		return err
 	}
 
-	var cosaBuild *cosa.Build
 	if kola.Options.CosaBuild != "" {
-		f, err := os.Open(kola.Options.CosaBuild)
+		var err error
+		kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
-		dec := json.NewDecoder(f)
-		// FIXME enable this to prevent schema regressions https://github.com/coreos/coreos-assembler/pull/1059
-		// dec.DisallowUnknownFields()
-		var tmpBuild cosa.Build
-		if err := dec.Decode(&tmpBuild); err != nil {
-			return err
-		}
-		cosaBuild = &tmpBuild
 	}
 
 	if kolaPlatform == "qemu-unpriv" && kola.QEMUOptions.DiskImage == "" {
-		if cosaBuild != nil {
-			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), cosaBuild.Images.QEMU.Path)
+		if kola.CosaBuild != nil {
+			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.Images.QEMU.Path)
 		} else {
 			return fmt.Errorf("No --qemu-image or --cosa-build provided")
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/harness/reporters"
 	"github.com/coreos/mantle/kola/cluster"
@@ -61,6 +62,8 @@ var (
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
 	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
+
+	CosaBuild *cosa.Build // this is the parsed object of --cosa-build
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
