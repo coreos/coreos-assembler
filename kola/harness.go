@@ -179,7 +179,31 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 	return
 }
 
-func filterTests(tests map[string]*register.Test, pattern, pltfrm string, version semver.Version) (map[string]*register.Test, error) {
+// matchesPatterns returns true if `s` matches one of the patterns in `patterns`.
+func matchesPatterns(s string, patterns []string) (bool, error) {
+	for _, pattern := range patterns {
+		match, err := filepath.Match(pattern, s)
+		if err != nil {
+			return false, err
+		}
+		if match {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// hasString returns true if `s` equals one of the strings in `slice`.
+func hasString(s string, slice []string) bool {
+	for _, e := range slice {
+		if e == s {
+			return true
+		}
+	}
+	return false
+}
+
+func filterTests(tests map[string]*register.Test, patterns []string, pltfrm string, version semver.Version) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
 	checkPlatforms := []string{pltfrm}
@@ -229,7 +253,7 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 			continue
 		}
 
-		match, err := filepath.Match(pattern, t.Name)
+		match, err := matchesPatterns(t.Name, patterns)
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +262,7 @@ func filterTests(tests map[string]*register.Test, pattern, pltfrm string, versio
 		}
 
 		// Check the test's min and end versions when running more than one test
-		if t.Name != pattern && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
+		if !hasString(t.Name, patterns) && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
 			continue
 		}
 
@@ -319,7 +343,7 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 // register tests in their init() function.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. If it already exists it will be erased!
-func RunTests(pattern, pltfrm, outputDir string, propagateTestErrors bool) error {
+func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -327,14 +351,14 @@ func RunTests(pattern, pltfrm, outputDir string, propagateTestErrors bool) error
 	// 1) none of the selected tests care about the version
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
-	tests, err := filterTests(register.Tests, pattern, pltfrm, semver.Version{})
+	tests, err := filterTests(register.Tests, patterns, pltfrm, semver.Version{})
 	if err != nil {
 		plog.Fatal(err)
 	}
 
 	skipGetVersion := true
 	for name, t := range tests {
-		if name != pattern && (t.MinVersion != semver.Version{} || t.EndVersion != semver.Version{}) {
+		if !hasString(name, patterns) && (t.MinVersion != semver.Version{} || t.EndVersion != semver.Version{}) {
 			skipGetVersion = false
 			break
 		}
@@ -356,7 +380,7 @@ func RunTests(pattern, pltfrm, outputDir string, propagateTestErrors bool) error
 		versionStr = version.String()
 
 		// one more filter pass now that we know real version
-		tests, err = filterTests(tests, pattern, pltfrm, *version)
+		tests, err = filterTests(tests, patterns, pltfrm, *version)
 		if err != nil {
 			plog.Fatal(err)
 		}

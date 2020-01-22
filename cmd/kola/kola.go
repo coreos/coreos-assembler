@@ -45,7 +45,7 @@ var (
 	}
 
 	cmdRun = &cobra.Command{
-		Use:   "run [glob pattern]",
+		Use:   "run [glob pattern...]",
 		Short: "Run kola tests by category",
 		Long: `Run all kola tests (default) or related groups.
 
@@ -108,15 +108,11 @@ func preRun(cmd *cobra.Command, args []string) {
 }
 
 func runRun(cmd *cobra.Command, args []string) {
-	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguments specified. Usage: 'kola run [glob pattern]'\n")
-		os.Exit(2)
-	}
-	var pattern string
-	if len(args) == 1 {
-		pattern = args[0]
+	var patterns []string
+	if len(args) == 0 {
+		patterns = []string{"*"} // run all tests by default
 	} else {
-		pattern = "*" // run all tests by default
+		patterns = args
 	}
 
 	var err error
@@ -126,7 +122,7 @@ func runRun(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	runErr := kola.RunTests(pattern, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
