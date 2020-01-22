@@ -72,7 +72,7 @@ func setKeys(c cluster.TestCluster, n int) (map[string]string, error) {
 			key := strconv.Itoa(rand.Int())[0:3]
 			value := strconv.Itoa(rand.Int())[0:3]
 
-			b, err := c.SSH(m, fmt.Sprintf("curl -s -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value))
+			b, err := c.SSHf(m, "curl -s -w %%{http_code} -s http://127.0.0.1:2379/v2/keys/%v -XPUT -d value=%v", key, value)
 			if err != nil {
 				return nil, err
 			}
