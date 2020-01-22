@@ -93,6 +93,10 @@ func main() {
 
 func preRun(cmd *cobra.Command, args []string) {
 	err := syncOptions()
+	if err == nil {
+		err = syncCosaOptions()
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(3)

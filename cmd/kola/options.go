@@ -177,14 +177,6 @@ func syncOptions() error {
 		}
 	}
 
-	if kolaPlatform == "qemu-unpriv" && kola.QEMUOptions.DiskImage == "" {
-		if kola.CosaBuild != nil {
-			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.Images.QEMU.Path)
-		} else {
-			return fmt.Errorf("No --qemu-image or --cosa-build provided")
-		}
-	}
-
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
 	for _, unit := range units {
 		kola.Options.SystemdDropins = append(kola.Options.SystemdDropins, platform.SystemdDropin{
@@ -203,6 +195,23 @@ func syncOptions() error {
 		kola.Options.IgnitionVersion, ok = kolaIgnitionVersionDefaults[kola.Options.Distribution]
 		if !ok {
 			return fmt.Errorf("Distribution %q has no default Ignition version", kola.Options.Distribution)
+		}
+	}
+
+	return nil
+}
+
+// syncCosaOptions parses the cosa build and sets unset platform-specific
+// options that can be derived from the cosa build metadata
+func syncCosaOptions() error {
+	if kola.CosaBuild == nil {
+		return nil
+	}
+
+	switch kolaPlatform {
+	case "qemu-unpriv", "qemu":
+		if kola.QEMUOptions.DiskImage == "" {
+			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.Images.QEMU.Path)
 		}
 	}
 
