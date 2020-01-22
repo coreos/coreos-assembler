@@ -20,6 +20,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"os"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -93,9 +94,7 @@ func EnableSelinux(m Machine) error {
 // Reboots a machine, stopping ssh first.
 // Afterwards run CheckMachine to verify the system is back and operational.
 func StartReboot(m Machine) error {
-	// stop sshd so that commonMachineChecks will only work if the machine
-	// actually rebooted
-	out, stderr, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
+	out, stderr, err := m.SSH("sudo reboot")
 	if _, ok := err.(*ssh.ExitMissingError); ok {
 		// A terminated session is perfectly normal during reboot.
 		err = nil
@@ -108,15 +107,18 @@ func StartReboot(m Machine) error {
 
 // RebootMachine will reboot a given machine, provided the machine's journal.
 func RebootMachine(m Machine, j *Journal) error {
+	bootId, err := GetMachineBootId(m)
+	if err != nil {
+		return err
+	}
 	if err := StartReboot(m); err != nil {
 		return fmt.Errorf("machine %q failed to begin rebooting: %v", m.ID(), err)
 	}
-	return StartMachine(m, j)
+	return StartMachineAfterReboot(m, j, bootId)
 }
 
-// StartMachine will start a given machine, provided the machine's journal.
-func StartMachine(m Machine, j *Journal) error {
-	if err := j.Start(context.TODO(), m); err != nil {
+func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
+	if err := j.Start(context.TODO(), m, oldBootId); err != nil {
 		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
 	}
 	if err := CheckMachine(context.TODO(), m); err != nil {
@@ -128,6 +130,19 @@ func StartMachine(m Machine, j *Journal) error {
 		}
 	}
 	return nil
+}
+
+// StartMachine will start a given machine, provided the machine's journal.
+func StartMachine(m Machine, j *Journal) error {
+	return StartMachineAfterReboot(m, j, "")
+}
+
+func GetMachineBootId(m Machine) (string, error) {
+	stdout, stderr, err := m.SSH("cat /proc/sys/kernel/random/boot_id")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve boot ID: %s: %s: %s", stdout, err, stderr)
+	}
+	return strings.TrimSpace(string(stdout)), nil
 }
 
 // GenerateFakeKey generates a SSH key pair, returns the public key, and

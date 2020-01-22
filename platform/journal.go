@@ -88,7 +88,7 @@ func NewJournal(dir string) (*Journal, error) {
 }
 
 // Start begins/resumes streaming the system journal to journal.txt.
-func (j *Journal) Start(ctx context.Context, m Machine) error {
+func (j *Journal) Start(ctx context.Context, m Machine, oldBootId string) error {
 	if j.cancel != nil {
 		j.cancel()
 		j.cancel = nil
@@ -97,6 +97,15 @@ func (j *Journal) Start(ctx context.Context, m Machine) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	start := func() error {
+		if oldBootId != "" {
+			bootId, err := GetMachineBootId(m)
+			if err != nil {
+				return err
+			} else if bootId == oldBootId {
+				return fmt.Errorf("found old boot ID %s (likely still rebooting)", oldBootId)
+			}
+		}
+
 		client, err := m.SSHClient()
 		if err != nil {
 			return err
