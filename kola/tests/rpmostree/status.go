@@ -26,7 +26,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         rpmOstreeStatus,
 		ClusterSize: 1,
 		Name:        "rpmostree.status",

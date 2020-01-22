@@ -338,13 +338,13 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 	return false
 }
 
-// RunTests is a harness for running multiple tests in parallel. Filters
-// tests based on a glob pattern and by platform. Has access to all
+// runProvidedTests is a harness for running multiple tests in parallel.
+// Filters tests based on a glob pattern and by platform. Has access to all
 // tests either registered in this package or by imported packages that
-// register tests in their init() function.
-// outputDir is where various test logs and data will be written for
-// analysis after the test run. If it already exists it will be erased!
-func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
+// register tests in their init() function.  outputDir is where various test
+// logs and data will be written for analysis after the test run. If it already
+// exists it will be erased!
+func runProvidedTests(tests map[string]*register.Test, patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -352,7 +352,7 @@ func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors b
 	// 1) none of the selected tests care about the version
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
-	tests, err := filterTests(register.Tests, patterns, pltfrm, semver.Version{})
+	tests, err := filterTests(tests, patterns, pltfrm, semver.Version{})
 	if err != nil {
 		plog.Fatal(err)
 	}
@@ -425,6 +425,10 @@ func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors b
 	}
 
 	return err
+}
+
+func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
+	return runProvidedTests(register.Tests, patterns, pltfrm, outputDir, propagateTestErrors)
 }
 
 // getClusterSemVer returns the CoreOS semantic version via starting a

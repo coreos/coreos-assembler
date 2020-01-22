@@ -24,7 +24,7 @@ import (
 // provider metadata since it will not be injected into the config. Platforms
 // where the cloud provider metadata system is not available have been excluded.
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
@@ -32,7 +32,7 @@ func init() {
 		Distros:          []string{"fcos"},
 		UserData:         conf.Empty(),
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.v3.noop",
 		Run:              empty,
 		ClusterSize:      1,

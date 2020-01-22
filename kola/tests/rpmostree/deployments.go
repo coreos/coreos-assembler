@@ -25,14 +25,14 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
 		Name:        "rpmostree.upgrade-rollback",
 		Distros:     []string{"fcos", "rhcos"},
 		FailFast:    true,
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         rpmOstreeInstallUninstall,
 		ClusterSize: 1,
 		Name:        "rpmostree.install-uninstall",

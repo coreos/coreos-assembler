@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         NetworkListeners,
 		ClusterSize: 1,
 		Name:        "fcos.network.listeners",
@@ -40,7 +40,7 @@ func init() {
 		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 	// TODO: rewrite test for NetworkManager
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:              NetworkInitramfsSecondBoot,
 		ClusterSize:      1,
 		Name:             "coreos.network.initramfs.second-boot",

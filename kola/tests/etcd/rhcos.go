@@ -31,7 +31,7 @@ import (
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         rhcosClusterInsecure,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.insecure",
@@ -72,7 +72,7 @@ func init() {
 		// qemu-unpriv machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         rhcosClusterTLS,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.tls",

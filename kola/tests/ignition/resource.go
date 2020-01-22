@@ -96,7 +96,7 @@ var (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.resource.local",
 		Run:         resourceLocal,
 		ClusterSize: 1,
@@ -107,7 +107,7 @@ func init() {
 		ExcludePlatforms: []string{"do", "qemu-unpriv"},
 		Distros:          []string{"fcos", "rhcos"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.resource.remote",
 		Run:         resourceRemote,
 		ClusterSize: 1,
@@ -179,7 +179,7 @@ func init() {
 	      }`),
 		Distros: []string{"fcos", "rhcos"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.resource.s3",
 		Run:         resourceS3,
 		ClusterSize: 1,
@@ -232,7 +232,7 @@ func init() {
 	// TODO: once Ignition supports this on all channels/distros
 	//       this test should be rolled into coreos.ignition.resources.remote
 	// Test specifically for versioned s3 objects
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.resource.s3.versioned",
 		Run:         resourceS3Versioned,
 		ClusterSize: 1,

@@ -49,7 +49,7 @@ systemd:
 
 func init() {
 	// TODO: enable FCOS when FCCT exists
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:            NFSv4,
 		ClusterSize:    0,
 		Name:           "linux.nfs.v4",

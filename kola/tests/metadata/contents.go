@@ -37,7 +37,7 @@ func init() {
 		}
 	}`)
 
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.aws",
 		Run:         verifyAWS,
 		ClusterSize: 1,
@@ -46,7 +46,7 @@ func init() {
 		Distros:     []string{"fcos"},
 	})
 
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.azure",
 		Run:         verifyAzure,
 		ClusterSize: 1,
@@ -55,7 +55,7 @@ func init() {
 		Distros:     []string{"fcos"},
 	})
 
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.packet",
 		Run:         verifyPacket,
 		ClusterSize: 1,

@@ -19,7 +19,7 @@ func init() {
 		"something": "something",
 	}
 
-	Register(Test{
+	RegisterTest(Test{
 		Name:     "LogIt",
 		Defaults: defaults,
 		Run: func(x *X) {
@@ -28,7 +28,7 @@ func init() {
 		},
 	})
 
-	Register(Test{
+	RegisterTest(Test{
 		Name:     "SkipIt",
 		Defaults: defaults,
 		Run: func(x *X) {

@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.once",
 		Run:         runsOnce,
 		ClusterSize: 1,

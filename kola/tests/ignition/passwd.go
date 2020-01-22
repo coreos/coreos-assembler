@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.groups",
 		Run:         groups,
 		ClusterSize: 1,
@@ -75,7 +75,7 @@ func init() {
 		           }`),
 		Distros: []string{"fcos", "rhcos"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.v2.users",
 		Run:         users,
 		ClusterSize: 1,

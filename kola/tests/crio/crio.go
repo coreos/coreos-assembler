@@ -197,7 +197,7 @@ var enableCrioIgnV3 = conf.Ignition(`{
 
 // init runs when the package is imported and takes care of registering tests
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         crioBaseTests,
 		ClusterSize: 1,
 		Name:        `crio.base`,
@@ -207,7 +207,7 @@ func init() {
 		UserData:   enableCrioIgn,
 		UserDataV3: enableCrioIgnV3,
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         crioNetwork,
 		ClusterSize: 2,
 		Name:        "crio.network",

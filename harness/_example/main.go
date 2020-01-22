@@ -49,7 +49,7 @@ type Test struct {
 
 var tests harness.Tests
 
-func Register(test Test) {
+func RegisterTest(test Test) {
 	// copy map to prevent surprises
 	defaults := make(map[string]string)
 	for k, v := range test.Defaults {

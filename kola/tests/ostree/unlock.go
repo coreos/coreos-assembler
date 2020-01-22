@@ -24,7 +24,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         ostreeUnlockTest,
 		ClusterSize: 1,
 		Name:        "ostree.unlock",
@@ -32,7 +32,7 @@ func init() {
 		Distros:     []string{"fcos", "rhcos"},
 		FailFast:    true,
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         ostreeHotfixTest,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM

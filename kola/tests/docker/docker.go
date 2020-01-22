@@ -54,7 +54,7 @@ type simplifiedDockerInfo struct {
 }
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         dockerNetwork,
 		ClusterSize: 2,
 		Name:        "docker.network",
@@ -63,13 +63,13 @@ func init() {
 		// qemu-unpriv machines cannot communicate
 		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         dockerOldClient,
 		ClusterSize: 0,
 		Name:        "docker.oldclient",
 		Distros:     []string{"cl"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         dockerUserns,
 		ClusterSize: 1,
 		Name:        "docker.userns",
@@ -113,14 +113,14 @@ passwd:
 	// required. Parallelism should be tweaked at the subtest level in the
 	// 'dockerBaseTests' implementation
 	// The primary goal of using subtests here is to make things quicker to run.
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         dockerBaseTests,
 		ClusterSize: 1,
 		Name:        `docker.base`,
 		Distros:     []string{"cl"},
 	})
 
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         func(c cluster.TestCluster) { testDockerInfo("btrfs", c) },
 		ClusterSize: 1,
 		Name:        "docker.btrfs-storage",
@@ -157,7 +157,7 @@ systemd:
 		Distros: []string{"cl"},
 	})
 
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		// For a while we shipped /usr/lib/coreos/dockerd as the execstart of the
 		// docker systemd unit.
 		// This test verifies backwards compatibility with that unit to ensure
@@ -201,7 +201,7 @@ systemd:
       [Install]
       WantedBy=multi-user.target`),
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		// Ensure containerd gets back up when it dies
 		Name:        "docker.containerd-restart",
 		Run:         dockerContainerdRestart,
