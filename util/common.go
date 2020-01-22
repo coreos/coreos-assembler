@@ -15,6 +15,7 @@
 package util
 
 import (
+	"os"
 	"unsafe"
 )
 
@@ -49,4 +50,15 @@ func StrToPtr(s string) *string {
 
 func BoolToPtr(b bool) *bool {
 	return &b
+}
+
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
