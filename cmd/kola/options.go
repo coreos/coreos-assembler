@@ -188,7 +188,7 @@ func syncOptions() error {
 		cosaBuild = &tmpBuild
 	}
 
-	if kola.QEMUOptions.DiskImage == "" {
+	if kolaPlatform == "qemu-unpriv" && kola.QEMUOptions.DiskImage == "" {
 		if cosaBuild != nil {
 			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), cosaBuild.Images.QEMU.Path)
 		} else {
