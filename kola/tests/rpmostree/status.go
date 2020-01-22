@@ -79,12 +79,8 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	}
 
 	// a deployment should be booted (duh!)
-	var deploymentBooted bool
-	for _, deployment := range status.Deployments {
-		deploymentBooted = deploymentBooted || deployment.Booted
-	}
-	if !deploymentBooted {
-		c.Fatalf(`No deployment reports as being booted`)
+	if _, err := util.GetBootedDeployment(c, m); err != nil {
+		c.Fatal(err)
 	}
 
 	// let's validate that the version from the JSON matches the normal output
