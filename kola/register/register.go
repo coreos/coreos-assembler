@@ -82,6 +82,10 @@ type Test struct {
 // to tests.
 var Tests = map[string]*Test{}
 
+// Registered tests that run as part of `kola run-upgrade` live here. Mapping of
+// names to tests.
+var UpgradeTests = map[string]*Test{}
+
 // Register is usually called via init() functions and is how kola test
 // harnesses knows which tests it can choose from. Panics if existing name is
 // registered
@@ -100,6 +104,10 @@ func Register(m map[string]*Test, t *Test) {
 
 func RegisterTest(t *Test) {
 	Register(Tests, t)
+}
+
+func RegisterUpgradeTest(t *Test) {
+	Register(UpgradeTests, t)
 }
 
 func (t *Test) HasFlag(flag Flag) bool {

@@ -17,19 +17,26 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/coreos/pkg/capnslog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/cosa"
+	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/sdk"
+	"github.com/coreos/mantle/util"
 
 	// register OS test suite
 	_ "github.com/coreos/mantle/kola/registry"
@@ -57,6 +64,16 @@ will be ignored.
 		PreRun: preRun,
 	}
 
+	cmdRunUpgrade = &cobra.Command{
+		Use:          "run-upgrade [glob pattern...]",
+		Short:        "Run upgrade kola tests",
+		Long:         `Run all upgrade kola tests (default) or related groups.`,
+		RunE:         runRunUpgrade,
+		PreRunE:      preRunUpgrade,
+		PostRun:      postRunUpgrade,
+		SilenceUsage: true,
+	}
+
 	cmdList = &cobra.Command{
 		Use:   "list",
 		Short: "List kola test names",
@@ -73,18 +90,25 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		Run: runHttpServer,
 	}
 
-	listJSON bool
-	httpPort int
+	listJSON           bool
+	httpPort           int
+	findParentImage    bool
+	qemuImageDir       string
+	qemuImageDirIsTemp bool
 )
 
 func init() {
 	root.AddCommand(cmdRun)
-	root.AddCommand(cmdList)
 
+	root.AddCommand(cmdList)
 	cmdList.Flags().BoolVar(&listJSON, "json", false, "format output in JSON")
 
 	root.AddCommand(cmdHttpServer)
 	cmdHttpServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
+
+	root.AddCommand(cmdRunUpgrade)
+	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
+	cmdRunUpgrade.Flags().StringVar(&qemuImageDir, "qemu-image-dir", "", "directory in which to cache QEMU images if --fetch-parent-image is enabled")
 }
 
 func main() {
@@ -357,4 +381,170 @@ func runHttpServer(cmd *cobra.Command, args []string) {
 
 	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
+}
+
+func preRunUpgrade(cmd *cobra.Command, args []string) error {
+	// unlike `kola run`, we *require* the --cosa-build arg -- XXX: figure out
+	// how to get this working using cobra's MarkFlagRequired()
+	if kola.Options.CosaBuild == "" {
+		errors.New("Error: missing required argument --cosa-build")
+	}
+
+	err := syncOptions()
+	if err != nil {
+		return err
+	}
+
+	if findParentImage {
+		err = syncFindParentImageOptions()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func postRunUpgrade(cmd *cobra.Command, args []string) {
+	if qemuImageDir != "" && qemuImageDirIsTemp {
+		os.RemoveAll(qemuImageDir)
+	}
+}
+
+// syncFindParentImageOptions handles --find-parent-image automagic.
+func syncFindParentImageOptions() error {
+	var err error
+
+	var parentBaseUrl string
+	switch kola.Options.Distribution {
+	case "fcos":
+		parentBaseUrl, err = getParentFcosBuildBase()
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("--find-parent-image not yet supported for distro %s", kola.Options.Distribution)
+	}
+
+	var parentCosaBuild *cosa.Build
+	parentCosaBuild, err = cosa.FetchAndParseBuild(parentBaseUrl + "meta.json")
+	if err != nil {
+		return err
+	}
+
+	// Here we handle the --fetch-parent-image --> platform-specific options
+	// based on its cosa build metadata
+	switch kolaPlatform {
+	case "qemu-unpriv":
+		if qemuImageDir == "" {
+			if qemuImageDir, err = ioutil.TempDir("", "kola-run-upgrade"); err != nil {
+				return err
+			}
+			qemuImageDirIsTemp = true
+		}
+		qcowUrl := parentBaseUrl + parentCosaBuild.Images.QEMU.Path
+		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.Images.QEMU.Path)
+		decompressedQcowLocal, err := downloadImageAndDecompress(qcowUrl, qcowLocal)
+		if err != nil {
+			return err
+		}
+		kola.QEMUOptions.DiskImage = decompressedQcowLocal
+	case "aws":
+		kola.AWSOptions.AMI, err = parentCosaBuild.FindAMI(kola.AWSOptions.Region)
+		if err != nil {
+			return err
+		}
+	default:
+		err = fmt.Errorf("--find-parent-image not yet supported for platform %s", kolaPlatform)
+	}
+
+	return nil
+}
+
+// Note this is a no-op if the decompressed dest already exists.
+func downloadImageAndDecompress(url, compressedDest string) (string, error) {
+	var decompressedDest string
+	if strings.HasSuffix(compressedDest, ".xz") {
+		// if the decompressed file is already present locally, assume it's
+		// good and verified already
+		decompressedDest = strings.TrimSuffix(compressedDest, ".xz")
+		if exists, err := util.PathExists(decompressedDest); err != nil {
+			return "", err
+		} else if exists {
+			return decompressedDest, nil
+		} else {
+			if err := sdk.DownloadCompressedSignedFile(decompressedDest, url, nil, "", util.XzDecompressStream); err != nil {
+				return "", err
+			}
+			return decompressedDest, nil
+		}
+	}
+
+	if err := sdk.DownloadSignedFile(compressedDest, url, nil, ""); err != nil {
+		return "", err
+	}
+
+	return compressedDest, nil
+}
+
+func getParentFcosBuildBase() (string, error) {
+	// For FCOS, we can be clever and automagically fetch the metadata for the
+	// parent release, which should be the latest release on that stream.
+
+	// We're taking liberal shortcuts here... the cleaner way to do this is
+	// parse commitmeta.json for `fedora-coreos.stream`, then fetch the stream
+	// metadata for that stream, then fetch the release metadata
+
+	if kola.CosaBuild.Ref == "" {
+		return "", errors.New("no ref in build metadata")
+	}
+
+	stream := filepath.Base(kola.CosaBuild.Ref)
+
+	var parentVersion string
+	if kola.CosaBuild.FedoraCoreOSParentVersion != "" {
+		parentVersion = kola.CosaBuild.FedoraCoreOSParentVersion
+	} else {
+		// ok, we're probably operating on a local dev build since the pipeline
+		// always injects the parent; just instead fetch the release index
+		// for that stream and get the last build id from there
+		index, err := fcos.FetchAndParseCanonicalReleaseIndex(stream)
+		if err != nil {
+			return "", err
+		}
+
+		n := len(index.Releases)
+		if n == 0 {
+			return "", fmt.Errorf("no parent version in build metadata, and no build on stream %s", stream)
+		}
+
+		parentVersion = index.Releases[n-1].Version
+	}
+
+	// XXX: multi-arch
+	// XXX: centralize URL and parameterize
+	return fmt.Sprintf("https://builds.coreos.fedoraproject.org/prod/streams/%s/builds/%s/x86_64/", stream, parentVersion), nil
+}
+
+func runRunUpgrade(cmd *cobra.Command, args []string) error {
+	outputDir, err := kola.SetupOutputDir(outputDir, kolaPlatform)
+	if err != nil {
+		return err
+	}
+
+	var patterns []string
+	if len(args) == 0 {
+		patterns = []string{"*"} // run all tests by default
+	} else {
+		patterns = args
+	}
+
+	runErr := kola.RunUpgradeTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+
+	// needs to be after RunTests() because harness empties the directory
+	if err := writeProps(); err != nil {
+		return err
+	}
+
+	return runErr
 }

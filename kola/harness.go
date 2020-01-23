@@ -431,6 +431,10 @@ func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors b
 	return runProvidedTests(register.Tests, patterns, pltfrm, outputDir, propagateTestErrors)
 }
 
+func RunUpgradeTests(patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
+	return runProvidedTests(register.UpgradeTests, patterns, pltfrm, outputDir, propagateTestErrors)
+}
+
 // getClusterSemVer returns the CoreOS semantic version via starting a
 // machine and checking
 func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version, error) {
