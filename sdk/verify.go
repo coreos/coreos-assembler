@@ -29,24 +29,8 @@ import (
 
 const rpmgpgKeyring = "/etc/pki/rpm-gpg"
 
-func Verify(signed, signature io.Reader, keyring openpgp.EntityList) error {
-	_, err := openpgp.CheckDetachedSignature(keyring, signed, signature)
-	return err
-}
-
-func VerifyFile(file, verifyKeyFile string) error {
-	signed, err := os.Open(file)
-	if err != nil {
-		return err
-	}
-	defer signed.Close()
-
-	signature, err := os.Open(file + ".sig")
-	if err != nil {
-		return err
-	}
-	defer signature.Close()
-
+func Verify(signed, signature io.Reader, verifyKeyFile string) error {
+	var err error
 	var keyring openpgp.EntityList
 	if verifyKeyFile == "" {
 		keyring, err = generateKeyRingFromDir(rpmgpgKeyring)
@@ -64,10 +48,24 @@ func VerifyFile(file, verifyKeyFile string) error {
 		}
 	}
 
-	if err := Verify(signed, signature, keyring); err != nil {
-		return fmt.Errorf("%v: %s", err, file)
+	_, err = openpgp.CheckDetachedSignature(keyring, signed, signature)
+	return err
+}
+
+func VerifyFile(file, verifyKeyFile string) error {
+	signed, err := os.Open(file)
+	if err != nil {
+		return err
 	}
-	return nil
+	defer signed.Close()
+
+	signature, err := os.Open(file + ".sig")
+	if err != nil {
+		return err
+	}
+	defer signature.Close()
+
+	return Verify(signed, signature, verifyKeyFile)
 }
 
 func generateKeyRingFromDir(dir string) (openpgp.EntityList, error) {
