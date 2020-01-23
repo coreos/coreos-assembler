@@ -143,9 +143,13 @@ if [ "${image_type}" = dasd ]; then
     ignition_platform_id=metal
 fi
 
-# First parse the old luks_rootfs flag
+# bootfs
+bootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("bootfs", "ext4"))' < "$configdir/image.yaml")"
+
+# First parse the old luks_rootfs flag (a custom "stringified bool")
 rootfs_type="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("luks" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
 if [ -z "${rootfs_type}" ]; then
+    # Now the newer rootfs flag
     rootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("rootfs", "xfs"))' < "$configdir/image.yaml")"
 fi
 
@@ -185,15 +189,21 @@ ostree --repo="${tmprepo}" cat "${commit}" "${target_moduledir}/config" > tmp/ta
 # We need to support kernels that don't have this enabled yet, including RHEL8
 # and current Fedora 31.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1765933
-# We unconditonally enable fs-verity for /boot if we have it,
-# because...integrity there is useful a bit and it will help
-# us prove this out even if we're not using it for the rootfs.
-if grep -Eq '^CONFIG_FS_VERITY=y' tmp/target-kernel.config; then
-    disk_args+=("--boot-verity")
-else
-    echo 'NOTE: Missing CONFIG_FS_VERITY from target kernel config'
-    sleep 1
-fi
+# For a while this was enabled by default, but we backed it out due to the use
+# case of running coreos-installer from old systems (e.g. Debian stable), or
+# ones without CONFIG_FS_VERITY.
+case "${bootfs_type}" in
+  ext4verity)
+        if grep -Eq '^CONFIG_FS_VERITY=y' tmp/target-kernel.config; then
+            disk_args+=("--boot-verity")
+        else
+            echo 'error: Missing CONFIG_FS_VERITY from target kernel config' 1>&2
+            exit 1
+        fi
+        ;;
+  ext4) ;;
+  *) echo "Unsupported bootfs: ${bootfs_type}" 1>&2; exit 1;;
+esac
 rm tmp/target-kernel.config
 
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
