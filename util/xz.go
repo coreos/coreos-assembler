@@ -22,8 +22,27 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
-// XZ2File does xz decompression from src file into dst file
-func XZ2File(dst, src string) error {
+func XzDecompressStream(out io.Writer, in io.Reader) error {
+	// opportunistically use the `xz` CLI if available since it's way faster
+	xzPath, err := exec.LookPath("xz")
+	if err == nil {
+		cmd := exec.Command(xzPath, "--decompress", "--stdout")
+		cmd.Stdin = in
+		cmd.Stdout = out
+		return cmd.Run()
+	}
+
+	reader, err := xz.NewReader(in)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(out, reader)
+	return err
+}
+
+// XzDecompressFile does xz decompression from src file into dst file
+func XzDecompressFile(dst, src string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -36,25 +55,8 @@ func XZ2File(dst, src string) error {
 	}
 	defer out.Close()
 
-	// opportunistically use the `xz` CLI if available since it's way faster
-	xzPath, err := exec.LookPath("xz")
-	if err == nil {
-		cmd := exec.Command(xzPath, "--decompress", "--stdout")
-		cmd.Stdin = in
-		cmd.Stdout = out
-		return cmd.Run()
-	}
-
-	reader, err := xz.NewReader(in)
-	if err != nil {
+	if err = XzDecompressStream(out, in); err != nil {
 		os.Remove(dst)
-		return err
 	}
-
-	_, err = io.Copy(out, reader)
-	if err != nil {
-		os.Remove(dst)
-		return err
-	}
-	return nil
+	return err
 }

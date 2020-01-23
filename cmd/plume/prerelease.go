@@ -234,7 +234,7 @@ func getFedoraImageFile(client *http.Client, spec *channelSpec, src *storage.Buc
 
 	// decompress it
 	plog.Printf("Decompressing %q...", rawxzPath)
-	if err := util.XZ2File(imagePath, rawxzPath); err != nil {
+	if err := util.XzDecompressFile(imagePath, rawxzPath); err != nil {
 		return "", err
 	}
 	return imagePath, nil
