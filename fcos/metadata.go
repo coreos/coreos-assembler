@@ -25,11 +25,47 @@ const canonicalStreamIndexLocation = "https://builds.coreos.fedoraproject.org/pr
 
 // XXX: dedupe with fedora-coreos-stream-generator
 
-// ReleaseIndex for accessing Release Index metadata
+// This models the release index:
+// https://github.com/coreos/fedora-coreos-tracker/tree/master/metadata/release-index
 type ReleaseIndex struct {
-	Releases []struct {
-		Version string `json:"version"`
-	} `json:"releases"`
+	Note     string                `json:"note"` // used to note to users not to consume the release metadata index
+	Releases []ReleaseIndexRelease `json:"releases"`
+	Metadata ReleaseIndexMetadata  `json:"metadata"`
+	Stream   string                `json:"stream"`
+}
+
+type ReleaseIndexRelease struct {
+	CommitHash []ReleaseCommit `json:"commits"`
+	Version    string          `json:"version"`
+	Endpoint   string          `json:"metadata"`
+}
+
+type ReleaseIndexMetadata struct {
+	LastModified string `json:"last-modified"`
+}
+
+// This models release metadata:
+// https://github.com/coreos/fedora-coreos-tracker/tree/master/metadata/release
+type Release struct {
+	Architectures map[string]ReleaseArchitecture `json:"architectures"`
+}
+
+type ReleaseArchitecture struct {
+	Commit string                  `json:"commit"`
+	Media  map[string]ReleaseMedia `json:"media"`
+}
+
+type ReleaseMedia struct {
+	Images map[string]ReleaseAMI `json:"images"`
+}
+
+type ReleaseAMI struct {
+	Image string `json:"image"`
+}
+
+type ReleaseCommit struct {
+	Architecture string `json:"architecture"`
+	Checksum     string `json:"checksum"`
 }
 
 func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {

@@ -32,6 +32,7 @@ import (
 	"google.golang.org/api/compute/v1"
 	gs "google.golang.org/api/storage/v1"
 
+	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/api/azure"
 	"github.com/coreos/mantle/platform/api/gcloud"
@@ -398,6 +399,12 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("creating aws client: %v", err)
 	}
 
+	// Note we use S3 directly here instead of
+	// FetchAndParseCanonicalReleaseIndex(), since that one uses the
+	// CloudFronted URL and we need to be sure we're operating on the latest
+	// version.  Plus we need S3 creds anyway later on to push the modified
+	// release index back.
+
 	path := filepath.Join("prod", "streams", specChannel, "releases.json")
 	data, err := func() ([]byte, error) {
 		f, err := api.DownloadFile(spec.Bucket, path)
@@ -420,8 +427,8 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatal(err)
 	}
 
-	var m ReleaseMetadata
-	err = json.Unmarshal(data, &m)
+	var releaseIdx fcos.ReleaseIndex
+	err = json.Unmarshal(data, &releaseIdx)
 	if err != nil {
 		plog.Fatalf("unmarshaling release metadata json: %v", err)
 	}
@@ -443,40 +450,40 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("reading release metadata: %v", err)
 	}
 
-	var im IndividualReleaseMetadata
-	err = json.Unmarshal(releaseData, &im)
+	var release fcos.Release
+	err = json.Unmarshal(releaseData, &release)
 	if err != nil {
 		plog.Fatalf("unmarshaling release metadata: %v", err)
 	}
 
-	var commits []Commit
-	for arch, vals := range im.Architectures {
-		commits = append(commits, Commit{
+	var commits []fcos.ReleaseCommit
+	for arch, vals := range release.Architectures {
+		commits = append(commits, fcos.ReleaseCommit{
 			Architecture: arch,
 			Checksum:     vals.Commit,
 		})
 	}
 
-	newRel := BuildMetadata{
+	newIdxRelease := fcos.ReleaseIndexRelease{
 		CommitHash: commits,
 		Version:    specVersion,
 		Endpoint:   url.String(),
 	}
 
-	for i, rel := range m.Releases {
-		if compareStaticReleaseInfo(rel, newRel) {
-			if i != (len(m.Releases) - 1) {
+	for i, rel := range releaseIdx.Releases {
+		if compareStaticReleaseInfo(rel, newIdxRelease) {
+			if i != (len(releaseIdx.Releases) - 1) {
 				plog.Fatalf("build is already present and is not the latest release")
 			}
 
-			comp := compareCommits(rel.CommitHash, newRel.CommitHash)
+			comp := compareCommits(rel.CommitHash, newIdxRelease.CommitHash)
 			if comp == 0 {
 				// the build is already the latest release, exit
 				return
 			} else if comp == -1 {
 				// the build is present and contains a subset of the new release data,
 				// pop the old entry and add the new version
-				m.Releases = m.Releases[:len(m.Releases)-1]
+				releaseIdx.Releases = releaseIdx.Releases[:len(releaseIdx.Releases)-1]
 				break
 			} else {
 				// the commit hash of the new build is not a superset of the current release
@@ -485,7 +492,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		}
 	}
 
-	for _, archs := range im.Architectures {
+	for _, archs := range release.Architectures {
 		for name, media := range archs.Media {
 			if name == "aws" {
 				for region, ami := range media.Images {
@@ -507,13 +514,13 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		}
 	}
 
-	m.Releases = append(m.Releases, newRel)
+	releaseIdx.Releases = append(releaseIdx.Releases, newIdxRelease)
 
-	m.Metadata.LastModified = time.Now().UTC().Format("2006-01-02T15:04:05Z")
-	m.Note = "For use only by Fedora CoreOS internal tooling.  All other applications should obtain release info from stream metadata endpoints."
-	m.Stream = specChannel
+	releaseIdx.Metadata.LastModified = time.Now().UTC().Format("2006-01-02T15:04:05Z")
+	releaseIdx.Note = "For use only by Fedora CoreOS internal tooling.  All other applications should obtain release info from stream metadata endpoints."
+	releaseIdx.Stream = specChannel
 
-	out, err := json.Marshal(m)
+	out, err := json.Marshal(releaseIdx)
 	if err != nil {
 		plog.Fatalf("marshalling release metadata json: %v", err)
 	}
@@ -526,7 +533,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	}
 }
 
-func compareStaticReleaseInfo(a, b BuildMetadata) bool {
+func compareStaticReleaseInfo(a, b fcos.ReleaseIndexRelease) bool {
 	if a.Version != b.Version || a.Endpoint != b.Endpoint {
 		return false
 	}
@@ -534,7 +541,7 @@ func compareStaticReleaseInfo(a, b BuildMetadata) bool {
 }
 
 // returns -1 if a is a subset of b, 0 if equal, 1 if a is not a subset of b
-func compareCommits(a, b []Commit) int {
+func compareCommits(a, b []fcos.ReleaseCommit) int {
 	if len(a) > len(b) {
 		return 1
 	}
