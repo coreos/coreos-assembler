@@ -126,6 +126,10 @@ func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
 	return stdout, err
 }
 
+func (t *TestCluster) SSHf(m platform.Machine, f string, args ...interface{}) ([]byte, error) {
+	return t.SSH(m, fmt.Sprintf(f, args...))
+}
+
 // MustSSH runs a ssh command on the given machine in the cluster, writes
 // its stderr to the test's output as a 'Log' line, fails the test if the
 // command is unsuccessful, and returns the command's stdout.
@@ -139,4 +143,8 @@ func (t *TestCluster) MustSSH(m platform.Machine, cmd string) []byte {
 		t.Fatalf("%q failed: output %s, status %v", cmd, out, err)
 	}
 	return out
+}
+
+func (t *TestCluster) MustSSHf(m platform.Machine, f string, args ...interface{}) []byte {
+	return t.MustSSH(m, fmt.Sprintf(f, args...))
 }

@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         TestTLSFetchURLs,
 		ClusterSize: 1,
 		Name:        "coreos.tls.fetch-urls",

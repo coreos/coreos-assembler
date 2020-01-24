@@ -45,7 +45,7 @@ var (
 	}
 
 	cmdRun = &cobra.Command{
-		Use:   "run [glob pattern]",
+		Use:   "run [glob pattern...]",
 		Short: "Run kola tests by category",
 		Long: `Run all kola tests (default) or related groups.
 
@@ -93,6 +93,10 @@ func main() {
 
 func preRun(cmd *cobra.Command, args []string) {
 	err := syncOptions()
+	if err == nil {
+		err = syncCosaOptions()
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(3)
@@ -108,15 +112,11 @@ func preRun(cmd *cobra.Command, args []string) {
 }
 
 func runRun(cmd *cobra.Command, args []string) {
-	if len(args) > 1 {
-		fmt.Fprintf(os.Stderr, "Extra arguments specified. Usage: 'kola run [glob pattern]'\n")
-		os.Exit(2)
-	}
-	var pattern string
-	if len(args) == 1 {
-		pattern = args[0]
+	var patterns []string
+	if len(args) == 0 {
+		patterns = []string{"*"} // run all tests by default
 	} else {
-		pattern = "*" // run all tests by default
+		patterns = args
 	}
 
 	var err error
@@ -126,7 +126,7 @@ func runRun(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	runErr := kola.RunTests(pattern, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
@@ -299,15 +299,6 @@ func runList(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runHttpServer(cmd *cobra.Command, args []string) {
-	directory := "."
-
-	http.Handle("/", http.FileServer(http.Dir(directory)))
-
-	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
-}
-
 type item struct {
 	Name                 string
 	Platforms            []string
@@ -357,4 +348,13 @@ func (i *item) updateValues() {
 
 func (i item) String() string {
 	return fmt.Sprintf("%v\t%v\t%v\t%v", i.Name, i.Platforms, i.Architectures, i.Distros)
+}
+
+func runHttpServer(cmd *cobra.Command, args []string) {
+	directory := "."
+
+	http.Handle("/", http.FileServer(http.Dir(directory)))
+
+	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
 }

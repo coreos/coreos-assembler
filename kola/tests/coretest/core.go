@@ -39,7 +39,7 @@ var offServices = []string{
 }
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "basic",
 		Run:         LocalTests,
 		ClusterSize: 1,
@@ -57,7 +57,7 @@ func init() {
 	// TODO: Enable DockerPing/DockerEcho once fixed
 	// TODO: Only enable PodmanPing on non qemu-unpriv. Needs:
 	// https://github.com/coreos/mantle/issues/1132
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "fcos.internet",
 		Run:         InternetTests,
 		ClusterSize: 1,
@@ -68,7 +68,7 @@ func init() {
 		},
 		Distros: []string{"fcos"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "rootfs.uuid",
 		Run:         LocalTests,
 		ClusterSize: 1,
@@ -78,7 +78,7 @@ func init() {
 		// FIXME run on RHCOS once it has https://github.com/coreos/ignition-dracut/pull/93
 		Distros: []string{"fcos"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "rhcos.services-disabled",
 		Run:         LocalTests,
 		ClusterSize: 1,

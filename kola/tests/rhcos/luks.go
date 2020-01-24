@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:                  luksTPMTest,
 		ClusterSize:          1,
 		Name:                 `rhcos.luks.tpm`,

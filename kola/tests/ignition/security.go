@@ -69,7 +69,7 @@ var (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.security.tls",
 		Run:         securityTLS,
 		ClusterSize: 1,

@@ -78,14 +78,15 @@ type Test struct {
 	EndVersion semver.Version
 }
 
-// Registered tests live here. Mapping of names to tests.
+// Registered tests that run as part of `kola run` live here. Mapping of names
+// to tests.
 var Tests = map[string]*Test{}
 
-// Register is usually called in init() functions and is how kola test
-// harnesses knows which tests it can choose from. Panics if existing
-// name is registered
-func Register(t *Test) {
-	_, ok := Tests[t.Name]
+// Register is usually called via init() functions and is how kola test
+// harnesses knows which tests it can choose from. Panics if existing name is
+// registered
+func Register(m map[string]*Test, t *Test) {
+	_, ok := m[t.Name]
 	if ok {
 		panic(fmt.Sprintf("test %v already registered", t.Name))
 	}
@@ -94,7 +95,11 @@ func Register(t *Test) {
 		panic(fmt.Sprintf("test %v has an invalid version range", t.Name))
 	}
 
-	Tests[t.Name] = t
+	m[t.Name] = t
+}
+
+func RegisterTest(t *Test) {
+	Register(Tests, t)
 }
 
 func (t *Test) HasFlag(flag Flag) bool {

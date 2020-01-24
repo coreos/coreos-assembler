@@ -20,6 +20,8 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -93,9 +95,7 @@ func EnableSelinux(m Machine) error {
 // Reboots a machine, stopping ssh first.
 // Afterwards run CheckMachine to verify the system is back and operational.
 func StartReboot(m Machine) error {
-	// stop sshd so that commonMachineChecks will only work if the machine
-	// actually rebooted
-	out, stderr, err := m.SSH("sudo systemctl stop sshd.socket && sudo reboot")
+	out, stderr, err := m.SSH("sudo reboot")
 	if _, ok := err.(*ssh.ExitMissingError); ok {
 		// A terminated session is perfectly normal during reboot.
 		err = nil
@@ -108,15 +108,46 @@ func StartReboot(m Machine) error {
 
 // RebootMachine will reboot a given machine, provided the machine's journal.
 func RebootMachine(m Machine, j *Journal) error {
+	bootId, err := GetMachineBootId(m)
+	if err != nil {
+		return err
+	}
 	if err := StartReboot(m); err != nil {
 		return fmt.Errorf("machine %q failed to begin rebooting: %v", m.ID(), err)
 	}
-	return StartMachine(m, j)
+	return StartMachineAfterReboot(m, j, bootId)
 }
 
-// StartMachine will start a given machine, provided the machine's journal.
-func StartMachine(m Machine, j *Journal) error {
-	if err := j.Start(context.TODO(), m); err != nil {
+// WaitForMachineReboot will wait for the machine to reboot, i.e. it is assumed
+// an action which will cause a reboot has already been initiated. Note the
+// timeout here is for how long to wait for the machine to seemingly go
+// *offline*, not for how long it takes to get back online. Journal.Start() has
+// its own timeouts for that.
+func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootId string) error {
+	// run a command we know will hold so we know approximately when the reboot happens
+	c := make(chan error)
+	go func() {
+		out, stderr, err := m.SSH("sudo sleep infinity")
+		if _, ok := err.(*ssh.ExitMissingError); ok {
+			c <- nil
+		} else {
+			c <- fmt.Errorf("waiting for reboot failed: %s: %s: %s", out, err, stderr)
+		}
+	}()
+
+	select {
+	case err := <-c:
+		if err != nil {
+			return err
+		}
+		return StartMachineAfterReboot(m, j, oldBootId)
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out after %v waiting for machine to reboot", timeout)
+	}
+}
+
+func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
+	if err := j.Start(context.TODO(), m, oldBootId); err != nil {
 		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
 	}
 	if err := CheckMachine(context.TODO(), m); err != nil {
@@ -128,6 +159,19 @@ func StartMachine(m Machine, j *Journal) error {
 		}
 	}
 	return nil
+}
+
+// StartMachine will start a given machine, provided the machine's journal.
+func StartMachine(m Machine, j *Journal) error {
+	return StartMachineAfterReboot(m, j, "")
+}
+
+func GetMachineBootId(m Machine) (string, error) {
+	stdout, stderr, err := m.SSH("cat /proc/sys/kernel/random/boot_id")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve boot ID: %s: %s: %s", stdout, err, stderr)
+	}
+	return strings.TrimSpace(string(stdout)), nil
 }
 
 // GenerateFakeKey generates a SSH key pair, returns the public key, and

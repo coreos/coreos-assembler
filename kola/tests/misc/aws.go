@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.misc.aws.diskfriendlyname",
 		Platforms:   []string{"aws"},
 		Run:         awsVerifyDiskFriendlyName,

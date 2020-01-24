@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,7 +56,6 @@ func init() {
 	root.PersistentFlags().BoolVarP(&kola.Options.NoTestExitError, "no-test-exit-error", "T", false, "Don't exit with non-zero if tests fail")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Specify multiple times for multiple units.")
-	sv(&kola.UpdatePayloadFile, "update-payload", "", "Path to an update payload that should be made available to tests")
 	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: v2, v3")
 	ssv(&kola.BlacklistedTests, "blacklist-test", []string{}, "List of tests to blacklist")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
@@ -68,7 +66,7 @@ func init() {
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
 	if defaultRegion == "" {
-		defaultRegion = "us-west-2"
+		defaultRegion = "us-east-1"
 	}
 	sv(&kola.AWSOptions.CredentialsFile, "aws-credentials-file", "", "AWS credentials file (default \"~/.aws/credentials\")")
 	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
@@ -171,28 +169,11 @@ func syncOptions() error {
 		return err
 	}
 
-	var cosaBuild *cosa.Build
 	if kola.Options.CosaBuild != "" {
-		f, err := os.Open(kola.Options.CosaBuild)
+		var err error
+		kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
 		if err != nil {
 			return err
-		}
-		defer f.Close()
-		dec := json.NewDecoder(f)
-		// FIXME enable this to prevent schema regressions https://github.com/coreos/coreos-assembler/pull/1059
-		// dec.DisallowUnknownFields()
-		var tmpBuild cosa.Build
-		if err := dec.Decode(&tmpBuild); err != nil {
-			return err
-		}
-		cosaBuild = &tmpBuild
-	}
-
-	if kolaPlatform == "qemu-unpriv" && kola.QEMUOptions.DiskImage == "" {
-		if cosaBuild != nil {
-			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), cosaBuild.Images.QEMU.Path)
-		} else {
-			return fmt.Errorf("No --qemu-image or --cosa-build provided")
 		}
 	}
 
@@ -214,6 +195,23 @@ func syncOptions() error {
 		kola.Options.IgnitionVersion, ok = kolaIgnitionVersionDefaults[kola.Options.Distribution]
 		if !ok {
 			return fmt.Errorf("Distribution %q has no default Ignition version", kola.Options.Distribution)
+		}
+	}
+
+	return nil
+}
+
+// syncCosaOptions parses the cosa build and sets unset platform-specific
+// options that can be derived from the cosa build metadata
+func syncCosaOptions() error {
+	if kola.CosaBuild == nil {
+		return nil
+	}
+
+	switch kolaPlatform {
+	case "qemu-unpriv", "qemu":
+		if kola.QEMUOptions.DiskImage == "" {
+			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.Images.QEMU.Path)
 		}
 	}
 

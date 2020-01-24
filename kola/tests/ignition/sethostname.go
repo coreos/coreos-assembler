@@ -62,7 +62,7 @@ func init() {
 	// These tests are disabled on Azure because the hostname
 	// is required by the API and is overwritten via waagent.service
 	// after the machine has booted.
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:             "coreos.ignition.sethostname",
 		Run:              setHostname,
 		ClusterSize:      1,

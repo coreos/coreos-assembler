@@ -16,6 +16,7 @@ package unprivqemu
 
 import (
 	"io/ioutil"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -62,6 +63,10 @@ func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 
 func (m *machine) Reboot() error {
 	return platform.RebootMachine(m, m.journal)
+}
+
+func (m *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	return platform.WaitForMachineReboot(m, m.journal, timeout, oldBootId)
 }
 
 func (m *machine) Destroy() {

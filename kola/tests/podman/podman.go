@@ -34,7 +34,7 @@ import (
 
 // init runs when the package is imported and takes care of registering tests
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         podmanBaseTest,
 		ClusterSize: 1,
 		Name:        `podman.base`,
@@ -42,7 +42,7 @@ func init() {
 	})
 	// These remaining tests use networking, and hence don't work reliably on RHCOS
 	// right now due to due to https://bugzilla.redhat.com/show_bug.cgi?id=1757572
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         podmanWorkflow,
 		ClusterSize: 1,
 		Name:        `podman.workflow`,
@@ -50,14 +50,14 @@ func init() {
 		Distros:     []string{"fcos"},
 		FailFast:    true,
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         podmanNetworksReliably,
 		ClusterSize: 1,
 		Name:        `podman.network-single`,
 		Distros:     []string{"fcos"},
 	})
 	// https://github.com/coreos/mantle/pull/1080
-	// register.Register(&register.Test{
+	// register.RegisterTest(&register.Test{
 	// 	Run:         podmanNetworkTest,
 	// 	ClusterSize: 2,
 	// 	Name:        `podman.network-multi`,

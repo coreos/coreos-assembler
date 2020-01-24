@@ -30,7 +30,7 @@ import (
 // the refs are defined. if 'fcos' goes in the same direction, we can
 // expand support there.
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         ostreeBasicTest,
 		ClusterSize: 1,
 		Name:        "ostree.basic",
@@ -38,7 +38,7 @@ func init() {
 		FailFast:    true,
 	})
 
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         ostreeRemoteTest,
 		ClusterSize: 1,
 		Name:        "ostree.remote",

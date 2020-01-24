@@ -197,7 +197,7 @@ var enableCrioIgnV3 = conf.Ignition(`{
 
 // init runs when the package is imported and takes care of registering tests
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         crioBaseTests,
 		ClusterSize: 1,
 		Name:        `crio.base`,
@@ -207,7 +207,7 @@ func init() {
 		UserData:   enableCrioIgn,
 		UserDataV3: enableCrioIgnV3,
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         crioNetwork,
 		ClusterSize: 2,
 		Name:        "crio.network",
@@ -300,19 +300,19 @@ func crioNetwork(c cluster.TestCluster) {
 	}
 
 	listener := func(ctx context.Context) error {
-		podID, err := c.SSH(dest, fmt.Sprintf("sudo crictl runp %s", crioConfigPod))
+		podID, err := c.SSHf(dest, "sudo crictl runp %s", crioConfigPod)
 		if err != nil {
 			return err
 		}
 
-		containerID, err := c.SSH(dest, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
-			podID, crioConfigContainer, crioConfigPod))
+		containerID, err := c.SSHf(dest, "sudo crictl create --no-pull %s %s %s",
+			podID, crioConfigContainer, crioConfigPod)
 		if err != nil {
 			return err
 		}
 
 		// This command will block until a message is recieved
-		output, err := c.SSH(dest, fmt.Sprintf("sudo timeout 30 crictl exec %s echo 'HELLO FROM SERVER' | timeout 20 ncat --listen 0.0.0.0 9988 || echo 'LISTENER TIMEOUT'", containerID))
+		output, err := c.SSHf(dest, "sudo timeout 30 crictl exec %s echo 'HELLO FROM SERVER' | timeout 20 ncat --listen 0.0.0.0 9988 || echo 'LISTENER TIMEOUT'", containerID)
 		if err != nil {
 			return err
 		}
@@ -343,19 +343,19 @@ func crioNetwork(c cluster.TestCluster) {
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
-		podID, err := c.SSH(src, fmt.Sprintf("sudo crictl runp %s", crioConfigPod))
+		podID, err := c.SSHf(src, "sudo crictl runp %s", crioConfigPod)
 		if err != nil {
 			return err
 		}
 
-		containerID, err := c.SSH(src, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
-			podID, crioConfigContainer, crioConfigPod))
+		containerID, err := c.SSHf(src, "sudo crictl create --no-pull %s %s %s",
+			podID, crioConfigContainer, crioConfigPod)
 		if err != nil {
 			return err
 		}
 
-		output, err := c.SSH(src, fmt.Sprintf("sudo crictl exec %s echo 'HELLO FROM CLIENT' | ncat %s 9988",
-			containerID, dest.PrivateIP()))
+		output, err := c.SSHf(src, "sudo crictl exec %s echo 'HELLO FROM CLIENT' | ncat %s 9988",
+			containerID, dest.PrivateIP())
 		if err != nil {
 			return err
 		}

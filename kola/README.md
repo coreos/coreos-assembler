@@ -22,7 +22,7 @@ func podmanNOOP(c cluster.TestCluster) {
 }
 $ $EDITOR podman/podman.go # Register the test in the init
 func init() {
-    register.Register(&register.Test{
+    register.RegisterTest(&register.Test{
         Run:         podmanNOOP,
         ClusterSize: 1,
         Name:        `podman.noop`,
@@ -57,7 +57,7 @@ Additionally, the FailFast flag can be enabled during the test registration to s
 Continuing with the look at the `podman` package we can see that `podman.base` is registered like so:
 
 ```golang
-    register.Register(&register.Test{
+    register.RegisterTest(&register.Test{
             Run:         podmanBaseTest,
             ClusterSize: 1,
             Name:        `podman.base`,
@@ -132,7 +132,7 @@ import (
 
 // init runs when the package is imported and takes care of registering tests
 func init() {
-    register.Register(&register.Test{ // See: https://godoc.org/github.com/coreos/mantle/kola/register#Test
+    register.RegisterTest(&register.Test{ // See: https://godoc.org/github.com/coreos/mantle/kola/register#Test
             Run:         exampleTestGroup,
             ClusterSize: 1,
             Name:        `example.example`,

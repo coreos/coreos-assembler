@@ -59,7 +59,7 @@ var (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		// This test needs additional disks which is only supported on qemu since Ignition
 		// does not support deleting partitions without wiping the partition table and the
 		// disk doesn't have room for new partitions.
@@ -71,7 +71,7 @@ func init() {
 		Name:        "cl.disk.raid.root",
 		Distros:     []string{"cl"},
 	})
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         DataOnRaid,
 		ClusterSize: 1,
 		Name:        "cl.disk.raid.data",

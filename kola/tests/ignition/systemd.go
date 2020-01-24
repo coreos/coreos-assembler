@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.systemd.enable-service",
 		Run:         enableSystemdService,
 		ClusterSize: 1,

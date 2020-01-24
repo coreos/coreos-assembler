@@ -17,6 +17,7 @@ package util
 import (
 	"io"
 	"os"
+	"os/exec"
 
 	"github.com/ulikunitz/xz"
 )
@@ -34,6 +35,15 @@ func XZ2File(dst, src string) error {
 		return err
 	}
 	defer out.Close()
+
+	// opportunistically use the `xz` CLI if available since it's way faster
+	xzPath, err := exec.LookPath("xz")
+	if err == nil {
+		cmd := exec.Command(xzPath, "--decompress", "--stdout")
+		cmd.Stdin = in
+		cmd.Stdout = out
+		return cmd.Run()
+	}
 
 	reader, err := xz.NewReader(in)
 	if err != nil {

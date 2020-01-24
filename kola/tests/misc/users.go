@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:              CheckUserShells,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"gce"},

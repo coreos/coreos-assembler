@@ -48,8 +48,8 @@ func run(cmd *cobra.Command, args []string) {
 	os.Exit(2)
 }
 
-func main() {
-	for testName, testObj := range register.Tests {
+func registerTestMap(m map[string]*register.Test) {
+	for testName, testObj := range m {
 		if len(testObj.NativeFuncs) == 0 {
 			continue
 		}
@@ -78,6 +78,10 @@ func main() {
 		}
 		cmdRun.AddCommand(testCmd)
 	}
+}
+
+func main() {
+	registerTestMap(register.Tests)
 	root.AddCommand(cmdRun)
 
 	cli.Execute(root)

@@ -17,6 +17,7 @@ package gcloud
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -63,6 +64,10 @@ func (gm *machine) SSH(cmd string) ([]byte, []byte, error) {
 
 func (gm *machine) Reboot() error {
 	return platform.RebootMachine(gm, gm.journal)
+}
+
+func (gm *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	return platform.WaitForMachineReboot(gm, gm.journal, timeout, oldBootId)
 }
 
 func (gm *machine) Destroy() {

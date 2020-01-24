@@ -21,7 +21,7 @@ import (
 
 // init runs when the package is imported and takes care of registering tests
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         noPythonTest,
 		ClusterSize: 1,
 		Name:        `fcos.python`,

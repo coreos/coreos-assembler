@@ -20,7 +20,7 @@ import (
 )
 
 func init() {
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Run:         gshadowParser,
 		ClusterSize: 1,
 		Name:        "systemd.sysusers.gshadow",

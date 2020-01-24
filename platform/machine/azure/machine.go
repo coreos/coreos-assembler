@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -73,18 +74,30 @@ func (am *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return am.cluster.SSH(am, cmd)
 }
 
-func (am *machine) Reboot() error {
-	err := platform.RebootMachine(am, am.journal)
-	if err != nil {
-		return err
-	}
-
-	// Re-fetch the Public & Private IP address for the event that it's changed during the reboot
+// Re-fetch the Public & Private IP address for the event that it's changed during the reboot
+func (am *machine) refetchIPs() error {
+	var err error
 	am.mach.PublicIPAddress, am.mach.PrivateIPAddress, err = am.cluster.flight.api.GetIPAddresses(am.InterfaceName(), am.PublicIPName(), am.ResourceGroup())
 	if err != nil {
 		return fmt.Errorf("Fetching IP addresses: %v", err)
 	}
 	return nil
+}
+
+func (am *machine) Reboot() error {
+	err := platform.RebootMachine(am, am.journal)
+	if err != nil {
+		return err
+	}
+	return am.refetchIPs()
+}
+
+func (am *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
+	err := platform.WaitForMachineReboot(am, am.journal, timeout, oldBootId)
+	if err != nil {
+		return err
+	}
+	return am.refetchIPs()
 }
 
 func (am *machine) Destroy() {

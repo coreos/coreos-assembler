@@ -16,6 +16,7 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -55,4 +56,19 @@ func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifi
 	}
 
 	return target, nil
+}
+
+func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*rpmOstreeDeployment, error) {
+	s, err := GetRpmOstreeStatusJSON(c, m)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, d := range s.Deployments {
+		if d.Booted {
+			return &d, nil
+		}
+	}
+
+	return nil, errors.New("No booted deployment found")
 }

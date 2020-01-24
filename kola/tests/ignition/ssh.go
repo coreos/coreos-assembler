@@ -22,7 +22,7 @@ import (
 func init() {
 	// verify that SSH key injection works correctly through Ignition,
 	// without injecting via platform metadata
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:             "coreos.ignition.ssh.key",
 		Run:              empty,
 		ClusterSize:      1,

@@ -185,7 +185,7 @@ var (
 
 func init() {
 	// mount disks to `/var/log` and `/var/lib/containers`
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.mount.disks",
 		Run:         testMountDisks,
 		ClusterSize: 0,
@@ -193,7 +193,7 @@ func init() {
 		Distros:     []string{"fcos", "rhcos"},
 	})
 	// create new partiitons with disk `vda`
-	register.Register(&register.Test{
+	register.RegisterTest(&register.Test{
 		Name: "coreos.ignition.mount.partitions",
 		Run:  testMountPartitions,
 		UserData: conf.Ignition(`{
