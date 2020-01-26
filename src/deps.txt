@@ -64,3 +64,6 @@ fedora-messaging
 
 # For debugging running processes in the pipelines
 strace
+
+# Used to validate the meta.json schema
+python3-jsonschema

@@ -1,4 +1,5 @@
 import json
+import jsonschema
 import os.path
 
 from cosalib.builds import Builds
@@ -7,18 +8,40 @@ from cosalib.cmdlib import (
     write_json)
 
 
+SCHEMA_PATH = os.environ.get("COSA_META_SCHEMA",
+                             "/usr/lib/coreos-assembler/schema/v1.json")
+
+
+class COSAInvalidMeta(Exception):
+    """
+    Raised when meta.json does not validate
+    """
+    def __str__(self):
+        return f"meta.json is or would be invalid: {': '.join(self.args)}"
+
+
 class GenericBuildMeta(dict):
     """
     GenericBuildMeta interacts with a builds meta.json
     """
 
-    def __init__(self, workdir=None, build='latest'):
+    def __init__(self, workdir=None, build='latest',
+                 schema=SCHEMA_PATH):
         builds = Builds(workdir)
         if build != "latest":
             if not builds.has(build):
                 raise Exception('Build was not found in builds.json')
         else:
             build = builds.get_latest()
+
+        # Load the schema
+        self._validator = None
+        self._schema_path = schema
+        if schema:
+            with open(schema, 'r') as data:
+                self._validator = jsonschema.Draft7Validator(
+                    json.loads(data.read())
+                )
 
         self._meta_path = os.path.join(
             builds.get_build_dir(build), 'meta.json')
@@ -28,6 +51,15 @@ class GenericBuildMeta(dict):
     def path(self):
         return self._meta_path
 
+    def validate(self):
+        """
+        validate ensures that the meta structure matches the schema
+        expected.
+        """
+        if not self._validator:
+            return
+        self._validator.validate(dict(self))
+
     def read(self):
         """
         Read the meta.json file into this object instance.
@@ -36,11 +68,13 @@ class GenericBuildMeta(dict):
         self.clear()
         # Load the file
         self.update(load_json(self._meta_path))
+        self.validate()
 
     def write(self):
         """
         Write out the dict to the meta path.
         """
+        self.validate()
         write_json(self._meta_path, dict(self))
 
     def get(self, *args):
@@ -70,6 +104,9 @@ class GenericBuildMeta(dict):
             return haystack
         except KeyError:
             return default
+
+    def dict(self):
+        return dict(self)
 
     def set(self, pathing, value):
         """

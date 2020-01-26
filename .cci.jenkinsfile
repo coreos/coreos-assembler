@@ -42,6 +42,8 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
               cosa_cmd("buildextend-openstack")
               cosa_cmd("buildextend-vmware")
               cosa_cmd("compress")
+              // quick schema validation"
+              cosa_cmd("meta --get name")
               cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
           }
       }

@@ -73,6 +73,8 @@ if [ -z "${cmd}" ]; then
 fi
 shift
 
+export COSA_META_SCHEMA="/usr/lib/coreos-assembler/schema/v1.json"
+
 target=/usr/lib/coreos-assembler/cmd-${cmd}
 if test -x "${target}"; then
     exec "${target}" "$@"
