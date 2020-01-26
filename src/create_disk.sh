@@ -239,7 +239,7 @@ chcon $(matchpathcon -n /ostree) $rootfs/ostree
 mkdir -p $rootfs/ostree/{repo,deploy}
 ostree --repo=$rootfs/ostree/repo init --mode=bare
 if [ "${rootfs_type}" = "ext4verity" ]; then
-    ostree config --repo=$rootfs/ostree/repo set fsverity.required 'true'
+    ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
 remote_arg=
 deploy_ref="${ref}"
