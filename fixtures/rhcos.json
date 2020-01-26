@@ -1,0 +1,160 @@
+{
+    "build-url": "https://example.org/job/rhcos-rhcos-4.4/5/",
+    "buildid": "44devel.81.202001151926.0",
+    "coreos-assembler.basearch": "x86_64",
+    "coreos-assembler.build-timestamp": "2020-01-15T19:32:19Z",
+    "coreos-assembler.code-source": "container",
+    "coreos-assembler.config-dirty": "true",
+    "coreos-assembler.config-gitrev": "v3.1-728-g742edc307e58f35824d906958b6493510e12b593",
+    "coreos-assembler.container-config-git": {
+        "branch": "HEAD",
+        "commit": "742edc307e58f35824d906958b6493510e12b593",
+        "dirty": "true",
+        "origin": "https://example.org/coreos/redhat-coreos.git"
+    },
+    "coreos-assembler.container-image-git": {
+        "branch": "HEAD",
+        "commit": "e41cbf0422adbb468911734b0516ebf4e7f977f4",
+        "dirty": "false",
+        "origin": "git@github.com:coreos/coreos-assembler.git"
+    },
+    "coreos-assembler.image-config-checksum": "f15f5b25cf138a7683e3d200c53ece2091bf71d31332135da87892ab72ff4ee3",
+    "coreos-assembler.image-genver": 0,
+    "coreos-assembler.image-input-checksum": "59b0904f91aafcf55a66075b731476f802c9d60f17b0c670fb5c43d26333b876",
+    "images": {
+        "ostree": {
+            "path": "rhcos-44devel.81.202001151926.0-ostree.x86_64.tar",
+            "sha256": "43375fa20ea1ff31ce83110b604cfab518da5b6b5a6c9c4c6cde3449d862c530",
+            "size": 814407680
+        },
+        "qemu": {
+            "path": "rhcos-44devel.81.202001151926.0-qemu.x86_64.qcow2.gz",
+            "sha256": "32d6716fb5df55457870298e24bdbf695d8c9127458d8fbfb0f7820e860901d5",
+            "size": 893759709,
+            "uncompressed-sha256": "72775ed71e40fce806a5a76bee73b22155f9a2d2ef1a9a9ea9a1a12f5bbbf3ac",
+            "uncompressed-size": 2476539904
+        },
+        "metal": {
+            "path": "rhcos-44devel.81.202001151926.0-metal.x86_64.raw.gz",
+            "sha256": "2899aa904e7646a10f25dae6ecc2c1099673b3fd39c122265d2d5faa5b9a7595",
+            "size": 894265661,
+            "uncompressed-sha256": "0f135871fe452b66f28383f5882aa5544fdb700755a68fbbb4b3dc42e3c5896e",
+            "uncompressed-size": 3824156672
+        },
+        "iso": {
+            "path": "rhcos-44devel.81.202001151926.0-installer.x86_64.iso",
+            "sha256": "770d6372dc469c2704b0ffff8b3c7f655115ddda8505d64789457ae450d79a54"
+        },
+        "kernel": {
+            "path": "rhcos-44devel.81.202001151926.0-installer-kernel-x86_64",
+            "sha256": "7ace7ebdb828e1dc4d242b2fb8a360e7b97da7748d2fde4ffa3bd30232c04865"
+        },
+        "initramfs": {
+            "path": "rhcos-44devel.81.202001151926.0-installer-initramfs.x86_64.img",
+            "sha256": "6cf23a16b8da57d35a0b066dfca7c2a2815654a0e84e65ba463a8ae45031a05b"
+        },
+        "openstack": {
+            "path": "rhcos-44devel.81.202001151926.0-openstack.x86_64.qcow2.gz",
+            "sha256": "72adb012bda15edc9d73052a534c1e0622c0671312691df9688f89bc4cf80f98",
+            "size": 893754996,
+            "uncompressed-sha256": "f43e20128d46e33c3a3a05985848647be11d51087cf2c24f6aee9310b4c53868",
+            "uncompressed-size": 2476605440
+        },
+        "vmware": {
+            "path": "rhcos-44devel.81.202001151926.0-vmware.x86_64.ova",
+            "sha256": "13980e76ca5dfe17cdbf1cae8d0e725805a99177136ac74fd95755b5eb61771c",
+            "size": 927324160
+        },
+        "aliyun": {
+            "path": "rhcos-44devel.81.202001151926.0-aliyun.x86_64.qcow2.gz",
+            "sha256": "1503360deb4ff46d662284ef00cc7c0e4cb96a6a0588ec10fb562238f1f1cf46",
+            "size": 893754990,
+            "uncompressed-sha256": "5abd1223cfd0283c0be7a2a29bf0326b37ed14b6771916c17806dc9dae22bdf1",
+            "uncompressed-size": 2476605440
+        },
+        "aws": {
+            "path": "rhcos-44devel.81.202001151926.0-aws.x86_64.vmdk.gz",
+            "sha256": "96481a13c5a4cc25eb718abf1e032cf68c15444d7d4fbf98fe7ab01e72d12ee6",
+            "size": 908650544,
+            "uncompressed-sha256": "7d9216eeb942df24a46c320667222c2f7677290d631c2dace2874a5b8be4e833",
+            "uncompressed-size": 927316480
+        },
+        "azure": {
+            "path": "rhcos-44devel.81.202001151926.0-azure.x86_64.vhd.gz",
+            "sha256": "73ac7c8ab0e7d08fb991425d184ab363b96c5604597ace73625ed2734e9ff43f",
+            "size": 893094276,
+            "uncompressed-sha256": "910e3a0a9c59eea1dd9303414fa987377f301cd519c52573cdf993793711f1d8",
+            "uncompressed-size": 2521427456
+        },
+        "gcp": {
+            "path": "rhcos-44devel.81.202001151926.0-gcp.x86_64.tar.gz",
+            "sha256": "842e04f40889ca05da54f1a8acd263f273dd72fce8e004264739f38eaf46f11d",
+            "size": 892692916
+        }
+    },
+    "name": "rhcos",
+    "oscontainer": {
+        "digest": "sha256:f8d18011913e87ae59d3781f3d07819267d43401ab444fb3b5794a5eb392b915",
+        "image": "registry.svc.ci.openshift.org/rhcos-devel/machine-os-content"
+    },
+    "ostree-commit": "9665ab0cfd4a995cf70f1a3bb678d3515a03f7d3b5bb87d723ba06c26f0daa6e",
+    "ostree-content-bytes-written": 156269945,
+    "ostree-content-checksum": "e02647edba305ad68e2c7c5bb3a2c7765eb4ea6aadd1ebf8e538e459ebf99ed7",
+    "ostree-n-cache-hits": 19185,
+    "ostree-n-content-total": 3688,
+    "ostree-n-content-written": 1210,
+    "ostree-n-metadata-total": 9225,
+    "ostree-n-metadata-written": 3015,
+    "ostree-timestamp": "2020-01-15T19:31:31Z",
+    "ostree-version": "44devel.81.202001151926.0",
+    "pkgdiff": [
+        [
+            "machine-config-daemon",
+            2,
+            {
+                "NewPackage": [
+                    "machine-config-daemon",
+                    "4.4.0-202001151823.git.1.7a12db8.el8",
+                    "x86_64"
+                ],
+                "PreviousPackage": [
+                    "machine-config-daemon",
+                    "4.4.0-202001151223.git.1.ca1f2c2.el8",
+                    "x86_64"
+                ]
+            }
+        ]
+    ],
+    "rpm-ostree-inputhash": "13de3656ed8f55f8b8bafeab7a2320496c247cf533063e3d3daa63a95592f1ac",
+    "summary": "OpenShift 4",
+    "aliyun": [
+        {
+            "name": "us-west-1",
+            "id": "m-rj000000aaaa111azzzz"
+        },
+        {
+            "name": "cn-shanghai",
+            "id": "m-rj000000aaaa111azzzz"
+        }
+    ],
+    "amis": [
+        {
+            "name": "us-east-1",
+            "hvm": "ami-012345678abcdef00",
+            "snapshot": "snap-012345678abcdef00"
+        },
+        {
+            "name": "eu-north-1",
+            "hvm": "ami-012345678abcdef00",
+            "snapshot": "snap-012345678abcdef00"
+        }
+    ],
+    "azure": {
+        "image": "rhcos-44devel.81.202001151926.0-azure.x86_64.vhd",
+        "url": "https://example.org/imagebucket/rhcos-44devel.81.202001151926.0-azure.x86_64.vhd"
+    },
+    "gcp": {
+        "image": "rhcos-44devel-81-202001151926-0",
+        "url": "https://example.org/rhcos-devel/devel/rhcos/44devel.81.202001151926.0.tar.gz"
+    }
+}

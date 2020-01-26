@@ -44,7 +44,9 @@ flake8:
 	# find src -maxdepth 1 -name "*.py" | xargs flake8 --ignore=$(PYIGNORE)
 
 unittest:
-	PYTHONPATH=`pwd`/src python3 -m pytest tests/
+	COSA_TEST_META_JSON=`pwd`/fixtures/rhcos.json \
+		COSA_META_SCHEMA=`pwd`/src/schema/v1.json \
+		PYTHONPATH=`pwd`/src python3 -m pytest tests/
 
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
@@ -60,6 +62,8 @@ install:
 	cp -df -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler $$(find src/ -maxdepth 1 -type l)
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib $$(find src/cosalib/ -maxdepth 1 -type f)
+	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/schema
+	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/schema $$(find src/schema/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
