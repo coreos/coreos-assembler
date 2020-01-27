@@ -26,11 +26,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 parser.add_argument("--basic-qemu-scenarios", help="Run the basic test across uefi-secure,nvme etc.", action='store_true')
 parser.add_argument("--output-dir", help="Output directory")
+parser.add_argument("--upgrades", help="Run upgrade tests", action='store_true')
 parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
                     default=[])
 args, unknown_args = parser.parse_known_args()
 
-default_cmd = 'run'
+if args.upgrades:
+    default_cmd = 'run-upgrade'
+else:
+    default_cmd = 'run'
 
 builds = Builds()
 if args.build is None:
@@ -102,6 +106,14 @@ if args.basic_qemu_scenarios:
         subargs = kolaargs + ['--qemu-' + scenario, 'basic']
         print(subprocess.list2cmdline(subargs), flush=True)
         subprocess.check_call(subargs)
+elif args.upgrades:
+    if '--qemu-image-dir' not in unknown_args:
+        os.makedirs('tmp/kola-qemu-cache', exist_ok=True)
+        kolaargs.extend(['--qemu-image-dir', 'tmp/kola-qemu-cache'])
+    kolaargs.extend(['-v', '--find-parent-image', '--qemu-image-dir',
+                     'tmp/kola-qemu-cache'])
+    print(subprocess.list2cmdline(kolaargs), flush=True)
+    os.execvpe('kola', kolaargs, env)
 else:
     # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
     print(subprocess.list2cmdline(kolaargs), flush=True)
