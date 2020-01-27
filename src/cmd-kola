@@ -27,8 +27,10 @@ parser.add_argument("--build", help="Build ID")
 parser.add_argument("--basic-qemu-scenarios", help="Run the basic test across uefi-secure,nvme etc.", action='store_true')
 parser.add_argument("--output-dir", help="Output directory")
 parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
-                    default=['run'])
+                    default=[])
 args, unknown_args = parser.parse_known_args()
+
+default_cmd = 'run'
 
 builds = Builds()
 if args.build is None:
@@ -80,7 +82,7 @@ if os.getuid() != 0 and not ('-p' in unknown_args):
 kolaargs.extend(['--cosa-build', buildmeta_path])
 outputdir = args.output_dir or "tmp/kola"
 kolaargs.extend(['--output-dir', outputdir])
-kolaargs.extend(args.subargs)
+kolaargs.extend(args.subargs or [default_cmd])
 kolaargs.extend(unknown_args)
 
 kolaargs.extend(blacklist_args)
