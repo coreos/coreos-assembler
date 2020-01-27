@@ -82,6 +82,7 @@ func registerTestMap(m map[string]*register.Test) {
 
 func main() {
 	registerTestMap(register.Tests)
+	registerTestMap(register.UpgradeTests)
 	root.AddCommand(cmdRun)
 
 	cli.Execute(root)

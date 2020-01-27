@@ -31,6 +31,7 @@ import (
 
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -194,6 +195,81 @@ func DownloadSignedFile(file, url string, client *http.Client, verifyKeyFile str
 
 	plog.Infof("Verified file: %s", file)
 	return nil
+}
+
+func getUrlStream(url string, client *http.Client) (*http.Response, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// Downloads, verifies, and decompresses in one shot. Unlike
+// DownloadSignedFile, this does not support resuming downloads, hence why it's
+// tricky to share code between those two paths.
+func DownloadCompressedSignedFile(file, url string, client *http.Client, verifyKeyFile string, decompressor func(io.Writer, io.Reader) error) error {
+	// A better approach here is using O_TMPFILE so it remains anonymous until
+	// it's verified. Although, this is not much different from
+	// DownloadSignedFile leaving the file around too.
+	dst, err := os.OpenFile(file+".unverified", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	fileStreamResp, err := getUrlStream(url, client)
+	if err != nil {
+		return err
+	}
+	defer fileStreamResp.Body.Close()
+
+	fileSigStreamResp, err := getUrlStream(url+".sig", client)
+	if err != nil {
+		return err
+	}
+	defer fileSigStreamResp.Body.Close()
+
+	var g errgroup.Group
+
+	// pass through progress bar
+	prefix := filepath.Base(file)
+	progressR, progressW := io.Pipe()
+	g.Go(func() error {
+		defer progressW.Close()
+		_, err := util.CopyProgress(capnslog.INFO, prefix, progressW, fileStreamResp.Body, fileStreamResp.ContentLength)
+		return err
+	})
+
+	// split the input into two streams: one for verification, one for decompression
+	fileStreamVerify, fileStreamVerifyW := io.Pipe()
+	fileStreamCompressed := io.TeeReader(progressR, fileStreamVerifyW)
+
+	// start decompressing into the destination file
+	g.Go(func() error {
+		defer fileStreamVerifyW.Close()
+		return decompressor(dst, fileStreamCompressed)
+	})
+
+	// start verifying at the same time
+	g.Go(func() error {
+		return Verify(fileStreamVerify, fileSigStreamResp.Body, verifyKeyFile)
+	})
+
+	if err = g.Wait(); err == nil {
+		os.Rename(file+".unverified", file)
+	}
+	return err
 }
 
 func DownloadSDK(version, verifyKeyFile string) error {
