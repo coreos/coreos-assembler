@@ -34,7 +34,8 @@ builds = Builds()
 if args.build is None:
     args.build = builds.get_latest()
 builddir = builds.get_build_dir(args.build)
-with open(os.path.join(builddir, "meta.json")) as f:
+buildmeta_path = os.path.join(builddir, "meta.json")
+with open(buildmeta_path) as f:
     buildmeta = json.load(f)
 
 # automatically add blacklisted tests specified in the src config
@@ -76,7 +77,7 @@ if os.getuid() != 0 and not ('-p' in unknown_args):
     kolaargs.extend(['-p', 'qemu-unpriv'])
 
 # shellcheck disable=SC2086
-kolaargs.extend(['--qemu-image', qemupath])
+kolaargs.extend(['--cosa-build', buildmeta_path])
 outputdir = args.output_dir or "tmp/kola"
 kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs)
