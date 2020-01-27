@@ -38,7 +38,7 @@ EOC
 
 rootfs_size="0"
 boot_verity=0
-rootfs="xfs"
+rootfs_type="xfs"
 extrakargs=""
 
 while [ $# -gt 0 ];
@@ -58,7 +58,7 @@ do
         --save-var-subdirs) save_var_subdirs="${1}"; shift;;
         --rootfs-size)      rootfs_size="${1}"; shift;;
         --boot-verity)      boot_verity=1;;
-        --rootfs)           rootfs="${1}" shift;;
+        --rootfs)           rootfs_type="${1}" shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
          --) break;
      esac;
@@ -81,9 +81,9 @@ grub_script="${grub_script:?--grub-script must be defined}"
 os_name="${os_name:?--os_name must be defined}"
 save_var_subdirs="${save_var_subdirs:?--save_var_subdirs must be defined}"
 
-case "${rootfs}" in
+case "${rootfs_type}" in
     xfs|ext4verity|luks) ;;
-    *) echo "Invalid rootfs type: ${rootfs}" 1>&2; exit 1;;
+    *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;
 esac
 
 set -x
@@ -141,7 +141,7 @@ esac
 udevtrig
 
 root_dev="${disk}${ROOTPN}"
-if [ "${rootfs}" = "luks" ]; then
+if [ "${rootfs_type}" = "luks" ]; then
     root_dev=/dev/mapper/crypt_root
     sgdisk -c ${ROOTPN}:luks_root "${disk}"
 
@@ -196,7 +196,7 @@ if [ ${EFIPN:+x} ]; then
        # partition $BIOPN has no FS, its for bios grub
        # partition $PREPPN has no FS, its for PowerPC PReP Boot
 fi
-if [ "${rootfs}" = "ext4verity" ]; then
+if [ "${rootfs_type}" = "ext4verity" ]; then
     # As of today, xfs doesn't support verity, so we have a choice of fs-verity or reflinks.
     # Now, fs-verity doesn't in practice gain us a huge amount of security because
     # there are other "persistence vectors".  See
@@ -238,7 +238,7 @@ mkdir -p $rootfs/ostree
 chcon $(matchpathcon -n /ostree) $rootfs/ostree
 mkdir -p $rootfs/ostree/{repo,deploy}
 ostree --repo=$rootfs/ostree/repo init --mode=bare
-if [ "${rootfs}" = "ext4verity" ]; then
+if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set fsverity.required 'true'
 fi
 remote_arg=
