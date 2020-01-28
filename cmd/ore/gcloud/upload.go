@@ -16,6 +16,7 @@ package gcloud
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -43,6 +44,7 @@ var (
 	uploadFile      string
 	uploadFedora    bool
 	uploadForce     bool
+	uploadWriteUrl  string
 )
 
 func init() {
@@ -55,6 +57,7 @@ func init() {
 		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
 	cmdUpload.Flags().BoolVar(&uploadFedora, "fcos", false, "Flag this is Fedora CoreOS (or a derivative); currently enables SECURE_BOOT and UEFI_COMPATIBLE")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
+	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
 	GCloud.AddCommand(cmdUpload)
 }
 
@@ -176,6 +179,10 @@ func runUpload(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	if uploadWriteUrl != "" {
+		err = ioutil.WriteFile(uploadWriteUrl, []byte(storageSrc), 0644)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 		os.Exit(1)
@@ -211,7 +218,7 @@ func gceSanitize(name string) string {
 
 // Write file to Google Storage
 func writeFile(api *storage.Service, bucket, filename, destname string) error {
-	fmt.Printf("Writing %v to gs://%v ...\n", filename, bucket)
+	fmt.Printf("Writing %v to gs://%v/%v ...\n", filename, bucket, destname)
 	fmt.Printf("(Sometimes this takes a few minutes)\n")
 
 	file, err := os.Open(filename)
