@@ -33,8 +33,10 @@ args, unknown_args = parser.parse_known_args()
 
 if args.upgrades:
     default_cmd = 'run-upgrade'
+    default_output_dir = "tmp/kola-upgrade"
 else:
     default_cmd = 'run'
+    default_output_dir = "tmp/kola"
 
 builds = Builds()
 if args.build is None:
@@ -84,7 +86,7 @@ if os.getuid() != 0 and not ('-p' in unknown_args):
 
 # shellcheck disable=SC2086
 kolaargs.extend(['--cosa-build', buildmeta_path])
-outputdir = args.output_dir or "tmp/kola"
+outputdir = args.output_dir or default_output_dir
 kolaargs.extend(['--output-dir', outputdir])
 kolaargs.extend(args.subargs or [default_cmd])
 kolaargs.extend(unknown_args)
