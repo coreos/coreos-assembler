@@ -1,6 +1,5 @@
 import os
 import re
-import urllib
 from cosalib.cmdlib import run_verbose
 from tenacity import (
     retry,
@@ -48,6 +47,7 @@ def gcp_run_ore(build, args):
     if not re.fullmatch(GCP_NAMING_RE, gcp_name):
         raise Exception(f"{gcp_name} does match the naming rule: file a bug")
 
+    urltmp = os.path.join(build.tmpdir, "gcp-url")
     ore_args.extend([
         'gcloud',
         '--project', args.project,
@@ -59,16 +59,13 @@ def gcp_run_ore(build, args):
         '--json-key', args.json_key,
         '--name', gcp_name,
         '--file', f"{build.image_path}",
+        '--write-url', urltmp,
     ])
 
     run_verbose(ore_args)
-    url_path = urllib.parse.quote((
-        "storage.googleapis.com/"
-        f"{args.bucket}/{build.build_name}/{build.image_name}"
-    ))
     build.meta['gcp'] = {
         'image': gcp_name,
-        'url': f"https://{url_path}",
+        'url': open(urltmp).read().strip()
     }
     build.meta_write()
 
