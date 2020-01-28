@@ -110,8 +110,7 @@ elif args.upgrades:
     if '--qemu-image-dir' not in unknown_args:
         os.makedirs('tmp/kola-qemu-cache', exist_ok=True)
         kolaargs.extend(['--qemu-image-dir', 'tmp/kola-qemu-cache'])
-    kolaargs.extend(['-v', '--find-parent-image', '--qemu-image-dir',
-                     'tmp/kola-qemu-cache'])
+    kolaargs.extend(['-v', '--find-parent-image'])
     print(subprocess.list2cmdline(kolaargs), flush=True)
     os.execvpe('kola', kolaargs, env)
 else:
