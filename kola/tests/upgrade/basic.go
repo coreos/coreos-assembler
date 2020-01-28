@@ -39,7 +39,7 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/upg
 
 func init() {
 	register.RegisterUpgradeTest(&register.Test{
-		Run:         upgradeFromPrevious,
+		Run:         fcosUpgradeBasic,
 		ClusterSize: 1,
 		// if renaming this, also rename the command in kolet-httpd.service below
 		Name:     "fcos.upgrade.basic",
@@ -111,7 +111,7 @@ func init() {
 
 // upgradeFromPrevious verifies that the previous build is capable of upgrading
 // to the current build and to another build
-func upgradeFromPrevious(c cluster.TestCluster) {
+func fcosUpgradeBasic(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	graph := new(Graph)
 
