@@ -54,12 +54,15 @@ def aliyun_run_ore_replicate(build, args):
     source_region = aliyun_img_data[0]['name']
 
     ore_args = [
-        'ore', f'--config-file={args.config}' if args.config else '',
+        'ore',
         '--log-level', args.log_level,
         'aliyun', 'copy-image',
         '--image', source_image,
         '--region', source_region
     ]
+
+    if args.config:
+        ore_args.extend(['--config-file', args.config])
 
     upload_failed_in_region = None
 
