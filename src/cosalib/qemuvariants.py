@@ -66,6 +66,10 @@ VARIANTS = {
         "convert_options":  {
             '-o': 'adapter_type=lsilogic,subformat=streamOptimized,compat6'
         }
+    },
+    "vultr": {
+        "image_format": "raw",
+        "platform": "vultr",
     }
 }
 

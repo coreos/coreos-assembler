@@ -9,7 +9,8 @@ from cosalib import (
     aliyun,
     aws,
     azure,
-    gcp
+    gcp,
+    vultr
 )
 
 CLOUD_CLI_TARGET = {
@@ -24,7 +25,10 @@ CLOUD_CLI_TARGET = {
                azure.azure_run_ore_replicate),
     "gcp":    (gcp.gcp_cli,
                gcp.gcp_run_ore,
-               gcp.gcp_run_ore_replicate)
+               gcp.gcp_run_ore_replicate),
+    "vultr":  (vultr.vultr_cli,
+               vultr.vultr_run_ore,
+               vultr.vultr_run_ore_replicate),
 }
 
 
