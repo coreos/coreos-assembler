@@ -119,14 +119,15 @@ case "$arch" in
         sgdisk -p "$disk"
         ;;
     ppc64le)
+        BOOTPN=2
+        PREPPN=1
         # ppc64le doesn't use special uuid for root partition
         sgdisk -Z $disk \
         -U 00000000-0000-4000-a000-000000000001 \
-        -n 2:0:+4M   -c 2:PowerPC-PReP-boot -t 2:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
+        -n ${PREPPN}:0:+4M   -c ${PREPPN}:PowerPC-PReP-boot -t ${PREPPN}:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root              -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
-        PREPPN=2
         ;;
 esac
 
