@@ -225,8 +225,7 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(forwardedPort uint) {
 // Ignition via the qemu -fw_cfg option.
 func (builder *QemuBuilder) supportsFwCfg() bool {
 	switch builder.Board {
-	case "s390x-usr":
-	case "ppc64le-usr":
+	case "s390x-usr", "ppc64le-usr":
 		return false
 	}
 	return true
@@ -237,8 +236,7 @@ func (builder *QemuBuilder) supportsSwtpm() bool {
 	// Yes, this is the same as supportsFwCfg *currently* but
 	// might not be in the future.
 	switch builder.Board {
-	case "s390x-usr":
-	case "ppc64le-usr":
+	case "s390x-usr", "ppc64le-usr":
 		return false
 	}
 	return true
