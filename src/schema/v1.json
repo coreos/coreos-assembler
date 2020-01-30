@@ -11,8 +11,6 @@
    "coreos-assembler.code-source",
    "coreos-assembler.config-dirty",
    "coreos-assembler.config-gitrev",
-   "coreos-assembler.container-config-git",
-   "coreos-assembler.container-image-git",
    "coreos-assembler.image-config-checksum",
    "coreos-assembler.image-genver",
    "coreos-assembler.image-input-checksum",
@@ -38,7 +36,9 @@
    "build-url",
    "gcp",
    "oscontainer",
-   "pkgdiff"
+   "pkgdiff",
+   "coreos-assembler.container-config-git",
+   "coreos-assembler.container-image-git"
   ],
  "properties": {
    "build-url": {
