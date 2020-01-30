@@ -9,11 +9,11 @@ def vultr_run_ore(build, args):
     """
     Placeholder to upload a raw image to Vultr.
     """
-    pass
+    raise Exception("not implemented yet")
 
 
 def vultr_run_ore_replicate(*args, **kwargs):
-    print("Images are not published to Vultr. This is a placeholder")
+    raise Exception("not implemented yet")
 
 
 def vultr_cli(parser):
