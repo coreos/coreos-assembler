@@ -36,7 +36,6 @@ class GenericBuildMeta(dict):
 
         # Load the schema
         self._validator = None
-        self._schema_path = schema
         if schema:
             with open(schema, 'r') as data:
                 self._validator = jsonschema.Draft7Validator(
@@ -57,6 +56,7 @@ class GenericBuildMeta(dict):
         expected.
         """
         if not self._validator:
+            print("no validator")
             return
         self._validator.validate(dict(self))
 

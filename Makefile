@@ -44,7 +44,7 @@ flake8:
 	# find src -maxdepth 1 -name "*.py" | xargs flake8 --ignore=$(PYIGNORE)
 
 unittest:
-	COSA_TEST_META_JSON=`pwd`/fixtures/rhcos.json \
+	COSA_TEST_META_PATH=`pwd`/fixtures \
 		COSA_META_SCHEMA=`pwd`/src/schema/v1.json \
 		PYTHONPATH=`pwd`/src python3 -m pytest tests/
 
