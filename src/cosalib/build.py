@@ -96,7 +96,12 @@ class _Build:
 
         self._found_files = {}
         self._workdir = kwargs.pop("workdir", os.getcwd())
-        self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd")
+        tmpdir = os.path.join(self._workdir, "tmp")
+        os.environ['TMPDIR'] = tmpdir
+
+        # we need to make sure we allocate in tmp/ so we're on the same
+        # filesystem as builds/ and we can just `rename()` it there
+        self._tmpdir = tempfile.mkdtemp(dir=tmpdir)
         self._image_name = None
 
         # Setup the instance properties.
@@ -108,7 +113,6 @@ class _Build:
         }
 
         os.environ['workdir'] = self._workdir
-        os.environ['TMPDIR'] = os.path.join(self._workdir, "tmp")
 
         # Setup what is required for this Class.
         #   require_cosa means that the COSA information is need
