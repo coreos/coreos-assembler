@@ -11,8 +11,8 @@ from cosalib import meta
 from cosalib.cmdlib import get_basearch
 from jsonschema import ValidationError
 
-TEST_META = os.environ.get(
-    "COSA_TEST_META_JSON", "/usr/lib/coreos-assembler/fixtures/rhcos.json")
+TEST_META_PATH = os.environ.get(
+    "COSA_TEST_META_PATH", "/usr/lib/coreos-assembler/fixtures")
 TEST_SCHEMA = os.environ.get(
     "COSA_META_SCHEMA", "/usr/lib/coreos-assembler/cosalib/schema/v1.json")
 
@@ -37,6 +37,7 @@ def _create_test_files(tmpdir, meta_data=None):
     if meta_data is None:
         meta_data = {
             'test': 'data',
+            'name': 'fedora-coreos',
             'a': {
                 'b': 'c',
             }
@@ -97,25 +98,13 @@ def test_valid_schema(tmpdir):
     Verifies that schema testing is enforced and checked against a known-good
     meta.json.
     """
-    m = None
-    with open(TEST_META, 'r') as valid_data:
-        td = json.load(valid_data)
-        m = meta.GenericBuildMeta(_create_test_files(tmpdir, meta_data=td),
-                                  '1.2.3')
-
-    schema = None
-    with open(TEST_SCHEMA, 'r') as schema_data:
-        schema = json.load(schema_data)
-
-    for k, v in m.items():
-        if k not in schema['required']:
-            continue
-
-        _ = m.pop(k)
-        with pytest.raises(ValidationError):
-            m.write()
-        m.set(k, v)
-        m.write()
+    for meta_f in os.listdir(TEST_META_PATH):
+        print(f"Validating {meta_f}")
+        test_meta = os.path.join(TEST_META_PATH, meta_f)
+        with open(test_meta, 'r') as valid_data:
+            td = json.load(valid_data)
+            _ = meta.GenericBuildMeta(_create_test_files(tmpdir, meta_data=td),
+                                      '1.2.3')
 
 
 def test_invalid_schema(tmpdir):
