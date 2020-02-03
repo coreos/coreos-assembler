@@ -18,7 +18,7 @@ from cosalib.qemuvariants import get_qemu_variant
 
 if __name__ == '__main__':
     log.basicConfig(
-        format='[%(asctime)s  %(levelname)s]: %(message)s',
+        format='[%(levelname)s]: %(message)s',
         level=log.INFO)
 
     parser = BuildCli(

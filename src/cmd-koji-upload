@@ -303,7 +303,7 @@ def set_logger(level):
     elif level == "info":
         sl = log.INFO
 
-    log.basicConfig(format='[%(asctime)s  %(levelname)s]: %(message)s',
+    log.basicConfig(format='[%(levelname)s]: %(message)s',
                     level=sl)
 
 
