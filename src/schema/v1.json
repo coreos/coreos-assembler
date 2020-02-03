@@ -55,17 +55,19 @@
          },
          "then": {
                 "required": [
-                   "fedora-coreos.parent-commit",
-                   "fedora-coreos.parent-version",
                    "ref"
-                  ]
+                  ],
+                "optional": [
+                  "fedora-coreos.parent-commit",
+                  "fedora-coreos.parent-version"
+                ]
          },
          "else": {}
     },
     {
          "if": {
              "properties": {
-                 "name": { "pattern": "^(rhcos|fedora-coreos)"  }
+                 "name": { "pattern": "^(rhcos|fedora-coreos)$"  }
              }
          },
          "then": {
@@ -75,8 +77,6 @@
                    "coreos-assembler.code-source",
                    "coreos-assembler.config-dirty",
                    "coreos-assembler.config-gitrev",
-                   "coreos-assembler.container-config-git",
-                   "coreos-assembler.container-image-git",
                    "coreos-assembler.image-config-checksum",
                    "coreos-assembler.image-genver",
                    "coreos-assembler.image-input-checksum"
