@@ -343,21 +343,9 @@ $ cosa fetch && cosa build
 ```
 See this [Stack Overflow question](https://stackoverflow.com/questions/26028971/docker-container-ssl-certificates) for additional discussion.
 
-#### Overriding RPMs: Using new, different, or locally-built RPMs
+#### Overriding content and testing component patches
 
-To override the RPM packages requested in `src/config/manifest.yaml`,
-drop local RPM packages into a directory `overrides/rpm`. This will
-generate a `coreos-assembler-local-overrides` repository during the
-next build where the overriding packages will be pulled from. Then, run
-`cosa build` to rebuild with the local overrides.
-
-As an example, from your assembler directory:
-
-```
-$ mkdir -p overrides/rpm
-$ cp /path/to/my/name-version-release.rpm ./overrides/rpm
-$ cosa build
-```
+See [README-devel.md](README-devel.md#using-overrides).
 
 ### Pulling in fixed packages into the COSA container
 
