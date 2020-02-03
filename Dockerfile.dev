@@ -15,6 +15,7 @@ RUN rm -rfv /lib/coreos-assembler /usr/bin/coreos-assembler
 COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
 COPY ./build.sh /root/containerbuild/
 RUN ./build.sh install_rpms
+RUN echo Dockerfile.dev > /usr/lib/coreos-assembler/.built-via-container
 
 COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info

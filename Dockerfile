@@ -14,6 +14,7 @@ RUN ./build.sh install_rpms
 COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info
 RUN ./build.sh make_and_makeinstall
+RUN echo Dockerfile > /usr/lib/coreos-assembler/.built-via-container
 RUN ./build.sh build_fcct
 RUN ./build.sh configure_user
 
