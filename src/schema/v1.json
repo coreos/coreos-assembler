@@ -42,6 +42,7 @@
            "coreos-assembler.image-config-checksum",
            "coreos-assembler.image-genver",
            "coreos-assembler.image-input-checksum",
+           "coreos-assembler.overrides-active",
            "fedora-coreos.parent-commit",
            "fedora-coreos.parent-version",
            "ref"
@@ -321,6 +322,13 @@
        "59b0904f91aafcf55a66075b731476f802c9d60f17b0c670fb5c43d26333b876"
       ],
      "pattern":"^(?!\\s*$).+"
+    },
+   "coreos-assembler.overrides-active": {
+     "$id":"#/properties/coreos-assembler.overrides-active",
+     "type":"string",
+     "title":"Overrides Active",
+     "default":"",
+     "type": "boolean"
     },
    "images": {
      "$id":"#/properties/images",
