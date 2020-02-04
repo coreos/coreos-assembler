@@ -6,7 +6,6 @@ import logging as log
 import os.path
 import shutil
 import sys
-import tarfile
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, f"{cosa_dir}/cosalib")
@@ -25,6 +24,15 @@ from cosalib.cmdlib import (
 
 # BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
+
+# Default flags for the creation of tarfiles
+# The default flags were selected because:
+#   -S: always create a sparse file
+#   -c: create a new tarball
+#   -h: derefence symlinks
+# These flags were selected from prior commits for
+# tarball creation.
+DEFAULT_TAR_FLAGS = '-Sch'
 
 # Variant are disk types that are derived from qemu images.
 # To define new variants that use the QCOW2 disk image, simply,
@@ -52,11 +60,20 @@ VARIANTS = {
         "platform": "openstack",
     },
     "gcp": {
+        # See https://cloud.google.com/compute/docs/import/import-existing-image#requirements_for_the_image_file
         "image_format": "raw",
         "platform": "gcp",
         "image_suffix": "tar.gz",
+        "convert_options": {
+            '-o': 'preallocation=off'
+        },
         "tar_members": [
             "disk.raw"
+        ],
+        "tar_flags": [
+            DEFAULT_TAR_FLAGS,
+            "-z",
+            "--format=oldgnu"
         ]
     },
     "vmware_vmdk": {
@@ -117,6 +134,7 @@ class QemuVariantImage(_Build):
         self.platform = kwargs.pop("platform", "qemu")
         self.force = kwargs.get("force", False)
         self.tar_members = kwargs.pop("tar_members", None)
+        self.tar_flags = kwargs.pop("tar_flags", [DEFAULT_TAR_FLAGS])
 
         # this is used in case the image has a different disk
         # name than the platform
@@ -191,22 +209,25 @@ class QemuVariantImage(_Build):
             callback(work_img)
 
         if self.tar_members:
-            wmode = 'w'
-            if final_img.endswith('gz'):
-                wmode = 'w:gz'
-            elif final_img.endswith('xz'):
-                wmode = 'w:xz'
-            log.info(f"Preparing tarball with mode '{wmode}': {final_img}")
-            with tarfile.open(final_img, wmode) as tar:
-                base_disk = self.tar_members.pop(0)
-                base_name = os.path.basename(base_disk)
-                log.info(f" - adding base disk '{work_img}' as '{base_name}'")
-                tar.add(work_img, arcname=base_name)
+            # Python does not create sparse Tarfiles, so we have do it via
+            # the CLI here.
+            base_name = self.tar_members.pop(0)
+            tarlist = [base_name]
+            # in the case of several clouds, the disk is named `disk.raw` or
+            # `disk.vmdk`. When creating a tarball, we rename the disk to
+            # the in-tar name if the name does not match the defaulting naming.
+            if base_name != os.path.basename(work_img):
+                os.rename(work_img, os.path.join(self._tmpdir, base_name))
 
-                for te in self.tar_members:
-                    te_name = os.path.basename(te)
-                    log.info(f" - adding additional file: {te_name}")
-                    tar.add(te, arcname=te_name)
+            for member in self.tar_members:
+                member_name = os.path.basename(member)
+                tarlist.append(member_name)
+
+            tar_cmd = ['tar', '-C', self._tmpdir]
+            tar_cmd.extend(self.tar_flags)
+            tar_cmd.extend(['-f', final_img])
+            tar_cmd.extend(tarlist)
+            run_verbose(tar_cmd)
 
         else:
             log.info(f"Moving {work_img} to {final_img}")
