@@ -118,7 +118,8 @@ def oscontainer_extract(containers_storage, src, dest,
 # oscontainer with it.
 def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True,
-                      add_directories=[], cert_dir="", authfile="", inspect_out=None):
+                      add_directories=[], cert_dir="", authfile="", inspect_out=None,
+                      display_name=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -174,6 +175,9 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                   '-l', OSCONTAINER_COMMIT_LABEL + '=' + rev]
         if ostree_version is not None:
             config += ['-l', 'version=' + ostree_version]
+        if display_name is not None:
+            config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
+                       '-l', 'io.openshift.build.versions=machine-os=' + ostree_version]
         run_verbose(buildah_base_argv + ['config'] + config + [bid])
         print("Committing container...")
         iid = run_get_string(buildah_base_argv + ['commit', bid, image_name_and_tag])
@@ -239,6 +243,7 @@ def main():
     parser_build.add_argument("src", help="OSTree repository")
     parser_build.add_argument("rev", help="OSTree ref (or revision)")
     parser_build.add_argument("name", help="Image name")
+    parser_build.add_argument("--display-name", help="Name used for an OpenShift component")
     parser_build.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
                               metavar='DIR', action='append', default=[])
     parser_build.add_argument(
@@ -269,6 +274,7 @@ def main():
         oscontainer_build(
             containers_storage, args.src, args.rev, args.name,
             getattr(args, 'from'),
+            display_name=args.display_name,
             inspect_out=args.inspect_out,
             add_directories=args.add_directory,
             push=args.push,
