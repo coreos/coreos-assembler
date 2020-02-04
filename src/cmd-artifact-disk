@@ -96,7 +96,7 @@ def artifact_cli():
             'platform': args.platform,
         }
         if args.convert_options:
-            kwargs["convert_options"] = {'-o': f'{args.convert_ooptions}'}
+            kwargs["convert_options"] = {'-o': f'{args.convert_options}'}
 
         builder = QVariants.QemuVariantImage(args.buildroot,
                                              args.build,
