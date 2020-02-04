@@ -89,6 +89,7 @@ def get_qemu_variant(variant, parser, kwargs={}):
     return QemuVariantImage(
         parser.buildroot,
         parser.build,
+        schema=parser.schema,
         variant=variant,
         force=parser.force,
         **kwargs)
