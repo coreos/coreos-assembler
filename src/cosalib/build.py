@@ -14,6 +14,7 @@ from cosalib.cmdlib import (
     sha256sum_file)
 from cosalib.builds import Builds
 from cosalib.meta import GenericBuildMeta as Meta
+from cosalib.meta import SCHEMA_PATH
 
 # BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
@@ -104,12 +105,13 @@ class _Build:
         self._tmpdir = tempfile.mkdtemp(dir=tmpdir)
         self._image_name = None
 
+        schema = kwargs.pop("schema", SCHEMA_PATH)
         # Setup the instance properties.
         self._build_json = {
             "commit": None,
             "config": None,
             "image": None,
-            "meta": Meta(self.workdir, build)
+            "meta": Meta(self.workdir, build, schema=schema)
         }
 
         os.environ['workdir'] = self._workdir

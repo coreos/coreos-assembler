@@ -13,10 +13,11 @@ import cosalib.qemuvariants as QVariants
 import cosalib.vmware as VmwareOVA
 
 
-def get_builder(imgtype, build_root, build="latest", force=False):
+def get_builder(imgtype, build_root, build="latest", force=False, schema=None):
     args = [build_root, build]
     kargs = {
         "force": force,
+        "schema": schema,
         "variant": imgtype
     }
 
@@ -87,13 +88,14 @@ def artifact_cli():
 
     if build_target:
         builder = get_builder(build_target, args.buildroot, args.build,
-                              force=args.force)
+                              force=args.force, schema=args.schema)
     elif "manual" in args:
         kwargs = {
             'force': args.force,
             'image_format': args.image_format,
             'image_suffix': args.image_suffix,
             'platform': args.platform,
+            'schema': args.schema,
         }
         if args.convert_options:
             kwargs["convert_options"] = {'-o': f'{args.convert_options}'}
