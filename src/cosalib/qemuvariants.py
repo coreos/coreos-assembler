@@ -56,10 +56,6 @@ VARIANTS = {
         "image_suffix": "vhd",
         "platform": "azure",
     },
-    "openstack": {
-        "image_format": "qcow2",
-        "platform": "openstack",
-    },
     "gcp": {
         # See https://cloud.google.com/compute/docs/import/import-existing-image#requirements_for_the_image_file
         "image_format": "raw",
@@ -76,6 +72,14 @@ VARIANTS = {
             "-z",
             "--format=oldgnu"
         ]
+    },
+    "ibmcloud": {
+        "image_format": "qcow2",
+        "platform": "ibmcloud",
+    },
+    "openstack": {
+        "image_format": "qcow2",
+        "platform": "openstack",
     },
     "vmware_vmdk": {
         "image_format": "vmdk",
