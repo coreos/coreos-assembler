@@ -96,7 +96,7 @@ class _Build:
 
         self._found_files = {}
         self._workdir = kwargs.pop("workdir", os.getcwd())
-        self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd")
+        self._tmpdir = tempfile.mkdtemp(prefix="build_tmpd", dir=self._workdir)
         self._image_name = None
 
         # Setup the instance properties.

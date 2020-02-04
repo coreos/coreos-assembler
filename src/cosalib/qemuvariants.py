@@ -12,6 +12,7 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
 
+import cosalib.azure as azure
 from cosalib.build import (
     _Build,
     BuildExistsError
@@ -43,9 +44,10 @@ VARIANTS = {
         "platform": "aliyun",
     },
     "azure": {
-        "image_format": "vpc",
+        "image_format": "raw",
         "image_suffix": "vhd",
         "platform": "azure",
+        "mutate-callback": azure.convert_to_fixed,
     },
     "openstack": {
         "image_format": "qcow2",
@@ -114,6 +116,7 @@ class QemuVariantImage(_Build):
         self.image_format = kwargs.pop("image_format", "raw")
         self.image_suffix = kwargs.pop("image_suffix", self.image_format)
         self.convert_options = kwargs.pop("convert_options", {})
+        self.mutate_callback = kwargs.pop("mutate-callback", None)
         self.platform = kwargs.pop("platform", "qemu")
         self.force = kwargs.get("force", False)
         self.tar_members = kwargs.pop("tar_members", None)
@@ -186,6 +189,8 @@ class QemuVariantImage(_Build):
         cmd.extend([work_img])
         run_verbose(cmd)
 
+        if not callback:
+            callback = getattr(self, "mutate_callback", None)
         if callback:
             log.info(f"Processing work image callback")
             callback(work_img)

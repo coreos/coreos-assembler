@@ -1,10 +1,44 @@
 import os
+import json
 import urllib
 from cosalib.cmdlib import run_verbose
 from tenacity import (
     retry,
     stop_after_attempt
 )
+
+
+def convert_to_fixed(image):
+    workdir = os.path.dirname(image)
+    new_img = os.path.join(workdir, "convert.vpc")
+
+    qemu_info = json.loads(run_verbose(
+        ['qemu-img', 'info', '--output=json', image],
+        capture_output=True).stdout)
+
+    # pad the disk by 10Mb
+    vsize = qemu_info.get('virtual-size')
+    vsize = (int(vsize / (1024 * 1024)) + 10)
+    run_verbose([
+        'qemu-img', 'resize', image, f"{vsize}M"
+    ])
+
+    run_verbose([
+       'qemu-img', 'convert',
+       '-f', qemu_info.get("format", "raw"),
+       '-O', 'vpc',
+       '-o', 'subformat=fixed',
+       image, new_img
+    ])
+
+    print(json.dumps(
+        run_verbose([
+            "qemu-img", "info", "--output=json", new_img
+        ]).stdout, indent=4))
+
+    run_verbose([
+        'mv', new_img, image
+    ])
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
