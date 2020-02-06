@@ -307,23 +307,37 @@ install_uefi() {
     # change our build process to download+extract it separately.
     local source_efidir="${deploy_root}/usr/lib/ostree-boot/efi"
     local target_efi="$rootfs/boot/efi"
-    local target_efiboot="${target_efi}/EFI/BOOT"
-    mkdir -p "${target_efiboot}"
-    /usr/lib/coreos-assembler/cp-reflink "${source_efidir}/EFI/BOOT/BOOT"* "${target_efiboot}"
-    local src_grubefi=$(find "${source_efidir}"/EFI/ -name 'grub*.efi')
-    /usr/lib/coreos-assembler/cp-reflink "${src_grubefi}" "${target_efiboot}"
+    local src_grubefi=$(find "${source_efidir}"/EFI/ -maxdepth 1 -type d | grep -v BOOT)
+    local vendor_id="${src_grubefi##*/}"
+    local vendordir="${target_efi}/EFI/${vendor_id}"
 
-    local vendor_id="$(basename $(dirname ${src_grubefi}))"
+    # Some of the files in EFI/BOOT are _symlinks_ to EFI/$VENDOR
+    # in the OS tree. We need to make copies here.
+    mkdir -p "${target_efi}"/EFI/BOOT "${vendordir}"
+    for t in BOOT "${vendor_id}";
+    do
+        (
+            cd "${source_efidir}"/EFI/${t}
+            for i in *; do
+                /usr/lib/coreos-assembler/cp-reflink -vRL \
+                    $(readlink -f $i) \
+                    "${target_efi}"/EFI/"${t}"/
+            done
+        )
+    done
+
     local vendordir="${target_efi}/EFI/${vendor_id}"
     mkdir -p "${vendordir}"
 	cat > ${vendordir}/grub.cfg << 'EOF'
 search --label boot --set prefix
-set prefix=($prefix)/grub2
-normal
+set prefix=($prefix)
+configfile $prefix/grub2/grub.cfg
+boot
 EOF
-    mkdir -p $rootfs/boot/grub2
+
     # copy the grub config and any other files we might need
-    cp $grub_script $rootfs/boot/grub2/grub.cfg
+    mkdir -p $rootfs/boot/grub2
+    cp -v $grub_script $rootfs/boot/grub2/grub.cfg
 }
 
 # Other arch-specific bootloader changes
