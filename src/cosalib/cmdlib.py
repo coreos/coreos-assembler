@@ -240,3 +240,14 @@ def get_timestamp(entry):
     # Older versions only had ostree-timestamp
     ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
     return parse_date_string(ts)
+
+
+def image_info(image):
+    try:
+        out = json.loads(run_verbose(
+            ['qemu-img', 'info', '--output=json', image],
+            capture_output=True).stdout
+        )
+        return out
+    except Exception as e:
+        raise Exception(f"failed to inspect {image} with qemu", e)
