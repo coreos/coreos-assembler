@@ -17,6 +17,7 @@ from cosalib.build import (
 )
 from cosalib.cmdlib import (
     get_basearch,
+    image_info,
     run_verbose,
     sha256sum_file
 )
@@ -132,6 +133,7 @@ class QemuVariantImage(_Build):
         self.image_format = kwargs.pop("image_format", "raw")
         self.image_suffix = kwargs.pop("image_suffix", self.image_format)
         self.convert_options = kwargs.pop("convert_options", {})
+        self.mutate_callback = kwargs.pop("mutate-callback", None)
         self.platform = kwargs.pop("platform", "qemu")
         self.force = kwargs.get("force", False)
         self.tar_members = kwargs.pop("tar_members", None)
@@ -179,7 +181,7 @@ class QemuVariantImage(_Build):
         run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
                      self.image_qemu, self.tmp_image, self.platform])
 
-    def mutate_image(self, callback=None):
+    def mutate_image(self):
         """
         mutate_image is broken out seperately to allow other Classes to
         override the behavor.
@@ -205,9 +207,15 @@ class QemuVariantImage(_Build):
         cmd.extend([work_img])
         run_verbose(cmd)
 
-        if callback:
+        img_info = image_info(work_img)
+        if self.image_format != img_info.get("format"):
+            raise ImageError((f"{work_img} format mismatch"
+                              f" expected: '{self.image_format}'"
+                              f" found: '{img_info.get('format')}'"))
+
+        if self.mutate_callback:
             log.info(f"Processing work image callback")
-            callback(work_img)
+            self.mutate_callback(work_img)
 
         if self.tar_members:
             # Python does not create sparse Tarfiles, so we have do it via

@@ -48,6 +48,9 @@ class VmwareOVA(QemuVariantImage):
         variant = kwargs.pop("variant", "vmware")
         kwargs.update(VARIANTS.get(variant, {}))
         QemuVariantImage.__init__(self, *args, **kwargs)
+        # Set the QemuVariant mutate_callback so that OVA is called.
+        self.mutate_callback = self.write_ova
+        # Ensure that desc.ovf is included in the tar
         self.desc_ovf_path = os.path.join(self._tmpdir, "desc.ovf")
 
     def generate_ovf_parameters(self, vmdk, cpu=2,
@@ -104,18 +107,3 @@ class VmwareOVA(QemuVariantImage):
         log.debug(vmdk_xml)
         log.info("desc.ovf will be added to the tar file")
         self.tar_members.append(self.desc_ovf_path)
-
-    def mutate_image(self, *args, **kwargs):
-        """
-        mutate_image calls the QemuVariant.mutate_image with write_ova
-        as the callback unless callback=<func> is defined.
-
-        :param args: Non keyword arguments to pass to add_argument
-        :type args: list
-        :param kwargs: Keyword arguments to pass to add_argument
-        :type kwargs: dict
-        """
-        if kwargs.get("callback"):
-            super().mutate_image(*args, **kwargs)
-        else:
-            super().mutate_image(callback=self.write_ova)
