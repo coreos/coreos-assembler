@@ -27,6 +27,7 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
           }
           parallel kola: {
               try {
+                cosa_cmd("kola --basic-qemu-scenarios")
                 cosa_cmd("kola run --parallel 8")
                 cosa_cmd("kola --upgrades")
               } finally {
