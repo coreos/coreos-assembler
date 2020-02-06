@@ -36,6 +36,8 @@ import (
 	v22types "github.com/coreos/ignition/config/v2_2/types"
 	v23 "github.com/coreos/ignition/config/v2_3"
 	v23types "github.com/coreos/ignition/config/v2_3/types"
+	v24 "github.com/coreos/ignition/config/v2_4"
+	v24types "github.com/coreos/ignition/config/v2_4/types"
 	ignvalidate "github.com/coreos/ignition/config/validate"
 	ign3err "github.com/coreos/ignition/v2/config/shared/errors"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
@@ -82,6 +84,7 @@ type Conf struct {
 	ignitionV21 *v21types.Config
 	ignitionV22 *v22types.Config
 	ignitionV23 *v23types.Config
+	ignitionV24 *v24types.Config
 	ignitionV3  *v3types.Config
 	cloudconfig *cci.CloudConfig
 	script      string
@@ -225,6 +228,15 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 			return err
 		}
 
+		ignc24, report, err := v24.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV24 = &ignc24
+			return nil
+		} else if err != ignerr.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report)
+			return err
+		}
+
 		ignc3, report3, err := v3.Parse([]byte(u.data))
 		if err == nil {
 			c.ignitionV3 = &ignc3
@@ -300,6 +312,9 @@ func (c *Conf) String() string {
 	} else if c.ignitionV23 != nil {
 		buf, _ := json.Marshal(c.ignitionV23)
 		return string(buf)
+	} else if c.ignitionV24 != nil {
+		buf, _ := json.Marshal(c.ignitionV24)
+		return string(buf)
 	} else if c.ignitionV3 != nil {
 		buf, _ := json.Marshal(c.ignitionV3)
 		return string(buf)
@@ -343,6 +358,8 @@ func (c *Conf) getIgnitionValidateValue() reflect.Value {
 		return reflect.ValueOf(c.ignitionV22)
 	} else if c.ignitionV23 != nil {
 		return reflect.ValueOf(c.ignitionV23)
+	} else if c.ignitionV24 != nil {
+		return reflect.ValueOf(c.ignitionV24)
 	} else if c.ignitionV3 != nil {
 		return reflect.ValueOf(c.ignitionV3)
 	}
@@ -420,6 +437,21 @@ func (c *Conf) addFileV23(path, filesystem, contents string, mode int) {
 	})
 }
 
+func (c *Conf) addFileV24(path, filesystem, contents string, mode int) {
+	c.ignitionV24.Storage.Files = append(c.ignitionV24.Storage.Files, v24types.File{
+		Node: v24types.Node{
+			Filesystem: filesystem,
+			Path:       path,
+		},
+		FileEmbedded1: v24types.FileEmbedded1{
+			Contents: v24types.FileContents{
+				Source: dataurl.EncodeBytes([]byte(contents)),
+			},
+			Mode: &mode,
+		},
+	})
+}
+
 func (c *Conf) addFileV3(path, filesystem, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v3types.Config{
@@ -456,6 +488,8 @@ func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 		c.addFileV22(path, filesystem, contents, mode)
 	} else if c.ignitionV23 != nil {
 		c.addFileV23(path, filesystem, contents, mode)
+	} else if c.ignitionV24 != nil {
+		c.addFileV24(path, filesystem, contents, mode)
 	} else if c.ignitionV1 != nil || c.cloudconfig != nil {
 		panic("conf: AddFile does not support ignition v1 or cloudconfig")
 	}
@@ -499,6 +533,15 @@ func (c *Conf) addSystemdUnitV22(name, contents string, enable, mask bool) {
 
 func (c *Conf) addSystemdUnitV23(name, contents string, enable, mask bool) {
 	c.ignitionV23.Systemd.Units = append(c.ignitionV23.Systemd.Units, v23types.Unit{
+		Name:     name,
+		Contents: contents,
+		Enabled:  &enable,
+		Mask:     mask,
+	})
+}
+
+func (c *Conf) addSystemdUnitV24(name, contents string, enable, mask bool) {
+	c.ignitionV24.Systemd.Units = append(c.ignitionV24.Systemd.Units, v24types.Unit{
 		Name:     name,
 		Contents: contents,
 		Enabled:  &enable,
@@ -552,6 +595,8 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 		c.addSystemdUnitV22(name, contents, enable, mask)
 	} else if c.ignitionV23 != nil {
 		c.addSystemdUnitV23(name, contents, enable, mask)
+	} else if c.ignitionV24 != nil {
+		c.addSystemdUnitV24(name, contents, enable, mask)
 	} else if c.ignitionV3 != nil {
 		c.addSystemdUnitV3(name, contents, enable, mask)
 	} else if c.cloudconfig != nil {
@@ -669,6 +714,28 @@ func (c *Conf) addSystemdDropinV23(service, name, contents string) {
 	})
 }
 
+func (c *Conf) addSystemdDropinV24(service, name, contents string) {
+	for i, unit := range c.ignitionV24.Systemd.Units {
+		if unit.Name == service {
+			unit.Dropins = append(unit.Dropins, v24types.SystemdDropin{
+				Name:     name,
+				Contents: contents,
+			})
+			c.ignitionV24.Systemd.Units[i] = unit
+			return
+		}
+	}
+	c.ignitionV24.Systemd.Units = append(c.ignitionV24.Systemd.Units, v24types.Unit{
+		Name: service,
+		Dropins: []v24types.SystemdDropin{
+			{
+				Name:     name,
+				Contents: contents,
+			},
+		},
+	})
+}
+
 func (c *Conf) addSystemdDropinV3(service, name, contents string) {
 	newConfig := v3types.Config{
 		Ignition: v3types.Ignition{
@@ -724,6 +791,8 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 		c.addSystemdDropinV22(service, name, contents)
 	} else if c.ignitionV23 != nil {
 		c.addSystemdDropinV23(service, name, contents)
+	} else if c.ignitionV24 != nil {
+		c.addSystemdDropinV24(service, name, contents)
 	} else if c.ignitionV3 != nil {
 		c.addSystemdDropinV3(service, name, contents)
 	} else if c.cloudconfig != nil {
@@ -815,6 +884,24 @@ func (c *Conf) copyKeysIgnitionV23(keys []*agent.Key) {
 	})
 }
 
+func (c *Conf) copyKeysIgnitionV24(keys []*agent.Key) {
+	var keyObjs []v24types.SSHAuthorizedKey
+	for _, key := range keys {
+		keyObjs = append(keyObjs, v24types.SSHAuthorizedKey(key.String()))
+	}
+	for i := range c.ignitionV24.Passwd.Users {
+		user := &c.ignitionV24.Passwd.Users[i]
+		if user.Name == "core" {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
+			return
+		}
+	}
+	c.ignitionV24.Passwd.Users = append(c.ignitionV24.Passwd.Users, v24types.PasswdUser{
+		Name:              "core",
+		SSHAuthorizedKeys: keyObjs,
+	})
+}
+
 func (c *Conf) copyKeysIgnitionV3(keys []*agent.Key) {
 	var keyObjs []v3types.SSHAuthorizedKey
 	for _, key := range keys {
@@ -858,6 +945,8 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 		c.copyKeysIgnitionV22(keys)
 	} else if c.ignitionV23 != nil {
 		c.copyKeysIgnitionV23(keys)
+	} else if c.ignitionV24 != nil {
+		c.copyKeysIgnitionV24(keys)
 	} else if c.ignitionV3 != nil {
 		c.copyKeysIgnitionV3(keys)
 	} else if c.cloudconfig != nil {
@@ -878,7 +967,7 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 // Returns false in the case of empty configs as on most platforms,
 // this will default back to cloudconfig
 func (c *Conf) IsIgnition() bool {
-	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV3 != nil
+	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV24 != nil || c.ignitionV3 != nil
 }
 
 func (c *Conf) IsEmpty() bool {
