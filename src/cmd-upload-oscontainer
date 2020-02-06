@@ -1,0 +1,96 @@
+#!/usr/bin/python3 -u
+# Upload an oscontainer.  This is a wrapper for
+# `cosa oscontainer` that just for historical reasons
+# used to live downstream in the redhat-coreos pipeline.
+# In the future we should just have one `cosa oscontainer`
+# command.
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+from cosalib import cmdlib
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--name", help="oscontainer name",
+                    action='store', required=True)
+parser.add_argument("--from", help="Base image", default='scratch',
+                    dest='from_image')
+parser.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
+                    metavar='DIR', action='append', default=[])
+
+args = parser.parse_args()
+
+with open('builds/builds.json') as f:
+    builds = json.load(f)['builds']
+if len(builds) == 0:
+    cmdlib.fatal("No builds found")
+latest_build = builds[0]['id']
+arch = cmdlib.get_basearch()
+latest_build_path = f"builds/{latest_build}/{arch}"
+
+metapath = f"{latest_build_path}/meta.json"
+with open(metapath) as f:
+    meta = json.load(f)
+
+print("Preparing to upload oscontainer for build: {}".format(latest_build))
+
+osc_workdir = "{}/tmp/oscontainer-work".format(os.getcwd())
+
+tmprepo = "{}/tmp/repo".format(os.getcwd())
+# if tmprepo is not a directory, but is unexpectedly a file,
+# just nuke it
+if not os.path.isdir(tmprepo) and os.path.exists(tmprepo):
+    os.remove(tmprepo)
+
+# if tmprepo is not a directory and not a file, recreate from
+# the tarfile
+if not os.path.exists(tmprepo):
+    os.makedirs(tmprepo, exist_ok=True)
+    ostree_commit_tar = 'ostree-commit.tar'
+    if 'ostree' in meta['images']:
+        ostree_commit_tar = meta['images']['ostree']['path']
+    subprocess.check_call(['tar', '-xf',
+                           f'{latest_build_path}/{ostree_commit_tar}',
+                           '-C', tmprepo])
+
+
+# The build ID is the container tag
+osc_name_and_tag = "{}:{}".format(args.name, latest_build)
+
+# TODO: Use labels for the build hash and avoid pulling the oscontainer
+# every time we want to poll.
+# TODO: Remove --from
+# We have removed the use of `--workdir` from this script because
+# `coreos-assembler` assumes the working diretory in the unprivileged case
+# See: https://github.com/coreos/coreos-assembler/pull/360
+inspect_out = os.getcwd() + '/oscontainer.json'
+cosa_argv = ['coreos-assembler', 'oscontainer', 'build', f"--from={args.from_image}"]
+for d in args.add_directory:
+    cosa_argv.append(f"--add-directory={d}")
+subprocess.check_call(cosa_argv +
+    ['--inspect-out=' + inspect_out,
+        '--push', tmprepo,
+        meta['ostree-commit'],
+        osc_name_and_tag])
+
+with open(inspect_out) as f:
+    osc_inspect = json.load(f)
+osc_digest = osc_inspect['Digest']
+
+# Inject the oscontainer with SHA256 into the build metadata
+meta['oscontainer'] = {'image': args.name,
+                       'digest': osc_digest}
+metapath_new = f"{metapath}.new"
+with open(metapath_new, 'w') as f:
+    json.dump(meta, f, sort_keys=True)
+os.rename(metapath_new, metapath)
+
+# Cleanup workdirs
+shutil.rmtree(osc_workdir, ignore_errors=True)
