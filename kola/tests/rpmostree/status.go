@@ -35,8 +35,8 @@ func init() {
 }
 
 var (
-	// Regex to extract version number from "rpm-ostree status"
-	rpmOstreeVersionRegex string = `^Version: ([0-9a-zA-Z.]+).*`
+	// rpmOstreeVersionRegex parses the text output of "rpm-ostree status"
+	rpmOstreeVersionRegex string = `^Version: *([^ ]*)`
 )
 
 // rpmOstreeCleanup calls 'rpm-ostree cleanup -rpmb' on a host and verifies
@@ -91,9 +91,9 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	for _, line := range statusArray {
 		versionMatch := reVersion.FindStringSubmatch(strings.Trim(line, " "))
 		if versionMatch != nil {
-			// versionMatch should be like `[Version: 420.8.20190711.0 (2019-07-11T09:00:04Z) 420.8.20190711.0]`
-			// i.e. the full match and the group we want
-			// `versionMatch[len(versionMatch)-1]` gets the last element in the array
+			// versionMatch should be like `Version: 44.81.202002052139-0 (2020-02-05T21:45:46Z) 44.81.202002052139-0`
+			// i.e. the full match and the groups we want
+			// `versionMatch[len(versionMatch)-1]` gets the last element (full version string) in the array
 			rpmOstreeVersion = versionMatch[len(versionMatch)-1]
 		}
 	}
