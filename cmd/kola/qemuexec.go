@@ -36,12 +36,15 @@ var (
 
 	memory  int
 	usernet bool
+
+	ignition string
 )
 
 func init() {
 	root.AddCommand(cmdQemuExec)
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
+	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
 }
 
 func runQemuExec(cmd *cobra.Command, args []string) {
@@ -54,12 +57,18 @@ func runQemuExec(cmd *cobra.Command, args []string) {
 func doQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 
-	builder := platform.NewBuilder(kola.QEMUOptions.Board, "")
+	builder := platform.NewBuilder(kola.QEMUOptions.Board, ignition)
 	defer builder.Close()
-
+	builder.Firmware = kola.QEMUOptions.Firmware
 	if kola.QEMUOptions.DiskImage != "" {
+		channel := "virtio"
+		if kola.QEMUOptions.Nvme {
+			channel = "nvme"
+		}
 		builder.AddPrimaryDisk(&platform.Disk{
 			BackingFile: kola.QEMUOptions.DiskImage,
+			Channel:     channel,
+			Size:        kola.QEMUOptions.DiskSize,
 		})
 	}
 	if memory != 0 {
