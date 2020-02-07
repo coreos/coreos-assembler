@@ -84,8 +84,7 @@ fi
 
 completionf=${statedir}/completion.txt
 touch "${completionf}"
-setpriv --pdeathsig SIGTERM -- qemu-system-x86_64 -accel kvm -m 1536 -nographic \
-       -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0 \
+kola qemuexec -m 1536 -- \
        -boot once=n -option-rom /usr/share/qemu/pxe-rtl8139.rom \
        -device e1000,netdev=mynet0,mac=52:54:00:12:34:56 -netdev user,id=mynet0,net=192.168.76.0/24,dhcpstart=192.168.76.9,tftp=${tftpdir},bootfile=/pxelinux.0 \
        -drive if=virtio,file=${disk} \
