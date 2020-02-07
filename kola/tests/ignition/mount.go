@@ -190,7 +190,6 @@ func init() {
 		Run:         testMountDisks,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
-		Distros:     []string{"fcos", "rhcos"},
 	})
 	// create new partiitons with disk `vda`
 	register.RegisterTest(&register.Test{
@@ -341,7 +340,6 @@ func init() {
 		}`),
 		ClusterSize: 1,
 		Platforms:   []string{"qemu"},
-		Distros:     []string{"fcos", "rhcos"},
 	})
 }
 

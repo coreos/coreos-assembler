@@ -29,19 +29,16 @@ func init() {
 		Run:         SelinuxEnforce,
 		ClusterSize: 1,
 		Name:        "coreos.selinux.enforce",
-		Distros:     []string{"fcos", "rhcos"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         SelinuxBoolean,
 		ClusterSize: 1,
 		Name:        "coreos.selinux.boolean",
-		Distros:     []string{"fcos", "rhcos"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         SelinuxBooleanPersist,
 		ClusterSize: 1,
 		Name:        "rhcos.selinux.boolean.persist",
-		Distros:     []string{"fcos", "rhcos"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         SelinuxManage,

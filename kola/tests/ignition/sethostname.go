@@ -68,7 +68,6 @@ func init() {
 		ClusterSize:      1,
 		UserData:         configV2,
 		UserDataV3:       configV3,
-		Distros:          []string{"fcos", "rhcos"},
 		ExcludePlatforms: []string{"azure"},
 	})
 }

@@ -24,7 +24,6 @@ func init() {
 		Run:         AuthVerify,
 		ClusterSize: 1,
 		Name:        "coreos.auth.verify",
-		Distros:     []string{"fcos", "rhcos"},
 	})
 }
 

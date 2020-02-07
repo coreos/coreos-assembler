@@ -29,7 +29,6 @@ func init() {
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
 		Name:        "rpmostree.upgrade-rollback",
-		Distros:     []string{"fcos", "rhcos"},
 		FailFast:    true,
 	})
 	register.RegisterTest(&register.Test{
@@ -109,9 +108,7 @@ func init() {
     ]
   }
 }`),
-
-		Distros: []string{"fcos", "rhcos"},
-		Flags:   []register.Flag{register.RequiresInternetAccess}, // these need network to retrieve bits
+		Flags: []register.Flag{register.RequiresInternetAccess}, // these need network to retrieve bits
 	})
 }
 
