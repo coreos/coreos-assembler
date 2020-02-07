@@ -94,6 +94,9 @@ def aws_run_ore(build, args):
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
 
+    if args.force:
+        ore_args.extend(['--force'])
+
     region = "us-east-1"
     if args.region is not None and len(args.region) > 0:
         region = args.region[0]
@@ -107,8 +110,7 @@ def aws_run_ore(build, args):
         '--ami-description', f'{build.summary} {build.build_id}',
         '--file', f"{build.image_path}",
         '--disk-size-inspect',
-        '--delete-object',
-        '--force'
+        '--delete-object'
     ])
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])

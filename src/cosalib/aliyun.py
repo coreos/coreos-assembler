@@ -96,6 +96,9 @@ def aliyun_run_ore(build, args):
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
 
+    if args.force:
+        ore_args.extend(['--force'])
+
     region = "us-west-1"
     if args.region is not None:
         region = args.region[0]
@@ -113,8 +116,7 @@ def aliyun_run_ore(build, args):
         '--file', f"{build.image_path}",
         '--description', f'{build.summary} {build.build_id}',
         '--architecture', build.basearch,
-        '--disk-size-inspect',
-        '--force'
+        '--disk-size-inspect'
     ])
 
     print(ore_args)
