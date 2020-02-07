@@ -108,7 +108,7 @@ class Cli(argparse.ArgumentParser):
         :type level: str
         """
         log.basicConfig(
-            format='[%(asctime)s  %(levelname)s]: %(message)s',
+            format='[%(levelname)s]: %(message)s',
             level=log._nameToLevel.get(level.upper(), log.DEBUG))
 
 
