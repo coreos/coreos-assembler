@@ -30,6 +30,5 @@ func init() {
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
 		UserDataV3:       conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
-		Distros:          []string{"fcos", "rhcos"},
 	})
 }

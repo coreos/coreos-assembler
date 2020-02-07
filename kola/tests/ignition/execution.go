@@ -54,7 +54,6 @@ func init() {
                                ]
                              }
                            }`),
-		Distros: []string{"fcos", "rhcos"},
 	})
 }
 

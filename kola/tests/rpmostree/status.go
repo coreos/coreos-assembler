@@ -30,7 +30,6 @@ func init() {
 		Run:         rpmOstreeStatus,
 		ClusterSize: 1,
 		Name:        "rpmostree.status",
-		Distros:     []string{"fcos", "rhcos"},
 	})
 }
 

@@ -52,7 +52,6 @@ func init() {
 			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
 			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
 		},
-		Distros: []string{"fcos", "rhcos"},
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
 	// TODO: Only enable PodmanPing on non qemu-unpriv. Needs:

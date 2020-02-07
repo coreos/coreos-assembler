@@ -38,7 +38,6 @@ func init() {
 		Run:         podmanBaseTest,
 		ClusterSize: 1,
 		Name:        `podman.base`,
-		Distros:     []string{"fcos", "rhcos"},
 	})
 	// These remaining tests use networking, and hence don't work reliably on RHCOS
 	// right now due to due to https://bugzilla.redhat.com/show_bug.cgi?id=1757572

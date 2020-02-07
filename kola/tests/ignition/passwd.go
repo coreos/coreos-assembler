@@ -73,7 +73,6 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"fcos", "rhcos"},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.v2.users",
@@ -121,7 +120,6 @@ func init() {
 		               ]
 		             }
 		           }`),
-		Distros: []string{"fcos", "rhcos"},
 	})
 }
 

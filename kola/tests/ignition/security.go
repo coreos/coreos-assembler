@@ -80,7 +80,6 @@ func init() {
 		// DO: https://github.com/coreos/bugs/issues/2205
 		// Packet & QEMU: https://github.com/coreos/ignition/issues/645
 		ExcludePlatforms: []string{"do", "packet", "qemu"},
-		Distros:          []string{"fcos", "rhcos"},
 	})
 }
 
