@@ -229,7 +229,7 @@
      "examples": [
        "31.20200127.20.1"
       ],
-      "pattern":"[0-9]{2}\\.[0-9]{8,}\\.[0-9]{2}\\.[0-1]"
+     "pattern":"^(?!\\s*$).+"
     },
     "fedora-coreos.parent-commit": {
      "$id":"#/properties/fedora-coreos.parent-commit",
