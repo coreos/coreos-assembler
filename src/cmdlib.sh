@@ -238,6 +238,14 @@ prepare_build() {
         ref_is_temp=1
     fi
     export name ref summary license
+    # And validate fields coreos-assembler requires, but not rpm-ostree
+    required_fields=("automatic-version-prefix")
+    for field in "${required_fields[@]}"; do
+        if ! jq -re '."'"${field}"'"' < "${manifest_tmp_json}" >/dev/null; then
+            echo "Missing required field in src/config/manifest.yaml: ${field}" 1>&2
+            exit 1
+        fi
+    done
     rm -f "${manifest_tmp_json}"
 
     # This dir is no longer used
