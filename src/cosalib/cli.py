@@ -10,25 +10,29 @@ from cosalib import (
     aws,
     azure,
     gcp,
-    vultr
+    vultr,
+    exoscale
 )
 
 CLOUD_CLI_TARGET = {
-    "aws":    (aws.aws_cli,
-               aws.aws_run_ore,
-               aws.aws_run_ore_replicate),
-    "aliyun": (aliyun.aliyun_cli,
-               aliyun.aliyun_run_ore,
-               aliyun.aliyun_run_ore_replicate),
-    "azure":  (azure.azure_cli,
-               azure.azure_run_ore,
-               azure.azure_run_ore_replicate),
-    "gcp":    (gcp.gcp_cli,
-               gcp.gcp_run_ore,
-               gcp.gcp_run_ore_replicate),
-    "vultr":  (vultr.vultr_cli,
-               vultr.vultr_run_ore,
-               vultr.vultr_run_ore_replicate),
+    "aws":      (aws.aws_cli,
+                 aws.aws_run_ore,
+                 aws.aws_run_ore_replicate),
+    "aliyun":   (aliyun.aliyun_cli,
+                 aliyun.aliyun_run_ore,
+                 aliyun.aliyun_run_ore_replicate),
+    "azure":    (azure.azure_cli,
+                 azure.azure_run_ore,
+                 azure.azure_run_ore_replicate),
+    "gcp":      (gcp.gcp_cli,
+                 gcp.gcp_run_ore,
+                 gcp.gcp_run_ore_replicate),
+    "vultr":    (vultr.vultr_cli,
+                 vultr.vultr_run_ore,
+                 vultr.vultr_run_ore_replicate),
+    "exoscale": (exoscale.exoscale_cli,
+                 exoscale.exoscale_run_ore,
+                 exoscale.exoscale_run_ore_replicate),
 }
 
 
