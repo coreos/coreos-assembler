@@ -121,6 +121,8 @@ configure_user(){
     # At some point we may make this the default.
     useradd builder --uid 1000 -G wheel,kvm,kvm78,kvm124,kvm232
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
+    # Contents of /etc/sudoers.d need not to be world writable
+    chmod 600 /etc/sudoers.d/wheel-nopasswd
 }
 
 write_archive_info() {
