@@ -95,6 +95,10 @@ VARIANTS = {
     "vultr": {
         "image_format": "raw",
         "platform": "vultr",
+    },
+    "exoscale": {
+        "image_format": "qcow2",
+        "platform": "exoscale",
     }
 }
 
