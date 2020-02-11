@@ -83,8 +83,16 @@ class Builds:  # pragma: nocover
             basearch = get_basearch()
         return self._path(f"builds/{build_id}/{basearch}")
 
+    def get_build_meta(self, build_id, basearch=None):
+        d = self.get_build_dir(build_id, basearch)
+        with open(os.path.join(d, 'meta.json')) as f:
+            return json.load(f)
+
     def get_tags(self):
         return self._data.get('tags', [])
+
+    def get_builds(self):
+        return self._data.get('builds', [])
 
     def insert_build(self, build_id, basearch=None):
         if not basearch:

@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+
+import datetime
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.builds import Builds
+from cosalib.cmdlib import parse_date_string
+
+
+def main():
+    builds = Builds()
+    if len(builds.get_builds()) == 0:
+        print(f"No builds!")
+        return
+
+    tags = {}
+    for tag in builds.get_tags():
+        tags[tag['target']] = tags.get(tag['target'], []) + [tag['name']]
+
+    for build in builds.get_builds():
+        print(f"{build['id']}")
+        m = builds.get_build_meta(build['id'])
+        ts = m['coreos-assembler.build-timestamp']
+        d = parse_date_string(ts)
+        delta = datetime.datetime.now(datetime.timezone.utc) - d
+        # chop off the microseconds in the delta; don't need that precise
+        print(f"   Timestamp: {ts} ({str(delta).split('.')[0]} ago)")
+        print(f"   Artifacts: {' '.join(list(m['images']))}")
+        if build['id'] in tags:
+            print(f"   Tags: {' '.join(tags[build['id']])}")
+        print()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
