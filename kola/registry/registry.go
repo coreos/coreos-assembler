@@ -11,7 +11,6 @@ import (
 	_ "github.com/coreos/mantle/kola/tests/metadata"
 	_ "github.com/coreos/mantle/kola/tests/misc"
 	_ "github.com/coreos/mantle/kola/tests/ostree"
-	_ "github.com/coreos/mantle/kola/tests/packages"
 	_ "github.com/coreos/mantle/kola/tests/podman"
 	_ "github.com/coreos/mantle/kola/tests/rhcos"
 	_ "github.com/coreos/mantle/kola/tests/rpmostree"
