@@ -9,6 +9,7 @@ sys.path.insert(0, cosa_dir)
 
 from cosalib.build import BuildExistsError
 from cosalib.cli import BuildCli
+import cosalib.metal as Metal
 import cosalib.qemuvariants as QVariants
 import cosalib.vmware as VmwareOVA
 
@@ -26,7 +27,12 @@ def get_builder(imgtype, build_root, build="latest", force=False, schema=None):
         return QVariants.QemuVariantImage(*args, **kargs)
 
     if imgtype in VmwareOVA.VARIANTS:
+        log.info(f"Target '{imgtype.upper()}' is a VMWare OVA Variant image")
         return VmwareOVA.VmwareOVA(*args, **kargs)
+
+    if imgtype in Metal.VARIANTS:
+        log.info(f"Target '{imgtype.upper()}' is a Metal/Base Variant image")
+        return Metal.MetalVariantImage(*args, **kargs)
 
     raise Exception(f"{imgtype} is not supported by this command")
 
@@ -39,6 +45,7 @@ def artifact_cli():
 
     targets = list(QVariants.VARIANTS.keys())
     targets.extend(VmwareOVA.VARIANTS.keys())
+    targets.extend(Metal.VARIANTS.keys())
     targets.append("manual")
 
     parser = BuildCli()

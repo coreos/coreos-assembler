@@ -46,8 +46,6 @@ def run_verbose(args, **kwargs):
     :type kwargs: dict
     :raises: CalledProcessError
     """
-    print("+ {}".format(subprocess.list2cmdline(args)))
-
     # default to throwing exception
     if 'check' not in kwargs.keys():
         kwargs['check'] = True
@@ -57,11 +55,27 @@ def run_verbose(args, **kwargs):
         kwargs['stdout'] = subprocess.PIPE
         kwargs['stderr'] = subprocess.PIPE
 
-    try:
-        process = subprocess.run(args, **kwargs)
-    except subprocess.CalledProcessError:
-        fatal("Error running command " + args[0])
-    return process
+    print("+ {}".format(subprocess.list2cmdline(args)))
+    with tempfile.NamedTemporaryFile(prefix="cmdlib-cmd") as t:
+        cosa_path = os.path.dirname(os.path.dirname(__file__))
+
+        # when cmdlib_sh=True, execute the command in a wrapper
+        # that sources the cmdlib.sh functions to allow using
+        # cmdlib.sh features like "runvm".
+        if kwargs.pop('cmdlib_sh', False):
+            wrapper = f"""
+. {cosa_path}/cmdlib.sh
+{' '.join(args)}
+"""
+            t.write(str.encode(wrapper))
+            t.flush()
+            args = ["/bin/bash", "-xe", f"{t.name}"]
+
+        try:
+            process = subprocess.run(args, **kwargs)
+        except subprocess.CalledProcessError:
+            fatal("Error running command " + args[0])
+        return process
 
 
 def write_json(path, data):

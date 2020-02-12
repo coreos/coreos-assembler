@@ -27,6 +27,16 @@ def test_run_verbose():
         assert result.stdout == b'hi\n'
 
 
+def test_run_verbose_cmdlib():
+    """
+    Verify cmdlib_sh sourcing works correctly.
+    """
+    result = cmdlib.run_verbose(['echo', '$0'],
+                                cmdlib_sh=True, capture_output=True)
+    assert "/tmp/cmdlib-" in result.stdout.decode()
+
+
+
 def test_write_and_load_json(tmpdir):
     """
     Ensure write_json writes loadable json

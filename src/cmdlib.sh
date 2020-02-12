@@ -2,7 +2,12 @@
 set -euo pipefail
 # Shared shell script library
 
-DIR=$(dirname "$0")
+my_name="$0"
+if [ "${BASH_SOURCE[0]}x" != "x" ]; then
+    # Allow this library to be sourced
+    my_name="${BASH_SOURCE[0]}"
+fi
+DIR="$(dirname "$(readlink -f "${my_name}")")"
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
 # Detect what platform we are on
