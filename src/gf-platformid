@@ -61,7 +61,8 @@ fi
 # reflink-backed file on the host https://github.com/coreos/coreos-assembler/pull/935
 # and this will verify whether it happened
 coreos_gf umount-all
-coreos_gf e2fsck /dev/sda1 correct:false forceall:true
+bootpn=$(coreos_gf findfs-label boot)
+coreos_gf e2fsck "${bootpn}" correct:false forceall:true
 
 coreos_gf_shutdown
 
