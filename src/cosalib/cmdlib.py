@@ -2,7 +2,6 @@
 """
 Houses helper code for python based coreos-assembler commands.
 """
-
 import hashlib
 import json
 import os
@@ -248,6 +247,18 @@ def image_info(image):
             ['qemu-img', 'info', '--output=json', image],
             capture_output=True).stdout
         )
+
+        # Fixed VPC/VHD v1 disks are really raw images with a VHD footer.
+        # The VHD footer uses 'conectix' as the identify in first 8 bytes
+        # of the last 512 bytes. Sadly, 'qemu-img' does not identify it
+        # properly.
+        if out.get("format") == "raw":
+            with open(image, 'rb') as imgf:
+                imgf.seek(-512, os.SEEK_END)
+                data = imgf.read(8)
+                if data == b"conectix":
+                    out['format'] = "vpc"
+                    out['submformat'] = "fixed"
         return out
     except Exception as e:
         raise Exception(f"failed to inspect {image} with qemu", e)
