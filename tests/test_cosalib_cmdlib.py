@@ -140,3 +140,14 @@ def test_import_ostree_commit(monkeypatch, tmpdir):
     monkeypatch.setattr(subprocess, 'call', monkeyspcall)
     # Test
     cmdlib.import_ostree_commit(tmpdir, 'commit', 'tarfile')
+
+
+def test_image_info(tmpdir):
+    cmdlib.run_verbose([
+        "qemu-img", "create", "-f", "qcow2", f"{tmpdir}/test.qcow2", "10M"])
+    assert cmdlib.image_info(f"{tmpdir}/test.qcow2").get('format') == "qcow2"
+    cmdlib.run_verbose([
+        "qemu-img", "create", "-f", "vpc",
+        '-o', 'force_size,subformat=fixed',
+        f"{tmpdir}/test.vpc", "10M"])
+    assert cmdlib.image_info(f"{tmpdir}/test.vpc").get('format') == "vpc"

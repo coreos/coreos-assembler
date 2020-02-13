@@ -55,6 +55,9 @@ VARIANTS = {
         "image_format": "vpc",
         "image_suffix": "vhd",
         "platform": "azure",
+        "convert_options": {
+            '-o': 'force_size,subformat=fixed'
+        },
     },
     "gcp": {
         # See https://cloud.google.com/compute/docs/import/import-existing-image#requirements_for_the_image_file
