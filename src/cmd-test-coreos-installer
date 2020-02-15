@@ -13,6 +13,12 @@ build=${1:-latest}
 
 arch=$(arch)
 
+case "${arch}" in
+  ppc64le) boottype="grub"; networkdevice="virtio-net-pci" ;;
+  x86_64) boottype="pxe"; networkdevice="e1000"; pxeimagepath="/usr/share/syslinux/"; pxeimages=("pxelinux.0" "ldlinux.c32") ;;
+  *) echo "CoreOS installer test not supported for ${arch}"; exit 1 ;;
+esac
+
 builddir=builds/${build}/${arch}
 buildmeta=${builddir}/meta.json
 
@@ -20,21 +26,13 @@ buildid=$(jq -er .buildid < ${buildmeta})
 metalimg=$(jq -er .images.metal.path < ${buildmeta})
 instkernel=$(jq -er .images.kernel.path < ${buildmeta})
 instinitramfs=$(jq -er .images.initramfs.path < ${buildmeta})
-
 ignition_version=$(disk_ignition_version "${metalimg}")
 
 # OK, we seem to have the images.  Launch our temporary webserver.
 statedir=tmp/coreos-installer-test
 rm -rf "${statedir}" && mkdir -p "${statedir}"
 tftpdir=${statedir}/tftp
-pxeconfigdir=${tftpdir}/pxelinux.cfg
-mkdir -p "${pxeconfigdir}"
-
-# FIXME when we rewrite this in mantle, use an auto-allocated port
-port=8723
-cd "${tftpdir}"
-setpriv --pdeathsig SIGTERM -- kola http-server --port "${port}" &
-cd -
+mkdir -p "${tftpdir}"
 
 case "${metalimg}" in
   *.raw) echo "NOTICE: Metal image is not compressed, doing so now temporarily"
@@ -46,17 +44,44 @@ esac
 for x in ${instkernel} ${instinitramfs}; do
     ln "${builddir}/${x}" "${tftpdir}"
 done
-cat > ${pxeconfigdir}/default << EOF
+
+# FIXME when we rewrite this in mantle, use an auto-allocated port
+port=8723
+cd "${tftpdir}"
+setpriv --pdeathsig SIGTERM -- kola http-server --port "${port}" &
+cd -
+
+case "${boottype}" in
+  pxe) pxeconfigdir=${tftpdir}/pxelinux.cfg
+       mkdir -p "${pxeconfigdir}"
+       for image in ${pxeimages[@]}; do
+          /usr/lib/coreos-assembler/cp-reflink "${pxeimagepath}"/"${image}" "${tftpdir}"
+       done
+       bootfile=/${pxeimages[0]}
+       cat > ${pxeconfigdir}/default << EOF
 DEFAULT pxeboot
 TIMEOUT 20
 PROMPT 0
 LABEL pxeboot
     KERNEL ${instkernel}
-    APPEND ip=dhcp rd.neednet=1 initrd=${instinitramfs} console=tty0 console=ttyS0 coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://192.168.76.2:${port}/${metalimg} coreos.inst.ignition_url=http://192.168.76.2:${port}/config.ign
+    APPEND ip=dhcp rd.neednet=1 initrd=${instinitramfs} console=tty0 console=${DEFAULT_TERMINAL} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://192.168.76.2:${port}/${metalimg} coreos.inst.ignition_url=http://192.168.76.2:${port}/config.ign
 IPAPPEND 2
 EOF
-
-/usr/lib/coreos-assembler/cp-reflink /usr/share/syslinux/{pxelinux.0,ldlinux.c32} ${tftpdir}
+  ;;
+  grub) grub2-mknetdir --net-directory="${tftpdir}"
+        bootfile=/boot/grub2/powerpc-ieee1275/core.elf
+        cat > ${tftpdir}/boot/grub2/grub.cfg << EOF
+default=0
+timeout=1
+menuentry "CoreOS (BIOS)" {
+echo "Loading kernel"
+linux /${instkernel} ip=dhcp rd.neednet=1 console=tty0 console=${DEFAULT_TERMINAL} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://192.168.76.2:${port}/${metalimg} coreos.inst.ignition_url=http://192.168.76.2:${port}/config.ign
+echo "Loading initrd"
+initrd /${instinitramfs}
+}
+EOF
+  ;;
+esac
 
 disk=${statedir}/disk.qcow2
 qemu-img create -f qcow2 ${disk} 12G
@@ -86,7 +111,7 @@ completionf=${statedir}/completion.txt
 touch "${completionf}"
 kola qemuexec -m 1536 -- \
        -boot once=n -option-rom /usr/share/qemu/pxe-rtl8139.rom \
-       -device e1000,netdev=mynet0,mac=52:54:00:12:34:56 -netdev user,id=mynet0,net=192.168.76.0/24,dhcpstart=192.168.76.9,tftp=${tftpdir},bootfile=/pxelinux.0 \
+       -device ${networkdevice},netdev=mynet0,mac=52:54:00:12:34:56 -netdev user,id=mynet0,net=192.168.76.0/24,dhcpstart=192.168.76.9,tftp=${tftpdir},bootfile=${bootfile} \
        -drive if=virtio,file=${disk} \
        -device virtio-serial -device virtserialport,chardev=completion,name=completion \
        -chardev file,id=completion,path=${completionf}
