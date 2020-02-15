@@ -32,7 +32,9 @@ VARIANTS = {
             "disk.vmdk"
         ],
         "tar_flags": [
-            "-c",
+            # DEFAULT_TAR_FLAGS has -S, which isn't suppported by ustar
+            '-ch',
+            # Required by OVF spec
             "--format=ustar"
         ]
     },
