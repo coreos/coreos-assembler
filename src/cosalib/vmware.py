@@ -110,4 +110,6 @@ class VmwareOVA(QemuVariantImage):
 
         log.debug(vmdk_xml)
         log.info("desc.ovf will be added to the tar file")
-        self.tar_members.append(self.desc_ovf_path)
+        # OVF descriptor must come first, then the manifest, then
+        # References in order
+        self.tar_members.insert(0, self.desc_ovf_path)
