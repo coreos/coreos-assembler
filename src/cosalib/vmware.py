@@ -58,8 +58,8 @@ class VmwareOVA(QemuVariantImage):
         QemuVariantImage.__init__(self, *args, **kwargs)
         # Set the QemuVariant mutate_callback so that OVA is called.
         self.mutate_callback = self.write_ova
-        # Ensure that desc.ovf is included in the tar
-        self.desc_ovf_path = os.path.join(self._tmpdir, "desc.ovf")
+        # Ensure that coreos.ovf is included in the tar
+        self.ovf_path = os.path.join(self._tmpdir, "coreos.ovf")
 
     def generate_ovf_parameters(self, vmdk, cpu=2,
                                 memory=4096, system_type="vmx-13",
@@ -103,13 +103,12 @@ class VmwareOVA(QemuVariantImage):
 
         with open(OVA_TEMPLATE_FILE) as f:
             template = f.read()
-        vmdk_xml = template.format(**ovf_params)
+        ovf_xml = template.format(**ovf_params)
 
-        with open(self.desc_ovf_path, "w") as ovf:
-            ovf.write(vmdk_xml)
+        with open(self.ovf_path, "w") as ovf:
+            ovf.write(ovf_xml)
 
-        log.debug(vmdk_xml)
-        log.info("desc.ovf will be added to the tar file")
+        log.debug(ovf_xml)
         # OVF descriptor must come first, then the manifest, then
         # References in order
-        self.tar_members.insert(0, self.desc_ovf_path)
+        self.tar_members.insert(0, self.ovf_path)
