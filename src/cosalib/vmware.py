@@ -2,6 +2,8 @@
 # NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
 #
 # An operation that mutates a build by generating an ova
+import hashlib
+import json
 import logging as log
 import os.path
 import sys
@@ -60,6 +62,8 @@ class VmwareOVA(QemuVariantImage):
         self.mutate_callback = self.write_ova
         # Ensure that coreos.ovf is included in the tar
         self.ovf_path = os.path.join(self._tmpdir, "coreos.ovf")
+        # and the manifest
+        self.manifest_path = os.path.join(self._tmpdir, "coreos.mf")
 
     def generate_ovf_parameters(self, vmdk, cpu=2,
                                 memory=4096, system_type="vmx-13",
@@ -113,3 +117,23 @@ class VmwareOVA(QemuVariantImage):
         # OVF descriptor must come first, then the manifest, then
         # References in order
         self.tar_members.insert(0, self.ovf_path)
+
+        # Now generate and add the manifest
+        manifest_files = (
+            (os.path.basename(self.ovf_path), self.ovf_path),
+            ('disk.vmdk', image_name),
+        )
+        manifest_lines = []
+        for name, path in manifest_files:
+            digest = hashlib.sha256()
+            with open(path, 'rb') as f:
+                while True:
+                    buf = f.read(1 << 20)
+                    if not buf:
+                        break
+                    digest.update(buf)
+            manifest_lines.append(f'SHA256({name})= {digest.hexdigest()}\n')
+        with open(self.manifest_path, 'w') as f:
+            f.write(''.join(manifest_lines))
+        # Insert after the OVF descriptor
+        self.tar_members.insert(1, self.manifest_path)
