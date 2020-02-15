@@ -227,16 +227,16 @@ class QemuVariantImage(_Build):
         if self.tar_members:
             # Python does not create sparse Tarfiles, so we have do it via
             # the CLI here.
-            base_name = self.tar_members.pop(0)
-            tarlist = [base_name]
-            # in the case of several clouds, the disk is named `disk.raw` or
-            # `disk.vmdk`. When creating a tarball, we rename the disk to
-            # the in-tar name if the name does not match the defaulting naming.
-            if base_name != os.path.basename(work_img):
-                os.rename(work_img, os.path.join(self._tmpdir, base_name))
-
+            tarlist = []
             for member in self.tar_members:
                 member_name = os.path.basename(member)
+                # In the case of several clouds, the disk is named
+                # `disk.raw` or `disk.vmdk`.  When creating a tarball, we
+                # rename the disk to the in-tar name if the name does not
+                # match the default naming.
+                if member_name.endswith(('.raw', '.vmdk')):
+                    if member_name != os.path.basename(work_img):
+                        os.rename(work_img, os.path.join(self._tmpdir, member_name))
                 tarlist.append(member_name)
 
             tar_cmd = ['tar', '--owner=0', '--group=0', '-C', self._tmpdir]
