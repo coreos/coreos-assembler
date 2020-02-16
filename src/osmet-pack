@@ -1,0 +1,69 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ ! -f /etc/cosa-supermin ]; then
+    dn=$(dirname "$0")
+    # shellcheck source=src/cmdlib.sh
+    . "${dn}"/cmdlib.sh
+
+    img_src=$1; shift
+    osmet_dest=$1; shift
+    checksum=$1; shift
+    coreinst=${1:-${OSMET_PACK_COREOS_INSTALLER:-}}
+
+    workdir=$(pwd)
+    TMPDIR=tmp/tmp-osmet-pack
+    rm -rf "${TMPDIR}"
+    mkdir -p "${TMPDIR}"
+
+    if [[ $img_src == *.gz || $img_src == *.xz ]]; then
+        img="$(basename "$img_src")"
+        fatal "Cannot pack osmet from $img; not an uncompressed image"
+    fi
+
+    set -- "${TMPDIR}/osmet.bin" "${checksum}"
+    if [ -n "${coreinst:-}" ]; then
+        cp "${coreinst}" "${TMPDIR}/coreos-installer"
+        set -- "$@" "${TMPDIR}/coreos-installer"
+    fi
+
+    # stamp it with "osmet" serial so we find it easily in the VM
+    runvm -drive "if=none,id=osmet,format=raw,readonly=on,file=${img_src}" \
+        -device virtio-blk,serial=osmet,drive=osmet -- \
+        /usr/lib/coreos-assembler/osmet-pack "$@"
+
+    mv "${TMPDIR}/osmet.bin" "${osmet_dest}"
+    rm -rf "${TMPDIR}"
+
+    exit 0
+fi
+
+# This runs inside supermin
+
+osmet_dest=$1; shift
+checksum=$1; shift
+coreinst=${1:-}
+
+set -x
+
+# we want /dev/disk symlinks for coreos-installer
+/usr/lib/systemd/systemd-udevd --daemon
+/usr/sbin/udevadm trigger --settle
+
+rootfs=/dev/disk/by-id/virtio-osmet-part4
+
+mkdir -p /sysroot
+mount -o ro "${rootfs}" /sysroot
+osname=$(ls /sysroot/ostree/deploy)
+deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1 -type d)
+# shellcheck disable=SC1090
+description=$(. "${deploydir}/etc/os-release" && echo "${PRETTY_NAME}")
+
+if [ -z "${coreinst}" ]; then
+    coreinst=${deploydir}/usr/bin/coreos-installer
+fi
+
+RUST_BACKTRACE=full "${coreinst}" osmet pack /dev/disk/by-id/virtio-osmet \
+    --description "${description}" \
+    --checksum "${checksum}" \
+    --output "${osmet_dest}"
