@@ -34,7 +34,8 @@ SIZE_ESITMATED = 35
 # rootfs defaults to being 'xfs'
 DEFAULT_ROOTFS = "xfs"
 
-# VARIANTS are the type of disks that can build built
+# These are basic image types; the qemu one is what most secondary
+# artifact types derive from (e.g. openstack, aws).
 # To define new variants add its definition below:
 VARIANTS = {
     "qemu": {
