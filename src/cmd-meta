@@ -9,6 +9,7 @@ import sys
 
 COSA_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, COSA_PATH)
+from cosalib import cmdlib
 from cosalib.meta import GenericBuildMeta as Meta
 
 
@@ -27,6 +28,8 @@ def new_cli():
     sub_parser.add_argument('--set', help='set a field', action='append')
     sub_parser.add_argument(
         '--dump', help='dumps the entire structure', action='store_true')
+    sub_parser.add_argument(
+        '--ignition-version', help='Output the Ignition version used for a build', action='store_true')
     sub_parser.add_argument(
         '--image-path', help='Output path to artifact IMAGETYPE',
         action='store',
@@ -62,6 +65,8 @@ def new_cli():
         meta.write()
     elif args.dump is True:
         print(meta)
+    elif args.ignition_version:
+        print(cmdlib.disk_ignition_version(meta.get('images')['qemu']['path']))
     elif args.image_path is not None:
         print(os.path.join(os.path.dirname(meta.path), meta.get('images')[args.image_path]['path']))
 
