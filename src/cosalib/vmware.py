@@ -2,7 +2,6 @@
 # NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
 #
 # An operation that mutates a build by generating an ova
-import json
 import logging as log
 import os.path
 import sys
@@ -11,7 +10,7 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
 
-from cosalib.cmdlib import run_verbose
+from cosalib.cmdlib import image_info
 from cosalib.qemuvariants import QemuVariantImage
 
 
@@ -31,6 +30,10 @@ VARIANTS = {
         },
         "tar_members": [
             "disk.vmdk"
+        ],
+        "tar_flags": [
+            "-c",
+            "--format=ustar"
         ]
     },
 }
@@ -42,6 +45,9 @@ class VmwareOVA(QemuVariantImage):
     the absolute bare minium, and is effectively a wrapper around the
     QemuVariantImage Class. The only added functionality is the generation
     of the OVF paramters.
+
+    Spec for an OVA can be found at:
+    https://www.dmtf.org/sites/default/files/standards/documents/DSP0243_1.1.0.pdf
     """
 
     def __init__(self, *args, **kwargs):
@@ -61,11 +67,7 @@ class VmwareOVA(QemuVariantImage):
         Returns a dictionary with the parameters needed to create an OVF file
         based on the qemu, vmdk, and info from the build metadata
         """
-        qemu_info = run_verbose(["qemu-img", "info", vmdk,
-                                 "--output", "json"], capture_output=True)
-        disk_size = json.loads(qemu_info.stdout)['virtual-size']
-        vmdk_size = str(os.stat(vmdk).st_blocks * 512)
-
+        disk_info = image_info(vmdk)
         image = self.summary
         product = f'{self.meta["name"]} {self.summary}'
         vendor = self.meta['name']
@@ -82,8 +84,8 @@ class VmwareOVA(QemuVariantImage):
             'vsphere_os_type':                  os_type,
             'vsphere_scsi_controller_type':     scsi,
             'vsphere_network_controller_type':  network,
-            'virtual_disk_size':                disk_size,
-            'vmdk_size':                        vmdk_size
+            'virtual_disk_size':                disk_info.get("virtual-size"),
+            'vmdk_size':                        disk_info.get("actual-size"),
         }
 
         return params
