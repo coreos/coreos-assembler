@@ -67,3 +67,8 @@ strace
 
 # Used to validate the meta.json schema
 python3-jsonschema
+
+# Will be used by mantle, and eh let's include it on
+# general principle so people using cosa have it
+# automatically
+coreos-installer
