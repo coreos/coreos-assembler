@@ -341,6 +341,7 @@
        "aliyun",
        "aws",
        "azure",
+       "dasd",
        "gcp",
        "initramfs",
        "iso",
@@ -388,6 +389,70 @@
              "default": 0,
              "examples": [
                 814407680
+              ]
+            }
+          }
+        },
+       "dasd": {
+         "$id":"#/properties/images/properties/dasd",
+         "type":"object",
+         "title":"dasd",
+         "required": [
+           "path",
+           "sha256",
+           "size"
+         ],
+         "optional": [
+           "uncompressed-sha256",
+           "uncompressed-size"
+          ],
+         "properties": {
+           "path": {
+             "$id":"#/properties/images/properties/dasd/properties/path",
+             "type":"string",
+             "title":"Relative Path of Artifact",
+             "default":"",
+             "examples": [
+               "fcos-31-202001010000-0-dasd.x86_64.qcow2.gz"
+              ],
+             "pattern":"^(.*).qcow2(|.gz|.xz)$"
+            },
+           "sha256": {
+             "$id":"#/properties/images/properties/dasd/properties/sha256",
+             "type":"string",
+             "title":"Artifact SHA256 Checksum",
+             "default":"",
+             "examples": [
+               "32d6716fb5df55457870298e24bdbf695d8c9127458d8fbfb0f7820e860901d5"
+              ],
+             "pattern":"[A-Fa-f0-9]{64}"
+            },
+           "size": {
+             "$id":"#/properties/images/properties/dasd/properties/size",
+             "type":"integer",
+             "title":"Size in bytes",
+             "default": 0,
+             "examples": [
+                893759709
+              ]
+            },
+           "uncompressed-sha256": {
+             "$id":"#/properties/images/properties/dasd/properties/uncompressed-sha256",
+             "type":"string",
+             "title":"Uncompressed-sha256",
+             "default":"",
+             "examples": [
+               "72775ed71e40fce806a5a76bee73b22155f9a2d2ef1a9a9ea9a1a12f5bbbf3ac"
+              ],
+             "pattern":"[A-Fa-f0-9]{64}"
+            },
+           "uncompressed-size": {
+             "$id":"#/properties/images/properties/dasd/properties/uncompressed-size",
+             "type":"integer",
+             "title":"Uncompressed-size",
+             "default": 0,
+             "examples": [
+                2476539904
               ]
             }
           }
