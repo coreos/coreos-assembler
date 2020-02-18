@@ -16,17 +16,11 @@ package local
 
 import (
 	"fmt"
-	"math/rand"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/lang/destructor"
-	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/system/ns"
@@ -52,35 +46,6 @@ func (lc *LocalCluster) hostIP() string {
 		}
 	}
 	panic("Not a valid bridge!")
-}
-
-func (lc *LocalCluster) etcdEndpoint() string {
-	return fmt.Sprintf("http://%s:%d", lc.hostIP(), lc.flight.SimpleEtcd.Port)
-}
-
-func (lc *LocalCluster) GetDiscoveryURL(size int) (string, error) {
-	baseURL := fmt.Sprintf("%v/v2/keys/discovery/%v", lc.etcdEndpoint(), rand.Int())
-
-	nsDialer := network.NewNsDialer(lc.flight.nshandle)
-	tr := &http.Transport{
-		Dial: nsDialer.Dial,
-	}
-	client := &http.Client{Transport: tr}
-
-	body := strings.NewReader(url.Values{"value": {strconv.Itoa(size)}}.Encode())
-	req, err := http.NewRequest("PUT", baseURL+"/_config/size", body)
-	if err != nil {
-		return "", fmt.Errorf("setting discovery url failed: %v\n", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("setting discovery url failed: %v\n", err)
-	}
-	defer resp.Body.Close()
-
-	return baseURL, nil
 }
 
 func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
