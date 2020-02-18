@@ -12,10 +12,21 @@ dn=$(dirname "$0")
 build=${1:-latest}
 
 arch=$(arch)
-
+vmmemory=1536
+tftpipaddr="192.168.76.2"
 case "${arch}" in
-  ppc64le) boottype="grub"; networkdevice="virtio-net-pci" ;;
-  x86_64) boottype="pxe"; networkdevice="e1000"; pxeimagepath="/usr/share/syslinux/"; pxeimages=("pxelinux.0" "ldlinux.c32") ;;
+  ppc64le) boottype="grub"
+           networkdevice="virtio-net-pci" ;;
+  x86_64)  boottype="pxe"
+           networkdevice="e1000"
+           pxeimagepath="/usr/share/syslinux/"
+           pxeimages=("pxelinux.0" "ldlinux.c32") ;;
+  s390x)   boottype="pxe"
+           networkdevice="virtio-net-ccw"
+           tftpipaddr="10.0.2.2"
+           pxeimages=("pxelinux.0")
+           vmmemory=16384 # on a zKVM below 16G the unzipping of the metal image fails with oomkill. 
+           bootindex="bootindex=1" ;;
   *) echo "CoreOS installer test not supported for ${arch}"; exit 1 ;;
 esac
 
@@ -45,6 +56,39 @@ for x in ${instkernel} ${instinitramfs}; do
     ln "${builddir}/${x}" "${tftpdir}"
 done
 
+create_pxe_config() {
+  cmdline="ip=dhcp rd.neednet=1 console=${DEFAULT_TERMINAL} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://${tftpipaddr}:${port}/${metalimg} coreos.inst.ignition_url=http://${tftpipaddr}:${port}/config.ign"
+  if [ "${arch}" == "s390x" ]; then 
+    cat > ${pxeconfigdir}/default << EOF
+${cmdline}
+EOF
+  else
+    cmdline+=" console=tty0 initrd=${instinitramfs}"
+    cat > ${pxeconfigdir}/default << EOF
+DEFAULT pxeboot
+TIMEOUT 20
+PROMPT 0
+LABEL pxeboot
+    KERNEL ${instkernel}
+    APPEND ${cmdline}
+IPAPPEND 2
+EOF
+  fi
+}
+
+create_grub_config() {
+  cat > ${tftpdir}/boot/grub2/grub.cfg << EOF
+default=0
+timeout=1
+menuentry "CoreOS (BIOS)" {
+echo "Loading kernel"
+linux /${instkernel} ip=dhcp rd.neednet=1 console=tty0 console=${DEFAULT_TERMINAL} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://${tftpipaddr}:${port}/${metalimg} coreos.inst.ignition_url=http://${tftpipaddr}:${port}/config.ign
+echo "Loading initrd"
+initrd /${instinitramfs}
+}
+EOF
+}
+
 # FIXME when we rewrite this in mantle, use an auto-allocated port
 port=8723
 cd "${tftpdir}"
@@ -54,32 +98,21 @@ cd -
 case "${boottype}" in
   pxe) pxeconfigdir=${tftpdir}/pxelinux.cfg
        mkdir -p "${pxeconfigdir}"
-       for image in ${pxeimages[@]}; do
-          /usr/lib/coreos-assembler/cp-reflink "${pxeimagepath}"/"${image}" "${tftpdir}"
-       done
+       create_pxe_config
+       if [ ! -n "${pxeimagepath:-}" ]; then
+          # this is only for s390x where the pxe image has to be created - s390 doesn't seem to have a pre-created pxe image although have to check on this
+          /usr/share/s390-tools/netboot/mk-s390image "${tftpdir}"/"${instkernel}" -r "${tftpdir}"/"${instinitramfs}" \
+          -p "${pxeconfigdir}"/default "${tftpdir}"/"${pxeimages[0]}"
+       else
+          for image in ${pxeimages[@]}; do
+              /usr/lib/coreos-assembler/cp-reflink "${pxeimagepath}"/"${image}" "${tftpdir}"
+          done
+       fi
        bootfile=/${pxeimages[0]}
-       cat > ${pxeconfigdir}/default << EOF
-DEFAULT pxeboot
-TIMEOUT 20
-PROMPT 0
-LABEL pxeboot
-    KERNEL ${instkernel}
-    APPEND ip=dhcp rd.neednet=1 initrd=${instinitramfs} console=tty0 console=${DEFAULT_TERMINAL} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://192.168.76.2:${port}/${metalimg} coreos.inst.ignition_url=http://192.168.76.2:${port}/config.ign
-IPAPPEND 2
-EOF
   ;;
   grub) grub2-mknetdir --net-directory="${tftpdir}"
         bootfile=/boot/grub2/powerpc-ieee1275/core.elf
-        cat > ${tftpdir}/boot/grub2/grub.cfg << EOF
-default=0
-timeout=1
-menuentry "CoreOS (BIOS)" {
-echo "Loading kernel"
-linux /${instkernel} ip=dhcp rd.neednet=1 console=tty0 console=${DEFAULT_TERMINAL} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://192.168.76.2:${port}/${metalimg} coreos.inst.ignition_url=http://192.168.76.2:${port}/config.ign
-echo "Loading initrd"
-initrd /${instinitramfs}
-}
-EOF
+        create_grub_config
   ;;
 esac
 
@@ -107,18 +140,29 @@ if [ "${ignition_version}" = "2.2.0" ]; then
     mv "${spec2f}" "${ignition_path}"
 fi
 
+exec_qemu_command() {
+  cmd="kola qemuexec -m ${vmmemory} -- "
+  if [ -n "${bootindex:-}" ]; then
+      cmd+="-device ${networkdevice},netdev=mynet0,${bootindex},"
+  else
+      cmd+="-boot once=n -option-rom /usr/share/qemu/pxe-rtl8139.rom -device ${networkdevice},netdev=mynet0,"
+  fi
+  cmd+="mac=52:54:00:12:34:56 -netdev user,id=mynet0,"
+  if [ "${tftpipaddr}" != "10.0.2.2" ]; then
+      cmd+="net=192.168.76.0/24,dhcpstart=192.168.76.9,"
+  fi
+  cmd+="tftp=${tftpdir},bootfile=${bootfile} \
+        -drive if=virtio,file=${disk} \
+        -device virtio-serial -device virtserialport,chardev=completion,name=completion \
+       -chardev file,id=completion,path=${completionf}"
+  ${cmd}
+}
 completionf=${statedir}/completion.txt
 touch "${completionf}"
-kola qemuexec -m 1536 -- \
-       -boot once=n -option-rom /usr/share/qemu/pxe-rtl8139.rom \
-       -device ${networkdevice},netdev=mynet0,mac=52:54:00:12:34:56 -netdev user,id=mynet0,net=192.168.76.0/24,dhcpstart=192.168.76.9,tftp=${tftpdir},bootfile=${bootfile} \
-       -drive if=virtio,file=${disk} \
-       -device virtio-serial -device virtserialport,chardev=completion,name=completion \
-       -chardev file,id=completion,path=${completionf}
+exec_qemu_command
 if ! grep -q 'coreos-installer-test-OK' ${completionf}; then 
   echo "Failed to receive installer test completion"
   cat ${completionf}
   exit 1
 fi
 echo "ok metal+installer for ${buildid}"
-
