@@ -423,7 +423,7 @@ class _Build:
         log.info(f"Calculating metadata for {fname}")
         return {
             "path": fname,
-            "sha256sum": sha256sum_file(fpath),
+            "sha256": sha256sum_file(fpath),
             "size": int(fsize)
         }
 
