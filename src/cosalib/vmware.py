@@ -70,6 +70,7 @@ class VmwareOVA(QemuVariantImage):
         based on the qemu, vmdk, and info from the build metadata
         """
         disk_info = image_info(vmdk)
+        vmdk_size = os.stat(vmdk).st_size
         image = self.summary
         product = f'{self.meta["name"]} {self.summary}'
         vendor = self.meta['name']
@@ -86,8 +87,8 @@ class VmwareOVA(QemuVariantImage):
             'vsphere_os_type':                  os_type,
             'vsphere_scsi_controller_type':     scsi,
             'vsphere_network_controller_type':  network,
-            'virtual_disk_size':                disk_info.get("virtual-size"),
-            'vmdk_size':                        disk_info.get("actual-size"),
+            'vmdk_capacity':                    disk_info.get("virtual-size"),
+            'vmdk_size':                        str(vmdk_size),
         }
 
         return params
