@@ -516,9 +516,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	if t.ClusterSize > 0 {
 		var userdata *conf.UserData
-		if Options.IgnitionVersion == "v2" {
+		if Options.IgnitionVersion == "v2" && t.UserData != nil {
 			userdata = t.UserData
-		} else if Options.IgnitionVersion == "v3" {
+		} else {
 			userdata = t.UserDataV3
 		}
 		if userdata != nil && userdata.Contains("$discovery") {

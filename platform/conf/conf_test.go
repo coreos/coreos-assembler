@@ -43,7 +43,7 @@ func TestConfCopyKey(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		conf, err := tt.Render("")
+		conf, err := tt.Render("", false)
 		if err != nil {
 			t.Errorf("failed to parse config %d: %v", i, err)
 			continue

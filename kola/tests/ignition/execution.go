@@ -25,21 +25,6 @@ func init() {
 		Name:        "coreos.ignition.once",
 		Run:         runsOnce,
 		ClusterSize: 1,
-		UserData: conf.Ignition(`{
-                             "ignition": { "version": "2.0.0" },
-                             "storage": {
-                               "files": [
-                                 {
-                                   "filesystem": "root",
-                                   "path": "/etc/ignition-ran",
-                                   "contents": {
-                                     "source": "data:,Ignition%20ran."
-                                   },
-                                   "mode": 420
-                                 }
-                               ]
-                             }
-                           }`),
 		UserDataV3: conf.Ignition(`{
                              "ignition": { "version": "3.0.0" },
                              "storage": {
