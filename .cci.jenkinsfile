@@ -49,38 +49,8 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
           }
       }
 
-      stage("Pruning test") {
-          // Test that first build has been pruned
-          cosa_cmd("build ostree --force-image")
-          cosa_cmd("build ostree --force-image")
-          cosa_cmd("build ostree --force-image")
-          coreos.shwrap("cat /srv/builds/builds.json")
-          coreos.shwrap('jq -e ".builds|length == 3" /srv/builds/builds.json')
-          coreos.shwrap('jq -e ".builds[2].id | endswith(\\"0-1\\")" /srv/builds/builds.json')
-
-          // Test --skip-prune
-          cosa_cmd("build ostree --force-image --skip-prune")
-          coreos.shwrap("cat /srv/builds/builds.json")
-          coreos.shwrap('jq -e ".builds|length == 4" /srv/builds/builds.json')
-          coreos.shwrap('jq -e ".builds[3].id | endswith(\\"0-1\\")" /srv/builds/builds.json')
-
-          // Test prune --dry-run
-          cosa_cmd("prune --workdir /srv --dry-run")
-          coreos.shwrap("cat /srv/builds/builds.json")
-          coreos.shwrap('jq -e ".builds|length == 4" /srv/builds/builds.json')
-          coreos.shwrap('jq -e ".builds[3].id | endswith(\\"0-1\\")" /srv/builds/builds.json')
-
-          // Test --keep-last-n=0 skips pruning
-          cosa_cmd("prune --workdir /srv --keep-last-n=0")
-          coreos.shwrap("cat /srv/builds/builds.json")
-          coreos.shwrap('jq -e ".builds|length == 4" /srv/builds/builds.json')
-          coreos.shwrap('jq -e ".builds[3].id | endswith(\\"0-1\\")" /srv/builds/builds.json')
-
-          // Test prune --keep-last-n=1
-          cosa_cmd("prune --workdir /srv --keep-last-n=1")
-          coreos.shwrap("cat /srv/builds/builds.json")
-          coreos.shwrap('jq -e ".builds|length == 1" /srv/builds/builds.json')
-          coreos.shwrap('jq -e ".builds[0].id | endswith(\\"0-4\\")" /srv/builds/builds.json')
+      stage("CLI Tests") {
+          coreos.shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
       }
 }
 
