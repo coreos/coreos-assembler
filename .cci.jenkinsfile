@@ -1,10 +1,10 @@
-@Library('github.com/coreos/coreos-ci-lib@master') _
+// Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
 
-coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memory: "9Gi"]) {
+pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memory: "9Gi") {
       checkout scm
 
       stage("Build") {
-          coreos.shwrap("""
+          shwrap("""
             dnf install -y git
             git submodule update --init
             ./build.sh
@@ -13,13 +13,13 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
 
       stage("Test") {
           parallel check: {
-              coreos.shwrap("""
+              shwrap("""
                 make check
                 make unittest
               """)
           },
           build: {
-              coreos.shwrap("chown builder: /srv")
+              shwrap("chown builder: /srv")
               // just split into separate invocations to make it easier to see where it fails
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
@@ -31,11 +31,11 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
                 cosa_cmd("kola run --parallel 8")
                 cosa_cmd("kola --upgrades")
               } finally {
-                coreos.shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
+                shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
                 archiveArtifacts allowEmptyArchive: true, artifacts: 'kola.tar.xz'
               }
               // sanity check kola actually ran and dumped its output in tmp/
-              coreos.shwrap("test -d /srv/tmp/kola")
+              shwrap("test -d /srv/tmp/kola")
           },
           buildextend: {
               cosa_cmd("buildextend-metal")
@@ -50,10 +50,10 @@ coreos.pod([image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: tr
       }
 
       stage("CLI Tests") {
-          coreos.shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
+          shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
       }
 }
 
 def cosa_cmd(args) {
-    coreos.shwrap("cd /srv && sudo -u builder cosa ${args}")
+    shwrap("cd /srv && sudo -u builder cosa ${args}")
 }
