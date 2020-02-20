@@ -239,7 +239,7 @@ class QemuVariantImage(_Build):
                 member_name = os.path.basename(member)
                 tarlist.append(member_name)
 
-            tar_cmd = ['tar', '-C', self._tmpdir]
+            tar_cmd = ['tar', '--owner=0', '--group=0', '-C', self._tmpdir]
             tar_cmd.extend(self.tar_flags)
             tar_cmd.extend(['-f', final_img])
             tar_cmd.extend(tarlist)
