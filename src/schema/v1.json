@@ -1,5 +1,154 @@
 {
- "definitions": {},
+ "definitions": {
+     "artifact": {
+         "type": "object",
+         "properties": {
+           "path": {
+             "$id": "#/artifact/Path",
+             "type":"string",
+             "title":"Path",
+             "default":"",
+             "pattern":"^(.*)$"
+            },
+           "sha256": {
+             "$id": "#/artifact/sha256",
+             "type":"string",
+             "title":"SHA256",
+             "pattern": "[A-Fa-f0-9]{64}"
+            },
+           "size": {
+             "$id": "#/artifact/size",
+             "type":"integer",
+             "title":"Size in bytes",
+             "default": 0
+            },
+           "uncompressed-sha256": {
+             "$id": "#/artifact/uncompressed-sha256",
+             "type":"string",
+             "title":"Uncompressed SHA256",
+             "pattern": "[A-Fa-f0-9]{64}"
+            },
+           "uncompressed-size": {
+             "$id": "#/artifact/uncompressed-size",
+             "type":"integer",
+             "title":"Uncompressed-size",
+             "default": 0
+            }
+          },
+          "optional": [
+              "size",
+              "uncompressed-sha256",
+              "uncompressed-size"
+          ],
+          "required": [
+              "path",
+              "sha256"
+          ]
+        },
+     "image": {
+         "type": "object",
+         "required": [
+             "digest",
+             "image"
+         ],
+         "properties": {
+           "digest": {
+             "$id": "#/image/digest",
+             "type":"string",
+             "title":"Digest",
+             "pattern":"sha256:[A-Fa-f0-9]{64}"
+            },
+           "image": {
+             "$id": "#/image/image",
+             "type":"string",
+             "title":"Image",
+             "pattern":"^(?!\\s*$).+"
+            }
+          }
+      },
+      "cloudartifact": {
+         "type": "object",
+         "required": [
+             "image",
+             "url"
+         ],
+         "properties": {
+           "image": {
+             "$id":"#/cloudartifact/image",
+             "type":"string",
+             "title":"Image",
+             "default":"",
+             "examples": [
+               "fcos-31-202001010000-0"
+              ],
+             "pattern":"^(?!\\s*$).+"
+            },
+           "url": {
+             "$id":"#/cloudartifact/url",
+             "type":"string",
+             "title":"URL",
+             "default":"",
+             "examples": [
+               "https://example.com/devel/devel/rhcos/fcos-31-202001010000-0.tar.gz"
+              ],
+             "pattern":"^(?!\\s*$).+"
+            }
+          }
+     },
+     "git": {
+         "type": "object",
+         "required": [
+             "commit",
+             "origin"
+         ],
+         "optional": [
+             "branch",
+             "dirty"
+         ],
+         "properties": {
+           "branch": {
+             "$id":"#/git/branch",
+             "type":"string",
+             "title":"branch",
+             "default":"",
+             "examples": [
+               "HEAD"
+              ],
+             "pattern":"^(?!\\s*$).+"
+            },
+           "commit": {
+             "$id":"#/git/commit",
+             "type":"string",
+             "title":"commit",
+             "default":"",
+             "examples": [
+               "742edc307e58f35824d906958b6493510e12b593"
+              ],
+             "pattern":"\\b[0-9a-f]{5,40}\\b"
+            },
+           "dirty": {
+             "$id":"#/git/dirty",
+             "type":"string",
+             "title":"dirty",
+             "default":"",
+             "examples": [
+               "true"
+              ],
+             "pattern":"^(?!\\s*$).+"
+            },
+           "origin": {
+             "$id":"#/git/origin",
+             "type":"string",
+             "title":"origin",
+             "default":"",
+             "examples": [
+               "https://github.com/coreos/fedora-coreos-config"
+              ],
+             "pattern":"^(?!\\s*$).+"
+            }
+          }
+     }
+ },
  "$schema":"http://json-schema.org/draft-07/schema#",
  "$id":"http://github.com/coreos/coreos-assembler/blob/master/schema/v1.json",
  "type":"object",
@@ -121,7 +270,7 @@
    "coreos-assembler.basearch": {
      "$id":"#/properties/coreos-assembler.basearch",
      "type":"string",
-     "title":"Architecture Schema",
+     "title":"Architecture",
      "default":"",
      "examples": [
        "x86_64"
@@ -131,7 +280,7 @@
    "coreos-assembler.build-timestamp": {
      "$id":"#/properties/coreos-assembler.build-timestamp",
      "type":"string",
-     "title":"Build Time Stamp schema",
+     "title":"Build Time Stamp",
      "default":"",
      "examples": [
        "2020-01-15T19:32:19Z"
@@ -151,7 +300,7 @@
    "coreos-assembler.config-dirty": {
      "$id":"#/properties/coreos-assembler.config-dirty",
      "type":"string",
-     "title":"Indication if the source has been overrriden",
+     "title":"GitDirty",
      "default":"",
      "examples": [
        "true"
@@ -161,7 +310,7 @@
    "coreos-assembler.config-gitrev": {
      "$id":"#/properties/coreos-assembler.config-gitrev",
      "type":"string",
-     "title":"Config GitRev for Build",
+     "title":"Config GitRev",
      "default":"",
      "examples": [
        "v3.1-728-g742edc307e58f35824d906958b6493510e12b593"
@@ -171,55 +320,14 @@
    "coreos-assembler.container-config-git": {
      "$id":"#/properties/coreos-assembler.container-config-git",
      "type":"object",
-     "title":"COSAcontainer-config-git",
-     "required": [
-       "branch",
-       "commit",
-       "dirty",
-       "origin"
-      ],
-     "properties": {
-       "branch": {
-         "$id":"#/properties/coreos-assembler.container-config-git/properties/branch",
-         "type":"string",
-         "title":"Git branch for COSA",
-         "default":"",
-         "examples": [
-           "HEAD"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        },
-       "commit": {
-         "$id":"#/properties/coreos-assembler.container-config-git/properties/commit",
-         "type":"string",
-         "title":"COSA git ref",
-         "default":"",
-         "examples": [
-           "742edc307e58f35824d906958b6493510e12b593"
-          ],
-         "pattern":"\\b[0-9a-f]{5,40}\\b"
-        },
-       "dirty": {
-         "$id":"#/properties/coreos-assembler.container-config-git/properties/dirty",
-         "type":"string",
-         "title":"Indicates if COSA checkout is dirty",
-         "default":"",
-         "examples": [
-           "true"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        },
-       "origin": {
-         "$id":"#/properties/coreos-assembler.container-config-git/properties/origin",
-         "type":"string",
-         "title":"Build config origin",
-         "default":"",
-         "examples": [
-           "https://github.com/coreos/fedora-coreos-config"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        }
-      }
+     "title":"Container Config GIT",
+     "$ref": "#/definitions/git"
+    },
+   "coreos-assembler.container-image-git": {
+     "$id":"#/properties/coreos-assembler.container-image-git",
+     "type":"object",
+     "title":"COSA Container Image Git",
+     "$ref": "#/definitions/git"
     },
     "fedora-coreos.parent-version": {
      "$id":"#/properties/fedora-coreos.parent-version",
@@ -240,59 +348,6 @@
        "f15f5b25cf138a7683e3d200c53ece2091bf71d31332135da87892ab72ff4ee3"
       ],
       "pattern":"[A-Fa-f0-9]{64}$"
-    },
-   "coreos-assembler.container-image-git": {
-     "$id":"#/properties/coreos-assembler.container-image-git",
-     "type":"object",
-     "title":"COSA Container Image Git Source",
-     "required": [
-       "branch",
-       "commit",
-       "dirty",
-       "origin"
-      ],
-     "properties": {
-       "branch": {
-         "$id":"#/properties/coreos-assembler.container-image-git/properties/branch",
-         "type":"string",
-         "title":"COSA branch",
-         "default":"",
-         "examples": [
-           "HEAD"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        },
-       "commit": {
-         "$id":"#/properties/coreos-assembler.container-image-git/properties/commit",
-         "type":"string",
-         "title":"COSA Commit",
-         "default":"",
-         "examples": [
-           "e41cbf0422adbb468911734b0516ebf4e7f977f4"
-          ],
-         "pattern":"\\b[0-9a-f]{5,40}\\b"
-        },
-       "dirty": {
-         "$id":"#/properties/coreos-assembler.container-image-git/properties/dirty",
-         "type":"string",
-         "title":"Branch state is dirty",
-         "default":"",
-         "examples": [
-           "false"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        },
-       "origin": {
-         "$id":"#/properties/coreos-assembler.container-image-git/properties/origin",
-         "type":"string",
-         "title":"Origin URL of the COSA",
-         "default":"",
-         "examples": [
-           "git@github.com:coreos/coreos-assembler.git"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        }
-      }
     },
    "coreos-assembler.image-config-checksum": {
      "$id":"#/properties/coreos-assembler.image-config-checksum",
@@ -356,665 +411,79 @@
          "$id":"#/properties/images/properties/ostree",
          "type":"object",
          "title":"OSTree",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/ostree/properties/path",
-             "type":"string",
-             "title":"Relative Path of OSTree Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-ostree.x86_64.tar"
-              ],
-             "pattern":"(.*).tar(|.xz|.gz)"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/ostree/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "43375fa20ea1ff31ce83110b604cfab518da5b6b5a6c9c4c6cde3449d862c530"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}$"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/ostree/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                814407680
-              ]
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "dasd": {
          "$id":"#/properties/images/properties/dasd",
          "type":"object",
          "title":"dasd",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-         ],
-         "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/dasd/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-dasd.x86_64.qcow2.gz"
-              ],
-             "pattern":"^(.*).qcow2(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/dasd/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "32d6716fb5df55457870298e24bdbf695d8c9127458d8fbfb0f7820e860901d5"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/dasd/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                893759709
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/dasd/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "72775ed71e40fce806a5a76bee73b22155f9a2d2ef1a9a9ea9a1a12f5bbbf3ac"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/dasd/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                2476539904
-              ]
-            }
-          }
-        },
+         "$ref": "#/definitions/artifact"
+       },
        "qemu": {
          "$id":"#/properties/images/properties/qemu",
          "type":"object",
          "title":"Qemu",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-         ],
-         "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/qemu/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-qemu.x86_64.qcow2.gz"
-              ],
-             "pattern":"^(.*).qcow2(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/qemu/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "32d6716fb5df55457870298e24bdbf695d8c9127458d8fbfb0f7820e860901d5"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/qemu/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                893759709
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/qemu/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "72775ed71e40fce806a5a76bee73b22155f9a2d2ef1a9a9ea9a1a12f5bbbf3ac"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/qemu/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                2476539904
-              ]
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "metal": {
          "$id":"#/properties/images/properties/metal",
          "type":"object",
          "title":"Metal",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-          ],
-          "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/metal/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-metal.x86_64.raw.gz"
-              ],
-             "pattern":"^(.*).raw(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/metal/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "2899aa904e7646a10f25dae6ecc2c1099673b3fd39c122265d2d5faa5b9a7595"
-              ],
-             "pattern":"^(?!\\s*$).+"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/metal/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                894265661
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/metal/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "0f135871fe452b66f28383f5882aa5544fdb700755a68fbbb4b3dc42e3c5896e"
-              ],
-             "pattern": "[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/metal/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                3824156672
-              ]
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "iso": {
          "$id":"#/properties/images/properties/iso",
          "type":"object",
-         "title":"Iso",
-         "required": [
-           "path",
-           "sha256"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/iso/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-installer.x86_64.iso"
-              ],
-             "pattern":"^(.*).iso(|.gz|xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/iso/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "770d6372dc469c2704b0ffff8b3c7f655115ddda8505d64789457ae450d79a54"
-              ],
-             "pattern": "[A-Fa-f0-9]{64}"
-            }
-          }
+         "title":"ISO",
+         "$ref": "#/definitions/artifact"
         },
        "kernel": {
          "$id":"#/properties/images/properties/kernel",
          "type":"object",
          "title":"Kernel",
-         "required": [
-           "path",
-           "sha256"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/kernel/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-installer-kernel-x86_64"
-              ],
-             "pattern":"^(.*)-kernel-(.*)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/kernel/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "7ace7ebdb828e1dc4d242b2fb8a360e7b97da7748d2fde4ffa3bd30232c04865"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "initramfs": {
          "$id":"#/properties/images/properties/initramfs",
          "type":"object",
          "title":"Initramfs",
-         "required": [
-           "path",
-           "sha256"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/initramfs/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-installer-initramfs.x86_64.img"
-              ],
-             "pattern":"^(.*).img$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/initramfs/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "6cf23a16b8da57d35a0b066dfca7c2a2815654a0e84e65ba463a8ae45031a05b"
-              ],
-             "pattern":"^(?!\\s*$).+"
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "openstack": {
          "$id":"#/properties/images/properties/openstack",
          "type":"object",
-         "title":"Openstack",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-         ],
-         "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/openstack/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-openstack.x86_64.qcow2.gz"
-              ],
-             "pattern":"^(.*).qcow2(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/openstack/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "72adb012bda15edc9d73052a534c1e0622c0671312691df9688f89bc4cf80f98"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/openstack/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                893754996
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/openstack/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "f43e20128d46e33c3a3a05985848647be11d51087cf2c24f6aee9310b4c53868"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/openstack/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                2476605440
-              ]
-            }
-          }
+         "title":"OpenStack",
+         "$ref": "#/definitions/artifact"
         },
        "vmware": {
          "$id":"#/properties/images/properties/vmware",
          "type":"object",
-         "title":"Vmware",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/vmware/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-vmware.x86_64.ova"
-              ],
-             "pattern":"^(.*).ova$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/vmware/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "13980e76ca5dfe17cdbf1cae8d0e725805a99177136ac74fd95755b5eb61771c"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/vmware/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                927324160
-              ]
-            }
-          }
+         "title":"VMWare",
+         "$ref": "#/definitions/artifact"
         },
        "aliyun": {
          "$id":"#/properties/images/properties/aliyun",
          "type":"object",
          "title":"Aliyun",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-         ],
-         "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/aliyun/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-aliyun.x86_64.qcow2.gz"
-              ],
-             "pattern":"^(.*).qcow2(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/aliyun/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "1503360deb4ff46d662284ef00cc7c0e4cb96a6a0588ec10fb562238f1f1cf46"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/aliyun/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                893754990
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/aliyun/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "5abd1223cfd0283c0be7a2a29bf0326b37ed14b6771916c17806dc9dae22bdf1"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/aliyun/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                2476605440
-              ]
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "aws": {
          "$id":"#/properties/images/properties/aws",
          "type":"object",
-         "title":"Aws",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-         ],
-         "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/aws/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-aws.x86_64.vmdk.gz"
-              ],
-             "pattern":"^(.*).vmdk(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/aws/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "96481a13c5a4cc25eb718abf1e032cf68c15444d7d4fbf98fe7ab01e72d12ee6"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/aws/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                908650544
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/aws/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "7d9216eeb942df24a46c320667222c2f7677290d631c2dace2874a5b8be4e833"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/aws/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                927316480
-              ]
-            }
-          }
-        },
+         "title":"AWS",
+         "$ref": "#/definitions/artifact"
+       },
        "azure": {
          "$id":"#/properties/images/properties/azure",
          "type":"object",
          "title":"Azure",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-         ],
-         "optional": [
-           "uncompressed-sha256",
-           "uncompressed-size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/azure/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-azure.x86_64.vhd.gz"
-              ],
-             "pattern":"^(.*).vhd(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/azure/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "73ac7c8ab0e7d08fb991425d184ab363b96c5604597ace73625ed2734e9ff43f"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/azure/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                893094276
-              ]
-            },
-           "uncompressed-sha256": {
-             "$id":"#/properties/images/properties/azure/properties/uncompressed-sha256",
-             "type":"string",
-             "title":"Uncompressed-sha256",
-             "default":"",
-             "examples": [
-               "910e3a0a9c59eea1dd9303414fa987377f301cd519c52573cdf993793711f1d8"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "uncompressed-size": {
-             "$id":"#/properties/images/properties/azure/properties/uncompressed-size",
-             "type":"integer",
-             "title":"Uncompressed-size",
-             "default": 0,
-             "examples": [
-                2521427456
-              ]
-            }
-          }
+         "$ref": "#/definitions/artifact"
         },
        "gcp": {
          "$id":"#/properties/images/properties/gcp",
          "type":"object",
-         "title":"Gcp",
-         "required": [
-           "path",
-           "sha256",
-           "size"
-          ],
-         "properties": {
-           "path": {
-             "$id":"#/properties/images/properties/gcp/properties/path",
-             "type":"string",
-             "title":"Relative Path of Artifact",
-             "default":"",
-             "examples": [
-               "fcos-31-202001010000-0-gcp.x86_64.tar.gz"
-              ],
-             "pattern":"(.*).tar(|.gz|.xz)$"
-            },
-           "sha256": {
-             "$id":"#/properties/images/properties/gcp/properties/sha256",
-             "type":"string",
-             "title":"Artifact SHA256 Checksum",
-             "default":"",
-             "examples": [
-               "842e04f40889ca05da54f1a8acd263f273dd72fce8e004264739f38eaf46f11d"
-              ],
-             "pattern":"[A-Fa-f0-9]{64}"
-            },
-           "size": {
-             "$id":"#/properties/images/properties/gcp/properties/size",
-             "type":"integer",
-             "title":"Size in bytes",
-             "default": 0,
-             "examples": [
-                892692916
-              ]
-            }
-          }
+         "title":"GCP",
+         "$ref": "#/definitions/artifact"
         }
       }
     },
@@ -1032,32 +501,7 @@
      "$id":"#/properties/oscontainer",
      "type":"object",
      "title":"Oscontainer",
-     "required": [
-       "digest",
-       "image"
-      ],
-     "properties": {
-       "digest": {
-         "$id":"#/properties/oscontainer/properties/digest",
-         "type":"string",
-         "title":"Digest",
-         "default":"",
-         "examples": [
-           "sha256:f8d18011913e87ae59d3781f3d07819267d43401ab444fb3b5794a5eb392b915"
-          ],
-         "pattern":"sha256:[A-Fa-f0-9]{64}"
-        },
-       "image": {
-         "$id":"#/properties/oscontainer/properties/image",
-         "type":"string",
-         "title":"Image",
-         "default":"",
-         "examples": [
-           "registry.example.org/devel/machine-os-content"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        }
-      }
+     "$ref": "#/definitions/image"
     },
    "ostree-commit": {
      "$id":"#/properties/ostree-commit",
@@ -1198,9 +642,9 @@
      "type":"array",
      "title":"Alibaba/Aliyun Uploads",
      "items": {
-       "$id":"#/properties/aliyun/items",
+       "$id":"#/properties/aliyun/images",
        "type":"object",
-       "title":"Image ID",
+       "title":"Aliyun Image",
        "required": [
          "name",
          "id"
@@ -1209,7 +653,7 @@
          "name": {
            "$id":"#/properties/aliyun/items/properties/name",
            "type":"string",
-           "title":"Region Name",
+           "title":"Region",
            "default":"",
            "examples": [
              "us-west-1"
@@ -1219,7 +663,7 @@
          "id": {
            "$id":"#/properties/aliyun/items/properties/id",
            "type":"string",
-           "title":"Id",
+           "title":"ImageID",
            "default":"",
            "examples": [
              "m-rj9d477fe8uxzai8d8zf"
@@ -1232,11 +676,11 @@
    "amis": {
      "$id":"#/properties/amis",
      "type":"array",
-     "title":"Amazon AWS AMIs",
+     "title":"AMIS",
      "items": {
        "$id":"#/properties/amis/items",
        "type":"object",
-       "title":"Items",
+       "title":"AMIS",
        "required": [
          "name",
          "hvm",
@@ -1246,7 +690,7 @@
          "name": {
            "$id":"#/properties/amis/items/properties/name",
            "type":"string",
-           "title":"Region Name",
+           "title":"Region",
            "default":"",
            "examples": [
              "us-east-1"
@@ -1256,7 +700,7 @@
          "hvm": {
            "$id":"#/properties/amis/items/properties/hvm",
            "type":"string",
-           "title":"HVM AMI ID",
+           "title":"HVM",
            "default":"",
            "examples": [
              "ami-0de107f30d290b9a1"
@@ -1279,64 +723,14 @@
    "azure": {
      "$id":"#/properties/azure",
      "type":"object",
-     "title":"Azure Upload",
-     "required": [
-       "image",
-       "url"
-      ],
-     "properties": {
-       "image": {
-         "$id":"#/properties/azure/properties/image",
-         "type":"string",
-         "title":"Image",
-         "default":"",
-         "examples": [
-           "fcos-31-202001010000-0-azure.x86_64.vhd"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        },
-       "url": {
-         "$id":"#/properties/azure/properties/url",
-         "type":"string",
-         "title":"Artifact URL",
-         "default":"",
-         "examples": [
-           "https://example.com/imagebucket/fcos-31-202001010000-0-azure.x86_64.vhd"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        }
-      }
+     "title":"Azure",
+     "$ref": "#/definitions/cloudartifact"
     },
    "gcp": {
      "$id":"#/properties/gcp",
      "type":"object",
-     "title":"GCP Object Storage Location",
-     "required": [
-       "image",
-       "url"
-      ],
-     "properties": {
-       "image": {
-         "$id":"#/properties/gcp/properties/image",
-         "type":"string",
-         "title":"Image",
-         "default":"",
-         "examples": [
-           "fcos-31-202001010000-0"
-          ],
-         "pattern":"^(?!\\s*$).+"
-        },
-       "url": {
-         "$id":"#/properties/gcp/properties/url",
-         "type":"string",
-         "title":"URL for Artifact",
-         "default":"",
-         "examples": [
-           "https://example.com/devel/devel/rhcos/fcos-31-202001010000-0.tar.gz"
-          ],
-         "pattern":"(.*).tar.gz$"
-        }
-      }
+     "title":"GCP",
+     "$ref": "#/definitions/cloudartifact"
     }
   }
 }
