@@ -23,6 +23,8 @@ import (
 	"reflect"
 	"strings"
 
+	ignconverter "github.com/coreos/ign-converter"
+
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	cci "github.com/coreos/coreos-cloudinit/config"
 	ignerr "github.com/coreos/ignition/config/shared/errors"
@@ -177,7 +179,7 @@ func (u *UserData) IsIgnitionCompatible() bool {
 
 // Render parses userdata and returns a new Conf. It returns an error if the
 // userdata can't be parsed.
-func (u *UserData) Render(ctPlatform string) (*Conf, error) {
+func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 	c := &Conf{}
 
 	renderIgnition := func() error {
@@ -240,6 +242,15 @@ func (u *UserData) Render(ctPlatform string) (*Conf, error) {
 		ignc3, report3, err := v3.Parse([]byte(u.data))
 		if err == nil {
 			c.ignitionV3 = &ignc3
+
+			if ignv2 {
+				newCfg, err := ignconverter.Translate3to2(*c.ignitionV3)
+				if err != nil {
+					return err
+				}
+				c.ignitionV22 = &newCfg
+			}
+
 			return nil
 		} else if err != ign3err.ErrUnknownVersion {
 			plog.Errorf("invalid userdata: %v", report3)

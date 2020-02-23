@@ -17,10 +17,12 @@ require (
 	github.com/coreos/coreos-cloudinit v1.11.0
 	github.com/coreos/etcd v3.3.9+incompatible
 	github.com/coreos/go-semver v0.3.0
+	github.com/coreos/ign-converter v0.0.0-20200122222434-1b8b585493ff
 	github.com/coreos/ignition v0.35.0
-	github.com/coreos/ignition/v2 v2.0.1
+	github.com/coreos/ignition/v2 v2.1.1
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20161026222926-447b7ec906e5
+	github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5 // indirect
 	github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269 // indirect
 	github.com/cpuguy83/go-md2man v1.0.4 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
@@ -60,17 +62,16 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
 	github.com/ugorji/go v0.0.0-20171019201919-bdcc60b419d1 // indirect
 	github.com/ulikunitz/xz v0.5.4
-	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
+	github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
 	github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
 	github.com/vmware/govmomi v0.15.0
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
-	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4
-	golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae
+	golang.org/x/sys v0.0.0-20191110163157-d32e6e3b99c4
 	golang.org/x/text v0.3.2
 	google.golang.org/api v0.1.0
 	google.golang.org/appengine v1.6.0 // indirect

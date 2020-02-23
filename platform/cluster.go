@@ -151,7 +151,7 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		}
 	}
 
-	conf, err := userdata.Render(bc.bf.ctPlatform)
+	conf, err := userdata.Render(bc.bf.ctPlatform, bc.IgnitionVersion() == "v2")
 	if err != nil {
 		return nil, err
 	}

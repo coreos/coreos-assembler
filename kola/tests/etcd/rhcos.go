@@ -35,22 +35,6 @@ func init() {
 		Run:         rhcosClusterInsecure,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.insecure",
-		UserData: conf.Ignition(`{
-  "ignition": { "version": "2.2.0" },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd.service",
-        "enable": false,
-        "contents": "[Unit]\nDescription=etcd in podman\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nType=simple\nRestart=on-failure\nRestartSec=10s\nExecStart=/usr/bin/podman run --name=etcd --net=host quay.io/coreos/etcd /usr/local/bin/etcd --name=${NODE_NAME} --initial-advertise-peer-urls=http://${NODE_IP}:2380 --listen-peer-urls=http://${NODE_IP}:2380 --advertise-client-urls=http://${NODE_IP}:2379 --listen-client-urls=http://${NODE_IP}:2379,http://127.0.0.1:2379 --initial-cluster=${CLUSTER} --initial-cluster-state=new --initial-cluster-token=${TOKEN}\n\n[Install]\nWantedBy=multi-user.target\n",
-        "dropins": [{
-          "name": "cluster.conf",
-          "contents": "# placeholder"
-        }]
-      }
-    ]
-  }
-}`),
 		UserDataV3: conf.Ignition(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {
@@ -76,32 +60,6 @@ func init() {
 		Run:         rhcosClusterTLS,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.tls",
-		UserData: conf.Ignition(`{
-  "ignition": { "version": "2.2.0" },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd.service",
-        "enable": false,
-        "contents": "[Unit]\nDescription=etcd in podman\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nType=simple\nRestart=on-failure\nRestartSec=10s\nExecStart=/usr/bin/podman run --name=etcd --net=host --security-opt=label=disable --volume=/etc/ssl/certs:/etc/ssl/certs:ro quay.io/coreos/etcd /usr/local/bin/etcd --name=${NODE_NAME} --initial-advertise-peer-urls=https://${NODE_IP}:2380 --listen-peer-urls=https://${NODE_IP}:2380 --advertise-client-urls=https://${NODE_IP}:2379 --listen-client-urls=https://${NODE_IP}:2379,http://127.0.0.1:2379 --initial-cluster=${CLUSTER} --initial-cluster-state=new --initial-cluster-token=${TOKEN} --cert-file=/etc/ssl/certs/etcd-cert.pem --key-file=/etc/ssl/certs/etcd-key.pem --peer-cert-file=/etc/ssl/certs/peer-cert.pem --peer-key-file=/etc/ssl/certs/peer-key.pem --peer-client-cert-auth --peer-trusted-ca-file=/etc/ssl/certs/ca-peer-cert.pem\n\n[Install]\nWantedBy=multi-user.target\n",
-        "dropins": [{
-          "name": "cluster.conf",
-          "contents": "# placeholder"
-        }]
-      }
-    ]
-  },
-  "storage": {
-    "files": [
-      {
-        "filesystem": "root",
-        "path": "/etc/ssl/etcd.cnf",
-        "contents": { "source": "data:,%5Breq%5D%0Adistinguished_name=req%0A%5Betcd_ca%5D%0AbasicConstraints=CA:true%0AkeyUsage=keyCertSign,cRLSign%0AsubjectKeyIdentifier=hash%0A%5Betcd_peer%5D%0AbasicConstraints=CA:FALSE%0AextendedKeyUsage=clientAuth,serverAuth%0AkeyUsage=digitalSignature,keyEncipherment%0AsubjectAltName=@sans%0A%5Betcd_server%5D%0AbasicConstraints=CA:FALSE%0AextendedKeyUsage=serverAuth%0AkeyUsage=digitalSignature,keyEncipherment%0AsubjectAltName=@sans%0A%5Bsans%5D%0ADNS.1=localhost%0AIP.1=127.0.0.1%0A" },
-        "mode": 420
-      }
-    ]
-  }
-}`),
 		UserDataV3: conf.Ignition(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {

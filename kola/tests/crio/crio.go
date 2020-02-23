@@ -156,27 +156,6 @@ var crioContainerTemplate = `{
 // RHCOS has the crio service disabled by default, so use Ignition to enable it
 var enableCrioIgn = conf.Ignition(`{
   "ignition": {
-    "version": "2.2.0"
-  },
-  "storage": {
-	"directories": [{
-		"filesystem": "root",
-		"path": "/tmp/test",
-		"mode": 511
-	}]
-  },
-  "systemd": {
-    "units": [
-      {
-        "enabled": true,
-        "name": "crio.service"
-      }
-    ]
-  }
-}`)
-
-var enableCrioIgnV3 = conf.Ignition(`{
-  "ignition": {
     "version": "3.0.0"
   },
   "storage": {
@@ -204,8 +183,7 @@ func init() {
 		// crio pods require fetching a kubernetes pause image
 		Flags:      []register.Flag{register.RequiresInternetAccess},
 		Distros:    []string{"rhcos"},
-		UserData:   enableCrioIgn,
-		UserDataV3: enableCrioIgnV3,
+		UserDataV3: enableCrioIgn,
 	})
 	register.RegisterTest(&register.Test{
 		Run:         crioNetwork,
@@ -213,8 +191,7 @@ func init() {
 		Name:        "crio.network",
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		Distros:     []string{"rhcos"},
-		UserData:    enableCrioIgn,
-		UserDataV3:  enableCrioIgnV3,
+		UserDataV3:  enableCrioIgn,
 		// qemu-unpriv machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
