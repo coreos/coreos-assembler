@@ -26,6 +26,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	ignconverter "github.com/coreos/ign-converter"
+	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -90,6 +92,16 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		Run: runHttpServer,
 	}
 
+	cmdIgnConvert = &cobra.Command{
+		Use:   "ign-convert2",
+		Short: "Translate Ignition spec 3 to Ignition spec 2",
+		Long: `Accept an Ignition spec 3 JSON on stdin and output spec 2
+
+This can be useful for e.g. serving locally built OSTree repos to qemu.
+`,
+		RunE: runIgnitionConvert2,
+	}
+
 	listJSON           bool
 	httpPort           int
 	findParentImage    bool
@@ -105,6 +117,8 @@ func init() {
 
 	root.AddCommand(cmdHttpServer)
 	cmdHttpServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
+
+	root.AddCommand(cmdIgnConvert)
 
 	root.AddCommand(cmdRunUpgrade)
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
@@ -378,6 +392,31 @@ func runHttpServer(cmd *cobra.Command, args []string) {
 
 	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
+}
+
+func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
+	buf, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		return err
+	}
+	ignc3, _, err := ignv3.Parse(buf)
+	if err != nil {
+		return err
+	}
+	ignc2, err := ignconverter.Translate3to2(ignc3)
+	if err != nil {
+		return err
+	}
+	obuf, err := json.Marshal(ignc2)
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write(obuf)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func preRunUpgrade(cmd *cobra.Command, args []string) error {
