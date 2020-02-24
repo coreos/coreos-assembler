@@ -117,9 +117,6 @@ func main() {
 
 func preRun(cmd *cobra.Command, args []string) {
 	err := syncOptions()
-	if err == nil {
-		err = syncCosaOptions()
-	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -390,7 +387,7 @@ func preRunUpgrade(cmd *cobra.Command, args []string) error {
 		errors.New("Error: missing required argument --cosa-build")
 	}
 
-	err := syncOptions()
+	err := syncOptionsImpl(false)
 	if err != nil {
 		return err
 	}
