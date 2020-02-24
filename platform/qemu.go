@@ -403,6 +403,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	diskOpts := disk.DeviceOpts
 	if primary {
 		diskOpts = append(diskOpts, "serial=primary-disk")
+	} else {
+		// Note that diskId is incremented by addQcow2DiskFd
+		diskOpts = append(diskOpts, "serial="+fmt.Sprintf("disk%d", builder.diskId))
 	}
 	channel := disk.Channel
 	if channel == "" {
