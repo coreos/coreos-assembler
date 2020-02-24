@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -eu
+
+# This script uses schematyper, which must be installed and in the PATH.
+#
+# The purpose of this script is to generate cosa/cosa_<ver>.go. Whenever
+# the schema is updated, this script should be run.
+
+hash schematyper 2>/dev/null || {
+    echo >&2 "schematyper must be installed and in the PATH to use this script: https://github.com/idubinskiy/schematyper"
+    exit 1
+}
+
+schema_version="v1"
+schema_commit="25b788bf0a8d826db07830d11ee6105ea615814c"
+schema_url="https://raw.githubusercontent.com/coreos/coreos-assembler/${schema_commit}/src/schema/${schema_version}.json"
+echo "Generating COSA Schema ${schema_version} ${schema_commit}"
+curl -sL "${schema_url}" -o "cosa/${schema_version}.json"
+
+schematyper "cosa/${schema_version}.json" \
+    -o "cosa/cosa_${schema_version}.go" \
+    --package="cosa" \
+    --root-type=Build
