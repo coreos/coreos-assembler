@@ -220,5 +220,11 @@ func syncCosaOptions() error {
 		}
 	}
 
+	if kola.Options.IgnitionVersion == "" {
+		if kola.QEMUOptions.DiskImage != "" {
+			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
+		}
+	}
+
 	return nil
 }
