@@ -442,8 +442,8 @@ func syncFindParentImageOptions() error {
 			}
 			qemuImageDirIsTemp = true
 		}
-		qcowUrl := parentBaseUrl + parentCosaBuild.Images.QEMU.Path
-		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.Images.QEMU.Path)
+		qcowUrl := parentBaseUrl + parentCosaBuild.BuildArtifacts.Qemu.Path
+		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.BuildArtifacts.Qemu.Path)
 		decompressedQcowLocal, err := downloadImageAndDecompress(qcowUrl, qcowLocal)
 		if err != nil {
 			return err
@@ -495,15 +495,15 @@ func getParentFcosBuildBase() (string, error) {
 	// parse commitmeta.json for `fedora-coreos.stream`, then fetch the stream
 	// metadata for that stream, then fetch the release metadata
 
-	if kola.CosaBuild.Ref == "" {
+	if kola.CosaBuild.BuildRef == "" {
 		return "", errors.New("no ref in build metadata")
 	}
 
-	stream := filepath.Base(kola.CosaBuild.Ref)
+	stream := filepath.Base(kola.CosaBuild.BuildRef)
 
 	var parentVersion string
-	if kola.CosaBuild.FedoraCoreOSParentVersion != "" {
-		parentVersion = kola.CosaBuild.FedoraCoreOSParentVersion
+	if kola.CosaBuild.FedoraCoreOsParentVersion != "" {
+		parentVersion = kola.CosaBuild.FedoraCoreOsParentVersion
 	} else {
 		// ok, we're probably operating on a local dev build since the pipeline
 		// always injects the parent; just instead fetch the release index
