@@ -54,7 +54,7 @@ clean:
 	find . -name "__pycache__" -type d | xargs rm -rf
 
 mantle:
-	cd mantle && $(MAKE)
+	if [ -z "$(SKIPMANTLE)" ]; then cd mantle && $(MAKE); fi
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -68,4 +68,4 @@ install:
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
-	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
+	if [ -z "$(SKIPMANTLE)" ]; then cd mantle && $(MAKE) install DESTDIR=$(DESTDIR); fi
