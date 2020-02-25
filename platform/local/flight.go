@@ -35,7 +35,6 @@ type LocalFlight struct {
 	destructor.MultiDestructor
 	*platform.BaseFlight
 	Dnsmasq    *Dnsmasq
-	SimpleEtcd *SimpleEtcd
 	NTPServer  *ntp.Server
 	nshandle   netns.NsHandle
 	listenPort int32
@@ -76,13 +75,6 @@ func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalF
 		return nil, err
 	}
 	lf.AddDestructor(lf.Dnsmasq)
-
-	lf.SimpleEtcd, err = NewSimpleEtcd()
-	if err != nil {
-		lf.Destroy()
-		return nil, err
-	}
-	lf.AddDestructor(lf.SimpleEtcd)
 
 	lf.NTPServer, err = ntp.NewServer(":123")
 	if err != nil {

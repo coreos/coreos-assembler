@@ -15,7 +15,6 @@ require (
 	github.com/coreos/bbolt v1.3.1-coreos.6 // indirect
 	github.com/coreos/container-linux-config-transpiler v0.8.0
 	github.com/coreos/coreos-cloudinit v1.11.0
-	github.com/coreos/etcd v3.3.9+incompatible
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/ign-converter v0.0.0-20200122222434-1b8b585493ff
 	github.com/coreos/ignition v0.35.0

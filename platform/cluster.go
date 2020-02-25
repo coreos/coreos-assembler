@@ -17,17 +17,13 @@ package platform
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"sync"
-	"time"
 
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
 	platformConf "github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/util"
 )
 
 type BaseCluster struct {
@@ -213,30 +209,6 @@ func (bc *BaseCluster) Destroy() {
 	for _, m := range bc.Machines() {
 		m.Destroy()
 	}
-}
-
-// XXX(mischief): i don't really think this belongs here, but it completes the
-// interface we've established.
-func (bc *BaseCluster) GetDiscoveryURL(size int) (string, error) {
-	var result string
-	err := util.Retry(3, 5*time.Second, func() error {
-		resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("Discovery service returned %q", resp.Status)
-		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		result = string(body)
-		return nil
-	})
-	return result, err
 }
 
 func (bc *BaseCluster) Distribution() string {

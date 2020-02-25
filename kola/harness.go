@@ -521,17 +521,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		} else {
 			userdata = t.UserDataV3
 		}
-		if userdata != nil && userdata.Contains("$discovery") {
-			url, err := c.GetDiscoveryURL(t.ClusterSize)
-			if err != nil {
-				// Skip instead of failing since the harness not being able to
-				// get a discovery url is likely an outage (e.g
-				// 503 Service Unavailable: Back-end server is at capacity)
-				// not a problem with the OS
-				h.Skipf("Failed to create discovery endpoint: %v", err)
-			}
-			userdata = userdata.Subst("$discovery", url)
-		}
 
 		if _, err := platform.NewMachines(c, userdata, t.ClusterSize); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)

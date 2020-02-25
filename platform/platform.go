@@ -99,9 +99,6 @@ type Cluster interface {
 	// Machines returns a slice of the active machines in the Cluster.
 	Machines() []Machine
 
-	// GetDiscoveryURL returns a new etcd discovery URL.
-	GetDiscoveryURL(size int) (string, error)
-
 	// Destroy terminates each machine in the cluster and frees any other
 	// associated resources. It should log any failures; since they are not
 	// actionable, it does not return an error
