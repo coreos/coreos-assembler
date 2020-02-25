@@ -103,6 +103,8 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	}
 
 	listJSON           bool
+	listPlatform       string
+	listDistro         string
 	httpPort           int
 	findParentImage    bool
 	qemuImageDir       string
@@ -114,6 +116,8 @@ func init() {
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().BoolVar(&listJSON, "json", false, "format output in JSON")
+	cmdList.Flags().StringVarP(&listPlatform, "platform", "p", "all", "filter output by platform")
+	cmdList.Flags().StringVarP(&listDistro, "distro", "b", "all", "filter output by distro")
 
 	root.AddCommand(cmdHttpServer)
 	cmdHttpServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
@@ -321,7 +325,29 @@ func runList(cmd *cobra.Command, args []string) {
 		fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures\tDistributions")
 		fmt.Fprintln(w, "\t")
 		for _, item := range testlist {
-			fmt.Fprintf(w, "%v\n", item)
+			platformFound := (listPlatform == "all")
+			if listPlatform != "all" {
+				for _, platform := range item.Platforms {
+					if listPlatform == "all" || platform == "all" || platform == listPlatform {
+						platformFound = true
+						break
+					}
+				}
+			}
+
+			distroFound := (listDistro == "all")
+			if listDistro != "all" {
+				for _, distro := range item.Distros {
+					if listDistro == "all" || distro == "all" || distro == listDistro {
+						distroFound = true
+						break
+					}
+				}
+			}
+
+			if platformFound && distroFound {
+				fmt.Fprintf(w, "%v\n", item)
+			}
 		}
 		w.Flush()
 	} else {
