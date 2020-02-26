@@ -10,7 +10,7 @@ if [[ $# -eq 0 ]]; then
 	set -- cmd/*
 fi
 
-version=$(git describe --dirty)
+version=$(git describe --tags --always --dirty)
 version="${version#v}"
 version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
