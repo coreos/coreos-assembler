@@ -1,0 +1,3 @@
+# for projects which have their canonical spec files upstream, use those instead
+# since they're more up to date
+https://raw.githubusercontent.com/coreos/rpm-ostree/master/packaging/rpm-ostree.spec.in
