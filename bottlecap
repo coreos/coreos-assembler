@@ -6,7 +6,7 @@ set -euo pipefail
 usage() {
 	echo "usage:"
 	echo "bottlecap [--dev] [--dry-run] [--runtime $runtime] [--build-dir $build_dir] [--container $container] assemblerargs..."
-	echo "  --dev: rebuild and reinstall mantle, the build scripts, and the ostree-releng-scipts before running coreos-assembler"
+	echo "  --dev: rebuild and reinstall mantle and the build scripts before running coreos-assembler"
 	echo "  --dry-run: do not run CoreOS Assembler; print what commands would be executed instead"
 	echo "  --runtime: (auto) specify whether to use podman or docker. Defaults to podman if it is in \$PATH"
 	echo "  --build-dir: Where to put build artifacts, defaults to the current directory"

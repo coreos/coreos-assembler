@@ -1,3 +1,0 @@
-[submodule "ostree-releng-scripts"]
-	path = ostree-releng-scripts
-	url = https://github.com/ostreedev/ostree-releng-scripts
