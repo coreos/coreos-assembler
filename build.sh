@@ -71,18 +71,6 @@ install_rpms() {
     yum clean all
 }
 
-_prep_make_and_make_install() {
-    # TODO: install these as e.g.
-    # /usr/bin/ostree-releng-script-rsync-repos
-    mkdir -p /usr/app/
-    rsync -rlv "${srcdir}"/ostree-releng-scripts/ /usr/app/ostree-releng-scripts/
-
-    if git submodule status | grep -qEe '^-'; then
-        echo -e "\033[1merror: submodules not initialized. Run: git submodule update --init\033[0m" 1>&2
-        exit 1
-    fi
-}
-
 # Yes, this is a hack that loses sane auditing around what git commit
 # we used to build fcct, etc.  In the future we'll probably give in and package
 # it or something, see also https://github.com/coreos/fedora-coreos-tracker/issues/235
@@ -99,7 +87,6 @@ build_fcct() {
 }
 
 make_and_makeinstall() {
-    _prep_make_and_make_install
     make && make install
 }
 

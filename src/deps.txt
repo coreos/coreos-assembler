@@ -25,9 +25,11 @@ make git rpm-build
 # virt dependencies
 libguestfs-tools /usr/bin/qemu-img qemu-kvm swtpm
 
-# ostree-releng-scripts dependencies
+# Useful for moving files around
 rsync
-python2-gobject-base python3-gobject-base
+
+# For gobject-introspection
+python3-gobject-base
 
 # To support recursive containerization and manipulating images
 podman buildah skopeo

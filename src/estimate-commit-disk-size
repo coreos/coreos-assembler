@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 #
 # Given an OSTree commit, estimate how much disk space it will take
-# Derived from ostree-releng-scripts/print-commitsize
+# Derived from: https://github.com/ostreedev/ostree-releng-scripts/blob/master/print-commitsize
+
 #
 # Copyright 2018 Red Hat, Inc
 # Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
