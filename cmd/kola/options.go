@@ -143,6 +143,8 @@ func init() {
 
 // Sync up the command line options if there is dependency
 func syncOptionsImpl(useCosa bool) error {
+	var err error
+
 	kola.PacketOptions.Board = kola.QEMUOptions.Board
 	kola.PacketOptions.GSOptions = &kola.GCEOptions
 
@@ -169,9 +171,15 @@ func syncOptionsImpl(useCosa bool) error {
 		return err
 	}
 
-	if useCosa && kola.Options.CosaBuild != "" {
-		if err := syncCosaOptions(); err != nil {
+	if kola.Options.CosaBuild != "" {
+		kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
+		if err != nil {
 			return err
+		}
+		if useCosa {
+			if err := syncCosaOptions(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -204,15 +212,9 @@ func syncOptions() error {
 	return syncOptionsImpl(true)
 }
 
-// syncCosaOptions parses the cosa build and sets unset platform-specific
+// syncCosaOptions sets unset platform-specific
 // options that can be derived from the cosa build metadata
 func syncCosaOptions() error {
-	var err error
-	kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
-	if err != nil {
-		return err
-	}
-
 	switch kolaPlatform {
 	case "qemu-unpriv", "qemu":
 		if kola.QEMUOptions.DiskImage == "" {
