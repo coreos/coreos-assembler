@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# Run all tests
+#   ./test
+#   ./test -v
+#
+# Run tests for one package
+#   PKG=./foo ./test
+#
+
+set -e
+
+cd $(dirname $0)
+
+source ./env
+# Use an alternate bin to avoid clobbering output from ./build
+export GOBIN="$(pwd)/_testbin"
+trap "rm -rf _testbin/" EXIT
+
+# PKG may be passed in from ./cover
+[[ -z "$PKG" ]] && PKG="./..."
+
+# Expand PKG, excluding the vendor directory.
+pkgs=$(go list -mod=vendor $PKG | grep -v /vendor/)
+src=$(find . -name '*.go' -not -path "./vendor/*")
+
+echo "Building tests..."
+go test -mod=vendor -i "$@" $pkgs
+go install -mod=vendor $pkgs
+
+echo "Running tests..."
+go test -mod=vendor -cover "$@" $pkgs
+
+echo "Checking gofmt..."
+res=$(gofmt -d -e $src)
+if [ -n "${res}" ]; then
+    echo "${res}"
+    echo "gofmt check failed" >&2
+    exit 1
+fi
+
+echo "Checking govet..."
+go vet -mod=vendor $pkgs
+
+echo "Running commands..."
+for cmd in ${GOBIN}/*; do
+	echo " Running $(basename ${cmd})..."
+	${cmd} --help > /dev/null
+done
+
+echo "Success"
