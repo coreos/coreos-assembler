@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# Generate coverage HTML for a package
+#   PKG=./foo ./cover
+#   ./cover ./foo
+#
+set -e
+
+if [[ $# -eq 1 ]]; then
+    PKG="$1"
+fi
+
+if [[ -z "$PKG" ]]; then
+	echo "cover only works with a single package, sorry" 1>&2
+	exit 2
+fi
+
+coverout=$(mktemp)
+trap "rm -f $coverout" EXIT
+
+source ./test -coverprofile $coverout
+
+go tool cover -html=$coverout
