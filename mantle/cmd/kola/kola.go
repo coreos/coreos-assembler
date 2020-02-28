@@ -102,6 +102,13 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		RunE: runIgnitionConvert2,
 	}
 
+	cmdArtifactIgnitionVersion = &cobra.Command{
+		Use:    "artifact-ignition-version",
+		Short:  "Implementation detail of coreos-assembler",
+		RunE:   runArtifactIgnitionVersion,
+		Hidden: true,
+	}
+
 	listJSON           bool
 	listPlatform       string
 	listDistro         string
@@ -127,6 +134,9 @@ func init() {
 	root.AddCommand(cmdRunUpgrade)
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
 	cmdRunUpgrade.Flags().StringVar(&qemuImageDir, "qemu-image-dir", "", "directory in which to cache QEMU images if --fetch-parent-image is enabled")
+
+	// Implementation/hidden commands
+	root.AddCommand(cmdArtifactIgnitionVersion)
 }
 
 func main() {
@@ -442,6 +452,12 @@ func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return nil
+}
+
+func runArtifactIgnitionVersion(cmd *cobra.Command, args []string) error {
+	artifact := args[0]
+	fmt.Printf("%s\n", sdk.TargetIgnitionVersionFromName(artifact))
 	return nil
 }
 

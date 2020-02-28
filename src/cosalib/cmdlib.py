@@ -169,17 +169,13 @@ def rm_allow_noent(path):
 # too surprised either ;)  Oh and hey if you are please send me an email, it'll
 # be like a virtual time capsule!  If they still use email then...
 def disk_ignition_version(path):
-    bn = os.path.basename(path)
-    ignition_spec2_openshift_releases = [1, 2, 3, 4]
-    # The output from the RHCOS pipeline names images like
-    # rhcos-42.81.$datestamp.  The images are renamed when
-    # placed at e.g. https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.2/4.2.0/
-    prefixes = [f"rhcos-4{x}" for x in ignition_spec2_openshift_releases] + \
-               [f"rhcos-4.{x}" for x in ignition_spec2_openshift_releases]
-    if bn.startswith(tuple(prefixes)):
+    v = subprocess.check_output(['kola', 'artifact-ignition-version', path], encoding='utf8').strip()
+    if v == "v2":
         return "2.2.0"
-    else:
+    elif v == "v3":
         return "3.0.0"
+    else:
+        raise Exception(f"Unhandled: {v}")
 
 
 def import_ostree_commit(repo, commit, tarfile, force=False):
