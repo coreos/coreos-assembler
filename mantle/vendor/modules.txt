@@ -113,7 +113,7 @@ github.com/coreos/go-semver/semver
 # github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142
 github.com/coreos/go-systemd/journal
 github.com/coreos/go-systemd/unit
-# github.com/coreos/ign-converter v0.0.0-20200122222434-1b8b585493ff
+# github.com/coreos/ign-converter v0.0.0-20200228175238-237c8512310a
 github.com/coreos/ign-converter
 # github.com/coreos/ignition v0.35.0
 github.com/coreos/ignition/config/shared/errors

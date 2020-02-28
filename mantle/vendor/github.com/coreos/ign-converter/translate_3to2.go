@@ -310,15 +310,18 @@ func translateNode3to2(n types.Node, fss []string) old.Node {
 
 func translateFiles3to2(files []types.File, fss []string) (ret []old.File) {
 	for _, f := range files {
-		// Overwrite defaults to true in spec 2 and false in spec 3
-		if f.Node.Overwrite == nil {
-			f.Node.Overwrite = boolPStrict(false)
-		}
 		file := old.File{
 			Node: translateNode3to2(f.Node, fss),
 			FileEmbedded1: old.FileEmbedded1{
 				Mode: f.Mode,
 			},
+		}
+
+		// Overwrite defaults to false in spec 3 and true in spec 2; but
+		// we should omit it if append is specified as we want the "unset"
+		// default.
+		if f.Node.Overwrite == nil && len(f.FileEmbedded1.Append) == 0 {
+			file.Node.Overwrite = boolPStrict(false)
 		}
 
 		if f.FileEmbedded1.Contents.Source != nil {
