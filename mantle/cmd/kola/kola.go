@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -62,7 +61,7 @@ If the glob pattern is exactly equal to the name of a single test, any
 restrictions on the versions of Container Linux supported by that test
 will be ignored.
 `,
-		Run:    runRun,
+		RunE:   runRun,
 		PreRun: preRun,
 	}
 
@@ -79,7 +78,7 @@ will be ignored.
 	cmdList = &cobra.Command{
 		Use:   "list",
 		Short: "List kola test names",
-		Run:   runList,
+		RunE:  runList,
 	}
 
 	cmdHttpServer = &cobra.Command{
@@ -89,7 +88,7 @@ will be ignored.
 
 This can be useful for e.g. serving locally built OSTree repos to qemu.
 `,
-		Run: runHttpServer,
+		RunE: runHttpServer,
 	}
 
 	cmdIgnConvert = &cobra.Command{
@@ -160,7 +159,7 @@ func preRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runRun(cmd *cobra.Command, args []string) {
+func runRun(cmd *cobra.Command, args []string) error {
 	var patterns []string
 	if len(args) == 0 {
 		patterns = []string{"*"} // run all tests by default
@@ -171,22 +170,17 @@ func runRun(cmd *cobra.Command, args []string) {
 	var err error
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	runErr := kola.RunTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		return err
 	}
 
-	if runErr != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", runErr)
-		os.Exit(1)
-	}
+	return runErr
 }
 
 func writeProps() error {
@@ -310,7 +304,7 @@ func writeProps() error {
 	})
 }
 
-func runList(cmd *cobra.Command, args []string) {
+func runList(cmd *cobra.Command, args []string) error {
 	var testlist []*item
 	for name, test := range register.Tests {
 		item := &item{
@@ -363,11 +357,12 @@ func runList(cmd *cobra.Command, args []string) {
 	} else {
 		out, err := json.MarshalIndent(testlist, "", "\t")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "marshalling test list: %v\n", err)
-			os.Exit(1)
+			return errors.Wrapf(err, "marshalling test list")
 		}
 		fmt.Println(string(out))
 	}
+
+	return nil
 }
 
 type item struct {
@@ -421,13 +416,13 @@ func (i item) String() string {
 	return fmt.Sprintf("%v\t%v\t%v\t%v", i.Name, i.Platforms, i.Architectures, i.Distros)
 }
 
-func runHttpServer(cmd *cobra.Command, args []string) {
+func runHttpServer(cmd *cobra.Command, args []string) error {
 	directory := "."
 
 	http.Handle("/", http.FileServer(http.Dir(directory)))
 
 	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
+	return http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil)
 }
 
 func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
