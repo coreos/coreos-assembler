@@ -242,10 +242,10 @@ func genContainer(c cluster.TestCluster, m platform.Machine, podName, imageName 
 	if err != nil {
 		return "", "", err
 	}
-	if err = c.DropFile(configPathPod); err != nil {
+	if err = cluster.DropFile(c.Machines(), configPathPod); err != nil {
 		return "", "", err
 	}
-	if err = c.DropFile(configPathContainer); err != nil {
+	if err = cluster.DropFile(c.Machines(), configPathContainer); err != nil {
 		return "", "", err
 	}
 	// Create the crio image used for testing, only if it doesn't exist already

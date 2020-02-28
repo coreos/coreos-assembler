@@ -92,14 +92,14 @@ func (t *TestCluster) ListNativeFunctions() []string {
 }
 
 // DropFile places file from localPath to ~/ on every machine in cluster
-func (t *TestCluster) DropFile(localPath string) error {
+func DropFile(machines []platform.Machine, localPath string) error {
 	in, err := os.Open(localPath)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
 
-	for _, m := range t.Machines() {
+	for _, m := range machines {
 		if _, err := in.Seek(0, 0); err != nil {
 			return err
 		}
