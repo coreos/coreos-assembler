@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/harness"
@@ -543,7 +544,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
-		scpKolet(tcluster, architecture(pltfrm))
+		if err := scpKolet(tcluster, architecture(pltfrm)); err != nil {
+			h.Fatal(err)
+		}
 	}
 
 	defer func() {
@@ -574,7 +577,7 @@ func boardToArch(board string) string {
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(c cluster.TestCluster, mArch string) {
+func scpKolet(c cluster.TestCluster, mArch string) error {
 	for _, d := range []string{
 		".",
 		filepath.Dir(os.Args[0]),
@@ -584,21 +587,20 @@ func scpKolet(c cluster.TestCluster, mArch string) {
 		kolet := filepath.Join(d, "kolet")
 		if _, err := os.Stat(kolet); err == nil {
 			if err := c.DropFile(kolet); err != nil {
-				c.Fatalf("dropping kolet binary: %v", err)
+				return errors.Wrapf(err, "dropping kolet binary")
 			}
-			// The default SELinux rules do not allow init_t to execute user_home_t
-			if Options.Distribution == "rhcos" || Options.Distribution == "fcos" {
-				for _, machine := range c.Machines() {
-					out, stderr, err := machine.SSH("sudo chcon -t bin_t kolet")
-					if err != nil {
-						c.Fatalf("running chcon on kolet: %s: %s: %v", out, stderr, err)
-					}
+			// If in the future we want to care about machines without SELinux, let's
+			// do basically test -d /sys/fs/selinux or run `getenforce`.
+			for _, machine := range c.Machines() {
+				out, stderr, err := machine.SSH("sudo chcon -t bin_t kolet")
+				if err != nil {
+					return errors.Wrapf(err, "running chcon on kolet: %s: %s", out, stderr)
 				}
 			}
-			return
+			return nil
 		}
 	}
-	c.Fatalf("Unable to locate kolet binary for %s", mArch)
+	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
 }
 
 // CheckConsole checks some console output for badness and returns short
