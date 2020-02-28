@@ -14,6 +14,7 @@ import sys
 import tarfile
 import tempfile
 import yaml
+import glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -283,8 +284,17 @@ def generate_iso():
                        '-boot-info-table']
 
     elif basearch == "ppc64le":
-        genisoargs += ['-r', '-l', '-sysid', 'PPC',
-                       '-chrp-boot', '-graft-points']
+        os.makedirs(os.path.join(tmpisoroot, 'boot/grub'))
+        # can be EFI/fedora or EFI/redhat
+        grubpath = glob.glob(os.path.join(tmpisoroot, 'EFI/*/grub.cfg'))
+        shutil.move(grubpath[0], os.path.join(tmpisoroot, 'boot/grub/grub.cfg'))
+
+        # safely remove things we don't need in the final ISO tree
+        for d in ['EFI', 'isolinux', 'zipl.prm']:
+            run_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
+
+        # grub2-mkrescue is a wrapper around xorriso
+        genisoargs = ['grub2-mkrescue']
     elif basearch == "s390x":
         # Reserve 32MB for the kernel, starting memory address of the initramfs
         # See https://github.com/weldr/lorax/blob/master/share/templates.d/99-generic/s390.tmpl
