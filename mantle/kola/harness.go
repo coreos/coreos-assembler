@@ -544,7 +544,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// drop kolet binary on machines
 	if t.NativeFuncs != nil {
-		if err := scpKolet(tcluster, architecture(pltfrm)); err != nil {
+		if err := scpKolet(tcluster.Machines(), architecture(pltfrm)); err != nil {
 			h.Fatal(err)
 		}
 	}
@@ -577,7 +577,7 @@ func boardToArch(board string) string {
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(c cluster.TestCluster, mArch string) error {
+func scpKolet(machines []platform.Machine, mArch string) error {
 	for _, d := range []string{
 		".",
 		filepath.Dir(os.Args[0]),
@@ -586,12 +586,12 @@ func scpKolet(c cluster.TestCluster, mArch string) error {
 	} {
 		kolet := filepath.Join(d, "kolet")
 		if _, err := os.Stat(kolet); err == nil {
-			if err := c.DropFile(kolet); err != nil {
+			if err := cluster.DropFile(machines, kolet); err != nil {
 				return errors.Wrapf(err, "dropping kolet binary")
 			}
 			// If in the future we want to care about machines without SELinux, let's
 			// do basically test -d /sys/fs/selinux or run `getenforce`.
-			for _, machine := range c.Machines() {
+			for _, machine := range machines {
 				out, stderr, err := machine.SSH("sudo chcon -t bin_t kolet")
 				if err != nil {
 					return errors.Wrapf(err, "running chcon on kolet: %s: %s", out, stderr)

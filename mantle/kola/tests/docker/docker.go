@@ -382,7 +382,7 @@ func dockerOldClient(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	c.DropFile(oldclient)
+	cluster.DropFile(c.Machines(), oldclient)
 
 	genDockerContainer(c, m, "echo", []string{"echo"})
 

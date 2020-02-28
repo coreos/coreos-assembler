@@ -121,7 +121,7 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// all. cloud testing should mostly be a pipeline thing, where the infra
 		// connection should be much faster
 		ostreeTarPath := filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.BuildArtifacts.Ostree.Path)
-		if err := c.DropFile(ostreeTarPath); err != nil {
+		if err := cluster.DropFile(c.Machines(), ostreeTarPath); err != nil {
 			c.Fatal(err)
 		}
 
