@@ -231,7 +231,7 @@ EOF
 if [ "${ignition_version}" = "2.2.0" ]; then
     ign_validate="true"
     spec2f=$(mktemp)
-    /usr/lib/coreos-assembler/incomplete-hack-ign-3to2 "${f}" > "${spec2f}"
+    kola ign-convert2 < "${f}" > "${spec2f}"
     mv "${spec2f}" "${f}"
 fi
 

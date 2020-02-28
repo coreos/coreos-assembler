@@ -136,7 +136,7 @@ cat > "${ignition_path}" << EOF
 EOF
 if [ "${ignition_version}" = "2.2.0" ]; then
     spec2f="${tftpdir}/config.ign2"
-    /usr/lib/coreos-assembler/incomplete-hack-ign-3to2 "${ignition_path}" > "${spec2f}"
+    kola ign-convert2 < "${ignition_path}" > "${spec2f}"
     mv "${spec2f}" "${ignition_path}"
 fi
 
