@@ -86,7 +86,7 @@ func startLogging(cmd *cobra.Command) {
 		logLevel = capnslog.INFO
 	}
 
-	capnslog.SetFormatter(capnslog.NewStringFormatter(cmd.Out()))
+	capnslog.SetFormatter(capnslog.NewStringFormatter(cmd.OutOrStderr()))
 	capnslog.SetGlobalLogLevel(logLevel)
 
 	plog.Infof("Started logging at level %s", logLevel)
