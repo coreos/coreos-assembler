@@ -43,10 +43,11 @@ type Dialer interface {
 type SSHAgent struct {
 	agent.Agent
 	Dialer
-	User     string
-	Socket   string
-	sockDir  string
-	listener *net.UnixListener
+	User         string
+	Socket       string
+	sockDir      string
+	sockdirOwned bool
+	listener     *net.UnixListener
 }
 
 // NewSSHAgent constructs a new SSHAgent using dialer to create ssh
@@ -69,11 +70,12 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	}
 
 	var sockDir string
-	var ok bool
+	var ok, sockdirOwned bool
 	// This will be set by at least `coreos-assembler kola` since
 	// we have an implicit workdir.
 	if sockDir, ok = os.LookupEnv("MANTLE_SSH_DIR"); !ok {
 		sockDir, err = ioutil.TempDir("", "mantle-ssh-")
+		sockdirOwned = true
 		if err != nil {
 			return nil, err
 		}
@@ -84,17 +86,20 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	sockAddr := &net.UnixAddr{Name: sockPath, Net: "unix"}
 	listener, err := net.ListenUnix("unix", sockAddr)
 	if err != nil {
-		os.RemoveAll(sockDir)
+		if sockdirOwned {
+			os.RemoveAll(sockDir)
+		}
 		return nil, err
 	}
 
 	a := &SSHAgent{
-		Agent:    keyring,
-		Dialer:   dialer,
-		User:     defaultUser,
-		Socket:   sockPath,
-		sockDir:  sockDir,
-		listener: listener,
+		Agent:        keyring,
+		Dialer:       dialer,
+		User:         defaultUser,
+		Socket:       sockPath,
+		sockDir:      sockDir,
+		sockdirOwned: sockdirOwned,
+		listener:     listener,
 	}
 
 	go func() {
@@ -113,7 +118,10 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 // Close closes the unix socket of the agent.
 func (a *SSHAgent) Close() error {
 	a.listener.Close()
-	return os.RemoveAll(a.sockDir)
+	if a.sockdirOwned {
+		return os.RemoveAll(a.sockDir)
+	}
+	return nil
 }
 
 // Add port to host if not already set.
