@@ -9,7 +9,7 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check flake8 pycheck unittest clean mantle install
+.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install
 
 all: mantle
 
@@ -30,7 +30,7 @@ endif
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-check
 	echo OK
 
 pycheck:
@@ -55,6 +55,9 @@ clean:
 
 mantle:
 	cd mantle && $(MAKE)
+
+mantle-check:
+	cd mantle && $(MAKE) test
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
