@@ -402,6 +402,9 @@
        "initramfs",
        "iso",
        "kernel",
+       "live-kernel",
+       "live-initramfs",
+       "live-iso",
        "metal",
        "openstack",
        "qemu",
@@ -450,6 +453,24 @@
          "title":"Initramfs",
          "$ref": "#/definitions/artifact"
         },
+       "live-kernel": {
+         "$id":"#/properties/images/properties/live-kernel",
+         "type":"object",
+         "title":"Live Kernel",
+         "$ref": "#/definitions/artifact"
+         },
+       "live-initramfs": {
+         "$id":"#/properties/images/properties/live-initramfs",
+         "type":"object",
+         "title":"Live Initramfs",
+         "$ref": "#/definitions/artifact"
+        },
+       "live-iso": {
+        "$id":"#/properties/images/properties/live-iso",
+        "type":"object",
+        "title":"Live ISO",
+        "$ref": "#/definitions/artifact"
+       },
        "openstack": {
          "$id":"#/properties/images/properties/openstack",
          "type":"object",
