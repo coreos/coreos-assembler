@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,10 +27,10 @@ import (
 
 var (
 	cmdCheckConsole = &cobra.Command{
-		Use:    "check-console [input-file...]",
-		Run:    runCheckConsole,
-		PreRun: preRun,
-		Short:  "Check console output for badness.",
+		Use:     "check-console [input-file...]",
+		RunE:    runCheckConsole,
+		PreRunE: preRun,
+		Short:   "Check console output for badness.",
 		Long: `
 Check console output for expressions matching failure messages logged
 by a Container Linux instance.
@@ -45,13 +46,13 @@ func init() {
 	root.AddCommand(cmdCheckConsole)
 }
 
-func runCheckConsole(cmd *cobra.Command, args []string) {
+func runCheckConsole(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// default to stdin
 		args = append(args, "-")
 	}
 
-	errors := 0
+	errorcount := 0
 	for _, arg := range args {
 		var console []byte
 		var err error
@@ -67,15 +68,16 @@ func runCheckConsole(cmd *cobra.Command, args []string) {
 		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
-			errors += 1
+			errorcount += 1
 			continue
 		}
 		for _, badness := range kola.CheckConsole(console, nil) {
 			fmt.Printf("%v: %v\n", sourceName, badness)
-			errors += 1
+			errorcount += 1
 		}
 	}
-	if errors > 0 {
-		os.Exit(1)
+	if errorcount > 0 {
+		return errors.New("Errors found on console")
 	}
+	return nil
 }

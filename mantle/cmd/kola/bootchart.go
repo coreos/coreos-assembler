@@ -25,10 +25,10 @@ import (
 )
 
 var cmdBootchart = &cobra.Command{
-	Run:    runBootchart,
-	PreRun: preRun,
-	Use:    "bootchart > bootchart.svg",
-	Short:  "Boot performance graphing tool",
+	Run:     runBootchart,
+	PreRunE: preRun,
+	Use:     "bootchart > bootchart.svg",
+	Short:   "Boot performance graphing tool",
 	Long: `
 Boot a single instance and plot how the time was spent.
 

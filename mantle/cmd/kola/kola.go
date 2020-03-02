@@ -61,8 +61,8 @@ If the glob pattern is exactly equal to the name of a single test, any
 restrictions on the versions of Container Linux supported by that test
 will be ignored.
 `,
-		RunE:   runRun,
-		PreRun: preRun,
+		RunE:    runRun,
+		PreRunE: preRun,
 	}
 
 	cmdRunUpgrade = &cobra.Command{
@@ -142,12 +142,10 @@ func main() {
 	cli.Execute(root)
 }
 
-func preRun(cmd *cobra.Command, args []string) {
+func preRun(cmd *cobra.Command, args []string) error {
 	err := syncOptions()
-
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(3)
+		return err
 	}
 
 	// Packet uses storage, and storage talks too much.
@@ -157,6 +155,8 @@ func preRun(cmd *cobra.Command, args []string) {
 			"storage": capnslog.WARNING,
 		})
 	}
+
+	return nil
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
