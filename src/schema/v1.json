@@ -381,7 +381,6 @@
     },
    "coreos-assembler.overrides-active": {
      "$id":"#/properties/coreos-assembler.overrides-active",
-     "type":"string",
      "title":"Overrides Active",
      "default":"",
      "type": "boolean"
