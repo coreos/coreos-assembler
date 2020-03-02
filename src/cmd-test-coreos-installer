@@ -14,4 +14,4 @@ arch=$(arch)
 builddir=builds/${build}/${arch}
 buildmeta=${builddir}/meta.json
 
-exec kola testiso --cosa-build "${buildmeta}"
+exec kola testiso --cosa-build "${buildmeta}" "$@"
