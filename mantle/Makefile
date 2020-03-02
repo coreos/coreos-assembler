@@ -11,6 +11,7 @@ endif
 
 .PHONY: build test vendor
 build:
+	./generate
 	./build
 
 .PHONY: install
