@@ -12,12 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO:
+// - Support testing the "just run Live" case - maybe try to figure out
+//   how to have main `kola` tests apply?
+// - Test `coreos-install iso embed` path
+
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -52,10 +58,23 @@ var (
 		"arm64-usr":   "ttyAMA0",
 		"s390x-usr":   "ttysclp0",
 	}
+
+	instInsecure bool
+
+	legacy bool
+	nolive bool
 )
 
 func init() {
+	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
+	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
+	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer")
+
 	root.AddCommand(cmdTestIso)
+}
+
+type kernelSetup struct {
+	kernel, initramfs string
 }
 
 func runTestIso(cmd *cobra.Command, args []string) error {
@@ -63,63 +82,95 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Must provide --cosa-build")
 	}
 
-	if kola.CosaBuild.BuildArtifacts.Kernel.Path != "" {
-		if err := testLegacyInstaller(); err != nil {
-			return errors.Wrapf(err, "testing legacy installer")
+	ranTest := false
+
+	foundLegacy := kola.CosaBuild.BuildArtifacts.Kernel.Path != ""
+	if foundLegacy {
+		if legacy {
+			ranTest = true
+			if err := testLegacyInstaller(&kernelSetup{
+				kernel:    kola.CosaBuild.BuildArtifacts.Kernel.Path,
+				initramfs: kola.CosaBuild.BuildArtifacts.Initramfs.Path,
+			}); err != nil {
+				return errors.Wrapf(err, "testing legacy installer")
+			}
 		}
-		return nil
-	} else {
-		return fmt.Errorf("build %s has no installer kernel", kola.CosaBuild.Name)
+	} else if legacy {
+		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Name)
 	}
+
+	foundLive := kola.CosaBuild.BuildArtifacts.LiveKernel.Path != ""
+	if !nolive {
+		if !foundLive {
+			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Name)
+		}
+		ranTest = true
+		if err := testLiveInstaller(&kernelSetup{
+			kernel:    kola.CosaBuild.BuildArtifacts.LiveKernel.Path,
+			initramfs: kola.CosaBuild.BuildArtifacts.LiveInitramfs.Path,
+		}); err != nil {
+			return errors.Wrapf(err, "testing live installer")
+		}
+	}
+
+	if !ranTest {
+		return fmt.Errorf("Nothing to test!")
+	}
+
+	return nil
 }
 
-func testLegacyInstaller() error {
-	builddir := filepath.Dir(kola.Options.CosaBuild)
-	metalimg := kola.CosaBuild.BuildArtifacts.Metal.Path
+type pxeSetup struct {
+	tftpipaddr    string
+	boottype      string
+	networkdevice string
+	bootindex     string
+	pxeimagepath  string
 
-	builder := platform.NewBuilder(kola.QEMUOptions.Board, "")
-	defer builder.Close()
-	builder.Firmware = kola.QEMUOptions.Firmware
-	builder.AddDisk(&platform.Disk{
-		Size: "12G", // Arbitrary
-	})
-	// Arbitrary
-	builder.Memory = 1536
+	// bootfile is initialized later
+	bootfile string
+}
 
-	builder.InheritConsole = true
+type installerTest struct {
+	builder *platform.QemuBuilder
 
-	tftpipaddr := "192.168.76.2"
-	var boottype, networkdevice, bootindex, pxeimagepath string
-	switch kola.QEMUOptions.Board {
-	case "amd64-usr":
-		boottype = "pxe"
-		networkdevice = "e1000"
-		pxeimagepath = "/usr/share/syslinux/"
-		break
-	case "ppc64le-usr":
-		boottype = "grub"
-		networkdevice = "virtio-net-pci"
-		break
-	case "s390x-usr":
-		boottype = "pxe"
-		networkdevice = "virtio-net-ccw"
-		tftpipaddr = "10.0.2.2"
-		bootindex = "1"
-		builder.Memory = 16384
-	default:
-		return fmt.Errorf("Unsupported arch %s", kola.QEMUOptions.Board)
-	}
+	builddir string
+	tempdir  string
+	tftpdir  string
 
-	unit := `[Unit]
-	Requires=dev-virtio\\x2dports-completion.device
-	OnFailure=emergency.target
-	OnFailureJobMode=isolate
-	[Service]
-	Type=oneshot
-	ExecStart=/bin/sh -c '/usr/bin/echo coreos-installer-test-OK >/dev/virtio-ports/completion && systemctl poweroff'
-	[Install]
-	RequiredBy=multi-user.target
+	metalimg  string
+	metalname string
+
+	baseurl string
+
+	kern kernelSetup
+	pxe  pxeSetup
+}
+
+var signalCompletionUnit = `[Unit]
+Requires=dev-virtio\\x2dports-completion.device
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/bin/echo coreos-installer-test-OK >/dev/virtio-ports/completion && systemctl poweroff'
+[Install]
+RequiredBy=multi-user.target
 `
+
+// TODO derive this from docs, or perhaps include kargs in cosa metadata?
+var baseKargs = []string{"rd.neednet=1", "ip=dhcp"}
+var liveKargs = []string{"ignition.firstboot", "ignition.platform.id=metal"}
+
+func absSymlink(src, dest string) error {
+	src, err := filepath.Abs(src)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(src, dest)
+}
+
+func setupTftpDir(builddir, tftpdir, metalimg string, kern *kernelSetup) error {
 	config := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -128,7 +179,7 @@ func testLegacyInstaller() error {
 			Units: []ignv3types.Unit{
 				{
 					Name:     "coreos-test-installer.service",
-					Contents: &unit,
+					Contents: &signalCompletionUnit,
 					Enabled:  util.BoolToPtr(true),
 				},
 			},
@@ -153,18 +204,7 @@ func testLegacyInstaller() error {
 		serializedConfig = buf
 	}
 
-	tempdir, err := ioutil.TempDir("", "kola-testiso")
-	if err != nil {
-		return err
-	}
-
-	tftpdir := filepath.Join(tempdir, "tftp")
-	if err := os.Mkdir(tftpdir, 0777); err != nil {
-		return err
-	}
-	defer os.RemoveAll(tftpdir)
-
-	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0777); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
 		return err
 	}
 
@@ -190,41 +230,144 @@ func testLegacyInstaller() error {
 		if err := cmd.Run(); err != nil {
 			return errors.Wrapf(err, "running gzip")
 		}
+	} else {
+		if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(tftpdir, metalimg)); err != nil {
+			return err
+		}
+	}
+
+	for _, name := range []string{kern.kernel, kern.initramfs} {
+		if err := absSymlink(filepath.Join(builddir, name), filepath.Join(tftpdir, name)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func setupTest(kern *kernelSetup) (*installerTest, error) {
+	builder := platform.NewBuilder(kola.QEMUOptions.Board, "")
+	builder.Firmware = kola.QEMUOptions.Firmware
+	builder.AddDisk(&platform.Disk{
+		Size: "12G", // Arbitrary
+	})
+
+	// This applies just in the legacy case
+	builder.Memory = 1542
+	if kola.QEMUOptions.Board == "s390x-usr" {
+		// FIXME - determine why this is
+		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
+	}
+
+	// For now, but in the future we should rely on log capture
+	builder.InheritConsole = true
+
+	tempdir, err := ioutil.TempDir("", "kola-testiso")
+	if err != nil {
+		return nil, err
+	}
+	cleanupTempdir := true
+	defer func() {
+		if cleanupTempdir {
+			os.RemoveAll(tempdir)
+		}
+	}()
+
+	tftpdir := filepath.Join(tempdir, "tftp")
+	if err := os.Mkdir(tftpdir, 0777); err != nil {
+		return nil, err
+	}
+
+	builddir := filepath.Dir(kola.Options.CosaBuild)
+	metalimg := kola.CosaBuild.BuildArtifacts.Metal.Path
+	metalname := metalimg
+	// Yeah this is duplicated with setupTftpDir
+	if strings.HasSuffix(metalimg, ".raw") {
+		metalname = metalimg + ".gz"
+	}
+
+	if err := setupTftpDir(builddir, tftpdir, metalimg, kern); err != nil {
+		return nil, err
+	}
+
+	pxe := pxeSetup{}
+	pxe.tftpipaddr = "192.168.76.2"
+	switch kola.QEMUOptions.Board {
+	case "amd64-usr":
+		pxe.boottype = "pxe"
+		pxe.networkdevice = "e1000"
+		pxe.pxeimagepath = "/usr/share/syslinux/"
+		break
+	case "ppc64le-usr":
+		pxe.boottype = "grub"
+		pxe.networkdevice = "virtio-net-pci"
+		break
+	case "s390x-usr":
+		pxe.boottype = "pxe"
+		pxe.networkdevice = "virtio-net-ccw"
+		pxe.tftpipaddr = "10.0.2.2"
+		pxe.bootindex = "1"
+	default:
+		return nil, fmt.Errorf("Unsupported arch %s", kola.QEMUOptions.Board)
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir(tftpdir)))
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
+	// Yeah this leaks
 	go func() {
 		http.Serve(listener, mux)
 	}()
-	baseurl := fmt.Sprintf("http://%s:%d", tftpipaddr, port)
+	baseurl := fmt.Sprintf("http://%s:%d", pxe.tftpipaddr, port)
 
-	for _, name := range []string{kola.CosaBuild.BuildArtifacts.Kernel.Path, kola.CosaBuild.BuildArtifacts.Initramfs.Path} {
-		src, err := filepath.Abs(filepath.Join(builddir, name))
-		if err != nil {
-			return err
-		}
-		if err := os.Symlink(src, filepath.Join(tftpdir, name)); err != nil {
-			return err
-		}
+	cleanupTempdir = false // Transfer ownership
+	return &installerTest{
+		builder:  builder,
+		tempdir:  tempdir,
+		tftpdir:  tftpdir,
+		builddir: builddir,
+
+		metalimg:  metalimg,
+		metalname: metalname,
+
+		baseurl: baseurl,
+
+		pxe:  pxe,
+		kern: *kern,
+	}, nil
+}
+
+func renderBaseKargs(t *installerTest) []string {
+	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[kola.QEMUOptions.Board]))
+}
+
+func renderInstallKargs(t *installerTest) []string {
+	args := []string{"coreos.inst=yes", "coreos.inst.install_dev=vda",
+		fmt.Sprintf("coreos.inst.image_url=%s/%s", t.baseurl, t.metalname),
+		fmt.Sprintf("coreos.inst.ignition_url=%s/config.ign", t.baseurl)}
+	// FIXME - ship signatures by default too
+	if instInsecure {
+		args = append(args, "coreos.inst.insecure=1")
 	}
+	return args
+}
 
-	kargs := []string{"rd.neednet=1", "ip=dhcp", "coreos.inst=yes", "coreos.inst.install_dev=vda"}
-	kargs = append(kargs, fmt.Sprintf("console=%s", consoleKernelArgument[kola.QEMUOptions.Board]))
-	kargs = append(kargs, fmt.Sprintf("coreos.inst.image_url=%s/%s", baseurl, metalname))
-	kargs = append(kargs, fmt.Sprintf("coreos.inst.ignition_url=%s/config.ign", baseurl))
+func (t *installerTest) destroy() error {
+	t.builder.Close()
+	return os.RemoveAll(t.tempdir)
+}
 
+func (t *installerTest) completePxeSetup(kargs []string) error {
 	kargsStr := strings.Join(kargs, " ")
 
 	var bootfile string
-	switch boottype {
+	switch t.pxe.boottype {
 	case "pxe":
-		pxeconfigdir := filepath.Join(tftpdir, "pxelinux.cfg")
+		pxeconfigdir := filepath.Join(t.tftpdir, "pxelinux.cfg")
 		if err := os.Mkdir(pxeconfigdir, 0777); err != nil {
 			return err
 		}
@@ -236,7 +379,7 @@ func testLegacyInstaller() error {
 		LABEL pxeboot
 			KERNEL %s
 			APPEND initrd=%s %s
-		`, kola.CosaBuild.BuildArtifacts.Kernel.Path, kola.CosaBuild.BuildArtifacts.Initramfs.Path, kargsStr))
+		`, t.kern.kernel, t.kern.initramfs, kargsStr))
 		if kola.QEMUOptions.Board == "s390x-usr" {
 			pxeconfig = []byte(kargsStr)
 		}
@@ -244,18 +387,18 @@ func testLegacyInstaller() error {
 
 		// this is only for s390x where the pxe image has to be created;
 		// s390 doesn't seem to have a pre-created pxe image although have to check on this
-		if pxeimagepath == "" {
-			kernelpath := filepath.Join(builddir, kola.CosaBuild.BuildArtifacts.Kernel.Path)
-			initrdpath := filepath.Join(builddir, kola.CosaBuild.BuildArtifacts.Initramfs.Path)
+		if t.pxe.pxeimagepath == "" {
+			kernelpath := filepath.Join(t.builddir, t.kern.kernel)
+			initrdpath := filepath.Join(t.builddir, t.kern.initramfs)
 			err := exec.Command("/usr/share/s390-tools/netboot/mk-s390image", kernelpath, "-r", initrdpath,
-				"-p", filepath.Join(pxeconfigdir, "default"), filepath.Join(tftpdir, pxeimages[0])).Run()
+				"-p", filepath.Join(pxeconfigdir, "default"), filepath.Join(t.tftpdir, pxeimages[0])).Run()
 			if err != nil {
 				return err
 			}
 		} else {
 			for _, img := range pxeimages {
 				srcpath := filepath.Join("/usr/share/syslinux", img)
-				if err := exec.Command("/usr/lib/coreos-assembler/cp-reflink", srcpath, tftpdir).Run(); err != nil {
+				if err := exec.Command("/usr/lib/coreos-assembler/cp-reflink", srcpath, t.tftpdir).Run(); err != nil {
 					return err
 				}
 			}
@@ -264,10 +407,10 @@ func testLegacyInstaller() error {
 		break
 	case "grub":
 		bootfile = "/boot/grub2/powerpc-ieee1275/core.elf"
-		if err := exec.Command("grub2-mknetdir", "--net-directory="+tftpdir).Run(); err != nil {
+		if err := exec.Command("grub2-mknetdir", "--net-directory="+t.tftpdir).Run(); err != nil {
 			return err
 		}
-		ioutil.WriteFile(filepath.Join(tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
+		ioutil.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
 			default=0
 			timeout=1
 			menuentry "CoreOS (BIOS)" {
@@ -276,24 +419,31 @@ func testLegacyInstaller() error {
 				echo "Loading initrd"
 				initrd %s
 			}
-		`, kola.CosaBuild.BuildArtifacts.Kernel.Path, kargsStr, kola.CosaBuild.BuildArtifacts.Initramfs.Path)), 0777)
+		`, t.kern.kernel, kargsStr, t.kern.initramfs)), 0777)
 		break
 	default:
-		panic("Unhandled boottype " + boottype)
+		panic("Unhandled boottype " + t.pxe.boottype)
 	}
 
-	completionfile := filepath.Join(tempdir, "completion.txt")
+	t.pxe.bootfile = bootfile
+
+	return nil
+}
+
+func (t *installerTest) run() error {
+	completionfile := filepath.Join(t.tempdir, "completion.txt")
 	completionstamp := "coreos-installer-test-OK"
 
-	netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", networkdevice)
-	if bootindex == "" {
+	builder := t.builder
+	netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", t.pxe.networkdevice)
+	if t.pxe.bootindex == "" {
 		builder.Append("-boot", "once=n", "-option-rom", "/usr/share/qemu/pxe-rtl8139.rom")
 	} else {
-		netdev += fmt.Sprintf(",bootindex=%s", bootindex)
+		netdev += fmt.Sprintf(",bootindex=%s", t.pxe.bootindex)
 	}
 	builder.Append("-device", netdev)
-	usernetdev := fmt.Sprintf("user,id=mynet0,tftp=%s,bootfile=%s", tftpdir, bootfile)
-	if tftpipaddr != "10.0.2.2" {
+	usernetdev := fmt.Sprintf("user,id=mynet0,tftp=%s,bootfile=%s", t.tftpdir, t.pxe.bootfile)
+	if t.pxe.tftpipaddr != "10.0.2.2" {
 		usernetdev += ",net=192.168.76.0/24,dhcpstart=192.168.76.9"
 	}
 	builder.Append("-netdev", usernetdev)
@@ -315,7 +465,50 @@ func testLegacyInstaller() error {
 		return fmt.Errorf("Failed to find %s in %s: %s", completionstamp, completionfile, err)
 	}
 
+	return nil
+}
+
+func testLegacyInstaller(kern *kernelSetup) error {
+	t, err := setupTest(kern)
+	if err != nil {
+		return err
+	}
+	defer t.destroy()
+
+	kargs := append(renderBaseKargs(t), renderInstallKargs(t)...)
+	if err := t.completePxeSetup(kargs); err != nil {
+		return err
+	}
+	if err := t.run(); err != nil {
+		return err
+	}
+
 	fmt.Printf("Successfully tested legacy installer for %s\n", kola.CosaBuild.OstreeVersion)
+
+	return nil
+}
+
+func testLiveInstaller(kern *kernelSetup) error {
+	t, err := setupTest(kern)
+	if err != nil {
+		return err
+	}
+	defer t.destroy()
+
+	// https://github.com/coreos/fedora-coreos-tracker/issues/388
+	// https://github.com/coreos/fedora-coreos-docs/pull/46
+	t.builder.Memory = int(math.Max(float64(t.builder.Memory), 4096))
+
+	kargs := append(renderBaseKargs(t), liveKargs...)
+	kargs = append(kargs, renderInstallKargs(t)...)
+	if err := t.completePxeSetup(kargs); err != nil {
+		return err
+	}
+	if err := t.run(); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully tested live installer for %s\n", kola.CosaBuild.OstreeVersion)
 
 	return nil
 }
