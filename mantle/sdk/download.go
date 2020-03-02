@@ -272,12 +272,6 @@ func DownloadCompressedSignedFile(file, url string, client *http.Client, verifyK
 	return err
 }
 
-func DownloadSDK(version, verifyKeyFile string) error {
-	tarFile := filepath.Join(RepoCache(), "sdks", TarballName(version))
-	tarURL := TarballURL(version)
-	return DownloadSignedFile(tarFile, tarURL, nil, verifyKeyFile)
-}
-
 // false if both files do not exist
 func cmpFileBytes(file1, file2 string) (bool, error) {
 	info1, err := os.Stat(file1)

@@ -183,9 +183,7 @@ func getImageTypeURI() string {
 }
 
 func getFedoraImageFile(client *http.Client, spec *channelSpec, src *storage.Bucket, fileName string) (string, error) {
-	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specVersion)
-	rawxzPath := filepath.Join(cacheDir, fileName)
-	imagePath := strings.TrimSuffix(rawxzPath, ".xz")
+	imagePath := strings.TrimSuffix(fileName, ".xz")
 
 	if _, err := os.Stat(imagePath); err == nil {
 		plog.Printf("Reusing existing image %q", imagePath)
@@ -197,15 +195,15 @@ func getFedoraImageFile(client *http.Client, spec *channelSpec, src *storage.Buc
 		return "", err
 	}
 
-	plog.Printf("Downloading image %q to %q", rawxzURI, rawxzPath)
+	plog.Printf("Downloading image %q to %q", rawxzURI, fileName)
 
-	if err := sdk.UpdateFile(rawxzPath, rawxzURI.String(), client); err != nil {
+	if err := sdk.UpdateFile(fileName, rawxzURI.String(), client); err != nil {
 		return "", err
 	}
 
 	// decompress it
-	plog.Printf("Decompressing %q...", rawxzPath)
-	if err := util.XzDecompressFile(imagePath, rawxzPath); err != nil {
+	plog.Printf("Decompressing %q...", fileName)
+	if err := util.XzDecompressFile(imagePath, fileName); err != nil {
 		return "", err
 	}
 	return imagePath, nil

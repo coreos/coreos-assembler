@@ -17,7 +17,6 @@ package sdk
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -214,52 +213,6 @@ func extract(tar, dir string) error {
 	if err := unzip.Wait(); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func Unpack(version, name string) error {
-	chroot := filepath.Join(RepoRoot(), name)
-	if _, err := os.Stat(chroot); !os.IsNotExist(err) {
-		if err == nil {
-			err = fmt.Errorf("Path already exists: %s", chroot)
-		}
-		return err
-	}
-
-	plog.Noticef("Unpacking SDK into %s", chroot)
-	if err := os.MkdirAll(chroot, 0777); err != nil {
-		return err
-	}
-
-	tar := filepath.Join(RepoCache(), "sdks", TarballName(version))
-	plog.Infof("Using %s", tar)
-	if err := extract(tar, chroot); err != nil {
-		plog.Errorf("Extracting %s to %s failed: %v", tar, chroot, err)
-		return err
-	}
-	plog.Notice("Unpacked")
-
-	return nil
-}
-
-func Delete(name string) error {
-	chroot := filepath.Join(RepoRoot(), name)
-	if _, err := os.Stat(chroot); err != nil {
-		if os.IsNotExist(err) {
-			plog.Infof("Path does not exist: %s", chroot)
-			return nil
-		}
-		return err
-	}
-
-	plog.Noticef("Removing SDK at %s", chroot)
-	rm := exec.Command("sudo", "-p", sudoPrompt, "rm", "-rf", chroot)
-	rm.Stderr = os.Stderr
-	if err := rm.Run(); err != nil {
-		return err
-	}
-	plog.Notice("Removed")
 
 	return nil
 }
