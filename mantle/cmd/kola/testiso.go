@@ -40,10 +40,10 @@ import (
 
 var (
 	cmdTestIso = &cobra.Command{
-		Run:    runTestIso,
-		PreRun: preRun,
-		Use:    "testiso",
-		Short:  "Test a CoreOS PXE boot or ISO install path",
+		RunE:    runTestIso,
+		PreRunE: preRun,
+		Use:     "testiso",
+		Short:   "Test a CoreOS PXE boot or ISO install path",
 	}
 	// TODO expose this as an API that can be used by cosa too
 	consoleKernelArgument = map[string]string{
@@ -58,14 +58,7 @@ func init() {
 	root.AddCommand(cmdTestIso)
 }
 
-func runTestIso(cmd *cobra.Command, args []string) {
-	if err := doTestIso(cmd, args); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
-	}
-}
-
-func doTestIso(cmd *cobra.Command, args []string) error {
+func runTestIso(cmd *cobra.Command, args []string) error {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --cosa-build")
 	}
