@@ -180,37 +180,6 @@ func getImageTypeURI() string {
 	return specImageType
 }
 
-func getCLImageFile(client *http.Client, src *storage.Bucket, fileName string) (string, error) {
-	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specBoard, specVersion)
-	bzipPath := filepath.Join(cacheDir, fileName)
-	imagePath := strings.TrimSuffix(bzipPath, filepath.Ext(bzipPath))
-
-	if _, err := os.Stat(imagePath); err == nil {
-		plog.Printf("Reusing existing image %q", imagePath)
-		return imagePath, nil
-	}
-
-	bzipUri, err := url.Parse(fileName)
-	if err != nil {
-		return "", err
-	}
-
-	bzipUri = src.URL().ResolveReference(bzipUri)
-
-	plog.Printf("Downloading image %q to %q", bzipUri, bzipPath)
-
-	if err := sdk.UpdateSignedFile(bzipPath, bzipUri.String(), client, verifyKeyFile); err != nil {
-		return "", err
-	}
-
-	// decompress it
-	plog.Printf("Decompressing %q...", bzipPath)
-	if err := util.Bunzip2File(imagePath, bzipPath); err != nil {
-		return "", err
-	}
-	return imagePath, nil
-}
-
 func getFedoraImageFile(client *http.Client, spec *channelSpec, src *storage.Bucket, fileName string) (string, error) {
 	cacheDir := filepath.Join(sdk.RepoCache(), "images", specChannel, specVersion)
 	rawxzPath := filepath.Join(cacheDir, fileName)
