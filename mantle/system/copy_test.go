@@ -31,7 +31,7 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 
 	info, err := file.Stat()
 	if info.Mode() != mode {
-		t.Fatalf("Unexpected mode: %s %s", info.Mode(), path)
+		t.Fatalf("Unexpected mode: %s != %s %s", info.Mode(), mode, path)
 	}
 
 	newData, err := ioutil.ReadAll(file)
@@ -39,7 +39,7 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(data, newData) {
-		t.Fatalf("Unexpected data: %q %s", string(newData), path)
+		t.Fatalf("Unexpected data: %q != %q %s", data, string(newData), path)
 	}
 }
 
