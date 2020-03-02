@@ -15,28 +15,14 @@
 package sdk
 
 import (
-	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/coreos/mantle/system"
-	"github.com/coreos/mantle/system/exec"
 )
 
-const (
-	defaultGroup = "developer"
-
-	// In the SDK chroot the repo is always at this location
-	chrootRepoRoot = "/mnt/host/source"
-
-	// Assorted paths under the repo root
-	defaultCacheDir = ".cache"
-	defaultBuildDir = "src/build"
-	defaultBoardCfg = "src/scripts/.default_board"
-)
+const ()
 
 func isDir(dir string) bool {
 	stat, err := os.Stat(dir)
@@ -55,112 +41,21 @@ func envDir(env string) string {
 }
 
 func RepoRoot() string {
-	if dir := envDir("REPO_ROOT"); dir != "" {
-		return dir
-	}
-
-	if isDir(chrootRepoRoot) {
-		return chrootRepoRoot
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Invalid working directory: %v", err)
-	}
-
-	for dir := wd; ; dir = filepath.Dir(dir) {
-		if isDir(filepath.Join(dir, ".repo")) {
-			return dir
-		} else if filepath.IsAbs(dir) {
-			break
-		}
-	}
-
+	wd, _ := os.Getwd()
 	return wd
-}
-
-func RepoCache() string {
-	return filepath.Join(RepoRoot(), defaultCacheDir)
 }
 
 func DefaultBoard() string {
 	defaultBoard := system.PortageArch() + "-usr"
-	cfg := filepath.Join(RepoRoot(), defaultBoardCfg)
-	board, err := ioutil.ReadFile(cfg)
-	if err != nil {
-		return defaultBoard
-	}
-
-	board = bytes.TrimSpace(board)
-	if len(board) == 0 {
-		return defaultBoard
-	}
-
-	return string(board)
+	return string(defaultBoard)
 }
 
+// TODO replace with coreos-assembler concepts
 func BoardRoot(board string) string {
-	if board == "" {
-		board = DefaultBoard()
-	}
-	return filepath.Join("/build", board)
+	return ""
 }
 
+// TODO replace with coreos-assembler concepts
 func BuildRoot() string {
-	if dir := envDir("BUILD_ROOT"); dir != "" {
-		return dir
-	}
-	return filepath.Join(RepoRoot(), defaultBuildDir)
-}
-
-// version may be "latest" or a full version like "752.1.0+2015-07-27-1656"
-func BuildImageDir(board, version string) string {
-	if board == "" {
-		board = DefaultBoard()
-	}
-	if version == "" {
-		version = "latest"
-	} else if version != "latest" {
-		// Assume all builds are "attempt" #1
-		version += "-a1"
-	}
-	dir := defaultGroup + "-" + version
-	return filepath.Join(BuildRoot(), "images", board, dir)
-}
-
-func RepoInit(chroot, url, branch, name string, useHostDNS bool) error {
-	return enterChroot(enter{
-		Chroot:     chroot,
-		CmdDir:     chrootRepoRoot,
-		UseHostDNS: useHostDNS,
-		Cmd: []string{"--",
-			"repo", "init",
-			"--manifest-url", url,
-			"--manifest-branch", branch,
-			"--manifest-name", name,
-		}})
-}
-
-func RepoVerifyTag(branch string) error {
-	manifestRepoDir := ".repo/manifests"
-	if strings.HasPrefix(branch, "refs/tags/") {
-		branch = strings.TrimPrefix(branch, "refs/tags/")
-	}
-
-	tag := exec.Command("git", "-C", manifestRepoDir, "tag", "-v", branch)
-	tag.Stderr = os.Stderr
-	return tag.Run()
-}
-
-func RepoSync(chroot string, force, useHostDNS bool) error {
-	args := []string{"--", "repo", "sync", "--no-clone-bundle"}
-	if force {
-		args = append(args, "--force-sync")
-	}
-	return enterChroot(enter{
-		Chroot:     chroot,
-		CmdDir:     chrootRepoRoot,
-		Cmd:        args,
-		UseHostDNS: useHostDNS,
-	})
+	return ""
 }
