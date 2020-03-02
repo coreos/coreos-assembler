@@ -36,10 +36,10 @@ import (
 
 var (
 	cmdSpawn = &cobra.Command{
-		Run:    runSpawn,
-		PreRun: preRun,
-		Use:    "spawn",
-		Short:  "spawn a CoreOS instance",
+		RunE:    runSpawn,
+		PreRunE: preRun,
+		Use:     "spawn",
+		Short:   "spawn a CoreOS instance",
 	}
 
 	spawnNodeCount      int
@@ -70,14 +70,7 @@ func init() {
 	root.AddCommand(cmdSpawn)
 }
 
-func runSpawn(cmd *cobra.Command, args []string) {
-	if err := doSpawn(cmd, args); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
-	}
-}
-
-func doSpawn(cmd *cobra.Command, args []string) error {
+func runSpawn(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if spawnDetach {

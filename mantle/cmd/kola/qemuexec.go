@@ -17,9 +17,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
@@ -28,10 +25,10 @@ import (
 
 var (
 	cmdQemuExec = &cobra.Command{
-		Run:    runQemuExec,
-		PreRun: preRun,
-		Use:    "qemuexec",
-		Short:  "Directly execute qemu on a CoreOS instance",
+		RunE:    runQemuExec,
+		PreRunE: preRun,
+		Use:     "qemuexec",
+		Short:   "Directly execute qemu on a CoreOS instance",
 	}
 
 	memory  int
@@ -47,14 +44,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
 }
 
-func runQemuExec(cmd *cobra.Command, args []string) {
-	if err := doQemuExec(cmd, args); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
-	}
-}
-
-func doQemuExec(cmd *cobra.Command, args []string) error {
+func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 
 	builder := platform.NewBuilder(kola.QEMUOptions.Board, ignition)
