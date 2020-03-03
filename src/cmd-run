@@ -115,6 +115,8 @@ fi
 vmdiskdir=$(dirname "${VM_DISK}")
 VM_DISK=$(realpath "${vmdiskdir}")/$(basename "${VM_DISK}")
 
+# For future me: if you are in here wondering where this value is ultimately
+# derived from, it exists in mantle/sdk/ignversion.go via `TargetIgnitionVersionFromName()`
 ignition_version=$(disk_ignition_version "${VM_DISK}")
 ign_validate="ignition-validate"
 
