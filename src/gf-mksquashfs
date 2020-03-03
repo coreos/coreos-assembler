@@ -31,10 +31,7 @@ set -x
 tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-mksquashfs.XXXXXX)
 tmp_dest=${tmpd}/image.squashfs
 
-coreos_gf_run "${src}" --ro
-
-root=$(coreos_gf findfs-label root)
-coreos_gf mount "${root}" /
+coreos_gf_run_mount "${src}" --ro
 
 coreos_gf mksquashfs / "${tmp_dest}" "compress:${compression}"
 
