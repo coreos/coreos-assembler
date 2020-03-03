@@ -27,9 +27,9 @@ type Build struct {
 	Architecture              string                  `json:"coreos-assembler.basearch,omitempty"`
 	Azure                     Cloudartifact           `json:"azure,omitempty"`
 	BuildArtifacts            BuildArtifacts          `json:"images,omitempty"`
-	BuildID                   string                  `json:"buildid,omitempty"`
+	BuildID                   string                  `json:"buildid"`
 	BuildRef                  string                  `json:"ref,omitempty"`
-	BuildSummary              string                  `json:"summary,omitempty"`
+	BuildSummary              string                  `json:"summary"`
 	BuildTimeStamp            string                  `json:"coreos-assembler.build-timestamp,omitempty"`
 	BuildURL                  string                  `json:"build-url,omitempty"`
 	ConfigGitRev              string                  `json:"coreos-assembler.config-gitrev,omitempty"`
@@ -43,19 +43,19 @@ type Build struct {
 	Gcp                       Cloudartifact           `json:"gcp,omitempty"`
 	GitDirty                  string                  `json:"coreos-assembler.config-dirty,omitempty"`
 	ImageInputChecksum        string                  `json:"coreos-assembler.image-input-checksum,omitempty"`
-	InputHasOfTheRpmOstree    string                  `json:"rpm-ostree-inputhash,omitempty"`
-	Name                      string                  `json:"name,omitempty"`
+	InputHasOfTheRpmOstree    string                  `json:"rpm-ostree-inputhash"`
+	Name                      string                  `json:"name"`
 	Oscontainer               Image                   `json:"oscontainer,omitempty"`
-	OstreeCommit              string                  `json:"ostree-commit,omitempty"`
-	OstreeContentBytesWritten int                     `json:"ostree-content-bytes-written,omitempty"`
-	OstreeContentChecksum     string                  `json:"ostree-content-checksum,omitempty"`
-	OstreeNCacheHits          int                     `json:"ostree-n-cache-hits,omitempty"`
-	OstreeNContentTotal       int                     `json:"ostree-n-content-total,omitempty"`
-	OstreeNContentWritten     int                     `json:"ostree-n-content-written,omitempty"`
-	OstreeNMetadataTotal      int                     `json:"ostree-n-metadata-total,omitempty"`
-	OstreeNMetadataWritten    int                     `json:"ostree-n-metadata-written,omitempty"`
-	OstreeTimestamp           string                  `json:"ostree-timestamp,omitempty"`
-	OstreeVersion             string                  `json:"ostree-version,omitempty"`
+	OstreeCommit              string                  `json:"ostree-commit"`
+	OstreeContentBytesWritten int                     `json:"ostree-content-bytes-written"`
+	OstreeContentChecksum     string                  `json:"ostree-content-checksum"`
+	OstreeNCacheHits          int                     `json:"ostree-n-cache-hits"`
+	OstreeNContentTotal       int                     `json:"ostree-n-content-total"`
+	OstreeNContentWritten     int                     `json:"ostree-n-content-written"`
+	OstreeNMetadataTotal      int                     `json:"ostree-n-metadata-total"`
+	OstreeNMetadataWritten    int                     `json:"ostree-n-metadata-written"`
+	OstreeTimestamp           string                  `json:"ostree-timestamp"`
+	OstreeVersion             string                  `json:"ostree-version"`
 	OverridesActive           bool                    `json:"coreos-assembler.overrides-active,omitempty"`
 	PkgdiffBetweenBuilds      []PackageSetDifferences `json:"pkgdiff,omitempty"`
 }
