@@ -34,12 +34,14 @@ var (
 	memory  int
 	usernet bool
 
+	hostname string
 	ignition string
 )
 
 func init() {
 	root.AddCommand(cmdQemuExec)
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
+	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
 }
@@ -61,6 +63,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			Size:        kola.QEMUOptions.DiskSize,
 		})
 	}
+	builder.Hostname = hostname
 	if memory != 0 {
 		builder.Memory = memory
 	}
