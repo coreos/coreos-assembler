@@ -259,4 +259,4 @@ case "${FIRMWARE}" in
     *) kola_args+=("--qemu-firmware=${FIRMWARE}")
 esac
 
-exec kola qemuexec --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
+exec kola qemuexec -U --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
