@@ -15,6 +15,7 @@ dn=$(dirname "$0")
 
 BUILDID=latest
 IMAGE_TYPE=qemu
+HOSTNAME=
 VM_DISK=
 DISK_CHANNEL=virtio
 VM_MEMORY=2048
@@ -31,6 +32,7 @@ Options:
     -i FILE               File containing an Ignition config to merge into the default config
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
+    --hostname NAME       Set hostname via DHCP
     --size GB             Disk size in GB (matches base by default)
     --user USERNAME       Create user USERNAME via Ignition (if not already extant) and log in as that user
     -h                    this ;-)
@@ -76,6 +78,9 @@ while [ $# -ge 1 ]; do
             shift 2 ;;
         --user)
             TARGET_USER="$2"
+            shift 2 ;;
+        --hostname)
+            HOSTNAME="$2"
             shift 2 ;;
         -v|--verbose)
             set -x
@@ -258,5 +263,9 @@ case "${FIRMWARE}" in
     bios) ;;
     *) kola_args+=("--qemu-firmware=${FIRMWARE}")
 esac
+
+if [ -n "${HOSTNAME}" ]; then
+    kola_args+=("--hostname=${HOSTNAME}")
+fi
 
 exec kola qemuexec -U --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"

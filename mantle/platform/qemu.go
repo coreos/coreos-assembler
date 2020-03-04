@@ -148,6 +148,8 @@ type QemuBuilder struct {
 	Pdeathsig  bool
 	Argv       []string
 
+	Hostname   string
+
 	InheritConsole bool
 
 	primaryDiskAdded bool
@@ -220,11 +222,16 @@ func (builder *QemuBuilder) ConsoleToFile(path string) {
 }
 
 func (builder *QemuBuilder) EnableUsermodeNetworking(forwardedPort uint) {
-	var forward string
+	netdev := "user,id=eth0"
 	if forwardedPort != 0 {
-		forward = fmt.Sprintf(",hostfwd=tcp:127.0.0.1:0-:%d", forwardedPort)
+		netdev += fmt.Sprintf(",hostfwd=tcp:127.0.0.1:0-:%d", forwardedPort)
 	}
-	builder.Append("-netdev", "user,id=eth0"+forward, "-device", virtio(builder.Board, "net", "netdev=eth0"))
+
+	if builder.Hostname != "" {
+		netdev += fmt.Sprintf(",hostname=%s", builder.Hostname)
+	}
+
+	builder.Append("-netdev", netdev, "-device", virtio(builder.Board, "net", "netdev=eth0"))
 }
 
 // supportsFwCfg if the target system supports injecting
