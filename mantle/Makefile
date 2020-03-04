@@ -11,7 +11,6 @@ endif
 
 .PHONY: build test vendor clean
 build: clean
-	./schema-generate
 	./build
 
 .PHONY: install

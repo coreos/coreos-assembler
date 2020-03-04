@@ -15,6 +15,28 @@ version="${version#v}"
 version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 
+schema_generate() {
+    export GOBIN="${PWD}/bin"
+    mkdir -p ${GOBIN}
+    if [ ! -x "${GOBIN}/schematyper" ]; then
+        (
+            mkdir -p ${GOBIN}
+            echo "Building schematyper"
+            cd schematyper &&
+                go build -mod vendor -o "${GOBIN}" .
+        )
+    fi
+
+    schema_version="v1"
+    echo "Generating COSA Schema ${schema_version}"
+
+    "${GOBIN}/schematyper" \
+        "../src/schema/${schema_version}.json" \
+        -o "cosa/cosa_${schema_version}.go" \
+        --package="cosa" \
+        --root-type=Build
+}
+
 host_build() {
 	echo "Building $1"
 	go build -i \
@@ -36,6 +58,7 @@ cross_build() {
 	done
 }
 
+schema_generate
 for cmd in "$@"; do
 	cmd=$(basename "${cmd}")
 	host_build "${cmd}"
