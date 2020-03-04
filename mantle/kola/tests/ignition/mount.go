@@ -212,12 +212,14 @@ func init() {
 							{
 								"label": "CONTR",
 								"size": 2097152,
-								"start": 0
+								"start": 0,
+								"guid": "63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
 							},
 							{
 								"label": "LOG",
 								"size": 2097152,
-								"start": 0
+								"start": 0,
+								"guid": "6385b84e-2c7b-4488-a870-667c565e01a8"
 							}
 						]
 					}
@@ -226,7 +228,7 @@ func init() {
 					{
 						"name": "CONTR",
 						"mount": {
-							"device": "/dev/disk/by-partlabel/CONTR",
+							"device": "/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7",
 							"format": "xfs",
 							"wipeFilesystem": true
 						}
@@ -234,7 +236,7 @@ func init() {
 					{
 						"name": "LOG",
 						"mount": {
-							"device": "/dev/disk/by-partlabel/LOG",
+							"device": "/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8",
 							"format": "xfs",
 							"wipeFilesystem": true
 						}
@@ -264,12 +266,12 @@ func init() {
 					{
 						"name": "var-lib-containers.mount",
 						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partlabel/CONTR\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
+						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
 					},
 					{
 						"name": "var-log.mount",
 						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partlabel/LOG\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
+						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
 					}
 				]
 			}
@@ -286,13 +288,15 @@ func init() {
 							"label": "CONTR",
 							"sizeMiB": 1024,
 							"startMiB": 0,
-							"wipePartitionEntry": true
+							"wipePartitionEntry": true,
+							"guid":"63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
 						},
 						{
 							"label": "LOG",
 							"sizeMiB": 1024,
 							"startMiB": 0,
-							"wipePartitionEntry": true
+							"wipePartitionEntry": true,
+							"guid":"6385b84e-2c7b-4488-a870-667c565e01a8"
 						}
 						]
 					}
@@ -300,14 +304,14 @@ func init() {
 				"filesystems": [
 					{
 						"path": "/var/lib/containers",
-						"device": "/dev/disk/by-partlabel/CONTR",
+						"device": "/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7",
 						"format": "xfs",
 						"label": "CONTR",
 						"wipeFilesystem": true
 					},
 					{
 						"path": "/var/log",
-						"device": "/dev/disk/by-partlabel/LOG",
+						"device": "/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8",
 						"format": "xfs",
 						"label": "LOG",
 						"wipeFilesystem": true
@@ -333,12 +337,12 @@ func init() {
 					{
 						"name": "var-lib-containers.mount",
 						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partlabel/CONTR\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
+						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
 					},
 					{
 						"name": "var-log.mount",
 						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partlabel/LOG\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
+						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
 					}]
 			}
 		}`),
