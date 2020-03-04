@@ -10,7 +10,7 @@ else ifeq ($(GOARCH),aarch64)
 endif
 
 .PHONY: build test vendor clean
-build: clean
+build:
 	./build
 
 .PHONY: install
