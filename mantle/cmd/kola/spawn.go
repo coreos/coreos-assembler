@@ -36,10 +36,11 @@ import (
 
 var (
 	cmdSpawn = &cobra.Command{
-		RunE:    runSpawn,
-		PreRunE: preRun,
-		Use:     "spawn",
-		Short:   "spawn a CoreOS instance",
+		RunE:         runSpawn,
+		PreRunE:      preRun,
+		Use:          "spawn",
+		Short:        "spawn a CoreOS instance",
+		SilenceUsage: true,
 	}
 
 	spawnNodeCount      int
