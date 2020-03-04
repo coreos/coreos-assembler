@@ -61,8 +61,9 @@ If the glob pattern is exactly equal to the name of a single test, any
 restrictions on the versions of Container Linux supported by that test
 will be ignored.
 `,
-		RunE:    runRun,
-		PreRunE: preRun,
+		RunE:         runRun,
+		PreRunE:      preRun,
+		SilenceUsage: true,
 	}
 
 	cmdRunUpgrade = &cobra.Command{
