@@ -7,7 +7,7 @@ require (
 	github.com/Azure/go-autorest v9.1.0+incompatible
 	github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.25.14
@@ -21,30 +21,22 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5 // indirect
 	github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269 // indirect
-	github.com/cpuguy83/go-md2man v1.0.4 // indirect
 	github.com/digitalocean/godo v1.1.3
 	github.com/dimchansky/utfbom v1.1.0 // indirect
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813 // indirect
+	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/protobuf v1.3.1
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
-	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d // indirect
+	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
-	github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983 // indirect
 	github.com/packethost/packngo v0.0.0-20180426081943-80f62d78849d
 	github.com/pborman/uuid v1.2.0
-	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pin/tftp v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
-	github.com/pquerna/ffjson v0.0.0-20181028064349-e517b90714f7 // indirect
-	github.com/prometheus/procfs v0.0.2 // indirect
-	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/sirupsen/logrus v1.4.1 // indirect
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.3
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
-	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/ulikunitz/xz v0.5.4
 	github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
 	github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
@@ -58,7 +50,8 @@ require (
 	golang.org/x/text v0.3.2
 	google.golang.org/api v0.1.0
 	google.golang.org/appengine v1.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20190611190212-a7e196e89fd3 // indirect
+	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d

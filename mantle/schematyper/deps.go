@@ -1,7 +1,9 @@
-package util
+package main
 
 /*
-	Ensure that the schematyper modules are kept around.
+	Ensure that schematyper survives `go mod tidy`
+
+	This file is a COSA specific addition.
 */
 
 import (
