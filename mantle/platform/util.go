@@ -125,11 +125,30 @@ func RebootMachine(m Machine, j *Journal) error {
 // *offline*, not for how long it takes to get back online. Journal.Start() has
 // its own timeouts for that.
 func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootId string) error {
+	// The machine could be in three distinct states here wrt SSH
+	// accessibility: it may be up before the reboot, or down during the
+	// reboot, or up after the reboot.
+
+	// we *require* the old boot ID, otherwise there's no way to know if the
+	// machine already rebooted
+	if oldBootId == "" {
+		panic("unreachable: oldBootId empty")
+	}
+
 	// run a command we know will hold so we know approximately when the reboot happens
 	c := make(chan error)
 	go func() {
-		out, stderr, err := m.SSH("sudo sleep infinity")
-		if _, ok := err.(*ssh.ExitMissingError); ok {
+		out, stderr, err := m.SSH(fmt.Sprintf("if [ $(cat /proc/sys/kernel/random/boot_id) == '%s' ]; then sleep infinity; fi", oldBootId))
+		if err == nil {
+			// we're already in the new boot!
+			c <- nil
+		} else if _, ok := err.(*ssh.ExitMissingError); ok {
+			// we got interrupted running the command, likely by sshd going down
+			c <- nil
+		} else if strings.Contains(err.Error(), "connection reset by peer") {
+			// Catch ECONNRESET, which can happen if sshd is killed during
+			// handshake. crypto/ssh doesn't provide a distinct error type for
+			// this, so we're left looking for the string... :(
 			c <- nil
 		} else {
 			c <- fmt.Errorf("waiting for reboot failed: %s: %s: %s", out, err, stderr)
