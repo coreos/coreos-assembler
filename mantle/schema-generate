@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -eu
+
+# The purpose of this script is to generate cosa/cosa_<ver>.go. Whenever
+# the schema is updated, this script should be run.
+
+export GOBIN="${PWD}/bin"
+mkdir -p ${GOBIN}
+if [ ! -x "${GOBIN}/schematyper" ]; then
+    (
+        mkdir -p ${GOBIN}
+        echo "Building schematyper"
+        cd vendor/github.com/idubinskiy/schematyper &&
+            go build -mod vendor -o "${GOBIN}" .
+    )
+fi
+
+schema_version="v1"
+echo "Generating COSA Schema ${schema_version}"
+
+"${GOBIN}/schematyper" \
+    "../src/schema/${schema_version}.json" \
+    -o "cosa/cosa_${schema_version}.go" \
+    --package="cosa" \
+    --root-type=Build

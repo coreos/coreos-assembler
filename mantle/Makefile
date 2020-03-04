@@ -9,8 +9,9 @@ else ifeq ($(GOARCH),aarch64)
 	GOARCH=arm64
 endif
 
-.PHONY: build test vendor
-build:
+.PHONY: build test vendor clean
+build: clean
+	./schema-generate
 	./build
 
 .PHONY: install
@@ -23,3 +24,6 @@ test:
 
 vendor:
 	@go mod vendor
+
+clean:
+	@rm -rfv bin
