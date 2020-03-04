@@ -23,7 +23,9 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -47,6 +49,7 @@ var (
 	spawnUserData       string
 	spawnDetach         bool
 	spawnShell          bool
+	spawnReconnect      bool
 	spawnIdle           bool
 	spawnRemove         bool
 	spawnVerbose        bool
@@ -61,6 +64,7 @@ func init() {
 	cmdSpawn.Flags().StringVarP(&spawnUserData, "userdata", "u", "", "file containing userdata to pass to the instances")
 	cmdSpawn.Flags().BoolVarP(&spawnDetach, "detach", "t", false, "-kv --shell=false --remove=false")
 	cmdSpawn.Flags().BoolVarP(&spawnShell, "shell", "s", true, "spawn a shell in an instance before exiting")
+	cmdSpawn.Flags().BoolVarP(&spawnReconnect, "reconnect", "", false, "keep trying to reconnect to machine when disconnected")
 	cmdSpawn.Flags().BoolVarP(&spawnIdle, "idle", "", false, "idle after starting machines (implies --shell=false)")
 	cmdSpawn.Flags().BoolVarP(&spawnRemove, "remove", "r", true, "remove instances after shell exits")
 	cmdSpawn.Flags().BoolVarP(&spawnVerbose, "verbose", "v", false, "output information about spawned instances")
@@ -206,8 +210,24 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("Setting shell prompt failed: %v", err)
 			}
 		}
-		if err := platform.Manhole(someMach); err != nil {
-			return fmt.Errorf("Manhole failed: %v", err)
+		for {
+			var bootId string
+			if spawnReconnect {
+				if bootId, err = platform.GetMachineBootId(someMach); err != nil {
+					return errors.Wrapf(err, "failed getting boot id")
+				}
+			}
+			err = platform.Manhole(someMach)
+			if !spawnReconnect {
+				return errors.Wrapf(err, "Manhole failed")
+			}
+			if _, ok := errors.Cause(err).(*ssh.ExitMissingError); ok {
+				fmt.Printf("Reconnecting (press Ctrl-C to abort)... ")
+				if err = someMach.WaitForReboot(120*time.Second, bootId); err != nil {
+					return errors.Wrapf(err, "failed to reboot")
+				}
+				fmt.Println()
+			}
 		}
 	} else if spawnIdle {
 		select {}
