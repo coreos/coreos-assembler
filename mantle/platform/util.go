@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -69,15 +70,15 @@ func Manhole(m Machine) error {
 	}
 
 	if err = session.RequestPty(os.Getenv("TERM"), lines, cols, modes); err != nil {
-		return fmt.Errorf("failed to request pseudo terminal: %s", err)
+		return errors.Wrapf(err, "failed to request pseudo terminal")
 	}
 
 	if err := session.Shell(); err != nil {
-		return fmt.Errorf("failed to start shell: %s", err)
+		return errors.Wrapf(err, "failed to start shell")
 	}
 
 	if err := session.Wait(); err != nil {
-		return fmt.Errorf("failed to wait for session: %s", err)
+		return errors.Wrapf(err, "failed to wait for session")
 	}
 
 	return nil
