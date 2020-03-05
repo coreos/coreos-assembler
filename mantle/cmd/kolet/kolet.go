@@ -15,9 +15,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"strings"
+	"time"
 
+	systemddbus "github.com/coreos/go-systemd/v22/dbus"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/cli"
@@ -25,6 +30,12 @@ import (
 
 	// Register any tests that we may wish to execute in kolet.
 	_ "github.com/coreos/mantle/kola/registry"
+)
+
+const (
+	// From /usr/include/bits/siginfo-consts.h
+	CLD_EXITED int32 = 1
+	CLD_KILLED int32 = 2
 )
 
 var (
@@ -40,6 +51,13 @@ var (
 		Use:   "run [test] [func]",
 		Short: "Run a given test's native function",
 		Run:   run,
+	}
+
+	cmdRunExtUnit = &cobra.Command{
+		Use:          "run-test-unit [unitname]",
+		Short:        "Monitor execution of a systemd unit",
+		RunE:         runExtUnit,
+		SilenceUsage: true,
 	}
 )
 
@@ -80,10 +98,110 @@ func registerTestMap(m map[string]*register.Test) {
 	}
 }
 
+// dispatchRunExtUnit returns true if unit completed successfully, false if
+// it's still running (or unit was terminated by SIGTERM)
+func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error) {
+	props, err := sdconn.GetAllProperties(unitname)
+	if err != nil {
+		return false, errors.Wrapf(err, "listing unit properties")
+	}
+
+	result := props["Result"]
+	if result == "exit-code" {
+		return false, fmt.Errorf("Unit %s exited with code %d", unitname, props["ExecMainStatus"])
+	}
+
+	state := props["ActiveState"]
+	substate := props["SubState"]
+
+	switch state {
+	case "inactive":
+		fmt.Printf("Starting %s\n", unitname)
+		sdconn.StartUnit(unitname, "fail", nil)
+		return false, nil
+	case "activating":
+		return false, nil
+	case "active":
+		{
+			switch substate {
+			case "exited":
+				maincode := props["ExecMainCode"]
+				mainstatus := props["ExecMainStatus"]
+				switch maincode {
+				case CLD_EXITED:
+					if mainstatus == int32(0) {
+						return true, nil
+					} else {
+						// I don't think this can happen, we'd have exit-code above; but just
+						// for completeness
+						return false, fmt.Errorf("Unit %s failed with code %d", unitname, mainstatus)
+					}
+				case CLD_KILLED:
+					// SIGTERM; we explicitly allow that, expecting we're rebooting.
+					if mainstatus == 15 {
+						fmt.Printf("Unit %s terminated via SIGTERM, assuming reboot\n", unitname)
+						return false, nil
+					} else {
+						return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
+					}
+				default:
+					return false, fmt.Errorf("Unit %s had unhandled code %d", unitname, maincode)
+				}
+			case "running":
+				return false, nil
+			case "failed":
+				return true, fmt.Errorf("Unit %s in substate 'failed'", unitname)
+			default:
+				// Pass through other states
+				return false, nil
+			}
+		}
+	default:
+		return false, fmt.Errorf("Unhandled systemd unit state %s", state)
+	}
+}
+
+func runExtUnit(cmd *cobra.Command, args []string) error {
+	unitname := args[0]
+	// Restrict this to services, don't need to support anything else right now
+	if !strings.HasSuffix(unitname, ".service") {
+		unitname = unitname + ".service"
+	}
+	sdconn, err := systemddbus.NewSystemConnection()
+	if err != nil {
+		return errors.Wrapf(err, "systemd connection")
+	}
+	if err := sdconn.Subscribe(); err != nil {
+		return err
+	}
+	dispatchRunExtUnit(unitname, sdconn)
+	unitevents, uniterrs := sdconn.SubscribeUnits(time.Second)
+
+	for {
+		select {
+		case m := <-unitevents:
+			for n := range m {
+				if n == unitname {
+					r, err := dispatchRunExtUnit(unitname, sdconn)
+					if err != nil {
+						return err
+					}
+					if r {
+						return nil
+					}
+				}
+			}
+		case m := <-uniterrs:
+			return m
+		}
+	}
+}
+
 func main() {
 	registerTestMap(register.Tests)
 	registerTestMap(register.UpgradeTests)
 	root.AddCommand(cmdRun)
+	root.AddCommand(cmdRunExtUnit)
 
 	cli.Execute(root)
 }

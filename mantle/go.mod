@@ -14,6 +14,7 @@ require (
 	github.com/coreos/container-linux-config-transpiler v0.8.0
 	github.com/coreos/coreos-cloudinit v1.11.0
 	github.com/coreos/go-semver v0.3.0
+	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/coreos/ign-converter v0.0.0-20200228175238-237c8512310a
 	github.com/coreos/ignition v0.35.0
 	github.com/coreos/ignition/v2 v2.1.1
