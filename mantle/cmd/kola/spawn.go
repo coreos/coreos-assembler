@@ -93,6 +93,10 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Cluster Failed: nodecount must be one or more")
 	}
 
+	if spawnReconnect && !strings.HasPrefix(kolaPlatform, "qemu") {
+		return fmt.Errorf("Cannot use --reconnect on non-qemu platforms %v", kolaPlatform)
+	}
+
 	var userdata *conf.UserData
 	if spawnUserData != "" {
 		userbytes, err := ioutil.ReadFile(spawnUserData)
