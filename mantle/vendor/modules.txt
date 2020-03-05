@@ -116,6 +116,8 @@ github.com/coreos/go-semver/semver
 # github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 github.com/coreos/go-systemd/journal
 github.com/coreos/go-systemd/unit
+# github.com/coreos/go-systemd/v22 v22.0.0
+github.com/coreos/go-systemd/v22/dbus
 # github.com/coreos/ign-converter v0.0.0-20200228175238-237c8512310a
 github.com/coreos/ign-converter
 # github.com/coreos/ignition v0.35.0
@@ -169,6 +171,8 @@ github.com/digitalocean/godo/context
 github.com/dimchansky/utfbom
 # github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 github.com/gedex/inflector
+# github.com/godbus/dbus/v5 v5.0.3
+github.com/godbus/dbus/v5
 # github.com/golang/protobuf v1.3.1
 github.com/golang/protobuf/proto
 # github.com/google/go-querystring v1.0.0
