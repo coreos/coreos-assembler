@@ -282,8 +282,8 @@ func setupIgnition(confPath string, diskImagePath string) error {
 	// Set guestfish backend to direct in order to avoid libvirt as backend.
 	// Using libvirt can lead to permission denied issues if it does not have access
 	// rights to the qcow image
-	os.Setenv("LIBGUESTFS_BACKEND", "direct")
 	cmd := exec.Command("guestfish", "--listen", "-a", diskImagePath)
+	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("getting stdout pipe: %v", err)
