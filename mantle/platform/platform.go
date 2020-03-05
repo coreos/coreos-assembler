@@ -19,11 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
+	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
@@ -280,6 +282,57 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 	out, err = session.CombinedOutput(fmt.Sprintf("sudo install -m 0755 /dev/stdin %s", to))
 	if err != nil {
 		return fmt.Errorf("failed executing install: %q: %v", out, err)
+	}
+
+	return nil
+}
+
+// CopyDirToMachine synchronizes the local contents of inputdir to the
+// remote destdir.
+func CopyDirToMachine(inputdir string, m Machine, destdir string) error {
+	out, stderr, err := m.SSH(fmt.Sprintf("sudo mkdir -p %s", shellquote.Join(destdir)))
+	if err != nil {
+		return errors.Wrapf(err, "failed creating directory %s: %s", destdir, stderr)
+	}
+
+	client, err := m.SSHClient()
+	if err != nil {
+		return errors.Wrapf(err, "failed creating SSH client")
+	}
+
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return errors.Wrapf(err, "failed creating SSH session")
+	}
+
+	defer session.Close()
+
+	// Use compression level 1 for speed
+	compressArgv := []string{"-c", "tar cf - . | gzip -1"}
+
+	clientCmd := exec.Command("/bin/sh", compressArgv...)
+	clientCmd.Dir = inputdir
+	stdout, err := clientCmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	defer stdout.Close()
+	err = clientCmd.Start()
+	if err != nil {
+		return err
+	}
+
+	session.Stdin = stdout
+	out, err = session.CombinedOutput(fmt.Sprintf("sudo tar -xz -C %s -f -", shellquote.Join(destdir)))
+	if err != nil {
+		return errors.Wrapf(err, "executing remote untar: %q", out)
+	}
+
+	err = clientCmd.Wait()
+	if err != nil {
+		return errors.Wrapf(err, "local tar")
 	}
 
 	return nil
