@@ -379,7 +379,7 @@ s390x)
 	# stage on s390x, either through zipl->grub2-emu or zipl standalone.
 	# See https://github.com/coreos/ignition-dracut/issues/84
 	# A similar hack is present in https://github.com/coreos/coreos-assembler/blob/master/src/gf-platformid#L55
-	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp" > $tmpfile
+	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp,dhcp6" > $tmpfile
 
 	# ideally we want to invoke zipl with bls and zipl.conf but we might need
 	# to chroot to $rootfs/ to do so. We would also do that when FCOS boot on its own.
