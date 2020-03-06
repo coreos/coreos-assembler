@@ -82,6 +82,10 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Must provide --cosa-build")
 	}
 
+	if kola.CosaBuild.BuildArtifacts.Metal.Path == "" {
+		return fmt.Errorf("Build %s must have a `metal` artifact", kola.CosaBuild.OstreeVersion)
+	}
+
 	ranTest := false
 
 	foundLegacy := kola.CosaBuild.BuildArtifacts.Kernel.Path != ""
@@ -246,6 +250,13 @@ func setupTftpDir(builddir, tftpdir, metalimg string, kern *kernelSetup) error {
 }
 
 func setupTest(kern *kernelSetup) (*installerTest, error) {
+	if kern.kernel == "" {
+		return nil, fmt.Errorf("Missing kernel artifact")
+	}
+	if kern.initramfs == "" {
+		return nil, fmt.Errorf("Missing initramfs artifact")
+	}
+
 	builder := platform.NewBuilder(kola.QEMUOptions.Board, "")
 	builder.Firmware = kola.QEMUOptions.Firmware
 	builder.AddDisk(&platform.Disk{
