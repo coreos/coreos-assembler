@@ -25,6 +25,8 @@ var (
 		Use:   "share-image image-name",
 		Short: "Set permissions on an azure OS image",
 		RunE:  runShareImage,
+
+		SilenceUsage: true,
 	}
 
 	sharePermission string

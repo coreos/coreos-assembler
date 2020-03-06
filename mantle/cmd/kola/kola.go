@@ -80,6 +80,8 @@ will be ignored.
 		Use:   "list",
 		Short: "List kola test names",
 		RunE:  runList,
+
+		SilenceUsage: true,
 	}
 
 	cmdHttpServer = &cobra.Command{
@@ -90,6 +92,8 @@ will be ignored.
 This can be useful for e.g. serving locally built OSTree repos to qemu.
 `,
 		RunE: runHttpServer,
+
+		SilenceUsage: true,
 	}
 
 	cmdIgnConvert = &cobra.Command{
@@ -107,6 +111,8 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		Short:  "Implementation detail of coreos-assembler",
 		RunE:   runArtifactIgnitionVersion,
 		Hidden: true,
+
+		SilenceUsage: true,
 	}
 
 	listJSON           bool

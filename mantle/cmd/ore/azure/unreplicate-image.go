@@ -25,6 +25,8 @@ var (
 		Use:   "unreplicate-image image",
 		Short: "Unreplicate an OS image in Azure",
 		RunE:  runUnreplicateImage,
+
+		SilenceUsage: true,
 	}
 )
 

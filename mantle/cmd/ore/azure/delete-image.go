@@ -27,6 +27,8 @@ var (
 		Short: "Delete Azure image",
 		Long:  "Remove an image from Azure.",
 		RunE:  runDeleteImage,
+
+		SilenceUsage: true,
 	}
 )
 

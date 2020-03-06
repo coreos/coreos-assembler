@@ -26,6 +26,8 @@ var (
 		Use:   "list-keys",
 		Short: "List Packet SSH keys",
 		RunE:  runListKeys,
+
+		SilenceUsage: true,
 	}
 )
 

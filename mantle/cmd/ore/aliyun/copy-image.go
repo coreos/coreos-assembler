@@ -31,6 +31,8 @@ var (
 After a successful run, the final line of output will be a line of JSON describing the resources created.
 `,
 		RunE: runCopyImage,
+
+		SilenceUsage: true,
 	}
 
 	sourceImageID        string

@@ -30,6 +30,8 @@ var (
 		Long: `List enabled regions in the AWS account and partition implied by the
 specified credentials file, profile, and region.`,
 		RunE: runListRegions,
+
+		SilenceUsage: true,
 	}
 	disabledRegions bool
 	allRegions      bool

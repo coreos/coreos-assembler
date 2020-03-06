@@ -35,6 +35,8 @@ var (
 		Short: "Create image",
 		Long:  `Create an image.`,
 		RunE:  runCreateImage,
+
+		SilenceUsage: true,
 	}
 )
 

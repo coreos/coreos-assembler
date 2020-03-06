@@ -44,6 +44,8 @@ After a successful run, the final line of output will be a line of JSON describi
 	  --file="/home/.../coreos_production_ami_vmdk_image.vmdk" \
 	  --tags="machine=production"`,
 		RunE: runUpload,
+
+		SilenceUsage: true,
 	}
 
 	uploadSourceObject    string

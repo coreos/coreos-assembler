@@ -26,6 +26,8 @@ var (
 		Use:   "replicate-image image",
 		Short: "Replicate an OS image in Azure",
 		RunE:  runReplicateImage,
+
+		SilenceUsage: true,
 	}
 
 	defaultRegions = []string{

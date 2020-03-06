@@ -28,6 +28,8 @@ var (
 		Short: "GC resources in Packet",
 		Long:  `Delete devices created over the given duration ago.`,
 		RunE:  runGC,
+
+		SilenceUsage: true,
 	}
 
 	gcDuration time.Duration

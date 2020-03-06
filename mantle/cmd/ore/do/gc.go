@@ -29,6 +29,8 @@ var (
 		Short: "GC resources in DO",
 		Long:  `Delete droplets created over the given duration ago.`,
 		RunE:  runGC,
+
+		SilenceUsage: true,
 	}
 
 	gcDuration time.Duration

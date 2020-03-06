@@ -31,6 +31,8 @@ var (
 After a successful run, the final line of output will be the ID of the image.
 `,
 		RunE: runCreate,
+
+		SilenceUsage: true,
 	}
 
 	path string

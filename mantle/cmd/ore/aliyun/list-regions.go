@@ -27,6 +27,8 @@ var (
 		Short: "List enabled regions in the given aliyun account",
 		Long:  `List enabled regions in the given aliyun account.`,
 		RunE:  runListRegions,
+
+		SilenceUsage: true,
 	}
 )
 
