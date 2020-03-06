@@ -21,6 +21,9 @@ install: bin/ore bin/kola bin/plume bin/kolet
 test:
 	./test
 
+check:
+	./test
+
 vendor:
 	@go mod vendor
 
