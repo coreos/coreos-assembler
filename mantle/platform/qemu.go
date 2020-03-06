@@ -148,7 +148,7 @@ type QemuBuilder struct {
 	Pdeathsig  bool
 	Argv       []string
 
-	Hostname   string
+	Hostname string
 
 	InheritConsole bool
 
