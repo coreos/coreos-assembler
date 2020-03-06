@@ -44,7 +44,9 @@ go vet -mod=vendor $pkgs
 
 echo "Running commands..."
 for cmd in ${GOBIN}/*; do
-	echo " Running $(basename ${cmd})..."
+	bn=$(basename ${cmd})
+	if [ "${bn}" = "schematyper" ]; then continue; fi
+	echo " Running ${bn}..."
 	${cmd} --help > /dev/null
 done
 
