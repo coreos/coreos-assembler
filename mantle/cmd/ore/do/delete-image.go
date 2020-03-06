@@ -28,6 +28,8 @@ var (
 		Short: "Delete image",
 		Long:  `Delete an image.`,
 		RunE:  runDeleteImage,
+
+		SilenceUsage: true,
 	}
 )
 

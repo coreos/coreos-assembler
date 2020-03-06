@@ -27,6 +27,8 @@ var (
 		Short: "Delete image on OpenStack",
 		Long:  `Delete an image from OpenStack.`,
 		RunE:  runDelete,
+
+		SilenceUsage: true,
 	}
 
 	id string

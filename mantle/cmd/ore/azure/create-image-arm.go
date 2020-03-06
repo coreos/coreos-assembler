@@ -28,6 +28,8 @@ var (
 		Short: "Create Azure image",
 		Long:  "Create Azure image from a blob url",
 		RunE:  runCreateImageARM,
+
+		SilenceUsage: true,
 	}
 
 	imageName     string

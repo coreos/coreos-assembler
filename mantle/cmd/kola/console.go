@@ -36,7 +36,10 @@ Check console output for expressions matching failure messages logged
 by a Container Linux instance.
 
 If no files are specified as arguments, stdin is checked.
-`}
+`,
+
+		SilenceUsage: true,
+	}
 
 	checkConsoleVerbose bool
 )

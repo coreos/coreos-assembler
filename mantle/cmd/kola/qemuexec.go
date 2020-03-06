@@ -29,6 +29,8 @@ var (
 		PreRunE: preRun,
 		Use:     "qemuexec",
 		Short:   "Directly execute qemu on a CoreOS instance",
+
+		SilenceUsage: true,
 	}
 
 	memory  int

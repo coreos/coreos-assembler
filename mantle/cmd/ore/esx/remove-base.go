@@ -27,6 +27,8 @@ var (
 		Short: "Remove base vm on ESX",
 		Long:  `Remove base vm on ESX server.`,
 		RunE:  runBaseDelete,
+
+		SilenceUsage: true,
 	}
 
 	vmName string

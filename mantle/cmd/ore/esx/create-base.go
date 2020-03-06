@@ -32,6 +32,8 @@ var (
 After a successful run, the final line of output will be the name of the VM created.
 `,
 		RunE: runBaseCreate,
+
+		SilenceUsage: true,
 	}
 
 	ovaPath    string

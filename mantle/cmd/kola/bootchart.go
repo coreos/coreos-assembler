@@ -37,7 +37,9 @@ systemd-bootchart since the latter requires setting a different
 init process.
 
 This must run as root!
-`}
+`,
+	SilenceUsage: true,
+}
 
 func init() {
 	root.AddCommand(cmdBootchart)

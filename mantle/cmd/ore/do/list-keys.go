@@ -27,6 +27,8 @@ var (
 		Use:   "list-keys",
 		Short: "List DigitalOcean SSH keys",
 		RunE:  runListKeys,
+
+		SilenceUsage: true,
 	}
 )
 

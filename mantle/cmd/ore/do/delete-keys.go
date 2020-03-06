@@ -27,6 +27,8 @@ var (
 		Use:   "delete-keys <key>...",
 		Short: "Delete DigitalOcean SSH keys",
 		RunE:  runDeleteKeys,
+
+		SilenceUsage: true,
 	}
 )
 

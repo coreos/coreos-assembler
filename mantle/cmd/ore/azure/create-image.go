@@ -28,6 +28,8 @@ var (
 		Short: "Create Azure image",
 		Long:  "Create Azure image from a local VHD file",
 		RunE:  runCreateImage,
+
+		SilenceUsage: true,
 	}
 
 	// create image options

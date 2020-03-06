@@ -26,6 +26,8 @@ var (
 		Use:   "initialize",
 		Short: "initialize any uncreated resources for a given AWS region",
 		RunE:  runInitialize,
+
+		SilenceUsage: true,
 	}
 
 	bucket string

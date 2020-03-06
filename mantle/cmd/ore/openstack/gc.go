@@ -28,6 +28,8 @@ var (
 		Short: "GC resources in OpenStack",
 		Long:  `Delete instances created over the given duration ago`,
 		RunE:  runGC,
+
+		SilenceUsage: true,
 	}
 
 	gcDuration time.Duration

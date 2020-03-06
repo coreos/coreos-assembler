@@ -27,6 +27,8 @@ var (
 		Short: "Delete image on aliyun",
 		Long:  `Delete an image from aliyun.`,
 		RunE:  runDelete,
+
+		SilenceUsage: true,
 	}
 
 	deleteId    string

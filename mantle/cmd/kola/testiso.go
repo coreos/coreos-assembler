@@ -50,6 +50,8 @@ var (
 		PreRunE: preRun,
 		Use:     "testiso",
 		Short:   "Test a CoreOS PXE boot or ISO install path",
+
+		SilenceUsage: true,
 	}
 	// TODO expose this as an API that can be used by cosa too
 	consoleKernelArgument = map[string]string{

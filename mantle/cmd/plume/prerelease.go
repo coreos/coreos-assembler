@@ -48,6 +48,8 @@ var (
 		Short: "Run pre-release steps for CoreOS",
 		Long:  "Runs pre-release steps for CoreOS, such as image uploading and OS image creation, and replication across regions.",
 		RunE:  runPreRelease,
+
+		SilenceUsage: true,
 	}
 
 	platforms = map[string]platform{

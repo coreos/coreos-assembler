@@ -26,6 +26,8 @@ var (
 		Use:   "delete-keys <key>...",
 		Short: "Delete Packet SSH keys",
 		RunE:  runDeleteKeys,
+
+		SilenceUsage: true,
 	}
 )
 
