@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/pkg/multierror"
+	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/network/journal"
 	"github.com/coreos/mantle/util"
@@ -117,7 +118,7 @@ func (j *Journal) Start(ctx context.Context, m Machine, oldBootId string) error 
 	// Retry for a while because this should be run before CheckMachine
 	if err := util.Retry(sshRetries, sshTimeout, start); err != nil {
 		cancel()
-		return fmt.Errorf("ssh journalctl failed: %v", err)
+		return errors.Wrapf(err, "ssh journalctl failed")
 	}
 
 	j.cancel = cancel
@@ -128,7 +129,7 @@ func (j *Journal) Start(ctx context.Context, m Machine, oldBootId string) error 
 func (j *Journal) Read() ([]byte, error) {
 	f, err := os.Open(j.journalPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading journal: %v", err)
+		return nil, errors.Wrapf(err, "reading journal")
 	}
 	defer f.Close()
 	return ioutil.ReadAll(f)

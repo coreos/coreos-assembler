@@ -450,18 +450,18 @@ func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version
 		OutputDir: testDir,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("creating cluster for semver check: %v", err)
+		return nil, errors.Wrapf(err, "creating cluster for semver check")
 	}
 	defer cluster.Destroy()
 
 	m, err := cluster.NewMachine(nil)
 	if err != nil {
-		return nil, fmt.Errorf("creating new machine for semver check: %v", err)
+		return nil, errors.Wrapf(err, "creating new machine for semver check")
 	}
 
 	out, stderr, err := m.SSH("grep ^VERSION_ID= /etc/os-release")
 	if err != nil {
-		return nil, fmt.Errorf("parsing /etc/os-release: %v: %s", err, stderr)
+		return nil, errors.Wrapf(err, "parsing /etc/os-release: %s", stderr)
 	}
 	ver := strings.Split(string(out), "=")[1]
 
@@ -479,7 +479,7 @@ func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version
 func parseCLVersion(input string) (*semver.Version, error) {
 	version, err := semver.NewVersion(input)
 	if err != nil {
-		return nil, fmt.Errorf("parsing os-release semver: %v", err)
+		return nil, errors.Wrapf(err, "parsing os-release semver")
 	}
 
 	return version, nil

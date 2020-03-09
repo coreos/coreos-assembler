@@ -15,10 +15,9 @@
 package azure
 
 import (
-	"fmt"
-
 	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/azure"
@@ -48,7 +47,7 @@ func NewFlight(opts *azure.Options) (platform.Flight, error) {
 	}
 
 	if err = api.SetupClients(); err != nil {
-		return nil, fmt.Errorf("setting up clients: %v", err)
+		return nil, errors.Wrapf(err, "setting up clients")
 	}
 
 	bf, err := platform.NewBaseFlight(opts.Options, Platform, ctplatform.Azure)

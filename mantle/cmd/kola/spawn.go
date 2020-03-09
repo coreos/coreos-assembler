@@ -101,7 +101,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 	if spawnUserData != "" {
 		userbytes, err := ioutil.ReadFile(spawnUserData)
 		if err != nil {
-			return fmt.Errorf("Reading userdata failed: %v", err)
+			return errors.Wrapf(err, "Reading userdata failed")
 		}
 		userdata = conf.Unknown(string(userbytes))
 	}
@@ -127,12 +127,12 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
-		return fmt.Errorf("Setup failed: %v", err)
+		return errors.Wrapf(err, "Setup failed")
 	}
 
 	flight, err := kola.NewFlight(kolaPlatform)
 	if err != nil {
-		return fmt.Errorf("Flight failed: %v", err)
+		return errors.Wrapf(err, "Flight failed")
 	}
 	if spawnRemove {
 		defer flight.Destroy()
@@ -143,7 +143,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		AllowFailedUnits: true,
 	})
 	if err != nil {
-		return fmt.Errorf("Cluster failed: %v", err)
+		return errors.Wrapf(err, "Cluster failed")
 	}
 
 	if spawnRemove {
@@ -173,12 +173,12 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 			if spawnMachineOptions != "" {
 				b, err := ioutil.ReadFile(spawnMachineOptions)
 				if err != nil {
-					return fmt.Errorf("Could not read machine options: %v", err)
+					return errors.Wrapf(err, "Could not read machine options")
 				}
 
 				err = json.Unmarshal(b, &machineOpts)
 				if err != nil {
-					return fmt.Errorf("Could not unmarshal machine options: %v", err)
+					return errors.Wrapf(err, "Could not unmarshal machine options")
 				}
 			}
 
@@ -192,7 +192,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 			mach, err = cluster.NewMachine(userdata)
 		}
 		if err != nil {
-			return fmt.Errorf("Spawning instance failed: %v", err)
+			return errors.Wrapf(err, "Spawning instance failed")
 		}
 
 		if spawnVerbose {
@@ -211,7 +211,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		if spawnRemove {
 			reader := strings.NewReader(`PS1="\[\033[0;31m\][bound]\[\033[0m\] $PS1"` + "\n")
 			if err := platform.InstallFile(reader, someMach, "/etc/profile.d/kola-spawn-bound.sh"); err != nil {
-				return fmt.Errorf("Setting shell prompt failed: %v", err)
+				return errors.Wrapf(err, "Setting shell prompt failed")
 			}
 		}
 		for {

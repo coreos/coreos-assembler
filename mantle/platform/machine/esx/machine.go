@@ -15,7 +15,6 @@
 package esx
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/esx"
+	"github.com/pkg/errors"
 )
 
 type machine struct {
@@ -109,7 +109,7 @@ func (em *machine) saveConsole() error {
 	defer f.Close()
 	_, err = f.WriteString(em.console)
 	if err != nil {
-		return fmt.Errorf("failed writing console to file: %v", err)
+		return errors.Wrapf(err, "failed writing console to file")
 	}
 
 	return nil
