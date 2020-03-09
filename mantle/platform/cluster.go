@@ -15,9 +15,15 @@
 package platform
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh"
@@ -111,10 +117,39 @@ func (bc *BaseCluster) Machines() []Machine {
 	return machs
 }
 
+func (bc *BaseCluster) appendSSH(m Machine) error {
+	sshConfig, err := os.OpenFile(filepath.Join(bc.rconf.OutputDir, "ssh-config"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return errors.Wrapf(err, "creating ssh config")
+	}
+	defer sshConfig.Close()
+	sshBuf := bufio.NewWriter(sshConfig)
+
+	machIP := m.IP()
+	idx := strings.LastIndex(machIP, ":")
+	if idx == -1 {
+		panic(fmt.Sprintf("Malformed machine IP %s", machIP))
+	}
+	_, err = fmt.Fprintf(sshBuf, `Host %s
+  HostName %s
+  Port %s
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+`, m.ID(), machIP[:idx], machIP[idx+1:])
+	if err != nil {
+		return err
+	}
+	return sshBuf.Flush()
+}
+
 func (bc *BaseCluster) AddMach(m Machine) {
 	bc.machlock.Lock()
 	defer bc.machlock.Unlock()
 	bc.machmap[m.ID()] = m
+
+	if err := bc.appendSSH(m); err != nil {
+		panic(err)
+	}
 }
 
 func (bc *BaseCluster) DelMach(m Machine) {
