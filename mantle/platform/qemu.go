@@ -275,7 +275,7 @@ func findLabel(label, pid string) (string, error) {
 	cmd := exec.Command("guestfish", remote, "findfs-label", label)
 	stdout, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("get stdout for findfs-label failed: %v", err)
+		return "", errors.Wrapf(err, "get stdout for findfs-label failed")
 	}
 	return strings.TrimSpace(string(stdout)), nil
 }
@@ -294,19 +294,19 @@ func newGuestfish(diskImagePath string) (*coreosGuestfish, error) {
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("getting stdout pipe: %v", err)
+		return nil, errors.Wrapf(err, "getting stdout pipe")
 	}
 	defer stdout.Close()
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("running guestfish: %v", err)
+		return nil, errors.Wrapf(err, "running guestfish")
 	}
 	buf, err := ioutil.ReadAll(stdout)
 	if err != nil {
-		return nil, fmt.Errorf("reading guestfish output: %v", err)
+		return nil, errors.Wrapf(err, "reading guestfish output")
 	}
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("waiting for guestfish response: %v", err)
+		return nil, errors.Wrapf(err, "waiting for guestfish response")
 	}
 	//GUESTFISH_PID=$PID; export GUESTFISH_PID
 	gfVarPid := strings.Split(string(buf), ";")
@@ -321,16 +321,16 @@ func newGuestfish(diskImagePath string) (*coreosGuestfish, error) {
 	remote := fmt.Sprintf("--remote=%s", pid)
 
 	if err := exec.Command("guestfish", remote, "run").Run(); err != nil {
-		return nil, fmt.Errorf("guestfish launch failed: %v", err)
+		return nil, errors.Wrapf(err, "guestfish launch failed")
 	}
 
 	bootfs, err := findLabel("boot", pid)
 	if err != nil {
-		return nil, fmt.Errorf("guestfish command failed to find boot label: %v", err)
+		return nil, errors.Wrapf(err, "guestfish command failed to find boot label")
 	}
 
 	if err := exec.Command("guestfish", remote, "mount", bootfs, "/").Run(); err != nil {
-		return nil, fmt.Errorf("guestfish boot mount failed: %v", err)
+		return nil, errors.Wrapf(err, "guestfish boot mount failed")
 	}
 
 	return &coreosGuestfish{
@@ -356,11 +356,11 @@ func setupIgnition(confPath string, knetargs string, diskImagePath string) error
 
 	if confPath != "" {
 		if err := exec.Command("guestfish", gf.remote, "mkdir-p", "/ignition").Run(); err != nil {
-			return fmt.Errorf("guestfish directory creation failed: %v", err)
+			return errors.Wrapf(err, "guestfish directory creation failed")
 		}
 
 		if err := exec.Command("guestfish", gf.remote, "upload", confPath, fileRemoteLocation).Run(); err != nil {
-			return fmt.Errorf("guestfish upload failed: %v", err)
+			return errors.Wrapf(err, "guestfish upload failed")
 		}
 	}
 
@@ -373,7 +373,7 @@ func setupIgnition(confPath string, knetargs string, diskImagePath string) error
 	}
 
 	if err := exec.Command("guestfish", gf.remote, "umount-all").Run(); err != nil {
-		return fmt.Errorf("guestfish umount failed: %v", err)
+		return errors.Wrapf(err, "guestfish umount failed")
 	}
 	return nil
 }
@@ -434,7 +434,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		requiresInjection := builder.Config != "" && !builder.supportsFwCfg()
 		if requiresInjection || builder.IgnitionNetworkKargs != "" {
 			if err = setupIgnition(builder.Config, builder.IgnitionNetworkKargs, dstFileName); err != nil {
-				return fmt.Errorf("ignition injection with guestfs failed: %v", err)
+				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
 		}
 	}

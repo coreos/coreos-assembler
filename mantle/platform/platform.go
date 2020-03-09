@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
@@ -218,13 +219,13 @@ func TransferFile(src Machine, srcPath string, dst Machine, dstPath string) erro
 func ReadFile(m Machine, path string) (io.ReadCloser, error) {
 	client, err := m.SSHClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed creating SSH client: %v", err)
+		return nil, errors.Wrapf(err, "failed creating SSH client")
 	}
 
 	session, err := client.NewSession()
 	if err != nil {
 		client.Close()
-		return nil, fmt.Errorf("failed creating SSH session: %v", err)
+		return nil, errors.Wrapf(err, "failed creating SSH session")
 	}
 
 	// connect session stdout
@@ -262,14 +263,14 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 
 	client, err := m.SSHClient()
 	if err != nil {
-		return fmt.Errorf("failed creating SSH client: %v", err)
+		return errors.Wrapf(err, "failed creating SSH client")
 	}
 
 	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
-		return fmt.Errorf("failed creating SSH session: %v", err)
+		return errors.Wrapf(err, "failed creating SSH session")
 	}
 
 	defer session.Close()
@@ -349,7 +350,7 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	}
 
 	if err := util.Retry(sshRetries, sshTimeout, sshChecker); err != nil {
-		return fmt.Errorf("ssh unreachable: %v", err)
+		return errors.Wrapf(err, "ssh unreachable")
 	}
 
 	out, stderr, err := m.SSH(`. /etc/os-release && echo "$ID-$VARIANT_ID"`)

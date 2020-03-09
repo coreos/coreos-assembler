@@ -16,7 +16,6 @@
 package harness
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -29,6 +28,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/harness/reporters"
 	"github.com/coreos/mantle/harness/testresult"
@@ -247,7 +248,7 @@ func (s *Suite) Run() (err error) {
 		}
 		defer f.Close()
 		if err := pprof.StartCPUProfile(f); err != nil {
-			return fmt.Errorf("harness: can't start cpu profile: %v", err)
+			return errors.Wrapf(err, "harness: can't start cpu profile")
 		}
 		defer pprof.StopCPUProfile() // flushes profile to disk
 	}
@@ -258,7 +259,7 @@ func (s *Suite) Run() (err error) {
 		}
 		defer f.Close()
 		if err := trace.Start(f); err != nil {
-			return fmt.Errorf("harness: can't start tacing: %v", err)
+			return errors.Wrapf(err, "harness: can't start tacing")
 		}
 		defer trace.Stop() // flushes trace to disk
 	}
