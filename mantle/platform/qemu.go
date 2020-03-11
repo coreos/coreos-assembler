@@ -292,6 +292,8 @@ func newGuestfish(diskImagePath string) (*coreosGuestfish, error) {
 	// rights to the qcow image
 	cmd := exec.Command("guestfish", "--listen", "-a", diskImagePath)
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
+	// make sure it inherits stderr so we see any error message
+	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting stdout pipe")
