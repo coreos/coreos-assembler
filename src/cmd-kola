@@ -75,11 +75,6 @@ if not any([x in unknown_args for x in ["-b", "--distro"]]):
         kolaargs.extend(['-b', 'fcos'])
 
 print(f"qemu path: {qemupath}")
-ignition_version = cmdlib.disk_ignition_version(qemupath)
-print(f"Using ignition version {ignition_version}")
-
-if ignition_version == "2.2.0":
-    kolaargs.extend(["--ignition-version", "v2"])
 
 if os.getuid() != 0 and not ('-p' in unknown_args):
     kolaargs.extend(['-p', 'qemu-unpriv'])
