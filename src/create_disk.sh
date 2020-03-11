@@ -30,6 +30,7 @@ Options:
     --rootfs-size: Create the root filesystem with specified size
     --boot-verity: Provide this to enable ext4 fs-verity for /boot
     --rootfs: xfs|ext4verity|luks
+    --no-x86-bios-partition: don't create a BIOS partition on x86_64
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -39,26 +40,28 @@ EOC
 rootfs_size="0"
 boot_verity=0
 rootfs_type="xfs"
+x86_bios_partition=1
 extrakargs=""
 
 while [ $# -gt 0 ];
 do
     flag="${1}"; shift;
     case "${flag}" in
-        --disk)             disk="${1}"; shift;;
-        --buildid)          buildid="${1}"; shift;;
-        --imgid)            imgid="${1}"; shift;;
-        --grub-script)      grub_script="${1}"; shift;;
-        --help)             usage; exit;;
-        --kargs)            extrakargs="${extrakargs} ${1}"; shift;;
-        --osname)           os_name="${1}"; shift;;
-        --ostree-ref)       ref="${1}"; shift;;
-        --ostree-remote)    remote_name="${1}"; shift;;
-        --ostree-repo)      ostree="${1}"; shift;;
-        --save-var-subdirs) save_var_subdirs="${1}"; shift;;
-        --rootfs-size)      rootfs_size="${1}"; shift;;
-        --boot-verity)      boot_verity=1;;
-        --rootfs)           rootfs_type="${1}" shift;;
+        --disk)                  disk="${1}"; shift;;
+        --buildid)               buildid="${1}"; shift;;
+        --imgid)                 imgid="${1}"; shift;;
+        --grub-script)           grub_script="${1}"; shift;;
+        --help)                  usage; exit;;
+        --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
+        --osname)                os_name="${1}"; shift;;
+        --ostree-ref)            ref="${1}"; shift;;
+        --ostree-remote)         remote_name="${1}"; shift;;
+        --ostree-repo)           ostree="${1}"; shift;;
+        --save-var-subdirs)      save_var_subdirs="${1}"; shift;;
+        --rootfs-size)           rootfs_size="${1}"; shift;;
+        --boot-verity)           boot_verity=1;;
+        --rootfs)                rootfs_type="${1}" shift;;
+        --no-x86-bios-partition) x86_bios_partition=0;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -99,12 +102,15 @@ if [ "${rootfs_size}" != "0" ]; then
 fi
 case "$arch" in
     x86_64)
-        sgdisk -Z $disk \
+        set -- -Z $disk \
         -U 00000000-0000-4000-a000-000000000001 \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
-        -n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649 \
-        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+        if [ "${x86_bios_partition}" = 1 ]; then
+            set -- "$@" -n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649
+        fi
+        set -- "$@" -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        sgdisk "$@"
         sgdisk -p "$disk"
         EFIPN=2
         ;;
@@ -343,12 +349,14 @@ case "$arch" in
 x86_64)
     # UEFI
     install_uefi
-    # And BIOS grub in addition.  See also
-    # https://github.com/coreos/fedora-coreos-tracker/issues/32
-    grub2-install \
-    --target i386-pc \
-    --boot-directory $rootfs/boot \
-    $disk
+    if [ "${x86_bios_partition}" = 1 ]; then
+        # And BIOS grub in addition.  See also
+        # https://github.com/coreos/fedora-coreos-tracker/issues/32
+        grub2-install \
+        --target i386-pc \
+        --boot-directory $rootfs/boot \
+        $disk
+    fi
     ;;
 aarch64)
     # Our aarch64 is UEFI only.

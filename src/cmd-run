@@ -26,7 +26,7 @@ FIRMWARE=bios
 USAGE="Usage: $0 [-d /path/to/disk.qcow2] [--] [qemu options...]
 Options:
     -b --buildid          Target buildid (default latest)
-    -I --imgtype          Target image type (qemu, metal, etc.  Default qemu)
+    -I --imgtype          Target image type (qemu, metal, metal4k, etc.  Default qemu)
     -d DISK               Root disk drive (won't be changed by default)
     --disk-channel TYPE   Communication mechanism for root device: virtio, nvme
     -i FILE               File containing an Ignition config to merge into the default config
@@ -258,6 +258,14 @@ case "${DISK_CHANNEL}" in
     nvme) kola_args+=('--qemu-nvme');;
     *) die "Invalid --disk-channel ${DISK_CHANNEL}" ;;
 esac
+
+if [ "${IMAGE_TYPE}" == metal4k ]; then
+    kola_args+=("--qemu-native-4k")
+    # native 4k requires a UEFI bootloader
+    if [ "${FIRMWARE}" == bios ]; then
+        FIRMWARE=uefi
+    fi
+fi
 
 case "${FIRMWARE}" in
     bios) ;;
