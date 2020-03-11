@@ -15,177 +15,22 @@
 package ignition
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 
+	ignconverter "github.com/coreos/ign-converter"
+	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/mantle/util"
 )
 
-var (
-	v2IgnitionConfig = conf.Ignition(`{
-		"ignition": {
-			"version": "2.2.0"
-		},
-		"storage": {
-			"disks": [
-				{
-					"device": "/dev/disk/by-id/virtio-secondary-disk",
-					"wipeTable": true,
-					"partitions": [
-						{
-							"label": "CONTR",
-							"size": 1048576,
-							"start": 0,
-							"guid": "63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
-						}
-					]
-				},
-				{
-					"device": "/dev/disk/by-id/virtio-tertiary-disk",
-					"wipeTable": true,
-					"partitions": [
-						{
-							"label": "LOG",
-							"size": 1048576,
-							"start": 0,
-							"guid": "6385b84e-2c7b-4488-a870-667c565e01a8"
-						}
-					]
-				}
-			],
-			"filesystems": [
-				{
-					"name": "CONTR",
-					"mount": {
-						"device": "/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7",
-						"format": "xfs",
-						"wipeFilesystem": true
-					}
-				},
-				{
-					"name": "LOG",
-					"mount": {
-						"device": "/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8",
-						"format": "xfs",
-						"wipeFilesystem": true
-					}
-				}
-			],
-			"files": [
-				{
-					"filesystem": "CONTR",
-					"path": "/hello.txt",
-					"contents": {
-						"source": "data:,hello%20world%0A"
-					},
-					"mode": 420
-				},
-				{
-					"filesystem": "LOG",
-					"path": "/hello.txt",
-					"contents": {
-						"source": "data:,hello%20world%0A"
-					},
-					"mode": 420
-				}
-			]
-		},
-		"systemd": {
-			"units": [
-				{
-					"name": "var-lib-containers.mount",
-					"enabled": true,
-					"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-				},
-				{
-					"name": "var-log.mount",
-					"enabled": true,
-					"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-				}
-			]
-		}
-	}`)
-	v3IgnitionConfig = conf.Ignition(`{
-		"ignition": {"version": "3.0.0"},
-		"storage": {
-			"disks": [
-				{
-					"device": "/dev/disk/by-id/virtio-secondary-disk",
-					"wipeTable": true,
-					"partitions": [
-						{
-							"label": "CONTR",
-							"sizeMiB": 512,
-							"startMiB": 0,
-							"wipePartitionEntry": true,
-							"guid": "63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
-						}
-					]
-				},
-				{
-					"device": "/dev/disk/by-id/virtio-tertiary-disk",
-					"wipeTable": true,
-					"partitions": [
-						{
-							"label": "LOG",
-							"sizeMiB": 512,
-							"startMiB": 0,
-							"wipePartitionEntry": true,
-							"guid": "6385b84e-2c7b-4488-a870-667c565e01a8"
-						}
-					]
-				}
-			],
-			"filesystems": [
-				{
-					"path": "/var/lib/containers",
-					"device": "/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7",
-					"format": "xfs",
-					"label": "CONTR",
-					"wipeFilesystem": true
-				},
-				{
-					"path": "/var/log",
-					"device": "/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8",
-					"format": "xfs",
-					"label": "LOG",
-					"wipeFilesystem": true
-				}
-			],
-			"files": [
-				{
-					"path": "/var/lib/containers/hello.txt",
-					"contents": {
-						"source": "data:,hello%20world%0A"
-					}
-				},
-				{
-					"path": "/var/log/hello.txt",
-					"contents": {
-						"source": "data:,hello%20world%0A"
-					}
-				}
-			]
-		},
-		"systemd": {
-			"units": [
-				{
-					"name": "var-lib-containers.mount",
-					"enabled": true,
-					"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-				},
-				{
-					"name": "var-log.mount",
-					"enabled": true,
-					"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-				}]
-		}
-	}`)
-)
+var v3IgnitionConfig ignv3types.Config
 
 func init() {
 	// mount disks to `/var/log` and `/var/lib/containers`
@@ -197,156 +42,9 @@ func init() {
 	})
 	// create new partiitons with disk `vda`
 	register.RegisterTest(&register.Test{
-		Name: "coreos.ignition.mount.partitions",
-		Run:  testMountPartitions,
-		UserData: conf.Ignition(`{
-			"ignition": {
-				"version": "2.2.0"
-			},
-			"storage": {
-				"disks": [
-					{
-						"device": "/dev/vda",
-						"wipeTable": false,
-						"partitions": [
-							{
-								"label": "CONTR",
-								"size": 2097152,
-								"start": 0,
-								"guid": "63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
-							},
-							{
-								"label": "LOG",
-								"size": 2097152,
-								"start": 0,
-								"guid": "6385b84e-2c7b-4488-a870-667c565e01a8"
-							}
-						]
-					}
-				],
-				"filesystems": [
-					{
-						"name": "CONTR",
-						"mount": {
-							"device": "/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7",
-							"format": "xfs",
-							"wipeFilesystem": true
-						}
-					},
-					{
-						"name": "LOG",
-						"mount": {
-							"device": "/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8",
-							"format": "xfs",
-							"wipeFilesystem": true
-						}
-					}
-				],
-				"files": [
-					{
-						"filesystem": "CONTR",
-						"path": "/hello.txt",
-						"contents": {
-							"source": "data:,hello%20world%0A"
-						},
-						"mode": 420
-					},
-					{
-						"filesystem": "LOG",
-						"path": "/hello.txt",
-						"contents": {
-							"source": "data:,hello%20world%0A"
-						},
-						"mode": 420
-					}
-				]
-			},
-			"systemd": {
-				"units": [
-					{
-						"name": "var-lib-containers.mount",
-						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-					},
-					{
-						"name": "var-log.mount",
-						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-					}
-				]
-			}
-		}`),
-		UserDataV3: conf.Ignition(`{
-			"ignition": {"version": "3.0.0"},
-			"storage": {
-				"disks": [
-					{
-						"device": "/dev/vda",
-						"wipeTable": false,
-						"partitions": [
-						{
-							"label": "CONTR",
-							"sizeMiB": 1024,
-							"startMiB": 0,
-							"wipePartitionEntry": true,
-							"guid":"63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
-						},
-						{
-							"label": "LOG",
-							"sizeMiB": 1024,
-							"startMiB": 0,
-							"wipePartitionEntry": true,
-							"guid":"6385b84e-2c7b-4488-a870-667c565e01a8"
-						}
-						]
-					}
-				],
-				"filesystems": [
-					{
-						"path": "/var/lib/containers",
-						"device": "/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7",
-						"format": "xfs",
-						"label": "CONTR",
-						"wipeFilesystem": true
-					},
-					{
-						"path": "/var/log",
-						"device": "/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8",
-						"format": "xfs",
-						"label": "LOG",
-						"wipeFilesystem": true
-					}
-				],
-				"files": [
-					{
-						"path": "/var/lib/containers/hello.txt",
-						"contents": {
-							"source": "data:,hello%20world%0A"
-						}
-					},
-					{
-						"path": "/var/log/hello.txt",
-						"contents": {
-							"source": "data:,hello%20world%0A"
-						}
-					}
-				]
-			},
-			"systemd": {
-				"units": [
-					{
-						"name": "var-lib-containers.mount",
-						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-					},
-					{
-						"name": "var-log.mount",
-						"enabled": true,
-						"contents": "[Mount]\nWhat=/dev/disk/by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"
-					}]
-			}
-		}`),
-		ClusterSize: 1,
+		Name:        "coreos.ignition.mount.partitions",
+		Run:         testMountPartitions,
+		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
 	})
 }
@@ -354,9 +52,7 @@ func init() {
 // Mount two disks with id `virtio-secondary-disk` and `virtio-tertiary-disk`
 // and make sure we can write files to the mount points
 func testMountDisks(c cluster.TestCluster) {
-	var m platform.Machine
-	var err error
-	var ignConfig *conf.UserData
+	setupIgnitionConfig()
 
 	options := platform.MachineOptions{
 		AdditionalDisks: []platform.Disk{
@@ -365,14 +61,94 @@ func testMountDisks(c cluster.TestCluster) {
 		},
 	}
 
-	// TODO: use translation between Ignition v2 and v3 in the future
+	ignDisks := []ignv3types.Disk{
+		{
+			Device: "/dev/disk/by-id/virtio-secondary-disk",
+			Partitions: []ignv3types.Partition{
+				{
+					Label:              util.StrToPtr("CONTR"),
+					GUID:               util.StrToPtr("63194b49-e4b7-43f9-9a8b-df0fd8279bb7"),
+					WipePartitionEntry: util.BoolToPtr(true),
+				},
+			},
+			WipeTable: util.BoolToPtr(true),
+		},
+		{
+			Device: "/dev/disk/by-id/virtio-tertiary-disk",
+			Partitions: []ignv3types.Partition{
+				{
+					Label:              util.StrToPtr("LOG"),
+					GUID:               util.StrToPtr("6385b84e-2c7b-4488-a870-667c565e01a8"),
+					WipePartitionEntry: util.BoolToPtr(true),
+				},
+			},
+			WipeTable: util.BoolToPtr(true),
+		},
+	}
+	createClusterValidate(c, options, ignDisks, 1048576, 512)
+}
+
+func testMountPartitions(c cluster.TestCluster) {
+	setupIgnitionConfig()
+
+	ignDisks := []ignv3types.Disk{
+		{
+			Device: "/dev/vda",
+			Partitions: []ignv3types.Partition{
+				{
+					Label:              util.StrToPtr("CONTR"),
+					GUID:               util.StrToPtr("63194b49-e4b7-43f9-9a8b-df0fd8279bb7"),
+					WipePartitionEntry: util.BoolToPtr(true),
+				},
+				{
+					Label:              util.StrToPtr("LOG"),
+					GUID:               util.StrToPtr("6385b84e-2c7b-4488-a870-667c565e01a8"),
+					WipePartitionEntry: util.BoolToPtr(true),
+				},
+			},
+			WipeTable: util.BoolToPtr(false),
+		},
+	}
+	createClusterValidate(c, platform.MachineOptions{}, ignDisks, 2097152, 1024)
+}
+
+func createClusterValidate(c cluster.TestCluster, options platform.MachineOptions, ignDisks []ignv3types.Disk, v2size int, v3sizeMiB int) {
+	var m platform.Machine
+	var err error
+	v3IgnitionConfig.Storage.Disks = ignDisks
+
+	var serializedConfig []byte
 	switch c.IgnitionVersion() {
 	case "v2":
-		ignConfig = v2IgnitionConfig
+		v2ignconfig, err := ignconverter.Translate3to2(v3IgnitionConfig)
+		if err != nil {
+			break
+		}
+		for i := 0; i < len(v2ignconfig.Storage.Disks); i++ {
+			v2ignconfig.Storage.Disks[i].Partitions[0].Size = v2size
+			v2ignconfig.Storage.Disks[i].Partitions[0].Start = 0
+		}
+		buf, err := json.Marshal(v2ignconfig)
+		if err != nil {
+			break
+		}
+		serializedConfig = buf
 	case "v3":
-		ignConfig = v3IgnitionConfig
+		for i := 0; i < len(v3IgnitionConfig.Storage.Disks); i++ {
+			v3IgnitionConfig.Storage.Disks[i].Partitions[0].SizeMiB = &v3sizeMiB
+			v3IgnitionConfig.Storage.Disks[i].Partitions[0].StartMiB = util.IntToPtr(0)
+		}
+		buf, err := json.Marshal(v3IgnitionConfig)
+		if err != nil {
+			break
+		}
+		serializedConfig = buf
 	default:
 		c.Fatal("unsupported ignition version")
+	}
+
+	if err != nil {
+		c.Fatal(err)
 	}
 
 	switch pc := c.Cluster.(type) {
@@ -380,7 +156,7 @@ func testMountDisks(c cluster.TestCluster) {
 	// the golang compiler no longer checks that the individual types in the case have the
 	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
 	case *unprivqemu.Cluster:
-		m, err = pc.NewMachineWithOptions(ignConfig, options, true)
+		m, err = pc.NewMachineWithOptions(conf.Ignition(string(serializedConfig)), options, true)
 	default:
 		c.Fatal("unknown cluster type")
 	}
@@ -402,20 +178,75 @@ func testMountDisks(c cluster.TestCluster) {
 	mountValidateAll(c, m)
 }
 
-func testMountPartitions(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	// make sure partitions are mounted and files are written
-	mountValidateAll(c, m)
-
-	// reboot it to make sure it comes up again
-	err := m.Reboot()
-	if err != nil {
-		c.Fatalf("could not reboot machine: %v", err)
+func setupIgnitionConfig() {
+	containerpartdeviceid := "by-partlabel/CONTR"
+	logpartdeviceid := "by-partlabel/LOG"
+	if kola.QEMUOptions.Board == "s390x-usr" {
+		containerpartdeviceid = "by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
+		logpartdeviceid = "by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8"
 	}
 
-	// make sure partitions are mounted and files are written
-	mountValidateAll(c, m)
+	v3IgnitionConfig = ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+		},
+		Storage: ignv3types.Storage{
+			Filesystems: []ignv3types.Filesystem{
+				{
+					Device:         "/dev/disk/" + containerpartdeviceid,
+					Path:           util.StrToPtr("/var/lib/containers"),
+					Label:          util.StrToPtr("CONTR"),
+					Format:         util.StrToPtr("xfs"),
+					WipeFilesystem: util.BoolToPtr(true),
+				},
+				{
+					Device:         "/dev/disk/" + logpartdeviceid,
+					Path:           util.StrToPtr("/var/log"),
+					Label:          util.StrToPtr("LOG"),
+					Format:         util.StrToPtr("xfs"),
+					WipeFilesystem: util.BoolToPtr(true),
+				},
+			},
+			Files: []ignv3types.File{
+				{
+					Node: ignv3types.Node{
+						Path: "/var/lib/containers/hello.txt",
+					},
+					FileEmbedded1: ignv3types.FileEmbedded1{
+						Contents: ignv3types.FileContents{
+							Source: util.StrToPtr("data:,hello%20world%0A"),
+						},
+						Mode: util.IntToPtr(420),
+					},
+				},
+				{
+					Node: ignv3types.Node{
+						Path: "/var/log/hello.txt",
+					},
+					FileEmbedded1: ignv3types.FileEmbedded1{
+						Contents: ignv3types.FileContents{
+							Source: util.StrToPtr("data:,hello%20world%0A"),
+						},
+						Mode: util.IntToPtr(420),
+					},
+				},
+			},
+		},
+		Systemd: ignv3types.Systemd{
+			Units: []ignv3types.Unit{
+				{
+					Name:     "var-lib-containers.mount",
+					Contents: util.StrToPtr("[Mount]\nWhat=/dev/disk/" + containerpartdeviceid + "\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"),
+					Enabled:  util.BoolToPtr(true),
+				},
+				{
+					Name:     "var-log.mount",
+					Contents: util.StrToPtr("[Mount]\nWhat=/dev/disk/" + logpartdeviceid + "\nWhere=/var/log\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"),
+					Enabled:  util.BoolToPtr(true),
+				},
+			},
+		},
+	}
 }
 
 // Check volume correctly mounted to `/var/lib/containers` and `/var/log`
