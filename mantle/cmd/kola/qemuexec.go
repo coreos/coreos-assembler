@@ -40,6 +40,8 @@ var (
 	hostname string
 	ignition string
 	knetargs string
+
+	forceConfigInjection bool
 )
 
 func init() {
@@ -49,12 +51,13 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
+	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
 }
 
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 
-	builder := platform.NewBuilder(kola.QEMUOptions.Board, ignition)
+	builder := platform.NewBuilder(kola.QEMUOptions.Board, ignition, forceConfigInjection)
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}

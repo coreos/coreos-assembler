@@ -88,7 +88,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 
 	board := qc.flight.opts.Board
-	builder := platform.NewBuilder(board, confPath)
+	builder := platform.NewBuilder(board, confPath, false)
 	defer builder.Close()
 	builder.Uuid = qm.id
 	builder.Firmware = qc.flight.opts.Firmware

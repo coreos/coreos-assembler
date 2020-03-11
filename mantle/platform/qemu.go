@@ -151,6 +151,8 @@ type QemuBuilder struct {
 	// IgnitionNetworkKargs are written to /boot/ignition
 	IgnitionNetworkKargs string
 
+	ForceConfigInjection bool
+
 	Hostname string
 
 	InheritConsole bool
@@ -162,14 +164,15 @@ type QemuBuilder struct {
 	fds       []*os.File
 }
 
-func NewBuilder(board, config string) *QemuBuilder {
+func NewBuilder(board, config string, forceIgnInjection bool) *QemuBuilder {
 	ret := QemuBuilder{
-		Board:     board,
-		Config:    config,
-		Firmware:  "bios",
-		Swtpm:     true,
-		Pdeathsig: true,
-		Argv:      []string{},
+		Board:                board,
+		Config:               config,
+		ForceConfigInjection: forceIgnInjection,
+		Firmware:             "bios",
+		Swtpm:                true,
+		Pdeathsig:            true,
+		Argv:                 []string{},
 	}
 	return &ret
 }
@@ -431,9 +434,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		return err
 	}
 	if primary {
-		// If the board doesn't support -fw_cfg, inject via libguestfs on the
-		// primary disk.
-		requiresInjection := builder.Config != "" && !builder.supportsFwCfg()
+		// If the board doesn't support -fw_cfg or we were explicitly
+		// requested, inject via libguestfs on the primary disk.
+		requiresInjection := builder.Config != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
 		if requiresInjection || builder.IgnitionNetworkKargs != "" {
 			if err = setupIgnition(builder.Config, builder.IgnitionNetworkKargs, dstFileName); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
