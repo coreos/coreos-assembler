@@ -131,7 +131,9 @@ func (bc *BaseCluster) appendSSH(m Machine) error {
 	}
 	host, port, err := net.SplitHostPort(m.IP())
 	if err != nil {
-		return errors.Wrapf(err, "parsing machine IP")
+		// Yeah this is hacky, surprising there's not a stdlib API for this
+		host = m.IP()
+		port = ""
 	}
 	if port != "" {
 		if _, err := fmt.Fprintf(sshBuf, "  Port %s\n", port); err != nil {
