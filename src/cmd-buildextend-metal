@@ -183,8 +183,8 @@ disk_args=()
 
 set -x
 # Extract the target kernel config, which may inform how we build disks.
-target_moduledir=$(ostree --repo="${tmprepo}" ls "${commit}" /usr/lib/modules | grep -o '/usr/lib/modules/.*')
-ostree --repo="${tmprepo}" cat "${commit}" "${target_moduledir}/config" > tmp/target-kernel.config
+target_moduledir=$(ostree --repo="${ostree_repo}" ls "${commit}" /usr/lib/modules | grep -o '/usr/lib/modules/.*')
+ostree --repo="${ostree_repo}" cat "${commit}" "${target_moduledir}/config" > tmp/target-kernel.config
 # Part of: https://github.com/ostreedev/ostree/pull/1959
 # We need to support kernels that don't have this enabled yet, including RHEL8
 # and current Fedora 31.
