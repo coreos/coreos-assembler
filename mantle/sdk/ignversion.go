@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/coreos/mantle/cosa"
 )
 
 // TargetIgnitionVersionFromName returns the Ignition spec version that should
@@ -36,4 +38,14 @@ func TargetIgnitionVersionFromName(artifact string) string {
 		}
 	}
 	return "v3"
+}
+
+func TargetIgnitionVersion(build *cosa.Build) string {
+	// Most cosa builds should have an "ostree"
+	for _, n := range []string{build.BuildArtifacts.Ostree.Path, build.BuildArtifacts.Qemu.Path, build.BuildArtifacts.Metal.Path} {
+		if n != "" {
+			return TargetIgnitionVersionFromName(n)
+		}
+	}
+	panic("TargetIgnitionVersion couldn't find artifact")
 }
