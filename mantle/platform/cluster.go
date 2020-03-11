@@ -18,9 +18,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -125,18 +125,23 @@ func (bc *BaseCluster) appendSSH(m Machine) error {
 	defer sshConfig.Close()
 	sshBuf := bufio.NewWriter(sshConfig)
 
-	machIP := m.IP()
-	idx := strings.LastIndex(machIP, ":")
-	if idx == -1 {
-		panic(fmt.Sprintf("Malformed machine IP %s", machIP))
+	_, err = fmt.Fprintf(sshBuf, "Host %s\n", m.ID())
+	if err != nil {
+		return err
 	}
-	_, err = fmt.Fprintf(sshBuf, `Host %s
-  HostName %s
-  Port %s
+	host, port, err := net.SplitHostPort(m.IP())
+	if err != nil {
+		return errors.Wrapf(err, "parsing machine IP")
+	}
+	if port != "" {
+		if _, err := fmt.Fprintf(sshBuf, "  Port %s\n", port); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintf(sshBuf, `  HostName %s
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
-`, m.ID(), machIP[:idx], machIP[idx+1:])
-	if err != nil {
+`, host); err != nil {
 		return err
 	}
 	return sshBuf.Flush()
