@@ -107,7 +107,6 @@ case "$arch" in
         -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         EFIPN=2
-        BIOSPN=3
         ;;
     aarch64)
         sgdisk -Z $disk \
