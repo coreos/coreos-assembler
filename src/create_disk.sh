@@ -60,7 +60,6 @@ do
         --boot-verity)      boot_verity=1;;
         --rootfs)           rootfs_type="${1}" shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
-         --) break;
      esac;
 done
 
