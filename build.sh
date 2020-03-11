@@ -41,6 +41,16 @@ install_rpms() {
     # xargs is part of findutils, which may not be installed
     yum -y install /usr/bin/xargs
 
+    # We need a newer guestfish which supports 4k drives (XXX: tag into
+    # continuous tag?)
+    local libguestfs_koji="https://kojipkgs.fedoraproject.org//packages/libguestfs/1.42.0/1.fc32"
+    yum -y install \
+        ${libguestfs_koji}/x86_64/libguestfs-1.42.0-1.fc32.x86_64.rpm \
+        ${libguestfs_koji}/x86_64/libguestfs-xfs-1.42.0-1.fc32.x86_64.rpm \
+        ${libguestfs_koji}/x86_64/libguestfs-tools-c-1.42.0-1.fc32.x86_64.rpm \
+        ${libguestfs_koji}/noarch/libguestfs-tools-1.42.0-1.fc32.noarch.rpm \
+        ${libguestfs_koji}/x86_64/perl-Sys-Guestfs-1.42.0-1.fc32.x86_64.rpm
+
     # These are only used to build things in here.  Today
     # we ship these in the container too to make it easier
     # to use the container as a development environment for itself.

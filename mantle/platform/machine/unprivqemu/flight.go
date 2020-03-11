@@ -35,7 +35,8 @@ type Options struct {
 
 	ForceConfigInjection bool
 
-	Nvme bool
+	Native4k bool
+	Nvme     bool
 
 	//Option to create a temporary software TPM - true by default
 	Swtpm bool

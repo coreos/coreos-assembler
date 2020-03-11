@@ -99,10 +99,15 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if qc.flight.opts.Nvme {
 		channel = "nvme"
 	}
+	sectorSize := 0
+	if qc.flight.opts.Native4k {
+		sectorSize = 4096
+	}
 	primaryDisk := platform.Disk{
 		BackingFile: qc.flight.opts.DiskImage,
 		Channel:     channel,
 		Size:        qc.flight.opts.DiskSize,
+		SectorSize:  sectorSize,
 	}
 
 	if err = builder.AddPrimaryDisk(&primaryDisk); err != nil {

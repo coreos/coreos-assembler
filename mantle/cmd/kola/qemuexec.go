@@ -68,10 +68,15 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if kola.QEMUOptions.Nvme {
 			channel = "nvme"
 		}
+		sectorSize := 0
+		if kola.QEMUOptions.Native4k {
+			sectorSize = 4096
+		}
 		if err = builder.AddPrimaryDisk(&platform.Disk{
 			BackingFile: kola.QEMUOptions.DiskImage,
 			Channel:     channel,
 			Size:        kola.QEMUOptions.DiskSize,
+			SectorSize:  sectorSize,
 		}); err != nil {
 			return errors.Wrapf(err, "adding primary disk")
 		}

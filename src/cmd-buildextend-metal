@@ -9,6 +9,7 @@ dn=$(dirname "$0")
 # image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
 case "$(basename "$0")" in
     "cmd-buildextend-metal") image_type=metal;;
+    "cmd-buildextend-metal4k") image_type=metal4k;;
     "cmd-buildextend-dasd") image_type=dasd;;
     "cmd-buildextend-qemu") image_type=qemu;;
     *) fatal "called as unexpected name $0";;
@@ -137,9 +138,8 @@ img=${name}-${build}-${image_type}.${basearch}.${image_format}
 path=${PWD}/${img}
 
 ignition_platform_id="${image_type}"
-# dasd is a different disk format, but it's still metal.  Just like
-# if in the future we introduce a 4k sector size x86_64 image type (metal-4k).
-if [ "${image_type}" = dasd ]; then
+# dasd and metal4k are different disk formats, but they're still metal
+if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
     ignition_platform_id=metal
 fi
 
@@ -169,17 +169,25 @@ rootfs_size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 image_size="$(( rootfs_size + 513 ))M"
 echo "Disk size estimated to ${image_size}"
 
+disk_args=()
+
 # For bare metal and dasd images, we use the estimated image size. For IaaS/virt, we get it from
 # image.yaml because we want a "default" disk size that has some free space.
-if [[ "${image_type}" = metal || "${image_type}" = dasd ]]; then
-    # Unset the root size, which will inherit from the image size
-    rootfs_size=0
-else
-    image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
-    rootfs_size="${rootfs_size}M"
-fi
+case "${image_type}" in
+    metal*|dasd)
+        # Unset the root size, which will inherit from the image size
+        rootfs_size=0
+        ;;
+    qemu)
+        image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+        rootfs_size="${rootfs_size}M"
+        ;;
+    *) fatal "unreachable image_type ${image_type}";;
+esac
 
-disk_args=()
+if [ "${image_type}" == metal4k ]; then
+    disk_args+=("--no-x86-bios-partition")
+fi
 
 set -x
 # Extract the target kernel config, which may inform how we build disks.
@@ -225,12 +233,18 @@ ref_arg=${ref}
 if [ -n "${ref_is_temp}" ]; then
     ref_arg=${commit}
 fi
+
 target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp,cache=unsafe")
-if [[ $image_format == raw && $image_type == dasd ]]; then
+# we need 4096 block size for ECKD DASD and (obviously) metal4k
+if [[ $image_type == dasd || $image_type == metal4k ]]; then
+    device_type=virtio-blk
+    if [[ $image_type == dasd ]]; then
+        device_type=virtio-blk-ccw
+    fi
     target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
-                    # we need 4096 block size for ECKD DASD
-                    "-device" "virtio-blk-ccw,drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
+                    "-device" "${device_type},drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
 fi
+
 runvm "${target_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
             --disk /dev/vda \

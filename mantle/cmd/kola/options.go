@@ -137,6 +137,7 @@ func init() {
 	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "bios", "Boot firmware: bios,uefi,uefi-secure")
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
 	sv(&kola.QEMUOptions.DiskSize, "qemu-size", "", "Resize target disk via qemu-img resize [+]SIZE")
+	bv(&kola.QEMUOptions.Native4k, "qemu-native-4k", false, "Force 4k sectors for main disk")
 	bv(&kola.QEMUOptions.Nvme, "qemu-nvme", false, "Use NVMe for main disk")
 	bv(&kola.QEMUOptions.Swtpm, "qemu-swtpm", true, "Create temporary software TPM")
 }

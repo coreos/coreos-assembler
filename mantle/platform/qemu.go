@@ -40,6 +40,7 @@ type Disk struct {
 	BackingFile string   // raw disk image to use. Incompatible with Size.
 	Channel     string   // virtio (default), nvme
 	DeviceOpts  []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
+	SectorSize  int      // if not 0, override disk sector size
 }
 
 type QemuInstance struct {
@@ -289,11 +290,16 @@ type coreosGuestfish struct {
 	remote string
 }
 
-func newGuestfish(diskImagePath string) (*coreosGuestfish, error) {
+func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, error) {
 	// Set guestfish backend to direct in order to avoid libvirt as backend.
 	// Using libvirt can lead to permission denied issues if it does not have access
 	// rights to the qcow image
-	cmd := exec.Command("guestfish", "--listen", "-a", diskImagePath)
+	guestfish_args := []string{"--listen"}
+	if diskSectorSize != 0 {
+		guestfish_args = append(guestfish_args, fmt.Sprintf("--blocksize=%d", diskSectorSize))
+	}
+	guestfish_args = append(guestfish_args, "-a", diskImagePath)
+	cmd := exec.Command("guestfish", guestfish_args...)
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 	// make sure it inherits stderr so we see any error message
 	cmd.Stderr = os.Stderr
@@ -352,8 +358,8 @@ func (gf *coreosGuestfish) destroy() {
 
 // setupIgnition copies the ignition file inside the disk image and/or sets
 // networking kernel arguments
-func setupIgnition(confPath string, knetargs string, diskImagePath string) error {
-	gf, err := newGuestfish(diskImagePath)
+func setupIgnition(confPath string, knetargs string, diskImagePath string, diskSectorSize int) error {
+	gf, err := newGuestfish(diskImagePath, diskSectorSize)
 	if err != nil {
 		return err
 	}
@@ -438,7 +444,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		// requested, inject via libguestfs on the primary disk.
 		requiresInjection := builder.Config != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
 		if requiresInjection || builder.IgnitionNetworkKargs != "" {
-			if err = setupIgnition(builder.Config, builder.IgnitionNetworkKargs, dstFileName); err != nil {
+			if err = setupIgnition(builder.Config, builder.IgnitionNetworkKargs, dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
 		}
@@ -465,6 +471,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	channel := disk.Channel
 	if channel == "" {
 		channel = "virtio"
+	}
+	if disk.SectorSize != 0 {
+		diskOpts = append(diskOpts, fmt.Sprintf("physical_block_size=%[1]d,logical_block_size=%[1]d", disk.SectorSize))
 	}
 	builder.addQcow2DiskFd(fd, channel, diskOpts)
 	return nil
