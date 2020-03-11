@@ -259,7 +259,7 @@ func setupTest(kern *kernelSetup) (*installerTest, error) {
 		return nil, fmt.Errorf("Missing initramfs artifact")
 	}
 
-	builder := platform.NewBuilder(kola.QEMUOptions.Board, "")
+	builder := platform.NewBuilder(kola.QEMUOptions.Board, "", false)
 	builder.Firmware = kola.QEMUOptions.Firmware
 	builder.AddDisk(&platform.Disk{
 		Size: "12G", // Arbitrary

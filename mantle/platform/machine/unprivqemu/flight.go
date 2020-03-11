@@ -33,6 +33,8 @@ type Options struct {
 	Board    string
 	Firmware string
 
+	ForceConfigInjection bool
+
 	Nvme bool
 
 	//Option to create a temporary software TPM - true by default

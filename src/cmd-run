@@ -268,4 +268,10 @@ if [ -n "${HOSTNAME}" ]; then
     kola_args+=("--hostname=${HOSTNAME}")
 fi
 
+# for the metal images, there's no other way but to inject into /boot
+case "${IMAGE_TYPE}" in
+    qemu) ;;
+    *) kola_args+=('--inject-ignition');;
+esac
+
 exec kola qemuexec -U --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
