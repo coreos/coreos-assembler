@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
@@ -64,11 +65,13 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if kola.QEMUOptions.Nvme {
 			channel = "nvme"
 		}
-		builder.AddPrimaryDisk(&platform.Disk{
+		if err = builder.AddPrimaryDisk(&platform.Disk{
 			BackingFile: kola.QEMUOptions.DiskImage,
 			Channel:     channel,
 			Size:        kola.QEMUOptions.DiskSize,
-		})
+		}); err != nil {
+			return errors.Wrapf(err, "adding primary disk")
+		}
 	}
 	builder.Hostname = hostname
 	if memory != 0 {

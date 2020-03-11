@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
@@ -104,9 +105,13 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		Size:        qc.flight.opts.DiskSize,
 	}
 
-	builder.AddPrimaryDisk(&primaryDisk)
+	if err = builder.AddPrimaryDisk(&primaryDisk); err != nil {
+		return nil, errors.Wrapf(err, "adding primary disk")
+	}
 	for _, disk := range options.AdditionalDisks {
-		builder.AddDisk(&disk)
+		if err = builder.AddDisk(&disk); err != nil {
+			return nil, errors.Wrapf(err, "adding additional disk")
+		}
 	}
 	builder.EnableUsermodeNetworking(22)
 
