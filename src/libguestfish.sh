@@ -56,7 +56,6 @@ coreos_gf_run_mount() {
     if [ "$1" = ro ]; then
         mntarg=mount-ro
         shift
-        set -- "$@" --ro
     fi
     coreos_gf_run "$@"
     # Detect the RHCOS LUKS case; first check if there's
