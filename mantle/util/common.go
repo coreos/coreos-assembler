@@ -52,6 +52,10 @@ func BoolToPtr(b bool) *bool {
 	return &b
 }
 
+func IntToPtr(i int) *int {
+	return &i
+}
+
 func PathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
