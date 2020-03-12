@@ -35,6 +35,8 @@ var (
 		PreRunE: preRun,
 		Use:     "switch-kernel",
 		Short:   "Test on switching between Default and RT Kernel",
+
+		SilenceUsage: true,
 	}
 
 	rtKernelRpmDir string
