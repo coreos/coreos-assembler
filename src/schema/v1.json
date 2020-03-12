@@ -305,6 +305,7 @@
        "aws",
        "azure",
        "dasd",
+       "exoscale",
        "gcp",
        "initramfs",
        "iso",
@@ -328,6 +329,12 @@
          "$id":"#/properties/images/properties/dasd",
          "type":"object",
          "title":"dasd",
+         "$ref": "#/definitions/artifact"
+       },
+       "exoscale": {
+         "$id":"#/properties/images/properties/exoscale",
+         "type":"object",
+         "title":"exoscale",
          "$ref": "#/definitions/artifact"
        },
        "qemu": {
