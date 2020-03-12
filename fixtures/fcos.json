@@ -1,118 +1,158 @@
 {
     "ref": "fedora/x86_64/coreos/testing-devel",
-    "ostree-n-metadata-total": 9075,
-    "ostree-n-metadata-written": 18,
-    "ostree-n-content-total": 4659,
-    "ostree-n-content-written": 26,
-    "ostree-n-cache-hits": 15280,
-    "ostree-content-bytes-written": 74744943,
-    "ostree-commit": "f4804b55772a66be779db86e27bbda71aed1d61daebea4f766fd9894d958b140",
-    "ostree-content-checksum": "23efb91032f078a0621556e57aa83fef5083b9a9ec4d78e7ab3853aa8d7899ff",
-    "ostree-version": "31.20200127.20.2",
-    "ostree-timestamp": "2020-01-28T14:36:27Z",
-    "rpm-ostree-inputhash": "7f6f3c29927170a09ad70bb681b2eff696f193a6de436d99ba1bff2f69f6f890",
-    "pkgdiff": [],
-    "buildid": "31.20200127.20.2",
+    "ostree-n-metadata-total": 9137,
+    "ostree-n-metadata-written": 21,
+    "ostree-n-content-total": 4774,
+    "ostree-n-content-written": 24,
+    "ostree-n-cache-hits": 15605,
+    "ostree-content-bytes-written": 76970521,
+    "ostree-commit": "981ddd48f99d8d30caa85c81e02ab4f0d20b957f031db81b7bccfe8f54b679ce",
+    "ostree-content-checksum": "a2ba5f894b56613d92f236ffc98719b18a6838081c24dd33f04fce3bdf366d82",
+    "ostree-version": "31.20200310.20.0",
+    "ostree-timestamp": "2020-03-12T00:16:04Z",
+    "rpm-ostree-inputhash": "f44f5836de5cc028196c9671f8155c94a0234aeb93b791f0f2b11a26c9802d33",
+    "pkgdiff": [
+        [
+            "podman",
+            2,
+            {
+                "PreviousPackage": [
+                    "podman",
+                    "2:1.8.1-0.7.rc4.fc31",
+                    "x86_64"
+                ],
+                "NewPackage": [
+                    "podman",
+                    "2:1.8.1-2.fc31",
+                    "x86_64"
+                ]
+            }
+        ],
+        [
+            "podman-plugins",
+            2,
+            {
+                "PreviousPackage": [
+                    "podman-plugins",
+                    "2:1.8.1-0.7.rc4.fc31",
+                    "x86_64"
+                ],
+                "NewPackage": [
+                    "podman-plugins",
+                    "2:1.8.1-2.fc31",
+                    "x86_64"
+                ]
+            }
+        ]
+    ],
+    "buildid": "31.20200310.20.0",
     "coreos-assembler.image-genver": 0,
     "name": "fedora-coreos",
     "summary": "Fedora CoreOS testing-devel",
-    "coreos-assembler.build-timestamp": "2020-01-28T14:38:49Z",
+    "coreos-assembler.build-timestamp": "2020-03-12T00:18:45Z",
     "coreos-assembler.image-config-checksum": "8fc8f4a0777d4e6a9d393677e7c5dc17af7c9f3bf6f26b766b7d2c0681b803ab",
-    "coreos-assembler.image-input-checksum": "4d4016076f4ba9a9000f9c9eb36b614dc2043b84bc71f119f708860503b82a9c",
+    "coreos-assembler.image-input-checksum": "4e7099d6f2a8fc5bd38987d865656086bb6f17cecdd357346f9ae1bae7ef8a0a",
     "coreos-assembler.code-source": "container",
     "coreos-assembler.container-config-git": {
-        "commit": "4438fbd1821b3cc2f23a2f4cc3d2d068413c00eb",
+        "commit": "640ecad99f5b2eacb66b9a3c06f56e79bd15690a",
         "origin": "https://github.com/coreos/fedora-coreos-config",
         "branch": "testing-devel",
         "dirty": "false"
     },
     "images": {
         "ostree": {
-            "path": "fedora-coreos-31.20200127.20.2-ostree.x86_64.tar",
-            "sha256": "746cdefd426e263f38d283e82780dc06305ff4e9647d95d78ba77c3f2bb2e314",
-            "size": 636467200
+            "path": "fedora-coreos-31.20200310.20.0-ostree.x86_64.tar",
+            "sha256": "9d508652bad3b4958f9bbb5f19a5f8b11c02768e949bd4c0582078bc2eec04b5",
+            "size": 662149120
         },
         "qemu": {
-            "path": "fedora-coreos-31.20200127.20.2-qemu.x86_64.qcow2.xz",
-            "sha256": "9c48c5ab67e9b84aeb53247843bee420b13b16913905f861993fd57c1f84653c",
-            "size": 454417284,
-            "uncompressed-sha256": "0505b34810948308717b90844c1a423e6c403a3fb522714021289150e2d27821",
-            "uncompressed-size": 1707540480
+            "path": "fedora-coreos-31.20200310.20.0-qemu.x86_64.qcow2.xz",
+            "sha256": "99f76fe3bc89818aca638c754610997730d5f58a1850446a00bff9e51309c67a",
+            "size": 475755272,
+            "uncompressed-sha256": "8f8c9f50b3ba9e19e28df398ea6ef48d5c472e94d4d6e481e9ef8bf02a31aad2",
+            "uncompressed-size": 1759969280
         },
         "metal": {
-            "path": "fedora-coreos-31.20200127.20.2-metal.x86_64.raw.xz",
-            "sha256": "2f6e75f85b116817c99ea9fe886a545637339a82be542418514f12b74f1bdffa",
-            "size": 455882892,
-            "uncompressed-sha256": "6e7966e2a0eada061940de2b484dc968edfb52b1dbf2b2d208704f7c2021da8b",
-            "uncompressed-size": 2793406464
+            "path": "fedora-coreos-31.20200310.20.0-metal.x86_64.raw.xz",
+            "sha256": "434ddbd866eb64304fdd000a070e0fdfb99af6eadf4399ebe35b306b3db9d997",
+            "size": 476843400,
+            "uncompressed-sha256": "9487814b37e3382cfe0989494b0c77b0249f198229e1db1b0c3c55c12d030238",
+            "uncompressed-size": 2856321024
         },
         "live-iso": {
-            "path": "fedora-coreos-31.20200127.20.2-live.x86_64.iso",
-            "sha256": "4879a23a5239e7c28c76bfa4b94e721c8628f805aba72a796ec691645a30f95e"
+            "path": "fedora-coreos-31.20200310.20.0-live.x86_64.iso",
+            "sha256": "b8f556074415649de09aa65f52ccc55aa97ec3b692cb5f0968b43959e4c4fb60"
         },
         "live-kernel": {
-            "path": "fedora-coreos-31.20200127.20.2-live-kernel-x86_64",
-            "sha256": "2e895c2cc9717e32ba78ff728003410509ff57dcbe25a487b22ba66997b344b8"
+            "path": "fedora-coreos-31.20200310.20.0-live-kernel-x86_64",
+            "sha256": "1d75758325541eff3f7c221120c013c94940cc3ba36b23542ded2c636330a06f"
         },
         "live-initramfs": {
-            "path": "fedora-coreos-31.20200127.20.2-live-initramfs.x86_64.img",
-            "sha256": "6faa217b1db2fe697365e2880d5009b6cab35ed978bf02ffd2540cef0750db71"
+            "path": "fedora-coreos-31.20200310.20.0-live-initramfs.x86_64.img",
+            "sha256": "cbbf3a6cf94129afa598fba6b1d0e00738d80b5b43ee462d633ed4b8d59cc11b"
         },
         "azure": {
-            "path": "fedora-coreos-31.20200127.20.2-azure.x86_64.vhd.xz",
-            "sha256": "370d45adc7e3fbbafa67cb0605c9c384af794370316494b4517eea39cdc0dbe3",
-            "size": 454410068,
-            "uncompressed-sha256": "75c3cbf0b73d917a86e0029b577de33ae3866eaeebed19d2967ee9e0baa6f1b7",
-            "uncompressed-size": 1751568384
+            "path": "fedora-coreos-31.20200310.20.0-azure.x86_64.vhd.xz",
+            "sha256": "4062628000a1e114d3eb7a75332d01ab516445eedacfa5cf5bbdd40c89cb68e1",
+            "size": 477213924,
+            "uncompressed-sha256": "085be1effd08adbde6bc99bd70727166b303d83ba5d591f711321a96636006d1",
+            "uncompressed-size": 8589935104
+        },
+        "exoscale": {
+            "path": "fedora-coreos-31.20200310.20.0-exoscale.x86_64.qcow2.xz",
+            "sha256": "4f28afd19b0d2dc02fc1423e726d34aaea7a665fd29d846e854ceeb078c09037",
+            "size": 475394540,
+            "uncompressed-sha256": "a1f93924719b8f91246716351d17676154bd72675558d9c23a89add2f984feb4",
+            "uncompressed-size": 1731461120
         },
         "openstack": {
-            "path": "fedora-coreos-31.20200127.20.2-openstack.x86_64.qcow2.xz",
-            "sha256": "212cbfc9d6d4ba3637b70214efb62b9e3e3449f3a13a3d9e80fb8ea97f04924e",
-            "size": 453823640,
-            "uncompressed-sha256": "deda906a95444bfc90669293482f983910ebb3cdbb6ea5becce3227f285add11",
-            "uncompressed-size": 1680539648
+            "path": "fedora-coreos-31.20200310.20.0-openstack.x86_64.qcow2.xz",
+            "sha256": "6becdf89050b0c7d3b2e1e58b97eaefc9965b10755c028dd7cfd5d6f5c7b29a5",
+            "size": 475447920,
+            "uncompressed-sha256": "d4d993cc00a5234bbbacce01aef914e321fb25d69b8f81f3171252fb5b818fcd",
+            "uncompressed-size": 1731461120
         },
         "aliyun": {
-            "path": "fedora-coreos-31.20200127.20.2-aliyun.x86_64.qcow2.xz",
-            "sha256": "e19be1c6cc0099d889d7ad17941c8c327e5508a1c753e8574521ba3c322e8016",
-            "size": 453834524,
-            "uncompressed-sha256": "1deaba6612ca8a00ebaad7ad48edd0af251df28d49b37d2b282c6287098f12a5",
-            "uncompressed-size": 1680539648
+            "path": "fedora-coreos-31.20200310.20.0-aliyun.x86_64.qcow2.xz",
+            "sha256": "8dc62b097deef5fa31fe26861be25f42f5227d4366b31bf4bd86362f0b7b7cb5",
+            "size": 475401328,
+            "uncompressed-sha256": "21260e581d346c4954cbed974664e0c3d918ea1383be251bf6a0c2eba2915a00",
+            "uncompressed-size": 1731461120
         },
         "vmware": {
-            "path": "fedora-coreos-31.20200127.20.2-vmware.x86_64.ova",
-            "sha256": "76d8eb9475c4c4ca0623a62f71da21d7fe517adfacf1805a8e21059f6eafd339",
-            "size": 711311360
+            "path": "fedora-coreos-31.20200310.20.0-vmware.x86_64.ova",
+            "sha256": "f279c70d7f83f884db90862acdda5e00dcc574160c7f18d4521726408ae845bd",
+            "size": 741345280
         },
         "gcp": {
-            "path": "fedora-coreos-31.20200127.20.2-gcp.x86_64.tar.gz",
-            "sha256": "c5bf7eb10f1de9a6757e5738183c038f63ba5623473a23a8901d0e465afcead7",
-            "size": 697838891
+            "path": "fedora-coreos-31.20200310.20.0-gcp.x86_64.tar.gz",
+            "sha256": "b8ce5beaf24c962d788ceeac9529c5b70c284c8a17b42bd0955c153d478267be",
+            "size": 724615999
         },
         "aws": {
-            "path": "fedora-coreos-31.20200127.20.2-aws.x86_64.vmdk.xz",
-            "sha256": "9d21826078cc3f62ad382b42312826f4e23d2444daffe2c95bcd294ee0bf0013",
-            "size": 673121632,
-            "uncompressed-sha256": "2e2fa5b0ca8a87eb53ee5bfe324654c9e86f873f6fa7023fbe2b019d4c727aeb",
-            "uncompressed-size": 711297024
+            "path": "fedora-coreos-31.20200310.20.0-aws.x86_64.vmdk.xz",
+            "sha256": "7c1d7962628a43e1e0d985ac2f94eb10845d4eae922e9fc47b77c2b4c05fbe4a",
+            "size": 702342320,
+            "uncompressed-sha256": "a4d7820edc9c890dd61caa927f86c6e476b961130bbd98c4033055006a580277",
+            "uncompressed-size": 741327872
         }
     },
     "coreos-assembler.container-image-git": {
-        "commit": "4f7f2f651d8265d2ad5b8fdfe07c84fec68df064",
+        "commit": "dc88a07d55d3567f79f185309af9e643475ff31d",
         "origin": "git@github.com:coreos/coreos-assembler.git",
         "branch": "HEAD",
         "dirty": "false"
     },
-    "coreos-assembler.config-gitrev": "4438fbd1821b3cc2f23a2f4cc3d2d068413c00eb",
+    "coreos-assembler.config-gitrev": "640ecad99f5b2eacb66b9a3c06f56e79bd15690a",
     "coreos-assembler.config-dirty": "false",
     "coreos-assembler.basearch": "x86_64",
-    "fedora-coreos.parent-version": "31.20200127.20.1",
-    "fedora-coreos.parent-commit": "896bbf4681b23b607235285662a7c57b92240f8ff934439cd79b97850363a19f",
+    "fedora-coreos.parent-version": "31.20200309.20.1",
+    "fedora-coreos.parent-commit": "fd1e00b6b2f3a71b125b1beed22434238ee0b7403d58595ad9255650744d2afe",
     "amis": [
         {
             "name": "us-east-1",
-            "hvm": "ami-0260775b1132d4eb3",
-            "snapshot": "snap-0f0dcc48a69cff9be"
+            "hvm": "ami-050291f5347c66dbb",
+            "snapshot": "snap-0f90cca03655ab1b1"
         }
     ]
 }
