@@ -17,6 +17,7 @@ package cosa
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -24,22 +25,35 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	// ErrMetaFailsValidation is thrown on reading and invalid meta.json
+	ErrMetaFailsValidation = errors.New("meta.json failed schema validation")
+)
+
+func buildParser(r io.Reader) (*Build, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+	var cosaBuild *Build
+	if err := dec.Decode(&cosaBuild); err != nil {
+		return nil, errors.Wrapf(err, "failed to parse build")
+	}
+	if errs := cosaBuild.Validate(); len(errs) > 0 {
+		return nil, ErrMetaFailsValidation
+	}
+	return cosaBuild, nil
+}
+
 func ParseBuild(path string) (*Build, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open %s", path)
 	}
 	defer f.Close()
-
-	dec := json.NewDecoder(f)
-	// FIXME enable this to prevent schema regressions https://github.com/coreos/coreos-assembler/pull/1059
-	// dec.DisallowUnknownFields()
-	var cosaBuild *Build
-	if err := dec.Decode(&cosaBuild); err != nil {
-		return nil, errors.Wrapf(err, "failed to parse %s", path)
+	b, err := buildParser(f)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed parsing of %s", path)
 	}
-
-	return cosaBuild, nil
+	return b, err
 }
 
 func FetchAndParseBuild(url string) (*Build, error) {
@@ -47,19 +61,8 @@ func FetchAndParseBuild(url string) (*Build, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	var cosaBuild *Build
-	if err = json.Unmarshal(body, &cosaBuild); err != nil {
-		return nil, err
-	}
-
-	return cosaBuild, nil
+	defer res.Body.Close()
+	return buildParser(res.Body)
 }
 
 func (build *Build) FindAMI(region string) (string, error) {
@@ -69,4 +72,17 @@ func (build *Build) FindAMI(region string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no AMI found for region %s", region)
+}
+
+func (build *Build) WriteMeta(path string, validate bool) error {
+	if validate {
+		if err := build.Validate(); len(err) != 0 {
+			errors.New("data is not compliant with schema")
+		}
+	}
+	out, err := json.MarshalIndent(build, "", "    ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, out, 0644)
 }
