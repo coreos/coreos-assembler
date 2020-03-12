@@ -189,6 +189,11 @@ if [ "${image_type}" == metal4k ]; then
     disk_args+=("--no-x86-bios-partition")
 fi
 
+sysroot_ro="$(python3 -c 'import sys, yaml; v=yaml.safe_load(sys.stdin).get("sysroot-readonly", False); print("1" if v else "")' < "$configdir/image.yaml")"
+if [ -n "${sysroot_ro}" ]; then
+    disk_args+=("--sysroot-ro")
+fi
+
 set -x
 # Extract the target kernel config, which may inform how we build disks.
 target_moduledir=$(ostree --repo="${ostree_repo}" ls "${commit}" /usr/lib/modules | grep -o '/usr/lib/modules/.*')

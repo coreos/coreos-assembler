@@ -38,6 +38,7 @@ Options:
     --save-var-subdirs: "yes" to workaround selabel issue for RHCOS
     --rootfs-size: Create the root filesystem with specified size
     --boot-verity: Provide this to enable ext4 fs-verity for /boot
+    --sysroot-ro: Enable read-only /sysroot
     --rootfs: xfs|ext4verity|luks
     --no-x86-bios-partition: don't create a BIOS partition on x86_64
 
@@ -49,6 +50,7 @@ EOC
 disk=
 rootfs_size="0"
 boot_verity=0
+sysroot_ro=0
 rootfs_type="xfs"
 x86_bios_partition=1
 extrakargs=""
@@ -70,6 +72,7 @@ do
         --save-var-subdirs)      save_var_subdirs="${1}"; shift;;
         --rootfs-size)           rootfs_size="${1}"; shift;;
         --boot-verity)           boot_verity=1;;
+        --sysroot-ro)            sysroot_ro=1;;
         --rootfs)                rootfs_type="${1}" shift;;
         --no-x86-bios-partition) x86_bios_partition=0;;
          *) echo "${flag} is not understood."; usage; exit 10;;
@@ -409,7 +412,9 @@ esac
 ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
 # Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
 # https://github.com/ostreedev/ostree/issues/1265
-ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
+if [ "${sysroot_ro}" = 1 ]; then
+    ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
+fi
 
 touch $rootfs/boot/ignition.firstboot
 
