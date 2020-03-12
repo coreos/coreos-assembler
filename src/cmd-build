@@ -182,14 +182,13 @@ EOF
 prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar.gz" "${PWD}/coreos-assembler-config-git.json"
 
 lock_arg=
-if [ -f "${manifest_lock}" ]; then
-    lock_arg="--ex-lockfile=${manifest_lock}"
-    echo -n "Building from lockfile ${manifest_lock}"
-    if [ -f "${manifest_lock_overrides}" ]; then
-        lock_arg="${lock_arg} --ex-lockfile=${manifest_lock_overrides}"
-        echo -n " and overrides ${manifest_lock_overrides}"
+for lock in "${manifest_lock}" "${manifest_lock_overrides}"; do
+    if [ -f "${lock}" ]; then
+        lock_arg+=" --ex-lockfile=${lock}"
+        echo "Building from lockfile: ${manifest_lock}"
     fi
-    echo
+done
+if [ -n "${lock_arg}" ]; then
     sleep 1
 fi
 

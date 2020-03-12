@@ -69,15 +69,16 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
         echo "NB: ignoring overrides ${manifest_lock_overrides}"
         sleep 1
     fi
-elif [ -f "${manifest_lock}" ]; then
-    args="--ex-lockfile=${manifest_lock}"
-    echo -n "Fetching RPMs from lockfile ${manifest_lock}"
-    if [ -f "${manifest_lock_overrides}" ]; then
-        args="${args} --ex-lockfile=${manifest_lock_overrides}"
-        echo -n " and overrides ${manifest_lock_overrides}"
+else
+    for lock in "${manifest_lock}" "${manifest_lock_overrides}"; do
+        if [ -f "${lock}" ]; then
+            args+=" --ex-lockfile=${lock}"
+            echo "Fetching RPMs from lockfile: ${manifest_lock}"
+        fi
+    done
+    if [ -n "${args}" ]; then
+        sleep 1
     fi
-    echo
-    sleep 1
 fi
 
 if [ -n "${DRY_RUN}" ]; then
