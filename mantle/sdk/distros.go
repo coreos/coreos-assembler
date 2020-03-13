@@ -47,3 +47,26 @@ func TargetIgnitionVersion(build *cosa.Build) string {
 	// Most cosa builds should have an "ostree"
 	return TargetIgnitionVersionFromName(build.BuildArtifacts.Ostree.Path)
 }
+
+// TargetDistroFromName returns the distribution given
+// the path to an artifact (usually a disk image).
+func TargetDistroFromName(artifact string) string {
+	basename := filepath.Base(artifact)
+	if strings.HasPrefix(basename, "rhcos-") {
+		return "rhcos"
+	}
+	// For now, just assume fcos
+	return "fcos"
+}
+
+// TargetDistro returns the distribution of a cosa build
+func TargetDistro(build *cosa.Build) (string, error) {
+	switch build.Name {
+	case "rhcos":
+		return "rhcos", nil
+	case "fedora-coreos":
+		return "fcos", nil
+	default:
+		return "", fmt.Errorf("Unknown distribution: %s", build.Name)
+	}
+}
