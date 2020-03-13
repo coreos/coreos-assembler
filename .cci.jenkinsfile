@@ -49,8 +49,13 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
           }
       }
 
-      stage("CLI Tests") {
+      stage("More tests") {
+        parallel testiso: {
+          cosa_cmd("kola testiso -S")
+        },
+        clitests: {
           shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
+        }
       }
 }
 
