@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,29 +28,11 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/api/storage/v1"
 
-	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	urlHost = "storage.googleapis.com"
-	urlPath = "/builds.developer.core-os.net/sdk"
-)
-
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "sdk")
-
-func TarballName(version string) string {
-	arch := system.PortageArch()
-	return fmt.Sprintf("coreos-sdk-%s-%s.tar.bz2", arch, version)
-}
-
-func TarballURL(version string) string {
-	arch := system.PortageArch()
-	p := path.Join(urlPath, arch, version, TarballName(version))
-	u := url.URL{Scheme: "https", Host: urlHost, Path: p}
-	return u.String()
-}
 
 func DownloadFile(file, fileURL string, client *http.Client) error {
 	plog.Infof("Downloading %s to %s", fileURL, file)
