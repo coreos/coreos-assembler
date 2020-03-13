@@ -50,7 +50,7 @@ func init() {
 	// general options
 	sv(&outputDir, "output-dir", "", "Temporary output directory for test data and logs")
 	root.PersistentFlags().StringVarP(&kolaPlatform, "platform", "p", "qemu-unpriv", "VM platform: "+strings.Join(kolaPlatforms, ", "))
-	root.PersistentFlags().StringVarP(&kola.Options.Distribution, "distro", "b", kolaDistros[0], "Distribution: "+strings.Join(kolaDistros, ", "))
+	root.PersistentFlags().StringVarP(&kola.Options.Distribution, "distro", "b", "", "Distribution: "+strings.Join(kolaDistros, ", "))
 	root.PersistentFlags().IntVarP(&kola.TestParallelism, "parallel", "j", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	root.PersistentFlags().BoolVarP(&kola.Options.NoTestExitError, "no-test-exit-error", "T", false, "Don't exit with non-zero if tests fail")
@@ -168,10 +168,6 @@ func syncOptionsImpl(useCosa bool) error {
 		return err
 	}
 
-	if err := validateOption("distro", kola.Options.Distribution, kolaDistros); err != nil {
-		return err
-	}
-
 	if kola.Options.CosaBuild != "" {
 		kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
 		if err != nil {
@@ -195,6 +191,12 @@ func syncOptionsImpl(useCosa bool) error {
 
 	if kola.Options.OSContainer != "" && kola.Options.Distribution != "rhcos" {
 		return fmt.Errorf("oscontainer is only supported on rhcos")
+	}
+
+	if kola.Options.Distribution == "" {
+		kola.Options.Distribution = kolaDistros[0]
+	} else if err := validateOption("distro", kola.Options.Distribution, kolaDistros); err != nil {
+		return err
 	}
 
 	if kola.Options.IgnitionVersion == "" {
@@ -229,6 +231,14 @@ func syncCosaOptions() error {
 		} else if kola.QEMUOptions.DiskImage != "" {
 			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
 		}
+	}
+
+	if kola.Options.Distribution == "" {
+		distro, err := sdk.TargetDistro(kola.CosaBuild)
+		if err != nil {
+			return err
+		}
+		kola.Options.Distribution = distro
 	}
 
 	return nil

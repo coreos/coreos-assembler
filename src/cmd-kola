@@ -68,12 +68,6 @@ qemupath = os.path.join(builddir, qemuimg['path'])
 # https://github.com/coreos/coreos-assembler/pull/85
 kolaargs = ['kola']
 bn = os.path.basename(qemupath)
-if not any([x in unknown_args for x in ["-b", "--distro"]]):
-    if bn.startswith("rhcos-"):
-        kolaargs.extend(['-b', 'rhcos'])
-    else:
-        kolaargs.extend(['-b', 'fcos'])
-
 print(f"qemu path: {qemupath}")
 
 if os.getuid() != 0 and not ('-p' in unknown_args):
