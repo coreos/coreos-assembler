@@ -38,7 +38,7 @@ func buildParser(r io.Reader) (*Build, error) {
 		return nil, errors.Wrapf(err, "failed to parse build")
 	}
 	if errs := cosaBuild.Validate(); len(errs) > 0 {
-		return nil, ErrMetaFailsValidation
+		return nil, errors.Wrapf(ErrMetaFailsValidation, "%v", errs)
 	}
 	return cosaBuild, nil
 }
