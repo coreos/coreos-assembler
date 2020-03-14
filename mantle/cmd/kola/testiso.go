@@ -104,13 +104,13 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		"-device", "virtio-serial", "-device", "virtserialport,chardev=completion,name=completion",
 		"-chardev", "file,id=completion,path=" + completionfile}
 
-	if kola.CosaBuild.BuildArtifacts.Metal.Path == "" {
+	if kola.CosaBuild.BuildArtifacts.Metal == nil {
 		return fmt.Errorf("Build %s must have a `metal` artifact", kola.CosaBuild.OstreeVersion)
 	}
 
 	ranTest := false
 
-	foundLegacy := baseInst.CosaBuild.BuildArtifacts.Kernel.Path != ""
+	foundLegacy := baseInst.CosaBuild.BuildArtifacts.Kernel != nil
 	if foundLegacy {
 		if legacy {
 			ranTest = true
@@ -126,7 +126,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Name)
 	}
 
-	foundLive := kola.CosaBuild.BuildArtifacts.LiveKernel.Path != ""
+	foundLive := kola.CosaBuild.BuildArtifacts.LiveKernel != nil
 	if !nolive {
 		if !foundLive {
 			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Name)
