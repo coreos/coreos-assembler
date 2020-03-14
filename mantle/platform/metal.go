@@ -65,7 +65,7 @@ type InstalledMachine struct {
 }
 
 func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, error) {
-	if inst.CosaBuild.BuildArtifacts.Metal.Path == "" {
+	if inst.CosaBuild.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.OstreeVersion)
 	}
 
@@ -75,7 +75,7 @@ func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, er
 	var err error
 	var mach *InstalledMachine
 	if inst.LegacyInstaller {
-		if inst.CosaBuild.BuildArtifacts.Kernel.Path == "" {
+		if inst.CosaBuild.BuildArtifacts.Kernel == nil {
 			return nil, fmt.Errorf("build %s has no legacy installer kernel", inst.CosaBuild.OstreeVersion)
 		}
 		mach, err = inst.runLegacy(&kernelSetup{
@@ -86,7 +86,7 @@ func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, er
 			return nil, errors.Wrapf(err, "legacy installer")
 		}
 	} else {
-		if inst.CosaBuild.BuildArtifacts.LiveKernel.Path == "" {
+		if inst.CosaBuild.BuildArtifacts.LiveKernel == nil {
 			return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Name)
 		}
 		mach, err = inst.runLive(&kernelSetup{
