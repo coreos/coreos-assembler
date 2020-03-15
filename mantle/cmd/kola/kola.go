@@ -84,22 +84,6 @@ will be ignored.
 		SilenceUsage: true,
 	}
 
-	cmdRunExtBin = &cobra.Command{
-		Use:   "run-ext-bin",
-		Short: "Run an external test (single binary)",
-		Long: `Run an externally defined test
-
-This injects a single binary into the target system and executes it as a systemd
-unit.  The test is considered successful when the service exits normally, and
-failed if the test exits non-zero - but the service being killed by e.g. SIGTERM
-is ignored.  This is intended to allow rebooting the system.
-`,
-
-		Args:    cobra.ExactArgs(1),
-		PreRunE: preRun,
-		RunE:    runRunExtBin,
-	}
-
 	cmdHttpServer = &cobra.Command{
 		Use:   "http-server",
 		Short: "Run a static webserver",
@@ -140,14 +124,15 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	qemuImageDirIsTemp bool
 
 	extDependencyDir string
+	runExternals     []string
 )
 
 func init() {
 	root.AddCommand(cmdRun)
-	root.AddCommand(cmdRunExtBin)
-	cmdRunExtBin.Flags().StringVar(&extDependencyDir, "depdir", "", "Copy (rsync) dir to target, available as ${KOLA_EXT_DATA}")
+	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
 
 	root.AddCommand(cmdList)
+	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
 	cmdList.Flags().BoolVar(&listJSON, "json", false, "format output in JSON")
 	cmdList.Flags().StringVarP(&listPlatform, "platform", "p", "all", "filter output by platform")
 	cmdList.Flags().StringVarP(&listDistro, "distro", "b", "all", "filter output by distro")
@@ -200,27 +185,18 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	for _, d := range runExternals {
+		err := kola.RegisterExternalTests(d)
+		if err != nil {
+			return err
+		}
+	}
+
 	runErr := kola.RunTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
 		return err
-	}
-
-	return runErr
-}
-
-func runRunExtBin(cmd *cobra.Command, args []string) error {
-	extbin := args[0]
-
-	outputDir, err := kola.SetupOutputDir(outputDir, kolaPlatform)
-	if err != nil {
-		return err
-	}
-
-	runErr := kola.RunExtBin(kolaPlatform, outputDir, extbin, extDependencyDir)
-	if err := writeProps(); err != nil {
-		return errors.Wrapf(err, "writing properties")
 	}
 
 	return runErr
@@ -348,6 +324,12 @@ func writeProps() error {
 }
 
 func runList(cmd *cobra.Command, args []string) error {
+	for _, d := range runExternals {
+		err := kola.RegisterExternalTests(d)
+		if err != nil {
+			return err
+		}
+	}
 	var testlist []*item
 	for name, test := range register.Tests {
 		item := &item{
