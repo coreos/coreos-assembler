@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	systemddbus "github.com/coreos/go-systemd/v22/dbus"
@@ -138,9 +139,16 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 					}
 				case CLD_KILLED:
 					// SIGTERM; we explicitly allow that, expecting we're rebooting.
-					if mainstatus == 15 {
+					if mainstatus == int32(15) {
 						fmt.Printf("Unit %s terminated via SIGTERM, assuming reboot\n", unitname)
-						return false, nil
+						// Now we send ourself SIGTERM, so that that propagates back to the ssh
+						// status, so that the kola runner can use that as a trigger to reboot.
+						selfproc := os.Process{
+							Pid: os.Getpid(),
+						}
+						selfproc.Signal(syscall.SIGTERM)
+						time.Sleep(time.Hour)
+						panic("failed to send SIGTERM to self")
 					} else {
 						return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
 					}
@@ -157,7 +165,7 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 			}
 		}
 	default:
-		return false, fmt.Errorf("Unhandled systemd unit state %s", state)
+		return false, fmt.Errorf("Unhandled systemd unit state:%s", state)
 	}
 }
 

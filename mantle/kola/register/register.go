@@ -63,6 +63,11 @@ type Test struct {
 	ExcludeArchitectures []string // blacklist of architectures to ignore -- defaults to none
 	Flags                []Flag   // special-case options for this test
 
+	// ExternalTest is a path to a binary that will be uploaded
+	ExternalTest string
+	// DependencyDir is a path to directory that will be uploaded, normally used by external tests
+	DependencyDir string
+
 	// FailFast skips any sub-test that occurs after a sub-test has
 	// failed.
 	FailFast bool

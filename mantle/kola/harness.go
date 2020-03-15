@@ -15,17 +15,24 @@
 package kola
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/ssh"
+
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
 
+	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
+	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/harness/reporters"
@@ -49,6 +56,7 @@ import (
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/system"
+	"github.com/coreos/mantle/util"
 )
 
 var (
@@ -150,6 +158,17 @@ var (
 			match: regexp.MustCompile("[Cc]ore dump"),
 		},
 	}
+)
+
+const (
+	// kolaExtBinDataDir is where data will be stored on the target (but use the environment variable)
+	kolaExtBinDataDir = "/var/opt/kola/extdata"
+
+	// kolaExtBinDataEnv is an environment variable pointing to the above
+	kolaExtBinDataEnv = "KOLA_EXT_DATA"
+
+	// kolaExtBinDataName is the name for test dependency data
+	kolaExtBinDataName = "data"
 )
 
 // NativeRunner is a closure passed to all kola test functions and used
@@ -436,6 +455,209 @@ func RunUpgradeTests(patterns []string, pltfrm, outputDir string, propagateTestE
 	return runProvidedTests(register.UpgradeTests, patterns, pltfrm, outputDir, propagateTestErrors)
 }
 
+// externalTestMeta is parsed from kola.yaml in external tests
+type externalTestMeta struct {
+	Architectures string `json:",architectures,omitempty"`
+	Platforms     string `json:",platforms,omitempty"`
+}
+
+func registerExternalTest(testname, executable, dependencydir, ignition string, meta externalTestMeta) error {
+	ignc3, _, err := ignv3.Parse([]byte(ignition))
+	if err != nil {
+		return errors.Wrapf(err, "Parsing config.ign")
+	}
+
+	unitname := "kola-runext.service"
+	remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", filepath.Base(executable))
+	// Note this isn't Type=oneshot because it's cleaner to support self-SIGTERM that way
+	unit := fmt.Sprintf(`[Unit]
+[Service]
+RemainAfterExit=yes
+Environment=%s=%s
+ExecStart=%s
+[Install]
+RequiredBy=multi-user.target
+`, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
+	runextconfig := ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: ignv3types.Systemd{
+			Units: []ignv3types.Unit{
+				{
+					Name:     unitname,
+					Contents: &unit,
+					Enabled:  util.BoolToPtr(false),
+				},
+			},
+		},
+	}
+
+	finalIgn := ignv3.Merge(ignc3, runextconfig)
+	serializedIgn, err := json.Marshal(finalIgn)
+	if err != nil {
+		return errors.Wrapf(err, "serializing ignition")
+	}
+
+	t := &register.Test{
+		Name:          testname,
+		ClusterSize:   1, // Hardcoded for now
+		ExternalTest:  executable,
+		DependencyDir: dependencydir,
+
+		Run: func(c cluster.TestCluster) {
+			mach := c.Machines()[0]
+			plog.Debugf("Running kolet")
+
+			var stderr []byte
+			var err error
+			for {
+				plog.Debug("Starting kolet run-test-unit")
+				_, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unitname)))
+				if exit, ok := err.(*ssh.ExitError); ok {
+					plog.Debug("Caught ssh.ExitError")
+					// In the future I'd like to better support having the host reboot itself and
+					// we just detect it.
+					if exit.Signal() == "TERM" {
+						plog.Debug("Caught SIGTERM from kolet run-test-unit, rebooting machine")
+						suberr := mach.Reboot()
+						if suberr == nil {
+							err = nil
+							continue
+						}
+						plog.Debug("Propagating ssh.ExitError")
+						err = suberr
+					}
+				}
+				// Other errors, just bomb out for now
+				break
+			}
+			if err != nil {
+				out, _, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status %s", shellquote.Join(unitname)))
+				if len(out) > 0 {
+					fmt.Printf("systemctl status %s:\n%s\n", unitname, string(out))
+				} else {
+					fmt.Printf("Fetching status failed: %v\n", suberr)
+				}
+				if Options.SSHOnTestFailure {
+					plog.Errorf("dropping to shell: kolet failed: %v: %s", err, stderr)
+					platform.Manhole(mach)
+				}
+				c.Fatalf(errors.Wrapf(err, "kolet failed: %s", stderr).Error())
+			}
+		},
+
+		UserDataV3: conf.Ignition(string(serializedIgn)),
+	}
+
+	// To avoid doubling the duplication here with register.Test, we support
+	// a ! prefix (inspired by systemd unit syntax), like:
+	//
+	// architectures: !ppc64le s390x
+	// platforms: aws qemu
+	if strings.HasPrefix(meta.Architectures, "!") {
+		t.ExcludeArchitectures = strings.Fields(meta.Architectures[1:])
+	} else {
+		t.Architectures = strings.Fields(meta.Architectures)
+	}
+	if strings.HasPrefix(meta.Platforms, "!") {
+		t.ExcludePlatforms = strings.Fields(meta.Platforms[1:])
+	} else {
+		t.Platforms = strings.Fields(meta.Platforms)
+	}
+
+	register.RegisterTest(t)
+
+	return nil
+}
+
+// registerTestDir parses one test directory and registers it as a test
+func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
+	var dependencydir string
+	var meta externalTestMeta
+	ignition := `{ "ignition": { "version": "3.0.0" } }`
+	executables := []string{}
+	for _, c := range children {
+		fpath := filepath.Join(dir, c.Name())
+		isreg := c.Mode().IsRegular()
+		if isreg && (c.Mode().Perm()&0001) > 0 {
+			executables = append(executables, filepath.Join(dir, c.Name()))
+		} else if isreg && c.Name() == "config.ign" {
+			v, err := ioutil.ReadFile(filepath.Join(dir, c.Name()))
+			if err != nil {
+				return errors.Wrapf(err, "reading %s", c.Name())
+			}
+			ignition = string(v)
+		} else if isreg && c.Name() == "kola.json" {
+			f, err := os.Open(fpath)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			dec := json.NewDecoder(f)
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&meta); err != nil {
+				return errors.Wrapf(err, "parsing %s", fpath)
+			}
+		} else if c.IsDir() && c.Name() == kolaExtBinDataName {
+			dependencydir = filepath.Join(dir, c.Name())
+		} else if c.Mode()&os.ModeSymlink != 0 && c.Name() == kolaExtBinDataName {
+			target, err := filepath.EvalSymlinks(filepath.Join(dir, c.Name()))
+			if err != nil {
+				return err
+			}
+			dependencydir = target
+		} else if c.IsDir() {
+			subdir := filepath.Join(dir, c.Name())
+			subchildren, err := ioutil.ReadDir(subdir)
+			if err != nil {
+				return err
+			}
+			subprefix := fmt.Sprintf("%s.%s", testprefix, c.Name())
+			if err := registerTestDir(subdir, subprefix, subchildren); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, executable := range executables {
+		testname := testprefix
+		if len(executables) > 1 {
+			testname = fmt.Sprintf("%s.%s", testname, filepath.Base(executable))
+		}
+		err := registerExternalTest(testname, executable, dependencydir, ignition, meta)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RegisterExternalTests iterates over a directory, and finds subdirectories
+// that have exactly one executable binary.
+func RegisterExternalTests(dir string) error {
+	// eval symlinks to turn e.g. src/config into fedora-coreos-config
+	// for the test basename.
+	realdir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return err
+	}
+	basename := fmt.Sprintf("ext.%s", filepath.Base(realdir))
+
+	testsdir := filepath.Join(dir, "tests/kola")
+	children, err := ioutil.ReadDir(testsdir)
+	if err != nil {
+		return errors.Wrapf(err, "reading %s", dir)
+	}
+
+	if err := registerTestDir(testsdir, basename, children); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // getClusterSemVer returns the CoreOS semantic version via starting a
 // machine and checking
 func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version, error) {
@@ -543,9 +765,31 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 
 	// drop kolet binary on machines
-	if t.NativeFuncs != nil {
+	if t.ExternalTest != "" || t.NativeFuncs != nil {
 		if err := scpKolet(tcluster.Machines(), architecture(pltfrm)); err != nil {
 			h.Fatal(err)
+		}
+	}
+
+	if t.ExternalTest != "" {
+		in, err := os.Open(t.ExternalTest)
+		if err != nil {
+			h.Fatal(err)
+		}
+		defer in.Close()
+		for _, mach := range tcluster.Machines() {
+			remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", filepath.Base(t.ExternalTest))
+			if err := platform.InstallFile(in, mach, remotepath); err != nil {
+				h.Fatal(errors.Wrapf(err, "uploading %s", t.ExternalTest))
+			}
+		}
+	}
+
+	if t.DependencyDir != "" {
+		for _, mach := range tcluster.Machines() {
+			if err := platform.CopyDirToMachine(t.DependencyDir, mach, kolaExtBinDataDir); err != nil {
+				h.Fatal(errors.Wrapf(err, "copying dependencies %s to %s", t.DependencyDir, mach.ID()))
+			}
 		}
 	}
 
