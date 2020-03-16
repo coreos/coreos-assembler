@@ -29,6 +29,9 @@ configure_yum_repos() {
     # can depend on those latest tools being available in all container
     # builds.
     echo -e "[f${version_id}-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f${version_id}-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
+    # We have a few packages that we currently import from f32, so explicitly
+    # add the f32 repo temporarily.
+    echo -e "[f32-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f32-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" >> /etc/yum.repos.d/coreos.repo
 
 }
 
@@ -40,16 +43,6 @@ install_rpms() {
 
     # xargs is part of findutils, which may not be installed
     yum -y install /usr/bin/xargs
-
-    # We need a newer guestfish which supports 4k drives (XXX: tag into
-    # continuous tag?)
-    local libguestfs_koji="https://kojipkgs.fedoraproject.org//packages/libguestfs/1.42.0/1.fc32"
-    yum -y install \
-        ${libguestfs_koji}/x86_64/libguestfs-1.42.0-1.fc32.x86_64.rpm \
-        ${libguestfs_koji}/x86_64/libguestfs-xfs-1.42.0-1.fc32.x86_64.rpm \
-        ${libguestfs_koji}/x86_64/libguestfs-tools-c-1.42.0-1.fc32.x86_64.rpm \
-        ${libguestfs_koji}/noarch/libguestfs-tools-1.42.0-1.fc32.noarch.rpm \
-        ${libguestfs_koji}/x86_64/perl-Sys-Guestfs-1.42.0-1.fc32.x86_64.rpm
 
     # These are only used to build things in here.  Today
     # we ship these in the container too to make it easier
