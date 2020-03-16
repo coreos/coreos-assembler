@@ -73,7 +73,7 @@ else
     for lock in "${manifest_lock}" "${manifest_lock_overrides}"; do
         if [ -f "${lock}" ]; then
             args+=" --ex-lockfile=${lock}"
-            echo "Fetching RPMs from lockfile: ${manifest_lock}"
+            echo "Fetching RPMs from lockfile: ${lock}"
         fi
     done
     if [ -n "${args}" ]; then
