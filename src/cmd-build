@@ -185,7 +185,7 @@ lock_arg=
 for lock in "${manifest_lock}" "${manifest_lock_overrides}"; do
     if [ -f "${lock}" ]; then
         lock_arg+=" --ex-lockfile=${lock}"
-        echo "Building from lockfile: ${manifest_lock}"
+        echo "Building from lockfile: ${lock}"
     fi
 done
 if [ -n "${lock_arg}" ]; then
