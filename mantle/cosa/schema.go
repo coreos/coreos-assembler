@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -19,6 +20,9 @@ var (
 
 func init() {
 	runtimeSchemaPath := os.Getenv("COSA_META_SCHEMA")
+	if strings.ToLower(runtimeSchemaPath) == "none" {
+		return
+	}
 	if runtimeSchemaPath != "" {
 		f, err := os.Open(runtimeSchemaPath)
 		if err != nil {
