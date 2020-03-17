@@ -314,6 +314,7 @@
        "live-initramfs",
        "live-iso",
        "metal",
+       "metal4k",
        "openstack",
        "qemu",
        "vmware"
@@ -347,6 +348,12 @@
          "$id":"#/properties/images/properties/metal",
          "type":"object",
          "title":"Metal",
+         "$ref": "#/definitions/artifact"
+        },
+       "metal4k": {
+         "$id":"#/properties/images/properties/metal4k",
+         "type":"object",
+         "title":"Metal (4K native)",
          "$ref": "#/definitions/artifact"
         },
        "iso": {
