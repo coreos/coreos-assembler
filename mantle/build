@@ -19,10 +19,9 @@ schema_generate() {
     mkdir -p ${GOBIN}
     if [ ! -x "${GOBIN}/schematyper" ]; then
         (
-            mkdir -p ${GOBIN}
             echo "Building schematyper"
             cd schematyper &&
-                go build -mod vendor -o "${GOBIN}" .
+                go build -mod vendor -o "${GOBIN}/schematyper" .
         )
     fi
 
