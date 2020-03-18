@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/cosa"
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/pkg/errors"
 )
@@ -36,10 +37,10 @@ var liveKargs = []string{"ignition.firstboot", "ignition.platform.id=metal"}
 var (
 	// TODO expose this as an API that can be used by cosa too
 	consoleKernelArgument = map[string]string{
-		"amd64-usr":   "ttyS0",
-		"ppc64le-usr": "hvc0",
-		"arm64-usr":   "ttyAMA0",
-		"s390x-usr":   "ttysclp0",
+		"x86_64":  "ttyS0",
+		"ppc64le": "hvc0",
+		"aarch64": "ttyAMA0",
+		"s390x":   "ttysclp0",
 	}
 )
 
@@ -47,7 +48,6 @@ type Install struct {
 	CosaBuildDir string
 	CosaBuild    *cosa.Build
 
-	Board    string
 	Firmware string
 	Insecure bool
 	QemuArgs []string
@@ -199,7 +199,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, fmt.Errorf("Missing initramfs artifact")
 	}
 
-	builder := NewBuilder(inst.Board, "", false)
+	builder := NewBuilder("", false)
 	builder.Firmware = inst.Firmware
 	builder.AddDisk(&Disk{
 		Size: "12G", // Arbitrary
@@ -207,7 +207,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 
 	// This applies just in the legacy case
 	builder.Memory = 1536
-	if inst.Board == "s390x-usr" {
+	if system.RpmArch() == "s390x" {
 		// FIXME - determine why this is
 		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
 	}
@@ -245,23 +245,23 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 
 	pxe := pxeSetup{}
 	pxe.tftpipaddr = "192.168.76.2"
-	switch inst.Board {
-	case "amd64-usr":
+	switch system.RpmArch() {
+	case "x86_64":
 		pxe.boottype = "pxe"
 		pxe.networkdevice = "e1000"
 		pxe.pxeimagepath = "/usr/share/syslinux/"
 		break
-	case "ppc64le-usr":
+	case "ppc64le":
 		pxe.boottype = "grub"
 		pxe.networkdevice = "virtio-net-pci"
 		break
-	case "s390x-usr":
+	case "s390x":
 		pxe.boottype = "pxe"
 		pxe.networkdevice = "virtio-net-ccw"
 		pxe.tftpipaddr = "10.0.2.2"
 		pxe.bootindex = "1"
 	default:
-		return nil, fmt.Errorf("Unsupported arch %s", inst.Board)
+		return nil, fmt.Errorf("Unsupported arch %s" + system.RpmArch())
 	}
 
 	mux := http.NewServeMux()
@@ -297,7 +297,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 }
 
 func renderBaseKargs(t *installerRun) []string {
-	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[t.inst.Board]))
+	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()]))
 }
 
 func renderInstallKargs(t *installerRun) []string {
@@ -338,7 +338,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 			KERNEL %s
 			APPEND initrd=%s %s
 		`, t.kern.kernel, t.kern.initramfs, kargsStr))
-		if t.inst.Board == "s390x-usr" {
+		if system.RpmArch() == "s390x" {
 			pxeconfig = []byte(kargsStr)
 		}
 		ioutil.WriteFile(filepath.Join(pxeconfigdir, "default"), pxeconfig, 0777)

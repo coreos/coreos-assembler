@@ -21,12 +21,12 @@ import (
 
 	ignconverter "github.com/coreos/ign-converter"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
-	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
 
@@ -181,7 +181,7 @@ func createClusterValidate(c cluster.TestCluster, options platform.MachineOption
 func setupIgnitionConfig() {
 	containerpartdeviceid := "by-partlabel/CONTR"
 	logpartdeviceid := "by-partlabel/LOG"
-	if kola.QEMUOptions.Board == "s390x-usr" {
+	if system.RpmArch() == "s390x" {
 		containerpartdeviceid = "by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
 		logpartdeviceid = "by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8"
 	}

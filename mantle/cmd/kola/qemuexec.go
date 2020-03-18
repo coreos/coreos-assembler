@@ -57,7 +57,7 @@ func init() {
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 
-	builder := platform.NewBuilder(kola.QEMUOptions.Board, ignition, forceConfigInjection)
+	builder := platform.NewBuilder(ignition, forceConfigInjection)
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}

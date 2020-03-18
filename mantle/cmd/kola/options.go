@@ -30,7 +30,6 @@ import (
 var (
 	outputDir                   string
 	kolaPlatform                string
-	defaultTargetBoard          = sdk.DefaultBoard()
 	kolaArchitectures           = []string{"amd64"}
 	kolaPlatforms               = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv"}
 	kolaDistros                 = []string{"fcos", "rhcos"}
@@ -133,7 +132,6 @@ func init() {
 	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
 
 	// QEMU-specific options
-	sv(&kola.QEMUOptions.Board, "board", defaultTargetBoard, "target board")
 	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "bios", "Boot firmware: bios,uefi,uefi-secure")
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
 	sv(&kola.QEMUOptions.DiskSize, "qemu-size", "", "Resize target disk via qemu-img resize [+]SIZE")
