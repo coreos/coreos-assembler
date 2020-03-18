@@ -36,7 +36,6 @@ func CheckUserShells(c cluster.TestCluster) {
 	var badusers []string
 
 	ValidUsers := map[string]string{
-		"root":                 "/bin/bash",
 		"sync":                 "/bin/sync",
 		"shutdown":             "/sbin/shutdown",
 		"halt":                 "/sbin/halt",
@@ -58,7 +57,12 @@ func CheckUserShells(c cluster.TestCluster) {
 
 		username := userdata[0]
 		shell := userdata[6]
-		if shell != ValidUsers[username] && shell != "/sbin/nologin" {
+		if username == "root" {
+			// https://github.com/systemd/systemd/issues/15160
+			if shell != "/bin/bash" && shell != "/bin/sh" {
+				badusers = append(badusers, user)
+			}
+		} else if shell != ValidUsers[username] && shell != "/sbin/nologin" && shell != "/usr/sbin/nologin" {
 			badusers = append(badusers, user)
 		}
 	}
