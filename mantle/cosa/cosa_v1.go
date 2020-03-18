@@ -74,6 +74,7 @@ type BuildArtifacts struct {
 	LiveIso       *Artifact `json:"live-iso,omitempty"`
 	LiveKernel    *Artifact `json:"live-kernel,omitempty"`
 	Metal         *Artifact `json:"metal,omitempty"`
+	Metal4KNative *Artifact `json:"metal4k,omitempty"`
 	OpenStack     *Artifact `json:"openstack,omitempty"`
 	Ostree        Artifact  `json:"ostree"`
 	Qemu          *Artifact `json:"qemu,omitempty"`
