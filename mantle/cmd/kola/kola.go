@@ -275,7 +275,6 @@ func writeProps() error {
 		Platform:        kolaPlatform,
 		Distro:          kola.Options.Distribution,
 		IgnitionVersion: kola.Options.IgnitionVersion,
-		Board:           kola.QEMUOptions.Board,
 		OSContainer:     kola.Options.OSContainer,
 		AWS: AWS{
 			Region:       kola.AWSOptions.Region,

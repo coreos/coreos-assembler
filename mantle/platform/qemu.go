@@ -21,11 +21,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
@@ -136,8 +136,6 @@ func (inst *QemuInstance) Destroy() {
 
 // QemuBuilder is a configurator that can then create a qemu instance
 type QemuBuilder struct {
-	Board string
-
 	// Config is a path to Ignition configuration
 	Config string
 
@@ -165,9 +163,8 @@ type QemuBuilder struct {
 	fds       []*os.File
 }
 
-func NewBuilder(board, config string, forceIgnInjection bool) *QemuBuilder {
+func NewBuilder(config string, forceIgnInjection bool) *QemuBuilder {
 	ret := QemuBuilder{
-		Board:                board,
 		Config:               config,
 		ForceConfigInjection: forceIgnInjection,
 		Firmware:             "bios",
@@ -188,17 +185,17 @@ func (builder *QemuBuilder) AddFd(fd *os.File) string {
 }
 
 // virtio returns a virtio device argument for qemu, which is architecture dependent
-func virtio(board, device, args string) string {
+func virtio(device, args string) string {
 	var suffix string
-	switch board {
-	case "amd64-usr", "ppc64le-usr":
+	switch system.RpmArch() {
+	case "x86_64", "ppc64le":
 		suffix = "pci"
-	case "arm64-usr":
+	case "aarch64":
 		suffix = "device"
-	case "s390x-usr":
+	case "s390x":
 		suffix = "ccw"
 	default:
-		panic(board)
+		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", system.RpmArch()))
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
@@ -215,7 +212,7 @@ func (builder *QemuBuilder) addQcow2DiskFd(fd *os.File, channel string, options 
 	builder.diskId += 1
 	switch channel {
 	case "virtio":
-		builder.Append("-device", virtio(builder.Board, "blk", fmt.Sprintf("drive=%s%s", id, opts)))
+		builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
 	case "nvme":
 		builder.Append("-device", fmt.Sprintf("nvme,drive=%s%s", id, opts))
 	default:
@@ -238,14 +235,14 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(forwardedPort uint) {
 		netdev += fmt.Sprintf(",hostname=%s", builder.Hostname)
 	}
 
-	builder.Append("-netdev", netdev, "-device", virtio(builder.Board, "net", "netdev=eth0"))
+	builder.Append("-netdev", netdev, "-device", virtio("net", "netdev=eth0"))
 }
 
 // supportsFwCfg if the target system supports injecting
 // Ignition via the qemu -fw_cfg option.
 func (builder *QemuBuilder) supportsFwCfg() bool {
-	switch builder.Board {
-	case "s390x-usr", "ppc64le-usr":
+	switch system.RpmArch() {
+	case "s390x", "ppc64le":
 		return false
 	}
 	return true
@@ -255,8 +252,8 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 func (builder *QemuBuilder) supportsSwtpm() bool {
 	// Yes, this is the same as supportsFwCfg *currently* but
 	// might not be in the future.
-	switch builder.Board {
-	case "s390x-usr", "ppc64le-usr":
+	switch system.RpmArch() {
+	case "s390x", "ppc64le":
 		return false
 	}
 	return true
@@ -512,10 +509,10 @@ func (builder *QemuBuilder) finalize() {
 
 		// Then later, other non-x86_64 seemed to just copy that.
 		memory := 1024
-		switch builder.Board {
-		case "arm64-usr":
-		case "s390x-usr":
-		case "ppc64le-usr":
+		switch system.RpmArch() {
+		case "aarch64":
+		case "s390x":
+		case "ppc64le":
 			memory = 2048
 		}
 		builder.Memory = memory
@@ -529,40 +526,33 @@ func (builder *QemuBuilder) Append(args ...string) {
 
 // baseQemuArgs takes a board and returns the basic qemu
 // arguments needed for the current architecture.
-func baseQemuArgs(board string) []string {
-	combo := runtime.GOARCH + "--" + board
-	switch combo {
-	case "amd64--amd64-usr":
+func baseQemuArgs() []string {
+	switch system.RpmArch() {
+	case "x86_64":
 		return []string{
 			"qemu-system-x86_64",
 			"-machine", "accel=kvm",
 			"-cpu", "host",
 		}
-	case "amd64--arm64-usr":
-		return []string{
-			"qemu-system-aarch64",
-			"-machine", "virt",
-			"-cpu", "cortex-a57",
-		}
-	case "arm64--arm64-usr":
+	case "aarch64":
 		return []string{
 			"qemu-system-aarch64",
 			"-machine", "virt,accel=kvm,gic-version=3",
 			"-cpu", "host",
 		}
-	case "s390x--s390x-usr":
+	case "s390x":
 		return []string{
 			"qemu-system-s390x",
 			"-machine", "s390-ccw-virtio,accel=kvm",
 			"-cpu", "host",
 		}
-	case "ppc64le--ppc64le-usr":
+	case "ppc64le":
 		return []string{
 			"qemu-system-ppc64",
 			"-machine", "pseries,accel=kvm,kvm-type=HV",
 		}
 	default:
-		panic("host-guest combo not supported: " + combo)
+		panic(fmt.Sprintf("RpmArch %s combo not supported for qemu ", system.RpmArch()))
 	}
 }
 
@@ -601,7 +591,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	inst := QemuInstance{}
 
-	argv := baseQemuArgs(builder.Board)
+	argv := baseQemuArgs()
 	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
 
 	switch builder.Firmware {
@@ -618,7 +608,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	// We always provide a random source
 	argv = append(argv, "-object", "rng-random,filename=/dev/urandom,id=rng0",
-		"-device", virtio(builder.Board, "rng", "rng=rng0"))
+		"-device", virtio("rng", "rng=rng0"))
 	if builder.Uuid != "" {
 		argv = append(argv, "-uuid", builder.Uuid)
 	}

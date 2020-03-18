@@ -84,7 +84,6 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		CosaBuildDir: kola.Options.CosaBuild,
 		CosaBuild:    kola.CosaBuild,
 
-		Board:    kola.QEMUOptions.Board,
 		Firmware: kola.QEMUOptions.Firmware,
 	}
 
