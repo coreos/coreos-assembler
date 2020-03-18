@@ -15,8 +15,26 @@
 package system
 
 import (
+	"fmt"
 	"runtime"
 )
+
+// RpmArch returns the architecture in RPM terms.
+func RpmArch() string {
+	goarch := runtime.GOARCH
+	switch goarch {
+	case "amd64":
+		return "x86_64"
+	case "arm64":
+		return "aarch64"
+	case "ppc64":
+		return "ppc64le"
+	case "s390x":
+		return "s390x"
+	default:
+		panic(fmt.Sprintf("RpmArch: No mapping defined for GOARCH %s", goarch))
+	}
+}
 
 func PortageArch() string {
 	arch := runtime.GOARCH
