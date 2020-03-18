@@ -174,15 +174,32 @@ func syncOptionsImpl(useCosa bool) error {
 		return err
 	}
 
-	if kola.Options.CosaBuild != "" {
+	foundCosa := false
+	if kola.Options.CosaBuild == "" {
+		isroot, err := sdk.IsCosaRoot(".")
+		if err != nil {
+			return err
+		}
+		if isroot {
+			localbuild, err := sdk.GetLatestLocalBuild()
+			if err != nil {
+				return err
+			}
+
+			kola.Options.CosaBuild = filepath.Join(localbuild.Dir, "meta.json")
+			kola.CosaBuild = localbuild.Meta
+			foundCosa = true
+		}
+	} else {
 		kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
 		if err != nil {
 			return err
 		}
-		if useCosa {
-			if err := syncCosaOptions(); err != nil {
-				return err
-			}
+		foundCosa = true
+	}
+	if foundCosa && useCosa {
+		if err := syncCosaOptions(); err != nil {
+			return err
 		}
 	}
 

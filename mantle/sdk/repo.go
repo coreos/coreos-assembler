@@ -15,14 +15,23 @@
 package sdk
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+
+	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/system"
 )
 
-const ()
+// Build is a parsed coreos-assembler build
+type LocalBuild struct {
+	Dir  string
+	Arch string
+	Meta *cosa.Build
+}
 
 func isDir(dir string) bool {
 	stat, err := os.Stat(dir)
@@ -40,9 +49,54 @@ func envDir(env string) string {
 	return dir
 }
 
-func RepoRoot() string {
-	wd, _ := os.Getwd()
-	return wd
+func IsCosaRoot(root string) (bool, error) {
+	if _, err := os.Stat(filepath.Join(root, "builds")); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "validating coreos-assembler root")
+	}
+	return true, nil
+}
+
+func RequireCosaRoot(root string) error {
+	isroot, err := IsCosaRoot(root)
+	if err != nil {
+		return err
+	}
+	if !isroot {
+		return fmt.Errorf("%s does not appear to be a coreos-assembler buildroot", root)
+	}
+	return nil
+}
+
+func GetLatestLocalBuild() (*LocalBuild, error) {
+	return GetLocalBuild("latest")
+}
+
+func GetLocalBuild(buildid string) (*LocalBuild, error) {
+	// Maybe in the future we support an environment variable or CLI switch
+	root, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	if err := RequireCosaRoot(root); err != nil {
+		return nil, err
+	}
+
+	arch := system.RpmArch()
+	builddir := filepath.Join(root, "builds", buildid, arch)
+	metapath := filepath.Join(builddir, "meta.json")
+	cosameta, err := cosa.ParseBuild(metapath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LocalBuild{
+		Dir:  builddir,
+		Arch: arch,
+		Meta: cosameta,
+	}, nil
 }
 
 func DefaultBoard() string {

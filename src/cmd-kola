@@ -2,7 +2,6 @@
 
 import argparse
 import subprocess
-import json
 import os
 import sys
 import shutil
@@ -17,7 +16,6 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
 from cosalib import cmdlib
-from cosalib.builds import Builds
 
 basearch = cmdlib.get_basearch()
 
@@ -38,14 +36,6 @@ else:
     default_cmd = 'run'
     default_output_dir = "tmp/kola"
 
-builds = Builds()
-if args.build is None:
-    args.build = builds.get_latest()
-builddir = builds.get_build_dir(args.build)
-buildmeta_path = os.path.join(builddir, "meta.json")
-with open(buildmeta_path) as f:
-    buildmeta = json.load(f)
-
 # automatically add blacklisted tests specified in the src config
 blacklist_args = []
 blacklist_path = "src/config/kola-blacklist.yaml"
@@ -59,22 +49,13 @@ if os.path.isfile(blacklist_path):
                 print(f"⚠️  {obj['tracker']}")
                 blacklist_args += ['--blacklist-test', obj['pattern']]
 
-qemuimg = buildmeta['images'].get('qemu')
-if qemuimg is None:
-    raise SystemExit(f"No qemu image in build: {args.build}")
-qemupath = os.path.join(builddir, qemuimg['path'])
-
 # XXX: teach to kola to auto-detect based on prefix; see discussions in
 # https://github.com/coreos/coreos-assembler/pull/85
 kolaargs = ['kola']
-bn = os.path.basename(qemupath)
-print(f"qemu path: {qemupath}")
 
 if os.getuid() != 0 and not ('-p' in unknown_args):
     kolaargs.extend(['-p', 'qemu-unpriv'])
 
-# shellcheck disable=SC2086
-kolaargs.extend(['--cosa-build', buildmeta_path])
 outputdir = args.output_dir or default_output_dir
 kolaargs.extend(['--output-dir', outputdir])
 subargs = args.subargs or [default_cmd]
