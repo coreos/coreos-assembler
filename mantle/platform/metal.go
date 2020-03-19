@@ -148,12 +148,9 @@ func absSymlink(src, dest string) error {
 	return os.Symlink(src, dest)
 }
 
-func (inst *Install) setupTftpDir(builddir, tftpdir, metalimg string, kern *kernelSetup) error {
-	serializedConfig := []byte(inst.ignition)
-	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
-		return err
-	}
-
+// setupMetalImage handles compressing the metal image if necessary,
+// or just creating a symlink to it.
+func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 	metalIsCompressed := !strings.HasSuffix(metalimg, ".raw")
 	metalname := metalimg
 	if !metalIsCompressed {
@@ -161,46 +158,33 @@ func (inst *Install) setupTftpDir(builddir, tftpdir, metalimg string, kern *kern
 		metalimgpath := filepath.Join(builddir, metalimg)
 		srcf, err := os.Open(metalimgpath)
 		if err != nil {
-			return err
+			return "", err
 		}
 		defer srcf.Close()
 		metalname = metalname + ".gz"
-		destf, err := os.OpenFile(filepath.Join(tftpdir, metalname), os.O_RDWR|os.O_CREATE, 0755)
+		destf, err := os.OpenFile(filepath.Join(destdir, metalname), os.O_RDWR|os.O_CREATE, 0755)
 		if err != nil {
-			return err
+			return "", err
 		}
 		defer destf.Close()
 		cmd := exec.Command("gzip", "-1")
 		cmd.Stdin = srcf
 		cmd.Stdout = destf
 		if err := cmd.Run(); err != nil {
-			return errors.Wrapf(err, "running gzip")
+			return "", errors.Wrapf(err, "running gzip")
 		}
+		return metalname, nil
 	} else {
-		if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(tftpdir, metalimg)); err != nil {
-			return err
+		if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(destdir, metalimg)); err != nil {
+			return "", err
 		}
+		return metalimg, nil
 	}
-
-	for _, name := range []string{kern.kernel, kern.initramfs} {
-		if err := absSymlink(filepath.Join(builddir, name), filepath.Join(tftpdir, name)); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
-func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
-	if kern.kernel == "" {
-		return nil, fmt.Errorf("Missing kernel artifact")
-	}
-	if kern.initramfs == "" {
-		return nil, fmt.Errorf("Missing initramfs artifact")
-	}
-
+func newQemuBuilder(firmware string) *QemuBuilder {
 	builder := NewBuilder("", false)
-	builder.Firmware = inst.Firmware
+	builder.Firmware = firmware
 	builder.AddDisk(&Disk{
 		Size: "12G", // Arbitrary
 	})
@@ -214,6 +198,19 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 
 	// For now, but in the future we should rely on log capture
 	builder.InheritConsole = true
+
+	return builder
+}
+
+func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
+	if kern.kernel == "" {
+		return nil, fmt.Errorf("Missing kernel artifact")
+	}
+	if kern.initramfs == "" {
+		return nil, fmt.Errorf("Missing initramfs artifact")
+	}
+
+	builder := newQemuBuilder(inst.Firmware)
 
 	tempdir, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
@@ -232,15 +229,21 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	}
 
 	builddir := filepath.Dir(inst.CosaBuildDir)
-	metalimg := inst.CosaBuild.BuildArtifacts.Metal.Path
-	metalname := metalimg
-	// Yeah this is duplicated with setupTftpDir
-	if strings.HasSuffix(metalimg, ".raw") {
-		metalname = metalimg + ".gz"
+	serializedConfig := []byte(inst.ignition)
+	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
+		return nil, err
 	}
 
-	if err := inst.setupTftpDir(builddir, tftpdir, metalimg, kern); err != nil {
-		return nil, err
+	for _, name := range []string{kern.kernel, kern.initramfs} {
+		if err := absSymlink(filepath.Join(builddir, name), filepath.Join(tftpdir, name)); err != nil {
+			return nil, err
+		}
+	}
+
+	metalimg := inst.CosaBuild.BuildArtifacts.Metal.Path
+	metalname, err := setupMetalImage(builddir, metalimg, tftpdir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "setting up metal image")
 	}
 
 	pxe := pxeSetup{}
