@@ -57,6 +57,8 @@ if [ "$basearch" = "s390x" ] ; then
     coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
     coreos_gf debug sh "mount -o bind /sysroot/boot /sysroot/${deploydir}/boot"
+    # guestfish tries to create a /dev when doing a chroot. Mount it here as the filesystem is read only
+    coreos_gf debug sh "mount -t devtmpfs none /sysroot/${deploydir}/dev"
     # zipl wants /proc
     coreos_gf debug sh "mount -t proc none /sysroot/${deploydir}/proc"
     coreos_gf debug sh "chroot /sysroot/${deploydir} /usr/sbin/zipl"
