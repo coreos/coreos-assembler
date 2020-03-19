@@ -261,10 +261,6 @@ esac
 
 if [ "${IMAGE_TYPE}" == metal4k ]; then
     kola_args+=("--qemu-native-4k")
-    # native 4k requires a UEFI bootloader
-    if [ "${FIRMWARE}" == bios ]; then
-        FIRMWARE=uefi
-    fi
 fi
 
 case "${FIRMWARE}" in
