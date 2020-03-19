@@ -77,8 +77,14 @@ if os.getuid() != 0 and not ('-p' in unknown_args):
 kolaargs.extend(['--cosa-build', buildmeta_path])
 outputdir = args.output_dir or default_output_dir
 kolaargs.extend(['--output-dir', outputdir])
-kolaargs.extend(args.subargs or [default_cmd])
+subargs = args.subargs or [default_cmd]
+kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
+
+# FIXME drain into kola once it understands cosa
+if 'run' in subargs or 'list' in subargs:
+    if os.path.isdir('src/config/tests/kola'):
+        kolaargs.extend(['-E', 'src/config'])
 
 kolaargs.extend(blacklist_args)
 
