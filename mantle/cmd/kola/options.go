@@ -132,7 +132,7 @@ func init() {
 	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
 
 	// QEMU-specific options
-	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "bios", "Boot firmware: bios,uefi,uefi-secure")
+	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "", "Boot firmware: bios,uefi,uefi-secure (default bios)")
 	sv(&kola.QEMUOptions.DiskImage, "qemu-image", "", "path to CoreOS disk image")
 	sv(&kola.QEMUOptions.DiskSize, "qemu-size", "", "Resize target disk via qemu-img resize [+]SIZE")
 	bv(&kola.QEMUOptions.Native4k, "qemu-native-4k", false, "Force 4k sectors for main disk")
@@ -160,6 +160,14 @@ func syncOptionsImpl(useCosa bool) error {
 	// Alias qemu to qemu-unpriv.
 	if kolaPlatform == "qemu" {
 		kolaPlatform = "qemu-unpriv"
+	}
+
+	// native 4k requires a UEFI bootloader
+	if kola.QEMUOptions.Native4k && kola.QEMUOptions.Firmware == "bios" {
+		return fmt.Errorf("native 4k requires uefi firmware")
+	}
+	if kola.QEMUOptions.Firmware == "" {
+		kola.QEMUOptions.Firmware = "bios"
 	}
 
 	if err := validateOption("platform", kolaPlatform, kolaPlatforms); err != nil {
