@@ -147,6 +147,18 @@ if [ -n "${previous_commit}" ]; then
     if ! ostree rev-parse --repo="${tmprepo}" "${ref}" &>/dev/null; then
         ostree refs --repo="${tmprepo}" --create "${ref}" "${previous_commit}"
     fi
+
+    # Corner-case here: if the previous build was for a different ref, then we
+    # want to make sure rpm-ostree doesn't select the same version. Do this by
+    # pretending the ref is currently pointing at the last commit on the
+    # previous ref. This is a dirty hack, though note all of cosa today knows to
+    # not trust tmp/repo and only use it as an optimization. This corner-case is
+    # also only relevant to developer workflows.
+    previous_ref=$(jq -r '.["ref"]' < "${previous_builddir}/meta.json")
+    if [ "${previous_ref}" != "null" ] && [ "${previous_ref}" != "${ref}" ]; then
+        ostree reset --repo="${tmprepo}" "${ref}" "${previous_ref}"
+        FORCE=--force-nocache
+    fi
 fi
 
 # Calculate image input checksum now and gather previous image build variables if any
