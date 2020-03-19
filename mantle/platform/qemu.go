@@ -149,6 +149,9 @@ type QemuBuilder struct {
 	Pdeathsig  bool
 	Argv       []string
 
+	// AppendKernelArguments are appended to the bootloader config
+	AppendKernelArguments string
+
 	// IgnitionNetworkKargs are written to /boot/ignition
 	IgnitionNetworkKargs string
 
@@ -356,9 +359,8 @@ func (gf *coreosGuestfish) destroy() {
 	}
 }
 
-// setupIgnition copies the ignition file inside the disk image and/or sets
-// networking kernel arguments
-func setupIgnition(confPath string, knetargs string, diskImagePath string, diskSectorSize int) error {
+// setupPreboot performs changes necessary before the disk is booted
+func setupPreboot(confPath, knetargs, kargs string, diskImagePath string, diskSectorSize int) error {
 	gf, err := newGuestfish(diskImagePath, diskSectorSize)
 	if err != nil {
 		return err
@@ -380,6 +382,34 @@ func setupIgnition(confPath string, knetargs string, diskImagePath string, diskS
 		grubStr := fmt.Sprintf("set ignition_network_kcmdline='%s'\n", knetargs)
 		if err := exec.Command("guestfish", gf.remote, "write", "/ignition.firstboot", grubStr).Run(); err != nil {
 			return errors.Wrapf(err, "guestfish write")
+		}
+	}
+
+	if kargs != "" {
+		confpathout, err := exec.Command("guestfish", gf.remote, "glob-expand", "/loader/entries/ostree*conf").Output()
+		if err != nil {
+			return errors.Wrapf(err, "finding bootloader config path")
+		}
+		confs := strings.Split(strings.TrimSpace(string(confpathout)), "\n")
+		if len(confs) != 1 {
+			return fmt.Errorf("Multiple values for bootloader config: %v", confpathout)
+		}
+		confpath := confs[0]
+
+		origconf, err := exec.Command("guestfish", gf.remote, "read-file", confpath).Output()
+		if err != nil {
+			return errors.Wrapf(err, "reading bootloader config")
+		}
+		var buf strings.Builder
+		for _, line := range strings.Split(string(origconf), "\n") {
+			if strings.HasPrefix(line, "options ") {
+				line += " " + kargs
+			}
+			buf.Write([]byte(line))
+			buf.Write([]byte("\n"))
+		}
+		if err := exec.Command("guestfish", gf.remote, "write", confpath, buf.String()).Run(); err != nil {
+			return errors.Wrapf(err, "writing bootloader config")
 		}
 	}
 
@@ -443,8 +473,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		// If the board doesn't support -fw_cfg or we were explicitly
 		// requested, inject via libguestfs on the primary disk.
 		requiresInjection := builder.Config != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
-		if requiresInjection || builder.IgnitionNetworkKargs != "" {
-			if err = setupIgnition(builder.Config, builder.IgnitionNetworkKargs, dstFileName, disk.SectorSize); err != nil {
+		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArguments != "" {
+			if err = setupPreboot(builder.Config, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
+				dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
 		}

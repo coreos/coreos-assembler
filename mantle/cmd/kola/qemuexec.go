@@ -39,6 +39,7 @@ var (
 
 	hostname string
 	ignition string
+	kargs    string
 	knetargs string
 
 	forceConfigInjection bool
@@ -47,6 +48,7 @@ var (
 func init() {
 	root.AddCommand(cmdQemuExec)
 	cmdQemuExec.Flags().StringVarP(&knetargs, "knetargs", "", "", "Arguments for Ignition networking on kernel commandline")
+	cmdQemuExec.Flags().StringVarP(&kargs, "kargs", "", "", "Additional kernel arguments applied")
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
@@ -61,6 +63,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}
+	builder.AppendKernelArguments = kargs
 	defer builder.Close()
 	builder.Firmware = kola.QEMUOptions.Firmware
 	if kola.QEMUOptions.DiskImage != "" {
