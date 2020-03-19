@@ -78,10 +78,10 @@ func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, er
 		if inst.CosaBuild.BuildArtifacts.Kernel == nil {
 			return nil, fmt.Errorf("build %s has no legacy installer kernel", inst.CosaBuild.OstreeVersion)
 		}
-		mach, err = inst.runLegacy(&kernelSetup{
+		mach, err = inst.runPXE(&kernelSetup{
 			kernel:    inst.CosaBuild.BuildArtifacts.Kernel.Path,
 			initramfs: inst.CosaBuild.BuildArtifacts.Initramfs.Path,
-		})
+		}, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "legacy installer")
 		}
@@ -89,10 +89,10 @@ func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, er
 		if inst.CosaBuild.BuildArtifacts.LiveKernel == nil {
 			return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Name)
 		}
-		mach, err = inst.runLive(&kernelSetup{
+		mach, err = inst.runPXE(&kernelSetup{
 			kernel:    inst.CosaBuild.BuildArtifacts.LiveKernel.Path,
 			initramfs: inst.CosaBuild.BuildArtifacts.LiveInitramfs.Path,
-		})
+		}, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "testing live installer")
 		}
@@ -296,7 +296,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	}, nil
 }
 
-func renderBaseKargs(t *installerRun) []string {
+func renderBaseKargs() []string {
 	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()]))
 }
 
@@ -411,40 +411,21 @@ func (t *installerRun) run() (*QemuInstance, error) {
 	return inst, nil
 }
 
-func (inst *Install) runLegacy(kern *kernelSetup) (*InstalledMachine, error) {
+func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, error) {
 	t, err := inst.setup(kern)
 	if err != nil {
 		return nil, err
 	}
 	defer t.destroy()
 
-	kargs := append(renderBaseKargs(t), renderInstallKargs(t)...)
-	if err := t.completePxeSetup(kargs); err != nil {
-		return nil, err
+	kargs := renderBaseKargs()
+	if !legacy {
+		// https://github.com/coreos/fedora-coreos-tracker/issues/388
+		// https://github.com/coreos/fedora-coreos-docs/pull/46
+		t.builder.Memory = int(math.Max(float64(t.builder.Memory), 4096))
+		kargs = append(kargs, liveKargs...)
 	}
-	qinst, err := t.run()
-	if err != nil {
-		return nil, err
-	}
-	t.tempdir = "" // Transfer ownership
-	return &InstalledMachine{
-		QemuInst: qinst,
-		tempdir:  t.tempdir,
-	}, nil
-}
 
-func (inst *Install) runLive(kern *kernelSetup) (*InstalledMachine, error) {
-	t, err := inst.setup(kern)
-	if err != nil {
-		return nil, err
-	}
-	defer t.destroy()
-
-	// https://github.com/coreos/fedora-coreos-tracker/issues/388
-	// https://github.com/coreos/fedora-coreos-docs/pull/46
-	t.builder.Memory = int(math.Max(float64(t.builder.Memory), 4096))
-
-	kargs := append(renderBaseKargs(t), liveKargs...)
 	kargs = append(kargs, renderInstallKargs(t)...)
 	if err := t.completePxeSetup(kargs); err != nil {
 		return nil, err
