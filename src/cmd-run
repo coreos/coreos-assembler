@@ -17,6 +17,7 @@ BUILDID=latest
 IMAGE_TYPE=qemu
 HOSTNAME=
 VM_DISK=
+KARGS=
 DISK_CHANNEL=virtio
 VM_MEMORY=2048
 VM_NCPUS="${VM_NCPUS:-${QEMU_PROCS}}"
@@ -36,6 +37,7 @@ Options:
     --size GB             Disk size in GB (matches base by default)
     --user USERNAME       Create user USERNAME via Ignition (if not already extant) and log in as that user
     -h                    this ;-)
+    --kargs               Append kernel arguments
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
 
@@ -91,6 +93,9 @@ while [ $# -ge 1 ]; do
         --uefi-secure)
             FIRMWARE=uefi-secure
             shift ;;
+        --kargs)
+            KARGS="$2"
+            shift 2;;
         -h|--help)
             echo "$USAGE"
             exit ;;
@@ -270,6 +275,9 @@ esac
 
 if [ -n "${HOSTNAME}" ]; then
     kola_args+=("--hostname=${HOSTNAME}")
+fi
+if [ -n "${KARGS}" ]; then
+    kola_args+=("--kargs=${KARGS}")
 fi
 
 # for the metal images, there's no other way but to inject into /boot
