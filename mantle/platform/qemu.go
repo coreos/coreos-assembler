@@ -519,6 +519,12 @@ func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 	return builder.addDiskImpl(disk, false)
 }
 
+// AddInstallIso adds an ISO image, configuring to boot from it once
+func (builder *QemuBuilder) AddInstallIso(path string) error {
+	builder.Append("-boot", "once=d", "-cdrom", path)
+	return nil
+}
+
 func (builder *QemuBuilder) finalize() {
 	if builder.finalized {
 		return

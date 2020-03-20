@@ -15,7 +15,9 @@
 package platform
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net"
@@ -24,10 +26,40 @@ import (
 	"path/filepath"
 	"strings"
 
+	v3 "github.com/coreos/ignition/v2/config/v3_0"
+	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
+	"github.com/pkg/errors"
+	"github.com/vincent-petithory/dataurl"
+
 	"github.com/coreos/mantle/cosa"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
-	"github.com/pkg/errors"
+	"github.com/coreos/mantle/util"
+)
+
+const (
+	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
+	defaultQemuHostIPv4 = "10.0.2.2"
+
+	targetDevice = "/dev/vda"
+
+	// rebootUnit is a copy of the system one without the ConditionPathExists
+	rebootUnit = `[Unit]
+	Description=Reboot after CoreOS Installer
+	After=coreos-installer.service
+	Requires=coreos-installer.service
+	OnFailure=emergency.target
+	OnFailureJobMode=replace-irreversibly
+	
+	[Service]
+	Type=simple
+	ExecStart=/usr/bin/systemctl --no-block reboot
+	StandardOutput=kmsg+console
+	StandardError=kmsg+console
+	[Install]
+	WantedBy=multi-user.target
+`
 )
 
 // TODO derive this from docs, or perhaps include kargs in cosa metadata?
@@ -55,8 +87,9 @@ type Install struct {
 	LegacyInstaller bool
 
 	// These are set by the install path
-	kargs    []string
-	ignition string
+	kargs        []string
+	ignition     string
+	liveIgnition string
 }
 
 type InstalledMachine struct {
@@ -414,6 +447,12 @@ func (t *installerRun) run() (*QemuInstance, error) {
 	return inst, nil
 }
 
+func setBuilderLiveMemory(builder *QemuBuilder) {
+	// https://github.com/coreos/fedora-coreos-tracker/issues/388
+	// https://github.com/coreos/fedora-coreos-docs/pull/46
+	builder.Memory = int(math.Max(float64(builder.Memory), 4096))
+}
+
 func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, error) {
 	t, err := inst.setup(kern)
 	if err != nil {
@@ -423,9 +462,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 
 	kargs := renderBaseKargs()
 	if !legacy {
-		// https://github.com/coreos/fedora-coreos-tracker/issues/388
-		// https://github.com/coreos/fedora-coreos-docs/pull/46
-		t.builder.Memory = int(math.Max(float64(t.builder.Memory), 4096))
+		setBuilderLiveMemory(t.builder)
 		kargs = append(kargs, liveKargs...)
 	}
 
@@ -441,5 +478,185 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 	return &InstalledMachine{
 		QemuInst: qinst,
 		tempdir:  t.tempdir,
+	}, nil
+}
+
+func generatePointerIgnitionString(target string) string {
+	p := ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+			Config: ignv3types.IgnitionConfig{
+				Merge: []ignv3types.ConfigReference{
+					ignv3types.ConfigReference{
+						Source: &target,
+					},
+				},
+			},
+		},
+	}
+
+	buf, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(buf)
+}
+
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnition string) (*InstalledMachine, error) {
+	if inst.CosaBuild.BuildArtifacts.Metal == nil {
+		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.OstreeVersion)
+	}
+	if inst.CosaBuild.BuildArtifacts.LiveIso == nil {
+		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Name)
+	}
+
+	if len(inst.kargs) > 0 {
+		return nil, errors.New("injecting kargs is not supported yet, see https://github.com/coreos/coreos-installer/issues/164")
+	}
+
+	inst.kargs = kargs
+	inst.ignition = targetIgnition
+	inst.liveIgnition = liveIgniton
+
+	tempdir, err := ioutil.TempDir("", "mantle-metal")
+	if err != nil {
+		return nil, err
+	}
+	cleanupTempdir := true
+	defer func() {
+		if cleanupTempdir {
+			os.RemoveAll(tempdir)
+		}
+	}()
+
+	if err := ioutil.WriteFile(filepath.Join(tempdir, "target.ign"), []byte(inst.ignition), 0644); err != nil {
+		return nil, err
+	}
+
+	builddir := filepath.Dir(inst.CosaBuildDir)
+	srcisopath := filepath.Join(builddir, inst.CosaBuild.BuildArtifacts.LiveIso.Path)
+	metalimg := inst.CosaBuild.BuildArtifacts.Metal.Path
+	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "setting up metal image")
+	}
+
+	providedLiveConfig, _, err := v3.Parse([]byte(inst.liveIgnition))
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing provided live config")
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(tempdir)))
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, err
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	// Yeah this leaks
+	go func() {
+		http.Serve(listener, mux)
+	}()
+	baseurl := fmt.Sprintf("http://%s:%d", defaultQemuHostIPv4, port)
+
+	insecureOpt := ""
+	if inst.Insecure {
+		insecureOpt = "--insecure"
+	}
+	pointerIgnitionPath := "/var/opt/pointer.ign"
+	installerUnit := fmt.Sprintf(`
+[Unit]
+After=network-online.target
+Wants=network-online.target
+[Service]
+RemainAfterExit=yes
+Type=oneshot
+ExecStart=/usr/bin/coreos-installer install --image-url %s/%s --ignition %s %s %s
+StandardOutput=kmsg+console
+StandardError=kmsg+console
+[Install]
+WantedBy=multi-user.target
+`, baseurl, metalname, pointerIgnitionPath, insecureOpt, targetDevice)
+	// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
+	// when it arrives
+	pointerIgnitionStr := generatePointerIgnitionString(baseurl + "/target.ign")
+	pointerIgnitionEnc := dataurl.EncodeBytes([]byte(pointerIgnitionStr))
+	mode := 0644
+	rebootUnitP := string(rebootUnit)
+	installerConfig := ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: ignv3types.Systemd{
+			Units: []ignv3types.Unit{
+				{
+					Name:     "coreos-installer.service",
+					Contents: &installerUnit,
+					Enabled:  util.BoolToPtr(true),
+				},
+				{
+					Name:     "coreos-installer-reboot.service",
+					Contents: &rebootUnitP,
+					Enabled:  util.BoolToPtr(true),
+				},
+			},
+		},
+		Storage: ignv3types.Storage{
+			Files: []ignv3types.File{
+				{
+					Node: ignv3types.Node{
+						Path: pointerIgnitionPath,
+					},
+					FileEmbedded1: ignv3types.FileEmbedded1{
+						Contents: ignv3types.FileContents{
+							Source: &pointerIgnitionEnc,
+						},
+						Mode: &mode,
+					},
+				},
+			},
+		},
+	}
+	mergedConfig := v3.Merge(providedLiveConfig, installerConfig)
+	mergedConfig = v3.Merge(mergedConfig, conf.GetAutologin())
+
+	isoEmbeddedPath := filepath.Join(tempdir, "test.iso")
+	// TODO ensure this tempdir is underneath cosa tempdir so we can reliably reflink
+	if err := exec.Command("cp", "--reflink=auto", srcisopath, isoEmbeddedPath).Run(); err != nil {
+		return nil, errors.Wrapf(err, "copying iso")
+	}
+	instCmd := exec.Command("coreos-installer", "iso", "embed", isoEmbeddedPath)
+	instCmd.Stderr = os.Stderr
+	instCmdStdin, err := instCmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		mergedConfigSerialized, err := json.Marshal(mergedConfig)
+		if err != nil {
+			panic(err)
+		}
+		defer instCmdStdin.Close()
+		if _, err := io.WriteString(instCmdStdin, string(mergedConfigSerialized)); err != nil {
+			panic(err)
+		}
+	}()
+	if err := instCmd.Run(); err != nil {
+		return nil, errors.Wrapf(err, "running coreos-installer iso embed")
+	}
+
+	qemubuilder := newQemuBuilder(inst.Firmware)
+	setBuilderLiveMemory(qemubuilder)
+	qemubuilder.AddInstallIso(isoEmbeddedPath)
+	qemubuilder.Append(inst.QemuArgs...)
+
+	qinst, err := qemubuilder.Exec()
+	if err != nil {
+		return nil, err
+	}
+	cleanupTempdir = false // Transfer ownership
+	return &InstalledMachine{
+		QemuInst: qinst,
+		tempdir:  tempdir,
 	}, nil
 }
