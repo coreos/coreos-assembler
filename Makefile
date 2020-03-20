@@ -72,4 +72,6 @@ install:
 	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
+	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
+	cp -rdf tests/kola/* $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
 	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)

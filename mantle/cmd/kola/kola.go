@@ -172,6 +172,19 @@ func preRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func registerExternals() error {
+	if err := kola.RegisterExternalTests("/usr/lib/coreos-assembler"); err != nil {
+		return err
+	}
+	for _, d := range runExternals {
+		err := kola.RegisterExternalTests(d)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func runRun(cmd *cobra.Command, args []string) error {
 	var patterns []string
 	if len(args) == 0 {
@@ -186,11 +199,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	for _, d := range runExternals {
-		err := kola.RegisterExternalTests(d)
-		if err != nil {
-			return err
-		}
+	if err := registerExternals(); err != nil {
+		return err
 	}
 
 	runErr := kola.RunTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
@@ -327,11 +337,8 @@ func writeProps() error {
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	for _, d := range runExternals {
-		err := kola.RegisterExternalTests(d)
-		if err != nil {
-			return err
-		}
+	if err := registerExternals(); err != nil {
+		return err
 	}
 	var testlist []*item
 	for name, test := range register.Tests {

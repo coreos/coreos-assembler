@@ -1,0 +1,9 @@
+#!/bin/bash
+set -xeuo pipefail
+status="$(systemctl is-active nfs-server.service)"
+if [ "${status}" = "inactive" ]; then
+    echo "nfs-server.service is inactive" 1>&2
+    exit 1
+else
+    echo "nfs-server.service = ${status}"
+fi
