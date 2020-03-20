@@ -35,9 +35,6 @@ live_exclude_kargs = set([
     'console',               # no serial console by default on ISO
     'ignition.platform.id',  # we hardcode "metal"
     'ostree',                # dracut finds the tree automatically
-    'root',                  # we use root.squashfs
-    'rootflags',             # not needed
-    'rw',                    # we have a read-only root
 ])
 
 # Parse args and dispatch
