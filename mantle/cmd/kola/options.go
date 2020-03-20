@@ -186,6 +186,10 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 	}
 
+	if kola.Options.IgnitionVersion == "" && kola.QEMUOptions.DiskImage != "" {
+		kola.Options.IgnitionVersion = sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
+	}
+
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
 	for _, unit := range units {
 		kola.Options.SystemdDropins = append(kola.Options.SystemdDropins, platform.SystemdDropin{
@@ -234,8 +238,6 @@ func syncCosaOptions() error {
 	if kola.Options.IgnitionVersion == "" {
 		if kola.CosaBuild != nil {
 			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersion(kola.CosaBuild)
-		} else if kola.QEMUOptions.DiskImage != "" {
-			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
 		}
 	}
 
