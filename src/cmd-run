@@ -183,16 +183,6 @@ EOF
 rowcol=$(stty -a | tr ';' '\n' | grep -e 'rows\|columns' | tr '\n' ' ' )
 rowcol=$(echo "stty ${rowcol}" | base64 --wrap 0)
 
-append_systemd_unit "{
-    \"name\": \"serial-getty@${DEFAULT_TERMINAL}.service\",
-    \"dropins\": [
-        {
-            \"name\": \"autologin-core.conf\",
-            \"contents\": \"[Service]\\nTTYVTDisallocate=no\\nExecStart=\\nExecStart=-/usr/sbin/agetty --autologin ${TARGET_USER} --noclear %I \$TERM\\n\"
-        }
-    ]
-}"
-
 f=$(mktemp)
 cat > "${f}" <<EOF
 {
@@ -279,4 +269,4 @@ case "${IMAGE_TYPE}" in
 esac
 
 set -x
-exec kola qemuexec -U --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
+exec kola qemuexec --add-ignition=autologin -U --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
