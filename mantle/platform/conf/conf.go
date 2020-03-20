@@ -984,3 +984,32 @@ func (c *Conf) IsIgnition() bool {
 func (c *Conf) IsEmpty() bool {
 	return !c.IsIgnition() && c.cloudconfig == nil && c.script == ""
 }
+
+func getAutologinFragment(name, args string) v3types.Unit {
+	contents := fmt.Sprintf(`[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin core -o '-p -f core' %s %%I $TERM
+`, args)
+	return v3types.Unit{
+		Name: name,
+		Dropins: []v3types.Dropin{
+			{
+				Name:     "10-autologin.conf",
+				Contents: &contents,
+			},
+		},
+	}
+}
+
+// GetAutologin returns an Ignition config to automatic login on consoles
+func GetAutologin() v3types.Config {
+	conf := v3types.Config{
+		Ignition: v3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: v3types.Systemd{},
+	}
+	conf.Systemd.Units = append(conf.Systemd.Units, getAutologinFragment("getty@.service", "--noclear"))
+	conf.Systemd.Units = append(conf.Systemd.Units, getAutologinFragment("serial-getty@.service", "--keep-baud 115200,38400,9600"))
+	return conf
+}
