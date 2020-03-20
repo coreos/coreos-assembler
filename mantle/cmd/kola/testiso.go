@@ -54,6 +54,7 @@ var (
 
 	legacy bool
 	nolive bool
+	nopxe  bool
 )
 
 var signalCompletionUnit = `[Unit]
@@ -70,7 +71,8 @@ RequiredBy=multi-user.target
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
-	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer")
+	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer (PXE and ISO)")
+	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
 
 	root.AddCommand(cmdTestIso)
 }
@@ -130,14 +132,22 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		if !foundLive {
 			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Name)
 		}
-		ranTest = true
-		inst := baseInst // Pretend this is Rust and I wrote .copy()
+		if !nopxe {
+			ranTest = true
+			instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(inst, completionfile); err != nil {
-			return err
+			if err := testPXE(instPxe, completionfile); err != nil {
+				return err
+			}
+			fmt.Printf("Successfully tested PXE live installer for %s\n", kola.CosaBuild.OstreeVersion)
 		}
 
-		fmt.Printf("Successfully tested live installer for %s\n", kola.CosaBuild.OstreeVersion)
+		ranTest = true
+		instIso := baseInst // Pretend this is Rust and I wrote .copy()
+		if err := testLiveIso(instIso, completionfile); err != nil {
+			return err
+		}
+		fmt.Printf("Successfully tested ISO live installer for %s\n", kola.CosaBuild.OstreeVersion)
 	}
 
 	if !ranTest {
@@ -194,6 +204,90 @@ func testPXE(inst platform.Install, completionfile string) error {
 		return err
 	}
 
+	err = exec.Command("grep", "-q", "-e", completionstamp, completionfile).Run()
+	if err != nil {
+		return fmt.Errorf("Failed to find %s in %s: %s", completionstamp, completionfile, err)
+	}
+
+	err = os.Remove(completionfile)
+	if err != nil {
+		return errors.Wrapf(err, "removing %s", completionfile)
+	}
+
+	return nil
+}
+
+func testLiveIso(inst platform.Install, completionfile string) error {
+	completionstamp := "coreos-installer-test-OK"
+
+	// We're just testing that executing our custom Ignition in the live
+	// path worked ok.
+	liveOKSignal := "live-test-OK"
+	var liveSignalOKUnit = `[Unit]
+	Requires=dev-virtio\\x2dports-completion.device
+	OnFailure=emergency.target
+	OnFailureJobMode=isolate
+	Before=coreos-installer.service
+	[Service]
+	Type=oneshot
+	ExecStart=/bin/sh -c '/usr/bin/echo live-test-OK >/dev/virtio-ports/completion'
+	[Install]
+	RequiredBy=multi-user.target
+	`
+
+	liveConfig := ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: ignv3types.Systemd{
+			Units: []ignv3types.Unit{
+				{
+					Name:     "live-signal-ok.service",
+					Contents: &liveSignalOKUnit,
+					Enabled:  util.BoolToPtr(true),
+				},
+			},
+		},
+	}
+	liveConfigBuf, err := json.Marshal(liveConfig)
+	if err != nil {
+		return err
+	}
+
+	targetConfig := ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: ignv3types.Systemd{
+			Units: []ignv3types.Unit{
+				{
+					Name:     "coreos-test-installer.service",
+					Contents: &signalCompletionUnit,
+					Enabled:  util.BoolToPtr(true),
+				},
+			},
+		},
+	}
+
+	targetIgnitionBuf, err := json.Marshal(targetConfig)
+	if err != nil {
+		return err
+	}
+	mach, err := inst.InstallViaISOEmbed(nil, string(liveConfigBuf), string(targetIgnitionBuf))
+	if err != nil {
+		return errors.Wrapf(err, "running iso install")
+	}
+	defer mach.Destroy()
+
+	err = mach.QemuInst.Wait()
+	if err != nil {
+		return err
+	}
+
+	err = exec.Command("grep", "-q", "-e", liveOKSignal, completionfile).Run()
+	if err != nil {
+		return fmt.Errorf("Failed to find %s in %s: %s", liveOKSignal, completionfile, err)
+	}
 	err = exec.Command("grep", "-q", "-e", completionstamp, completionfile).Run()
 	if err != nil {
 		return fmt.Errorf("Failed to find %s in %s: %s", completionstamp, completionfile, err)
