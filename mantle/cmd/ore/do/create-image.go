@@ -38,6 +38,8 @@ var (
 
 		SilenceUsage: true,
 	}
+
+	customImage bool
 )
 
 func init() {
@@ -45,6 +47,7 @@ func init() {
 	cmdCreateImage.Flags().StringVar(&options.Region, "region", "sfo2", "region slug")
 	cmdCreateImage.Flags().StringVarP(&imageName, "name", "n", "", "image name")
 	cmdCreateImage.Flags().StringVarP(&imageURL, "url", "u", "", "image source URL (e.g. \"https://stable.release.core-os.net/amd64-usr/current/coreos_production_digitalocean_image.bin.bz2\"")
+	cmdCreateImage.Flags().BoolVarP(&customImage, "custom", "", false, "create a \"custom image\" (which supports DHCP) rather than a snapshot of a distribution image (which doesn't)")
 }
 
 func runCreateImage(cmd *cobra.Command, args []string) error {
@@ -69,6 +72,24 @@ func createImage() error {
 		return fmt.Errorf("Image URL must be specified")
 	}
 
+	if customImage {
+		return createCustomImage()
+	} else {
+		return createSnapshot()
+	}
+}
+
+func createCustomImage() error {
+	ctx := context.Background()
+
+	if _, err := API.CreateCustomImage(ctx, imageName, imageURL); err != nil {
+		return fmt.Errorf("couldn't create image: %v", err)
+	}
+
+	return nil
+}
+
+func createSnapshot() error {
 	// set smallest available size, so the image will run on any size droplet
 	options.Size = "512mb"
 
