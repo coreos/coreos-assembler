@@ -157,6 +157,7 @@
    "amis",
    "azure",
    "build-url",
+   "digitalocean",
    "gcp",
    "exoscale",
    "oscontainer",
@@ -305,6 +306,7 @@
        "aws",
        "azure",
        "dasd",
+       "digitalocean",
        "exoscale",
        "gcp",
        "initramfs",
@@ -420,6 +422,12 @@
          "$id":"#/properties/images/properties/azure",
          "type":"object",
          "title":"Azure",
+         "$ref": "#/definitions/artifact"
+        },
+       "digitalocean": {
+         "$id":"#/properties/images/properties/digitalocean",
+         "type":"object",
+         "title":"DigitalOcean",
          "$ref": "#/definitions/artifact"
         },
        "gcp": {

@@ -65,6 +65,7 @@ type BuildArtifacts struct {
 	Aws           *Artifact `json:"aws,omitempty"`
 	Azure         *Artifact `json:"azure,omitempty"`
 	Dasd          *Artifact `json:"dasd,omitempty"`
+	DigitalOcean  *Artifact `json:"digitalocean,omitempty"`
 	Exoscale      *Artifact `json:"exoscale,omitempty"`
 	Gcp           *Artifact `json:"gcp,omitempty"`
 	Initramfs     *Artifact `json:"initramfs,omitempty"`
