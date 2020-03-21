@@ -236,6 +236,38 @@ func (a *API) DeleteDroplet(ctx context.Context, dropletID int) error {
 	return nil
 }
 
+func (a *API) CreateCustomImage(ctx context.Context, name string, url string) (*godo.Image, error) {
+	var image *godo.Image
+	var err error
+	image, _, err = a.c.Images.Create(ctx, &godo.CustomImageCreateRequest{
+		Name:         name,
+		Url:          url,
+		Region:       a.opts.Region,
+		Distribution: "Fedora",
+		Tags:         []string{"mantle"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create image: %v", err)
+	}
+	imageID := image.ID
+
+	err = util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
+		var err error
+		// update image in closure
+		image, _, err = a.c.Images.GetByID(ctx, imageID)
+		if err != nil {
+			return false, err
+		}
+		return image.Status == "available", nil
+	})
+	if err != nil {
+		a.DeleteImage(ctx, imageID)
+		return nil, fmt.Errorf("waiting for image creation: %v", err)
+	}
+
+	return image, nil
+}
+
 func (a *API) GetUserImage(ctx context.Context, imageName string, inRegion bool) (*godo.Image, error) {
 	var ret *godo.Image
 	var regionMessage string
