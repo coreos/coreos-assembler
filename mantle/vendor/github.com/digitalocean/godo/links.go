@@ -1,10 +1,9 @@
 package godo
 
 import (
+	"context"
 	"net/url"
 	"strconv"
-
-	"github.com/digitalocean/godo/context"
 )
 
 // Links manages links that are returned along with a List
@@ -60,7 +59,7 @@ func (l *Links) IsLastPage() bool {
 }
 
 func (p *Pages) isLast() bool {
-	return p.Last == ""
+	return p.Next == ""
 }
 
 func pageForURL(urlText string) (int, error) {

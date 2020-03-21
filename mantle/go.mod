@@ -22,11 +22,10 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5 // indirect
 	github.com/coreos/yaml v0.0.0-20141224210557-6b16a5714269 // indirect
-	github.com/digitalocean/godo v1.1.3
+	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/protobuf v1.3.1
-	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
 	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250

@@ -1,9 +1,8 @@
 package godo
 
 import (
+	"context"
 	"net/http"
-
-	"github.com/digitalocean/godo/context"
 )
 
 // RegionsService is an interface for interfacing with the regions
@@ -33,6 +32,7 @@ type Region struct {
 type regionsRoot struct {
 	Regions []Region
 	Links   *Links `json:"links"`
+	Meta    *Meta  `json:"meta"`
 }
 
 func (r Region) String() string {
@@ -59,6 +59,9 @@ func (s *RegionsServiceOp) List(ctx context.Context, opt *ListOptions) ([]Region
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.Regions, resp, err
