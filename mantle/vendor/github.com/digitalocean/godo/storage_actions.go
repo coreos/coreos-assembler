@@ -1,10 +1,9 @@
 package godo
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-
-	"github.com/digitalocean/godo/context"
 )
 
 // StorageActionsService is an interface for interfacing with the
@@ -120,6 +119,9 @@ func (s *StorageActionsServiceOp) list(ctx context.Context, path string) ([]Acti
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.Actions, resp, err

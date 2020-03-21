@@ -1,10 +1,9 @@
 package godo
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-
-	"github.com/digitalocean/godo/context"
 )
 
 const floatingBasePath = "v2/floating_ips"
@@ -38,9 +37,14 @@ func (f FloatingIP) String() string {
 	return Stringify(f)
 }
 
+func (f FloatingIP) URN() string {
+	return ToURN("FloatingIP", f.IP)
+}
+
 type floatingIPsRoot struct {
 	FloatingIPs []FloatingIP `json:"floating_ips"`
 	Links       *Links       `json:"links"`
+	Meta        *Meta        `json:"meta"`
 }
 
 type floatingIPRoot struct {
@@ -76,6 +80,9 @@ func (f *FloatingIPsServiceOp) List(ctx context.Context, opt *ListOptions) ([]Fl
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.FloatingIPs, resp, err
