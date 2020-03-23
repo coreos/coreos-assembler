@@ -55,6 +55,8 @@ var (
 	legacy bool
 	nolive bool
 	nopxe  bool
+
+	console bool
 )
 
 var signalCompletionUnit = `[Unit]
@@ -73,6 +75,7 @@ func init() {
 	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
 	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer (PXE and ISO)")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
+	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout")
 
 	root.AddCommand(cmdTestIso)
 }
@@ -86,6 +89,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		CosaBuildDir: kola.Options.CosaBuild,
 		CosaBuild:    kola.CosaBuild,
 
+		Console:  console,
 		Firmware: kola.QEMUOptions.Firmware,
 	}
 

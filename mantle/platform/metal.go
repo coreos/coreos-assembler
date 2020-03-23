@@ -81,6 +81,7 @@ type Install struct {
 	CosaBuild    *cosa.Build
 
 	Firmware string
+	Console  bool
 	Insecure bool
 	QemuArgs []string
 
@@ -215,7 +216,7 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 	}
 }
 
-func newQemuBuilder(firmware string) *QemuBuilder {
+func newQemuBuilder(firmware string, console bool) *QemuBuilder {
 	builder := NewBuilder("", false)
 	builder.Firmware = firmware
 	builder.AddDisk(&Disk{
@@ -230,7 +231,7 @@ func newQemuBuilder(firmware string) *QemuBuilder {
 	}
 
 	// For now, but in the future we should rely on log capture
-	builder.InheritConsole = true
+	builder.InheritConsole = console
 
 	return builder
 }
@@ -243,7 +244,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, fmt.Errorf("Missing initramfs artifact")
 	}
 
-	builder := newQemuBuilder(inst.Firmware)
+	builder := newQemuBuilder(inst.Firmware, inst.Console)
 
 	tempdir, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
@@ -622,7 +623,9 @@ WantedBy=multi-user.target
 
 	isoEmbeddedPath := filepath.Join(tempdir, "test.iso")
 	// TODO ensure this tempdir is underneath cosa tempdir so we can reliably reflink
-	if err := exec.Command("cp", "--reflink=auto", srcisopath, isoEmbeddedPath).Run(); err != nil {
+	cpcmd := exec.Command("cp", "--reflink=auto", srcisopath, isoEmbeddedPath)
+	cpcmd.Stderr = os.Stderr
+	if err := cpcmd.Run(); err != nil {
 		return nil, errors.Wrapf(err, "copying iso")
 	}
 	instCmd := exec.Command("coreos-installer", "iso", "embed", isoEmbeddedPath)
@@ -645,7 +648,7 @@ WantedBy=multi-user.target
 		return nil, errors.Wrapf(err, "running coreos-installer iso embed")
 	}
 
-	qemubuilder := newQemuBuilder(inst.Firmware)
+	qemubuilder := newQemuBuilder(inst.Firmware, inst.Console)
 	setBuilderLiveMemory(qemubuilder)
 	qemubuilder.AddInstallIso(isoEmbeddedPath)
 	qemubuilder.Append(inst.QemuArgs...)

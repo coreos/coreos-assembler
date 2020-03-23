@@ -50,7 +50,7 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
       }
 
       stage("Image tests") {
-        cosa_cmd("kola testiso -S")
+        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ cosa kola testiso -S")
       }
 
       // Needs to be last because it's destructive
