@@ -230,7 +230,7 @@ func syncOptions() error {
 func syncCosaOptions() error {
 	switch kolaPlatform {
 	case "qemu-unpriv", "qemu":
-		if kola.QEMUOptions.DiskImage == "" {
+		if kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.BuildArtifacts.Qemu != nil {
 			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.BuildArtifacts.Qemu.Path)
 		}
 	}
