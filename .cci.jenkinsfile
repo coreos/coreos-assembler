@@ -49,13 +49,13 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
           }
       }
 
-      stage("More tests") {
-        parallel testiso: {
-          cosa_cmd("kola testiso -S")
-        },
-        clitests: {
-          shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
-        }
+      stage("Image tests") {
+        cosa_cmd("kola testiso -S")
+      }
+
+      // Needs to be last because it's destructive
+      stage("CLI/build tests") {
+        shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
       }
 }
 
