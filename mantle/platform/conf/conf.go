@@ -27,8 +27,6 @@ import (
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	ignerr "github.com/coreos/ignition/config/shared/errors"
-	v1 "github.com/coreos/ignition/config/v1"
-	v1types "github.com/coreos/ignition/config/v1/types"
 	v2 "github.com/coreos/ignition/config/v2_0"
 	v2types "github.com/coreos/ignition/config/v2_0/types"
 	v21 "github.com/coreos/ignition/config/v2_1"
@@ -77,7 +75,6 @@ type UserData struct {
 
 // Conf is a configuration for a CoreOS machine. It's Ignition 2 or 3
 type Conf struct {
-	ignitionV1  *v1types.Config
 	ignitionV2  *v2types.Config
 	ignitionV21 *v21types.Config
 	ignitionV22 *v22types.Config
@@ -161,15 +158,6 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 	renderIgnition := func() error {
 		// Try each known version in turn.  Newer parsers will
 		// fall back to older ones, so try older versions first.
-		ignc1, report, err := v1.Parse([]byte(u.data))
-		if err == nil {
-			c.ignitionV1 = &ignc1
-			return nil
-		} else if err != ignerr.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report)
-			return err
-		}
-
 		ignc2, report, err := v2.Parse([]byte(u.data))
 		if err == nil {
 			c.ignitionV2 = &ignc2
@@ -275,10 +263,7 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 
 // String returns the string representation of the userdata in Conf.
 func (c *Conf) String() string {
-	if c.ignitionV1 != nil {
-		buf, _ := json.Marshal(c.ignitionV1)
-		return string(buf)
-	} else if c.ignitionV2 != nil {
+	if c.ignitionV2 != nil {
 		buf, _ := json.Marshal(c.ignitionV2)
 		return string(buf)
 	} else if c.ignitionV21 != nil {
@@ -322,9 +307,7 @@ func (c *Conf) ValidConfig() bool {
 }
 
 func (c *Conf) getIgnitionValidateValue() reflect.Value {
-	if c.ignitionV1 != nil {
-		return reflect.ValueOf(c.ignitionV1)
-	} else if c.ignitionV2 != nil {
+	if c.ignitionV2 != nil {
 		return reflect.ValueOf(c.ignitionV2)
 	} else if c.ignitionV21 != nil {
 		return reflect.ValueOf(c.ignitionV21)
@@ -464,18 +447,7 @@ func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 		c.addFileV23(path, filesystem, contents, mode)
 	} else if c.ignitionV24 != nil {
 		c.addFileV24(path, filesystem, contents, mode)
-	} else if c.ignitionV1 != nil {
-		panic("conf: AddFile does not support ignition v1")
 	}
-}
-
-func (c *Conf) addSystemdUnitV1(name, contents string, enable, mask bool) {
-	c.ignitionV1.Systemd.Units = append(c.ignitionV1.Systemd.Units, v1types.SystemdUnit{
-		Name:     v1types.SystemdUnitName(name),
-		Contents: contents,
-		Enable:   enable,
-		Mask:     mask,
-	})
 }
 
 func (c *Conf) addSystemdUnitV2(name, contents string, enable, mask bool) {
@@ -550,9 +522,7 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 	case Mask:
 		mask = true
 	}
-	if c.ignitionV1 != nil {
-		c.addSystemdUnitV1(name, contents, enable, mask)
-	} else if c.ignitionV2 != nil {
+	if c.ignitionV2 != nil {
 		c.addSystemdUnitV2(name, contents, enable, mask)
 	} else if c.ignitionV21 != nil {
 		c.addSystemdUnitV21(name, contents, enable, mask)
@@ -565,28 +535,6 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 	} else if c.ignitionV3 != nil {
 		c.addSystemdUnitV3(name, contents, enable, mask)
 	}
-}
-
-func (c *Conf) addSystemdDropinV1(service, name, contents string) {
-	for i, unit := range c.ignitionV1.Systemd.Units {
-		if unit.Name == v1types.SystemdUnitName(service) {
-			unit.DropIns = append(unit.DropIns, v1types.SystemdUnitDropIn{
-				Name:     v1types.SystemdUnitDropInName(name),
-				Contents: contents,
-			})
-			c.ignitionV1.Systemd.Units[i] = unit
-			return
-		}
-	}
-	c.ignitionV1.Systemd.Units = append(c.ignitionV1.Systemd.Units, v1types.SystemdUnit{
-		Name: v1types.SystemdUnitName(service),
-		DropIns: []v1types.SystemdUnitDropIn{
-			{
-				Name:     v1types.SystemdUnitDropInName(name),
-				Contents: contents,
-			},
-		},
-	})
 }
 
 func (c *Conf) addSystemdDropinV2(service, name, contents string) {
@@ -722,9 +670,7 @@ func (c *Conf) addSystemdDropinV3(service, name, contents string) {
 }
 
 func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
-	if c.ignitionV1 != nil {
-		c.addSystemdDropinV1(service, name, contents)
-	} else if c.ignitionV2 != nil {
+	if c.ignitionV2 != nil {
 		c.addSystemdDropinV2(service, name, contents)
 	} else if c.ignitionV21 != nil {
 		c.addSystemdDropinV21(service, name, contents)
@@ -737,21 +683,6 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 	} else if c.ignitionV3 != nil {
 		c.addSystemdDropinV3(service, name, contents)
 	}
-}
-
-func (c *Conf) copyKeysIgnitionV1(keys []*agent.Key) {
-	keyStrs := keysToStrings(keys)
-	for i := range c.ignitionV1.Passwd.Users {
-		user := &c.ignitionV1.Passwd.Users[i]
-		if user.Name == "core" {
-			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyStrs...)
-			return
-		}
-	}
-	c.ignitionV1.Passwd.Users = append(c.ignitionV1.Passwd.Users, v1types.User{
-		Name:              "core",
-		SSHAuthorizedKeys: keyStrs,
-	})
 }
 
 func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
@@ -865,9 +796,7 @@ func (c *Conf) copyKeysIgnitionV3(keys []*agent.Key) {
 // CopyKeys copies public keys from agent ag into the configuration to the
 // appropriate configuration section for the core user.
 func (c *Conf) CopyKeys(keys []*agent.Key) {
-	if c.ignitionV1 != nil {
-		c.copyKeysIgnitionV1(keys)
-	} else if c.ignitionV2 != nil {
+	if c.ignitionV2 != nil {
 		c.copyKeysIgnitionV2(keys)
 	} else if c.ignitionV21 != nil {
 		c.copyKeysIgnitionV21(keys)
@@ -892,7 +821,7 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 // IsIgnition returns true if the config is for Ignition.
 // Returns false in the case of empty configs
 func (c *Conf) IsIgnition() bool {
-	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV24 != nil || c.ignitionV3 != nil
+	return c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV24 != nil || c.ignitionV3 != nil
 }
 
 func (c *Conf) IsEmpty() bool {
