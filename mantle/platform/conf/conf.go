@@ -84,7 +84,6 @@ type Conf struct {
 	ignitionV23 *v23types.Config
 	ignitionV24 *v24types.Config
 	ignitionV3  *v3types.Config
-	script      string
 }
 
 func Empty() *UserData {
