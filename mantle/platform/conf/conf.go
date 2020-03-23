@@ -26,7 +26,6 @@ import (
 	ignconverter "github.com/coreos/ign-converter"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
-	cci "github.com/coreos/coreos-cloudinit/config"
 	ignerr "github.com/coreos/ignition/config/shared/errors"
 	v1 "github.com/coreos/ignition/config/v1"
 	v1types "github.com/coreos/ignition/config/v1/types"
@@ -54,10 +53,8 @@ type kind int
 
 const (
 	kindEmpty kind = iota
-	kindCloudConfig
 	kindIgnition
 	kindContainerLinuxConfig
-	kindScript
 )
 
 type systemdUnitState int
@@ -70,7 +67,7 @@ const (
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
 
-// UserData is an immutable, unvalidated configuration for a Container Linux
+// UserData is an immutable, unvalidated configuration for a CoreOS
 // machine.
 type UserData struct {
 	kind      kind
@@ -78,8 +75,7 @@ type UserData struct {
 	extraKeys []*agent.Key // SSH keys to be injected during rendering
 }
 
-// Conf is a configuration for a Container Linux machine. It may be either a
-// coreos-cloudconfig or an ignition configuration.
+// Conf is a configuration for a CoreOS machine. It's Ignition 2 or 3
 type Conf struct {
 	ignitionV1  *v1types.Config
 	ignitionV2  *v2types.Config
@@ -88,7 +84,6 @@ type Conf struct {
 	ignitionV23 *v23types.Config
 	ignitionV24 *v24types.Config
 	ignitionV3  *v3types.Config
-	cloudconfig *cci.CloudConfig
 	script      string
 }
 
@@ -112,20 +107,6 @@ func Ignition(data string) *UserData {
 	}
 }
 
-func CloudConfig(data string) *UserData {
-	return &UserData{
-		kind: kindCloudConfig,
-		data: data,
-	}
-}
-
-func Script(data string) *UserData {
-	return &UserData{
-		kind: kindScript,
-		data: data,
-	}
-}
-
 func Unknown(data string) *UserData {
 	u := &UserData{
 		data: data,
@@ -135,10 +116,6 @@ func Unknown(data string) *UserData {
 	switch err {
 	case ignerr.ErrEmpty:
 		u.kind = kindEmpty
-	case ignerr.ErrCloudConfig:
-		u.kind = kindCloudConfig
-	case ignerr.ErrScript:
-		u.kind = kindScript
 	default:
 		// Guess whether this is an Ignition config or a CLC.
 		// This treats an invalid Ignition config as a CLC, and a
@@ -264,15 +241,6 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 	switch u.kind {
 	case kindEmpty:
 		// empty, noop
-	case kindCloudConfig:
-		var err error
-		c.cloudconfig, err = cci.NewCloudConfig(u.data)
-		if err != nil {
-			return nil, err
-		}
-	case kindScript:
-		// pass through scripts unmodified, you are on your own.
-		c.script = u.data
 	case kindIgnition:
 		err := renderIgnition()
 		if err != nil {
@@ -329,10 +297,6 @@ func (c *Conf) String() string {
 	} else if c.ignitionV3 != nil {
 		buf, _ := json.Marshal(c.ignitionV3)
 		return string(buf)
-	} else if c.cloudconfig != nil {
-		return c.cloudconfig.String()
-	} else if c.script != "" {
-		return c.script
 	}
 
 	return ""
@@ -501,8 +465,8 @@ func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 		c.addFileV23(path, filesystem, contents, mode)
 	} else if c.ignitionV24 != nil {
 		c.addFileV24(path, filesystem, contents, mode)
-	} else if c.ignitionV1 != nil || c.cloudconfig != nil {
-		panic("conf: AddFile does not support ignition v1 or cloudconfig")
+	} else if c.ignitionV1 != nil {
+		panic("conf: AddFile does not support ignition v1")
 	}
 }
 
@@ -579,15 +543,6 @@ func (c *Conf) addSystemdUnitV3(name, contents string, enable, mask bool) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) addSystemdUnitCloudConfig(name, contents string, enable, mask bool) {
-	c.cloudconfig.CoreOS.Units = append(c.cloudconfig.CoreOS.Units, cci.Unit{
-		Name:    name,
-		Content: contents,
-		Enable:  enable,
-		Mask:    mask,
-	})
-}
-
 func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 	enable, mask := false, false
 	switch state {
@@ -610,8 +565,6 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 		c.addSystemdUnitV24(name, contents, enable, mask)
 	} else if c.ignitionV3 != nil {
 		c.addSystemdUnitV3(name, contents, enable, mask)
-	} else if c.cloudconfig != nil {
-		c.addSystemdUnitCloudConfig(name, contents, enable, mask)
 	}
 }
 
@@ -769,28 +722,6 @@ func (c *Conf) addSystemdDropinV3(service, name, contents string) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) addSystemdDropinCloudConfig(service, name, contents string) {
-	for i, unit := range c.cloudconfig.CoreOS.Units {
-		if unit.Name == service {
-			unit.DropIns = append(unit.DropIns, cci.UnitDropIn{
-				Name:    name,
-				Content: contents,
-			})
-			c.cloudconfig.CoreOS.Units[i] = unit
-			return
-		}
-	}
-	c.cloudconfig.CoreOS.Units = append(c.cloudconfig.CoreOS.Units, cci.Unit{
-		Name: service,
-		DropIns: []cci.UnitDropIn{
-			{
-				Name:    name,
-				Content: contents,
-			},
-		},
-	})
-}
-
 func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 	if c.ignitionV1 != nil {
 		c.addSystemdDropinV1(service, name, contents)
@@ -806,8 +737,6 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 		c.addSystemdDropinV24(service, name, contents)
 	} else if c.ignitionV3 != nil {
 		c.addSystemdDropinV3(service, name, contents)
-	} else if c.cloudconfig != nil {
-		c.addSystemdDropinCloudConfig(service, name, contents)
 	}
 }
 
@@ -934,15 +863,6 @@ func (c *Conf) copyKeysIgnitionV3(keys []*agent.Key) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) copyKeysCloudConfig(keys []*agent.Key) {
-	c.cloudconfig.SSHAuthorizedKeys = append(c.cloudconfig.SSHAuthorizedKeys, keysToStrings(keys)...)
-}
-
-func (c *Conf) copyKeysScript(keys []*agent.Key) {
-	keyString := strings.Join(keysToStrings(keys), "\n")
-	c.script = strings.Replace(c.script, "@SSH_KEYS@", keyString, -1)
-}
-
 // CopyKeys copies public keys from agent ag into the configuration to the
 // appropriate configuration section for the core user.
 func (c *Conf) CopyKeys(keys []*agent.Key) {
@@ -960,10 +880,6 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 		c.copyKeysIgnitionV24(keys)
 	} else if c.ignitionV3 != nil {
 		c.copyKeysIgnitionV3(keys)
-	} else if c.cloudconfig != nil {
-		c.copyKeysCloudConfig(keys)
-	} else if c.script != "" {
-		c.copyKeysScript(keys)
 	}
 }
 
@@ -975,12 +891,11 @@ func keysToStrings(keys []*agent.Key) (keyStrs []string) {
 }
 
 // IsIgnition returns true if the config is for Ignition.
-// Returns false in the case of empty configs as on most platforms,
-// this will default back to cloudconfig
+// Returns false in the case of empty configs
 func (c *Conf) IsIgnition() bool {
 	return c.ignitionV1 != nil || c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV24 != nil || c.ignitionV3 != nil
 }
 
 func (c *Conf) IsEmpty() bool {
-	return !c.IsIgnition() && c.cloudconfig == nil && c.script == ""
+	return !c.IsIgnition()
 }

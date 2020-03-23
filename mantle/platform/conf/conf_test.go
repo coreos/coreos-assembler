@@ -39,7 +39,6 @@ func TestConfCopyKey(t *testing.T) {
 		Ignition(`{ "ignition": { "version": "2.1.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.0.0" } }`),
 		Ignition(`{ "ignitionVersion": 1 }`),
-		CloudConfig("#cloud-config"),
 	}
 
 	for i, tt := range tests {
