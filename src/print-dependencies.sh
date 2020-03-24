@@ -6,5 +6,8 @@ srcdir="$(cd "$(dirname "$0")" && pwd)"
 arch="$(arch)"
 for x in deps vmdeps; do 
     grep -v '^#' "${srcdir}/${x}.txt"
-    grep -v '^#' "${srcdir}/${x}-${arch}.txt"
+    # There might not be any archful dependencies
+    if [ -s "${srcdir}/${x}-${arch}.txt" ]; then
+        grep -v '^#' "${srcdir}/${x}-${arch}.txt"
+    fi
 done
