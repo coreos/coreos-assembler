@@ -314,7 +314,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				isExcluded = true
 				break
 			}
-			allowedArchitecture, _ := isAllowed(architecture(platform), t.Architectures, t.ExcludeArchitectures)
+			allowedArchitecture, _ := isAllowed(system.RpmArch(), t.Architectures, t.ExcludeArchitectures)
 			allowed = allowed || (allowedPlatform && allowedArchitecture)
 		}
 		if isExcluded || !allowed {
@@ -327,7 +327,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 		// Check native tests for arch specific exclusion
 		for k, NativeFuncWrap := range t.NativeFuncs {
-			_, excluded := isAllowed(architecture(pltfrm), nil, NativeFuncWrap.ExcludeArchitectures)
+			_, excluded := isAllowed(system.RpmArch(), nil, NativeFuncWrap.ExcludeArchitectures)
 			if excluded {
 				delete(t.NativeFuncs, k)
 			}
@@ -766,7 +766,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
-		if err := scpKolet(tcluster.Machines(), architecture(pltfrm)); err != nil {
+		if err := scpKolet(tcluster.Machines(), system.RpmArch()); err != nil {
 			h.Fatal(err)
 		}
 	}
@@ -801,18 +801,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// run test
 	t.Run(tcluster)
-}
-
-// architecture returns the machine architecture of the given platform.
-func architecture(pltfrm string) string {
-	nativeArch := "amd64"
-	if (pltfrm == "qemu" || pltfrm == "qemu-unpriv") && QEMUOptions.Board != "" {
-		nativeArch = boardToArch(QEMUOptions.Board)
-	}
-	if pltfrm == "packet" && PacketOptions.Board != "" {
-		nativeArch = boardToArch(PacketOptions.Board)
-	}
-	return nativeArch
 }
 
 // returns the arch part of an sdk board name
