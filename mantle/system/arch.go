@@ -27,10 +27,8 @@ func RpmArch() string {
 		return "x86_64"
 	case "arm64":
 		return "aarch64"
-	case "ppc64":
-		return "ppc64le"
-	case "s390x":
-		return "s390x"
+	case "ppc64le", "s390x":
+		return goarch
 	default:
 		panic(fmt.Sprintf("RpmArch: No mapping defined for GOARCH %s", goarch))
 	}
