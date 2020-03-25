@@ -56,6 +56,8 @@ kolaargs = ['kola']
 if os.getuid() != 0 and not ('-p' in unknown_args):
     kolaargs.extend(['-p', 'qemu-unpriv'])
 
+if args.build is not None:
+    kolaargs.extend(['--build', args.build])
 outputdir = args.output_dir or default_output_dir
 kolaargs.extend(['--output-dir', outputdir])
 subargs = args.subargs or [default_cmd]

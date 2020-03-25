@@ -31,8 +31,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vincent-petithory/dataurl"
 
-	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
@@ -77,8 +77,7 @@ var (
 )
 
 type Install struct {
-	CosaBuildDir string
-	CosaBuild    *cosa.Build
+	CosaBuild *sdk.LocalBuild
 
 	Firmware string
 	Console  bool
@@ -99,8 +98,8 @@ type InstalledMachine struct {
 }
 
 func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, error) {
-	if inst.CosaBuild.BuildArtifacts.Metal == nil {
-		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.OstreeVersion)
+	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
+		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
 
 	inst.kargs = kargs
@@ -109,23 +108,23 @@ func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, er
 	var err error
 	var mach *InstalledMachine
 	if inst.LegacyInstaller {
-		if inst.CosaBuild.BuildArtifacts.Kernel == nil {
-			return nil, fmt.Errorf("build %s has no legacy installer kernel", inst.CosaBuild.OstreeVersion)
+		if inst.CosaBuild.Meta.BuildArtifacts.Kernel == nil {
+			return nil, fmt.Errorf("build %s has no legacy installer kernel", inst.CosaBuild.Meta.OstreeVersion)
 		}
 		mach, err = inst.runPXE(&kernelSetup{
-			kernel:    inst.CosaBuild.BuildArtifacts.Kernel.Path,
-			initramfs: inst.CosaBuild.BuildArtifacts.Initramfs.Path,
+			kernel:    inst.CosaBuild.Meta.BuildArtifacts.Kernel.Path,
+			initramfs: inst.CosaBuild.Meta.BuildArtifacts.Initramfs.Path,
 		}, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "legacy installer")
 		}
 	} else {
-		if inst.CosaBuild.BuildArtifacts.LiveKernel == nil {
-			return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Name)
+		if inst.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
+			return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Meta.Name)
 		}
 		mach, err = inst.runPXE(&kernelSetup{
-			kernel:    inst.CosaBuild.BuildArtifacts.LiveKernel.Path,
-			initramfs: inst.CosaBuild.BuildArtifacts.LiveInitramfs.Path,
+			kernel:    inst.CosaBuild.Meta.BuildArtifacts.LiveKernel.Path,
+			initramfs: inst.CosaBuild.Meta.BuildArtifacts.LiveInitramfs.Path,
 		}, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "testing live installer")
@@ -262,7 +261,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, err
 	}
 
-	builddir := filepath.Dir(inst.CosaBuildDir)
+	builddir := inst.CosaBuild.Dir
 	serializedConfig := []byte(inst.ignition)
 	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
 		return nil, err
@@ -274,7 +273,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		}
 	}
 
-	metalimg := inst.CosaBuild.BuildArtifacts.Metal.Path
+	metalimg := inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
 	metalname, err := setupMetalImage(builddir, metalimg, tftpdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
@@ -504,11 +503,11 @@ func generatePointerIgnitionString(target string) string {
 }
 
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnition string) (*InstalledMachine, error) {
-	if inst.CosaBuild.BuildArtifacts.Metal == nil {
-		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.OstreeVersion)
+	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
+		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
-	if inst.CosaBuild.BuildArtifacts.LiveIso == nil {
-		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Name)
+	if inst.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Meta.Name)
 	}
 
 	if len(inst.kargs) > 0 {
@@ -534,9 +533,9 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnit
 		return nil, err
 	}
 
-	builddir := filepath.Dir(inst.CosaBuildDir)
-	srcisopath := filepath.Join(builddir, inst.CosaBuild.BuildArtifacts.LiveIso.Path)
-	metalimg := inst.CosaBuild.BuildArtifacts.Metal.Path
+	builddir := inst.CosaBuild.Dir
+	srcisopath := filepath.Join(builddir, inst.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+	metalimg := inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
 	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")

@@ -481,10 +481,10 @@ func runArtifactIgnitionVersion(cmd *cobra.Command, args []string) error {
 }
 
 func preRunUpgrade(cmd *cobra.Command, args []string) error {
-	// unlike `kola run`, we *require* the --cosa-build arg -- XXX: figure out
+	// unlike `kola run`, we *require* the --build arg -- XXX: figure out
 	// how to get this working using cobra's MarkFlagRequired()
-	if kola.Options.CosaBuild == "" {
-		errors.New("Error: missing required argument --cosa-build")
+	if kola.Options.CosaBuildId == "" {
+		errors.New("Error: missing required argument --build")
 	}
 
 	err := syncOptionsImpl(false)
@@ -592,15 +592,15 @@ func getParentFcosBuildBase() (string, error) {
 	// parse commitmeta.json for `fedora-coreos.stream`, then fetch the stream
 	// metadata for that stream, then fetch the release metadata
 
-	if kola.CosaBuild.BuildRef == "" {
+	if kola.CosaBuild.Meta.BuildRef == "" {
 		return "", errors.New("no ref in build metadata")
 	}
 
-	stream := filepath.Base(kola.CosaBuild.BuildRef)
+	stream := filepath.Base(kola.CosaBuild.Meta.BuildRef)
 
 	var parentVersion string
-	if kola.CosaBuild.FedoraCoreOsParentVersion != "" {
-		parentVersion = kola.CosaBuild.FedoraCoreOsParentVersion
+	if kola.CosaBuild.Meta.FedoraCoreOsParentVersion != "" {
+		parentVersion = kola.CosaBuild.Meta.FedoraCoreOsParentVersion
 	} else {
 		// ok, we're probably operating on a local dev build since the pipeline
 		// always injects the parent; just instead fetch the release index

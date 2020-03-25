@@ -161,7 +161,8 @@ type Options struct {
 	IgnitionVersion string
 	SystemdDropins  []SystemdDropin
 
-	CosaBuild string
+	CosaWorkdir string
+	CosaBuildId string
 
 	NoTestExitError bool
 

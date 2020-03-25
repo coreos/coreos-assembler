@@ -33,7 +33,6 @@ import (
 
 	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
-	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/harness/reporters"
 	"github.com/coreos/mantle/kola/cluster"
@@ -55,6 +54,7 @@ import (
 	"github.com/coreos/mantle/platform/machine/openstack"
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
@@ -72,7 +72,7 @@ var (
 	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
 	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
 
-	CosaBuild *cosa.Build // this is the parsed object of --cosa-build
+	CosaBuild *sdk.LocalBuild // this is a parsed cosa build
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here

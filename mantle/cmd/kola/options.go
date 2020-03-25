@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
@@ -58,7 +57,8 @@ func init() {
 	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: v2, v3")
 	ssv(&kola.BlacklistedTests, "blacklist-test", []string{}, "List of tests to blacklist")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
-	sv(&kola.Options.CosaBuild, "cosa-build", "", "File path for coreos-assembler meta.json")
+	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
+	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")
 	// rhcos-specific options
 	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
 
@@ -142,8 +142,6 @@ func init() {
 
 // Sync up the command line options if there is dependency
 func syncOptionsImpl(useCosa bool) error {
-	var err error
-
 	kola.PacketOptions.Board = kola.QEMUOptions.Board
 	kola.PacketOptions.GSOptions = &kola.GCEOptions
 
@@ -175,28 +173,45 @@ func syncOptionsImpl(useCosa bool) error {
 	}
 
 	foundCosa := false
-	if kola.Options.CosaBuild == "" {
-		isroot, err := sdk.IsCosaRoot(".")
+	if kola.Options.CosaBuildId != "" {
+		// specified --build? fetch that build. in this path we *require* a
+		// cosa workdir, either assumed as PWD or via --workdir.
+
+		if kola.Options.CosaWorkdir == "" {
+			kola.Options.CosaWorkdir = "."
+		}
+
+		localbuild, err := sdk.GetLocalBuild(kola.Options.CosaWorkdir, kola.Options.CosaBuildId)
 		if err != nil {
 			return err
 		}
-		if isroot {
-			localbuild, err := sdk.GetLatestLocalBuild()
+
+		kola.CosaBuild = localbuild
+		foundCosa = true
+	} else {
+		if kola.Options.CosaWorkdir == "" {
+			// specified neither --build nor --workdir; only opportunistically
+			// try to use the PWD as the workdir, but don't error out if it's
+			// not
+			if isroot, err := sdk.IsCosaRoot("."); err != nil {
+				return err
+			} else if isroot {
+				kola.Options.CosaWorkdir = "."
+			}
+		}
+
+		if kola.Options.CosaWorkdir != "" {
+			localbuild, err := sdk.GetLatestLocalBuild(kola.Options.CosaWorkdir)
 			if err != nil {
 				return err
 			}
 
-			kola.Options.CosaBuild = filepath.Join(localbuild.Dir, "meta.json")
-			kola.CosaBuild = localbuild.Meta
+			kola.Options.CosaBuildId = localbuild.Meta.BuildID
+			kola.CosaBuild = localbuild
 			foundCosa = true
 		}
-	} else {
-		kola.CosaBuild, err = cosa.ParseBuild(kola.Options.CosaBuild)
-		if err != nil {
-			return err
-		}
-		foundCosa = true
 	}
+
 	if foundCosa && useCosa {
 		if err := syncCosaOptions(); err != nil {
 			return err
@@ -247,19 +262,19 @@ func syncOptions() error {
 func syncCosaOptions() error {
 	switch kolaPlatform {
 	case "qemu-unpriv", "qemu":
-		if kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.BuildArtifacts.Qemu != nil {
-			kola.QEMUOptions.DiskImage = filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.BuildArtifacts.Qemu.Path)
+		if kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.Meta.BuildArtifacts.Qemu != nil {
+			kola.QEMUOptions.DiskImage = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.Qemu.Path)
 		}
 	}
 
 	if kola.Options.IgnitionVersion == "" {
 		if kola.CosaBuild != nil {
-			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersion(kola.CosaBuild)
+			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersion(kola.CosaBuild.Meta)
 		}
 	}
 
 	if kola.Options.Distribution == "" {
-		distro, err := sdk.TargetDistro(kola.CosaBuild)
+		distro, err := sdk.TargetDistro(kola.CosaBuild.Meta)
 		if err != nil {
 			return err
 		}
