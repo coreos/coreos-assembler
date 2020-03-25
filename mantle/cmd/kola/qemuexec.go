@@ -41,8 +41,9 @@ var (
 		SilenceUsage: true,
 	}
 
-	memory  int
-	usernet bool
+	memory       int
+	usernet      bool
+	cpuCountHost bool
 
 	hostname string
 	ignition string
@@ -64,6 +65,7 @@ func init() {
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
+	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
@@ -174,6 +176,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder.Hostname = hostname
 	if memory != 0 {
 		builder.Memory = memory
+	}
+	if cpuCountHost {
+		builder.Processors = -1
 	}
 	if usernet {
 		builder.EnableUsermodeNetworking(22)

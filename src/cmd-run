@@ -20,7 +20,6 @@ VM_DISK=
 KARGS=
 DISK_CHANNEL=virtio
 VM_MEMORY=2048
-VM_NCPUS="${VM_NCPUS:-${QEMU_PROCS}}"
 VM_SRV_MNT=
 TARGET_USER=core
 FIRMWARE=bios
@@ -126,7 +125,7 @@ vmdiskdir=$(dirname "${VM_DISK}")
 VM_DISK=$(realpath "${vmdiskdir}")/$(basename "${VM_DISK}")
 
 # Set name to coreos to be shorter, and default CPUs to host
-set -- -name coreos -smp "${VM_NCPUS}" "$@"
+set -- -name coreos "$@"
 
 systemd_units=
 append_systemd_unit() {
@@ -254,4 +253,4 @@ case "${IMAGE_TYPE}" in
 esac
 
 set -x
-exec kola qemuexec --add-ignition=autologin -U --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
+exec kola qemuexec --add-ignition=autologin -U --auto-cpus --qemu-image "${VM_DISK}" --ignition "${IGNITION_CONFIG_FILE}" --memory "${VM_MEMORY}" "${kola_args[@]}" -- "$@"
