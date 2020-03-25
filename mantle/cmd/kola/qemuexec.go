@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
@@ -49,6 +50,8 @@ var (
 	knetargs string
 
 	ignitionFragments []string
+	bindro            []string
+	bindrw            []string
 
 	forceConfigInjection bool
 )
@@ -62,6 +65,8 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
+	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
+	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
 }
 
@@ -77,6 +82,14 @@ func renderFragments(config v3types.Config) (*v3types.Config, error) {
 		}
 	}
 	return &config, nil
+}
+
+func parseBindOpt(s string) (string, string, error) {
+	parts := strings.SplitN(s, ",", 2)
+	if len(parts) == 1 {
+		return "", "", fmt.Errorf("malformed bind option, required: SRC,DEST")
+	}
+	return parts[0], parts[1], nil
 }
 
 func runQemuExec(cmd *cobra.Command, args []string) error {
@@ -97,10 +110,26 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		config = *newconfig
 	}
 	builder := platform.NewBuilder()
+	builder.ForceConfigInjection = forceConfigInjection
+	for _, b := range bindro {
+		src, dest, err := parseBindOpt(b)
+		if err != nil {
+			return err
+		}
+		builder.Mount9p(src, dest, true)
+		config = v3.Merge(config, conf.Mount9p(dest, true))
+	}
+	for _, b := range bindrw {
+		src, dest, err := parseBindOpt(b)
+		if err != nil {
+			return err
+		}
+		builder.Mount9p(src, dest, false)
+		config = v3.Merge(config, conf.Mount9p(dest, false))
+	}
 	if err := builder.SetConfig(config, kola.Options.IgnitionVersion == "v2"); err != nil {
 		return errors.Wrapf(err, "rendering config")
 	}
-	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}

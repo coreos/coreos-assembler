@@ -173,6 +173,7 @@ type QemuBuilder struct {
 
 	finalized bool
 	diskId    uint
+	fs9pId    uint
 	fds       []*os.File
 }
 
@@ -278,6 +279,18 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(forwardedPort uint) {
 	}
 
 	builder.Append("-netdev", netdev, "-device", virtio("net", "netdev=eth0"))
+}
+
+// Mount9p sets up a mount point from the host to guest.  To be replaced
+// with https://virtio-fs.gitlab.io/ once it lands everywhere.
+func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
+	builder.fs9pId += 1
+	readonlyStr := ""
+	if readonly {
+		readonlyStr = ",readonly"
+	}
+	builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", builder.fs9pId, source, readonlyStr))
+	builder.Append("-device", virtio("9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pId, destHint)))
 }
 
 // supportsFwCfg if the target system supports injecting
