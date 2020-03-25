@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -139,7 +140,9 @@ type QemuBuilder struct {
 	// Config is a path to Ignition configuration
 	Config string
 
-	Memory     int
+	// Memory defaults to 1024 on most architectures, others it may be 2048
+	Memory int
+	// Processors < 0 means to use host count, unset means 1, values > 1 are directly used
 	Processors int
 	Uuid       string
 	Firmware   string
@@ -529,9 +532,6 @@ func (builder *QemuBuilder) finalize() {
 	if builder.finalized {
 		return
 	}
-	if builder.Processors == 0 {
-		builder.Processors = 1
-	}
 	if builder.Memory == 0 {
 		// FIXME; Required memory should really be a property of the tests, and
 		// let's try to drop these arch-specific overrides.  ARM was bumped via
@@ -630,6 +630,21 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	argv := baseQemuArgs()
 	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
+
+	if builder.Processors < 0 {
+		nproc, err := system.GetProcessors()
+		if err != nil {
+			return nil, errors.Wrapf(err, "qemu estimating processors")
+		}
+		// cap qemu smp at some reasonable level; sometimes our tooling runs
+		// on 32-core servers (64 hyperthreads) and there's no reason to
+		// try to match that.
+		nproc = uint(math.Max(float64(nproc), float64(16)))
+		builder.Processors = int(nproc)
+	} else if builder.Processors == 0 {
+		builder.Processors = 1
+	}
+	argv = append(argv, "-smp", fmt.Sprintf("%d", builder.Processors))
 
 	switch builder.Firmware {
 	case "bios":
