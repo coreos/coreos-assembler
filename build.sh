@@ -89,6 +89,11 @@ build_fcct() {
     rm fcct -rf
 }
 
+configure_tang() {
+    install -m 0755 -T "$srcdir"/src/tang/tangdw /usr/libexec/tangdw
+    install -m 0644 -T "$srcdir"/src/tang/tangd.xinetd /etc/xinetd.d/tangd
+}
+
 make_and_makeinstall() {
     make && make install
 }
@@ -133,4 +138,5 @@ else
   write_archive_info
   make_and_makeinstall
   configure_user
+  configure_tang
 fi
