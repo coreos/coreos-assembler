@@ -120,19 +120,19 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// optimized for qemu testing locally where this won't leave localhost at
 		// all. cloud testing should mostly be a pipeline thing, where the infra
 		// connection should be much faster
-		ostreeTarPath := filepath.Join(filepath.Dir(kola.Options.CosaBuild), kola.CosaBuild.BuildArtifacts.Ostree.Path)
+		ostreeTarPath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path)
 		if err := cluster.DropFile(c.Machines(), ostreeTarPath); err != nil {
 			c.Fatal(err)
 		}
 
-		c.MustSSHf(m, "tar -xf %s -C %s", kola.CosaBuild.BuildArtifacts.Ostree.Path, ostreeRepo)
+		c.MustSSHf(m, "tar -xf %s -C %s", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
 
 		graph.seedFromMachine(c, m)
-		graph.addUpdate(c, m, kola.CosaBuild.OstreeVersion, kola.CosaBuild.OstreeCommit)
+		graph.addUpdate(c, m, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
 	})
 
 	c.Run("upgrade-from-previous", func(c cluster.TestCluster) {
-		waitForUpgradeToVersion(c, m, kola.CosaBuild.OstreeVersion)
+		waitForUpgradeToVersion(c, m, kola.CosaBuild.Meta.OstreeVersion)
 	})
 
 	// Now, synthesize an update and serve that -- this is similar to
@@ -141,9 +141,9 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 	// Zincati & HTTP). Essentially, this sanity-checks that old starting state
 	// + new content set can update.
 	c.Run("upgrade-from-current", func(c cluster.TestCluster) {
-		newVersion := kola.CosaBuild.OstreeVersion + ".kola"
+		newVersion := kola.CosaBuild.Meta.OstreeVersion + ".kola"
 		newCommit := c.MustSSHf(m, "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s",
-			ostreeRepo, kola.CosaBuild.BuildRef, kola.CosaBuild.OstreeCommit, newVersion)
+			ostreeRepo, kola.CosaBuild.Meta.BuildRef, kola.CosaBuild.Meta.OstreeCommit, newVersion)
 
 		graph.addUpdate(c, m, newVersion, string(newCommit))
 

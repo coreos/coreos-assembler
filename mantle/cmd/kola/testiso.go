@@ -86,8 +86,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 
 	baseInst := platform.Install{
-		CosaBuildDir: kola.Options.CosaBuild,
-		CosaBuild:    kola.CosaBuild,
+		CosaBuild: kola.CosaBuild,
 
 		Console:  console,
 		Firmware: kola.QEMUOptions.Firmware,
@@ -109,13 +108,13 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		"-device", "virtio-serial", "-device", "virtserialport,chardev=completion,name=completion",
 		"-chardev", "file,id=completion,path=" + completionfile}
 
-	if kola.CosaBuild.BuildArtifacts.Metal == nil {
-		return fmt.Errorf("Build %s must have a `metal` artifact", kola.CosaBuild.OstreeVersion)
+	if kola.CosaBuild.Meta.BuildArtifacts.Metal == nil {
+		return fmt.Errorf("Build %s must have a `metal` artifact", kola.CosaBuild.Meta.OstreeVersion)
 	}
 
 	ranTest := false
 
-	foundLegacy := baseInst.CosaBuild.BuildArtifacts.Kernel != nil
+	foundLegacy := baseInst.CosaBuild.Meta.BuildArtifacts.Kernel != nil
 	if foundLegacy {
 		if legacy {
 			ranTest = true
@@ -125,16 +124,16 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			if err := testPXE(inst, completionfile); err != nil {
 				return err
 			}
-			fmt.Printf("Successfully tested legacy installer for %s\n", kola.CosaBuild.OstreeVersion)
+			fmt.Printf("Successfully tested legacy installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 		}
 	} else if legacy {
-		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Name)
+		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Meta.Name)
 	}
 
-	foundLive := kola.CosaBuild.BuildArtifacts.LiveKernel != nil
+	foundLive := kola.CosaBuild.Meta.BuildArtifacts.LiveKernel != nil
 	if !nolive {
 		if !foundLive {
-			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Name)
+			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Meta.Name)
 		}
 		if !nopxe {
 			ranTest = true
@@ -143,7 +142,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			if err := testPXE(instPxe, completionfile); err != nil {
 				return err
 			}
-			fmt.Printf("Successfully tested PXE live installer for %s\n", kola.CosaBuild.OstreeVersion)
+			fmt.Printf("Successfully tested PXE live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 		}
 
 		ranTest = true
@@ -151,7 +150,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		if err := testLiveIso(instIso, completionfile); err != nil {
 			return err
 		}
-		fmt.Printf("Successfully tested ISO live installer for %s\n", kola.CosaBuild.OstreeVersion)
+		fmt.Printf("Successfully tested ISO live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 	}
 
 	if !ranTest {
@@ -179,7 +178,7 @@ func testPXE(inst platform.Install, completionfile string) error {
 		},
 	}
 	var configStr string
-	if sdk.TargetIgnitionVersion(kola.CosaBuild) == "v2" {
+	if sdk.TargetIgnitionVersion(kola.CosaBuild.Meta) == "v2" {
 		ignc2, err := ignconverter.Translate3to2(config)
 		if err != nil {
 			return err

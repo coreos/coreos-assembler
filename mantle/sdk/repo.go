@@ -70,16 +70,11 @@ func RequireCosaRoot(root string) error {
 	return nil
 }
 
-func GetLatestLocalBuild() (*LocalBuild, error) {
-	return GetLocalBuild("latest")
+func GetLatestLocalBuild(root string) (*LocalBuild, error) {
+	return GetLocalBuild(root, "latest")
 }
 
-func GetLocalBuild(buildid string) (*LocalBuild, error) {
-	// Maybe in the future we support an environment variable or CLI switch
-	root, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
+func GetLocalBuild(root, buildid string) (*LocalBuild, error) {
 	if err := RequireCosaRoot(root); err != nil {
 		return nil, err
 	}
