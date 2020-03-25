@@ -45,34 +45,7 @@ case $arch in
     "s390x")   DEFAULT_TERMINAL="ttysclp0"; devtype=ccw ;;
     *)         fatal "Architecture $(arch) not supported"
 esac
-export DEFAULT_TERMINAL
-
-if [ -x /usr/libexec/qemu-kvm ]; then
-    QEMU_KVM="/usr/libexec/qemu-kvm"
-else
-    # Enable arch-specific options for qemu
-    case "$(arch)" in
-        "x86_64")  QEMU_KVM="qemu-system-$(arch) -accel kvm"                          ;;
-        "aarch64") QEMU_KVM="qemu-system-$(arch) -accel kvm -M virt,gic-version=host" ;;
-        "ppc64le") QEMU_KVM="qemu-system-ppc64 -accel kvm"                            ;;
-        "s390x")   QEMU_KVM="qemu-system-$(arch) -accel kvm -M s390-ccw-virtio"       ;;
-        *)         fatal "Architecture $(arch) not supported"
-    esac
-fi
-
-if grep -q 'kubepods' /proc/1/cgroup; then
-# only use 1 core on kubernetes since we can't determine how much we can actually use
-    QEMU_PROCS=1
-elif [ "$(nproc)" -gt 16 ]; then
-# cap qemu smp at some reasonable level to not exceed limitation of some platforms
-    QEMU_PROCS=16
-else
-    QEMU_PROCS="$(nproc)"
-fi
-# cap smp and dissable VGA as it "eats" output from console on some platforms, ppc64le most notably
-QEMU_KVM+=" -smp ${QEMU_PROCS} -vga none"
-export QEMU_KVM
-export QEMU_PROCS
+export DEFAULT_TERMINAL devtype
 
 _privileged=
 has_privileges() {
@@ -489,8 +462,7 @@ EOF
 
     cachedisk=()
     if [ -f "${workdir}/cache/cache2.qcow2" ]; then
-        cachedisk=("-drive" "if=none,id=drive-scsi0-0-0-1,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
-                   "-device" "scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1")
+        cachedisk=("-drive" "if=virtio,discard=unmap,file=${workdir}/cache/cache2.qcow2,index=2")
     fi
 
     # support local dev cases where src/config is a symlink
@@ -500,33 +472,15 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
-    scsibus="bus=pci.0,addr=0x3"
-    arch_args=
-    case $arch in
-        "aarch64")
-            # 'pci' bus doesn't work on aarch64
-            scsibus="bus=pcie.0,addr=0x3"
-            arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
-	    ;;
-        "s390x") scsibus="devno=fe.0.0003" ;;
-    esac
-
     rm -f "${workdir}/tmp/rc"
 
     #shellcheck disable=SC2086
-    ${QEMU_KVM} ${arch_args:-} \
-        -nodefaults -nographic -m 2048 -no-reboot -cpu host \
-        -kernel "${vmbuilddir}/kernel" \
-        -initrd "${vmbuilddir}/initrd" \
-        -netdev user,id=eth0,hostname=supermin \
-        -device virtio-net-"${devtype}",netdev=eth0 \
-        -device virtio-scsi-"${devtype}",id=scsi0,"${scsibus}" \
-        -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
-        -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
-        -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
+    kola qemuexec -m 2048 --auto-cpus -U -- -no-reboot -nodefaults -serial stdio \
+        -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
+        -drive "if=virtio,format=raw,snapshot=on,file=${vmbuilddir}/root,index=1" \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
+        "${srcvirtfs[@]}" -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
 	"${qemu_args[@]}"
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
