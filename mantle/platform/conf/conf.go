@@ -26,6 +26,7 @@ import (
 	ignconverter "github.com/coreos/ign-converter"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
+	systemdunit "github.com/coreos/go-systemd/unit"
 	ignerr "github.com/coreos/ignition/config/shared/errors"
 	v2 "github.com/coreos/ignition/config/v2_0"
 	v2types "github.com/coreos/ignition/config/v2_0/types"
@@ -854,5 +855,37 @@ func GetAutologin() v3types.Config {
 	}
 	conf.Systemd.Units = append(conf.Systemd.Units, getAutologinFragment("getty@.service", "--noclear"))
 	conf.Systemd.Units = append(conf.Systemd.Units, getAutologinFragment("serial-getty@.service", "--keep-baud 115200,38400,9600"))
+	return conf
+}
+
+func Mount9p(dest string, readonly bool) v3types.Config {
+	conf := v3types.Config{
+		Ignition: v3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: v3types.Systemd{},
+	}
+	readonlyStr := ""
+	if readonly {
+		readonlyStr = ",ro"
+	}
+	mntBuf := fmt.Sprintf(`[Unit]
+DefaultDependencies=no
+After=systemd-tmpfiles-setup.service
+Before=basic.target
+[Mount]
+What=%s
+Where=%s
+Type=9p
+Options=trans=virtio,version=9p2000.L%s
+[Install]
+WantedBy=multi-user.target
+`, dest, dest, readonlyStr)
+	enable := true
+	conf.Systemd.Units = append(conf.Systemd.Units, v3types.Unit{
+		Name:     fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])),
+		Contents: &mntBuf,
+		Enabled:  &enable,
+	})
 	return conf
 }

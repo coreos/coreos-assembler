@@ -137,17 +137,6 @@ append_systemd_unit() {
     fi
 }
 
-if [ -n "${VM_SRV_MNT}" ]; then
-    set -- --fsdev local,id=var-srv,path="${VM_SRV_MNT}",security_model=mapped,readonly \
-        -device virtio-9p-"${devtype}",fsdev=var-srv,mount_tag=/var/srv "$@"
-    # The dependency changes are hacks around https://github.com/coreos/fedora-coreos-tracker/issues/223
-    append_systemd_unit '{
-"name": "var-srv.mount",
-"enabled": true,
-"contents": "[Unit]\nDefaultDependencies=no\nAfter=systemd-tmpfiles-setup.service\nBefore=basic.target\n[Mount]\nWhat=/var/srv\nWhere=/var/srv\nType=9p\nOptions=ro,trans=virtio,version=9p2000.L\n[Install]\nWantedBy=multi-user.target\n"
-}'
-fi
-
 if [ -n "${IGNITION_CONFIG_FILE:-}" ]; then
     user_config=$(base64 --wrap 0 "${IGNITION_CONFIG_FILE}")
     user_config=$(cat << EOF
@@ -237,6 +226,10 @@ case "${DISK_CHANNEL}" in
     nvme) kola_args+=('--qemu-nvme');;
     *) die "Invalid --disk-channel ${DISK_CHANNEL}" ;;
 esac
+
+if [ -n "${VM_SRV_MNT}" ]; then
+    kola_args+=("--bind-ro=${VM_SRV_MNT},/var/srv")
+fi
 
 if [ "${IMAGE_TYPE}" == metal4k ]; then
     kola_args+=("--qemu-native-4k")
