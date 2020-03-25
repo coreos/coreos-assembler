@@ -252,7 +252,7 @@ func syncCosaOptions() error {
 		}
 	}
 
-	if kola.Options.IgnitionVersion == "" {
+	if kola.Options.IgnitionVersion == "" && kola.QEMUOptions.DiskImage == "" {
 		if kola.CosaBuild != nil {
 			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersion(kola.CosaBuild)
 		}

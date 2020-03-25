@@ -17,13 +17,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 
-	ignconverter "github.com/coreos/ign-converter"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
+	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -67,12 +65,7 @@ func init() {
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
 }
 
-func renderFragments() (string, error) {
-	buf, err := ioutil.ReadFile(ignition)
-	if err != nil {
-		return "", err
-	}
-	config, _, err := v3.Parse(buf)
+func renderFragments(config v3types.Config) (*v3types.Config, error) {
 	for _, fragtype := range ignitionFragments {
 		switch fragtype {
 		case "autologin":
@@ -80,73 +73,34 @@ func renderFragments() (string, error) {
 			config = newconf
 			break
 		default:
-			return "", fmt.Errorf("Unknown fragment: %s", fragtype)
+			return nil, fmt.Errorf("Unknown fragment: %s", fragtype)
 		}
 	}
-
-	newbuf, err := json.Marshal(config)
-	if err != nil {
-		return "", err
-	}
-	tmpf, err := ioutil.TempFile("", "qemuexec-ign")
-	if err != nil {
-		return "", err
-	}
-	if _, err := tmpf.Write(newbuf); err != nil {
-		return "", err
-	}
-
-	return tmpf.Name(), nil
+	return &config, nil
 }
 
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
-	cleanupIgnition := false
+	buf, err := ioutil.ReadFile(ignition)
+	if err != nil {
+		return err
+	}
+	config, _, err := v3.Parse(buf)
+	if err != nil {
+		return errors.Wrapf(err, "parsing %s", ignition)
+	}
 	if len(ignitionFragments) > 0 {
-		newconfig, err := renderFragments()
+		newconfig, err := renderFragments(config)
 		if err != nil {
 			return errors.Wrapf(err, "rendering fragments")
 		}
-		ignition = newconfig
-		cleanupIgnition = true
+		config = *newconfig
 	}
-	if kola.Options.IgnitionVersion == "v2" {
-		buf, err := ioutil.ReadFile(ignition)
-		if err != nil {
-			return err
-		}
-		config, _, err := v3.Parse(buf)
-		if err != nil {
-			return errors.Wrapf(err, "parsing %s", ignition)
-		}
-		ignc2, err := ignconverter.Translate3to2(config)
-		if err != nil {
-			return err
-		}
-		ignc2buf, err := json.Marshal(ignc2)
-		if err != nil {
-			return err
-		}
-		tmpf, err := ioutil.TempFile("", "qemuexec-ign-conv")
-		if err != nil {
-			return err
-		}
-		if _, err := tmpf.Write(ignc2buf); err != nil {
-			return err
-		}
-		if cleanupIgnition {
-			os.Remove(ignition)
-		}
-		cleanupIgnition = true
-		ignition = tmpf.Name()
+	builder, err := platform.NewBuilderFromParsed(config, kola.Options.IgnitionVersion == "v2")
+	if err != nil {
+		return errors.Wrapf(err, "creating qemu builder")
 	}
-	defer func() {
-		if cleanupIgnition {
-			os.Remove(ignition)
-		}
-	}()
-
-	builder := platform.NewBuilder(ignition, forceConfigInjection)
+	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}

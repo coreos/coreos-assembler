@@ -15,6 +15,7 @@
 package platform
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,8 @@ import (
 	"strings"
 	"syscall"
 
+	ignconverter "github.com/coreos/ign-converter"
+	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
@@ -45,6 +48,7 @@ type Disk struct {
 
 type QemuInstance struct {
 	qemu      exec.Cmd
+	tmpConfig string
 	swtpmTmpd string
 	swtpm     exec.Cmd
 }
@@ -116,6 +120,9 @@ func (inst *QemuInstance) Wait() error {
 }
 
 func (inst *QemuInstance) Destroy() {
+	if inst.tmpConfig != "" {
+		os.Remove(inst.tmpConfig)
+	}
 	if inst.qemu != nil {
 		if err := inst.qemu.Kill(); err != nil {
 			plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
@@ -161,6 +168,9 @@ type QemuBuilder struct {
 
 	primaryDiskAdded bool
 
+	// cleanupConfig is true if we own the Ignition config
+	cleanupConfig bool
+
 	finalized bool
 	diskId    uint
 	fds       []*os.File
@@ -176,6 +186,37 @@ func NewBuilder(config string, forceIgnInjection bool) *QemuBuilder {
 		Argv:                 []string{},
 	}
 	return &ret
+}
+
+func NewBuilderFromParsed(config v3types.Config, convSpec2 bool) (*QemuBuilder, error) {
+	var configBuf []byte
+	var err error
+	if convSpec2 {
+		ignc2, err := ignconverter.Translate3to2(config)
+		if err != nil {
+			return nil, err
+		}
+		configBuf, err = json.Marshal(ignc2)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		configBuf, err = json.Marshal(config)
+		if err != nil {
+			return nil, err
+		}
+	}
+	tmpf, err := ioutil.TempFile("", "mantle-qemu-ign")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tmpf.Write(configBuf); err != nil {
+		return nil, err
+	}
+
+	builder := NewBuilder(tmpf.Name(), false)
+	builder.cleanupConfig = true
+	return builder, nil
 }
 
 // AddFd appends a file descriptor that will be passed to qemu,
@@ -716,6 +757,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+	}
+
+	if builder.cleanupConfig {
+		inst.tmpConfig = builder.Config
 	}
 
 	if err = inst.qemu.Start(); err != nil {

@@ -125,11 +125,6 @@ fi
 vmdiskdir=$(dirname "${VM_DISK}")
 VM_DISK=$(realpath "${vmdiskdir}")/$(basename "${VM_DISK}")
 
-# For future me: if you are in here wondering where this value is ultimately
-# derived from, it exists in mantle/sdk/ignversion.go via `TargetIgnitionVersionFromName()`
-ignition_version=$(disk_ignition_version "${VM_DISK}")
-ign_validate="ignition-validate"
-
 # Set name to coreos to be shorter, and default CPUs to host
 set -- -name coreos -smp "${VM_NCPUS}" "$@"
 
@@ -230,23 +225,12 @@ cat > "${f}" <<EOF
     }
 }
 EOF
-if [ "${ignition_version}" = "2.2.0" ]; then
-    ign_validate="true"
-    spec2f=$(mktemp)
-    kola ign-convert2 < "${f}" > "${spec2f}"
-    mv "${spec2f}" "${f}"
-fi
 
 # We're using fd 9 to avoid clashing with kola's internal qemu fd mappings;
 # this is a bug.
 exec 9<>"${f}"
 rm -f "${f}"
 IGNITION_CONFIG_FILE=/proc/self/fd/9
-
-if ! ${ign_validate} "${IGNITION_CONFIG_FILE}"; then
-    jq . < "${IGNITION_CONFIG_FILE}"
-    exit 1
-fi
 
 case "${DISK_CHANNEL}" in
     virtio) ;;
