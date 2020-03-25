@@ -22,6 +22,7 @@ import (
 )
 
 const canonicalStreamIndexLocation = "https://builds.coreos.fedoraproject.org/prod/streams/%s/releases.json"
+const canonicalStreamMetadataLocation = "https://builds.coreos.fedoraproject.org/streams/%s.json"
 
 // XXX: dedupe with fedora-coreos-stream-generator
 
@@ -68,7 +69,87 @@ type ReleaseCommit struct {
 	Checksum     string `json:"checksum"`
 }
 
-func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
+// This models stream metadata:
+// https://github.com/coreos/fedora-coreos-tracker/tree/master/metadata/stream
+type StreamMetadata struct {
+	Stream        string                 `json:"stream"`
+	Metadata      Metadata               `json:"metadata"`
+	Architectures map[string]*StreamArch `json:"architectures"`
+}
+
+// StreamArch release details for x86_64 architetcure
+type StreamArch struct {
+	Artifacts StreamArtifacts `json:"artifacts"`
+	Images    *StreamImages   `json:"images,omitempty"`
+}
+
+// StreamArtifacts contains shipped artifacts list
+type StreamArtifacts struct {
+	Aliyun       *StreamMediaDetails `json:"aliyun,omitempty"`
+	Aws          *StreamMediaDetails `json:"aws,omitempty"`
+	Azure        *StreamMediaDetails `json:"azure,omitempty"`
+	Digitalocean *StreamMediaDetails `json:"digitalocean,omitempty"`
+	Exoscale     *StreamMediaDetails `json:"exoscale,omitempty"`
+	Gcp          *StreamMediaDetails `json:"gcp,omitempty"`
+	Metal        *StreamMediaDetails `json:"metal,omitempty"`
+	Openstack    *StreamMediaDetails `json:"openstack,omitempty"`
+	Packet       *StreamMediaDetails `json:"packet,omitempty"`
+	Qemu         *StreamMediaDetails `json:"qemu,omitempty"`
+	Virtualbox   *StreamMediaDetails `json:"virtualbox,omitempty"`
+	Vmware       *StreamMediaDetails `json:"vmware,omitempty"`
+}
+
+// StreamMediaDetails contains image artifact and release detail
+type StreamMediaDetails struct {
+	Release string                  `json:"release"`
+	Formats map[string]*ImageFormat `json:"formats"`
+}
+
+// StreamImages contains images available in cloud providers
+type StreamImages struct {
+	Aws          *StreamAwsImage   `json:"aws,omitempty"`
+	Azure        *StreamCloudImage `json:"azure,omitempty"`
+	Gcp          *StreamCloudImage `json:"gcp,omitempty"`
+	Digitalocean *StreamCloudImage `json:"digitalocean,omitempty"`
+	Packet       *StreamCloudImage `json:"packet,omitempty"`
+}
+
+// StreamCloudImage image for Cloud provider
+type StreamCloudImage struct {
+	Image string `json:"image,omitempty"`
+}
+
+// StreamAwsImage Aws images
+type StreamAwsImage struct {
+	Regions map[string]*StreamAwsAMI `json:"regions,omitempty"`
+}
+
+// StreamAwsAMI aws AMI detail
+type StreamAwsAMI struct {
+	Release string `json:"release"`
+	Image   string `json:"image"`
+}
+
+// Metadata for stream
+type Metadata struct {
+	LastModified string `json:"last-modified"`
+}
+
+// ImageFormat contains Disk image details
+type ImageFormat struct {
+	Disk      *ImageType `json:"disk,omitempty"`
+	Kernel    *ImageType `json:"kernel,omitempty"`
+	Initramfs *ImageType `json:"initramfs,omitempty"`
+}
+
+// ImageType contains image detail
+type ImageType struct {
+	Location  string `json:"location"`
+	Signature string `json:"signature"`
+	Sha256    string `json:"sha256"`
+}
+
+func fetchURL(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -76,6 +157,15 @@ func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
 
 	body, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
+	body, err := fetchURL(url)
 	if err != nil {
 		return nil, err
 	}
@@ -90,4 +180,22 @@ func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
 
 func FetchAndParseCanonicalReleaseIndex(stream string) (*ReleaseIndex, error) {
 	return FetchAndParseReleaseIndex(fmt.Sprintf(canonicalStreamIndexLocation, stream))
+}
+
+func FetchAndParseStreamMetadata(url string) (*StreamMetadata, error) {
+	body, err := fetchURL(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var meta *StreamMetadata
+	if err = json.Unmarshal(body, &meta); err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
+func FetchAndParseCanonicalStreamMetadata(stream string) (*StreamMetadata, error) {
+	return FetchAndParseStreamMetadata(fmt.Sprintf(canonicalStreamMetadataLocation, stream))
 }
