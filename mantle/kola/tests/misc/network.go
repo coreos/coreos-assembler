@@ -117,7 +117,7 @@ NextProcess:
 func NetworkListeners(c cluster.TestCluster) {
 	expectedListeners := []listener{
 		{"tcp", "22", "sshd"},
-		{"udp", "68", "dhclient"},
+		{"udp", "68", "NetworkManager"},
 		{"udp", "323", "chronyd"},
 	}
 	checkList := func() error {
