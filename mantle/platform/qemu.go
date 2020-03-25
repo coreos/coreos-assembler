@@ -574,7 +574,7 @@ func baseQemuArgs() []string {
 	case "aarch64":
 		return []string{
 			"qemu-system-aarch64",
-			"-machine", "virt,accel=kvm,gic-version=3",
+			"-machine", "virt,accel=kvm,gic-version=max",
 			"-cpu", "host",
 		}
 	case "s390x":
