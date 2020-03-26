@@ -54,8 +54,9 @@ var (
 	bindro            []string
 	bindrw            []string
 
-	directIgnition       bool
-	forceConfigInjection bool
+	directIgnition            bool
+	forceConfigInjection      bool
+	propagateInitramfsFailure bool
 )
 
 func init() {
@@ -72,6 +73,8 @@ func init() {
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
+	cmdQemuExec.Flags().BoolVar(&propagateInitramfsFailure, "propagate-initramfs-failure", false, "Error out if the system fails in the initramfs")
+
 }
 
 func renderFragments(config v3types.Config) (*v3types.Config, error) {
@@ -202,8 +205,13 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 	defer inst.Destroy()
 
-	// Ignore errors
-	_ = inst.Wait()
-
-	return nil
+	if propagateInitramfsFailure {
+		err = inst.WaitAll()
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		return inst.Wait()
+	}
 }

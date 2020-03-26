@@ -74,6 +74,10 @@ func (am *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return am.cluster.SSH(am, cmd)
 }
 
+func (am *machine) IgnitionError() error {
+	return nil
+}
+
 // Re-fetch the Public & Private IP address for the event that it's changed during the reboot
 func (am *machine) refetchIPs() error {
 	var err error

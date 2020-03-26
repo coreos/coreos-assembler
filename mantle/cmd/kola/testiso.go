@@ -193,7 +193,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 func awaitCompletion(inst *platform.QemuInstance, qchan *os.File, expected []string) error {
 	errchan := make(chan error)
 	go func() {
-		if err := inst.Wait(); err != nil {
+		if err := inst.WaitAll(); err != nil {
 			errchan <- err
 		}
 		time.Sleep(1 * time.Minute)

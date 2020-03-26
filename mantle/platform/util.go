@@ -183,7 +183,19 @@ func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
 
 // StartMachine will start a given machine, provided the machine's journal.
 func StartMachine(m Machine, j *Journal) error {
-	return StartMachineAfterReboot(m, j, "")
+	errchan := make(chan error)
+	go func() {
+		err := m.IgnitionError()
+		if err != nil {
+			plog.Infof("machine %s entered emergency.target in initramfs: %v", m.ID(), err)
+			errchan <- err
+		}
+	}()
+	go func() {
+		// This one ends up connecting to the journal via ssh
+		errchan <- StartMachineAfterReboot(m, j, "")
+	}()
+	return <-errchan
 }
 
 func GetMachineBootId(m Machine) (string, error) {

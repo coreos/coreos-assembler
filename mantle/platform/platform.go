@@ -51,6 +51,9 @@ type Machine interface {
 	// ID returns the plaform-specific machine identifier.
 	ID() string
 
+	// IgnitionError returns an error if the machine failed in Ignition
+	IgnitionError() error
+
 	// IP returns the machine's public IP.
 	IP() string
 

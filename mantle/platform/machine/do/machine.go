@@ -61,6 +61,10 @@ func (dm *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return dm.cluster.SSH(dm, cmd)
 }
 
+func (dm *machine) IgnitionError() error {
+	return nil
+}
+
 func (dm *machine) Reboot() error {
 	return platform.RebootMachine(dm, dm.journal)
 }

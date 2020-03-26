@@ -61,6 +61,15 @@ func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return m.qc.SSH(m, cmd)
 }
 
+func (m *machine) IgnitionError() error {
+	_, err := m.inst.WaitIgnitionError()
+	if err != nil {
+		return err
+	}
+	// TODO render buf
+	return platform.ErrInitramfsEmergency
+}
+
 func (m *machine) Reboot() error {
 	return platform.RebootMachine(m, m.journal)
 }

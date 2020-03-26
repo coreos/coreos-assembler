@@ -61,6 +61,10 @@ func (pm *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return pm.cluster.SSH(pm, cmd)
 }
 
+func (pm *machine) IgnitionError() error {
+	return nil
+}
+
 func (pm *machine) Reboot() error {
 	return platform.RebootMachine(pm, pm.journal)
 }
