@@ -52,14 +52,25 @@ def aws_run_ore_replicate(build, args):
     if len(region_list) == 0:
         raise Exception("no new regions detected")
 
-    source_image = buildmeta['amis'][0]['hvm']
-    source_region = buildmeta['amis'][0]['name']
+    if not args.source_region:
+        args.source_region = buildmeta['amis'][0]['name']
+
+    source_image = None
+    for a in buildmeta['amis']:
+        if a['name'] == args.source_region:
+            source_image = a['hvm']
+            break
+
+    if source_image is None:
+        raise Exception(("Unable to find AMI ID for "
+                        f"{args.source_region} region"))
+
     ore_args = ['ore']
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
     ore_args.extend([
         'aws', 'copy-image', '--image',
-        source_image, '--region', source_region
+        source_image, '--region', args.source_region
     ])
     ore_args.extend(region_list)
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
