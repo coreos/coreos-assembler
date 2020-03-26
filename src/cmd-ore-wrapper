@@ -84,6 +84,7 @@ Each target has its own sub options. To access them us:
     parser.add_argument("--region", "--regions", dest="region",
                         help="Upload/replicate to specific regions",
                         nargs='+')
+    parser.add_argument("--source-region", help="Region to copy AMI from")
 
     parser.description = (
         f"'ore' interface for running ore commands for {target.upper()}"
