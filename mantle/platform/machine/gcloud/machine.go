@@ -62,6 +62,10 @@ func (gm *machine) SSH(cmd string) ([]byte, []byte, error) {
 	return gm.gc.SSH(gm, cmd)
 }
 
+func (gm *machine) IgnitionError() error {
+	return nil
+}
+
 func (gm *machine) Reboot() error {
 	return platform.RebootMachine(gm, gm.journal)
 }

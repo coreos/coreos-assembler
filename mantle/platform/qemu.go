@@ -15,6 +15,7 @@
 package platform
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,6 +36,10 @@ import (
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
+)
+
+var (
+	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
 )
 
 type MachineOptions struct {
@@ -63,6 +68,8 @@ type QemuInstance struct {
 	swtpm      exec.Cmd
 	tmpFiles   []string
 	nbdServers []exec.Cmd
+
+	journalPipe *os.File
 }
 
 func (inst *QemuInstance) Pid() int {
@@ -127,6 +134,7 @@ func (inst *QemuInstance) SSHAddress() (string, error) {
 	return "", fmt.Errorf("didn't find an address")
 }
 
+// Wait for the qemu process to exit
 func (inst *QemuInstance) Wait() error {
 	if inst.qemu != nil {
 		err := inst.qemu.Wait()
@@ -136,9 +144,68 @@ func (inst *QemuInstance) Wait() error {
 	return nil
 }
 
+// WaitIgnitionError will only return if the instance
+// failed inside the initramfs.  The resulting string will
+// be a newline-delimited stream of JSON strings, as returned
+// by `journalctl -o json`.
+func (inst *QemuInstance) WaitIgnitionError() (string, error) {
+	b := bufio.NewReaderSize(inst.journalPipe, 64768)
+	var r strings.Builder
+	iscorrupted := false
+	_, err := b.Peek(1)
+	if err != nil {
+		if err == io.EOF {
+			return "", nil
+		}
+		return "", errors.Wrapf(err, "Reading from journal")
+	}
+	for {
+		line, prefix, err := b.ReadLine()
+		if err != nil {
+			return r.String(), errors.Wrapf(err, "Reading from journal channel")
+		}
+		if prefix {
+			iscorrupted = true
+		}
+		if len(line) == 0 || string(line) == "{}" {
+			break
+		}
+		r.Write(line)
+	}
+	if iscorrupted {
+		return r.String(), fmt.Errorf("journal was truncated due to overly long line")
+	}
+	return r.String(), nil
+}
+
+// WaitAll wraps the process exit as well as WaitIgnitionError,
+// returning an error if either fail.
+func (inst *QemuInstance) WaitAll() error {
+	c := make(chan error)
+	go func() {
+		buf, err := inst.WaitIgnitionError()
+		if err != nil {
+			c <- err
+		} else {
+			// TODO parse buf and try to nicely render something
+			if buf != "" {
+				c <- ErrInitramfsEmergency
+			}
+		}
+	}()
+	go func() {
+		c <- inst.Wait()
+	}()
+	return <-c
+}
+
 func (inst *QemuInstance) Destroy() {
 	for _, fN := range inst.tmpFiles {
 		os.RemoveAll(fN)
+	}
+	if inst.journalPipe != nil {
+		inst.journalPipe.Close()
+		inst.journalPipe = nil
 	}
 	// check if qemu is dead before trying to kill it
 	if inst.qemu != nil {
@@ -884,6 +951,17 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock),
 			"-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-tis,tpmdev=tpm0")
 	}
+
+	// Set up the virtio channel to get Ignition failures by default
+	journalPipeR, journalPipeW, err := os.Pipe()
+	if err != nil {
+		return nil, errors.Wrapf(err, "creating journal pipe")
+	}
+	inst.journalPipe = journalPipeR
+	argv = append(argv, "-device", "virtio-serial")
+	// https://www.redhat.com/archives/libvir-list/2015-December/msg00305.html
+	argv = append(argv, "-chardev", fmt.Sprintf("file,id=ignition-dracut,path=%s,append=on", builder.AddFd(journalPipeW)))
+	argv = append(argv, "-device", "virtserialport,chardev=ignition-dracut,name=com.coreos.ignition.journal")
 
 	fdnum := 3 // first additional file starts at position 3
 	for i, _ := range builder.fds {
