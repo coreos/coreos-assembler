@@ -766,7 +766,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
-		if err := scpKolet(tcluster.Machines(), system.RpmArch()); err != nil {
+		if err := scpKolet(tcluster.Machines()); err != nil {
 			h.Fatal(err)
 		}
 	}
@@ -803,13 +803,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	t.Run(tcluster)
 }
 
-// returns the arch part of an sdk board name
-func boardToArch(board string) string {
-	return strings.SplitN(board, "-", 2)[0]
-}
-
 // scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(machines []platform.Machine, mArch string) error {
+func scpKolet(machines []platform.Machine) error {
+	mArch := system.RpmArch()
 	for _, d := range []string{
 		".",
 		filepath.Dir(os.Args[0]),
