@@ -30,8 +30,11 @@ if [ -L "${workdir}"/src/config ]; then
     mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
 mkdir -p "${workdir}"/cache /host/container-work
-if [ -b /dev/sdb1 ]; then
-    mount /dev/sdb1 "${workdir}"/cache
+cachedev=$(blkid -lt LABEL=cosa-cache -o device)
+if [ -n "${cachedev}" ]; then
+    mount "${cachedev}" "${workdir}"/cache
+else
+    echo "No cosa-cache filesystem found!"
 fi
 
 if [ -f "${workdir}/tmp/supermin/supermin.env" ]; then
