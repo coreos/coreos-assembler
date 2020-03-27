@@ -94,30 +94,40 @@ func parseBindOpt(s string) (string, string, error) {
 
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
-	buf, err := ioutil.ReadFile(ignition)
-	if err != nil {
-		return err
-	}
-	config, _, err := v3.Parse(buf)
-	if err != nil {
-		return errors.Wrapf(err, "parsing %s", ignition)
+	var config *v3types.Config
+	if ignition != "" {
+		buf, err := ioutil.ReadFile(ignition)
+		if err != nil {
+			return err
+		}
+		configv, _, err := v3.Parse(buf)
+		if err != nil {
+			return errors.Wrapf(err, "parsing %s", ignition)
+		}
+		config = &configv
 	}
 	if len(ignitionFragments) > 0 {
-		newconfig, err := renderFragments(config)
+		if config == nil {
+			config = &v3types.Config{}
+		}
+		newconfig, err := renderFragments(*config)
 		if err != nil {
 			return errors.Wrapf(err, "rendering fragments")
 		}
-		config = *newconfig
+		config = newconfig
 	}
 	builder := platform.NewBuilder()
-	builder.ForceConfigInjection = forceConfigInjection
 	for _, b := range bindro {
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
 			return err
 		}
 		builder.Mount9p(src, dest, true)
-		config = v3.Merge(config, conf.Mount9p(dest, true))
+		if config == nil {
+			config = &v3types.Config{}
+		}
+		configv := v3.Merge(*config, conf.Mount9p(dest, true))
+		config = &configv
 	}
 	for _, b := range bindrw {
 		src, dest, err := parseBindOpt(b)
@@ -125,11 +135,18 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		builder.Mount9p(src, dest, false)
-		config = v3.Merge(config, conf.Mount9p(dest, false))
+		if config == nil {
+			config = &v3types.Config{}
+		}
+		configv := v3.Merge(*config, conf.Mount9p(dest, false))
+		config = &configv
 	}
-	if err := builder.SetConfig(config, kola.Options.IgnitionVersion == "v2"); err != nil {
-		return errors.Wrapf(err, "rendering config")
+	if config != nil {
+		if err := builder.SetConfig(*config, kola.Options.IgnitionVersion == "v2"); err != nil {
+			return errors.Wrapf(err, "rendering config")
+		}
 	}
+	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}
