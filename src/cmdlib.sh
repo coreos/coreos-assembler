@@ -172,10 +172,13 @@ prepare_build() {
     if ! [ -d builds ]; then
         fatal "No $(pwd)/builds found; did you run coreos-assembler init?"
     elif ! has_privileges; then
-        if [ ! -f cache/cache.qcow2 ]; then
-            qemu-img create -f qcow2 cache/cache.qcow2 10G
-            LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs -a cache/cache.qcow2
+        # "cache2" has an explicit label so we can find it in qemu easily
+        if [ ! -f cache/cache2.qcow2 ]; then
+            qemu-img create -f qcow2 cache/cache2.qcow2 10G
+            LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs --label=cosa-cache -a cache/cache2.qcow2
         fi
+        # And remove the old one
+        rm -vf cache/cache.qcow2
     fi
 
     workdir="$(pwd)"
@@ -471,7 +474,7 @@ $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
 sh ${TMPDIR}/cmd.sh || rc=\$?
 echo \$rc > ${workdir}/tmp/rc
-if [ -b /dev/sdb1 ]; then
+if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
 fi
 /sbin/reboot -f
@@ -483,8 +486,8 @@ EOF
     echo "$@" > "${TMPDIR}"/cmd.sh
 
     cachedisk=()
-    if [ -f "${workdir}/cache/cache.qcow2" ]; then
-        cachedisk=("-drive" "if=none,id=drive-scsi0-0-0-1,discard=unmap,file=${workdir}/cache/cache.qcow2" \
+    if [ -f "${workdir}/cache/cache2.qcow2" ]; then
+        cachedisk=("-drive" "if=none,id=drive-scsi0-0-0-1,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
                    "-device" "scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1")
     fi
 
