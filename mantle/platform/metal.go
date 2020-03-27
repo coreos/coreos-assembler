@@ -216,7 +216,7 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 }
 
 func newQemuBuilder(firmware string, console bool) *QemuBuilder {
-	builder := NewBuilder("", false)
+	builder := NewBuilder()
 	builder.Firmware = firmware
 	builder.AddDisk(&Disk{
 		Size: "12G", // Arbitrary

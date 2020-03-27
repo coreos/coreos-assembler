@@ -143,8 +143,10 @@ func (inst *QemuInstance) Destroy() {
 
 // QemuBuilder is a configurator that can then create a qemu instance
 type QemuBuilder struct {
-	// Config is a path to Ignition configuration
-	Config string
+	// ConfigFile is a path to Ignition configuration
+	ConfigFile string
+	// ForceConfigInjection is useful for booting `metal` images directly
+	ForceConfigInjection bool
 
 	Memory     int
 	Processors int
@@ -160,8 +162,6 @@ type QemuBuilder struct {
 	// IgnitionNetworkKargs are written to /boot/ignition
 	IgnitionNetworkKargs string
 
-	ForceConfigInjection bool
-
 	Hostname string
 
 	InheritConsole bool
@@ -176,47 +176,45 @@ type QemuBuilder struct {
 	fds       []*os.File
 }
 
-func NewBuilder(config string, forceIgnInjection bool) *QemuBuilder {
+func NewBuilder() *QemuBuilder {
 	ret := QemuBuilder{
-		Config:               config,
-		ForceConfigInjection: forceIgnInjection,
-		Firmware:             "bios",
-		Swtpm:                true,
-		Pdeathsig:            true,
-		Argv:                 []string{},
+		Firmware:  "bios",
+		Swtpm:     true,
+		Pdeathsig: true,
+		Argv:      []string{},
 	}
 	return &ret
 }
 
-func NewBuilderFromParsed(config v3types.Config, convSpec2 bool) (*QemuBuilder, error) {
+func (builder *QemuBuilder) SetConfig(config v3types.Config, convSpec2 bool) error {
 	var configBuf []byte
 	var err error
 	if convSpec2 {
 		ignc2, err := ignconverter.Translate3to2(config)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		configBuf, err = json.Marshal(ignc2)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	} else {
 		configBuf, err = json.Marshal(config)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	tmpf, err := ioutil.TempFile("", "mantle-qemu-ign")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if _, err := tmpf.Write(configBuf); err != nil {
-		return nil, err
+		return err
 	}
 
-	builder := NewBuilder(tmpf.Name(), false)
+	builder.ConfigFile = tmpf.Name()
 	builder.cleanupConfig = true
-	return builder, nil
+	return nil
 }
 
 // AddFd appends a file descriptor that will be passed to qemu,
@@ -510,9 +508,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if primary {
 		// If the board doesn't support -fw_cfg or we were explicitly
 		// requested, inject via libguestfs on the primary disk.
-		requiresInjection := builder.Config != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
+		requiresInjection := builder.ConfigFile != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
 		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArguments != "" {
-			if err = setupPreboot(builder.Config, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
+			if err = setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
 				dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
@@ -695,9 +693,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	argv = append(argv, "-nographic")
 
 	// Handle Ignition
-	if builder.Config != "" {
+	if builder.ConfigFile != "" {
 		if builder.supportsFwCfg() {
-			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.Config)
+			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.ConfigFile)
 		} else if !builder.primaryDiskAdded {
 			// Otherwise, we should have handled it in builder.AddPrimaryDisk
 			panic("Ignition specified but no primary disk")
@@ -760,7 +758,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	}
 
 	if builder.cleanupConfig {
-		inst.tmpConfig = builder.Config
+		inst.tmpConfig = builder.ConfigFile
 	}
 
 	if err = inst.qemu.Start(); err != nil {
