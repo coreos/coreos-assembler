@@ -484,7 +484,8 @@ EOF
 
     cachedisk=()
     if [ -f "${workdir}/cache/cache.qcow2" ]; then
-        cachedisk=("-hdb" "${workdir}/cache/cache.qcow2")
+        cachedisk=("-drive" "if=none,id=drive-scsi0-0-0-1,discard=unmap,file=${workdir}/cache/cache.qcow2" \
+                   "-device" "scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=1,drive=drive-scsi0-0-0-1,id=scsi0-0-0-1")
     fi
 
     # support local dev cases where src/config is a symlink
@@ -494,9 +495,15 @@ EOF
         srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
     fi
 
+    scsibus="bus=pci.0,addr=0x3"
     arch_args=
     case $arch in
-        "aarch64") arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd' ;;
+        "aarch64")
+            # 'pci' bus doesn't work on aarch64
+            scsibus="bus=pcie.0,addr=0x3"
+            arch_args='-bios /usr/share/AAVMF/AAVMF_CODE.fd'
+	    ;;
+        "s390x") scsibus="devno=fe.0.0003" ;;
     esac
 
     #shellcheck disable=SC2086
@@ -506,8 +513,10 @@ EOF
         -initrd "${vmbuilddir}/initrd" \
         -netdev user,id=eth0,hostname=supermin \
         -device virtio-net-"${devtype}",netdev=eth0 \
+        -device virtio-scsi-"${devtype}",id=scsi0,"${scsibus}" \
         -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-"${devtype}",rng=rng0 \
-        -hda "${vmbuilddir}/root" \
+        -drive if=none,id=drive-scsi0-0-0-0,snapshot=on,file="${vmbuilddir}/root" \
+        -device scsi-hd,bus=scsi0.0,channel=0,scsi-id=0,lun=0,drive=drive-scsi0-0-0-0,id=scsi0-0-0-0,bootindex=1 \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
         "${srcvirtfs[@]}" -serial stdio -append "root=/dev/sda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
