@@ -24,6 +24,7 @@ EOF
 }
 
 # Parse options
+SHORTCUTS=
 FORCE=
 FORCE_IMAGE=
 SKIP_PRUNE=0
@@ -31,7 +32,7 @@ VERSION=
 PARENT=
 TAG=
 rc=0
-options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hfS:t: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune,shortcut -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -51,6 +52,10 @@ while true; do
             ;;
         --skip-prune)
             SKIP_PRUNE=1
+            ;;
+        -S | --shortcut)
+            shift
+            SHORTCUTS="$1"
             ;;
         --version)
             shift
@@ -108,6 +113,23 @@ ostree --version
 rpm-ostree --version
 
 previous_build=$(get_latest_build)
+previous_qemu=
+# If the previous build was a shortcut, prune it so we get back to the base
+# rather than creating a "stack" of shortcut builds
+if [ -n "${SHORTCUTS}" ]; then
+    if [ -z "${previous_build}" ]; then
+        fatal "--shortcut requires a previous build"
+    fi
+    previous_builddir=$(get_build_dir "${previous_build}")
+    if jq -re '.["coreos-assembler.shortcut"]' < "${previous_builddir}/meta.json" >/dev/null; then
+        (cd "${workdir}" && cosa prune --prune="${previous_build}")
+        previous_build=$(get_latest_build)
+    fi
+    previous_qemu=$(jq -r '.["images"]["qemu"]["path"]' < "${previous_builddir}/meta.json")
+    if [ "${previous_qemu}" = "null" ]; then
+        fatal "--shortcut requires a previous build with qemu"
+    fi
+fi
 if [ -n "${previous_build}" ]; then
     previous_builddir=$(get_build_dir "${previous_build}")
 fi
@@ -226,22 +248,51 @@ composejson=${PWD}/tmp/compose.json
 # Put this under tmprepo so it gets automatically chown'ed if needed
 lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 prepare_compose_overlays
-# --cache-only is here since `fetch` is a separate verb.
-# shellcheck disable=SC2086
-runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
+
+shortcut_overlay=
+if [ -n "$SHORTCUTS" ]; then
+    case "${SHORTCUTS}" in
+        "overrides")
+            if [ -z "${previous_commit}" ]; then
+                fatal "Cannot shortcut=overlays with no previous build"
+            fi
+            shortversion="shortcut-$(date +"%s")"
+            # Depends https://github.com/ostreedev/ostree/pull/2041/commits/b3bbbd154225e81980546b2c0b5ed98714830696
+            set -x
+            ostree --repo="${tmprepo}" commit -b "${ref}" --base="${previous_commit}" --tree=dir="${workdir}"/overrides/rootfs \
+                --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs \
+                --add-metadata-string=version="${shortversion}"
+            set +x
+            commit=$(ostree --repo="${tmprepo}" rev-parse "${ref}")
+            cat > "${composejson}" << EOF
+            { "ref": "${ref}", "ostree-commit": "${commit}", "coreos-assembler.shortcut": true }
+EOF
+            echo '{}' > "${lockfile_out}"
+            touch "${changed_stamp}"
+            shortcut_overlay=1
+        ;;
+        *) fatal "Unknown shortcut: ${SHORTCUTS}"
+    esac
+else
+    # --cache-only is here since `fetch` is a separate verb.
+    # shellcheck disable=SC2086
+    runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}".tmp \
            ${lock_arg} ${version_arg} ${parent_arg}
-strip_out_lockfile_digests "$lockfile_out".tmp
-/usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
+    strip_out_lockfile_digests "$lockfile_out".tmp
+    /usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
+fi
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ]; then
-    commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
-    # Clean up prior versions
-    rm -f "${workdir}"/tmp/compose-*.json
-    # Save this in case the image build fails
-    cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
+    if [ -z "${shortcut_overlay}" ]; then
+        commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
+        # Clean up prior versions
+        rm -f "${workdir}"/tmp/compose-*.json
+        # Save this in case the image build fails
+        cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
+    fi
 else
     # Pick up from tmprepo; that's what rpm-ostree is comparing against. It may
     # be the same as previous_commit, or newer if a previous build failed image
@@ -282,7 +333,7 @@ else
     fi
 fi
 
-if [ -n "${previous_build}" ]; then
+if [ -n "${previous_build}" ] && [ -z "${shortcut_overlay}" ]; then
     # do it once for the terminal
     rpm-ostree --repo="${tmprepo}" db diff "${previous_commit}" "${commit}"
     # and once more for the metadata, but only keep the pkgdiff key
@@ -312,6 +363,10 @@ fi
 # And create the ostree repo tarball containing the commit
 ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
 ostree_tarfile_sha256=
+if [ -n "${shortcut_overlay}" ]; then
+    # Stub this out
+    touch "${ostree_tarfile_path}"
+else
 if [ "${commit}" == "${previous_commit}" ] && \
     [ -f "${previous_builddir}/${previous_ostree_tarfile_path}" ]; then
     cp-reflink "${previous_builddir}/${previous_ostree_tarfile_path}" "${ostree_tarfile_path}"
@@ -332,6 +387,7 @@ else
     tar -cf "${ostree_tarfile_path}".tmp -C repo .
     /usr/lib/coreos-assembler/finalize-artifact "${ostree_tarfile_path}"{.tmp,}
     rm -rf repo
+fi
 fi
 
 if [ -z "${ostree_tarfile_sha256:-}" ]; then
@@ -405,6 +461,25 @@ mv "${lockfile_out}" .
 "${dn}"/commitmeta_to_json "${tmprepo}" "${commit}" > commitmeta.json.tmp
 /usr/lib/coreos-assembler/finalize-artifact commitmeta.json{.tmp,}
 
+# In shortcut mode, build qemu as an overlay from the previous disk image
+if [ -n "${SHORTCUTS}" ]; then
+    image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+    shortcut_qemu_path=shortcut.qcow2.tmp
+    qemu-img create -o backing_file="${previous_builddir}/${previous_qemu}" -f qcow2 "${shortcut_qemu_path}" "${image_size}"
+    runvm -drive if=virtio,id=target,format=qcow2,file="${shortcut_qemu_path}" -- \
+        /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
+    python3 -c "
+import sys, json
+j = json.load(sys.stdin)
+j['images']['qemu'] = {
+    'path': '${shortcut_qemu_path}',
+    'size': $(stat -c '%s' "${shortcut_qemu_path}")
+}
+json.dump(j, sys.stdout, indent=4)" < meta.json > meta.json.new
+    /usr/lib/coreos-assembler/finalize-artifact meta.json.new meta.json
+    /usr/lib/coreos-assembler/finalize-artifact "${shortcut_qemu_path}" shortcut.qcow2
+fi
+
 # Clean up our temporary data
 saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
 rm -rf "${saved_build_tmpdir}"
@@ -431,6 +506,12 @@ else
   "${dn}"/cmd-prune --workdir "${workdir}"
 fi
 rm builds/.build-commit
+
+# In shortcut mode we don't tag, and we only support qemu right now, so
+# no followup targets.
+if [ -n "${SHORTCUTS}" ]; then
+    exit 0
+fi
 
 if [ -n "${TAG}" ]; then
     # ideally, we'd do this atomically before moving to builds/latest, but

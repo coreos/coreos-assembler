@@ -32,6 +32,7 @@ type Build struct {
 	BuildSummary              string                  `json:"summary"`
 	BuildTimeStamp            string                  `json:"coreos-assembler.build-timestamp,omitempty"`
 	BuildURL                  string                  `json:"build-url,omitempty"`
+	BuildWasShortcut          bool                    `json:"coreos-assembler.shortcut,omitempty"`
 	ConfigGitRev              string                  `json:"coreos-assembler.config-gitrev,omitempty"`
 	ContainerConfigGit        *Git                    `json:"coreos-assembler.container-config-git,omitempty"`
 	CoreOsSource              string                  `json:"coreos-assembler.code-source,omitempty"`

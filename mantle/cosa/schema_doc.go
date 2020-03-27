@@ -179,6 +179,7 @@ var generatedSchemaJSON = `{
    "coreos-assembler.image-genver",
    "coreos-assembler.image-input-checksum",
    "coreos-assembler.overrides-active",
+   "coreos-assembler.shortcut",
    "fedora-coreos.parent-commit",
    "fedora-coreos.parent-version",
    "ref"
@@ -299,6 +300,12 @@ var generatedSchemaJSON = `{
      "default":"",
      "type": "boolean"
     },
+    "coreos-assembler.shortcut": {
+      "$id":"#/properties/coreos-assembler.shortcut",
+      "title":"Build was shortcut",
+      "default":"",
+      "type": "boolean"
+     },
    "images": {
      "$id":"#/properties/images",
      "type":"object",
