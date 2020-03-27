@@ -96,9 +96,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 		config = *newconfig
 	}
-	builder, err := platform.NewBuilderFromParsed(config, kola.Options.IgnitionVersion == "v2")
-	if err != nil {
-		return errors.Wrapf(err, "creating qemu builder")
+	builder := platform.NewBuilder()
+	if err := builder.SetConfig(config, kola.Options.IgnitionVersion == "v2"); err != nil {
+		return errors.Wrapf(err, "rendering config")
 	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {

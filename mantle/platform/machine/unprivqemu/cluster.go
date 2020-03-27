@@ -87,7 +87,8 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		consolePath: filepath.Join(dir, "console.txt"),
 	}
 
-	builder := platform.NewBuilder(confPath, false)
+	builder := platform.NewBuilder()
+	builder.ConfigFile = confPath
 	defer builder.Close()
 	builder.Uuid = qm.id
 	builder.Firmware = qc.flight.opts.Firmware
