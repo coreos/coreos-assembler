@@ -199,3 +199,29 @@ func FetchAndParseStreamMetadata(url string) (*StreamMetadata, error) {
 func FetchAndParseCanonicalStreamMetadata(stream string) (*StreamMetadata, error) {
 	return FetchAndParseStreamMetadata(fmt.Sprintf(canonicalStreamMetadataLocation, stream))
 }
+
+func FetchCanonicalStreamArtifacts(stream, architecture string) (*StreamArtifacts, error) {
+	metadata, err := FetchAndParseCanonicalStreamMetadata(stream)
+	if err != nil {
+		return nil, fmt.Errorf("fetching stream metadata: %v", err)
+	}
+	arch, ok := metadata.Architectures[architecture]
+	if !ok {
+		return nil, fmt.Errorf("stream metadata missing architecture %q", architecture)
+	}
+	return &arch.Artifacts, nil
+}
+
+func GetPlatformDiskArtifact(platform *StreamMediaDetails, format string) (*ImageType, error) {
+	if platform == nil {
+		return nil, fmt.Errorf("stream metadata missing expected platform")
+	}
+	artifacts, ok := platform.Formats[format]
+	if !ok {
+		return nil, fmt.Errorf("stream metadata missing %q format", format)
+	}
+	if artifacts.Disk == nil {
+		return nil, fmt.Errorf("stream metadata missing %q disk image", format)
+	}
+	return artifacts.Disk, nil
+}

@@ -16,7 +16,6 @@ package packet
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -25,18 +24,15 @@ import (
 	"strings"
 	"time"
 
-	ignition "github.com/coreos/ignition/config/v2_0/types"
+	ignition "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/packethost/packngo"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/net/context"
-	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/storage"
 	"github.com/coreos/mantle/util"
 )
 
@@ -48,29 +44,19 @@ const (
 	installPollInterval = 5 * time.Second
 	apiRetries          = 3
 	apiRetryInterval    = 5 * time.Second
+
+	imageDefaultStream = "testing"
 )
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/packet")
 
-	defaultInstallerImageBaseURL = map[string]string{
-		// HTTPS causes iPXE to fail on a "permission denied" error
-		"amd64-usr": "http://stable.release.core-os.net/amd64-usr/current",
-		"arm64-usr": "http://beta.release.core-os.net/arm64-usr/current",
-	}
-	defaultImageURL = map[string]string{
-		"amd64-usr": "https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2",
-		"arm64-usr": "https://alpha.release.core-os.net/arm64-usr/current/coreos_production_packet_image.bin.bz2",
-	}
 	defaultPlan = map[string]string{
-		"amd64-usr": "t1.small.x86",
-		"arm64-usr": "c1.large.arm",
+		"arm64":  "c1.large.arm",
+		"x86_64": "t1.small.x86",
 	}
-	linuxConsole = map[string]string{
-		"amd64-usr":   "ttyS1,115200",
-		"arm64-usr":   "ttyAMA0,115200",
-		"s390x-usr":   "ttysclp0,115200",
-		"ppc64le-usr": "hvc0,115200",
+	defaultIPXEURL = map[string]string{
+		"x86_64": "https://raw.githubusercontent.com/coreos/coreos-assembler/master/mantle/platform/api/packet/fcos-x86_64.ipxe",
 	}
 )
 
@@ -90,24 +76,17 @@ type Options struct {
 	Facility string
 	// Slug of the device type (e.g. "t1.small.x86")
 	Plan string
-	// The Container Linux board name
-	Board string
-	// e.g. http://alpha.release.core-os.net/amd64-usr/current
-	InstallerImageBaseURL string
-	// e.g. https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2
+	// CPU architecture
+	Architecture string
+	// e.g. https://raw.githubusercontent.com/coreos/coreos-assembler/master/mantle/platform/api/packet/fcos-x86_64.ipxe
+	IPXEURL string
+	// e.g. https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/31.20200223.3.0/x86_64/fedora-coreos-31.20200223.3.0-metal.x86_64.raw.xz
 	ImageURL string
-
-	// Options for Google Storage
-	GSOptions *gcloud.Options
-	// Google Storage base URL for temporary uploads
-	// e.g. gs://users.developer.core-os.net/bovik/mantle
-	StorageURL string
 }
 
 type API struct {
-	c      *packngo.Client
-	bucket *storage.Bucket
-	opts   *Options
+	c    *packngo.Client
+	opts *Options
 }
 
 type Console interface {
@@ -137,35 +116,33 @@ func New(opts *Options) (*API, error) {
 		}
 	}
 
-	_, ok := linuxConsole[opts.Board]
+	_, ok := defaultPlan[opts.Architecture]
 	if !ok {
-		return nil, fmt.Errorf("unknown board %q", opts.Board)
+		return nil, fmt.Errorf("unknown architecture %q", opts.Architecture)
 	}
 	if opts.Plan == "" {
-		opts.Plan = defaultPlan[opts.Board]
+		opts.Plan = defaultPlan[opts.Architecture]
 	}
-	if opts.InstallerImageBaseURL == "" {
-		opts.InstallerImageBaseURL = defaultInstallerImageBaseURL[opts.Board]
+	if opts.IPXEURL == "" {
+		opts.IPXEURL = defaultIPXEURL[opts.Architecture]
 	}
 	if opts.ImageURL == "" {
-		opts.ImageURL = defaultImageURL[opts.Board]
+		artifacts, err := fcos.FetchCanonicalStreamArtifacts(imageDefaultStream, opts.Architecture)
+		if err != nil {
+			return nil, err
+		}
+		disk, err := fcos.GetPlatformDiskArtifact(artifacts.Metal, "raw.xz")
+		if err != nil {
+			return nil, err
+		}
+		opts.ImageURL = disk.Location
 	}
 
-	gapi, err := gcloud.New(opts.GSOptions)
-	if err != nil {
-		return nil, fmt.Errorf("connecting to Google Storage: %v", err)
-	}
-	bucket, err := storage.NewBucket(gapi.Client(), opts.StorageURL)
-	if err != nil {
-		return nil, fmt.Errorf("connecting to Google Storage bucket: %v", err)
-	}
-
-	client := packngo.NewClient("github.com/coreos/mantle", opts.ApiKey, nil)
+	client := packngo.NewClient("github.com/coreos/coreos-assembler", opts.ApiKey, nil)
 
 	return &API{
-		c:      client,
-		bucket: bucket,
-		opts:   opts,
+		c:    client,
+		opts: opts,
 	}, nil
 }
 
@@ -191,22 +168,7 @@ func (a *API) CreateDevice(hostname string, conf *conf.Conf, console Console) (*
 		return nil, err
 	}
 
-	// The Ignition config can't go in userdata via coreos.config.url=https://metadata.packet.net/userdata because Ignition supplies an Accept header that metadata.packet.net finds 406 Not Acceptable.
-	// It can't go in userdata via coreos.oem.id=packet because the Packet OEM expects unit files in /usr/share/oem which the PXE image doesn't have.
-	userdataName, userdataURL, err := a.uploadObject(hostname, "application/vnd.coreos.ignition+json", []byte(userdata))
-	if err != nil {
-		return nil, err
-	}
-	defer a.bucket.Delete(context.TODO(), userdataName)
-
-	// This can't go in userdata because the installed coreos-cloudinit will try to execute it.
-	ipxeScriptName, ipxeScriptURL, err := a.uploadObject(hostname, "application/octet-stream", []byte(a.ipxeScript(userdataURL)))
-	if err != nil {
-		return nil, err
-	}
-	defer a.bucket.Delete(context.TODO(), ipxeScriptName)
-
-	device, err := a.createDevice(hostname, ipxeScriptURL)
+	device, err := a.createDevice(hostname, userdata)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create device: %v", err)
 	}
@@ -236,7 +198,7 @@ func (a *API) CreateDevice(hostname string, conf *conf.Conf, console Console) (*
 	err = waitForInstall(ipAddress)
 	if err != nil {
 		a.DeleteDevice(deviceID)
-		return nil, fmt.Errorf("timed out waiting for coreos-install: %v", err)
+		return nil, fmt.Errorf("timed out waiting for coreos-installer: %v", err)
 	}
 
 	return device, nil
@@ -287,16 +249,6 @@ func (a *API) ListKeys() ([]packngo.SSHKey, error) {
 }
 
 func (a *API) wrapUserData(conf *conf.Conf) (string, error) {
-	userDataOption := "-i"
-	if !conf.IsIgnition() && conf.String() != "" {
-		// By providing a no-op Ignition config, we prevent Ignition
-		// from enabling oem-cloudinit.service, which is unordered
-		// with respect to the cloud-config installed by the -c
-		// option. Otherwise it might override settings in the
-		// cloud-config with defaults obtained from the Packet
-		// metadata endpoint.
-		userDataOption = "-i /noop.ign -c"
-	}
 	escapedImageURL := strings.Replace(a.opts.ImageURL, "%", "%%", -1)
 
 	// make systemd units
@@ -323,7 +275,7 @@ StandardOutput=null
 `
 	installUnit := fmt.Sprintf(`
 [Unit]
-Description=Install Container Linux
+Description=Run coreos-installer
 
 Requires=network-online.target
 After=network-online.target
@@ -333,98 +285,64 @@ After=dev-sda.device
 
 [Service]
 Type=oneshot
-# Prevent coreos-install from validating cloud-config
-Environment=PATH=/root/bin:/usr/sbin:/usr/bin
 
-ExecStart=/usr/bin/curl -fo image.bin.bz2 "%v"
-# We don't verify signatures because the iPXE script isn't verified either
-# (and, in fact, is transferred over HTTP)
+# We don't verify signatures because this might be a random dev image.
+# Even if a signature exists, there's no way to verify signatures on the
+# iPXE script or PXE image, so we have to trust the web server.
+ExecStart=/usr/bin/coreos-installer install -u %q -i /var/userdata -p packet --insecure /dev/sda
 
-ExecStart=/usr/bin/coreos-install -d /dev/sda -f image.bin.bz2 %v /userdata
-
-ExecStart=/usr/bin/systemctl --no-block isolate reboot.target
+ExecStart=/usr/bin/systemctl reboot
 
 StandardOutput=journal+console
 StandardError=journal+console
 
 [Install]
 RequiredBy=multi-user.target
-`, escapedImageURL, userDataOption)
-
-	// make workarounds
-	noopIgnitionConfig := base64.StdEncoding.EncodeToString([]byte(`{"ignition": {"version": "2.1.0"}}`))
-	coreosCloudInit := base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\nexit 0"))
+`, escapedImageURL)
 
 	// make Ignition config
 	b64UserData := base64.StdEncoding.EncodeToString(conf.Bytes())
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(ignition.Config{
 		Ignition: ignition.Ignition{
-			Version: ignition.IgnitionVersion{Major: 2},
+			Version: "3.0.0",
 		},
 		Storage: ignition.Storage{
 			Files: []ignition.File{
 				ignition.File{
-					Filesystem: "root",
-					Path:       "/userdata",
-					Contents: ignition.FileContents{
-						Source: ignition.Url{
-							Scheme: "data",
-							Opaque: ";base64," + b64UserData,
-						},
+					Node: ignition.Node{
+						Path: "/var/userdata",
 					},
-					Mode: 0644,
-				},
-				ignition.File{
-					Filesystem: "root",
-					Path:       "/noop.ign",
-					Contents: ignition.FileContents{
-						Source: ignition.Url{
-							Scheme: "data",
-							Opaque: ";base64," + noopIgnitionConfig,
+					FileEmbedded1: ignition.FileEmbedded1{
+						Contents: ignition.FileContents{
+							Source: util.StrToPtr("data:;base64," + b64UserData),
 						},
+						Mode: util.IntToPtr(0644),
 					},
-					Mode: 0644,
-				},
-				ignition.File{
-					Filesystem: "root",
-					Path:       "/root/bin/coreos-cloudinit",
-					Contents: ignition.FileContents{
-						Source: ignition.Url{
-							Scheme: "data",
-							Opaque: ";base64," + coreosCloudInit,
-						},
-					},
-					Mode: 0755,
 				},
 			},
 		},
 		Systemd: ignition.Systemd{
-			Units: []ignition.SystemdUnit{
-				ignition.SystemdUnit{
+			Units: []ignition.Unit{
+				ignition.Unit{
 					// don't appear to be running while install is in progress
-					Name: "sshd.socket",
-					Mask: true,
-				},
-				ignition.SystemdUnit{
-					// future-proofing
 					Name: "sshd.service",
-					Mask: true,
+					Mask: util.BoolToPtr(true),
 				},
-				ignition.SystemdUnit{
+				ignition.Unit{
 					// allow remote detection of install in progress
 					Name:     "discard.socket",
-					Enable:   true,
-					Contents: discardSocketUnit,
+					Enabled:  util.BoolToPtr(true),
+					Contents: util.StrToPtr(discardSocketUnit),
 				},
-				ignition.SystemdUnit{
+				ignition.Unit{
 					Name:     "discard@.service",
-					Contents: discardServiceUnit,
+					Contents: util.StrToPtr(discardServiceUnit),
 				},
-				ignition.SystemdUnit{
-					Name:     "coreos-install.service",
-					Enable:   true,
-					Contents: installUnit,
+				ignition.Unit{
+					Name:     "coreos-installer.service",
+					Enabled:  util.BoolToPtr(true),
+					Contents: util.StrToPtr(installUnit),
 				},
 			},
 		},
@@ -436,38 +354,8 @@ RequiredBy=multi-user.target
 	return buf.String(), nil
 }
 
-func (a *API) uploadObject(hostname, contentType string, data []byte) (string, string, error) {
-	if hostname == "" {
-		hostname = "mantle"
-	}
-	b := make([]byte, 5)
-	rand.Read(b)
-	name := fmt.Sprintf("%s-%x", hostname, b)
-
-	obj := gs.Object{
-		Name:        a.bucket.Prefix() + name,
-		ContentType: contentType,
-	}
-	err := a.bucket.Upload(context.TODO(), &obj, bytes.NewReader(data))
-	if err != nil {
-		return "", "", fmt.Errorf("uploading object: %v", err)
-	}
-
-	// HTTPS causes iPXE to fail on a "permission denied" error
-	url := fmt.Sprintf("http://storage-download.googleapis.com/%v/%v", a.bucket.Name(), obj.Name)
-	return obj.Name, url, nil
-}
-
-func (a *API) ipxeScript(userdataURL string) string {
-	return fmt.Sprintf(`#!ipxe
-set base-url %s
-kernel ${base-url}/coreos_production_pxe.vmlinuz initrd=coreos_production_pxe_image.cpio.gz coreos.first_boot=1 coreos.config.url=%s console=%s
-initrd ${base-url}/coreos_production_pxe_image.cpio.gz
-boot`, strings.TrimRight(a.opts.InstallerImageBaseURL, "/"), userdataURL, linuxConsole[a.opts.Board])
-}
-
 // device creation seems a bit flaky, so try a few times
-func (a *API) createDevice(hostname, ipxeScriptURL string) (device *packngo.Device, err error) {
+func (a *API) createDevice(hostname, userdata string) (device *packngo.Device, err error) {
 	for tries := apiRetries; tries >= 0; tries-- {
 		var response *packngo.Response
 		device, response, err = a.c.Devices.Create(&packngo.DeviceCreateRequest{
@@ -475,9 +363,10 @@ func (a *API) createDevice(hostname, ipxeScriptURL string) (device *packngo.Devi
 			Facility:      a.opts.Facility,
 			Plan:          a.opts.Plan,
 			BillingCycle:  "hourly",
+			UserData:      userdata,
 			Hostname:      hostname,
 			OS:            "custom_ipxe",
-			IPXEScriptURL: ipxeScriptURL,
+			IPXEScriptURL: a.opts.IPXEURL,
 			Tags:          []string{"mantle"},
 		})
 		if err == nil || response.StatusCode != 500 {

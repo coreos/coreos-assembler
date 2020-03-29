@@ -126,10 +126,10 @@ func init() {
 	sv(&kola.PacketOptions.ApiKey, "packet-api-key", "", "Packet API key (overrides config file)")
 	sv(&kola.PacketOptions.Project, "packet-project", "", "Packet project UUID (overrides config file)")
 	sv(&kola.PacketOptions.Facility, "packet-facility", "sjc1", "Packet facility code")
-	sv(&kola.PacketOptions.Plan, "packet-plan", "", "Packet plan slug (default board-dependent, e.g. \"t1.small.x86\")")
-	sv(&kola.PacketOptions.InstallerImageBaseURL, "packet-installer-image-base-url", "", "Packet installer image base URL, non-https (default board-dependent, e.g. \"http://stable.release.core-os.net/amd64-usr/current\")")
-	sv(&kola.PacketOptions.ImageURL, "packet-image-url", "", "Packet image URL (default board-dependent, e.g. \"https://alpha.release.core-os.net/amd64-usr/current/coreos_production_packet_image.bin.bz2\")")
-	sv(&kola.PacketOptions.StorageURL, "packet-storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
+	sv(&kola.PacketOptions.Plan, "packet-plan", "", "Packet plan slug (default arch-dependent, e.g. \"t1.small.x86\")")
+	sv(&kola.PacketOptions.Architecture, "packet-architecture", "x86_64", "Packet CPU architecture")
+	sv(&kola.PacketOptions.IPXEURL, "packet-ipxe-url", "", "iPXE script URL (default arch-dependent, e.g. \"https://raw.githubusercontent.com/coreos/coreos-assembler/master/mantle/platform/api/packet/fcos-x86_64.ipxe\")")
+	sv(&kola.PacketOptions.ImageURL, "packet-image-url", "", "image URL (default arch-dependent, e.g. \"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/31.20200223.3.0/x86_64/fedora-coreos-31.20200223.3.0-metal.x86_64.raw.xz\")")
 
 	// QEMU-specific options
 	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "", "Boot firmware: bios,uefi,uefi-secure (default bios)")
@@ -142,9 +142,6 @@ func init() {
 
 // Sync up the command line options if there is dependency
 func syncOptionsImpl(useCosa bool) error {
-	kola.PacketOptions.Board = kola.QEMUOptions.Board
-	kola.PacketOptions.GSOptions = &kola.GCEOptions
-
 	validateOption := func(name, item string, valid []string) error {
 		for _, v := range valid {
 			if v == item {

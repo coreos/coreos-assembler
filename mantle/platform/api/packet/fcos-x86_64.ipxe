@@ -1,0 +1,12 @@
+#!ipxe
+# By default, mantle fetches this file directly from the
+# coreos/coreos-assembler GitHub repo.  Changing this file in the master
+# branch will affect all deployed copies of mantle.
+
+set version 31.20200323.2.1
+# This URL is not a stable API.  We should be dynamically fetching URLs from
+# stream metadata instead.
+set base-url https://builds.coreos.fedoraproject.org/prod/streams/testing/builds/${version}/x86_64
+kernel ${base-url}/fedora-coreos-${version}-live-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=fedora-coreos-${version}-live-initramfs.x86_64.img ignition.platform.id=packet ignition.firstboot console=ttyS1,115200n8
+initrd ${base-url}/fedora-coreos-${version}-live-initramfs.x86_64.img
+boot

@@ -248,6 +248,8 @@ func writeProps() error {
 		Facility              string `json:"facility"`
 		Plan                  string `json:"plan"`
 		InstallerImageBaseURL string `json:"installer"`
+		Architecture          string `json:"architecture"`
+		IPXEURL               string `json:"ipxe"`
 		ImageURL              string `json:"image"`
 	}
 	type QEMU struct {
@@ -309,10 +311,11 @@ func writeProps() error {
 			Flavor: kola.OpenStackOptions.Flavor,
 		},
 		Packet: Packet{
-			Facility:              kola.PacketOptions.Facility,
-			Plan:                  kola.PacketOptions.Plan,
-			InstallerImageBaseURL: kola.PacketOptions.InstallerImageBaseURL,
-			ImageURL:              kola.PacketOptions.ImageURL,
+			Facility:     kola.PacketOptions.Facility,
+			Plan:         kola.PacketOptions.Plan,
+			Architecture: kola.PacketOptions.Architecture,
+			IPXEURL:      kola.PacketOptions.IPXEURL,
+			ImageURL:     kola.PacketOptions.ImageURL,
 		},
 		QEMU: QEMU{
 			Image:     kola.QEMUOptions.DiskImage,
