@@ -16,11 +16,9 @@ package packet
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/platform/api/gcloud"
 	"github.com/coreos/mantle/platform/api/packet"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
@@ -34,16 +32,11 @@ var (
 		Short: "Packet machine utilities",
 	}
 
-	API       *packet.API
-	options   packet.Options
-	gsOptions gcloud.Options
+	API     *packet.API
+	options packet.Options
 )
 
 func init() {
-	options.GSOptions = &gsOptions
-	Packet.PersistentFlags().StringVar(&options.StorageURL, "storage-url", "gs://users.developer.core-os.net/"+os.Getenv("USER")+"/mantle", "Google Storage base URL for temporary uploads")
-	Packet.PersistentFlags().StringVar(&gsOptions.JSONKeyFile, "gs-json-key", "", "use a Google service account's JSON key to authenticate to Google Storage")
-	Packet.PersistentFlags().BoolVar(&gsOptions.ServiceAuth, "gs-service-auth", false, "use non-interactive Google auth when running within GCE")
 	Packet.PersistentFlags().StringVar(&options.ConfigPath, "config-file", "", "config file (default \"~/"+auth.PacketConfigPath+"\")")
 	Packet.PersistentFlags().StringVar(&options.Profile, "profile", "", "profile (default \"default\")")
 	Packet.PersistentFlags().StringVar(&options.ApiKey, "api-key", "", "API key (overrides config file)")
