@@ -52,7 +52,7 @@ coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 if [ "$basearch" = "s390x" ] ; then
     # Before we re-run zipl make sure we have the firstboot options
     # A hack similar to https://github.com/coreos/coreos-assembler/blob/master/src/create_disk.sh#L381
-    sed -i -e 's,^\(options .*\),\1 ignition.firstboot rd.neednet=1 ip=dhcp\,dhcp6,' "${tmpd}"/bls.conf
+    sed -i -e 's,^\(options .*\),\1 ignition.firstboot,' "${tmpd}"/bls.conf
     coreos_gf rename "${blscfg_path}" "${blscfg_path}.orig"
     coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
