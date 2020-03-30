@@ -33,9 +33,9 @@ def delete_snapshot(snap_id, region):
 def aws_run_ore_replicate(build, args):
     build.refresh_meta()
     buildmeta = build.meta
-    if len(buildmeta['amis']) < 1:
+    if len(buildmeta.get('amis', [])) < 1:
         raise SystemExit(("buildmeta doesn't contain source AMIs."
-                         " Run buildextend-aws first"))
+                         " Run buildextend-aws --upload first"))
     if not args.region:
         args.region = subprocess.check_output([
             'ore', 'aws', 'list-regions'
