@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/coreos/mantle/platform/api/aws"
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/util"
 	"github.com/spf13/cobra"
 )
@@ -71,9 +70,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/ (defaults to a regional bucket and prefix defaults to $USER/board/name)")
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
-	cmdUpload.Flags().StringVar(&uploadFile, "file",
-		defaultUploadFile(),
-		"path to CoreOS image (build with: ./image_to_vm.sh --format=ami_vmdk ...)")
+	cmdUpload.Flags().StringVar(&uploadFile, "file", "", "path to CoreOS image")
 	cmdUpload.Flags().UintVarP(&uploadDiskSizeGiB, "disk-size-gib", "", aws.ContainerLinuxDiskSizeGiB, "AMI disk size in GiB")
 	cmdUpload.Flags().BoolVar(&uploadDiskSizeInspect, "disk-size-inspect", false, "set AMI disk size to size of local file")
 	cmdUpload.Flags().BoolVar(&uploadDeleteObject, "delete-object", true, "delete uploaded S3 object after snapshot is created")
@@ -88,11 +85,6 @@ func init() {
 
 func defaultBucketNameForRegion(region string) string {
 	return fmt.Sprintf("coreos-dev-ami-import-%s", region)
-}
-
-func defaultUploadFile() string {
-	build := sdk.BuildRoot()
-	return build + "/images/amd64-usr/latest/coreos_production_ami_vmdk_image.vmdk"
 }
 
 // defaultBucketURL determines the location the tool should upload to.
@@ -138,6 +130,10 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 	if uploadDiskSizeInspect && (uploadSourceObject != "" || uploadSourceSnapshot != "") {
 		fmt.Fprintf(os.Stderr, "--disk-size-inspect cannot be used with --source-object or --source-snapshot.\n")
+		os.Exit(2)
+	}
+	if uploadFile == "" {
+		fmt.Fprintf(os.Stderr, "specify --file\n")
 		os.Exit(2)
 	}
 	if uploadImageName == "" {
