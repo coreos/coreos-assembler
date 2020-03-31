@@ -52,10 +52,10 @@ class VmwareOVA(QemuVariantImage):
     https://www.dmtf.org/sites/default/files/standards/documents/DSP0243_1.1.0.pdf
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         variant = kwargs.pop("variant", "vmware")
         kwargs.update(VARIANTS.get(variant, {}))
-        QemuVariantImage.__init__(self, *args, **kwargs)
+        QemuVariantImage.__init__(self, **kwargs)
         # Set the QemuVariant mutate_callback so that OVA is called.
         self.mutate_callback = self.write_ova
         # Ensure that coreos.ovf is included in the tar

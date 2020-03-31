@@ -14,8 +14,9 @@ import cosalib.vmware as VmwareOVA
 
 
 def get_builder(imgtype, build_root, build="latest", force=False, schema=None):
-    args = [build_root, build]
     kargs = {
+        "build": build,
+        "buildroot": build_root,
         "force": force,
         "schema": schema,
         "variant": imgtype
@@ -23,10 +24,10 @@ def get_builder(imgtype, build_root, build="latest", force=False, schema=None):
 
     if imgtype in QVariants.VARIANTS:
         log.info(f"Target '{imgtype.upper()}' is a Qemu Variant image")
-        return QVariants.QemuVariantImage(*args, **kargs)
+        return QVariants.QemuVariantImage(**kargs)
 
     if imgtype in VmwareOVA.VARIANTS:
-        return VmwareOVA.VmwareOVA(*args, **kargs)
+        return VmwareOVA.VmwareOVA(**kargs)
 
     raise Exception(f"{imgtype} is not supported by this command")
 

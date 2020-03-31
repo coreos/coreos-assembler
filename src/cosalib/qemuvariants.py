@@ -125,8 +125,8 @@ def get_qemu_variant(variant, parser, kwargs={}):
     """
     log.debug(f"returning QemuVariantImage for {variant}")
     return QemuVariantImage(
-        parser.buildroot,
-        parser.build,
+        buildroot=parser.buildroot,
+        build=parser.build,
         schema=parser.schema,
         variant=variant,
         force=parser.force,
@@ -134,7 +134,7 @@ def get_qemu_variant(variant, parser, kwargs={}):
 
 
 class QemuVariantImage(_Build):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """
         This takes all the regular _BuildClass arguments. In kwargs, the
         additional arguments are used:
@@ -164,7 +164,7 @@ class QemuVariantImage(_Build):
         self.platform_image_name = kwargs.get(
             "platform_image_name", self.platform)
 
-        _Build.__init__(self, *args, **kwargs)
+        _Build.__init__(self, **kwargs)
 
     @property
     def image_qemu(self):
