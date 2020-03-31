@@ -15,7 +15,6 @@
 package aws
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -36,45 +35,12 @@ import (
 // https://github.com/coreos/mantle/pull/944
 const ContainerLinuxDiskSizeGiB = 8
 
-var (
-	NoRegionPVSupport = errors.New("Region does not support PV")
-)
-
-type EC2ImageType string
-
-const (
-	EC2ImageTypeHVM EC2ImageType = "hvm"
-	EC2ImageTypePV  EC2ImageType = "paravirtual"
-)
-
 type EC2ImageFormat string
 
 const (
 	EC2ImageFormatRaw  EC2ImageFormat = ec2.DiskImageFormatRaw
 	EC2ImageFormatVmdk EC2ImageFormat = ec2.DiskImageFormatVmdk
 )
-
-// TODO, these can be derived at runtime
-// these are pv-grub-hd0_1.04-x86_64
-var akis = map[string]string{
-	"us-east-1":      "aki-919dcaf8",
-	"us-west-1":      "aki-880531cd",
-	"us-west-2":      "aki-fc8f11cc",
-	"eu-west-1":      "aki-52a34525",
-	"eu-central-1":   "aki-184c7a05",
-	"ap-southeast-1": "aki-503e7402",
-	"ap-southeast-2": "aki-c362fff9",
-	"ap-northeast-1": "aki-176bf516",
-	"sa-east-1":      "aki-5553f448",
-
-	"us-gov-west-1": "aki-1de98d3e",
-	"cn-north-1":    "aki-9e8f1da7",
-}
-
-func RegionSupportsPV(region string) bool {
-	_, ok := akis[region]
-	return ok
-}
 
 func (e *EC2ImageFormat) Set(s string) error {
 	switch s {
@@ -363,19 +329,30 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string) (string, error) {
-	params := registerImageParams(snapshotID, diskSizeGiB, name, description, "xvd", EC2ImageTypeHVM)
-	params.EnaSupport = aws.Bool(true)
-	params.SriovNetSupport = aws.String("simple")
-	return a.createImage(params)
-}
-
-func (a *API) CreatePVImage(snapshotID string, diskSizeGiB uint, name string, description string) (string, error) {
-	if !RegionSupportsPV(a.opts.Region) {
-		return "", NoRegionPVSupport
-	}
-	params := registerImageParams(snapshotID, diskSizeGiB, name, description, "sd", EC2ImageTypePV)
-	params.KernelId = aws.String(akis[a.opts.Region])
-	return a.createImage(params)
+	return a.createImage(&ec2.RegisterImageInput{
+		Name:               aws.String(name),
+		Description:        aws.String(description),
+		Architecture:       aws.String("x86_64"),
+		VirtualizationType: aws.String("hvm"),
+		RootDeviceName:     aws.String("/dev/xvda"),
+		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
+			&ec2.BlockDeviceMapping{
+				DeviceName: aws.String("/dev/xvda"),
+				Ebs: &ec2.EbsBlockDevice{
+					SnapshotId:          aws.String(snapshotID),
+					DeleteOnTermination: aws.Bool(true),
+					VolumeSize:          aws.Int64(int64(diskSizeGiB)),
+					VolumeType:          aws.String("gp2"),
+				},
+			},
+			&ec2.BlockDeviceMapping{
+				DeviceName:  aws.String("/dev/xvdb"),
+				VirtualName: aws.String("ephemeral0"),
+			},
+		},
+		EnaSupport:      aws.Bool(true),
+		SriovNetSupport: aws.String("simple"),
+	})
 }
 
 func (a *API) deregisterImageIfExists(name string) error {
@@ -408,6 +385,8 @@ func (a *API) RemoveImage(name, s3BucketName, s3ObjectPath string) error {
 		plog.Infof("Deleted existing S3 object bucket:%s path:%s", s3BucketName, s3ObjectPath)
 	}
 
+	// compatibility with old versions of this code, which created HVM
+	// AMIs with an "-hvm" suffix
 	err = a.deregisterImageIfExists(name + "-hvm")
 	if err != nil {
 		return err
@@ -481,31 +460,6 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	return imageID, nil
 }
 
-func registerImageParams(snapshotID string, diskSizeGiB uint, name, description string, diskBaseName string, imageType EC2ImageType) *ec2.RegisterImageInput {
-	return &ec2.RegisterImageInput{
-		Name:               aws.String(name),
-		Description:        aws.String(description),
-		Architecture:       aws.String("x86_64"),
-		VirtualizationType: aws.String(string(imageType)),
-		RootDeviceName:     aws.String(fmt.Sprintf("/dev/%sa", diskBaseName)),
-		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
-			&ec2.BlockDeviceMapping{
-				DeviceName: aws.String(fmt.Sprintf("/dev/%sa", diskBaseName)),
-				Ebs: &ec2.EbsBlockDevice{
-					SnapshotId:          aws.String(snapshotID),
-					DeleteOnTermination: aws.Bool(true),
-					VolumeSize:          aws.Int64(int64(diskSizeGiB)),
-					VolumeType:          aws.String("gp2"),
-				},
-			},
-			&ec2.BlockDeviceMapping{
-				DeviceName:  aws.String(fmt.Sprintf("/dev/%sb", diskBaseName)),
-				VirtualName: aws.String("ephemeral0"),
-			},
-		},
-	}
-}
-
 func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
 	arg := &ec2.ModifyImageAttributeInput{
 		Attribute:        aws.String("launchPermission"),
@@ -534,14 +488,6 @@ func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, 
 	image, err := a.describeImage(sourceImageID)
 	if err != nil {
 		return err
-	}
-
-	if *image.VirtualizationType == ec2.VirtualizationTypeParavirtual {
-		for _, region := range regions {
-			if !RegionSupportsPV(region) {
-				return NoRegionPVSupport
-			}
-		}
 	}
 
 	snapshotID, err := getImageSnapshotID(image)

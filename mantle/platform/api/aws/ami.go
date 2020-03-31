@@ -26,7 +26,6 @@ import (
 type releaseAMIs struct {
 	AMIS []struct {
 		Name string `json:"name"`
-		PV   string `json:"pv"`
 		HVM  string `json:"hvm"`
 	} `json:"amis"`
 }
