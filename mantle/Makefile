@@ -4,8 +4,11 @@ DESTDIR ?=
 ARCH:=$(shell uname -m)
 
 .PHONY: build test vendor clean
-build:
-	./build
+build: cosa/cosa_v1.go
+	./build cmd/*
+
+cosa/cosa_v1.go: ../src/schema/v1.json Makefile
+	./build schema
 
 .PHONY: install
 install: bin/ore bin/kola bin/plume bin/kolet

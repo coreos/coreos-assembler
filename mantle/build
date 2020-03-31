@@ -7,7 +7,7 @@ cd $(dirname $0)
 source ./env
 
 if [[ $# -eq 0 ]]; then
-	set -- cmd/*
+	set -- cmd/* schema
 fi
 
 version=$(git describe --tags --always --dirty)
@@ -73,8 +73,11 @@ cross_build() {
 	done
 }
 
-schema_generate
-for cmd in "$@"; do
-	cmd=$(basename "${cmd}")
-	host_build "${cmd}"
+for arg in "$@"; do
+    if [ "${arg}" = "schema" ]; then
+        schema_generate
+    else
+	    cmd=$(basename "${arg}")
+	    host_build "${cmd}"
+    fi
 done
