@@ -392,7 +392,7 @@ func getSpecAWSImageMetadata(spec *channelSpec) (map[string]string, error) {
 	return awsImageMetaData, nil
 }
 
-func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, map[string]string, error) {
+func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, error) {
 	plog.Printf("Connecting to %v...", part.Name)
 	api, err := aws.New(&aws.Options{
 		CredentialsFile: awsCredentialsFile,
@@ -400,18 +400,18 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 		Region:          part.BucketRegion,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating client for %v: %v", part.Name, err)
+		return nil, fmt.Errorf("creating client for %v: %v", part.Name, err)
 	}
 
 	f, err := os.Open(imagePath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not open image file %v: %v", imagePath, err)
+		return nil, fmt.Errorf("Could not open image file %v: %v", imagePath, err)
 	}
 	defer f.Close()
 
 	awsImageMetadata, err := getSpecAWSImageMetadata(spec)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not generate the image metadata: %v", err)
+		return nil, fmt.Errorf("Could not generate the image metadata: %v", err)
 	}
 
 	imageFileName := awsImageMetadata["imageFileName"]
@@ -427,14 +427,14 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 	snapshot, err := api.FindSnapshot(imageName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to check for snapshot: %v", err)
+		return nil, fmt.Errorf("unable to check for snapshot: %v", err)
 	}
 
 	if snapshot == nil {
 		plog.Printf("Creating S3 object %v...", s3ObjectURL)
 		err = api.UploadObject(f, part.Bucket, s3ObjectPath, false)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error uploading: %v", err)
+			return nil, fmt.Errorf("Error uploading: %v", err)
 		}
 
 		plog.Printf("Creating EBS snapshot...")
@@ -447,7 +447,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 		snapshot, err = api.CreateSnapshot(imageName, s3ObjectURL, format)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unable to create snapshot: %v", err)
+			return nil, fmt.Errorf("unable to create snapshot: %v", err)
 		}
 	}
 
@@ -455,16 +455,16 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	plog.Printf("Deleting S3 object %v...", s3ObjectURL)
 	err = api.DeleteObject(part.Bucket, s3ObjectPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error deleting S3 object: %v", err)
+		return nil, fmt.Errorf("Error deleting S3 object: %v", err)
 	}
 
 	plog.Printf("Creating AMIs from %v...", snapshot.SnapshotID)
 
-	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, aws.ContainerLinuxDiskSizeGiB, imageName+"-hvm", imageDescription+" (HVM)")
+	imageID, err := api.CreateHVMImage(snapshot.SnapshotID, aws.ContainerLinuxDiskSizeGiB, imageName, imageDescription)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to create HVM image: %v", err)
+		return nil, fmt.Errorf("unable to create image: %v", err)
 	}
-	resources := []string{snapshot.SnapshotID, hvmImageID}
+	resources := []string{snapshot.SnapshotID, imageID}
 
 	switch selectedDistro {
 	case "fedora":
@@ -476,65 +476,49 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 			"Arch":      specBoard,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("couldn't tag images: %v", err)
+			return nil, fmt.Errorf("couldn't tag images: %v", err)
 		}
 	}
 
-	postprocess := func(imageID string, pv bool) (map[string]string, error) {
-		if len(part.LaunchPermissions) > 0 {
-			if err := api.GrantLaunchPermission(imageID, part.LaunchPermissions); err != nil {
-				return nil, err
-			}
+	if len(part.LaunchPermissions) > 0 {
+		if err := api.GrantLaunchPermission(imageID, part.LaunchPermissions); err != nil {
+			return nil, err
 		}
-
-		destRegions := make([]string, 0, len(part.Regions))
-		foundBucketRegion := false
-		for _, region := range part.Regions {
-			if region != part.BucketRegion {
-				if pv && !aws.RegionSupportsPV(region) {
-					plog.Debugf("%v doesn't support PV AMIs; skipping", region)
-				} else {
-					destRegions = append(destRegions, region)
-				}
-			} else {
-				foundBucketRegion = true
-			}
-		}
-		if !foundBucketRegion {
-			// We don't handle this case and shouldn't ever
-			// encounter it
-			return nil, fmt.Errorf("BucketRegion %v is not listed in Regions", part.BucketRegion)
-		}
-
-		amis := map[string]string{}
-		if len(destRegions) > 0 {
-			plog.Printf("Replicating AMI %v...", imageID)
-			err := api.CopyImage(imageID, destRegions, func(region string, ami aws.ImageData) {
-				amis[region] = ami.AMI
-			})
-			if err != nil {
-				return nil, fmt.Errorf("couldn't copy image: %v", err)
-			}
-		}
-		amis[part.BucketRegion] = imageID
-
-		return amis, nil
 	}
 
-	hvmAmis, err := postprocess(hvmImageID, false)
-	if err != nil {
-		return nil, nil, fmt.Errorf("processing HVM images: %v", err)
+	destRegions := make([]string, 0, len(part.Regions))
+	foundBucketRegion := false
+	for _, region := range part.Regions {
+		if region != part.BucketRegion {
+			destRegions = append(destRegions, region)
+		} else {
+			foundBucketRegion = true
+		}
+	}
+	if !foundBucketRegion {
+		// We don't handle this case and shouldn't ever
+		// encounter it
+		return nil, fmt.Errorf("BucketRegion %v is not listed in Regions", part.BucketRegion)
 	}
 
-	var pvAmis map[string]string
+	amis := map[string]string{}
+	if len(destRegions) > 0 {
+		plog.Printf("Replicating AMI %v...", imageID)
+		err := api.CopyImage(imageID, destRegions, func(region string, ami aws.ImageData) {
+			amis[region] = ami.AMI
+		})
+		if err != nil {
+			return nil, fmt.Errorf("couldn't copy image: %v", err)
+		}
+	}
+	amis[part.BucketRegion] = imageID
 
-	return hvmAmis, pvAmis, nil
+	return amis, nil
 }
 
 type amiListEntry struct {
 	Region string `json:"name"`
-	PvAmi  string `json:"pv,omitempty"`
-	HvmAmi string `json:"hvm"`
+	Ami    string `json:"hvm"`
 }
 
 type amiList struct {
@@ -544,8 +528,7 @@ type amiList struct {
 // awsPreRelease runs everything necessary to prepare a CoreOS release for AWS.
 //
 // This includes uploading the ami_vmdk image to an S3 bucket in each EC2
-// partition, creating HVM and PV AMIs, and replicating the AMIs to each
-// region.
+// partition, creating AMIs, and replicating the AMIs to each region.
 func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec, imageInfo *imageInfo) error {
 	if spec.AWS.Image == "" {
 		plog.Notice("AWS image creation disabled.")
@@ -568,16 +551,15 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 
 	var amis amiList
 	for i := range spec.AWS.Partitions {
-		hvmAmis, pvAmis, err := awsUploadToPartition(spec, &spec.AWS.Partitions[i], imageName, imageDescription, imagePath)
+		amiMap, err := awsUploadToPartition(spec, &spec.AWS.Partitions[i], imageName, imageDescription, imagePath)
 		if err != nil {
 			return err
 		}
 
-		for region := range hvmAmis {
+		for region := range amiMap {
 			amis.Entries = append(amis.Entries, amiListEntry{
 				Region: region,
-				PvAmi:  pvAmis[region],
-				HvmAmi: hvmAmis[region],
+				Ami:    amiMap[region],
 			})
 		}
 	}
