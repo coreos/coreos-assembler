@@ -69,7 +69,7 @@ func init() {
 	AWS.AddCommand(cmdUpload)
 	cmdUpload.Flags().StringVar(&uploadSourceObject, "source-object", "", "'s3://' URI pointing to image data (default: same as upload)")
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/ (defaults to a regional bucket and prefix defaults to $USER/board/name)")
-	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image (default COREOS_VERSION)")
+	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image")
 	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
 	cmdUpload.Flags().StringVar(&uploadFile, "file",
 		defaultUploadFile(),
@@ -80,7 +80,7 @@ func init() {
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite any existing S3 object, snapshot, and AMI")
 	cmdUpload.Flags().StringVar(&uploadSourceSnapshot, "source-snapshot", "", "the snapshot ID to base this AMI on (default: create new snapshot)")
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
-	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
+	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
@@ -140,16 +140,13 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "--disk-size-inspect cannot be used with --source-object or --source-snapshot.\n")
 		os.Exit(2)
 	}
-
-	// if an image name is unspecified try to use version.txt
-	imageName := uploadImageName
-	if imageName == "" {
-		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
-			os.Exit(1)
-		}
-		imageName = ver.Version
+	if uploadImageName == "" {
+		fmt.Fprintf(os.Stderr, "unknown image name; specify --name\n")
+		os.Exit(2)
+	}
+	if uploadAMIName == "" {
+		fmt.Fprintf(os.Stderr, "unknown AMI name; specify --ami-name\n")
+		os.Exit(2)
 	}
 
 	if uploadDiskSizeInspect {
@@ -167,17 +164,6 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	amiName := uploadAMIName
-	if amiName == "" {
-		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not guess image name: %v\n", err)
-			os.Exit(1)
-		}
-		awsVersion := strings.Replace(ver.Version, "+", "-", -1) // '+' is invalid in an AMI name
-		amiName = fmt.Sprintf("Container-Linux-dev-%s-%s", os.Getenv("USER"), awsVersion)
-	}
-
 	var s3URL *url.URL
 	var err error
 	if uploadSourceObject != "" {
@@ -187,7 +173,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 	} else {
-		s3URL, err = defaultBucketURL(uploadBucket, imageName, uploadBoard, uploadFile, region)
+		s3URL, err = defaultBucketURL(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
@@ -198,14 +184,14 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
 	if uploadForce {
-		API.RemoveImage(amiName, s3BucketName, s3ObjectPath)
+		API.RemoveImage(uploadAMIName, s3BucketName, s3ObjectPath)
 	}
 
 	// if no snapshot was specified, check for an existing one or a
 	// snapshot task in progress
 	sourceSnapshot := uploadSourceSnapshot
 	if sourceSnapshot == "" {
-		snapshot, err := API.FindSnapshot(imageName)
+		snapshot, err := API.FindSnapshot(uploadImageName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed finding snapshot: %v\n", err)
 			os.Exit(1)
@@ -234,7 +220,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	// if we don't already have a snapshot, make one
 	if sourceSnapshot == "" {
-		snapshot, err := API.CreateSnapshot(imageName, s3URL.String(), uploadObjectFormat)
+		snapshot, err := API.CreateSnapshot(uploadImageName, s3URL.String(), uploadObjectFormat)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
 			os.Exit(1)
@@ -253,7 +239,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, amiName, uploadAMIDescription)
+	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
