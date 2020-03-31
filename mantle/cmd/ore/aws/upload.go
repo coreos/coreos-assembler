@@ -32,7 +32,7 @@ var (
 	cmdUpload = &cobra.Command{
 		Use:   "upload",
 		Short: "Create AWS images",
-		Long: `Upload CoreOS image to S3 and create relevant AMIs (hvm and pv).
+		Long: `Upload CoreOS image to S3 and create an AMI.
 
 Supported source formats are VMDK (as created with ./image_to_vm --format=ami_vmdk) and RAW.
 
@@ -62,7 +62,6 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadAMIName         string
 	uploadAMIDescription  string
 	uploadGrantUsers      []string
-	uploadCreatePV        bool
 	uploadTags            []string
 )
 
@@ -84,7 +83,6 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create (default: Container-Linux-$USER-$VERSION)")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
-	cmdUpload.Flags().BoolVar(&uploadCreatePV, "create-pv", false, "create a PV AMI in addition to the HVM AMI")
 	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
 }
 
@@ -255,14 +253,14 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	hvmID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, amiName+"-hvm", uploadAMIDescription)
+	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, amiName, uploadAMIDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
 	}
 
 	if len(uploadGrantUsers) > 0 {
-		err = API.GrantLaunchPermission(hvmID, uploadGrantUsers)
+		err = API.GrantLaunchPermission(amiID, uploadGrantUsers)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
 			os.Exit(1)
@@ -280,42 +278,17 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		tagMap[key] = value
 	}
 
-	if err := API.CreateTags([]string{hvmID, sourceSnapshot}, tagMap); err != nil {
+	if err := API.CreateTags([]string{amiID, sourceSnapshot}, tagMap); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
 		os.Exit(1)
 	}
 
-	var pvID string
-	if uploadCreatePV {
-		pvImageID, err := API.CreatePVImage(sourceSnapshot, uploadDiskSizeGiB, amiName, uploadAMIDescription)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to create PV image: %v\n", err)
-			os.Exit(1)
-		}
-		pvID = pvImageID
-
-		if len(uploadGrantUsers) > 0 {
-			err = API.GrantLaunchPermission(pvID, uploadGrantUsers)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
-		if err := API.CreateTags([]string{pvID}, tagMap); err != nil {
-			fmt.Fprintf(os.Stderr, "unable to add tags: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
 	err = json.NewEncoder(os.Stdout).Encode(&struct {
 		HVM        string
-		PV         string `json:",omitempty"`
 		SnapshotID string
 		S3Object   string
 	}{
-		HVM:        hvmID,
-		PV:         pvID,
+		HVM:        amiID,
 		SnapshotID: sourceSnapshot,
 		S3Object:   s3URL.String(),
 	})
