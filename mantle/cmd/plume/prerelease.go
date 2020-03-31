@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -33,7 +32,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
-	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/platform/api/azure"
@@ -541,89 +539,6 @@ type amiListEntry struct {
 
 type amiList struct {
 	Entries []amiListEntry `json:"amis"`
-}
-
-func awsUploadAmiLists(ctx context.Context, bucket *storage.Bucket, spec *channelSpec, amis *amiList) error {
-	upload := func(name string, data string) error {
-		var contentType string
-		if strings.HasSuffix(name, ".txt") {
-			contentType = "text/plain"
-		} else if strings.HasSuffix(name, ".json") {
-			contentType = "application/json"
-		} else {
-			return fmt.Errorf("unknown file extension in %v", name)
-		}
-
-		obj := gs.Object{
-			Name:        bucket.Prefix() + spec.AWS.Prefix + name,
-			ContentType: contentType,
-		}
-		media := bytes.NewReader([]byte(data))
-		if err := bucket.Upload(ctx, &obj, media); err != nil {
-			return fmt.Errorf("couldn't upload %v: %v", name, err)
-		}
-		return nil
-	}
-
-	// emit keys in stable order
-	sort.Slice(amis.Entries, func(i, j int) bool {
-		return amis.Entries[i].Region < amis.Entries[j].Region
-	})
-
-	// format JSON AMI list
-	var jsonBuf bytes.Buffer
-	encoder := json.NewEncoder(&jsonBuf)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(amis); err != nil {
-		return fmt.Errorf("couldn't encode JSON: %v", err)
-	}
-	jsonAll := jsonBuf.String()
-
-	// format text AMI lists and upload AMI IDs for individual regions
-	var hvmRecords, pvRecords []string
-	for _, entry := range amis.Entries {
-		hvmRecords = append(hvmRecords,
-			fmt.Sprintf("%v=%v", entry.Region, entry.HvmAmi))
-		if entry.PvAmi != "" {
-			pvRecords = append(pvRecords,
-				fmt.Sprintf("%v=%v", entry.Region, entry.PvAmi))
-		}
-
-		if err := upload(fmt.Sprintf("hvm_%v.txt", entry.Region),
-			entry.HvmAmi+"\n"); err != nil {
-			return err
-		}
-		if entry.PvAmi != "" {
-			if err := upload(fmt.Sprintf("pv_%v.txt", entry.Region),
-				entry.PvAmi+"\n"); err != nil {
-				return err
-			}
-			// compatibility
-			if err := upload(fmt.Sprintf("%v.txt", entry.Region),
-				entry.PvAmi+"\n"); err != nil {
-				return err
-			}
-		}
-	}
-	hvmAll := strings.Join(hvmRecords, "|") + "\n"
-	pvAll := strings.Join(pvRecords, "|") + "\n"
-
-	// upload AMI lists
-	if err := upload("all.json", jsonAll); err != nil {
-		return err
-	}
-	if err := upload("hvm.txt", hvmAll); err != nil {
-		return err
-	}
-	if err := upload("pv.txt", pvAll); err != nil {
-		return err
-	}
-	// compatibility
-	if err := upload("all.txt", pvAll); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // awsPreRelease runs everything necessary to prepare a CoreOS release for AWS.
