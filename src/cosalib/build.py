@@ -57,13 +57,11 @@ class _Build:
       - _build_artifacts(*args, **kwargs)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """
         init loads the builds.json which lists the builds, loads the relevant
         meta-data from JSON and finally, locates the build artifacts.
 
-        :param args: All non-keyword arguments
-        :type args: list
         :param kwargs: All keyword arguments
         :type kwargs: dict
         :raises: BuildError
