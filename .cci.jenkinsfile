@@ -39,6 +39,7 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
           },
           buildextend: {
               cosa_cmd("buildextend-metal")
+              cosa_cmd("buildextend-metal4k")
               cosa_cmd("buildextend-live")
               cosa_cmd("buildextend-openstack")
               cosa_cmd("buildextend-vmware")
@@ -50,7 +51,9 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
       }
 
       stage("Image tests") {
-        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ cosa kola testiso -S")
+        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S")
+        // and again this time with the 4k image
+        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --qemu-native-4k --no-pxe")
       }
 
       // Needs to be last because it's destructive
