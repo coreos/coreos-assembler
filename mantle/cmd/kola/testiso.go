@@ -145,7 +145,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			if err := testPXE(instPxe, completionfile); err != nil {
 				return err
 			}
-			fmt.Printf("Successfully tested PXE live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
+			printSuccess("PXE")
 		}
 
 		if !noiso {
@@ -154,7 +154,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			if err := testLiveIso(instIso, completionfile); err != nil {
 				return err
 			}
-			fmt.Printf("Successfully tested ISO live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
+			printSuccess("ISO")
 		}
 	}
 
@@ -163,6 +163,14 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func printSuccess(mode string) {
+	metaltype := "metal"
+	if kola.QEMUOptions.Native4k {
+		metaltype = "metal4k"
+	}
+	fmt.Printf("Successfully tested %s live installer for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
 func testPXE(inst platform.Install, completionfile string) error {
