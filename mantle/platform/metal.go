@@ -187,7 +187,7 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 	metalIsCompressed := !strings.HasSuffix(metalimg, ".raw")
 	metalname := metalimg
 	if !metalIsCompressed {
-		fmt.Println("Compressing metal image")
+		fmt.Printf("Compressing %s\n", metalimg)
 		metalimgpath := filepath.Join(builddir, metalimg)
 		srcf, err := os.Open(metalimgpath)
 		if err != nil {
