@@ -178,7 +178,10 @@ type QemuBuilder struct {
 	finalized bool
 	diskId    uint
 	fs9pId    uint
-	fds       []*os.File
+	// virtioSerialId is incremented for each device
+	virtioSerialId uint
+	// fds is file descriptors we own to pass to qemu
+	fds []*os.File
 }
 
 func NewBuilder() *QemuBuilder {
@@ -684,6 +687,27 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 	builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
 	builder.Append("-machine", "q35")
 	return nil
+}
+
+// VirtioChannelRead allocates a virtio-serial channel that will appear in
+// the guest as /dev/virtio-ports/<name>.  The guest can write to it, and
+// the host can read.
+func (builder *QemuBuilder) VirtioChannelRead(name string) (*os.File, error) {
+	// Set up the virtio channel to get Ignition failures by default
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, errors.Wrapf(err, "virtioChannelRead creating pipe")
+	}
+	if builder.virtioSerialId == 0 {
+		builder.Append("-device", "virtio-serial")
+	}
+	builder.virtioSerialId += 1
+	id := fmt.Sprintf("virtioserial%d", builder.virtioSerialId)
+	// https://www.redhat.com/archives/libvir-list/2015-December/msg00305.html
+	builder.Append("-chardev", fmt.Sprintf("file,id=%s,path=%s,append=on", id, builder.AddFd(w)))
+	builder.Append("-device", fmt.Sprintf("virtserialport,chardev=%s,name=%s", id, name))
+
+	return r, nil
 }
 
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {

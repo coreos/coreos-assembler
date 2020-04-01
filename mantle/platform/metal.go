@@ -76,16 +76,26 @@ var (
 	}
 )
 
+// NewMetalQemuBuilderDefault returns a QEMU builder instance with some
+// defaults set up for bare metal.
+func NewMetalQemuBuilderDefault() *QemuBuilder {
+	builder := NewBuilder()
+	// https://github.com/coreos/fedora-coreos-tracker/issues/388
+	// https://github.com/coreos/fedora-coreos-docs/pull/46
+	builder.Memory = 4096
+	if system.RpmArch() == "s390x" {
+		// FIXME - determine why this is
+		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
+	}
+	return builder
+}
+
 type Install struct {
-	CosaBuild *sdk.LocalBuild
-
-	Firmware string
-	Native4k bool
-	Console  bool
-	Insecure bool
-	QemuArgs []string
-
+	CosaBuild       *sdk.LocalBuild
+	Builder         *QemuBuilder
+	Insecure        bool
 	LegacyInstaller bool
+	Native4k        bool
 
 	// These are set by the install path
 	kargs        []string
@@ -216,34 +226,6 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 	}
 }
 
-func newQemuBuilder(firmware string, console bool, native4k bool) *QemuBuilder {
-	builder := NewBuilder()
-	builder.Firmware = firmware
-
-	sectorSize := 0
-	if native4k {
-		sectorSize = 4096
-	}
-
-	builder.AddPrimaryDisk(&Disk{
-		Size: "12G", // Arbitrary
-
-		SectorSize: sectorSize,
-	})
-
-	// This applies just in the legacy case
-	builder.Memory = 1536
-	if system.RpmArch() == "s390x" {
-		// FIXME - determine why this is
-		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
-	}
-
-	// For now, but in the future we should rely on log capture
-	builder.InheritConsole = console
-
-	return builder
-}
-
 func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	if kern.kernel == "" {
 		return nil, fmt.Errorf("Missing kernel artifact")
@@ -252,7 +234,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, fmt.Errorf("Missing initramfs artifact")
 	}
 
-	builder := newQemuBuilder(inst.Firmware, inst.Console, inst.Native4k)
+	builder := inst.Builder
 
 	tempdir, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
@@ -452,19 +434,12 @@ func (t *installerRun) run() (*QemuInstance, error) {
 		usernetdev += ",net=192.168.76.0/24,dhcpstart=192.168.76.9"
 	}
 	builder.Append("-netdev", usernetdev)
-	builder.Append(t.inst.QemuArgs...)
 
 	inst, err := builder.Exec()
 	if err != nil {
 		return nil, err
 	}
 	return inst, nil
-}
-
-func setBuilderLiveMemory(builder *QemuBuilder) {
-	// https://github.com/coreos/fedora-coreos-tracker/issues/388
-	// https://github.com/coreos/fedora-coreos-docs/pull/46
-	builder.Memory = int(math.Max(float64(builder.Memory), 4096))
 }
 
 func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, error) {
@@ -476,7 +451,6 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 
 	kargs := renderBaseKargs()
 	if !legacy {
-		setBuilderLiveMemory(t.builder)
 		kargs = append(kargs, liveKargs...)
 	}
 
@@ -666,10 +640,8 @@ WantedBy=multi-user.target
 		return nil, errors.Wrapf(err, "running coreos-installer iso embed")
 	}
 
-	qemubuilder := newQemuBuilder(inst.Firmware, inst.Console, inst.Native4k)
-	setBuilderLiveMemory(qemubuilder)
+	qemubuilder := inst.Builder
 	qemubuilder.AddInstallIso(isoEmbeddedPath)
-	qemubuilder.Append(inst.QemuArgs...)
 
 	qinst, err := qemubuilder.Exec()
 	if err != nil {
