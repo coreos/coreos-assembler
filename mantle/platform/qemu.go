@@ -560,6 +560,11 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if disk.SectorSize != 0 {
 		diskOpts = append(diskOpts, fmt.Sprintf("physical_block_size=%[1]d,logical_block_size=%[1]d", disk.SectorSize))
 	}
+	// Primary disk gets bootindex 1, all other disks have unspecified
+	// bootindex, which means lower priority.
+	if primary {
+		diskOpts = append(diskOpts, "bootindex=1")
+	}
 	builder.addQcow2DiskFd(fd, channel, diskOpts)
 	return nil
 }
@@ -576,9 +581,14 @@ func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 	return builder.addDiskImpl(disk, false)
 }
 
-// AddInstallIso adds an ISO image, configuring to boot from it once
+// AddInstallIso adds an ISO image
 func (builder *QemuBuilder) AddInstallIso(path string) error {
-	builder.Append("-boot", "once=d", "-cdrom", path)
+	// We use bootindex=2 here: the idea is that during an ISO install, the
+	// primary disk isn't bootable, so the bootloader will fall back to the ISO
+	// boot. On reboot when the system is installed, the primary disk is
+	// selected. This allows us to have "boot once" functionality on both UEFI
+	// and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
+	builder.Append("-drive", "file="+path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso,bootindex=2")
 	return nil
 }
 
