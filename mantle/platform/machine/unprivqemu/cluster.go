@@ -103,11 +103,16 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if qc.flight.opts.Native4k {
 		sectorSize = 4096
 	}
+	multiPathDisk := false
+	if qc.flight.opts.MultiPathDisk {
+		multiPathDisk = true
+	}
 	primaryDisk := platform.Disk{
-		BackingFile: qc.flight.opts.DiskImage,
-		Channel:     channel,
-		Size:        qc.flight.opts.DiskSize,
-		SectorSize:  sectorSize,
+		BackingFile:   qc.flight.opts.DiskImage,
+		Channel:       channel,
+		Size:          qc.flight.opts.DiskSize,
+		SectorSize:    sectorSize,
+		MultiPathDisk: multiPathDisk,
 	}
 
 	if err = builder.AddPrimaryDisk(&primaryDisk); err != nil {

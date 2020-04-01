@@ -16,6 +16,7 @@ dn=$(dirname "$0")
 BUILDID=latest
 IMAGE_TYPE=qemu
 HOSTNAME=
+MULTIPATH=
 VM_DISK=
 KARGS=
 DISK_CHANNEL=virtio
@@ -39,6 +40,7 @@ Options:
     --kargs               Append kernel arguments
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
+    --multipath           Attach disks using two paths
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
 it will auto-log you into the console, and by default for read-only disk
@@ -91,6 +93,9 @@ while [ $# -ge 1 ]; do
             shift ;;
         --uefi-secure)
             FIRMWARE=uefi-secure
+            shift ;;
+        --multipath)
+            MULTIPATH=multipath
             shift ;;
         --kargs)
             KARGS="$2"
@@ -232,6 +237,9 @@ fi
 
 if [ "${IMAGE_TYPE}" == metal4k ]; then
     kola_args+=("--qemu-native-4k")
+fi
+if [ -n "${MULTIPATH}" ]; then
+    kola_args+=("--qemu-multipath")
 fi
 
 case "${FIRMWARE}" in
