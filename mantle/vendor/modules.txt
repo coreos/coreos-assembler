@@ -166,6 +166,8 @@ github.com/digitalocean/godo
 github.com/dimchansky/utfbom
 # github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 github.com/gedex/inflector
+# github.com/ghodss/yaml v1.0.0
+github.com/ghodss/yaml
 # github.com/godbus/dbus/v5 v5.0.3
 github.com/godbus/dbus/v5
 # github.com/golang/protobuf v1.3.1
@@ -325,3 +327,5 @@ google.golang.org/appengine/urlfetch
 gopkg.in/alecthomas/kingpin.v2
 # gopkg.in/ini.v1 v1.42.0
 gopkg.in/ini.v1
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2

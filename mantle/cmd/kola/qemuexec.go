@@ -49,6 +49,7 @@ var (
 	kargs    string
 	knetargs string
 
+	machineconfig     string
 	ignitionFragments []string
 	bindro            []string
 	bindrw            []string
@@ -65,6 +66,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
+	cmdQemuExec.Flags().StringVar(&machineconfig, "machineconfig", "", "Path to a MachineConfig fragment (RHCOS, https://github.com/openshift/machine-config-operator/)")
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
@@ -115,6 +117,21 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return errors.Wrapf(err, "rendering fragments")
 		}
 		config = newconfig
+	}
+	if machineconfig != "" {
+		if config == nil {
+			config = &v3types.Config{}
+		}
+		machineConfigContents, err := ioutil.ReadFile(machineconfig)
+		if err != nil {
+			return err
+		}
+		encapsulated, err := conf.EncapsulateMachineConfig(string(machineConfigContents))
+		if err != nil {
+			return errors.Wrapf(err, "encapsulating MachineConfig")
+		}
+		configv := v3.Merge(*config, *encapsulated)
+		config = &configv
 	}
 	builder := platform.NewBuilder()
 	for _, b := range bindro {

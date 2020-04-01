@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	ignconverter "github.com/coreos/ign-converter"
+	"github.com/pkg/errors"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	systemdunit "github.com/coreos/go-systemd/unit"
@@ -46,6 +47,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/crypto/ssh/agent"
+	"gopkg.in/yaml.v2"
 )
 
 type kind int
@@ -843,6 +845,75 @@ ExecStart=-/sbin/agetty --autologin core -o '-p -f core' %s %%I $TERM
 			},
 		},
 	}
+}
+
+// EncapsulateMachineConfig takes a MachineConfig and converts
+// it into Ignition - only applies to RHCOS currently.  See
+// https://github.com/openshift/machine-config-operator/pull/868
+// While this function does not actually validate the MachineConfig object,
+// it will accept YAML format and convert it to JSON.
+func EncapsulateMachineConfig(machineconfigdata string) (*v3types.Config, error) {
+	retconfig := v3types.Config{
+		Ignition: v3types.Ignition{
+			Version: "3.0.0",
+		},
+	}
+	var decoded map[interface{}]interface{}
+	err := yaml.Unmarshal([]byte(machineconfigdata), &decoded)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing YAML")
+	}
+	if spec, ok := decoded["spec"].(map[interface{}]interface{}); ok {
+		if config, ok := spec["config"].(map[interface{}]interface{}); ok {
+			reserialized, err := json.Marshal(config)
+			if err != nil {
+				return nil, errors.Wrapf(err, "re-serializing config")
+			}
+			ign2, _, err := v23.Parse(reserialized)
+			if err != nil {
+				return nil, errors.Wrapf(err, "re-parsing config")
+			}
+			embedConfig, err := ignconverter.Translate(ign2, nil)
+			if err != nil {
+				return nil, errors.Wrapf(err, "converting to spec 3")
+			}
+			retconfig = v3.Merge(retconfig, embedConfig)
+
+			// And empty it out
+			delete(spec, "config")
+			// ign2 = v23types.Config{
+			// 	Ignition: v23types.Ignition{
+			// 		Version: "2.3.0",
+			// 	},
+			// }
+			// ign2Empty, err := json.Marshal(ign2)
+			// if err != nil {
+			// 	panic(err)
+			// }
+		}
+	}
+
+	remarshaled, err := json.Marshal(decoded)
+	if err != nil {
+		return nil, errors.Wrapf(err, "re-marshaling")
+	}
+	source := dataurl.EncodeBytes(remarshaled)
+
+	path := "/etc/ignition-machine-config-encapsulated.json"
+	mode := 0644
+	retconfig.Storage.Files = append(retconfig.Storage.Files,
+		v3types.File{
+			Node: v3types.Node{
+				Path: path,
+			},
+			FileEmbedded1: v3types.FileEmbedded1{
+				Contents: v3types.FileContents{
+					Source: &source,
+				},
+				Mode: &mode,
+			},
+		})
+	return &retconfig, nil
 }
 
 // GetAutologin returns an Ignition config to automatic login on consoles

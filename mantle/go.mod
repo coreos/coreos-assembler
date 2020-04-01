@@ -24,6 +24,7 @@ require (
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
+	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.3.1
 	github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
 	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
@@ -50,6 +51,7 @@ require (
 	google.golang.org/api v0.1.0
 	google.golang.org/appengine v1.6.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	gopkg.in/yaml.v2 v2.2.2
 )
 
 replace google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d

@@ -15,6 +15,7 @@ dn=$(dirname "$0")
 
 BUILDID=latest
 IMAGE_TYPE=qemu
+MACHINECONFIG=
 HOSTNAME=
 VM_DISK=
 KARGS=
@@ -31,6 +32,7 @@ Options:
     -d DISK               Root disk drive (won't be changed by default)
     --disk-channel TYPE   Communication mechanism for root device: virtio, nvme
     -i FILE               File containing an Ignition config to merge into the default config
+    --machineconfig FILE  File containing MachineConfig (RHCOS, see https://github.com/openshift/machine-config-operator/)
     --srv src             Mount (via 9p) src on the host as /var/srv in guest
     -m MB                 RAM size in MB (2048)
     --hostname NAME       Set hostname via DHCP
@@ -71,6 +73,9 @@ while [ $# -ge 1 ]; do
             shift 2 ;;
         -i|--ignition-config)
             IGNITION_CONFIG_FILE="$2"
+            shift 2 ;;
+        --machineconfig)
+            MACHINE_CONFIG_FILE="$2"
             shift 2 ;;
         --srv)
             VM_SRV_MNT="$2"
@@ -245,6 +250,9 @@ if [ -n "${HOSTNAME}" ]; then
 fi
 if [ -n "${KARGS}" ]; then
     kola_args+=("--kargs=${KARGS}")
+fi
+if [ -n "${MACHINE_CONFIG_FILE}" ]; then
+    kola_args+=("--machineconfig=${MACHINE_CONFIG_FILE}")
 fi
 
 # for the metal images, there's no other way but to inject into /boot
