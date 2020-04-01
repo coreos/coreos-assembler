@@ -20,12 +20,14 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	ignconverter "github.com/coreos/ign-converter"
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
@@ -40,11 +42,12 @@ type MachineOptions struct {
 }
 
 type Disk struct {
-	Size        string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
-	BackingFile string   // raw disk image to use. Incompatible with Size.
-	Channel     string   // virtio (default), nvme
-	DeviceOpts  []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
-	SectorSize  int      // if not 0, override disk sector size
+	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
+	BackingFile   string   // raw disk image to use. Incompatible with Size.
+	Channel       string   // virtio (default), nvme
+	DeviceOpts    []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
+	SectorSize    int      // if not 0, override disk sector size
+	MultiPathDisk bool     // if true, present multiple paths
 }
 
 type QemuInstance struct {
@@ -52,6 +55,15 @@ type QemuInstance struct {
 	tmpConfig string
 	swtpmTmpd string
 	swtpm     exec.Cmd
+}
+
+// AttachFormat returns the Qemu format that should be used
+func (d *Disk) AttachFormat() string {
+	// qcow2 locking defeats our multipathing right now, see below
+	if d.MultiPathDisk {
+		return "raw"
+	}
+	return "qcow2"
 }
 
 func (inst *QemuInstance) Pid() int {
@@ -172,6 +184,8 @@ type QemuBuilder struct {
 
 	primaryDiskAdded bool
 
+	MultiPathDisk bool
+
 	// cleanupConfig is true if we own the Ignition config
 	cleanupConfig bool
 
@@ -183,10 +197,11 @@ type QemuBuilder struct {
 
 func NewBuilder() *QemuBuilder {
 	ret := QemuBuilder{
-		Firmware:  "bios",
-		Swtpm:     true,
-		Pdeathsig: true,
-		Argv:      []string{},
+		Firmware:      "bios",
+		Swtpm:         true,
+		Pdeathsig:     true,
+		MultiPathDisk: false,
+		Argv:          []string{},
 	}
 	return &ret
 }
@@ -247,16 +262,42 @@ func virtio(device, args string) string {
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
-// addQcow2Disk adds a disk image from a file descriptor,
+// addDisk adds a disk image from a file descriptor,
 // mounted read-write, formatted qcow2.
-func (builder *QemuBuilder) addQcow2DiskFd(fd *os.File, channel string, options []string) {
+func (builder *QemuBuilder) addDiskFd(fd *os.File, channel string, disk *Disk, options []string) {
 	opts := ""
 	if len(options) > 0 {
 		opts = "," + strings.Join(options, ",")
 	}
 	fdset := builder.AddFd(fd)
-	id := fmt.Sprintf("d%d", builder.diskId)
 	builder.diskId += 1
+	id := fmt.Sprintf("d%d", builder.diskId)
+
+	if disk.MultiPathDisk {
+		// Fake a NVME device with a fake WWN. All these attributes are needed in order
+		// to trick multipath-tools that this is a "real" multipath device.
+		// Each disk is presented on its own controller.
+
+		// The WWN needs to be a unique uint64 number
+		rand.Seed(time.Now().UnixNano())
+		wwn := rand.Uint64()
+
+		for i := 0; i < 2; i++ {
+			if i == 1 {
+				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
+			}
+			pId := fmt.Sprintf("mpath%d%d", builder.diskId, i)
+			scsiId := fmt.Sprintf("scsi_%s", pId)
+			builder.Append("-device", fmt.Sprintf("virtio-scsi-pci,id=%s", scsiId))
+			builder.Append("-device",
+				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
+					scsiId, pId, wwn, opts))
+			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=%s,file=%s,auto-read-only=off,media=disk",
+				pId, disk.AttachFormat(), fdset))
+		}
+		return
+	}
+
 	switch channel {
 	case "virtio":
 		builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
@@ -265,7 +306,9 @@ func (builder *QemuBuilder) addQcow2DiskFd(fd *os.File, channel string, options 
 	default:
 		panic(fmt.Sprintf("Unhandled channel: %s", channel))
 	}
-	builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=qcow2,file=%s,auto-read-only=off", id, fdset))
+
+	builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=%s,file=%s,auto-read-only=off",
+		id, disk.AttachFormat(), fdset))
 }
 
 func (builder *QemuBuilder) ConsoleToFile(path string) {
@@ -505,14 +548,22 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	}
 	defer os.Remove(dstFileName)
 
-	imgOpts := []string{"create", "-f", "qcow2", dstFileName}
+	imgOpts := []string{"create", "-f", disk.AttachFormat(), dstFileName}
 	if disk.BackingFile != "" {
 		backingFile, err := resolveBackingFile(disk.BackingFile)
 		if err != nil {
 			return err
 		}
 		imgOpts = append(imgOpts, "-o", fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile))
+		if disk.AttachFormat() == "raw" {
+			// TODO This copies the whole disk right now; we should figure out how to
+			// either turn off locking (the `file` driver has a `locking=off` option,
+			// might require a qemu patch to do for qcow2) or figure out if there's a different
+			// way to do virtual multipath.
+			imgOpts = []string{"convert", "-f", "qcow2", "-O", "raw", backingFile, dstFileName}
+		}
 	}
+
 	if disk.Size != "" {
 		imgOpts = append(imgOpts, disk.Size)
 	}
@@ -522,6 +573,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if err := qemuImg.Run(); err != nil {
 		return err
 	}
+
 	if primary {
 		// If the board doesn't support -fw_cfg or we were explicitly
 		// requested, inject via libguestfs on the primary disk.
@@ -549,7 +601,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			}
 		}
 		if !foundserial {
-			// Note that diskId is incremented by addQcow2DiskFd
+			// Note that diskId is incremented by addDiskFd
 			diskOpts = append(diskOpts, "serial="+fmt.Sprintf("disk%d", builder.diskId))
 		}
 	}
@@ -565,7 +617,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if primary {
 		diskOpts = append(diskOpts, "bootindex=1")
 	}
-	builder.addQcow2DiskFd(fd, channel, diskOpts)
+	builder.addDiskFd(fd, channel, disk, diskOpts)
 	return nil
 }
 
