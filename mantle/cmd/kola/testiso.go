@@ -90,6 +90,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 		Console:  console,
 		Firmware: kola.QEMUOptions.Firmware,
+		Native4k: kola.QEMUOptions.Native4k,
 	}
 
 	if instInsecure {
