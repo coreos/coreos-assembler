@@ -20,13 +20,17 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
 
@@ -60,16 +64,18 @@ var (
 	console bool
 )
 
-var signalCompletionUnit = `[Unit]
-Requires=dev-virtio\\x2dports-completion.device
+var signalCompleteString = "coreos-installer-test-OK"
+var signalCompletionUnit = fmt.Sprintf(`[Unit]
+Requires=dev-virtio\\x2dports-testisocompletion.device
 OnFailure=emergency.target
 OnFailureJobMode=isolate
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c '/usr/bin/echo coreos-installer-test-OK >/dev/virtio-ports/completion && systemctl poweroff'
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && systemctl poweroff'
 [Install]
 RequiredBy=multi-user.target
-`
+`, signalCompleteString)
 
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
@@ -82,6 +88,32 @@ func init() {
 	root.AddCommand(cmdTestIso)
 }
 
+func newQemuBuilder() *platform.QemuBuilder {
+	builder := platform.NewMetalQemuBuilderDefault()
+	builder.Firmware = kola.QEMUOptions.Firmware
+	sectorSize := 0
+	if kola.QEMUOptions.Native4k {
+		sectorSize = 4096
+	}
+	builder.AddPrimaryDisk(&platform.Disk{
+		Size: "12G", // Arbitrary
+
+		SectorSize: sectorSize,
+	})
+
+	// https://github.com/coreos/fedora-coreos-tracker/issues/388
+	// https://github.com/coreos/fedora-coreos-docs/pull/46
+	builder.Memory = 4096
+	if system.RpmArch() == "s390x" {
+		// FIXME - determine why this is
+		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
+	}
+
+	builder.InheritConsole = console
+
+	return builder
+}
+
 func runTestIso(cmd *cobra.Command, args []string) error {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --cosa-build")
@@ -89,10 +121,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 	baseInst := platform.Install{
 		CosaBuild: kola.CosaBuild,
-
-		Console:  console,
-		Firmware: kola.QEMUOptions.Firmware,
-		Native4k: kola.QEMUOptions.Native4k,
+		Native4k:  kola.QEMUOptions.Native4k,
 	}
 
 	if instInsecure {
@@ -107,10 +136,6 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 	completionfile := filepath.Join(tmpd, "completion.txt")
 
-	baseInst.QemuArgs = []string{
-		"-device", "virtio-serial", "-device", "virtserialport,chardev=completion,name=completion",
-		"-chardev", "file,id=completion,path=" + completionfile}
-
 	if kola.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return fmt.Errorf("Build %s must have a `metal` artifact", kola.CosaBuild.Meta.OstreeVersion)
 	}
@@ -124,7 +149,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			inst := baseInst // Pretend this is Rust and I wrote .copy()
 			inst.LegacyInstaller = true
 
-			if err := testPXE(inst, completionfile); err != nil {
+			if err := testPXE(inst); err != nil {
 				return err
 			}
 			fmt.Printf("Successfully tested legacy installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
@@ -142,7 +167,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			ranTest = true
 			instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-			if err := testPXE(instPxe, completionfile); err != nil {
+			if err := testPXE(instPxe); err != nil {
 				return err
 			}
 			printSuccess("PXE")
@@ -165,6 +190,35 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func awaitCompletion(inst *platform.QemuInstance, qchan *os.File, expected []string) error {
+	errchan := make(chan error)
+	go func() {
+		if err := inst.Wait(); err != nil {
+			errchan <- err
+		}
+		time.Sleep(1 * time.Minute)
+		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
+	}()
+	go func() {
+		r := bufio.NewReader(qchan)
+		for _, exp := range expected {
+			l, err := r.ReadString('\n')
+			if err != nil {
+				errchan <- errors.Wrapf(err, "reading from completion channel")
+				return
+			}
+			line := strings.TrimSpace(l)
+			if line != exp {
+				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
+				return
+			}
+		}
+		// OK!
+		errchan <- nil
+	}()
+	return <-errchan
+}
+
 func printSuccess(mode string) {
 	metaltype := "metal"
 	if kola.QEMUOptions.Native4k {
@@ -173,9 +227,7 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested %s live installer for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-func testPXE(inst platform.Install, completionfile string) error {
-	completionstamp := "coreos-installer-test-OK"
-
+func testPXE(inst platform.Install) error {
 	config := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -209,47 +261,43 @@ func testPXE(inst platform.Install, completionfile string) error {
 		configStr = string(buf)
 	}
 
+	inst.Builder = newQemuBuilder()
+	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
+	if err != nil {
+		return err
+	}
+
 	mach, err := inst.PXE(nil, configStr)
 	if err != nil {
 		return errors.Wrapf(err, "running PXE")
 	}
 	defer mach.Destroy()
 
-	err = mach.QemuInst.Wait()
+	return awaitCompletion(mach.QemuInst, completionChannel, []string{signalCompleteString})
+}
+
+func testLiveIso(inst platform.Install, completionfile string) error {
+	inst.Builder = newQemuBuilder()
+	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
 	}
 
-	err = exec.Command("grep", "-q", "-e", completionstamp, completionfile).Run()
-	if err != nil {
-		return fmt.Errorf("Failed to find %s in %s: %s", completionstamp, completionfile, err)
-	}
-
-	err = os.Remove(completionfile)
-	if err != nil {
-		return errors.Wrapf(err, "removing %s", completionfile)
-	}
-
-	return nil
-}
-
-func testLiveIso(inst platform.Install, completionfile string) error {
-	completionstamp := "coreos-installer-test-OK"
-
 	// We're just testing that executing our custom Ignition in the live
 	// path worked ok.
 	liveOKSignal := "live-test-OK"
-	var liveSignalOKUnit = `[Unit]
-	Requires=dev-virtio\\x2dports-completion.device
+	var liveSignalOKUnit = fmt.Sprintf(`[Unit]
+	Requires=dev-virtio\\x2dports-testisocompletion.device
 	OnFailure=emergency.target
 	OnFailureJobMode=isolate
 	Before=coreos-installer.service
 	[Service]
 	Type=oneshot
-	ExecStart=/bin/sh -c '/usr/bin/echo live-test-OK >/dev/virtio-ports/completion'
+	RemainAfterExit=yes
+	ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion'
 	[Install]
 	RequiredBy=multi-user.target
-	`
+	`, liveOKSignal)
 
 	liveConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -295,24 +343,5 @@ func testLiveIso(inst platform.Install, completionfile string) error {
 	}
 	defer mach.Destroy()
 
-	err = mach.QemuInst.Wait()
-	if err != nil {
-		return err
-	}
-
-	err = exec.Command("grep", "-q", "-e", liveOKSignal, completionfile).Run()
-	if err != nil {
-		return fmt.Errorf("Failed to find %s in %s: %s", liveOKSignal, completionfile, err)
-	}
-	err = exec.Command("grep", "-q", "-e", completionstamp, completionfile).Run()
-	if err != nil {
-		return fmt.Errorf("Failed to find %s in %s: %s", completionstamp, completionfile, err)
-	}
-
-	err = os.Remove(completionfile)
-	if err != nil {
-		return errors.Wrapf(err, "removing %s", completionfile)
-	}
-
-	return nil
+	return awaitCompletion(mach.QemuInst, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
