@@ -80,6 +80,7 @@ type Install struct {
 	CosaBuild *sdk.LocalBuild
 
 	Firmware string
+	Native4k bool
 	Console  bool
 	Insecure bool
 	QemuArgs []string
@@ -215,11 +216,19 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 	}
 }
 
-func newQemuBuilder(firmware string, console bool) *QemuBuilder {
+func newQemuBuilder(firmware string, console bool, native4k bool) *QemuBuilder {
 	builder := NewBuilder()
 	builder.Firmware = firmware
+
+	sectorSize := 0
+	if native4k {
+		sectorSize = 4096
+	}
+
 	builder.AddDisk(&Disk{
 		Size: "12G", // Arbitrary
+
+		SectorSize: sectorSize,
 	})
 
 	// This applies just in the legacy case
@@ -243,7 +252,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, fmt.Errorf("Missing initramfs artifact")
 	}
 
-	builder := newQemuBuilder(inst.Firmware, inst.Console)
+	builder := newQemuBuilder(inst.Firmware, inst.Console, inst.Native4k)
 
 	tempdir, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
@@ -273,7 +282,12 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		}
 	}
 
-	metalimg := inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
+	var metalimg string
+	if inst.Native4k {
+		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative.Path
+	} else {
+		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
+	}
 	metalname, err := setupMetalImage(builddir, metalimg, tftpdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
@@ -535,7 +549,12 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnit
 
 	builddir := inst.CosaBuild.Dir
 	srcisopath := filepath.Join(builddir, inst.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	metalimg := inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
+	var metalimg string
+	if inst.Native4k {
+		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative.Path
+	} else {
+		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
+	}
 	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
@@ -647,7 +666,7 @@ WantedBy=multi-user.target
 		return nil, errors.Wrapf(err, "running coreos-installer iso embed")
 	}
 
-	qemubuilder := newQemuBuilder(inst.Firmware, inst.Console)
+	qemubuilder := newQemuBuilder(inst.Firmware, inst.Console, inst.Native4k)
 	setBuilderLiveMemory(qemubuilder)
 	qemubuilder.AddInstallIso(isoEmbeddedPath)
 	qemubuilder.Append(inst.QemuArgs...)
