@@ -4,10 +4,10 @@ DESTDIR ?=
 ARCH:=$(shell uname -m)
 
 .PHONY: build test vendor clean
-build: cosa/schema_doc.go
+build:
 	./build cmd/*
 
-cosa/schema_doc.go: ../src/schema/v1.json Makefile
+schema-update:
 	./build schema
 
 .PHONY: install
