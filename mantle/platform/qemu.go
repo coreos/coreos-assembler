@@ -147,6 +147,7 @@ type QemuBuilder struct {
 	ConfigFile string
 	// ForceConfigInjection is useful for booting `metal` images directly
 	ForceConfigInjection bool
+	configInjected       bool
 
 	Memory     int
 	Processors int
@@ -527,6 +528,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 				dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
+			builder.configInjected = true
 		}
 	}
 	fd, err := os.OpenFile(dstFileName, os.O_RDWR, 0)
@@ -706,7 +708,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	argv = append(argv, "-nographic")
 
 	// Handle Ignition
-	if builder.ConfigFile != "" {
+	if builder.ConfigFile != "" && !builder.configInjected {
 		if builder.supportsFwCfg() {
 			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.ConfigFile)
 		} else if !builder.primaryDiskAdded {
