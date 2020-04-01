@@ -55,6 +55,7 @@ var (
 	legacy bool
 	nolive bool
 	nopxe  bool
+	noiso  bool
 
 	console bool
 )
@@ -75,6 +76,7 @@ func init() {
 	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
 	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer (PXE and ISO)")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
+	cmdTestIso.Flags().BoolVarP(&noiso, "no-iso", "", false, "Skip testing live installer ISO")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout")
 
 	root.AddCommand(cmdTestIso)
@@ -146,12 +148,14 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Successfully tested PXE live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 		}
 
-		ranTest = true
-		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(instIso, completionfile); err != nil {
-			return err
+		if !noiso {
+			ranTest = true
+			instIso := baseInst // Pretend this is Rust and I wrote .copy()
+			if err := testLiveIso(instIso, completionfile); err != nil {
+				return err
+			}
+			fmt.Printf("Successfully tested ISO live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 		}
-		fmt.Printf("Successfully tested ISO live installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 	}
 
 	if !ranTest {
