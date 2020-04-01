@@ -225,7 +225,7 @@ func newQemuBuilder(firmware string, console bool, native4k bool) *QemuBuilder {
 		sectorSize = 4096
 	}
 
-	builder.AddDisk(&Disk{
+	builder.AddPrimaryDisk(&Disk{
 		Size: "12G", // Arbitrary
 
 		SectorSize: sectorSize,
