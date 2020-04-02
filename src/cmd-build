@@ -16,6 +16,7 @@ Usage: coreos-assembler build --help
   - ostree
   - qemu
   - metal
+  - metal4k
 
   The "qemu" and "metal" targets imply "ostree". If unspecified, defaults to
   "qemu". They are equivalent to manually running buildextend-[TARGET] after.
@@ -87,7 +88,7 @@ declare -A targets=( )
 for target in "$@"; do
     if [[ $target != ostree ]]; then
         case "$target" in
-            metal|qemu) ;;
+            metal|metal4k|qemu) ;;
             *) fatal "Unrecognized target: $target" ;;
         esac
         targets[$target]=1
