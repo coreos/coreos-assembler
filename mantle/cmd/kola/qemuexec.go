@@ -54,6 +54,7 @@ var (
 	bindro            []string
 	bindrw            []string
 
+	directIgnition       bool
 	forceConfigInjection bool
 )
 
@@ -66,6 +67,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
+	cmdQemuExec.Flags().BoolVar(&directIgnition, "ignition-direct", false, "Do not parse Ignition, pass directly to instance")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
@@ -97,7 +99,7 @@ func parseBindOpt(s string) (string, string, error) {
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 	var config *v3types.Config
-	if ignition != "" {
+	if ignition != "" && !directIgnition {
 		buf, err := ioutil.ReadFile(ignition)
 		if err != nil {
 			return err
@@ -144,9 +146,14 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		config = &configv
 	}
 	if config != nil {
+		if directIgnition {
+			return fmt.Errorf("Cannot use fragments/mounts with direct ignition")
+		}
 		if err := builder.SetConfig(*config, kola.Options.IgnitionVersion == "v2"); err != nil {
 			return errors.Wrapf(err, "rendering config")
 		}
+	} else if directIgnition {
+		builder.ConfigFile = ignition
 	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
