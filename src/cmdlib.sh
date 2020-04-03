@@ -506,6 +506,8 @@ EOF
         "s390x") scsibus="devno=fe.0.0003" ;;
     esac
 
+    rm -f "${workdir}/tmp/rc"
+
     #shellcheck disable=SC2086
     ${QEMU_KVM} ${arch_args:-} \
         -nodefaults -nographic -m 2048 -no-reboot -cpu host \
@@ -525,7 +527,9 @@ EOF
     if [ ! -f "${workdir}"/tmp/rc ]; then
         fatal "Couldn't find rc file, something went terribly wrong!"
     fi
-    return "$(cat "${workdir}"/tmp/rc)"
+    rc="$(cat "${workdir}"/tmp/rc)"
+    rm -f "${workdir}/tmp/rc"
+    return "${rc}"
 }
 
 openshift_git_hack() {
