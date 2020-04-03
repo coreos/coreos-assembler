@@ -79,7 +79,6 @@ func (cmd *ExecCmd) Kill() error {
 			return nil
 		}
 	}
-
 	return err
 }
 

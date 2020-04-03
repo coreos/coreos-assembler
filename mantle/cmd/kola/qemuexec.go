@@ -170,6 +170,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			Size:          kola.QEMUOptions.DiskSize,
 			SectorSize:    sectorSize,
 			MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
+			NbdDisk:       kola.QEMUOptions.NbdDisk,
 		}); err != nil {
 			return errors.Wrapf(err, "adding primary disk")
 		}
@@ -192,6 +193,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer inst.Destroy()
 
 	// Ignore errors
 	_ = inst.Wait()
