@@ -953,15 +953,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	}
 
 	// Set up the virtio channel to get Ignition failures by default
-	journalPipeR, journalPipeW, err := os.Pipe()
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating journal pipe")
-	}
+	journalPipeR, err := builder.VirtioChannelRead("com.coreos.ignition.journal")
 	inst.journalPipe = journalPipeR
-	argv = append(argv, "-device", "virtio-serial")
-	// https://www.redhat.com/archives/libvir-list/2015-December/msg00305.html
-	argv = append(argv, "-chardev", fmt.Sprintf("file,id=ignition-dracut,path=%s,append=on", builder.AddFd(journalPipeW)))
-	argv = append(argv, "-device", "virtserialport,chardev=ignition-dracut,name=com.coreos.ignition.journal")
 
 	fdnum := 3 // first additional file starts at position 3
 	for i, _ := range builder.fds {
