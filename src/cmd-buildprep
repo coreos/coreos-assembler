@@ -162,7 +162,9 @@ class HTTPFetcher(Fetcher):
         with requests.head(url) as r:
             if r.status_code == 200:
                 return True
-            if r.status_code == 404:
+            # just treat 403 as ENOENT too; this is common for APIs to do (like
+            # AWS) and we don't support HTTP basic auth here anyway
+            if r.status_code in [404, 403]:
                 return False
             raise Exception(f"Received rc {r.status_code} for {url}")
 
