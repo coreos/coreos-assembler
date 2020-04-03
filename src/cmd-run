@@ -17,6 +17,7 @@ BUILDID=latest
 IMAGE_TYPE=qemu
 HOSTNAME=
 MULTIPATH=
+NBD_SOCKET=
 VM_DISK=
 KARGS=
 DISK_CHANNEL=virtio
@@ -40,7 +41,8 @@ Options:
     --kargs               Append kernel arguments
     --uefi                Boot using uefi (x86_64 only, implied on arm)
     --uefi-secure         Boot using uefi with secure boot enabled (x86_64/arm only)
-    --multipath           Attach disks using two paths
+    --multipath           Attach disks using two paths, implies --nbd-socket
+    --nbd-socket          Attach disk using an nbd socket
 
 This script is a wrapper around qemu for starting CoreOS virtual machines,
 it will auto-log you into the console, and by default for read-only disk
@@ -96,6 +98,9 @@ while [ $# -ge 1 ]; do
             shift ;;
         --multipath)
             MULTIPATH=multipath
+            shift ;;
+        --nbd-socket)
+            NBD_SOCKET=nbd-socket
             shift ;;
         --kargs)
             KARGS="$2"
@@ -241,6 +246,10 @@ fi
 if [ -n "${MULTIPATH}" ]; then
     kola_args+=("--qemu-multipath")
 fi
+if [ -n "${NBD_SOCKET}" ]; then
+    kola_args+=("--qemu-nbd-socket")
+fi
+
 
 case "${FIRMWARE}" in
     bios) ;;

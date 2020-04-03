@@ -47,23 +47,22 @@ type Disk struct {
 	Channel       string   // virtio (default), nvme
 	DeviceOpts    []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
 	SectorSize    int      // if not 0, override disk sector size
+	NbdDisk       bool     // if true, the disks should be presented over nbd:unix socket
 	MultiPathDisk bool     // if true, present multiple paths
+
+	attachEndPoint string   // qemuPath to attach to
+	fd             *os.File // builder file descriptor location, e.g. /proc/self/fd/
+	dstFileName    string   // the prepared file
+	nbdServCmd     exec.Cmd // command to serve the disk
 }
 
 type QemuInstance struct {
-	qemu      exec.Cmd
-	tmpConfig string
-	swtpmTmpd string
-	swtpm     exec.Cmd
-}
-
-// AttachFormat returns the Qemu format that should be used
-func (d *Disk) AttachFormat() string {
-	// qcow2 locking defeats our multipathing right now, see below
-	if d.MultiPathDisk {
-		return "raw"
-	}
-	return "qcow2"
+	qemu       exec.Cmd
+	tmpConfig  string
+	swtpmTmpd  string
+	swtpm      exec.Cmd
+	tmpFiles   []string
+	nbdServers []exec.Cmd
 }
 
 func (inst *QemuInstance) Pid() int {
@@ -129,29 +128,41 @@ func (inst *QemuInstance) SSHAddress() (string, error) {
 }
 
 func (inst *QemuInstance) Wait() error {
-	return inst.qemu.Wait()
+	if inst.qemu != nil {
+		err := inst.qemu.Wait()
+		inst.qemu = nil
+		return err
+	}
+	return nil
 }
 
 func (inst *QemuInstance) Destroy() {
-	if inst.tmpConfig != "" {
-		os.Remove(inst.tmpConfig)
+	for _, fN := range inst.tmpFiles {
+		os.RemoveAll(fN)
 	}
+	// check if qemu is dead before trying to kill it
 	if inst.qemu != nil {
 		if err := inst.qemu.Kill(); err != nil {
 			plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
 		}
-		inst.qemu.Wait() // Ignore errors
 	}
+	inst.qemu = nil
 	if inst.swtpmTmpd != "" {
 		if inst.swtpm != nil {
 			inst.swtpm.Kill() // Ignore errors
 		}
+		inst.swtpm = nil
 		// And ensure it's cleaned up
-		inst.swtpm.Wait()
 		if err := os.RemoveAll(inst.swtpmTmpd); err != nil {
 			plog.Errorf("Error removing swtpm dir: %v", err)
 		}
 	}
+	for _, nbdServ := range inst.nbdServers {
+		if nbdServ != nil {
+			nbdServ.Kill() // Ignore errors
+		}
+	}
+	inst.nbdServers = nil
 }
 
 // QemuBuilder is a configurator that can then create a qemu instance
@@ -191,6 +202,7 @@ type QemuBuilder struct {
 
 	finalized bool
 	diskId    uint
+	disks     []*Disk
 	fs9pId    uint
 	// virtioSerialId is incremented for each device
 	virtioSerialId uint
@@ -263,55 +275,6 @@ func virtio(device, args string) string {
 		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", system.RpmArch()))
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
-}
-
-// addDisk adds a disk image from a file descriptor,
-// mounted read-write, formatted qcow2.
-func (builder *QemuBuilder) addDiskFd(fd *os.File, channel string, disk *Disk, options []string) {
-	opts := ""
-	if len(options) > 0 {
-		opts = "," + strings.Join(options, ",")
-	}
-	fdset := builder.AddFd(fd)
-	builder.diskId += 1
-	id := fmt.Sprintf("d%d", builder.diskId)
-
-	if disk.MultiPathDisk {
-		// Fake a NVME device with a fake WWN. All these attributes are needed in order
-		// to trick multipath-tools that this is a "real" multipath device.
-		// Each disk is presented on its own controller.
-
-		// The WWN needs to be a unique uint64 number
-		rand.Seed(time.Now().UnixNano())
-		wwn := rand.Uint64()
-
-		for i := 0; i < 2; i++ {
-			if i == 1 {
-				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
-			}
-			pId := fmt.Sprintf("mpath%d%d", builder.diskId, i)
-			scsiId := fmt.Sprintf("scsi_%s", pId)
-			builder.Append("-device", fmt.Sprintf("virtio-scsi-pci,id=%s", scsiId))
-			builder.Append("-device",
-				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
-					scsiId, pId, wwn, opts))
-			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=%s,file=%s,auto-read-only=off,media=disk",
-				pId, disk.AttachFormat(), fdset))
-		}
-		return
-	}
-
-	switch channel {
-	case "virtio":
-		builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
-	case "nvme":
-		builder.Append("-device", fmt.Sprintf("nvme,drive=%s%s", id, opts))
-	default:
-		panic(fmt.Sprintf("Unhandled channel: %s", channel))
-	}
-
-	builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=%s,file=%s,auto-read-only=off",
-		id, disk.AttachFormat(), fdset))
 }
 
 func (builder *QemuBuilder) ConsoleToFile(path string) {
@@ -544,27 +507,22 @@ func mkpath(basedir string) (string, error) {
 	return f.Name(), nil
 }
 
-func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
+// prepare creates the target disk and sets all the runtime attributes
+// for use by the QemuBuilder.
+func (disk *Disk) prepare(builder *QemuBuilder) error {
 	dstFileName, err := mkpath("")
 	if err != nil {
 		return err
 	}
-	defer os.Remove(dstFileName)
+	disk.dstFileName = dstFileName
 
-	imgOpts := []string{"create", "-f", disk.AttachFormat(), dstFileName}
+	imgOpts := []string{"create", "-f", "qcow2", dstFileName}
 	if disk.BackingFile != "" {
 		backingFile, err := resolveBackingFile(disk.BackingFile)
 		if err != nil {
 			return err
 		}
 		imgOpts = append(imgOpts, "-o", fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile))
-		if disk.AttachFormat() == "raw" {
-			// TODO This copies the whole disk right now; we should figure out how to
-			// either turn off locking (the `file` driver has a `locking=off` option,
-			// might require a qemu patch to do for qcow2) or figure out if there's a different
-			// way to do virtual multipath.
-			imgOpts = []string{"convert", "-f", "qcow2", "-O", "raw", backingFile, dstFileName}
-		}
 	}
 
 	if disk.Size != "" {
@@ -577,21 +535,48 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		return err
 	}
 
+	disk.fd, err = os.OpenFile(disk.dstFileName, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	fdSet := builder.AddFd(disk.fd)
+	disk.attachEndPoint = fdSet
+
+	// MultiPathDisks must be NBD remote mounted
+	if disk.MultiPathDisk || disk.NbdDisk {
+		socketName := fmt.Sprintf("%s.socket", dstFileName)
+		shareCount := "1"
+		if disk.MultiPathDisk {
+			shareCount = "2"
+		}
+		disk.nbdServCmd = exec.Command("qemu-nbd",
+			"--format", "qcow2",
+			"--cache", "unsafe",
+			"--discard", "unmap",
+			"--socket", socketName,
+			"--share", shareCount,
+			dstFileName)
+		disk.attachEndPoint = fmt.Sprintf("nbd:unix:%s", socketName)
+	}
+
+	builder.diskId += 1
+	builder.disks = append(builder.disks, disk)
+	return nil
+}
+
+func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
+	disk.prepare(builder)
 	if primary {
 		// If the board doesn't support -fw_cfg or we were explicitly
 		// requested, inject via libguestfs on the primary disk.
 		requiresInjection := builder.ConfigFile != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
 		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArguments != "" {
-			if err = setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
-				dstFileName, disk.SectorSize); err != nil {
+			if err := setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
+				disk.dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
 			builder.configInjected = true
 		}
-	}
-	fd, err := os.OpenFile(dstFileName, os.O_RDWR, 0)
-	if err != nil {
-		return err
 	}
 	diskOpts := disk.DeviceOpts
 	if primary {
@@ -604,7 +589,6 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			}
 		}
 		if !foundserial {
-			// Note that diskId is incremented by addDiskFd
 			diskOpts = append(diskOpts, "serial="+fmt.Sprintf("disk%d", builder.diskId))
 		}
 	}
@@ -620,7 +604,49 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if primary {
 		diskOpts = append(diskOpts, "bootindex=1")
 	}
-	builder.addDiskFd(fd, channel, disk, diskOpts)
+
+	opts := ""
+	if len(diskOpts) > 0 {
+		opts = "," + strings.Join(diskOpts, ",")
+	}
+
+	id := fmt.Sprintf("d%d", builder.diskId)
+
+	if disk.MultiPathDisk {
+		// Fake a NVME device with a fake WWN. All these attributes are needed in order
+		// to trick multipath-tools that this is a "real" multipath device.
+		// Each disk is presented on its own controller.
+
+		// The WWN needs to be a unique uint64 number
+		rand.Seed(time.Now().UnixNano())
+		wwn := rand.Uint64()
+
+		for i := 0; i < 2; i++ {
+			if i == 1 {
+				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
+			}
+			pId := fmt.Sprintf("mpath%d%d", builder.diskId, i)
+			scsiId := fmt.Sprintf("scsi_%s", pId)
+			builder.Append("-device", fmt.Sprintf("virtio-scsi-pci,id=%s", scsiId))
+			builder.Append("-device",
+				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
+					scsiId, pId, wwn, opts))
+			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,auto-read-only=off,media=disk",
+				pId, disk.attachEndPoint))
+		}
+	} else {
+		switch channel {
+		case "virtio":
+			builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
+		case "nvme":
+			builder.Append("-device", fmt.Sprintf("nvme,drive=%s%s", id, opts))
+		default:
+			panic(fmt.Sprintf("Unhandled channel: %s", channel))
+		}
+
+		builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,auto-read-only=off",
+			id, disk.attachEndPoint))
+	}
 	return nil
 }
 
@@ -818,6 +844,21 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 	}
 
+	// Start up the disks. Since the disk may be served via NBD,
+	// we can't use builder.AddFd (no support for fdsets), so we at the disk to the tmpFiles.
+	for _, disk := range builder.disks {
+		inst.tmpFiles = append(inst.tmpFiles, disk.dstFileName)
+		if disk.nbdServCmd != nil {
+			inst.tmpFiles = append(inst.tmpFiles, fmt.Sprintf("%s.socket", disk.dstFileName))
+			cmd := disk.nbdServCmd.(*exec.ExecCmd)
+			if err := cmd.Start(); err != nil {
+				return nil, errors.Wrapf(err, "spawing nbd server")
+			}
+			inst.nbdServers = append(inst.nbdServers, cmd)
+		}
+	}
+
+	// Handle Software TPM
 	if builder.Swtpm && builder.supportsSwtpm() {
 		inst.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
 		if err != nil {
@@ -874,7 +915,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	}
 
 	if builder.cleanupConfig {
-		inst.tmpConfig = builder.ConfigFile
+		inst.tmpFiles = append(inst.tmpFiles, builder.ConfigFile)
 	}
 
 	if err = inst.qemu.Start(); err != nil {

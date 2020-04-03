@@ -35,6 +35,7 @@ type Options struct {
 
 	ForceConfigInjection bool
 
+	NbdDisk       bool
 	MultiPathDisk bool
 	Native4k      bool
 	Nvme          bool
