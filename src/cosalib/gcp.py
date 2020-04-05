@@ -63,6 +63,8 @@ def gcp_run_ore(build, args):
 
     if args.fcos:
         ore_args.extend(['--fcos'])
+    if args.family:
+        ore_args.extend(['--family', args.family])
 
     run_verbose(ore_args)
     build.meta['gcp'] = {
@@ -106,4 +108,7 @@ def gcp_cli(parser):
                                 Currently enables SECURE_BOOT and UEFI_COMPATIBLE""",
                         action="store_true",
                         default=False)
+    parser.add_argument("--family",
+                        help="GCP image family to attach image to",
+                        default=None)
     return parser
