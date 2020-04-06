@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,7 +26,6 @@ import (
 	"google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/platform/api/gcloud"
-	"github.com/coreos/mantle/sdk"
 )
 
 var (
@@ -40,7 +38,6 @@ var (
 
 	uploadBucket    string
 	uploadImageName string
-	uploadBoard     string
 	uploadFile      string
 	uploadFedora    bool
 	uploadForce     bool
@@ -48,13 +45,12 @@ var (
 )
 
 func init() {
-	build := sdk.BuildRoot()
-	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "gs://users.developer.core-os.net", "gs://bucket/prefix/ prefix defaults to $USER")
-	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image, defaults to COREOS_VERSION")
-	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
-	cmdUpload.Flags().StringVar(&uploadFile, "file",
-		build+"/images/amd64-usr/latest/coreos_production_gce.tar.gz",
-		"path_to_coreos_image (build with: ./image_to_vm.sh --format=gce ...)")
+	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "gs://bucket/prefix/")
+	cmdUpload.MarkFlagRequired("bucket")
+	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image")
+	cmdUpload.MarkFlagRequired("name")
+	cmdUpload.Flags().StringVar(&uploadFile, "file", "", "path to image .tar.gz file to upload")
+	cmdUpload.MarkFlagRequired("file")
 	cmdUpload.Flags().BoolVar(&uploadFedora, "fcos", false, "Flag this is Fedora CoreOS (or a derivative); currently enables SECURE_BOOT and UEFI_COMPATIBLE")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
@@ -65,16 +61,6 @@ func runUpload(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in plume upload cmd: %v\n", args)
 		os.Exit(2)
-	}
-
-	// if an image name is unspecified try to use version.txt
-	if uploadImageName == "" {
-		ver, err := sdk.VersionsFromDir(filepath.Dir(uploadFile))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
-			os.Exit(1)
-		}
-		uploadImageName = ver.Version
 	}
 
 	gsURL, err := url.Parse(uploadBucket)
@@ -90,12 +76,9 @@ func runUpload(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "URL missing bucket name %v\n", uploadBucket)
 		os.Exit(1)
 	}
-	// if prefix not specified default name to gs://bucket/$USER/$BOARD/$VERSION
 	if gsURL.Path == "" {
-		if user := os.Getenv("USER"); user != "" {
-			gsURL.Path = "/" + os.Getenv("USER")
-			gsURL.Path += "/" + uploadBoard
-		}
+		fmt.Fprint(os.Stderr, "prefix not specified. Refusing to upload in root directory of bucket\n")
+		os.Exit(1)
 	}
 
 	uploadBucket = gsURL.Host
