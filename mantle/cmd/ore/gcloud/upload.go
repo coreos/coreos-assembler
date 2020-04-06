@@ -36,12 +36,12 @@ var (
 		Run:   runUpload,
 	}
 
-	uploadBucket    string
-	uploadImageName string
-	uploadFile      string
-	uploadFedora    bool
-	uploadForce     bool
-	uploadWriteUrl  string
+	uploadBucket      string
+	uploadImageName   string
+	uploadFile        string
+	uploadFedora      bool
+	uploadForce       bool
+	uploadWriteUrl    string
 	uploadImageFamily string
 )
 
