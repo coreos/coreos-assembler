@@ -2,4 +2,4 @@
 set -euo pipefail
 # This used to contain a lot of its own custom logic.  All of the qemu code
 # now lives inside mantle/kola.
-exec kola qemuexec --add-ignition=autologin -U --auto-cpus "$@"
+exec kola qemuexec --hostname cosarun --add-ignition=autologin -U --auto-cpus "$@"
