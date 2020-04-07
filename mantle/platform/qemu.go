@@ -385,10 +385,8 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 
 // supportsSwtpm if the target system supports a virtual TPM device
 func (builder *QemuBuilder) supportsSwtpm() bool {
-	// Yes, this is the same as supportsFwCfg *currently* but
-	// might not be in the future.
 	switch system.RpmArch() {
-	case "s390x", "ppc64le":
+	case "s390x":
 		return false
 	}
 	return true
@@ -948,8 +946,17 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		if err = inst.swtpm.Start(); err != nil {
 			return nil, err
 		}
-		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock),
-			"-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-tis,tpmdev=tpm0")
+		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm")
+		// There are different device backends on each architecture
+		switch system.RpmArch() {
+		case "x86_64":
+			argv = append(argv, "-device", "tpm-tis,tpmdev=tpm0")
+		case "aarch64":
+			argv = append(argv, "-device", "tpm-tis-device,tpmdev=tpm0")
+		case "ppc64le":
+			argv = append(argv, "-device", "tpm-spapr,tpmdev=tpm0")
+		}
+
 	}
 
 	// Set up the virtio channel to get Ignition failures by default
