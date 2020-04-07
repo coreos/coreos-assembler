@@ -54,7 +54,7 @@ def gcp_run_ore(build, args):
         '--basename', build.build_name,
         'upload',
         '--force',  # We want to support restarting the pipeline
-        '--bucket', f'gs://{args.bucket}/{build.build_name}',
+        '--bucket', f'{args.bucket}',
         '--json-key', args.json_key,
         '--name', gcp_name,
         '--file', f"{build.image_path}",
