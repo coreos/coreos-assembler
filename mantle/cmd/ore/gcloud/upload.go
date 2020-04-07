@@ -150,6 +150,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 			fmt.Println("Overriding existing image...")
 			_, pending, err = api.CreateImage(&gcloud.ImageSpec{
 				Name:        imageNameGCE,
+				Family:      uploadImageFamily,
 				SourceImage: storageSrc,
 			}, true, uploadFedora)
 			if err == nil {
