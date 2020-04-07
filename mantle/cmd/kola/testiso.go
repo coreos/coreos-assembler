@@ -61,8 +61,22 @@ var (
 	nopxe  bool
 	noiso  bool
 
+	scenarios []string
+
 	console bool
 )
+
+const (
+	scenarioPXEInstall    = "pxe-install"
+	scenarioISOInstall    = "iso-install"
+	scenarioLegacyInstall = "legacy-install"
+)
+
+var allScenarios = map[string]bool{
+	scenarioPXEInstall:    true,
+	scenarioISOInstall:    true,
+	scenarioLegacyInstall: true,
+}
 
 var signalCompleteString = "coreos-installer-test-OK"
 var signalCompletionUnit = fmt.Sprintf(`[Unit]
@@ -80,10 +94,12 @@ RequiredBy=multi-user.target
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
+	// TODO remove these --no-X args once RHCOS switches to the live ISO
 	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer (PXE and ISO)")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
 	cmdTestIso.Flags().BoolVarP(&noiso, "no-iso", "", false, "Skip testing live installer ISO")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout")
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %s)", scenarioLegacyInstall))
 
 	root.AddCommand(cmdTestIso)
 }
@@ -119,6 +135,32 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Must provide --cosa-build")
 	}
 
+	targetScenarios := make(map[string]bool)
+	for _, scenario := range scenarios {
+		if _, ok := allScenarios[scenario]; !ok {
+			return fmt.Errorf("Unknown scenario: %s", scenario)
+		}
+		targetScenarios[scenario] = true
+	}
+	if legacy {
+		targetScenarios[scenarioLegacyInstall] = true
+	}
+	if nopxe || nolive {
+		delete(targetScenarios, scenarioPXEInstall)
+	}
+	if noiso || nolive {
+		delete(targetScenarios, scenarioISOInstall)
+	}
+
+	if len(targetScenarios) == 0 {
+		return fmt.Errorf("No scenarios specified!")
+	}
+	scenarios = []string{}
+	for scenario, _ := range targetScenarios {
+		scenarios = append(scenarios, scenario)
+	}
+	fmt.Printf("Testing scenarios: %s\n", scenarios)
+
 	baseInst := platform.Install{
 		CosaBuild: kola.CosaBuild,
 		Native4k:  kola.QEMUOptions.Native4k,
@@ -144,7 +186,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 	foundLegacy := baseInst.CosaBuild.Meta.BuildArtifacts.Kernel != nil
 	if foundLegacy {
-		if legacy {
+		if _, ok := targetScenarios[scenarioLegacyInstall]; ok {
 			ranTest = true
 			inst := baseInst // Pretend this is Rust and I wrote .copy()
 			inst.LegacyInstaller = true
@@ -154,37 +196,38 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			}
 			fmt.Printf("Successfully tested legacy installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
 		}
-	} else if legacy {
+	} else if _, ok := targetScenarios[scenarioLegacyInstall]; ok {
 		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Meta.Name)
 	}
 
 	foundLive := kola.CosaBuild.Meta.BuildArtifacts.LiveKernel != nil
-	if !nolive {
+	if _, ok := targetScenarios[scenarioPXEInstall]; ok {
 		if !foundLive {
 			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Meta.Name)
 		}
-		if !nopxe {
-			ranTest = true
-			instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-			if err := testPXE(instPxe); err != nil {
-				return err
-			}
-			printSuccess("PXE")
-		}
+		ranTest = true
+		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if !noiso {
-			ranTest = true
-			instIso := baseInst // Pretend this is Rust and I wrote .copy()
-			if err := testLiveIso(instIso, completionfile); err != nil {
-				return err
-			}
-			printSuccess("ISO")
+		if err := testPXE(instPxe); err != nil {
+			return err
 		}
+		printSuccess("PXE")
+	}
+	if _, ok := targetScenarios[scenarioISOInstall]; ok {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
+		}
+		ranTest = true
+		instIso := baseInst // Pretend this is Rust and I wrote .copy()
+		if err := testLiveIso(instIso, completionfile); err != nil {
+			return err
+		}
+		printSuccess("ISO")
 	}
 
 	if !ranTest {
-		return fmt.Errorf("Nothing to test!")
+		panic("Nothing was tested!")
 	}
 
 	return nil
