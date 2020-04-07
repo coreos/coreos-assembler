@@ -25,5 +25,8 @@ util-linux
 which
 xz
 
+# For rpm-ostree's CI at least
+rustfmt
+
 # Also, add clang since it's useful at least in CI for C/C++ projects
 clang
