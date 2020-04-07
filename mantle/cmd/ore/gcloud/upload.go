@@ -36,13 +36,14 @@ var (
 		Run:   runUpload,
 	}
 
-	uploadBucket      string
-	uploadImageName   string
-	uploadFile        string
-	uploadFedora      bool
-	uploadForce       bool
-	uploadWriteUrl    string
-	uploadImageFamily string
+	uploadBucket           string
+	uploadImageName        string
+	uploadFile             string
+	uploadFedora           bool
+	uploadForce            bool
+	uploadWriteUrl         string
+	uploadImageFamily      string
+	uploadImageDescription string
 )
 
 func init() {
@@ -56,6 +57,7 @@ func init() {
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
 	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
+	cmdUpload.Flags().StringVar(&uploadImageDescription, "description", "", "The description that should be attached to the image")
 	GCloud.AddCommand(cmdUpload)
 }
 
@@ -132,6 +134,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		Name:        imageNameGCE,
 		Family:      uploadImageFamily,
 		SourceImage: storageSrc,
+		Description: uploadImageDescription,
 	}, uploadForce, uploadFedora)
 	if err == nil {
 		err = pending.Wait()
@@ -152,6 +155,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 				Name:        imageNameGCE,
 				Family:      uploadImageFamily,
 				SourceImage: storageSrc,
+				Description: uploadImageDescription,
 			}, true, uploadFedora)
 			if err == nil {
 				err = pending.Wait()

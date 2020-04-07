@@ -70,6 +70,8 @@ def gcp_run_ore(build, args):
         ore_args.extend(['--fcos'])
     if args.family:
         ore_args.extend(['--family', args.family])
+    if args.description:
+        ore_args.extend(['--description', args.description])
 
     run_verbose(ore_args)
     build.meta['gcp'] = {
@@ -115,5 +117,8 @@ def gcp_cli(parser):
                         default=False)
     parser.add_argument("--family",
                         help="GCP image family to attach image to",
+                        default=None)
+    parser.add_argument("--description",
+                        help="The description that should be attached to the image",
                         default=None)
     return parser
