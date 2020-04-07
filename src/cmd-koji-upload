@@ -99,13 +99,13 @@ class Build(_Build):
     """
     Koji implementation of Build.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self._tmpdir = tempfile.mkdtemp(prefix="koji-build")
         kwargs.update({
             "require_commit": True,
             "require_cosa": True,
         })
-        _Build.__init__(self, *args, **kwargs)
+        _Build.__init__(self, **kwargs)
 
     def __del__(self):
         try:
@@ -649,7 +649,7 @@ Environment variables are supported:
 
     set_logger(args.log_level)
 
-    build = Build(args.buildroot, build=args.build, arch=args.arch)
+    build = Build(buildroot=args.buildroot, build=args.build, arch=args.arch)
     if args.auth:
         kinit(args.keytab, args.owner)
 
