@@ -815,16 +815,8 @@ func scpKolet(machines []platform.Machine) error {
 	} {
 		kolet := filepath.Join(d, "kolet")
 		if _, err := os.Stat(kolet); err == nil {
-			if err := cluster.DropFile(machines, kolet); err != nil {
+			if err := cluster.DropLabeledFile(machines, kolet, "bin_t"); err != nil {
 				return errors.Wrapf(err, "dropping kolet binary")
-			}
-			// If in the future we want to care about machines without SELinux, let's
-			// do basically test -d /sys/fs/selinux or run `getenforce`.
-			for _, machine := range machines {
-				out, stderr, err := machine.SSH("sudo chcon -t bin_t kolet")
-				if err != nil {
-					return errors.Wrapf(err, "running chcon on kolet: %s: %s", out, stderr)
-				}
 			}
 			return nil
 		}
