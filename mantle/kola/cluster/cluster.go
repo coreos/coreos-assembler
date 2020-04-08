@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -103,8 +104,15 @@ func DropFile(machines []platform.Machine, localPath string) error {
 		if _, err := in.Seek(0, 0); err != nil {
 			return err
 		}
-		if err := platform.InstallFile(in, m, filepath.Base(localPath)); err != nil {
+		// write to a separate path first, then rename to its final location so
+		// that anything watching the path can only get a complete file
+		base := filepath.Base(localPath)
+		partial := base + ".partial"
+		if err := platform.InstallFile(in, m, partial); err != nil {
 			return err
+		}
+		if out, stderr, err := m.SSH(fmt.Sprintf("mv %[1]s.partial %[1]s", base)); err != nil {
+			return errors.Wrapf(err, "running mv %[1]s.partial %[1]s: %s: %s", base, out, stderr)
 		}
 	}
 	return nil
