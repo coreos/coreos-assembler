@@ -92,8 +92,9 @@ func (t *TestCluster) ListNativeFunctions() []string {
 	return t.NativeFuncs
 }
 
-// DropFile places file from localPath to ~/ on every machine in cluster
-func DropFile(machines []platform.Machine, localPath string) error {
+// DropLabeledFile places file from localPath to ~/ on every machine in
+// cluster, potentially with a custom SELinux label.
+func DropLabeledFile(machines []platform.Machine, localPath, selabel string) error {
 	in, err := os.Open(localPath)
 	if err != nil {
 		return err
@@ -111,11 +112,21 @@ func DropFile(machines []platform.Machine, localPath string) error {
 		if err := platform.InstallFile(in, m, partial); err != nil {
 			return err
 		}
+		if selabel != "" {
+			if out, stderr, err := m.SSH(fmt.Sprintf("sudo chcon -t %s %s.partial", selabel, base)); err != nil {
+				return errors.Wrapf(err, "running chcon on %s.partial: %s: %s", base, out, stderr)
+			}
+		}
 		if out, stderr, err := m.SSH(fmt.Sprintf("mv %[1]s.partial %[1]s", base)); err != nil {
 			return errors.Wrapf(err, "running mv %[1]s.partial %[1]s: %s: %s", base, out, stderr)
 		}
 	}
 	return nil
+}
+
+// DropFile places file from localPath to ~/ on every machine in cluster
+func DropFile(machines []platform.Machine, localPath string) error {
+	return DropLabeledFile(machines, localPath, "")
 }
 
 // SSH runs a ssh command on the given machine in the cluster. It differs from
