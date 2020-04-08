@@ -69,12 +69,14 @@ var (
 const (
 	scenarioPXEInstall    = "pxe-install"
 	scenarioISOInstall    = "iso-install"
+	scenarioISOLiveLogin  = "iso-live-login"
 	scenarioLegacyInstall = "legacy-install"
 )
 
 var allScenarios = map[string]bool{
 	scenarioPXEInstall:    true,
 	scenarioISOInstall:    true,
+	scenarioISOLiveLogin:  true,
 	scenarioLegacyInstall: true,
 }
 
@@ -99,23 +101,14 @@ func init() {
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
 	cmdTestIso.Flags().BoolVarP(&noiso, "no-iso", "", false, "Skip testing live installer ISO")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout")
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %s)", scenarioLegacyInstall))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall, scenarioISOLiveLogin}, fmt.Sprintf("Test scenarios (also available: %s)", scenarioLegacyInstall))
 
 	root.AddCommand(cmdTestIso)
 }
 
-func newQemuBuilder() *platform.QemuBuilder {
+func newBaseQemuBuilder() *platform.QemuBuilder {
 	builder := platform.NewMetalQemuBuilderDefault()
 	builder.Firmware = kola.QEMUOptions.Firmware
-	sectorSize := 0
-	if kola.QEMUOptions.Native4k {
-		sectorSize = 4096
-	}
-	builder.AddPrimaryDisk(&platform.Disk{
-		Size: "12G", // Arbitrary
-
-		SectorSize: sectorSize,
-	})
 
 	// https://github.com/coreos/fedora-coreos-tracker/issues/388
 	// https://github.com/coreos/fedora-coreos-docs/pull/46
@@ -126,6 +119,21 @@ func newQemuBuilder() *platform.QemuBuilder {
 	}
 
 	builder.InheritConsole = console
+
+	return builder
+}
+
+func newQemuBuilder() *platform.QemuBuilder {
+	builder := newBaseQemuBuilder()
+	sectorSize := 0
+	if kola.QEMUOptions.Native4k {
+		sectorSize = 4096
+	}
+	builder.AddPrimaryDisk(&platform.Disk{
+		Size: "12G", // Arbitrary
+
+		SectorSize: sectorSize,
+	})
 
 	return builder
 }
@@ -178,10 +186,6 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 	completionfile := filepath.Join(tmpd, "completion.txt")
 
-	if kola.CosaBuild.Meta.BuildArtifacts.Metal == nil {
-		return fmt.Errorf("Build %s must have a `metal` artifact", kola.CosaBuild.Meta.OstreeVersion)
-	}
-
 	ranTest := false
 
 	foundLegacy := baseInst.CosaBuild.Meta.BuildArtifacts.Kernel != nil
@@ -194,7 +198,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			if err := testPXE(inst); err != nil {
 				return err
 			}
-			fmt.Printf("Successfully tested legacy installer for %s\n", kola.CosaBuild.Meta.OstreeVersion)
+			printSuccess(scenarioLegacyInstall)
 		}
 	} else if _, ok := targetScenarios[scenarioLegacyInstall]; ok {
 		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Meta.Name)
@@ -212,7 +216,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		if err := testPXE(instPxe); err != nil {
 			return err
 		}
-		printSuccess("PXE")
+		printSuccess(scenarioPXEInstall)
 	}
 	if _, ok := targetScenarios[scenarioISOInstall]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -223,7 +227,17 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		if err := testLiveIso(instIso, completionfile); err != nil {
 			return err
 		}
-		printSuccess("ISO")
+		printSuccess(scenarioISOInstall)
+	}
+	if _, ok := targetScenarios[scenarioISOLiveLogin]; ok {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
+		}
+		ranTest = true
+		if err := testLiveLogin(); err != nil {
+			return err
+		}
+		printSuccess(scenarioISOLiveLogin)
 	}
 
 	if !ranTest {
@@ -267,7 +281,7 @@ func printSuccess(mode string) {
 	if kola.QEMUOptions.Native4k {
 		metaltype = "metal4k"
 	}
-	fmt.Printf("Successfully tested %s live installer for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
+	fmt.Printf("Successfully tested scenario:%s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
 func testPXE(inst platform.Install) error {
@@ -387,4 +401,28 @@ func testLiveIso(inst platform.Install, completionfile string) error {
 	defer mach.Destroy()
 
 	return awaitCompletion(mach.QemuInst, completionChannel, []string{liveOKSignal, signalCompleteString})
+}
+
+func testLiveLogin() error {
+	builddir := kola.CosaBuild.Dir
+	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+	builder := newBaseQemuBuilder()
+	// See AddInstallISO, but drop the bootindex bit; we want it to be the default
+	builder.Append("-drive", "file="+isopath+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso")
+
+	completionChannel, err := builder.VirtioChannelRead("coreos.liveiso-success")
+	if err != nil {
+		return err
+	}
+
+	// No network device to test https://github.com/coreos/fedora-coreos-config/pull/326
+	builder.Append("-net", "none")
+
+	mach, err := builder.Exec()
+	if err != nil {
+		return errors.Wrapf(err, "running iso")
+	}
+	defer mach.Destroy()
+
+	return awaitCompletion(mach, completionChannel, []string{"coreos-liveiso-success"})
 }

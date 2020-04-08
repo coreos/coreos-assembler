@@ -853,6 +853,19 @@ func (builder *QemuBuilder) VirtioChannelRead(name string) (*os.File, error) {
 	return r, nil
 }
 
+// SerialPipe reads the serial console output into a pipe
+func (builder *QemuBuilder) SerialPipe() (*os.File, error) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, errors.Wrapf(err, "virtioChannelRead creating pipe")
+	}
+	id := "serialpipe"
+	builder.Append("-chardev", fmt.Sprintf("file,id=%s,path=%s,append=on", id, builder.AddFd(w)))
+	builder.Append("-serial", fmt.Sprintf("chardev:%s", id))
+
+	return r, nil
+}
+
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
 	var err error
