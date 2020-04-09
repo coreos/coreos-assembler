@@ -61,8 +61,6 @@ def gcp_run_ore(build, args):
         '--write-url', urltmp,
     ])
 
-    if args.fcos:
-        ore_args.extend(['--fcos'])
     if args.family:
         ore_args.extend(['--family', args.family])
     if args.description:
@@ -105,11 +103,6 @@ def gcp_cli(parser):
     parser.add_argument("--project",
                         help="GCP Project name",
                         default=os.environ.get("GCP_PROJECT_NAME"))
-    parser.add_argument("--fcos",
-                        help="""Flag this is Fedora CoreOS (or a derivative);
-                                Currently enables SECURE_BOOT and UEFI_COMPATIBLE""",
-                        action="store_true",
-                        default=False)
     parser.add_argument("--family",
                         help="GCP image family to attach image to",
                         default=None)

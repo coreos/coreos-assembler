@@ -42,7 +42,7 @@ type ImageSpec struct {
 // CreateImage creates an image on GCE and returns operation details and
 // a Pending. If overwrite is true, an existing image will be overwritten
 // if it exists.
-func (a *API) CreateImage(spec *ImageSpec, overwrite, fedora bool) (*compute.Operation, *Pending, error) {
+func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, *Pending, error) {
 	licenses := make([]string, len(spec.Licenses))
 	for i, l := range spec.Licenses {
 		license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
@@ -75,15 +75,12 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite, fedora bool) (*compute.Ope
 		{
 			Type: "VIRTIO_SCSI_MULTIQUEUE",
 		},
-	}
-	if fedora {
-		features = append(features,
-			&compute.GuestOsFeature{
-				Type: "UEFI_COMPATIBLE",
-			},
-			&compute.GuestOsFeature{
-				Type: "SECURE_BOOT",
-			})
+		{
+			Type: "UEFI_COMPATIBLE",
+		},
+		{
+			Type: "SECURE_BOOT",
+		},
 	}
 
 	image := &compute.Image{
