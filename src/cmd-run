@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# This used to contain a lot of its own custom logic.  All of the qemu code
-# now lives inside mantle/kola.
-exec kola qemuexec --hostname cosarun --add-ignition=autologin -U --auto-cpus "$@"
+# This enables "devshell" mode.  Important things to understand:
+#
+# The default connection is over ssh, but you can use --devshell-console
+# to directly connect to the serial console to e.g. debug things in
+# the initramfs.
+#
+# You can exit via either exiting the login session cleanly
+# in SSH (ctrl-d/exit in bash), or via `poweroff`.
+#
+# If 9p is available and this is started from a coreos-assembler
+# working directory, the build directory will be mounted readonly
+# at /var/mnt/workdir, and the tmp/ directory will be read *write*
+# at /var/mnt/workdir-tmp.  This allows you to easily exchange
+# data.
+exec kola qemuexec --devshell "$@"
