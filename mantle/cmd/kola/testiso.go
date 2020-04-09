@@ -104,27 +104,40 @@ func init() {
 	root.AddCommand(cmdTestIso)
 }
 
-func newQemuBuilder() *platform.QemuBuilder {
+func newQemuBuilder(isPXE bool) *platform.QemuBuilder {
 	builder := platform.NewMetalQemuBuilderDefault()
 	builder.Firmware = kola.QEMUOptions.Firmware
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
 		sectorSize = 4096
 	}
-	builder.AddPrimaryDisk(&platform.Disk{
-		Size: "12G", // Arbitrary
-
-		SectorSize: sectorSize,
-	})
 
 	// https://github.com/coreos/fedora-coreos-tracker/issues/388
 	// https://github.com/coreos/fedora-coreos-docs/pull/46
 	builder.Memory = 4096
+	primaryDiskAdded := false
 	if system.RpmArch() == "s390x" {
+		// For s390x PXE installs the network device has the bootindex of 1.
+		// Do not use a primary disk in case of net-booting for this test
+		if isPXE {
+			builder.AddDisk(&platform.Disk{
+				Size: "12G", // Arbitrary
+
+				SectorSize: sectorSize,
+			})
+			primaryDiskAdded = true
+		}
 		// FIXME - determine why this is
-		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
+		builder.Memory = int(math.Max(float64(builder.Memory), 8192))
 	}
 
+	if !primaryDiskAdded {
+		builder.AddPrimaryDisk(&platform.Disk{
+			Size: "12G", // Arbitrary
+
+			SectorSize: sectorSize,
+		})
+	}
 	builder.InheritConsole = console
 
 	return builder
@@ -304,7 +317,7 @@ func testPXE(inst platform.Install) error {
 		configStr = string(buf)
 	}
 
-	inst.Builder = newQemuBuilder()
+	inst.Builder = newQemuBuilder(true)
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
@@ -320,7 +333,7 @@ func testPXE(inst platform.Install) error {
 }
 
 func testLiveIso(inst platform.Install, completionfile string) error {
-	inst.Builder = newQemuBuilder()
+	inst.Builder = newQemuBuilder(false)
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
