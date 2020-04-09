@@ -413,9 +413,9 @@ var generatedSchemaJSON = `{
          "$ref": "#/definitions/artifact"
         },
        "vultr": {
-         "$id":"#/properties/images/properties/vultr",
-         "type":"object",
-         "title":"Vultr",
+         "$id": "#/properties/images/properties/vultr",
+         "type": "object",
+         "title": "Vultr",
          "$ref": "#/definitions/artifact"
         },
        "aliyun": {
@@ -638,7 +638,36 @@ var generatedSchemaJSON = `{
      "$id":"#/properties/gcp",
      "type":"object",
      "title":"GCP",
-     "$ref": "#/definitions/cloudartifact"
+     "required": [
+         "image",
+         "url",
+         "project"
+     ],
+     "optional": [
+         "family"
+     ],
+     "properties": {
+       "image": {
+         "$id":"#/properties/gcp/image",
+         "type":"string",
+         "title":"Image Name"
+        },
+       "url": {
+         "$id":"#/properties/gcp/url",
+         "type":"string",
+         "title":"URL"
+        },
+       "project": {
+         "$id":"#/properties/gcp/project",
+         "type":"string",
+         "title":"Image Project"
+        },
+       "family": {
+         "$id":"#/properties/gcp/family",
+         "type":"string",
+         "title":"Image Family"
+        }
+      }
     }
   }
 }
