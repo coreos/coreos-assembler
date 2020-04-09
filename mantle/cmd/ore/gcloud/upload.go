@@ -39,7 +39,6 @@ var (
 	uploadBucket           string
 	uploadImageName        string
 	uploadFile             string
-	uploadFedora           bool
 	uploadForce            bool
 	uploadWriteUrl         string
 	uploadImageFamily      string
@@ -53,7 +52,6 @@ func init() {
 	cmdUpload.MarkFlagRequired("name")
 	cmdUpload.Flags().StringVar(&uploadFile, "file", "", "path to image .tar.gz file to upload")
 	cmdUpload.MarkFlagRequired("file")
-	cmdUpload.Flags().BoolVar(&uploadFedora, "fcos", false, "Flag this is Fedora CoreOS (or a derivative); currently enables SECURE_BOOT and UEFI_COMPATIBLE")
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
 	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
@@ -135,7 +133,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 		Family:      uploadImageFamily,
 		SourceImage: storageSrc,
 		Description: uploadImageDescription,
-	}, uploadForce, uploadFedora)
+	}, uploadForce)
 	if err == nil {
 		err = pending.Wait()
 	}
@@ -156,7 +154,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 				Family:      uploadImageFamily,
 				SourceImage: storageSrc,
 				Description: uploadImageDescription,
-			}, true, uploadFedora)
+			}, true)
 			if err == nil {
 				err = pending.Wait()
 			}
