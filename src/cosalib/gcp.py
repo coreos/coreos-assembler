@@ -93,8 +93,11 @@ def gcp_run_ore(build, args):
 
     build.meta['gcp'] = {
         'image': gcp_name,
+        'project': args.project,
         'url': open(urltmp).read().strip()
     }
+    if args.family:
+        build.meta['gcp']['family'] = args.family
     build.meta_write()
 
 

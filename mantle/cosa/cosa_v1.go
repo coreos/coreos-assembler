@@ -40,7 +40,7 @@ type Build struct {
 	CosaImageVersion          int                     `json:"coreos-assembler.image-genver,omitempty"`
 	FedoraCoreOsParentCommit  string                  `json:"fedora-coreos.parent-commit,omitempty"`
 	FedoraCoreOsParentVersion string                  `json:"fedora-coreos.parent-version,omitempty"`
-	Gcp                       *Cloudartifact          `json:"gcp,omitempty"`
+	Gcp                       *Gcp                    `json:"gcp,omitempty"`
 	GitDirty                  string                  `json:"coreos-assembler.config-dirty,omitempty"`
 	ImageInputChecksum        string                  `json:"coreos-assembler.image-input-checksum,omitempty"`
 	InputHasOfTheRpmOstree    string                  `json:"rpm-ostree-inputhash"`
@@ -86,6 +86,13 @@ type BuildArtifacts struct {
 type Cloudartifact struct {
 	Image string `json:"image"`
 	URL   string `json:"url"`
+}
+
+type Gcp struct {
+	ImageFamily  string `json:"family,omitempty"`
+	ImageName    string `json:"image"`
+	ImageProject string `json:"project"`
+	URL          string `json:"url"`
 }
 
 type Git struct {
