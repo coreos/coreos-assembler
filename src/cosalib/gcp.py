@@ -39,11 +39,6 @@ def gcp_run_ore(build, args):
     if args.project is None:
         raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
 
-    # compat for RHCOS pipeline - remove after cloud-gcp.groovy is updated
-    # to pass --bucket without prepending `gs://`
-    if not args.bucket.startswith('gs://'):
-        args.bucket = f"gs://{args.bucket}"
-
     ore_args = ['ore']
     if args.log_level == "DEBUG":
         ore_args.extend(['--log-level', "DEBUG"])
