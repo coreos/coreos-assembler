@@ -285,5 +285,7 @@ func syncCosaOptions() error {
 		kola.Options.Distribution = distro
 	}
 
+	runExternals = append(runExternals, filepath.Join(kola.Options.CosaWorkdir, "src/config"))
+
 	return nil
 }

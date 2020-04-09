@@ -77,9 +77,10 @@ will be ignored.
 	}
 
 	cmdList = &cobra.Command{
-		Use:   "list",
-		Short: "List kola test names",
-		RunE:  runList,
+		Use:     "list",
+		Short:   "List kola test names",
+		PreRunE: preRun,
+		RunE:    runList,
 
 		SilenceUsage: true,
 	}
