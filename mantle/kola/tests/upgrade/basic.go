@@ -125,7 +125,11 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 			c.Fatal(err)
 		}
 
-		c.MustSSHf(m, "tar -xf %s -C %s", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
+		// XXX: Note the '&& sync' here; this is to work around sysroot
+		// remounting in libostree forcing a cache flush and blocking D-Bus.
+		// Should drop this once we fix it more properly in {rpm-,}ostree.
+		// https://github.com/coreos/coreos-assembler/issues/1301
+		c.MustSSHf(m, "tar -xf %s -C %s && sync", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
 
 		graph.seedFromMachine(c, m)
 		graph.addUpdate(c, m, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
