@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
@@ -57,6 +58,9 @@ var (
 	directIgnition            bool
 	forceConfigInjection      bool
 	propagateInitramfsFailure bool
+
+	devshell        bool
+	devshellConsole bool
 )
 
 func init() {
@@ -69,6 +73,8 @@ func init() {
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
 	cmdQemuExec.Flags().BoolVar(&directIgnition, "ignition-direct", false, "Do not parse Ignition, pass directly to instance")
+	cmdQemuExec.Flags().BoolVar(&devshell, "devshell", false, "Enable development shell")
+	cmdQemuExec.Flags().BoolVar(&devshellConsole, "devshell-console", false, "Connect directly to serial console in devshell mode")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
@@ -102,6 +108,30 @@ func parseBindOpt(s string) (string, string, error) {
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 	var config *v3types.Config
+
+	if devshellConsole {
+		devshell = true
+	}
+	if devshell {
+		if directIgnition {
+			return fmt.Errorf("Cannot use devshell with direct ignition")
+		}
+		ignitionFragments = append(ignitionFragments, "autologin")
+		cpuCountHost = true
+		usernet = true
+		// Can't use 9p on RHEL8, need https://virtio-fs.gitlab.io/ instead in the future
+		if kola.Options.CosaWorkdir != "" && !strings.HasPrefix(filepath.Base(kola.QEMUOptions.DiskImage), "rhcos") {
+			// Conservatively bind readonly to avoid anything in the guest (stray tests, whatever)
+			// from destroying stuff
+			bindro = append(bindro, fmt.Sprintf("%s,/var/mnt/workdir", kola.Options.CosaWorkdir))
+			// But provide the tempdir so it's easy to pass stuff back
+			bindrw = append(bindrw, fmt.Sprintf("%s,/var/mnt/workdir-tmp", kola.Options.CosaWorkdir+"/tmp"))
+		}
+		if hostname == "" {
+			hostname = devshellHostname
+		}
+	}
+
 	if ignition != "" && !directIgnition {
 		buf, err := ioutil.ReadFile(ignition)
 		if err != nil {
@@ -148,16 +178,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		configv := v3.Merge(*config, conf.Mount9p(dest, false))
 		config = &configv
 	}
-	if config != nil {
-		if directIgnition {
-			return fmt.Errorf("Cannot use fragments/mounts with direct ignition")
-		}
-		if err := builder.SetConfig(*config, kola.Options.IgnitionVersion == "v2"); err != nil {
-			return errors.Wrapf(err, "rendering config")
-		}
-	} else if directIgnition {
-		builder.ConfigFile = ignition
-	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
@@ -196,8 +216,21 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		builder.EnableUsermodeNetworking(22)
 	}
 	builder.InheritConsole = true
-
 	builder.Append(args...)
+
+	if devshell && !devshellConsole {
+		return runDevShellSSH(builder, config)
+	}
+	if config != nil {
+		if directIgnition {
+			return fmt.Errorf("Cannot use fragments/mounts with direct ignition")
+		}
+		if err := builder.SetConfig(*config, kola.Options.IgnitionVersion == "v2"); err != nil {
+			return errors.Wrapf(err, "rendering config")
+		}
+	} else if directIgnition {
+		builder.ConfigFile = ignition
+	}
 
 	inst, err := builder.Exec()
 	if err != nil {
@@ -206,7 +239,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	defer inst.Destroy()
 
 	if propagateInitramfsFailure {
-		err = inst.WaitAll()
+		err := inst.WaitAll()
 		if err != nil {
 			return err
 		}
