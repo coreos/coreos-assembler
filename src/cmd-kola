@@ -4,7 +4,6 @@ import argparse
 import subprocess
 import os
 import sys
-import shutil
 import yaml
 
 # Just test these boot to start with.  In the future we should at least
@@ -64,22 +63,7 @@ subargs = args.subargs or [default_cmd]
 kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
 
-# FIXME drain into kola once it understands cosa
-if 'run' in subargs or 'list' in subargs:
-    if os.path.isdir('src/config/tests/kola'):
-        kolaargs.extend(['-E', 'src/config'])
-
 kolaargs.extend(blacklist_args)
-
-env = dict(os.environ)
-# By default, store ssh agent in tmp/ too so it can be
-# conveniently found.
-if args.output_dir is None:
-    kola_ssh_dir = 'tmp/kola-ssh'
-    if os.path.isdir(kola_ssh_dir):
-        shutil.rmtree(kola_ssh_dir)
-    os.mkdir(kola_ssh_dir)
-    env['MANTLE_SSH_DIR'] = kola_ssh_dir
 
 if args.basic_qemu_scenarios:
     for scenario in BASIC_SCENARIOS:
@@ -92,8 +76,8 @@ elif args.upgrades:
         kolaargs.extend(['--qemu-image-dir', 'tmp/kola-qemu-cache'])
     kolaargs.extend(['-v', '--find-parent-image'])
     print(subprocess.list2cmdline(kolaargs), flush=True)
-    os.execvpe('kola', kolaargs, env)
+    os.execvp('kola', kolaargs)
 else:
     # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
     print(subprocess.list2cmdline(kolaargs), flush=True)
-    os.execvpe('kola', kolaargs, env)
+    os.execvp('kola', kolaargs)

@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/mantle/harness/reporters"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform"
 	awsapi "github.com/coreos/mantle/platform/api/aws"
 	azureapi "github.com/coreos/mantle/platform/api/azure"
@@ -855,7 +856,13 @@ func CheckConsole(output []byte, t *register.Test) []string {
 
 func SetupOutputDir(outputDir, platform string) (string, error) {
 	defaulted := outputDir == ""
-	defaultBaseDirName := "_kola_temp"
+
+	var defaultBaseDirName string
+	if defaulted && Options.CosaWorkdir != "" {
+		defaultBaseDirName = filepath.Join(Options.CosaWorkdir, "tmp/kola")
+	} else {
+		defaultBaseDirName = "_kola_temp"
+	}
 	defaultDirName := fmt.Sprintf("%s-%s-%d", platform, time.Now().Format("2006-01-02-1504"), os.Getpid())
 
 	if defaulted {
@@ -865,6 +872,8 @@ func SetupOutputDir(outputDir, platform string) (string, error) {
 			}
 		}
 		outputDir = filepath.Join(defaultBaseDirName, defaultDirName)
+		// FIXME pass this down better than global state
+		network.DefaultSSHDir = defaultBaseDirName
 	}
 
 	outputDir, err := harness.CleanOutputDir(outputDir)
