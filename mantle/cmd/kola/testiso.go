@@ -123,17 +123,28 @@ func newBaseQemuBuilder() *platform.QemuBuilder {
 	return builder
 }
 
-func newQemuBuilder() *platform.QemuBuilder {
+func newQemuBuilder(isPXE bool) *platform.QemuBuilder {
 	builder := newBaseQemuBuilder()
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
 		sectorSize = 4096
 	}
-	builder.AddPrimaryDisk(&platform.Disk{
-		Size: "12G", // Arbitrary
 
-		SectorSize: sectorSize,
-	})
+	if system.RpmArch() == "s390x" && isPXE {
+		// For s390x PXE installs the network device has the bootindex of 1.
+		// Do not use a primary disk in case of net-booting for this test
+		builder.AddDisk(&platform.Disk{
+			Size: "12G", // Arbitrary
+
+			SectorSize: sectorSize,
+		})
+	} else {
+		builder.AddPrimaryDisk(&platform.Disk{
+			Size: "12G", // Arbitrary
+
+			SectorSize: sectorSize,
+		})
+	}
 
 	return builder
 }
@@ -319,7 +330,7 @@ func testPXE(inst platform.Install) error {
 		configStr = string(buf)
 	}
 
-	inst.Builder = newQemuBuilder()
+	inst.Builder = newQemuBuilder(true)
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
@@ -335,7 +346,7 @@ func testPXE(inst platform.Install) error {
 }
 
 func testLiveIso(inst platform.Install, completionfile string) error {
-	inst.Builder = newQemuBuilder()
+	inst.Builder = newQemuBuilder(false)
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
