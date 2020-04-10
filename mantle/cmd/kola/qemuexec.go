@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
@@ -46,6 +47,7 @@ var (
 	cpuCountHost bool
 
 	hostname string
+	fcct     string
 	ignition string
 	kargs    string
 	knetargs string
@@ -70,6 +72,7 @@ func init() {
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
 	cmdQemuExec.Flags().BoolVar(&directIgnition, "ignition-direct", false, "Do not parse Ignition, pass directly to instance")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to ignition config")
+	cmdQemuExec.Flags().StringVar(&fcct, "fcc", "", "Path to fcc config")
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
@@ -111,6 +114,25 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return errors.Wrapf(err, "parsing %s", ignition)
 		}
+		config = &configv
+	}
+	if fcct != "" {
+		if config == nil {
+			config = &v3types.Config{}
+		}
+		if directIgnition {
+			return fmt.Errorf("Cannot use --fcct with --direct-ignition")
+		}
+		f, err := os.Open(fcct)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		fcctCfg, err := conf.ParseFcct(f)
+		if err != nil {
+			return errors.Wrapf(err, "parsing %s", fcct)
+		}
+		configv := v3.Merge(*config, *fcctCfg)
 		config = &configv
 	}
 	if len(ignitionFragments) > 0 {

@@ -15,13 +15,18 @@
 package conf
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
+	"os/exec"
 	"reflect"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	ignconverter "github.com/coreos/ign-converter"
 
@@ -827,6 +832,25 @@ func (c *Conf) IsIgnition() bool {
 
 func (c *Conf) IsEmpty() bool {
 	return !c.IsIgnition()
+}
+
+func ParseFcct(input io.Reader) (*v3types.Config, error) {
+	// Yes, we could use the Go API, but we already want to
+	// ship the binary in coreos-assembler anyways, and it's
+	// saner if we just have one version.
+	fcctCmd := exec.Command("fcct")
+	fcctCmd.Stdin = input
+	fcctCmd.Stderr = os.Stderr
+	var buf bytes.Buffer
+	fcctCmd.Stdout = &buf
+	if err := fcctCmd.Run(); err != nil {
+		return nil, errors.Wrapf(err, "Executing fcct")
+	}
+	fcctCfg, _, err := v3.Parse(buf.Bytes())
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing fcct output")
+	}
+	return &fcctCfg, nil
 }
 
 func getAutologinFragment(name, args string) v3types.Unit {
