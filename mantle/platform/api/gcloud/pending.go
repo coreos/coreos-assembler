@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v0.alpha"
 	"google.golang.org/api/googleapi"
 )
 

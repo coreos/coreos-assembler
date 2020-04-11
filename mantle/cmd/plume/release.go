@@ -29,7 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
-	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v0.alpha"
 	gs "google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/fcos"

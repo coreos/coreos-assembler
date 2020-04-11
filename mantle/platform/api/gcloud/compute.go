@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh/agent"
-	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v0.alpha"
 )
 
 func (a *API) vmname() string {
@@ -38,7 +38,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 			// this should be done with a label instead, but
 			// our old vendored Go binding doesn't support those
 			Key:   "created-by",
-			Value: &mantle,
+			Value: mantle,
 		},
 	}
 	if len(keys) > 0 {
@@ -49,7 +49,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 
 		metadataItems = append(metadataItems, &compute.MetadataItems{
 			Key:   "ssh-keys",
-			Value: &sshKeys,
+			Value: sshKeys,
 		})
 	}
 
@@ -96,7 +96,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 	if userdata != "" {
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
 			Key:   "user-data",
-			Value: &userdata,
+			Value: userdata,
 		})
 	}
 
@@ -195,7 +195,7 @@ func (a *API) gcInstances(gracePeriod time.Duration) error {
 		}
 		isMantle := false
 		for _, item := range instance.Metadata.Items {
-			if item.Key == "created-by" && item.Value != nil && *item.Value == "mantle" {
+			if item.Key == "created-by" && item.Value == "mantle" {
 				isMantle = true
 				break
 			}

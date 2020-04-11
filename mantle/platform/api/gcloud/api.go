@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
-	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v0.alpha"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
