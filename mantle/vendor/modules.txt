@@ -340,7 +340,7 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 golang.org/x/time/rate
 # google.golang.org/api v0.23.0
-google.golang.org/api/compute/v1
+google.golang.org/api/compute/v0.alpha
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/transport
 google.golang.org/api/internal
