@@ -154,3 +154,22 @@ func (a *API) DeleteImage(name string) (*Pending, error) {
 	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
 	return a.NewPending(op.Name, opReq), nil
 }
+
+func (a *API) UpdateImage(name string, family string, description string) (*Pending, error) {
+
+	// The docs say the following fields can be modified:
+	//      family, description, deprecation status
+	// but deprecation status did not seem to work when tested.
+	image := &compute.Image{
+		Family:      family,
+		Description: description,
+	}
+
+	req := a.compute.Images.Patch(a.options.Project, name, image)
+	op, err := req.Do()
+	if err != nil {
+		return nil, fmt.Errorf("Updating %s failed: %v", name, err)
+	}
+	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
+	return a.NewPending(op.Name, opReq), nil
+}
