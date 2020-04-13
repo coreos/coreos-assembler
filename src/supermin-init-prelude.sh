@@ -30,7 +30,7 @@ if [ -L "${workdir}"/src/config ]; then
     mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
 mkdir -p "${workdir}"/cache /host/container-work
-cachedev=$(blkid -lt LABEL=cosa-cache -o device)
+cachedev=$(blkid -lt LABEL=cosa-cache -o device || true)
 if [ -n "${cachedev}" ]; then
     mount "${cachedev}" "${workdir}"/cache
 else
