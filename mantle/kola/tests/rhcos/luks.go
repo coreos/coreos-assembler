@@ -109,7 +109,7 @@ func setupTangKeys(c cluster.TestCluster) {
 	per_source	= 10
 
 	v6only		= no
-
+	bind		= 0.0.0.0
 	groups		= yes
 	umask		= 002
 }

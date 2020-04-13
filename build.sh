@@ -16,6 +16,7 @@ if [ $# -gt 1 ]; then
   echo "    configure_yum_repos"
   echo "    install_rpms"
   echo "    make_and_makeinstall"
+  echo "    install_tang"
   exit 1
 fi
 
@@ -89,9 +90,8 @@ build_fcct() {
     rm fcct -rf
 }
 
-configure_tang() {
+install_tang() {
     install -m 0755 -T "$srcdir"/src/tang/tangdw /usr/libexec/tangdw
-    install -m 0644 -T "$srcdir"/src/tang/tangd.xinetd /etc/xinetd.d/tangd
 }
 
 make_and_makeinstall() {
@@ -138,5 +138,5 @@ else
   write_archive_info
   make_and_makeinstall
   configure_user
-  configure_tang
+  install_tang
 fi

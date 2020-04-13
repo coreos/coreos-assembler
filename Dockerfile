@@ -16,7 +16,7 @@ RUN ./build.sh write_archive_info
 RUN ./build.sh make_and_makeinstall
 RUN ./build.sh build_fcct
 RUN ./build.sh configure_user
-RUN ./build.sh configure_tang
+RUN ./build.sh install_tang
 
 RUN make check
 RUN make unittest
