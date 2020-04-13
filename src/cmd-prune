@@ -7,6 +7,7 @@
 import argparse
 import os
 import sys
+import subprocess
 
 
 from shutil import rmtree
@@ -26,6 +27,9 @@ keep_options = parser.add_mutually_exclusive_group()
 keep_options.add_argument("--keep-last-n", type=int, metavar="N",
                           default=DEFAULT_KEEP_LAST_N,
                           help="Number of untagged builds to keep (0 for all)")
+exactdelete_options = parser.add_mutually_exclusive_group()
+exactdelete_options.add_argument("--prune", metavar="BUILDID", action='append',
+                          default=[], help="Explicitly prune BUILDID")
 args = parser.parse_args()
 
 skip_pruning = (args.keep_last_n == 0)
@@ -45,6 +49,9 @@ scanned_builds = get_local_builds(builds_dir)
 scanned_builds = sorted(scanned_builds,
                         key=lambda x: x.timestamp,
                         reverse=True)
+scanned_builds_map = {}
+for build in scanned_builds:
+    scanned_builds_map[build.id] = build
 
 new_builds = []
 builds_to_delete = []
@@ -52,6 +59,21 @@ builds_to_delete = []
 # Don't prune known builds
 if skip_pruning:
     new_builds = scanned_builds
+elif len(args.prune) > 0:
+    builds_to_delete_map = {}
+    for bid in args.prune:
+        build = scanned_builds_map.get(bid)
+        if build is None:
+            raise Exception(f"Failed to find build ID: {bid}")
+        if build.id in tagged_builds:
+            tags = ', '.join(tagged_builds[build.id])
+            raise Exception(f"Build {build.id} is tagged ({tags})")
+        builds_to_delete_map[build.id] = build
+    for build in scanned_builds:
+        if build.id not in builds_to_delete_map:
+            new_builds.append(build)
+        else:
+            builds_to_delete.append(build)
 else:
     n = args.keep_last_n
     assert n > 0
@@ -74,11 +96,18 @@ if args.dry_run:
 
 # create a new builds list
 builds.raw()['builds'] = []
-for build in reversed(new_builds):
+for build in sorted(new_builds,
+                    key=lambda x: x.timestamp):
     for arch in build.basearches:
         builds.insert_build(build.id, arch)
 
 builds.bump_timestamp()
+
+if len(builds.get_builds()) > 0:
+    latest = builds.get_latest()
+    subprocess.check_call(["ln", "-Tsf", latest, "builds/latest"])
+elif os.path.islink("builds/latest"):
+    os.unlink("builds/latest")
 
 # now delete other build dirs not in the manifest
 error_during_pruning = False
