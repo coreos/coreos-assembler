@@ -37,6 +37,7 @@ run as part of 'coreos-assembler build'.
 EOC
 }
 
+disk=
 rootfs_size="0"
 boot_verity=0
 rootfs_type="xfs"
@@ -73,7 +74,25 @@ udevtrig() {
 
 export PATH=$PATH:/sbin:/usr/sbin
 arch="$(uname -m)"
-disk="${disk:?--disk must be defined}"
+
+if [ -z "${disk:-}" ]; then
+    # hex 0x2a = 42 in decimal; this is set in cmd-buildextend-metal.
+    # We use the WWN as an unambiguous way to identify our target disk,
+    # independent of other devices attached to the VM (caches, etc.)
+    wwn=000000000000002a
+    for dev in /sys/block/*; do
+        if grep -F -e "${wwn}" "${dev}/device/wwid" 2>/dev/null; then
+            disk="/dev/$(basename ${dev})"
+            break
+        fi
+    done
+    if [ -z "${disk:-}" ]; then
+        echo "failed to find disk with wwn ${wwn}" 1>&2
+        bash
+        exit 1
+    fi
+fi
+
 buildid="${buildid:?--buildid must be defined}"
 imgid="${imgid:?--imgid must be defined}"
 ostree="${ostree:?--ostree-repo must be defined}"
