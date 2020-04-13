@@ -234,20 +234,16 @@ if [ -n "${ref_is_temp}" ]; then
     ref_arg=${commit}
 fi
 
-target_drive=("-drive" "if=virtio,id=target,format=${image_format},file=${path}.tmp,cache=unsafe")
+target_device_opt="scsi-disk,drive=target,wwn=0x2a"
 # we need 4096 block size for ECKD DASD and (obviously) metal4k
 if [[ $image_type == dasd || $image_type == metal4k ]]; then
-    device_type=virtio-blk
-    if [[ $image_type == dasd ]]; then
-        device_type=virtio-blk-ccw
-    fi
-    target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
-                    "-device" "${device_type},drive=target,physical_block_size=4096,logical_block_size=4096,scsi=off")
+  target_device_opt="${target_device_opt},physical_block_size=4096,logical_block_size=4096"
 fi
+target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
+              "-device" "virtio-scsi-${devtype},id=scsitarget" "-device" "${target_device_opt}")
 
 runvm "${target_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
-            --disk /dev/vda \
             --buildid "${build}" \
             --imgid "${img}" \
             --grub-script /usr/lib/coreos-assembler/grub.cfg \
