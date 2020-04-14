@@ -13,10 +13,12 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/util"
 )
 
 var runOnce sync.Once
@@ -159,6 +161,12 @@ func getEncodedTangPin(c cluster.TestCluster) string {
 }
 
 func startTang(c cluster.TestCluster) int {
+	if _, err := os.Stat(xinetdPidFile); err == nil {
+		if os.Remove(xinetdPidFile); err != nil {
+			c.Fatalf("Unable to delete %s: %v", xinetdPidFile, err)
+		}
+	}
+
 	cmd := exec.Command("/usr/sbin/xinetd", "-f", xinetdConfFile, "-pidfile", xinetdPidFile, "-filelog", xinetdLogFile)
 	// Give the xinetd child process a separate process group ID so it can be
 	// killed independently from the test
@@ -169,9 +177,18 @@ func startTang(c cluster.TestCluster) int {
 
 	// xinetd detatches itself and os.Process.Pid reports incorrect pid
 	// Use pid file instead
+	if err := util.Retry(10, 2*time.Second, func() error {
+		_, err := os.Stat(xinetdPidFile)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		c.Fatalf("Cannot find pid file %v", err)
+	}
 	output, err := ioutil.ReadFile(xinetdPidFile)
 	if err != nil {
-		c.Fatalf("Unable to get pid %v, err")
+		c.Fatalf("Unable to get pid %v", err)
 	}
 
 	p := bytes.Trim(output, "\n")
