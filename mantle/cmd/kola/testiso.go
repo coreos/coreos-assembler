@@ -158,6 +158,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 	if noiso || nolive {
 		delete(targetScenarios, scenarioISOInstall)
+		delete(targetScenarios, scenarioISOLiveLogin)
 	}
 
 	if len(targetScenarios) == 0 {
