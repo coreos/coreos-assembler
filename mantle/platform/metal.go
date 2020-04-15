@@ -291,7 +291,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		pxe.boottype = "pxe"
 		pxe.networkdevice = "virtio-net-ccw"
 		pxe.tftpipaddr = "10.0.2.2"
-		pxe.bootindex = "1"
+		pxe.bootindex = "2"
 	default:
 		return nil, fmt.Errorf("Unsupported arch %s" + system.RpmArch())
 	}

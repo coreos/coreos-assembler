@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"math"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,6 +36,7 @@ import (
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
+	"github.com/digitalocean/go-qemu/qmp"
 	"github.com/pkg/errors"
 )
 
@@ -64,12 +66,29 @@ type Disk struct {
 type QemuInstance struct {
 	qemu       exec.Cmd
 	tmpConfig  string
-	swtpmTmpd  string
+	tempdir    string
 	swtpm      exec.Cmd
 	tmpFiles   []string
 	nbdServers []exec.Cmd
 
+	qmpChan     *net.Conn
 	journalPipe *os.File
+}
+
+type QOMBlkDev struct {
+	Return []struct {
+		Device     string `json:"device"`
+		DevicePath string `json:"qdev"`
+	} `json:"return"`
+}
+
+type QOMSetBootindexCmd struct {
+	Execute   string `json:"execute"`
+	Arguments struct {
+		Path     string `json:"path"`
+		Property string `json:"property"`
+		Value    int    `json:"value"`
+	} `json:"arguments"`
 }
 
 func (inst *QemuInstance) Pid() int {
@@ -214,14 +233,13 @@ func (inst *QemuInstance) Destroy() {
 		}
 	}
 	inst.qemu = nil
-	if inst.swtpmTmpd != "" {
-		if inst.swtpm != nil {
-			inst.swtpm.Kill() // Ignore errors
-		}
+	if inst.swtpm != nil {
+		inst.swtpm.Kill() // Ignore errors
 		inst.swtpm = nil
-		// And ensure it's cleaned up
-		if err := os.RemoveAll(inst.swtpmTmpd); err != nil {
-			plog.Errorf("Error removing swtpm dir: %v", err)
+	}
+	if inst.tempdir != "" {
+		if err := os.RemoveAll(inst.tempdir); err != nil {
+			plog.Errorf("Error removing qemu tempdir: %v", err)
 		}
 	}
 	for _, nbdServ := range inst.nbdServers {
@@ -664,11 +682,6 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if disk.SectorSize != 0 {
 		diskOpts = append(diskOpts, fmt.Sprintf("physical_block_size=%[1]d,logical_block_size=%[1]d", disk.SectorSize))
 	}
-	// Primary disk gets bootindex 1, all other disks have unspecified
-	// bootindex, which means lower priority.
-	if primary {
-		diskOpts = append(diskOpts, "bootindex=1")
-	}
 
 	opts := ""
 	if len(diskOpts) > 0 {
@@ -687,9 +700,6 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		wwn := rand.Uint64()
 
 		for i := 0; i < 2; i++ {
-			if i == 1 {
-				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
-			}
 			pId := fmt.Sprintf("mpath%d%d", builder.diskId, i)
 			scsiId := fmt.Sprintf("scsi_%s", pId)
 			builder.Append("-device", fmt.Sprintf("virtio-scsi-pci,id=%s", scsiId))
@@ -734,7 +744,7 @@ func (builder *QemuBuilder) AddInstallIso(path string) error {
 	// boot. On reboot when the system is installed, the primary disk is
 	// selected. This allows us to have "boot once" functionality on both UEFI
 	// and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
-	builder.Append("-drive", "file="+path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso,bootindex=2")
+	builder.Append("-drive", "file="+path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso")
 	return nil
 }
 
@@ -912,6 +922,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// We never want a popup window
 	argv = append(argv, "-nographic")
 
+	inst.tempdir, err = ioutil.TempDir("", "mantle-qemu-tmp")
+	if err != nil {
+		return nil, err
+	}
+
 	// Handle Ignition
 	if builder.ConfigFile != "" && !builder.configInjected {
 		if builder.supportsFwCfg() {
@@ -938,16 +953,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	// Handle Software TPM
 	if builder.Swtpm && builder.supportsSwtpm() {
-		inst.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
-		if err != nil {
-			return nil, err
-		}
-
-		swtpmSock := filepath.Join(inst.swtpmTmpd, "swtpm-sock")
+		swtpmSock := filepath.Join(inst.tempdir, "swtpm-sock")
 
 		inst.swtpm = exec.Command("swtpm", "socket", "--tpm2",
 			"--ctrl", fmt.Sprintf("type=unixio,path=%s", swtpmSock),
-			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", inst.swtpmTmpd))
+			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", inst.tempdir))
 		cmd := inst.swtpm.(*exec.ExecCmd)
 		// For now silence the swtpm stderr as it prints errors when
 		// disconnected, but that's normal.
@@ -969,8 +979,12 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		case "ppc64le":
 			argv = append(argv, "-device", "tpm-spapr,tpmdev=tpm0")
 		}
-
 	}
+
+	qmpPath := filepath.Join(inst.tempdir, "qmp.sock")
+	qmpId := "mantle-qmp"
+	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpId, qmpPath))
+	builder.Append("-mon", fmt.Sprintf("chardev=%s,mode=control", qmpId))
 
 	// Set up the virtio channel to get Ignition failures by default
 	journalPipeR, err := builder.VirtioChannelRead("com.coreos.ignition.journal")
@@ -1013,6 +1027,62 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		return nil, err
 	}
 
+	// Use QMP to connect to the qemu monitor and set the bootindex dynamically
+	// This is helpful for changing the bootindex for subsequent booting and helps
+	// in cases like s390x netboot where the netdevice has to have a higher boot order
+	// when starting up, but later should boot from disk. Here we query for a list of all
+	// the block devices and set the bootindex based on the id
+	var monitor *qmp.SocketMonitor
+	if err := util.Retry(10, 1*time.Second, func() error {
+		monitor, err = qmp.NewSocketMonitor("unix", qmpPath, 2*time.Second)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, errors.Wrapf(err, "Connecting to qemu monitor")
+	}
+
+	monitor.Connect()
+	defer monitor.Disconnect()
+	qmpcmd := []byte(`{ "execute": "query-block" }`)
+	raw, err := monitor.Run(qmpcmd)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Running QMP command")
+	}
+
+	var blkdevs QOMBlkDev
+	if err = json.Unmarshal(raw, &blkdevs); err != nil {
+		return nil, errors.Wrapf(err, "De-serializing QMP output")
+	}
+
+	qomsetcmd := QOMSetBootindexCmd{}
+	qomsetcmd.Execute = "qom-set"
+	qomsetcmd.Arguments.Property = "bootindex"
+	for _, blkdev := range blkdevs.Return {
+		qomsetcmd.Arguments.Path = filepath.Clean(strings.Trim(blkdev.DevicePath, "virtio-backend"))
+		switch blkdev.Device {
+		case "d1", "mpath10":
+			qomsetcmd.Arguments.Value = 1
+			break
+		case "installiso", "mpath11":
+			qomsetcmd.Arguments.Value = 2
+			break
+		default:
+			break
+		}
+		if qomsetcmd.Arguments.Value != 0 {
+			rawcmd, err := json.Marshal(qomsetcmd)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Serializing QMP output")
+			}
+
+			if _, err = monitor.Run(rawcmd); err != nil {
+				return nil, errors.Wrapf(err, "Running QMP command")
+			}
+		}
+		qomsetcmd.Arguments.Value = 0
+	}
 	return &inst, nil
 }
 
