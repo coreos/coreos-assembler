@@ -75,21 +75,6 @@ install_rpms() {
     yum clean all
 }
 
-# Yes, this is a hack that loses sane auditing around what git commit
-# we used to build fcct, etc.  In the future we'll probably give in and package
-# it or something, see also https://github.com/coreos/fedora-coreos-tracker/issues/235
-build_fcct() {
-    cd /tmp
-    git clone https://github.com/coreos/fcct
-    cd fcct
-    git describe --tags --always > /usr/share/fcct-build.revision
-    ./build
-    fcct=$(find bin -type f -name fcct | head -1)
-    install -m 0755 -D -t /usr/bin "${fcct}"
-    cd /tmp
-    rm fcct -rf
-}
-
 install_tang() {
     install -m 0755 -T "$srcdir"/src/tang/tangdw /usr/libexec/tangdw
 }
