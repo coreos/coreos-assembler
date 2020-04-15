@@ -23,6 +23,8 @@ DEFAULT_COMPRESSOR = 'gzip'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
+parser.add_argument("--artifact", default=[], action='append',
+                    help="Only compress given image ARTIFACT", metavar="ARTIFACT")
 parser.add_argument("--compressor",
                     choices=['xz', 'gzip'],
                     default=DEFAULT_COMPRESSOR,
@@ -87,9 +89,15 @@ def compress_one_builddir(builddir):
 
     at_least_one = False
 
+    only_artifacts = None
+    if len(args.artifact) > 0:
+        only_artifacts = set(args.artifact)
+
     for img_format in buildmeta['images']:
         if img_format in imgs_to_skip:
             print(f"Skipping {img_format}")
+            continue
+        if only_artifacts is not None and img_format not in only_artifacts:
             continue
 
         img = buildmeta['images'][img_format]
