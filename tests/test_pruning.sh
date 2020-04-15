@@ -17,7 +17,7 @@ jq -e '.builds[2].id | endswith("0-1")' builds/builds.json
 
 # Test pruning latest via explicit buildid
 latest="$(readlink builds/latest)"
-cosa prune --prune="${latest}"
+cosa prune --build="${latest}"
 # And validate it
 cosa meta --get ostree-version>/dev/null
 # Another build to get back to previous state

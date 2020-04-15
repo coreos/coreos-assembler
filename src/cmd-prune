@@ -27,7 +27,7 @@ strategy = parser.add_mutually_exclusive_group()
 strategy.add_argument("--keep-last-n", type=int, metavar="N",
                       default=DEFAULT_KEEP_LAST_N,
                       help="Number of untagged builds to keep (0 for all)")
-strategy.add_argument("--prune", metavar="BUILDID", action='append',
+strategy.add_argument("--build", metavar="BUILDID", action='append',
                       default=[], help="Explicitly prune BUILDID")
 args = parser.parse_args()
 
@@ -58,9 +58,9 @@ builds_to_delete = []
 # Don't prune known builds
 if skip_pruning:
     new_builds = scanned_builds
-elif len(args.prune) > 0:
+elif len(args.build) > 0:
     builds_to_delete_map = {}
-    for bid in args.prune:
+    for bid in args.build:
         build = scanned_builds_map.get(bid)
         if build is None:
             raise Exception(f"Failed to find build ID: {bid}")
