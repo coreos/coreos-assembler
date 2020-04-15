@@ -519,7 +519,13 @@ func syncFindParentImageOptions() error {
 	var parentBaseUrl string
 	switch kola.Options.Distribution {
 	case "fcos":
-		parentBaseUrl, err = getParentFcosBuildBase()
+		// We're taking liberal shortcuts here... the cleaner way to do this is
+		// parse commitmeta.json for `fedora-coreos.stream`
+		if kola.CosaBuild.Meta.BuildRef == "" {
+			return errors.New("no ref in build metadata")
+		}
+		stream := filepath.Base(kola.CosaBuild.Meta.BuildRef)
+		parentBaseUrl, err = getParentFcosBuildBase(stream)
 		if err != nil {
 			return err
 		}
@@ -588,19 +594,14 @@ func downloadImageAndDecompress(url, compressedDest string) (string, error) {
 	return compressedDest, nil
 }
 
-func getParentFcosBuildBase() (string, error) {
+// Returns the URL to a parent build that can be used as a base for upgrade
+// testing.
+func getParentFcosBuildBase(stream string) (string, error) {
 	// For FCOS, we can be clever and automagically fetch the metadata for the
 	// parent release, which should be the latest release on that stream.
 
-	// We're taking liberal shortcuts here... the cleaner way to do this is
-	// parse commitmeta.json for `fedora-coreos.stream`, then fetch the stream
-	// metadata for that stream, then fetch the release metadata
-
-	if kola.CosaBuild.Meta.BuildRef == "" {
-		return "", errors.New("no ref in build metadata")
-	}
-
-	stream := filepath.Base(kola.CosaBuild.Meta.BuildRef)
+	// We're taking liberal shortcuts here... the cleaner way to do this is to
+	// fetch the stream metadata, then fetch the release metadata
 
 	var parentVersion string
 	if kola.CosaBuild.Meta.FedoraCoreOsParentVersion != "" {
@@ -616,7 +617,13 @@ func getParentFcosBuildBase() (string, error) {
 
 		n := len(index.Releases)
 		if n == 0 {
-			return "", fmt.Errorf("no parent version in build metadata, and no build on stream %s", stream)
+			// hmmm, no builds; likely a new stream. let's just fallback on testing-devel.
+			msg := fmt.Sprintf("no parent version in build metadata, and no build on stream %s", stream)
+			if stream == "testing-devel" {
+				return "", errors.New(msg)
+			}
+			plog.Infof("%s; falling back to testing-devel", msg)
+			return getParentFcosBuildBase("testing-devel")
 		}
 
 		parentVersion = index.Releases[n-1].Version
