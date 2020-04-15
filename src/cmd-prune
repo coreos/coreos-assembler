@@ -23,13 +23,12 @@ parser = argparse.ArgumentParser(prog="coreos-assembler prune")
 parser.add_argument("--workdir", default='.', help="Path to workdir")
 parser.add_argument("--dry-run", help="Don't actually delete anything",
                     action='store_true')
-keep_options = parser.add_mutually_exclusive_group()
-keep_options.add_argument("--keep-last-n", type=int, metavar="N",
-                          default=DEFAULT_KEEP_LAST_N,
-                          help="Number of untagged builds to keep (0 for all)")
-exactdelete_options = parser.add_mutually_exclusive_group()
-exactdelete_options.add_argument("--prune", metavar="BUILDID", action='append',
-                          default=[], help="Explicitly prune BUILDID")
+strategy = parser.add_mutually_exclusive_group()
+strategy.add_argument("--keep-last-n", type=int, metavar="N",
+                      default=DEFAULT_KEEP_LAST_N,
+                      help="Number of untagged builds to keep (0 for all)")
+strategy.add_argument("--prune", metavar="BUILDID", action='append',
+                      default=[], help="Explicitly prune BUILDID")
 args = parser.parse_args()
 
 skip_pruning = (args.keep_last_n == 0)
