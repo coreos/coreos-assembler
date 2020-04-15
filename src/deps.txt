@@ -77,3 +77,6 @@ python3-jsonschema
 # general principle so people using cosa have it
 # automatically
 coreos-installer
+
+# For the ability to easily pass in an fcc to kola
+fcct
