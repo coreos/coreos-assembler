@@ -102,6 +102,10 @@ func WrapPreRun(root *cobra.Command, f PreRunEFunc) {
 		if err := f(cmd, args); err != nil {
 			return err
 		}
+		// Always inject startLogging to commands that are wrapping the preRun
+		// due to github.com/spf13/cobra/issues/253 where parent command's
+		// preRun & preRunE functions are overwritten by children
+		startLogging(cmd)
 		if preRun != nil {
 			preRun(cmd, args)
 		} else if preRunE != nil {
