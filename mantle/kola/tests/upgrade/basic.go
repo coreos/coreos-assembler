@@ -130,13 +130,25 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// Should drop this once we fix it more properly in {rpm-,}ostree.
 		// https://github.com/coreos/coreos-assembler/issues/1301
 		c.MustSSHf(m, "tar -xf %s -C %s && sync", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
-
-		graph.seedFromMachine(c, m)
-		graph.addUpdate(c, m, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
 	})
 
 	c.Run("upgrade-from-previous", func(c cluster.TestCluster) {
-		waitForUpgradeToVersion(c, m, kola.CosaBuild.Meta.OstreeVersion)
+		// We need to check now whether this is a within-stream update or a
+		// cross-stream rebase.
+		d, err := util.GetBootedDeployment(c, m)
+		if err != nil {
+			c.Fatal(err)
+		}
+		if strings.HasSuffix(d.Origin, ":"+kola.CosaBuild.Meta.BuildRef) {
+			// same stream; let's use Zincati
+			graph.seedFromMachine(c, m)
+			graph.addUpdate(c, m, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
+			waitForUpgradeToVersion(c, m, kola.CosaBuild.Meta.OstreeVersion)
+		} else {
+			rebaseToStream(c, m, kola.CosaBuild.Meta.BuildRef, kola.CosaBuild.Meta.OstreeVersion)
+			// and from now on we can use Zincati, so seed the graph with the new node
+			graph.seedFromMachine(c, m)
+		}
 	})
 
 	// Now, synthesize an update and serve that -- this is similar to
@@ -218,15 +230,13 @@ func (g *Graph) sync(c cluster.TestCluster, m platform.Machine) {
 	}
 }
 
-func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
+func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine, version string, fn func()) {
 	oldBootId, err := platform.GetMachineBootId(m)
 	if err != nil {
 		c.Fatal(err)
 	}
 
-	// XXX: patch zincati to have faster refresh rate
-	// https://github.com/coreos/zincati/issues/203
-	c.MustSSH(m, "sudo systemctl restart zincati.service")
+	fn()
 
 	if err := m.WaitForReboot(120*time.Second, oldBootId); err != nil {
 		c.Fatalf("failed waiting for machine reboot: %v", err)
@@ -240,6 +250,22 @@ func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version 
 	if d.Version != version {
 		c.Fatalf("expected reboot into version %s, but got version %s", version, d.Version)
 	}
+}
+
+func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
+	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
+		// XXX: update to use https://github.com/coreos/zincati/issues/203
+		c.MustSSH(m, "sudo systemctl restart zincati.service")
+	})
+}
+
+func rebaseToStream(c cluster.TestCluster, m platform.Machine, ref, version string) {
+	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
+		c.MustSSHf(m, "sudo systemctl stop zincati")
+		// we use systemd-run here so that we can test the --reboot path
+		// without having SSH not exit cleanly, which would cause an error
+		c.MustSSHf(m, "sudo systemd-run rpm-ostree rebase --reboot %s", ref)
+	})
 }
 
 func httpd() error {
