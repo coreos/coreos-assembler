@@ -4,9 +4,11 @@ set -xeuo pipefail
 # This test isn't standalone for now. It's executed from the `.cci.jenkinsfile`.
 # It expects to be running in cosa workdir where a single fresh build was made.
 
-# Test that first build has been pruned; create a few builds for testing.
-# FIXME: Add env COSA_BUILD_DUMMY=true or something since this test is very
-# expensive in CI; or better add `cosa build --shortcut=overrides` or so.
+# Test that first build has been pruned; create a few builds for testing. Note
+# these builds are cheap to make because we invalidate the image input data, but
+# don't actually ask for a image rebuild since we use `ostree`.
+# FIXME: Add env COSA_BUILD_DUMMY=true or something instead of using this subtle
+# hack. Or better add `cosa build --shortcut=overrides` or so.
 cosa build ostree --force-image
 cosa build ostree --force-image
 cosa build ostree --force-image
