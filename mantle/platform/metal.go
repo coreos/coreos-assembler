@@ -15,9 +15,7 @@
 package platform
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math"
 	"net"
@@ -94,13 +92,14 @@ type Install struct {
 	CosaBuild       *sdk.LocalBuild
 	Builder         *QemuBuilder
 	Insecure        bool
+	IgnitionSpec2   bool
 	LegacyInstaller bool
 	Native4k        bool
 
 	// These are set by the install path
 	kargs        []string
-	ignition     string
-	liveIgnition string
+	ignition     ignv3types.Config
+	liveIgnition ignv3types.Config
 }
 
 type InstalledMachine struct {
@@ -108,7 +107,7 @@ type InstalledMachine struct {
 	QemuInst *QemuInstance
 }
 
-func (inst *Install) PXE(kargs []string, ignition string) (*InstalledMachine, error) {
+func (inst *Install) PXE(kargs []string, ignition ignv3types.Config) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -253,7 +252,10 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	}
 
 	builddir := inst.CosaBuild.Dir
-	serializedConfig := []byte(inst.ignition)
+	serializedConfig, err := conf.SerializeAndMaybeConvert(inst.ignition, inst.IgnitionSpec2)
+	if err != nil {
+		return nil, err
+	}
 	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
 		return nil, err
 	}
@@ -469,7 +471,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 	}, nil
 }
 
-func generatePointerIgnitionString(target string) string {
+func generatePointerIgnitionString(spec2 bool, target string) string {
 	p := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -482,15 +484,14 @@ func generatePointerIgnitionString(target string) string {
 			},
 		},
 	}
-
-	buf, err := json.Marshal(p)
+	buf, err := conf.SerializeAndMaybeConvert(p, spec2)
 	if err != nil {
 		panic(err)
 	}
 	return string(buf)
 }
 
-func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnition string) (*InstalledMachine, error) {
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition ignv3types.Config) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -504,7 +505,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnit
 
 	inst.kargs = kargs
 	inst.ignition = targetIgnition
-	inst.liveIgnition = liveIgniton
+	inst.liveIgnition = liveIgnition
 
 	tempdir, err := ioutil.TempDir("", "mantle-metal")
 	if err != nil {
@@ -517,7 +518,11 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnit
 		}
 	}()
 
-	if err := ioutil.WriteFile(filepath.Join(tempdir, "target.ign"), []byte(inst.ignition), 0644); err != nil {
+	renderedTarget, err := conf.SerializeAndMaybeConvert(inst.ignition, inst.IgnitionSpec2)
+	if err != nil {
+		return nil, err
+	}
+	if err := ioutil.WriteFile(filepath.Join(tempdir, "target.ign"), renderedTarget, 0644); err != nil {
 		return nil, err
 	}
 
@@ -532,11 +537,6 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgniton, targetIgnit
 	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
-	}
-
-	providedLiveConfig, _, err := v3.Parse([]byte(inst.liveIgnition))
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing provided live config")
 	}
 
 	mux := http.NewServeMux()
@@ -572,7 +572,7 @@ WantedBy=multi-user.target
 `, baseurl, metalname, pointerIgnitionPath, insecureOpt, targetDevice)
 	// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
 	// when it arrives
-	pointerIgnitionStr := generatePointerIgnitionString(baseurl + "/target.ign")
+	pointerIgnitionStr := generatePointerIgnitionString(inst.IgnitionSpec2, baseurl+"/target.ign")
 	pointerIgnitionEnc := dataurl.EncodeBytes([]byte(pointerIgnitionStr))
 	mode := 0644
 	rebootUnitP := string(rebootUnit)
@@ -610,8 +610,12 @@ WantedBy=multi-user.target
 			},
 		},
 	}
-	mergedConfig := v3.Merge(providedLiveConfig, installerConfig)
+	mergedConfig := v3.Merge(inst.liveIgnition, installerConfig)
 	mergedConfig = v3.Merge(mergedConfig, conf.GetAutologin())
+	mergedConfigSerialized, err := conf.SerializeAndMaybeConvert(mergedConfig, inst.IgnitionSpec2)
+	if err != nil {
+		return nil, err
+	}
 
 	isoEmbeddedPath := filepath.Join(tempdir, "test.iso")
 	// TODO ensure this tempdir is underneath cosa tempdir so we can reliably reflink
@@ -627,12 +631,8 @@ WantedBy=multi-user.target
 		return nil, err
 	}
 	go func() {
-		mergedConfigSerialized, err := json.Marshal(mergedConfig)
-		if err != nil {
-			panic(err)
-		}
 		defer instCmdStdin.Close()
-		if _, err := io.WriteString(instCmdStdin, string(mergedConfigSerialized)); err != nil {
+		if _, err := instCmdStdin.Write(mergedConfigSerialized); err != nil {
 			panic(err)
 		}
 	}()
