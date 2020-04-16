@@ -260,6 +260,14 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, err
 	}
 
+	pxeAutoLoginSerialized, err := conf.SerializeAndMaybeConvert(conf.GetAutologin(), inst.IgnitionSpec2)
+	if err != nil {
+		return nil, err
+	}
+	if err := ioutil.WriteFile(filepath.Join(tftpdir, "pxe-live.ign"), pxeAutoLoginSerialized, 0644); err != nil {
+		return nil, err
+	}
+
 	for _, name := range []string{kern.kernel, kern.initramfs} {
 		if err := absSymlink(filepath.Join(builddir, name), filepath.Join(tftpdir, name)); err != nil {
 			return nil, err
@@ -454,6 +462,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 	kargs := renderBaseKargs()
 	if !legacy {
 		kargs = append(kargs, liveKargs...)
+		kargs = append(kargs, fmt.Sprintf("ignition.config.url=%s/pxe-live.ign", t.baseurl))
 	}
 
 	kargs = append(kargs, renderInstallKargs(t)...)
