@@ -21,7 +21,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -34,9 +33,6 @@ import (
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
 
-	"github.com/coreos/mantle/sdk"
-
-	ignconverter "github.com/coreos/ign-converter"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/spf13/cobra"
 
@@ -184,6 +180,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	baseInst := platform.Install{
 		CosaBuild: kola.CosaBuild,
 		Native4k:  kola.QEMUOptions.Native4k,
+
+		IgnitionSpec2: kola.Options.IgnitionVersion == "v2",
 	}
 
 	if instInsecure {
@@ -311,24 +309,6 @@ func testPXE(inst platform.Install) error {
 			},
 		},
 	}
-	var configStr string
-	if sdk.TargetIgnitionVersion(kola.CosaBuild.Meta) == "v2" {
-		ignc2, err := ignconverter.Translate3to2(config)
-		if err != nil {
-			return err
-		}
-		buf, err := json.Marshal(ignc2)
-		if err != nil {
-			return err
-		}
-		configStr = string(buf)
-	} else {
-		buf, err := json.Marshal(config)
-		if err != nil {
-			return err
-		}
-		configStr = string(buf)
-	}
 
 	inst.Builder = newQemuBuilder(true)
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
@@ -336,7 +316,7 @@ func testPXE(inst platform.Install) error {
 		return err
 	}
 
-	mach, err := inst.PXE(nil, configStr)
+	mach, err := inst.PXE(nil, config)
 	if err != nil {
 		return errors.Wrapf(err, "running PXE")
 	}
@@ -382,10 +362,6 @@ func testLiveIso(inst platform.Install, completionfile string) error {
 			},
 		},
 	}
-	liveConfigBuf, err := json.Marshal(liveConfig)
-	if err != nil {
-		return err
-	}
 
 	targetConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -402,11 +378,7 @@ func testLiveIso(inst platform.Install, completionfile string) error {
 		},
 	}
 
-	targetIgnitionBuf, err := json.Marshal(targetConfig)
-	if err != nil {
-		return err
-	}
-	mach, err := inst.InstallViaISOEmbed(nil, string(liveConfigBuf), string(targetIgnitionBuf))
+	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig)
 	if err != nil {
 		return errors.Wrapf(err, "running iso install")
 	}

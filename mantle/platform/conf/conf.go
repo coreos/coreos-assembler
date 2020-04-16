@@ -104,6 +104,17 @@ func Ignition(data string) *UserData {
 	}
 }
 
+func IgnitionParsed(conf v3types.Config) *UserData {
+	buf, err := json.Marshal(conf)
+	if err != nil {
+		panic(err)
+	}
+	return &UserData{
+		kind: kindIgnition,
+		data: string(buf),
+	}
+}
+
 func Unknown(data string) *UserData {
 	u := &UserData{
 		data: data,
@@ -285,6 +296,17 @@ func (c *Conf) String() string {
 	}
 
 	return ""
+}
+
+// SerializeAndMaybeConvert serializes a config, and optionally
+// converts it to spec2x.
+func SerializeAndMaybeConvert(conf v3types.Config, spec2 bool) ([]byte, error) {
+	u := IgnitionParsed(conf)
+	c, err := u.Render("", spec2)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(c.String()), nil
 }
 
 // MergeV3 merges a config with the ignitionV3 config via Ignition's merging function.
