@@ -63,6 +63,8 @@ var (
 )
 
 const (
+	installTimeout = 15 * time.Minute
+
 	scenarioPXEInstall    = "pxe-install"
 	scenarioISOInstall    = "iso-install"
 	scenarioISOLiveLogin  = "iso-live-login"
@@ -260,6 +262,10 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 func awaitCompletion(inst *platform.QemuInstance, qchan *os.File, expected []string) error {
 	errchan := make(chan error)
+	go func() {
+		time.Sleep(installTimeout)
+		errchan <- fmt.Errorf("timed out after %v", installTimeout)
+	}()
 	go func() {
 		if err := inst.WaitAll(); err != nil {
 			errchan <- err
