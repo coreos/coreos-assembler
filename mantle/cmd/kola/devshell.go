@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -27,6 +28,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
@@ -64,6 +67,10 @@ func readTrimmedLine(r *bufio.Reader) (string, error) {
 }
 
 func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
+	if !terminal.IsTerminal(0) {
+		return fmt.Errorf("stdin is not a tty")
+	}
+
 	tmpd, err := ioutil.TempDir("", "kola-devshell")
 	if err != nil {
 		return err
@@ -151,6 +158,17 @@ WantedBy=multi-user.target`, readinessSignalChan)
 		return errors.Wrapf(err, "rendering config")
 	}
 
+	serialPipe, err := builder.SerialPipe()
+	if err != nil {
+		return err
+	}
+	serialLog, err := ioutil.TempFile("", "cosa-run-serial")
+	if err != nil {
+		return err
+	}
+	os.Remove(serialLog.Name())
+	serialTee := io.TeeReader(serialPipe, serialLog)
+
 	builder.InheritConsole = false
 	inst, err := builder.Exec()
 	if err != nil {
@@ -158,9 +176,15 @@ WantedBy=multi-user.target`, readinessSignalChan)
 	}
 	defer inst.Destroy()
 
+	statusChan, statusErrChan := inst.ParseSerialConsoleState(serialTee)
 	qemuWaitChan := make(chan error)
 	errchan := make(chan error)
 	readychan := make(chan struct{})
+	go func() {
+		// Just proxy this one
+		err := <-statusErrChan
+		errchan <- err
+	}()
 	go func() {
 		buf, err := inst.WaitIgnitionError()
 		if err != nil {
@@ -187,17 +211,34 @@ WantedBy=multi-user.target`, readinessSignalChan)
 		readychan <- s
 	}()
 
-	select {
-	case err := <-errchan:
-		if err == platform.ErrInitramfsEmergency {
-			return fmt.Errorf("instance failed in initramfs; try rerunning with --devshell-console")
+loop:
+	for {
+		select {
+		case err := <-errchan:
+			if err == platform.ErrInitramfsEmergency {
+				return fmt.Errorf("instance failed in initramfs; try rerunning with --devshell-console")
+			}
+			return err
+		case err := <-qemuWaitChan:
+			return errors.Wrapf(err, "qemu exited before setup")
+		case status := <-statusChan:
+			fmt.Printf("\033[2K\rstate: %s", status)
+		case _ = <-readychan:
+			fmt.Printf("\033[2K\rvirtio: connected\n")
+			break loop
 		}
-		return err
-	case err := <-qemuWaitChan:
-		return errors.Wrapf(err, "qemu exited before setup")
-	case _ = <-readychan:
-		fmt.Println("virtio: connected")
 	}
+
+	// Ignore other status messages, and just print errors for now
+	go func() {
+		for {
+			select {
+			case _ = <-statusChan:
+			case err := <-errchan:
+				fmt.Fprintf(os.Stderr, "errchan: %v", err)
+			}
+		}
+	}()
 
 	var ip string
 	err = util.Retry(6, 5*time.Second, func() error {
