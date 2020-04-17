@@ -157,7 +157,9 @@ func (inst *QemuInstance) WaitIgnitionError() (string, error) {
 		// It's normal to get EOF if we didn't catch an error and qemu
 		// is shutting down.  We also need to handle when the Destroy()
 		// function closes the journal FD on us.
-		if err == io.EOF || err == os.ErrClosed {
+		if e, ok := err.(*os.PathError); ok && e.Err == os.ErrClosed {
+			return "", nil
+		} else if err == io.EOF {
 			return "", nil
 		}
 		return "", errors.Wrapf(err, "Reading from journal")
