@@ -62,9 +62,12 @@ func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (m *machine) IgnitionError() error {
-	_, err := m.inst.WaitIgnitionError()
+	buf, err := m.inst.WaitIgnitionError()
 	if err != nil {
 		return err
+	}
+	if buf == "" {
+		return nil
 	}
 	// TODO render buf
 	return platform.ErrInitramfsEmergency
