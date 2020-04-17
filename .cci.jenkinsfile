@@ -23,7 +23,7 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
               // just split into separate invocations to make it easier to see where it fails
               cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
               cosa_cmd("fetch")
-              cosa_cmd("build")
+              cosa_cmd("build --strict")
           }
           parallel kola: {
               try {

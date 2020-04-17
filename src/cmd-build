@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--force-image] [--skip-prune] [--tag TAG] [--version VERSION] [TARGET...]
+       coreos-assembler build [--force] [--force-image] [--skip-prune] [--strict] [--tag TAG] [--version VERSION] [TARGET...]
 
   Build OSTree and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
@@ -30,8 +30,9 @@ SKIP_PRUNE=0
 VERSION=
 PARENT=
 TAG=
+STRICT=
 rc=0
-options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune -- "$@") || rc=$?
+options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -51,6 +52,9 @@ while true; do
             ;;
         --skip-prune)
             SKIP_PRUNE=1
+            ;;
+        --strict)
+            STRICT=1
             ;;
         --version)
             shift
@@ -194,23 +198,23 @@ EOF
 
 prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar.gz" "${PWD}/coreos-assembler-config-git.json"
 
-lock_arg=
+extra_compose_args=()
+
 for lock in "${manifest_lock}" "${manifest_lock_overrides}"; do
     if [ -f "${lock}" ]; then
-        lock_arg+=" --ex-lockfile=${lock}"
-        echo "Building from lockfile: ${lock}"
+        extra_compose_args+=("--ex-lockfile=${lock}")
     fi
 done
-if [ -n "${lock_arg}" ]; then
-    sleep 1
+
+if [ -n "${STRICT}" ]; then
+    extra_compose_args+=("--ex-lockfile-strict")
 fi
 
 # We'll pass this directly to rpm-ostree instead of through
 # commitmeta_input_json since that one also gets injected into meta.json, where
 # there's already ostree-version.
-version_arg=
 if [ -n "${VERSION}" ]; then
-    version_arg="--add-metadata-string=version=${VERSION}"
+    extra_compose_args+=("--add-metadata-string=version=${VERSION}")
 fi
 
 # Builds are independent of each other. Higher-level pipelines may want to force
@@ -220,6 +224,7 @@ parent_arg=--no-parent
 if [ -n "${PARENT}" ]; then
     parent_arg="--parent=${PARENT}"
 fi
+extra_compose_args+=("$parent_arg")
 
 # These need to be absolute paths right now for rpm-ostree
 composejson=${PWD}/tmp/compose.json
@@ -231,7 +236,7 @@ prepare_compose_overlays
 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}".tmp \
-           ${lock_arg} ${version_arg} ${parent_arg}
+           "${extra_compose_args[@]}"
 strip_out_lockfile_digests "$lockfile_out".tmp
 /usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
