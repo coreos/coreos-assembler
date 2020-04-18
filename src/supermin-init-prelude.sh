@@ -17,7 +17,9 @@ LANG=C /sbin/load_policy  -i
 /sbin/modprobe fuse
 
 # set up networking
-/usr/sbin/dhclient eth0
+if [ -z "${RUNVM_NONET:-}" ]; then
+    /usr/sbin/dhclient eth0
+fi
 
 # set the umask so that anyone in the group can rwx
 umask 002

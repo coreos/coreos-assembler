@@ -469,7 +469,7 @@ workdir=${workdir}
 # use the builder user's id, otherwise some operations like
 # chmod will set ownership to root, not builder
 export USER=$(id -u)
-
+export RUNVM_NONET=${RUNVM_NONET:-}
 $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
 sh ${TMPDIR}/cmd.sh || rc=\$?
