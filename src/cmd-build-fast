@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# This command can be run in two different ways.  If COSA_DIR is unset, it
+# must be run from a coreos-assembler working directory.  It will takes new
+# files from overrides/rootfs and applies them
+# on top of a previously built qemu image.  It creates a new deployment.
+# If COSA_DIR is set, it's assumed instead that you are developing on *one*
+# project - it will take the output of `make && make install DESTDIR=` as
+# an overlay on top of the build from COSA_DIR.  Notably, the qcow2 image
+# will end up in the project's working directory - so you can effectively
+# have independent CoreOS builds for each project.
+# This model is likely preferable if you are developing on an individual
+# project - you should turn to the main `cosa build/cosa build-fast` when
+# working on multiple projects.
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+projectdir=
+projectname=
+if [ -n "${COSA_DIR:-}" ]; then
+    projectdir=$(pwd)
+    projectname=$(basename "${projectdir}")
+    cd "${COSA_DIR}"
+fi
+
+prepare_build
+
+previous_build=$(get_latest_build)
+previous_qemu=
+if [ -z "${previous_build}" ]; then
+    fatal "previous build required for a fast build"
+fi
+previous_builddir=$(get_build_dir "${previous_build}")
+previous_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
+previous_qemu=$(jq -r '.["images"]["qemu"]["path"]' < "${previous_builddir}/meta.json")
+if [ "${previous_qemu}" = "null" ]; then
+    fatal "--shortcut requires a previous build with qemu"
+fi
+echo "Basing on previous build: ${previous_build:-none}"
+
+version="fastbuild-$(date +"%s")"
+if [ -n "${projectdir}" ]; then
+    cd "${projectdir}"
+    rm _install -rf
+    make
+    make install DESTDIR="$(pwd)/_install"
+    rootfsoverrides="${projectdir}/_install"
+else
+    rootfsoverrides="${workdir}/overrides/rootfs"
+fi
+etcdir="${rootfsoverrides}/etc"
+usretcdir="${rootfsoverrides}/usr/etc"
+etcmoved=0
+# FIXME add `ostree commit --rename=etc,usr/etc`
+if [ -d "${etcdir}" ]; then
+    mv -nT "${etcdir}" "${usretcdir}"
+    etcmoved=1
+fi
+restore_etc() {
+    if [ "${etcmoved}" = 1 ]; then
+        mv -nT "${usretcdir}" "${etcdir}"
+    fi
+}
+set -x
+ref=fastbuild
+commit_args=()
+if [ -n "${projectdir}" ]; then
+    ref=fastbuild-${projectname}
+    commit_args+=('--consume')  # nom nom nom
+fi
+# Depends https://github.com/ostreedev/ostree/pull/2041/commits/b3bbbd154225e81980546b2c0b5ed98714830696
+if ! ostree --repo="${tmprepo}" commit -b "${ref}" --base="${previous_commit}" --tree=dir="${rootfsoverrides}" \
+    --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs \
+    --add-metadata-string=version="${version}" --fsync=0 "${commit_args[@]}"; then
+    restore_etc
+    exit 1
+fi
+set +x
+commit=$(ostree --repo="${tmprepo}" rev-parse "${ref}")
+if [ -z "${projectdir}" ]; then
+    restore_etc
+fi
+fastbuild_qemu="fastbuild-${name}-qemu.qcow2"
+if [ -n "${projectdir}" ]; then
+    fastbuild_qemu="fastbuild-${name}-${projectname}-qemu.qcow2"
+fi
+tmpdir=${projectdir:-.}
+qemu-img create -f qcow2 -o backing_file="${previous_builddir}/${previous_qemu}" "${tmpdir}/${fastbuild_qemu}" 20G
+RUNVM_NONET=1 runvm -drive if=virtio,id=target,format=qcow2,file="${fastbuild_qemu}",cache=unsafe -- \
+    /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
+if [ -n "${projectdir}" ]; then
+    echo "Created: ${fastbuild_qemu}"
+else
+    cd "${workdir}"
+    rm "${fastbuilddir}" -rf
+    mv -nT "${tmp_builddir}" "${fastbuilddir}"
+    echo "Created: ${fastbuilddir}/${fastbuild_qemu}"
+fi
