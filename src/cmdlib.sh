@@ -229,6 +229,11 @@ prepare_build() {
     # This dir is no longer used
     rm builds/work -rf
 
+    # Place for cmd-build-fast
+    mkdir -p tmp/fastbuilds
+    fastbuilddir=$(pwd)/tmp/fastbuild
+    export fastbuilddir
+
     # Allocate temporary space for this build
     tmp_builddir=${workdir}/tmp/build
     rm "${tmp_builddir}" -rf
