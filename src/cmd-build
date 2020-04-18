@@ -228,7 +228,7 @@ lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 prepare_compose_overlays
 # --cache-only is here since `fetch` is a separate verb.
 # shellcheck disable=SC2086
-runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
+RUNVM_NONET=1 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}".tmp \
            ${lock_arg} ${version_arg} ${parent_arg}
