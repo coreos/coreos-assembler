@@ -28,6 +28,7 @@ Options:
     --disk: disk device to use
     --buildid: buildid
     --imgid: imageid
+    --firstboot-kargs: kernel args to be used on firstboot
     --grub-script: grub script to install
     --help: show this helper
     --kargs: kernel CLI args
@@ -51,6 +52,7 @@ rootfs_size="0"
 boot_verity=0
 rootfs_type="xfs"
 x86_bios_partition=1
+firstboot_kargs=""
 extrakargs=""
 
 while [ $# -gt 0 ];
@@ -60,6 +62,7 @@ do
         --disk)                  disk="${1}"; shift;;
         --buildid)               buildid="${1}"; shift;;
         --imgid)                 imgid="${1}"; shift;;
+        --firstboot-kargs)       firstboot_kargs="${1}"; shift;;
         --grub-script)           grub_script="${1}"; shift;;
         --help)                  usage; exit;;
         --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
@@ -392,7 +395,7 @@ s390x)
 	# stage on s390x, either through zipl->grub2-emu or zipl standalone.
 	# See https://github.com/coreos/ignition-dracut/issues/84
 	# A similar hack is present in https://github.com/coreos/coreos-assembler/blob/master/src/gf-platformid#L55
-	echo "$(grep options $blsfile) ignition.firstboot rd.neednet=1 ip=dhcp,dhcp6" > $tmpfile
+	echo "$(grep options $blsfile) ignition.firstboot" > $tmpfile
 
 	# ideally we want to invoke zipl with bls and zipl.conf but we might need
 	# to chroot to $rootfs/ to do so. We would also do that when FCOS boot on its own.
@@ -411,7 +414,7 @@ ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_ba
 # https://github.com/ostreedev/ostree/issues/1265
 ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
 
-touch $rootfs/boot/ignition.firstboot
+echo "set ignition_network_kcmdline='${firstboot_kargs}'" > $rootfs/boot/ignition.firstboot
 
 # Finally, add the immutable bit to the physical root; we don't
 # expect people to be creating anything there.  A use case for
