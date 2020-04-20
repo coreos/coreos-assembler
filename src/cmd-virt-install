@@ -27,24 +27,30 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--connect", "-c", help="libvirt URI", default="qemu:///system")
 parser.add_argument("--ignition", "-i", help="Ignition config", required=True)
 parser.add_argument("--build", help="Build ID")
+parser.add_argument("--image", help="Image path")
 parser.add_argument("--pool", help="storage pool", default="default")
 parser.add_argument("--name", help="Prefix for libvirt resources")
 parser.add_argument("--instid", help="Suffix appended to libvirt resources")
 args, vinstall_args = parser.parse_known_args()
 
 builds = Builds()
-if args.build is None:
-    args.build = builds.get_latest()
-builddir = builds.get_build_dir(args.build)
-with open(os.path.join(builddir, "meta.json")) as f:
-    buildmeta = json.load(f)
-qemuimg = buildmeta.get('images', {}).get('qemu')
-if qemuimg is None:
-    raise SystemExit(f"No qemu image in build: {args.build}")
-qemupath = os.path.join(builddir, qemuimg['path'])
+if args.image:
+    qemupath = args.image
+    if args.name is None:
+        args.name = os.path.basename(qemupath)
+else:
+    if args.build is None:
+        args.build = builds.get_latest()
+    builddir = builds.get_build_dir(args.build)
+    with open(os.path.join(builddir, "meta.json")) as f:
+        buildmeta = json.load(f)
+    qemuimg = buildmeta.get('images', {}).get('qemu')
+    if qemuimg is None:
+        raise SystemExit(f"No qemu image in build: {args.build}")
+    qemupath = os.path.join(builddir, qemuimg['path'])
 
-if args.name is None:
-    args.name = buildmeta['name']
+    if args.name is None:
+        args.name = buildmeta['name']
 
 if args.instid is None:
     args.instid = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(8)])
