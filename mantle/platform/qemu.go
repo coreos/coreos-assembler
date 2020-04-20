@@ -16,7 +16,6 @@ package platform
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,7 +29,8 @@ import (
 	"syscall"
 	"time"
 
-	ignconverter "github.com/coreos/ign-converter"
+	"github.com/coreos/mantle/platform/conf"
+
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
@@ -314,6 +314,13 @@ type QemuBuilder struct {
 
 	MultiPathDisk bool
 
+	// ignition is a config object that can be used instead of
+	// ConfigFile.
+	ignition *v3types.Config
+	// ignitionSpec2 says to convert to Ignition spec 2
+	ignitionSpec2    bool
+	ignitionSet      bool
+	ignitionRendered bool
 	// cleanupConfig is true if we own the Ignition config
 	cleanupConfig bool
 
@@ -338,34 +345,43 @@ func NewBuilder() *QemuBuilder {
 	return &ret
 }
 
-func (builder *QemuBuilder) SetConfig(config v3types.Config, convSpec2 bool) error {
-	var configBuf []byte
-	var err error
-	if convSpec2 {
-		ignc2, err := ignconverter.Translate3to2(config)
-		if err != nil {
-			return err
-		}
-		configBuf, err = json.Marshal(ignc2)
-		if err != nil {
-			return err
-		}
-	} else {
-		configBuf, err = json.Marshal(config)
-		if err != nil {
-			return err
-		}
+// SetConfig injects Ignition; this can be used in place of ConfigFile.
+func (builder *QemuBuilder) SetConfig(config v3types.Config, convSpec2 bool) {
+	if builder.ignitionRendered {
+		panic("SetConfig called after config rendered")
+	}
+	if builder.ignitionSet {
+		panic("SetConfig called multiple times")
+	}
+	builder.ignition = &config
+	builder.ignitionSpec2 = convSpec2
+	builder.ignitionSet = true
+}
+
+// renderIgnition lazily renders a parsed config if one is set
+func (builder *QemuBuilder) renderIgnition() error {
+	if !builder.ignitionSet || builder.ignitionRendered {
+		return nil
+	}
+	if builder.ConfigFile != "" {
+		panic("Both ConfigFile and ignition set")
+	}
+	buf, err := conf.SerializeAndMaybeConvert(*builder.ignition, builder.ignitionSpec2)
+	if err != nil {
+		return err
 	}
 	tmpf, err := ioutil.TempFile("", "mantle-qemu-ign")
 	if err != nil {
 		return err
 	}
-	if _, err := tmpf.Write(configBuf); err != nil {
+	if _, err := tmpf.Write(buf); err != nil {
 		return err
 	}
-
+	// Transfer ownership of the config file
 	builder.ConfigFile = tmpf.Name()
 	builder.cleanupConfig = true
+	builder.ignition = nil
+	builder.ignitionRendered = true
 	return nil
 }
 
@@ -684,6 +700,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	if primary {
 		// If the board doesn't support -fw_cfg or we were explicitly
 		// requested, inject via libguestfs on the primary disk.
+		if err := builder.renderIgnition(); err != nil {
+			return errors.Wrapf(err, "rendering ignition")
+		}
 		requiresInjection := builder.ConfigFile != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
 		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArguments != "" {
 			if err := setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
@@ -919,6 +938,10 @@ func (builder *QemuBuilder) SerialPipe() (*os.File, error) {
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
 	var err error
+
+	if err := builder.renderIgnition(); err != nil {
+		return nil, errors.Wrapf(err, "rendering ignition")
+	}
 
 	inst := QemuInstance{}
 

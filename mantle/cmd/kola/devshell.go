@@ -154,9 +154,7 @@ WantedBy=multi-user.target`, readinessSignalChan)
 	}
 	readyReader := bufio.NewReader(readyChan)
 
-	if err := builder.SetConfig(*conf, kola.Options.IgnitionVersion == "v2"); err != nil {
-		return errors.Wrapf(err, "rendering config")
-	}
+	builder.SetConfig(*conf, kola.Options.IgnitionVersion == "v2")
 
 	serialPipe, err := builder.SerialPipe()
 	if err != nil {
