@@ -10,6 +10,11 @@
 # an issue and we can discuss configuration needs.
 set -euo pipefail
 
+# This fixed UUID is detected in ignition-dracut and changed
+# on firstboot:
+# https://github.com/coreos/ignition-dracut/blob/6136be3d9d38d7926a61cd4d1b4ba5f9baf0892f/dracut/30ignition/coreos-gpt-setup.sh#L7
+uninitialized_gpt_uuid="00000000-0000-4000-a000-000000000001"
+
 usage() {
     cat <<EOC
 ${0} create a supermin virtual machinge to create a
@@ -103,7 +108,7 @@ fi
 case "$arch" in
     x86_64)
         set -- -Z $disk \
-        -U 00000000-0000-4000-a000-000000000001 \
+        -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B
         if [ "${x86_bios_partition}" = 1 ]; then
@@ -116,7 +121,7 @@ case "$arch" in
         ;;
     aarch64)
         sgdisk -Z $disk \
-        -U 00000000-0000-4000-a000-000000000001 \
+        -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
@@ -125,7 +130,7 @@ case "$arch" in
         ;;
     s390x)
         sgdisk -Z $disk \
-        -U 00000000-0000-4000-a000-000000000001 \
+        -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
@@ -135,7 +140,7 @@ case "$arch" in
         PREPPN=1
         # ppc64le doesn't use special uuid for root partition
         sgdisk -Z $disk \
-        -U 00000000-0000-4000-a000-000000000001 \
+        -U "${uninitialized_gpt_uuid}" \
         -n ${PREPPN}:0:+4M   -c ${PREPPN}:PowerPC-PReP-boot -t ${PREPPN}:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root              -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
