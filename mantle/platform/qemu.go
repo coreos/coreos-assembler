@@ -310,7 +310,7 @@ type QemuBuilder struct {
 
 	InheritConsole bool
 
-	primaryDiskAdded bool
+	primaryDisk *Disk
 
 	MultiPathDisk bool
 
@@ -785,11 +785,14 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 }
 
 func (builder *QemuBuilder) AddPrimaryDisk(disk *Disk) error {
-	if builder.primaryDiskAdded {
+	if builder.primaryDisk != nil {
 		panic("Multiple primary disks specified")
 	}
-	builder.primaryDiskAdded = true
-	return builder.addDiskImpl(disk, true)
+	// We do this one lazily in order to break an ordering requirement
+	// for SetConfig() and AddPrimaryDisk() in the case where the
+	// config needs to be injected into the disk.
+	builder.primaryDisk = disk
+	return nil
 }
 
 func (builder *QemuBuilder) AddDisk(disk *Disk) error {
@@ -985,11 +988,18 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// We never want a popup window
 	argv = append(argv, "-nographic")
 
+	// See AddPrimaryDisk for why we do this lazily
+	if builder.primaryDisk != nil {
+		if err := builder.addDiskImpl(builder.primaryDisk, true); err != nil {
+			return nil, err
+		}
+	}
+
 	// Handle Ignition
 	if builder.ConfigFile != "" && !builder.configInjected {
 		if builder.supportsFwCfg() {
 			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.ConfigFile)
-		} else if !builder.primaryDiskAdded {
+		} else if builder.primaryDisk == nil {
 			// Otherwise, we should have handled it in builder.AddPrimaryDisk
 			panic("Ignition specified but no primary disk")
 		}
