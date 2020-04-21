@@ -24,7 +24,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -64,6 +66,21 @@ func readTrimmedLine(r *bufio.Reader) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(l), nil
+}
+
+func stripControlCharacters(s string) string {
+	return strings.Map(func(r rune) rune {
+		if !strconv.IsGraphic(r) {
+			return ' '
+		}
+		// Ensure we always strip ESC which is used for ANSI codes,
+		// plus any embedded newlines which would mess up our progress bar
+		switch r {
+		case '\x1B', '\n', '\r':
+			return ' '
+		}
+		return r
+	}, s)
 }
 
 func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
@@ -158,6 +175,7 @@ WantedBy=multi-user.target`, readinessSignalChan)
 		return errors.Wrapf(err, "rendering config")
 	}
 
+	serialChan := make(chan string)
 	serialPipe, err := builder.SerialPipe()
 	if err != nil {
 		return err
@@ -166,8 +184,17 @@ WantedBy=multi-user.target`, readinessSignalChan)
 	if err != nil {
 		return err
 	}
-	os.Remove(serialLog.Name())
-	serialTee := io.TeeReader(serialPipe, serialLog)
+	go func() {
+		bufr := bufio.NewReader(serialPipe)
+		for {
+			buf, _, err := bufr.ReadLine()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "devshell reading serial console: %v\n", err)
+				break
+			}
+			serialChan <- string(buf)
+		}
+	}()
 
 	builder.InheritConsole = false
 	inst, err := builder.Exec()
@@ -176,15 +203,9 @@ WantedBy=multi-user.target`, readinessSignalChan)
 	}
 	defer inst.Destroy()
 
-	statusChan, statusErrChan := inst.ParseSerialConsoleState(serialTee)
 	qemuWaitChan := make(chan error)
 	errchan := make(chan error)
 	readychan := make(chan struct{})
-	go func() {
-		// Just proxy this one
-		err := <-statusErrChan
-		errchan <- err
-	}()
 	go func() {
 		buf, err := inst.WaitIgnitionError()
 		if err != nil {
@@ -210,6 +231,8 @@ WantedBy=multi-user.target`, readinessSignalChan)
 		var s struct{}
 		readychan <- s
 	}()
+	sigintChan := make(chan os.Signal, 1)
+	signal.Notify(sigintChan, os.Interrupt)
 
 loop:
 	for {
@@ -221,19 +244,33 @@ loop:
 			return err
 		case err := <-qemuWaitChan:
 			return errors.Wrapf(err, "qemu exited before setup")
-		case status := <-statusChan:
-			fmt.Printf("\033[2K\rstate: %s", status)
+		case serialMsg := <-serialChan:
+			fmt.Printf("\033[2K\r%s", stripControlCharacters(serialMsg))
+			if _, err := serialLog.Write([]byte(serialMsg + "\n")); err != nil {
+				return err
+			}
+		case <-sigintChan:
+			serialLog.Seek(0, os.SEEK_SET)
+			_, err := io.Copy(os.Stderr, serialLog)
+			if err != nil {
+				return err
+			}
+			// Caught SIGINT, we're done
+			return fmt.Errorf("Caught SIGINT before successful login")
 		case _ = <-readychan:
 			fmt.Printf("\033[2K\rvirtio: connected\n")
 			break loop
 		}
 	}
 
+	// Later Ctrl-c after this should just kill us
+	signal.Reset(os.Interrupt)
+
 	// Ignore other status messages, and just print errors for now
 	go func() {
 		for {
 			select {
-			case _ = <-statusChan:
+			case _ = <-serialChan:
 			case err := <-errchan:
 				fmt.Fprintf(os.Stderr, "errchan: %v", err)
 			}
