@@ -231,7 +231,15 @@ composejson=${PWD}/tmp/compose.json
 # Put this under tmprepo so it gets automatically chown'ed if needed
 lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 prepare_compose_overlays
-# --cache-only is here since `fetch` is a separate verb.
+# See https://github.com/coreos/coreos-assembler/pull/1379 - we want the local
+# dev case to explicitly fetch updates when they want them, plus CI pipelines
+# generally want to react to "changed or not" with a separate `fetch`.
+# The fetched-stamp is new, in order to not break existing workdirs we assume
+# a fetch was done if a successful build was done.
+if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
+    fatal "Must fetch before building"
+fi
+# --cache-only is here since `fetch` is a separate verb
 # shellcheck disable=SC2086
 RUNVM_NONET=1 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
