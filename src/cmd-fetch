@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
-       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file]
+       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file] [--strict]
 
   Fetch and import the latest packages.
 EOF
@@ -17,8 +17,9 @@ EOF
 UPDATE_LOCKFILE=
 OUTPUT_LOCKFILE=
 DRY_RUN=
+STRICT=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile,dry-run,write-lockfile-to: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,dry-run,write-lockfile-to:,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -40,6 +41,9 @@ while true; do
             ;;
         --dry-run)
             DRY_RUN=1
+            ;;
+        --strict)
+            STRICT=1
             ;;
         --)
             shift
@@ -79,6 +83,9 @@ fi
 
 if [ -n "${DRY_RUN}" ]; then
     args="${args} --dry-run"
+fi
+if [ -n "${STRICT}" ]; then
+	args="${args} --ex-lockfile-strict"
 fi
 
 # shellcheck disable=SC2086
