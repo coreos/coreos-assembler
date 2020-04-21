@@ -41,13 +41,6 @@ var (
 	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
 )
 
-const (
-	StateInitial    = "qemu"
-	StateKernel     = "kernel"
-	StateInitramfs  = "initramfs"
-	StateTargetRoot = "root"
-)
-
 type MachineOptions struct {
 	AdditionalDisks []Disk
 }
@@ -147,44 +140,6 @@ func (inst *QemuInstance) Wait() error {
 		return err
 	}
 	return nil
-}
-
-func runParseSerialConsoleState(r io.Reader, schan chan<- string, echan chan<- error) {
-	bufr := bufio.NewReader(r)
-	state := StateInitial
-	for {
-		buf, _, err := bufr.ReadLine()
-		if err != nil {
-			echan <- err
-			break
-		}
-		line := string(buf)
-		switch state {
-		case StateInitial:
-			// Yes, all this is heuristic.  But it's just informational.
-			if strings.Contains(line, "Hypervisor detected: KVM") {
-				state = StateKernel
-				schan <- state
-			}
-		case StateKernel:
-			if strings.Contains(line, "Running in initial RAM disk.") {
-				state = StateInitramfs
-				schan <- state
-			}
-		case StateInitramfs:
-			if strings.Contains(line, "initrd-switch-root.service: Succeeded.") {
-				state = StateTargetRoot
-				schan <- state
-			}
-		}
-	}
-}
-
-func (inst *QemuInstance) ParseSerialConsoleState(r io.Reader) (<-chan string, <-chan error) {
-	schan := make(chan string)
-	echan := make(chan error)
-	go runParseSerialConsoleState(r, schan, echan)
-	return schan, echan
 }
 
 // WaitIgnitionError will only return if the instance
