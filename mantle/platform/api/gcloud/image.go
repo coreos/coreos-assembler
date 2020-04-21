@@ -78,9 +78,6 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		{
 			Type: "UEFI_COMPATIBLE",
 		},
-		{
-			Type: "SECURE_BOOT",
-		},
 	}
 
 	image := &compute.Image{
