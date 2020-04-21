@@ -186,8 +186,10 @@ prepare_build() {
     manifest=${configdir}/manifest.yaml
     manifest_lock=$(pick_yaml_or_else_json "${configdir}/manifest-lock.${basearch}")
     manifest_lock_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
+    fetch_stamp="${workdir}"/cache/fetched-stamp
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides
+    export fetch_stamp
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"

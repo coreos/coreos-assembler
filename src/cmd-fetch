@@ -90,6 +90,9 @@ fi
 
 # shellcheck disable=SC2086
 runcompose --download-only ${args}
+# This stamp file signifies we successfully fetched once; it's
+# validated in cmd-build.
+touch "${fetch_stamp}"
 
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Write out to the lockfile specified by the user or to the
