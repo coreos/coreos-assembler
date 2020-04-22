@@ -100,6 +100,10 @@ class Build(_Build):
     Koji implementation of Build.
     """
     def __init__(self, **kwargs):
+        # add a dummy platform to satisfy _Build; we're not actually building a
+        # new kind of image here, but _Build is geared towards that and has a
+        # image_name_base() member that wants a platform string to name stuff
+        self.platform = "koji"
         self._tmpdir = tempfile.mkdtemp(prefix="koji-build")
         kwargs.update({
             "require_commit": True,
