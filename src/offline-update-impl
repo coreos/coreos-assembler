@@ -5,9 +5,6 @@ set -xeuo pipefail
 
 disk=/dev/vda
 
-udevadm trigger
-udevadm settle
-
 # We don't have systemd/udev running
 findlabel() {
     local label=$1

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# This script is our half-baked ad-hoc reimplementation of a minimal
+# Linux boot environment that we generate via `supermin`.  At some
+# point we will likely switch to using systemd.
+
 mount -t proc /proc /proc
 mount -t sysfs /sys /sys
 mount -t devtmpfs devtmpfs /dev
@@ -15,6 +19,10 @@ LANG=C /sbin/load_policy  -i
 
 # need fuse module for rofiles-fuse/bwrap during post scripts run
 /sbin/modprobe fuse
+
+# we want /dev/disk symlinks for coreos-installer
+/usr/lib/systemd/systemd-udevd --daemon
+/usr/sbin/udevadm trigger --settle
 
 # set up networking
 if [ -z "${RUNVM_NONET:-}" ]; then
