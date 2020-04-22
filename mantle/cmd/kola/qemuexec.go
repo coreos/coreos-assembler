@@ -216,7 +216,10 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		builder.Processors = -1
 	}
 	if usernet {
-		builder.EnableUsermodeNetworking(22)
+		h := []platform.HostForwardPort{
+			{Service: "ssh", HostPort: 0, GuestPort: 22},
+		}
+		builder.EnableUsermodeNetworking(h)
 	}
 	builder.InheritConsole = true
 	builder.Append(args...)
