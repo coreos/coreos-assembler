@@ -93,6 +93,11 @@ class _Build:
             basearch=kwargs.get("arch", BASEARCH)
         )
 
+        # This is a bit subtle; but essentially, we want to verify that the
+        # subclass has set a platform attribute; `getattr` will fail if not. We
+        # set it to itself to satisfy pylint.
+        self.platform = getattr(self, "platform")
+
         self._found_files = {}
         self._workdir = kwargs.pop("workdir", os.getcwd())
         tmpdir = os.path.join(self._workdir, "tmp")
