@@ -30,11 +30,13 @@ func init() {
 		ClusterSize: 1,
 		Name:        "rpmostree.upgrade-rollback",
 		FailFast:    true,
+		Tags:        []string{"rpm-ostree", "upgrade"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         rpmOstreeInstallUninstall,
 		ClusterSize: 1,
 		Name:        "rpmostree.install-uninstall",
+		Tags:        []string{"rpm-ostree"},
 		// this Ignition config lands the EPEL repo + key
 		UserDataV3: conf.Ignition(`{
   "ignition": {

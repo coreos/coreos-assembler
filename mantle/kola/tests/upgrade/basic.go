@@ -47,6 +47,7 @@ func init() {
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"httpd": register.CreateNativeFuncWrap(httpd),
 		},
+		Tags:    []string{"upgrade"},
 		Distros: []string{"fcos"},
 		// This Ignition does a few things:
 		// 1. bumps Zincati verbosity

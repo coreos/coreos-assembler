@@ -69,6 +69,7 @@ func init() {
 		UserData:         configV2,
 		UserDataV3:       configV3,
 		ExcludePlatforms: []string{"azure"},
+		Tags:             []string{"ignition"},
 	})
 }
 

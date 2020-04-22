@@ -103,6 +103,7 @@ func init() {
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"Serve": register.CreateNativeFuncWrap(Serve),
 		},
+		Tags: []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do", "qemu-unpriv"},
 	})
@@ -111,6 +112,7 @@ func init() {
 		Run:         resourceRemote,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
+		Tags:        []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
 		UserData: conf.Ignition(`{
@@ -182,6 +184,7 @@ func init() {
 		Run:         resourceS3,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
+		Tags:        []string{"ignition"},
 		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "2.1.0",
@@ -234,6 +237,7 @@ func init() {
 		Run:         resourceS3Versioned,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
+		Tags:        []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
 		UserData: conf.Ignition(`{

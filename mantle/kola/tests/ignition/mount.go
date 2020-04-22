@@ -39,6 +39,7 @@ func init() {
 		Run:         testMountDisks,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
+		Tags:        []string{"ignition"},
 	})
 	// create new partiitons with disk `vda`
 	register.RegisterTest(&register.Test{
@@ -46,6 +47,7 @@ func init() {
 		Run:         testMountPartitions,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
+		Tags:        []string{"ignition"},
 	})
 }
 
