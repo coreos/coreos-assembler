@@ -124,7 +124,15 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 			return nil, errors.Wrapf(err, "adding additional disk")
 		}
 	}
-	builder.EnableUsermodeNetworking(22)
+
+	if len(options.HostForwardPorts) > 0 {
+		builder.EnableUsermodeNetworking(options.HostForwardPorts)
+	} else {
+		h := []platform.HostForwardPort{
+			{Service: "ssh", HostPort: 0, GuestPort: 22},
+		}
+		builder.EnableUsermodeNetworking(h)
+	}
 
 	inst, err := builder.Exec()
 	if err != nil {
