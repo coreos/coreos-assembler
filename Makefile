@@ -35,6 +35,7 @@ check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-chec
 
 pycheck:
 	python3 -m py_compile $(pysources)
+	pylint -E $(pysources)
 
 flake8:
 	python3 -m flake8 --ignore=$(PYIGNORE) $(pysources)
