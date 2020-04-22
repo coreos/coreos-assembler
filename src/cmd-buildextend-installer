@@ -119,6 +119,22 @@ os.mkdir(tmpisoisolinux)
 initrd_ignition_padding = 256 * 1024
 
 
+def generate_initramfs_stampfile(tmpdir, destpath, stampname):
+    # Create a compressed CPIO archive that can be appended to an initramfs,
+    # with a single empty file.  This is used to differentiate between
+    # types of initramfs.
+    with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
+        stamppath = os.path.join(tmproot, stampname)
+        os.makedirs(os.path.dirname(stamppath), exist_ok=True)
+        open(stamppath, 'w').close()
+        run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
+            '--quiet', '--reproducible', '--force-local',
+            '-D', tmproot, '-O', destpath + '.tmp'],
+            input=stampname.encode())
+        run_verbose(['gzip', destpath + '.tmp'])
+        os.rename(destpath + '.tmp.gz', destpath)
+
+
 def generate_iso():
     # convention for kernel and initramfs names
     kernel_img = 'vmlinuz'
@@ -150,22 +166,14 @@ def generate_iso():
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
     initramfs = os.path.join(tmpisoimages, 'initramfs.img')
-    live_initramfs_cpio = None
+    initramfs_cpio_ext = None
     if is_live:
         # This stamp file denotes we're in a "live" initramfs
-        live_initramfs_cpio = os.path.join(tmpdir, 'live-stamp-initramfs')
-        with tempfile.TemporaryDirectory(prefix='live-initramfs', dir=tmpdir) as livetmpd:
-            live_initramfs_stamp_path = 'etc/coreos-live-initramfs'
-            live_initramfs_stamp = os.path.join(livetmpd, live_initramfs_stamp_path)
-            os.makedirs(os.path.dirname(live_initramfs_stamp), exist_ok=True)
-            with open(live_initramfs_stamp, 'w') as f:
-                pass
-            run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
-                '--quiet', '--reproducible', '--force-local',
-                '-D', livetmpd, '-O', live_initramfs_cpio],
-                input=live_initramfs_stamp_path.encode())
-            run_verbose(['gzip', live_initramfs_cpio])
-            live_initramfs_cpio = live_initramfs_cpio + '.gz'
+        initramfs_cpio_ext = os.path.join(tmpdir, 'live-stamp-initramfs')
+        generate_initramfs_stampfile(tmpdir, initramfs_cpio_ext, 'etc/coreos-live-initramfs')
+    elif image_type == 'installer':
+        initramfs_cpio_ext = os.path.join(tmpdir, 'legacy-stamp-initramfs')
+        generate_initramfs_stampfile(tmpdir, initramfs_cpio_ext, 'etc/coreos-legacy-installer-initramfs')
     if is_fulliso:
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
 
@@ -186,7 +194,7 @@ def generate_iso():
         with open(tmp_initramfs, 'wb') as fdst:
             with open(initramfs, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
-            with open(live_initramfs_cpio, 'rb') as fsrc:
+            with open(initramfs_cpio_ext, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
             fdst.write(bytes(initrd_ignition_padding))
         os.rename(tmp_initramfs, initramfs)
@@ -211,13 +219,22 @@ def generate_iso():
         with open(tmp_initramfs, 'wb') as fdst:
             with open(initramfs, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
-            with open(live_initramfs_cpio, 'rb') as fsrc:
+            with open(initramfs_cpio_ext, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
             with open(tmp_cpio + '.gz', 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
             fdst.write(bytes(initrd_ignition_padding))
         os.rename(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
+    elif image_type == 'installer':
+        tmp_initramfs = os.path.join(tmpdir, 'initramfs')
+        # And this one just includes the stamp file
+        with open(tmp_initramfs, 'wb') as fdst:
+            with open(initramfs, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
+            with open(initramfs_cpio_ext, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)
+        os.rename(tmp_initramfs, initramfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
     result = run_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
