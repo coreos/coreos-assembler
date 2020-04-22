@@ -56,6 +56,7 @@ func init() {
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Specify multiple times for multiple units.")
 	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: v2, v3")
 	ssv(&kola.BlacklistedTests, "blacklist-test", []string{}, "List of tests to blacklist")
+	ssv(&kola.Tags, "tags", []string{}, "List of tags to run")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
 	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")

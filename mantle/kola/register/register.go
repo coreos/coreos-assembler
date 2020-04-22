@@ -62,6 +62,7 @@ type Test struct {
 	Architectures        []string // whitelist of machine architectures supported -- defaults to all
 	ExcludeArchitectures []string // blacklist of architectures to ignore -- defaults to none
 	Flags                []Flag   // special-case options for this test
+	Tags                 []string // list of tags that can be matched against -- defaults to none
 
 	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string

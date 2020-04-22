@@ -79,6 +79,7 @@ var (
 	TAPFile         string // if not "", write TAP results here
 
 	BlacklistedTests []string // tests which are blacklisted
+	Tags             []string // tags to be ran
 
 	consoleChecks = []struct {
 		desc     string
@@ -236,6 +237,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 	}
 
 	var blacklisted bool
+	noPattern := hasString("*", patterns)
 	for name, t := range tests {
 		// Drop anything which is blacklisted directly or by pattern
 		blacklisted = false
@@ -279,7 +281,16 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		if err != nil {
 			return nil, err
 		}
-		if !match {
+
+		tagMatch := false
+		for _, tag := range Tags {
+			tagMatch = hasString(tag, t.Tags)
+			if tagMatch {
+				break
+			}
+		}
+
+		if (!noPattern && !match && !tagMatch) || (!tagMatch && noPattern && len(Tags) > 0) {
 			continue
 		}
 
