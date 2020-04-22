@@ -101,8 +101,8 @@ def artifact_cli():
         if args.convert_options:
             kwargs["convert_options"] = {'-o': f'{args.convert_options}'}
 
-        builder = QVariants.QemuVariantImage(args.buildroot,
-                                             args.build,
+        builder = QVariants.QemuVariantImage(buildroot=args.buildroot,
+                                             build=args.build,
                                              **kwargs)
     else:
         raise Exception("please see --help for correct invocation")

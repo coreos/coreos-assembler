@@ -37,7 +37,7 @@ def aliyun_run_ore_replicate(build, args):
         log.info(("default: replicating to all regions. If this is not "
                  " desirable, use '--regions'"))
 
-    log.info("replicating to regions: ", args.region)
+    log.info("replicating to regions: %s", args.region)
 
     # only replicate to regions that don't already exist
     existing_regions = [item['name'] for item in aliyun_img_data]
