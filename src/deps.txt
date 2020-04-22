@@ -55,6 +55,9 @@ ShellCheck
 # For python testing
 python3-flake8 python3-pytest python3-pytest-cov pylint
 
+# For cmd-virt-install
+python3-libvirt
+
 # For encryption tests
 tang xinetd
 
