@@ -25,6 +25,7 @@ func init() {
 		Name:        "coreos.ignition.instantiated.enable-service",
 		Run:         enableSystemdInstantiatedService,
 		ClusterSize: 1,
+		Tags:        []string{"ignition"},
 		UserDataV3: conf.Ignition(`{
     "ignition": {"version": "3.0.0"},
     "systemd": {

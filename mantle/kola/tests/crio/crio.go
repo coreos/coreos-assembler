@@ -184,6 +184,7 @@ func init() {
 		Flags:      []register.Flag{register.RequiresInternetAccess},
 		Distros:    []string{"rhcos"},
 		UserDataV3: enableCrioIgn,
+		Tags:       []string{"crio"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         crioNetwork,
@@ -192,6 +193,7 @@ func init() {
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		Distros:     []string{"rhcos"},
 		UserDataV3:  enableCrioIgn,
+		Tags:        []string{"crio"},
 		// qemu-unpriv machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu-unpriv"},
 	})

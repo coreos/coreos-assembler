@@ -36,6 +36,7 @@ func init() {
 		Name:        "ostree.basic",
 		Distros:     []string{"rhcos"},
 		FailFast:    true,
+		Tags:        []string{"ostree"},
 	})
 
 	register.RegisterTest(&register.Test{
@@ -44,6 +45,7 @@ func init() {
 		Name:        "ostree.remote",
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to contact remote
 		FailFast:    true,
+		Tags:        []string{"ostree"},
 	})
 }
 

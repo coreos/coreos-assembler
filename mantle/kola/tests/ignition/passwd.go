@@ -29,6 +29,7 @@ func init() {
 		Name:        "coreos.ignition.groups",
 		Run:         groups,
 		ClusterSize: 1,
+		Tags:        []string{"ignition"},
 		UserData: conf.Ignition(`{
 		             "ignition": { "version": "2.0.0" },
 		             "systemd": {
@@ -78,6 +79,7 @@ func init() {
 		Name:        "coreos.ignition.v2.users",
 		Run:         users,
 		ClusterSize: 1,
+		Tags:        []string{"ignition"},
 		UserData: conf.Ignition(`{
 		             "ignition": { "version": "2.0.0" },
 		             "passwd": {

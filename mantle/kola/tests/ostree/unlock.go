@@ -30,6 +30,7 @@ func init() {
 		Name:        "ostree.unlock",
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
 		FailFast:    true,
+		Tags:        []string{"ostree"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         ostreeHotfixTest,
@@ -37,6 +38,7 @@ func init() {
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
 		Name:        "ostree.hotfix",
 		FailFast:    true,
+		Tags:        []string{"ostree"},
 	})
 
 }

@@ -31,6 +31,7 @@ func init() {
 		ExcludePlatforms: []string{"qemu", "esx"},
 		Distros:          []string{"fcos"},
 		UserData:         conf.Empty(),
+		Tags:             []string{"ignition"},
 	})
 	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.v3.noop",
@@ -40,6 +41,7 @@ func init() {
 		Distros:          []string{"fcos"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
 		UserData:         conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
+		Tags:             []string{"ignition"},
 	})
 }
 

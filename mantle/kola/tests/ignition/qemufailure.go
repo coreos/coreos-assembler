@@ -35,6 +35,7 @@ func init() {
 		Run:         runIgnitionFailure,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu-unpriv"},
+		Tags:        []string{"ignition"},
 	})
 }
 

@@ -41,6 +41,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		Tags:                 []string{"luks", "tpm"},
 		UserData: conf.Ignition(`{
 			"ignition": {
 				"version": "2.2.0"
@@ -69,6 +70,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		Tags:                 []string{"luks", "tang"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST1Test,
@@ -78,6 +80,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		Tags:                 []string{"luks", "tpm", "tang", "sss"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2Test,
@@ -87,6 +90,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		Tags:                 []string{"luks", "tpm", "tang", "sss"},
 	})
 }
 

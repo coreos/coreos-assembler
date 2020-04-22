@@ -77,6 +77,7 @@ func init() {
 			"TLSServe":   register.CreateNativeFuncWrap(TLSServe),
 			"TLSServeV3": register.CreateNativeFuncWrap(TLSServeV3),
 		},
+		Tags: []string{"ignition"},
 		// DO: https://github.com/coreos/bugs/issues/2205
 		// Packet & QEMU: https://github.com/coreos/ignition/issues/645
 		ExcludePlatforms: []string{"do", "packet", "qemu"},
