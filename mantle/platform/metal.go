@@ -460,6 +460,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 	defer t.destroy()
 
 	kargs := renderBaseKargs()
+	kargs = append(kargs, inst.kargs...)
 	if !legacy {
 		kargs = append(kargs, liveKargs...)
 		kargs = append(kargs, fmt.Sprintf("ignition.config.url=%s/pxe-live.ign", t.baseurl))
