@@ -116,6 +116,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if directIgnition {
 			return fmt.Errorf("Cannot use devshell with direct ignition")
 		}
+		if kola.QEMUOptions.DiskImage == "" {
+			return fmt.Errorf("No disk image provided")
+		}
 		ignitionFragments = append(ignitionFragments, "autologin")
 		cpuCountHost = true
 		usernet = true
