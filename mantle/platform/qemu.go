@@ -771,6 +771,12 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 				pId, disk.attachEndPoint))
 		}
 	} else {
+		if !disk.NbdDisk {
+			// In the non-multipath/nbd case we can just unlink the disk now
+			// and avoid leaking space if we get Ctrl-C'd.
+			os.Remove(disk.dstFileName)
+		}
+		disk.dstFileName = ""
 		switch channel {
 		case "virtio":
 			builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
@@ -1010,7 +1016,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// Start up the disks. Since the disk may be served via NBD,
 	// we can't use builder.AddFd (no support for fdsets), so we at the disk to the tmpFiles.
 	for _, disk := range builder.disks {
-		inst.tmpFiles = append(inst.tmpFiles, disk.dstFileName)
+		if disk.dstFileName != "" {
+			inst.tmpFiles = append(inst.tmpFiles, disk.dstFileName)
+		}
 		if disk.nbdServCmd != nil {
 			inst.tmpFiles = append(inst.tmpFiles, fmt.Sprintf("%s.socket", disk.dstFileName))
 			cmd := disk.nbdServCmd.(*exec.ExecCmd)
