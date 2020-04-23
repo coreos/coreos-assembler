@@ -36,16 +36,15 @@ export basearch
 # Get target architecture
 arch=$(uname -m)
 export arch
-devtype=pci
 
 case $arch in
-    "x86_64")  DEFAULT_TERMINAL="ttyS0"    ;;
-    "ppc64le") DEFAULT_TERMINAL="hvc0"     ;;
-    "aarch64") DEFAULT_TERMINAL="ttyAMA0"  ;;
-    "s390x")   DEFAULT_TERMINAL="ttysclp0"; devtype=ccw ;;
+    "x86_64")  DEFAULT_TERMINAL="ttyS0"   ;;
+    "ppc64le") DEFAULT_TERMINAL="hvc0"    ;;
+    "aarch64") DEFAULT_TERMINAL="ttyAMA0" ;;
+    "s390x")   DEFAULT_TERMINAL="ttysclp0";;
     *)         fatal "Architecture $(arch) not supported"
 esac
-export DEFAULT_TERMINAL devtype
+export DEFAULT_TERMINAL
 
 _privileged=
 has_privileges() {
