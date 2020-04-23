@@ -767,6 +767,13 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 				pId, disk.attachEndPoint))
 		}
 	} else {
+		if !disk.NbdDisk {
+			// In the non-multipath/nbd case we can just unlink the disk now
+			// and avoid leaking space if we get Ctrl-C'd (though it's best if
+			// higher level code catches SIGINT and cleans up the directory)
+			os.Remove(disk.dstFileName)
+		}
+		disk.dstFileName = ""
 		switch channel {
 		case "virtio":
 			builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
