@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -961,7 +960,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		// cap qemu smp at some reasonable level; sometimes our tooling runs
 		// on 32-core servers (64 hyperthreads) and there's no reason to
 		// try to match that.
-		nproc = uint(math.Max(float64(nproc), float64(16)))
+		if nproc > 16 {
+			nproc = 16
+		}
+
 		builder.Processors = int(nproc)
 	} else if builder.Processors == 0 {
 		builder.Processors = 1
