@@ -104,6 +104,7 @@ func init() {
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
 	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin}))
+	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
 }
