@@ -453,8 +453,8 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 func (builder *QemuBuilder) supportsSwtpm() bool {
 	switch system.RpmArch() {
 	// add back ppc64le as f32/f31's qemu doesn't yet support tpm device emulation
-	// can be removed when cosa is rebased on top of f33/qemu5.0
-	case "s390x", "ppc64le":
+	// can be removed when cosa is rebased on top of f33/qemu5.0 and also aarch64
+	case "s390x", "ppc64le", "aarch64":
 		return false
 	}
 	return true
