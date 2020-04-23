@@ -3,26 +3,11 @@ set -xeuo pipefail
 # See docs in cmd-offline-update.  This bit of code is run inside
 # a supermin VM; the cmd-offline-update is run outside.
 
-disk=/dev/vda
-
-# We don't have systemd/udev running
-findlabel() {
-    local label=$1
-    for p in $(lsblk -nrp -o NAME ${disk}); do
-        if blkid -o export "$p" | grep -qe "LABEL=$label"; then
-            echo "$p"
-            return
-        fi
-    done
-    echo "Failed to find LABEL=$label" 1>&2
-    return 1
-}
-
-echo "mounting"
+echo "mounting disks"
 sysroot=/mnt
 mkdir -p "${sysroot}"
-rootdev=$(findlabel root)
-bootdev=$(findlabel boot)
+rootdev=/dev/disk/by-label/root
+bootdev=/dev/disk/by-label/boot
 mount "$rootdev" "${sysroot}"
 mount "$bootdev" "${sysroot}/boot"
 
