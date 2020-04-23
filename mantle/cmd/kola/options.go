@@ -205,7 +205,7 @@ func syncOptionsImpl(useCosa bool) error {
 			}
 		}
 
-		if kola.Options.CosaWorkdir != "" {
+		if kola.Options.CosaWorkdir != "" && kola.Options.CosaWorkdir != "none" {
 			localbuild, err := sdk.GetLatestLocalBuild(kola.Options.CosaWorkdir)
 			if err != nil {
 				return err

@@ -475,7 +475,7 @@ EOF
     rm -f "${workdir}/tmp/rc"
 
     #shellcheck disable=SC2086
-    kola qemuexec -m 2048 --auto-cpus -U -- -no-reboot -nodefaults -serial stdio \
+    kola qemuexec -m 2048 --auto-cpus -U --workdir none -- -no-reboot -nodefaults -serial stdio \
         -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
         -drive "if=virtio,format=raw,snapshot=on,file=${vmbuilddir}/root,index=1" \
         "${cachedisk[@]}" \
