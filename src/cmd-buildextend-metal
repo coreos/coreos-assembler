@@ -234,13 +234,13 @@ if [ -n "${ref_is_temp}" ]; then
     ref_arg=${commit}
 fi
 
-target_device_opt="scsi-disk,drive=target,wwn=0x2a"
+extra_target_device_opts=""
 # we need 4096 block size for ECKD DASD and (obviously) metal4k
 if [[ $image_type == dasd || $image_type == metal4k ]]; then
-  target_device_opt="${target_device_opt},physical_block_size=4096,logical_block_size=4096"
+  extra_target_device_opts=",physical_block_size=4096,logical_block_size=4096"
 fi
 target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
-              "-device" "virtio-scsi-${devtype},id=scsitarget" "-device" "${target_device_opt}")
+              "-device" "virtio-blk,serial=target,drive=target${extra_target_device_opts}")
 
 runvm "${target_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
