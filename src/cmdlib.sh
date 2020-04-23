@@ -481,7 +481,8 @@ EOF
 
     cachedisk=()
     if [ -f "${workdir}/cache/cache2.qcow2" ]; then
-        cachedisk=("-drive" "if=virtio,discard=unmap,file=${workdir}/cache/cache2.qcow2,index=2")
+        cachedisk=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+                    "-device" "virtio-blk,drive=cache")
     fi
 
     # support local dev cases where src/config is a symlink
@@ -502,7 +503,8 @@ EOF
         -device virtio-serial \
         -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
         -chardev stdio,id=virtioserial0 \
-        -drive "if=virtio,format=raw,snapshot=on,file=${vmbuilddir}/root,index=1" \
+        -drive "if=none,id=root,format=raw,snapshot=on,file=${vmbuilddir}/root,index=1" \
+        -device "virtio-blk,drive=root" \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
         "${srcvirtfs[@]}" -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
