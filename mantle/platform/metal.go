@@ -501,7 +501,7 @@ func generatePointerIgnitionString(spec2 bool, target string) string {
 	return string(buf)
 }
 
-func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition ignv3types.Config) (*InstalledMachine, error) {
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition ignv3types.Config, offline bool) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -549,18 +549,36 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		return nil, errors.Wrapf(err, "setting up metal image")
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(tempdir)))
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return nil, err
+	var srcOpt string
+	var serializedTargetConfig string
+	if offline {
+		srcOpt = "--offline"
+		// we want to test that a full offline install works; that includes the
+		// final installed host booting offline
+		serializedTargetConfig = dataurl.EncodeBytes([]byte(renderedTarget))
+	} else {
+		mux := http.NewServeMux()
+		mux.Handle("/", http.FileServer(http.Dir(tempdir)))
+		listener, err := net.Listen("tcp", ":0")
+		if err != nil {
+			return nil, err
+		}
+		port := listener.Addr().(*net.TCPAddr).Port
+		// Yeah this leaks
+		go func() {
+			http.Serve(listener, mux)
+		}()
+		baseurl := fmt.Sprintf("http://%s:%d", defaultQemuHostIPv4, port)
+		srcOpt = fmt.Sprintf("--image-url %s/%s", baseurl, metalname)
+
+		// In this case; the target config is jut a tiny wrapper that wants to
+		// fetch our hosted target.ign config
+
+		// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
+		// when it arrives
+		pointerIgnitionStr := generatePointerIgnitionString(inst.IgnitionSpec2, baseurl+"/target.ign")
+		serializedTargetConfig = dataurl.EncodeBytes([]byte(pointerIgnitionStr))
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	// Yeah this leaks
-	go func() {
-		http.Serve(listener, mux)
-	}()
-	baseurl := fmt.Sprintf("http://%s:%d", defaultQemuHostIPv4, port)
 
 	insecureOpt := ""
 	if inst.Insecure {
@@ -574,16 +592,12 @@ Wants=network-online.target
 [Service]
 RemainAfterExit=yes
 Type=oneshot
-ExecStart=/usr/bin/coreos-installer install --image-url %s/%s --ignition %s %s %s
+ExecStart=/usr/bin/coreos-installer install %s --ignition %s %s %s
 StandardOutput=kmsg+console
 StandardError=kmsg+console
 [Install]
 WantedBy=multi-user.target
-`, baseurl, metalname, pointerIgnitionPath, insecureOpt, targetDevice)
-	// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
-	// when it arrives
-	pointerIgnitionStr := generatePointerIgnitionString(inst.IgnitionSpec2, baseurl+"/target.ign")
-	pointerIgnitionEnc := dataurl.EncodeBytes([]byte(pointerIgnitionStr))
+`, srcOpt, pointerIgnitionPath, insecureOpt, targetDevice)
 	mode := 0644
 	rebootUnitP := string(rebootUnit)
 	installerConfig := ignv3types.Config{
@@ -612,7 +626,7 @@ WantedBy=multi-user.target
 					},
 					FileEmbedded1: ignv3types.FileEmbedded1{
 						Contents: ignv3types.FileContents{
-							Source: &pointerIgnitionEnc,
+							Source: &serializedTargetConfig,
 						},
 						Mode: &mode,
 					},
@@ -652,6 +666,10 @@ WantedBy=multi-user.target
 
 	qemubuilder := inst.Builder
 	qemubuilder.AddInstallIso(isoEmbeddedPath)
+
+	if offline {
+		qemubuilder.Append("-nic", "none")
+	}
 
 	qinst, err := qemubuilder.Exec()
 	if err != nil {

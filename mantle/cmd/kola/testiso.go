@@ -67,17 +67,22 @@ var (
 const (
 	installTimeout = 15 * time.Minute
 
-	scenarioPXEInstall    = "pxe-install"
-	scenarioISOInstall    = "iso-install"
-	scenarioISOLiveLogin  = "iso-live-login"
-	scenarioLegacyInstall = "legacy-install"
+	scenarioPXEInstall = "pxe-install"
+	scenarioISOInstall = "iso-install"
+	// this might just be iso-install eventually since the pxe install already
+	// tests the over-the-network case; we're making it separate for now to
+	// more easily ratchet osmet into place
+	scenarioISOOfflineInstall = "iso-offline-install"
+	scenarioISOLiveLogin      = "iso-live-login"
+	scenarioLegacyInstall     = "legacy-install"
 )
 
 var allScenarios = map[string]bool{
-	scenarioPXEInstall:    true,
-	scenarioISOInstall:    true,
-	scenarioISOLiveLogin:  true,
-	scenarioLegacyInstall: true,
+	scenarioPXEInstall:        true,
+	scenarioISOInstall:        true,
+	scenarioISOOfflineInstall: true,
+	scenarioISOLiveLogin:      true,
+	scenarioLegacyInstall:     true,
 }
 
 var signalCompleteString = "coreos-installer-test-OK"
@@ -103,7 +108,7 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin}))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOOfflineInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
@@ -172,6 +177,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 	if noiso || nolive {
 		delete(targetScenarios, scenarioISOInstall)
+		delete(targetScenarios, scenarioISOOfflineInstall)
 		delete(targetScenarios, scenarioISOLiveLogin)
 	}
 
@@ -241,10 +247,21 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(instIso, completionfile); err != nil {
+		if err := testLiveIso(instIso, completionfile, false); err != nil {
 			return err
 		}
 		printSuccess(scenarioISOInstall)
+	}
+	if _, ok := targetScenarios[scenarioISOOfflineInstall]; ok {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
+		}
+		ranTest = true
+		instIso := baseInst // Pretend this is Rust and I wrote .copy()
+		if err := testLiveIso(instIso, completionfile, true); err != nil {
+			return err
+		}
+		printSuccess(scenarioISOOfflineInstall)
 	}
 	if _, ok := targetScenarios[scenarioISOLiveLogin]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -302,7 +319,7 @@ func printSuccess(mode string) {
 	if kola.QEMUOptions.Native4k {
 		metaltype = "metal4k"
 	}
-	fmt.Printf("Successfully tested scenario:%s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
+	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
 func testPXE(inst platform.Install) error {
@@ -336,7 +353,7 @@ func testPXE(inst platform.Install) error {
 	return awaitCompletion(mach.QemuInst, completionChannel, []string{signalCompleteString})
 }
 
-func testLiveIso(inst platform.Install, completionfile string) error {
+func testLiveIso(inst platform.Install, completionfile string, offline bool) error {
 	inst.Builder = newQemuBuilder(false)
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
@@ -389,7 +406,7 @@ func testLiveIso(inst platform.Install, completionfile string) error {
 		},
 	}
 
-	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig)
+	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, offline)
 	if err != nil {
 		return errors.Wrapf(err, "running iso install")
 	}
