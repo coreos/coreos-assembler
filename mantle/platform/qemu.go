@@ -70,9 +70,8 @@ type Disk struct {
 type QemuInstance struct {
 	qemu       exec.Cmd
 	tmpConfig  string
-	swtpmTmpd  string
+	tempdir    string
 	swtpm      exec.Cmd
-	tmpFiles   []string
 	nbdServers []exec.Cmd
 
 	journalPipe *os.File
@@ -249,9 +248,6 @@ func (inst *QemuInstance) WaitAll() error {
 }
 
 func (inst *QemuInstance) Destroy() {
-	for _, fN := range inst.tmpFiles {
-		os.RemoveAll(fN)
-	}
 	if inst.journalPipe != nil {
 		inst.journalPipe.Close()
 		inst.journalPipe = nil
@@ -263,15 +259,9 @@ func (inst *QemuInstance) Destroy() {
 		}
 	}
 	inst.qemu = nil
-	if inst.swtpmTmpd != "" {
-		if inst.swtpm != nil {
-			inst.swtpm.Kill() // Ignore errors
-		}
+	if inst.swtpm != nil {
+		inst.swtpm.Kill() // Ignore errors
 		inst.swtpm = nil
-		// And ensure it's cleaned up
-		if err := os.RemoveAll(inst.swtpmTmpd); err != nil {
-			plog.Errorf("Error removing swtpm dir: %v", err)
-		}
 	}
 	for _, nbdServ := range inst.nbdServers {
 		if nbdServ != nil {
@@ -279,6 +269,12 @@ func (inst *QemuInstance) Destroy() {
 		}
 	}
 	inst.nbdServers = nil
+
+	if inst.tempdir != "" {
+		if err := os.RemoveAll(inst.tempdir); err != nil {
+			plog.Errorf("Error removing tempdir: %v", err)
+		}
+	}
 }
 
 // QemuBuilder is a configurator that can then create a qemu instance
@@ -313,6 +309,9 @@ type QemuBuilder struct {
 
 	MultiPathDisk bool
 
+	// tempdir holds our temporary files
+	tempdir string
+
 	// ignition is a config object that can be used instead of
 	// ConfigFile.
 	ignition *v3types.Config
@@ -320,8 +319,6 @@ type QemuBuilder struct {
 	ignitionSpec2    bool
 	ignitionSet      bool
 	ignitionRendered bool
-	// cleanupConfig is true if we own the Ignition config
-	cleanupConfig bool
 
 	finalized bool
 	diskId    uint
@@ -342,6 +339,18 @@ func NewBuilder() *QemuBuilder {
 		Argv:          []string{},
 	}
 	return &ret
+}
+
+func (builder *QemuBuilder) ensureTempdir() error {
+	if builder.tempdir != "" {
+		return nil
+	}
+	tempdir, err := ioutil.TempDir("", "mantle-qemu")
+	if err != nil {
+		return err
+	}
+	builder.tempdir = tempdir
+	return nil
 }
 
 // SetConfig injects Ignition; this can be used in place of ConfigFile.
@@ -369,16 +378,14 @@ func (builder *QemuBuilder) renderIgnition() error {
 	if err != nil {
 		return err
 	}
-	tmpf, err := ioutil.TempFile("", "mantle-qemu-ign")
+	if err := builder.ensureTempdir(); err != nil {
+		return err
+	}
+	builder.ConfigFile = filepath.Join(builder.tempdir, "config.ign")
+	err = ioutil.WriteFile(builder.ConfigFile, buf, 0644)
 	if err != nil {
 		return err
 	}
-	if _, err := tmpf.Write(buf); err != nil {
-		return err
-	}
-	// Transfer ownership of the config file
-	builder.ConfigFile = tmpf.Name()
-	builder.cleanupConfig = true
 	builder.ignition = nil
 	builder.ignitionRendered = true
 	return nil
@@ -630,25 +637,19 @@ func resolveBackingFile(backingFile string) (string, error) {
 	return backingFile, nil
 }
 
-func mkpath(basedir string) (string, error) {
-	f, err := ioutil.TempFile(basedir, "mantle-qemu")
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	return f.Name(), nil
-}
-
 // prepare creates the target disk and sets all the runtime attributes
 // for use by the QemuBuilder.
 func (disk *Disk) prepare(builder *QemuBuilder) error {
-	dstFileName, err := mkpath("")
+	if err := builder.ensureTempdir(); err != nil {
+		return err
+	}
+	tmpf, err := ioutil.TempFile(builder.tempdir, "disk")
 	if err != nil {
 		return err
 	}
-	disk.dstFileName = dstFileName
+	disk.dstFileName = tmpf.Name()
 
-	imgOpts := []string{"create", "-f", "qcow2", dstFileName}
+	imgOpts := []string{"create", "-f", "qcow2", disk.dstFileName}
 	if disk.BackingFile != "" {
 		backingFile, err := resolveBackingFile(disk.BackingFile)
 		if err != nil {
@@ -667,16 +668,12 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 		return err
 	}
 
-	disk.fd, err = os.OpenFile(disk.dstFileName, os.O_RDWR, 0)
-	if err != nil {
-		return err
-	}
-	fdSet := builder.AddFd(disk.fd)
+	fdSet := builder.AddFd(tmpf)
 	disk.attachEndPoint = fdSet
 
 	// MultiPathDisks must be NBD remote mounted
 	if disk.MultiPathDisk || disk.NbdDisk {
-		socketName := fmt.Sprintf("%s.socket", dstFileName)
+		socketName := fmt.Sprintf("%s.socket", disk.dstFileName)
 		shareCount := "1"
 		if disk.MultiPathDisk {
 			shareCount = "2"
@@ -687,7 +684,7 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 			"--discard", "unmap",
 			"--socket", socketName,
 			"--share", shareCount,
-			dstFileName)
+			disk.dstFileName)
 		disk.attachEndPoint = fmt.Sprintf("nbd:unix:%s", socketName)
 	}
 
@@ -948,6 +945,12 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	}
 
 	inst := QemuInstance{}
+	cleanupInst := false
+	defer func() {
+		if cleanupInst {
+			inst.Destroy()
+		}
+	}()
 
 	argv := baseQemuArgs()
 	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
@@ -1012,9 +1015,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// Start up the disks. Since the disk may be served via NBD,
 	// we can't use builder.AddFd (no support for fdsets), so we at the disk to the tmpFiles.
 	for _, disk := range builder.disks {
-		inst.tmpFiles = append(inst.tmpFiles, disk.dstFileName)
 		if disk.nbdServCmd != nil {
-			inst.tmpFiles = append(inst.tmpFiles, fmt.Sprintf("%s.socket", disk.dstFileName))
 			cmd := disk.nbdServCmd.(*exec.ExecCmd)
 			if err := cmd.Start(); err != nil {
 				return nil, errors.Wrapf(err, "spawing nbd server")
@@ -1025,16 +1026,15 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	// Handle Software TPM
 	if builder.Swtpm && builder.supportsSwtpm() {
-		inst.swtpmTmpd, err = ioutil.TempDir("", "kola-swtpm")
-		if err != nil {
+		swtpmSock := filepath.Join(builder.tempdir, "swtpm-sock")
+		swtpmdir := filepath.Join(builder.tempdir, "swtpm")
+		if err := os.Mkdir(swtpmdir, 0755); err != nil {
 			return nil, err
 		}
 
-		swtpmSock := filepath.Join(inst.swtpmTmpd, "swtpm-sock")
-
 		inst.swtpm = exec.Command("swtpm", "socket", "--tpm2",
 			"--ctrl", fmt.Sprintf("type=unixio,path=%s", swtpmSock),
-			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", inst.swtpmTmpd))
+			"--terminate", "--tpmstate", fmt.Sprintf("dir=%s", swtpmdir))
 		cmd := inst.swtpm.(*exec.ExecCmd)
 		// For now silence the swtpm stderr as it prints errors when
 		// disconnected, but that's normal.
@@ -1092,13 +1092,14 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		cmd.Stderr = os.Stderr
 	}
 
-	if builder.cleanupConfig {
-		inst.tmpFiles = append(inst.tmpFiles, builder.ConfigFile)
-	}
-
 	if err = inst.qemu.Start(); err != nil {
 		return nil, err
 	}
+
+	// Transfer ownership of the tempdir
+	inst.tempdir = builder.tempdir
+	builder.tempdir = ""
+	cleanupInst = false
 
 	return &inst, nil
 }
@@ -1111,4 +1112,8 @@ func (builder *QemuBuilder) Close() {
 		f.Close()
 	}
 	builder.fds = nil
+
+	if builder.tempdir != "" {
+		os.RemoveAll(builder.tempdir)
+	}
 }
