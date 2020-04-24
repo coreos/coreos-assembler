@@ -183,9 +183,11 @@ def get_local_builds(builds_dir):
                         multiarch_build = Build(id=entry.name, timestamp=ts,
                                                 basearches=[basearch_entry.name])
                     else:
-                        multiarch_build.basearches += [basearch_entry.name]
-                        multiarch_build.timestamp = max(
-                            multiarch_build.timestamp, ts)
+                        arches = [basearch_entry.name]
+                        arches.extend(multiarch_build.basearches)
+                        multiarch_build = Build(id=entry.name,
+                            timestamp=max(multiarch_build.timestamp, ts),
+                            basearches=arches)
                 if multiarch_build:
                     scanned_builds.append(multiarch_build)
     return scanned_builds
