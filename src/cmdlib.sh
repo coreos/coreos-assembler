@@ -409,7 +409,8 @@ json_key() {
 # process.  It mounts the workdir via 9p.  If you need to add new packages into
 # the vm, update `vmdeps.txt`.
 # If you need to debug it, one trick is to change the `-serial file` below
-# into `-serial stdio` and then e.g. add `bash` into the init process.
+# into `-serial stdio`, drop the <&- and virtio-serial stuff and then e.g. add
+# `bash` into the init process.
 runvm() {
     local qemu_args=()
     while true; do
@@ -443,9 +444,6 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
 
-    local cmdoutput
-    cmdoutput=${workdir}/tmp/runvm-cmd-output.txt
-
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
     cat > "${vmpreparedir}/init" <<EOF
@@ -460,7 +458,9 @@ export USER=$(id -u)
 export RUNVM_NONET=${RUNVM_NONET:-}
 $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
-bash ${TMPDIR}/cmd.sh 1>${cmdoutput} 2>&1 || rc=\$?
+# tee to the virtio port so its output is also part of the supermin output in
+# case e.g. a key msg happens in dmesg when the command does a specific operation
+bash ${TMPDIR}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
 echo \$rc > ${workdir}/tmp/rc
 if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
@@ -487,27 +487,27 @@ EOF
 
     local runvm_console
     runvm_console="${workdir}/tmp/runvm-console.txt"
-    rm -f "${workdir}/tmp/rc" "${runvm_console}" "${cmdoutput}"
+    rm -f "${workdir}/tmp/rc" "${runvm_console}"
 
     touch "${runvm_console}"
-    setpriv --pdeathsig SIGTERM -- tail -qF "${cmdoutput}" --pid $$ &
     #shellcheck disable=SC2086
-    kola qemuexec -m 2048 --auto-cpus -U --workdir none -- -no-reboot -nodefaults -serial file:"${runvm_console}" \
+    if ! kola qemuexec -m 2048 --auto-cpus -U --workdir none -- -no-reboot -nodefaults -serial file:"${runvm_console}" \
         -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
+        -device virtio-serial \
+        -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
+        -chardev stdio,id=virtioserial0 \
         -drive "if=virtio,format=raw,snapshot=on,file=${vmbuilddir}/root,index=1" \
         "${cachedisk[@]}" \
         -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
         "${srcvirtfs[@]}" -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
-	"${qemu_args[@]}"
-    kill %1
+        "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
+            cat "${runvm_console}"
+            fatal "Failed to run 'kola qemuexec'"
+    fi
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
         cat "${runvm_console}"
         fatal "Couldn't find rc file; failure inside supermin init?"
-    fi
-    if [ ! -f "${cmdoutput}" ]; then
-        cat "${runvm_console}"
-        fatal "Couldn't find command output file, failure inside supermin init?"
     fi
     rc="$(cat "${workdir}"/tmp/rc)"
     rm -f "${workdir}/tmp/rc"
