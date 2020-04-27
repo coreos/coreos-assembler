@@ -469,7 +469,13 @@ fi
 EOF
     chmod a+x "${vmpreparedir}"/init
     (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
-    supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}"
+    # put the supermin output in a separate file since it's noisy
+    if ! supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}" \
+            &> "${workdir}/tmp/supermin.out"; then
+        cat "${workdir}/tmp/supermin.out"
+        fatal "Failed to run: supermin --build"
+    fi
+    rm "${workdir}/tmp/supermin.out"
 
     echo "$@" > "${TMPDIR}"/cmd.sh
 
