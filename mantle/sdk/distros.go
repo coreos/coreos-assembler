@@ -27,7 +27,7 @@ import (
 // be a disk image or the "name" of a coreos-assembler stream.
 func TargetIgnitionVersionFromName(artifact string) string {
 	basename := filepath.Base(artifact)
-	ignition_spec2_openshift_releases := []int{1, 2, 3, 4, 5}
+	ignition_spec2_openshift_releases := []int{1, 2, 3, 4, 5, 6}
 	// The output from the RHCOS pipeline names images like
 	// rhcos-42.81.$datestamp.  The images are renamed when
 	// placed at e.g. https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.2/4.2.0/
