@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
-       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file] [--strict]
+       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file] [--with-cosa-overrides] [--strict]
 
   Fetch and import the latest packages.
 EOF
@@ -16,10 +16,11 @@ EOF
 
 UPDATE_LOCKFILE=
 OUTPUT_LOCKFILE=
+WITH_COSA_OVERRIDES=
 DRY_RUN=
 STRICT=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile,dry-run,write-lockfile-to:,strict -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -38,6 +39,9 @@ while true; do
             shift;
             UPDATE_LOCKFILE=1
             OUTPUT_LOCKFILE=$1
+            ;;
+        --with-cosa-overrides)
+            WITH_COSA_OVERRIDES=1
             ;;
         --dry-run)
             DRY_RUN=1
@@ -87,7 +91,14 @@ if [ -n "${DRY_RUN}" ]; then
     args="${args} --dry-run"
 fi
 if [ -n "${STRICT}" ]; then
-	args="${args} --ex-lockfile-strict"
+    args="${args} --ex-lockfile-strict"
+fi
+
+# By default, we ignore cosa overrides since they're temporary. With
+# WITH_COSA_OVERRIDES, we don't ignore them (and thus don't need to fetch any
+# overridden packages).
+if [ -n "${WITH_COSA_OVERRIDES}" ]; then
+    prepare_compose_overlays
 fi
 
 # shellcheck disable=SC2086
