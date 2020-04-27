@@ -58,9 +58,6 @@ python3-flake8 python3-pytest python3-pytest-cov pylint
 # For cmd-virt-install
 python3-libvirt
 
-# For encryption tests
-tang xinetd
-
 # Support for Koji uploads.
 krb5-libs krb5-workstation koji-utils python3-koji python3-koji-cli-plugins
 

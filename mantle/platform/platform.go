@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	sshRetries = 30
+	// Encryption takes a long time--retry more before failing
+	sshRetries = 60
 	sshTimeout = 10 * time.Second
 )
 

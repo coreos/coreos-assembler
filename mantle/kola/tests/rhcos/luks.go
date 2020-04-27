@@ -1,35 +1,17 @@
 package rhcos
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"os/user"
 	"regexp"
-	"strconv"
-	"sync"
-	"syscall"
 	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/util"
-)
-
-var runOnce sync.Once
-
-const (
-	dbDir          = "/tmp/tang/db"
-	cacheDir       = "/tmp/tang/cache"
-	xinetdConfFile = "/tmp/tang/xinetd.conf"
-	xinetdPidFile  = "/tmp/tang/pid"
-	tangLogFile    = "/tmp/tang/tang.log"
-	xinetdLogFile  = "/tmp/tang/xinetd.log"
 )
 
 func init() {
@@ -68,7 +50,6 @@ func init() {
 		Name:                 `rhcos.luks.tang`,
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
-		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
 		Tags:                 []string{"luks", "tang"},
 	})
@@ -94,143 +75,88 @@ func init() {
 	})
 }
 
-func setupTangKeys(c cluster.TestCluster) {
-	runOnce.Do(func() {
-		user, err := user.Current()
-		if err != nil {
-			c.Fatalf("Unable to get current user: %v", err)
-		}
+func setupTangMachine(c cluster.TestCluster) (string, string) {
+	var m platform.Machine
+	var err error
+	var thumbprint []byte
+	var tangAddress string
 
-		// xinetd requires the service to be in /etc/services which Tang is not
-		// included.  Use the webcache service (port 8080) and run as the
-		// current user so we can run unprivileged
-		xinetdConf := fmt.Sprintf(`defaults
-{
-	log_type	= SYSLOG daemon info 
-	log_on_failure	= HOST
-	log_on_success	= PID HOST DURATION EXIT
-
-	cps		= 50 10
-	instances	= 50
-	per_source	= 10
-
-	v6only		= no
-	bind		= 0.0.0.0
-	groups		= yes
-	umask		= 002
-}
-
-service webcache
-{
-	server_args = %s /dev/null
-	server = /usr/libexec/tangdw
-	socket_type = stream
-	protocol = tcp
-	only_from = 10.0.2.15 127.0.0.1
-	user = %s
-	wait = no
-}`, cacheDir, user.Username)
-		if err := os.MkdirAll(cacheDir, 0755); err != nil {
-			c.Fatalf("Unable to create %s: %v", err)
-		}
-
-		f, err := os.Open(cacheDir)
-		if err != nil {
-			c.Fatalf("Unable to open %s: %v", cacheDir, err)
-		}
-		// This is a simple check that the directory is empty
-		_, err = f.Readdir(1)
-		if err == io.EOF {
-			if err := os.MkdirAll(dbDir, 0755); err != nil {
-				c.Fatalf("Unable to create %s: %v", err)
-			}
-			err := ioutil.WriteFile(xinetdConfFile, []byte(xinetdConf), 0644)
-			if err != nil {
-				c.Fatalf("Unable to write xinetd configuration file: %v", err)
-			}
-			keygen := exec.Command("/usr/libexec/tangd-keygen", dbDir)
-			if err := keygen.Run(); err != nil {
-				c.Fatalf("Unable to generate Tang keys: %v", err)
-			}
-			update := exec.Command("/usr/libexec/tangd-update", dbDir, cacheDir)
-			if err := update.Run(); err != nil {
-				c.Fatalf("Unable to update Tang DB: %v", err)
-			}
-		}
-	})
-}
-
-func getEncodedTangPin(c cluster.TestCluster) string {
-	return b64Encode(getTangPin(c))
-}
-
-func startTang(c cluster.TestCluster) int {
-	if _, err := os.Stat(xinetdPidFile); err == nil {
-		if os.Remove(xinetdPidFile); err != nil {
-			c.Fatalf("Unable to delete %s: %v", xinetdPidFile, err)
-		}
+	options := platform.MachineOptions{
+		HostForwardPorts: []platform.HostForwardPort{
+			{Service: "ssh", HostPort: 0, GuestPort: 22},
+			{Service: "tang", HostPort: 0, GuestPort: 80},
+		},
 	}
 
-	cmd := exec.Command("/usr/sbin/xinetd", "-f", xinetdConfFile, "-pidfile", xinetdPidFile, "-filelog", xinetdLogFile)
-	// Give the xinetd child process a separate process group ID so it can be
-	// killed independently from the test
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := cmd.Run(); err != nil {
-		c.Fatalf("Unable to start Tang: %v ", err)
+	ignition := conf.Ignition(`{
+		"ignition": {
+			"version": "2.2.0"
+		}
+	}`)
+
+	switch pc := c.Cluster.(type) {
+	// These cases have to be separated because when put together to the same case statement
+	// the golang compiler no longer checks that the individual types in the case have the
+	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
+	case *unprivqemu.Cluster:
+		m, err = pc.NewMachineWithOptions(ignition, options, true)
+		for _, hfp := range options.HostForwardPorts {
+			if hfp.Service == "tang" {
+				tangAddress = fmt.Sprintf("10.0.2.2:%d", hfp.HostPort)
+			}
+		}
+	default:
+		m, err = pc.NewMachine(ignition)
+		tangAddress = fmt.Sprintf("%s:80", m.PrivateIP())
+	}
+	if err != nil {
+		c.Fatal(err)
 	}
 
-	// xinetd detatches itself and os.Process.Pid reports incorrect pid
-	// Use pid file instead
-	if err := util.Retry(10, 2*time.Second, func() error {
-		_, err := os.Stat(xinetdPidFile)
+	// TODO: move container image to centralized namespace
+	// container source: https://github.com/mike-nguyen/tang-docker-container/
+	containerID, _, err := m.SSH("sudo podman run -d -p 80:80 docker.io/mnguyenrh/tangd")
+	if err != nil {
+		c.Fatalf("Unable to start Tang container: %v", err)
+	}
+
+	// Wait a little bit for the container to start
+	if err := util.Retry(10, time.Second, func() error {
+		cmd := fmt.Sprintf("sudo podman exec %s /usr/bin/tang-show-keys", string(containerID))
+		thumbprint, _, err = m.SSH(cmd)
 		if err != nil {
 			return err
 		}
+		if string(thumbprint) == "" {
+			return fmt.Errorf("tang-show-keys returns nothing")
+		}
 		return nil
 	}); err != nil {
-		c.Fatalf("Cannot find pid file %v", err)
-	}
-	output, err := ioutil.ReadFile(xinetdPidFile)
-	if err != nil {
-		c.Fatalf("Unable to get pid %v", err)
+		c.Fatalf("Unable to retrieve Tang keys: %v", err)
 	}
 
-	p := bytes.Trim(output, "\n")
-	pid, err := strconv.Atoi(string(p))
-	if err != nil {
-		c.Fatalf("Unable to convert pid to integer: %v", err)
-	}
-
-	return pid
+	return tangAddress, string(thumbprint)
 }
 
-func stopTang(c cluster.TestCluster, pid int) {
-	// kill with a negative pid is killing the process group
-	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
-		c.Fatalf("Unable to stop xinetd: %v", err)
-	}
+func getEncodedTangPin(c cluster.TestCluster, address string, thumbprint string) string {
+	return b64Encode(getTangPin(c, address, thumbprint))
 }
 
-func getTangPin(c cluster.TestCluster) string {
-	tangThumbprint, err := exec.Command("tang-show-keys", "8080").Output()
-	if err != nil {
-		c.Fatalf("Unable to retrieve Tang thumbprint: %v", err)
-	}
-
+func getTangPin(c cluster.TestCluster, address string, thumbprint string) string {
 	return fmt.Sprintf(`{
-	"url": "http://10.0.2.2:8080",
+	"url": "http://%s",
 	"thp": "%s"
-}`, tangThumbprint)
+}`, address, string(thumbprint))
 }
 
 // Generates a SSS clevis pin with TPM2 and a valid/invalid Tang config
-func getEncodedSSSPin(c cluster.TestCluster, num int, tang bool) string {
-	tangPin := getTangPin(c)
+func getEncodedSSSPin(c cluster.TestCluster, num int, tang bool, address string, thumbprint string) string {
+	tangPin := getTangPin(c, address, thumbprint)
 	if !tang {
 		tangPin = fmt.Sprintf(`{
-	"url": "http://10.0.2.2:8080",
+	"url": "http://%s",
 	"thp": "INVALIDTHUMBPRINT"
-}`)
+}`, address)
 	}
 
 	return b64Encode(fmt.Sprintf(`{
@@ -266,8 +192,7 @@ func mustNotMatch(c cluster.TestCluster, r string, output []byte) {
 	}
 }
 
-func luksSanityTest(c cluster.TestCluster, pin string) {
-	m := c.Machines()[0]
+func luksSanityTest(c cluster.TestCluster, m platform.Machine, pin string) {
 	luksDump := c.MustSSH(m, "sudo cryptsetup luksDump /dev/disk/by-partlabel/luks_root")
 	// Yes, some hacky regexps.  There is luksDump --debug-json but we'd have to massage the JSON
 	// out of other debug output and it's not clear to me it's going to be more stable.
@@ -289,16 +214,14 @@ func luksSanityTest(c cluster.TestCluster, pin string) {
 
 // Verify that the rootfs is encrypted with the TPM
 func luksTPMTest(c cluster.TestCluster) {
-	luksSanityTest(c, "tpm2")
+	luksSanityTest(c, c.Machines()[0], "tpm2")
 }
 
 // Verify that the rootfs is encrypted with Tang
 func luksTangTest(c cluster.TestCluster) {
-	setupTangKeys(c)
-	pid := startTang(c)
-	defer stopTang(c, pid)
-	encodedTangPin := getEncodedTangPin(c)
-	c.NewMachine(conf.Ignition(fmt.Sprintf(`{
+	address, thumbprint := setupTangMachine(c)
+	encodedTangPin := getEncodedTangPin(c, address, thumbprint)
+	m, err := c.NewMachine(conf.Ignition(fmt.Sprintf(`{
 		"ignition": {
 			"version": "2.2.0"
 		},
@@ -315,17 +238,17 @@ func luksTangTest(c cluster.TestCluster) {
 			]
 		}
 	}`, encodedTangPin)))
-	luksSanityTest(c, "tang")
-
+	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
+	}
+	luksSanityTest(c, m, "tang")
 }
 
 // Verify that the rootfs is encrypted with SSS with t=1
 func luksSSST1Test(c cluster.TestCluster) {
-	setupTangKeys(c)
-	pid := startTang(c)
-	defer stopTang(c, pid)
-	encodedSSST1Pin := getEncodedSSSPin(c, 1, false)
-	c.NewMachine(conf.Ignition(fmt.Sprintf(`{
+	address, thumbprint := setupTangMachine(c)
+	encodedSSST1Pin := getEncodedSSSPin(c, 1, false, address, thumbprint)
+	m, err := c.NewMachine(conf.Ignition(fmt.Sprintf(`{
 		"ignition": {
 			"version": "2.2.0"
 		},
@@ -342,16 +265,17 @@ func luksSSST1Test(c cluster.TestCluster) {
 			]
 		}
 	}`, encodedSSST1Pin)))
-	luksSanityTest(c, "sss")
+	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
+	}
+	luksSanityTest(c, m, "sss")
 }
 
 // Verify that the rootfs is encrypted with SSS with t=2
 func luksSSST2Test(c cluster.TestCluster) {
-	setupTangKeys(c)
-	pid := startTang(c)
-	defer stopTang(c, pid)
-	encodedSSST2Pin := getEncodedSSSPin(c, 2, true)
-	c.NewMachine(conf.Ignition(fmt.Sprintf(`{
+	address, thumbprint := setupTangMachine(c)
+	encodedSSST2Pin := getEncodedSSSPin(c, 2, true, address, thumbprint)
+	m, err := c.NewMachine(conf.Ignition(fmt.Sprintf(`{
 		"ignition": {
 			"version": "2.2.0"
 		},
@@ -368,5 +292,8 @@ func luksSSST2Test(c cluster.TestCluster) {
 			]
 		}
 	}`, encodedSSST2Pin)))
-	luksSanityTest(c, "sss")
+	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
+	}
+	luksSanityTest(c, m, "sss")
 }

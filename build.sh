@@ -16,7 +16,6 @@ if [ $# -gt 1 ]; then
   echo "    configure_yum_repos"
   echo "    install_rpms"
   echo "    make_and_makeinstall"
-  echo "    install_tang"
   exit 1
 fi
 
@@ -75,10 +74,6 @@ install_rpms() {
     yum clean all
 }
 
-install_tang() {
-    install -m 0755 -T "$srcdir"/src/tang/tangdw /usr/libexec/tangdw
-}
-
 make_and_makeinstall() {
     make && make install
 }
@@ -123,5 +118,4 @@ else
   write_archive_info
   make_and_makeinstall
   configure_user
-  install_tang
 fi
