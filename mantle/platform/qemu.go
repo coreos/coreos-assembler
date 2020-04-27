@@ -988,6 +988,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	// Handle Software TPM
 	if builder.Swtpm && builder.supportsSwtpm() {
+		err = builder.ensureTempdir()
+		if err != nil {
+			return nil, err
+		}
 		swtpmSock := filepath.Join(builder.tempdir, "swtpm-sock")
 		swtpmdir := filepath.Join(builder.tempdir, "swtpm")
 		if err := os.Mkdir(swtpmdir, 0755); err != nil {
