@@ -1,2 +1,0 @@
-#!/bin/bash
-/usr/libexec/tangd $1 2>>$2
