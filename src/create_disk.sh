@@ -242,15 +242,10 @@ if [ ${EFIPN:+x} ]; then
        mount "${disk}${EFIPN}" $rootfs/boot/efi
 fi
 
-
-# Initialize the ostree setup; TODO replace this with
-# https://github.com/ostreedev/ostree/pull/1894
-# `ostree admin init-fs --modern`
+# Now that we have the basic disk layout, initialize the basic
+# OSTree layout, load in the ostree commit and deploy it.
 ostree_commit=$(ostree --repo="${ostree}" rev-parse "${ref}")
-mkdir -p $rootfs/ostree
-chcon $(matchpathcon -n /ostree) $rootfs/ostree
-mkdir -p $rootfs/ostree/{repo,deploy}
-ostree --repo=$rootfs/ostree/repo init --mode=bare
+ostree admin init-fs --modern $rootfs
 if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
