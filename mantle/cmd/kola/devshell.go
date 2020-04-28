@@ -187,7 +187,9 @@ WantedBy=multi-user.target`, readinessSignalChan)
 		for {
 			buf, _, err := bufr.ReadLine()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "devshell reading serial console: %v\n", err)
+				if err != io.EOF {
+					fmt.Fprintf(os.Stderr, "devshell reading serial console: %v\n", err)
+				}
 				break
 			}
 			serialChan <- string(buf)
