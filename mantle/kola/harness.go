@@ -516,6 +516,7 @@ RequiredBy=multi-user.target
 		ClusterSize:   1, // Hardcoded for now
 		ExternalTest:  executable,
 		DependencyDir: dependencydir,
+		Tags:          []string{"external"},
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
