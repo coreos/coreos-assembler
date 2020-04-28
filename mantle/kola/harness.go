@@ -790,10 +790,24 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		}
 		defer in.Close()
 		for _, mach := range tcluster.Machines() {
-			remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", filepath.Base(t.ExternalTest))
+			unit := fmt.Sprintf("kola-runext-%s", filepath.Base(t.ExternalTest))
+			remotepath := fmt.Sprintf("/usr/local/bin/%s", unit)
 			if err := platform.InstallFile(in, mach, remotepath); err != nil {
 				h.Fatal(errors.Wrapf(err, "uploading %s", t.ExternalTest))
 			}
+			defer func(mach platform.Machine) {
+				unit := unit
+				tcluster := tcluster
+				path := filepath.Join(mach.RuntimeConf().OutputDir, mach.ID(), fmt.Sprintf("%s.txt", unit))
+				f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+				if err != nil {
+					h.Fatal(errors.Wrapf(err, "opening %s", path))
+					return
+				}
+				defer f.Close()
+				out := tcluster.MustSSHf(mach, "journalctl -t %s", unit)
+				f.WriteString(string(out))
+			}(mach)
 		}
 	}
 
