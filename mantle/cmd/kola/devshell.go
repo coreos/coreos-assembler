@@ -69,18 +69,25 @@ func readTrimmedLine(r *bufio.Reader) (string, error) {
 }
 
 func stripControlCharacters(s string) string {
+	s = strings.ToValidUTF8(s, "")
 	return strings.Map(func(r rune) rune {
 		if !strconv.IsGraphic(r) {
 			return ' '
 		}
-		// Ensure we always strip ESC which is used for ANSI codes,
-		// plus any embedded newlines which would mess up our progress bar
-		switch r {
-		case '\x1B', '\n', '\r':
-			return ' '
-		}
 		return r
 	}, s)
+}
+
+func displaySerialMsg(serialMsg string) {
+	s := strings.TrimSpace(serialMsg)
+	if s == "" {
+		return
+	}
+	max := 100
+	if len(s) > max {
+		s = s[:max]
+	}
+	fmt.Printf("\033[2K\r%s", stripControlCharacters(s))
 }
 
 func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
@@ -185,7 +192,7 @@ WantedBy=multi-user.target`, readinessSignalChan)
 	go func() {
 		bufr := bufio.NewReader(serialPipe)
 		for {
-			buf, _, err := bufr.ReadLine()
+			buf, err := bufr.ReadString('\n')
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "devshell reading serial console: %v\n", err)
 				break
@@ -243,8 +250,8 @@ loop:
 		case err := <-qemuWaitChan:
 			return errors.Wrapf(err, "qemu exited before setup")
 		case serialMsg := <-serialChan:
-			fmt.Printf("\033[2K\r%s", stripControlCharacters(serialMsg))
-			if _, err := serialLog.Write([]byte(serialMsg + "\n")); err != nil {
+			displaySerialMsg(serialMsg)
+			if _, err := serialLog.Write([]byte(serialMsg)); err != nil {
 				return err
 			}
 		case <-sigintChan:
