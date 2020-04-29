@@ -649,7 +649,9 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 }
 
 func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
-	disk.prepare(builder)
+	if err := disk.prepare(builder); err != nil {
+		return err
+	}
 	if primary {
 		// If the board doesn't support -fw_cfg or we were explicitly
 		// requested, inject via libguestfs on the primary disk.
