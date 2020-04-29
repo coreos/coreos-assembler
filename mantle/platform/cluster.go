@@ -34,6 +34,7 @@ import (
 
 type BaseCluster struct {
 	machlock   sync.Mutex
+	machserial uint
 	machmap    map[string]Machine
 	consolemap map[string]string
 
@@ -164,6 +165,14 @@ func (bc *BaseCluster) DelMach(m Machine) {
 	defer bc.machlock.Unlock()
 	delete(bc.machmap, m.ID())
 	bc.consolemap[m.ID()] = m.ConsoleOutput()
+}
+
+func (bc *BaseCluster) AllocateMachineSerial() uint {
+	bc.machlock.Lock()
+	defer bc.machlock.Unlock()
+	r := bc.machserial
+	bc.machserial += 1
+	return r
 }
 
 func (bc *BaseCluster) Keys() ([]*agent.Key, error) {

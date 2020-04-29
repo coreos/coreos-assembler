@@ -93,6 +93,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	builder.Uuid = qm.id
 	builder.Firmware = qc.flight.opts.Firmware
 	builder.Swtpm = qc.flight.opts.Swtpm
+	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
 	builder.ConsoleToFile(qm.consolePath)
 
 	channel := "virtio"
