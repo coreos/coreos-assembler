@@ -113,32 +113,15 @@ func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
 	}
 	sshPubKey := v3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 
-	readinessSignalChan := "coreos.devshellready"
-	signalReadyUnit := fmt.Sprintf(`[Unit]
-Requires=dev-virtio\\x2dports-%s.device
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-After=systemd-user-sessions.service
-After=sshd.service
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/echo ready
-StandardOutput=file:/dev/virtio-ports/%[1]s
-[Install]
-RequiredBy=multi-user.target`, readinessSignalChan)
-	signalPoweroffUnit := fmt.Sprintf(`[Unit]
-Requires=dev-virtio\\x2dports-%s.device
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-Conflicts=reboot.target
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStop=/bin/echo poweroff
-StandardOutput=file:/dev/virtio-ports/%[1]s
-[Install]
-WantedBy=multi-user.target`, readinessSignalChan)
+	// Await sshd startup;
+	// src/systemd/sd-messages.h
+	// 89:#define SD_MESSAGE_UNIT_STARTED           SD_ID128_MAKE(39,f5,34,79,d3,a0,45,ac,8e,11,78,62,48,23,1f,bf)
+	journalConf, journalPipe, err := builder.VirtioJournal("-u sshd MESSAGE_ID=39f53479d3a045ac8e11786248231fbf")
+	if err != nil {
+		return err
+	}
+	confm := v3.Merge(*conf, *journalConf)
+	conf = &confm
 
 	devshellConfig := v3types.Config{
 		Ignition: v3types.Ignition{
@@ -154,29 +137,11 @@ WantedBy=multi-user.target`, readinessSignalChan)
 				},
 			},
 		},
-		Systemd: v3types.Systemd{
-			Units: []v3types.Unit{
-				{
-					Name:     "coreos-devshell-signal-ready.service",
-					Contents: &signalReadyUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-				{
-					Name:     "coreos-devshell-signal-poweroff.service",
-					Contents: &signalPoweroffUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
 	}
-	confm := v3.Merge(*conf, devshellConfig)
+	confm = v3.Merge(*conf, devshellConfig)
 	conf = &confm
 
-	readyChan, err := builder.VirtioChannelRead(readinessSignalChan)
-	if err != nil {
-		return err
-	}
-	readyReader := bufio.NewReader(readyChan)
+	readyReader := bufio.NewReader(journalPipe)
 
 	builder.SetConfig(*conf, kola.Options.IgnitionVersion == "v2")
 
@@ -232,8 +197,8 @@ WantedBy=multi-user.target`, readinessSignalChan)
 		if err != nil {
 			errchan <- err
 		}
-		if readyMsg != "ready" {
-			errchan <- fmt.Errorf("Unexpected ready message: %s", readyMsg)
+		if !strings.Contains(readyMsg, "Started OpenSSH server daemon") {
+			errchan <- fmt.Errorf("Unexpected journal message: %s", readyMsg)
 		}
 		var s struct{}
 		readychan <- s
@@ -265,7 +230,7 @@ loop:
 			// Caught SIGINT, we're done
 			return fmt.Errorf("Caught SIGINT before successful login")
 		case _ = <-readychan:
-			fmt.Printf("\033[2K\rvirtio: connected\n")
+			fmt.Printf("\033[2K\rvirtio journal connected - sshd started\n")
 			break loop
 		}
 	}
