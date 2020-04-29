@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/util"
 
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/system"
@@ -876,6 +877,43 @@ func (builder *QemuBuilder) SerialPipe() (*os.File, error) {
 	builder.Append("-serial", fmt.Sprintf("chardev:%s", id))
 
 	return r, nil
+}
+
+// VirtioJournal configures the OS and VM to stream the systemd journal
+// (post-switchroot) over a virtio-serial channel.  The first return value
+// is an Ignition fragment that should be included in the target config,
+// and the file stream will be newline-separated JSON.  The optional
+// queryArguments filters the stream - see `man journalctl` for more information.
+func (builder *QemuBuilder) VirtioJournal(queryArguments string) (*v3types.Config, *os.File, error) {
+	stream, err := builder.VirtioChannelRead("mantlejournal")
+	if err != nil {
+		return nil, nil, err
+	}
+	var streamJournalUnit = fmt.Sprintf(`[Unit]
+	Requires=dev-virtio\\x2dports-mantlejournal.device
+	[Service]
+	Type=simple
+	StandardOutput=file:/dev/virtio-ports/mantlejournal
+	ExecStart=/usr/bin/journalctl -q -b -f -o json --no-tail %s
+	[Install]
+	RequiredBy=multi-user.target
+	`, queryArguments)
+
+	conf := v3types.Config{
+		Ignition: v3types.Ignition{
+			Version: "3.0.0",
+		},
+		Systemd: v3types.Systemd{
+			Units: []v3types.Unit{
+				{
+					Name:     "mantle-virtio-journal-stream.service",
+					Contents: &streamJournalUnit,
+					Enabled:  util.BoolToPtr(true),
+				},
+			},
+		},
+	}
+	return &conf, stream, nil
 }
 
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
