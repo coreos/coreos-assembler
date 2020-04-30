@@ -43,9 +43,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
-# Temporary switch while we ratchet osmet in place
-parser.add_argument("--osmet", action='store_true', default=False,
-                    help="Generate osmet file")
 args = parser.parse_args()
 
 # Identify the builds and target the latest build if none provided
@@ -57,6 +54,10 @@ print(f"Targeting build: {args.build}")
 with open('src/config/image.yaml') as fh:
     image_yaml = yaml.safe_load(fh)
 squashfs_compression = image_yaml.get('squashfs-compression', 'zstd')
+
+# We make this a knob so that RHCOS can disable it until it supports osmet. See
+# https://github.com/coreos/coreos-installer/issues/224.
+osmet = image_yaml.get('osmet', True)
 
 # Hacky mode switch, until we can drop support for the installer images
 is_live = os.path.basename(sys.argv[0]).endswith('-live')
@@ -175,16 +176,17 @@ def generate_iso():
         tmp_cpio = os.path.join(tmpdir, 'root.cpio')
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
         cpio_input_files = [os.path.basename(tmp_squashfs)]
-        if args.osmet:
+        if osmet:
             tmp_osmet = os.path.join(tmpdir, img_metal_obj['path'] + '.osmet')
-            cpio_input_files += [os.path.basename(tmp_osmet)]
-            print(f'Generating osmet file')
+            print('Generating osmet file')
             run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                          img_metal, tmp_osmet, img_metal_checksum])
+            cpio_input_files += [os.path.basename(tmp_osmet)]
 
         print(f'Compressing squashfs with {squashfs_compression}')
         run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
                      img_metal, tmp_squashfs, squashfs_compression])
+
         # create a CPIO layer which holds the root squashfs and osmet binary
         run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
                 '--quiet', '--reproducible', '--force-local',
