@@ -552,7 +552,9 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	var srcOpt string
 	var serializedTargetConfig string
 	if offline {
-		srcOpt = "--offline"
+		// note we leave srcOpt as "" here; offline installs should now be the
+		// default!
+
 		// we want to test that a full offline install works; that includes the
 		// final installed host booting offline
 		serializedTargetConfig = dataurl.EncodeBytes([]byte(renderedTarget))
