@@ -167,7 +167,7 @@ def generate_iso():
         # This stamp file denotes we're in a "live" initramfs
         initramfs_cpio_ext = os.path.join(tmpdir, 'live-stamp-initramfs')
         generate_initramfs_stampfile(tmpdir, initramfs_cpio_ext, 'etc/coreos-live-initramfs')
-    elif image_type == 'installer':
+    else:
         initramfs_cpio_ext = os.path.join(tmpdir, 'legacy-stamp-initramfs')
         generate_initramfs_stampfile(tmpdir, initramfs_cpio_ext, 'etc/coreos-legacy-installer-initramfs')
     if is_live:
@@ -206,7 +206,7 @@ def generate_iso():
             fdst.write(bytes(initrd_ignition_padding))
         os.rename(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
-    elif image_type == 'installer':
+    else:
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
         # And this one just includes the stamp file
         with open(tmp_initramfs, 'wb') as fdst:
