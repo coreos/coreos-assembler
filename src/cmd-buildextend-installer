@@ -43,6 +43,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
+parser.add_argument("--no-pxe", action='store_true', default=False,
+                    help="Do not generate PXE media")
 args = parser.parse_args()
 
 # Identify the builds and target the latest build if none provided
@@ -138,6 +140,15 @@ def mkinitrd(tmproot, destpath, compression=True):
     os.rename(desttmp, destpath)
 
 
+def extend_initrd(initramfs, tmproot, compression=True):
+    with open(initramfs, 'ab') as fdst:
+        mkinitrd_pipe(tmproot, fdst, compression=compression)
+
+
+def cp_reflink(src, dest):
+    subprocess.check_call(['cp', '--reflink=auto', src, dest])
+
+
 def generate_iso():
     # convention for kernel and initramfs names
     kernel_img = 'vmlinuz'
@@ -161,14 +172,17 @@ def generate_iso():
 
     # copy those files out of the ostree into the iso root dir
     for file in [kernel_img, initramfs_img]:
-        run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
+        run_verbose(['/usr/bin/ostree', 'checkout', '--force-copy', '--repo', repo,
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
                      f"{buildmeta_commit}", tmpisoimages])
         # initramfs isn't world readable by default so let's open up perms
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
     initramfs = os.path.join(tmpisoimages, initramfs_img)
-    initramfs_cpio_ext = os.path.join(tmpdir, 'initramfs-stamp.img')
+    base_initramfs = os.path.join(tmpdir, initramfs_img)
+    os.rename(initramfs, base_initramfs)
+    # Append the "stampfile initramfs" to the base which says
+    # whether it's a live or legacy initramfs.
     with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
         if is_live:
             stampname = 'etc/coreos-live-initramfs'
@@ -177,54 +191,29 @@ def generate_iso():
         stamppath = os.path.join(tmproot, stampname)
         os.makedirs(os.path.dirname(stamppath), exist_ok=True)
         open(stamppath, 'w').close()
-        mkinitrd(tmproot, initramfs_cpio_ext)
+        extend_initrd(base_initramfs, tmproot)
 
-    # Append the "stampfile initramfs" to the base, also
-    # copying the base initramfs.
-    tmp_initramfs = os.path.join(tmpdir, 'initramfs')
-    with open(tmp_initramfs, 'wb') as fdst:
-        with open(initramfs, 'rb') as fsrc:
-            shutil.copyfileobj(fsrc, fdst)
-        with open(initramfs_cpio_ext, 'rb') as fsrc:
-            shutil.copyfileobj(fsrc, fdst)
-    os.rename(tmp_initramfs, initramfs)
-    os.unlink(initramfs_cpio_ext)
+    if is_live and osmet:
+        with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
+            tmp_osmet = os.path.join(tmproot, img_metal_obj['path'] + '.osmet')
+            print(f'Generating osmet file')
+            run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
+                        img_metal, tmp_osmet, img_metal_checksum])
+            extend_initrd(base_initramfs, tmproot, compression=False)
 
+    # The base_initramfs from here is shared between the ISO and PXE paths
+    cp_reflink(base_initramfs, initramfs)
+
+    tmp_squashfs = None
     if is_live:
-        tmp_initramfs = os.path.join(tmpdir, 'initramfs')
-        osmet_initramfs = None
-        if osmet:
-            osmet_initramfs = os.path.join(tmpdir, 'initramfs-osmet.img')
-            with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
-                tmp_osmet = os.path.join(tmproot, img_metal_obj['path'] + '.osmet')
-                print(f'Generating osmet file')
-                run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                            img_metal, tmp_osmet, img_metal_checksum])
-                mkinitrd(tmproot, osmet_initramfs, compression=False)
+        print(f'Compressing squashfs with {squashfs_compression}')
+        tmp_squashfs = os.path.join(tmpisoroot, 'root.squashfs')
+        run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
+                    img_metal, tmp_squashfs, squashfs_compression])
 
-        # The initramfs image is a hardlink to the uncompressed objects
-        # cache, so we can't modify it in place.
-        with open(tmp_initramfs, 'wb') as fdst:
-            with open(initramfs, 'rb') as fsrc:
-                shutil.copyfileobj(fsrc, fdst)
-            # Append osmet if we have it
-            if osmet_initramfs is not None:
-                with open(osmet_initramfs, 'rb') as fsrc:
-                    shutil.copyfileobj(fsrc, fdst)
-            fdst.flush()
-            # Create the squashfs for the root, and then as soon as possible
-            # insert it inline into the initramfs.  This avoids
-            # copying the squashfs multiple times.  Ideally in the future
-            # we directly write it into the cpio archive.
-            with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
-                print(f'Compressing squashfs with {squashfs_compression}')
-                run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
-                            img_metal, os.path.join(tmproot, 'root.squashfs'), squashfs_compression])
-                # Compression is redundant but the kernel requires it
-                mkinitrd_pipe(tmproot, fdst, compression=False)
-            # And finally, the padding
+        # Add the padding
+        with open(initramfs, 'ab') as fdst:
             fdst.write(bytes(initrd_ignition_padding))
-        os.rename(tmp_initramfs, initramfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
     result = run_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
@@ -440,41 +429,39 @@ def generate_iso():
             isofh.write(struct.pack(fmt, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
 
-    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{basearch}'
-    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{basearch}.img'
-    kernel_file = os.path.join(builddir, kernel_name)
-    initramfs_file = os.path.join(builddir, initramfs_name)
-    shutil.copyfile(os.path.join(tmpisoimages, kernel_img), kernel_file)
-    with open(initramfs, 'rb') as fsrc:
-        with open(initramfs_file, 'wb') as fdst:
-            shutil.copyfileobj(fsrc, fdst)
-            if is_live:
-                # Verify ISO initrd padding and truncate it away
-                pad_offset = fsrc.tell() - initrd_ignition_padding
-                fsrc.seek(pad_offset)
-                if fsrc.read() != bytes(initrd_ignition_padding):
-                    raise Exception(f"Expected {initrd_ignition_padding} bytes of trailing zeroes in initrd, didn't find it")
-                fdst.truncate(pad_offset)
-
-    kernel_checksum = sha256sum_file(kernel_file)
-    initramfs_checksum = sha256sum_file(initramfs_file)
-    checksum = sha256sum_file(tmpisofile)
-
     buildmeta['images'].update({
         meta_keys['iso']: {
             'path': iso_name,
-            'sha256': checksum
-        },
-        meta_keys['kernel']: {
-            'path': kernel_name,
-            'sha256': kernel_checksum
-        },
-        meta_keys['initramfs']: {
-            'path': initramfs_name,
-            'sha256': initramfs_checksum
+            'sha256': sha256sum_file(tmpisofile)
         }
     })
     os.rename(tmpisofile, f"{builddir}/{iso_name}")
+
+    if not args.no_pxe:
+        kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{basearch}'
+        initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{basearch}.img'
+        kernel_file = os.path.join(builddir, kernel_name)
+        initramfs_file = os.path.join(builddir, initramfs_name)
+        shutil.copyfile(os.path.join(tmpisoimages, kernel_img), kernel_file)
+        cp_reflink(base_initramfs, initramfs_file)
+        # Append the rootfs squashfs to the PXE initramfs, so that it can be used
+        # directly for installs.
+        if is_live:
+            with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
+                shutil.move(tmp_squashfs, tmproot)
+                # Compression is redundant but the kernel requires it
+                extend_initrd(initramfs_file, tmproot, compression=False)
+        buildmeta['images'].update({
+            meta_keys['kernel']: {
+                'path': kernel_name,
+                'sha256': sha256sum_file(kernel_file)
+            },
+            meta_keys['initramfs']: {
+                'path': initramfs_name,
+                'sha256': sha256sum_file(initramfs_file)
+            }
+        })
+
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
 
