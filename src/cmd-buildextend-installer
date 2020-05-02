@@ -167,7 +167,7 @@ def generate_iso():
         # initramfs isn't world readable by default so let's open up perms
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
-    initramfs = os.path.join(tmpisoimages, 'initramfs.img')
+    initramfs = os.path.join(tmpisoimages, initramfs_img)
     initramfs_cpio_ext = os.path.join(tmpdir, 'initramfs-stamp.img')
     with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
         if is_live:
@@ -318,21 +318,23 @@ def generate_iso():
 
         # s390x's z/VM CMS files are limited to 8 char for filenames and extensions
         # Also it is nice to keep naming convetion with Fedora/RHEL for existing users and code
-        shutil.move(os.path.join(tmpisoimages, kernel_img), os.path.join(tmpisoimages, 'kernel.img'))
-        shutil.move(os.path.join(tmpisoimages, initramfs_img), os.path.join(tmpisoimages, 'initrd.img'))
+        kernel_dest = os.path.join(tmpisoimages, 'kernel.img')
+        shutil.move(os.path.join(tmpisoimages, kernel_img), kernel_dest)
         kernel_img = 'kernel.img'
-        initramfs_img = 'initrd.img'
+        initramfs_dest = os.path.join(tmpisoimages, 'initrd.img')
+        shutil.move(initramfs, initramfs_dest)
+        initramfs = initramfs_dest
 
         # combine kernel, initramfs and cmdline using lorax/mk-s390-cdboot tool
         run_verbose(['/usr/bin/mk-s390-cdboot',
-                     '-i', os.path.join(tmpisoimages, kernel_img),
-                     '-r', os.path.join(tmpisoimages, initramfs_img),
+                     '-i', kernel_dest,
+                     '-r', initramfs,
                      '-p', os.path.join(tmpisoimages, 'cdboot.prm'),
                      '-o', os.path.join(tmpisoimages, 'cdboot.img')])
         # generate .addrsize file for LPAR
         with open(os.path.join(tmpisoimages, 'initrd.addrsize'), 'wb') as addrsize:
             addrsize_data = struct.pack(">iiii", 0, int(INITRD_ADDRESS, 16), 0,
-                                        os.stat(os.path.join(tmpisoimages, initramfs_img)).st_size)
+                                        os.stat(initramfs).st_size)
             addrsize.write(addrsize_data)
 
         # safely remove things we don't need in the final ISO tree
@@ -423,7 +425,7 @@ def generate_iso():
         # Start of the initramfs within the ISO
         offset = int(matches[0].group(1)) * 2048  # assume 2 KB per logical block
         # End of the initramfs within the ISO
-        offset += os.stat(os.path.join(tmpisoimages, initramfs_img)).st_size
+        offset += os.stat(initramfs).st_size
         # Start of the initramfs padding
         offset -= initrd_ignition_padding
         with open(tmpisofile, 'r+b') as isofh:
@@ -443,7 +445,7 @@ def generate_iso():
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
     shutil.copyfile(os.path.join(tmpisoimages, kernel_img), kernel_file)
-    with open(os.path.join(tmpisoimages, initramfs_img), 'rb') as fsrc:
+    with open(initramfs, 'rb') as fsrc:
         with open(initramfs_file, 'wb') as fdst:
             shutil.copyfileobj(fsrc, fdst)
             if is_live:
