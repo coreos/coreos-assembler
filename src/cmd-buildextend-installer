@@ -117,20 +117,25 @@ os.mkdir(tmpisoisolinux)
 initrd_ignition_padding = 256 * 1024
 
 
-def generate_initramfs_stampfile(tmpdir, destpath, stampname):
-    # Create a compressed CPIO archive that can be appended to an initramfs,
-    # with a single empty file.  This is used to differentiate between
-    # types of initramfs.
-    with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
-        stamppath = os.path.join(tmproot, stampname)
-        os.makedirs(os.path.dirname(stamppath), exist_ok=True)
-        open(stamppath, 'w').close()
-        run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
-            '--quiet', '--reproducible', '--force-local',
-            '-D', tmproot, '-O', destpath + '.tmp'],
-            input=stampname.encode())
-        run_verbose(['gzip', destpath + '.tmp'])
-        os.rename(destpath + '.tmp.gz', destpath)
+# https://www.kernel.org/doc/html/latest/admin-guide/initrd.html#compressed-cpio-images
+def mkinitrd_pipe(tmproot, destf, compression=True):
+    findproc = subprocess.Popen(['find', '.', '-print0'], cwd=tmproot, stdout=subprocess.PIPE)
+    cpioproc = subprocess.Popen(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
+            '--quiet', '--reproducible', '--force-local', '--null',
+            '-D', tmproot], stdin=findproc.stdout, stdout=subprocess.PIPE)
+    gzipargs = ['gzip']
+    if not compression:
+        gzipargs.append('-1')
+    gzipproc = subprocess.Popen(gzipargs, stdin=cpioproc.stdout, stdout=destf)
+    cpioproc.wait()
+    findproc.wait()
+    gzipproc.wait()
+
+
+def mkinitrd(tmproot, destpath, compression=True):
+    desttmp = destpath + '.tmp'
+    mkinitrd_pipe(tmproot, open(desttmp, 'w'), compression=compression)
+    os.rename(desttmp, destpath)
 
 
 def generate_iso():
@@ -163,59 +168,62 @@ def generate_iso():
         os.chmod(os.path.join(tmpisoimages, file), 0o755)
 
     initramfs = os.path.join(tmpisoimages, 'initramfs.img')
-    initramfs_cpio_ext = None
+    initramfs_cpio_ext = os.path.join(tmpdir, 'initramfs-stamp.img')
+    with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
+        if is_live:
+            stampname = 'etc/coreos-live-initramfs'
+        else:
+            stampname = 'etc/coreos-legacy-installer-initramfs'
+        stamppath = os.path.join(tmproot, stampname)
+        os.makedirs(os.path.dirname(stamppath), exist_ok=True)
+        open(stamppath, 'w').close()
+        mkinitrd(tmproot, initramfs_cpio_ext)
+
+    # Append the "stampfile initramfs" to the base, also
+    # copying the base initramfs.
+    tmp_initramfs = os.path.join(tmpdir, 'initramfs')
+    with open(tmp_initramfs, 'wb') as fdst:
+        with open(initramfs, 'rb') as fsrc:
+            shutil.copyfileobj(fsrc, fdst)
+        with open(initramfs_cpio_ext, 'rb') as fsrc:
+            shutil.copyfileobj(fsrc, fdst)
+    os.rename(tmp_initramfs, initramfs)
+    os.unlink(initramfs_cpio_ext)
+
     if is_live:
-        # This stamp file denotes we're in a "live" initramfs
-        initramfs_cpio_ext = os.path.join(tmpdir, 'live-stamp-initramfs')
-        generate_initramfs_stampfile(tmpdir, initramfs_cpio_ext, 'etc/coreos-live-initramfs')
-    else:
-        initramfs_cpio_ext = os.path.join(tmpdir, 'legacy-stamp-initramfs')
-        generate_initramfs_stampfile(tmpdir, initramfs_cpio_ext, 'etc/coreos-legacy-installer-initramfs')
-    if is_live:
-        tmp_squashfs = os.path.join(tmpdir, 'root.squashfs')
-        tmp_cpio = os.path.join(tmpdir, 'root.cpio')
         tmp_initramfs = os.path.join(tmpdir, 'initramfs')
-        cpio_input_files = [os.path.basename(tmp_squashfs)]
+        osmet_initramfs = None
         if osmet:
-            tmp_osmet = os.path.join(tmpdir, img_metal_obj['path'] + '.osmet')
-            print('Generating osmet file')
-            run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                         img_metal, tmp_osmet, img_metal_checksum])
-            cpio_input_files += [os.path.basename(tmp_osmet)]
+            osmet_initramfs = os.path.join(tmpdir, 'initramfs-osmet.img')
+            with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
+                tmp_osmet = os.path.join(tmproot, img_metal_obj['path'] + '.osmet')
+                print(f'Generating osmet file')
+                run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
+                            img_metal, tmp_osmet, img_metal_checksum])
+                mkinitrd(tmproot, osmet_initramfs, compression=False)
 
-        print(f'Compressing squashfs with {squashfs_compression}')
-        run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
-                     img_metal, tmp_squashfs, squashfs_compression])
-
-        # create a CPIO layer which holds the root squashfs and osmet binary
-        run_verbose(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
-                '--quiet', '--reproducible', '--force-local',
-                '-D', os.path.dirname(tmp_squashfs), '-O', tmp_cpio],
-                input=('\n'.join(cpio_input_files).encode()))
-        # Compression is redundant but the kernel requires it
-        run_verbose(['gzip', '-1', tmp_cpio])
-
-        # Append the root cpio to the initramfs.
         # The initramfs image is a hardlink to the uncompressed objects
         # cache, so we can't modify it in place.
         with open(tmp_initramfs, 'wb') as fdst:
             with open(initramfs, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
-            with open(initramfs_cpio_ext, 'rb') as fsrc:
-                shutil.copyfileobj(fsrc, fdst)
-            with open(tmp_cpio + '.gz', 'rb') as fsrc:
-                shutil.copyfileobj(fsrc, fdst)
+            # Append osmet if we have it
+            if osmet_initramfs is not None:
+                with open(osmet_initramfs, 'rb') as fsrc:
+                    shutil.copyfileobj(fsrc, fdst)
+            fdst.flush()
+            # Create the squashfs for the root, and then as soon as possible
+            # insert it inline into the initramfs.  This avoids
+            # copying the squashfs multiple times.  Ideally in the future
+            # we directly write it into the cpio archive.
+            with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
+                print(f'Compressing squashfs with {squashfs_compression}')
+                run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
+                            img_metal, os.path.join(tmproot, 'root.squashfs'), squashfs_compression])
+                # Compression is redundant but the kernel requires it
+                mkinitrd_pipe(tmproot, fdst, compression=False)
+            # And finally, the padding
             fdst.write(bytes(initrd_ignition_padding))
-        os.rename(tmp_initramfs, initramfs)
-        os.unlink(tmp_squashfs)
-    else:
-        tmp_initramfs = os.path.join(tmpdir, 'initramfs')
-        # And this one just includes the stamp file
-        with open(tmp_initramfs, 'wb') as fdst:
-            with open(initramfs, 'rb') as fsrc:
-                shutil.copyfileobj(fsrc, fdst)
-            with open(initramfs_cpio_ext, 'rb') as fsrc:
-                shutil.copyfileobj(fsrc, fdst)
         os.rename(tmp_initramfs, initramfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
