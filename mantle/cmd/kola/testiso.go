@@ -22,6 +22,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"os"
@@ -299,7 +300,11 @@ func awaitCompletion(inst *platform.QemuInstance, qchan *os.File, expected []str
 		for _, exp := range expected {
 			l, err := r.ReadString('\n')
 			if err != nil {
-				errchan <- errors.Wrapf(err, "reading from completion channel")
+				if err == io.EOF {
+					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
+				} else {
+					errchan <- errors.Wrapf(err, "reading from completion channel")
+				}
 				return
 			}
 			line := strings.TrimSpace(l)
