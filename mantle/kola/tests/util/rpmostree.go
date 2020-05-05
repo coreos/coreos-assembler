@@ -23,8 +23,8 @@ import (
 	"github.com/coreos/mantle/platform"
 )
 
-// rpmOstreeDeployment represents some of the data of an rpm-ostree deployment
-type rpmOstreeDeployment struct {
+// RpmOstreeDeployment represents some of the data of an rpm-ostree deployment
+type RpmOstreeDeployment struct {
 	Booted            bool     `json:"booted"`
 	Checksum          string   `json:"checksum"`
 	Origin            string   `json:"origin"`
@@ -34,11 +34,19 @@ type rpmOstreeDeployment struct {
 	Timestamp         int64    `json:"timestamp"`
 	Unlocked          string   `json:"unlocked"`
 	Version           string   `json:"version"`
+
+	// instead of making it a generic map of strings to "value", we just
+	// special-case the keys we're interested in for now
+	BaseCommitMeta rpmOstreeBaseCommitMeta `json:"base-commit-meta"`
+}
+
+type rpmOstreeBaseCommitMeta struct {
+	FedoraCoreOSStream string `json:"fedora-coreos.stream"`
 }
 
 // simplifiedRpmOstreeStatus contains deployments from rpm-ostree status
 type simplifiedRpmOstreeStatus struct {
-	Deployments []rpmOstreeDeployment
+	Deployments []RpmOstreeDeployment
 }
 
 // GetRpmOstreeStatusJSON returns an unmarshal'ed JSON object that contains
@@ -58,7 +66,7 @@ func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifi
 	return target, nil
 }
 
-func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*rpmOstreeDeployment, error) {
+func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*RpmOstreeDeployment, error) {
 	s, err := GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		return nil, err
