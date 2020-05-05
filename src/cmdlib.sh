@@ -125,17 +125,19 @@ from cosalib.cmdlib import disk_ignition_version
 print(disk_ignition_version('${path}}'))"
 }
 
-# Picks between yaml or json based on which version exists. If neither exist,
-# prefers YAML.
+# Picks between yaml or json based on which version exists. Errors out if both
+# exists. If neither exist, prefers the extension in ${2}, or otherwise YAML.
 pick_yaml_or_else_json() {
     local f=$1; shift
+    local default=${1:-yaml}; shift
     if [ -f "${f}.json" ] && [ -f "${f}.yaml" ]; then
         fatal "Found both ${f}.json and ${f}.yaml"
     elif [ -f "${f}.json" ]; then
         echo "${f}.json"
-    else
-        # prefer yaml
+    elif [ -f "${f}.yaml" ]; then
         echo "${f}.yaml"
+    else
+        echo "${f}.${default}"
     fi
 }
 
@@ -156,7 +158,9 @@ prepare_build() {
     workdir="$(pwd)"
     configdir=${workdir}/src/config
     manifest=${configdir}/manifest.yaml
-    manifest_lock=$(pick_yaml_or_else_json "${configdir}/manifest-lock.${basearch}")
+    # for the base lockfile, we default to JSON since that's what rpm-ostree
+    # actually outputs
+    manifest_lock=$(pick_yaml_or_else_json "${configdir}/manifest-lock.${basearch}" json)
     manifest_lock_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
     fetch_stamp="${workdir}"/cache/fetched-stamp
 
