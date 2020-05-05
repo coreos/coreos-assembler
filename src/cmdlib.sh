@@ -463,7 +463,11 @@ $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
 # tee to the virtio port so its output is also part of the supermin output in
 # case e.g. a key msg happens in dmesg when the command does a specific operation
-bash ${TMPDIR}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
+if [ -z "${RUNVM_SHELL:-}" ]; then
+  bash ${TMPDIR}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
+else
+  bash; poweroff -f -f; sleep infinity
+fi
 echo \$rc > ${workdir}/tmp/rc
 if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
@@ -482,38 +486,43 @@ EOF
 
     echo "$@" > "${TMPDIR}"/cmd.sh
 
-    cachedisk=()
-    if [ -f "${workdir}/cache/cache2.qcow2" ]; then
-        cachedisk=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
-                    "-device" "virtio-blk,drive=cache")
-    fi
-
-    # support local dev cases where src/config is a symlink
-    srcvirtfs=()
-    if [ -L "${workdir}/src/config" ]; then
-        # qemu follows symlinks
-        srcvirtfs=("-virtfs" "local,id=source,path=${workdir}/src/config,security_model=none,mount_tag=source")
-    fi
-
     local runvm_console
     runvm_console="${workdir}/tmp/runvm-console.txt"
     rm -f "${workdir}/tmp/rc" "${runvm_console}"
 
     touch "${runvm_console}"
-    #shellcheck disable=SC2086
-    if ! kola qemuexec -m 2048 --auto-cpus -U --workdir none -- -no-reboot -nodefaults -serial file:"${runvm_console}" \
-        -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
-        -device virtio-serial \
-        -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
-        -chardev stdio,id=virtioserial0 \
-        -drive "if=none,id=root,format=raw,snapshot=on,file=${vmbuilddir}/root,index=1" \
-        -device "virtio-blk,drive=root" \
-        "${cachedisk[@]}" \
-        -virtfs local,id=workdir,path="${workdir}",security_model=none,mount_tag=workdir \
-        "${srcvirtfs[@]}" -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
-        "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
-            cat "${runvm_console}"
-            fatal "Failed to run 'kola qemuexec'"
+    kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none)
+    base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
+                    -device 'virtio-blk,drive=root'
+                    -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
+                    -no-reboot -nodefaults \
+                    -device virtio-serial \
+                    -virtfs 'local,id=workdir,path='"${workdir}"',security_model=none,mount_tag=workdir' \
+                    -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
+                   )
+
+    # support local dev cases where src/config is a symlink
+    if [ -L "${workdir}/src/config" ]; then
+        # qemu follows symlinks
+        base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
+    fi
+
+    if [ -f "${workdir}/cache/cache2.qcow2" ]; then
+        base_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+                         "-device" "virtio-blk,drive=cache")
+    fi
+
+    if [ -z "${RUNVM_SHELL:-}" ]; then
+        if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
+            -serial file:"${runvm_console}" \
+            -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
+            -chardev stdio,id=virtioserial0 \
+            "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
+                cat "${runvm_console}"
+                fatal "Failed to run 'kola qemuexec'"
+        fi
+    else
+        exec "${kola_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
     fi
 
     if [ ! -f "${workdir}"/tmp/rc ]; then
