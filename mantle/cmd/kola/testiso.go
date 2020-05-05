@@ -62,7 +62,7 @@ var (
 
 	pxeKernelArgs []string
 
-	console bool
+	debug bool
 )
 
 const (
@@ -106,7 +106,7 @@ func init() {
 	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer (PXE and ISO)")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
 	cmdTestIso.Flags().BoolVarP(&noiso, "no-iso", "", false, "Skip testing live installer ISO")
-	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout")
+	cmdTestIso.Flags().BoolVar(&debug, "debug", false, "Display qemu console to stdout, turn off automatic initramfs failure checking")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
 	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOOfflineInstall}))
@@ -127,7 +127,7 @@ func newBaseQemuBuilder() *platform.QemuBuilder {
 		builder.Memory = int(math.Max(float64(builder.Memory), 16384))
 	}
 
-	builder.InheritConsole = console
+	builder.InheritConsole = debug
 
 	return builder
 }
@@ -289,7 +289,13 @@ func awaitCompletion(inst *platform.QemuInstance, qchan *os.File, expected []str
 		errchan <- fmt.Errorf("timed out after %v", installTimeout)
 	}()
 	go func() {
-		if err := inst.WaitAll(); err != nil {
+		var err error
+		if !debug {
+			err = inst.WaitAll()
+		} else {
+			err = inst.Wait()
+		}
+		if err != nil {
 			errchan <- err
 		}
 		time.Sleep(1 * time.Minute)
