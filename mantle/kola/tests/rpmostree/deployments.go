@@ -177,7 +177,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		}
 
 		// validate we are back to the original deployment by comparing the
-		// the two rpmOstreeDeployment structs
+		// the two RpmOstreeDeployment structs
 		if !reflect.DeepEqual(originalStatus.Deployments[0], rollbackStatus.Deployments[0]) {
 			c.Fatalf(`Differences found in "rpm-ostree status"; original %v, current: %v`, originalStatus.Deployments[0], rollbackStatus.Deployments[0])
 		}

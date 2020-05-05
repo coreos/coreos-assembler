@@ -34,6 +34,7 @@ import (
 )
 
 const ostreeRepo = "/srv/ostree"
+const zincatiMetricsSocket = "/run/zincati/public/metrics.promsock"
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/upgrade")
 
@@ -52,9 +53,12 @@ func init() {
 		// This Ignition does a few things:
 		// 1. bumps Zincati verbosity
 		// 2. auto-runs httpd once kolet is scp'ed
-		// 3. changes the zincati config to point to localhost:8080 so we'll be
+		// 3. changes the Zincati config to point to localhost:8080 so we'll be
 		//    able to feed the update graph we want
-		// 4. change the OSTree remote to localhost:8080
+		// 4. always start with Zincati updates disabled so we can finish
+		//    setting it up here before enabling it again without risking race
+		//    conditions
+		// 5. change the OSTree remote to localhost:8080
 		// We could use file:/// to simplify things though using a URL at least
 		// exercises the ostree/libcurl stack.
 		// We use strings.Replace here because fmt.Sprintf would try to
@@ -85,8 +89,13 @@ func init() {
   "storage": {
     "files": [
       {
+        "path": "/etc/zincati/config.d/99-cincinnati-url.toml",
+        "contents": { "source": "data:,cincinnati.base_url%3D%20%22http%3A%2F%2Flocalhost%3A8080%22%0A" },
+        "mode": 420
+      },
+      {
         "path": "/etc/zincati/config.d/99-updates.toml",
-        "contents": { "source": "data:,updates.enabled%20%3D%20true%0Acincinnati.base_url%3D%20%22http%3A%2F%2Flocalhost%3A8080%22%0A" },
+        "contents": { "source": "data:,updates.enabled%20%3D%20true%0A" },
         "mode": 420
       },
       {
@@ -131,6 +140,14 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// Should drop this once we fix it more properly in {rpm-,}ostree.
 		// https://github.com/coreos/coreos-assembler/issues/1301
 		c.MustSSHf(m, "tar -xf %s -C %s && sync", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
+
+		// disable zincati; from now on, we'll start it manually whenenever we
+		// want to upgrade via Zincati
+		c.MustSSH(m, "sudo systemctl disable --now --quiet zincati.service")
+		c.MustSSH(m, "sudo rm /etc/zincati/config.d/99-updates.toml")
+		// delete what mantle adds (XXX: should just opt out of this upfront)
+		c.MustSSH(m, "sudo rm /etc/zincati/config.d/90-disable-auto-updates.toml")
+
 	})
 
 	c.Run("upgrade-from-previous", func(c cluster.TestCluster) {
@@ -220,6 +237,40 @@ func (g *Graph) addUpdate(c cluster.TestCluster, m platform.Machine, version, pa
 	g.sync(c, m)
 }
 
+// XXX: consider making this distinction part of FCOS itself?
+func onProdStream(c cluster.TestCluster, d *util.RpmOstreeDeployment) bool {
+	switch d.BaseCommitMeta.FedoraCoreOSStream {
+	case "":
+		c.Fatalf("missing fedora-coreos.stream metadata key")
+	case "stable", "testing", "next":
+		return true
+	}
+
+	return false
+}
+
+func isDevBuild(c cluster.TestCluster, d *util.RpmOstreeDeployment) bool {
+	return strings.Contains(d.Version, "dev")
+}
+
+// On production streams, the default should already be to have updates turned
+// on, so we shouldn't have to delete anything. On developer and/or
+// non-production streams, we have to delete other knobs.
+func undoZincatiDisablement(c cluster.TestCluster, m platform.Machine) {
+	d, err := util.GetBootedDeployment(c, m)
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	if !onProdStream(c, d) {
+		c.MustSSH(m, "sudo rm -f /etc/zincati/config.d/90-disable-on-non-production-stream.toml")
+	}
+
+	if isDevBuild(c, d) {
+		c.MustSSH(m, "sudo rm -f /etc/zincati/config.d/95-disable-on-dev.toml")
+	}
+}
+
 func (g *Graph) sync(c cluster.TestCluster, m platform.Machine) {
 	b, err := json.Marshal(g)
 	if err != nil {
@@ -253,10 +304,33 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 	}
 }
 
+func getZincatiMetrics(c cluster.TestCluster, m platform.Machine) string {
+	// do this in a loop in case it was just started and hasn't created the
+	// socket yet.
+	for i := 0; i < 10; i++ {
+		if _, err := c.SSHf(m, "test -S %s", zincatiMetricsSocket); err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	// either it exists, or we fail trying now
+	return string(c.MustSSHf(m, "sudo socat - UNIX-CONNECT:%s", zincatiMetricsSocket))
+}
+
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
+	// we have to do this every time in case e.g. we've just rebased from an
+	// official pipeline build to a developer build
+	undoZincatiDisablement(c, m)
+
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
 		// XXX: update to use https://github.com/coreos/zincati/issues/203
-		c.MustSSH(m, "sudo systemctl restart zincati.service")
+		c.MustSSH(m, "sudo systemctl start zincati.service")
+
+		// sanity-check that Zincati has updates enabled
+		metrics := getZincatiMetrics(c, m)
+		if !strings.Contains(metrics, "zincati_update_agent_updates_enabled 1") {
+			c.Fatalf("failed to find 'zincati_update_agent_updates_enabled 1' on Zincati metrics.promsock")
+		}
 	})
 }
 
