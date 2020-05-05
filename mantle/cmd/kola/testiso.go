@@ -220,7 +220,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			inst.LegacyInstaller = true
 
 			if err := testPXE(inst); err != nil {
-				return err
+				return errors.Wrapf(err, "scenario %s", scenarioLegacyInstall)
 			}
 			printSuccess(scenarioLegacyInstall)
 		}
@@ -238,7 +238,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
 		if err := testPXE(instPxe); err != nil {
-			return err
+			return errors.Wrapf(err, "scenario %s", scenarioPXEInstall)
+
 		}
 		printSuccess(scenarioPXEInstall)
 	}
@@ -249,7 +250,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
 		if err := testLiveIso(instIso, completionfile, false); err != nil {
-			return err
+			return errors.Wrapf(err, "scenario %s", scenarioISOInstall)
 		}
 		printSuccess(scenarioISOInstall)
 	}
@@ -260,7 +261,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
 		if err := testLiveIso(instIso, completionfile, true); err != nil {
-			return err
+			return errors.Wrapf(err, "scenario %s", scenarioISOOfflineInstall)
 		}
 		printSuccess(scenarioISOOfflineInstall)
 	}
@@ -270,7 +271,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		if err := testLiveLogin(); err != nil {
-			return err
+			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
 		}
 		printSuccess(scenarioISOLiveLogin)
 	}
