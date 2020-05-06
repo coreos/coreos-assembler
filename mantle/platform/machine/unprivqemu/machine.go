@@ -15,6 +15,7 @@
 package unprivqemu
 
 import (
+	"errors"
 	"io/ioutil"
 	"time"
 
@@ -69,8 +70,7 @@ func (m *machine) IgnitionError() error {
 	if buf == "" {
 		return nil
 	}
-	// TODO render buf
-	return platform.ErrInitramfsEmergency
+	return errors.New(buf)
 }
 
 func (m *machine) Reboot() error {
