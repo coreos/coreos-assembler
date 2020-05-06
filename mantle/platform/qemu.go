@@ -133,6 +133,7 @@ func (inst *QemuInstance) WaitIgnitionError() (string, error) {
 			break
 		}
 		r.Write(line)
+		r.Write([]byte("\n"))
 	}
 	if iscorrupted {
 		return r.String(), fmt.Errorf("journal was truncated due to overly long line")
