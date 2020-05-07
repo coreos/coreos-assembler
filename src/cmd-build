@@ -241,7 +241,8 @@ if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
 fi
 # --cache-only is here since `fetch` is a separate verb
 # shellcheck disable=SC2086
-RUNVM_NONET=1 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
+# XXX: use RUNVM_NONET=1 here once all issues are ironed out
+runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}".tmp \
            "${extra_compose_args[@]}"

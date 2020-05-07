@@ -88,7 +88,8 @@ if [ -n "${projectdir}" ]; then
 fi
 tmpdir=${projectdir:-.}
 qemu-img create -f qcow2 -o backing_file="${previous_builddir}/${previous_qemu}" "${tmpdir}/${fastbuild_qemu}" 20G
-RUNVM_NONET=1 runvm -drive if=virtio,id=target,format=qcow2,file="${fastbuild_qemu}",cache=unsafe -- \
+# XXX: use RUNVM_NONET=1 here once all issues are ironed out
+runvm -drive if=virtio,id=target,format=qcow2,file="${fastbuild_qemu}",cache=unsafe -- \
     /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
 if [ -n "${projectdir}" ]; then
     echo "Created: ${fastbuild_qemu}"
