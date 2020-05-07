@@ -353,6 +353,7 @@ EOF
 name=coreos-assembler-local-overrides
 baseurl=file://${workdir}/overrides/rpm
 gpgcheck=0
+cost=500
 EOF
     fi
     rootfs_overrides="${overridesdir}/rootfs"
