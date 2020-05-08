@@ -43,6 +43,7 @@ var (
 	uploadWriteUrl         string
 	uploadImageFamily      string
 	uploadImageDescription string
+	uploadCreateImage      bool
 )
 
 func init() {
@@ -56,6 +57,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
 	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
 	cmdUpload.Flags().StringVar(&uploadImageDescription, "description", "", "The description that should be attached to the image")
+	cmdUpload.Flags().BoolVar(&uploadCreateImage, "create-image", true, "Create an image in GCP after uploading")
 	GCloud.AddCommand(cmdUpload)
 }
 
@@ -124,52 +126,55 @@ func runUpload(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Creating image in GCE: %v...\n", imageNameGCE)
+	imageStorageURL := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
 
-	// create image on gce
-	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", uploadBucket, imageNameGS)
-	_, pending, err := api.CreateImage(&gcloud.ImageSpec{
-		Name:        imageNameGCE,
-		Family:      uploadImageFamily,
-		SourceImage: storageSrc,
-		Description: uploadImageDescription,
-	}, uploadForce)
-	if err == nil {
-		err = pending.Wait()
-	}
+	if uploadCreateImage {
+		fmt.Printf("Creating image in GCE: %v...\n", imageNameGCE)
 
-	// if image already exists ask to delete and try again
-	if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
-		var ans string
-		fmt.Printf("Image %v already exists on GCE. Overwrite? (y/n):", imageNameGCE)
-		if _, err = fmt.Scan(&ans); err != nil {
-			fmt.Fprintf(os.Stderr, "Scanning overwrite input: %v", err)
-			os.Exit(1)
+		// create image on gce
+		_, pending, err := api.CreateImage(&gcloud.ImageSpec{
+			Name:        imageNameGCE,
+			Family:      uploadImageFamily,
+			SourceImage: imageStorageURL,
+			Description: uploadImageDescription,
+		}, uploadForce)
+		if err == nil {
+			err = pending.Wait()
 		}
-		switch ans {
-		case "y", "Y", "yes":
-			fmt.Println("Overriding existing image...")
-			_, pending, err = api.CreateImage(&gcloud.ImageSpec{
-				Name:        imageNameGCE,
-				Family:      uploadImageFamily,
-				SourceImage: storageSrc,
-				Description: uploadImageDescription,
-			}, true)
-			if err == nil {
-				err = pending.Wait()
-			}
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
+
+		// if image already exists ask to delete and try again
+		if err != nil && strings.HasSuffix(err.Error(), "alreadyExists") {
+			var ans string
+			fmt.Printf("Image %v already exists on GCE. Overwrite? (y/n):", imageNameGCE)
+			if _, err = fmt.Scan(&ans); err != nil {
+				fmt.Fprintf(os.Stderr, "Scanning overwrite input: %v", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Image %v sucessfully created in GCE\n", imageNameGCE)
-		default:
-			fmt.Println("Skipped GCE image creation")
+			switch ans {
+			case "y", "Y", "yes":
+				fmt.Println("Overriding existing image...")
+				_, pending, err = api.CreateImage(&gcloud.ImageSpec{
+					Name:        imageNameGCE,
+					Family:      uploadImageFamily,
+					SourceImage: imageStorageURL,
+					Description: uploadImageDescription,
+				}, true)
+				if err == nil {
+					err = pending.Wait()
+				}
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("Image %v sucessfully created in GCE\n", imageNameGCE)
+			default:
+				fmt.Println("Skipped GCE image creation")
+			}
 		}
 	}
 
 	if uploadWriteUrl != "" {
-		err = ioutil.WriteFile(uploadWriteUrl, []byte(storageSrc), 0644)
+		err = ioutil.WriteFile(uploadWriteUrl, []byte(imageStorageURL), 0644)
 	}
 
 	if err != nil {
