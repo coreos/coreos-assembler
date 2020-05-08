@@ -65,6 +65,8 @@ def gcp_run_ore(build, args):
         ore_args.extend(['--family', args.family])
     if args.description:
         ore_args.extend(['--description', args.description])
+    if not args.create_image:
+        ore_args.extend(['--create-image=false'])
 
     run_verbose(ore_args)
     build.meta['gcp'] = {
@@ -79,6 +81,13 @@ def gcp_run_ore_replicate(*args, **kwargs):
 Google Cloud Compute Engine does not require regional
 replication. This command is a place-holder only.
 """)
+
+
+# https://stackoverflow.com/questions/44561722/why-in-argparse-a-true-is-always-true
+def boolean_string(s):
+    if s.lower() not in {'false', 'true'}:
+        raise ValueError('Not a valid boolean string')
+    return s.lower() == 'true'
 
 
 def gcp_cli(parser):
@@ -109,4 +118,8 @@ def gcp_cli(parser):
     parser.add_argument("--description",
                         help="The description that should be attached to the image",
                         default=None)
+    parser.add_argument("--create-image",
+                        type=boolean_string,
+                        help="Whether or not to create an image in GCP after upload.",
+                        default=True)
     return parser
