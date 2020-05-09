@@ -29,12 +29,13 @@ var (
 		Run:   runDeprecateImage,
 	}
 
+	deprecateImageName        string
 	deprecateImageState       string
 	deprecateImageReplacement string
 )
 
 func init() {
-	// note that --image comes from the toplevel options in gcloud.go
+	cmdDeprecateImage.Flags().StringVar(&deprecateImageName, "image", "", "GCP image name")
 	cmdDeprecateImage.Flags().StringVar(&deprecateImageState, "state",
 		string(gcloud.DeprecationStateDeprecated),
 		fmt.Sprintf("Deprecation state must be one of: %s,%s,%s,%s",
@@ -49,7 +50,7 @@ func init() {
 
 func runDeprecateImage(cmd *cobra.Command, args []string) {
 	// Check that the user provided an image
-	if opts.Image == "" {
+	if deprecateImageName == "" {
 		plog.Fatal("Must provide an image name via --image")
 	}
 
@@ -65,8 +66,8 @@ func runDeprecateImage(cmd *cobra.Command, args []string) {
 	}
 
 	plog.Debugf("Attempting to change GCP image deprecation state of %s to %s\n",
-		opts.Image, deprecateImageState)
-	_, err := api.DeprecateImage(opts.Image,
+		deprecateImageName, deprecateImageState)
+	_, err := api.DeprecateImage(deprecateImageName,
 		gcloud.DeprecationState(deprecateImageState), deprecateImageReplacement)
 	if err != nil {
 		plog.Fatalf("Changing deprecation state of image failed: %v\n", err)
