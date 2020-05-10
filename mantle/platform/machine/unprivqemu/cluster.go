@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"sync"
 	"time"
@@ -95,6 +96,14 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	builder.Swtpm = qc.flight.opts.Swtpm
 	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
 	builder.ConsoleToFile(qm.consolePath)
+
+	if qc.flight.opts.Memory != "" {
+		memory, err := strconv.ParseInt(qc.flight.opts.Memory, 10, 32)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing memory option")
+		}
+		builder.Memory = int(memory)
+	}
 
 	channel := "virtio"
 	if qc.flight.opts.Nvme {

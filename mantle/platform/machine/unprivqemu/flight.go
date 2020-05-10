@@ -32,6 +32,7 @@ type Options struct {
 	DiskSize string
 	Board    string
 	Firmware string
+	Memory   string
 
 	ForceConfigInjection bool
 
