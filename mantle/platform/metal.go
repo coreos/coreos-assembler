@@ -591,6 +591,8 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 [Unit]
 After=network-online.target
 Wants=network-online.target
+OnFailure=emergency.target
+OnFailureJobMode=isolate
 [Service]
 RemainAfterExit=yes
 Type=oneshot

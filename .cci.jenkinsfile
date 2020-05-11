@@ -51,10 +51,16 @@ pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memo
       }
 
       stage("Image tests") {
-        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S")
-        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --scenarios iso-offline-install")
-        // and again this time with the 4k image
-        shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --qemu-native-4k --no-pxe")
+        try {
+          shwrap("cd /srv && rm tmp/kola -rf")
+          shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S")
+          shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --scenarios iso-offline-install")
+          // and again this time with the 4k image
+          shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --qemu-native-4k --no-pxe")
+        } finally {
+          shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola-testiso.tar.xz")
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso.tar.xz'
+        }
       }
 
       // Needs to be last because it's destructive
