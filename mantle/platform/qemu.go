@@ -892,6 +892,7 @@ func (builder *QemuBuilder) VirtioJournal(queryArguments string) (*v3types.Confi
 	}
 	var streamJournalUnit = fmt.Sprintf(`[Unit]
 	Requires=dev-virtio\\x2dports-mantlejournal.device
+	IgnoreOnIsolate=true
 	[Service]
 	Type=simple
 	StandardOutput=file:/dev/virtio-ports/mantlejournal
