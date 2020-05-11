@@ -3,13 +3,9 @@ DESTDIR ?=
 
 ARCH:=$(shell uname -m)
 
-BINS:=$(shell ls cmd)
-
-bin/%:
-	./build cmd/$*
-
 .PHONY: build test vendor clean
-build: $(patsubst %,bin/%,$(BINS))
+build:
+	./build cmd/*
 
 schema-update:
 	./build schema
