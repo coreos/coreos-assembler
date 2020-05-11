@@ -13,13 +13,15 @@ repositories, and allow these projects to target Fedora CoreOS
 in e.g. their own CI.  And we also want to run unmodified
 upstream tests, *without rebuilding* the project.
 
-Using kola run -E/--exttest
+Using kola run with externally defined tests
 ---
 
 The `--exttest` (`-E`) argument to `kola run` one way to accomplish this; you
 provide the path to an upstream project git repository.  Tests will be found
 in the `tests/kola` directory.  If this project contains binaries that require
 building, it is assumed that `make` (or equivalent) has already been invoked.
+
+In addition to using `-E`, you may also copy tests to `/usr/lib/coreos-assembler/tests/kola`.
 
 The `tests/kola` directory will be traversed recursively to find tests.
 

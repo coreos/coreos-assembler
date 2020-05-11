@@ -60,6 +60,12 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
+// InstalledTestsDir is a directory where "installed" external
+// can be placed; for example, a project like ostree can install
+// tests at /usr/lib/coreos-assembler/tests/kola/ostree/...
+// and this will be automatically picked up.
+const InstalledTestsDir = "/usr/lib/coreos-assembler/tests/kola"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
@@ -655,6 +661,20 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 	return nil
 }
 
+func RegisterExternalTestsWithPrefix(dir, prefix string) error {
+	testsdir := filepath.Join(dir, "tests/kola")
+	children, err := ioutil.ReadDir(testsdir)
+	if err != nil {
+		return errors.Wrapf(err, "reading %s", dir)
+	}
+
+	if err := registerTestDir(testsdir, prefix, children); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // RegisterExternalTests iterates over a directory, and finds subdirectories
 // that have exactly one executable binary.
 func RegisterExternalTests(dir string) error {
@@ -666,17 +686,7 @@ func RegisterExternalTests(dir string) error {
 	}
 	basename := fmt.Sprintf("ext.%s", filepath.Base(realdir))
 
-	testsdir := filepath.Join(dir, "tests/kola")
-	children, err := ioutil.ReadDir(testsdir)
-	if err != nil {
-		return errors.Wrapf(err, "reading %s", dir)
-	}
-
-	if err := registerTestDir(testsdir, basename, children); err != nil {
-		return err
-	}
-
-	return nil
+	return RegisterExternalTestsWithPrefix(dir, basename)
 }
 
 // getClusterSemVer returns the CoreOS semantic version via starting a
