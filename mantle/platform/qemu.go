@@ -818,31 +818,59 @@ func baseQemuArgs() []string {
 }
 
 func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
-	varsVariant := ""
-	if secureBoot {
-		varsVariant = ".secboot"
-	}
-	varsSrc, err := os.Open(fmt.Sprintf("/usr/share/edk2/ovmf/OVMF_VARS%s.fd", varsVariant))
-	if err != nil {
-		return err
-	}
-	defer varsSrc.Close()
-	vars, err := ioutil.TempFile("", "mantle-qemu")
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(vars, varsSrc); err != nil {
-		return err
-	}
-	_, err = vars.Seek(0, 0)
-	if err != nil {
-		return err
+	switch system.RpmArch() {
+	case "x86_64":
+		varsVariant := ""
+		if secureBoot {
+			varsVariant = ".secboot"
+		}
+		varsSrc, err := os.Open(fmt.Sprintf("/usr/share/edk2/ovmf/OVMF_VARS%s.fd", varsVariant))
+		if err != nil {
+			return err
+		}
+		defer varsSrc.Close()
+		vars, err := ioutil.TempFile("", "mantle-qemu")
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(vars, varsSrc); err != nil {
+			return err
+		}
+		_, err = vars.Seek(0, 0)
+		if err != nil {
+			return err
+		}
+
+		fdset := builder.AddFd(vars)
+		builder.Append("-drive", fmt.Sprintf("file=/usr/share/edk2/ovmf/OVMF_CODE%s.fd,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off", varsVariant))
+		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
+		builder.Append("-machine", "q35")
+	case "aarch64":
+		if secureBoot {
+			return fmt.Errorf("Architecture %s doesn't have support for secure boot in kola.", system.RpmArch())
+		}
+		vars, err := ioutil.TempFile("", "mantle-qemu")
+		if err != nil {
+			return err
+		}
+		//67108864 bytes is expected size of the "VARS" by qemu
+		err = vars.Truncate(67108864)
+		if err != nil {
+			return err
+		}
+
+		_, err = vars.Seek(0, 0)
+		if err != nil {
+			return err
+		}
+
+		fdset := builder.AddFd(vars)
+		builder.Append("-drive", fmt.Sprintf("file=/usr/share/edk2/aarch64/QEMU_EFI-pflash.raw,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off"))
+		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
+	default:
+		panic(fmt.Sprintf("Architecture %s doesn't have support for UEFI in qemu.", system.RpmArch()))
 	}
 
-	fdset := builder.AddFd(vars)
-	builder.Append("-drive", fmt.Sprintf("file=/usr/share/edk2/ovmf/OVMF_CODE%s.fd,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off", varsVariant))
-	builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
-	builder.Append("-machine", "q35")
 	return nil
 }
 
