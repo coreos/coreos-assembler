@@ -471,6 +471,8 @@ func RunUpgradeTests(patterns []string, pltfrm, outputDir string, propagateTestE
 type externalTestMeta struct {
 	Architectures string `json:",architectures,omitempty"`
 	Platforms     string `json:",platforms,omitempty"`
+	Distros       string `json:",distros,omitempty"`
+	Tags          string `json:",tags,omitempty"`
 }
 
 func registerExternalTest(testname, executable, dependencydir, ignition string, meta externalTestMeta) error {
@@ -578,6 +580,12 @@ RequiredBy=multi-user.target
 	} else {
 		t.Platforms = strings.Fields(meta.Platforms)
 	}
+	if strings.HasPrefix(meta.Distros, "!") {
+		t.ExcludeDistros = strings.Fields(meta.Distros[1:])
+	} else {
+		t.Distros = strings.Fields(meta.Distros)
+	}
+	t.Tags = strings.Fields(meta.Tags)
 
 	register.RegisterTest(t)
 
