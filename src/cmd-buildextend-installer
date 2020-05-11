@@ -236,7 +236,7 @@ def generate_iso():
     print(f'Substituting ISO kernel arguments: {kargs}')
 
     # Grab all the contents from the installer dir from the configs
-    for srcdir, dirnames, filenames in os.walk(srcdir_prefix):
+    for srcdir, _, filenames in os.walk(srcdir_prefix):
         dir_suffix = srcdir.replace(srcdir_prefix, '', 1)
         dstdir = os.path.join(tmpisoroot, dir_suffix)
         if not os.path.exists(dstdir):
