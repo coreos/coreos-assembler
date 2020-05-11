@@ -106,9 +106,6 @@ def gcp_cli(parser):
     parser.add_argument("--json-key",
                         help="GCP Service Account JSON Auth",
                         default=os.environ.get("GCP_JSON_AUTH"))
-    parser.add_argument("--name-suffix",
-                        help="Append suffix to name",
-                        required=False)
     parser.add_argument("--project",
                         help="GCP Project name",
                         default=os.environ.get("GCP_PROJECT_NAME"))
