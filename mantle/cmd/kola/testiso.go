@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
 
+	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/spf13/cobra"
 
@@ -132,7 +133,7 @@ func newBaseQemuBuilder() *platform.QemuBuilder {
 	return builder
 }
 
-func newQemuBuilder(isPXE bool) *platform.QemuBuilder {
+func newQemuBuilder(isPXE bool, outputdir string) (*platform.QemuBuilder, *ignv3types.Config, error) {
 	builder := newBaseQemuBuilder()
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
@@ -154,8 +155,30 @@ func newQemuBuilder(isPXE bool) *platform.QemuBuilder {
 			SectorSize: sectorSize,
 		})
 	}
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return nil, nil, err
+	}
 
-	return builder
+	if !builder.InheritConsole {
+		builder.ConsoleToFile(filepath.Join(outputDir, "console.txt"))
+	}
+	virtioJournalConfig, journalPipe, err := builder.VirtioJournal("")
+	if err != nil {
+		return nil, nil, err
+	}
+	journalOut, err := os.OpenFile(filepath.Join(outputDir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
+		_, err := io.Copy(journalOut, journalPipe)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+	}()
+
+	return builder, virtioJournalConfig, nil
 }
 
 func runTestIso(cmd *cobra.Command, args []string) error {
@@ -191,6 +214,12 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("Testing scenarios: %s\n", scenarios)
 
+	var err error
+	outputDir, err = kola.SetupOutputDir(outputDir, "testiso")
+	if err != nil {
+		return err
+	}
+
 	baseInst := platform.Install{
 		CosaBuild: kola.CosaBuild,
 		Native4k:  kola.QEMUOptions.Native4k,
@@ -208,8 +237,6 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 	defer os.RemoveAll(tmpd)
 
-	completionfile := filepath.Join(tmpd, "completion.txt")
-
 	ranTest := false
 
 	foundLegacy := baseInst.CosaBuild.Meta.BuildArtifacts.Kernel != nil
@@ -219,7 +246,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			inst := baseInst // Pretend this is Rust and I wrote .copy()
 			inst.LegacyInstaller = true
 
-			if err := testPXE(inst); err != nil {
+			if err := testPXE(inst, filepath.Join(outputDir, scenarioLegacyInstall)); err != nil {
 				return errors.Wrapf(err, "scenario %s", scenarioLegacyInstall)
 			}
 			printSuccess(scenarioLegacyInstall)
@@ -237,7 +264,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(instPxe); err != nil {
+		if err := testPXE(instPxe, filepath.Join(outputDir, scenarioPXEInstall)); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioPXEInstall)
 
 		}
@@ -249,7 +276,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(instIso, completionfile, false); err != nil {
+		if err := testLiveIso(instIso, filepath.Join(outputDir, scenarioISOInstall), false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOInstall)
 		}
 		printSuccess(scenarioISOInstall)
@@ -260,7 +287,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(instIso, completionfile, true); err != nil {
+		if err := testLiveIso(instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOOfflineInstall)
 		}
 		printSuccess(scenarioISOOfflineInstall)
@@ -334,7 +361,14 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-func testPXE(inst platform.Install) error {
+// what we really want at some point is to have `kola -p qemu-metal-pxe` or so
+// and share most of the code with the rest of kola.
+func setupQemuForOutputDir(inst *platform.Install, outputdir string) error {
+
+	return nil
+}
+
+func testPXE(inst platform.Install, outputDir string) error {
 	config := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -350,11 +384,17 @@ func testPXE(inst platform.Install) error {
 		},
 	}
 
-	inst.Builder = newQemuBuilder(true)
+	builder, virtioJournalConfig, err := newQemuBuilder(true, outputDir)
+	if err != nil {
+		return err
+	}
+	inst.Builder = builder
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
 	}
+
+	config = ignv3.Merge(config, *virtioJournalConfig)
 
 	mach, err := inst.PXE(pxeKernelArgs, config)
 	if err != nil {
@@ -365,8 +405,12 @@ func testPXE(inst platform.Install) error {
 	return awaitCompletion(mach.QemuInst, completionChannel, []string{signalCompleteString})
 }
 
-func testLiveIso(inst platform.Install, completionfile string, offline bool) error {
-	inst.Builder = newQemuBuilder(false)
+func testLiveIso(inst platform.Install, outputDir string, offline bool) error {
+	builder, virtioJournalConfig, err := newQemuBuilder(true, outputDir)
+	if err != nil {
+		return err
+	}
+	inst.Builder = builder
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
 		return err
@@ -402,6 +446,7 @@ func testLiveIso(inst platform.Install, completionfile string, offline bool) err
 			},
 		},
 	}
+	liveConfig = ignv3.Merge(*virtioJournalConfig, liveConfig)
 
 	targetConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -417,6 +462,7 @@ func testLiveIso(inst platform.Install, completionfile string, offline bool) err
 			},
 		},
 	}
+	targetConfig = ignv3.Merge(*virtioJournalConfig, targetConfig)
 
 	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, offline)
 	if err != nil {
