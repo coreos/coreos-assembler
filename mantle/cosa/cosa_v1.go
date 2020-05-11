@@ -80,6 +80,7 @@ type BuildArtifacts struct {
 	Ostree        Artifact  `json:"ostree"`
 	Qemu          *Artifact `json:"qemu,omitempty"`
 	Vmware        *Artifact `json:"vmware,omitempty"`
+	Vultr         *Artifact `json:"vultr,omitempty"`
 }
 
 type Cloudartifact struct {
