@@ -39,38 +39,58 @@ def gcp_run_ore(build, args):
     if args.project is None:
         raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
 
-    ore_args = ['ore']
-    if args.log_level == "DEBUG":
-        ore_args.extend(['--log-level', "DEBUG"])
-
     gcp_name = re.sub(r'[_\.]', '-', build.image_name_base)
     if not re.fullmatch(GCP_NAMING_RE, gcp_name):
         raise Exception(f"{gcp_name} does match the naming rule: file a bug")
-
     urltmp = os.path.join(build.tmpdir, "gcp-url")
-    ore_args.extend([
+
+    ore_common_args = [
+        'ore',
         'gcloud',
         '--project', args.project,
-        '--basename', build.build_name,
+        '--json-key', args.json_key,
+
+    ]
+    if args.log_level == "DEBUG":
+        ore_common_args.extend(['--log-level', "DEBUG"])
+
+    ore_upload_cmd = ore_common_args + [
         'upload',
+        '--basename', build.build_name,
         '--force',  # We want to support restarting the pipeline
         '--bucket', f'{args.bucket}',
-        '--json-key', args.json_key,
         '--name', gcp_name,
         '--file', f"{build.image_path}",
         '--write-url', urltmp,
-    ])
-
-    if args.family:
-        ore_args.extend(['--family', args.family])
+    ]
     if args.description:
-        ore_args.extend(['--description', args.description])
+        ore_upload_cmd.extend(['--description', args.description])
     if not args.create_image:
-        ore_args.extend(['--create-image=false'])
+        ore_upload_cmd.extend(['--create-image=false'])
     if args.license:
-        ore_args.extend(['--license', args.license])
+        ore_upload_cmd.extend(['--license', args.license])
+    run_verbose(ore_upload_cmd)
 
-    run_verbose(ore_args)
+    # Run deprecate image to deprecate if requested
+    if args.deprecated:
+        ore_deprecate_cmd = ore_common_args + [
+            'deprecate-image',
+            '--image', gcp_name,
+            '--state', 'DEPRECATED'
+        ]
+        run_verbose(ore_deprecate_cmd)
+
+    # Run update-image to add to an image family if requested.
+    # We run this as a separate API call because we want to run
+    # it AFTER the deprecation if the user passed --deprecated
+    if args.family:
+        ore_update_cmd = ore_common_args + [
+            'update-image',
+            '--image', gcp_name,
+            '--family', args.family
+        ]
+        run_verbose(ore_update_cmd)
+
     build.meta['gcp'] = {
         'image': gcp_name,
         'url': open(urltmp).read().strip()
@@ -124,4 +144,8 @@ def gcp_cli(parser):
     parser.add_argument("--license",
                         help="The license that should be attached to the image",
                         default=None)
+    parser.add_argument("--deprecated",
+                        action="store_true",
+                        default=False,
+                        help="If the image should be marked as deprecated")
     return parser
