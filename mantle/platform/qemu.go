@@ -959,10 +959,13 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	case "bios":
 		break
 	case "uefi":
-		builder.setupUefi(false)
+		if err := builder.setupUefi(false); err != nil {
+			return nil, err
+		}
 	case "uefi-secure":
-		builder.setupUefi(true)
-		break
+		if err := builder.setupUefi(true); err != nil {
+			return nil, err
+		}
 	default:
 		panic(fmt.Sprintf("Unknown firmware: %s", builder.Firmware))
 	}
