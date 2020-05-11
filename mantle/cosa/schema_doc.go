@@ -324,7 +324,8 @@ var generatedSchemaJSON = `{
        "metal4k",
        "openstack",
        "qemu",
-       "vmware"
+       "vmware",
+       "vultr"
       ],
      "properties": {
        "ostree": {
@@ -409,6 +410,12 @@ var generatedSchemaJSON = `{
          "$id":"#/properties/images/properties/vmware",
          "type":"object",
          "title":"VMWare",
+         "$ref": "#/definitions/artifact"
+        },
+       "vultr": {
+         "$id":"#/properties/images/properties/vultr",
+         "type":"object",
+         "title":"Vultr",
          "$ref": "#/definitions/artifact"
         },
        "aliyun": {
