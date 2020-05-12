@@ -67,6 +67,8 @@ def gcp_run_ore(build, args):
         ore_args.extend(['--description', args.description])
     if not args.create_image:
         ore_args.extend(['--create-image=false'])
+    if args.license:
+        ore_args.extend(['--license', args.license])
 
     run_verbose(ore_args)
     build.meta['gcp'] = {
@@ -119,4 +121,7 @@ def gcp_cli(parser):
                         type=boolean_string,
                         help="Whether or not to create an image in GCP after upload.",
                         default=True)
+    parser.add_argument("--license",
+                        help="The license that should be attached to the image",
+                        default=None)
     return parser

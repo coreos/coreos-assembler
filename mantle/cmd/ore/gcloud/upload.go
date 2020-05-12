@@ -44,6 +44,7 @@ var (
 	uploadImageFamily      string
 	uploadImageDescription string
 	uploadCreateImage      bool
+	uploadImageLicense     string
 )
 
 func init() {
@@ -58,6 +59,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
 	cmdUpload.Flags().StringVar(&uploadImageDescription, "description", "", "The description that should be attached to the image")
 	cmdUpload.Flags().BoolVar(&uploadCreateImage, "create-image", true, "Create an image in GCP after uploading")
+	cmdUpload.Flags().StringVar(&uploadImageLicense, "license", "", "The license to attach to the image")
 	GCloud.AddCommand(cmdUpload)
 }
 
@@ -130,14 +132,16 @@ func runUpload(cmd *cobra.Command, args []string) {
 
 	if uploadCreateImage {
 		fmt.Printf("Creating image in GCE: %v...\n", imageNameGCE)
-
-		// create image on gce
-		_, pending, err := api.CreateImage(&gcloud.ImageSpec{
+		spec := &gcloud.ImageSpec{
 			Name:        imageNameGCE,
 			Family:      uploadImageFamily,
 			SourceImage: imageStorageURL,
 			Description: uploadImageDescription,
-		}, uploadForce)
+		}
+		if uploadImageLicense != "" {
+			spec.Licenses = []string{uploadImageLicense}
+		}
+		_, pending, err := api.CreateImage(spec, uploadForce)
 		if err == nil {
 			err = pending.Wait()
 		}
@@ -153,12 +157,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 			switch ans {
 			case "y", "Y", "yes":
 				fmt.Println("Overriding existing image...")
-				_, pending, err = api.CreateImage(&gcloud.ImageSpec{
-					Name:        imageNameGCE,
-					Family:      uploadImageFamily,
-					SourceImage: imageStorageURL,
-					Description: uploadImageDescription,
-				}, true)
+				_, pending, err := api.CreateImage(spec, true)
 				if err == nil {
 					err = pending.Wait()
 				}
