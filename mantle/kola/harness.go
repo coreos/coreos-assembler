@@ -585,7 +585,7 @@ RequiredBy=multi-user.target
 	} else {
 		t.Distros = strings.Fields(meta.Distros)
 	}
-	t.Tags = strings.Fields(meta.Tags)
+	t.Tags = append(t.Tags, strings.Fields(meta.Tags)...)
 
 	register.RegisterTest(t)
 
