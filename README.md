@@ -103,7 +103,7 @@ here need to change for that.
 cosa() {
    env | grep COREOS_ASSEMBLER
    set -x
-   podman run --rm -ti --security-opt label=disable --privileged                                    \
+   podman run --rm -ti --security-opt label=disable --privileged --init                             \
               --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536                          \
               -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse                                  \
               --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa                                         \
