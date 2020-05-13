@@ -423,6 +423,11 @@ touch $rootfs/boot/ignition.firstboot
 chattr +i $rootfs
 
 fstrim -a -v
-umount -R $rootfs
+if [ ${EFIPN:+x} ]; then
+    umount $rootfs/boot/efi
+fi
+umount ${rootfs}/boot
+e2fsck -y "${disk}${BOOTPN}"
+umount $rootfs
 
 rmdir $rootfs
