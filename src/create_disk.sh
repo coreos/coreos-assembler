@@ -14,6 +14,10 @@ set -euo pipefail
 # on firstboot:
 # https://github.com/coreos/ignition-dracut/blob/6136be3d9d38d7926a61cd4d1b4ba5f9baf0892f/dracut/30ignition/coreos-gpt-setup.sh#L7
 uninitialized_gpt_uuid="00000000-0000-4000-a000-000000000001"
+# These UUIDs should be changed by code in fedora-coreos-config on firstboot, see
+# https://github.com/coreos/fedora-coreos-tracker/issues/465
+bootfs_uuid="96d15588-3596-4b3c-adca-a2ff7279ea63"
+rootfs_uuid="910678ff-f77e-4a7d-8d53-86f2ac47a823"
 
 usage() {
     cat <<EOC
@@ -203,7 +207,7 @@ if [ "${boot_verity}" = 1 ]; then
     # really mkfs.ext4 should know this.
     bootargs="-b $(getconf PAGE_SIZE) -O verity"
 fi
-mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot
+mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot -U "${bootfs_uuid}"
 if [ ${EFIPN:+x} ]; then
        mkfs.fat "${disk}${EFIPN}" -n EFI-SYSTEM
        # partition $BIOPN has no FS, its for bios grub
@@ -219,9 +223,9 @@ if [ "${rootfs_type}" = "ext4verity" ]; then
     # So basically, we're choosing performance over half-implemented security.
     # Eventually, we'd like both - once XFS gains verity (probably not too hard),
     # we could unconditionally enable it there.
-    mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}"
+    mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}" -U "${rootfs_uuid}"
 else
-    mkfs.xfs "${root_dev}" -L root -m reflink=1
+    mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
 fi
 
 rootfs=$PWD/tmp/rootfs
