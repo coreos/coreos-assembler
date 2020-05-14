@@ -171,16 +171,20 @@ func runUpload(cmd *cobra.Command, args []string) {
 				fmt.Println("Skipped GCE image creation")
 			}
 		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if uploadWriteUrl != "" {
 		err = ioutil.WriteFile(uploadWriteUrl, []byte(imageStorageURL), 0644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Writing file (%v) failed: %v\n", uploadWriteUrl, err)
+			os.Exit(1)
+		}
 	}
 
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
-		os.Exit(1)
-	}
 }
 
 // Converts an image name from Google Storage to an equivalent GCE image
