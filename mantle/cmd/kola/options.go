@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
+	"github.com/coreos/mantle/system"
 )
 
 var (
@@ -167,6 +168,8 @@ func syncOptionsImpl(useCosa bool) error {
 	// default to BIOS, or UEFI for 4k
 	if kola.QEMUOptions.Firmware == "" {
 		if kola.QEMUOptions.Native4k {
+			kola.QEMUOptions.Firmware = "uefi"
+		} else if system.RpmArch() == "aarch64" {
 			kola.QEMUOptions.Firmware = "uefi"
 		} else {
 			kola.QEMUOptions.Firmware = "bios"
