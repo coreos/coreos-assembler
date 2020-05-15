@@ -86,15 +86,6 @@ func Manhole(m Machine) error {
 	return nil
 }
 
-// Enable SELinux on a machine (skip on machines without SELinux support)
-func EnableSelinux(m Machine) error {
-	_, stderr, err := m.SSH("if type -P setenforce; then sudo setenforce 1; fi")
-	if err != nil {
-		return fmt.Errorf("Unable to enable SELinux: %s: %s", err, stderr)
-	}
-	return nil
-}
-
 // Reboots a machine, stopping ssh first.
 // Afterwards run CheckMachine to verify the system is back and operational.
 func StartReboot(m Machine) error {
@@ -174,11 +165,6 @@ func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
 	}
 	if err := CheckMachine(context.TODO(), m); err != nil {
 		return fmt.Errorf("machine %q failed basic checks: %v", m.ID(), err)
-	}
-	if !m.RuntimeConf().NoEnableSelinux {
-		if err := EnableSelinux(m); err != nil {
-			return fmt.Errorf("machine %q failed to enable selinux: %v", m.ID(), err)
-		}
 	}
 	return nil
 }
