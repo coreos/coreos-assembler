@@ -748,7 +748,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		OutputDir:          h.OutputDir(),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
-		NoEnableSelinux:    t.HasFlag(register.NoEnableSelinux),
 	}
 	c, err := flight.NewCluster(rconf)
 	if err != nil {

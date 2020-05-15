@@ -185,7 +185,6 @@ type RuntimeConfig struct {
 
 	NoSSHKeyInUserData bool // don't inject SSH key into Ignition/cloud-config
 	NoSSHKeyInMetadata bool // don't add SSH key to platform metadata
-	NoEnableSelinux    bool // don't enable selinux when starting or rebooting a machine
 	AllowFailedUnits   bool // don't fail CheckMachine if a systemd unit has failed
 }
 
