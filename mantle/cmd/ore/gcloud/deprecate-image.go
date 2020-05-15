@@ -67,8 +67,11 @@ func runDeprecateImage(cmd *cobra.Command, args []string) {
 
 	plog.Debugf("Attempting to change GCP image deprecation state of %s to %s\n",
 		deprecateImageName, deprecateImageState)
-	_, err := api.DeprecateImage(deprecateImageName,
+	pending, err := api.DeprecateImage(deprecateImageName,
 		gcloud.DeprecationState(deprecateImageState), deprecateImageReplacement)
+	if err == nil {
+		err = pending.Wait()
+	}
 	if err != nil {
 		plog.Fatalf("Changing deprecation state of image failed: %v\n", err)
 	}
