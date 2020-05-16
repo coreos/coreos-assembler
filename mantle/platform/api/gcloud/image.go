@@ -159,6 +159,15 @@ func (a *API) GetPendingForImage(image *compute.Image) (*Pending, error) {
 }
 
 func (a *API) DeprecateImage(name string, state DeprecationState, replacement string) (*Pending, error) {
+	var err error
+
+	if replacement != "" {
+		replacement, err = getImageAPIEndpoint(replacement, a.options.Project)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	req := a.compute.Images.Deprecate(a.options.Project, name, &compute.DeprecationStatus{
 		State:       string(state),
 		Replacement: replacement,
