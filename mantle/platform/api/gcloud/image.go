@@ -39,6 +39,31 @@ type ImageSpec struct {
 	Licenses    []string // short names
 }
 
+// Given a string representing an image return the full API
+// endpoint for the image. For example:
+// https://www.googleapis.com/compute/v1/projects/fedora-coreos-cloud/global/images/fedora-coreos-31-20200420-3-0-gcp-x86-64
+func getImageAPIEndpoint(image, project string) (string, error) {
+	const endpointPrefix = "https://www.googleapis.com/compute/v1/"
+	// If the input is already a full API endpoint then just return it
+	if strings.HasPrefix(image, endpointPrefix) {
+		return image, nil
+	}
+	// Accept a name beginning with "projects/" to specify a different
+	// project from the instance.
+	if strings.HasPrefix(image, "projects/") {
+		return endpointPrefix + image, nil
+	}
+	// Also accept a short name (no '/') build API endpoint using
+	// instance project (opts.Project).
+	if !strings.Contains(image, "/") {
+		return fmt.Sprintf(
+			"%sprojects/%s/global/images/%s",
+			endpointPrefix, project, image), nil
+	}
+	return "", fmt.Errorf("GCP Image argument must be the full api endpoint," +
+		" begin with 'projects/', or use the short name")
+}
+
 // CreateImage creates an image on GCE and returns operation details and
 // a Pending. If overwrite is true, an existing image will be overwritten
 // if it exists.
