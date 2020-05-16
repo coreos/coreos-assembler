@@ -127,11 +127,14 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 	return op, a.NewPending(op.Name, doable), nil
 }
 
-func (a *API) ListImages(ctx context.Context, prefix string) ([]*compute.Image, error) {
+func (a *API) ListImages(ctx context.Context, prefix string, family string) ([]*compute.Image, error) {
 	var images []*compute.Image
 	listReq := a.compute.Images.List(a.options.Project)
 	if prefix != "" {
 		listReq.Filter(fmt.Sprintf("name eq ^%s.*", prefix))
+	}
+	if family != "" {
+		listReq.Filter(fmt.Sprintf("family eq ^%s$", family))
 	}
 	err := listReq.Pages(ctx, func(i *compute.ImageList) error {
 		images = append(images, i.Items...)

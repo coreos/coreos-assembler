@@ -170,7 +170,7 @@ func doGCE(ctx context.Context, client *http.Client, src *storage.Bucket, spec *
 	desc := fmt.Sprintf("%s, %s, %s published on %s", spec.GCE.Description,
 		specVersion, specBoard, date.Format("2006-01-02"))
 
-	images, err := api.ListImages(ctx, spec.GCE.Family+"-")
+	images, err := api.ListImages(ctx, spec.GCE.Family+"-", "")
 	if err != nil {
 		plog.Fatal(err)
 	}
