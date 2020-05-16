@@ -43,7 +43,7 @@ func runImage(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	images, err := api.ListImages(context.Background(), imagePrefix)
+	images, err := api.ListImages(context.Background(), imagePrefix, "")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
