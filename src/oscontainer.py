@@ -65,7 +65,7 @@ def run_verbose(args, **kwargs):
 
 # Given a container reference, pull the latest version, then extract the ostree
 # repo a new directory dest/repo.
-def oscontainer_extract(containers_storage, src, dest,
+def oscontainer_extract(containers_storage, tmpdir, src, dest,
                         tls_verify=True, ref=None, cert_dir="",
                         authfile=""):
     dest = os.path.realpath(dest)
@@ -75,6 +75,10 @@ def oscontainer_extract(containers_storage, src, dest,
     if containers_storage is not None:
         podman_base_argv.append(f"--root={containers_storage}")
     podCmd = podman_base_argv + ['pull']
+
+    # See similar message in oscontainer_build.
+    if tmpdir is not None:
+        os.environ['TMPDIR'] = tmpdir
 
     if not tls_verify:
         tls_arg = '--tls-verify=false'
@@ -116,7 +120,7 @@ def oscontainer_extract(containers_storage, src, dest,
 
 # Given an OSTree repository at src (and exactly one ref) generate an
 # oscontainer with it.
-def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
+def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True,
                       add_directories=[], cert_dir="", authfile="", inspect_out=None,
                       display_name=None):
@@ -140,6 +144,13 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
     if containers_storage is not None:
         podman_base_argv.append(f"--root={containers_storage}")
         buildah_base_argv.append(f"--root={containers_storage}")
+
+    # In general, we just stick with the default tmpdir set up. But if a
+    # workdir is provided, then we want to be sure that all the heavy I/O work
+    # that happens stays in there since e.g. we might be inside a tiny supermin
+    # appliance.
+    if tmpdir is not None:
+        os.environ['TMPDIR'] = tmpdir
 
     bid = run_get_string(buildah_base_argv + ['from', base_image])
     mnt = run_get_string(buildah_base_argv + ['mount', bid])
@@ -258,21 +269,26 @@ def main():
     args = parser.parse_args()
 
     containers_storage = None
+    tmpdir = None
     if args.workdir is not None:
         containers_storage = os.path.join(args.workdir, 'containers-storage')
         if os.path.exists(containers_storage):
             shutil.rmtree(containers_storage)
+        tmpdir = os.path.join(args.workdir, 'tmp')
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
+        os.makedirs(tmpdir)
 
     if args.action == 'extract':
         oscontainer_extract(
-            containers_storage, args.src, args.dest,
+            containers_storage, tmpdir, args.src, args.dest,
             tls_verify=not args.disable_tls_verify,
             cert_dir=args.cert_dir,
             ref=args.ref,
             authfile=args.authfile)
     elif args.action == 'build':
         oscontainer_build(
-            containers_storage, args.src, args.rev, args.name,
+            containers_storage, tmpdir, args.src, args.rev, args.name,
             getattr(args, 'from'),
             display_name=args.display_name,
             inspect_out=args.inspect_out,
