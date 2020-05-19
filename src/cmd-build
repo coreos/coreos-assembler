@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--force-image] [--skip-prune] [--strict] [--tag TAG] [--version VERSION] [TARGET...]
+       coreos-assembler build [--force] [--force-image] [--skip-prune] [--strict] [--tag TAG] [--version VERSION] [-O/--variant VARIANT] [TARGET...]
 
   Build OSTree and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
@@ -30,9 +30,10 @@ SKIP_PRUNE=0
 VERSION=
 PARENT=
 TAG=
+VARIANT=
 STRICT=
 rc=0
-options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
+options=$(getopt --options hftO: --longoptions tag:,help,force,version:,parent:,variant:,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -63,6 +64,10 @@ while true; do
         --parent)
             shift
             PARENT=$1
+            ;;
+        -O | --variant)
+            shift
+            VARIANT=$1
             ;;
         -t | --tag)
             shift
@@ -107,6 +112,13 @@ build_followup_targets() {
 }
 
 prepare_build
+if [ -n "${VARIANT}" ]; then
+    manifest=${workdir}/src/config/${VARIANT}.yaml
+    if ! [ -f "${manifest}" ]; then
+        fatal "Failed to find variant manifest ${manifest}"
+    fi
+    echo "Using variant manifest: ${manifest}"
+fi
 
 ostree --version
 rpm-ostree --version
@@ -357,12 +369,17 @@ fi
 #
 # notice need to backslash escape double quotes in summary since the
 # summary could have double quotes: https://github.com/coreos/coreos-assembler/issues/327
+variantmeta=
+if [ -n "${VARIANT}" ]; then
+    variantmeta='"variant": "'"${VARIANT}"'",'
+fi
 #
 # shellcheck disable=SC2046 disable=SC2086
 cat > tmp/buildmeta.json <<EOF
 {
  "name": "${name}",
  "summary": "${summary//\"/\\\"}",
+ ${variantmeta}
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",

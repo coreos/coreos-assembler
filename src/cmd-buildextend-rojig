@@ -30,13 +30,14 @@ print(f"Targeting build: {args.build}")
 buildmeta_path = os.path.join(builddir, 'meta.json')
 with open(buildmeta_path) as f:
     buildmeta = json.load(f)
+manifest = buildmeta.get('variant', 'manifest')
 # Grab the commit hash for this build
 buildmeta_commit = buildmeta['ostree-commit']
 repo = os.path.join(workdir, 'tmp/repo')
 pkgcache_repo = os.path.join(workdir, 'cache/pkgcache-repo')
 
 with tempfile.TemporaryDirectory(prefix='rojig-', dir=f"{workdir}/tmp") as tmpd:
-    run_verbose(['/usr/lib/coreos-assembler/buildextend-rojig-impl', buildmeta_commit, os.path.abspath(tmpd)])
+    run_verbose(['/usr/lib/coreos-assembler/buildextend-rojig-impl', manifest, buildmeta_commit, os.path.abspath(tmpd)])
     rojig_path = None
     arch_destdir = os.path.join(tmpd, get_basearch())
     if not os.path.isdir(arch_destdir):

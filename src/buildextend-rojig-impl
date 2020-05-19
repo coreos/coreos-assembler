@@ -5,6 +5,8 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+manifest=$1
+shift
 commit=$1
 shift
 tmpdir=$1
@@ -27,7 +29,7 @@ if has_privileges; then
         tmpdir=$(mktemp -d -p /var/tmp)
     fi
     sudo rpm-ostree ex commit2rojig --repo="$(pwd)/tmp/repo" --pkgcache-repo="$(pwd)/cache/pkgcache-repo" \
-        "${commit}" "$(pwd)/src/config/manifest.yaml" "${tmpdir}"
+        "${commit}" "$(pwd)/src/config/${manifest}.yaml" "${tmpdir}"
     if ! [ -f /etc/cosa-supermin ]; then
         sudo chown -R -h "${USER}:${USER}" "${tmpdir}"
     else
