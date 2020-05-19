@@ -294,7 +294,7 @@ prepare_compose_overlays() {
     if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovld}" ]; then
         mkdir "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
-include: ${workdir}/src/config/manifest.yaml
+include: ${manifest}
 EOF
         # Because right now rpm-ostree doesn't look for .repo files in
         # each included dir.
