@@ -742,13 +742,24 @@ func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 }
 
 // AddInstallIso adds an ISO image
-func (builder *QemuBuilder) AddInstallIso(path string) error {
-	// We use bootindex=2 here: the idea is that during an ISO install, the
-	// primary disk isn't bootable, so the bootloader will fall back to the ISO
-	// boot. On reboot when the system is installed, the primary disk is
-	// selected. This allows us to have "boot once" functionality on both UEFI
-	// and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
-	builder.Append("-drive", "file="+path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso,bootindex=2")
+func (builder *QemuBuilder) AddInstallIso(path string, bootindexStr string) error {
+	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
+	// For all other arches we use ide-cd device with bootindex=2 here: the idea is
+	// that during an ISO install, the primary disk isn't bootable, so the bootloader
+	// will fall back to the ISO boot. On reboot when the system is installed, the
+	// primary disk is selected. This allows us to have "boot once" functionality on
+	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
+
+	// TBD: aarch64 does not support ide-cd but cdrom won't work either.Including it here as it doesn't error out at least.
+	switch system.RpmArch() {
+	case "s390x", "ppc64le", "aarch64":
+		builder.Append("-cdrom", path)
+	default:
+		if bootindexStr != "" {
+			bootindexStr = "," + bootindexStr
+		}
+		builder.Append("-drive", "file="+path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso"+bootindexStr)
+	}
 	return nil
 }
 
@@ -771,9 +782,7 @@ func (builder *QemuBuilder) finalize() {
 		// Then later, other non-x86_64 seemed to just copy that.
 		memory := 1024
 		switch system.RpmArch() {
-		case "aarch64":
-		case "s390x":
-		case "ppc64le":
+		case "aarch64", "s390x", "ppc64le":
 			memory = 2048
 		}
 		builder.Memory = memory
