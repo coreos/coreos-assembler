@@ -32,5 +32,8 @@ else
     else
         info "warning: No ~/.docker/config.json found, push will likely fail"
     fi
-    runvm -- env PYTHONUNBUFFERED=1 "${osc}" --authfile="${workdir}/tmp/docker-auth.json" --workdir /host/container-work "$@"
+    # we use the cache qcow2 here so that e.g. we cache the base image, and also
+    # so that buildah has a nice filesystem with space to work with instead of
+    # the tiny supermin ext2 root
+    runvm -- env PYTHONUNBUFFERED=1 "${osc}" --authfile="${workdir}/tmp/docker-auth.json" --workdir "${workdir}/cache/oscontainer-work" "$@"
 fi
