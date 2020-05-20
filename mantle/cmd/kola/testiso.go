@@ -485,8 +485,8 @@ func testLiveLogin() error {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder := newBaseQemuBuilder()
-	// See AddInstallISO, but drop the bootindex bit; we want it to be the default
-	builder.Append("-drive", "file="+isopath+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso")
+	// See AddInstallISO, but drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
+	builder.AddInstallIso(isopath, "")
 
 	completionChannel, err := builder.VirtioChannelRead("coreos.liveiso-success")
 	if err != nil {

@@ -288,7 +288,7 @@ def generate_iso():
             run_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
 
         # grub2-mkrescue is a wrapper around xorriso
-        genisoargs = ['grub2-mkrescue']
+        genisoargs = ['grub2-mkrescue', '-volid', volid]
     elif basearch == "s390x":
         # Reserve 32MB for the kernel, starting memory address of the initramfs
         # See https://github.com/weldr/lorax/blob/master/share/templates.d/99-generic/s390.tmpl

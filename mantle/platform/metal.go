@@ -669,7 +669,7 @@ WantedBy=multi-user.target
 	}
 
 	qemubuilder := inst.Builder
-	qemubuilder.AddInstallIso(isoEmbeddedPath)
+	qemubuilder.AddInstallIso(isoEmbeddedPath, "bootindex=2")
 
 	if offline {
 		qemubuilder.Append("-nic", "none")
