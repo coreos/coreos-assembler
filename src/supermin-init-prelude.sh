@@ -39,7 +39,7 @@ if [ -L "${workdir}"/src/config ]; then
     mkdir -p "$(readlink "${workdir}"/src/config)"
     mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
 fi
-mkdir -p "${workdir}"/cache /host/container-work
+mkdir -p "${workdir}"/cache
 cachedev=$(blkid -lt LABEL=cosa-cache -o device || true)
 if [ -n "${cachedev}" ]; then
     mount "${cachedev}" "${workdir}"/cache

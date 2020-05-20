@@ -8,7 +8,6 @@
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 
@@ -40,8 +39,6 @@ with open(metapath) as f:
     meta = json.load(f)
 
 print("Preparing to upload oscontainer for build: {}".format(latest_build))
-
-osc_workdir = "{}/tmp/oscontainer-work".format(os.getcwd())
 
 tmprepo = "{}/tmp/repo".format(os.getcwd())
 # if tmprepo is not a directory, but is unexpectedly a file,
@@ -91,6 +88,3 @@ metapath_new = f"{metapath}.new"
 with open(metapath_new, 'w') as f:
     json.dump(meta, f, sort_keys=True)
 os.rename(metapath_new, metapath)
-
-# Cleanup workdirs
-shutil.rmtree(osc_workdir, ignore_errors=True)
