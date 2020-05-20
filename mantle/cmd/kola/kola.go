@@ -15,6 +15,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -37,6 +38,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/sdk"
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 
 	// register OS test suite
@@ -524,6 +526,7 @@ func syncFindParentImageOptions() error {
 	var err error
 
 	var parentBaseUrl string
+	skipSignature := false
 	switch kola.Options.Distribution {
 	case "fcos":
 		// We're taking liberal shortcuts here... the cleaner way to do this is
@@ -536,6 +539,11 @@ func syncFindParentImageOptions() error {
 		if err != nil {
 			return err
 		}
+	case "rhcos":
+		// Hardcoded for now based on https://github.com/openshift/installer/blob/release-4.3/data/data/rhcos.json
+		parentBaseUrl = fmt.Sprintf("https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/rhcos-4.3/43.81.202003111353.0/%s/", system.RpmArch())
+		// sigh...someday we'll get the stuff signed by ART or maybe https://github.com/openshift/enhancements/pull/201 will just happen
+		skipSignature = true
 	default:
 		return fmt.Errorf("--find-parent-image not yet supported for distro %s", kola.Options.Distribution)
 	}
@@ -558,7 +566,7 @@ func syncFindParentImageOptions() error {
 		}
 		qcowUrl := parentBaseUrl + parentCosaBuild.BuildArtifacts.Qemu.Path
 		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.BuildArtifacts.Qemu.Path)
-		decompressedQcowLocal, err := downloadImageAndDecompress(qcowUrl, qcowLocal)
+		decompressedQcowLocal, err := downloadImageAndDecompress(qcowUrl, qcowLocal, skipSignature)
 		if err != nil {
 			return err
 		}
@@ -576,26 +584,57 @@ func syncFindParentImageOptions() error {
 }
 
 // Note this is a no-op if the decompressed dest already exists.
-func downloadImageAndDecompress(url, compressedDest string) (string, error) {
+func downloadImageAndDecompress(url, compressedDest string, skipSignature bool) (string, error) {
 	var decompressedDest string
-	if strings.HasSuffix(compressedDest, ".xz") {
+	if strings.HasSuffix(compressedDest, ".xz") || strings.HasSuffix(compressedDest, ".gz") {
 		// if the decompressed file is already present locally, assume it's
 		// good and verified already
-		decompressedDest = strings.TrimSuffix(compressedDest, ".xz")
+		decompressedDest = strings.TrimSuffix(strings.TrimSuffix(compressedDest, ".xz"), ".gz")
 		if exists, err := util.PathExists(decompressedDest); err != nil {
 			return "", err
 		} else if exists {
 			return decompressedDest, nil
 		} else {
-			if err := sdk.DownloadCompressedSignedFile(decompressedDest, url, nil, "", util.XzDecompressStream); err != nil {
-				return "", err
+			if !skipSignature {
+				if err := sdk.DownloadCompressedSignedFile(decompressedDest, url, nil, "", util.XzDecompressStream); err != nil {
+					return "", err
+				}
+			} else {
+				req, err := http.NewRequest("GET", url, nil)
+				if err != nil {
+					return "", err
+				}
+
+				resp, err := http.DefaultClient.Do(req)
+				if err != nil {
+					return "", err
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					return "", fmt.Errorf("url %s status: %s", url, resp.Status)
+				}
+				gzr, err := gzip.NewReader(resp.Body)
+				if err != nil {
+					return "", err
+				}
+				dst, err := os.OpenFile(decompressedDest, os.O_WRONLY|os.O_CREATE, 0666)
+				if err != nil {
+					return "", err
+				}
+				defer dst.Close()
+				prefix := filepath.Base(decompressedDest)
+				if _, err := util.CopyProgress(capnslog.INFO, prefix, dst, gzr, resp.ContentLength); err != nil {
+					return "", err
+				}
 			}
 			return decompressedDest, nil
 		}
 	}
 
-	if err := sdk.DownloadSignedFile(compressedDest, url, nil, ""); err != nil {
-		return "", err
+	if !skipSignature {
+		if err := sdk.DownloadSignedFile(compressedDest, url, nil, ""); err != nil {
+			return "", err
+		}
 	}
 
 	return compressedDest, nil
