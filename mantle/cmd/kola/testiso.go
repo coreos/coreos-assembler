@@ -310,19 +310,34 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func awaitCompletion(inst *platform.QemuInstance, qchan *os.File, expected []string) error {
+func awaitCompletion(inst *platform.QemuInstance, outputDir string, qchan *os.File, expected []string) error {
 	errchan := make(chan error)
 	go func() {
 		time.Sleep(installTimeout)
 		errchan <- fmt.Errorf("timed out after %v", installTimeout)
 	}()
+	if !debug {
+		go func() {
+			errBuf, err := inst.WaitIgnitionError()
+			if err == nil {
+				if errBuf != "" {
+					msg := fmt.Sprintf("entered emergency.target in initramfs")
+					plog.Info(msg)
+					path := filepath.Join(outputDir, "ignition-virtio-dump.txt")
+					if err := ioutil.WriteFile(path, []byte(errBuf), 0644); err != nil {
+						plog.Errorf("Failed to write journal: %v", err)
+					}
+					err = platform.ErrInitramfsEmergency
+				}
+			}
+			if err != nil {
+				errchan <- err
+			}
+		}()
+	}
 	go func() {
 		var err error
-		if !debug {
-			err = inst.WaitAll()
-		} else {
-			err = inst.Wait()
-		}
+		err = inst.Wait()
 		if err != nil {
 			errchan <- err
 		}
@@ -361,13 +376,6 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-// what we really want at some point is to have `kola -p qemu-metal-pxe` or so
-// and share most of the code with the rest of kola.
-func setupQemuForOutputDir(inst *platform.Install, outputdir string) error {
-
-	return nil
-}
-
 func testPXE(inst platform.Install, outputDir string) error {
 	config := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -402,7 +410,7 @@ func testPXE(inst platform.Install, outputDir string) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, completionChannel, []string{signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outputDir, completionChannel, []string{signalCompleteString})
 }
 
 func testLiveIso(inst platform.Install, outputDir string, offline bool) error {
@@ -470,7 +478,7 @@ func testLiveIso(inst platform.Install, outputDir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outputDir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveLogin() error {
@@ -494,5 +502,5 @@ func testLiveLogin() error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach, completionChannel, []string{"coreos-liveiso-success"})
+	return awaitCompletion(mach, outputDir, completionChannel, []string{"coreos-liveiso-success"})
 }
