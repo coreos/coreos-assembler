@@ -113,18 +113,6 @@ preflight() {
     fi
 }
 
-
-disk_ignition_version() {
-    local path
-    path=$1
-    # yup, this is happening *again* (see below too)
-    python3 -c "
-import sys
-sys.path.insert(0, '${DIR}')
-from cosalib.cmdlib import disk_ignition_version
-print(disk_ignition_version('${path}}'))"
-}
-
 # Picks between yaml or json based on which version exists. Errors out if both
 # exists. If neither exist, prefers the extension in ${2}, or otherwise YAML.
 pick_yaml_or_else_json() {

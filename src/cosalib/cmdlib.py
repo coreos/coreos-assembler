@@ -162,22 +162,6 @@ def rm_allow_noent(path):
         pass
 
 
-# Obviously this is a hack but...we need to know this before
-# launching, and I don't think we have structured metadata in e.g. qcow2.
-# There are other alternatives but we'll carry this hack for now.
-# But if you're reading this comment 10 years in the future, I won't be
-# too surprised either ;)  Oh and hey if you are please send me an email, it'll
-# be like a virtual time capsule!  If they still use email then...
-def disk_ignition_version(path):
-    v = subprocess.check_output(['kola', 'artifact-ignition-version', path], encoding='utf8').strip()
-    if v == "v2":
-        return "2.2.0"
-    elif v == "v3":
-        return "3.0.0"
-    else:
-        raise Exception(f"Unhandled: {v}")
-
-
 def import_ostree_commit(repo, commit, tarfile, force=False):
     # create repo in case e.g. tmp/ was cleared out; idempotent
     subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
