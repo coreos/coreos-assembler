@@ -577,7 +577,7 @@ func syncFindParentImageOptions() error {
 			return err
 		}
 	default:
-		err = fmt.Errorf("--find-parent-image not yet supported for platform %s", kolaPlatform)
+		return fmt.Errorf("--find-parent-image not yet supported for platform %s", kolaPlatform)
 	}
 
 	return nil
