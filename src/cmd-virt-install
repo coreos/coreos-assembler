@@ -57,8 +57,6 @@ if args.instid is None:
 
 ignvol = f"{args.name}-ign-{args.instid}"
 ignsize = os.path.getsize(args.ignition)
-# TODO do conversion
-# ignition_version = cmdlib.disk_ignition_version(qemupath)
 
 vconn = libvirt.open(args.connect)
 if vconn is None:
