@@ -19,10 +19,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/coreos/mantle/system"
 )
 
-const canonicalStreamIndexLocation = "https://builds.coreos.fedoraproject.org/prod/streams/%s/releases.json"
-const canonicalStreamMetadataLocation = "https://builds.coreos.fedoraproject.org/streams/%s.json"
+const buildHostUrl = "https://builds.coreos.fedoraproject.org/"
+const canonicalReleaseIndexLocation = "prod/streams/%s/releases.json"
+const canonicalStreamMetadataLocation = "streams/%s.json"
 
 // XXX: dedupe with fedora-coreos-stream-generator
 
@@ -179,7 +182,7 @@ func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
 }
 
 func FetchAndParseCanonicalReleaseIndex(stream string) (*ReleaseIndex, error) {
-	return FetchAndParseReleaseIndex(fmt.Sprintf(canonicalStreamIndexLocation, stream))
+	return FetchAndParseReleaseIndex(buildHostUrl + fmt.Sprintf(canonicalReleaseIndexLocation, stream))
 }
 
 func FetchAndParseStreamMetadata(url string) (*StreamMetadata, error) {
@@ -197,7 +200,7 @@ func FetchAndParseStreamMetadata(url string) (*StreamMetadata, error) {
 }
 
 func FetchAndParseCanonicalStreamMetadata(stream string) (*StreamMetadata, error) {
-	return FetchAndParseStreamMetadata(fmt.Sprintf(canonicalStreamMetadataLocation, stream))
+	return FetchAndParseStreamMetadata(buildHostUrl + fmt.Sprintf(canonicalStreamMetadataLocation, stream))
 }
 
 func FetchCanonicalStreamArtifacts(stream, architecture string) (*StreamArtifacts, error) {
@@ -224,4 +227,9 @@ func GetPlatformDiskArtifact(platform *StreamMediaDetails, format string) (*Imag
 		return nil, fmt.Errorf("stream metadata missing %q disk image", format)
 	}
 	return artifacts.Disk, nil
+}
+
+// GetCosaBuildUrl returns a URL prefix for the coreos-assembler build.
+func GetCosaBuildUrl(stream, buildid string) string {
+	return buildHostUrl + fmt.Sprintf("prod/streams/%s/builds/%s/%s/", stream, buildid, system.RpmArch())
 }
