@@ -133,7 +133,7 @@ func newBaseQemuBuilder() *platform.QemuBuilder {
 	return builder
 }
 
-func newQemuBuilder(isPXE bool, outputdir string) (*platform.QemuBuilder, *ignv3types.Config, error) {
+func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *ignv3types.Config, error) {
 	builder := newBaseQemuBuilder()
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
@@ -155,18 +155,18 @@ func newQemuBuilder(isPXE bool, outputdir string) (*platform.QemuBuilder, *ignv3
 			SectorSize: sectorSize,
 		})
 	}
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return nil, nil, err
 	}
 
 	if !builder.InheritConsole {
-		builder.ConsoleToFile(filepath.Join(outputDir, "console.txt"))
+		builder.ConsoleToFile(filepath.Join(outdir, "console.txt"))
 	}
 	virtioJournalConfig, journalPipe, err := builder.VirtioJournal("")
 	if err != nil {
 		return nil, nil, err
 	}
-	journalOut, err := os.OpenFile(filepath.Join(outputDir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
+	journalOut, err := os.OpenFile(filepath.Join(outdir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -215,6 +215,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Testing scenarios: %s\n", scenarios)
 
 	var err error
+	// note this reassigns a *global*
 	outputDir, err = kola.SetupOutputDir(outputDir, "testiso")
 	if err != nil {
 		return err
@@ -297,7 +298,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
 		ranTest = true
-		if err := testLiveLogin(); err != nil {
+		if err := testLiveLogin(filepath.Join(outputDir, scenarioISOLiveLogin)); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
 		}
 		printSuccess(scenarioISOLiveLogin)
@@ -310,7 +311,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func awaitCompletion(inst *platform.QemuInstance, outputDir string, qchan *os.File, expected []string) error {
+func awaitCompletion(inst *platform.QemuInstance, outdir string, qchan *os.File, expected []string) error {
 	errchan := make(chan error)
 	go func() {
 		time.Sleep(installTimeout)
@@ -323,7 +324,7 @@ func awaitCompletion(inst *platform.QemuInstance, outputDir string, qchan *os.Fi
 				if errBuf != "" {
 					msg := fmt.Sprintf("entered emergency.target in initramfs")
 					plog.Info(msg)
-					path := filepath.Join(outputDir, "ignition-virtio-dump.txt")
+					path := filepath.Join(outdir, "ignition-virtio-dump.txt")
 					if err := ioutil.WriteFile(path, []byte(errBuf), 0644); err != nil {
 						plog.Errorf("Failed to write journal: %v", err)
 					}
@@ -376,7 +377,7 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-func testPXE(inst platform.Install, outputDir string) error {
+func testPXE(inst platform.Install, outdir string) error {
 	config := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -392,7 +393,7 @@ func testPXE(inst platform.Install, outputDir string) error {
 		},
 	}
 
-	builder, virtioJournalConfig, err := newQemuBuilder(true, outputDir)
+	builder, virtioJournalConfig, err := newQemuBuilder(true, outdir)
 	if err != nil {
 		return err
 	}
@@ -410,11 +411,11 @@ func testPXE(inst platform.Install, outputDir string) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outputDir, completionChannel, []string{signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{signalCompleteString})
 }
 
-func testLiveIso(inst platform.Install, outputDir string, offline bool) error {
-	builder, virtioJournalConfig, err := newQemuBuilder(true, outputDir)
+func testLiveIso(inst platform.Install, outdir string, offline bool) error {
+	builder, virtioJournalConfig, err := newQemuBuilder(true, outdir)
 	if err != nil {
 		return err
 	}
@@ -478,10 +479,13 @@ func testLiveIso(inst platform.Install, outputDir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outputDir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveLogin() error {
+func testLiveLogin(outdir string) error {
+	if err := os.MkdirAll(outdir, 0755); err != nil {
+		return err
+	}
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder := newBaseQemuBuilder()
@@ -502,5 +506,5 @@ func testLiveLogin() error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach, outputDir, completionChannel, []string{"coreos-liveiso-success"})
+	return awaitCompletion(mach, outdir, completionChannel, []string{"coreos-liveiso-success"})
 }
