@@ -39,11 +39,12 @@ type ImageSpec struct {
 	Licenses    []string // short names
 }
 
+const endpointPrefix = "https://www.googleapis.com/compute/v1/"
+
 // Given a string representing an image return the full API
 // endpoint for the image. For example:
 // https://www.googleapis.com/compute/v1/projects/fedora-coreos-cloud/global/images/fedora-coreos-31-20200420-3-0-gcp-x86-64
 func getImageAPIEndpoint(image, project string) (string, error) {
-	const endpointPrefix = "https://www.googleapis.com/compute/v1/"
 	// If the input is already a full API endpoint then just return it
 	if strings.HasPrefix(image, endpointPrefix) {
 		return image, nil
@@ -70,11 +71,17 @@ func getImageAPIEndpoint(image, project string) (string, error) {
 func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, *Pending, error) {
 	licenses := make([]string, len(spec.Licenses))
 	for i, l := range spec.Licenses {
-		license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("Invalid GCE license %s: %v", l, err)
+		// If the license is already in URI format then use that
+		if strings.HasPrefix(l, "https://") {
+			licenses[i] = l
+		} else {
+			// If not in URI format then query GCP for that info
+			license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
+			if err != nil {
+				return nil, nil, fmt.Errorf("Invalid GCE license %s: %v", l, err)
+			}
+			licenses[i] = license.SelfLink
 		}
-		licenses[i] = license.SelfLink
 	}
 
 	if overwrite {
