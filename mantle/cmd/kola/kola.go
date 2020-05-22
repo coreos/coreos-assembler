@@ -15,12 +15,12 @@
 package main
 
 import (
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -585,59 +585,24 @@ func syncFindParentImageOptions() error {
 
 // Note this is a no-op if the decompressed dest already exists.
 func downloadImageAndDecompress(url, compressedDest string, skipSignature bool) (string, error) {
-	var decompressedDest string
-	if strings.HasSuffix(compressedDest, ".xz") || strings.HasSuffix(compressedDest, ".gz") {
-		// if the decompressed file is already present locally, assume it's
-		// good and verified already
-		decompressedDest = strings.TrimSuffix(strings.TrimSuffix(compressedDest, ".xz"), ".gz")
-		if exists, err := util.PathExists(decompressedDest); err != nil {
-			return "", err
-		} else if exists {
-			return decompressedDest, nil
-		} else {
-			if !skipSignature {
-				if err := sdk.DownloadCompressedSignedFile(decompressedDest, url, nil, "", util.XzDecompressStream); err != nil {
-					return "", err
-				}
-			} else {
-				req, err := http.NewRequest("GET", url, nil)
-				if err != nil {
-					return "", err
-				}
-
-				resp, err := http.DefaultClient.Do(req)
-				if err != nil {
-					return "", err
-				}
-				defer resp.Body.Close()
-				if resp.StatusCode != http.StatusOK {
-					return "", fmt.Errorf("url %s status: %s", url, resp.Status)
-				}
-				gzr, err := gzip.NewReader(resp.Body)
-				if err != nil {
-					return "", err
-				}
-				dst, err := os.OpenFile(decompressedDest, os.O_WRONLY|os.O_CREATE, 0666)
-				if err != nil {
-					return "", err
-				}
-				defer dst.Close()
-				prefix := filepath.Base(decompressedDest)
-				if _, err := util.CopyProgress(capnslog.INFO, prefix, dst, gzr, resp.ContentLength); err != nil {
-					return "", err
-				}
-			}
-			return decompressedDest, nil
+	var decompressedDest = strings.TrimSuffix(strings.TrimSuffix(compressedDest, ".xz"), ".gz")
+	if exists, err := util.PathExists(decompressedDest); err != nil {
+		return "", err
+	} else if !exists {
+		targetdir := filepath.Dir(decompressedDest)
+		downloadArgs := []string{"download", "--decompress", "-C", targetdir}
+		if skipSignature {
+			downloadArgs = append(downloadArgs, "--insecure")
 		}
-	}
-
-	if !skipSignature {
-		if err := sdk.DownloadSignedFile(compressedDest, url, nil, ""); err != nil {
+		downloadArgs = append(downloadArgs, []string{"-u", url}...)
+		cmd := exec.Command("coreos-installer", downloadArgs...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
 			return "", err
 		}
 	}
-
-	return compressedDest, nil
+	return decompressedDest, nil
 }
 
 // Returns the URL to a parent build that can be used as a base for upgrade
