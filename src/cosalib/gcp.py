@@ -51,8 +51,8 @@ def gcp_run_ore(build, args):
         '--json-key', args.json_key,
 
     ]
-    if args.log_level == "DEBUG":
-        ore_common_args.extend(['--log-level', "DEBUG"])
+    if args.log_level:
+        ore_common_args.extend(['--log-level', args.log_level])
 
     ore_upload_cmd = ore_common_args + [
         'upload',
