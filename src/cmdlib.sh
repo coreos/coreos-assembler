@@ -211,14 +211,13 @@ prepare_build() {
     # Also grab rojig summary for image upload descriptions
     name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
     summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
-    license=$(jq -r '.rojig.license' < "${manifest_tmp_json}")
     ref=$(jq -r '.ref' < "${manifest_tmp_json}")
     ref_is_temp=""
     if [ "${ref}" = "null" ]; then
         ref="tmpref-${name}"
         ref_is_temp=1
     fi
-    export name ref summary license
+    export name ref summary
     # And validate fields coreos-assembler requires, but not rpm-ostree
     required_fields=("automatic-version-prefix")
     for field in "${required_fields[@]}"; do
