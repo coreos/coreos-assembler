@@ -576,6 +576,11 @@ func syncFindParentImageOptions() error {
 		if err != nil {
 			return err
 		}
+	case "gce":
+		kola.GCEOptions.Image, err = parentCosaBuild.FindGCPImage()
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("--find-parent-image not yet supported for platform %s", kolaPlatform)
 	}
