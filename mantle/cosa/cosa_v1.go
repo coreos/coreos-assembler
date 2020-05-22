@@ -91,7 +91,7 @@ type Cloudartifact struct {
 type Gcp struct {
 	ImageFamily  string `json:"family,omitempty"`
 	ImageName    string `json:"image"`
-	ImageProject string `json:"project"`
+	ImageProject string `json:"project,omitempty"`
 	URL          string `json:"url"`
 }
 

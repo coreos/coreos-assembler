@@ -640,11 +640,11 @@ var generatedSchemaJSON = `{
      "title":"GCP",
      "required": [
          "image",
-         "url",
-         "project"
+         "url"
      ],
      "optional": [
-         "family"
+         "family",
+         "project"
      ],
      "properties": {
        "image": {
