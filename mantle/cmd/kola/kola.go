@@ -640,9 +640,7 @@ func getParentFcosBuildBase(stream string) (string, error) {
 		parentVersion = index.Releases[n-1].Version
 	}
 
-	// XXX: multi-arch
-	// XXX: centralize URL and parameterize
-	return fmt.Sprintf("https://builds.coreos.fedoraproject.org/prod/streams/%s/builds/%s/x86_64/", stream, parentVersion), nil
+	return fcos.GetCosaBuildUrl(stream, parentVersion), nil
 }
 
 func runRunUpgrade(cmd *cobra.Command, args []string) error {
