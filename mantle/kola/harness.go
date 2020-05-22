@@ -665,7 +665,12 @@ func RegisterExternalTestsWithPrefix(dir, prefix string) error {
 	testsdir := filepath.Join(dir, "tests/kola")
 	children, err := ioutil.ReadDir(testsdir)
 	if err != nil {
-		return errors.Wrapf(err, "reading %s", dir)
+		if os.IsNotExist(err) {
+			// The directory doesn't exist.. Skip registering tests
+			return nil
+		} else {
+			return errors.Wrapf(err, "reading %s", dir)
+		}
 	}
 
 	if err := registerTestDir(testsdir, prefix, children); err != nil {
