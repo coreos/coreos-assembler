@@ -74,6 +74,20 @@ func (build *Build) FindAMI(region string) (string, error) {
 	return "", fmt.Errorf("no AMI found for region %s", region)
 }
 
+func (build *Build) FindGCPImage() (string, error) {
+	if build.Gcp != nil {
+		project := build.Gcp.ImageProject
+		if project == "" {
+			// Hack for when meta.json didn't include the project. We can
+			// probably drop this in the future. See:
+			// https://github.com/coreos/coreos-assembler/pull/1335
+			project = "fedora-coreos-cloud"
+		}
+		return fmt.Sprintf("projects/%s/global/images/%s", project, build.Gcp.ImageName), nil
+	}
+	return "", errors.New("no GCP image found")
+}
+
 func (build *Build) WriteMeta(path string, validate bool) error {
 	if validate {
 		if err := build.Validate(); len(err) != 0 {
