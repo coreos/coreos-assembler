@@ -207,10 +207,16 @@ prepare_build() {
     manifest_tmp_json=${workdir}/tmp/manifest.json
     rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${manifest_tmp_json}"
 
-    # Abuse the rojig/name as the name of the VM images
-    # Also grab rojig summary for image upload descriptions
-    name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
-    summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
+    if [ "$(jq -r '.rojig' < "${manifest_tmp_json}")" == "null" ]; then
+        name=$(basename "$(realpath "${manifest}")" .yaml)
+        summary=$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("summary"))' < "$configdir/image.yaml")
+    else
+        # Abuse the rojig/name as the name of the VM images
+        # Also grab rojig summary for image upload descriptions
+        name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
+        summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
+    fi
+
     ref=$(jq -r '.ref' < "${manifest_tmp_json}")
     ref_is_temp=""
     if [ "${ref}" = "null" ]; then
