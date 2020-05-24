@@ -83,6 +83,7 @@ var (
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
+	NoNet           bool   // Disable tests requiring Internet
 
 	BlacklistedTests []string // tests which are blacklisted
 	Tags             []string // tags to be ran
@@ -242,11 +243,22 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		checkPlatforms = append(checkPlatforms, "qemu")
 	}
 
-	var blacklisted bool
 	noPattern := hasString("*", patterns)
 	for name, t := range tests {
+		var noNetFiltered bool
+		var blacklisted bool
+		for _, flag := range t.Flags {
+			if flag == register.RequiresInternetAccess && NoNet {
+				noNetFiltered = true
+				break
+			}
+		}
+		if noNetFiltered {
+			plog.Debugf("Skipping test that requires network: %s", t.Name)
+			continue
+		}
+
 		// Drop anything which is blacklisted directly or by pattern
-		blacklisted = false
 		for _, bl := range BlacklistedTests {
 			match, err := filepath.Match(bl, t.Name)
 			if err != nil {
