@@ -193,6 +193,22 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		targetScenarios[scenario] = true
 	}
+
+	// ppc64le: pxe-install does not work: https://github.com/coreos/coreos-assembler/issues/1457. Seems like
+	// the SLOF doesn't like the live initramfs image.
+	// s390x: pxe-install does not work because the bootimage used today is built from the rhcos kernel+initrd
+	// since s390x does not have a pre-built all in one image. For the pxe case, this image turns out to
+	// be bigger than the allowed tftp buffer. iso-install does not work because s390x uses an El Torito image
+	switch system.RpmArch() {
+	case "s390x":
+		fmt.Println("Skipping pxe-install and iso-install on s390x")
+		noiso = true
+		nopxe = true
+	case "ppc64le":
+		fmt.Println("Skipping pxe-install on ppc64le")
+		nopxe = true
+	}
+
 	if legacy {
 		targetScenarios[scenarioLegacyInstall] = true
 	}
