@@ -7,4 +7,4 @@ dn=$(dirname "$0")
 
 prepare_build
 
-RUNVM_SHELL=1 runvm -- bash
+RUNVM_SHELL=1 runvm "$@" -- bash
