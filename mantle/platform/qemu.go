@@ -638,7 +638,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		if err := builder.renderIgnition(); err != nil {
 			return errors.Wrapf(err, "rendering ignition")
 		}
-		requiresInjection := builder.ConfigFile != "" && (builder.ForceConfigInjection || !builder.supportsFwCfg())
+		requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
 		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArguments != "" {
 			if err := setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
 				disk.dstFileName, disk.SectorSize); err != nil {
@@ -1028,9 +1028,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	if builder.ConfigFile != "" && !builder.configInjected {
 		if builder.supportsFwCfg() {
 			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.ConfigFile)
-		} else if builder.primaryDisk == nil {
-			// Otherwise, we should have handled it in builder.AddPrimaryDisk
-			panic("Ignition specified but no primary disk")
+		} else {
+			// Alternative to fw_cfg, should be generally usable on all arches,
+			// especially those without fw_cfg support.
+			// See https://github.com/coreos/ignition/pull/905
+			builder.Append("-drive", fmt.Sprintf("if=none,id=ignition,format=raw,file=%s,readonly=on", builder.ConfigFile), "-device", "virtio-blk,serial=ignition,drive=ignition")
 		}
 	}
 
