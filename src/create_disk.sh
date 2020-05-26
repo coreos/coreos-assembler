@@ -426,6 +426,9 @@ echo "set ignition_network_kcmdline='${firstboot_kargs}'" > $rootfs/boot/ignitio
 chattr +i $rootfs
 
 fstrim -a -v
+# Ensure the filesystem journal is flushed
+mount -o remount,ro $rootfs
+xfs_freeze -f $rootfs
 umount -R $rootfs
 
 rmdir $rootfs
