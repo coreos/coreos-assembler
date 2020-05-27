@@ -128,7 +128,7 @@ def compress_one_builddir(builddir):
             # Just flush out after every image type, but unlink after writing.
             # Then, we should be able to interrupt and restart from the last
             # type.
-            os.rename(tmpfile, filepath_with_ext)
+            shutil.move(tmpfile, filepath_with_ext)
             write_json(buildmeta_path, buildmeta)
             os.unlink(filepath)
             at_least_one = True

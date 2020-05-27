@@ -137,7 +137,7 @@ def mkinitrd_pipe(tmproot, destf, compression=True):
 def mkinitrd(tmproot, destpath, compression=True):
     desttmp = destpath + '.tmp'
     mkinitrd_pipe(tmproot, open(desttmp, 'w'), compression=compression)
-    os.rename(desttmp, destpath)
+    shutil.move(desttmp, destpath)
 
 
 def extend_initrd(initramfs, tmproot, compression=True):
@@ -180,7 +180,7 @@ def generate_iso():
 
     initramfs = os.path.join(tmpisoimages, initramfs_img)
     base_initramfs = os.path.join(tmpdir, initramfs_img)
-    os.rename(initramfs, base_initramfs)
+    shutil.move(initramfs, base_initramfs)
     # Append the "stampfile initramfs" to the base which says
     # whether it's a live or legacy initramfs.
     with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
@@ -435,7 +435,7 @@ def generate_iso():
             'sha256': sha256sum_file(tmpisofile)
         }
     })
-    os.rename(tmpisofile, f"{builddir}/{iso_name}")
+    shutil.move(tmpisofile, f"{builddir}/{iso_name}")
 
     if not args.no_pxe:
         kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{basearch}'

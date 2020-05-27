@@ -5,6 +5,7 @@ Houses helper code for python based coreos-assembler commands.
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -77,7 +78,7 @@ def write_json(path, data):
     f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
     json.dump(data, f, indent=4)
     os.fchmod(f.file.fileno(), 0o644)
-    os.rename(f.name, path)
+    shutil.move(f.name, path)
 
 
 def load_json(path):
