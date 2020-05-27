@@ -8,6 +8,7 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -87,4 +88,4 @@ meta['oscontainer'] = {'image': args.name,
 metapath_new = f"{metapath}.new"
 with open(metapath_new, 'w') as f:
     json.dump(meta, f, sort_keys=True)
-os.rename(metapath_new, metapath)
+shutil.move(metapath_new, metapath)
