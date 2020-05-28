@@ -129,9 +129,9 @@ def mkinitrd_pipe(tmproot, destf, compression=True):
     if not compression:
         gzipargs.append('-1')
     gzipproc = subprocess.Popen(gzipargs, stdin=cpioproc.stdout, stdout=destf)
-    cpioproc.wait()
-    findproc.wait()
-    gzipproc.wait()
+    assert cpioproc.wait() == 0, f"cpio exited with {cpioproc.returncode}"
+    assert findproc.wait() == 0, f"find exited with {findproc.returncode}"
+    assert gzipproc.wait() == 0, f"gzip exited with {gzipproc.returncode}"
 
 
 def mkinitrd(tmproot, destpath, compression=True):
