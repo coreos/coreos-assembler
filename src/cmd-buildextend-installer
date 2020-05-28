@@ -121,7 +121,8 @@ initrd_ignition_padding = 256 * 1024
 
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html#compressed-cpio-images
 def mkinitrd_pipe(tmproot, destf, compression=True):
-    findproc = subprocess.Popen(['find', '.', '-print0'], cwd=tmproot, stdout=subprocess.PIPE)
+    findproc = subprocess.Popen(['find', '.', '-mindepth', '1', '-print0'],
+                                cwd=tmproot, stdout=subprocess.PIPE)
     cpioproc = subprocess.Popen(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
             '--quiet', '--reproducible', '--force-local', '--null',
             '-D', tmproot], stdin=findproc.stdout, stdout=subprocess.PIPE)
