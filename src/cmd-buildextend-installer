@@ -134,12 +134,6 @@ def mkinitrd_pipe(tmproot, destf, compression=True):
     assert gzipproc.wait() == 0, f"gzip exited with {gzipproc.returncode}"
 
 
-def mkinitrd(tmproot, destpath, compression=True):
-    desttmp = destpath + '.tmp'
-    mkinitrd_pipe(tmproot, open(desttmp, 'w'), compression=compression)
-    shutil.move(desttmp, destpath)
-
-
 def extend_initrd(initramfs, tmproot, compression=True):
     with open(initramfs, 'ab') as fdst:
         mkinitrd_pipe(tmproot, fdst, compression=compression)
