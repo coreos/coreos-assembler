@@ -95,3 +95,15 @@ The reason to use a single string (instead of a native JSON list)
 is that by providing `!` at the front of the string, the value instead
 declares exclusions (`ExclusiveArchitectures` instead of `Architectures` in
 reference to kola internals.
+
+More recently, you can also (useful for shell scripts) include the JSON file
+inline per test, like this:
+
+```sh
+#!/bin/bash
+set -xeuo pipefail
+# kola: { "architectures": "x86_64", "platforms": ["aws", "gcp"] }
+test code here
+```
+
+This metadata stanza must start with `# kola: ` and have a single line of JSON.
