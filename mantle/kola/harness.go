@@ -15,8 +15,10 @@
 package kola
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -65,6 +67,7 @@ import (
 // tests at /usr/lib/coreos-assembler/tests/kola/ostree/...
 // and this will be automatically picked up.
 const InstalledTestsDir = "/usr/lib/coreos-assembler/tests/kola"
+const InstalledTestMetaPrefix = "# kola:"
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
@@ -493,10 +496,53 @@ type externalTestMeta struct {
 	Tags          string `json:",tags,omitempty"`
 }
 
-func registerExternalTest(testname, executable, dependencydir, ignition string, meta externalTestMeta) error {
+// metadataFromTestBinary extracts JSON-in-comment like:
+// #!/bin/bash
+// # kola: { "tags": ["ignition"], "architectures": ["x86_64"] }
+// <test code here>
+func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
+	f, err := os.Open(executable)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	r := bufio.NewReader(io.LimitReader(f, 8192))
+	var meta *externalTestMeta
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		if !strings.HasPrefix(line, InstalledTestMetaPrefix) {
+			continue
+		}
+		buf := strings.TrimSpace(line[len(InstalledTestMetaPrefix):])
+		dec := json.NewDecoder(strings.NewReader(buf))
+		dec.DisallowUnknownFields()
+		meta = &externalTestMeta{}
+		if err := dec.Decode(meta); err != nil {
+			return nil, errors.Wrapf(err, "parsing %s", line)
+		}
+		break
+	}
+	return meta, nil
+}
+
+func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
 	ignc3, _, err := ignv3.Parse([]byte(ignition))
 	if err != nil {
 		return errors.Wrapf(err, "Parsing config.ign")
+	}
+
+	targetMeta, err := metadataFromTestBinary(executable)
+	if err != nil {
+		return errors.Wrapf(err, "Parsing metadata from %s", executable)
+	}
+	if targetMeta == nil {
+		metaCopy := baseMeta
+		targetMeta = &metaCopy
 	}
 
 	unitname := "kola-runext.service"
@@ -588,22 +634,22 @@ RequiredBy=multi-user.target
 	//
 	// architectures: !ppc64le s390x
 	// platforms: aws qemu
-	if strings.HasPrefix(meta.Architectures, "!") {
-		t.ExcludeArchitectures = strings.Fields(meta.Architectures[1:])
+	if strings.HasPrefix(targetMeta.Architectures, "!") {
+		t.ExcludeArchitectures = strings.Fields(targetMeta.Architectures[1:])
 	} else {
-		t.Architectures = strings.Fields(meta.Architectures)
+		t.Architectures = strings.Fields(targetMeta.Architectures)
 	}
-	if strings.HasPrefix(meta.Platforms, "!") {
-		t.ExcludePlatforms = strings.Fields(meta.Platforms[1:])
+	if strings.HasPrefix(targetMeta.Platforms, "!") {
+		t.ExcludePlatforms = strings.Fields(targetMeta.Platforms[1:])
 	} else {
-		t.Platforms = strings.Fields(meta.Platforms)
+		t.Platforms = strings.Fields(targetMeta.Platforms)
 	}
-	if strings.HasPrefix(meta.Distros, "!") {
-		t.ExcludeDistros = strings.Fields(meta.Distros[1:])
+	if strings.HasPrefix(targetMeta.Distros, "!") {
+		t.ExcludeDistros = strings.Fields(targetMeta.Distros[1:])
 	} else {
-		t.Distros = strings.Fields(meta.Distros)
+		t.Distros = strings.Fields(targetMeta.Distros)
 	}
-	t.Tags = append(t.Tags, strings.Fields(meta.Tags)...)
+	t.Tags = append(t.Tags, strings.Fields(targetMeta.Tags)...)
 
 	register.RegisterTest(t)
 
