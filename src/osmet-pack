@@ -12,7 +12,7 @@ if [ ! -f /etc/cosa-supermin ]; then
     coreinst=${1:-${OSMET_PACK_COREOS_INSTALLER:-}}
 
     workdir=$(pwd)
-    TMPDIR=tmp/tmp-osmet-pack
+    TMPDIR=$(readlink -f tmp/tmp-osmet-pack)
     rm -rf "${TMPDIR}"
     mkdir -p "${TMPDIR}"
 
@@ -48,14 +48,16 @@ set -x
 
 # we want /dev/disk symlinks for coreos-installer
 /usr/lib/systemd/systemd-udevd --daemon
-/usr/sbin/udevadm trigger --settle
+# mock systemd-udevd-trigger.service
+/usr/sbin/udevadm trigger --settle --type=subsystems --action=add
+/usr/sbin/udevadm trigger --settle --type=devices --action=add
 
-rootfs=/dev/disk/by-id/virtio-osmet-part4
 # Also hardcoded in redhat-coreos/.../coreos-cryptfs
 rhcos_luks_header_size_sectors=32768
 
 mkdir -p /sysroot
-roottype=$(blkid -s TYPE -o value "${rootfs}")
+rootfs=/dev/disk/by-id/virtio-osmet-part4
+roottype=$(blkid -p -s TYPE -o value "${rootfs}")
 real_rootdev=
 if [ "${roottype}" = "crypto_LUKS" ]; then
   dev_size=$(($(blockdev --getsize ${rootfs}) - rhcos_luks_header_size_sectors))
