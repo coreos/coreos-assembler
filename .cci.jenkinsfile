@@ -1,6 +1,6 @@
 // Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
 
-pod(image: 'registry.fedoraproject.org/fedora:31', runAsUser: 0, kvm: true, memory: "9Gi") {
+pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memory: "9Gi") {
       checkout scm
 
       stage("Build") {
