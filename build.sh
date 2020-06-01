@@ -57,6 +57,9 @@ install_rpms() {
     archdeps=$(grep -v '^#' "${srcdir}/deps-$(arch)".txt)
     echo "${builddeps}" "${deps}" "${archdeps}" | xargs yum -y install
 
+    # https://github.com/coreos/coreos-assembler/issues/1496
+    yum -y downgrade cryptsetup-2.2.1-1.fc31
+
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
