@@ -1082,6 +1082,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		if err = inst.swtpm.Start(); err != nil {
 			return nil, err
 		}
+		// We need to wait until the swtpm starts up
+		err = util.Retry(10, 500*time.Millisecond, func() error {
+			_, err := os.Stat(swtpmSock)
+			return err
+		})
 		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm")
 		// There are different device backends on each architecture
 		switch system.RpmArch() {
