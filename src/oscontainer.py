@@ -125,7 +125,7 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
 # oscontainer with it.
 def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True,
-                      add_directories=[], cert_dir="", authfile="", inspect_out=None,
+                      add_directories=[], cert_dir="", authfile="", digestfile=None,
                       display_name=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
@@ -222,19 +222,14 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             podCmd.append("--cert-dir={}".format(cert_dir))
         podCmd.append(image_name_and_tag)
 
+        if digestfile is not None:
+            podCmd.append(f'--digestfile={digestfile}')
+
         run_verbose(podCmd)
-
-        skopeoCmd = ['skopeo', 'inspect']
-        if authfile != "":
-            skopeoCmd.append("--authfile={}".format(authfile))
-
-        skopeoCmd.append("docker://" + image_name_and_tag)
-        inspect = run_get_json_retry(skopeoCmd)
-    else:
+    elif digestfile is not None:
         inspect = run_get_json(podman_base_argv + ['inspect', image_name_and_tag])[0]
-    if inspect_out is not None:
-        with open(inspect_out, 'w') as f:
-            json.dump(inspect, f)
+        with open(digestfile, 'w') as f:
+            f.write(inspect['Digest'])
 
 
 def main():
@@ -267,8 +262,8 @@ def main():
     parser_build.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
                               metavar='DIR', action='append', default=[])
     parser_build.add_argument(
-        "--inspect-out",
-        help="Write image JSON to file",
+        "--digestfile",
+        help="Write image digest to file",
         action='store',
         metavar='FILE')
     parser_build.add_argument(
@@ -300,7 +295,7 @@ def main():
             containers_storage, tmpdir, args.src, args.rev, args.name,
             getattr(args, 'from'),
             display_name=args.display_name,
-            inspect_out=args.inspect_out,
+            digestfile=args.digestfile,
             add_directories=args.add_directory,
             push=args.push,
             tls_verify=not args.disable_tls_verify,
