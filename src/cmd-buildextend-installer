@@ -157,6 +157,11 @@ def generate_iso():
     img_metal = os.path.join(builddir, img_metal_obj['path'])
     img_metal_checksum = img_metal_obj['sha256']
 
+    img_metal4k_obj = buildmeta['images'].get('metal4k')
+    if img_metal4k_obj is not None:
+        img_metal4k = os.path.join(builddir, img_metal4k_obj['path'])
+        img_metal4k_checksum = img_metal4k_obj['sha256']
+
     # Find the directory under `/usr/lib/modules/<kver>` where the
     # kernel/initrd live. It will be the 2nd entity output by
     # `ostree ls <commit> /usr/lib/modules`
@@ -191,9 +196,15 @@ def generate_iso():
     if is_live and osmet:
         with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
             tmp_osmet = os.path.join(tmproot, img_metal_obj['path'] + '.osmet')
-            print(f'Generating osmet file')
+            print(f'Generating osmet file for 512b metal image')
             run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                        img_metal, tmp_osmet, img_metal_checksum])
+                         img_metal, '512', tmp_osmet, img_metal_checksum])
+            if img_metal4k_obj is not None:
+                tmp_osmet4k = os.path.join(tmproot, img_metal4k_obj['path'] + '.osmet')
+                print(f'Generating osmet file for 4k metal image')
+                run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
+                             img_metal4k, '4096', tmp_osmet4k,
+                             img_metal4k_checksum])
             extend_initrd(base_initramfs, tmproot, compression=False)
 
     # The base_initramfs from here is shared between the ISO and PXE paths

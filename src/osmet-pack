@@ -7,6 +7,7 @@ if [ ! -f /etc/cosa-supermin ]; then
     . "${dn}"/cmdlib.sh
 
     img_src=$1; shift
+    sector_size=$1; shift
     osmet_dest=$1; shift
     checksum=$1; shift
     coreinst=${1:-${OSMET_PACK_COREOS_INSTALLER:-}}
@@ -27,9 +28,14 @@ if [ ! -f /etc/cosa-supermin ]; then
         set -- "$@" "${TMPDIR}/coreos-installer"
     fi
 
+    device_opts=
+    if [ "$sector_size" != 512 ]; then
+        device_opts=",physical_block_size=${sector_size},logical_block_size=${sector_size}"
+    fi
+
     # stamp it with "osmet" serial so we find it easily in the VM
     runvm -drive "if=none,id=osmet,format=raw,readonly=on,file=${img_src}" \
-        -device virtio-blk,serial=osmet,drive=osmet -- \
+        -device "virtio-blk,serial=osmet,drive=osmet${device_opts}" -- \
         /usr/lib/coreos-assembler/osmet-pack "$@"
 
     mv "${TMPDIR}/osmet.bin" "${osmet_dest}"
