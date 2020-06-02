@@ -24,6 +24,9 @@ from time import sleep
 
 OSCONTAINER_COMMIT_LABEL = 'com.coreos.ostree-commit'
 
+# https://access.redhat.com/documentation/en-us/openshift_container_platform/4.1/html/builds/custom-builds-buildah
+NESTED_BUILD_ARGS = ['--storage-driver', 'vfs']
+
 
 # oscontainer.py can't use external python libs since its running in RHCOS
 def retry(attempts=5):
@@ -140,6 +143,12 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
     if containers_storage is not None:
         podman_base_argv.append(f"--root={containers_storage}")
         buildah_base_argv.append(f"--root={containers_storage}")
+        if os.environ.get('container') is not None:
+            print("Using nested container mode due to container environment variable")
+            podman_base_argv.extend(NESTED_BUILD_ARGS)
+            buildah_base_argv.extend(NESTED_BUILD_ARGS)
+        else:
+            print("Skipping nested container mode")
 
     bid = run_get_string(buildah_base_argv + ['from', base_image])
     mnt = run_get_string(buildah_base_argv + ['mount', bid])
@@ -281,6 +290,9 @@ def main():
             tls_verify=not args.disable_tls_verify,
             cert_dir=args.cert_dir,
             authfile=args.authfile)
+
+    if containers_storage is not None:
+        shutil.rmtree(containers_storage)
 
 
 if __name__ == '__main__':
