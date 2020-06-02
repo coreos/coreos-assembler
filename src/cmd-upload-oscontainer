@@ -65,7 +65,7 @@ osc_name_and_tag = "{}:{}".format(args.name, latest_build)
 # TODO: Use labels for the build hash and avoid pulling the oscontainer
 # every time we want to poll.
 # TODO: Remove --from
-inspect_out = os.getcwd() + '/oscontainer.json'
+digestfile = "tmp/oscontainer-digest"
 cosa_argv = []
 if os.getuid != 0:
     cosa_argv.extend(['sudo', '--preserve-env=container,REGISTRY_AUTH_FILE'])
@@ -73,14 +73,13 @@ cosa_argv.extend(['/usr/lib/coreos-assembler/oscontainer.py', '--workdir=./tmp',
 for d in args.add_directory:
     cosa_argv.append(f"--add-directory={d}")
 subprocess.check_call(cosa_argv +
-    ['--inspect-out=' + inspect_out,
+    [f'--digestfile={digestfile}',
         '--push', tmprepo,
         meta['ostree-commit'],
         osc_name_and_tag])
 
-with open(inspect_out) as f:
-    osc_inspect = json.load(f)
-osc_digest = osc_inspect['Digest']
+with open(digestfile) as f:
+    osc_digest = f.read().strip()
 
 # Inject the oscontainer with SHA256 into the build metadata
 meta['oscontainer'] = {'image': args.name,
