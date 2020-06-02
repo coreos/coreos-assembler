@@ -65,11 +65,11 @@ osc_name_and_tag = "{}:{}".format(args.name, latest_build)
 # TODO: Use labels for the build hash and avoid pulling the oscontainer
 # every time we want to poll.
 # TODO: Remove --from
-# We have removed the use of `--workdir` from this script because
-# `coreos-assembler` assumes the working diretory in the unprivileged case
-# See: https://github.com/coreos/coreos-assembler/pull/360
 inspect_out = os.getcwd() + '/oscontainer.json'
-cosa_argv = ['coreos-assembler', 'oscontainer', 'build', f"--from={args.from_image}"]
+cosa_argv = []
+if os.getuid != 0:
+    cosa_argv.extend(['sudo', '--preserve-env=container,REGISTRY_AUTH_FILE'])
+cosa_argv.extend(['/usr/lib/coreos-assembler/oscontainer.py', '--workdir=./tmp', 'build',  f"--from={args.from_image}"])
 for d in args.add_directory:
     cosa_argv.append(f"--add-directory={d}")
 subprocess.check_call(cosa_argv +
