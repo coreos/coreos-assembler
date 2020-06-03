@@ -29,10 +29,11 @@ FORCE_IMAGE=
 SKIP_PRUNE=0
 VERSION=
 PARENT=
+PARENT_BUILD=
 TAG=
 STRICT=
 rc=0
-options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
+options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,parent-build:,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -60,9 +61,14 @@ while true; do
             shift
             VERSION=$1
             ;;
+        # XXX: to remove once --parent-build is plumbed through
         --parent)
             shift
             PARENT=$1
+            ;;
+        --parent-build)
+            shift
+            PARENT_BUILD=$1
             ;;
         -t | --tag)
             shift
@@ -164,6 +170,13 @@ if [ -n "${previous_commit}" ]; then
         ostree reset --repo="${tmprepo}" "${ref}" "${previous_ref}"
         FORCE=--force-nocache
     fi
+fi
+
+if [ -n "${PARENT_BUILD}" ]; then
+    parent_builddir=$(get_build_dir "${PARENT_BUILD}")
+    PARENT=$(jq -r '.["ostree-commit"]' < "${parent_builddir}/meta.json")
+    # and copy the parent into the repo so that we can generate a pkgdiff below
+    cp "${parent_builddir}/ostree-commit-object" "${tmprepo}/objects/${PARENT::2}/${PARENT:2}.commit"
 fi
 
 # Calculate image input checksum now and gather previous image build variables if any
@@ -306,6 +319,14 @@ else
     echo '{}' > tmp/diff.json
 fi
 
+if [ -n "${PARENT_BUILD}" ] && [[ ${PARENT} != "${previous_commit}" ]]; then
+    rpm-ostree --repo="${tmprepo}" db diff --format=json \
+            "${PARENT}" "${commit}" | \
+        jq '{"parent-pkgdiff": .pkgdiff}' > tmp/parent-diff.json
+else
+    echo '{}' > tmp/parent-diff.json
+fi
+
 image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
 init_build_meta_json "${commit}" tmp/
@@ -402,7 +423,7 @@ fi
 
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/diff.json tmp/parent-diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Filter out `ref` if it's temporary
 if [ -n "${ref_is_temp}" ]; then
