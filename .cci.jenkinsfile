@@ -52,14 +52,15 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
 
       stage("Image tests") {
         try {
-          shwrap("cd /srv && rm tmp/kola -rf")
-          shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S")
-          shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --scenarios iso-offline-install")
-          // and again this time with the 4k image
-          shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --qemu-native-4k --no-pxe")
+          parallel metal: {
+              shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal")
+          }, metal4k: {
+              shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal4k --no-pxe")
+          }
         } finally {
-          shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola-testiso.tar.xz")
-          archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso.tar.xz'
+          shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
+          shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal4k/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal4k.tar.xz")
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
         }
       }
 
