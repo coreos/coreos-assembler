@@ -62,9 +62,13 @@ Support for rebooting
 
 An important feature of exttests is support for rebooting the host system.
 This allows one to easily test OS updates for example.  To do this, your
-test process should send `SIGTERM` to itself.  For example, in bash use:
+test process should create a stamp file `/run/kola-reboot`, then exit.
+For example, in bash use:
 
-`kill -TERM $$`
+```
+touch /run/kola-reboot
+exit 0
+```
 
 This will trigger the monitoring `kola` process to invoke a reboot.
 
@@ -72,6 +76,9 @@ The rationale for this is that it helps kola to know when a reboot
 is happening so that it can correctly follow the state of the systemd
 journal, etc.  A future enhancement will support directly invoking
 `reboot` and having kola just figure it out.
+
+(Previously the API for this was to send `SIGTERM` to the current process;
+ that method is deprecated and will be removed at some point)
 
 `kola.json`
 ---
