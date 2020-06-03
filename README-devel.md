@@ -94,3 +94,18 @@ Then in the booted VM, `/srv` will point to the `libpod` directory on your host,
 allowing you to directly execute binaries from there.  You can also use e.g.
 `rpm-ostree usroverlay` and then copy binaries from your host `/srv` into
 the VM's rootfs.
+
+# Developing on coreos-assembler remotely
+
+Many coreos-assembler developers use `podman` locally.  However some things
+may only reproduce in a Kubernetes/OpenShift environment.  One trick is to
+spin up a pod with coreos-assembler with an entrypoint of `sleep infinity`,
+then use `oc rsh` to log into it.
+
+A further trick you can use is `oc rsync` to copy the build from your
+workstation to the remote pod for fast iteration.  For example, assuming
+a remote pod name of `walters-cosa`:
+
+`oc rsync ./ walters-cosa:/home/builder/coreos-assembler/ && oc rsh walters-cosa sudo /bin/sh -c 'cd ~builder/coreos-assembler && make install'`
+
+(This could be improved in various ways, among them just shipping the binaries and not the source)
