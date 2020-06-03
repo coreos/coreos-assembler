@@ -74,7 +74,8 @@ func init() {
 	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
 	sv(&kola.AWSOptions.Profile, "aws-profile", "default", "AWS profile name")
 	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
-	sv(&kola.AWSOptions.InstanceType, "aws-type", "m4.large", "AWS instance type")
+	// See https://github.com/openshift/installer/issues/2919 for example
+	sv(&kola.AWSOptions.InstanceType, "aws-type", "m5.large", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
 	sv(&kola.AWSOptions.IAMInstanceProfile, "aws-iam-profile", "kola", "AWS IAM instance profile name")
 
