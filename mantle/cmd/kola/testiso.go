@@ -71,9 +71,7 @@ const (
 
 	scenarioPXEInstall = "pxe-install"
 	scenarioISOInstall = "iso-install"
-	// this might just be iso-install eventually since the pxe install already
-	// tests the over-the-network case; we're making it separate for now to
-	// more easily ratchet osmet into place
+
 	scenarioISOOfflineInstall = "iso-offline-install"
 	scenarioISOLiveLogin      = "iso-live-login"
 	scenarioLegacyInstall     = "legacy-install"
@@ -110,7 +108,7 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&debug, "debug", false, "Display qemu console to stdout, turn off automatic initramfs failure checking")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOOfflineInstall}))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
