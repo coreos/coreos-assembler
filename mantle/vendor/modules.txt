@@ -116,6 +116,7 @@ github.com/coreos/go-systemd/journal
 github.com/coreos/go-systemd/unit
 # github.com/coreos/go-systemd/v22 v22.0.0
 github.com/coreos/go-systemd/v22/dbus
+github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/unit
 # github.com/coreos/ign-converter v0.0.0-20200228175238-237c8512310a
 github.com/coreos/ign-converter
