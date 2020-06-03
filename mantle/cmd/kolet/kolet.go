@@ -22,6 +22,7 @@ import (
 	"time"
 
 	systemddbus "github.com/coreos/go-systemd/v22/dbus"
+	systemdjournal "github.com/coreos/go-systemd/v22/journal"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -38,6 +39,9 @@ const (
 	CLD_EXITED int32 = 1
 	CLD_KILLED int32 = 2
 )
+
+// kolaRebootStamp should be created by tests that want to reboot
+const kolaRebootStamp = "/run/kola-reboot"
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kolet")
@@ -99,6 +103,19 @@ func registerTestMap(m map[string]*register.Test) {
 	}
 }
 
+// requestRebootAndWait sends SIGTERM to the current process,
+// which then propagates back to the ssh
+// status, so that the kola runner (on the remote host)
+// can use that as a trigger to reboot.
+func requestRebootAndWait() error {
+	selfproc := os.Process{
+		Pid: os.Getpid(),
+	}
+	selfproc.Signal(syscall.SIGTERM)
+	time.Sleep(time.Hour)
+	panic("failed to send SIGTERM to self")
+}
+
 // dispatchRunExtUnit returns true if unit completed successfully, false if
 // it's still running (or unit was terminated by SIGTERM)
 func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error) {
@@ -131,6 +148,11 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 				switch maincode {
 				case CLD_EXITED:
 					if mainstatus == int32(0) {
+						_, err := os.Stat(kolaRebootStamp)
+						if err == nil {
+							systemdjournal.Print(systemdjournal.PriInfo, "Unit %s requested reboot via %s\n", unitname, kolaRebootStamp)
+							return false, requestRebootAndWait()
+						}
 						return true, nil
 					} else {
 						// I don't think this can happen, we'd have exit-code above; but just
@@ -140,15 +162,8 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 				case CLD_KILLED:
 					// SIGTERM; we explicitly allow that, expecting we're rebooting.
 					if mainstatus == int32(15) {
-						fmt.Printf("Unit %s terminated via SIGTERM, assuming reboot\n", unitname)
-						// Now we send ourself SIGTERM, so that that propagates back to the ssh
-						// status, so that the kola runner can use that as a trigger to reboot.
-						selfproc := os.Process{
-							Pid: os.Getpid(),
-						}
-						selfproc.Signal(syscall.SIGTERM)
-						time.Sleep(time.Hour)
-						panic("failed to send SIGTERM to self")
+						systemdjournal.Print(systemdjournal.PriInfo, "Unit %s terminated via SIGTERM, assuming reboot request\n", unitname)
+						return false, requestRebootAndWait()
 					} else {
 						return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
 					}
