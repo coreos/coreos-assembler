@@ -167,6 +167,7 @@ var generatedSchemaJSON = `{
    "exoscale",
    "oscontainer",
    "pkgdiff",
+   "parent-pkgdiff",
 
    "coreos-assembler.basearch",
    "coreos-assembler.build-timestamp",
@@ -547,6 +548,14 @@ var generatedSchemaJSON = `{
          "default":"",
          "minLength": 1
         }
+      }
+    },
+   "parent-pkgdiff": {
+     "$id":"#/properties/parent-pkgdiff",
+     "type":"array",
+     "title":"pkgdiff against parent",
+     "items": {
+       "$ref":"#/properties/pkgdiff/items"
       }
     },
    "rpm-ostree-inputhash": {

@@ -57,6 +57,7 @@ type Build struct {
 	OstreeTimestamp           string                  `json:"ostree-timestamp"`
 	OstreeVersion             string                  `json:"ostree-version"`
 	OverridesActive           bool                    `json:"coreos-assembler.overrides-active,omitempty"`
+	PkgdiffAgainstParent      []PackageSetDifferences `json:"parent-pkgdiff,omitempty"`
 	PkgdiffBetweenBuilds      []PackageSetDifferences `json:"pkgdiff,omitempty"`
 }
 
