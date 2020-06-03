@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# NOTE: PYTHONUNBUFFERED is set in cmdlib.sh for unbuffered output
+# NOTE: PYTHONUNBUFFERED is set in the entrypoint for unbuffered output
 #
 # An "oscontainer" is an ostree (archive) repository stuck inside
 # a Docker/OCI container at /srv/repo.  For more information,
@@ -23,6 +23,9 @@ from functools import wraps
 from time import sleep
 
 OSCONTAINER_COMMIT_LABEL = 'com.coreos.ostree-commit'
+
+# https://access.redhat.com/documentation/en-us/openshift_container_platform/4.1/html/builds/custom-builds-buildah
+NESTED_BUILD_ARGS = ['--storage-driver', 'vfs']
 
 
 # oscontainer.py can't use external python libs since its running in RHCOS
@@ -65,13 +68,20 @@ def run_verbose(args, **kwargs):
 
 # Given a container reference, pull the latest version, then extract the ostree
 # repo a new directory dest/repo.
-def oscontainer_extract(containers_storage, src, dest,
+def oscontainer_extract(containers_storage, tmpdir, src, dest,
                         tls_verify=True, ref=None, cert_dir="",
                         authfile=""):
     dest = os.path.realpath(dest)
     subprocess.check_call(["ostree", "--repo=" + dest, "refs"])
-    rootarg = '--root=' + containers_storage
-    podCmd = ['podman', rootarg, 'pull']
+
+    podman_base_argv = ['podman']
+    if containers_storage is not None:
+        podman_base_argv.append(f"--root={containers_storage}")
+    podCmd = podman_base_argv + ['pull']
+
+    # See similar message in oscontainer_build.
+    if tmpdir is not None:
+        os.environ['TMPDIR'] = tmpdir
 
     if not tls_verify:
         tls_arg = '--tls-verify=false'
@@ -87,7 +97,7 @@ def oscontainer_extract(containers_storage, src, dest,
     podCmd.append(src)
 
     run_verbose(podCmd)
-    inspect = run_get_json(['podman', rootarg, 'inspect', src])[0]
+    inspect = run_get_json(podman_base_argv + ['inspect', src])[0]
     commit = inspect['Labels'].get(OSCONTAINER_COMMIT_LABEL)
     if commit is None:
         raise SystemExit(
@@ -98,15 +108,14 @@ def oscontainer_extract(containers_storage, src, dest,
     # does then for us is "materialize" the merged rootfs, so we can mount it.
     # In theory we shouldn't need --entrypoint=/enoent here, but
     # it works around a podman bug.
-    cid = run_get_string([
-        'podman', rootarg, 'create', '--entrypoint=/enoent', iid])
-    mnt = run_get_string(['podman', rootarg, 'mount', cid])
+    cid = run_get_string(podman_base_argv + ['create', '--entrypoint=/enoent', iid])
+    mnt = run_get_string(podman_base_argv + ['mount', cid])
     try:
         src_repo = os.path.join(mnt, 'srv/repo')
         run_verbose([
             "ostree", "--repo=" + dest, "pull-local", src_repo, commit])
     finally:
-        subprocess.call(['podman', rootarg, 'umount', cid])
+        subprocess.call(podman_base_argv + ['umount', cid])
     if ref is not None:
         run_verbose([
             "ostree", "--repo=" + dest, "refs", '--create=' + ref, commit])
@@ -114,9 +123,10 @@ def oscontainer_extract(containers_storage, src, dest,
 
 # Given an OSTree repository at src (and exactly one ref) generate an
 # oscontainer with it.
-def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
+def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True,
-                      cert_dir="", authfile="", inspect_out=None):
+                      add_directories=[], cert_dir="", authfile="", digestfile=None,
+                      display_name=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -132,9 +142,27 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
     else:
         ostree_version = None
 
-    rootarg = '--root=' + containers_storage
-    bid = run_get_string(['buildah', rootarg, 'from', base_image])
-    mnt = run_get_string(['buildah', rootarg, 'mount', bid])
+    podman_base_argv = ['podman']
+    buildah_base_argv = ['buildah']
+    if containers_storage is not None:
+        podman_base_argv.append(f"--root={containers_storage}")
+        buildah_base_argv.append(f"--root={containers_storage}")
+        if os.environ.get('container') is not None:
+            print("Using nested container mode due to container environment variable")
+            podman_base_argv.extend(NESTED_BUILD_ARGS)
+            buildah_base_argv.extend(NESTED_BUILD_ARGS)
+        else:
+            print("Skipping nested container mode")
+
+    # In general, we just stick with the default tmpdir set up. But if a
+    # workdir is provided, then we want to be sure that all the heavy I/O work
+    # that happens stays in there since e.g. we might be inside a tiny supermin
+    # appliance.
+    if tmpdir is not None:
+        os.environ['TMPDIR'] = tmpdir
+
+    bid = run_get_string(buildah_base_argv + ['from', base_image])
+    mnt = run_get_string(buildah_base_argv + ['mount', bid])
     try:
         dest_repo = os.path.join(mnt, 'srv/repo')
         subprocess.check_call(['mkdir', '-p', dest_repo])
@@ -143,6 +171,13 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
         # Note that oscontainers don't have refs
         print("Copying ostree commit into container: {} ...".format(rev))
         run_verbose(["ostree", "--repo=" + dest_repo, "pull-local", src, rev])
+
+        for d in add_directories:
+            with os.scandir(d) as it:
+                for entry in it:
+                    dest = os.path.join(mnt, entry.name)
+                    subprocess.check_call(['/usr/lib/coreos-assembler/cp-reflink', entry.path, dest])
+                print(f"Copied in content from: {d}")
 
         # Generate pkglist.txt in to the oscontainer at /
         pkg_list_dest = os.path.join(mnt, 'pkglist.txt')
@@ -160,20 +195,20 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
                   '-l', OSCONTAINER_COMMIT_LABEL + '=' + rev]
         if ostree_version is not None:
             config += ['-l', 'version=' + ostree_version]
-        run_verbose(['buildah', rootarg, 'config'] + config + [bid])
+        if display_name is not None:
+            config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
+                       '-l', 'io.openshift.build.versions=machine-os=' + ostree_version]
+        run_verbose(buildah_base_argv + ['config'] + config + [bid])
         print("Committing container...")
-        iid = run_get_string([
-            'buildah', rootarg, 'commit', bid, image_name_and_tag])
+        iid = run_get_string(buildah_base_argv + ['commit', bid, image_name_and_tag])
         print("{} {}".format(image_name_and_tag, iid))
     finally:
-        subprocess.call([
-            'buildah', rootarg, 'umount', bid], stdout=subprocess.DEVNULL)
-        subprocess.call([
-            'buildah', rootarg, 'rm', bid], stdout=subprocess.DEVNULL)
+        subprocess.call(buildah_base_argv + ['umount', bid], stdout=subprocess.DEVNULL)
+        subprocess.call(buildah_base_argv + ['rm', bid], stdout=subprocess.DEVNULL)
 
     if push:
         print("Pushing container")
-        podCmd = ['podman', rootarg, 'push']
+        podCmd = podman_base_argv + ['push']
         if not tls_verify:
             tls_arg = '--tls-verify=false'
         else:
@@ -187,27 +222,20 @@ def oscontainer_build(containers_storage, src, ref, image_name_and_tag,
             podCmd.append("--cert-dir={}".format(cert_dir))
         podCmd.append(image_name_and_tag)
 
+        if digestfile is not None:
+            podCmd.append(f'--digestfile={digestfile}')
+
         run_verbose(podCmd)
-
-        skopeoCmd = ['skopeo', 'inspect']
-        if authfile != "":
-            skopeoCmd.append("--authfile={}".format(authfile))
-
-        skopeoCmd.append("docker://" + image_name_and_tag)
-        inspect = run_get_json_retry(skopeoCmd)
-    else:
-        inspect = run_get_json([
-            'podman', rootarg, 'inspect', image_name_and_tag])[0]
-    if inspect_out is not None:
-        with open(inspect_out, 'w') as f:
-            json.dump(inspect, f)
+    elif digestfile is not None:
+        inspect = run_get_json(podman_base_argv + ['inspect', image_name_and_tag])[0]
+        with open(digestfile, 'w') as f:
+            f.write(inspect['Digest'])
 
 
 def main():
     # Parse args and dispatch
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workdir", help="Temporary working directory",
-                        required=True)
+    parser.add_argument("--workdir", help="Temporary working directory")
     parser.add_argument("--disable-tls-verify",
                         help="Disable TLS for pushes and pulls",
                         action="store_true")
@@ -230,9 +258,12 @@ def main():
     parser_build.add_argument("src", help="OSTree repository")
     parser_build.add_argument("rev", help="OSTree ref (or revision)")
     parser_build.add_argument("name", help="Image name")
+    parser_build.add_argument("--display-name", help="Name used for an OpenShift component")
+    parser_build.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
+                              metavar='DIR', action='append', default=[])
     parser_build.add_argument(
-        "--inspect-out",
-        help="Write image JSON to file",
+        "--digestfile",
+        help="Write image digest to file",
         action='store',
         metavar='FILE')
     parser_build.add_argument(
@@ -241,26 +272,38 @@ def main():
         action='store_true')
     args = parser.parse_args()
 
-    containers_storage = os.path.join(args.workdir, 'containers-storage')
-    if os.path.exists(containers_storage):
-        shutil.rmtree(containers_storage)
+    containers_storage = None
+    tmpdir = None
+    if args.workdir is not None:
+        containers_storage = os.path.join(args.workdir, 'containers-storage')
+        if os.path.exists(containers_storage):
+            shutil.rmtree(containers_storage)
+        tmpdir = os.path.join(args.workdir, 'tmp')
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
+        os.makedirs(tmpdir)
 
     if args.action == 'extract':
         oscontainer_extract(
-            containers_storage, args.src, args.dest,
+            containers_storage, tmpdir, args.src, args.dest,
             tls_verify=not args.disable_tls_verify,
             cert_dir=args.cert_dir,
             ref=args.ref,
             authfile=args.authfile)
     elif args.action == 'build':
         oscontainer_build(
-            containers_storage, args.src, args.rev, args.name,
+            containers_storage, tmpdir, args.src, args.rev, args.name,
             getattr(args, 'from'),
-            inspect_out=args.inspect_out,
+            display_name=args.display_name,
+            digestfile=args.digestfile,
+            add_directories=args.add_directory,
             push=args.push,
             tls_verify=not args.disable_tls_verify,
             cert_dir=args.cert_dir,
             authfile=args.authfile)
+
+    if containers_storage is not None:
+        shutil.rmtree(containers_storage)
 
 
 if __name__ == '__main__':
