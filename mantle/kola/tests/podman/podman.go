@@ -24,6 +24,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	tutil "github.com/coreos/mantle/kola/tests/util"
@@ -53,7 +54,9 @@ func init() {
 		Run:         podmanNetworksReliably,
 		ClusterSize: 1,
 		Name:        `podman.network-single`,
-		Distros:     []string{"fcos"},
+		// Not really but podman blows up if there's no /etc/resolv.conf
+		Tags:    []string{kola.NeedsInternetTag},
+		Distros: []string{"fcos"},
 	})
 	// https://github.com/coreos/mantle/pull/1080
 	// register.RegisterTest(&register.Test{

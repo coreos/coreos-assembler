@@ -142,6 +142,9 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		}
 		builder.EnableUsermodeNetworking(h)
 	}
+	if !qc.RuntimeConf().InternetAccess {
+		builder.RestrictNetworking = true
+	}
 
 	inst, err := builder.Exec()
 	if err != nil {
