@@ -68,6 +68,10 @@ import (
 const InstalledTestsDir = "/usr/lib/coreos-assembler/tests/kola"
 const InstalledTestMetaPrefix = "# kola:"
 
+// This is the same string from https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+// Specifying this in the tags list is required to denote a need for Internet access
+const NeedsInternetTag = "needs-internet"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
@@ -239,6 +243,21 @@ func hasString(s string, slice []string) bool {
 	return false
 }
 
+func testRequiresInternet(test *register.Test) bool {
+	for _, flag := range test.Flags {
+		if flag == register.RequiresInternetAccess {
+			return true
+		}
+	}
+	// Also parse the newer tag for this
+	for _, tag := range test.Tags {
+		if tag == NeedsInternetTag {
+			return true
+		}
+	}
+	return false
+}
+
 func filterTests(tests map[string]*register.Test, patterns []string, pltfrm string, version semver.Version) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
@@ -251,19 +270,12 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 	noPattern := hasString("*", patterns)
 	for name, t := range tests {
-		var noNetFiltered bool
-		var denylisted bool
-		for _, flag := range t.Flags {
-			if flag == register.RequiresInternetAccess && NoNet {
-				noNetFiltered = true
-				break
-			}
-		}
-		if noNetFiltered {
+		if NoNet && testRequiresInternet(t) {
 			plog.Debugf("Skipping test that requires network: %s", t.Name)
 			continue
 		}
 
+		var denylisted bool
 		// Drop anything which is denylisted directly or by pattern
 		for _, bl := range DenylistedTests {
 			match, err := filepath.Match(bl, t.Name)
@@ -838,6 +850,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		OutputDir:          h.OutputDir(),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
+		InternetAccess:     testRequiresInternet(t),
 	}
 	c, err := flight.NewCluster(rconf)
 	if err != nil {

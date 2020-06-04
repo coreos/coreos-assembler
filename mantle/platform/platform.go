@@ -186,6 +186,9 @@ type RuntimeConfig struct {
 	NoSSHKeyInUserData bool // don't inject SSH key into Ignition/cloud-config
 	NoSSHKeyInMetadata bool // don't add SSH key to platform metadata
 	AllowFailedUnits   bool // don't fail CheckMachine if a systemd unit has failed
+
+	// InternetAccess is true if the cluster should be Internet connected
+	InternetAccess bool
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser
