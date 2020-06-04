@@ -26,7 +26,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -395,34 +394,16 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-// createSSHAuthorizedKey generates a public key to sanity check
-// that Ignition accepts it. This is added to address
-// https://github.com/coreos/fedora-coreos-tracker/issues/515
-func createSSHAuthorizedKey() ([]byte, error) {
-	tmpd, err := ioutil.TempDir("", "kola-testiso")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(tmpd)
-
-	sshKeyPath := filepath.Join(tmpd, "ssh.key")
-	sshPubKeyPath := sshKeyPath + ".pub"
-	err = exec.Command("ssh-keygen", "-N", "", "-t", "ed25519", "-f", sshKeyPath).Run()
-	if err != nil {
-		return nil, errors.Wrapf(err, "running ssh-keygen")
-	}
-	sshPubKeyBuf, err := ioutil.ReadFile(sshPubKeyPath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading pubkey")
-	}
-	return sshPubKeyBuf, nil
-}
-
 func testPXE(inst platform.Install, outdir string) error {
-	sshPubKeyBuf, err := createSSHAuthorizedKey()
+	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
 	}
+	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpd)
 	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 	config := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -497,10 +478,15 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 	RequiredBy=multi-user.target
 	`, liveOKSignal)
 
-	sshPubKeyBuf, err := createSSHAuthorizedKey()
+	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
 	}
+	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpd)
 	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 	liveConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{

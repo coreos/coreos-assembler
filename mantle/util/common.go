@@ -15,8 +15,13 @@
 package util
 
 import (
+	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -65,4 +70,21 @@ func PathExists(path string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// CreateSSHAuthorizedKey generates a public key to sanity check
+// that Ignition accepts it.
+func CreateSSHAuthorizedKey(tmpd string) ([]byte, string, error) {
+	var err error
+	sshKeyPath := filepath.Join(tmpd, "ssh.key")
+	sshPubKeyPath := sshKeyPath + ".pub"
+	err = exec.Command("ssh-keygen", "-N", "", "-t", "ed25519", "-f", sshKeyPath).Run()
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "running ssh-keygen")
+	}
+	sshPubKeyBuf, err := ioutil.ReadFile(sshPubKeyPath)
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "reading pubkey")
+	}
+	return sshPubKeyBuf, sshKeyPath, nil
 }
