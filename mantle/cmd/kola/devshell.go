@@ -94,23 +94,17 @@ func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
 	if !terminal.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
 	}
-
 	tmpd, err := ioutil.TempDir("", "kola-devshell")
 	if err != nil {
 		return err
 	}
+	sshPubKeyBuf, sshKeyPath, err := util.CreateSSHAuthorizedKey(tmpd)
+	if err != nil {
+		return err
+	}
+
 	defer os.RemoveAll(tmpd)
 
-	sshKeyPath := filepath.Join(tmpd, "ssh.key")
-	sshPubKeyPath := sshKeyPath + ".pub"
-	err = exec.Command("ssh-keygen", "-N", "", "-t", "ed25519", "-f", sshKeyPath).Run()
-	if err != nil {
-		return errors.Wrapf(err, "running ssh-keygen")
-	}
-	sshPubKeyBuf, err := ioutil.ReadFile(sshPubKeyPath)
-	if err != nil {
-		return errors.Wrapf(err, "reading pubkey")
-	}
 	sshPubKey := v3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 
 	// Await sshd startup;
