@@ -236,6 +236,7 @@ type QemuBuilder struct {
 	ignitionRendered bool
 
 	UsermodeNetworking        bool
+	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
 
 	finalized bool
@@ -343,7 +344,7 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort) {
 	builder.requestedHostForwardPorts = h
 }
 
-func (builder *QemuBuilder) usermodeNetworkingAssignPorts() error {
+func (builder *QemuBuilder) setupNetworking() error {
 	netdev := "user,id=eth0"
 	for i := range builder.requestedHostForwardPorts {
 		address := fmt.Sprintf(":%d", builder.requestedHostForwardPorts[i].HostPort)
@@ -362,6 +363,9 @@ func (builder *QemuBuilder) usermodeNetworkingAssignPorts() error {
 
 	if builder.Hostname != "" {
 		netdev += fmt.Sprintf(",hostname=%s", builder.Hostname)
+	}
+	if builder.RestrictNetworking {
+		netdev += ",restrict=on"
 	}
 
 	builder.Append("-netdev", netdev, "-device", virtio("net", "netdev=eth0"))
@@ -1050,7 +1054,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	// Handle Usermode Networking
 	if builder.UsermodeNetworking {
-		if err := builder.usermodeNetworkingAssignPorts(); err != nil {
+		if err := builder.setupNetworking(); err != nil {
 			return nil, err
 		}
 		inst.hostForwardedPorts = builder.requestedHostForwardPorts
