@@ -163,6 +163,14 @@ However, you can also choose to run the `cosa` bash alias above
 and create a transient new container for each command.  Either
 way, all data persists in the build directory.
 
+### Running multiple instances
+
+Remove `--name cosa` from the `cosa` alias to let `podman` pick a random name
+for the container and allow multiple instances of the `cosa` container to run
+simultaneously. This is not the default to avoid hard to debug issues but should
+be safe for running multiple instances of `kola` with different builds for
+example.
+
 ### Initializing
 ---
 
