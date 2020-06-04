@@ -30,6 +30,7 @@ The container itself is available on Quay.io at
 See [README-design.md](README-design.md) for more information about the overall design.
 
 ## Development
+
 For development information, including how to add new tests, please see [README-devel.md](README-devel.md).
 
 ### Build Process
@@ -99,7 +100,7 @@ Note: *You should run this command as non-root*
 It's also fully supported to use `podman` as root, but some of the arguments
 here need to change for that.
 
-```
+```sh
 cosa() {
    env | grep COREOS_ASSEMBLER
    set -x
@@ -241,10 +242,10 @@ matches the same Fedora release cosa uses, you can install cosa inside
 of it by doing:
 
 ```
-sudo ./build.sh configure_yum_repos
-sudo ./build.sh install_rpms
-make
-sudo make install
+$ sudo ./build.sh configure_yum_repos
+$ sudo ./build.sh install_rpms
+$ make
+$ sudo make install
 ```
 
 From that point on, you only need to run `make && sudo make install` if
@@ -291,8 +292,8 @@ into your overlay directories describing their structure.
 
 This YAML file configures the output disk images.  Supported keys are:
 
- - `size`: Size in GB for cloud images (OpenStack, AWS, etc.)  Required.
- - `extra-kargs`: List of kernel arguments.
+- `size`: Size in GB for cloud images (OpenStack, AWS, etc.)  Required.
+- `extra-kargs`: List of kernel arguments.
 
 It's likely in the future we will extend this to support e.g. a separate `/var`
 partition or configuring the filesystem types.  If you want to do anything like
@@ -349,6 +350,7 @@ $ export COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS='-v /etc/pki/ca-trust:/etc/pki/
 $ cosa init https://github.com/coreos/fedora-coreos-config.git
 $ cosa fetch && cosa build
 ```
+
 See this [Stack Overflow question](https://stackoverflow.com/questions/26028971/docker-container-ssl-certificates) for additional discussion.
 
 #### Overriding content and testing component patches
