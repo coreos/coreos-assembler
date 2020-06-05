@@ -270,7 +270,6 @@ runvm "${target_drive[@]}" -- \
             --rootfs "${rootfs_type}" \
             "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
-echo "{}" > tmp/vm-iso-checksum.json
 
 # there's probably a jq one-liner for this...
 python3 -c "
@@ -282,7 +281,7 @@ j['images']['${image_type}'] = {
     'size': $(stat -c '%s' "${img}")
 }
 json.dump(j, sys.stdout, indent=4)
-" < "${builddir}/meta.json" | cat - tmp/vm-iso-checksum.json | jq -s add > meta.json.new
+" < "${builddir}/meta.json" > meta.json.new
 
 # and now the crucial bits
 /usr/lib/coreos-assembler/finalize-artifact meta.json.new "${builddir}/meta.json"
