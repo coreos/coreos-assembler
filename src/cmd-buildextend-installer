@@ -189,7 +189,7 @@ def generate_iso():
             with open(live_initramfs_cpio, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
             fdst.write(bytes(initrd_ignition_padding))
-        os.rename(tmp_initramfs, initramfs)
+        shutil.move(tmp_initramfs, initramfs)
     elif is_live:
         tmp_squashfs = os.path.join(tmpdir, 'root.squashfs')
         tmp_cpio = os.path.join(tmpdir, 'root.cpio')
@@ -216,7 +216,7 @@ def generate_iso():
             with open(tmp_cpio + '.gz', 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
             fdst.write(bytes(initrd_ignition_padding))
-        os.rename(tmp_initramfs, initramfs)
+        shutil.move(tmp_initramfs, initramfs)
         os.unlink(tmp_squashfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
@@ -465,7 +465,7 @@ def generate_iso():
             'sha256': initramfs_checksum
         }
     })
-    os.rename(tmpisofile, f"{builddir}/{iso_name}")
+    shutil.move(tmpisofile, f"{builddir}/{iso_name}")
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
 

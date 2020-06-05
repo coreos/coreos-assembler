@@ -89,7 +89,7 @@ meta['oscontainer'] = {'image': args.name,
 metapath_new = f"{metapath}.new"
 with open(metapath_new, 'w') as f:
     json.dump(meta, f, sort_keys=True)
-os.rename(metapath_new, metapath)
+shutil.move(metapath_new, metapath)
 
 # Cleanup workdirs
 shutil.rmtree(osc_workdir, ignore_errors=True)
