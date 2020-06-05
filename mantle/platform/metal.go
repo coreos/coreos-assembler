@@ -597,8 +597,6 @@ OnFailureJobMode=isolate
 RemainAfterExit=yes
 Type=oneshot
 ExecStart=/usr/bin/coreos-installer install %s --ignition %s %s %s
-StandardOutput=kmsg+console
-StandardError=kmsg+console
 [Install]
 WantedBy=multi-user.target
 `, srcOpt, pointerIgnitionPath, insecureOpt, targetDevice)
