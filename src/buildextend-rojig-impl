@@ -36,5 +36,6 @@ if has_privileges; then
 else
     info "Required privileges not detected; running via supermin appliance"
     prepare_build
-    runvm -- "${0}" "${commit}" "${tmpdir}"
+    runvm -drive "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+            -device virtio-blk,drive=cache -- "${0}" "${commit}" "${tmpdir}"
 fi

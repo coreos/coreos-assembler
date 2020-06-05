@@ -231,11 +231,9 @@ else
     mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
 fi
 
-rootfs=$PWD/tmp/rootfs
+rootfs=$(mktemp -d -p $PWD/tmp rootfs-XXXXXX)
 
 # mount the partitions
-rm -rf ${rootfs}
-mkdir -p ${rootfs}
 mount -o discard "${root_dev}" ${rootfs}
 chcon $(matchpathcon -n /) ${rootfs}
 mkdir ${rootfs}/boot

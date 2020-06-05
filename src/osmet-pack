@@ -6,16 +6,16 @@ if [ ! -f /etc/cosa-supermin ]; then
     # shellcheck source=src/cmdlib.sh
     . "${dn}"/cmdlib.sh
 
-    img_src=$1; shift
+    img_src=$(realpath "$1"); shift
     sector_size=$1; shift
-    osmet_dest=$1; shift
+    osmet_dest=$(realpath "$1"); shift
     checksum=$1; shift
     coreinst=${1:-${OSMET_PACK_COREOS_INSTALLER:-}}
+    if [ -n "${coreinst:-}" ]; then
+        coreinst=$(realpath "${coreinst}")
+    fi
 
-    workdir=$(pwd)
-    TMPDIR=$(readlink -f tmp/tmp-osmet-pack)
-    rm -rf "${TMPDIR}"
-    mkdir -p "${TMPDIR}"
+    prepare_build
 
     if [[ $img_src == *.gz || $img_src == *.xz ]]; then
         img="$(basename "$img_src")"
@@ -39,8 +39,6 @@ if [ ! -f /etc/cosa-supermin ]; then
         /usr/lib/coreos-assembler/osmet-pack "$@"
 
     mv "${TMPDIR}/osmet.bin" "${osmet_dest}"
-    rm -rf "${TMPDIR}"
-
     exit 0
 fi
 

@@ -38,8 +38,11 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
               shwrap("test -d /srv/tmp/kola")
           },
           buildextend: {
-              cosa_cmd("buildextend-metal")
-              cosa_cmd("buildextend-metal4k")
+              parallel metal: {
+                  cosa_cmd("buildextend-metal")
+              }, metal4k: {
+                  cosa_cmd("buildextend-metal4k")
+              }
               cosa_cmd("buildextend-live")
               cosa_cmd("buildextend-openstack")
               cosa_cmd("buildextend-vmware")

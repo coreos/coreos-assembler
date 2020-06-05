@@ -225,9 +225,7 @@ prepare_build() {
     export fastbuilddir
 
     # Allocate temporary space for this build
-    tmp_builddir=${workdir}/tmp/build
-    rm "${tmp_builddir}" -rf
-    mkdir "${tmp_builddir}"
+    tmp_builddir=$(mktemp -d -p "${workdir}/tmp" build-XXXXXX)
     # And everything after this assumes it's in the temp builddir
     # In case `cd` fails:  https://github.com/koalaman/shellcheck/wiki/SC2164
     cd "${tmp_builddir}" || exit
@@ -381,7 +379,8 @@ runcompose() {
         sudo -E "$@"
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        runvm -- "$@"
+        runvm -drive "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+            -device virtio-blk,drive=cache -- "$@"
     fi
 }
 
@@ -416,11 +415,9 @@ runvm() {
                 ;;
         esac
     done
-    local vmpreparedir=${workdir}/tmp/supermin.prepare
-    local vmbuilddir=${workdir}/tmp/supermin.build
-
-    rm -rf "${vmpreparedir}" "${vmbuilddir}"
-    mkdir -p "${vmpreparedir}" "${vmbuilddir}"
+    local vmpreparedir=${tmp_builddir}/supermin.prepare
+    local vmbuilddir=${tmp_builddir}/supermin.build
+    mkdir "${vmpreparedir}" "${vmbuilddir}"
 
     local rpms
     # then add all the base deps
@@ -456,7 +453,7 @@ if [ -z "${RUNVM_SHELL:-}" ]; then
 else
   bash; poweroff -f -f; sleep infinity
 fi
-echo \$rc > ${workdir}/tmp/rc
+echo \$rc > ${tmp_builddir}/tmp/rc
 if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
 fi
@@ -466,17 +463,17 @@ EOF
     (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
     # put the supermin output in a separate file since it's noisy
     if ! supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}" \
-            &> "${workdir}/tmp/supermin.out"; then
-        cat "${workdir}/tmp/supermin.out"
+            &> "${tmp_builddir}/tmp/supermin.out"; then
+        cat "${tmp_builddir}/tmp/supermin.out"
         fatal "Failed to run: supermin --build"
     fi
-    rm "${workdir}/tmp/supermin.out"
+    rm "${tmp_builddir}/tmp/supermin.out"
 
     echo "$@" > "${TMPDIR}"/cmd.sh
 
     local runvm_console
-    runvm_console="${workdir}/tmp/runvm-console.txt"
-    rm -f "${workdir}/tmp/rc" "${runvm_console}"
+    runvm_console="${tmp_builddir}/tmp/runvm-console.txt"
+    rm -f "${tmp_builddir}/tmp/rc" "${runvm_console}"
 
     touch "${runvm_console}"
     kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none)
@@ -495,11 +492,6 @@ EOF
         base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
     fi
 
-    if [ -f "${workdir}/cache/cache2.qcow2" ]; then
-        base_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
-                         "-device" "virtio-blk,drive=cache")
-    fi
-
     if [ -z "${RUNVM_SHELL:-}" ]; then
         if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
             -serial file:"${runvm_console}" \
@@ -513,12 +505,12 @@ EOF
         exec "${kola_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
     fi
 
-    if [ ! -f "${workdir}"/tmp/rc ]; then
+    if [ ! -f "${tmp_builddir}"/tmp/rc ]; then
         cat "${runvm_console}"
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
-    rc="$(cat "${workdir}"/tmp/rc)"
-    rm -f "${workdir}/tmp/rc"
+    rc="$(cat "${tmp_builddir}"/tmp/rc)"
+    rm -f "${tmp_builddir}/tmp/rc"
     return "${rc}"
 }
 

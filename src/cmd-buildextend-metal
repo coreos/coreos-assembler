@@ -271,18 +271,27 @@ runvm "${target_drive[@]}" -- \
             "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
 
-# there's probably a jq one-liner for this...
-python3 -c "
+# calculate this ahead of time to reduce critical section timespan
+sha256=$(sha256sum_str < "${img}")
+
+# and now the crucial bits
+# shellcheck disable=SC2094
+(echo "Waiting for lock..."
+ flock 9
+ echo "Proceeding"
+
+ # there's probably a jq one-liner for this...
+ python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['${image_type}'] = {
-    'path': '${img}',
-    'sha256': '$(sha256sum_str < "${img}")',
-    'size': $(stat -c '%s' "${img}")
+ 'path': '${img}',
+ 'sha256': '${sha256}',
+ 'size': $(stat -c '%s' "${img}")
 }
 json.dump(j, sys.stdout, indent=4)
 " < "${builddir}/meta.json" > meta.json.new
 
-# and now the crucial bits
-/usr/lib/coreos-assembler/finalize-artifact meta.json.new "${builddir}/meta.json"
-/usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
+ /usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
+ /usr/lib/coreos-assembler/finalize-artifact meta.json.new "${builddir}/meta.json"
+) 9<"${builddir}/meta.json"
