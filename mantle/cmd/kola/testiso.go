@@ -67,7 +67,7 @@ var (
 )
 
 const (
-	installTimeout = 15 * time.Minute
+	installTimeout = 10 * time.Minute
 
 	scenarioPXEInstall = "pxe-install"
 	scenarioISOInstall = "iso-install"
