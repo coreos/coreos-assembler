@@ -1,4 +1,4 @@
-import os
+import shutil
 
 from cosalib.cmdlib import (
     run_verbose
@@ -13,7 +13,7 @@ def mutate_digitalocean(path):
     temp_path = f"{path}.gz"
     with open(temp_path, "wb") as fh:
         run_verbose(['gzip', '-9c', path], stdout=fh)
-    os.rename(temp_path, path)
+    shutil.move(temp_path, path)
 
 
 def digitalocean_run_ore(build, args):

@@ -249,7 +249,7 @@ class QemuVariantImage(_Build):
                 # match the default naming.
                 if member_name.endswith(('.raw', '.vmdk')):
                     if member_name != os.path.basename(work_img):
-                        os.rename(work_img, os.path.join(self._tmpdir, member_name))
+                        shutil.move(work_img, os.path.join(self._tmpdir, member_name))
                 tarlist.append(member_name)
 
             tar_cmd = ['tar', '--owner=0', '--group=0', '-C', self._tmpdir]

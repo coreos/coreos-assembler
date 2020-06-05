@@ -181,7 +181,7 @@ def robosign_ostree(args, s3):
         ostree_image['sha256'] = sha256sum_file(commit_tarfile_new)
         # and the critical bits
         shutil.copymode(commit_tarfile, commit_tarfile_new)
-        os.rename(commit_tarfile_new, commit_tarfile)
+        shutil.move(commit_tarfile_new, commit_tarfile)
         build.write()
 
     # and finally add it to the tmprepo too so that buildextend-(qemu|metal)
@@ -245,7 +245,7 @@ def robosign_images(args, s3):
                     raise e
 
             # move into final location
-            os.rename(tmp_sig_path, f'{local_artifact}.sig')
+            shutil.move(tmp_sig_path, f'{local_artifact}.sig')
 
             # and make S3 object public (XXX: fix robosignatory for this?)
             s3.put_object_acl(Bucket=args.bucket, Key=sig_s3_key,
