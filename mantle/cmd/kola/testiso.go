@@ -182,7 +182,7 @@ func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *ignv3typ
 
 func runTestIso(cmd *cobra.Command, args []string) error {
 	if kola.CosaBuild == nil {
-		return fmt.Errorf("Must provide --cosa-build")
+		return fmt.Errorf("Must provide --build")
 	}
 
 	targetScenarios := make(map[string]bool)
