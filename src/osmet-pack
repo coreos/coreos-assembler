@@ -52,12 +52,6 @@ coreinst=${1:-}
 
 set -x
 
-# we want /dev/disk symlinks for coreos-installer
-/usr/lib/systemd/systemd-udevd --daemon
-# mock systemd-udevd-trigger.service
-/usr/sbin/udevadm trigger --settle --type=subsystems --action=add
-/usr/sbin/udevadm trigger --settle --type=devices --action=add
-
 # Also hardcoded in redhat-coreos/.../coreos-cryptfs
 rhcos_luks_header_size_sectors=32768
 
