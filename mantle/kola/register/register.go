@@ -54,12 +54,12 @@ type Test struct {
 	UserData             *conf.UserData
 	UserDataV3           *conf.UserData
 	ClusterSize          int
-	Platforms            []string // whitelist of platforms to run test against -- defaults to all
-	ExcludePlatforms     []string // blacklist of platforms to ignore -- defaults to none
-	Distros              []string // whitelist of distributions to run test against -- defaults to all
-	ExcludeDistros       []string // blacklist of distributions to ignore -- defaults to none
-	Architectures        []string // whitelist of machine architectures supported -- defaults to all
-	ExcludeArchitectures []string // blacklist of architectures to ignore -- defaults to none
+	Platforms            []string // allowlist of platforms to run test against -- defaults to all
+	ExcludePlatforms     []string // denylist of platforms to ignore -- defaults to none
+	Distros              []string // allowlist of distributions to run test against -- defaults to all
+	ExcludeDistros       []string // denylist of distributions to ignore -- defaults to none
+	Architectures        []string // allowlist of machine architectures supported -- defaults to all
+	ExcludeArchitectures []string // denylist of architectures to ignore -- defaults to none
 	Flags                []Flag   // special-case options for this test
 	Tags                 []string // list of tags that can be matched against -- defaults to none
 
