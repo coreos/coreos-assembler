@@ -37,6 +37,14 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
               // sanity check kola actually ran and dumped its output in tmp/
               shwrap("test -d /srv/tmp/kola")
           },
+          kolaself: {
+            try {
+              shwrap("cd /srv && ${env.WORKSPACE}/ci/run-kola-self-tests")
+            } finally {
+              shwrap("cd /srv && tar -cf - tmp/kolaself | xz -c9 > ${env.WORKSPACE}/kolaself.tar.xz")
+              archiveArtifacts allowEmptyArchive: true, artifacts: 'kolaself.tar.xz'
+            }
+          },
           buildextend: {
               cosa_cmd("buildextend-metal")
               cosa_cmd("buildextend-metal4k")
