@@ -37,7 +37,7 @@ func Filesystem(c cluster.TestCluster) {
 	c.Run("writablefiles", WritableFiles)
 	c.Run("writabledirs", WritableDirs)
 	c.Run("stickydirs", StickyDirs)
-	c.Run("blacklist", Blacklist)
+	c.Run("denylist", Denylist)
 }
 
 func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
@@ -161,7 +161,7 @@ func StickyDirs(c cluster.TestCluster) {
 	}
 }
 
-func Blacklist(c cluster.TestCluster) {
+func Denylist(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	skip := []string{
@@ -175,7 +175,7 @@ func Blacklist(c cluster.TestCluster) {
 		"/usr/lib/firmware",
 	}
 
-	blacklist := []string{
+	denylist := []string{
 		// Things excluded from the image that might slip in
 		"/usr/bin/perl",
 		"/usr/bin/python",
@@ -196,9 +196,9 @@ func Blacklist(c cluster.TestCluster) {
 		"*\x7f*",
 	}
 
-	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(blacklist, "' -print -o -path '")))
+	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(denylist, "' -print -o -path '")))
 
 	if string(output) != "" {
-		c.Fatalf("Blacklisted files or directories found:\n%s", output)
+		c.Fatalf("Denylisted files or directories found:\n%s", output)
 	}
 }

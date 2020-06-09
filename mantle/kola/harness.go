@@ -88,8 +88,8 @@ var (
 	TAPFile         string // if not "", write TAP results here
 	NoNet           bool   // Disable tests requiring Internet
 
-	BlacklistedTests []string // tests which are blacklisted
-	Tags             []string // tags to be ran
+	DenylistedTests []string // tests which are on the denylist
+	Tags            []string // tags to be ran
 
 	consoleChecks = []struct {
 		desc     string
@@ -249,7 +249,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 	noPattern := hasString("*", patterns)
 	for name, t := range tests {
 		var noNetFiltered bool
-		var blacklisted bool
+		var denylisted bool
 		for _, flag := range t.Flags {
 			if flag == register.RequiresInternetAccess && NoNet {
 				noNetFiltered = true
@@ -261,28 +261,28 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			continue
 		}
 
-		// Drop anything which is blacklisted directly or by pattern
-		for _, bl := range BlacklistedTests {
+		// Drop anything which is denylisted directly or by pattern
+		for _, bl := range DenylistedTests {
 			match, err := filepath.Match(bl, t.Name)
 			if err != nil {
 				return nil, err
 			}
-			// If it matched the pattern this test is blacklisted
+			// If it matched the pattern this test is denylisted
 			if match {
-				blacklisted = true
+				denylisted = true
 				break
 			}
 
-			// Check if any native tests are blacklisted. To exclude native tests, specify the high level
+			// Check if any native tests are denylisted. To exclude native tests, specify the high level
 			// test and a "/" and then the glob pattern.
 			// - basic/TestNetworkScripts: excludes only TestNetworkScripts
 			// - basic/* - excludes all
 			// - If no pattern is specified after / , excludes none
-			nativeblacklistindex := strings.Index(bl, "/")
-			if nativeblacklistindex > -1 {
+			nativedenylistindex := strings.Index(bl, "/")
+			if nativedenylistindex > -1 {
 				// Check native tests for arch specific exclusion
 				for nativetestname := range t.NativeFuncs {
-					match, err := filepath.Match(bl[nativeblacklistindex+1:], nativetestname)
+					match, err := filepath.Match(bl[nativedenylistindex+1:], nativetestname)
 					if err != nil {
 						return nil, err
 					}
@@ -292,9 +292,9 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				}
 			}
 		}
-		// If the test is blacklisted, skip it and continue to the next test
-		if blacklisted {
-			plog.Debugf("Skipping blacklisted test %s", t.Name)
+		// If the test is denylisted, skip it and continue to the next test
+		if denylisted {
+			plog.Debugf("Skipping denylisted test %s", t.Name)
 			continue
 		}
 
