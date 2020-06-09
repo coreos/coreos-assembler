@@ -26,12 +26,11 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/ssh"
-
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/ssh"
 
 	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
@@ -181,6 +180,10 @@ const (
 
 	// kolaExtBinDataName is the name for test dependency data
 	kolaExtBinDataName = "data"
+
+	// kolaRebootStamp is an older reboot API that is deprecated in favor
+	// of the Debian autopkgtest API.
+	KolaRebootStamp = "/run/kola-reboot"
 )
 
 // NativeRunner is a closure passed to all kola test functions and used
@@ -551,11 +554,11 @@ func registerExternalTest(testname, executable, dependencydir, ignition string, 
 	unit := fmt.Sprintf(`[Unit]
 [Service]
 RemainAfterExit=yes
+EnvironmentFile=-/run/kola-runext-env
+Environment=KOLA_UNIT=%s
 Environment=%s=%s
 ExecStart=%s
-[Install]
-RequiredBy=multi-user.target
-`, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
+`, unitname, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
 	runextconfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -588,24 +591,48 @@ RequiredBy=multi-user.target
 			mach := c.Machines()[0]
 			plog.Debugf("Running kolet")
 
+			var previousRebootState string
+			var stdout []byte
 			var stderr []byte
 			var err error
 			for {
 				plog.Debug("Starting kolet run-test-unit")
-				_, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unitname)))
+				if previousRebootState != "" {
+					plog.Debugf("Setting AUTOPKGTEST_REBOOT_MARK=%s", previousRebootState)
+					c.MustSSHf(mach, "echo AUTOPKGTEST_REBOOT_MARK=%s | sudo tee /run/kola-runext-env", previousRebootState)
+					previousRebootState = ""
+				}
+				stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unitname)))
+				expectingReboot := false
 				if exit, ok := err.(*ssh.ExitError); ok {
 					plog.Debug("Caught ssh.ExitError")
-					// In the future I'd like to better support having the host reboot itself and
-					// we just detect it.
+					// If we got SIGTERM, then we assume the unit (or our login) was killed by a reboot.
+					// Verify that on stdout
 					if exit.Signal() == "TERM" {
-						plog.Debug("Caught SIGTERM from kolet run-test-unit, rebooting machine")
+						plog.Debug("Caught SIGTERM from kolet run-test-unit")
+						expectingReboot = true
+						err = nil
+					}
+				}
+				if err == nil {
+					stdout := strings.TrimSpace(string(stdout))
+					if stdout == "reboot" {
+						var kolaRebootStdout []byte
+						kolaRebootStdout, _, err = mach.SSH(fmt.Sprintf("if test -f %s; then cat %s; fi", KolaRebootStamp, KolaRebootStamp))
+						if err != nil {
+							break
+						}
+						previousRebootState = strings.TrimSpace(string(kolaRebootStdout))
+						plog.Debugf("Reboot request with mark='%s'", previousRebootState)
 						suberr := mach.Reboot()
 						if suberr == nil {
 							err = nil
 							continue
 						}
-						plog.Debug("Propagating ssh.ExitError")
-						err = suberr
+					} else if expectingReboot {
+						err = errors.New("Got SIGTERM, but didn't see reboot indication")
+					} else if stdout != "" {
+						err = fmt.Errorf("Unexpected stdout %s", stdout)
 					}
 				}
 				// Other errors, just bomb out for now

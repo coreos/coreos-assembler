@@ -16,9 +16,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	systemddbus "github.com/coreos/go-systemd/v22/dbus"
@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/cli"
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
 
 	// Register any tests that we may wish to execute in kolet.
@@ -40,8 +41,22 @@ const (
 	CLD_KILLED int32 = 2
 )
 
-// kolaRebootStamp should be created by tests that want to reboot
-const kolaRebootStamp = "/run/kola-reboot"
+// These are defined by https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+const (
+	autopkgTestRebootPath   = "/tmp/autopkgtest-reboot"
+	autopkgtestRebootScript = `#!/bin/bash
+set -euo pipefail
+~core/kolet reboot-request $1
+systemctl kill --no-block ${KOLA_UNIT} || true
+sleep infinity
+`
+	autopkgTestRebootPreparePath = "/tmp/autopkgtest-reboot-prepare"
+
+	autopkgtestRebootPrepareScript = `#!/bin/bash
+set -euo pipefail
+exec ~core/kolet reboot-request $1
+`
+)
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kolet")
@@ -62,6 +77,13 @@ var (
 		Use:          "run-test-unit [unitname]",
 		Short:        "Monitor execution of a systemd unit",
 		RunE:         runExtUnit,
+		SilenceUsage: true,
+	}
+
+	cmdReboot = &cobra.Command{
+		Use:          "reboot-request MARK",
+		Short:        "Request a reboot",
+		RunE:         runReboot,
 		SilenceUsage: true,
 	}
 )
@@ -103,17 +125,9 @@ func registerTestMap(m map[string]*register.Test) {
 	}
 }
 
-// requestRebootAndWait sends SIGTERM to the current process,
-// which then propagates back to the ssh
-// status, so that the kola runner (on the remote host)
-// can use that as a trigger to reboot.
-func requestRebootAndWait() error {
-	selfproc := os.Process{
-		Pid: os.Getpid(),
-	}
-	selfproc.Signal(syscall.SIGTERM)
-	time.Sleep(time.Hour)
-	panic("failed to send SIGTERM to self")
+// requestReboot writes a message which is parsed by the harness
+func requestReboot() {
+	fmt.Println("reboot")
 }
 
 // dispatchRunExtUnit returns true if unit completed successfully, false if
@@ -148,10 +162,11 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 				switch maincode {
 				case CLD_EXITED:
 					if mainstatus == int32(0) {
-						_, err := os.Stat(kolaRebootStamp)
+						_, err := os.Stat(kola.KolaRebootStamp)
 						if err == nil {
-							systemdjournal.Print(systemdjournal.PriInfo, "Unit %s requested reboot via %s\n", unitname, kolaRebootStamp)
-							return false, requestRebootAndWait()
+							systemdjournal.Print(systemdjournal.PriInfo, "Unit %s requested reboot via %s\n", unitname, kola.KolaRebootStamp)
+							requestReboot()
+							return true, nil
 						}
 						return true, nil
 					} else {
@@ -163,7 +178,8 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 					// SIGTERM; we explicitly allow that, expecting we're rebooting.
 					if mainstatus == int32(15) {
 						systemdjournal.Print(systemdjournal.PriInfo, "Unit %s terminated via SIGTERM, assuming reboot request\n", unitname)
-						return false, requestRebootAndWait()
+						requestReboot()
+						return true, nil
 					} else {
 						return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
 					}
@@ -185,6 +201,14 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 }
 
 func runExtUnit(cmd *cobra.Command, args []string) error {
+	// Write the autopkgtest wrappers
+	if err := ioutil.WriteFile(autopkgTestRebootPath, []byte(autopkgtestRebootScript), 0755); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(autopkgTestRebootPreparePath, []byte(autopkgtestRebootPrepareScript), 0755); err != nil {
+		return err
+	}
+
 	unitname := args[0]
 	// Restrict this to services, don't need to support anything else right now
 	if !strings.HasSuffix(unitname, ".service") {
@@ -194,6 +218,13 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "systemd connection")
 	}
+
+	// Start the unit; it's not started by default because we need to
+	// do some preparatory work above (and some is done in the harness)
+	if _, err := sdconn.StartUnit(unitname, "fail", nil); err != nil {
+		return errors.Wrapf(err, "starting unit")
+	}
+
 	if err := sdconn.Subscribe(); err != nil {
 		return err
 	}
@@ -220,11 +251,22 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	}
 }
 
+// This is a backend intending to support at least the same
+// API as defined by Debian autopkgtests:
+// https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+func runReboot(cmd *cobra.Command, args []string) error {
+	mark := args[0]
+	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
+	return ioutil.WriteFile(kola.KolaRebootStamp, []byte(fmt.Sprintf("%s\n", mark)), 0644)
+}
+
 func main() {
 	registerTestMap(register.Tests)
 	registerTestMap(register.UpgradeTests)
 	root.AddCommand(cmdRun)
 	root.AddCommand(cmdRunExtUnit)
+	cmdReboot.Args = cobra.ExactArgs(1)
+	root.AddCommand(cmdReboot)
 
 	cli.Execute(root)
 }
