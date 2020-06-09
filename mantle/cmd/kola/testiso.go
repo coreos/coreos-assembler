@@ -220,8 +220,10 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		delete(targetScenarios, scenarioISOLiveLogin)
 	}
 
+	// just make it a normal print message so pipelines don't error out for ppc64le and s390x
 	if len(targetScenarios) == 0 {
-		return fmt.Errorf("No scenarios specified!")
+		fmt.Println("No valid scenarios specified!")
+		return nil
 	}
 	scenarios = []string{}
 	for scenario, _ := range targetScenarios {

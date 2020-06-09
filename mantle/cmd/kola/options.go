@@ -167,11 +167,11 @@ func syncOptionsImpl(useCosa bool) error {
 	if kola.QEMUOptions.Native4k && kola.QEMUOptions.Firmware == "bios" {
 		return fmt.Errorf("native 4k requires uefi firmware")
 	}
-	// default to BIOS, or UEFI for 4k
+	// default to BIOS, UEFI for aarch64 and x86(only for 4k)
 	if kola.QEMUOptions.Firmware == "" {
-		if kola.QEMUOptions.Native4k {
+		if system.RpmArch() == "aarch64" {
 			kola.QEMUOptions.Firmware = "uefi"
-		} else if system.RpmArch() == "aarch64" {
+		} else if system.RpmArch() == "x86_64" && kola.QEMUOptions.Native4k {
 			kola.QEMUOptions.Firmware = "uefi"
 		} else {
 			kola.QEMUOptions.Firmware = "bios"
