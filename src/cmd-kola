@@ -36,18 +36,23 @@ else:
     default_cmd = 'run'
     default_output_dir = "tmp/kola"
 
-# automatically add blacklisted tests specified in the src config
-blacklist_args = []
-blacklist_path = "src/config/kola-blacklist.yaml"
-if os.path.isfile(blacklist_path):
-    with open(blacklist_path) as f:
-        blacklist = yaml.safe_load(f)
-        for obj in (blacklist or []):
+# automatically add tests from denylist specified in the src config
+denylist_args = []
+denylist_path = "src/config/kola-denylist.yaml"
+old_denylist_path = "src/config/kola-blacklist.yaml"
+if os.path.isfile(old_denylist_path):
+    print(f"⛔ Detected an old filename for denylist; please update your filename to `kola-denylist.yaml`")
+    denylist_path = old_denylist_path
+
+if os.path.isfile(denylist_path):
+    with open(denylist_path) as f:
+        denylist = yaml.safe_load(f)
+        for obj in (denylist or []):
             # if there are any arches specified, skip tests only for those arches. if not skip unconditionally.
             if basearch in obj.get('arches', [basearch]):
                 print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
                 print(f"⚠️  {obj['tracker']}")
-                blacklist_args += ['--blacklist-test', obj['pattern']]
+                denylist_args += ['--denylist-test', obj['pattern']]
 
 # XXX: teach to kola to auto-detect based on prefix; see discussions in
 # https://github.com/coreos/coreos-assembler/pull/85
@@ -67,7 +72,7 @@ subargs = args.subargs or [default_cmd]
 kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
 
-kolaargs.extend(blacklist_args)
+kolaargs.extend(denylist_args)
 
 if args.basic_qemu_scenarios:
     for scenario in BASIC_SCENARIOS:
