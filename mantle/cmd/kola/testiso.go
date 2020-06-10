@@ -85,6 +85,25 @@ var allScenarios = map[string]bool{
 	scenarioLegacyInstall:     true,
 }
 
+var liveOKSignal = "live-test-OK"
+var liveSignalOKUnit = fmt.Sprintf(`[Unit]
+Requires=dev-virtio\\x2dports-testisocompletion.device
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+Before=coreos-installer.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion'
+[Install]
+# In the embedded ISO scenario we're using the default multi-user.target
+# because we write out and enable our own coreos-installer service units
+RequiredBy=multi-user.target
+# In the PXE case we are passing kargs and the coreos-installer-generator
+# will switch us to target coreos-installer.target
+RequiredBy=coreos-installer.target
+`, liveOKSignal)
+
 var signalCompleteString = "coreos-installer-test-OK"
 var signalCompletionUnit = fmt.Sprintf(`[Unit]
 Requires=dev-virtio\\x2dports-testisocompletion.device
@@ -403,7 +422,32 @@ func testPXE(inst platform.Install, outdir string) error {
 	}
 	defer os.RemoveAll(tmpd)
 	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
-	config := ignv3types.Config{
+	liveConfig := ignv3types.Config{
+		Ignition: ignv3types.Ignition{
+			Version: "3.0.0",
+		},
+		Passwd: ignv3types.Passwd{
+			Users: []ignv3types.PasswdUser{
+				{
+					Name: "core",
+					SSHAuthorizedKeys: []ignv3types.SSHAuthorizedKey{
+						sshPubKey,
+					},
+				},
+			},
+		},
+		Systemd: ignv3types.Systemd{
+			Units: []ignv3types.Unit{
+				{
+					Name:     "live-signal-ok.service",
+					Contents: &liveSignalOKUnit,
+					Enabled:  util.BoolToPtr(true),
+				},
+			},
+		},
+	}
+
+	targetConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
 		},
@@ -437,16 +481,17 @@ func testPXE(inst platform.Install, outdir string) error {
 	if err != nil {
 		return err
 	}
+	liveConfig = ignv3.Merge(liveConfig, *virtioJournalConfig)
 
-	config = ignv3.Merge(config, *virtioJournalConfig)
+	targetConfig = ignv3.Merge(targetConfig, *virtioJournalConfig)
 
-	mach, err := inst.PXE(pxeKernelArgs, config)
+	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig)
 	if err != nil {
 		return errors.Wrapf(err, "running PXE")
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveIso(inst platform.Install, outdir string, offline bool) error {
@@ -459,22 +504,6 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 	if err != nil {
 		return err
 	}
-
-	// We're just testing that executing our custom Ignition in the live
-	// path worked ok.
-	liveOKSignal := "live-test-OK"
-	var liveSignalOKUnit = fmt.Sprintf(`[Unit]
-	Requires=dev-virtio\\x2dports-testisocompletion.device
-	OnFailure=emergency.target
-	OnFailureJobMode=isolate
-	Before=coreos-installer.service
-	[Service]
-	Type=oneshot
-	RemainAfterExit=yes
-	ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion'
-	[Install]
-	RequiredBy=multi-user.target
-	`, liveOKSignal)
 
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {

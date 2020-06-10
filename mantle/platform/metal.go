@@ -107,13 +107,14 @@ type InstalledMachine struct {
 	QemuInst *QemuInstance
 }
 
-func (inst *Install) PXE(kargs []string, ignition ignv3types.Config) (*InstalledMachine, error) {
+func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Config) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
 
 	inst.kargs = kargs
 	inst.ignition = ignition
+	inst.liveIgnition = liveIgnition
 
 	var err error
 	var mach *InstalledMachine
@@ -259,12 +260,13 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
 		return nil, err
 	}
-
-	pxeAutoLoginSerialized, err := conf.SerializeAndMaybeConvert(conf.GetAutologin(), inst.IgnitionSpec2)
+	// This code will ensure to add an SSH key to `pxe-live.ign` config.
+	pxeConfig := v3.Merge(inst.liveIgnition, conf.GetAutologin())
+	pxeConfigSerialized, err := conf.SerializeAndMaybeConvert(pxeConfig, inst.IgnitionSpec2)
 	if err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(filepath.Join(tftpdir, "pxe-live.ign"), pxeAutoLoginSerialized, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(tftpdir, "pxe-live.ign"), pxeConfigSerialized, 0644); err != nil {
 		return nil, err
 	}
 
