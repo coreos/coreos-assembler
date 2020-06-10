@@ -43,6 +43,7 @@ var (
 	}
 
 	memory       int
+	addDisks     []string
 	usernet      bool
 	cpuCountHost bool
 
@@ -71,6 +72,7 @@ func init() {
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
+	cmdQemuExec.Flags().StringArrayVarP(&addDisks, "add-disk", "D", []string{}, "Additional disk, human readable size (repeatable)")
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
 	cmdQemuExec.Flags().BoolVar(&directIgnition, "ignition-direct", false, "Do not parse Ignition, pass directly to instance")
 	cmdQemuExec.Flags().BoolVar(&devshell, "devshell", false, "Enable development shell")
@@ -211,6 +213,13 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder.Hostname = hostname
 	if memory != 0 {
 		builder.Memory = memory
+	}
+	for _, size := range addDisks {
+		if err := builder.AddDisk(&platform.Disk{
+			Size: size,
+		}); err != nil {
+			return errors.Wrapf(err, "adding additional disk")
+		}
 	}
 	if cpuCountHost {
 		builder.Processors = -1
