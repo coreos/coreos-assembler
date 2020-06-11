@@ -181,6 +181,7 @@ if [ -n "${PARENT_BUILD}" ]; then
     mkdir -p "$(dirname "${commitpath}")" "$(dirname "${commitpartial}")"
     if [ ! -f "${commitpath}" ]; then
         cp "${parent_builddir}/ostree-commit-object" "${commitpath}"
+        # and mark as partial since we only imported the commit object
         touch "${commitpartial}"
     fi
 fi
@@ -449,7 +450,9 @@ mv "${lockfile_out}" .
 saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
 rm -rf "${saved_build_tmpdir}"
 mv -T tmp "${saved_build_tmpdir}"
-ostree prune --repo="${tmprepo}" --refs-only
+# just keep the last 3 commits as a rough guideline; this matches
+# DEFAULT_KEEP_LAST_N in `cmd-prune`
+ostree prune --repo="${tmprepo}" --refs-only --depth=2
 # Back to the toplevel work directory, so we can rename this one
 cd "${workdir}"
 # We create a .build-commit file to note that we're in the
