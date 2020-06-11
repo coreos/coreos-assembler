@@ -40,6 +40,7 @@ with open(metapath) as f:
     meta = json.load(f)
 
 print("Preparing to upload oscontainer for build: {}".format(latest_build))
+ostree_commit = meta['ostree-commit']
 
 tmprepo = "{}/tmp/repo".format(os.getcwd())
 # if tmprepo is not a directory, but is unexpectedly a file,
@@ -58,6 +59,20 @@ if not os.path.exists(tmprepo):
                            f'{latest_build_path}/{ostree_commit_tar}',
                            '-C', tmprepo])
 
+tmp_osreleasedir = 'tmp/usrlib-osrelease'
+cmdlib.run_verbose(['/usr/bin/ostree', 'checkout', '--repo', tmprepo,
+                    '--user-mode', '--subpath=/usr/lib/os-release', ostree_commit,
+                    tmp_osreleasedir])
+display_name = None
+with open(os.path.join(tmp_osreleasedir, "os-release")) as f:
+    for line in f.readlines():
+        if not line.startswith('NAME='):
+            continue
+        display_name = line.split('=', 2)[1]
+        break
+if display_name is None:
+    raise SystemExit(f"Failed to find NAME= in /usr/lib/os-release in commit {ostree_commit}")
+shutil.rmtree(tmp_osreleasedir)
 
 # The build ID is the container tag
 osc_name_and_tag = "{}:{}".format(args.name, latest_build)
@@ -72,6 +87,7 @@ if os.getuid != 0:
 cosa_argv.extend(['/usr/lib/coreos-assembler/oscontainer.py', '--workdir=./tmp', 'build',  f"--from={args.from_image}"])
 for d in args.add_directory:
     cosa_argv.append(f"--add-directory={d}")
+cosa_argv.append(f"--display-name={display_name}")
 subprocess.check_call(cosa_argv +
     [f'--digestfile={digestfile}',
         '--push', tmprepo,
