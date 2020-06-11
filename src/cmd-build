@@ -177,8 +177,12 @@ if [ -n "${PARENT_BUILD}" ]; then
     PARENT=$(jq -r '.["ostree-commit"]' < "${parent_builddir}/meta.json")
     # and copy the parent into the repo so that we can generate a pkgdiff below
     commitpath=${tmprepo}/objects/${PARENT::2}/${PARENT:2}.commit
-    mkdir -p "$(dirname "${commitpath}")"
-    cp "${parent_builddir}/ostree-commit-object" "${commitpath}"
+    commitpartial=${tmprepo}/state/${PARENT}.commitpartial
+    mkdir -p "$(dirname "${commitpath}")" "$(dirname "${commitpartial}")"
+    if [ ! -f "${commitpath}" ]; then
+        cp "${parent_builddir}/ostree-commit-object" "${commitpath}"
+        touch "${commitpartial}"
+    fi
 fi
 
 # Calculate image input checksum now and gather previous image build variables if any
