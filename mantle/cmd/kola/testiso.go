@@ -493,7 +493,14 @@ func testPXE(inst platform.Install, outdir string) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	var signals []string
+	// the legacy installer doesn't have a live environment, so we only expect
+	// the signal from the installed machine
+	if !inst.LegacyInstaller {
+		signals = append(signals, liveOKSignal)
+	}
+	signals = append(signals, signalCompleteString)
+	return awaitCompletion(mach.QemuInst, outdir, completionChannel, signals)
 }
 
 func testLiveIso(inst platform.Install, outdir string, offline bool) error {
