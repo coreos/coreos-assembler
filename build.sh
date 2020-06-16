@@ -56,7 +56,8 @@ install_rpms() {
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
-    rpm -q grubby && yum remove -y grubby
+    # Add --exclude for s390utils-base because we need it to not get removed.
+    rpm -q grubby && yum remove --exclude=s390utils-base -y grubby
 
     # Allow Kerberos Auth to work from a keytab. The keyring is not
     # available in a Container.
