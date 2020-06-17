@@ -34,7 +34,8 @@ if [ -e /sys/fs/selinux/status ]; then
         exec sudo -- env coreos_assembler_unshared=1 unshare -m -- runuser -u "${USER}" -- "$0" "$@"
     else
         # Work around https://github.com/containers/libpod/issues/1448
-        sudo umount /sys/fs/selinux
+        # https://github.com/cgwalters/coretoolbox/blob/04e36894cdb912cd4d4c91b26436c57a2d96707d/src/coretoolbox.rs#L616
+        sudo mount --bind /usr/share/empty /sys/fs/selinux
     fi
 fi
 
