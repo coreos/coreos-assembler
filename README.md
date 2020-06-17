@@ -155,6 +155,10 @@ currently `quay.io/coreos-assembler/coreos-assembler:latest`.
 See the [Hacking](#hacking) section below for examples of how to use these
 variables:
 
+### Containers and networking
+
+You may currently need to use `--net=host` if your host is connected to a VPN for example.
+
 ### Running persistently
 
 At this point, try `cosa shell` to start a shell inside the container.
