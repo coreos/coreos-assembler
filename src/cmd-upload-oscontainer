@@ -62,17 +62,14 @@ if not os.path.exists(tmprepo):
                            '-C', tmprepo])
 
 tmp_osreleasedir = 'tmp/usrlib-osrelease'
+subprocess.check_call(['rm', '-rf', tmp_osreleasedir])
 cmdlib.run_verbose(['/usr/bin/ostree', 'checkout', '--repo', tmprepo,
                     '--user-mode', '--subpath=/usr/lib/os-release', ostree_commit,
                     tmp_osreleasedir])
 display_name = None
 with open(os.path.join(tmp_osreleasedir, "os-release")) as f:
-    for line in f.readlines():
-        if not line.startswith('NAME='):
-            continue
-        display_name = line.split('=', 2)[1]
-        break
-if display_name is None:
+    display_name = subprocess.check_output(['/bin/sh', '-c', 'set -euo pipefail; . /proc/self/fd/0 && echo $NAME'], stdin=f, encoding='UTF-8').strip()
+if display_name == "":
     raise SystemExit(f"Failed to find NAME= in /usr/lib/os-release in commit {ostree_commit}")
 shutil.rmtree(tmp_osreleasedir)
 
