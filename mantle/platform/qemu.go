@@ -823,7 +823,7 @@ func baseQemuArgs() []string {
 	case "ppc64le":
 		return []string{
 			"qemu-system-ppc64",
-			"-machine", "pseries,accel=kvm,kvm-type=HV",
+			"-machine", "pseries,accel=kvm,kvm-type=HV,vsmt=8",
 		}
 	default:
 		panic(fmt.Sprintf("RpmArch %s combo not supported for qemu ", system.RpmArch()))
