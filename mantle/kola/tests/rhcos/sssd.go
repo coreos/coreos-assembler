@@ -34,6 +34,11 @@ func init() {
 				"version": "2.2.0"
 			}
 		}`),
+		UserDataV3: conf.Ignition(`{
+			"ignition": {
+				"version": "3.0.0"
+			}
+		}`),
 	})
 }
 
