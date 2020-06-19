@@ -106,7 +106,12 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		return nil, fmt.Errorf("error resolving vpc: %v", err)
 	}
 
-	subnetId, err := a.getSubnetID(vpcId)
+	zone, err := a.GetZoneForInstanceType(a.opts.InstanceType)
+	if err != nil {
+		return nil, fmt.Errorf("error finding zone for instance type %v", a.opts.InstanceType)
+	}
+
+	subnetId, err := a.getSubnetID(vpcId, zone)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving subnet: %v", err)
 	}
@@ -305,4 +310,28 @@ func (a *API) GetConsoleOutput(instanceID string) (string, error) {
 	}
 
 	return string(decoded), nil
+}
+
+// GetZoneForInstanceType returns an availability zone that offers the
+// given instance type. This is useful because not all availabitliy zones
+// offer all instances types.
+func (a *API) GetZoneForInstanceType(instanceType string) (string, error) {
+
+	input := ec2.DescribeInstanceTypeOfferingsInput{
+		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("instance-type"),
+				Values: []*string{aws.String(instanceType)},
+			},
+		},
+	}
+	output, err := a.ec2.DescribeInstanceTypeOfferings(&input)
+	if err != nil {
+		return "", fmt.Errorf("error describing instance offerings: %v", err)
+	}
+	if len(output.InstanceTypeOfferings) == 0 {
+		return "", fmt.Errorf("no availability zones found for this instance type %v:", instanceType)
+	}
+	return *output.InstanceTypeOfferings[0].Location, nil
 }
