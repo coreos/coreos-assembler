@@ -54,6 +54,22 @@ func init() {
 				]
 			}
 		}`),
+		UserDataV3: conf.Ignition(`{
+			"ignition": {
+				"version": "3.0.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,e30K"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`),
 	})
 }
 
