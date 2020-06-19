@@ -43,7 +43,7 @@ cmd=${1:-}
 # commands we'd expect to use in the local dev path
 build_commands="init fetch build run prune clean list"
 # commands more likely to be used in a prod pipeline only
-advanced_build_commands="buildprep buildupload oscontainer upload-oscontainer"
+advanced_build_commands="buildprep buildupload oscontainer upload-oscontainer oc-adm-release"
 buildextend_commands="aws azure digitalocean gcp ibmcloud installer live metal metal4k openstack qemu vmware vultr exoscale"
 utility_commands="tag sign compress koji-upload kola aws-replicate remote-prune"
 other_commands="shell meta"
