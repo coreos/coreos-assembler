@@ -304,18 +304,22 @@ func (a *API) createSubnets(vpcId, routeTableId string) error {
 	return nil
 }
 
-// getSubnetID gets a subnet for the given VPC.
-func (a *API) getSubnetID(vpc string) (string, error) {
+// getSubnetID gets a subnet for the given VPC and availability zone
+func (a *API) getSubnetID(vpc string, zone string) (string, error) {
 	subIds, err := a.ec2.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   aws.String("vpc-id"),
 				Values: []*string{&vpc},
 			},
+			{
+				Name:   aws.String("availability-zone"),
+				Values: []*string{&zone},
+			},
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("unable to get subnets for vpc %v: %v", vpc, err)
+		return "", fmt.Errorf("unable to get subnets for vpc/zone %v/%v: %v", vpc, zone, err)
 	}
 	for _, id := range subIds.Subnets {
 		if id.SubnetId != nil {
