@@ -41,6 +41,22 @@ func init() {
 				]
 			}
 		}`),
+		UserDataV3: conf.Ignition(`{
+			"ignition": {
+				"version": "3.0.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,e30K"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`),
 	})
 	// Create 0 cluster size to allow starting and setup of Tang as needed per test
 	// See: https://github.com/coreos/coreos-assembler/pull/1310#discussion_r401908836
@@ -88,11 +104,20 @@ func setupTangMachine(c cluster.TestCluster) (string, string) {
 		},
 	}
 
-	ignition := conf.Ignition(`{
-		"ignition": {
-			"version": "2.2.0"
-		}
-	}`)
+	var ignition *conf.UserData
+	if c.IgnitionVersion() == "v2" {
+		ignition = conf.Ignition(`{
+			"ignition": {
+				"version": "2.2.0"
+			}
+		}`)
+	} else {
+		ignition = conf.Ignition(`{
+			"ignition": {
+				"version": "3.0.0"
+			}
+		}`)
+	}
 
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
@@ -221,23 +246,46 @@ func luksTPMTest(c cluster.TestCluster) {
 func luksTangTest(c cluster.TestCluster) {
 	address, thumbprint := setupTangMachine(c)
 	encodedTangPin := getEncodedTangPin(c, address, thumbprint)
-	m, err := c.NewMachine(conf.Ignition(fmt.Sprintf(`{
-		"ignition": {
-			"version": "2.2.0"
-		},
-		"storage": {
-			"files": [
-				{
-					"filesystem": "root",
-					"path": "/etc/clevis.json",
-					"contents": {
-						"source": "data:text/plain;base64,%s"
-					},
-					"mode": 420
-				}
-			]
-		}
-	}`, encodedTangPin)))
+
+	var ignition *conf.UserData
+	if c.IgnitionVersion() == "v2" {
+		ignition = conf.Ignition(fmt.Sprintf(`{
+			"ignition": {
+				"version": "2.2.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"filesystem": "root",
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,%s"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`, encodedTangPin))
+	} else {
+		ignition = conf.Ignition(fmt.Sprintf(`{
+			"ignition": {
+				"version": "3.0.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,%s"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`, encodedTangPin))
+	}
+
+	m, err := c.NewMachine(ignition)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
@@ -248,23 +296,47 @@ func luksTangTest(c cluster.TestCluster) {
 func luksSSST1Test(c cluster.TestCluster) {
 	address, thumbprint := setupTangMachine(c)
 	encodedSSST1Pin := getEncodedSSSPin(c, 1, false, address, thumbprint)
-	m, err := c.NewMachine(conf.Ignition(fmt.Sprintf(`{
-		"ignition": {
-			"version": "2.2.0"
-		},
-		"storage": {
-			"files": [
-				{
-					"filesystem": "root",
-					"path": "/etc/clevis.json",
-					"contents": {
-						"source": "data:text/plain;base64,%s"
-					},
-					"mode": 420
-				}
-			]
-		}
-	}`, encodedSSST1Pin)))
+
+	var ignition *conf.UserData
+	if c.IgnitionVersion() == "v2" {
+		ignition = conf.Ignition(fmt.Sprintf(`{
+			"ignition": {
+				"version": "2.2.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"filesystem": "root",
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,%s"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`, encodedSSST1Pin))
+	} else {
+		ignition = conf.Ignition(fmt.Sprintf(`{
+			"ignition": {
+				"version": "3.0.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"filesystem": "root",
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,%s"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`, encodedSSST1Pin))
+	}
+
+	m, err := c.NewMachine(ignition)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
@@ -275,23 +347,47 @@ func luksSSST1Test(c cluster.TestCluster) {
 func luksSSST2Test(c cluster.TestCluster) {
 	address, thumbprint := setupTangMachine(c)
 	encodedSSST2Pin := getEncodedSSSPin(c, 2, true, address, thumbprint)
-	m, err := c.NewMachine(conf.Ignition(fmt.Sprintf(`{
-		"ignition": {
-			"version": "2.2.0"
-		},
-		"storage": {
-			"files": [
-				{
-					"filesystem": "root",
-					"path": "/etc/clevis.json",
-					"contents": {
-						"source": "data:text/plain;base64,%s"
-					},
-					"mode": 420
-				}
-			]
-		}
-	}`, encodedSSST2Pin)))
+
+	var ignition *conf.UserData
+	if c.IgnitionVersion() == "v2" {
+		ignition = conf.Ignition(fmt.Sprintf(`{
+			"ignition": {
+				"version": "2.2.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"filesystem": "root",
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,%s"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`, encodedSSST2Pin))
+	} else {
+		ignition = conf.Ignition(fmt.Sprintf(`{
+			"ignition": {
+				"version": "3.0.0"
+			},
+			"storage": {
+				"files": [
+					{
+						"filesystem": "root",
+						"path": "/etc/clevis.json",
+						"contents": {
+							"source": "data:text/plain;base64,%s"
+						},
+						"mode": 420
+					}
+				]
+			}
+		}`, encodedSSST2Pin))
+	}
+
+	m, err := c.NewMachine(ignition)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
