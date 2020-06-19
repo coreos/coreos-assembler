@@ -632,7 +632,7 @@ ExecStart=%s
 					} else if expectingReboot {
 						err = errors.New("Got SIGTERM, but didn't see reboot indication")
 					} else if stdout != "" {
-						err = fmt.Errorf("Unexpected stdout %s", stdout)
+						plog.Warningf("Unexpected stdout %s", stdout)
 					}
 				}
 				// Other errors, just bomb out for now

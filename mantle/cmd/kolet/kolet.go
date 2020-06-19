@@ -148,7 +148,6 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 
 	switch state {
 	case "inactive":
-		fmt.Printf("Starting %s\n", unitname)
 		sdconn.StartUnit(unitname, "fail", nil)
 		return false, nil
 	case "activating":
