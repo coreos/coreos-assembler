@@ -83,16 +83,24 @@ def cmd_robosignatory(args):
         key, val = keyval.split('=', 1)  # will throw exception if there's no =
         args.extra_keys[key] = val
 
+    build = Meta(build=args.build)
+    version = build['ostree-version']
+
+    # 32.20200615.2.0 -> 32
+    major = int(version.split('.')[0])
+    gpgkey = f"{args.gpgkeypath}/RPM-GPG-KEY-fedora-{major}-primary"
+    if not os.path.isfile(gpgkey):
+        raise Exception(f"Expected GPG key {gpgkey} to exist")
+
     # these two are different enough that they deserve separate handlers
     if args.ostree:
-        robosign_ostree(args, s3)
+        robosign_ostree(args, s3, build, gpgkey)
     else:
         assert args.images
-        robosign_images(args, s3)
+        robosign_images(args, s3, build, gpgkey)
 
 
-def robosign_ostree(args, s3):
-    build = Meta(build=args.build)
+def robosign_ostree(args, s3, build, gpgkey):
     builds = Builds()
     builddir = builds.get_build_dir(args.build)
     checksum = build['ostree-commit']
@@ -145,7 +153,7 @@ def robosign_ostree(args, s3):
         # libostree at armored GPG keys
         config = repo.copy_config()
         config.set_string('remote "tmpremote"', 'url', 'https://example.com')
-        config.set_string('remote "tmpremote"', 'gpgkeypath', args.gpgkeypath)
+        config.set_string('remote "tmpremote"', 'gpgkeypath', gpgkey)
         config.set_boolean('remote "tmpremote"', 'gpg-verify', True)
         repo.write_config(config)
         # XXX: work around ostree_repo_write_config not reloading remotes too
@@ -190,8 +198,7 @@ def robosign_ostree(args, s3):
     import_ostree_commit('tmp/repo', checksum, commit_tarfile, force=True)
 
 
-def robosign_images(args, s3):
-    build = Meta(build=args.build)
+def robosign_images(args, s3, build, gpgkey):
     builds = Builds()
     builddir = builds.get_build_dir(args.build)
 
@@ -224,9 +231,7 @@ def robosign_images(args, s3):
         def gpg(*args):
             subprocess.check_call(['gpg', '--homedir', d, *args])
 
-        with os.scandir(args.gpgkeypath) as it:
-            keys = [entry.path for entry in it if entry.is_file()]
-            gpg('--quiet', '--import', *keys)
+        gpg('--quiet', '--import', gpgkey)
 
         for img in build['images'].values():
             sig_s3_key = f'{full_prefix}/{img["path"]}.sig'
