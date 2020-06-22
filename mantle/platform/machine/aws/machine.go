@@ -106,7 +106,7 @@ func (am *machine) saveConsole(origConsole string) error {
 	// returned output will be non-empty but won't necessarily include
 	// the most recent log messages. So we loop until the post-termination
 	// logs are different from the pre-termination logs.
-	err := util.WaitUntilReady(5*time.Minute, 5*time.Second, func() (bool, error) {
+	err := util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
 		var err error
 		am.console, err = am.cluster.flight.api.GetConsoleOutput(am.ID())
 		if err != nil {
@@ -114,14 +114,14 @@ func (am *machine) saveConsole(origConsole string) error {
 		}
 
 		if am.console == origConsole {
-			plog.Debugf("waiting for console for %v", am.ID())
+			plog.Debugf("waiting for post-terminate console for %v", am.ID())
 			return false, nil
 		}
 
 		return true, nil
 	})
 	if err != nil {
-		err = fmt.Errorf("retrieving console output of %v: %v", am.ID(), err)
+		err = fmt.Errorf("retrieving post-terminate console output of %v: %v", am.ID(), err)
 		if origConsole != "" {
 			plog.Warning(err)
 		} else {
