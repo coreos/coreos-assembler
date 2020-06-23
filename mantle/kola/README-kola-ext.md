@@ -61,13 +61,25 @@ Support for rebooting
 ---
 
 An important feature of exttests is support for rebooting the host system.
-This allows one to easily test OS updates for example.  To do this, your
-test process should create a stamp file `/run/kola-reboot`, then exit.
-For example, in bash use:
+This allows one to easily test OS updates for example.  In order to
+more easily allow sharing tests, kola has adopted a subset of the
+[Debian autopkgtest interface](https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst).
+
+See the section titled `Reboot during a test` there.  For convenience
+an example is included below:
+
 
 ```
-touch /run/kola-reboot
-exit 0
+#!/bin/bash
+# Copy of the reboot example from https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+set -xeuo pipefail
+case "${AUTOPKGTEST_REBOOT_MARK:-}" in
+  "") echo "test beginning"; /tmp/autopkgtest-reboot mark1 ;;
+  mark1) echo "test in mark1"; /tmp/autopkgtest-reboot mark2 ;;
+  mark2) echo "test in mark2" ;;
+  *) echo "unexpected mark: ${AUTOPKGTEST_REBOOT_MARK}"; exit 1;;
+esac
+echo "ok autopkgtest rebooting"
 ```
 
 This will trigger the monitoring `kola` process to invoke a reboot.
