@@ -15,6 +15,20 @@ if [ -z "${LIBGUESTFS_MEMSIZE:-}" ]; then
     # only if we detect this case, but eh.
     export LIBGUESTFS_MEMSIZE=2048
 fi
+
+arch=$(uname -m)
+
+if [ "$arch" = "ppc64le" ] ; then
+    tmp_qemu_wrapper=$(mktemp -tdp /tmp gf-vsmt.XXXXXX)
+    qemu_wrapper=${tmp_qemu_wrapper}/qemu-wrapper.sh
+	cat <<-'EOF' > "${qemu_wrapper}"
+	#!/bin/bash -
+	exec qemu-system-ppc64 "$@" -machine pseries,accel=kvm:tcg,vsmt=8
+	EOF
+    chmod +x "${qemu_wrapper}"
+    export LIBGUESTFS_HV="${qemu_wrapper}"
+fi
+
 # http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
 GUESTFISH_PID=
 coreos_gf_launch() {
@@ -30,6 +44,9 @@ coreos_gf_launch() {
 
 _coreos_gf_cleanup () {
     guestfish --remote -- exit >/dev/null 2>&1 ||:
+    if [ -n "${tmp_qemu_wrapper:-}" ] ; then
+        rm -rf "${tmp_qemu_wrapper}";
+    fi
 }
 trap _coreos_gf_cleanup EXIT
 
