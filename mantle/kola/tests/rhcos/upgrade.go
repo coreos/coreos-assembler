@@ -37,23 +37,6 @@ func init() {
 		FailFast: true,
 		Tags:     []string{"upgrade"},
 		Distros:  []string{"rhcos"},
-		UserData: conf.Ignition(`{
-			"ignition": {
-				"version": "2.2.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,e30K"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`),
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
