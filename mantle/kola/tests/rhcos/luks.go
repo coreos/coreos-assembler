@@ -24,23 +24,6 @@ func init() {
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
 		Tags:                 []string{"luks", "tpm"},
-		UserData: conf.Ignition(`{
-			"ignition": {
-				"version": "2.2.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,e30K"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`),
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
@@ -104,20 +87,11 @@ func setupTangMachine(c cluster.TestCluster) (string, string) {
 		},
 	}
 
-	var ignition *conf.UserData
-	if c.IgnitionVersion() == "v2" {
-		ignition = conf.Ignition(`{
-			"ignition": {
-				"version": "2.2.0"
-			}
-		}`)
-	} else {
-		ignition = conf.Ignition(`{
-			"ignition": {
-				"version": "3.0.0"
-			}
-		}`)
-	}
+	ignition := conf.Ignition(`{
+		"ignition": {
+			"version": "3.0.0"
+		}
+	}`)
 
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
@@ -247,43 +221,22 @@ func luksTangTest(c cluster.TestCluster) {
 	address, thumbprint := setupTangMachine(c)
 	encodedTangPin := getEncodedTangPin(c, address, thumbprint)
 
-	var ignition *conf.UserData
-	if c.IgnitionVersion() == "v2" {
-		ignition = conf.Ignition(fmt.Sprintf(`{
-			"ignition": {
-				"version": "2.2.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,%s"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`, encodedTangPin))
-	} else {
-		ignition = conf.Ignition(fmt.Sprintf(`{
-			"ignition": {
-				"version": "3.0.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,%s"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`, encodedTangPin))
-	}
+	ignition := conf.Ignition(fmt.Sprintf(`{
+		"ignition": {
+			"version": "3.0.0"
+		},
+		"storage": {
+			"files": [
+				{
+					"path": "/etc/clevis.json",
+					"contents": {
+						"source": "data:text/plain;base64,%s"
+					},
+					"mode": 420
+				}
+			]
+		}
+	}`, encodedTangPin))
 
 	m, err := c.NewMachine(ignition)
 	if err != nil {
@@ -297,44 +250,23 @@ func luksSSST1Test(c cluster.TestCluster) {
 	address, thumbprint := setupTangMachine(c)
 	encodedSSST1Pin := getEncodedSSSPin(c, 1, false, address, thumbprint)
 
-	var ignition *conf.UserData
-	if c.IgnitionVersion() == "v2" {
-		ignition = conf.Ignition(fmt.Sprintf(`{
-			"ignition": {
-				"version": "2.2.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,%s"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`, encodedSSST1Pin))
-	} else {
-		ignition = conf.Ignition(fmt.Sprintf(`{
-			"ignition": {
-				"version": "3.0.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,%s"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`, encodedSSST1Pin))
-	}
+	ignition := conf.Ignition(fmt.Sprintf(`{
+		"ignition": {
+			"version": "3.0.0"
+		},
+		"storage": {
+			"files": [
+				{
+					"filesystem": "root",
+					"path": "/etc/clevis.json",
+					"contents": {
+						"source": "data:text/plain;base64,%s"
+					},
+					"mode": 420
+				}
+			]
+		}
+	}`, encodedSSST1Pin))
 
 	m, err := c.NewMachine(ignition)
 	if err != nil {
@@ -348,44 +280,23 @@ func luksSSST2Test(c cluster.TestCluster) {
 	address, thumbprint := setupTangMachine(c)
 	encodedSSST2Pin := getEncodedSSSPin(c, 2, true, address, thumbprint)
 
-	var ignition *conf.UserData
-	if c.IgnitionVersion() == "v2" {
-		ignition = conf.Ignition(fmt.Sprintf(`{
-			"ignition": {
-				"version": "2.2.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,%s"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`, encodedSSST2Pin))
-	} else {
-		ignition = conf.Ignition(fmt.Sprintf(`{
-			"ignition": {
-				"version": "3.0.0"
-			},
-			"storage": {
-				"files": [
-					{
-						"filesystem": "root",
-						"path": "/etc/clevis.json",
-						"contents": {
-							"source": "data:text/plain;base64,%s"
-						},
-						"mode": 420
-					}
-				]
-			}
-		}`, encodedSSST2Pin))
-	}
+	ignition := conf.Ignition(fmt.Sprintf(`{
+		"ignition": {
+			"version": "3.0.0"
+		},
+		"storage": {
+			"files": [
+				{
+					"filesystem": "root",
+					"path": "/etc/clevis.json",
+					"contents": {
+						"source": "data:text/plain;base64,%s"
+					},
+					"mode": 420
+				}
+			]
+		}
+	}`, encodedSSST2Pin))
 
 	m, err := c.NewMachine(ignition)
 	if err != nil {

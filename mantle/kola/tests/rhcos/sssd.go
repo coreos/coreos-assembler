@@ -29,11 +29,6 @@ func init() {
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu"},
-		UserData: conf.Ignition(`{
-			"ignition": {
-				"version": "2.2.0"
-			}
-		}`),
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
