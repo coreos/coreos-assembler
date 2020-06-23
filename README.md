@@ -3,15 +3,9 @@ The CoreOS Assembler
 
 This is the CoreOS Assembler (often abbreviated COSA) build environment. It is
 a collection of various tools used to build
-[Fedora CoreOS](https://coreos.fedoraproject.org) style systems.  You
-can use this to create Ignition + OSTree based operating systems with
-custom components and manage updates yourself, etc.
-
-It reuses various upstream tools, such as:
-
-- [mantle](https://github.com/coreos/mantle)
-- [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
-- [libvirt](https://github.com/libvirt/libvirt)
+[Fedora CoreOS](https://coreos.fedoraproject.org) style systems, including
+RHEL CoreOS.  The goal is that everything needed to build and test the OS
+comes encapsulated in one (admittedly large) container.
 
 A high level goal of this tool is to support two highly related use cases,
 and to keep them as similar as possible:
@@ -24,6 +18,8 @@ example pipeline.
 
 The container itself is available on Quay.io at
 `quay.io/coreos-assembler/coreos-assembler`.
+
+For more information about building custom FCOS derivatives, see [README-custom.md](README-custom.md).
 
 ## Design
 
