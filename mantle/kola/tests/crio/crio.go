@@ -137,7 +137,8 @@ var crioContainerTemplate = `{
 			"capabilities": {
 				"add_capabilities": [
 					"setuid",
-					"setgid"
+					"setgid",
+					"net_raw"
 				],
 				"drop_capabilities": [
 				]
@@ -357,6 +358,12 @@ func crioNetwork(c cluster.TestCluster) {
 func crioNetworksReliably(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
+	// Figure out the host IP address on the crio default bridge. This is
+	// required as the default subnet was changed in 1.18 to avoid a conflict
+	// with the default podman bridge.
+	subnet := c.MustSSH(m, fmt.Sprintf("jq --raw-output '.ipam.ranges[0][0].subnet' /usr/etc/cni/net.d/100-crio-bridge.conf"))
+	hostIP := fmt.Sprintf("%s.1", (strings.Trim(string(subnet), ".0/16")))
+
 	// Here we generate 10 pods, each will run a container responsible for
 	// pinging to host
 	output := ""
@@ -373,7 +380,7 @@ func crioNetworksReliably(c cluster.TestCluster) {
 		podID := c.MustSSH(m, cmdCreatePod)
 		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
 			podID, crioConfigContainer, crioConfigPod))
-		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec %s ping -i 0.2 10.88.0.1 -w 1 >/dev/null && echo PASS || echo FAIL", containerID)))
+		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec %s ping -i 0.2 %s -w 1 >/dev/null && echo PASS || echo FAIL", containerID, hostIP)))
 	}
 
 	numPass := strings.Count(string(output), "PASS")
