@@ -78,7 +78,7 @@ In the future, it's likely coreos-assembler will also support something
 like `overrides/src` which could be a directory of symlinks to local
 git repositories.
 
-# Using cosa run --srv for even faster iteration
+# Using cosa run --ro-bind for even faster iteration
 
 If you're working on e.g. the kernel or Ignition (things that go into the initramfs),
 then you probably need a `cosa build` workflow.  However, let's say you want to
@@ -87,13 +87,35 @@ than doing a full image build each time, a fast way to test out changes is to us
 something like this:
 
 ```
-$ cosa run --srv ~/src/github/containers/libpod
+$ cosa run --ro-bind ~/src/github/containers/libpod,/run/workdir
 ```
 
-Then in the booted VM, `/srv` will point to the `libpod` directory on your host,
+Then in the booted VM, `/run/workdir` will point to the `libpod` directory on your host,
 allowing you to directly execute binaries from there.  You can also use e.g.
-`rpm-ostree usroverlay` and then copy binaries from your host `/srv` into
+`rpm-ostree usroverlay` and then copy binaries from your host `/run/workdir` into
 the VM's rootfs.
+
+# Using host binaries
+
+Another related trick is:
+
+```
+$ cosa run --ro-bind /usr/bin,/run/hostbin
+```
+
+Then in the VM you have e.g. `/run/hostbin/strace`.  (This may fail in some scenarios
+where your dev container is different than the target).
+
+# Developing on coreos-assembler itself
+
+Try e.g. `podman build -f Dockerfile.dev -t localhost/mycosa` to a new container image
+`localhost/mycosa` with changes from your local git.  You can then run it like
+the main image.
+
+Another useful way to do development is to simply `yum install` or `sudo make install`
+changes from other git repositories inside a `cosa shell`.  You'll likely
+want to do this for e.g. things like testing out changes to `ostree`/`rpm-ostree`
+that are run as part of `cosa build`.
 
 # Developing on coreos-assembler remotely
 
