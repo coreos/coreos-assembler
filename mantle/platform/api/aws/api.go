@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/marketplacecatalog"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/coreos/pkg/capnslog"
@@ -57,11 +58,12 @@ type Options struct {
 }
 
 type API struct {
-	session client.ConfigProvider
-	ec2     *ec2.EC2
-	iam     *iam.IAM
-	s3      *s3.S3
-	opts    *Options
+	session     client.ConfigProvider
+	ec2         *ec2.EC2
+	iam         *iam.IAM
+	marketplace *marketplacecatalog.MarketplaceCatalog
+	s3          *s3.S3
+	opts        *Options
 }
 
 // New creates a new AWS API wrapper. It uses credentials from any of the
@@ -90,11 +92,12 @@ func New(opts *Options) (*API, error) {
 	opts.AMI = resolveAMI(opts.AMI, opts.Region)
 
 	api := &API{
-		session: sess,
-		ec2:     ec2.New(sess),
-		iam:     iam.New(sess),
-		s3:      s3.New(sess),
-		opts:    opts,
+		session:     sess,
+		ec2:         ec2.New(sess),
+		iam:         iam.New(sess),
+		marketplace: marketplacecatalog.New(sess),
+		s3:          s3.New(sess),
+		opts:        opts,
 	}
 
 	return api, nil

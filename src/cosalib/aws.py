@@ -147,6 +147,72 @@ def aws_run_ore(build, args):
     build.meta_write()
 
 
+@retry(reraise=True, stop=stop_after_attempt(3))
+def aws_run_ore_marketplace_update(build, args):
+    # When uploading to the marketplace region also update the catalog entity
+    if not args.update_marketplace:
+        raise SystemExit(("no Marketplace Catalog update requested"))
+
+    region = None
+    if "catalog.marketplace.us-east-1" not in args.region:
+        raise Exception(f"Marketplace Catalog update failed: No supported region found")
+    else:
+        region = "catalog.marketplace.us-east-1"
+
+    build.refresh_meta()
+    buildmeta = build.meta
+
+    source_image = None
+    for a in buildmeta['amis']:
+        if a['name'] == region:
+            source_image = a['hvm']
+            break
+
+    if source_image is None:
+        raise Exception(("Unable to find AMI ID for "
+                        f"{region} region"))
+    
+    entity_type = "RHCOSIMG@1.0"
+    if args.entity_type:
+        entity_type = args.entity_type
+    
+    entity_id = ""
+    if not args.entity_id:
+        raise Exception(f"Marketplace Catalog update failed: no Entity ID specified")
+    else:
+        entity_id = args.entity_id
+    
+    ore_mpc_update_args = [
+        'ore', 'aws', 'update-marketplace',
+        '--entity-type', entity_type,
+        '--entity-id', entity_id,
+        '--newAmi', source_image,
+        '--newVersion', args.build_id
+    ]
+
+    print("+ {}".format(subprocess.list2cmdline(ore_mpc_update_args)))
+    # See DescribeEntity response syntax
+    # https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/API_DescribeEntity.html
+    ore_mpc_update_data = json.loads(subprocess.check_output(ore_mpc_update_args))
+    
+    mpc_data = build.meta.get('mpc_revisions', [])
+    mpc_data.append({
+        'details': ore_mpc_update_data.get('Details'),
+        'entity-arn': ore_mpc_update_data.get('EntityArn'),
+        'entity-id': ore_mpc_update_data.get('EntityIdentifier'),
+        'entity-type': ore_mpc_update_data.get('EntityType'),
+        'modified': ore_mpc_update_data.get('LastModifiedDate')
+    })
+
+    if ore_mpc_update_data.get("EntityArn") is None:
+        raise Exception(f"Marketplace Catalog update in {region} failed: no EntityArn returned")
+    if ore_mpc_update_data.get("EntityIdentifier") is None:
+        raise Exception(f"Marketplace Catalog update in {region} failed: no EntityIdentifier returned")
+
+    build.meta['mpc_revisions'] = mpc_data
+    build.meta_write()
+
+
 def aws_cli(parser):
     parser.add_argument("--bucket", help="S3 Bucket")
     parser.add_argument("--name-suffix", help="Suffix for name")

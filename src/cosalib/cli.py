@@ -18,7 +18,8 @@ from cosalib import (
 CLOUD_CLI_TARGET = {
     "aws":          (aws.aws_cli,
                      aws.aws_run_ore,
-                     aws.aws_run_ore_replicate),
+                     aws.aws_run_ore_replicate,
+                     aws.aws_run_ore_marketplace_update),
     "aliyun":       (aliyun.aliyun_cli,
                      aliyun.aliyun_run_ore,
                      aliyun.aliyun_run_ore_replicate),
