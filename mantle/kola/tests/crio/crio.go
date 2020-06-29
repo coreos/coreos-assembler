@@ -362,7 +362,7 @@ func crioNetworksReliably(c cluster.TestCluster) {
 	// required as the default subnet was changed in 1.18 to avoid a conflict
 	// with the default podman bridge.
 	subnet := c.MustSSH(m, fmt.Sprintf("jq --raw-output '.ipam.ranges[0][0].subnet' /usr/etc/cni/net.d/100-crio-bridge.conf"))
-	hostIP := fmt.Sprintf("%s.1", (strings.Trim(string(subnet), ".0/16")))
+	hostIP := fmt.Sprintf("%s.1", strings.TrimSuffix(string(subnet), ".0/16"))
 
 	// Here we generate 10 pods, each will run a container responsible for
 	// pinging to host
