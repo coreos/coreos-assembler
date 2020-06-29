@@ -62,6 +62,14 @@ VARIANTS = {
             '-o': 'force_size,subformat=fixed'
         },
     },
+    "azurestack": {
+        "image_format": "vpc",
+        "image_suffix": "vhd",
+        "platform": "azurestack",
+        "convert_options": {
+            '-o': 'force_size,subformat=fixed'
+        },
+    },
     "digitalocean": {
         "image_format": "qcow2",
         "image_suffix": "qcow2.gz",

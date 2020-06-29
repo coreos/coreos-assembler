@@ -78,6 +78,10 @@ create images from the image file.
  - `kola` works entirely on ARM based authentication, `ore` has methods for both ASM or ARM credentials.
  - `GC` in Azure searches for Resource Groups with a prefix of `kola-cluster` in the name.
 
+## Azure Stack
+
+Like Azure, but not.
+
 ## DigitalOcean
 
  - The DO platform wraps [godo](https://github.com/digitalocean/godo).

@@ -52,7 +52,7 @@ def artifact_cli():
     # Support for legacy cmd-buildextend-* targets
     symlink = None
     for k in targets:
-        if f"cmd-buildextend-{k}" in sys.argv[0]:
+        if sys.argv[0].endswith(f"cmd-buildextend-{k}"):
             symlink = k
             log.info(f"CLI is a symlink for cmd-buildextends-{k}")
             break
