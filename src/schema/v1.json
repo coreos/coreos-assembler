@@ -156,6 +156,7 @@
    "aliyun",
    "amis",
    "azure",
+   "azurestack",
    "build-url",
    "digitalocean",
    "gcp",
@@ -306,6 +307,7 @@
        "aliyun",
        "aws",
        "azure",
+       "azurestack",
        "dasd",
        "digitalocean",
        "exoscale",
@@ -432,6 +434,12 @@
          "title":"Azure",
          "$ref": "#/definitions/artifact"
         },
+       "azurestack": {
+         "$id":"#/properties/images/properties/azurestack",
+         "type":"object",
+         "title":"AzureStack",
+         "$ref": "#/definitions/artifact"
+       },
        "digitalocean": {
          "$id":"#/properties/images/properties/digitalocean",
          "type":"object",
