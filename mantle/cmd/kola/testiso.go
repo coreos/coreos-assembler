@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,15 +135,6 @@ func init() {
 func newBaseQemuBuilder() *platform.QemuBuilder {
 	builder := platform.NewMetalQemuBuilderDefault()
 	builder.Firmware = kola.QEMUOptions.Firmware
-
-	// https://github.com/coreos/fedora-coreos-tracker/issues/388
-	// https://github.com/coreos/fedora-coreos-docs/pull/46
-	builder.Memory = 4096
-	if system.RpmArch() == "s390x" {
-		// After some trial and error looks like we need at least 10G on s390x
-		// Recorded an issue to investigate this: https://github.com/coreos/coreos-assembler/issues/1489
-		builder.Memory = int(math.Max(float64(builder.Memory), 10240))
-	}
 
 	builder.InheritConsole = debug
 
