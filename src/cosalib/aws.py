@@ -1,6 +1,7 @@
 import boto3
 import json
 import subprocess
+import sys
 
 from cosalib.cmdlib import (
     retry_stop,
@@ -50,7 +51,8 @@ def aws_run_ore_replicate(build, args):
 
     region_list = list(set(args.region) - set(duplicates))
     if len(region_list) == 0:
-        raise Exception("no new regions detected")
+        print("no new regions detected")
+        sys.exit(0)
 
     if not args.source_region:
         args.source_region = buildmeta['amis'][0]['name']
