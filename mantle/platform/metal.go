@@ -641,36 +641,10 @@ WantedBy=multi-user.target
 	}
 	mergedConfig := v3.Merge(inst.liveIgnition, installerConfig)
 	mergedConfig = v3.Merge(mergedConfig, conf.GetAutologin())
-	mergedConfigSerialized, err := conf.SerializeAndMaybeConvert(mergedConfig, inst.IgnitionSpec2)
-	if err != nil {
-		return nil, err
-	}
-
-	isoEmbeddedPath := filepath.Join(tempdir, "test.iso")
-	// TODO ensure this tempdir is underneath cosa tempdir so we can reliably reflink
-	cpcmd := exec.Command("cp", "--reflink=auto", srcisopath, isoEmbeddedPath)
-	cpcmd.Stderr = os.Stderr
-	if err := cpcmd.Run(); err != nil {
-		return nil, errors.Wrapf(err, "copying iso")
-	}
-	instCmd := exec.Command("coreos-installer", "iso", "embed", isoEmbeddedPath)
-	instCmd.Stderr = os.Stderr
-	instCmdStdin, err := instCmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-	go func() {
-		defer instCmdStdin.Close()
-		if _, err := instCmdStdin.Write(mergedConfigSerialized); err != nil {
-			panic(err)
-		}
-	}()
-	if err := instCmd.Run(); err != nil {
-		return nil, errors.Wrapf(err, "running coreos-installer iso embed")
-	}
 
 	qemubuilder := inst.Builder
-	qemubuilder.AddInstallIso(isoEmbeddedPath, "bootindex=2")
+	qemubuilder.SetConfig(mergedConfig, inst.IgnitionSpec2)
+	qemubuilder.AddIso(srcisopath, "bootindex=2")
 
 	if offline {
 		qemubuilder.Append("-nic", "none")

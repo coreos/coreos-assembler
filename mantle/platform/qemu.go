@@ -67,6 +67,12 @@ type Disk struct {
 	nbdServCmd     exec.Cmd // command to serve the disk
 }
 
+// bootIso is an internal struct used by AddIso() and setupIso()
+type bootIso struct {
+	path      string
+	bootindex string
+}
+
 type QemuInstance struct {
 	qemu               exec.Cmd
 	tmpConfig          string
@@ -221,6 +227,7 @@ type QemuBuilder struct {
 
 	InheritConsole bool
 
+	iso         *bootIso
 	primaryDisk *Disk
 
 	MultiPathDisk bool
@@ -746,24 +753,11 @@ func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 	return builder.addDiskImpl(disk, false)
 }
 
-// AddInstallIso adds an ISO image
-func (builder *QemuBuilder) AddInstallIso(path string, bootindexStr string) error {
-	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
-	// For all other arches we use ide-cd device with bootindex=2 here: the idea is
-	// that during an ISO install, the primary disk isn't bootable, so the bootloader
-	// will fall back to the ISO boot. On reboot when the system is installed, the
-	// primary disk is selected. This allows us to have "boot once" functionality on
-	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
-
-	// TBD: aarch64 does not support ide-cd but cdrom won't work either.Including it here as it doesn't error out at least.
-	switch system.RpmArch() {
-	case "s390x", "ppc64le", "aarch64":
-		builder.Append("-cdrom", path)
-	default:
-		if bootindexStr != "" {
-			bootindexStr = "," + bootindexStr
-		}
-		builder.Append("-drive", "file="+path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso"+bootindexStr)
+// AddIso adds an ISO image, optionally configuring its boot index
+func (builder *QemuBuilder) AddIso(path string, bootindexStr string) error {
+	builder.iso = &bootIso{
+		path:      path,
+		bootindex: bootindexStr,
 	}
 	return nil
 }
@@ -883,6 +877,61 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
 	default:
 		panic(fmt.Sprintf("Architecture %s doesn't have support for UEFI in qemu.", system.RpmArch()))
+	}
+
+	return nil
+}
+
+func (builder *QemuBuilder) setupIso() error {
+	if builder.ConfigFile != "" {
+		if builder.configInjected {
+			panic("config already injected?")
+		}
+		if err := builder.ensureTempdir(); err != nil {
+			return err
+		}
+		// TODO change to use something like an unlinked tempfile (or O_TMPFILE)
+		// in the same filesystem as the source so that reflinks (if available)
+		// will work
+		isoEmbeddedPath := filepath.Join(builder.tempdir, "install.iso")
+		cpcmd := exec.Command("cp", "--reflink=auto", builder.iso.path, isoEmbeddedPath)
+		cpcmd.Stderr = os.Stderr
+		if err := cpcmd.Run(); err != nil {
+			return errors.Wrapf(err, "copying iso")
+		}
+		configf, err := os.Open(builder.ConfigFile)
+		if err != nil {
+			return err
+		}
+		instCmd := exec.Command("coreos-installer", "iso", "embed", isoEmbeddedPath)
+		instCmd.Stdin = configf
+		instCmd.Stderr = os.Stderr
+		if err := instCmd.Run(); err != nil {
+			return errors.Wrapf(err, "running coreos-installer iso embed")
+		}
+		builder.iso.path = isoEmbeddedPath
+		builder.configInjected = true
+	}
+
+	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
+	// For all other arches we use ide-cd device with bootindex=2 here: the idea is
+	// that during an ISO install, the primary disk isn't bootable, so the bootloader
+	// will fall back to the ISO boot. On reboot when the system is installed, the
+	// primary disk is selected. This allows us to have "boot once" functionality on
+	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
+	switch system.RpmArch() {
+	case "s390x", "ppc64le":
+		builder.Append("-cdrom", builder.iso.path)
+	case "aarch64":
+		// TODO - can we boot from a virtual USB CDROM or a USB flash drive here?
+		// https://fedoraproject.org/wiki/Architectures/AArch64/Install_with_QEMU#Installing_F23_aarch64_from_CDROM seems to claim yes
+		return fmt.Errorf("Architecture aarch64 does not support ISO")
+	default:
+		bootindexStr := ""
+		if builder.iso.bootindex != "" {
+			bootindexStr = "," + builder.iso.bootindex
+		}
+		builder.Append("-drive", "file="+builder.iso.path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso"+bootindexStr)
 	}
 
 	return nil
@@ -1022,14 +1071,20 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// We never want a popup window
 	argv = append(argv, "-nographic")
 
-	// See AddPrimaryDisk for why we do this lazily
+	// We only render Ignition lazily, because we want to support calling
+	// SetConfig() after AddPrimaryDisk() or AddInstallIso().
+	if builder.iso != nil {
+		if err := builder.setupIso(); err != nil {
+			return nil, err
+		}
+	}
 	if builder.primaryDisk != nil {
 		if err := builder.addDiskImpl(builder.primaryDisk, true); err != nil {
 			return nil, err
 		}
 	}
 
-	// Handle Ignition
+	// Handle Ignition if it wasn't already injected above
 	if builder.ConfigFile != "" && !builder.configInjected {
 		if builder.supportsFwCfg() {
 			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.ConfigFile)
