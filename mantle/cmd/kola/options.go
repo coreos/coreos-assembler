@@ -31,7 +31,7 @@ var (
 	outputDir                   string
 	kolaPlatform                string
 	kolaArchitectures           = []string{"amd64"}
-	kolaPlatforms               = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv"}
+	kolaPlatforms               = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
 	kolaDistros                 = []string{"fcos", "rhcos"}
 	kolaIgnitionVersionDefaults = map[string]string{
 		"cl":    "v2",
@@ -144,6 +144,8 @@ func init() {
 	bv(&kola.QEMUOptions.Native4k, "qemu-native-4k", false, "Force 4k sectors for main disk")
 	bv(&kola.QEMUOptions.Nvme, "qemu-nvme", false, "Use NVMe for main disk")
 	bv(&kola.QEMUOptions.Swtpm, "qemu-swtpm", true, "Create temporary software TPM")
+
+	sv(&kola.QEMUIsoOptions.IsoPath, "qemu-iso", "", "path to CoreOS ISO image")
 }
 
 // Sync up the command line options if there is dependency
@@ -274,6 +276,10 @@ func syncCosaOptions() error {
 	case "qemu-unpriv", "qemu":
 		if kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.Meta.BuildArtifacts.Qemu != nil {
 			kola.QEMUOptions.DiskImage = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.Qemu.Path)
+		}
+	case "qemu-iso":
+		if kola.QEMUIsoOptions.IsoPath == "" && kola.CosaBuild.Meta.BuildArtifacts.LiveIso != nil {
+			kola.QEMUIsoOptions.IsoPath = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 		}
 	}
 

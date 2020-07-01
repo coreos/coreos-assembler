@@ -118,7 +118,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if directIgnition {
 			return fmt.Errorf("Cannot use devshell with direct ignition")
 		}
-		if kola.QEMUOptions.DiskImage == "" {
+		if kola.QEMUOptions.DiskImage == "" && kolaPlatform == "qemu" {
 			return fmt.Errorf("No disk image provided")
 		}
 		ignitionFragments = append(ignitionFragments, "autologin")
@@ -209,6 +209,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}); err != nil {
 			return errors.Wrapf(err, "adding primary disk")
 		}
+	}
+	if kola.QEMUIsoOptions.IsoPath != "" {
+		builder.AddIso(kola.QEMUIsoOptions.IsoPath, "")
 	}
 	builder.Hostname = hostname
 	if memory != 0 {

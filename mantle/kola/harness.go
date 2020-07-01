@@ -54,6 +54,7 @@ import (
 	"github.com/coreos/mantle/platform/machine/gcloud"
 	"github.com/coreos/mantle/platform/machine/openstack"
 	"github.com/coreos/mantle/platform/machine/packet"
+	"github.com/coreos/mantle/platform/machine/qemuiso"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
@@ -83,6 +84,7 @@ var (
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
 	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
+	QEMUIsoOptions   = qemuiso.Options{Options: &Options}      // glue to set platform options from main
 
 	CosaBuild *sdk.LocalBuild // this is a parsed cosa build
 
@@ -216,6 +218,8 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = packet.NewFlight(&PacketOptions)
 	case "qemu-unpriv":
 		flight, err = unprivqemu.NewFlight(&QEMUOptions)
+	case "qemu-iso":
+		flight, err = qemuiso.NewFlight(&QEMUIsoOptions)
 	default:
 		err = fmt.Errorf("invalid platform %q", pltfrm)
 	}
