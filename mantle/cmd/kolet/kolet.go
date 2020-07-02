@@ -15,10 +15,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	systemddbus "github.com/coreos/go-systemd/v22/dbus"
@@ -56,6 +59,9 @@ sleep infinity
 set -euo pipefail
 exec ~core/kolet reboot-request $1
 `
+
+	// File used to communicate between the script and the kolet runner internally
+	rebootStamp = "/run/kolet-reboot"
 )
 
 var (
@@ -125,11 +131,6 @@ func registerTestMap(m map[string]*register.Test) {
 	}
 }
 
-// requestReboot writes a message which is parsed by the harness
-func requestReboot() {
-	fmt.Println("reboot")
-}
-
 // dispatchRunExtUnit returns true if unit completed successfully, false if
 // it's still running (or unit was terminated by SIGTERM)
 func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error) {
@@ -161,12 +162,6 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 				switch maincode {
 				case CLD_EXITED:
 					if mainstatus == int32(0) {
-						_, err := os.Stat(kola.KolaRebootStamp)
-						if err == nil {
-							systemdjournal.Print(systemdjournal.PriInfo, "Unit %s requested reboot via %s\n", unitname, kola.KolaRebootStamp)
-							requestReboot()
-							return true, nil
-						}
 						return true, nil
 					} else {
 						// I don't think this can happen, we'd have exit-code above; but just
@@ -174,14 +169,7 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 						return false, fmt.Errorf("Unit %s failed with code %d", unitname, mainstatus)
 					}
 				case CLD_KILLED:
-					// SIGTERM; we explicitly allow that, expecting we're rebooting.
-					if mainstatus == int32(15) {
-						systemdjournal.Print(systemdjournal.PriInfo, "Unit %s terminated via SIGTERM, assuming reboot request\n", unitname)
-						requestReboot()
-						return true, nil
-					} else {
-						return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
-					}
+					return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
 				default:
 					return false, fmt.Errorf("Unit %s had unhandled code %d", unitname, maincode)
 				}
@@ -200,6 +188,9 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 }
 
 func runExtUnit(cmd *cobra.Command, args []string) error {
+	sigtermChan := make(chan os.Signal, 1)
+	signal.Notify(sigtermChan, syscall.SIGTERM)
+
 	// Write the autopkgtest wrappers
 	if err := ioutil.WriteFile(autopkgTestRebootPath, []byte(autopkgtestRebootScript), 0755); err != nil {
 		return err
@@ -246,6 +237,20 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 			}
 		case m := <-uniterrs:
 			return m
+		case <-sigtermChan:
+			contents, err := ioutil.ReadFile(rebootStamp)
+			if err != nil {
+				return err
+			}
+			res := kola.KoletResult{
+				Reboot: string(contents),
+			}
+			buf, err := json.Marshal(&res)
+			if err != nil {
+				return errors.Wrapf(err, "serializing KoletResult")
+			}
+			fmt.Println(buf)
+			return nil
 		}
 	}
 }
@@ -256,7 +261,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 func runReboot(cmd *cobra.Command, args []string) error {
 	mark := args[0]
 	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
-	return ioutil.WriteFile(kola.KolaRebootStamp, []byte(fmt.Sprintf("%s\n", mark)), 0644)
+	return ioutil.WriteFile(rebootStamp, []byte(mark), 0644)
 }
 
 func main() {

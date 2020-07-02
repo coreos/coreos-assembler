@@ -30,7 +30,6 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh"
 
 	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
@@ -180,11 +179,12 @@ const (
 
 	// kolaExtBinDataName is the name for test dependency data
 	kolaExtBinDataName = "data"
-
-	// kolaRebootStamp is an older reboot API that is deprecated in favor
-	// of the Debian autopkgtest API.
-	KolaRebootStamp = "/run/kola-reboot"
 )
+
+// KoletResult is serialized JSON passed from kolet to the harness
+type KoletResult struct {
+	Reboot string
+}
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -603,36 +603,22 @@ ExecStart=%s
 					previousRebootState = ""
 				}
 				stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unitname)))
-				expectingReboot := false
-				if exit, ok := err.(*ssh.ExitError); ok {
-					plog.Debug("Caught ssh.ExitError")
-					// If we got SIGTERM, then we assume the unit (or our login) was killed by a reboot.
-					// Verify that on stdout
-					if exit.Signal() == "TERM" {
-						plog.Debug("Caught SIGTERM from kolet run-test-unit")
-						expectingReboot = true
-						err = nil
-					}
-				}
 				if err == nil {
-					stdout := strings.TrimSpace(string(stdout))
-					if stdout == "reboot" {
-						var kolaRebootStdout []byte
-						kolaRebootStdout, _, err = mach.SSH(fmt.Sprintf("if test -f %s; then cat %s; fi", KolaRebootStamp, KolaRebootStamp))
+					koletRes := KoletResult{}
+					if len(stdout) > 0 {
+						err = json.Unmarshal(stdout, &koletRes)
 						if err != nil {
 							break
 						}
-						previousRebootState = strings.TrimSpace(string(kolaRebootStdout))
+					}
+					if koletRes.Reboot != "" {
+						previousRebootState = koletRes.Reboot
 						plog.Debugf("Reboot request with mark='%s'", previousRebootState)
 						suberr := mach.Reboot()
 						if suberr == nil {
 							err = nil
 							continue
 						}
-					} else if expectingReboot {
-						err = errors.New("Got SIGTERM, but didn't see reboot indication")
-					} else if stdout != "" {
-						plog.Warningf("Unexpected stdout %s", stdout)
 					}
 				}
 				// Other errors, just bomb out for now
