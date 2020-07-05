@@ -1,10 +1,18 @@
 #!/bin/bash
 # Copy of the reboot example from https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+# Then modified to also use the "prepare" API with immediate/forced restart
 set -xeuo pipefail
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "") echo "test beginning"; /tmp/autopkgtest-reboot mark1 ;;
   mark1) echo "test in mark1"; /tmp/autopkgtest-reboot mark2 ;;
-  mark2) echo "test in mark2" ;;
+  mark2)
+    echo "test in mark2"
+    # Test hard forced reboot
+    /tmp/autopkgtest-reboot-prepare mark3
+    /sbin/reboot -ff
+    sleep infinity
+    ;;
+  mark3) echo "test in mark3" ;;
   *) echo "unexpected mark: ${AUTOPKGTEST_REBOOT_MARK}"; exit 1;;
 esac
 echo "ok autopkgtest rebooting"
