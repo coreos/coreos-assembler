@@ -131,7 +131,7 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 	// run a command we know will hold so we know approximately when the reboot happens
 	c := make(chan error)
 	go func() {
-		out, stderr, err := m.SSH(fmt.Sprintf("if [ $(cat /proc/sys/kernel/random/boot_id) == '%s' ]; then sleep infinity; fi", oldBootId))
+		out, stderr, err := m.SSH(fmt.Sprintf("if [ $(cat /proc/sys/kernel/random/boot_id) == '%s' ]; then echo waiting for reboot | logger && sleep infinity; fi", oldBootId))
 		if err == nil {
 			// we're already in the new boot!
 			c <- nil

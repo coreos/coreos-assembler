@@ -186,6 +186,11 @@ type KoletResult struct {
 	Reboot string
 }
 
+// KoletRebootUnit is a systemd unit that sleeps until the harness acknowledges
+// a reboot request by stopping it.
+const KoletRebootWaitUnit = "kolet-reboot-wait.service"
+const KoletExtTestUnit = "kola-runext.service"
+
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
 // glue until kola does introspection.
@@ -533,6 +538,58 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	return meta, nil
 }
 
+func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
+	var previousRebootState string
+	var stdout []byte
+	var stderr []byte
+	for {
+		bootID, err := platform.GetMachineBootId(mach)
+		if err != nil {
+			return errors.Wrapf(err, "getting boot id")
+		}
+		plog.Debug("Starting kolet run-test-unit")
+		if previousRebootState != "" {
+			plog.Debugf("Setting AUTOPKGTEST_REBOOT_MARK=%s", previousRebootState)
+			c.MustSSHf(mach, "echo AUTOPKGTEST_REBOOT_MARK=%s | sudo tee /run/kola-runext-env", previousRebootState)
+			previousRebootState = ""
+		}
+		// We ignore stderr here, it will end up in the journal
+		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(KoletExtTestUnit)))
+		if err != nil {
+			return errors.Wrapf(err, "kolet run-test-unit failed: %s", stderr)
+		}
+		koletRes := KoletResult{}
+		if len(stdout) > 0 {
+			err = json.Unmarshal(stdout, &koletRes)
+			if err != nil {
+				return errors.Wrapf(err, "parsing kolet json %s", string(stdout))
+			}
+		}
+		if koletRes.Reboot != "" {
+			previousRebootState = koletRes.Reboot
+			plog.Debugf("Reboot request with mark='%s'", previousRebootState)
+			// Stop sshd to ensure we don't race trying to log back in during shutdown
+			_, _, err = mach.SSH(fmt.Sprintf("sudo /bin/sh -c 'systemctl stop sshd && systemctl stop %s'", KoletRebootWaitUnit))
+			if err != nil {
+				return errors.Wrapf(err, "failed to stop %s", KoletRebootWaitUnit)
+			}
+			plog.Debug("Waiting for reboot")
+			suberr := mach.WaitForReboot(120*time.Second, bootID)
+			if suberr == nil {
+				plog.Debug("Reboot complete")
+				err = nil
+				continue
+			} else {
+				return errors.Wrapf(suberr, "Waiting for reboot")
+			}
+		}
+		// Otherwise, we're done
+		if err == nil {
+			return nil
+		}
+	}
+}
+
 func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
 	ignc3, _, err := ignv3.Parse([]byte(ignition))
 	if err != nil {
@@ -548,7 +605,6 @@ func registerExternalTest(testname, executable, dependencydir, ignition string, 
 		targetMeta = &metaCopy
 	}
 
-	unitname := "kola-runext.service"
 	remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", filepath.Base(executable))
 	// Note this isn't Type=oneshot because it's cleaner to support self-SIGTERM that way
 	unit := fmt.Sprintf(`[Unit]
@@ -558,7 +614,7 @@ EnvironmentFile=-/run/kola-runext-env
 Environment=KOLA_UNIT=%s
 Environment=%s=%s
 ExecStart=%s
-`, unitname, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
+`, KoletExtTestUnit, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
 	runextconfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
 			Version: "3.0.0",
@@ -566,7 +622,7 @@ ExecStart=%s
 		Systemd: ignv3types.Systemd{
 			Units: []ignv3types.Unit{
 				{
-					Name:     unitname,
+					Name:     KoletExtTestUnit,
 					Contents: &unit,
 					Enabled:  util.BoolToPtr(false),
 				},
@@ -591,43 +647,11 @@ ExecStart=%s
 			mach := c.Machines()[0]
 			plog.Debugf("Running kolet")
 
-			var previousRebootState string
-			var stdout []byte
-			var stderr []byte
-			var err error
-			for {
-				plog.Debug("Starting kolet run-test-unit")
-				if previousRebootState != "" {
-					plog.Debugf("Setting AUTOPKGTEST_REBOOT_MARK=%s", previousRebootState)
-					c.MustSSHf(mach, "echo AUTOPKGTEST_REBOOT_MARK=%s | sudo tee /run/kola-runext-env", previousRebootState)
-					previousRebootState = ""
-				}
-				stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unitname)))
-				if err == nil {
-					koletRes := KoletResult{}
-					if len(stdout) > 0 {
-						err = json.Unmarshal(stdout, &koletRes)
-						if err != nil {
-							break
-						}
-					}
-					if koletRes.Reboot != "" {
-						previousRebootState = koletRes.Reboot
-						plog.Debugf("Reboot request with mark='%s'", previousRebootState)
-						suberr := mach.Reboot()
-						if suberr == nil {
-							err = nil
-							continue
-						}
-					}
-				}
-				// Other errors, just bomb out for now
-				break
-			}
+			err := runExternalTest(c, mach)
 			if err != nil {
-				out, _, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status %s", shellquote.Join(unitname)))
+				out, stderr, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status %s", shellquote.Join(KoletExtTestUnit)))
 				if len(out) > 0 {
-					fmt.Printf("systemctl status %s:\n%s\n", unitname, string(out))
+					fmt.Printf("systemctl status %s:\n%s\n", KoletExtTestUnit, string(out))
 				} else {
 					fmt.Printf("Fetching status failed: %v\n", suberr)
 				}

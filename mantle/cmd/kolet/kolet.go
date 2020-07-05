@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
+	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	systemddbus "github.com/coreos/go-systemd/v22/dbus"
@@ -44,14 +43,54 @@ const (
 	CLD_KILLED int32 = 2
 )
 
-// These are defined by https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+// Reboot handling
+// ---
+//
+// Rebooting is complicated!  The high level API we expose is the one defined by
+// the Debian autopkgtest specification:
+// https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
+//
+// Today kola has support for rebooting a machine that ends up in a loop with SSH,
+// checking the value of /proc/sys/kernel/random/boot_id.
+// Originally we implemented the plain API that immediately starts a reboot by calling
+// back to the harness API.  Now we want to support the `autopkgtest-reboot-prepare` API, so
+// things are a bit more complicated, because the actual reboot is initiated by the client.
+//
+// The "immediate" reboot API is implemented in terms of the prepare API now.
+//
+// There are a few distinct actors here; using the term "subject" for the system
+// under test:
+//
+// harness: The process running the coreos-assembler container
+// login: The SSH login session initated on the subject (target) system
+// unit: The systemd unit on the subject system running the test, currently named kola-runext.service
+//
+// We need to *synchronously* communicate state from the unit to back to the harness.  The
+// login and unit also need to communicate to make this happen, because the channel
+// between the harness and subject is SSH.
+//
+// The way this works today is that our implementation of the "reboot-prepare" binary
+// writes the mark out to a file in /run and then starts a "sleep infinity" as a separate
+// systemd unit and blocks on its termination.
+//
+// The login notices this unit was started, reads the mark file, then prints out the reboot
+// data on stdout, which the harness reads.
+//
+// The harness then creates a separate SSH session which stops sshd (to avoid any races
+// around logging in again), and then stops the "sleep infinity" service.
+//
+// At this point, the "mark" (or state saved between reboots) is safely on the harness,
+// so the test code can invoke e.g. `reboot` or `reboot -ff` etc.
+//
+// The harness keeps polling via ssh, waiting until it can log in and also detects
+// that the boot ID is different, and passes in the mark via an environment variable.
+
 const (
 	autopkgTestRebootPath   = "/tmp/autopkgtest-reboot"
 	autopkgtestRebootScript = `#!/bin/bash
 set -euo pipefail
 ~core/kolet reboot-request $1
-systemctl kill --no-block ${KOLA_UNIT} || true
-sleep infinity
+reboot
 `
 	autopkgTestRebootPreparePath = "/tmp/autopkgtest-reboot-prepare"
 
@@ -187,10 +226,24 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 	}
 }
 
-func runExtUnit(cmd *cobra.Command, args []string) error {
-	sigtermChan := make(chan os.Signal, 1)
-	signal.Notify(sigtermChan, syscall.SIGTERM)
+func initiateReboot() error {
+	contents, err := ioutil.ReadFile(rebootStamp)
+	if err != nil {
+		return err
+	}
+	res := kola.KoletResult{
+		Reboot: string(contents),
+	}
+	buf, err := json.Marshal(&res)
+	if err != nil {
+		return errors.Wrapf(err, "serializing KoletResult")
+	}
+	fmt.Println(string(buf))
+	systemdjournal.Print(systemdjournal.PriInfo, "Acknowledged reboot request with mark: %s", buf)
+	return nil
+}
 
+func runExtUnit(cmd *cobra.Command, args []string) error {
 	// Write the autopkgtest wrappers
 	if err := ioutil.WriteFile(autopkgTestRebootPath, []byte(autopkgtestRebootScript), 0755); err != nil {
 		return err
@@ -233,24 +286,12 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 					if r {
 						return nil
 					}
+				} else if n == kola.KoletRebootWaitUnit {
+					return initiateReboot()
 				}
 			}
 		case m := <-uniterrs:
 			return m
-		case <-sigtermChan:
-			contents, err := ioutil.ReadFile(rebootStamp)
-			if err != nil {
-				return err
-			}
-			res := kola.KoletResult{
-				Reboot: string(contents),
-			}
-			buf, err := json.Marshal(&res)
-			if err != nil {
-				return errors.Wrapf(err, "serializing KoletResult")
-			}
-			fmt.Println(buf)
-			return nil
 		}
 	}
 }
@@ -261,7 +302,17 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 func runReboot(cmd *cobra.Command, args []string) error {
 	mark := args[0]
 	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
-	return ioutil.WriteFile(rebootStamp, []byte(mark), 0644)
+	err := ioutil.WriteFile(rebootStamp, []byte(mark), 0644)
+	if err != nil {
+		return err
+	}
+	// Synchronously wait until the mark is propagated back to the harness
+	err = exec.Command("systemd-run", "-q", "--wait", "--unit", kola.KoletRebootWaitUnit, "--", "sleep", "infinity").Run()
+	if err != nil {
+		return errors.Wrapf(err, "starting %s", kola.KoletRebootWaitUnit)
+	}
+	systemdjournal.Print(systemdjournal.PriInfo, "Reboot request acknowledged")
+	return nil
 }
 
 func main() {
