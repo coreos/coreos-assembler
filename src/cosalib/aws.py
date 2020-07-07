@@ -114,6 +114,8 @@ def aws_run_ore(build, args):
     ])
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
+    for user in args.grant_user_snapshot:
+        ore_args.extend(['--grant-user-snapshot', user])
 
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
     ore_data = json.loads(subprocess.check_output(ore_args))
@@ -140,5 +142,7 @@ def aws_cli(parser):
     parser.add_argument("--bucket", help="S3 Bucket")
     parser.add_argument("--name-suffix", help="Suffix for name")
     parser.add_argument("--grant-user", help="Grant user launch permission",
+                        nargs="*", default=[])
+    parser.add_argument("--grant-user-snapshot", help="Grant user snapshot volume permission",
                         nargs="*", default=[])
     return parser
