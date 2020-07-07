@@ -47,21 +47,22 @@ After a successful run, the final line of output will be a line of JSON describi
 		SilenceUsage: true,
 	}
 
-	uploadSourceObject    string
-	uploadBucket          string
-	uploadImageName       string
-	uploadBoard           string
-	uploadFile            string
-	uploadDiskSizeGiB     uint
-	uploadDiskSizeInspect bool
-	uploadDeleteObject    bool
-	uploadForce           bool
-	uploadSourceSnapshot  string
-	uploadObjectFormat    aws.EC2ImageFormat
-	uploadAMIName         string
-	uploadAMIDescription  string
-	uploadGrantUsers      []string
-	uploadTags            []string
+	uploadSourceObject       string
+	uploadBucket             string
+	uploadImageName          string
+	uploadBoard              string
+	uploadFile               string
+	uploadDiskSizeGiB        uint
+	uploadDiskSizeInspect    bool
+	uploadDeleteObject       bool
+	uploadForce              bool
+	uploadSourceSnapshot     string
+	uploadObjectFormat       aws.EC2ImageFormat
+	uploadAMIName            string
+	uploadAMIDescription     string
+	uploadGrantUsers         []string
+	uploadGrantUsersSnapshot []string
+	uploadTags               []string
 )
 
 func init() {
@@ -80,6 +81,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
+	cmdUpload.Flags().StringSliceVar(&uploadGrantUsersSnapshot, "grant-user-snapshot", []string{}, "grant snapshot volume permission to this AWS user ID")
 	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
 }
 
@@ -245,6 +247,15 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		err = API.GrantLaunchPermission(amiID, uploadGrantUsers)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to grant launch permission: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// grant snapshot volume permission to AWS user ids
+	if len(uploadGrantUsersSnapshot) > 0 {
+		err = API.GrantVolumePermission(sourceSnapshot, uploadGrantUsersSnapshot)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to grant snapshot volume permission: %v\n", err)
 			os.Exit(1)
 		}
 	}
