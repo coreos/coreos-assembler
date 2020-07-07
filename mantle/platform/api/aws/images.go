@@ -506,6 +506,26 @@ func registerImageParams(snapshotID string, diskSizeGiB uint, name, description 
 	}
 }
 
+// GrantVolumePermission grants permission to access an EC2 snapshot volume (referenced by its snapshot ID)
+// to a list of AWS users (referenced by their 12-digit numerical user IDs).
+func (a *API) GrantVolumePermission(snapshotID string, userIDs []string) error {
+	arg := &ec2.ModifySnapshotAttributeInput{
+		Attribute:              aws.String("createVolumePermission"),
+		SnapshotId:             aws.String(snapshotID),
+		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{},
+	}
+	for _, userID := range userIDs {
+		arg.CreateVolumePermission.Add = append(arg.CreateVolumePermission.Add, &ec2.CreateVolumePermission{
+			UserId: aws.String(userID),
+		})
+	}
+	_, err := a.ec2.ModifySnapshotAttribute(arg)
+	if err != nil {
+		return fmt.Errorf("couldn't grant snapshot volume permission: %v", err)
+	}
+	return nil
+}
+
 func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
 	arg := &ec2.ModifyImageAttributeInput{
 		Attribute:        aws.String("launchPermission"),
