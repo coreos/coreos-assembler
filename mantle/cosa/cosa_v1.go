@@ -22,49 +22,51 @@ type Artifact struct {
 }
 
 type Build struct {
-	AlibabaAliyunUploads      []AliyunImage           `json:"aliyun,omitempty"`
-	Amis                      []Amis                  `json:"amis,omitempty"`
-	Architecture              string                  `json:"coreos-assembler.basearch,omitempty"`
-	Azure                     *Cloudartifact          `json:"azure,omitempty"`
-	BuildArtifacts            *BuildArtifacts         `json:"images,omitempty"`
-	BuildID                   string                  `json:"buildid"`
-	BuildRef                  string                  `json:"ref,omitempty"`
-	BuildSummary              string                  `json:"summary"`
-	BuildTimeStamp            string                  `json:"coreos-assembler.build-timestamp,omitempty"`
-	BuildURL                  string                  `json:"build-url,omitempty"`
-	ConfigGitRev              string                  `json:"coreos-assembler.config-gitrev,omitempty"`
-	ContainerConfigGit        *Git                    `json:"coreos-assembler.container-config-git,omitempty"`
-	CoreOsSource              string                  `json:"coreos-assembler.code-source,omitempty"`
-	CosaContainerImageGit     *Git                    `json:"coreos-assembler.container-image-git,omitempty"`
-	CosaImageChecksum         string                  `json:"coreos-assembler.image-config-checksum,omitempty"`
-	CosaImageVersion          int                     `json:"coreos-assembler.image-genver,omitempty"`
-	FedoraCoreOsParentCommit  string                  `json:"fedora-coreos.parent-commit,omitempty"`
-	FedoraCoreOsParentVersion string                  `json:"fedora-coreos.parent-version,omitempty"`
-	Gcp                       *Gcp                    `json:"gcp,omitempty"`
-	GitDirty                  string                  `json:"coreos-assembler.config-dirty,omitempty"`
-	ImageInputChecksum        string                  `json:"coreos-assembler.image-input-checksum,omitempty"`
-	InputHasOfTheRpmOstree    string                  `json:"rpm-ostree-inputhash"`
-	Name                      string                  `json:"name"`
-	Oscontainer               *Image                  `json:"oscontainer,omitempty"`
-	OstreeCommit              string                  `json:"ostree-commit"`
-	OstreeContentBytesWritten int                     `json:"ostree-content-bytes-written"`
-	OstreeContentChecksum     string                  `json:"ostree-content-checksum"`
-	OstreeNCacheHits          int                     `json:"ostree-n-cache-hits"`
-	OstreeNContentTotal       int                     `json:"ostree-n-content-total"`
-	OstreeNContentWritten     int                     `json:"ostree-n-content-written"`
-	OstreeNMetadataTotal      int                     `json:"ostree-n-metadata-total"`
-	OstreeNMetadataWritten    int                     `json:"ostree-n-metadata-written"`
-	OstreeTimestamp           string                  `json:"ostree-timestamp"`
-	OstreeVersion             string                  `json:"ostree-version"`
-	OverridesActive           bool                    `json:"coreos-assembler.overrides-active,omitempty"`
-	PkgdiffAgainstParent      []PackageSetDifferences `json:"parent-pkgdiff,omitempty"`
-	PkgdiffBetweenBuilds      []PackageSetDifferences `json:"pkgdiff,omitempty"`
+	AlibabaAliyunUploads      []AliyunImage         `json:"aliyun,omitempty"`
+	Amis                      []Amis                `json:"amis,omitempty"`
+	Architecture              string                `json:"coreos-assembler.basearch,omitempty"`
+	Azure                     *Cloudartifact        `json:"azure,omitempty"`
+	BuildArtifacts            *BuildArtifacts       `json:"images,omitempty"`
+	BuildID                   string                `json:"buildid"`
+	BuildRef                  string                `json:"ref,omitempty"`
+	BuildSummary              string                `json:"summary"`
+	BuildTimeStamp            string                `json:"coreos-assembler.build-timestamp,omitempty"`
+	BuildURL                  string                `json:"build-url,omitempty"`
+	ConfigGitRev              string                `json:"coreos-assembler.config-gitrev,omitempty"`
+	ContainerConfigGit        *Git                  `json:"coreos-assembler.container-config-git,omitempty"`
+	CoreOsSource              string                `json:"coreos-assembler.code-source,omitempty"`
+	CosaContainerImageGit     *Git                  `json:"coreos-assembler.container-image-git,omitempty"`
+	CosaImageChecksum         string                `json:"coreos-assembler.image-config-checksum,omitempty"`
+	CosaImageVersion          int                   `json:"coreos-assembler.image-genver,omitempty"`
+	FedoraCoreOsParentCommit  string                `json:"fedora-coreos.parent-commit,omitempty"`
+	FedoraCoreOsParentVersion string                `json:"fedora-coreos.parent-version,omitempty"`
+	Gcp                       *Gcp                  `json:"gcp,omitempty"`
+	GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
+	ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
+	InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
+	Name                      string                `json:"name"`
+	Oscontainer               *Image                `json:"oscontainer,omitempty"`
+	OstreeCommit              string                `json:"ostree-commit"`
+	OstreeContentBytesWritten int                   `json:"ostree-content-bytes-written"`
+	OstreeContentChecksum     string                `json:"ostree-content-checksum"`
+	OstreeNCacheHits          int                   `json:"ostree-n-cache-hits"`
+	OstreeNContentTotal       int                   `json:"ostree-n-content-total"`
+	OstreeNContentWritten     int                   `json:"ostree-n-content-written"`
+	OstreeNMetadataTotal      int                   `json:"ostree-n-metadata-total"`
+	OstreeNMetadataWritten    int                   `json:"ostree-n-metadata-written"`
+	OstreeTimestamp           string                `json:"ostree-timestamp"`
+	OstreeVersion             string                `json:"ostree-version"`
+	OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`
+	PkgdiffAgainstParent      PackageSetDifferences `json:"parent-pkgdiff,omitempty"`
+	PkgdiffBetweenBuilds      PackageSetDifferences `json:"pkgdiff,omitempty"`
+	ReleasePayload            *Image                `json:"release-payload,omitempty"`
 }
 
 type BuildArtifacts struct {
 	Aliyun        *Artifact `json:"aliyun,omitempty"`
 	Aws           *Artifact `json:"aws,omitempty"`
 	Azure         *Artifact `json:"azure,omitempty"`
+	AzureStack    *Artifact `json:"azurestack,omitempty"`
 	Dasd          *Artifact `json:"dasd,omitempty"`
 	DigitalOcean  *Artifact `json:"digitalocean,omitempty"`
 	Exoscale      *Artifact `json:"exoscale,omitempty"`
@@ -104,8 +106,9 @@ type Git struct {
 }
 
 type Image struct {
-	Digest string `json:"digest"`
-	Image  string `json:"image"`
+	Comment string `json:"comment,omitempty"`
+	Digest  string `json:"digest"`
+	Image   string `json:"image"`
 }
 
 type Items interface{}

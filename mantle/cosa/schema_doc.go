@@ -50,11 +50,19 @@ var generatedSchemaJSON = `{
              "digest",
              "image"
          ],
+         "optional": [
+             "comment"
+         ],
          "properties": {
            "digest": {
              "$id": "#/image/digest",
              "type":"string",
              "title":"Digest"
+            },
+           "comment": {
+             "$id": "#/image/comment",
+             "type":"string",
+             "title":"Comment"
             },
            "image": {
              "$id": "#/image/image",
@@ -134,7 +142,17 @@ var generatedSchemaJSON = `{
              "minLength": 1
             }
           }
-     }
+     },
+     "pkg-items": {
+       "type":"array",
+       "title":"Package Set differences",
+       "items": {
+         "$id":"#/pkgdiff/items/item",
+         "title":"Items",
+         "default":"",
+         "minLength": 1
+        }
+      }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
  "$id":"http://github.com/coreos/coreos-assembler/blob/master/schema/v1.json",
@@ -161,6 +179,7 @@ var generatedSchemaJSON = `{
    "aliyun",
    "amis",
    "azure",
+   "azurestack",
    "build-url",
    "digitalocean",
    "gcp",
@@ -168,6 +187,7 @@ var generatedSchemaJSON = `{
    "oscontainer",
    "pkgdiff",
    "parent-pkgdiff",
+   "release-payload",
 
    "coreos-assembler.basearch",
    "coreos-assembler.build-timestamp",
@@ -311,6 +331,7 @@ var generatedSchemaJSON = `{
        "aliyun",
        "aws",
        "azure",
+       "azurestack",
        "dasd",
        "digitalocean",
        "exoscale",
@@ -437,6 +458,12 @@ var generatedSchemaJSON = `{
          "title":"Azure",
          "$ref": "#/definitions/artifact"
         },
+       "azurestack": {
+         "$id":"#/properties/images/properties/azurestack",
+         "type":"object",
+         "title":"AzureStack",
+         "$ref": "#/definitions/artifact"
+       },
        "digitalocean": {
          "$id":"#/properties/images/properties/digitalocean",
          "type":"object",
@@ -538,25 +565,13 @@ var generatedSchemaJSON = `{
      "$id":"#/properties/pkgdiff",
      "type":"array",
      "title":"pkgdiff between builds",
-     "items": {
-       "$id":"#/properties/pkgdiff/items",
-       "type":"array",
-       "title":"Package Set differences",
-       "items": {
-         "$id":"#/properties/pkgdiff/items/items",
-         "title":"Items",
-         "default":"",
-         "minLength": 1
-        }
-      }
+     "$ref": "#/definitions/pkg-items"
     },
    "parent-pkgdiff": {
      "$id":"#/properties/parent-pkgdiff",
      "type":"array",
      "title":"pkgdiff against parent",
-     "items": {
-       "$ref":"#/properties/pkgdiff/items"
-      }
+     "$ref": "#/definitions/pkg-items"
     },
    "rpm-ostree-inputhash": {
      "$id":"#/properties/rpm-ostree-inputhash",
@@ -677,6 +692,12 @@ var generatedSchemaJSON = `{
          "title":"Image Family"
         }
       }
+    },
+    "release-payload": {
+      "$id":"#/properties/release-payload",
+      "type":"object",
+      "title":"ReleasePayload",
+      "$ref": "#/definitions/image"
     }
   }
 }
