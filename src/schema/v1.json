@@ -45,11 +45,19 @@
              "digest",
              "image"
          ],
+         "optional": [
+             "comment"
+         ],
          "properties": {
            "digest": {
              "$id": "#/image/digest",
              "type":"string",
              "title":"Digest"
+            },
+           "comment": {
+             "$id": "#/image/comment",
+             "type":"string",
+             "title":"Comment"
             },
            "image": {
              "$id": "#/image/image",
@@ -164,6 +172,7 @@
    "oscontainer",
    "pkgdiff",
    "parent-pkgdiff",
+   "release-payload",
 
    "coreos-assembler.basearch",
    "coreos-assembler.build-timestamp",
@@ -680,6 +689,12 @@
          "title":"Image Family"
         }
       }
+    },
+    "release-payload": {
+      "$id":"#/properties/release-payload",
+      "type":"object",
+      "title":"Release Payload",
+      "$ref": "#/definitions/image"
     }
   }
 }
