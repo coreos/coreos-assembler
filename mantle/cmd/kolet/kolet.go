@@ -69,15 +69,21 @@ const (
 // login and unit also need to communicate to make this happen, because the channel
 // between the harness and subject is SSH.
 //
-// The way this works today is that our implementation of the "reboot-prepare" binary
-// writes the mark out to a file in /run and then starts a "sleep infinity" as a separate
-// systemd unit and blocks on its termination.
+// To implement communication, we use a "low tech" method of two FIFOs. (If we need
+// more sophistication in the future, it would probably make sense for the login
+// session to expose an API over a unix domain socket).
 //
-// The login notices this unit was started, reads the mark file, then prints out the reboot
-// data on stdout, which the harness reads.
+// When a reboot binary is invoked, it creates the "reboot acknowledge" FIFO in /run,
+// then writes the mark out to a second FIFO that the login session is waiting on.
+// The reboot binary then *synchronously* waits on a read from FIFO to signal
+// acknowledgement for rebooting.
+//
+// When the login session finds data in the "reboot request" FIFO, it reads it
+// and then prints out the reboot data on stdout, which the harness reads.
 //
 // The harness then creates a separate SSH session which stops sshd (to avoid any races
-// around logging in again), and then stops the "sleep infinity" service.
+// around logging in again), and then writes to the acknowlege FIFO,
+// allowing the reboot binary to continue.
 //
 // At this point, the "mark" (or state saved between reboots) is safely on the harness,
 // so the test code can invoke e.g. `reboot` or `reboot -ff` etc.
@@ -88,7 +94,7 @@ const (
 const (
 	autopkgTestRebootPath   = "/tmp/autopkgtest-reboot"
 	autopkgtestRebootScript = `#!/bin/bash
-set -euo pipefail
+set -xeuo pipefail
 ~core/kolet reboot-request $1
 reboot
 `
@@ -100,7 +106,7 @@ exec ~core/kolet reboot-request $1
 `
 
 	// File used to communicate between the script and the kolet runner internally
-	rebootStamp = "/run/kolet-reboot"
+	rebootRequestFifo = "/run/kolet-reboot"
 )
 
 var (
@@ -226,13 +232,10 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 	}
 }
 
-func initiateReboot() error {
-	contents, err := ioutil.ReadFile(rebootStamp)
-	if err != nil {
-		return err
-	}
+func initiateReboot(mark string) error {
+	systemdjournal.Print(systemdjournal.PriInfo, "Processing reboot request")
 	res := kola.KoletResult{
-		Reboot: string(contents),
+		Reboot: string(mark),
 	}
 	buf, err := json.Marshal(&res)
 	if err != nil {
@@ -251,6 +254,28 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	if err := ioutil.WriteFile(autopkgTestRebootPreparePath, []byte(autopkgtestRebootPrepareScript), 0755); err != nil {
 		return err
 	}
+
+	// Create the reboot cmdline -> login FIFO for the reboot mark and
+	// proxy it into a channel
+	rebootChan := make(chan string)
+	errChan := make(chan error)
+	err := exec.Command("mkfifo", rebootRequestFifo).Run()
+	if err != nil {
+		return err
+	}
+	go func() {
+		rebootReader, err := os.Open(rebootRequestFifo)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		defer rebootReader.Close()
+		buf, err := ioutil.ReadAll(rebootReader)
+		if err != nil {
+			errChan <- err
+		}
+		rebootChan <- string(buf)
+	}()
 
 	unitname := args[0]
 	// Restrict this to services, don't need to support anything else right now
@@ -271,23 +296,36 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	if err := sdconn.Subscribe(); err != nil {
 		return err
 	}
+	// Check the status now to avoid any race conditions
 	dispatchRunExtUnit(unitname, sdconn)
-	unitevents, uniterrs := sdconn.SubscribeUnits(time.Second)
+	// Watch for changes in the target unit
+	filterFunc := func(n string) bool {
+		return n != unitname
+	}
+	compareFunc := func(u1, u2 *systemddbus.UnitStatus) bool { return *u1 != *u2 }
+	unitevents, uniterrs := sdconn.SubscribeUnitsCustom(time.Second, 0, compareFunc, filterFunc)
 
 	for {
+		systemdjournal.Print(systemdjournal.PriInfo, "Awaiting events")
 		select {
+		case err := <-errChan:
+			return err
+		case reboot := <-rebootChan:
+			return initiateReboot(reboot)
 		case m := <-unitevents:
 			for n := range m {
 				if n == unitname {
+					systemdjournal.Print(systemdjournal.PriInfo, "Dispatching %s", n)
 					r, err := dispatchRunExtUnit(unitname, sdconn)
+					systemdjournal.Print(systemdjournal.PriInfo, "Done dispatching %s", n)
 					if err != nil {
 						return err
 					}
 					if r {
 						return nil
 					}
-				} else if n == kola.KoletRebootWaitUnit {
-					return initiateReboot()
+				} else {
+					systemdjournal.Print(systemdjournal.PriInfo, "Unexpected event %v", n)
 				}
 			}
 		case m := <-uniterrs:
@@ -302,14 +340,22 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 func runReboot(cmd *cobra.Command, args []string) error {
 	mark := args[0]
 	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
-	err := ioutil.WriteFile(rebootStamp, []byte(mark), 0644)
+	err := exec.Command("mkfifo", kola.KoletRebootAckFifo).Run()
 	if err != nil {
 		return err
 	}
-	// Synchronously wait until the mark is propagated back to the harness
-	err = exec.Command("systemd-run", "-q", "--wait", "--unit", kola.KoletRebootWaitUnit, "--", "sleep", "infinity").Run()
+	err = ioutil.WriteFile(rebootRequestFifo, []byte(mark), 0644)
 	if err != nil {
-		return errors.Wrapf(err, "starting %s", kola.KoletRebootWaitUnit)
+		return err
+	}
+	f, err := os.Open(kola.KoletRebootAckFifo)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, 1)
+	_, err = f.Read(buf)
+	if err != nil {
+		return err
 	}
 	systemdjournal.Print(systemdjournal.PriInfo, "Reboot request acknowledged")
 	return nil

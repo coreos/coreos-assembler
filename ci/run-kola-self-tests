@@ -3,7 +3,7 @@ set -euo pipefail
 dn=$(cd $(dirname $0) && pwd)
 toplevel=$(cd ${dn} && git rev-parse --show-toplevel)
 set -x
-kola run --output-dir tmp/kolaself -E ${toplevel}/tests/kola-ci-self 'ext.kola-ci-self*'
+kola run --output-dir tmp/kolaself -E ${toplevel}/tests/kola-ci-self 'ext.kola-ci-self*' "$@"
 log=$(find tmp/kolaself -type f -name kola-runext-autopkgtest-reboot.txt)
 test -n "${log}"
 if ! grep -qF -e 'ok autopkgtest rebooting' < "${log}"; then
