@@ -143,6 +143,9 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 			// handshake. crypto/ssh doesn't provide a distinct error type for
 			// this, so we're left looking for the string... :(
 			c <- nil
+		} else if strings.Contains(err.Error(), "handshake failed") {
+			// This error can be thrown by NewClientConn and is also just a string
+			c <- nil
 		} else {
 			c <- fmt.Errorf("waiting for reboot failed: %s: %s: %s", out, err, stderr)
 		}

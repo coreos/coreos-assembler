@@ -550,6 +550,9 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	return meta, nil
 }
 
+// runExternalTest is an implmenetation of the "external" test framework.
+// See README-kola-ext.md as well as the comments in kolet.go for reboot
+// handling.
 func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 	var previousRebootState string
 	var stdout []byte
@@ -565,7 +568,6 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 			c.MustSSHf(mach, "echo AUTOPKGTEST_REBOOT_MARK=%s | sudo tee /run/kola-runext-env", previousRebootState)
 			previousRebootState = ""
 		}
-		// We ignore stderr here, it will end up in the journal
 		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(KoletExtTestUnit)))
 		if err != nil {
 			return errors.Wrapf(err, "kolet run-test-unit failed: %s", stderr)
@@ -577,28 +579,27 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 				return errors.Wrapf(err, "parsing kolet json %s", string(stdout))
 			}
 		}
-		if koletRes.Reboot != "" {
-			previousRebootState = koletRes.Reboot
-			plog.Debugf("Reboot request with mark='%s'", previousRebootState)
-			// Stop sshd to ensure we don't race trying to log back in during shutdown
-			_, _, err = mach.SSH(fmt.Sprintf("sudo /bin/sh -c 'systemctl stop sshd && systemctl stop %s'", KoletRebootWaitUnit))
-			if err != nil {
-				return errors.Wrapf(err, "failed to stop %s", KoletRebootWaitUnit)
-			}
-			plog.Debug("Waiting for reboot")
-			suberr := mach.WaitForReboot(120*time.Second, bootID)
-			if suberr == nil {
-				plog.Debug("Reboot complete")
-				err = nil
-				continue
-			} else {
-				return errors.Wrapf(suberr, "Waiting for reboot")
-			}
-		}
-		// Otherwise, we're done
-		if err == nil {
+		// If no  reboot is requested, we're done
+		if koletRes.Reboot == "" {
 			return nil
 		}
+
+		// A reboot is requested
+		previousRebootState = koletRes.Reboot
+		plog.Debugf("Reboot request with mark='%s'", previousRebootState)
+		// This signals to the subject that we have saved the mark, and the subject
+		// can proceed with rebooting.  We stop sshd to ensure that the wait below
+		// doesn't log in while ssh is shutting down.
+		_, _, err = mach.SSH(fmt.Sprintf("sudo /bin/sh -c 'systemctl stop sshd && systemctl stop %s'", KoletRebootWaitUnit))
+		if err != nil {
+			return errors.Wrapf(err, "failed to stop %s", KoletRebootWaitUnit)
+		}
+		plog.Debug("Waiting for reboot")
+		err = mach.WaitForReboot(120*time.Second, bootID)
+		if err != nil {
+			return errors.Wrapf(err, "Waiting for reboot")
+		}
+		plog.Debug("Reboot complete")
 	}
 }
 
