@@ -104,16 +104,21 @@ Here's an example `kola.json`:
 ```json
 {
     "architectures": "!s390x ppc64le",
-    "platforms": "qemu-unpriv"
+    "platforms": "qemu-unpriv",
+    "additionalDisks": [ "5G" ]
 }
 ```
 
-The only supported keys are those two; either or none may be provided as well.
-Each value is a single string, which is a whitespace-separated list.
-The reason to use a single string (instead of a native JSON list)
-is that by providing `!` at the front of the string, the value instead
-declares exclusions (`ExclusiveArchitectures` instead of `Architectures` in
-reference to kola internals.
+The only supported keys are those three; any or none may be provided as
+well.  For `architectures` and `platforms`, each value is a single
+string, which is a whitespace-separated list.  The reason to use a
+single string (instead of a native JSON list) is that by providing `!`
+at the front of the string, the value instead declares exclusions
+(`ExclusiveArchitectures` instead of `Architectures` in reference to
+kola internals.
+
+The `additionalDisks` key has the same semantics as the `--add-disk`
+argument to `qemuexec`. It is currently only supported on `qemu-unpriv`.
 
 More recently, you can also (useful for shell scripts) include the JSON file
 inline per test, like this:

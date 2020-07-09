@@ -508,12 +508,13 @@ func RunUpgradeTests(patterns []string, pltfrm, outputDir string, propagateTestE
 	return runProvidedTests(register.UpgradeTests, patterns, pltfrm, outputDir, propagateTestErrors)
 }
 
-// externalTestMeta is parsed from kola.yaml in external tests
+// externalTestMeta is parsed from kola.json in external tests
 type externalTestMeta struct {
-	Architectures string `json:",architectures,omitempty"`
-	Platforms     string `json:",platforms,omitempty"`
-	Distros       string `json:",distros,omitempty"`
-	Tags          string `json:",tags,omitempty"`
+	Architectures   string   `json:",architectures,omitempty"`
+	Platforms       string   `json:",platforms,omitempty"`
+	Distros         string   `json:",distros,omitempty"`
+	Tags            string   `json:",tags,omitempty"`
+	AdditionalDisks []string `json:",additionalDisks,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -654,6 +655,8 @@ ExecStart=%s
 		ExternalTest:  executable,
 		DependencyDir: dependencydir,
 		Tags:          []string{"external"},
+
+		AdditionalDisks: targetMeta.AdditionalDisks,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -888,7 +891,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			userdata = t.UserDataV3
 		}
 
-		if _, err := platform.NewMachines(c, userdata, t.ClusterSize); err != nil {
+		if _, err := platform.NewMachines(c, userdata, t.ClusterSize, t.AdditionalDisks); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
