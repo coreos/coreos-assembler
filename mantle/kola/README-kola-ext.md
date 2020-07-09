@@ -121,7 +121,7 @@ inline per test, like this:
 ```sh
 #!/bin/bash
 set -xeuo pipefail
-# kola: { "architectures": "x86_64", "platforms": ["aws", "gcp"] }
+# kola: { "architectures": "x86_64", "platforms": "aws gcp"] }
 test code here
 ```
 
