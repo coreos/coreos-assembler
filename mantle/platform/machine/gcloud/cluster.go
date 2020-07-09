@@ -16,6 +16,7 @@
 package gcloud
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -88,6 +89,13 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	gc.AddMach(gm)
 
 	return gm, nil
+}
+
+func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform gce does not yet support additional disks")
+	}
+	return gc.NewMachine(userdata)
 }
 
 func (gc *cluster) Destroy() {

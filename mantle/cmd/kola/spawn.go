@@ -169,7 +169,9 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		}
 		// use qemu-specific interface only if needed
 		if strings.HasPrefix(kolaPlatform, "qemu") && (spawnMachineOptions != "" || !spawnRemove) {
-			var machineOpts platform.MachineOptions
+			machineOpts := platform.QemuMachineOptions{
+				DisablePDeathSig: !spawnRemove,
+			}
 			if spawnMachineOptions != "" {
 				b, err := ioutil.ReadFile(spawnMachineOptions)
 				if err != nil {
@@ -184,7 +186,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 
 			switch qc := cluster.(type) {
 			case *unprivqemu.Cluster:
-				mach, err = qc.NewMachineWithOptions(userdata, machineOpts, spawnRemove)
+				mach, err = qc.NewMachineWithQemuOptions(userdata, machineOpts)
 			default:
 				plog.Fatalf("unreachable: qemu cluster %v unknown type", qc)
 			}

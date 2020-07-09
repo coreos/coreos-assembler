@@ -46,9 +46,10 @@ type HostForwardPort struct {
 	GuestPort int
 }
 
-type MachineOptions struct {
-	AdditionalDisks  []Disk
+type QemuMachineOptions struct {
+	MachineOptions
 	HostForwardPorts []HostForwardPort
+	DisablePDeathSig bool
 }
 
 type Disk struct {

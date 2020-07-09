@@ -16,6 +16,7 @@ package openstack
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -77,6 +78,13 @@ func (oc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	oc.AddMach(mach)
 
 	return mach, nil
+}
+
+func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform openstack does not yet support additional disks")
+	}
+	return oc.NewMachine(userdata)
 }
 
 func (oc *cluster) vmname() string {

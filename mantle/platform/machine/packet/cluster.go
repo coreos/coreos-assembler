@@ -16,6 +16,7 @@ package packet
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -109,6 +110,13 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	pc.AddMach(mach)
 
 	return mach, nil
+}
+
+func (pc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform packet does not yet support additional disks")
+	}
+	return pc.NewMachine(userdata)
 }
 
 func (pc *cluster) vmname() string {

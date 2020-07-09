@@ -15,6 +15,7 @@
 package esx
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -88,6 +89,13 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 	ec.AddMach(mach)
 
 	return mach, nil
+}
+
+func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform esx does not yet support additional disks")
+	}
+	return ec.NewMachine(userdata)
 }
 
 func (ec *cluster) Destroy() {

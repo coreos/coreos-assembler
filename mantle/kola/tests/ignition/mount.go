@@ -25,7 +25,6 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
@@ -57,15 +56,12 @@ func testMountDisks(c cluster.TestCluster) {
 	setupIgnitionConfig()
 
 	options := platform.MachineOptions{
-		AdditionalDisks: []platform.Disk{
-			{Size: "1024M", DeviceOpts: []string{"serial=secondary-disk"}},
-			{Size: "1024M", DeviceOpts: []string{"serial=tertiary-disk"}},
-		},
+		AdditionalDisks: []string{"1024M", "1024M"},
 	}
 
 	ignDisks := []ignv3types.Disk{
 		{
-			Device: "/dev/disk/by-id/virtio-secondary-disk",
+			Device: "/dev/disk/by-id/virtio-disk1",
 			Partitions: []ignv3types.Partition{
 				{
 					Label:              util.StrToPtr("CONTR"),
@@ -76,7 +72,7 @@ func testMountDisks(c cluster.TestCluster) {
 			WipeTable: util.BoolToPtr(true),
 		},
 		{
-			Device: "/dev/disk/by-id/virtio-tertiary-disk",
+			Device: "/dev/disk/by-id/virtio-disk2",
 			Partitions: []ignv3types.Partition{
 				{
 					Label:              util.StrToPtr("LOG"),
@@ -153,16 +149,7 @@ func createClusterValidate(c cluster.TestCluster, options platform.MachineOption
 		c.Fatal(err)
 	}
 
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
-	case *unprivqemu.Cluster:
-		m, err = pc.NewMachineWithOptions(conf.Ignition(string(serializedConfig)), options, true)
-	default:
-		c.Fatal("unknown cluster type")
-	}
-
+	m, err = c.NewMachineWithOptions(conf.Ignition(string(serializedConfig)), options)
 	if err != nil {
 		c.Fatal(err)
 	}

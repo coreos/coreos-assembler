@@ -100,8 +100,11 @@ type Cluster interface {
 	// Name returns a unique name for the Cluster.
 	Name() string
 
-	// NewMachine creates a new Container Linux machine.
+	// NewMachine creates a new CoreOS machine.
 	NewMachine(userdata *conf.UserData) (Machine, error)
+
+	// NewMachineWithOptions creates a new CoreOS machine as defined by the given options.
+	NewMachineWithOptions(userdata *conf.UserData, options MachineOptions) (Machine, error)
 
 	// Machines returns a slice of the active machines in the Cluster.
 	Machines() []Machine
@@ -149,6 +152,10 @@ type Flight interface {
 	// resources.  It should log any failures; since they are not
 	// actionable, it does not return an error.
 	Destroy()
+}
+
+type MachineOptions struct {
+	AdditionalDisks []string
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin
