@@ -43,10 +43,16 @@ type Cluster struct {
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
-	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{}, true)
+	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{})
 }
 
-func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions, pdeathsig bool) (platform.Machine, error) {
+func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	return qc.NewMachineWithQemuOptions(userdata, platform.QemuMachineOptions{
+		MachineOptions: options,
+	})
+}
+
+func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options platform.QemuMachineOptions) (platform.Machine, error) {
 	id := uuid.New()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
@@ -89,6 +95,9 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 
 	builder := platform.NewBuilder()
+	if options.DisablePDeathSig {
+		builder.Pdeathsig = false
+	}
 	builder.ConfigFile = confPath
 	defer builder.Close()
 	builder.Uuid = qm.id
@@ -129,7 +138,9 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		return nil, errors.Wrapf(err, "adding primary disk")
 	}
 	for _, disk := range options.AdditionalDisks {
-		if err = builder.AddDisk(&disk); err != nil {
+		if err = builder.AddDisk(&platform.Disk{
+			Size: disk,
+		}); err != nil {
 			return nil, errors.Wrapf(err, "adding additional disk")
 		}
 	}

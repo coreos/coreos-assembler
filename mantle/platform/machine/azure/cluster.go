@@ -15,6 +15,7 @@
 package azure
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -81,6 +82,13 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	ac.AddMach(mach)
 
 	return mach, nil
+}
+
+func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform azure does not yet support additional disks")
+	}
+	return ac.NewMachine(userdata)
 }
 
 func (ac *cluster) Destroy() {

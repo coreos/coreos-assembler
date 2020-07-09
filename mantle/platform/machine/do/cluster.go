@@ -17,6 +17,7 @@ package do
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,6 +86,13 @@ func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	dc.AddMach(mach)
 
 	return mach, nil
+}
+
+func (dc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform do does not yet support additional disks")
+	}
+	return dc.NewMachine(userdata)
 }
 
 func (dc *cluster) vmname() string {

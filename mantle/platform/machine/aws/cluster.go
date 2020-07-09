@@ -15,6 +15,7 @@
 package aws
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -75,6 +76,13 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	ac.AddMach(mach)
 
 	return mach, nil
+}
+
+func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform aws does not yet support additional disks")
+	}
+	return ac.NewMachine(userdata)
 }
 
 func (ac *cluster) Destroy() {

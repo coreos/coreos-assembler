@@ -80,7 +80,7 @@ func setupTangMachine(c cluster.TestCluster) (string, string) {
 	var thumbprint []byte
 	var tangAddress string
 
-	options := platform.MachineOptions{
+	options := platform.QemuMachineOptions{
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			{Service: "tang", HostPort: 0, GuestPort: 80},
@@ -96,9 +96,10 @@ func setupTangMachine(c cluster.TestCluster) (string, string) {
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
 	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
+	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
+	// does which fails
 	case *unprivqemu.Cluster:
-		m, err = pc.NewMachineWithOptions(ignition, options, true)
+		m, err = pc.NewMachineWithQemuOptions(ignition, options)
 		for _, hfp := range options.HostForwardPorts {
 			if hfp.Service == "tang" {
 				tangAddress = fmt.Sprintf("10.0.2.2:%d", hfp.HostPort)

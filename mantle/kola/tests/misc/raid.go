@@ -21,13 +21,12 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/platform/machine/unprivqemu"
 )
 
 var (
 	raidRootUserData = conf.ContainerLinuxConfig(`storage:
   disks:
-    - device: "/dev/disk/by-id/virtio-secondary"
+    - device: "/dev/disk/by-id/virtio-disk1"
       wipe_table: true
       partitions:
        - label: root1
@@ -108,19 +107,9 @@ func RootOnRaid(c cluster.TestCluster) {
 	var m platform.Machine
 	var err error
 	options := platform.MachineOptions{
-		AdditionalDisks: []platform.Disk{
-			{Size: "520M", DeviceOpts: []string{"serial=secondary"}},
-		},
+		AdditionalDisks: []string{"520M"},
 	}
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithOptions function, but rather whether platform.Cluster does which fails
-	case *unprivqemu.Cluster:
-		m, err = pc.NewMachineWithOptions(raidRootUserData, options, true)
-	default:
-		c.Fatal("unknown cluster type")
-	}
+	m, err = c.NewMachineWithOptions(raidRootUserData, options)
 	if err != nil {
 		c.Fatal(err)
 	}
