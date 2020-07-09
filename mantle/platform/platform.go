@@ -354,7 +354,7 @@ func CopyDirToMachine(inputdir string, m Machine, destdir string) error {
 
 // NewMachines spawns n instances in cluster c, with
 // each instance passed the same userdata.
-func NewMachines(c Cluster, userdata *conf.UserData, n int) ([]Machine, error) {
+func NewMachines(c Cluster, userdata *conf.UserData, n int, addDisks []string) ([]Machine, error) {
 	var wg sync.WaitGroup
 
 	mchan := make(chan Machine, n)
@@ -364,7 +364,10 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int) ([]Machine, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m, err := c.NewMachine(userdata)
+			options := MachineOptions{
+				AdditionalDisks: addDisks,
+			}
+			m, err := c.NewMachineWithOptions(userdata, options)
 			if err != nil {
 				errchan <- err
 			}
