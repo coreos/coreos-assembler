@@ -31,8 +31,6 @@ import (
 	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
 
-	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
-	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/harness/reporters"
 	"github.com/coreos/mantle/kola/cluster"
@@ -58,7 +56,6 @@ import (
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
-	"github.com/coreos/mantle/util"
 )
 
 // InstalledTestsDir is a directory where "installed" external
@@ -607,7 +604,7 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 }
 
 func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
-	ignc3, _, err := ignv3.Parse([]byte(ignition))
+	config, err := conf.Ignition(ignition).Render("", Options.IgnitionVersion == "v2")
 	if err != nil {
 		return errors.Wrapf(err, "Parsing config.ign")
 	}
@@ -631,26 +628,7 @@ Environment=KOLA_UNIT=%s
 Environment=%s=%s
 ExecStart=%s
 `, KoletExtTestUnit, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
-	runextconfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
-				{
-					Name:     KoletExtTestUnit,
-					Contents: &unit,
-					Enabled:  util.BoolToPtr(false),
-				},
-			},
-		},
-	}
-
-	finalIgn := ignv3.Merge(ignc3, runextconfig)
-	serializedIgn, err := json.Marshal(finalIgn)
-	if err != nil {
-		return errors.Wrapf(err, "serializing ignition")
-	}
+	config.AddSystemdUnit(KoletExtTestUnit, unit, conf.NoState)
 
 	t := &register.Test{
 		Name:          testname,
@@ -681,7 +659,7 @@ ExecStart=%s
 			}
 		},
 
-		UserDataV3: conf.Ignition(string(serializedIgn)),
+		UserDataV3: conf.Ignition(config.String()),
 	}
 
 	// To avoid doubling the duplication here with register.Test, we support
