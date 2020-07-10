@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -50,7 +51,7 @@ func init() {
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
-		Tags:                 []string{"luks", "tang"},
+		Tags:                 []string{"luks", "tang", kola.NeedsInternetTag},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST1Test,
@@ -60,7 +61,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
-		Tags:                 []string{"luks", "tpm", "tang", "sss"},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2Test,
@@ -70,7 +71,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
-		Tags:                 []string{"luks", "tpm", "tang", "sss"},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 	})
 }
 
