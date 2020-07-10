@@ -321,7 +321,7 @@ EOF
         local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
         dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
             --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
-            --qf '%{NAME}\t%{EVR}\t%{ARCH}' --quiet | python3 -c '
+            --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' --quiet | python3 -c '
 import sys, json
 lockfile = {"packages": {}}
 for line in sys.stdin:
