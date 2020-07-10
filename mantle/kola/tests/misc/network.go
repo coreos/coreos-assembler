@@ -59,61 +59,71 @@ type listener struct {
 func checkListeners(c cluster.TestCluster, expectedListeners []listener) error {
 	m := c.Machines()[0]
 
-	output := c.MustSSH(m, "sudo netstat -plutn")
+	output := c.MustSSH(m, "sudo ss -plutn")
 
 	processes := strings.Split(string(output), "\n")
 	// verify header is as expected
-	if len(processes) < 2 {
-		c.Fatalf("expected at least two lines of nestat output: %q", output)
+	if len(processes) < 1 {
+		c.Fatalf("expected at least one line of ss output: %q", output)
 	}
-	if processes[0] != "Active Internet connections (only servers)" {
-		c.Fatalf("netstat output has changed format: %q", output)
-	}
-	if !regexp.MustCompile(`Proto\s+Recv-Q\s+Send-Q\s+Local Address\s+Foreign Address\s+State\s+PID/Program name`).MatchString(processes[1]) {
-		c.Fatalf("netstat output has changed format: %q", output)
+	// ss output's header sometimes does not have whitespace between "Peer Address:Port" and "Process"
+	headerRegex := `Netid\s+State\s+Recv-Q\s+Send-Q\s+Local Address:Port\s+Peer Address:Port\s*Process`
+	if !regexp.MustCompile(headerRegex).MatchString(processes[0]) {
+		c.Fatalf("ss output has changed format: %q", processes[0])
 	}
 	// skip header
-	processes = processes[2:]
+	processes = processes[1:]
+
+	// create expectedListeners map
+	expectedListenersMap := map[listener]bool{}
+	for _, expected := range expectedListeners {
+		expectedListenersMap[expected] = true
+	}
 
 NextProcess:
+	/*
+		Sample `sudo ss -plutn` output:
+		Netid  State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port   Process
+		udp    UNCONN  0       0           127.0.0.1:323        0.0.0.0:*      users:(("chronyd",pid=856,fd=5))
+		udp    UNCONN  0       0               [::1]:323           [::]:*      users:(("chronyd",pid=856,fd=6))
+		tcp    LISTEN  0       128           0.0.0.0:22         0.0.0.0:*      users:(("sshd",pid=1156,fd=5))
+		tcp    LISTEN  0       128              [::]:22            [::]:*      users:(("sshd",pid=1156,fd=7))
+	*/
 	for _, line := range processes {
 		parts := strings.Fields(line)
-		// One gotcha: udp's 'state' field is optional, so it's possible to have 6
-		// or 7 parts depending on that.
-		if len(parts) != 6 && len(parts) != 7 {
+		if len(parts) != 7 {
 			c.Fatalf("unexpected number of parts on line: %q in output %q", line, output)
 		}
 		proto := parts[0]
-		portdata := strings.Split(parts[3], ":")
-		port := portdata[len(portdata)-1]
-		pidProgramParts := strings.SplitN(parts[len(parts)-1], "/", 2)
-		if len(pidProgramParts) != 2 {
-			c.Errorf("%v did not contain pid and program parts; full output: %q", parts[6], output)
+		portData := strings.Split(parts[4], ":")
+		port := portData[len(portData)-1]
+		processData := parts[len(parts)-1]
+		pidStr := regexp.MustCompile(`pid=\d+`).FindString(processData)  // pid has a  leading 'pid=' identifier
+		processStr := regexp.MustCompile(`".+"`).FindString(processData) // process name is captured inside double quotes
+		if pidStr == "" || processStr == "" {
+			c.Errorf("%v did not contain pid and program; full output: %q", processData, output)
 			continue
 		}
-		pid, process := pidProgramParts[0], pidProgramParts[1]
-
-		for _, expected := range expectedListeners {
-			if strings.HasPrefix(proto, expected.protocol) && // allow expected tcp to match tcp6
-				expected.port == port &&
-				expected.process == process {
-				// matches expected process
-				continue NextProcess
-			}
+		pid, process := pidStr[4:], processStr[1:len(processStr)-1]
+		thisListener := listener{
+			process:  process,
+			protocol: proto,
+			port:     port,
 		}
 
-		if process[0] == '(' {
-			c.Logf("Ignoring %q listener process: %q (pid %s) on %q", proto, process, pid, port)
-			continue
+		if expectedListenersMap[thisListener] {
+			// matches expected process
+			continue NextProcess
 		}
 
-		c.Logf("full netstat output: %q", output)
-		return fmt.Errorf("Unexpected listener process: %q", line)
+		c.Logf("full ss output: %q", output)
+		return fmt.Errorf("Unexpected listener process: %q (pid %s)", line, pid)
 	}
 
 	return nil
 }
 
+// NetworkListeners checks for listeners with ss.
 func NetworkListeners(c cluster.TestCluster) {
 	expectedListeners := []listener{
 		{"tcp", "22", "sshd"},
@@ -128,7 +138,7 @@ func NetworkListeners(c cluster.TestCluster) {
 	}
 }
 
-// Verify that networking is not started in the initramfs on the second boot.
+// NetworkInitramfsSecondBoot verifies that networking is not started in the initramfs on the second boot.
 // https://github.com/coreos/bugs/issues/1768
 func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 	m := c.Machines()[0]

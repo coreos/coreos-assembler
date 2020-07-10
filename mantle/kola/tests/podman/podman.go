@@ -312,7 +312,7 @@ func podmanNetworkTest(c cluster.TestCluster) {
 	talker := func(ctx context.Context) error {
 		// Wait until listener is ready before trying anything
 		for {
-			_, err := c.SSH(dest, "sudo netstat -tulpn | grep 9988")
+			_, err := c.SSH(dest, "sudo ss -tulpn | grep 9988")
 			if err == nil {
 				break // socket is ready
 			}
