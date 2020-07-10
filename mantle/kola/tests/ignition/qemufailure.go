@@ -46,8 +46,6 @@ func runIgnitionFailure(c cluster.TestCluster) {
 }
 
 func ignitionFailure(c cluster.TestCluster) error {
-	// TODO remove this once the feature lands
-	c.H.Skip("Needs https://github.com/coreos/ignition-dracut/pull/146")
 	// We can't create files in / due to the immutable bit OSTree creates, so
 	// this is a convenient way to test Ignition failure.
 	failConfig := ignv3types.Config{
@@ -94,13 +92,19 @@ func ignitionFailure(c cluster.TestCluster) error {
 		}
 		errchan <- err
 	}()
-	go func() {
-		time.Sleep(2 * time.Minute)
-		proc := os.Process{
-			Pid: inst.Pid(),
+	select {
+	case <-time.After(2 * time.Minute):
+		if inst != nil {
+			proc := os.Process{
+				Pid: inst.Pid(),
+			}
+			proc.Kill()
 		}
-		proc.Kill()
-		errchan <- errors.New("timed out waiting for initramfs error")
-	}()
-	return <-errchan
+		return errors.New("timed out waiting for initramfs error")
+	case err := <-errchan:
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 }
