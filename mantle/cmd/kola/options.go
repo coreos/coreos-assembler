@@ -184,6 +184,12 @@ func syncOptionsImpl(useCosa bool) error {
 		return err
 	}
 
+	// if no external dirs were given, automatically add the working directory;
+	// does nothing if ./tests/kola/ doesn't exist
+	if len(runExternals) == 0 {
+		runExternals = []string{"."}
+	}
+
 	foundCosa := false
 	if kola.Options.CosaBuildId != "" {
 		// specified --build? fetch that build. in this path we *require* a
