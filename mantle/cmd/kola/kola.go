@@ -167,6 +167,13 @@ func registerExternals() error {
 		return err
 	}
 	for _, d := range runExternals {
+		if d == "." {
+			if cwd, err := os.Getwd(); err != nil {
+				return err
+			} else {
+				d = cwd
+			}
+		}
 		err := kola.RegisterExternalTests(d)
 		if err != nil {
 			return err
