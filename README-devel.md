@@ -81,8 +81,8 @@ git repositories.
 # Using cosa run --ro-bind for even faster iteration
 
 If you're working on e.g. the kernel or Ignition (things that go into the initramfs),
-then you probably need a `cosa build` workflow.  However, let's say you want to
-test a change to something much later in the boot process - e.g. `podman`.  Rather
+then you probably need a `cosa build` workflow (or `cosa buildinitramfs-fast`, see below).
+However, let's say you want to test a change to something much later in the boot process - e.g. `podman`.  Rather
 than doing a full image build each time, a fast way to test out changes is to use
 something like this:
 
@@ -95,6 +95,9 @@ allowing you to directly execute binaries from there.  You can also use e.g.
 `rpm-ostree usroverlay` and then copy binaries from your host `/run/workdir` into
 the VM's rootfs.
 
+(This currently only works on Fedora CoreOS which ships `9p`, not RHCOS.  A future version
+ will use https://virtio-fs.gitlab.io/ )
+
 # Using host binaries
 
 Another related trick is:
@@ -105,6 +108,22 @@ $ cosa run --ro-bind /usr/bin,/run/hostbin
 
 Then in the VM you have e.g. `/run/hostbin/strace`.  (This may fail in some scenarios
 where your dev container is different than the target).
+
+# Using cosa buildinitramfs-fast
+
+If you're iterating on changes *just* to the initramfs, you can also use
+`cosa buildinitramfs-fast`.  For example, suppose you are working on `ignition`.
+Follow these steps:
+
+```
+$ make
+$ install -D -m 0755 bin/amd64/ignition /path/to/cosadir/overrides/initramfs/usr/bin/ignition
+$ cd /path/to/cosadir
+$ cosa buildinitramfs-fast
+$ cosa run --qemu-image tmp/fastbuild/fastbuildinitrd-fedora-coreos-qemu.qcow2
+```
+
+(Or instead of `cosa run` use e.g. `cosa kola` to run tests, etc.)
 
 # Developing on coreos-assembler itself
 
