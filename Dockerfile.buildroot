@@ -8,7 +8,7 @@
 # CI system will likely use this as a base image.
 FROM quay.io/coreos-assembler/coreos-assembler:latest
 USER root
-ENTRYPOINT ["/usr/bin/bash"]
+ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/bash"]
 WORKDIR /root/containerbuild
 COPY src src
 RUN ./src/install-buildroot.sh && yum clean all && rm src -rf
