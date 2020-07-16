@@ -141,6 +141,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
 		OutputDir:        outputDir,
 		AllowFailedUnits: true,
+		InternetAccess:   true,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "Cluster failed")
