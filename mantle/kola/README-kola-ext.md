@@ -105,17 +105,26 @@ Here's an example `kola.json`:
 {
     "architectures": "!s390x ppc64le",
     "platforms": "qemu-unpriv",
+    "tags": "sometagname needs-internet othertag"
     "additionalDisks": [ "5G" ]
 }
 ```
 
-The only supported keys are those three; any or none may be provided as
-well.  For `architectures` and `platforms`, each value is a single
-string, which is a whitespace-separated list.  The reason to use a
-single string (instead of a native JSON list) is that by providing `!`
-at the front of the string, the value instead declares exclusions
-(`ExclusiveArchitectures` instead of `Architectures` in reference to
-kola internals.
+The only supported keys are those mentioned above; any or none
+may be provided as well.  For `architectures`, `platforms` and `tags`, 
+each value is a single string, which is a whitespace-separated list.
+The reason to use a single string (instead of a native JSON list)
+is twofold.  First, it's easier to type than a JSON list, and
+we don't need to support values with whitespace.
+Second, for `architectures` and `platforms` by providing `!` at
+the front of the string, the value instead declares exclusions
+i.e. `ExclusiveArchitectures` instead  of `Architectures` in
+reference to kola internals.
+
+In this example, `sometagname` and `othertag` are arbitrary tags
+one can use with `kola run --tags`, but the `needs-internet` tag
+has semantic meaning, also taken from the Autopkgtest (linked above).
+Currently only the `qemu` platform enforces this restriction.
 
 The `additionalDisks` key has the same semantics as the `--add-disk`
 argument to `qemuexec`. It is currently only supported on `qemu-unpriv`.
@@ -126,7 +135,7 @@ inline per test, like this:
 ```sh
 #!/bin/bash
 set -xeuo pipefail
-# kola: { "architectures": "x86_64", "platforms": "aws gcp"] }
+# kola: { "architectures": "x86_64", "platforms": "aws gcp", "tags": "needs-internet" }
 test code here
 ```
 
