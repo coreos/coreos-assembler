@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"golang.org/x/net/context"
-	"google.golang.org/api/compute/v0.alpha"
+	"google.golang.org/api/compute/v0.beta"
 )
 
 type DeprecationState string
