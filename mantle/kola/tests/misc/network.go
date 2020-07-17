@@ -98,13 +98,12 @@ NextProcess:
 		portData := strings.Split(parts[4], ":")
 		port := portData[len(portData)-1]
 		processData := parts[len(parts)-1]
-		pidStr := regexp.MustCompile(`pid=\d+`).FindString(processData)  // pid has a  leading 'pid=' identifier
 		processStr := regexp.MustCompile(`".+"`).FindString(processData) // process name is captured inside double quotes
-		if pidStr == "" || processStr == "" {
-			c.Errorf("%v did not contain pid and program; full output: %q", processData, output)
+		if processStr == "" {
+			c.Errorf("%v did not contain program; full output: %q", processData, output)
 			continue
 		}
-		pid, process := pidStr[4:], processStr[1:len(processStr)-1]
+		process := processStr[1 : len(processStr)-1]
 		thisListener := listener{
 			process:  process,
 			protocol: proto,
@@ -117,7 +116,7 @@ NextProcess:
 		}
 
 		c.Logf("full ss output: %q", output)
-		return fmt.Errorf("Unexpected listener process: %q (pid %s)", line, pid)
+		return fmt.Errorf("Unexpected listener process: %q", line)
 	}
 
 	return nil
