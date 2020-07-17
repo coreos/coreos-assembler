@@ -34,8 +34,6 @@ var (
 	ErrCompressionInvalid = errors.New("invalid compression method")
 
 	// Storage section errors
-	ErrFilePermissionsUnset      = errors.New("permissions unset, defaulting to 0644")
-	ErrDirectoryPermissionsUnset = errors.New("permissions unset, defaulting to 0755")
 	ErrFileUsedSymlink           = errors.New("file path includes link in config")
 	ErrDirectoryUsedSymlink      = errors.New("directory path includes link in config")
 	ErrLinkUsedSymlink           = errors.New("link path includes link in config")
@@ -54,6 +52,10 @@ var (
 	ErrXfsLabelTooLong           = errors.New("filesystem labels cannot be longer than 12 characters when using xfs")
 	ErrSwapLabelTooLong          = errors.New("filesystem labels cannot be longer than 15 characters when using swap")
 	ErrVfatLabelTooLong          = errors.New("filesystem labels cannot be longer than 11 characters when using vfat")
+	ErrLuksLabelTooLong          = errors.New("luks device labels cannot be longer than 47 characters")
+	ErrLuksNameContainsSlash     = errors.New("device names cannot contain slashes")
+	ErrInvalidLuksVolume         = errors.New("a key-file or clevis configuration must be specified")
+	ErrTangThumbprintRequired    = errors.New("thumbprint is required")
 	ErrFileIllegalMode           = errors.New("illegal file mode")
 	ErrBothIDAndNameSet          = errors.New("cannot set both id and name")
 	ErrLabelTooLong              = errors.New("partition labels may not exceed 36 characters")
@@ -91,6 +93,10 @@ var (
 
 	// AWS S3 specific errors
 	ErrInvalidS3ObjectVersionId = errors.New("invalid S3 object VersionId")
+
+	// Obsolete errors, left here for ABI compatibility
+	ErrFilePermissionsUnset      = errors.New("permissions unset, defaulting to 0644")
+	ErrDirectoryPermissionsUnset = errors.New("permissions unset, defaulting to 0755")
 )
 
 // NewNoInstallSectionError produces an error indicating the given unit, named

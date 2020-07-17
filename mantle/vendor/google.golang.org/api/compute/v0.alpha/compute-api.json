@@ -29,7 +29,7 @@
   "description": "Creates and runs virtual machines on Google Cloud Platform.",
   "discoveryVersion": "v1",
   "documentationLink": "https://developers.google.com/compute/docs/reference/latest/",
-  "etag": "\"u9GIe6H63LSGq-9_t39K2Zx_EAc/_V4PqxqGCplPlTlUEzGZNpFXj3c\"",
+  "etag": "\"u9GIe6H63LSGq-9_t39K2Zx_EAc/dg0TZAIlKG-SEb73iIfHYrxa9tA\"",
   "icons": {
     "x16": "https://www.google.com/images/icons/product/compute_engine-16.png",
     "x32": "https://www.google.com/images/icons/product/compute_engine-32.png"
@@ -27080,6 +27080,47 @@
             "https://www.googleapis.com/auth/compute.readonly"
           ]
         },
+        "patch": {
+          "description": "Patches the specified TargetGrpcProxy resource with the data included in the request. This method supports PATCH semantics and uses JSON merge patch format and processing rules.",
+          "httpMethod": "PATCH",
+          "id": "compute.targetGrpcProxies.patch",
+          "parameterOrder": [
+            "project",
+            "targetGrpcProxy"
+          ],
+          "parameters": {
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "requestId": {
+              "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed.\n\nFor example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments.\n\nThe request ID must be a valid UUID with the exception that zero UUID is not supported (00000000-0000-0000-0000-000000000000).",
+              "location": "query",
+              "type": "string"
+            },
+            "targetGrpcProxy": {
+              "description": "Name of the TargetGrpcProxy resource to patch.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+              "required": true,
+              "type": "string"
+            }
+          },
+          "path": "{project}/global/targetGrpcProxies/{targetGrpcProxy}",
+          "request": {
+            "$ref": "TargetGrpcProxy"
+          },
+          "response": {
+            "$ref": "Operation"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute"
+          ]
+        },
         "testIamPermissions": {
           "description": "Returns permissions that a caller has on the specified resource.",
           "httpMethod": "POST",
@@ -27637,6 +27678,46 @@
             "https://www.googleapis.com/auth/cloud-platform",
             "https://www.googleapis.com/auth/compute",
             "https://www.googleapis.com/auth/compute.readonly"
+          ]
+        },
+        "setCertificateMap": {
+          "description": "Changes the Certificate Map for TargetHttpsProxy.",
+          "httpMethod": "POST",
+          "id": "compute.targetHttpsProxies.setCertificateMap",
+          "parameterOrder": [
+            "project",
+            "targetHttpsProxy"
+          ],
+          "parameters": {
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "requestId": {
+              "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed.\n\nFor example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments.\n\nThe request ID must be a valid UUID with the exception that zero UUID is not supported (00000000-0000-0000-0000-000000000000).",
+              "location": "query",
+              "type": "string"
+            },
+            "targetHttpsProxy": {
+              "description": "Name of the TargetHttpsProxy resource whose CertificateMap is to be set. The name must be 1-63 characters long, and comply with RFC1035.",
+              "location": "path",
+              "required": true,
+              "type": "string"
+            }
+          },
+          "path": "{project}/global/targetHttpsProxies/{targetHttpsProxy}/setCertificateMap",
+          "request": {
+            "$ref": "TargetHttpsProxiesSetCertificateMapRequest"
+          },
+          "response": {
+            "$ref": "Operation"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute"
           ]
         },
         "setQuicOverride": {
@@ -28927,6 +29008,46 @@
           "path": "{project}/global/targetSslProxies/{targetSslProxy}/setBackendService",
           "request": {
             "$ref": "TargetSslProxiesSetBackendServiceRequest"
+          },
+          "response": {
+            "$ref": "Operation"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute"
+          ]
+        },
+        "setCertificateMap": {
+          "description": "Changes the Certificate Map for TargetSslProxy.",
+          "httpMethod": "POST",
+          "id": "compute.targetSslProxies.setCertificateMap",
+          "parameterOrder": [
+            "project",
+            "targetSslProxy"
+          ],
+          "parameters": {
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "requestId": {
+              "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed.\n\nFor example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments.\n\nThe request ID must be a valid UUID with the exception that zero UUID is not supported (00000000-0000-0000-0000-000000000000).",
+              "location": "query",
+              "type": "string"
+            },
+            "targetSslProxy": {
+              "description": "Name of the TargetSslProxy resource whose CertificateMap is to be set. The name must be 1-63 characters long, and comply with RFC1035.",
+              "location": "path",
+              "required": true,
+              "type": "string"
+            }
+          },
+          "path": "{project}/global/targetSslProxies/{targetSslProxy}/setCertificateMap",
+          "request": {
+            "$ref": "TargetSslProxiesSetCertificateMapRequest"
           },
           "response": {
             "$ref": "Operation"
@@ -31545,7 +31666,7 @@
       }
     }
   },
-  "revision": "20200331",
+  "revision": "20200501",
   "rootUrl": "https://compute.googleapis.com/",
   "schemas": {
     "AcceleratorConfig": {
@@ -32562,12 +32683,17 @@
           "type": "string"
         },
         "longTermRelease": {
-          "description": "Compute Engine Long Term Release. When specified, VMs that have this policy become long term release (internal: stable fleet) VMs.\n\nFor all VM shapes, this should result in fewer disruptions due to software updates and greater predictability via 1 week extended notifications.\n\nFor GPU VMs, this should also result in an 2 week uptime guarantee. See go/stable-fleet-gpus-design for more details.",
+          "description": "DEPRECATED, please use maintenance_freeze_duration_hours. TODO(b/154158138): Remove this field. Compute Engine Long Term Release. When specified, VMs that have this policy become long term release (internal: stable fleet) VMs.\n\nFor all VM shapes, this should result in fewer disruptions due to software updates and greater predictability via 1 week extended notifications.\n\nFor GPU VMs, this should also result in an 2 week uptime guarantee. See go/stable-fleet-gpus-design for more details.",
           "type": "boolean"
         },
         "machineType": {
           "description": "Specifies type of machine (name only) which has fixed number of vCPUs and fixed amount of memory. This also includes specifying custom machine type following custom-NUMBER_OF_CPUS-AMOUNT_OF_MEMORY pattern.",
           "type": "string"
+        },
+        "maintenanceFreezeDurationHours": {
+          "description": "Specifies the number of hours after reservation creation where instances using the reservation won't be scheduled for maintenance.",
+          "format": "int32",
+          "type": "integer"
         },
         "minCpuPlatform": {
           "description": "Minimum cpu platform the reservation.",
@@ -32745,6 +32871,10 @@
           },
           "description": "Labels to apply to this disk. These can be later modified by the disks.setLabels method. This field is only applicable for persistent disks.",
           "type": "object"
+        },
+        "multiWriter": {
+          "description": "Indicates whether or not the disk can be read/write attached to more than one instance.",
+          "type": "boolean"
         },
         "onUpdateAction": {
           "description": "Specifies which action to take on instance update with this disk. Default is to use the existing disk.",
@@ -34006,7 +34136,7 @@
           "type": "integer"
         },
         "portName": {
-          "description": "A named port on a backend instance group representing the port for communication to the backend VMs in that group. Required when the loadBalancingScheme is EXTERNAL, INTERNAL_MANAGED, or INTERNAL_SELF_MANAGED and the backends are instance groups. The named port must be defined on each backend instance group. This parameter has no meaning if the backends are NEGs.\n\n\n\nMust be omitted when the loadBalancingScheme is INTERNAL (Internal TCP/UDP Load Blaancing).",
+          "description": "A named port on a backend instance group representing the port for communication to the backend VMs in that group. Required when the loadBalancingScheme is EXTERNAL, INTERNAL_MANAGED, or INTERNAL_SELF_MANAGED and the backends are instance groups. The named port must be defined on each backend instance group. This parameter has no meaning if the backends are NEGs.\n\n\n\nMust be omitted when the loadBalancingScheme is INTERNAL (Internal TCP/UDP Load Balancing).",
           "type": "string"
         },
         "protocol": {
@@ -34820,7 +34950,7 @@
       "properties": {
         "condition": {
           "$ref": "Expr",
-          "description": "The condition that is associated with this binding. NOTE: An unsatisfied condition will not allow user access via current binding. Different bindings, including their conditions, are examined independently."
+          "description": "The condition that is associated with this binding.\n\nIf the condition evaluates to `true`, then this binding applies to the current request.\n\nIf the condition evaluates to `false`, then this binding does not apply to the current request. However, a different role binding might grant the same role to one or more of the members in this binding.\n\nTo learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies)."
         },
         "members": {
           "description": "Specifies the identities requesting access for a Cloud Platform resource. `members` can have the following values:\n\n* `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account.\n\n* `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account.\n\n* `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` .\n\n\n\n* `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`.\n\n* `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`.\n\n* `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding.\n\n* `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding.\n\n* `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding.\n\n\n\n* `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.",
@@ -34843,13 +34973,6 @@
           "description": "The maximum number of instances to create.",
           "format": "int64",
           "type": "string"
-        },
-        "excludedZones": {
-          "description": "List of zones to exclude for regional requests.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         },
         "instance": {
           "$ref": "Instance"
@@ -35675,14 +35798,14 @@
           "type": "array"
         },
         "allowOriginRegexes": {
-          "description": "Specifies the regualar expression patterns that match allowed origins. For regular expression grammar please see en.cppreference.com/w/cpp/regex/ecmascript \nAn origin is allowed if it matches either allow_origins or allow_origin_regex.",
+          "description": "Specifies the regualar expression patterns that match allowed origins. For regular expression grammar please see en.cppreference.com/w/cpp/regex/ecmascript \nAn origin is allowed if it matches either an item in allowOrigins or an item in allowOriginRegexes.",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "allowOrigins": {
-          "description": "Specifies the list of origins that will be allowed to do CORS requests.\nAn origin is allowed if it matches either allow_origins or allow_origin_regex.",
+          "description": "Specifies the list of origins that will be allowed to do CORS requests.\nAn origin is allowed if it matches either an item in allowOrigins or an item in allowOriginRegexes.",
           "items": {
             "type": "string"
           },
@@ -37061,7 +37184,7 @@
       "type": "object"
     },
     "ExternalVpnGateway": {
-      "description": "External VPN gateway is the on-premises VPN gateway(s) or another cloud provider's VPN gateway that connects to your Google Cloud VPN gateway. To create a highly available VPN from Google Cloud to your on-premises side or another Cloud provider's VPN gateway, you must create a external VPN gateway resource in GCP, which provides the information to GCP about your external VPN gateway.",
+      "description": "Represents an external VPN gateway.\n\nExternal VPN gateway is the on-premises VPN gateway(s) or another cloud provider's VPN gateway that connects to your Google Cloud VPN gateway.\n\nTo create a highly available VPN from Google Cloud Platform to your VPN gateway or another cloud provider's VPN gateway, you must create a external VPN gateway resource with information about the other gateway.\n\nFor more information about using external VPN gateways, see  Creating an HA VPN gateway and tunnel pair to a peer VPN. (== resource_for {$api_version}.externalVpnGateways ==)",
       "id": "ExternalVpnGateway",
       "properties": {
         "creationTimestamp": {
@@ -37274,6 +37397,7 @@
           "type": "string"
         },
         "fileType": {
+          "description": "The file type of source file.",
           "enum": [
             "BIN",
             "UNDEFINED",
@@ -38750,7 +38874,7 @@
       "type": "object"
     },
     "HealthCheckService": {
-      "description": "A HealthCheckService defines a set of backends on which to perform periodic health checks and an endpoint to which to send notification of changes in the health status of the backends.",
+      "description": "Represents a Health-Check as a Service resource.\n\n(== resource_for {$api_version}.regionHealthCheckServices ==)",
       "id": "HealthCheckService",
       "properties": {
         "creationTimestamp": {
@@ -40793,7 +40917,7 @@
           "type": "boolean"
         },
         "status": {
-          "description": "[Output Only] The status of the instance. One of the following values: PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, SUSPENDING, SUSPENDED, and TERMINATED.",
+          "description": "[Output Only] The status of the instance. One of the following values: PROVISIONING, STAGING, RUNNING, STOPPING, SUSPENDING, SUSPENDED, and TERMINATED.",
           "enum": [
             "DEPROVISIONING",
             "PROVISIONING",
@@ -45637,7 +45761,7 @@
       "id": "LogConfigDataAccessOptions",
       "properties": {
         "logMode": {
-          "description": "Whether Gin logging should happen in a fail-closed manner at the caller. This is currently supported in the LocalIAM implementation, Stubby C++, and Stubby Java. For Apps Framework, see go/af-audit-logging#failclosed. TODO(b/77591626): Add support for Stubby Go. TODO(b/129671387): Add support for Scaffolding.",
+          "description": "",
           "enum": [
             "LOG_FAIL_CLOSED",
             "LOG_MODE_UNSPECIFIED"
@@ -46722,7 +46846,7 @@
       "type": "object"
     },
     "NetworkEndpointGroup": {
-      "description": "Represents a collection of network endpoints.\n\nFor more information read Network endpoint groups overview. (== resource_for {$api_version}.networkEndpointGroups ==) Next ID: 21",
+      "description": "Represents a collection of network endpoints.\n\nA network endpoint group (NEG) defines how a set of endpoints should be reached, whether they are reachable, and where they are located. For more information about using NEGs, see  Setting up internet NEGs or  Setting up zonal NEGs. (== resource_for {$api_version}.networkEndpointGroups ==) (== resource_for {$api_version}.globalNetworkEndpointGroups ==)",
       "id": "NetworkEndpointGroup",
       "properties": {
         "annotations": {
@@ -47185,7 +47309,7 @@
           "type": "array"
         },
         "healthStatus": {
-          "description": "Optional query parameter for showing the health status of each network endpoint. Valid options are SKIP or SHOW. If you don't specifiy this parameter, the health status of network endpoints will not be provided.",
+          "description": "Optional query parameter for showing the health status of each network endpoint. Valid options are SKIP or SHOW. If you don't specify this parameter, the health status of network endpoints will not be provided.",
           "enum": [
             "SHOW",
             "SKIP"
@@ -49315,7 +49439,7 @@
       "type": "object"
     },
     "NotificationEndpoint": {
-      "description": "A notification endpoint resource defines an endpoint to receive notifications when there are status changes detected by the associated health check service.",
+      "description": "Represents a notification endpoint.\n\nA notification endpoint resource defines an endpoint to receive notifications when there are status changes detected by the associated health check service.\n\nFor more information, see  Health checks overview. (== resource_for {$api_version}.notificationEndpoint ==) (== resource_for {$api_version}.regionNotificationEndpoints ==)",
       "id": "NotificationEndpoint",
       "properties": {
         "creationTimestamp": {
@@ -50199,7 +50323,7 @@
       "type": "object"
     },
     "PacketMirroring": {
-      "description": "Represents a PacketMirroring resource.",
+      "description": "Represents a Packet Mirroring resource.\n\nPacket Mirroring clones the traffic of specified instances in your Virtual Private Cloud (VPC) network and forwards it to a collector destination, such as an instance group of an internal TCP/UDP load balancer, for analysis or examination. For more information about setting up Packet Mirroring, see Using Packet Mirroring. (== resource_for {$api_version}.packetMirrorings ==)",
       "id": "PacketMirroring",
       "properties": {
         "collectorIlb": {
@@ -50908,7 +51032,7 @@
       "type": "object"
     },
     "Policy": {
-      "description": "An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources.\n\n\n\nA `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role.\n\nOptionally, a `binding` can specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both.\n\n**JSON example:**\n\n{ \"bindings\": [ { \"role\": \"roles/resourcemanager.organizationAdmin\", \"members\": [ \"user:mike@example.com\", \"group:admins@example.com\", \"domain:google.com\", \"serviceAccount:my-project-id@appspot.gserviceaccount.com\" ] }, { \"role\": \"roles/resourcemanager.organizationViewer\", \"members\": [\"user:eve@example.com\"], \"condition\": { \"title\": \"expirable access\", \"description\": \"Does not grant access after Sep 2020\", \"expression\": \"request.time \u003c timestamp('2020-10-01T00:00:00.000Z')\", } } ], \"etag\": \"BwWWja0YfJA=\", \"version\": 3 }\n\n**YAML example:**\n\nbindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time \u003c timestamp('2020-10-01T00:00:00.000Z') - etag: BwWWja0YfJA= - version: 3\n\nFor a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).",
+      "description": "An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources.\n\n\n\nA `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role.\n\nFor some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).\n\n**JSON example:**\n\n{ \"bindings\": [ { \"role\": \"roles/resourcemanager.organizationAdmin\", \"members\": [ \"user:mike@example.com\", \"group:admins@example.com\", \"domain:google.com\", \"serviceAccount:my-project-id@appspot.gserviceaccount.com\" ] }, { \"role\": \"roles/resourcemanager.organizationViewer\", \"members\": [ \"user:eve@example.com\" ], \"condition\": { \"title\": \"expirable access\", \"description\": \"Does not grant access after Sep 2020\", \"expression\": \"request.time \u003c timestamp('2020-10-01T00:00:00.000Z')\", } } ], \"etag\": \"BwWWja0YfJA=\", \"version\": 3 }\n\n**YAML example:**\n\nbindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time \u003c timestamp('2020-10-01T00:00:00.000Z') - etag: BwWWja0YfJA= - version: 3\n\nFor a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).",
       "id": "Policy",
       "properties": {
         "auditConfigs": {
@@ -50942,7 +51066,7 @@
           "type": "array"
         },
         "version": {
-          "description": "Specifies the format of the policy.\n\nValid values are `0`, `1`, and `3`. Requests that specify an invalid value are rejected.\n\nAny operation that affects conditional role bindings must specify version `3`. This requirement applies to the following operations:\n\n* Getting a policy that includes a conditional role binding * Adding a conditional role binding to a policy * Changing a conditional role binding in a policy * Removing any role binding, with or without a condition, from a policy that includes conditions\n\n**Important:** If you use IAM Conditions, you must include the `etag` field whenever you call `setIamPolicy`. If you omit this field, then IAM allows you to overwrite a version `3` policy with a version `1` policy, and all of the conditions in the version `3` policy are lost.\n\nIf a policy does not include any conditions, operations on that policy may specify any valid version or leave the field unset.",
+          "description": "Specifies the format of the policy.\n\nValid values are `0`, `1`, and `3`. Requests that specify an invalid value are rejected.\n\nAny operation that affects conditional role bindings must specify version `3`. This requirement applies to the following operations:\n\n* Getting a policy that includes a conditional role binding * Adding a conditional role binding to a policy * Changing a conditional role binding in a policy * Removing any role binding, with or without a condition, from a policy that includes conditions\n\n**Important:** If you use IAM Conditions, you must include the `etag` field whenever you call `setIamPolicy`. If you omit this field, then IAM allows you to overwrite a version `3` policy with a version `1` policy, and all of the conditions in the version `3` policy are lost.\n\nIf a policy does not include any conditions, operations on that policy may specify any valid version or leave the field unset.\n\nTo learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).",
           "format": "int32",
           "type": "integer"
         }
@@ -52019,6 +52143,7 @@
             "PREEMPTIBLE_NVIDIA_T4_VWS_GPUS",
             "PREEMPTIBLE_NVIDIA_V100_GPUS",
             "PRIVATE_V6_ACCESS_SUBNETWORKS",
+            "PSC_GOOGLE_APIS_FORWARDING_RULES_PER_NETWORK",
             "PUBLIC_ADVERTISED_PREFIXES",
             "PUBLIC_DELEGATED_PREFIXES",
             "REGIONAL_AUTOSCALERS",
@@ -52050,6 +52175,7 @@
             "XPN_SERVICE_PROJECTS"
           ],
           "enumDescriptions": [
+            "",
             "",
             "",
             "",
@@ -56280,7 +56406,7 @@
       "type": "object"
     },
     "Scheduling": {
-      "description": "Sets the scheduling options for an Instance. NextID: 10",
+      "description": "Sets the scheduling options for an Instance. NextID: 11",
       "id": "Scheduling",
       "properties": {
         "automaticRestart": {
@@ -56296,8 +56422,13 @@
           "type": "string"
         },
         "longTermRelease": {
-          "description": "Compute Engine Long Term Release. When specified, VMs that have this policy become long term release (internal: stable fleet) VMs.\n\nFor all VM shapes, this should result in fewer disruptions due to software updates and greater predictability via 1 week extended notifications.\n\nFor GPU VMs, this should also result in an 2 week uptime guarantee. See go/stable-fleet-gpus-design for more details.",
+          "description": "DEPRECATED, please use maintenance_freeze_duration_hours. TODO(b/154158138): Remove this field. Compute Engine Long Term Release. When specified, VMs that have this policy become long term release (internal: stable fleet) VMs.\n\nFor all VM shapes, this should result in fewer disruptions due to software updates and greater predictability via 1 week extended notifications.\n\nFor GPU VMs, this should also result in an 2 week uptime guarantee. See go/stable-fleet-gpus-design for more details.",
           "type": "boolean"
+        },
+        "maintenanceFreezeDurationHours": {
+          "description": "Specifies the number of hours after instance creation where the instance won't be scheduled for maintenance.",
+          "format": "int32",
+          "type": "integer"
         },
         "minNodeCpus": {
           "description": "The minimum number of virtual CPUs this instance will consume when running on a sole-tenant node.",
@@ -57205,15 +57336,15 @@
       "id": "ShieldedInstanceConfig",
       "properties": {
         "enableIntegrityMonitoring": {
-          "description": "Defines whether the instance has integrity monitoring enabled.",
+          "description": "Defines whether the instance has integrity monitoring enabled. Enabled by default.",
           "type": "boolean"
         },
         "enableSecureBoot": {
-          "description": "Defines whether the instance has Secure Boot enabled.",
+          "description": "Defines whether the instance has Secure Boot enabled. Disabled by default.",
           "type": "boolean"
         },
         "enableVtpm": {
-          "description": "Defines whether the instance has the vTPM enabled.",
+          "description": "Defines whether the instance has the vTPM enabled. Enabled by default.",
           "type": "boolean"
         }
       },
@@ -58584,7 +58715,7 @@
           "type": "string"
         },
         "enableFlowLogs": {
-          "description": "Whether to enable flow logging for this subnetwork. If this field is not explicitly set, it will not appear in get listings. If not set the default behavior is to disable flow logging.",
+          "description": "Whether to enable flow logging for this subnetwork. If this field is not explicitly set, it will not appear in get listings. If not set the default behavior is to disable flow logging. This field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.",
           "type": "boolean"
         },
         "enablePrivateV6Access": {
@@ -58676,7 +58807,7 @@
           "type": "array"
         },
         "purpose": {
-          "description": "The purpose of the resource. This field can be either PRIVATE_RFC_1918 or INTERNAL_HTTPS_LOAD_BALANCER. A subnetwork with purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a user-created subnetwork that is reserved for Internal HTTP(S) Load Balancing. If unspecified, the purpose defaults to PRIVATE_RFC_1918.",
+          "description": "The purpose of the resource. This field can be either PRIVATE_RFC_1918 or INTERNAL_HTTPS_LOAD_BALANCER. A subnetwork with purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a user-created subnetwork that is reserved for Internal HTTP(S) Load Balancing. If unspecified, the purpose defaults to PRIVATE_RFC_1918. The enableFlowLogs field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.",
           "enum": [
             "AGGREGATE",
             "INTERNAL_HTTPS_LOAD_BALANCER",
@@ -59241,6 +59372,11 @@
         },
         "description": {
           "description": "An optional description of this resource. Provide this property when you create the resource.",
+          "type": "string"
+        },
+        "fingerprint": {
+          "description": "Fingerprint of this resource. A hash of the contents stored in this object. This field is used in optimistic locking. This field will be ignored when inserting a TargetGrpcProxy. An up-to-date fingerprint must be provided in order to patch/update the TargetGrpcProxy; otherwise, the request will fail with error 412 conditionNotMet. To see the latest fingerprint, make a get() request to retrieve the TargetGrpcProxy.",
+          "format": "byte",
           "type": "string"
         },
         "id": {
@@ -59875,6 +60011,16 @@
             }
           },
           "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "TargetHttpsProxiesSetCertificateMapRequest": {
+      "id": "TargetHttpsProxiesSetCertificateMapRequest",
+      "properties": {
+        "certificateMap": {
+          "description": "URL of the Certificate Map to associate with this TargetHttpsProxy.",
+          "type": "string"
         }
       },
       "type": "object"
@@ -61128,6 +61274,16 @@
       "properties": {
         "service": {
           "description": "The URL of the new BackendService resource for the targetSslProxy.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "TargetSslProxiesSetCertificateMapRequest": {
+      "id": "TargetSslProxiesSetCertificateMapRequest",
+      "properties": {
+        "certificateMap": {
+          "description": "URL of the Certificate Map to associate with this TargetSslProxy.",
           "type": "string"
         }
       },
@@ -62997,7 +63153,7 @@
       "type": "object"
     },
     "VpnGateway": {
-      "description": "Represents a VPN gateway resource. Next ID: 13",
+      "description": "Represents a HA VPN gateway.\n\nHA VPN is a high-availability (HA) Cloud VPN solution that lets you securely connect your on-premises network to your Google Cloud Virtual Private Cloud network through an IPsec VPN connection in a single region. For more information about Cloud HA VPN solutions, see  Cloud VPN topologies . (== resource_for {$api_version}.vpnGateways ==)",
       "id": "VpnGateway",
       "properties": {
         "creationTimestamp": {
