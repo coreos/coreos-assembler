@@ -41,12 +41,13 @@ require (
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
 	github.com/vmware/govmomi v0.15.0
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
-	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sys v0.0.0-20200610111108-226ff32320da
 	golang.org/x/text v0.3.2
-	google.golang.org/api v0.26.0
+	golang.org/x/tools v0.0.0-20200717024301-6ddee64345a6 // indirect
+	google.golang.org/api v0.29.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
