@@ -37,7 +37,6 @@ func init() {
   units:
     - name: docker.service
       enabled: true`),
-		ExcludePlatforms: []string{"qemu-unpriv"},
 	})
 	// TODO: rewrite test for NetworkManager
 	register.RegisterTest(&register.Test{
