@@ -128,7 +128,11 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 		panic("unreachable: oldBootId empty")
 	}
 
-	// run a command we know will hold so we know approximately when the reboot happens
+	// Run a command that stays blocked until we're killed by the reboot process
+	// on the target machine, so we know we know approximately when the reboot happens.
+	// This is intended to be "best effort", there are a wide variety of potential
+	// failure modes.  In the future we should probably have a relatively short
+	// timeout here and not make it fatal, and instead only do a timeout inside StartMachineAfterReboot().
 	c := make(chan error)
 	go func() {
 		out, stderr, err := m.SSH(fmt.Sprintf("if [ $(cat /proc/sys/kernel/random/boot_id) == '%s' ]; then echo waiting for reboot | logger && sleep infinity; fi", oldBootId))
@@ -142,6 +146,9 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 			// Catch ECONNRESET, which can happen if sshd is killed during
 			// handshake. crypto/ssh doesn't provide a distinct error type for
 			// this, so we're left looking for the string... :(
+			c <- nil
+		} else if strings.Contains(err.Error(), "handshake failed: EOF") {
+			// This can also happen if we're killed during handshake
 			c <- nil
 		} else {
 			c <- fmt.Errorf("waiting for reboot failed: %s: %s: %s", out, err, stderr)
