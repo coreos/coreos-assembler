@@ -4,8 +4,8 @@
 set -xeuo pipefail
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "") echo "test beginning"; /tmp/autopkgtest-reboot mark1 ;;
-  mark1) echo "test in mark1"; /tmp/autopkgtest-reboot mark2 ;;
-  mark2)
+  mark1) echo "test in mark1"; /tmp/autopkgtest-reboot 'mark2 "internal quotes"' ;;
+  'mark2 "internal quotes"')
     echo "test in mark2"
     # Test hard forced reboot
     /tmp/autopkgtest-reboot-prepare mark3
