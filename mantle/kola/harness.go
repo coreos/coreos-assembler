@@ -564,8 +564,12 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 		}
 		plog.Debug("Starting kolet run-test-unit")
 		if previousRebootState != "" {
-			plog.Debugf("Setting AUTOPKGTEST_REBOOT_MARK=%s", previousRebootState)
-			c.MustSSHf(mach, "echo AUTOPKGTEST_REBOOT_MARK=%s | sudo tee /run/kola-runext-env", previousRebootState)
+			// quote around the value for systemd
+			contents := fmt.Sprintf("AUTOPKGTEST_REBOOT_MARK='%s'", previousRebootState)
+			plog.Debugf("Setting %s", contents)
+			if err := platform.InstallFile(strings.NewReader(contents), mach, "/run/kola-runext-env"); err != nil {
+				return err
+			}
 			previousRebootState = ""
 		}
 		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(KoletExtTestUnit)))
