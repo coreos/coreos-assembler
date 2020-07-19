@@ -398,12 +398,12 @@ def generate_iso():
     # The System Area usually contains partition tables and the like, and
     # we're assuming that none of our platforms use the last 24 bytes of it.
     #
-    # This allows an external tool, coreos-iso-embed-ignition, to modify
+    # This allows an external tool, `coreos-installer iso embed`, to modify
     # an existing ISO image to embed a user's custom Ignition config.
     # The tool wraps the Ignition config in a cpio.gz and uses our header
     # to write it directly into the ISO image.  The cpio.gz will be read
-    # into the initramfs filesystem at runtime and ignition-dracut will
-    # ensure that the config is moved where Ignition will see it.
+    # into the initramfs filesystem at runtime and the Ignition Dracut module
+    # will ensure that the config is moved where Ignition will see it.
     #
     # Skip on s390x because that platform uses an embedded El Torito image
     # with its own copy of the initramfs.
