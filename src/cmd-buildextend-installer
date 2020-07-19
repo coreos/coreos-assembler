@@ -120,24 +120,24 @@ initrd_ignition_padding = 256 * 1024
 
 
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html#compressed-cpio-images
-def mkinitrd_pipe(tmproot, destf, compression=True):
+def mkinitrd_pipe(tmproot, destf):
     findproc = subprocess.Popen(['find', '.', '-mindepth', '1', '-print0'],
                                 cwd=tmproot, stdout=subprocess.PIPE)
     cpioproc = subprocess.Popen(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
             '--quiet', '--reproducible', '--force-local', '--null',
             '-D', tmproot], stdin=findproc.stdout, stdout=subprocess.PIPE)
-    gzipargs = ['gzip']
-    if not compression:
-        gzipargs.append('-1')
+    # Almost everything we're adding is already compressed.  The kernel
+    # requires us to compress again, but don't try very hard.
+    gzipargs = ['gzip', '-1']
     gzipproc = subprocess.Popen(gzipargs, stdin=cpioproc.stdout, stdout=destf)
     assert cpioproc.wait() == 0, f"cpio exited with {cpioproc.returncode}"
     assert findproc.wait() == 0, f"find exited with {findproc.returncode}"
     assert gzipproc.wait() == 0, f"gzip exited with {gzipproc.returncode}"
 
 
-def extend_initrd(initramfs, tmproot, compression=True):
+def extend_initrd(initramfs, tmproot):
     with open(initramfs, 'ab') as fdst:
-        mkinitrd_pipe(tmproot, fdst, compression=compression)
+        mkinitrd_pipe(tmproot, fdst)
 
 
 def cp_reflink(src, dest):
@@ -205,7 +205,7 @@ def generate_iso():
                 run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                              img_metal4k, '4096', tmp_osmet4k,
                              img_metal4k_checksum])
-            extend_initrd(base_initramfs, tmproot, compression=False)
+            extend_initrd(base_initramfs, tmproot)
 
     # The base_initramfs from here is shared between the ISO and PXE paths
     cp_reflink(base_initramfs, initramfs)
@@ -455,8 +455,7 @@ def generate_iso():
         if is_live:
             with tempfile.TemporaryDirectory(prefix='initramfs', dir=tmpdir) as tmproot:
                 shutil.move(tmp_squashfs, tmproot)
-                # Compression is redundant but the kernel requires it
-                extend_initrd(initramfs_file, tmproot, compression=False)
+                extend_initrd(initramfs_file, tmproot)
         buildmeta['images'].update({
             meta_keys['kernel']: {
                 'path': kernel_name,
