@@ -2,10 +2,12 @@ package coretest
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +53,8 @@ func init() {
 			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
 			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
 			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowpart, []string{"fcos"}...),
+			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
 		},
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
@@ -375,6 +379,78 @@ func TestMachineID() error {
 		return fmt.Errorf("machine-id is empty")
 	} else if id == "COREOS_BLANK_MACHINE_ID" {
 		return fmt.Errorf("machine-id is %s", id)
+	}
+	return nil
+}
+
+// TestRHCOSGrowpart tests whether rhcos-growpart.service was run successfully
+// and check that filesystem size has been grown to at least 15 GB.
+func TestRHCOSGrowpart() error {
+	// check that rhcos-growpart.service was run and exited normally
+	err := checkService("rhcos-growpart.service")
+	if err != nil {
+		return err
+	}
+	// check that filesystem size is >= 15 GB
+	err = checkFilesystemSize(15 * 1024 * 1024 * 1024)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TestFCOSGrowfs tests whether ignition-ostree-growfs.service was run successfully
+// and check that filesystem size has been grown to at least 7 GB.
+func TestFCOSGrowfs() error {
+	// check that ignition-ostree-growfs.service was run and exited normally
+	err := checkService("ignition-ostree-growfs.service")
+	if err != nil {
+		return err
+	}
+	// check that filesystem size is >= 7 GB
+	err = checkFilesystemSize(7 * 1024 * 1024 * 1024)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkService(unit string) error {
+	// Value of MESSAGE_ID= is the SD_MESSAGE_UNIT_STARTED macro's value from
+	// https://github.com/systemd/systemd/blob/master/src/systemd/sd-messages.h
+	// For oneshot type services that remain after exit, STARTED being "done"
+	// should imply that the service ran and exited successfully.
+	c := exec.Command("journalctl", "-o", "json", "MESSAGE_ID=39f53479d3a045ac8e11786248231fbf",
+		"UNIT="+unit)
+	out, err := c.Output()
+	if err != nil {
+		return fmt.Errorf("journalctl: %s", err)
+	}
+	if len(out) == 0 {
+		return fmt.Errorf("%s did not start", unit)
+	}
+	var journalOutput map[string]string
+	if err := json.Unmarshal(out, &journalOutput); err != nil {
+		return fmt.Errorf("Error getting journalclt output for %s: %s. Out: %s", unit, err, out)
+	}
+	if journalOutput["JOB_RESULT"] != "done" {
+		return fmt.Errorf("%s did not start successfully\n Journalctl output: %q", unit, out)
+	}
+	return nil
+}
+
+func checkFilesystemSize(size int) error {
+	c := exec.Command("bash", "-c", "echo $(($(stat -f /sysroot --format '%S * %b')))")
+	filesystemSizeStr, err := c.Output()
+	if err != nil {
+		return fmt.Errorf("Error getting filesystem size: %s", err)
+	}
+	filesystemSize, err := strconv.Atoi(strings.TrimSuffix(string(filesystemSizeStr), "\n"))
+	if err != nil {
+		return fmt.Errorf("Error converting filesystem size from string to int: %s", err)
+	}
+	if filesystemSize < size {
+		return fmt.Errorf("Filesystem size is less than %d bytes, size in bytes: %d", size, filesystemSize)
 	}
 	return nil
 }
