@@ -377,9 +377,14 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			continue
 		}
 
-		// Check native tests for arch specific exclusion
+		// Check native tests for arch-specific and distro-specfic exclusion
 		for k, NativeFuncWrap := range t.NativeFuncs {
-			_, excluded := isAllowed(system.RpmArch(), nil, NativeFuncWrap.ExcludeArchitectures)
+			_, excluded := isAllowed(Options.Distribution, nil, NativeFuncWrap.Exclusions)
+			if excluded {
+				delete(t.NativeFuncs, k)
+				continue
+			}
+			_, excluded = isAllowed(system.RpmArch(), nil, NativeFuncWrap.Exclusions)
 			if excluded {
 				delete(t.NativeFuncs, k)
 			}

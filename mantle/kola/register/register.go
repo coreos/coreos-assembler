@@ -32,15 +32,17 @@ const (
 	RequiresInternetAccess             // run the test only if the platform supports Internet access
 )
 
-// Wrapper for the NativeFunc which includes an optional string of arches to exclude for each native test
+// NativeFuncWrap is a wrapper for the NativeFunc which includes an optional string of arches and/or distributions to
+// exclude for each native test.
 type NativeFuncWrap struct {
-	NativeFunc           func() error
-	ExcludeArchitectures []string
+	NativeFunc func() error
+	Exclusions []string
 }
 
-// Simple constructor for returning NativeFuncWrap structure
-func CreateNativeFuncWrap(f func() error, excludearches ...string) NativeFuncWrap {
-	return NativeFuncWrap{f, excludearches}
+// CreateNativeFuncWrap is a simple constructor for returning NativeFuncWrap structure.
+// exclusions can be architectures and/or distributions.
+func CreateNativeFuncWrap(f func() error, exclusions ...string) NativeFuncWrap {
+	return NativeFuncWrap{f, exclusions}
 }
 
 // Test provides the main test abstraction for kola. The run function is
