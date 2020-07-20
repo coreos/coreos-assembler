@@ -143,6 +143,7 @@ type ImageFormat struct {
 	Disk      *ImageType `json:"disk,omitempty"`
 	Kernel    *ImageType `json:"kernel,omitempty"`
 	Initramfs *ImageType `json:"initramfs,omitempty"`
+	Rootfs    *ImageType `json:"rootfs,omitempty"`
 }
 
 // ImageType contains image detail
