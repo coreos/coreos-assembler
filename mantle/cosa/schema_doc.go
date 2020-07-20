@@ -342,6 +342,7 @@ var generatedSchemaJSON = `{
        "live-kernel",
        "live-initramfs",
        "live-iso",
+       "live-rootfs",
        "metal",
        "metal4k",
        "openstack",
@@ -422,6 +423,12 @@ var generatedSchemaJSON = `{
         "title":"Live ISO",
         "$ref": "#/definitions/artifact"
        },
+       "live-rootfs": {
+         "$id":"#/properties/images/properties/live-rootfs",
+         "type":"object",
+         "title":"Live Rootfs",
+         "$ref": "#/definitions/artifact"
+        },
        "openstack": {
          "$id":"#/properties/images/properties/openstack",
          "type":"object",
