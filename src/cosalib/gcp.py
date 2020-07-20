@@ -65,6 +65,8 @@ def gcp_run_ore(build, args):
     ]
     if args.description:
         ore_upload_cmd.extend(['--description', args.description])
+    if args.public:
+        ore_upload_cmd.extend(['--public'])
     if not args.create_image:
         ore_upload_cmd.extend(['--create-image=false'])
     if args.license:
@@ -153,4 +155,8 @@ def gcp_cli(parser):
                         action="store_true",
                         default=False,
                         help="If the image should be marked as deprecated")
+    parser.add_argument("--public",
+                        action="store_true",
+                        default=False,
+                        help="If the image should be given public ACLs")
     return parser

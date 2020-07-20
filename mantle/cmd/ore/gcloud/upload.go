@@ -44,6 +44,7 @@ var (
 	uploadImageFamily      string
 	uploadImageDescription string
 	uploadCreateImage      bool
+	uploadPublic           bool
 	uploadImageLicenses    []string
 )
 
@@ -59,6 +60,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
 	cmdUpload.Flags().StringVar(&uploadImageDescription, "description", "", "The description that should be attached to the image")
 	cmdUpload.Flags().BoolVar(&uploadCreateImage, "create-image", true, "Create an image in GCP after uploading")
+	cmdUpload.Flags().BoolVar(&uploadPublic, "public", false, "Set public ACLs on image")
 	cmdUpload.Flags().StringSliceVar(
 		&uploadImageLicenses, "license", []string{},
 		"License to attach to image. Can be specified multiple times.")
@@ -175,6 +177,16 @@ func runUpload(cmd *cobra.Command, args []string) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Creating GCE image failed: %v\n", err)
 			os.Exit(1)
+		}
+
+		// If requested, set the image ACL to public
+		if uploadPublic {
+			fmt.Printf("Setting image to have public access: %v\n", imageNameGCE)
+			err = api.SetImagePublic(imageNameGCE)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Marking GCE image with public ACLs failed: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	}
 
