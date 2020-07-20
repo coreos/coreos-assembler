@@ -77,6 +77,7 @@ type BuildArtifacts struct {
 	LiveInitramfs *Artifact `json:"live-initramfs,omitempty"`
 	LiveIso       *Artifact `json:"live-iso,omitempty"`
 	LiveKernel    *Artifact `json:"live-kernel,omitempty"`
+	LiveRootfs    *Artifact `json:"live-rootfs,omitempty"`
 	Metal         *Artifact `json:"metal,omitempty"`
 	Metal4KNative *Artifact `json:"metal4k,omitempty"`
 	OpenStack     *Artifact `json:"openstack,omitempty"`

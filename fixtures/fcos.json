@@ -91,6 +91,10 @@
             "path": "fedora-coreos-31.20200310.20.0-live-initramfs.x86_64.img",
             "sha256": "cbbf3a6cf94129afa598fba6b1d0e00738d80b5b43ee462d633ed4b8d59cc11b"
         },
+        "live-rootfs": {
+            "path": "fedora-coreos-31.20200310.20.0-live-rootfs.x86_64.img",
+            "sha256": "dbbf3a6cf94129afa598fba6b1d0e00738d80b5b43ee462d633ed4b8d59cc11b"
+        },
         "azure": {
             "path": "fedora-coreos-31.20200310.20.0-azure.x86_64.vhd.xz",
             "sha256": "4062628000a1e114d3eb7a75332d01ab516445eedacfa5cf5bbdd40c89cb68e1",
