@@ -4,6 +4,7 @@
 # An operation that creates an ISO image for installing CoreOS
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -45,6 +46,8 @@ parser.add_argument("--fast", action='store_true', default=False,
                     help="Reduce compression for development (FCOS only)")
 parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
+parser.add_argument("--legacy-pxe", action='store_true', default=False,
+                    help="Generate stub PXE rootfs image")
 parser.add_argument("--no-pxe", action='store_true', default=False,
                     help="Do not generate PXE media")
 args = parser.parse_args()
@@ -108,11 +111,15 @@ tmpisoimages = os.path.join(tmpisoroot, 'images')
 tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
 # contents of initramfs on both PXE and ISO
 tmpinitrd_base = os.path.join(tmpdir, 'initrd-base')
+# additional contents of initramfs on ISO
+tmpinitrd_iso = os.path.join(tmpdir, 'initrd-iso')
 # additional contents of initramfs on PXE
 tmpinitrd_pxe = os.path.join(tmpdir, 'initrd-pxe')
+# contents of PXE rootfs image
+tmpinitrd_pxe_rootfs = os.path.join(tmpdir, 'initrd-pxe-rootfs')
 
 for d in (tmpdir, tmpisoroot, tmpisoimages, tmpisoisolinux, tmpinitrd_base,
-        tmpinitrd_pxe):
+        tmpinitrd_iso, tmpinitrd_pxe, tmpinitrd_pxe_rootfs):
     os.mkdir(d)
 
 # Number of padding bytes at the end of the ISO initramfs for embedding
@@ -143,6 +150,20 @@ def extend_initrd(initramfs, tmproot):
 
 def cp_reflink(src, dest):
     subprocess.check_call(['cp', '--reflink=auto', src, dest])
+
+
+# Make stream hash for `rdcore stream-hash`
+# https://github.com/coreos/coreos-installer/blob/a8d6f50dea6e/src/bin/rdcore/stream_hash.rs#L26-L41
+def make_stream_hash(src, dest):
+    bufsize = 2 * 1024 * 1024
+    with open(src, 'rb') as inf:
+        with open(dest, 'w') as outf:
+            outf.write('stream-hash sha256 {}\n'.format(bufsize))
+            while True:
+                buf = inf.read(bufsize)
+                if not buf:
+                    break
+                outf.write(hashlib.sha256(buf).hexdigest() + '\n')
 
 
 def generate_iso():
@@ -182,19 +203,33 @@ def generate_iso():
         os.chmod(os.path.join(tmpisoimages, file), 0o644)
 
     # Generate initramfs stamp file which says whether it's a live or legacy
-    # initramfs.
+    # initramfs.  Store the build ID in it.
     if is_live:
         stampname = 'etc/coreos-live-initramfs'
     else:
         stampname = 'etc/coreos-legacy-installer-initramfs'
     stamppath = os.path.join(tmpinitrd_base, stampname)
     os.makedirs(os.path.dirname(stamppath), exist_ok=True)
-    open(stamppath, 'w').close()
+    with open(stamppath, 'w') as fh:
+        fh.write(args.build + '\n')
+
+    # Generate rootfs stamp file with the build ID, indicating that the
+    # rootfs has been appended and confirming that initramfs and rootfs are
+    # from the same build.
+    if is_live:
+        stamppath = os.path.join(tmpinitrd_pxe_rootfs, 'etc/coreos-live-rootfs')
+        os.makedirs(os.path.dirname(stamppath), exist_ok=True)
+        with open(stamppath, 'w') as fh:
+            fh.write(args.build + '\n')
 
     # Add osmet files
+    if args.legacy_pxe:
+        tmpinitrd_pxe_or_rootfs = tmpinitrd_pxe
+    else:
+        tmpinitrd_pxe_or_rootfs = tmpinitrd_pxe_rootfs
     if is_live:
-        tmp_osmet = os.path.join(tmpinitrd_base, img_metal_obj['path'] + '.osmet')
-        tmp_osmet4k = os.path.join(tmpinitrd_base, img_metal4k_obj['path'] + '.osmet')
+        tmp_osmet = os.path.join(tmpinitrd_iso, img_metal_obj['path'] + '.osmet')
+        tmp_osmet4k = os.path.join(tmpinitrd_iso, img_metal4k_obj['path'] + '.osmet')
         print(f'Generating osmet file for 512b metal image')
         run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                      img_metal, '512', tmp_osmet, img_metal_checksum,
@@ -203,6 +238,9 @@ def generate_iso():
         run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                      img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
                      'fast' if args.fast else 'normal'])
+        if not args.no_pxe:
+            cp_reflink(tmp_osmet, os.path.join(tmpinitrd_pxe_or_rootfs, os.path.basename(tmp_osmet)))
+            cp_reflink(tmp_osmet4k, os.path.join(tmpinitrd_pxe_or_rootfs, os.path.basename(tmp_osmet4k)))
 
     # Generate root squashfs
     tmp_squashfs = None
@@ -212,7 +250,7 @@ def generate_iso():
         run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
                     img_metal, tmp_squashfs, squashfs_compression])
         if not args.no_pxe:
-            cp_reflink(tmp_squashfs, os.path.join(tmpinitrd_pxe, 'root.squashfs'))
+            cp_reflink(tmp_squashfs, os.path.join(tmpinitrd_pxe_or_rootfs, 'root.squashfs'))
 
     # Generate initramfses
     # Add common content
@@ -222,8 +260,17 @@ def generate_iso():
         # Clone to PXE image
         pxe_initramfs = os.path.join(tmpdir, initramfs_img)
         cp_reflink(iso_initramfs, pxe_initramfs)
+        # Generate rootfs image
+        if is_live:
+            pxe_rootfs = os.path.join(tmpdir, 'rootfs.img')
+            extend_initrd(pxe_rootfs, tmpinitrd_pxe_rootfs)
+            # Save stream hash of rootfs for verifying out-of-band fetches
+            os.makedirs(os.path.join(tmpinitrd_pxe, 'etc'), exist_ok=True)
+            make_stream_hash(pxe_rootfs, os.path.join(tmpinitrd_pxe, 'etc/coreos-live-want-rootfs'))
         # Add additional content to PXE image
         extend_initrd(pxe_initramfs, tmpinitrd_pxe)
+    # Add additional content to ISO image
+    extend_initrd(iso_initramfs, tmpinitrd_iso)
     # Add Ignition padding to ISO image
     with open(iso_initramfs, 'ab') as fdst:
         fdst.write(bytes(initrd_ignition_padding))
@@ -467,6 +514,16 @@ def generate_iso():
                 'sha256': sha256sum_file(initramfs_file)
             }
         })
+        if is_live:
+            rootfs_name = f'{base_name}-{args.build}-{image_type}-rootfs.{basearch}.img'
+            rootfs_file = os.path.join(builddir, rootfs_name)
+            shutil.move(pxe_rootfs, rootfs_file)
+            buildmeta['images'].update({
+                'live-rootfs': {
+                    'path': rootfs_name,
+                    'sha256': sha256sum_file(rootfs_file)
+                }
+            })
 
     write_json(buildmeta_path, buildmeta)
     print(f"Updated: {buildmeta_path}")
