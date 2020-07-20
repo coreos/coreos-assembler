@@ -16,6 +16,7 @@ package platform
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net"
@@ -96,6 +97,7 @@ type Install struct {
 	IgnitionSpec2   bool
 	LegacyInstaller bool
 	Native4k        bool
+	PxeAppendRootfs bool
 
 	// These are set by the install path
 	kargs        []string
@@ -137,6 +139,7 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Confi
 		mach, err = inst.runPXE(&kernelSetup{
 			kernel:    inst.CosaBuild.Meta.BuildArtifacts.LiveKernel.Path,
 			initramfs: inst.CosaBuild.Meta.BuildArtifacts.LiveInitramfs.Path,
+			rootfs:    inst.CosaBuild.Meta.BuildArtifacts.LiveRootfs.Path,
 		}, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "testing live installer")
@@ -158,7 +161,7 @@ func (inst *InstalledMachine) Destroy() error {
 }
 
 type kernelSetup struct {
-	kernel, initramfs string
+	kernel, initramfs, rootfs string
 }
 
 type pxeSetup struct {
@@ -275,8 +278,22 @@ func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error
 		return nil, err
 	}
 
-	for _, name := range []string{kern.kernel, kern.initramfs} {
+	for _, name := range []string{kern.kernel, kern.initramfs, kern.rootfs} {
+		if name == "" {
+			continue
+		}
 		if err := absSymlink(filepath.Join(builddir, name), filepath.Join(tftpdir, name)); err != nil {
+			return nil, err
+		}
+	}
+	if kern.rootfs != "" && inst.PxeAppendRootfs {
+		// replace the initramfs symlink with a concatenation of
+		// the initramfs and rootfs
+		initrd := filepath.Join(tftpdir, kern.initramfs)
+		if err := os.Remove(initrd); err != nil {
+			return nil, err
+		}
+		if err := cat(initrd, filepath.Join(builddir, kern.initramfs), filepath.Join(builddir, kern.rootfs)); err != nil {
 			return nil, err
 		}
 	}
@@ -369,6 +386,9 @@ func (t *installerRun) destroy() error {
 }
 
 func (t *installerRun) completePxeSetup(kargs []string) error {
+	if t.kern.rootfs != "" && !t.inst.PxeAppendRootfs {
+		kargs = append(kargs, fmt.Sprintf("coreos.live.rootfs_url=%s/%s", t.baseurl, t.kern.rootfs))
+	}
 	kargsStr := strings.Join(kargs, " ")
 
 	var bootfile string
@@ -434,6 +454,26 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 
 	t.pxe.bootfile = bootfile
 
+	return nil
+}
+
+func cat(outfile string, infiles ...string) error {
+	out, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	for _, infile := range infiles {
+		in, err := os.Open(infile)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+		_, err = io.Copy(out, in)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
