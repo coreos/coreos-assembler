@@ -217,3 +217,34 @@ func (a *API) UpdateImage(name string, family string, description string) (*Pend
 	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
 	return a.NewPending(op.Name, opReq), nil
 }
+
+// https://cloud.google.com/compute/docs/images/managing-access-custom-images#share-images-publicly
+func (a *API) SetImagePublic(name string) error {
+	// The IAM policy binding to allow all authenticated users to
+	// use an image
+	publicbinding := &compute.Binding{
+		Members: []string{"allAuthenticatedUsers"},
+		Role:    "roles/compute.imageUser",
+	}
+
+	// Get the current policy for the image
+	policy, err := a.compute.Images.GetIamPolicy(a.options.Project, name).Do()
+	if err != nil {
+		return fmt.Errorf("Getting image %s IAM policy failed: %v", name, err)
+	}
+
+	// Add entries to the policy to make the image public.
+	policy.Bindings = append(policy.Bindings, publicbinding)
+
+	// Make the call to make it public. If the image is already
+	// public for whatever reason doing this has no effect.
+	globalsetpolicyrequest := &compute.GlobalSetPolicyRequest{
+		Policy: policy,
+	}
+	_, err = a.compute.Images.SetIamPolicy(
+		a.options.Project, name, globalsetpolicyrequest).Do()
+	if err != nil {
+		return fmt.Errorf("Setting image %s IAM policy failed: %v", name, err)
+	}
+	return nil
+}
