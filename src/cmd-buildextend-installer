@@ -176,7 +176,7 @@ def generate_iso():
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
                      f"{buildmeta_commit}", tmpisoimages])
         # initramfs isn't world readable by default so let's open up perms
-        os.chmod(os.path.join(tmpisoimages, file), 0o755)
+        os.chmod(os.path.join(tmpisoimages, file), 0o644)
 
     initramfs = os.path.join(tmpisoimages, initramfs_img)
     base_initramfs = os.path.join(tmpdir, initramfs_img)
