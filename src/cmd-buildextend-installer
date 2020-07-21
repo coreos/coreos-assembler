@@ -41,6 +41,8 @@ live_exclude_kargs = set([
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
+parser.add_argument("--fast", action='store_true', default=False,
+                    help="Reduce compression for development (FCOS only)")
 parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
 parser.add_argument("--no-pxe", action='store_true', default=False,
@@ -55,7 +57,7 @@ print(f"Targeting build: {args.build}")
 
 with open('src/config/image.yaml') as fh:
     image_yaml = yaml.safe_load(fh)
-squashfs_compression = image_yaml.get('squashfs-compression', 'zstd')
+squashfs_compression = 'lz4' if args.fast else image_yaml.get('squashfs-compression', 'zstd')
 
 # Hacky mode switch, until we can drop support for the installer images
 is_live = os.path.basename(sys.argv[0]).endswith('-live')
