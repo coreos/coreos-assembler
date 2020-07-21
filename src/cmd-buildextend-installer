@@ -57,10 +57,6 @@ with open('src/config/image.yaml') as fh:
     image_yaml = yaml.safe_load(fh)
 squashfs_compression = image_yaml.get('squashfs-compression', 'zstd')
 
-# We make this a knob so that RHCOS can disable it until it supports osmet. See
-# https://github.com/coreos/coreos-installer/issues/224.
-osmet = image_yaml.get('osmet', True)
-
 # Hacky mode switch, until we can drop support for the installer images
 is_live = os.path.basename(sys.argv[0]).endswith('-live')
 if is_live:
@@ -192,7 +188,7 @@ def generate_iso():
     open(stamppath, 'w').close()
 
     # Add osmet files
-    if is_live and osmet:
+    if is_live:
         tmp_osmet = os.path.join(tmpinitrd_base, img_metal_obj['path'] + '.osmet')
         print(f'Generating osmet file for 512b metal image')
         run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
