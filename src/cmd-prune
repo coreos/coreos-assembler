@@ -8,9 +8,11 @@ import argparse
 import os
 import sys
 import subprocess
-
+import json
+import string
 
 from shutil import rmtree
+from cosalib import cmdlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds, get_local_builds
@@ -23,6 +25,8 @@ parser = argparse.ArgumentParser(prog="coreos-assembler prune")
 parser.add_argument("--workdir", default='.', help="Path to workdir")
 parser.add_argument("--dry-run", help="Don't actually delete anything",
                     action='store_true')
+parser.add_argument("--pkgcache", help="Prune refs packages from the pkgcache",
+                    action='store_true')
 strategy = parser.add_mutually_exclusive_group()
 strategy.add_argument("--keep-last-n", type=int, metavar="N",
                       default=DEFAULT_KEEP_LAST_N,
@@ -30,6 +34,59 @@ strategy.add_argument("--keep-last-n", type=int, metavar="N",
 strategy.add_argument("--build", metavar="BUILDID", action='append',
                       default=[], help="Explicitly prune BUILDID")
 args = parser.parse_args()
+
+
+def rpmostree_quote(s):
+    r = ""
+    for c in s:
+        if c in ('.') or c in string.ascii_letters or c in string.digits:
+            r += c
+        elif c == '_':
+            r += "__"
+        else:
+            r += "{0:02X}".format(ord(c))
+    return r
+
+
+# refer to rpmostree_nevra_to_cache_branch() in rpm-ostree: https://github.com/coreos/rpm-ostree/blob/1c9ea5dab3528477112c04314e5615c371d02118/src/libpriv/rpmostree-rpm-util.c#L1295
+def nevra_to_cache_branch(pkg):
+    name = pkg[0]
+
+    epoch = "" if pkg[1] == "0" else pkg[1] + "_3A"
+    version = pkg[2]
+    release = pkg[3]
+    evr = epoch + version + "-" + release
+
+    arch = rpmostree_quote(pkg[4])
+
+    cache_branch = "rpmostree/pkg/" + name + "/" + evr + "." + arch
+
+    return cache_branch
+
+
+if args.pkgcache:
+    arch = cmdlib.get_basearch()
+    metapath = f"builds/latest/{arch}/commitmeta.json"
+    with open(metapath) as f:
+        meta = json.load(f)
+    build_pkg_nevra = meta['rpmostree.rpmdb.pkglist']
+    build_pkg = []
+    for pkg in build_pkg_nevra:
+        cache_branch = nevra_to_cache_branch(pkg)
+        build_pkg.append(cache_branch)
+
+    # In order to improve efficiency, only prune those refs packages modified over 30 days
+    ref_pkg = subprocess.check_output("find cache/pkgcache-repo/refs/heads/rpmostree/pkg/ -mtime +30 -type f", shell=True).decode('utf-8').split("\n")
+    del ref_pkg[-1]
+    for pkg in ref_pkg:
+        # pkg starts with "cache/pkgcache-repo/refs/heads/"
+        n = len("cache/pkgcache-repo/refs/heads/")
+        if pkg[n:] not in build_pkg:
+            print(f"Deleted {pkg[n:]}")
+            subprocess.call(f"sudo ostree refs --repo=cache/pkgcache-repo --delete {pkg[n:]}", shell=True)
+
+    sys.exit(0)
+
 
 skip_pruning = (args.keep_last_n == 0)
 

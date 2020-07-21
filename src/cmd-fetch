@@ -5,6 +5,18 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+FILE=cache/pkgcache-repo
+if [ -d "${FILE}" ]
+then
+        pkgcachesize=$(du --bytes --max-depth 0 "${FILE}" \
+                       | awk '{print $1; exit}')
+        pkglimit=$((1024 * 1024 * 1024 * 5))
+        if [[ "${pkgcachesize}" -gt "${pkglimit}" ]]
+        then
+                sudo cosa prune --pkgcache
+        fi
+fi
+
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
