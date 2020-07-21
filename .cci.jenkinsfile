@@ -63,7 +63,7 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
           parallel metal: {
               shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal")
           }, metal4k: {
-              shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal4k --no-pxe")
+              shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal4k --no-pxe --qemu-native-4k")
           }
         } finally {
           shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
