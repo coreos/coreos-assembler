@@ -421,7 +421,7 @@ func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
 // register tests in their init() function.  outputDir is where various test
 // logs and data will be written for analysis after the test run. If it already
 // exists it will be erased!
-func runProvidedTests(tests map[string]*register.Test, patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
+func runProvidedTests(tests map[string]*register.Test, patterns []string, multiply int, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -440,6 +440,21 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, pltfrm
 			skipGetVersion = false
 			break
 		}
+	}
+
+	if multiply > 1 {
+		newTests := make(map[string]*register.Test)
+		for name, t := range tests {
+			delete(register.Tests, name)
+			for i := 0; i < multiply; i++ {
+				newName := fmt.Sprintf("%s%d", name, i)
+				newT := *t
+				newT.Name = newName
+				newTests[newName] = &newT
+				register.RegisterTest(&newT)
+			}
+		}
+		tests = newTests
 	}
 
 	flight, err := NewFlight(pltfrm)
@@ -504,12 +519,12 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, pltfrm
 	return err
 }
 
-func RunTests(patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.Tests, patterns, pltfrm, outputDir, propagateTestErrors)
+func RunTests(patterns []string, multiply int, pltfrm, outputDir string, propagateTestErrors bool) error {
+	return runProvidedTests(register.Tests, patterns, multiply, pltfrm, outputDir, propagateTestErrors)
 }
 
 func RunUpgradeTests(patterns []string, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.UpgradeTests, patterns, pltfrm, outputDir, propagateTestErrors)
+	return runProvidedTests(register.UpgradeTests, patterns, 0, pltfrm, outputDir, propagateTestErrors)
 }
 
 // externalTestMeta is parsed from kola.json in external tests
