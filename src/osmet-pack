@@ -10,6 +10,7 @@ if [ ! -f /etc/cosa-supermin ]; then
     sector_size=$1; shift
     osmet_dest=$1; shift
     checksum=$1; shift
+    speed=$1; shift
     coreinst=${1:-${OSMET_PACK_COREOS_INSTALLER:-}}
 
     workdir=$(pwd)
@@ -22,7 +23,7 @@ if [ ! -f /etc/cosa-supermin ]; then
         fatal "Cannot pack osmet from $img; not an uncompressed image"
     fi
 
-    set -- "${TMPDIR}/osmet.bin" "${checksum}"
+    set -- "${TMPDIR}/osmet.bin" "${checksum}" "${speed}"
     if [ -n "${coreinst:-}" ]; then
         cp "${coreinst}" "${TMPDIR}/coreos-installer"
         set -- "$@" "${TMPDIR}/coreos-installer"
@@ -48,6 +49,7 @@ fi
 
 osmet_dest=$1; shift
 checksum=$1; shift
+speed=$1; shift
 coreinst=${1:-}
 
 set -x
@@ -79,8 +81,14 @@ if [ -z "${coreinst}" ]; then
     coreinst=${deploydir}/usr/bin/coreos-installer
 fi
 
+case "$speed" in
+    fast)      fast=--fast ;;
+    normal)    fast=       ;;
+    *)         exit 1      ;;
+esac
+
 RUST_BACKTRACE=full "${coreinst}" osmet pack /dev/disk/by-id/virtio-osmet \
     --description "${description}" \
     --checksum "${checksum}" \
     ${real_rootdev:+--real-rootdev ${real_rootdev}} \
-    --output "${osmet_dest}"
+    --output "${osmet_dest}" $fast
