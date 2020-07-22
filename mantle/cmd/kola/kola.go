@@ -119,11 +119,13 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 
 	extDependencyDir string
 	runExternals     []string
+	runMultiply      int
 )
 
 func init() {
 	root.AddCommand(cmdRun)
 	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
+	cmdRun.Flags().IntVar(&runMultiply, "multiply", 0, "Run the provided tests N times (useful to find race conditions)")
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
@@ -200,7 +202,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, runMultiply, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
