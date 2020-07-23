@@ -159,6 +159,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		config = newconfig
 	}
 	builder := platform.NewBuilder()
+	defer builder.Close()
 	for _, b := range bindro {
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
@@ -188,7 +189,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		builder.IgnitionNetworkKargs = knetargs
 	}
 	builder.AppendKernelArguments = kargs
-	defer builder.Close()
 	builder.Firmware = kola.QEMUOptions.Firmware
 	if kola.QEMUOptions.DiskImage != "" {
 		channel := "virtio"

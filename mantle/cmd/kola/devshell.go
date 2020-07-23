@@ -98,12 +98,11 @@ func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(tmpd)
 	sshPubKeyBuf, sshKeyPath, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
 		return err
 	}
-
-	defer os.RemoveAll(tmpd)
 
 	sshPubKey := v3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 
