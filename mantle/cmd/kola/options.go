@@ -48,7 +48,7 @@ func init() {
 
 	// general options
 	sv(&outputDir, "output-dir", "", "Temporary output directory for test data and logs")
-	root.PersistentFlags().StringVarP(&kolaPlatform, "platform", "p", "qemu-unpriv", "VM platform: "+strings.Join(kolaPlatforms, ", "))
+	root.PersistentFlags().StringVarP(&kolaPlatform, "platform", "p", "", "VM platform: "+strings.Join(kolaPlatforms, ", "))
 	root.PersistentFlags().StringVarP(&kola.Options.Distribution, "distro", "b", "", "Distribution: "+strings.Join(kolaDistros, ", "))
 	root.PersistentFlags().IntVarP(&kola.TestParallelism, "parallel", "j", 1, "number of tests to run in parallel")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
@@ -157,6 +157,13 @@ func syncOptionsImpl(useCosa bool) error {
 			}
 		}
 		return fmt.Errorf("unsupported %v %q", name, item)
+	}
+
+	// TODO: Could also auto-synchronize if e.g. --aws-ami is passed
+	if kolaPlatform == "" && kola.QEMUIsoOptions.IsoPath != "" {
+		kolaPlatform = "qemu-iso"
+	} else {
+		kolaPlatform = "qemu-unpriv"
 	}
 
 	// There used to be a "privileged" qemu path, it is no longer supported.
