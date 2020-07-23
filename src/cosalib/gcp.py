@@ -6,6 +6,10 @@ from tenacity import (
     stop_after_attempt
 )
 
+# https://github.com/coreos/coreos-assembler/pull/1477#issuecomment-634275570
+DEFAULT_LICENSES = [
+    "https://compute.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx"
+]
 
 # This is the naming rule used by GCP and is used to check image
 # names during upload. See:
@@ -69,9 +73,8 @@ def gcp_run_ore(build, args):
         ore_upload_cmd.extend(['--public'])
     if not args.create_image:
         ore_upload_cmd.extend(['--create-image=false'])
-    if args.license:
-        for license in args.license:
-            ore_upload_cmd.extend(['--license', license])
+    for license in args.license or DEFAULT_LICENSES:
+        ore_upload_cmd.extend(['--license', license])
     run_verbose(ore_upload_cmd)
 
     # Run deprecate image to deprecate if requested
