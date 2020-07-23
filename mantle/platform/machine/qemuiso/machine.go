@@ -27,7 +27,7 @@ import (
 type machine struct {
 	qc          *Cluster
 	id          string
-	inst        platform.QemuInstance
+	inst        *platform.QemuInstance
 	journal     *platform.Journal
 	consolePath string
 	console     string

@@ -161,7 +161,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	if err != nil {
 		return nil, err
 	}
-	qm.inst = *inst
+	qm.inst = inst
 
 	err = util.Retry(6, 5*time.Second, func() error {
 		var err error
