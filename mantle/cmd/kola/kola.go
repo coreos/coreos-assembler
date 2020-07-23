@@ -74,7 +74,6 @@ will be ignored.
 		Long:         `Run all upgrade kola tests (default) or related groups.`,
 		RunE:         runRunUpgrade,
 		PreRunE:      preRunUpgrade,
-		PostRun:      postRunUpgrade,
 		SilenceUsage: true,
 	}
 
@@ -505,6 +504,7 @@ func preRunUpgrade(cmd *cobra.Command, args []string) error {
 	if findParentImage {
 		err = syncFindParentImageOptions()
 		if err != nil {
+			runUpgradeCleanup()
 			return err
 		}
 	}
@@ -512,7 +512,7 @@ func preRunUpgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func postRunUpgrade(cmd *cobra.Command, args []string) {
+func runUpgradeCleanup() {
 	if qemuImageDir != "" && qemuImageDirIsTemp {
 		os.RemoveAll(qemuImageDir)
 	}
@@ -646,6 +646,8 @@ func getParentFcosBuildBase(stream string) (string, error) {
 }
 
 func runRunUpgrade(cmd *cobra.Command, args []string) error {
+	defer runUpgradeCleanup()
+
 	outputDir, err := kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
 		return err
