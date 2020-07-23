@@ -481,10 +481,11 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 	if err != nil {
 		return nil, err
 	}
+	tempdir := t.tempdir
 	t.tempdir = "" // Transfer ownership
 	return &InstalledMachine{
 		QemuInst: qinst,
-		tempdir:  t.tempdir,
+		tempdir:  tempdir,
 	}, nil
 }
 
