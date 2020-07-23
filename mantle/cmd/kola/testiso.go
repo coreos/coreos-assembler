@@ -408,11 +408,11 @@ func testPXE(inst platform.Install, outdir string) error {
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(tmpd)
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpd)
 	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 	liveConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -508,11 +508,11 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(tmpd)
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpd)
 	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
 	liveConfig := ignv3types.Config{
 		Ignition: ignv3types.Ignition{
@@ -582,6 +582,7 @@ func testLiveLogin(outdir string) error {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder := newBaseQemuBuilder()
+	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
 	builder.AddIso(isopath, "")
 
