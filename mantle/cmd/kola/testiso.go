@@ -258,12 +258,6 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		baseInst.Insecure = true
 	}
 
-	tmpd, err := ioutil.TempDir("", "kola-testiso")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmpd)
-
 	ranTest := false
 
 	foundLegacy := baseInst.CosaBuild.Meta.BuildArtifacts.Kernel != nil

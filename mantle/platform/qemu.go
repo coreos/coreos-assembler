@@ -268,7 +268,7 @@ func (builder *QemuBuilder) ensureTempdir() error {
 	if builder.tempdir != "" {
 		return nil
 	}
-	tempdir, err := ioutil.TempDir("", "mantle-qemu")
+	tempdir, err := ioutil.TempDir("/var/tmp", "mantle-qemu")
 	if err != nil {
 		return err
 	}

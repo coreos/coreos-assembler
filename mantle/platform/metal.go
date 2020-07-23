@@ -241,7 +241,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 
 	builder := inst.Builder
 
-	tempdir, err := ioutil.TempDir("", "kola-testiso")
+	tempdir, err := ioutil.TempDir("/var/tmp", "mantle-pxe")
 	if err != nil {
 		return nil, err
 	}
@@ -525,7 +525,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	inst.ignition = targetIgnition
 	inst.liveIgnition = liveIgnition
 
-	tempdir, err := ioutil.TempDir("", "mantle-metal")
+	tempdir, err := ioutil.TempDir("/var/tmp", "mantle-metal")
 	if err != nil {
 		return nil, err
 	}
