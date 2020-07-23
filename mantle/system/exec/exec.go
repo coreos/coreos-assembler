@@ -20,6 +20,7 @@ import (
 	"context"
 	"io"
 	"os/exec"
+	"sync"
 	"syscall"
 )
 
@@ -52,6 +53,7 @@ type Cmd interface {
 type ExecCmd struct {
 	*exec.Cmd
 	cancel context.CancelFunc
+	wait   sync.Once
 }
 
 func Command(name string, arg ...string) *ExecCmd {
@@ -66,6 +68,15 @@ func CommandContext(ctx context.Context, name string, arg ...string) *ExecCmd {
 	}
 }
 
+func (cmd *ExecCmd) Wait() error {
+	var err error
+	cmd.wait.Do(func() {
+		err = cmd.Cmd.Wait()
+	})
+	return err
+}
+
+// safe even if already dead
 func (cmd *ExecCmd) Kill() error {
 	cmd.cancel()
 	err := cmd.Wait()

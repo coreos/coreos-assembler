@@ -16,7 +16,6 @@ package ignition
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
@@ -94,12 +93,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 	}()
 	select {
 	case <-time.After(2 * time.Minute):
-		if inst != nil {
-			proc := os.Process{
-				Pid: inst.Pid(),
-			}
-			proc.Kill()
-		}
+		inst.Kill()
 		return errors.New("timed out waiting for initramfs error")
 	case err := <-errchan:
 		if err != nil {

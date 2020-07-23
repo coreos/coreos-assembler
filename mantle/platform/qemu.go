@@ -88,6 +88,10 @@ func (inst *QemuInstance) Pid() int {
 	return inst.qemu.Pid()
 }
 
+func (inst *QemuInstance) Kill() error {
+	return inst.qemu.Kill()
+}
+
 // Get the IP address with the forwarded port
 func (inst *QemuInstance) SSHAddress() (string, error) {
 	for _, fwdPorts := range inst.hostForwardedPorts {
@@ -100,12 +104,7 @@ func (inst *QemuInstance) SSHAddress() (string, error) {
 
 // Wait for the qemu process to exit
 func (inst *QemuInstance) Wait() error {
-	if inst.qemu != nil {
-		err := inst.qemu.Wait()
-		inst.qemu = nil
-		return err
-	}
-	return nil
+	return inst.qemu.Wait()
 }
 
 // WaitIgnitionError will only return if the instance
@@ -174,13 +173,10 @@ func (inst *QemuInstance) Destroy() {
 		inst.journalPipe.Close()
 		inst.journalPipe = nil
 	}
-	// check if qemu is dead before trying to kill it
-	if inst.qemu != nil {
-		if err := inst.qemu.Kill(); err != nil {
-			plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
-		}
+	// kill is safe if already dead
+	if err := inst.qemu.Kill(); err != nil {
+		plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
 	}
-	inst.qemu = nil
 	if inst.swtpm != nil {
 		inst.swtpm.Kill() // Ignore errors
 		inst.swtpm = nil
