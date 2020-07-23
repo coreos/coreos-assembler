@@ -147,6 +147,10 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Confi
 }
 
 func (inst *InstalledMachine) Destroy() error {
+	if inst.QemuInst != nil {
+		inst.QemuInst.Destroy()
+		inst.QemuInst = nil
+	}
 	if inst.tempdir != "" {
 		return os.RemoveAll(inst.tempdir)
 	}
