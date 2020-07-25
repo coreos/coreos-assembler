@@ -593,13 +593,20 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 	disk.dstFileName = tmpf.Name()
 
 	imgOpts := []string{"create", "-f", "qcow2", disk.dstFileName}
+	// On filesystems like btrfs, qcow2 files can become much more fragmented
+	// if copy-on-write is enabled.  We don't need that, our disks are ephemeral.
+	// https://gitlab.gnome.org/GNOME/gnome-boxes/-/issues/88
+	// https://btrfs.wiki.kernel.org/index.php/Gotchas#Fragmentation
+	// https://www.redhat.com/archives/libvir-list/2014-July/msg00361.html
+	qcow2Opts := "nocow=on"
 	if disk.BackingFile != "" {
 		backingFile, err := resolveBackingFile(disk.BackingFile)
 		if err != nil {
 			return err
 		}
-		imgOpts = append(imgOpts, "-o", fmt.Sprintf("backing_file=%s,lazy_refcounts=on", backingFile))
+		qcow2Opts += fmt.Sprintf(",backing_file=%s,lazy_refcounts=on", backingFile)
 	}
+	imgOpts = append(imgOpts, "-o", qcow2Opts)
 
 	if disk.Size != "" {
 		imgOpts = append(imgOpts, disk.Size)
