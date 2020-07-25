@@ -199,10 +199,10 @@ func absSymlink(src, dest string) error {
 
 // setupMetalImage handles compressing the metal image if necessary,
 // or just creating a symlink to it.
-func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
+func setupMetalImage(builddir, metalimg, destdir string, compress bool) (string, error) {
 	metalIsCompressed := !strings.HasSuffix(metalimg, ".raw")
 	metalname := metalimg
-	if !metalIsCompressed {
+	if compress && !metalIsCompressed {
 		fmt.Printf("Compressing %s\n", metalimg)
 		metalimgpath := filepath.Join(builddir, metalimg)
 		srcf, err := os.Open(metalimgpath)
@@ -231,7 +231,7 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 	}
 }
 
-func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
+func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error) {
 	if kern.kernel == "" {
 		return nil, fmt.Errorf("Missing kernel artifact")
 	}
@@ -287,7 +287,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	} else {
 		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
 	}
-	metalname, err := setupMetalImage(builddir, metalimg, tftpdir)
+	metalname, err := setupMetalImage(builddir, metalimg, tftpdir, legacy)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
 	}
@@ -460,7 +460,7 @@ func (t *installerRun) run() (*QemuInstance, error) {
 }
 
 func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, error) {
-	t, err := inst.setup(kern)
+	t, err := inst.setup(kern, legacy)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +552,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	} else {
 		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
 	}
-	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
+	metalname, err := setupMetalImage(builddir, metalimg, tempdir, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
 	}
