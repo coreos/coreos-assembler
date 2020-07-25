@@ -696,6 +696,10 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 
 	id := fmt.Sprintf("d%d", builder.diskId)
 
+	// Avoid file locking detection, and the disks we create
+	// here are always currently ephemeral.
+	defaultDiskOpts := "auto-read-only=off,cache=unsafe"
+
 	if disk.MultiPathDisk {
 		// Fake a NVME device with a fake WWN. All these attributes are needed in order
 		// to trick multipath-tools that this is a "real" multipath device.
@@ -715,8 +719,8 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			builder.Append("-device",
 				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
 					scsiId, pId, wwn, opts))
-			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,auto-read-only=off,media=disk",
-				pId, disk.attachEndPoint))
+			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,media=disk,%s",
+				pId, disk.attachEndPoint, defaultDiskOpts))
 		}
 	} else {
 		if !disk.NbdDisk {
@@ -735,8 +739,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			panic(fmt.Sprintf("Unhandled channel: %s", channel))
 		}
 
-		builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,auto-read-only=off",
-			id, disk.attachEndPoint))
+		// Default to cache=unsafe
+		builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,%s",
+			id, disk.attachEndPoint, defaultDiskOpts))
 	}
 	return nil
 }
