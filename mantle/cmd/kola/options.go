@@ -160,10 +160,12 @@ func syncOptionsImpl(useCosa bool) error {
 	}
 
 	// TODO: Could also auto-synchronize if e.g. --aws-ami is passed
-	if kolaPlatform == "" && kola.QEMUIsoOptions.IsoPath != "" {
-		kolaPlatform = "qemu-iso"
-	} else {
-		kolaPlatform = "qemu-unpriv"
+	if kolaPlatform == "" {
+		if kola.QEMUIsoOptions.IsoPath != "" {
+			kolaPlatform = "qemu-iso"
+		} else {
+			kolaPlatform = "qemu-unpriv"
+		}
 	}
 
 	// There used to be a "privileged" qemu path, it is no longer supported.
