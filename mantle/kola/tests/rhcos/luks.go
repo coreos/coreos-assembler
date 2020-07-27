@@ -116,9 +116,9 @@ func setupTangMachine(c cluster.TestCluster) (string, string) {
 
 	// TODO: move container image to centralized namespace
 	// container source: https://github.com/mike-nguyen/tang-docker-container/
-	containerID, _, err := m.SSH("sudo podman run -d -p 80:80 docker.io/mnguyenrh/tangd")
+	containerID, errMsg, err := m.SSH("sudo podman run -d -p 80:80 quay.io/mike_nguyen/tang")
 	if err != nil {
-		c.Fatalf("Unable to start Tang container: %v", err)
+		c.Fatalf("Unable to start Tang container: %v\n%s", err, string(errMsg))
 	}
 
 	// Wait a little bit for the container to start
