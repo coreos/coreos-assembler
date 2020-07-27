@@ -125,8 +125,7 @@ func init() {
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
 	cmdTestIso.Flags().BoolVarP(&noiso, "no-iso", "", false, "Skip testing live installer ISO")
 	cmdTestIso.Flags().BoolVar(&debug, "debug", false, "Display qemu console to stdout, turn off automatic initramfs failure checking")
-	// TODO: default to false once https://github.com/coreos/fedora-coreos-config/pull/528 lands
-	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", true, "Append rootfs to PXE initrd instead of fetching at runtime")
+	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
 	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOInstall}))
