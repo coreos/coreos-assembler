@@ -255,7 +255,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		Native4k:        kola.QEMUOptions.Native4k,
 		PxeAppendRootfs: pxeAppendRootfs,
 
-		IgnitionSpec2: kola.Options.IgnitionVersion == "v2",
+		IgnitionSpec2: kola.Options.IgnitionVersion == "v3",
 	}
 
 	if instInsecure {

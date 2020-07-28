@@ -243,7 +243,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if directIgnition {
 			return fmt.Errorf("Cannot use fragments/mounts with direct ignition")
 		}
-		builder.SetConfig(*config, kola.Options.IgnitionVersion == "v2")
+		builder.SetConfig(*config, kola.Options.IgnitionVersion == "v3")
 	} else if directIgnition {
 		builder.ConfigFile = ignition
 	}
