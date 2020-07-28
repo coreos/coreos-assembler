@@ -237,7 +237,7 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 			return err
 		}
 
-		ignc32exp, report3, err := v32exp.Parse([]byte(u.data))
+		ignc32exp, report32exp, err := v32exp.Parse([]byte(u.data))
 		if err == nil {
 			c.ignitionV32exp = &ignc32exp
 			if ignv2 {
@@ -245,7 +245,7 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 			}
 			return nil
 		} else if err != ign3err.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report3)
+			plog.Errorf("invalid userdata: %v", report32exp)
 			return err
 		}
 
@@ -515,7 +515,7 @@ func (c *Conf) addFileV32exp(path, filesystem, contents string, mode int) {
 func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 	if c.ignitionV3 != nil {
 		c.addFileV3(path, filesystem, contents, mode)
-	} else if c.ignitionV3 != nil {
+	} else if c.ignitionV32exp != nil {
 		c.addFileV32exp(path, filesystem, contents, mode)
 	} else if c.ignitionV2 != nil {
 		c.addFileV2(path, filesystem, contents, mode)
