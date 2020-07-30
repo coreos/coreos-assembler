@@ -169,9 +169,11 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         subprocess.check_call(['mkdir', '-p', dest_repo])
         subprocess.check_call([
             "ostree", "--repo=" + dest_repo, "init", "--mode=archive"])
-        # Note that oscontainers don't have refs
+        # Note that oscontainers don't have refs; we also disable fsync
+        # because the repo will be put into a container image and the build
+        # process should handle its own fsync (or choose not to).
         print("Copying ostree commit into container: {} ...".format(rev))
-        run_verbose(["ostree", "--repo=" + dest_repo, "pull-local", src, rev])
+        run_verbose(["ostree", "--repo=" + dest_repo, "pull-local", "--disable-fsync", src, rev])
 
         for d in add_directories:
             with os.scandir(d) as it:
