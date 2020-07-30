@@ -207,8 +207,10 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         with open(metapath) as f:
             meta = json.load(f)
         rhcos_commit = meta['coreos-assembler.container-config-git']['commit']
-        cosa_commit = meta['coreos-assembler.container-image-git']['commit']
-        config += ['-l', f"com.coreos.coreos-assembler-commit={cosa_commit}"]
+        imagegit = meta.get('coreos-assembler.container-image-git')
+        if imagegit is not None:
+            cosa_commit = imagegit['commit']
+            config += ['-l', f"com.coreos.coreos-assembler-commit={cosa_commit}"]
         config += ['-l', f"com.coreos.redhat-coreos-commit={rhcos_commit}"]
 
         if display_name is not None:
