@@ -23,7 +23,7 @@ import (
 	"reflect"
 	"strings"
 
-	ignconverter "github.com/coreos/ign-converter"
+	ignconverterv30tov22 "github.com/coreos/ign-converter/translate/v30tov22"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	systemdunit "github.com/coreos/go-systemd/unit"
@@ -224,7 +224,7 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 			c.ignitionV3 = &ignc3
 
 			if ignv2 {
-				newCfg, err := ignconverter.Translate3to2(*c.ignitionV3)
+				newCfg, err := ignconverterv30tov22.Translate(*c.ignitionV3)
 				if err != nil {
 					return err
 				}

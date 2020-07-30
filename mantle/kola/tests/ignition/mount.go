@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	ignconverter "github.com/coreos/ign-converter"
+	ignconverter "github.com/coreos/ign-converter/translate/v30tov22"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -118,7 +118,7 @@ func createClusterValidate(c cluster.TestCluster, options platform.MachineOption
 	var serializedConfig []byte
 	switch c.IgnitionVersion() {
 	case "v2":
-		v2ignconfig, err := ignconverter.Translate3to2(v3IgnitionConfig)
+		v2ignconfig, err := ignconverter.Translate(v3IgnitionConfig)
 		if err != nil {
 			break
 		}
