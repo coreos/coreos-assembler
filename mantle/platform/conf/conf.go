@@ -148,14 +148,14 @@ func (u *UserData) Contains(substr string) bool {
 	return strings.Contains(u.data, substr)
 }
 
-// Performs a string substitution and returns a new UserData.
+// Subst performs a string substitution and returns a new UserData.
 func (u *UserData) Subst(old, new string) *UserData {
 	ret := *u
 	ret.data = strings.Replace(u.data, old, new, -1)
 	return &ret
 }
 
-// Adds an SSH key and returns a new UserData.
+// AddKey adds an SSH key and returns a new UserData.
 func (u *UserData) AddKey(key agent.Key) *UserData {
 	ret := *u
 	ret.extraKeys = append(ret.extraKeys, &key)
