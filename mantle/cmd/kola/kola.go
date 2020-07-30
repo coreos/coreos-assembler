@@ -26,8 +26,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	ignconverter "github.com/coreos/ign-converter/translate/v30tov22"
-	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -37,6 +35,7 @@ import (
 	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
@@ -463,24 +462,12 @@ func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ignc3, _, err := ignv3.Parse(buf)
+	config, err := conf.Ignition(string(buf)).Render("", true)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not convert the given config to spec 2")
 	}
-	ignc2, err := ignconverter.Translate(ignc3)
-	if err != nil {
-		return err
-	}
-	obuf, err := json.Marshal(ignc2)
-	if err != nil {
-		return err
-	}
-	_, err = os.Stdout.Write(obuf)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = os.Stdout.Write([]byte(config.String()))
+	return err
 }
 
 func runArtifactIgnitionVersion(cmd *cobra.Command, args []string) error {
