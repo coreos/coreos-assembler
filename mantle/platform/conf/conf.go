@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	ignconverterv30tov22 "github.com/coreos/ign-converter/translate/v30tov22"
+	ignconverterv31tov24 "github.com/coreos/ign-converter/translate/v31tov24"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	systemdunit "github.com/coreos/go-systemd/unit"
@@ -42,6 +43,8 @@ import (
 	ign3err "github.com/coreos/ignition/v2/config/shared/errors"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
+	v31 "github.com/coreos/ignition/v2/config/v3_1"
+	v31types "github.com/coreos/ignition/v2/config/v3_1/types"
 	v32exp "github.com/coreos/ignition/v2/config/v3_2_experimental"
 	v32exptypes "github.com/coreos/ignition/v2/config/v3_2_experimental/types"
 	ign3validate "github.com/coreos/ignition/v2/config/validate"
@@ -84,6 +87,7 @@ type Conf struct {
 	ignitionV23 *v23types.Config
 	ignitionV24 *v24types.Config
 	ignitionV3  *v3types.Config
+	ignitionV31 *v31types.Config
 
 	ignitionV32exp *v32exptypes.Config
 }
@@ -237,6 +241,24 @@ func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
 			return err
 		}
 
+		ignc31, report31, err := v31.Parse([]byte(u.data))
+		if err == nil {
+			c.ignitionV31 = &ignc31
+
+			if ignv2 {
+				newCfg, err := ignconverterv31tov24.Translate(*c.ignitionV31)
+				if err != nil {
+					return err
+				}
+				c.ignitionV24 = &newCfg
+			}
+
+			return nil
+		} else if err != ign3err.ErrUnknownVersion {
+			plog.Errorf("invalid userdata: %v", report31)
+			return err
+		}
+
 		ignc32exp, report32exp, err := v32exp.Parse([]byte(u.data))
 		if err == nil {
 			c.ignitionV32exp = &ignc32exp
@@ -309,6 +331,9 @@ func (c *Conf) String() string {
 	} else if c.ignitionV3 != nil {
 		buf, _ := json.Marshal(c.ignitionV3)
 		return string(buf)
+	} else if c.ignitionV31 != nil {
+		buf, _ := json.Marshal(c.ignitionV31)
+		return string(buf)
 	} else if c.ignitionV32exp != nil {
 		buf, _ := json.Marshal(c.ignitionV32exp)
 		return string(buf)
@@ -334,6 +359,12 @@ func (c *Conf) MergeV3(newConfig v3types.Config) {
 	c.ignitionV3 = &mergeConfig
 }
 
+// MergeV31 merges a config with the ignitionV31 config via Ignition's merging function.
+func (c *Conf) MergeV31(newConfig v31types.Config) {
+	mergeConfig := v31.Merge(*c.ignitionV31, newConfig)
+	c.ignitionV31 = &mergeConfig
+}
+
 // MergeV32exp merges a config with the ignitionV32exp config via Ignition's merging function.
 func (c *Conf) MergeV32exp(newConfig v32exptypes.Config) {
 	mergeConfig := v32exp.Merge(*c.ignitionV32exp, newConfig)
@@ -347,6 +378,9 @@ func (c *Conf) ValidConfig() bool {
 	val := c.getIgnitionValidateValue()
 	if c.ignitionV3 != nil {
 		rpt := ign3validate.ValidateWithContext(c.ignitionV3, nil)
+		return !rpt.IsFatal()
+	} else if c.ignitionV31 != nil {
+		rpt := ign3validate.ValidateWithContext(c.ignitionV31, nil)
 		return !rpt.IsFatal()
 	} else if c.ignitionV32exp != nil {
 		rpt := ign3validate.ValidateWithContext(c.ignitionV32exp, nil)
@@ -370,6 +404,8 @@ func (c *Conf) getIgnitionValidateValue() reflect.Value {
 		return reflect.ValueOf(c.ignitionV24)
 	} else if c.ignitionV3 != nil {
 		return reflect.ValueOf(c.ignitionV3)
+	} else if c.ignitionV31 != nil {
+		return reflect.ValueOf(c.ignitionV31)
 	} else if c.ignitionV32exp != nil {
 		return reflect.ValueOf(c.ignitionV32exp)
 	}
@@ -487,6 +523,31 @@ func (c *Conf) addFileV3(path, filesystem, contents string, mode int) {
 	c.MergeV3(newConfig)
 }
 
+func (c *Conf) addFileV31(path, filesystem, contents string, mode int) {
+	source := dataurl.EncodeBytes([]byte(contents))
+	newConfig := v31types.Config{
+		Ignition: v31types.Ignition{
+			Version: "3.1.0",
+		},
+		Storage: v31types.Storage{
+			Files: []v31types.File{
+				{
+					Node: v31types.Node{
+						Path: path,
+					},
+					FileEmbedded1: v31types.FileEmbedded1{
+						Contents: v31types.Resource{
+							Source: &source,
+						},
+						Mode: &mode,
+					},
+				},
+			},
+		},
+	}
+	c.MergeV31(newConfig)
+}
+
 func (c *Conf) addFileV32exp(path, filesystem, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v32exptypes.Config{
@@ -515,6 +576,8 @@ func (c *Conf) addFileV32exp(path, filesystem, contents string, mode int) {
 func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 	if c.ignitionV3 != nil {
 		c.addFileV3(path, filesystem, contents, mode)
+	} else if c.ignitionV31 != nil {
+		c.addFileV31(path, filesystem, contents, mode)
 	} else if c.ignitionV32exp != nil {
 		c.addFileV32exp(path, filesystem, contents, mode)
 	} else if c.ignitionV2 != nil {
@@ -594,6 +657,25 @@ func (c *Conf) addSystemdUnitV3(name, contents string, enable, mask bool) {
 	c.MergeV3(newConfig)
 }
 
+func (c *Conf) addSystemdUnitV31(name, contents string, enable, mask bool) {
+	newConfig := v31types.Config{
+		Ignition: v31types.Ignition{
+			Version: "3.1.0",
+		},
+		Systemd: v31types.Systemd{
+			Units: []v31types.Unit{
+				{
+					Name:     name,
+					Contents: &contents,
+					Enabled:  &enable,
+					Mask:     &mask,
+				},
+			},
+		},
+	}
+	c.MergeV31(newConfig)
+}
+
 func (c *Conf) addSystemdUnitV32exp(name, contents string, enable, mask bool) {
 	newConfig := v32exptypes.Config{
 		Ignition: v32exptypes.Ignition{
@@ -633,6 +715,8 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 		c.addSystemdUnitV24(name, contents, enable, mask)
 	} else if c.ignitionV3 != nil {
 		c.addSystemdUnitV3(name, contents, enable, mask)
+	} else if c.ignitionV31 != nil {
+		c.addSystemdUnitV31(name, contents, enable, mask)
 	} else if c.ignitionV32exp != nil {
 		c.addSystemdUnitV32exp(name, contents, enable, mask)
 	}
@@ -770,6 +854,28 @@ func (c *Conf) addSystemdDropinV3(service, name, contents string) {
 	c.MergeV3(newConfig)
 }
 
+func (c *Conf) addSystemdDropinV31(service, name, contents string) {
+	newConfig := v31types.Config{
+		Ignition: v31types.Ignition{
+			Version: "3.1.0",
+		},
+		Systemd: v31types.Systemd{
+			Units: []v31types.Unit{
+				{
+					Name: service,
+					Dropins: []v31types.Dropin{
+						{
+							Name:     name,
+							Contents: &contents,
+						},
+					},
+				},
+			},
+		},
+	}
+	c.MergeV31(newConfig)
+}
+
 func (c *Conf) addSystemdDropinV32exp(service, name, contents string) {
 	newConfig := v32exptypes.Config{
 		Ignition: v32exptypes.Ignition{
@@ -805,6 +911,8 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 		c.addSystemdDropinV24(service, name, contents)
 	} else if c.ignitionV3 != nil {
 		c.addSystemdDropinV3(service, name, contents)
+	} else if c.ignitionV31 != nil {
+		c.addSystemdDropinV31(service, name, contents)
 	} else if c.ignitionV32exp != nil {
 		c.addSystemdDropinV32exp(service, name, contents)
 	}
@@ -917,6 +1025,27 @@ func (c *Conf) AddAuthorizedKeysV3(username string, keys []string) {
 	c.MergeV3(newConfig)
 }
 
+func (c *Conf) AddAuthorizedKeysV31(username string, keys []string) {
+	var keyObjs []v31types.SSHAuthorizedKey
+	for _, key := range keys {
+		keyObjs = append(keyObjs, v31types.SSHAuthorizedKey(key))
+	}
+	newConfig := v31types.Config{
+		Ignition: v31types.Ignition{
+			Version: "3.1.0",
+		},
+		Passwd: v31types.Passwd{
+			Users: []v31types.PasswdUser{
+				{
+					Name:              username,
+					SSHAuthorizedKeys: keyObjs,
+				},
+			},
+		},
+	}
+	c.MergeV31(newConfig)
+}
+
 func (c *Conf) AddAuthorizedKeysV32exp(username string, keys []string) {
 	var keyObjs []v32exptypes.SSHAuthorizedKey
 	for _, key := range keys {
@@ -953,6 +1082,8 @@ func (c *Conf) AddAuthorizedKeys(user string, keys []string) {
 		c.AddAuthorizedKeysV24(user, keys)
 	} else if c.ignitionV3 != nil {
 		c.AddAuthorizedKeysV3(user, keys)
+	} else if c.ignitionV31 != nil {
+		c.AddAuthorizedKeysV31(user, keys)
 	} else if c.ignitionV32exp != nil {
 		c.AddAuthorizedKeysV32exp(user, keys)
 	}
@@ -971,7 +1102,7 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 // IsIgnition returns true if the config is for Ignition.
 // Returns false in the case of empty configs
 func (c *Conf) IsIgnition() bool {
-	return c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV24 != nil || c.ignitionV3 != nil || c.ignitionV32exp != nil
+	return c.ignitionV2 != nil || c.ignitionV21 != nil || c.ignitionV22 != nil || c.ignitionV23 != nil || c.ignitionV24 != nil || c.ignitionV3 != nil || c.ignitionV31 != nil || c.ignitionV32exp != nil
 }
 
 func (c *Conf) IsEmpty() bool {
