@@ -1020,6 +1020,27 @@ func GetAutologin() v3types.Config {
 	return conf
 }
 
+// Mount9p adds an Ignition config to mount an folder with 9p
+func (c *Conf) Mount9p(dest string, readonly bool) {
+	readonlyStr := ""
+	if readonly {
+		readonlyStr = ",ro"
+	}
+	content := fmt.Sprintf(`[Unit]
+DefaultDependencies=no
+After=systemd-tmpfiles-setup.service
+Before=basic.target
+[Mount]
+What=%s
+Where=%s
+Type=9p
+Options=trans=virtio,version=9p2000.L%s
+[Install]
+WantedBy=multi-user.target
+`, dest, dest, readonlyStr)
+	c.AddSystemdUnit(fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])), content, Enable)
+}
+
 func Mount9p(dest string, readonly bool) v3types.Config {
 	conf := v3types.Config{
 		Ignition: v3types.Ignition{
