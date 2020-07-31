@@ -810,97 +810,96 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 	}
 }
 
-func (c *Conf) copyKeysIgnitionV2(keys []*agent.Key) {
-	keyStrs := keysToStrings(keys)
+func (c *Conf) AddAuthorizedKeysV2(username string, keys []string) {
 	for i := range c.ignitionV2.Passwd.Users {
 		user := &c.ignitionV2.Passwd.Users[i]
-		if user.Name == "core" {
-			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyStrs...)
+		if user.Name == username {
+			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keys...)
 			return
 		}
 	}
 	c.ignitionV2.Passwd.Users = append(c.ignitionV2.Passwd.Users, v2types.User{
-		Name:              "core",
-		SSHAuthorizedKeys: keyStrs,
+		Name:              username,
+		SSHAuthorizedKeys: keys,
 	})
 }
 
-func (c *Conf) copyKeysIgnitionV21(keys []*agent.Key) {
+func (c *Conf) AddAuthorizedKeysV21(username string, keys []string) {
 	var keyObjs []v21types.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v21types.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v21types.SSHAuthorizedKey(key))
 	}
 	for i := range c.ignitionV21.Passwd.Users {
 		user := &c.ignitionV21.Passwd.Users[i]
-		if user.Name == "core" {
+		if user.Name == username {
 			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
 			return
 		}
 	}
 	c.ignitionV21.Passwd.Users = append(c.ignitionV21.Passwd.Users, v21types.PasswdUser{
-		Name:              "core",
+		Name:              username,
 		SSHAuthorizedKeys: keyObjs,
 	})
 }
 
-func (c *Conf) copyKeysIgnitionV22(keys []*agent.Key) {
+func (c *Conf) AddAuthorizedKeysV22(username string, keys []string) {
 	var keyObjs []v22types.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v22types.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v22types.SSHAuthorizedKey(key))
 	}
 	for i := range c.ignitionV22.Passwd.Users {
 		user := &c.ignitionV22.Passwd.Users[i]
-		if user.Name == "core" {
+		if user.Name == username {
 			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
 			return
 		}
 	}
 	c.ignitionV22.Passwd.Users = append(c.ignitionV22.Passwd.Users, v22types.PasswdUser{
-		Name:              "core",
+		Name:              username,
 		SSHAuthorizedKeys: keyObjs,
 	})
 }
 
-func (c *Conf) copyKeysIgnitionV23(keys []*agent.Key) {
+func (c *Conf) AddAuthorizedKeysV23(username string, keys []string) {
 	var keyObjs []v23types.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v23types.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v23types.SSHAuthorizedKey(key))
 	}
 	for i := range c.ignitionV23.Passwd.Users {
 		user := &c.ignitionV23.Passwd.Users[i]
-		if user.Name == "core" {
+		if user.Name == username {
 			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
 			return
 		}
 	}
 	c.ignitionV23.Passwd.Users = append(c.ignitionV23.Passwd.Users, v23types.PasswdUser{
-		Name:              "core",
+		Name:              username,
 		SSHAuthorizedKeys: keyObjs,
 	})
 }
 
-func (c *Conf) copyKeysIgnitionV24(keys []*agent.Key) {
+func (c *Conf) AddAuthorizedKeysV24(username string, keys []string) {
 	var keyObjs []v24types.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v24types.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v24types.SSHAuthorizedKey(key))
 	}
 	for i := range c.ignitionV24.Passwd.Users {
 		user := &c.ignitionV24.Passwd.Users[i]
-		if user.Name == "core" {
+		if user.Name == username {
 			user.SSHAuthorizedKeys = append(user.SSHAuthorizedKeys, keyObjs...)
 			return
 		}
 	}
 	c.ignitionV24.Passwd.Users = append(c.ignitionV24.Passwd.Users, v24types.PasswdUser{
-		Name:              "core",
+		Name:              username,
 		SSHAuthorizedKeys: keyObjs,
 	})
 }
 
-func (c *Conf) copyKeysIgnitionV3(keys []*agent.Key) {
+func (c *Conf) AddAuthorizedKeysV3(username string, keys []string) {
 	var keyObjs []v3types.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v3types.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v3types.SSHAuthorizedKey(key))
 	}
 	newConfig := v3types.Config{
 		Ignition: v3types.Ignition{
@@ -909,7 +908,7 @@ func (c *Conf) copyKeysIgnitionV3(keys []*agent.Key) {
 		Passwd: v3types.Passwd{
 			Users: []v3types.PasswdUser{
 				{
-					Name:              "core",
+					Name:              username,
 					SSHAuthorizedKeys: keyObjs,
 				},
 			},
@@ -918,10 +917,10 @@ func (c *Conf) copyKeysIgnitionV3(keys []*agent.Key) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) copyKeysIgnitionV32exp(keys []*agent.Key) {
+func (c *Conf) AddAuthorizedKeysV32exp(username string, keys []string) {
 	var keyObjs []v32exptypes.SSHAuthorizedKey
 	for _, key := range keys {
-		keyObjs = append(keyObjs, v32exptypes.SSHAuthorizedKey(key.String()))
+		keyObjs = append(keyObjs, v32exptypes.SSHAuthorizedKey(key))
 	}
 	newConfig := v32exptypes.Config{
 		Ignition: v32exptypes.Ignition{
@@ -930,7 +929,7 @@ func (c *Conf) copyKeysIgnitionV32exp(keys []*agent.Key) {
 		Passwd: v32exptypes.Passwd{
 			Users: []v32exptypes.PasswdUser{
 				{
-					Name:              "core",
+					Name:              username,
 					SSHAuthorizedKeys: keyObjs,
 				},
 			},
@@ -939,31 +938,34 @@ func (c *Conf) copyKeysIgnitionV32exp(keys []*agent.Key) {
 	c.MergeV32exp(newConfig)
 }
 
-// CopyKeys copies public keys from agent ag into the configuration to the
-// appropriate configuration section for the core user.
-func (c *Conf) CopyKeys(keys []*agent.Key) {
+// AddAuthorizedKeys adds an Ignition config to add the given keys to the SSH
+// authorized_keys file for the given user.
+func (c *Conf) AddAuthorizedKeys(user string, keys []string) {
 	if c.ignitionV2 != nil {
-		c.copyKeysIgnitionV2(keys)
+		c.AddAuthorizedKeysV2(user, keys)
 	} else if c.ignitionV21 != nil {
-		c.copyKeysIgnitionV21(keys)
+		c.AddAuthorizedKeysV21(user, keys)
 	} else if c.ignitionV22 != nil {
-		c.copyKeysIgnitionV22(keys)
+		c.AddAuthorizedKeysV22(user, keys)
 	} else if c.ignitionV23 != nil {
-		c.copyKeysIgnitionV23(keys)
+		c.AddAuthorizedKeysV23(user, keys)
 	} else if c.ignitionV24 != nil {
-		c.copyKeysIgnitionV24(keys)
+		c.AddAuthorizedKeysV24(user, keys)
 	} else if c.ignitionV3 != nil {
-		c.copyKeysIgnitionV3(keys)
+		c.AddAuthorizedKeysV3(user, keys)
 	} else if c.ignitionV32exp != nil {
-		c.copyKeysIgnitionV32exp(keys)
+		c.AddAuthorizedKeysV32exp(user, keys)
 	}
 }
 
-func keysToStrings(keys []*agent.Key) (keyStrs []string) {
+// CopyKeys copies public keys from agent ag into the configuration to the
+// appropriate configuration section for the core user.
+func (c *Conf) CopyKeys(keys []*agent.Key) {
+	var keyStrs []string
 	for _, key := range keys {
 		keyStrs = append(keyStrs, key.String())
 	}
-	return
+	c.AddAuthorizedKeys("core", keyStrs)
 }
 
 // IsIgnition returns true if the config is for Ignition.
