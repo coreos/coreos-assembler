@@ -30,9 +30,12 @@ set -x
 # https://github.com/coreos/coreos-assembler/pull/394
 tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-mksquashfs.XXXXXX)
 tmp_dest=${tmpd}/image.squashfs
-
 coreos_gf_run_mount "${src}" --ro
 
+# Remove the sysroot=readonly flag, see https://github.com/coreos/fedora-coreos-tracker/issues/589
+coreos_gf download /ostree/repo/config "${tmpd}/config"
+grep -v readonly=true "${tmpd}/config" > "${tmpd}/config.new"
+coreos_gf upload "${tmpd}/config.new" /ostree/repo/config
 coreos_gf mksquashfs / "${tmp_dest}" "compress:${compression}"
 
 coreos_gf_shutdown
