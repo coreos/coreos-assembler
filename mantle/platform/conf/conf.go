@@ -978,6 +978,19 @@ func (c *Conf) IsEmpty() bool {
 	return !c.IsIgnition()
 }
 
+func getAutologinUnit(name, args string) string {
+	return fmt.Sprintf(`[Service]
+	ExecStart=
+	ExecStart=-/sbin/agetty --autologin core -o '-p -f core' %s %%I $TERM
+	`, args)
+}
+
+// AddAutoLogin adds an Ignition config for automatic login on consoles
+func (c *Conf) AddAutoLogin() {
+	c.AddSystemdUnit("getty@.service", getAutologinUnit("getty@.service", "--noclear"), Enable)
+	c.AddSystemdUnit("serial-getty@.service", getAutologinUnit("serial-getty@.service", "--keep-baud 115200,38400,9600"), Enable)
+}
+
 func getAutologinFragment(name, args string) v3types.Unit {
 	contents := fmt.Sprintf(`[Service]
 ExecStart=
