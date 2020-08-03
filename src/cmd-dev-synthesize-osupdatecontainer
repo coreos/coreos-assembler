@@ -1,0 +1,46 @@
+#!/usr/bin/python3 -u
+# Wrapper for dev-synthesize-osupdate that operates on an oscontainer
+# for OpenShift
+
+import os
+import argparse
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser()
+parser.add_argument("src", help="Source oscontainer")
+parser.add_argument("dest", help="Destination oscontainer")
+parser.add_argument("--from", help="Base image", default='scratch', dest='from_image')
+parser.add_argument("--insecure",
+                    help="Disable TLS for pushes and pulls",
+                    action="store_true")
+parser.add_argument("--digestfile",
+                    help="Write container digest to this file",
+                    action="store")
+parser.add_argument("--percentage", help="Approximate percentage of files to update", default=None, type=int)
+args = parser.parse_args()
+
+with tempfile.TemporaryDirectory(prefix='cosa-dev-synth-update') as tmpd:
+    repo = tmpd + '/repo'
+    repoarg = f'--repo={repo}'
+    subprocess.check_call(['ostree', repoarg, 'init', '--mode=archive'])
+    # This is a temp repo
+    subprocess.check_call(['ostree', repoarg, 'config', 'set', 'core.fsync', 'false'])
+    tmpref = 'tmpref'
+    childargv = ['/usr/lib/coreos-assembler/oscontainer.py', f'--workdir={tmpd}/work']
+    if args.insecure:
+        childargv.append('--disable-tls-verify')
+    childargv += ['extract', f'--ref={tmpref}', args.src, repo]
+    subprocess.check_call(childargv)
+    childargv = ['cosa', 'dev-synthesize-osupdate', repoarg, f'--ref={tmpref}']
+    if args.percentage is not None:
+        childargv += [f'--percentage={args.percentage}']
+    subprocess.check_call(childargv)
+    newcommit = subprocess.check_output(['ostree', repoarg, 'rev-parse', tmpref], encoding='UTF-8').strip()
+    childargv = []
+    if os.getuid != 0:
+        childargv.extend(['sudo', '--preserve-env=container,REGISTRY_AUTH_FILE'])
+    childargv.extend(['/usr/lib/coreos-assembler/oscontainer.py', f'--workdir={tmpd}/work', 'build',  f"--from={args.from_image}"])
+    if args.digestfile:
+        childargv.append(f'--digestfile={args.digestfile}')
+    subprocess.check_call(childargv + ['--push', repo, newcommit, args.dest])

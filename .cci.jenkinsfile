@@ -76,9 +76,12 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
         }
       }
 
-      // Needs to be last because it's destructive
+      // Random other tests that aren't about building
       stage("CLI/build tests") {
-        shwrap("cd /srv && sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh")
+        shwrap("""
+          cd /srv
+          sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh
+        """)
       }
 }
 
