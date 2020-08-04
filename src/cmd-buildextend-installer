@@ -166,6 +166,17 @@ def make_stream_hash(src, dest):
                 outf.write(hashlib.sha256(buf).hexdigest() + '\n')
 
 
+def file_offset_in_iso(isoinfo, filename):
+    # -rw-rw-r--   1 1750 1750       553961457 Sep 18 2019 [   4733 00]  filename
+    #                           match the logical block number ^^^^ ||
+    #                                          file type, always 00 ^^
+    matches = list(re.finditer(r'\[\s*([0-9]+) 00\]\s+{}\s*$'.format(filename),
+                   isoinfo, re.MULTILINE))
+    if len(matches) != 1:
+        raise Exception('Found {} copies of {}'.format(len(matches), filename))
+    return int(matches[0].group(1)) * 2048  # assume 2 KB per logical block
+
+
 def generate_iso():
     # convention for kernel and initramfs names
     kernel_img = 'vmlinuz'
@@ -445,6 +456,9 @@ def generate_iso():
     if basearch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', tmpisofile])
 
+    isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
+                          stdout=subprocess.PIPE, text=True).stdout
+
     # We've already padded the ISO initrd with initrd_ignition_padding bytes of
     # zeroes.  Find the byte offset of that padding within the ISO image and
     # write it into a custom header at the end of the ISO 9660 System Area,
@@ -462,17 +476,8 @@ def generate_iso():
     # Skip on s390x because that platform uses an embedded El Torito image
     # with its own copy of the initramfs.
     if is_live and basearch != "s390x":
-        isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
-                stdout=subprocess.PIPE, text=True)
-        # -rw-rw-r--   1 1750 1750       553961457 Sep 18 2019 [   4733 00]  initramfs.img
-        #                           match the logical block number ^^^^ ||
-        #                                          file type, always 00 ^^
-        matches = list(re.finditer(r'\[\s*([0-9]+) 00\]\s+{}\s*$'.format(initramfs_img),
-                isoinfo.stdout, re.MULTILINE))
-        if len(matches) != 1:
-            raise Exception('Found {} copies of {}'.format(len(matches), initramfs_img))
         # Start of the initramfs within the ISO
-        offset = int(matches[0].group(1)) * 2048  # assume 2 KB per logical block
+        offset = file_offset_in_iso(isoinfo, initramfs_img)
         # End of the initramfs within the ISO
         offset += os.stat(iso_initramfs).st_size
         # Start of the initramfs padding
