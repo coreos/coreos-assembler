@@ -22,7 +22,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<EOF
 Usage: coreos-assembler offline-update --help
-       coreos-assembler offline-update [--build ID] DISK
+       coreos-assembler offline-update [--build ID] [--commit COMMIT] DISK
 
   In-place update DISK to the OSTree commit from the provided build.
 EOF
@@ -30,7 +30,8 @@ EOF
 
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build: -- "$@") || rc=$?
+commit=
+options=$(getopt --options h --longoptions help,build,commit: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -44,6 +45,10 @@ while true; do
             ;;
         --build)
             build=$2
+            shift
+            ;;
+        --commit)
+            commit=$2
             shift
             ;;
         --)
@@ -75,6 +80,7 @@ shift
 workdir=$(pwd)
 TMPDIR=${workdir}/tmp
 
+if [ -z "${commit}" ]; then
 if [ -z "${build}" ]; then
     build=$(get_latest_build)
     if [ -z "${build}" ]; then
@@ -88,6 +94,7 @@ if [ ! -d "${builddir}" ]; then
 fi
 
 commit=$(json_key ostree-commit)
+fi
 
 runvm -drive if=virtio,id=target,format=qcow2,file="${disk}" -- \
     /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
