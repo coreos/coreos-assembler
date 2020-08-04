@@ -317,6 +317,8 @@ def generate_iso():
     kargs = ' '.join(kargs_array)
     print(f'Substituting ISO kernel arguments: {kargs}')
 
+    files_with_karg_embed_areas = {}
+    karg_embed_area_length = 0
     # Grab all the contents from the live dir from the configs
     for srcdir, _, filenames in os.walk(srcdir_prefix):
         dir_suffix = srcdir.replace(srcdir_prefix, '', 1)
@@ -332,7 +334,18 @@ def generate_iso():
             # Assumes all files are text
             with open(srcfile) as fh:
                 buf = fh.read()
-            buf = buf.replace('@@KERNEL-ARGS@@', kargs)
+            newbuf = buf.replace('@@KERNEL-ARGS@@', kargs)
+            # if we injected kargs, also check for an embed area
+            if buf != newbuf:
+                buf = newbuf
+                karg_area = re.search(r'(#+) COREOS_KARG_EMBED_AREA\n', buf)
+                if karg_area is not None:
+                    length = len(karg_area[1])
+                    files_with_karg_embed_areas[filename] = karg_area.start()
+                    if karg_embed_area_length == 0:
+                        karg_embed_area_length = length
+                    elif length != karg_embed_area_length:
+                        raise Exception(f"Karg embed areas of varying length {list(files_with_karg_embed_areas)}")
             with open(dstfile, 'w') as fh:
                 fh.write(buf)
             shutil.copystat(srcfile, dstfile)
@@ -495,6 +508,11 @@ def generate_iso():
     #
     # Skip on s390x because that platform uses an embedded El Torito image
     # with its own copy of the initramfs.
+    #
+    # Recently, we also play a similar trick for injecting kernel arguments: we
+    # store the location of "karg embed areas" at the end of the System Area
+    # (in the 64 bytes before the 24 bytes for the initrd info). This is then
+    # picked up by `coreos-installer iso embed-kargs`.
     if basearch != "s390x":
         # Start of the Ignition padding within the ISO
         offset = file_offset_in_iso(isoinfo, ignition_img)
@@ -503,9 +521,22 @@ def generate_iso():
             isofh.seek(offset)
             if isofh.read(initrd_ignition_padding) != bytes(initrd_ignition_padding):
                 raise Exception(f'ISO image {initrd_ignition_padding} bytes at {offset} are not zero')
+
             # Write header at the end of the System Area
+
+            # Right now we only have 2 karg files, but let's be generous and
+            # make space for 6. If we go beyond that in the future, we can
+            # ratchet it in.
+            assert len(files_with_karg_embed_areas) <= 6
+            kargsfmt = "<8s7Q"
             initrdfmt = '<8s2Q'
-            isofh.seek(32768 - struct.calcsize(initrdfmt))
+            isofh.seek(32768 - (struct.calcsize(initrdfmt) +
+                                struct.calcsize(kargsfmt)))
+            offsets = [0] * 6
+            for i, fn in enumerate(files_with_karg_embed_areas):
+                offset_in_file = files_with_karg_embed_areas[fn]
+                offsets[i] = file_offset_in_iso(isoinfo, fn) + offset_in_file
+            isofh.write(struct.pack(kargsfmt, b'corekarg', karg_embed_area_length, *offsets))
             # Magic number + offset + length
             isofh.write(struct.pack(initrdfmt, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
