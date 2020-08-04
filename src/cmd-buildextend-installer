@@ -488,10 +488,10 @@ def generate_iso():
             if isofh.read(initrd_ignition_padding) != bytes(initrd_ignition_padding):
                 raise Exception(f'ISO image {initrd_ignition_padding} bytes at {offset} are not zero')
             # Write header at the end of the System Area
-            fmt = '<8s2Q'
-            isofh.seek(32768 - struct.calcsize(fmt))
+            initrdfmt = '<8s2Q'
+            isofh.seek(32768 - struct.calcsize(initrdfmt))
             # Magic number + offset + length
-            isofh.write(struct.pack(fmt, b'coreiso+', offset, initrd_ignition_padding))
+            isofh.write(struct.pack(initrdfmt, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
 
     buildmeta['images'].update({
