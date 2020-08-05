@@ -56,7 +56,7 @@ func init() {
 func writeAbsoluteSymlink(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	out := c.MustSSH(m, "ls /usr/share/zoneinfo/Europe/Zurich")
+	out := c.MustSSH(m, "readlink /etc/localtime")
 
 	if strings.Compare(string(out), "/usr/share/zoneinfo/Europe/Zurich") != 0 {
 		c.Fatalf("write absolute symlink failed:\n%s", out)
