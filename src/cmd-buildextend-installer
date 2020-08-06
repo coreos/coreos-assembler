@@ -106,6 +106,7 @@ if os.path.isdir(tmpdir):
 
 tmpisoroot = os.path.join(tmpdir, image_type)
 tmpisoimages = os.path.join(tmpisoroot, 'images')
+tmpisoimagespxe = os.path.join(tmpisoimages, 'pxeboot')
 tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
 # contents of initramfs on both PXE and ISO
 tmpinitrd_base = os.path.join(tmpdir, 'initrd-base')
@@ -116,8 +117,8 @@ tmpinitrd_pxe = os.path.join(tmpdir, 'initrd-pxe')
 # contents of PXE rootfs image
 tmpinitrd_pxe_rootfs = os.path.join(tmpdir, 'initrd-pxe-rootfs')
 
-for d in (tmpdir, tmpisoroot, tmpisoimages, tmpisoisolinux, tmpinitrd_base,
-        tmpinitrd_iso, tmpinitrd_pxe, tmpinitrd_pxe_rootfs):
+for d in (tmpdir, tmpisoroot, tmpisoimages, tmpisoimagespxe, tmpisoisolinux,
+        tmpinitrd_base, tmpinitrd_iso, tmpinitrd_pxe, tmpinitrd_pxe_rootfs):
     os.mkdir(d)
 
 # Number of padding bytes at the end of the ISO initramfs for embedding
@@ -199,7 +200,7 @@ def file_offset_in_iso(isoinfo, filename):
 def generate_iso():
     # convention for kernel and initramfs names
     kernel_img = 'vmlinuz'
-    initramfs_img = 'initramfs.img'
+    initrd_img = 'initrd.img'
     # other files
     ignition_img = 'ignition.img'
 
@@ -227,12 +228,18 @@ def generate_iso():
     moduledir = process.stdout.decode().split('\0')[1]
 
     # copy those files out of the ostree into the iso root dir
+    initramfs_img = 'initramfs.img'
     for file in [kernel_img, initramfs_img]:
         run_verbose(['/usr/bin/ostree', 'checkout', '--force-copy', '--repo', repo,
                      '--user-mode', '--subpath', os.path.join(moduledir, file),
-                     f"{buildmeta_commit}", tmpisoimages])
+                     f"{buildmeta_commit}", tmpisoimagespxe])
         # initramfs isn't world readable by default so let's open up perms
-        os.chmod(os.path.join(tmpisoimages, file), 0o644)
+        os.chmod(os.path.join(tmpisoimagespxe, file), 0o644)
+        if file == initramfs_img:
+            os.rename(
+                os.path.join(tmpisoimagespxe, initramfs_img),
+                os.path.join(tmpisoimagespxe, initrd_img)
+            )
 
     # Generate initramfs stamp file which says whether it's a live or legacy
     # initramfs.  Store the build ID in it.
@@ -289,10 +296,10 @@ def generate_iso():
 
     # Generate initramfses
     # Add common content
-    iso_initramfs = os.path.join(tmpisoimages, initramfs_img)
+    iso_initramfs = os.path.join(tmpisoimagespxe, initrd_img)
     extend_initrd(iso_initramfs, tmpinitrd_base)
     # Clone to PXE image
-    pxe_initramfs = os.path.join(tmpdir, initramfs_img)
+    pxe_initramfs = os.path.join(tmpdir, initrd_img)
     cp_reflink(iso_initramfs, pxe_initramfs)
     # Generate rootfs image
     if is_live:
@@ -400,12 +407,9 @@ def generate_iso():
 
         # s390x's z/VM CMS files are limited to 8 char for filenames and extensions
         # Also it is nice to keep naming convetion with Fedora/RHEL for existing users and code
-        kernel_dest = os.path.join(tmpisoimages, 'kernel.img')
-        shutil.move(os.path.join(tmpisoimages, kernel_img), kernel_dest)
+        kernel_dest = os.path.join(tmpisoimagespxe, 'kernel.img')
+        shutil.move(os.path.join(tmpisoimagespxe, kernel_img), kernel_dest)
         kernel_img = 'kernel.img'
-        iso_initramfs_dest = os.path.join(tmpisoimages, 'initrd.img')
-        shutil.move(iso_initramfs, iso_initramfs_dest)
-        iso_initramfs = iso_initramfs_dest
 
         # combine kernel, initramfs and cmdline using lorax/mk-s390-cdboot tool
         run_verbose(['/usr/bin/mk-s390-cdboot',
@@ -525,7 +529,7 @@ def generate_iso():
     initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{basearch}.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
-    shutil.copyfile(os.path.join(tmpisoimages, kernel_img), kernel_file)
+    shutil.copyfile(os.path.join(tmpisoimagespxe, kernel_img), kernel_file)
     shutil.move(pxe_initramfs, initramfs_file)
     buildmeta['images'].update({
         meta_keys['kernel']: {
