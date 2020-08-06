@@ -200,6 +200,8 @@ def generate_iso():
     # convention for kernel and initramfs names
     kernel_img = 'vmlinuz'
     initramfs_img = 'initramfs.img'
+    # other files
+    ignition_img = 'ignition.img'
 
     tmpisofile = os.path.join(tmpdir, iso_name)
 
@@ -252,6 +254,11 @@ def generate_iso():
         with open(stamppath, 'w') as fh:
             fh.write(args.build + '\n')
 
+    # Add Ignition padding file to ISO image
+    if is_live:
+        with open(os.path.join(tmpisoimages, ignition_img), 'wb') as fdst:
+            fdst.write(bytes(initrd_ignition_padding))
+
     # Add osmet files
     if args.legacy_pxe:
         tmpinitrd_pxe_or_rootfs = tmpinitrd_pxe
@@ -300,9 +307,6 @@ def generate_iso():
     extend_initrd(pxe_initramfs, tmpinitrd_pxe)
     # Add additional content to ISO image
     extend_initrd(iso_initramfs, tmpinitrd_iso)
-    # Add Ignition padding to ISO image
-    with open(iso_initramfs, 'ab') as fdst:
-        fdst.write(bytes(initrd_ignition_padding))
 
     # Read and filter kernel arguments for substituting into ISO bootloader
     result = run_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
@@ -477,12 +481,13 @@ def generate_iso():
     isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
                           stdout=subprocess.PIPE, text=True).stdout
 
-    # We've already padded the ISO initrd with initrd_ignition_padding bytes of
-    # zeroes.  Find the byte offset of that padding within the ISO image and
-    # write it into a custom header at the end of the ISO 9660 System Area,
-    # which is 32 KB at the start of the image "reserved for system use".
-    # The System Area usually contains partition tables and the like, and
-    # we're assuming that none of our platforms use the last 24 bytes of it.
+    # We've already created a file in the ISO with initrd_ignition_padding
+    # bytes of zeroes.  Find the byte offset of that file within the ISO
+    # image and write it into a custom header at the end of the ISO 9660
+    # System Area, which is 32 KB at the start of the image "reserved for
+    # system use".  The System Area usually contains partition tables and
+    # the like, and we're assuming that none of our platforms use the last
+    # 24 bytes of it.
     #
     # This allows an external tool, `coreos-installer iso embed`, to modify
     # an existing ISO image to embed a user's custom Ignition config.
@@ -494,12 +499,8 @@ def generate_iso():
     # Skip on s390x because that platform uses an embedded El Torito image
     # with its own copy of the initramfs.
     if is_live and basearch != "s390x":
-        # Start of the initramfs within the ISO
-        offset = file_offset_in_iso(isoinfo, initramfs_img)
-        # End of the initramfs within the ISO
-        offset += os.stat(iso_initramfs).st_size
-        # Start of the initramfs padding
-        offset -= initrd_ignition_padding
+        # Start of the Ignition padding within the ISO
+        offset = file_offset_in_iso(isoinfo, ignition_img)
         with open(tmpisofile, 'r+b') as isofh:
             # Verify that the calculated byte range is empty
             isofh.seek(offset)
