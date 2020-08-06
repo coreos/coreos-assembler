@@ -514,6 +514,20 @@ def generate_iso():
     # (in the 64 bytes before the 24 bytes for the initrd info). This is then
     # picked up by `coreos-installer iso embed-kargs`.
     if basearch != "s390x":
+        # size of System Area section at start of ISO9660 images
+        ISO_SYSTEM_AREA_SIZE = 32768
+
+        # number of karg files we allow for in the format
+        MAX_KARG_FILES = 6
+        assert len(files_with_karg_embed_areas) <= MAX_KARG_FILES
+
+        # these can really never change without ratcheting on the
+        # coreos-installer side first
+        INITRDFMT = '<8s2Q'
+        assert struct.calcsize(INITRDFMT) == 24
+        KARGSFMT = f"<8s{MAX_KARG_FILES+1}Q"  # +1 for area length
+        assert struct.calcsize(KARGSFMT) == 64
+
         # Start of the Ignition padding within the ISO
         offset = file_offset_in_iso(isoinfo, ignition_img)
         with open(tmpisofile, 'r+b') as isofh:
@@ -523,22 +537,16 @@ def generate_iso():
                 raise Exception(f'ISO image {initrd_ignition_padding} bytes at {offset} are not zero')
 
             # Write header at the end of the System Area
+            isofh.seek(ISO_SYSTEM_AREA_SIZE - (struct.calcsize(INITRDFMT) +
+                                               struct.calcsize(KARGSFMT)))
+            offsets = [0] * MAX_KARG_FILES
 
-            # Right now we only have 2 karg files, but let's be generous and
-            # make space for 6. If we go beyond that in the future, we can
-            # ratchet it in.
-            assert len(files_with_karg_embed_areas) <= 6
-            kargsfmt = "<8s7Q"
-            initrdfmt = '<8s2Q'
-            isofh.seek(32768 - (struct.calcsize(initrdfmt) +
-                                struct.calcsize(kargsfmt)))
-            offsets = [0] * 6
             for i, fn in enumerate(files_with_karg_embed_areas):
                 offset_in_file = files_with_karg_embed_areas[fn]
                 offsets[i] = file_offset_in_iso(isoinfo, fn) + offset_in_file
-            isofh.write(struct.pack(kargsfmt, b'corekarg', karg_embed_area_length, *offsets))
+            isofh.write(struct.pack(KARGSFMT, b'corekarg', karg_embed_area_length, *offsets))
             # Magic number + offset + length
-            isofh.write(struct.pack(initrdfmt, b'coreiso+', offset, initrd_ignition_padding))
+            isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
 
     buildmeta['images'].update({
