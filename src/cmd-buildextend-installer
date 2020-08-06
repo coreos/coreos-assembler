@@ -125,25 +125,46 @@ for d in (tmpdir, tmpisoroot, tmpisoimages, tmpisoisolinux, tmpinitrd_base,
 initrd_ignition_padding = 256 * 1024
 
 
+# The kernel requires that uncompressed cpio archives appended to an initrd
+# start on a 4-byte boundary.  If there's misalignment, it stops unpacking
+# and says:
+#
+#     Initramfs unpacking failed: invalid magic at start of compressed archive
+#
+# Append NUL bytes to destf until its size is a multiple of 4 bytes.
+#
+# https://www.kernel.org/doc/Documentation/early-userspace/buffer-format.txt
+# https://github.com/torvalds/linux/blob/47ec5303/init/initramfs.c#L463
+def align_initrd_for_uncompressed_append(destf):
+    offset = destf.tell()
+    if offset % 4:
+        destf.write(b'\0' * (4 - offset % 4))
+
+
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html#compressed-cpio-images
-def mkinitrd_pipe(tmproot, destf):
+def mkinitrd_pipe(tmproot, destf, compress=True):
+    if not compress:
+        align_initrd_for_uncompressed_append(destf)
     findproc = subprocess.Popen(['find', '.', '-mindepth', '1', '-print0'],
                                 cwd=tmproot, stdout=subprocess.PIPE)
     cpioproc = subprocess.Popen(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
             '--quiet', '--reproducible', '--force-local', '--null',
             '-D', tmproot], stdin=findproc.stdout, stdout=subprocess.PIPE)
-    # Almost everything we're adding is already compressed.  The kernel
-    # requires us to compress again, but don't try very hard.
-    gzipargs = ['gzip', '-1']
+    if compress:
+        gzipargs = ['gzip', '-9']
+    else:
+        gzipargs = ['cat']
     gzipproc = subprocess.Popen(gzipargs, stdin=cpioproc.stdout, stdout=destf)
     assert cpioproc.wait() == 0, f"cpio exited with {cpioproc.returncode}"
     assert findproc.wait() == 0, f"find exited with {findproc.returncode}"
     assert gzipproc.wait() == 0, f"gzip exited with {gzipproc.returncode}"
+    # Fix up padding so the user can append the rootfs afterward
+    align_initrd_for_uncompressed_append(destf)
 
 
-def extend_initrd(initramfs, tmproot):
+def extend_initrd(initramfs, tmproot, compress=True):
     with open(initramfs, 'ab') as fdst:
-        mkinitrd_pipe(tmproot, fdst)
+        mkinitrd_pipe(tmproot, fdst, compress=compress)
 
 
 def cp_reflink(src, dest):
@@ -269,7 +290,9 @@ def generate_iso():
     # Generate rootfs image
     if is_live:
         pxe_rootfs = os.path.join(tmpdir, 'rootfs.img')
-        extend_initrd(pxe_rootfs, tmpinitrd_pxe_rootfs)
+        # The rootfs must be uncompressed because the ISO mounts
+        # root.squashfs directly from the middle of the file
+        extend_initrd(pxe_rootfs, tmpinitrd_pxe_rootfs, compress=False)
         # Save stream hash of rootfs for verifying out-of-band fetches
         os.makedirs(os.path.join(tmpinitrd_pxe, 'etc'), exist_ok=True)
         make_stream_hash(pxe_rootfs, os.path.join(tmpinitrd_pxe, 'etc/coreos-live-want-rootfs'))
