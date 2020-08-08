@@ -72,6 +72,7 @@ const (
 	scenarioPXEInstall = "pxe-install"
 	scenarioISOInstall = "iso-install"
 
+	scenarioPXEOfflineInstall = "pxe-offline-install"
 	scenarioISOOfflineInstall = "iso-offline-install"
 	scenarioISOLiveLogin      = "iso-live-login"
 	scenarioLegacyInstall     = "legacy-install"
@@ -79,6 +80,7 @@ const (
 
 var allScenarios = map[string]bool{
 	scenarioPXEInstall:        true,
+	scenarioPXEOfflineInstall: true,
 	scenarioISOInstall:        true,
 	scenarioISOOfflineInstall: true,
 	scenarioISOLiveLogin:      true,
@@ -104,6 +106,26 @@ RequiredBy=multi-user.target
 RequiredBy=coreos-installer.target
 `, liveOKSignal)
 
+var downloadCheck = `[Unit]
+After=coreos-installer.service
+Before=coreos-installer.target
+# Can be dropped with coreos-installer v0.5.1
+Before=coreos-installer-reboot.service
+[Service]
+Type=oneshot
+StandardOutput=kmsg+console
+StandardError=kmsg+console
+ExecStart=/bin/sh -c "journalctl -t coreos-installer-service | /usr/bin/awk '/[Dd]ownload/ {exit 1}'"
+ExecStart=/bin/sh -c "/usr/bin/udevadm settle"
+ExecStart=/bin/sh -c "/usr/bin/mount /dev/disk/by-label/root /mnt"
+ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"build\"] == \"%s\"' /mnt/.coreos-aleph-version.json"
+ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"ostree-commit\"] == \"%s\"' /mnt/.coreos-aleph-version.json"
+[Install]
+RequiredBy=coreos-installer.target
+# Can be dropped when the target is fixed to not trigger reboot when a new unit is added to the target and fails
+RequiredBy=coreos-installer-reboot.service
+`
+
 var signalCompleteString = "coreos-installer-test-OK"
 var signalCompletionUnit = fmt.Sprintf(`[Unit]
 Requires=dev-virtio\\x2dports-testisocompletion.device
@@ -128,7 +150,7 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOInstall}))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
@@ -224,6 +246,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 	if nopxe || nolive {
 		delete(targetScenarios, scenarioPXEInstall)
+		delete(targetScenarios, scenarioPXEOfflineInstall)
 	}
 	if noiso || nolive {
 		delete(targetScenarios, scenarioISOInstall)
@@ -270,7 +293,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			inst := baseInst // Pretend this is Rust and I wrote .copy()
 			inst.LegacyInstaller = true
 
-			if err := testPXE(inst, filepath.Join(outputDir, scenarioLegacyInstall)); err != nil {
+			if err := testPXE(inst, filepath.Join(outputDir, scenarioLegacyInstall), false); err != nil {
 				return errors.Wrapf(err, "scenario %s", scenarioLegacyInstall)
 			}
 			printSuccess(scenarioLegacyInstall)
@@ -288,11 +311,25 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(instPxe, filepath.Join(outputDir, scenarioPXEInstall)); err != nil {
+		if err := testPXE(instPxe, filepath.Join(outputDir, scenarioPXEInstall), false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioPXEInstall)
 
 		}
 		printSuccess(scenarioPXEInstall)
+	}
+	if _, ok := targetScenarios[scenarioPXEOfflineInstall]; ok {
+		if !foundLive {
+			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Meta.Name)
+		}
+
+		ranTest = true
+		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
+
+		if err := testPXE(instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true); err != nil {
+			return errors.Wrapf(err, "scenario %s", scenarioPXEOfflineInstall)
+
+		}
+		printSuccess(scenarioPXEOfflineInstall)
 	}
 	if _, ok := targetScenarios[scenarioISOInstall]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -400,7 +437,7 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-func testPXE(inst platform.Install, outdir string) error {
+func testPXE(inst platform.Install, outdir string, offline bool) error {
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
@@ -434,6 +471,15 @@ func testPXE(inst platform.Install, outdir string) error {
 				},
 			},
 		},
+	}
+
+	if offline {
+		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.BuildID, kola.CosaBuild.Meta.OstreeCommit)
+		liveConfig.Systemd.Units = append(liveConfig.Systemd.Units, ignv3types.Unit{
+			Name:     "coreos-installer-offline-check.service",
+			Contents: &contents,
+			Enabled:  util.BoolToPtr(true),
+		})
 	}
 
 	targetConfig := ignv3types.Config{
@@ -474,7 +520,7 @@ func testPXE(inst platform.Install, outdir string) error {
 
 	targetConfig = ignv3.Merge(targetConfig, *virtioJournalConfig)
 
-	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig)
+	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig, offline)
 	if err != nil {
 		return errors.Wrapf(err, "running PXE")
 	}
