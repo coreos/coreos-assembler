@@ -110,7 +110,7 @@ type InstalledMachine struct {
 	QemuInst *QemuInstance
 }
 
-func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Config) (*InstalledMachine, error) {
+func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Config, offline bool) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -128,7 +128,7 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Confi
 		mach, err = inst.runPXE(&kernelSetup{
 			kernel:    inst.CosaBuild.Meta.BuildArtifacts.Kernel.Path,
 			initramfs: inst.CosaBuild.Meta.BuildArtifacts.Initramfs.Path,
-		}, true)
+		}, true, offline)
 		if err != nil {
 			return nil, errors.Wrapf(err, "legacy installer")
 		}
@@ -140,7 +140,7 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Confi
 			kernel:    inst.CosaBuild.Meta.BuildArtifacts.LiveKernel.Path,
 			initramfs: inst.CosaBuild.Meta.BuildArtifacts.LiveInitramfs.Path,
 			rootfs:    inst.CosaBuild.Meta.BuildArtifacts.LiveRootfs.Path,
-		}, false)
+		}, false, offline)
 		if err != nil {
 			return nil, errors.Wrapf(err, "testing live installer")
 		}
@@ -366,10 +366,12 @@ func renderBaseKargs() []string {
 	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()]))
 }
 
-func renderInstallKargs(t *installerRun) []string {
+func renderInstallKargs(t *installerRun, offline bool) []string {
 	args := []string{"coreos.inst=yes", "coreos.inst.install_dev=vda",
-		fmt.Sprintf("coreos.inst.image_url=%s/%s", t.baseurl, t.metalname),
 		fmt.Sprintf("coreos.inst.ignition_url=%s/config.ign", t.baseurl)}
+	if !offline {
+		args = append(args, fmt.Sprintf("coreos.inst.image_url=%s/%s", t.baseurl, t.metalname))
+	}
 	// FIXME - ship signatures by default too
 	if t.inst.Insecure {
 		args = append(args, "coreos.inst.insecure=1")
@@ -499,7 +501,7 @@ func (t *installerRun) run() (*QemuInstance, error) {
 	return inst, nil
 }
 
-func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, error) {
+func (inst *Install) runPXE(kern *kernelSetup, legacy, offline bool) (*InstalledMachine, error) {
 	t, err := inst.setup(kern, legacy)
 	if err != nil {
 		return nil, err
@@ -513,7 +515,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy bool) (*InstalledMachine, 
 		kargs = append(kargs, fmt.Sprintf("ignition.config.url=%s/pxe-live.ign", t.baseurl))
 	}
 
-	kargs = append(kargs, renderInstallKargs(t)...)
+	kargs = append(kargs, renderInstallKargs(t, offline)...)
 	if err := t.completePxeSetup(kargs); err != nil {
 		return nil, err
 	}
