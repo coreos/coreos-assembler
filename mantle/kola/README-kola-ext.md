@@ -105,8 +105,9 @@ Here's an example `kola.json`:
 {
     "architectures": "!s390x ppc64le",
     "platforms": "qemu-unpriv",
-    "tags": "sometagname needs-internet othertag"
-    "additionalDisks": [ "5G" ]
+    "tags": "sometagname needs-internet othertag",
+    "additionalDisks": [ "5G" ],
+    "minMemory": 4096
 }
 ```
 
@@ -128,6 +129,11 @@ Currently only the `qemu` platform enforces this restriction.
 
 The `additionalDisks` key has the same semantics as the `--add-disk`
 argument to `qemuexec`. It is currently only supported on `qemu-unpriv`.
+
+The `minMemory` key takes a size in MB and ensures that an instance type
+with at least the specified amount of memory is used. On QEMU, this is
+equivalent to the `--memory` argument to `qemuexec`. This is currently
+only enforced on `qemu-unpriv`.
 
 More recently, you can also (useful for shell scripts) include the JSON file
 inline per test, like this:

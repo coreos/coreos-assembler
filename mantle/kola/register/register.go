@@ -69,6 +69,9 @@ type Test struct {
 	// "5G"]) -- defaults to none.
 	AdditionalDisks []string
 
+	// Minimum amount of memory required for test.
+	MinMemory int
+
 	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string
 	// DependencyDir is a path to directory that will be uploaded, normally used by external tests

@@ -156,6 +156,7 @@ type Flight interface {
 
 type MachineOptions struct {
 	AdditionalDisks []string
+	MinMemory       int
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin
