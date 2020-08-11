@@ -316,7 +316,7 @@ def generate_iso():
                 os.path.join(tmpinitrd_rootfs, 'etc/coreos-live-rootfs'),
                 os.path.join(tmpinitrd_legacy, 'etc/coreos-live-rootfs')
             )
-            extend_initrd(pxe_rootfs, tmpinitrd_legacy)
+            extend_initrd(pxe_rootfs, tmpinitrd_legacy, compress=False)
         else:
             # Clone to PXE image
             cp_reflink(iso_rootfs, pxe_rootfs)
