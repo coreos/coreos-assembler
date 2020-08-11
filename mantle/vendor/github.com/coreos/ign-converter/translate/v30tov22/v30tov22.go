@@ -1,4 +1,18 @@
-package ignconverter
+// Copyright 2020 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package v30tov22
 
 import (
 	"fmt"
@@ -10,9 +24,12 @@ import (
 	oldValidate "github.com/coreos/ignition/config/validate"
 	"github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/ignition/v2/config/validate"
+
+	"github.com/coreos/ign-converter/util"
 )
 
-func Translate3to2(cfg types.Config) (old.Config, error) {
+// Translate translates Ignition spec config v3.0 to v2.2
+func Translate(cfg types.Config) (old.Config, error) {
 	rpt := validate.ValidateWithContext(cfg, nil)
 	if rpt.IsFatal() {
 		return old.Config{}, fmt.Errorf("Invalid input config:\n%s", rpt.String())
@@ -40,12 +57,12 @@ func Translate3to2(cfg types.Config) (old.Config, error) {
 		Ignition: old.Ignition{
 			Version: "2.2.0",
 			Config: old.IgnitionConfig{
-				Replace: translateCfgRef3to2(cfg.Ignition.Config.Replace),
-				Append:  translateCfgRefs3to2(cfg.Ignition.Config.Merge),
+				Replace: translateCfgRef(cfg.Ignition.Config.Replace),
+				Append:  translateCfgRefs(cfg.Ignition.Config.Merge),
 			},
 			Security: old.Security{
 				TLS: old.TLS{
-					CertificateAuthorities: translateCAs3to2(cfg.Ignition.Security.TLS.CertificateAuthorities),
+					CertificateAuthorities: translateCAs(cfg.Ignition.Security.TLS.CertificateAuthorities),
 				},
 			},
 			Timeouts: old.Timeouts{
@@ -55,19 +72,19 @@ func Translate3to2(cfg types.Config) (old.Config, error) {
 		},
 		// Passwd section
 		Passwd: old.Passwd{
-			Users:  translateUsers3to2(cfg.Passwd.Users),
-			Groups: translateGroups3to2(cfg.Passwd.Groups),
+			Users:  translateUsers(cfg.Passwd.Users),
+			Groups: translateGroups(cfg.Passwd.Groups),
 		},
 		Systemd: old.Systemd{
-			Units: translateUnits3to2(cfg.Systemd.Units),
+			Units: translateUnits(cfg.Systemd.Units),
 		},
 		Storage: old.Storage{
-			Disks:       translateDisks3to2(cfg.Storage.Disks),
-			Raid:        translateRaid3to2(cfg.Storage.Raid),
-			Filesystems: translateFilesystems3to2(cfg.Storage.Filesystems),
-			Files:       translateFiles3to2(cfg.Storage.Files, fsList),
-			Directories: translateDirectories3to2(cfg.Storage.Directories, fsList),
-			Links:       translateLinks3to2(cfg.Storage.Links, fsList),
+			Disks:       translateDisks(cfg.Storage.Disks),
+			Raid:        translateRaid(cfg.Storage.Raid),
+			Filesystems: translateFilesystems(cfg.Storage.Filesystems),
+			Files:       translateFiles(cfg.Storage.Files, fsList),
+			Directories: translateDirectories(cfg.Storage.Directories, fsList),
+			Links:       translateLinks(cfg.Storage.Links, fsList),
 		},
 	}
 
@@ -90,24 +107,24 @@ func generateFsList(fss []types.Filesystem) (ret []string) {
 	return
 }
 
-func translateCfgRef3to2(ref types.ConfigReference) (ret *old.ConfigReference) {
+func translateCfgRef(ref types.ConfigReference) (ret *old.ConfigReference) {
 	if ref.Source == nil {
 		return
 	}
 	ret = &old.ConfigReference{}
-	ret.Source = strV(ref.Source)
+	ret.Source = util.StrV(ref.Source)
 	ret.Verification.Hash = ref.Verification.Hash
 	return
 }
 
-func translateCfgRefs3to2(refs []types.ConfigReference) (ret []old.ConfigReference) {
+func translateCfgRefs(refs []types.ConfigReference) (ret []old.ConfigReference) {
 	for _, ref := range refs {
-		ret = append(ret, *translateCfgRef3to2(ref))
+		ret = append(ret, *translateCfgRef(ref))
 	}
 	return
 }
 
-func translateCAs3to2(refs []types.CaReference) (ret []old.CaReference) {
+func translateCAs(refs []types.CaReference) (ret []old.CaReference) {
 	for _, ref := range refs {
 		ret = append(ret, old.CaReference{
 			Source: ref.Source,
@@ -119,127 +136,127 @@ func translateCAs3to2(refs []types.CaReference) (ret []old.CaReference) {
 	return
 }
 
-func translateUsers3to2(users []types.PasswdUser) (ret []old.PasswdUser) {
+func translateUsers(users []types.PasswdUser) (ret []old.PasswdUser) {
 	for _, u := range users {
 		ret = append(ret, old.PasswdUser{
 			Name:              u.Name,
 			PasswordHash:      u.PasswordHash,
-			SSHAuthorizedKeys: translateUserSSH3to2(u.SSHAuthorizedKeys),
+			SSHAuthorizedKeys: translateUserSSH(u.SSHAuthorizedKeys),
 			UID:               u.UID,
-			Gecos:             strV(u.Gecos),
-			HomeDir:           strV(u.HomeDir),
-			NoCreateHome:      boolV(u.NoCreateHome),
-			PrimaryGroup:      strV(u.PrimaryGroup),
-			Groups:            translateUserGroups3to2(u.Groups),
-			NoUserGroup:       boolV(u.NoUserGroup),
-			NoLogInit:         boolV(u.NoLogInit),
-			Shell:             strV(u.Shell),
-			System:            boolV(u.System),
+			Gecos:             util.StrV(u.Gecos),
+			HomeDir:           util.StrV(u.HomeDir),
+			NoCreateHome:      util.BoolV(u.NoCreateHome),
+			PrimaryGroup:      util.StrV(u.PrimaryGroup),
+			Groups:            translateUserGroups(u.Groups),
+			NoUserGroup:       util.BoolV(u.NoUserGroup),
+			NoLogInit:         util.BoolV(u.NoLogInit),
+			Shell:             util.StrV(u.Shell),
+			System:            util.BoolV(u.System),
 		})
 	}
 	return
 }
 
-func translateUserSSH3to2(in []types.SSHAuthorizedKey) (ret []old.SSHAuthorizedKey) {
+func translateUserSSH(in []types.SSHAuthorizedKey) (ret []old.SSHAuthorizedKey) {
 	for _, k := range in {
 		ret = append(ret, old.SSHAuthorizedKey(k))
 	}
 	return
 }
 
-func translateUserGroups3to2(in []types.Group) (ret []old.Group) {
+func translateUserGroups(in []types.Group) (ret []old.Group) {
 	for _, g := range in {
 		ret = append(ret, old.Group(g))
 	}
 	return
 }
 
-func translateGroups3to2(groups []types.PasswdGroup) (ret []old.PasswdGroup) {
+func translateGroups(groups []types.PasswdGroup) (ret []old.PasswdGroup) {
 	for _, g := range groups {
 		ret = append(ret, old.PasswdGroup{
 			Name:         g.Name,
 			Gid:          g.Gid,
-			PasswordHash: strV(g.PasswordHash),
-			System:       boolV(g.System),
+			PasswordHash: util.StrV(g.PasswordHash),
+			System:       util.BoolV(g.System),
 		})
 	}
 	return
 }
 
-func translateUnits3to2(units []types.Unit) (ret []old.Unit) {
+func translateUnits(units []types.Unit) (ret []old.Unit) {
 	for _, u := range units {
 		ret = append(ret, old.Unit{
 			Name:     u.Name,
 			Enabled:  u.Enabled,
-			Mask:     boolV(u.Mask),
-			Contents: strV(u.Contents),
-			Dropins:  translateDropins3to2(u.Dropins),
+			Mask:     util.BoolV(u.Mask),
+			Contents: util.StrV(u.Contents),
+			Dropins:  translateDropins(u.Dropins),
 		})
 	}
 	return
 }
 
-func translateDropins3to2(dropins []types.Dropin) (ret []old.SystemdDropin) {
+func translateDropins(dropins []types.Dropin) (ret []old.SystemdDropin) {
 	for _, d := range dropins {
 		ret = append(ret, old.SystemdDropin{
 			Name:     d.Name,
-			Contents: strV(d.Contents),
+			Contents: util.StrV(d.Contents),
 		})
 	}
 	return
 }
 
-func translateDisks3to2(disks []types.Disk) (ret []old.Disk) {
+func translateDisks(disks []types.Disk) (ret []old.Disk) {
 	for _, d := range disks {
 		ret = append(ret, old.Disk{
 			Device:     d.Device,
-			WipeTable:  boolV(d.WipeTable),
-			Partitions: translatePartitions3to2(d.Partitions),
+			WipeTable:  util.BoolV(d.WipeTable),
+			Partitions: translatePartitions(d.Partitions),
 		})
 	}
 	return
 }
 
-func translatePartitions3to2(parts []types.Partition) (ret []old.Partition) {
+func translatePartitions(parts []types.Partition) (ret []old.Partition) {
 	for _, p := range parts {
 		ret = append(ret, old.Partition{
-			Label:    strV(p.Label),
+			Label:    util.StrV(p.Label),
 			Number:   p.Number,
-			TypeGUID: strV(p.TypeGUID),
-			GUID:     strV(p.GUID),
+			TypeGUID: util.StrV(p.TypeGUID),
+			GUID:     util.StrV(p.GUID),
 		})
 	}
 	return
 }
 
-func translateRaid3to2(raids []types.Raid) (ret []old.Raid) {
+func translateRaid(raids []types.Raid) (ret []old.Raid) {
 	for _, r := range raids {
 		ret = append(ret, old.Raid{
 			Name:    r.Name,
 			Level:   r.Level,
-			Devices: translateDevices3to2(r.Devices),
-			Spares:  intV(r.Spares),
-			Options: translateRaidOptions3to2(r.Options),
+			Devices: translateDevices(r.Devices),
+			Spares:  util.IntV(r.Spares),
+			Options: translateRaidOptions(r.Options),
 		})
 	}
 	return
 }
 
-func translateDevices3to2(devices []types.Device) (ret []old.Device) {
+func translateDevices(devices []types.Device) (ret []old.Device) {
 	for _, d := range devices {
 		ret = append(ret, old.Device(d))
 	}
 	return
 }
 
-func translateRaidOptions3to2(options []types.RaidOption) (ret []old.RaidOption) {
+func translateRaidOptions(options []types.RaidOption) (ret []old.RaidOption) {
 	for _, o := range options {
 		ret = append(ret, old.RaidOption(o))
 	}
 	return
 }
 
-func translateFilesystems3to2(fss []types.Filesystem) (ret []old.Filesystem) {
+func translateFilesystems(fss []types.Filesystem) (ret []old.Filesystem) {
 	// For filesystems that have no explicit path, we will uniquely name them with an int instead
 	inc := 1
 	for _, f := range fss {
@@ -257,25 +274,25 @@ func translateFilesystems3to2(fss []types.Filesystem) (ret []old.Filesystem) {
 			Name: fsname,
 			Mount: &old.Mount{
 				Device:         f.Device,
-				Format:         strV(f.Format),
-				WipeFilesystem: boolV(f.WipeFilesystem),
+				Format:         util.StrV(f.Format),
+				WipeFilesystem: util.BoolV(f.WipeFilesystem),
 				Label:          f.Label,
 				UUID:           f.UUID,
-				Options:        translateFilesystemOptions3to2(f.Options),
+				Options:        translateFilesystemOptions(f.Options),
 			},
 		})
 	}
 	return
 }
 
-func translateFilesystemOptions3to2(options []types.FilesystemOption) (ret []old.MountOption) {
+func translateFilesystemOptions(options []types.FilesystemOption) (ret []old.MountOption) {
 	for _, o := range options {
 		ret = append(ret, old.MountOption(o))
 	}
 	return
 }
 
-func translateNode3to2(n types.Node, fss []string) old.Node {
+func translateNode(n types.Node, fss []string) old.Node {
 	fsname := ""
 	path := n.Path
 	for _, fs := range fss {
@@ -296,38 +313,38 @@ func translateNode3to2(n types.Node, fss []string) old.Node {
 	if n.User != (types.NodeUser{}) {
 		ret.User = &old.NodeUser{
 			ID:   n.User.ID,
-			Name: strV(n.User.Name),
+			Name: util.StrV(n.User.Name),
 		}
 	}
 	if n.Group != (types.NodeGroup{}) {
 		ret.Group = &old.NodeGroup{
 			ID:   n.Group.ID,
-			Name: strV(n.Group.Name),
+			Name: util.StrV(n.Group.Name),
 		}
 	}
 	return ret
 }
 
-func translateFiles3to2(files []types.File, fss []string) (ret []old.File) {
+func translateFiles(files []types.File, fss []string) (ret []old.File) {
 	for _, f := range files {
 		file := old.File{
-			Node: translateNode3to2(f.Node, fss),
+			Node: translateNode(f.Node, fss),
 			FileEmbedded1: old.FileEmbedded1{
 				Mode: f.Mode,
 			},
 		}
 
-		// Overwrite defaults to false in spec 3 and true in spec 2; but
-		// we should omit it if append is specified as we want the "unset"
-		// default.
-		if f.Node.Overwrite == nil && len(f.FileEmbedded1.Append) == 0 {
-			file.Node.Overwrite = boolPStrict(false)
+		// Overwrite defaults to false in spec 3 and true in spec 2;
+		// we want to retain the "unset" default of spec 3 when translating down,
+		// so we're defaulting to false
+		if f.Node.Overwrite == nil {
+			file.Node.Overwrite = util.BoolPStrict(false)
 		}
 
 		if f.FileEmbedded1.Contents.Source != nil {
 			file.FileEmbedded1.Contents = old.FileContents{
-				Compression: strV(f.Contents.Compression),
-				Source:      strV(f.Contents.Source),
+				Compression: util.StrV(f.Contents.Compression),
+				Source:      util.StrV(f.Contents.Source),
 			}
 			file.FileEmbedded1.Contents.Verification.Hash = f.FileEmbedded1.Contents.Verification.Hash
 			file.FileEmbedded1.Append = false
@@ -340,11 +357,16 @@ func translateFiles3to2(files []types.File, fss []string) (ret []old.File) {
 					FileEmbedded1: file.FileEmbedded1,
 				}
 				appendFile.FileEmbedded1.Contents = old.FileContents{
-					Compression: strV(fc.Compression),
-					Source:      strV(fc.Source),
+					Compression: util.StrV(fc.Compression),
+					Source:      util.StrV(fc.Source),
 				}
 				appendFile.FileEmbedded1.Contents.Verification.Hash = fc.Verification.Hash
 				appendFile.FileEmbedded1.Append = true
+				// In spec 3, we may have a file object with overwrite true, contents, and some appends.
+				// When the appended files are split out to separate file objects for spec 2,
+				// the append false object may still have overwrite true,
+				// but the append true objects must have overwrite false in spec 2.
+				appendFile.Node.Overwrite = util.BoolPStrict(false)
 				ret = append(ret, appendFile)
 			}
 		}
@@ -352,12 +374,12 @@ func translateFiles3to2(files []types.File, fss []string) (ret []old.File) {
 	return
 }
 
-func translateLinks3to2(links []types.Link, fss []string) (ret []old.Link) {
+func translateLinks(links []types.Link, fss []string) (ret []old.Link) {
 	for _, l := range links {
 		ret = append(ret, old.Link{
-			Node: translateNode3to2(l.Node, fss),
+			Node: translateNode(l.Node, fss),
 			LinkEmbedded1: old.LinkEmbedded1{
-				Hard:   boolV(l.Hard),
+				Hard:   util.BoolV(l.Hard),
 				Target: l.Target,
 			},
 		})
@@ -365,10 +387,10 @@ func translateLinks3to2(links []types.Link, fss []string) (ret []old.Link) {
 	return
 }
 
-func translateDirectories3to2(dirs []types.Directory, fss []string) (ret []old.Directory) {
+func translateDirectories(dirs []types.Directory, fss []string) (ret []old.Directory) {
 	for _, d := range dirs {
 		ret = append(ret, old.Directory{
-			Node: translateNode3to2(d.Node, fss),
+			Node: translateNode(d.Node, fss),
 			DirectoryEmbedded1: old.DirectoryEmbedded1{
 				Mode: d.Mode,
 			},
