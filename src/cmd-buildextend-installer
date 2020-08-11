@@ -275,6 +275,11 @@ def generate_iso():
         if is_live:
             pxe_rootfs = os.path.join(tmpdir, 'rootfs.img')
             extend_initrd(pxe_rootfs, tmpinitrd_pxe_rootfs)
+            # coreos-installer download won't accept an artifact sized
+            # less than 1 MiB
+            with open(pxe_rootfs, 'r+b') as fh:
+                if fh.seek(0, 2) < 1024 * 1024:
+                    fh.truncate(1024 * 1024)
             # Save stream hash of rootfs for verifying out-of-band fetches
             os.makedirs(os.path.join(tmpinitrd_pxe, 'etc'), exist_ok=True)
             make_stream_hash(pxe_rootfs, os.path.join(tmpinitrd_pxe, 'etc/coreos-live-want-rootfs'))
