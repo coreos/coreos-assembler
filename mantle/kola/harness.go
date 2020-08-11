@@ -896,7 +896,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			userdata = t.UserDataV3
 		}
 
-		if _, err := platform.NewMachines(c, userdata, t.ClusterSize, t.AdditionalDisks); err != nil {
+		options := platform.MachineOptions{
+			AdditionalDisks: t.AdditionalDisks,
+		}
+		if _, err := platform.NewMachines(c, userdata, t.ClusterSize, options); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
