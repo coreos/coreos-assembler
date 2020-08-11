@@ -534,6 +534,7 @@ type externalTestMeta struct {
 	Distros         string   `json:",distros,omitempty"`
 	Tags            string   `json:",tags,omitempty"`
 	AdditionalDisks []string `json:",additionalDisks,omitempty"`
+	MinMemory       int      `json:",minMemory,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -662,6 +663,7 @@ ExecStart=%s
 		Tags:          []string{"external"},
 
 		AdditionalDisks: targetMeta.AdditionalDisks,
+		MinMemory:       targetMeta.MinMemory,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -898,6 +900,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 		options := platform.MachineOptions{
 			AdditionalDisks: t.AdditionalDisks,
+			MinMemory:       t.MinMemory,
 		}
 		if _, err := platform.NewMachines(c, userdata, t.ClusterSize, options); err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)

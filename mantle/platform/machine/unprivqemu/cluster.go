@@ -112,6 +112,8 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 			return nil, errors.Wrapf(err, "parsing memory option")
 		}
 		builder.Memory = int(memory)
+	} else if options.MinMemory != 0 {
+		builder.Memory = options.MinMemory
 	}
 
 	channel := "virtio"
