@@ -917,17 +917,8 @@ func (builder *QemuBuilder) setupIso() error {
 		if err := instCmd.Run(); err != nil {
 			return errors.Wrapf(err, "running coreos-installer iso embed")
 		}
-		builder.configInjected = true
-
-		consoleArg := fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()])
-		instCmdKargs := exec.Command("coreos-installer", "iso", "embed-kargs", "--kargs", consoleArg, isoEmbeddedPath)
-		instCmdKargs.Stderr = os.Stderr
-		if err := instCmdKargs.Run(); err != nil {
-			// Don't make this a hard error yet; we may be operating on an old
-			// live ISO or with an old coreos-installer.
-			plog.Warningf("running coreos-installer iso embed-kargs: %v", err)
-		}
 		builder.iso.path = isoEmbeddedPath
+		builder.configInjected = true
 	}
 
 	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
