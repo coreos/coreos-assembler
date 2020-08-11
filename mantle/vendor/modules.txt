@@ -123,8 +123,9 @@ github.com/coreos/go-systemd/unit
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/unit
-# github.com/coreos/ign-converter v0.0.0-20200228175238-237c8512310a
-github.com/coreos/ign-converter
+# github.com/coreos/ign-converter v0.0.0-20200706175125-8bea9183aea9
+github.com/coreos/ign-converter/translate/v30tov22
+github.com/coreos/ign-converter/util
 # github.com/coreos/ignition v0.35.0
 github.com/coreos/ignition/config/shared/errors
 github.com/coreos/ignition/config/shared/validations
