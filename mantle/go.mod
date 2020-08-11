@@ -15,7 +15,7 @@ require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/go-systemd/v22 v22.0.0
-	github.com/coreos/ign-converter v0.0.0-20200228175238-237c8512310a
+	github.com/coreos/ign-converter v0.0.0-20200706175125-8bea9183aea9
 	github.com/coreos/ignition v0.35.0
 	github.com/coreos/ignition/v2 v2.6.0
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
@@ -24,6 +24,7 @@ require (
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
+	github.com/godbus/dbus v0.0.0-20181025153459-66d97aec3384 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
 	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
