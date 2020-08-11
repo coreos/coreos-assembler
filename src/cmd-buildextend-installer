@@ -317,6 +317,11 @@ def generate_iso():
                 os.path.join(tmpinitrd_legacy, 'etc/coreos-live-rootfs')
             )
             extend_initrd(pxe_rootfs, tmpinitrd_legacy, compress=False)
+            # coreos-installer download won't accept an artifact sized
+            # less than 1 MiB
+            with open(pxe_rootfs, 'r+b') as fh:
+                if fh.seek(0, 2) < 1024 * 1024:
+                    fh.truncate(1024 * 1024)
         else:
             # Clone to PXE image
             cp_reflink(iso_rootfs, pxe_rootfs)
