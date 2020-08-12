@@ -8,7 +8,12 @@ sys.path.insert(0, f'{parent_path}/src')
 sys.path.insert(0, parent_path)
 
 from cosalib import meta
-from cosalib.cmdlib import get_basearch
+from cosalib.cmdlib import (
+    get_basearch,
+    load_json,
+    run_verbose,
+    write_json
+)
 from jsonschema import ValidationError
 
 TEST_META_PATH = os.environ.get(
@@ -114,3 +119,19 @@ def test_invalid_schema(tmpdir):
     """
     with pytest.raises(ValidationError):
         _ = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
+
+def test_require_lock_json(tmpdir):
+    """
+    Test locking of JSON
+    """
+    j = {"test": "unwritable"}
+    test_f = f"{tmpdir}/test.json"
+    test_f_l = f"{tmpdir}/.test.json.lock"
+    write_json(test_f, j)
+    _ = load_json(test_f, require_exclusive=True)
+
+    with pytest.raises(PermissionError):
+        os.chmod(tmpdir, 0o0555)
+        _ = load_json(test_f, require_exclusive=True)
+
+    _ = load_json(test_f, require_exclusive=False)

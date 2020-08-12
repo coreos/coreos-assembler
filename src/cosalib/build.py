@@ -279,9 +279,12 @@ class _Build:
         """
 
         file_path = self.__file(name)
+        require_exclusive = False
+        if self.build_dir in file_path:
+            require_exclusive = True
         log.debug("Reading in %s", file_path)
         try:
-            return load_json(file_path)
+            return load_json(file_path, require_exclusive=require_exclusive)
         except FileNotFoundError:
             e = self._exceptions.get(name)
             if e:

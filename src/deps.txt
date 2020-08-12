@@ -80,3 +80,6 @@ coreos-installer
 
 # For the ability to easily pass in an fcc to kola
 fcct
+
+# Support for meta.json file locking
+python3-flufl-lock

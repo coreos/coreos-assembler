@@ -17,6 +17,8 @@ from botocore.exceptions import (
     IncompleteReadError,
     ReadTimeoutError)
 
+from flufl.lock import Lock
+
 from tenacity import (
     stop_after_delay, stop_after_attempt, retry_if_exception_type)
 
@@ -72,27 +74,49 @@ def write_json(path, data):
     :type: path: str
     :param data:  structure to write out as json
     :type data: dict or list
+    :param lock_file: Exclusively lock file before writing
+    :type: lock_file: bool
     :raises: ValueError, OSError
     """
     dn = os.path.dirname(path)
     f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
     json.dump(data, f, indent=4)
     os.fchmod(f.file.fileno(), 0o644)
-    shutil.move(f.name, path)
+
+    # lock before moving
+    bn = os.path.basename(path)
+    lock = Lock(f"{dn}/.{bn}.lock")
+    with lock:
+        shutil.move(f.name, path)
 
 
-def load_json(path):
+def load_json(path, require_exclusive=True):
     """
     Shortcut for loading json from a file path.
 
     :param path: The full path to the file
     :type: path: str
+    :param require_exclusive: lock file for exclusive read
+    :type require_exclusive: bool
     :returns: loaded json
     :rtype: dict
     :raises: IOError, ValueError
     """
-    with open(path) as f:
-        return json.load(f)
+    dn = os.path.dirname(path)
+    bn = os.path.basename(path)
+    lock_f = f"{dn}/.{bn}.lock"
+
+    # lock the file before reading
+    lock = None
+    lock = Lock(lock_f)
+    if require_exclusive:
+        lock.lock()
+    try:
+        with open(path) as f:
+            return json.load(f)
+    finally:
+        if lock and lock.is_locked:
+            lock.unlock(unconditionally=True)
 
 
 def sha256sum_file(path):
@@ -215,8 +239,8 @@ def get_timestamp(entry):
         return None
 
     # collect dirs and timestamps
-    with open(meta_file) as f:
-        j = json.load(f)
+    j = load_json(meta_file)
+
     # Older versions only had ostree-timestamp
     ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
     return parse_date_string(ts)
