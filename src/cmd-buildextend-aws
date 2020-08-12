@@ -24,6 +24,8 @@ parser.add_argument("--bucket", help="S3 Bucket")
 parser.add_argument("--name-suffix", help="Suffix for name")
 parser.add_argument("--grant-user", help="Grant user launch permission",
                     nargs="*", default=[])
+parser.add_argument("--grant-user-snapshot", help="Grant user ec2 snapshot volume permission",
+                    nargs="*", default=[])
 parser.add_argument("--log-level", help="ore log level")
 parser.add_argument("--upload", action='store_true', default=False,
                     help="Upload to AWS")
@@ -101,6 +103,8 @@ def run_ore():
                      '--force'])
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
+    for user in args.grant_user_snapshot:
+        ore_args.extend(['--grant-user-snapshot', user])
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
     ore_data = json.loads(subprocess.check_output(ore_args))
     # This matches the Container Linux schema:
