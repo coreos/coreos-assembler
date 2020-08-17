@@ -13,7 +13,6 @@ if [ $# -gt 1 ]; then
   echo Usage: "build.sh [CMD]"
   echo "Supported commands:"
   echo "    configure_user"
-  echo "    configure_yum_repos"
   echo "    install_rpms"
   echo "    make_and_makeinstall"
   exit 1
@@ -21,15 +20,6 @@ fi
 
 set -x
 srcdir=$(pwd)
-
-configure_yum_repos() {
-    local version_id
-    version_id=$(. /etc/os-release && echo ${VERSION_ID})
-    # Add continuous tag for latest build tools and mark as required so we
-    # can depend on those latest tools being available in all container
-    # builds.
-    echo -e "[f${version_id}-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f${version_id}-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
-}
 
 install_rpms() {
     # First, a general update; this is best practice.  We also hit an issue recently
@@ -113,7 +103,6 @@ if [ $# -ne 0 ]; then
   ${1}
 else
   # Otherwise, just run all the steps
-  configure_yum_repos
   install_rpms
   write_archive_info
   make_and_makeinstall

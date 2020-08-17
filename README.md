@@ -242,7 +242,6 @@ matches the same Fedora release cosa uses, you can install cosa inside
 of it by doing:
 
 ```
-$ sudo ./build.sh configure_yum_repos
 $ sudo ./build.sh install_rpms
 $ make
 $ sudo make install
