@@ -24,12 +24,6 @@ set -x
 srcdir=$(pwd)
 
 configure_yum_repos() {
-    local version_id
-    version_id=$(. /etc/os-release && echo ${VERSION_ID})
-    # Add continuous tag for latest build tools and mark as required so we
-    # can depend on those latest tools being available in all container
-    # builds.
-    echo -e "[f${version_id}-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f${version_id}-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
     # We have a few packages that we currently import from f32, so explicitly
     # add the f32 repo temporarily.
     echo -e "[f32-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f32-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" >> /etc/yum.repos.d/coreos.repo
