@@ -147,7 +147,18 @@
          "default":"",
          "minLength": 1
         }
-      }
+      },
+      "meta": {
+        "type": "object",
+        "required": ["resource-version"],
+        "properties": {
+          "resource-version": {
+            "$id": "#/meta/resource-version",
+            "type":"string",
+            "title":"resource-version"
+            }
+          }
+        }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
  "$id":"http://github.com/coreos/coreos-assembler/blob/master/schema/v1.json",
@@ -183,6 +194,7 @@
    "pkgdiff",
    "parent-pkgdiff",
    "release-payload",
+   "meta",
 
    "coreos-assembler.basearch",
    "coreos-assembler.build-timestamp",
@@ -480,6 +492,11 @@
         }
       }
     },
+    "meta": {
+      "$id":"#/properties/meta",
+      "type":"object",
+      "title":"Meta"
+     },
    "name": {
      "$id":"#/properties/name",
      "type":"string",

@@ -152,7 +152,18 @@ var generatedSchemaJSON = `{
          "default":"",
          "minLength": 1
         }
-      }
+      },
+      "meta": {
+        "type": "object",
+        "required": ["resource-version"],
+        "properties": {
+          "resource-version": {
+            "$id": "#/meta/resource-version",
+            "type":"string",
+            "title":"resource-version"
+            }
+          }
+        }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
  "$id":"http://github.com/coreos/coreos-assembler/blob/master/schema/v1.json",
@@ -175,8 +186,9 @@ var generatedSchemaJSON = `{
      "summary"
  ],
  "optional": [
-   "images",
-   "aliyun",
+  "images",
+  "meta",
+  "aliyun",
    "amis",
    "azure",
    "azurestack",
@@ -485,6 +497,11 @@ var generatedSchemaJSON = `{
         }
       }
     },
+    "meta": {
+      "$id":"#/properties/meta",
+      "type":"meta",
+      "title":"Meta"
+     },
    "name": {
      "$id":"#/properties/name",
      "type":"string",

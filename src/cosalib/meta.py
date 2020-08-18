@@ -75,6 +75,17 @@ class GenericBuildMeta(dict):
         Write out the dict to the meta path.
         """
         self.validate()
+        newver = self.get('meta', {}).get('resource-version', "0")
+        curver = "0"
+        if os.path.exists(self._meta_path):
+            with open(self._meta_path) as f:
+                current = json.load(f)
+                curver = current.get('meta', {}).get('resource-version', "0")
+            if curver != newver:
+                raise Exception(f"resource-version conflict updating {self._meta_path}, expected {newver}, found {curver}")
+        selfmeta = self.get('meta', {})
+        selfmeta['resource-version'] = "{}".format(int(curver) + 1)
+        self['meta'] = selfmeta
         write_json(self._meta_path, dict(self))
 
     def get(self, *args):

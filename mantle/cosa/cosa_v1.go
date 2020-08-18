@@ -44,6 +44,7 @@ type Build struct {
 	GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
 	ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
 	InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
+	Meta                      interface{}           `json:"meta,omitempty"`
 	Name                      string                `json:"name"`
 	Oscontainer               *Image                `json:"oscontainer,omitempty"`
 	OstreeCommit              string                `json:"ostree-commit"`
@@ -113,5 +114,9 @@ type Image struct {
 }
 
 type Items interface{}
+
+type Meta struct {
+	ResourceVersion string `json:"resource-version"`
+}
 
 type PackageSetDifferences []Items
