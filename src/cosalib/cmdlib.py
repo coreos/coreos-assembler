@@ -17,6 +17,8 @@ from botocore.exceptions import (
     IncompleteReadError,
     ReadTimeoutError)
 
+from flufl.lock import Lock
+
 from tenacity import (
     stop_after_delay, stop_after_attempt, retry_if_exception_type)
 
@@ -64,7 +66,16 @@ def run_verbose(args, **kwargs):
     return process
 
 
-def write_json(path, data):
+def get_lock_path(path):
+    """
+    Return the lock path to use for a given path.
+    """
+    dn = os.path.dirname(path)
+    bn = os.path.basename(path)
+    return os.path.join(dn, f".{bn}.lock")
+
+
+def write_json(path, data, lock_path=None):
     """
     Shortcut for writing a structure as json to the file system.
 
@@ -72,27 +83,49 @@ def write_json(path, data):
     :type: path: str
     :param data:  structure to write out as json
     :type data: dict or list
+    :param lock_path: path for the lock file to use
+    :type lock_path: string
     :raises: ValueError, OSError
     """
     dn = os.path.dirname(path)
     f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
     json.dump(data, f, indent=4)
     os.fchmod(f.file.fileno(), 0o644)
-    shutil.move(f.name, path)
+
+    # lock before moving
+    if not lock_path:
+        lock_path = get_lock_path(path)
+
+    with Lock(lock_path):
+        shutil.move(f.name, path)
 
 
-def load_json(path):
+def load_json(path, require_exclusive=True, lock_path=None):
     """
     Shortcut for loading json from a file path.
 
     :param path: The full path to the file
     :type: path: str
+    :param require_exclusive: lock file for exclusive read
+    :type require_exclusive: bool
+    :param lock_path: path for the lock file to use
+    :type lock_path: string
     :returns: loaded json
     :rtype: dict
     :raises: IOError, ValueError
     """
-    with open(path) as f:
-        return json.load(f)
+    lock = None
+    if require_exclusive:
+        if not lock_path:
+            lock_path = get_lock_path(path)
+        lock = Lock(lock_path)
+        lock.lock()
+    try:
+        with open(path) as f:
+            return json.load(f)
+    finally:
+        if lock:
+            lock.unlock(unconditionally=True)
 
 
 def sha256sum_file(path):
@@ -215,8 +248,8 @@ def get_timestamp(entry):
         return None
 
     # collect dirs and timestamps
-    with open(meta_file) as f:
-        j = json.load(f)
+    j = load_json(meta_file)
+
     # Older versions only had ostree-timestamp
     ts = j.get('coreos-assembler.build-timestamp') or j['ostree-timestamp']
     return parse_date_string(ts)
