@@ -3,9 +3,7 @@ import jsonschema
 import os.path
 
 from cosalib.builds import Builds
-from cosalib.cmdlib import (
-    load_json,
-    write_json)
+from cosalib.cmdlib import write_json
 
 
 SCHEMA_PATH = os.environ.get("COSA_META_SCHEMA",
@@ -66,8 +64,11 @@ class GenericBuildMeta(dict):
         """
         # Remove any current data
         self.clear()
-        # Load the file
-        self.update(load_json(self._meta_path))
+        # Load the file and record the initial timestamp to
+        # detect conflicts
+        with open(self._meta_path) as f:
+            self._initial_timestamp = os.fstat(f.fileno()).st_mtime
+            self.update(json.load(f))
         self.validate()
 
     def write(self):
@@ -75,6 +76,9 @@ class GenericBuildMeta(dict):
         Write out the dict to the meta path.
         """
         self.validate()
+        ts = os.stat(self._meta_path).st_mtime
+        if ts != self._initial_timestamp:
+            raise Exception(f"Detected read-modify-write conflict, expected timestamp={self._initial_timestamp} found {ts}")
         write_json(self._meta_path, dict(self))
 
     def get(self, *args):
