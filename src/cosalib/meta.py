@@ -56,7 +56,6 @@ class GenericBuildMeta(dict):
         expected.
         """
         if not self._validator:
-            print("no validator")
             return
         self._validator.validate(dict(self))
 

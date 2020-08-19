@@ -281,7 +281,7 @@ class _Build:
         file_path = self.__file(name)
         log.debug("Reading in %s", file_path)
         try:
-            return load_json(file_path)
+            return load_json(file_path, require_exclusive=False)
         except FileNotFoundError:
             e = self._exceptions.get(name)
             if e:
