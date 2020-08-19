@@ -76,6 +76,7 @@ def test_set(tmpdir):
     m.set('test', 'changed')
     m.write()
     assert m.get('test') == 'changed'
+    m.read()
     m.set(['a', 'b'], 'z')
     m.write()
     assert m.get(['a', 'b']) == 'z'
