@@ -1,8 +1,6 @@
-Integrating external test suites
-=
+# Integrating external test suites
 
-Rationale
----
+## Rationale
 
 Fedora CoreOS is comprised of a number of upstream projects, from
 the Linux kernel to systemd, ostree, Ignition, podman and
@@ -13,10 +11,9 @@ repositories, and allow these projects to target Fedora CoreOS
 in e.g. their own CI.  And we also want to run unmodified
 upstream tests, *without rebuilding* the project.
 
-Using kola run with externally defined tests
----
+## Using kola run with externally defined tests
 
-The `--exttest` (`-E`) argument to `kola run` one way to accomplish this; you
+The `--exttest` (`-E`) argument to `kola run` is one way to accomplish this; you
 provide the path to an upstream project git repository.  Tests will be found
 in the `tests/kola` directory.  If this project contains binaries that require
 building, it is assumed that `make` (or equivalent) has already been invoked.
@@ -57,8 +54,7 @@ of CoreOS; for example, one can have the binary drive a container runtime.
 A test is considered failed if the unit exits with any non-zero exit
 status or dies from any signal other than `SIGTERM`.
 
-Support for rebooting
----
+## Support for rebooting
 
 An important feature of exttests is support for rebooting the host system.
 This allows one to easily test OS updates for example.  In order to
@@ -92,8 +88,7 @@ journal, etc.  A future enhancement will support directly invoking
 (Previously the API for this was to send `SIGTERM` to the current process;
  that method is deprecated and will be removed at some point)
 
-`kola.json`
----
+## `kola.json`
 
 Kola internally supports limiting tests to specific architectures and plaforms,
 as well as "clusters" of machines that have size > 1.  External tests
@@ -146,3 +141,32 @@ test code here
 ```
 
 This metadata stanza must start with `# kola: ` and have a single line of JSON.
+
+## Quick Start
+1. In your project's upstream repository, create the `tests/kola` directory, if 
+   it does not already exist
+2. Move into it and find or create an appropriate subdirectory for your test to 
+   live in
+3. Add your test to the subdirectory and make sure it is *executable* (`chmod a+x`)
+4. Your test should now be able to be run by kola when you provide the `--exttest`
+   (`-E`) argument to `kola run`
+
+### Example
+Say we want to add a simple [noop](https://en.wikipedia.org/wiki/NOP_(code)) 
+test in the project `my-project` externally. If we follow the above instructions, 
+it would look like this:
+```
+$ git clone git@github.com:$GITHUB_USERNAME/my-project.git
+$ cd my-project/tests/kola
+$ $EDITOR basic/noop # Add the `noop` test
+#!/bin/bash
+set -xeuo pipefail
+# kola: { "architectures": "x86_64", "platforms": "qemu", "tags": "needs-internet" }
+# Test: I'm a NOOP!
+test 2 -gt 1
+$ chmod a+x basic/noop # Make sure the test is executable
+$ cosa kola run -p qemu --qemu-image path/to/qcow2 -E path/to/my-project/ 'ext.my-project.basic' # Run the test
+=== RUN   ext.my-project.basic
+--- PASS: ext.my-project.basic (35.57s)
+PASS, output in _kola_temp/qemu-unpriv-2020-08-18-1815-2295199
+```
