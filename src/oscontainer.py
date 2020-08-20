@@ -301,27 +301,28 @@ def main():
             shutil.rmtree(tmpdir)
         os.makedirs(tmpdir)
 
-    if args.action == 'extract':
-        oscontainer_extract(
-            containers_storage, tmpdir, args.src, args.dest,
-            tls_verify=not args.disable_tls_verify,
-            cert_dir=args.cert_dir,
-            ref=args.ref,
-            authfile=args.authfile)
-    elif args.action == 'build':
-        oscontainer_build(
-            containers_storage, tmpdir, args.src, args.rev, args.name,
-            getattr(args, 'from'),
-            display_name=args.display_name,
-            digestfile=args.digestfile,
-            add_directories=args.add_directory,
-            push=args.push,
-            tls_verify=not args.disable_tls_verify,
-            cert_dir=args.cert_dir,
-            authfile=args.authfile)
-
-    if containers_storage is not None:
-        shutil.rmtree(containers_storage)
+    try:
+        if args.action == 'extract':
+            oscontainer_extract(
+                containers_storage, tmpdir, args.src, args.dest,
+                tls_verify=not args.disable_tls_verify,
+                cert_dir=args.cert_dir,
+                ref=args.ref,
+                authfile=args.authfile)
+        elif args.action == 'build':
+            oscontainer_build(
+                containers_storage, tmpdir, args.src, args.rev, args.name,
+                getattr(args, 'from'),
+                display_name=args.display_name,
+                digestfile=args.digestfile,
+                add_directories=args.add_directory,
+                push=args.push,
+                tls_verify=not args.disable_tls_verify,
+                cert_dir=args.cert_dir,
+                authfile=args.authfile)
+    finally:
+        if containers_storage is not None and os.path.isdir(containers_storage):
+            shutil.rmtree(containers_storage)
 
 
 if __name__ == '__main__':
