@@ -199,19 +199,20 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         if ostree_version is not None:
             config += ['-l', 'version=' + ostree_version]
 
-        with open('builds/builds.json') as fb:
-            builds = json.load(fb)['builds']
-        latest_build = builds[0]['id']
-        arch = cmdlib.get_basearch()
-        metapath = f"builds/{latest_build}/{arch}/meta.json"
-        with open(metapath) as f:
-            meta = json.load(f)
-        rhcos_commit = meta['coreos-assembler.container-config-git']['commit']
-        imagegit = meta.get('coreos-assembler.container-image-git')
-        if imagegit is not None:
-            cosa_commit = imagegit['commit']
-            config += ['-l', f"com.coreos.coreos-assembler-commit={cosa_commit}"]
-        config += ['-l', f"com.coreos.redhat-coreos-commit={rhcos_commit}"]
+        if os.path.isfile('builds/builds.json'):
+            with open('builds/builds.json') as fb:
+                builds = json.load(fb)['builds']
+            latest_build = builds[0]['id']
+            arch = cmdlib.get_basearch()
+            metapath = f"builds/{latest_build}/{arch}/meta.json"
+            with open(metapath) as f:
+                meta = json.load(f)
+            rhcos_commit = meta['coreos-assembler.container-config-git']['commit']
+            imagegit = meta.get('coreos-assembler.container-image-git')
+            if imagegit is not None:
+                cosa_commit = imagegit['commit']
+                config += ['-l', f"com.coreos.coreos-assembler-commit={cosa_commit}"]
+            config += ['-l', f"com.coreos.redhat-coreos-commit={rhcos_commit}"]
 
         if display_name is not None:
             config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
