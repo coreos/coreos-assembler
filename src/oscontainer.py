@@ -40,6 +40,15 @@ def run_verbose(args, **kwargs):
     subprocess.check_call(args, **kwargs)
 
 
+def find_commit_from_oscontainer(repo):
+    """Given an ostree repo, find exactly one commit object in it"""
+    o = subprocess.check_output(['find', repo + '/objects', '-name', '*.commit'], encoding='UTF-8').strip().split('\n')
+    if len(o) > 1:
+        raise SystemExit(f"Multiple commit objects found in {repo}")
+    d, n = os.path.split(o[0])
+    return os.path.basename(d) + n.split('.')[0]
+
+
 # Given a container reference, pull the latest version, then extract the ostree
 # repo a new directory dest/repo.
 def oscontainer_extract(containers_storage, tmpdir, src, dest,
@@ -48,48 +57,36 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
     dest = os.path.realpath(dest)
     subprocess.check_call(["ostree", "--repo=" + dest, "refs"])
 
-    podman_base_argv = ['podman']
-    if containers_storage is not None:
-        podman_base_argv.append(f"--root={containers_storage}")
-    podCmd = podman_base_argv + ['pull']
-
+    # FIXME: Today we use skopeo in a hacky way for this.  What we
+    # really want is the equivalent of `oc image extract` as part of
+    # podman or skopeo.
+    cmd = ['skopeo']
     # See similar message in oscontainer_build.
     if tmpdir is not None:
         os.environ['TMPDIR'] = tmpdir
 
     if not tls_verify:
-        tls_arg = '--tls-verify=false'
-    else:
-        tls_arg = '--tls-verify'
-    podCmd.append(tls_arg)
+        cmd.append('--tls-verify=false')
 
     if authfile != "":
-        podCmd.append("--authfile={}".format(authfile))
-
+        cmd.append("--authfile={}".format(authfile))
     if cert_dir != "":
-        podCmd.append("--cert-dir={}".format(cert_dir))
-    podCmd.append(src)
+        cmd.append("--cert-dir={}".format(cert_dir))
+    tmp_tarball = tmpdir + '/container.tar'
+    cmd += ['copy', "docker://" + src, 'docker-archive://' + tmp_tarball]
+    run_verbose(cmd)
+    run_verbose(['tar', 'xf', tmp_tarball], cwd=tmpdir)
+    os.unlink(tmp_tarball)
+    # This is a brutal hack to extract all the layers; we don't even bother with ordering
+    # because we know we're not removing anything in higher layers.
+    subprocess.check_call(['find', '-name', '*.tar', '-exec', 'tar', 'xUf', '{}', ';'], cwd=tmpdir)
+    # Some files/directories aren't writable, and this will cause permission errors
+    subprocess.check_call(['find', '!', '-perm', '-u+w', '-exec', 'chmod', 'u+w', '{}', ';'], cwd=tmpdir)
 
-    run_verbose(podCmd)
-    inspect = run_get_json(podman_base_argv + ['inspect', src])[0]
-    commit = inspect['Labels'].get(OSCONTAINER_COMMIT_LABEL)
-    if commit is None:
-        raise SystemExit(
-            "Failed to find label '{}'".format(OSCONTAINER_COMMIT_LABEL))
-    iid = inspect['Id']
-    print("Preparing to extract cid: {}".format(iid))
-    # We're not actually going to run the container. The main thing `create`
-    # does then for us is "materialize" the merged rootfs, so we can mount it.
-    # In theory we shouldn't need --entrypoint=/enoent here, but
-    # it works around a podman bug.
-    cid = run_get_string(podman_base_argv + ['create', '--entrypoint=/enoent', iid])
-    mnt = run_get_string(podman_base_argv + ['mount', cid])
-    try:
-        src_repo = os.path.join(mnt, 'srv/repo')
-        run_verbose([
-            "ostree", "--repo=" + dest, "pull-local", src_repo, commit])
-    finally:
-        subprocess.call(podman_base_argv + ['umount', cid])
+    repo = tmpdir + '/srv/repo'
+    commit = find_commit_from_oscontainer(repo)
+    print(f"commit: {commit}")
+    run_verbose(["ostree", "--repo=" + dest, "pull-local", repo, commit])
     if ref is not None:
         run_verbose([
             "ostree", "--repo=" + dest, "refs", '--create=' + ref, commit])
