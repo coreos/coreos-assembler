@@ -19,39 +19,12 @@ import json
 import os
 import shutil
 import subprocess
-from functools import wraps
-from time import sleep
 from cosalib import cmdlib
 
 OSCONTAINER_COMMIT_LABEL = 'com.coreos.ostree-commit'
 
 # https://access.redhat.com/documentation/en-us/openshift_container_platform/4.1/html/builds/custom-builds-buildah
 NESTED_BUILD_ARGS = ['--storage-driver', 'vfs']
-
-
-# oscontainer.py can't use external python libs since its running in RHCOS
-def retry(attempts=5):
-    def retry_decorator(f):
-
-        @wraps(f)
-        def retry_function(*args, **kwargs):
-            delay = 5
-            i = attempts
-            while i > 1:
-                try:
-                    return f(*args, **kwargs)
-                except subprocess.CalledProcessError as e:
-                    print(f"{str(e)}, retrying in {delay} seconds...")
-                    sleep(delay)
-                    i -= 1
-            return f(*args, **kwargs)
-        return retry_function
-    return retry_decorator
-
-
-@retry(attempts=5)
-def run_get_json_retry(args):
-    return run_get_json(args)
 
 
 def run_get_json(args):
