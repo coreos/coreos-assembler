@@ -75,9 +75,33 @@ def get_lock_path(path):
     return os.path.join(dn, f".{bn}.lock")
 
 
-def write_json(path, data, lock_path=None):
+# Credit to @arithx
+def merge_dicts(x, y):
+    """
+    Merge two dicts recursively, but based on the difference.
+    """
+    sd = set(x.keys()).symmetric_difference(y.keys())
+    ret = {}
+    for d in [x, y]:
+        for k, v in d.items():
+            if k in sd:
+                # the key is only present in one dict, add it directly
+                ret.update({k: v})
+            elif type(x[k]) == dict and type(y[k]) == dict:
+                # recursively merge
+                ret.update({k: merge_dicts(x[k], y[k])})
+            else:
+                # first dictionary always takes precedence
+                ret.update({k: x[k]})
+    return ret
+
+
+def write_json(path, data, lock_path=None, merge_func=None):
     """
     Shortcut for writing a structure as json to the file system.
+
+    merge_func is a callable that takes two dict and merges them
+    together.
 
     :param path: The full path to the file to write
     :type: path: str
@@ -87,16 +111,25 @@ def write_json(path, data, lock_path=None):
     :type lock_path: string
     :raises: ValueError, OSError
     """
-    dn = os.path.dirname(path)
-    f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
-    json.dump(data, f, indent=4)
-    os.fchmod(f.file.fileno(), 0o644)
-
     # lock before moving
     if not lock_path:
         lock_path = get_lock_path(path)
 
     with Lock(lock_path):
+        if callable(merge_func):
+            try:
+                disk_data = load_json(path, require_exclusive=False)
+            except FileNotFoundError:
+                disk_data = {}
+            mem_data = data.copy()
+            data = merge_func(disk_data, mem_data)
+
+        # we could probably write directly to the file,
+        # but set the permissions to RO
+        dn = os.path.dirname(path)
+        f = tempfile.NamedTemporaryFile(mode='w', dir=dn, delete=False)
+        json.dump(data, f, indent=4)
+        os.fchmod(f.file.fileno(), 0o644)
         shutil.move(f.name, path)
 
 

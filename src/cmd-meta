@@ -59,11 +59,12 @@ def new_cli():
             k, v = item.split('=')
             keypath = pather(k)
             meta.set(keypath, v)
-        meta.write()
+        meta.write(merge_func=None)
     elif args.dump is True:
         print(meta)
     elif args.image_path is not None:
-        print(os.path.join(os.path.dirname(meta.path), meta.get('images')[args.image_path]['path']))
+        print(os.path.join(os.path.dirname(meta.path),
+              meta.get('images')[args.image_path]['path']))
 
 
 if __name__ == '__main__':

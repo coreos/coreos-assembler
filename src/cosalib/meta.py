@@ -1,13 +1,80 @@
 import json
 import jsonschema
 import os.path
+import time
 
 from cosalib.builds import Builds
-from cosalib.cmdlib import write_json
+from cosalib.cmdlib import (
+    merge_dicts,
+    write_json
+)
 
+COSA_VER_STAMP = "coreos-assembler.meta-stamp"
 
 SCHEMA_PATH = os.environ.get("COSA_META_SCHEMA",
                              "/usr/lib/coreos-assembler/schema/v1.json")
+
+
+class COSAMergeError(Exception):
+    """
+    Raised when unable to merge meta.json together
+    """
+    def __str__(self):
+        return f"unable to merge: {': '.join(self.args)}"
+
+
+def merge_meta(x, y):
+    """
+    Merge two GenericMeta's together
+
+    This is likely over engineered, merge_dicts is safe enough.
+    But to we want to be sure.
+
+    Rules for merging:
+    - the first dict should be on-disk while second is modified one
+    - if the attribute checked exists on x, it must match on y.
+    - which ever version is newer is merged into the older
+
+    Note: this will NOT deal with replacing keys. For example,
+          re-running an AWS replication will not update the missing
+          keys.
+
+    """
+
+    # Only allow merging of artifacts from the same content
+    # i.e. you can't add RHCOS into FCOS.
+    for i in ["ostree-commit", "ostree-content-checksum",
+              "coreos-assembler.image-config-checksum"]:
+        if x.get(i, False) and (x.get(i) != y.get(i)):
+            raise COSAMergeError(f"meta.json conflict on '{i}' "
+                                 f"{x.get(i)} != {y.get(i)}")
+
+    # Do not allow merging from different COSA code.
+    cosa_git = "coreos-assembler.container-config-git"
+    x_cosa = x.get(cosa_git, {}).get("commit")
+    y_cosa = y.get(cosa_git, {}).get("commit")
+    if x_cosa and (x_cosa != y_cosa):
+        raise COSAMergeError(f"{cosa_git} version {x_cosa}"
+                             f" doest not match {y_cosa}")
+
+    ret = {}
+    x_stamp = x.get(COSA_VER_STAMP, 0)
+    y_stamp = y.get(COSA_VER_STAMP, 0)
+    if x_stamp == y_stamp:
+        # version on disk is the same as starting version
+        ret = y
+    elif x_stamp > y_stamp:
+        # x is newer
+        ret = merge_dicts(x, y)
+    else:
+        # y is newer
+        ret = merge_dicts(y, x)
+
+    # Update the version stamp to the current time in ns
+    # For distributed builds time is pretty much the only
+    # equalizer.
+    ret[COSA_VER_STAMP] = time.time_ns()
+    return ret
 
 
 class COSAInvalidMeta(Exception):
@@ -18,31 +85,31 @@ class COSAInvalidMeta(Exception):
         return f"meta.json is or would be invalid: {': '.join(self.args)}"
 
 
-class GenericBuildMeta(dict):
+class GenericMeta(dict):
     """
-    GenericBuildMeta interacts with a builds meta.json
+    GenericMeta is meta.json outside the scope of a build.
     """
 
-    def __init__(self, workdir=None, build='latest',
-                 schema=SCHEMA_PATH):
-        builds = Builds(workdir)
-        if build != "latest":
-            if not builds.has(build):
-                raise Exception('Build was not found in builds.json')
-        else:
-            build = builds.get_latest()
-
+    def __init__(self, *args, **kwargs):
         # Load the schema
         self._validator = None
+        self._meta_path = kwargs.get("path")
+
+        # Load the schema
+        schema = kwargs.get("schema")
         if schema and schema.lower() not in ("false", "none"):
             with open(schema, 'r') as data:
                 self._validator = jsonschema.Draft7Validator(
                     json.loads(data.read())
                 )
 
-        self._meta_path = os.path.join(
-            builds.get_build_dir(build), 'meta.json')
+        if not self.path:
+            raise Exception("path not set")
         self.read()
+
+        # add the timestamp
+        if self.get(COSA_VER_STAMP) is None:
+            self.set(COSA_VER_STAMP, os.stat(self.path).st_mtime)
 
     @property
     def path(self):
@@ -65,21 +132,31 @@ class GenericBuildMeta(dict):
         self.clear()
         # Load the file and record the initial timestamp to
         # detect conflicts
-        with open(self._meta_path) as f:
+        with open(self.path) as f:
             self._initial_timestamp = os.fstat(f.fileno()).st_mtime
             self.update(json.load(f))
         self.validate()
 
-    def write(self):
+    def write(self, artifact_name=None, merge_func=merge_meta):
         """
         Write out the dict to the meta path.
+
         """
         self.validate()
-        ts = os.stat(self._meta_path).st_mtime
-        if ts != self._initial_timestamp:
-            raise Exception(f"Detected read-modify-write conflict, expected timestamp={self._initial_timestamp} found {ts}")
-        write_json(self._meta_path, dict(self))
+        if artifact_name is None:
+            artifact_name = f"{time.time_ns()}"
+
+        # support writing meta.json to meta.<ARTIFACT>.json
+        if self.get("coreos-assembler.delayed-meta-merge"):
+            dn = os.path.dirname(self.path)
+            alt_path = os.path.join(dn, f"meta.{artifact_name}.json")
+            write_json(alt_path, dict(self))
+            return alt_path
+
+        # otherwise merge
+        write_json(self.path, dict(self), merge_func=merge_meta)
         self.read()
+        return self.path
 
     def get(self, *args):
         """
@@ -149,3 +226,24 @@ class GenericBuildMeta(dict):
         :rtype: dict
         """
         return json.dumps(dict(self), indent=4)
+
+
+class GenericBuildMeta(GenericMeta):
+    """
+    GenericBuildMeta interacts with a builds meta.json
+    in a Build Context
+
+    Yes, this OOP. Deal with it.
+    """
+
+    def __init__(self, workdir=None, build='latest',
+                 schema=SCHEMA_PATH):
+        builds = Builds(workdir)
+        if build != "latest":
+            if not builds.has(build):
+                raise Exception('Build was not found in builds.json')
+        else:
+            build = builds.get_latest()
+
+        path = os.path.join(builds.get_build_dir(build), 'meta.json')
+        super().__init__(schema=schema, path=path)
