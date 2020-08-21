@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import sys
@@ -8,8 +9,9 @@ sys.path.insert(0, f'{parent_path}/src')
 sys.path.insert(0, parent_path)
 
 from cosalib import meta
-from cosalib.cmdlib import get_basearch
+from cosalib.cmdlib import get_basearch, load_json
 from jsonschema import ValidationError
+
 
 TEST_META_PATH = os.environ.get(
     "COSA_TEST_META_PATH", "/usr/lib/coreos-assembler/fixtures")
@@ -75,6 +77,7 @@ def test_set(tmpdir):
     m = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3', schema=None)
     m.set('test', 'changed')
     m.write()
+    m.read()
     assert m.get('test') == 'changed'
     m.read()
     m.set(['a', 'b'], 'z')
@@ -115,3 +118,79 @@ def test_invalid_schema(tmpdir):
     """
     with pytest.raises(ValidationError):
         _ = meta.GenericBuildMeta(_create_test_files(tmpdir), '1.2.3')
+
+
+def test_merge_meta(tmpdir):
+    """
+    Verifies merging meta.json works as expected.
+    """
+    x = None
+    y = None
+
+    aws = {
+        "path": "/dev/null",
+        "size": 99999999,
+        "sha256": "ff279bc0207964d96571adfd720b1af1b65e587e589eee528d0315b7fb298773"
+    }
+
+    def get_aws(x, key="path"):
+        return x.get("images", {}).get("aws", {}).get(key)
+
+    for meta_f in os.listdir(TEST_META_PATH):
+        test_meta = os.path.join(TEST_META_PATH, meta_f)
+        with open(test_meta, 'r') as valid_data:
+            td = json.load(valid_data)
+            m = meta.GenericBuildMeta(_create_test_files(tmpdir, meta_data=td),
+                                      '1.2.3')
+
+            w = meta.GenericBuildMeta(_create_test_files(tmpdir, meta_data=td),
+                                      '1.2.3')
+            # create working copies
+            if x is None:
+                x = copy.deepcopy(m)
+            else:
+                y = copy.deepcopy(m)
+
+            # add the stamp
+            m.write()
+            old_stamp = m.get(meta.COSA_VER_STAMP)
+            assert old_stamp is not None
+
+            # check merging old into new
+            m["images"]["aws"] = aws
+            m[meta.COSA_VER_STAMP] = 10
+
+            m.write()
+            new_stamp = m.get(meta.COSA_VER_STAMP)
+            assert new_stamp > old_stamp
+            assert get_aws(m) != aws["path"]
+
+    # Now go full yolo and attempt to merge RHCOS into FCOS
+    # Srly? Whose going to do this...
+    y._meta_path = x.path
+    with pytest.raises(meta.COSAMergeError):
+        x.write()
+
+    #### Artifact merging tests
+    # clear the meta.json that's been corrupted
+    os.unlink(x.path)
+
+    # test that write went to meta.json
+    maws = x.write()
+    assert x.path == maws
+
+    # test that write went to meta.aws.json
+    x.set("coreos-assembler.delayed-meta-merge", True)
+    maws = x.write(artifact_name="aws")
+    assert maws.endswith("aws.json")
+
+    # make sure that meta.json != meta.aws.json
+    x.read()
+    d = load_json(maws)
+    assert get_aws(m) != get_aws(d)
+
+
+    # test that the write went to meta.<TS>.json
+    tnw = x.write()
+    assert maws != tnw
+

@@ -151,3 +151,39 @@ def test_image_info(tmpdir):
         '-o', 'force_size,subformat=fixed',
         f"{tmpdir}/test.vpc", "10M"])
     assert cmdlib.image_info(f"{tmpdir}/test.vpc").get('format') == "vpc"
+
+
+def test_merge_dicts(tmpdir):
+    x = {
+        1: "Nope",
+        2: ["a", "b", "c"],
+        3: {"3a": True}
+    }
+
+    y = {4: True}
+
+    z = {1: "yup",
+         3: {
+             "3a": False,
+             "3b": "found"
+            }
+    }
+
+    # merge y into x
+    m = cmdlib.merge_dicts(x, y)
+    for i in range(1, 4):
+        assert i in m
+    assert y[4] is True
+
+    # merge z into x
+    m = cmdlib.merge_dicts(x, z)
+    assert m[1] == "Nope"
+    assert x[2] == m[2]
+    assert m[3]["3a"] is True
+    assert m[3]["3b"] == "found"
+
+   # merge x into z
+    m = cmdlib.merge_dicts(z, x)
+    assert m[1] == "yup"
+    assert x[2] == m[2]
+    assert m[3] == z[3]
