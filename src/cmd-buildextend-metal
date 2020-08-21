@@ -143,18 +143,6 @@ if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
     ignition_platform_id=metal
 fi
 
-# Firstboot kernel arguments.
-firstboot_kargs="$(python3 -c '
-import sys, yaml
-LEGACY_DEFAULT = [ "rd.neednet=1", "ip=dhcp,dhcp6" ]
-args = yaml.safe_load(sys.stdin).get("ignition-network-kcmdline", LEGACY_DEFAULT)
-if not args:
-  # False-y value provided, e.g. empty array.
-  print("", end = "")
-else:
-  print(" ".join(args), end = "")
-' < "$configdir/image.yaml")"
-
 # bootfs
 bootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("bootfs", "ext4"))' < "$configdir/image.yaml")"
 
@@ -259,7 +247,6 @@ runvm "${target_drive[@]}" -- \
             --buildid "${build}" \
             --imgid "${img}" \
             --grub-script /usr/lib/coreos-assembler/grub.cfg \
-            --firstboot-kargs "\"${firstboot_kargs}\"" \
             --kargs "\"${kargs}\"" \
             --osname "${name}" \
             --ostree-ref "${ref_arg}" \
