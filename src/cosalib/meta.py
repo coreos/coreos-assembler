@@ -79,6 +79,8 @@ class GenericBuildMeta(dict):
         if ts != self._initial_timestamp:
             raise Exception(f"Detected read-modify-write conflict, expected timestamp={self._initial_timestamp} found {ts}")
         write_json(self._meta_path, dict(self))
+        # And reread to re-update our timestamp
+        self.read()
 
     def get(self, *args):
         """
