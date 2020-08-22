@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--force] [--force-image] [--skip-prune] [--strict] [--tag TAG] [--version VERSION] [TARGET...]
+       coreos-assembler build [--delay-meta-merge] [--force] [--force-image] [--skip-prune] [--strict] [--tag TAG] [--version VERSION] [TARGET...]
 
   Build OSTree and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
@@ -24,6 +24,7 @@ EOF
 }
 
 # Parse options
+DELAY_META_MERGE=false
 FORCE=
 FORCE_IMAGE=
 SKIP_PRUNE=0
@@ -33,7 +34,7 @@ PARENT_BUILD=
 TAG=
 STRICT=
 rc=0
-options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,parent-build:,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
+options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -47,6 +48,9 @@ while true; do
             ;;
         -f | --force | --force-nocache)
             FORCE="--force-nocache"
+            ;;
+        --delay-meta-merge)
+            DELAY_META_MERGE=true
             ;;
         --force-image)
             FORCE_IMAGE=1
@@ -395,7 +399,9 @@ cat > tmp/buildmeta.json <<EOF
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.code-source": "${src_location}",
- "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json)
+ "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json),
+ "coreos-assembler.meta-stamp": $(python -c 'import time; print(time.time_ns())'),
+ "coreos-assembler.delayed-meta-merge": ${DELAY_META_MERGE}
 }
 EOF
 

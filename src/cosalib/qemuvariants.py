@@ -306,4 +306,4 @@ class QemuVariantImage(_Build):
         img_meta = self.get_artifact_meta()
         self._found_files[self.image_name] = img_meta
         imgs[self.platform] = img_meta
-        self.meta_write()
+        self.meta_write(artifact_name=self.platform_image_name)

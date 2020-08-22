@@ -362,11 +362,11 @@ class _Build:
         """
         self.meta.update(update_dict)
 
-    def meta_write(self):
+    def meta_write(self, artifact_name=None):
         """
         Writes out the meta.json file based on the internal structure.
         """
-        self.meta.write()
+        self.meta.write(artifact_name=artifact_name)
 
     def build_artifacts(self, *args, **kwargs):
         """
