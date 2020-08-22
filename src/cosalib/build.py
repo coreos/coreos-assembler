@@ -6,6 +6,7 @@ import logging as log
 import os
 import os.path
 import shutil
+import time
 import tempfile
 
 from cosalib.cmdlib import (
@@ -136,14 +137,19 @@ class _Build:
                  self.summary, self.build_name.upper(), self.basearch,
                  self.build_id)
 
+        self.set_token()
+
     def __del__(self):
         try:
             tmpdir = getattr(self, "_tmpdir", None)
             if tmpdir:
                 shutil.rmtree(tmpdir)
+
         except Exception as e:
             raise Exception(
                 f"failed to remove temporary directory: {self._tmpdir}", e)
+
+        self.unset_token()
 
     def clean(self):
         """
@@ -153,6 +159,28 @@ class _Build:
             shutil.rmtree(self._workdir)
             log.info(
                 'Removed temporary work directory at {}'.format(self.workdir))
+
+    def set_token(self):
+        """
+        Create a semaphore to claim the the platform exclusively.
+        """
+        tf = os.path.join(self.build_dir, f".{self.platform}.building")
+        if os.path.exists(tf):
+            raise Exception(f"{tf} exists. This platform "
+                            "is currently being built")
+
+        with open(tf, 'w') as f:
+            f.write(f"{time.time_ns()}")
+
+        setattr(self, "_token_file", tf)
+
+    def unset_token(self):
+        """
+        Clear the build sempahore
+        """
+        tf = getattr(self, "_token_file", None)
+        if tf:
+            os.unlink(tf)
 
     @property
     def workdir(self):
