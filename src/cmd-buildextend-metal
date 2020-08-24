@@ -73,7 +73,7 @@ if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
 fi
 
 export LIBGUESTFS_BACKEND=direct
-
+export IMAGE_TYPE="${image_type}"
 prepare_build
 
 if [ -z "${build}" ]; then
@@ -88,9 +88,17 @@ if [ ! -d "${builddir}" ]; then
     fatal "Build dir ${builddir} does not exist."
 fi
 
+# add building sempahore
+build_semaphore="${builddir}/.${image_type}.building"
+if [ -e "${build_semaphore}" ]; then
+    fatal "${build_semaphore} found: another process is building ${image_type}"
+fi
+touch "${build_semaphore}"
+trap 'rm -rvf ${build_semaphore}' EXIT
+
 # check if the image already exists in the meta.json
-meta_img=$(jq -r ".[\"images\"][\"${image_type}\"]" < "${builddir}/meta.json")
-if [ "${meta_img}" != "null" ]; then
+meta_img=$(meta_key "images.${image_type}.path")
+if [ "${meta_img}" != "None" ]; then
     echo "${image_type} image already exists:"
     echo "$meta_img"
     exit 0
@@ -98,14 +106,14 @@ fi
 
 # reread these values from the build itself rather than rely on the ones loaded
 # by prepare_build since the config might've changed since then
-name=$(json_key name)
-ref=$(json_key ref)
+name=$(meta_key name)
+ref=$(meta_key ref)
 ref_is_temp=""
-if [ "${ref}" = "null" ]; then
+if [ "${ref}" = "None" ]; then
     ref="tmpref-${name}"
     ref_is_temp=1
 fi
-commit=$(json_key ostree-commit)
+commit=$(meta_key ostree-commit)
 
 ostree_repo=${tmprepo}
 rev_parsed=$(ostree rev-parse --repo="${ostree_repo}" "${ref}" 2>/dev/null || :)
@@ -270,20 +278,23 @@ runvm "${target_drive[@]}" -- \
             --rootfs "${rootfs_type}" \
             "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
-echo "{}" > tmp/vm-iso-checksum.json
 
+sha256=$(sha256sum_str < "${img}")
 # there's probably a jq one-liner for this...
 python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['${image_type}'] = {
     'path': '${img}',
-    'sha256': '$(sha256sum_str < "${img}")',
+    'sha256': '${sha256}',
     'size': $(stat -c '%s' "${img}")
 }
 json.dump(j, sys.stdout, indent=4)
-" < "${builddir}/meta.json" | cat - tmp/vm-iso-checksum.json | jq -s add > meta.json.new
+" < "${builddir}/meta.json" | jq -s add > "meta.json.new"
 
 # and now the crucial bits
-/usr/lib/coreos-assembler/finalize-artifact meta.json.new "${builddir}/meta.json"
+cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
 /usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
+
+# clean up the tmpild
+rm -rf "${tmp_builddir}"

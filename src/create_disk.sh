@@ -231,7 +231,9 @@ else
     mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
 fi
 
-rootfs=$PWD/tmp/rootfs
+# since we normally run in supermin container and we need
+# support parallel runs, use /tmp
+rootfs=/tmp/rootfs
 
 # mount the partitions
 rm -rf ${rootfs}

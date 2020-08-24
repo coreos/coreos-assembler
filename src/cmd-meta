@@ -4,16 +4,23 @@ cmd-meta is a helper for interacting with a builds meta.json
 """
 
 import argparse
+import glob
 import os
 import sys
 
 COSA_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, COSA_PATH)
-from cosalib.meta import GenericBuildMeta as Meta
+from cosalib.meta import (
+    GenericMeta,
+    GenericBuildMeta,
+    COSA_DELAYED_MERGE,
+    COSA_VER_STAMP
+)
 
 
 def new_cli():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--artifact', help="when merging name of the artifact")
     parser.add_argument('--workdir', default=os.getcwd())
     parser.add_argument('--build', default='latest')
     parser.add_argument('--skip-validation',
@@ -22,9 +29,25 @@ def new_cli():
     parser.add_argument('--schema', help='location of meta.json schema',
                         default=os.environ.get("COSA_META_SCHEMA",
                                                f'{COSA_PATH}/schema/v1.json'))
+    parser.add_argument('--true', dest='bool', default=None,
+                        help='set a field', action='store_true')
+    parser.add_argument('--false', dest='bool', default=None,
+                        help='set a field', action='store_false')
+    parser.add_argument('--no-clean', action="store_true",
+                        help="when finalizing leave artifacts meta.*.json")
     sub_parser = parser.add_mutually_exclusive_group(required=True)
     sub_parser.add_argument('--get', help='get a field', action='append')
+    sub_parser.add_argument('--get-value',
+                            help='get value only', action='append')
+    sub_parser.add_argument('--set-int', help='set a field', action='append')
     sub_parser.add_argument('--set', help='set a field', action='append')
+    sub_parser.add_argument('--set-bool', help='set a field', action='store')
+    sub_parser.add_argument('--artifact-json', action='append',
+                            help=('merge in artifact meta.json into meta.json'
+                                  ' according to merge rules'))
+    sub_parser.add_argument('--finalize', action='store_true',
+                            help='commit artifact json into the main meta.json'
+                            )
     sub_parser.add_argument(
         '--dump', help='dumps the entire structure', action='store_true')
     sub_parser.add_argument(
@@ -36,30 +59,63 @@ def new_cli():
     schema = args.schema
     if args.skip_validation:
         schema = None
-    meta = Meta(args.workdir, args.build, schema=schema)
+    meta = GenericBuildMeta(args.workdir, args.build, schema=schema)
+    old_ts = meta.get(COSA_VER_STAMP)
 
-    # support the coreos-assembler.* keys
     def pather(val):
         path = val.split('.')
         if val.startswith("coreos-assembler."):
             new_path = [f"{path[0]}.{path[1]}"]
             new_path.extend(path[2:])
-            return new_path
+            return ".".join(new_path)
         return path
 
     # Get keys
-    if args.get is not None:
-        dotpath = args.get[0]
+    if args.get is not None or args.get_value is not None:
+        dotpath = args.get[0] if args.get else args.get_value[0]
         keypath = pather(dotpath)
         loc = meta.get(keypath)
-        print(f'{dotpath}: {loc}')
+        if args.get_value:
+            print(f'{loc}')
+        else:
+            print(f'{dotpath}: {loc}')
     # Set keys
     elif args.set is not None:
         for item in args.set:
             k, v = item.split('=')
             keypath = pather(k)
             meta.set(keypath, v)
-        meta.write(merge_func=None)
+            meta.validate()
+            meta.write(merge_func=None)
+    # Set boolean values
+    elif args.set_bool is not None:
+        keypath = pather(args.set_bool)
+        meta.set(keypath, bool(args.bool))
+        meta.validate()
+        print(meta.write(merge_func=None))
+    # Merge meta.json into the existing meta.json
+    elif args.artifact_json is not None:
+        for item in args.artifact_json:
+            item_data = GenericMeta(path=item, schema=schema)
+            meta.update(item_data.dict())
+            out = meta.write(artifact_name=args.artifact)
+            print(f"{out} wrote with version stamp {meta.get(COSA_VER_STAMP)}")
+    # Finalize the meta.json
+    elif args.finalize:
+        if not meta.get(COSA_DELAYED_MERGE):
+            print(f"{COSA_DELAYED_MERGE} is not set, skipping merge")
+            sys.exit(0)
+        print("Finalizing meta.<ARTIFACT>.json into meta.json")
+        print(f"[stamp {old_ts}] starting on {meta.path}")
+        for candidate in glob.glob(f'{meta.build_dir}/meta.*.json'):
+            item_data = GenericMeta(path=candidate, schema=schema)
+            print(f"[ stamp {item_data.get(COSA_VER_STAMP)}] on {candidate}")
+            meta.clear()
+            meta.update(item_data.dict())
+            meta.write(final=True)
+            if not args.no_clean:
+                os.unlink(candidate)
+        print(f"[ stamp {meta.get(COSA_VER_STAMP)}] applied to {meta.path}")
     elif args.dump is True:
         print(meta)
     elif args.image_path is not None:
