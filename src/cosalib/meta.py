@@ -199,7 +199,7 @@ class GenericMeta(dict):
         dn = os.path.dirname(self.path)
         alt_path = os.path.join(dn, f"meta.{artifact}.json")
         if (os.path.exists(alt_path) and unmerged is True and
-            self.get(COSA_DELAYED_MERGE) is True):
+           self.get(COSA_DELAYED_MERGE) is True):
             data = load_json(alt_path)
 
         return {
