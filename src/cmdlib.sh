@@ -230,9 +230,10 @@ prepare_build() {
     export fastbuilddir
 
     # Allocate temporary space for this build
-    tmp_builddir=${workdir}/tmp/build
+    export tmp_builddir="${workdir}/tmp/build${IMAGE_TYPE:+.$IMAGE_TYPE}"
     rm "${tmp_builddir}" -rf
     mkdir "${tmp_builddir}"
+
     # And everything after this assumes it's in the temp builddir
     # In case `cd` fails:  https://github.com/koalaman/shellcheck/wiki/SC2164
     cd "${tmp_builddir}" || exit
@@ -240,7 +241,7 @@ prepare_build() {
     # contains artifacts we definitely don't want to outlive it, unlike
     # other things in ${workdir}/tmp. But we don't export it since e.g. if it's
     # over an NFS mount (like a PVC in OCP), some apps might error out.
-    mkdir tmp && TMPDIR=$(pwd)/tmp
+    mkdir -p tmp && export TMPDIR="${workdir}/tmp"
 
     # Needs to be absolute for rpm-ostree today
     changed_stamp=${TMPDIR}/treecompose.changed
@@ -284,7 +285,7 @@ prepare_compose_overlays() {
     fi
 
     if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovld}" ]; then
-        mkdir "${tmp_overridesdir}"
+        mkdir -p "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${manifest}
 EOF
@@ -401,6 +402,10 @@ json_key() {
     jq -r ".[\"$1\"]" < "${builddir}/meta.json"
 }
 
+meta_key() {
+    cosa meta --workdir="${workdir}" --build="${build:-latest}" --get-value "${@}"
+}
+
 # runvm generates and runs a minimal VM which we use to "bootstrap" our build
 # process.  It mounts the workdir via 9p.  If you need to add new packages into
 # the vm, update `vmdeps.txt`.
@@ -421,10 +426,13 @@ runvm() {
                 ;;
         esac
     done
-    local vmpreparedir=${workdir}/tmp/supermin.prepare
-    local vmbuilddir=${workdir}/tmp/supermin.build
 
-    rm -rf "${vmpreparedir}" "${vmbuilddir}"
+    # shellcheck disable=SC2155
+    local vmpreparedir="${tmp_builddir}/supermin.prepare"
+    local vmbuilddir="${tmp_builddir}/supermin.build"
+    local runvm_console="${tmp_builddir}/runvm-console.txt"
+    local rc_file="${tmp_builddir}/rc"
+
     mkdir -p "${vmpreparedir}" "${vmbuilddir}"
 
     local rpms
@@ -434,6 +442,7 @@ runvm() {
     [ -n "${ISEL}" ]     && filter='^#EL7 '
     rpms=$(sed "s/${filter}//" "${DIR}"/vmdeps.txt | grep -v '^#')
     archrpms=$(sed "s/${filter}//" "${DIR}"/vmdeps-"$(arch)".txt | grep -v '^#')
+
     # shellcheck disable=SC2086
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms $archrpms
 
@@ -457,11 +466,11 @@ rc=0
 # tee to the virtio port so its output is also part of the supermin output in
 # case e.g. a key msg happens in dmesg when the command does a specific operation
 if [ -z "${RUNVM_SHELL:-}" ]; then
-  bash ${TMPDIR}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
+  bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
 else
   bash; poweroff -f -f; sleep infinity
 fi
-echo \$rc > ${workdir}/tmp/rc
+echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
 fi
@@ -471,17 +480,14 @@ EOF
     (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
     # put the supermin output in a separate file since it's noisy
     if ! supermin --build "${vmpreparedir}" --size 5G -f ext2 -o "${vmbuilddir}" \
-            &> "${workdir}/tmp/supermin.out"; then
-        cat "${workdir}/tmp/supermin.out"
+            &> "${tmp_builddir}/supermin.out"; then
+        cat "${tmp_builddir}/supermin.out"
         fatal "Failed to run: supermin --build"
     fi
-    rm "${workdir}/tmp/supermin.out"
+    rm "${tmp_builddir}/supermin.out"
 
-    echo "$@" > "${TMPDIR}"/cmd.sh
-
-    local runvm_console
-    runvm_console="${workdir}/tmp/runvm-console.txt"
-    rm -f "${workdir}/tmp/rc" "${runvm_console}"
+    # this is the command run in the supermin container
+    echo "$@" > "${tmp_builddir}"/cmd.sh
 
     touch "${runvm_console}"
     kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none)
@@ -518,12 +524,11 @@ EOF
         exec "${kola_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
     fi
 
-    if [ ! -f "${workdir}"/tmp/rc ]; then
+    if [ ! -f "${rc_file}" ]; then
         cat "${runvm_console}"
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
-    rc="$(cat "${workdir}"/tmp/rc)"
-    rm -f "${workdir}/tmp/rc"
+    rc="$(cat "${rc_file}")"
     return "${rc}"
 }
 

@@ -6,9 +6,11 @@ import time
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
     merge_dicts,
+    load_json,
     write_json
 )
 
+COSA_DELAYED_MERGE = "coreos-assembler.delayed-meta-merge"
 COSA_VER_STAMP = "coreos-assembler.meta-stamp"
 
 SCHEMA_PATH = os.environ.get("COSA_META_SCHEMA",
@@ -29,6 +31,8 @@ def merge_meta(x, y):
 
     This is likely over engineered, merge_dicts is safe enough.
     But to we want to be sure.
+
+    As a reminder: merge_dicts only merges the superset
 
     Rules for merging:
     - the first dict should be on-disk while second is modified one
@@ -137,7 +141,7 @@ class GenericMeta(dict):
             self.update(json.load(f))
         self.validate()
 
-    def write(self, artifact_name=None, merge_func=merge_meta):
+    def write(self, artifact_name=None, merge_func=merge_meta, final=False):
         """
         Write out the dict to the meta path.
 
@@ -146,17 +150,18 @@ class GenericMeta(dict):
         if artifact_name is None:
             artifact_name = f"{time.time_ns()}"
 
-        # support writing meta.json to meta.<ARTIFACT>.json
-        if self.get("coreos-assembler.delayed-meta-merge"):
-            dn = os.path.dirname(self.path)
-            alt_path = os.path.join(dn, f"meta.{artifact_name}.json")
-            write_json(alt_path, dict(self))
-            return alt_path
+        path = self.path
 
-        # otherwise merge
-        write_json(self.path, dict(self), merge_func=merge_meta)
+        # support writing meta.json to meta.<ARTIFACT>.json
+        if self.get(COSA_DELAYED_MERGE) and not final:
+            dn = os.path.dirname(self.path)
+            path = os.path.join(dn, f"meta.{artifact_name}.json")
+            self.set(COSA_VER_STAMP, time.time_ns())
+            merge_func = None
+
+        write_json(path, dict(self), merge_func=merge_func)
         self.read()
-        return self.path
+        return path
 
     def get(self, *args):
         """
@@ -185,6 +190,24 @@ class GenericMeta(dict):
             return haystack
         except KeyError:
             return default
+
+    def get_artifact_meta(self, artifact, unmerged=False):
+        """
+        Return just a dict of the artifact
+        """
+        data = self.dict()
+        dn = os.path.dirname(self.path)
+        alt_path = os.path.join(dn, f"meta.{artifact}.json")
+        if (os.path.exists(alt_path) and unmerged is True and
+            self.get(COSA_DELAYED_MERGE) is True):
+            data = load_json(alt_path)
+
+        return {
+            "images": {
+                artifact: data.get("images", {}).get(artifact, {})
+            },
+            artifact: data.get(artifact)
+        }
 
     def dict(self):
         return dict(self)
@@ -245,5 +268,10 @@ class GenericBuildMeta(GenericMeta):
         else:
             build = builds.get_latest()
 
-        path = os.path.join(builds.get_build_dir(build), 'meta.json')
+        self._build_dir = builds.get_build_dir(build)
+        path = os.path.join(self._build_dir, 'meta.json')
         super().__init__(schema=schema, path=path)
+
+    @property
+    def build_dir(self):
+        return self._build_dir
