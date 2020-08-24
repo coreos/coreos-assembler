@@ -179,9 +179,10 @@ class QemuVariantImage(_Build):
         """
         Return the path of the Qemu QCOW2 image from the meta-data
         """
+        qemu_meta = self.meta.get_artifact_meta("qemu", unmerged=True)
         qimage = os.path.join(
             self.build_dir,
-            self.meta.get('images', {}).get('qemu', {}).get('path', None)
+            qemu_meta.get('images', {}).get('qemu', {}).get('path', None)
         )
         if not qimage:
             raise ImageError("qemu image has not be built yet")
