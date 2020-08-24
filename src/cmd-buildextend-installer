@@ -5,7 +5,6 @@
 
 import argparse
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -14,13 +13,15 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import yaml
 import glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
-from cosalib.cmdlib import run_verbose, write_json, sha256sum_file
+from cosalib.cmdlib import run_verbose, sha256sum_file
 from cosalib.cmdlib import import_ostree_commit, get_basearch
+from cosalib.meta import GenericBuildMeta
 
 
 def ostree_extract_efi(repo, commit, destdir):
@@ -59,7 +60,6 @@ print(f"Targeting build: {args.build}")
 with open('src/config/image.yaml') as fh:
     image_yaml = yaml.safe_load(fh)
 squashfs_compression = 'lz4' if args.fast else image_yaml.get('squashfs-compression', 'zstd')
-
 # Hacky mode switch, until we can drop support for the installer images
 is_live = os.path.basename(sys.argv[0]).endswith('-live')
 if is_live:
@@ -77,8 +77,15 @@ if not os.path.isdir(srcdir_prefix):
 workdir = os.path.abspath(os.getcwd())
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
-with open(buildmeta_path) as f:
-    buildmeta = json.load(f)
+buildmeta = GenericBuildMeta(workdir=workdir)
+
+# used to lock
+build_semaphore = os.path.join(
+    buildmeta.build_dir, f".{image_type}.building")
+if os.path.exists(build_semaphore):
+    raise Exception(
+        f"{build_semaphore} exists: another process is building {image_type}")
+
 
 # Grab the commit hash for this build
 buildmeta_commit = buildmeta['ostree-commit']
@@ -212,8 +219,8 @@ def generate_iso():
 
     tmpisofile = os.path.join(tmpdir, iso_name)
 
-    img_metal_obj = buildmeta['images'].get('metal')
-    img_metal4k_obj = buildmeta['images'].get('metal4k')
+    img_metal_obj = buildmeta.get_artifact_meta("metal", unmerged=True)["images"].get("metal")
+    img_metal4k_obj = buildmeta.get_artifact_meta("metal4k", unmerged=True)["images"].get("metal4k")
     if is_live:
         if img_metal_obj is None or img_metal4k_obj is None:
             raise Exception("Live image generation requires `metal` and `metal4k` images")
@@ -575,7 +582,7 @@ def generate_iso():
             }
         })
 
-    write_json(buildmeta_path, buildmeta)
+    buildmeta.write(artifact_name=image_type)
     print(f"Updated: {buildmeta_path}")
 
 
@@ -585,5 +592,12 @@ if 'ostree' in buildmeta['images']:
 commit_tar = os.path.join(builddir, commit_tar_name)
 import_ostree_commit(repo, buildmeta_commit, commit_tar)
 
-# Do it!
-generate_iso()
+# lock and build
+with open(build_semaphore, 'w') as f:
+    f.write(f"{time.time_ns()}")
+
+try:
+    generate_iso()
+finally:
+    if os.path.exists(build_semaphore):
+        os.unlink(build_semaphore)
