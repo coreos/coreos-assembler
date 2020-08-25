@@ -231,7 +231,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	// s390x: iso-install does not work because s390x uses an El Torito image
 	switch system.RpmArch() {
 	case "s390x":
-		fmt.Println("Skipping pxe-install and iso-install on s390x")
+		fmt.Println("Skipping iso-install on s390x")
 		noiso = true
 	case "ppc64le":
 		fmt.Println("Skipping pxe-install on ppc64le")
