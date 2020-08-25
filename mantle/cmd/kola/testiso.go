@@ -226,16 +226,10 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		targetScenarios[scenario] = true
 	}
 
-	// ppc64le: pxe-install does not work: https://github.com/coreos/coreos-assembler/issues/1457. Seems like
-	// the SLOF doesn't like the live initramfs image.
 	// s390x: iso-install does not work because s390x uses an El Torito image
-	switch system.RpmArch() {
-	case "s390x":
+	if system.RpmArch() == "s390x" {
 		fmt.Println("Skipping iso-install on s390x")
 		noiso = true
-	case "ppc64le":
-		fmt.Println("Skipping pxe-install on ppc64le")
-		nopxe = true
 	}
 
 	if legacy {
