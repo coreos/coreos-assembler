@@ -36,6 +36,7 @@ type Build struct {
 	ContainerConfigGit        *Git                  `json:"coreos-assembler.container-config-git,omitempty"`
 	CoreOsSource              string                `json:"coreos-assembler.code-source,omitempty"`
 	CosaContainerImageGit     *Git                  `json:"coreos-assembler.container-image-git,omitempty"`
+	CosaDelayedMetaMerge      bool                  `json:"coreos-assembler.delayed-meta-merge,omitempty"`
 	CosaImageChecksum         string                `json:"coreos-assembler.image-config-checksum,omitempty"`
 	CosaImageVersion          int                   `json:"coreos-assembler.image-genver,omitempty"`
 	FedoraCoreOsParentCommit  string                `json:"fedora-coreos.parent-commit,omitempty"`
@@ -44,6 +45,7 @@ type Build struct {
 	GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
 	ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
 	InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
+	MetaStamp                 float64               `json:"coreos-assembler.meta-stamp,omitempty"`
 	Name                      string                `json:"name"`
 	Oscontainer               *Image                `json:"oscontainer,omitempty"`
 	OstreeCommit              string                `json:"ostree-commit"`

@@ -196,9 +196,11 @@ var generatedSchemaJSON = `{
    "coreos-assembler.config-gitrev",
    "coreos-assembler.container-config-git",
    "coreos-assembler.container-image-git",
+   "coreos-assembler.delayed-meta-merge",
    "coreos-assembler.image-config-checksum",
    "coreos-assembler.image-genver",
    "coreos-assembler.image-input-checksum",
+   "coreos-assembler.meta-stamp",
    "coreos-assembler.overrides-active",
    "fedora-coreos.parent-commit",
    "fedora-coreos.parent-version",
@@ -273,6 +275,19 @@ var generatedSchemaJSON = `{
      "type":"object",
      "title":"COSA Container Image Git",
      "$ref": "#/definitions/git"
+    },
+   "coreos-assembler.delayed-meta-merge": {
+     "$id":"#/properties/coreos-assembler.delayed-meta-merge",
+     "type":"boolean",
+     "title":"COSA Delayed Meta Merge",
+     "default": "False"
+    },
+   "coreos-assembler.meta-stamp": {
+     "$id":"#/properties/coreos-assembler.meta-stamp",
+     "type":"number",
+     "title":"Meta Stamp",
+     "default":"",
+     "minLength": 16
     },
     "fedora-coreos.parent-version": {
      "$id":"#/properties/fedora-coreos.parent-version",
