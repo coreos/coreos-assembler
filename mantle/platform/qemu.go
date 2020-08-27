@@ -53,8 +53,8 @@ type QemuMachineOptions struct {
 }
 
 type Disk struct {
-	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed. Incompatible with BackingFile
-	BackingFile   string   // raw disk image to use. Incompatible with Size.
+	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
+	BackingFile   string   // raw disk image to use.
 	Channel       string   // virtio (default), nvme
 	DeviceOpts    []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
 	SectorSize    int      // if not 0, override disk sector size
