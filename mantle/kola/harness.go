@@ -65,6 +65,10 @@ import (
 const InstalledTestsDir = "/usr/lib/coreos-assembler/tests/kola"
 const InstalledTestMetaPrefix = "# kola:"
 
+// InstalledTestDefaultTest is a special name; see the README-kola-ext.md
+// for more information.
+const InstalledTestDefaultTest = "test.sh"
+
 // This is the same string from https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
 // Specifying this in the tags list is required to denote a need for Internet access
 const NeedsInternetTag = "needs-internet"
@@ -776,7 +780,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 
 	for _, executable := range executables {
 		testname := testprefix
-		if len(executables) > 1 {
+		if len(executables) > 1 || executable != InstalledTestDefaultTest {
 			testname = fmt.Sprintf("%s.%s", testname, filepath.Base(executable))
 		}
 		err := registerExternalTest(testname, executable, dependencydir, ignition, meta)

@@ -35,8 +35,11 @@ Concretely then, an external test directory can have the following content:
 - one or more executables: Each executable is its own test, run independently
   with the Ignition config and/or dependency data provided.
 
-In the case of a test directory with a single executable, the kola test name will be
-`ext.<projname>.<subdirectory>`.  Otherwise, the test will be named `ext.<projname>.<subdirectory>.<executable>`.
+Normally the test will be named `ext.<projname>.<subdirectory>.<executable>`.
+However there is a special case to make it nicer to test Ignition configs;
+In the case of a test directory with a single executable named `test.sh`,
+the kola test name will be `ext.<projname>.<subdirectory>` (i.e. `test.sh`
+will be omitted).
 
 Currently the test systemd unit runs with full privileges - tests
 are assumed to be (potentially) destructive and a general assumption
