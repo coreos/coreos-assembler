@@ -671,7 +671,7 @@ ExecStart=%s
 
 			err := runExternalTest(c, mach)
 			if err != nil {
-				out, stderr, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status %s", shellquote.Join(KoletExtTestUnit)))
+				out, stderr, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status --lines=40 %s", shellquote.Join(KoletExtTestUnit)))
 				if len(out) > 0 {
 					fmt.Printf("systemctl status %s:\n%s\n", KoletExtTestUnit, string(out))
 				} else {
