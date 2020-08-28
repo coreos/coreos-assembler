@@ -422,6 +422,10 @@ runvm() {
         esac
     done
 
+    # tmp_builddir is set in prepare_build, but some stages may not
+    # know that it exists.
+    export tmp_builddir="${tmp_builddir:-${workdir}/tmp/build${IMAGE_TYPE:+.$IMAGE_TYPE}}"
+
     # shellcheck disable=SC2155
     local vmpreparedir="${tmp_builddir}/supermin.prepare"
     local vmbuilddir="${tmp_builddir}/supermin.build"
