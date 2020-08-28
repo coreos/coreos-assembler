@@ -251,7 +251,7 @@ fi
 extra_compose_args+=("$parent_arg")
 
 # These need to be absolute paths right now for rpm-ostree
-composejson=${PWD}/tmp/compose.json
+composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
 # Put this under tmprepo so it gets automatically chown'ed if needed
 lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 prepare_compose_overlays
