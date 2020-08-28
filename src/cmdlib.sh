@@ -96,6 +96,11 @@ preflight() {
         fatal "Unable to find /dev/kvm"
     fi
 
+    # See https://pagure.io/centos-infra/issue/48
+    if test "$(umask)" = 0000; then
+        fatal "Your umask is unset, please use umask 0022 or so"
+    fi
+
     # permissions on /dev/kvm vary by (host) distro.  If it's
     # not writable, recreate it.
     if ! [ -w /dev/kvm ]; then
