@@ -173,3 +173,21 @@ $ cosa kola run -p qemu --qemu-image path/to/qcow2 -E path/to/my-project/ 'ext.m
 --- PASS: ext.my-project.basic (35.57s)
 PASS, output in _kola_temp/qemu-unpriv-2020-08-18-1815-2295199
 ```
+
+## Fast build and iteration on your project's tests
+
+First, use `cosa build-fast` if it applies to you (e.g. you're not working
+on something in the kernel or initramfs).  From your project's git repository,
+do e.g.:
+
+```
+$ export COSA_DIR=/path/to/cosadir
+$ cosa build-fast
+$ kola run --qemu-image fastbuild*.qcow2 'ext.*'
+```
+
+Whenever you change your project's code, rerun `cosa build-fast`
+to create a new qcow2.  If you just changed a test script, you
+can just directly rerun `kola`.
+
+For more tips, see also the [README-devel.md](../../README-devel.md).
