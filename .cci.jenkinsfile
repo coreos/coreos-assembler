@@ -46,11 +46,15 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
             }
           },
           buildextend: {
-              cosa_cmd("buildextend-metal")
-              cosa_cmd("buildextend-metal4k")
-              cosa_cmd("buildextend-live --fast")
-              cosa_cmd("buildextend-openstack")
-              cosa_cmd("buildextend-vmware")
+              parallel metal: {
+                 cosa_cmd("buildextend-metal")
+                 cosa_cmd("buildextend-metal4k")
+              }
+              parallel artifacts: {
+                  cosa_cmd("buildextend-live --fast")
+                  cosa_cmd("buildextend-openstack")
+                  cosa_cmd("buildextend-vmware")
+              }
               cosa_cmd("compress")
               // quick schema validation"
               cosa_cmd("meta --get name")
