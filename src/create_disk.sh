@@ -99,7 +99,7 @@ os_name="${os_name:?--os_name must be defined}"
 save_var_subdirs="${save_var_subdirs:?--save_var_subdirs must be defined}"
 
 case "${rootfs_type}" in
-    xfs|ext4verity|luks) ;;
+    xfs|ext4verity|luks|btrfs) ;;
     *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;
 esac
 
@@ -216,20 +216,30 @@ if [ ${EFIPN:+x} ]; then
        # partition $BIOPN has no FS, its for bios grub
        # partition $PREPPN has no FS, its for PowerPC PReP Boot
 fi
-if [ "${rootfs_type}" = "ext4verity" ]; then
-    # As of today, xfs doesn't support verity, so we have a choice of fs-verity or reflinks.
-    # Now, fs-verity doesn't in practice gain us a huge amount of security because
-    # there are other "persistence vectors".  See
-    # https://blog.verbum.org/2017/06/12/on-dm-verity-and-operating-systems/
-    # https://github.com/coreos/rpm-ostree/issues/702
-    # And reflinks are *very* useful for the container stack with overlayfs (and in general).
-    # So basically, we're choosing performance over half-implemented security.
-    # Eventually, we'd like both - once XFS gains verity (probably not too hard),
-    # we could unconditionally enable it there.
-    mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}" -U "${rootfs_uuid}"
-else
-    mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
-fi
+case "${rootfs_type}" in
+    ext4verity)
+        # As of today, xfs doesn't support verity, so we have a choice of fs-verity or reflinks.
+        # Now, fs-verity doesn't in practice gain us a huge amount of security because
+        # there are other "persistence vectors".  See
+        # https://blog.verbum.org/2017/06/12/on-dm-verity-and-operating-systems/
+        # https://github.com/coreos/rpm-ostree/issues/702
+        # And reflinks are *very* useful for the container stack with overlayfs (and in general).
+        # So basically, we're choosing performance over half-implemented security.
+        # Eventually, we'd like both - once XFS gains verity (probably not too hard),
+        # we could unconditionally enable it there.
+        mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}" -U "${rootfs_uuid}"
+        ;;
+    btrfs)
+        mkfs.btrfs -L root "${root_dev}" -U "${rootfs_uuid}"
+        ;;
+    xfs|luks|"")
+        mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
+        ;;
+    *)
+        echo "Unknown rootfs_type: $rootfs_type" 1>&2
+        exit 1
+        ;;
+esac
 
 # since we normally run in supermin container and we need
 # support parallel runs, use /tmp
