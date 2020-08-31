@@ -227,6 +227,12 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 	return
 }
 
+// IsIgnitionV2 returns true if Ignition spec 2 support was asked on the command
+// line.
+func IsIgnitionV2() bool {
+	return Options.IgnitionVersion == "v2"
+}
+
 // matchesPatterns returns true if `s` matches one of the patterns in `patterns`.
 func matchesPatterns(s string, patterns []string) (bool, error) {
 	for _, pattern := range patterns {
@@ -633,7 +639,7 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 }
 
 func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
-	config, err := conf.Ignition(ignition).Render("", Options.IgnitionVersion == "v2")
+	config, err := conf.Ignition(ignition).Render("", IsIgnitionV2())
 	if err != nil {
 		return errors.Wrapf(err, "Parsing config.ign")
 	}
@@ -906,7 +912,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	if t.ClusterSize > 0 {
 		var userdata *conf.UserData
-		if Options.IgnitionVersion == "v2" && t.UserData != nil {
+		if IsIgnitionV2() && t.UserData != nil {
 			userdata = t.UserData
 		} else {
 			userdata = t.UserDataV3

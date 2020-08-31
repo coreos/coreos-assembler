@@ -22,8 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	v3 "github.com/coreos/ignition/v2/config/v3_0"
-	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -85,18 +83,17 @@ func init() {
 
 }
 
-func renderFragments(config v3types.Config) (*v3types.Config, error) {
-	for _, fragtype := range ignitionFragments {
+func renderFragments(fragments []string, c *conf.Conf) error {
+	for _, fragtype := range fragments {
 		switch fragtype {
 		case "autologin":
-			newconf := v3.Merge(config, conf.GetAutologin())
-			config = newconf
+			c.AddAutoLogin()
 			break
 		default:
-			return nil, fmt.Errorf("Unknown fragment: %s", fragtype)
+			return fmt.Errorf("Unknown fragment: %s", fragtype)
 		}
 	}
-	return &config, nil
+	return nil
 }
 
 func parseBindOpt(s string) (string, string, error) {
@@ -109,7 +106,7 @@ func parseBindOpt(s string) (string, string, error) {
 
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
-	var config *v3types.Config
+	var config *conf.Conf
 
 	if devshellConsole {
 		devshell = true
@@ -137,52 +134,57 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if ignition != "" && !directIgnition {
-		buf, err := ioutil.ReadFile(ignition)
-		if err != nil {
-			return err
+	if !directIgnition {
+		if ignition == "" {
+			config, err = conf.Ignition("").Render("", kola.IsIgnitionV2())
+			if err != nil {
+				return errors.Wrapf(err, "creating empty config")
+			}
+		} else {
+			buf, err := ioutil.ReadFile(ignition)
+			if err != nil {
+				return err
+			}
+			config, err = conf.Ignition(string(buf)).Render("", kola.IsIgnitionV2())
+			if err != nil {
+				return errors.Wrapf(err, "parsing %s", ignition)
+			}
 		}
-		configv, _, err := v3.Parse(buf)
-		if err != nil {
-			return errors.Wrapf(err, "parsing %s", ignition)
-		}
-		config = &configv
 	}
+
 	if len(ignitionFragments) > 0 {
-		if config == nil {
-			config = &v3types.Config{}
+		if directIgnition {
+			return fmt.Errorf("Cannot use fragments with direct ignition")
 		}
-		newconfig, err := renderFragments(*config)
+		err := renderFragments(ignitionFragments, config)
 		if err != nil {
 			return errors.Wrapf(err, "rendering fragments")
 		}
-		config = newconfig
 	}
+
 	builder := platform.NewBuilder()
 	defer builder.Close()
 	for _, b := range bindro {
+		if directIgnition {
+			return fmt.Errorf("Cannot use mounts with direct ignition")
+		}
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
 			return err
 		}
 		builder.Mount9p(src, dest, true)
-		if config == nil {
-			config = &v3types.Config{}
-		}
-		configv := v3.Merge(*config, conf.Mount9p(dest, true))
-		config = &configv
+		config.Mount9p(dest, true)
 	}
 	for _, b := range bindrw {
+		if directIgnition {
+			return fmt.Errorf("Cannot use mounts with direct ignition")
+		}
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
 			return err
 		}
 		builder.Mount9p(src, dest, false)
-		if config == nil {
-			config = &v3types.Config{}
-		}
-		configv := v3.Merge(*config, conf.Mount9p(dest, false))
-		config = &configv
+		config.Mount9p(dest, false)
 	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
@@ -243,7 +245,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if directIgnition {
 			return fmt.Errorf("Cannot use fragments/mounts with direct ignition")
 		}
-		builder.SetConfig(*config, kola.Options.IgnitionVersion == "v2")
+		builder.SetConfig(config, kola.IsIgnitionV2())
 	} else if directIgnition {
 		builder.ConfigFile = ignition
 	}

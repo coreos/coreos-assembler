@@ -18,14 +18,13 @@ import (
 	"fmt"
 	"time"
 
-	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
@@ -47,29 +46,15 @@ func runIgnitionFailure(c cluster.TestCluster) {
 func ignitionFailure(c cluster.TestCluster) error {
 	// We can't create files in / due to the immutable bit OSTree creates, so
 	// this is a convenient way to test Ignition failure.
-	failConfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Storage: ignv3types.Storage{
-			Files: []ignv3types.File{
-				{
-					Node: ignv3types.Node{
-						Path: "/notwritable.txt",
-					},
-					FileEmbedded1: ignv3types.FileEmbedded1{
-						Contents: ignv3types.FileContents{
-							Source: util.StrToPtr("data:,hello%20world%0A"),
-						},
-						Mode: util.IntToPtr(420),
-					},
-				},
-			},
-		},
+	failConfig, err := conf.Ignition("").Render("", kola.IsIgnitionV2())
+	if err != nil {
+		return errors.Wrapf(err, "creating empty config")
 	}
+	failConfig.AddFile("/notwritable.txt", "/", "Hello world", 0644)
+
 	builder := platform.NewBuilder()
 	defer builder.Close()
-	builder.SetConfig(failConfig, kola.Options.IgnitionVersion == "v2")
+	builder.SetConfig(failConfig, kola.IsIgnitionV2())
 	builder.AddPrimaryDisk(&platform.Disk{
 		BackingFile: kola.QEMUOptions.DiskImage,
 	})
