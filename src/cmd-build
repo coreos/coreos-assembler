@@ -273,7 +273,7 @@ strip_out_lockfile_digests "$lockfile_out".tmp
 /usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
-if [ -f "${changed_stamp}" ]; then
+if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
     commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
     # Clean up prior versions
     rm -f "${workdir}"/tmp/compose-*.json
