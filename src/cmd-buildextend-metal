@@ -211,8 +211,9 @@ fi
 
 set -x
 # Extract the target kernel config, which may inform how we build disks.
+kconfig="${tmp_builddir:-tmp}/target-kernel.config"
 target_moduledir=$(ostree --repo="${ostree_repo}" ls "${commit}" /usr/lib/modules | grep -o '/usr/lib/modules/.*')
-ostree --repo="${ostree_repo}" cat "${commit}" "${target_moduledir}/config" > tmp/target-kernel.config
+ostree --repo="${ostree_repo}" cat "${commit}" "${target_moduledir}/config" > "${kconfig}"
 # Part of: https://github.com/ostreedev/ostree/pull/1959
 # We need to support kernels that don't have this enabled yet, including RHEL8
 # and current Fedora 31.
@@ -222,7 +223,7 @@ ostree --repo="${ostree_repo}" cat "${commit}" "${target_moduledir}/config" > tm
 # ones without CONFIG_FS_VERITY.
 case "${bootfs_type}" in
   ext4verity)
-        if grep -Eq '^CONFIG_FS_VERITY=y' tmp/target-kernel.config; then
+        if grep -Eq '^CONFIG_FS_VERITY=y' "${kconfig}"; then
             disk_args+=("--boot-verity")
         else
             echo 'error: Missing CONFIG_FS_VERITY from target kernel config' 1>&2
@@ -232,7 +233,7 @@ case "${bootfs_type}" in
   ext4) ;;
   *) echo "Unsupported bootfs: ${bootfs_type}" 1>&2; exit 1;;
 esac
-rm tmp/target-kernel.config
+rm -f "${kconfig}"
 
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
