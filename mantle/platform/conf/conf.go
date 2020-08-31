@@ -1099,6 +1099,139 @@ func (c *Conf) CopyKeys(keys []*agent.Key) {
 	c.AddAuthorizedKeys("core", keyStrs)
 }
 
+func (c *Conf) addConfigSourceV2(source string) {
+	url, err := url.Parse(source)
+	if err != nil {
+		panic(err)
+	}
+	c.ignitionV2.Ignition.Config.Append = append(c.ignitionV2.Ignition.Config.Append, v2types.ConfigReference{
+		Source: v2types.Url(*url),
+		Verification: v2types.Verification{
+			Hash: nil,
+		},
+	})
+}
+
+func (c *Conf) addConfigSourceV21(source string) {
+	c.ignitionV21.Ignition.Config.Append = append(c.ignitionV21.Ignition.Config.Append, v21types.ConfigReference{
+		Source: source,
+		Verification: v21types.Verification{
+			Hash: nil,
+		},
+	})
+}
+
+func (c *Conf) addConfigSourceV22(source string) {
+	c.ignitionV22.Ignition.Config.Append = append(c.ignitionV22.Ignition.Config.Append, v22types.ConfigReference{
+		Source: source,
+		Verification: v22types.Verification{
+			Hash: nil,
+		},
+	})
+}
+
+func (c *Conf) addConfigSourceV23(source string) {
+	c.ignitionV23.Ignition.Config.Append = append(c.ignitionV23.Ignition.Config.Append, v23types.ConfigReference{
+		Source: source,
+		Verification: v23types.Verification{
+			Hash: nil,
+		},
+	})
+}
+
+func (c *Conf) addConfigSourceV24(source string) {
+	var headers []v24types.HTTPHeader
+	c.ignitionV24.Ignition.Config.Append = append(c.ignitionV24.Ignition.Config.Append, v24types.ConfigReference{
+		HTTPHeaders: headers,
+		Source:      source,
+		Verification: v24types.Verification{
+			Hash: nil,
+		},
+	})
+}
+
+func (c *Conf) addConfigSourceV3(source string) {
+	newConfig := v3types.Config{
+		Ignition: v3types.Ignition{
+			Version: "3.0.0",
+			Config: v3types.IgnitionConfig{
+				Merge: []v3types.ConfigReference{
+					v3types.ConfigReference{
+						Source: &source,
+					},
+				},
+			},
+		},
+	}
+	c.MergeV3(newConfig)
+}
+
+func (c *Conf) addConfigSourceV31(source string) {
+	var resources []v31types.Resource
+	var headers []v31types.HTTPHeader
+	resources = append(resources, v31types.Resource{
+		Compression: nil,
+		HTTPHeaders: headers,
+		Source:      &source,
+		Verification: v31types.Verification{
+			Hash: nil,
+		},
+	})
+	newConfig := v31types.Config{
+		Ignition: v31types.Ignition{
+			Version: "3.1.0",
+			Config: v31types.IgnitionConfig{
+				Merge: resources,
+			},
+		},
+	}
+	c.MergeV31(newConfig)
+}
+
+func (c *Conf) addConfigSourceV32exp(source string) {
+	var resources []v32exptypes.Resource
+	var headers []v32exptypes.HTTPHeader
+	resources = append(resources, v32exptypes.Resource{
+		Compression: nil,
+		HTTPHeaders: headers,
+		Source:      &source,
+		Verification: v32exptypes.Verification{
+			Hash: nil,
+		},
+	})
+	newConfig := v32exptypes.Config{
+		Ignition: v32exptypes.Ignition{
+			Version: "3.2.0-experimental",
+			Config: v32exptypes.IgnitionConfig{
+				Merge: resources,
+			},
+		},
+	}
+	c.MergeV32exp(newConfig)
+}
+
+// AddConfigSource adds an Ignition config to append (v2) or merge (v3) the
+// config available at the `source` URL with the current config.
+func (c *Conf) AddConfigSource(source string) {
+	if c.ignitionV2 != nil {
+		c.addConfigSourceV2(source)
+	} else if c.ignitionV21 != nil {
+		c.addConfigSourceV21(source)
+	} else if c.ignitionV22 != nil {
+		c.addConfigSourceV22(source)
+	} else if c.ignitionV23 != nil {
+		c.addConfigSourceV23(source)
+	} else if c.ignitionV24 != nil {
+		c.addConfigSourceV24(source)
+	} else if c.ignitionV3 != nil {
+		c.addConfigSourceV3(source)
+	} else if c.ignitionV31 != nil {
+		c.addConfigSourceV31(source)
+	} else if c.ignitionV32exp != nil {
+		c.addConfigSourceV32exp(source)
+	}
+}
+
 // IsIgnition returns true if the config is for Ignition.
 // Returns false in the case of empty configs
 func (c *Conf) IsIgnition() bool {
