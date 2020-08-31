@@ -33,11 +33,9 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
-
-	v3 "github.com/coreos/ignition/v2/config/v3_0"
-	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
@@ -90,7 +88,7 @@ func displaySerialMsg(serialMsg string) {
 	fmt.Printf("\033[2K\r%s", stripControlCharacters(s))
 }
 
-func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
+func runDevShellSSH(builder *platform.QemuBuilder, conf *conf.Conf) error {
 	if !terminal.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
 	}
@@ -104,39 +102,21 @@ func runDevShellSSH(builder *platform.QemuBuilder, conf *v3types.Config) error {
 		return err
 	}
 
-	sshPubKey := v3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
-
 	// Await sshd startup;
 	// src/systemd/sd-messages.h
 	// 89:#define SD_MESSAGE_UNIT_STARTED           SD_ID128_MAKE(39,f5,34,79,d3,a0,45,ac,8e,11,78,62,48,23,1f,bf)
-	journalConf, journalPipe, err := builder.VirtioJournal("-u sshd MESSAGE_ID=39f53479d3a045ac8e11786248231fbf")
+	journalPipe, err := builder.VirtioJournal(conf, "-u sshd MESSAGE_ID=39f53479d3a045ac8e11786248231fbf")
 	if err != nil {
 		return err
 	}
-	confm := v3.Merge(*conf, *journalConf)
-	conf = &confm
 
-	devshellConfig := v3types.Config{
-		Ignition: v3types.Ignition{
-			Version: "3.0.0",
-		},
-		Passwd: v3types.Passwd{
-			Users: []v3types.PasswdUser{
-				{
-					Name: "core",
-					SSHAuthorizedKeys: []v3types.SSHAuthorizedKey{
-						sshPubKey,
-					},
-				},
-			},
-		},
-	}
-	confm = v3.Merge(*conf, devshellConfig)
-	conf = &confm
+	var keys []string
+	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
+	conf.AddAuthorizedKeys("core", keys)
 
 	readyReader := bufio.NewReader(journalPipe)
 
-	builder.SetConfig(*conf, kola.Options.IgnitionVersion == "v2")
+	builder.SetConfig(conf, kola.IsIgnitionV2())
 
 	serialChan := make(chan string)
 	serialPipe, err := builder.SerialPipe()

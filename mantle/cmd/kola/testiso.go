@@ -29,12 +29,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
 
-	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
-	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/mantle/kola"
@@ -165,7 +164,7 @@ func newBaseQemuBuilder() *platform.QemuBuilder {
 	return builder
 }
 
-func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *ignv3types.Config, error) {
+func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	builder := newBaseQemuBuilder()
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
@@ -194,7 +193,11 @@ func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *ignv3typ
 	if !builder.InheritConsole {
 		builder.ConsoleToFile(filepath.Join(outdir, "console.txt"))
 	}
-	virtioJournalConfig, journalPipe, err := builder.VirtioJournal("")
+	config, err := conf.Ignition("").Render("", kola.IsIgnitionV2())
+	if err != nil {
+		return nil, nil, err
+	}
+	journalPipe, err := builder.VirtioJournal(config, "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -210,7 +213,7 @@ func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *ignv3typ
 		}
 	}()
 
-	return builder, virtioJournalConfig, nil
+	return builder, config, nil
 }
 
 func runTestIso(cmd *cobra.Command, args []string) error {
@@ -268,7 +271,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		Native4k:        kola.QEMUOptions.Native4k,
 		PxeAppendRootfs: pxeAppendRootfs,
 
-		IgnitionSpec2: kola.Options.IgnitionVersion == "v2",
+		IgnitionSpec2: kola.IsIgnitionV2(),
 	}
 
 	if instInsecure {
@@ -434,68 +437,10 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 		return err
 	}
 	defer os.RemoveAll(tmpd)
+
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
 		return err
-	}
-	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
-	liveConfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Passwd: ignv3types.Passwd{
-			Users: []ignv3types.PasswdUser{
-				{
-					Name: "core",
-					SSHAuthorizedKeys: []ignv3types.SSHAuthorizedKey{
-						sshPubKey,
-					},
-				},
-			},
-		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
-				{
-					Name:     "live-signal-ok.service",
-					Contents: &liveSignalOKUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
-	}
-
-	if offline {
-		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.BuildID, kola.CosaBuild.Meta.OstreeCommit)
-		liveConfig.Systemd.Units = append(liveConfig.Systemd.Units, ignv3types.Unit{
-			Name:     "coreos-installer-offline-check.service",
-			Contents: &contents,
-			Enabled:  util.BoolToPtr(true),
-		})
-	}
-
-	targetConfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Passwd: ignv3types.Passwd{
-			Users: []ignv3types.PasswdUser{
-				{
-					Name: "core",
-					SSHAuthorizedKeys: []ignv3types.SSHAuthorizedKey{
-						sshPubKey,
-					},
-				},
-			},
-		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
-				{
-					Name:     "coreos-test-installer.service",
-					Contents: &signalCompletionUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
 	}
 
 	builder, virtioJournalConfig, err := newQemuBuilder(true, outdir)
@@ -507,9 +452,21 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 	if err != nil {
 		return err
 	}
-	liveConfig = ignv3.Merge(liveConfig, *virtioJournalConfig)
 
-	targetConfig = ignv3.Merge(targetConfig, *virtioJournalConfig)
+	var keys []string
+	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
+	virtioJournalConfig.AddAuthorizedKeys("core", keys)
+
+	liveConfig := *virtioJournalConfig
+	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
+
+	if offline {
+		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.BuildID, kola.CosaBuild.Meta.OstreeCommit)
+		liveConfig.AddSystemdUnit("coreos-installer-offline-check.service", contents, conf.Enable)
+	}
+
+	targetConfig := *virtioJournalConfig
+	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 
 	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig, offline)
 	if err != nil {
@@ -528,6 +485,17 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 }
 
 func testLiveIso(inst platform.Install, outdir string, offline bool) error {
+	tmpd, err := ioutil.TempDir("", "kola-testiso")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpd)
+
+	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
+	if err != nil {
+		return err
+	}
+
 	builder, virtioJournalConfig, err := newQemuBuilder(true, outdir)
 	if err != nil {
 		return err
@@ -538,67 +506,15 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 		return err
 	}
 
-	tmpd, err := ioutil.TempDir("", "kola-testiso")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmpd)
-	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
-	if err != nil {
-		return err
-	}
-	sshPubKey := ignv3types.SSHAuthorizedKey(strings.TrimSpace(string(sshPubKeyBuf)))
-	liveConfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Passwd: ignv3types.Passwd{
-			Users: []ignv3types.PasswdUser{
-				{
-					Name: "core",
-					SSHAuthorizedKeys: []ignv3types.SSHAuthorizedKey{
-						sshPubKey,
-					},
-				},
-			},
-		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
-				{
-					Name:     "live-signal-ok.service",
-					Contents: &liveSignalOKUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
-	}
-	liveConfig = ignv3.Merge(*virtioJournalConfig, liveConfig)
+	var keys []string
+	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
+	virtioJournalConfig.AddAuthorizedKeys("core", keys)
 
-	targetConfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Passwd: ignv3types.Passwd{
-			Users: []ignv3types.PasswdUser{
-				{
-					Name: "core",
-					SSHAuthorizedKeys: []ignv3types.SSHAuthorizedKey{
-						sshPubKey,
-					},
-				},
-			},
-		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
-				{
-					Name:     "coreos-test-installer.service",
-					Contents: &signalCompletionUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
-	}
-	targetConfig = ignv3.Merge(*virtioJournalConfig, targetConfig)
+	liveConfig := *virtioJournalConfig
+	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
+
+	targetConfig := *virtioJournalConfig
+	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 
 	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, offline)
 	if err != nil {
