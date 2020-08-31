@@ -122,17 +122,6 @@ func Ignition(data string) *UserData {
 	}
 }
 
-func IgnitionParsed(conf v3types.Config) *UserData {
-	buf, err := json.Marshal(conf)
-	if err != nil {
-		panic(err)
-	}
-	return &UserData{
-		kind: kindIgnition,
-		data: string(buf),
-	}
-}
-
 func Unknown(data string) *UserData {
 	u := &UserData{
 		data: data,
@@ -350,17 +339,6 @@ func (c *Conf) String() string {
 	}
 
 	return ""
-}
-
-// SerializeAndMaybeConvert serializes a config, and optionally
-// converts it to spec2x.
-func SerializeAndMaybeConvert(conf v3types.Config, spec2 bool) ([]byte, error) {
-	u := IgnitionParsed(conf)
-	c, err := u.Render("", spec2)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(c.String()), nil
 }
 
 // MergeV3 merges a config with the ignitionV3 config via Ignition's merging function.
@@ -1275,35 +1253,6 @@ func (c *Conf) AddAutoLogin() {
 	c.AddSystemdUnitDropin("serial-getty@.service", "10-autologin.conf", getAutologinUnit("serial-getty@.service", "--keep-baud 115200,38400,9600"))
 }
 
-func getAutologinFragment(name, args string) v3types.Unit {
-	contents := fmt.Sprintf(`[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin core -o '-p -f core' %s %%I $TERM
-`, args)
-	return v3types.Unit{
-		Name: name,
-		Dropins: []v3types.Dropin{
-			{
-				Name:     "10-autologin.conf",
-				Contents: &contents,
-			},
-		},
-	}
-}
-
-// GetAutologin returns an Ignition config to automatic login on consoles
-func GetAutologin() v3types.Config {
-	conf := v3types.Config{
-		Ignition: v3types.Ignition{
-			Version: "3.0.0",
-		},
-		Systemd: v3types.Systemd{},
-	}
-	conf.Systemd.Units = append(conf.Systemd.Units, getAutologinFragment("getty@.service", "--noclear"))
-	conf.Systemd.Units = append(conf.Systemd.Units, getAutologinFragment("serial-getty@.service", "--keep-baud 115200,38400,9600"))
-	return conf
-}
-
 // Mount9p adds an Ignition config to mount an folder with 9p
 func (c *Conf) Mount9p(dest string, readonly bool) {
 	readonlyStr := ""
@@ -1323,36 +1272,4 @@ Options=trans=virtio,version=9p2000.L%s
 WantedBy=multi-user.target
 `, dest, dest, readonlyStr)
 	c.AddSystemdUnit(fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])), content, Enable)
-}
-
-func Mount9p(dest string, readonly bool) v3types.Config {
-	conf := v3types.Config{
-		Ignition: v3types.Ignition{
-			Version: "3.0.0",
-		},
-		Systemd: v3types.Systemd{},
-	}
-	readonlyStr := ""
-	if readonly {
-		readonlyStr = ",ro"
-	}
-	mntBuf := fmt.Sprintf(`[Unit]
-DefaultDependencies=no
-After=systemd-tmpfiles-setup.service
-Before=basic.target
-[Mount]
-What=%s
-Where=%s
-Type=9p
-Options=trans=virtio,version=9p2000.L%s
-[Install]
-WantedBy=multi-user.target
-`, dest, dest, readonlyStr)
-	enable := true
-	conf.Systemd.Units = append(conf.Systemd.Units, v3types.Unit{
-		Name:     fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])),
-		Contents: &mntBuf,
-		Enabled:  &enable,
-	})
-	return conf
 }
