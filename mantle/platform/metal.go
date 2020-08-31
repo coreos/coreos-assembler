@@ -25,16 +25,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	v3 "github.com/coreos/ignition/v2/config/v3_0"
-	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/pkg/errors"
-	"github.com/vincent-petithory/dataurl"
 
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
-	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -101,8 +97,8 @@ type Install struct {
 
 	// These are set by the install path
 	kargs        []string
-	ignition     ignv3types.Config
-	liveIgnition ignv3types.Config
+	ignition     conf.Conf
+	liveIgnition conf.Conf
 }
 
 type InstalledMachine struct {
@@ -110,7 +106,7 @@ type InstalledMachine struct {
 	QemuInst *QemuInstance
 }
 
-func (inst *Install) PXE(kargs []string, liveIgnition, ignition ignv3types.Config, offline bool) (*InstalledMachine, error) {
+func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offline bool) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -261,20 +257,12 @@ func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error
 	}
 
 	builddir := inst.CosaBuild.Dir
-	serializedConfig, err := conf.SerializeAndMaybeConvert(inst.ignition, inst.IgnitionSpec2)
-	if err != nil {
-		return nil, err
-	}
-	if err := ioutil.WriteFile(filepath.Join(tftpdir, "config.ign"), serializedConfig, 0644); err != nil {
+	if err := inst.ignition.WriteFile(filepath.Join(tftpdir, "config.ign")); err != nil {
 		return nil, err
 	}
 	// This code will ensure to add an SSH key to `pxe-live.ign` config.
-	pxeConfig := v3.Merge(inst.liveIgnition, conf.GetAutologin())
-	pxeConfigSerialized, err := conf.SerializeAndMaybeConvert(pxeConfig, inst.IgnitionSpec2)
-	if err != nil {
-		return nil, err
-	}
-	if err := ioutil.WriteFile(filepath.Join(tftpdir, "pxe-live.ign"), pxeConfigSerialized, 0644); err != nil {
+	inst.liveIgnition.AddAutoLogin()
+	if err := inst.liveIgnition.WriteFile(filepath.Join(tftpdir, "pxe-live.ign")); err != nil {
 		return nil, err
 	}
 
@@ -531,27 +519,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy, offline bool) (*Installed
 	}, nil
 }
 
-func generatePointerIgnitionString(spec2 bool, target string) string {
-	p := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-			Config: ignv3types.IgnitionConfig{
-				Merge: []ignv3types.ConfigReference{
-					ignv3types.ConfigReference{
-						Source: &target,
-					},
-				},
-			},
-		},
-	}
-	buf, err := conf.SerializeAndMaybeConvert(p, spec2)
-	if err != nil {
-		panic(err)
-	}
-	return string(buf)
-}
-
-func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition ignv3types.Config, offline bool) (*InstalledMachine, error) {
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, offline bool) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -578,11 +546,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		}
 	}()
 
-	renderedTarget, err := conf.SerializeAndMaybeConvert(inst.ignition, inst.IgnitionSpec2)
-	if err != nil {
-		return nil, err
-	}
-	if err := ioutil.WriteFile(filepath.Join(tempdir, "target.ign"), renderedTarget, 0644); err != nil {
+	if err := inst.ignition.WriteFile(filepath.Join(tempdir, "target.ign")); err != nil {
 		return nil, err
 	}
 
@@ -607,7 +571,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 		// we want to test that a full offline install works; that includes the
 		// final installed host booting offline
-		serializedTargetConfig = dataurl.EncodeBytes([]byte(renderedTarget))
+		serializedTargetConfig = inst.ignition.String()
 	} else {
 		mux := http.NewServeMux()
 		mux.Handle("/", http.FileServer(http.Dir(tempdir)))
@@ -628,8 +592,12 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 		// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
 		// when it arrives
-		pointerIgnitionStr := generatePointerIgnitionString(inst.IgnitionSpec2, baseurl+"/target.ign")
-		serializedTargetConfig = dataurl.EncodeBytes([]byte(pointerIgnitionStr))
+		targetConfig, err := conf.Ignition("").Render("", inst.IgnitionSpec2)
+		if err != nil {
+			return nil, err
+		}
+		targetConfig.AddConfigSource(baseurl + "/target.ign")
+		serializedTargetConfig = targetConfig.String()
 	}
 
 	insecureOpt := ""
@@ -652,45 +620,14 @@ WantedBy=multi-user.target
 `, srcOpt, pointerIgnitionPath, insecureOpt, targetDevice)
 	mode := 0644
 	rebootUnitP := string(rebootUnit)
-	installerConfig := ignv3types.Config{
-		Ignition: ignv3types.Ignition{
-			Version: "3.0.0",
-		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
-				{
-					Name:     "coreos-installer.service",
-					Contents: &installerUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-				{
-					Name:     "coreos-installer-reboot.service",
-					Contents: &rebootUnitP,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
-		Storage: ignv3types.Storage{
-			Files: []ignv3types.File{
-				{
-					Node: ignv3types.Node{
-						Path: pointerIgnitionPath,
-					},
-					FileEmbedded1: ignv3types.FileEmbedded1{
-						Contents: ignv3types.FileContents{
-							Source: &serializedTargetConfig,
-						},
-						Mode: &mode,
-					},
-				},
-			},
-		},
-	}
-	mergedConfig := v3.Merge(inst.liveIgnition, installerConfig)
-	mergedConfig = v3.Merge(mergedConfig, conf.GetAutologin())
+
+	inst.liveIgnition.AddSystemdUnit("coreos-installer.service", installerUnit, conf.Enable)
+	inst.liveIgnition.AddSystemdUnit("coreos-installer-reboot.service", rebootUnitP, conf.Enable)
+	inst.liveIgnition.AddFile(pointerIgnitionPath, "/", serializedTargetConfig, mode)
+	inst.liveIgnition.AddAutoLogin()
 
 	qemubuilder := inst.Builder
-	qemubuilder.SetConfig(mergedConfig, inst.IgnitionSpec2)
+	qemubuilder.SetConfig(&inst.liveIgnition, inst.IgnitionSpec2)
 	qemubuilder.AddIso(srcisopath, "bootindex=2")
 
 	if offline {

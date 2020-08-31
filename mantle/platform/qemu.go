@@ -30,7 +30,6 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 
-	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/pkg/errors"
@@ -233,7 +232,7 @@ type QemuBuilder struct {
 
 	// ignition is a config object that can be used instead of
 	// ConfigFile.
-	ignition *v3types.Config
+	ignition *conf.Conf
 	// ignitionSpec2 says to convert to Ignition spec 2
 	ignitionSpec2    bool
 	ignitionSet      bool
@@ -277,14 +276,14 @@ func (builder *QemuBuilder) ensureTempdir() error {
 }
 
 // SetConfig injects Ignition; this can be used in place of ConfigFile.
-func (builder *QemuBuilder) SetConfig(config v3types.Config, convSpec2 bool) {
+func (builder *QemuBuilder) SetConfig(config *conf.Conf, convSpec2 bool) {
 	if builder.ignitionRendered {
 		panic("SetConfig called after config rendered")
 	}
 	if builder.ignitionSet {
 		panic("SetConfig called multiple times")
 	}
-	builder.ignition = &config
+	builder.ignition = config
 	builder.ignitionSpec2 = convSpec2
 	builder.ignitionSet = true
 }
@@ -297,16 +296,12 @@ func (builder *QemuBuilder) renderIgnition() error {
 	if builder.ConfigFile != "" {
 		panic("Both ConfigFile and ignition set")
 	}
-	buf, err := conf.SerializeAndMaybeConvert(*builder.ignition, builder.ignitionSpec2)
-	if err != nil {
-		return err
-	}
+
 	if err := builder.ensureTempdir(); err != nil {
 		return err
 	}
 	builder.ConfigFile = filepath.Join(builder.tempdir, "config.ign")
-	err = ioutil.WriteFile(builder.ConfigFile, buf, 0644)
-	if err != nil {
+	if err := builder.ignition.WriteFile(builder.ConfigFile); err != nil {
 		return err
 	}
 	builder.ignition = nil
@@ -980,14 +975,15 @@ func (builder *QemuBuilder) SerialPipe() (*os.File, error) {
 }
 
 // VirtioJournal configures the OS and VM to stream the systemd journal
-// (post-switchroot) over a virtio-serial channel.  The first return value
-// is an Ignition fragment that should be included in the target config,
-// and the file stream will be newline-separated JSON.  The optional
-// queryArguments filters the stream - see `man journalctl` for more information.
-func (builder *QemuBuilder) VirtioJournal(queryArguments string) (*v3types.Config, *os.File, error) {
+// (post-switchroot) over a virtio-serial channel.
+// - The first parameter is a poitner to the configuration of the target VM.
+// - The second parameter is an optional queryArguments to filter the stream -
+//   see `man journalctl` for more information.
+// - The return value is a file stream which will be newline-separated JSON.
+func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments string) (*os.File, error) {
 	stream, err := builder.VirtioChannelRead("mantlejournal")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var streamJournalUnit = fmt.Sprintf(`[Unit]
 	Requires=dev-virtio\\x2dports-mantlejournal.device
@@ -1000,21 +996,9 @@ func (builder *QemuBuilder) VirtioJournal(queryArguments string) (*v3types.Confi
 	RequiredBy=multi-user.target
 	`, queryArguments)
 
-	conf := v3types.Config{
-		Ignition: v3types.Ignition{
-			Version: "3.0.0",
-		},
-		Systemd: v3types.Systemd{
-			Units: []v3types.Unit{
-				{
-					Name:     "mantle-virtio-journal-stream.service",
-					Contents: &streamJournalUnit,
-					Enabled:  util.BoolToPtr(true),
-				},
-			},
-		},
-	}
-	return &conf, stream, nil
+	config.AddSystemdUnit("mantle-virtio-journal-stream.service", streamJournalUnit, conf.Enable)
+
+	return stream, nil
 }
 
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
