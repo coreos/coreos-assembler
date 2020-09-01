@@ -918,7 +918,7 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 	}
 }
 
-func (c *Conf) AddAuthorizedKeysV2(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV2(username string, keys []string) {
 	for i := range c.ignitionV2.Passwd.Users {
 		user := &c.ignitionV2.Passwd.Users[i]
 		if user.Name == username {
@@ -932,7 +932,7 @@ func (c *Conf) AddAuthorizedKeysV2(username string, keys []string) {
 	})
 }
 
-func (c *Conf) AddAuthorizedKeysV21(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV21(username string, keys []string) {
 	var keyObjs []v21types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v21types.SSHAuthorizedKey(key))
@@ -950,7 +950,7 @@ func (c *Conf) AddAuthorizedKeysV21(username string, keys []string) {
 	})
 }
 
-func (c *Conf) AddAuthorizedKeysV22(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV22(username string, keys []string) {
 	var keyObjs []v22types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v22types.SSHAuthorizedKey(key))
@@ -968,7 +968,7 @@ func (c *Conf) AddAuthorizedKeysV22(username string, keys []string) {
 	})
 }
 
-func (c *Conf) AddAuthorizedKeysV23(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV23(username string, keys []string) {
 	var keyObjs []v23types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v23types.SSHAuthorizedKey(key))
@@ -986,7 +986,7 @@ func (c *Conf) AddAuthorizedKeysV23(username string, keys []string) {
 	})
 }
 
-func (c *Conf) AddAuthorizedKeysV24(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV24(username string, keys []string) {
 	var keyObjs []v24types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v24types.SSHAuthorizedKey(key))
@@ -1004,7 +1004,7 @@ func (c *Conf) AddAuthorizedKeysV24(username string, keys []string) {
 	})
 }
 
-func (c *Conf) AddAuthorizedKeysV3(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV3(username string, keys []string) {
 	var keyObjs []v3types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v3types.SSHAuthorizedKey(key))
@@ -1025,7 +1025,7 @@ func (c *Conf) AddAuthorizedKeysV3(username string, keys []string) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) AddAuthorizedKeysV31(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV31(username string, keys []string) {
 	var keyObjs []v31types.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v31types.SSHAuthorizedKey(key))
@@ -1046,7 +1046,7 @@ func (c *Conf) AddAuthorizedKeysV31(username string, keys []string) {
 	c.MergeV31(newConfig)
 }
 
-func (c *Conf) AddAuthorizedKeysV32exp(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV32exp(username string, keys []string) {
 	var keyObjs []v32exptypes.SSHAuthorizedKey
 	for _, key := range keys {
 		keyObjs = append(keyObjs, v32exptypes.SSHAuthorizedKey(key))
@@ -1071,21 +1071,21 @@ func (c *Conf) AddAuthorizedKeysV32exp(username string, keys []string) {
 // authorized_keys file for the given user.
 func (c *Conf) AddAuthorizedKeys(user string, keys []string) {
 	if c.ignitionV2 != nil {
-		c.AddAuthorizedKeysV2(user, keys)
+		c.addAuthorizedKeysV2(user, keys)
 	} else if c.ignitionV21 != nil {
-		c.AddAuthorizedKeysV21(user, keys)
+		c.addAuthorizedKeysV21(user, keys)
 	} else if c.ignitionV22 != nil {
-		c.AddAuthorizedKeysV22(user, keys)
+		c.addAuthorizedKeysV22(user, keys)
 	} else if c.ignitionV23 != nil {
-		c.AddAuthorizedKeysV23(user, keys)
+		c.addAuthorizedKeysV23(user, keys)
 	} else if c.ignitionV24 != nil {
-		c.AddAuthorizedKeysV24(user, keys)
+		c.addAuthorizedKeysV24(user, keys)
 	} else if c.ignitionV3 != nil {
-		c.AddAuthorizedKeysV3(user, keys)
+		c.addAuthorizedKeysV3(user, keys)
 	} else if c.ignitionV31 != nil {
-		c.AddAuthorizedKeysV31(user, keys)
+		c.addAuthorizedKeysV31(user, keys)
 	} else if c.ignitionV32exp != nil {
-		c.AddAuthorizedKeysV32exp(user, keys)
+		c.addAuthorizedKeysV32exp(user, keys)
 	}
 }
 
