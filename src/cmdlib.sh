@@ -429,7 +429,8 @@ runvm() {
 
     # tmp_builddir is set in prepare_build, but some stages may not
     # know that it exists.
-    export tmp_builddir="${tmp_builddir:-${workdir}/tmp/build${IMAGE_TYPE:+.$IMAGE_TYPE}}"
+    # shellcheck disable=SC2086
+    export tmp_builddir="${tmp_builddir:-$(mktemp -p ${workdir}/tmp -d supermin.XXXX)}"
 
     # shellcheck disable=SC2155
     local vmpreparedir="${tmp_builddir}/supermin.prepare"
@@ -488,7 +489,6 @@ EOF
         cat "${tmp_builddir}/supermin.out"
         fatal "Failed to run: supermin --build"
     fi
-    rm "${tmp_builddir}/supermin.out"
 
     # this is the command run in the supermin container
     echo "$@" > "${tmp_builddir}"/cmd.sh
@@ -527,6 +527,8 @@ EOF
     else
         exec "${kola_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
     fi
+
+    rm -rf "${tmp_builddir}/supermin.out" "${vmpreparedir}" "${vmbuilddir}"
 
     if [ ! -f "${rc_file}" ]; then
         cat "${runvm_console}"
