@@ -314,8 +314,7 @@ EOF
 # be overridden below
 bootloader_backend=none
 
-# Helper to install UEFI on supported architectures
-install_uefi() {
+install_uefi_without_bootupd() {
     # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
     # In the future it'd be better to get this stuff out of the OSTree commit and
     # change our build process to download+extract it separately.
@@ -339,7 +338,21 @@ install_uefi() {
             done
         )
     done
+}
 
+install_uefi() {
+    if test -d "${deploy_root}"/usr/lib/bootupd/updates; then
+        # https://github.com/coreos/fedora-coreos-tracker/issues/510
+        # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
+        /usr/bin/bootupctl backend install --src-root="${deploy_root}" "${rootfs}"
+    else
+        install_uefi_without_bootupd
+    fi
+    # We have a "static" grub config file that basically configures grub to look
+    # in the partition labeled "boot".
+    local target_efi="$rootfs/boot/efi"
+    local grubefi=$(find "${target_efi}/EFI/" -maxdepth 1 -type d | grep -v BOOT)
+    local vendor_id="${grubefi##*/}"
     local vendordir="${target_efi}/EFI/${vendor_id}"
     mkdir -p "${vendordir}"
 	cat > ${vendordir}/grub.cfg << 'EOF'
@@ -348,8 +361,10 @@ set prefix=($prefix)
 configfile $prefix/grub2/grub.cfg
 boot
 EOF
+}
 
-    # copy the grub config and any other files we might need
+# copy the grub config and any other files we might need
+install_grub_cfg() {
     mkdir -p $rootfs/boot/grub2
     cp -v $grub_script $rootfs/boot/grub2/grub.cfg
 }
@@ -367,6 +382,7 @@ x86_64)
         --boot-directory $rootfs/boot \
         $disk
     fi
+    install_grub_cfg
     ;;
 aarch64)
     # Our aarch64 is UEFI only.
@@ -375,9 +391,7 @@ aarch64)
 ppc64le)
     # to populate PReP Boot, i.e. support pseries
     grub2-install --target=powerpc-ieee1275 --boot-directory $rootfs/boot --no-nvram "${disk}${PREPPN}"
-    mkdir -p $rootfs/boot/grub2
-    # copy the grub config and any other files we might need
-    cp $grub_script $rootfs/boot/grub2/grub.cfg
+    install_grub_cfg
     ;;
 s390x)
     bootloader_backend=zipl

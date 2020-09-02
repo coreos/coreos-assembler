@@ -1,5 +1,6 @@
 # For grub install when creating images and pxe install
 grub2 grub2-tools-extra
+bootupd
 
 # For creating bootable UEFI media on aarch64
 shim-aa64 grub2-efi-aa64
