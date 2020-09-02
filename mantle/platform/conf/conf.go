@@ -1118,8 +1118,8 @@ func getAutologinUnit(name, args string) string {
 
 // AddAutoLogin adds an Ignition config for automatic login on consoles
 func (c *Conf) AddAutoLogin() {
-	c.AddSystemdUnit("getty@.service", getAutologinUnit("getty@.service", "--noclear"), Enable)
-	c.AddSystemdUnit("serial-getty@.service", getAutologinUnit("serial-getty@.service", "--keep-baud 115200,38400,9600"), Enable)
+	c.AddSystemdUnitDropin("getty@.service", "10-autologin.conf", getAutologinUnit("getty@.service", "--noclear"))
+	c.AddSystemdUnitDropin("serial-getty@.service", "10-autologin.conf", getAutologinUnit("serial-getty@.service", "--keep-baud 115200,38400,9600"))
 }
 
 func getAutologinFragment(name, args string) v3types.Unit {
