@@ -320,14 +320,14 @@ func renderBaseKargs() []string {
 }
 
 func renderInstallKargs(t *installerRun, offline bool) []string {
-	args := []string{"coreos.inst=yes", "coreos.inst.install_dev=vda",
+	args := []string{"coreos.inst.install_dev=/dev/vda",
 		fmt.Sprintf("coreos.inst.ignition_url=%s/config.ign", t.baseurl)}
 	if !offline {
 		args = append(args, fmt.Sprintf("coreos.inst.image_url=%s/%s", t.baseurl, t.metalname))
 	}
 	// FIXME - ship signatures by default too
 	if t.inst.Insecure {
-		args = append(args, "coreos.inst.insecure=1")
+		args = append(args, "coreos.inst.insecure")
 	}
 	return args
 }
