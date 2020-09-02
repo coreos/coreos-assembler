@@ -60,16 +60,8 @@ print(f"Targeting build: {args.build}")
 with open('src/config/image.yaml') as fh:
     image_yaml = yaml.safe_load(fh)
 squashfs_compression = 'lz4' if args.fast else image_yaml.get('squashfs-compression', 'zstd')
-# Hacky mode switch, until we can drop support for the installer images
-is_live = os.path.basename(sys.argv[0]).endswith('-live')
-if is_live:
-    image_type = 'live'
-else:
-    image_type = 'installer'
-meta_keys = {k: 'live-' + k if is_live else k for k in ('iso', 'kernel', 'initramfs')}
 
-config_src = image_type
-srcdir_prefix = f"src/config/{config_src}/"
+srcdir_prefix = f"src/config/live/"
 
 if not os.path.isdir(srcdir_prefix):
     raise Exception(f"missing directory {srcdir_prefix}")
@@ -80,11 +72,10 @@ buildmeta_path = os.path.join(builddir, 'meta.json')
 buildmeta = GenericBuildMeta(workdir=workdir)
 
 # used to lock
-build_semaphore = os.path.join(
-    buildmeta.build_dir, f".{image_type}.building")
+build_semaphore = os.path.join(buildmeta.build_dir, ".live.building")
 if os.path.exists(build_semaphore):
     raise Exception(
-        f"{build_semaphore} exists: another process is building {image_type}")
+        f"{build_semaphore} exists: another process is building live")
 
 
 # Grab the commit hash for this build
@@ -93,25 +84,25 @@ buildmeta_commit = buildmeta['ostree-commit']
 repo = os.path.join(workdir, 'tmp/repo')
 
 # Don't run if it's already been done, unless forced
-if meta_keys['iso'] in buildmeta['images'] and not args.force:
-    print(f"'{image_type}' has already been built for {args.build}. Skipping.")
+if 'live-iso' in buildmeta['images'] and not args.force:
+    print(f"'live' has already been built for {args.build}. Skipping.")
     print("You can force a rebuild with '--force'.")
     sys.exit(0)
 
 basearch = get_basearch()
 base_name = buildmeta['name']
-iso_name = f'{base_name}-{args.build}-{image_type}.{basearch}.iso'
+iso_name = f'{base_name}-{args.build}-live.{basearch}.iso'
 name_version = f'{base_name}-{args.build}'
 # The short volume ID can only be 32 characters (bytes probably).  We may in the future want
 # to shorten this more intelligently, otherwise we truncate the
 # version which may impede uniqueness.
 volid = name_version[0:32]
 
-tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-{image_type}")
+tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-live")
 if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 
-tmpisoroot = os.path.join(tmpdir, image_type)
+tmpisoroot = os.path.join(tmpdir, 'live')
 tmpisoimages = os.path.join(tmpisoroot, 'images')
 tmpisoimagespxe = os.path.join(tmpisoimages, 'pxeboot')
 tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
@@ -221,16 +212,12 @@ def generate_iso():
 
     img_metal_obj = buildmeta.get_artifact_meta("metal", unmerged=True)["images"].get("metal")
     img_metal4k_obj = buildmeta.get_artifact_meta("metal4k", unmerged=True)["images"].get("metal4k")
-    if is_live:
-        if img_metal_obj is None or img_metal4k_obj is None:
-            raise Exception("Live image generation requires `metal` and `metal4k` images")
-        img_metal4k = os.path.join(builddir, img_metal4k_obj['path'])
-        img_metal4k_checksum = img_metal4k_obj['sha256']
-    else:
-        if img_metal_obj is None:
-            raise Exception("ISO image generation requires `metal` image")
+    if img_metal_obj is None or img_metal4k_obj is None:
+        raise Exception("Live image generation requires `metal` and `metal4k` images")
     img_metal = os.path.join(builddir, img_metal_obj['path'])
     img_metal_checksum = img_metal_obj['sha256']
+    img_metal4k = os.path.join(builddir, img_metal4k_obj['path'])
+    img_metal4k_checksum = img_metal4k_obj['sha256']
 
     # Find the directory under `/usr/lib/modules/<kver>` where the
     # kernel/initrd live. It will be the 2nd entity output by
@@ -256,11 +243,7 @@ def generate_iso():
 
     # Generate initramfs stamp file which says whether it's a live or legacy
     # initramfs.  Store the build ID in it.
-    if is_live:
-        stampname = 'etc/coreos-live-initramfs'
-    else:
-        stampname = 'etc/coreos-legacy-installer-initramfs'
-    stamppath = os.path.join(tmpinitrd_base, stampname)
+    stamppath = os.path.join(tmpinitrd_base, 'etc/coreos-live-initramfs')
     os.makedirs(os.path.dirname(stamppath), exist_ok=True)
     with open(stamppath, 'w') as fh:
         fh.write(args.build + '\n')
@@ -268,73 +251,67 @@ def generate_iso():
     # Generate rootfs stamp file with the build ID, indicating that the
     # rootfs has been appended and confirming that initramfs and rootfs are
     # from the same build.
-    if is_live:
-        stamppath = os.path.join(tmpinitrd_rootfs, 'etc/coreos-live-rootfs')
-        os.makedirs(os.path.dirname(stamppath), exist_ok=True)
-        with open(stamppath, 'w') as fh:
-            fh.write(args.build + '\n')
+    stamppath = os.path.join(tmpinitrd_rootfs, 'etc/coreos-live-rootfs')
+    os.makedirs(os.path.dirname(stamppath), exist_ok=True)
+    with open(stamppath, 'w') as fh:
+        fh.write(args.build + '\n')
 
     # Add Ignition padding file to ISO image
-    if is_live:
-        with open(os.path.join(tmpisoimages, ignition_img), 'wb') as fdst:
-            fdst.write(bytes(initrd_ignition_padding))
+    with open(os.path.join(tmpisoimages, ignition_img), 'wb') as fdst:
+        fdst.write(bytes(initrd_ignition_padding))
 
     # Add osmet files
-    if is_live:
-        tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
-        tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
-        print(f'Generating osmet file for 512b metal image')
-        run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                     img_metal, '512', tmp_osmet, img_metal_checksum,
-                     'fast' if args.fast else 'normal'])
-        print(f'Generating osmet file for 4k metal image')
-        run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                     img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
-                     'fast' if args.fast else 'normal'])
+    tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
+    tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
+    print(f'Generating osmet file for 512b metal image')
+    run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
+                 img_metal, '512', tmp_osmet, img_metal_checksum,
+                 'fast' if args.fast else 'normal'])
+    print(f'Generating osmet file for 4k metal image')
+    run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
+                 img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
+                 'fast' if args.fast else 'normal'])
 
     # Generate root squashfs
-    if is_live:
-        print(f'Compressing squashfs with {squashfs_compression}')
-        # Name must be exactly "root.squashfs" because the 20live dracut
-        # module makes assumptions about the length of the name in
-        # sysroot.mount
-        tmp_squashfs = os.path.join(tmpinitrd_rootfs, 'root.squashfs')
-        run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
-                    img_metal, tmp_squashfs, squashfs_compression])
+    print(f'Compressing squashfs with {squashfs_compression}')
+    # Name must be exactly "root.squashfs" because the 20live dracut module
+    # makes assumptions about the length of the name in sysroot.mount
+    tmp_squashfs = os.path.join(tmpinitrd_rootfs, 'root.squashfs')
+    run_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
+                img_metal, tmp_squashfs, squashfs_compression])
 
     # Generate rootfs image
-    if is_live:
-        iso_rootfs = os.path.join(tmpisoimagespxe, rootfs_img)
-        # The rootfs must be uncompressed because the ISO mounts
-        # root.squashfs directly from the middle of the file
-        extend_initrd(iso_rootfs, tmpinitrd_rootfs, compress=False)
-        # Check that the root.squashfs magic number is in the offset
-        # hardcoded in sysroot.mount in 20live/live-generator
-        with open(iso_rootfs, 'rb') as fh:
-            fh.seek(124)
-            if fh.read(4) != b'hsqs':
-                raise Exception("root.squashfs not at expected offset in rootfs image")
-        pxe_rootfs = os.path.join(tmpdir, rootfs_img)
-        # This is super-messy but it's temporary.
-        if args.legacy_pxe:
-            tmpinitrd_legacy = os.path.join(tmpdir, 'initrd-legacy')
-            os.makedirs(os.path.join(tmpinitrd_legacy, 'etc'))
-            os.rename(
-                os.path.join(tmpinitrd_rootfs, 'etc/coreos-live-rootfs'),
-                os.path.join(tmpinitrd_legacy, 'etc/coreos-live-rootfs')
-            )
-            extend_initrd(pxe_rootfs, tmpinitrd_legacy, compress=False)
-            # coreos-installer download won't accept an artifact sized
-            # less than 1 MiB
-            with open(pxe_rootfs, 'r+b') as fh:
-                if fh.seek(0, 2) < 1024 * 1024:
-                    fh.truncate(1024 * 1024)
-        else:
-            # Clone to PXE image
-            cp_reflink(iso_rootfs, pxe_rootfs)
-        # Save stream hash of rootfs for verifying out-of-band fetches
-        os.makedirs(os.path.join(tmpinitrd_base, 'etc'), exist_ok=True)
-        make_stream_hash(pxe_rootfs, os.path.join(tmpinitrd_base, 'etc/coreos-live-want-rootfs'))
+    iso_rootfs = os.path.join(tmpisoimagespxe, rootfs_img)
+    # The rootfs must be uncompressed because the ISO mounts root.squashfs
+    # directly from the middle of the file
+    extend_initrd(iso_rootfs, tmpinitrd_rootfs, compress=False)
+    # Check that the root.squashfs magic number is in the offset hardcoded
+    # in sysroot.mount in 20live/live-generator
+    with open(iso_rootfs, 'rb') as fh:
+        fh.seek(124)
+        if fh.read(4) != b'hsqs':
+            raise Exception("root.squashfs not at expected offset in rootfs image")
+    pxe_rootfs = os.path.join(tmpdir, rootfs_img)
+    # This is super-messy but it's temporary.
+    if args.legacy_pxe:
+        tmpinitrd_legacy = os.path.join(tmpdir, 'initrd-legacy')
+        os.makedirs(os.path.join(tmpinitrd_legacy, 'etc'))
+        os.rename(
+            os.path.join(tmpinitrd_rootfs, 'etc/coreos-live-rootfs'),
+            os.path.join(tmpinitrd_legacy, 'etc/coreos-live-rootfs')
+        )
+        extend_initrd(pxe_rootfs, tmpinitrd_legacy, compress=False)
+        # coreos-installer download won't accept an artifact sized
+        # less than 1 MiB
+        with open(pxe_rootfs, 'r+b') as fh:
+            if fh.seek(0, 2) < 1024 * 1024:
+                fh.truncate(1024 * 1024)
+    else:
+        # Clone to PXE image
+        cp_reflink(iso_rootfs, pxe_rootfs)
+    # Save stream hash of rootfs for verifying out-of-band fetches
+    os.makedirs(os.path.join(tmpinitrd_base, 'etc'), exist_ok=True)
+    make_stream_hash(pxe_rootfs, os.path.join(tmpinitrd_base, 'etc/coreos-live-want-rootfs'))
     # Add common content
     iso_initramfs = os.path.join(tmpisoimagespxe, initrd_img)
     extend_initrd(iso_initramfs, tmpinitrd_base)
@@ -342,7 +319,7 @@ def generate_iso():
     pxe_initramfs = os.path.join(tmpdir, initrd_img)
     cp_reflink(iso_initramfs, pxe_initramfs)
     # Put the rootfs contents in the initramfs in the legacy PXE case
-    if is_live and args.legacy_pxe:
+    if args.legacy_pxe:
         extend_initrd(pxe_initramfs, tmpinitrd_rootfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
@@ -532,7 +509,7 @@ def generate_iso():
     #
     # Skip on s390x because that platform uses an embedded El Torito image
     # with its own copy of the initramfs.
-    if is_live and basearch != "s390x":
+    if basearch != "s390x":
         # Start of the Ignition padding within the ISO
         offset = file_offset_in_iso(isoinfo, ignition_img)
         with open(tmpisofile, 'r+b') as isofh:
@@ -548,41 +525,38 @@ def generate_iso():
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
 
     buildmeta['images'].update({
-        meta_keys['iso']: {
+        'live-iso': {
             'path': iso_name,
             'sha256': sha256sum_file(tmpisofile)
         }
     })
     shutil.move(tmpisofile, f"{builddir}/{iso_name}")
 
-    kernel_name = f'{base_name}-{args.build}-{image_type}-kernel-{basearch}'
-    initramfs_name = f'{base_name}-{args.build}-{image_type}-initramfs.{basearch}.img'
+    kernel_name = f'{base_name}-{args.build}-live-kernel-{basearch}'
+    initramfs_name = f'{base_name}-{args.build}-live-initramfs.{basearch}.img'
+    rootfs_name = f'{base_name}-{args.build}-live-rootfs.{basearch}.img'
     kernel_file = os.path.join(builddir, kernel_name)
     initramfs_file = os.path.join(builddir, initramfs_name)
+    rootfs_file = os.path.join(builddir, rootfs_name)
     shutil.copyfile(os.path.join(tmpisoimagespxe, kernel_img), kernel_file)
     shutil.move(pxe_initramfs, initramfs_file)
+    shutil.move(pxe_rootfs, rootfs_file)
     buildmeta['images'].update({
-        meta_keys['kernel']: {
+        'live-kernel': {
             'path': kernel_name,
             'sha256': sha256sum_file(kernel_file)
         },
-        meta_keys['initramfs']: {
+        'live-initramfs': {
             'path': initramfs_name,
             'sha256': sha256sum_file(initramfs_file)
+        },
+        'live-rootfs': {
+            'path': rootfs_name,
+            'sha256': sha256sum_file(rootfs_file)
         }
     })
-    if is_live:
-        rootfs_name = f'{base_name}-{args.build}-{image_type}-rootfs.{basearch}.img'
-        rootfs_file = os.path.join(builddir, rootfs_name)
-        shutil.move(pxe_rootfs, rootfs_file)
-        buildmeta['images'].update({
-            'live-rootfs': {
-                'path': rootfs_name,
-                'sha256': sha256sum_file(rootfs_file)
-            }
-        })
 
-    buildmeta.write(artifact_name=image_type)
+    buildmeta.write(artifact_name='live')
     print(f"Updated: {buildmeta_path}")
 
 
