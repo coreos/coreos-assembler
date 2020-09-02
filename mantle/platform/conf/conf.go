@@ -105,7 +105,13 @@ func ContainerLinuxConfig(data string) *UserData {
 	}
 }
 
+// Ignition returns an Ignition UserData struct from the provided string. If the
+// given string is empty, it will create a default empty config using the latest
+// stable supported Ignition spec.
 func Ignition(data string) *UserData {
+	if data == "" {
+		data = `{"ignition": {"version": "3.1.0"}}`
+	}
 	return &UserData{
 		kind: kindIgnition,
 		data: data,
