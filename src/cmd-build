@@ -112,7 +112,9 @@ done
 build_followup_targets() {
     cd "${workdir}"
     for target in "${!targets[@]}"; do
-        "/usr/lib/coreos-assembler/cmd-buildextend-${target}"
+        if ! "/usr/lib/coreos-assembler/cmd-buildextend-${target}"; then
+            fatal "failed buildextend-${target}"
+        fi
     done
 }
 
