@@ -52,10 +52,8 @@ var (
 
 	instInsecure bool
 
-	legacy bool
-	nolive bool
-	nopxe  bool
-	noiso  bool
+	nopxe bool
+	noiso bool
 
 	scenarios []string
 
@@ -74,7 +72,6 @@ const (
 	scenarioPXEOfflineInstall = "pxe-offline-install"
 	scenarioISOOfflineInstall = "iso-offline-install"
 	scenarioISOLiveLogin      = "iso-live-login"
-	scenarioLegacyInstall     = "legacy-install"
 )
 
 var allScenarios = map[string]bool{
@@ -83,7 +80,6 @@ var allScenarios = map[string]bool{
 	scenarioISOInstall:        true,
 	scenarioISOOfflineInstall: true,
 	scenarioISOLiveLogin:      true,
-	scenarioLegacyInstall:     true,
 }
 
 var liveOKSignal = "live-test-OK"
@@ -140,16 +136,13 @@ RequiredBy=multi-user.target
 
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
-	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
-	// TODO remove these --no-X args once RHCOS switches to the live ISO
-	cmdTestIso.Flags().BoolVarP(&nolive, "no-live", "L", false, "Skip testing live installer (PXE and ISO)")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
 	cmdTestIso.Flags().BoolVarP(&noiso, "no-iso", "", false, "Skip testing live installer ISO")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Display qemu console to stdout, turn off automatic initramfs failure checking")
 	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	// FIXME move scenarioISOLiveLogin into the defaults once https://github.com/coreos/fedora-coreos-config/pull/339#issuecomment-613000050 is fixed
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioLegacyInstall, scenarioISOLiveLogin, scenarioISOInstall}))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOLiveLogin, scenarioISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
@@ -235,14 +228,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		noiso = true
 	}
 
-	if legacy {
-		targetScenarios[scenarioLegacyInstall] = true
-	}
-	if nopxe || nolive {
+	if nopxe {
 		delete(targetScenarios, scenarioPXEInstall)
 		delete(targetScenarios, scenarioPXEOfflineInstall)
 	}
-	if noiso || nolive {
+	if noiso {
 		delete(targetScenarios, scenarioISOInstall)
 		delete(targetScenarios, scenarioISOOfflineInstall)
 		delete(targetScenarios, scenarioISOLiveLogin)
@@ -280,25 +270,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 	ranTest := false
 
-	foundLegacy := baseInst.CosaBuild.Meta.BuildArtifacts.Kernel != nil
-	if foundLegacy {
-		if _, ok := targetScenarios[scenarioLegacyInstall]; ok {
-			ranTest = true
-			inst := baseInst // Pretend this is Rust and I wrote .copy()
-			inst.LegacyInstaller = true
-
-			if err := testPXE(inst, filepath.Join(outputDir, scenarioLegacyInstall), false); err != nil {
-				return errors.Wrapf(err, "scenario %s", scenarioLegacyInstall)
-			}
-			printSuccess(scenarioLegacyInstall)
-		}
-	} else if _, ok := targetScenarios[scenarioLegacyInstall]; ok {
-		return fmt.Errorf("build %s has no legacy installer kernel", kola.CosaBuild.Meta.Name)
-	}
-
-	foundLive := kola.CosaBuild.Meta.BuildArtifacts.LiveKernel != nil
 	if _, ok := targetScenarios[scenarioPXEInstall]; ok {
-		if !foundLive {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
 			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Meta.Name)
 		}
 
@@ -312,7 +285,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		printSuccess(scenarioPXEInstall)
 	}
 	if _, ok := targetScenarios[scenarioPXEOfflineInstall]; ok {
-		if !foundLive {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
 			return fmt.Errorf("build %s has no live installer kernel", kola.CosaBuild.Meta.Name)
 		}
 
@@ -521,14 +494,7 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	var signals []string
-	// the legacy installer doesn't have a live environment, so we only expect
-	// the signal from the installed machine
-	if !inst.LegacyInstaller {
-		signals = append(signals, liveOKSignal)
-	}
-	signals = append(signals, signalCompleteString)
-	return awaitCompletion(mach.QemuInst, outdir, mach.Tempdir, completionChannel, signals)
+	return awaitCompletion(mach.QemuInst, outdir, mach.Tempdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveIso(inst platform.Install, outdir string, offline bool) error {

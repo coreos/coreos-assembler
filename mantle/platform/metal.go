@@ -58,8 +58,7 @@ const (
 )
 
 // TODO derive this from docs, or perhaps include kargs in cosa metadata?
-var baseKargs = []string{"rd.neednet=1", "ip=dhcp"}
-var liveKargs = []string{"ignition.firstboot", "ignition.platform.id=metal"}
+var baseKargs = []string{"rd.neednet=1", "ip=dhcp", "ignition.firstboot", "ignition.platform.id=metal"}
 
 var (
 	// TODO expose this as an API that can be used by cosa too
@@ -91,7 +90,6 @@ type Install struct {
 	Builder         *QemuBuilder
 	Insecure        bool
 	IgnitionSpec2   bool
-	LegacyInstaller bool
 	Native4k        bool
 	PxeAppendRootfs bool
 
@@ -110,36 +108,21 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
+	if inst.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
+		return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Meta.Name)
+	}
 
 	inst.kargs = kargs
 	inst.ignition = ignition
 	inst.liveIgnition = liveIgnition
 
-	var err error
-	var mach *InstalledMachine
-	if inst.LegacyInstaller {
-		if inst.CosaBuild.Meta.BuildArtifacts.Kernel == nil {
-			return nil, fmt.Errorf("build %s has no legacy installer kernel", inst.CosaBuild.Meta.OstreeVersion)
-		}
-		mach, err = inst.runPXE(&kernelSetup{
-			kernel:    inst.CosaBuild.Meta.BuildArtifacts.Kernel.Path,
-			initramfs: inst.CosaBuild.Meta.BuildArtifacts.Initramfs.Path,
-		}, true, offline)
-		if err != nil {
-			return nil, errors.Wrapf(err, "legacy installer")
-		}
-	} else {
-		if inst.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
-			return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Meta.Name)
-		}
-		mach, err = inst.runPXE(&kernelSetup{
-			kernel:    inst.CosaBuild.Meta.BuildArtifacts.LiveKernel.Path,
-			initramfs: inst.CosaBuild.Meta.BuildArtifacts.LiveInitramfs.Path,
-			rootfs:    inst.CosaBuild.Meta.BuildArtifacts.LiveRootfs.Path,
-		}, false, offline)
-		if err != nil {
-			return nil, errors.Wrapf(err, "testing live installer")
-		}
+	mach, err := inst.runPXE(&kernelSetup{
+		kernel:    inst.CosaBuild.Meta.BuildArtifacts.LiveKernel.Path,
+		initramfs: inst.CosaBuild.Meta.BuildArtifacts.LiveInitramfs.Path,
+		rootfs:    inst.CosaBuild.Meta.BuildArtifacts.LiveRootfs.Path,
+	}, offline)
+	if err != nil {
+		return nil, errors.Wrapf(err, "testing live installer")
 	}
 
 	return mach, nil
@@ -196,46 +179,23 @@ func absSymlink(src, dest string) error {
 	return os.Symlink(src, dest)
 }
 
-// setupMetalImage handles compressing the metal image if necessary,
-// or just creating a symlink to it.
-func setupMetalImage(builddir, metalimg, destdir string, compress bool) (string, error) {
-	metalIsCompressed := !strings.HasSuffix(metalimg, ".raw")
-	metalname := metalimg
-	if compress && !metalIsCompressed {
-		fmt.Printf("Compressing %s\n", metalimg)
-		metalimgpath := filepath.Join(builddir, metalimg)
-		srcf, err := os.Open(metalimgpath)
-		if err != nil {
-			return "", err
-		}
-		defer srcf.Close()
-		metalname = metalname + ".gz"
-		destf, err := os.OpenFile(filepath.Join(destdir, metalname), os.O_RDWR|os.O_CREATE, 0755)
-		if err != nil {
-			return "", err
-		}
-		defer destf.Close()
-		cmd := exec.Command("gzip", "-1")
-		cmd.Stdin = srcf
-		cmd.Stdout = destf
-		if err := cmd.Run(); err != nil {
-			return "", errors.Wrapf(err, "running gzip")
-		}
-		return metalname, nil
-	} else {
-		if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(destdir, metalimg)); err != nil {
-			return "", err
-		}
-		return metalimg, nil
+// setupMetalImage creates a symlink to the metal image.
+func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
+	if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(destdir, metalimg)); err != nil {
+		return "", err
 	}
+	return metalimg, nil
 }
 
-func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error) {
+func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	if kern.kernel == "" {
 		return nil, fmt.Errorf("Missing kernel artifact")
 	}
 	if kern.initramfs == "" {
 		return nil, fmt.Errorf("Missing initramfs artifact")
+	}
+	if kern.rootfs == "" {
+		return nil, fmt.Errorf("Missing rootfs artifact")
 	}
 
 	builder := inst.Builder
@@ -267,14 +227,11 @@ func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error
 	}
 
 	for _, name := range []string{kern.kernel, kern.initramfs, kern.rootfs} {
-		if name == "" {
-			continue
-		}
 		if err := absSymlink(filepath.Join(builddir, name), filepath.Join(tftpdir, name)); err != nil {
 			return nil, err
 		}
 	}
-	if kern.rootfs != "" && inst.PxeAppendRootfs {
+	if inst.PxeAppendRootfs {
 		// replace the initramfs symlink with a concatenation of
 		// the initramfs and rootfs
 		initrd := filepath.Join(tftpdir, kern.initramfs)
@@ -292,7 +249,7 @@ func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error
 	} else {
 		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
 	}
-	metalname, err := setupMetalImage(builddir, metalimg, tftpdir, legacy)
+	metalname, err := setupMetalImage(builddir, metalimg, tftpdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
 	}
@@ -505,8 +462,8 @@ func (t *installerRun) run() (*QemuInstance, error) {
 	return inst, nil
 }
 
-func (inst *Install) runPXE(kern *kernelSetup, legacy, offline bool) (*InstalledMachine, error) {
-	t, err := inst.setup(kern, legacy)
+func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine, error) {
+	t, err := inst.setup(kern)
 	if err != nil {
 		return nil, err
 	}
@@ -514,10 +471,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy, offline bool) (*Installed
 
 	kargs := renderBaseKargs()
 	kargs = append(kargs, inst.kargs...)
-	if !legacy {
-		kargs = append(kargs, liveKargs...)
-		kargs = append(kargs, fmt.Sprintf("ignition.config.url=%s/pxe-live.ign", t.baseurl))
-	}
+	kargs = append(kargs, fmt.Sprintf("ignition.config.url=%s/pxe-live.ign", t.baseurl))
 
 	kargs = append(kargs, renderInstallKargs(t, offline)...)
 	if err := t.completePxeSetup(kargs); err != nil {
@@ -574,7 +528,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	} else {
 		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
 	}
-	metalname, err := setupMetalImage(builddir, metalimg, tempdir, false)
+	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up metal image")
 	}
