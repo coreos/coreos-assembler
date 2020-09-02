@@ -134,6 +134,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if directIgnition && ignition == "" {
+		return fmt.Errorf("Cannot use ignition-direct without a path to an Ignition config")
+	}
 	if !directIgnition {
 		if ignition == "" {
 			config, err = conf.Ignition("").Render("", kola.IsIgnitionV2())
