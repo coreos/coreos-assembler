@@ -724,7 +724,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			builder.Append("-device",
 				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
 					scsiId, pId, wwn, opts))
-			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,media=disk,%s",
+			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=raw,file=%s,media=disk,%s",
 				pId, disk.attachEndPoint, defaultDiskOpts))
 		}
 	} else {
