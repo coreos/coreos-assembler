@@ -22,7 +22,12 @@ info() {
 }
 
 fatal() {
-    echo "fatal: $*" 1>&2; exit 1
+    if test -t 1; then
+        echo "$(tput setaf 1)fatal:$(tput sgr0) $*" 1>&2
+    else
+        echo "fatal: $*" 1>&2
+    fi
+    exit 1
 }
 
 # Get target base architecture
