@@ -639,7 +639,7 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 }
 
 func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
-	config, err := conf.Ignition(ignition).Render("", IsIgnitionV2())
+	config, err := conf.Ignition(ignition).Render(IsIgnitionV2())
 	if err != nil {
 		return errors.Wrapf(err, "Parsing config.ign")
 	}

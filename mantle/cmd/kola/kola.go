@@ -462,7 +462,7 @@ func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	config, err := conf.Ignition(string(buf)).Render("", true)
+	config, err := conf.Ignition(string(buf)).Render(true)
 	if err != nil {
 		return errors.Wrapf(err, "could not convert the given config to spec 2")
 	}

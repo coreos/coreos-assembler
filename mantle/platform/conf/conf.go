@@ -109,6 +109,12 @@ func ContainerLinuxConfig(data string) *UserData {
 	}
 }
 
+// EmptyIgnition returns an a default empty config using the latest
+// stable supported Ignition spec.
+func EmptyIgnition() *UserData {
+	return Ignition("")
+}
+
 // Ignition returns an Ignition UserData struct from the provided string. If the
 // given string is empty, it will create a default empty config using the latest
 // stable supported Ignition spec.
@@ -171,7 +177,13 @@ func (u *UserData) IsIgnitionCompatible() bool {
 
 // Render parses userdata and returns a new Conf. It returns an error if the
 // userdata can't be parsed.
-func (u *UserData) Render(ctPlatform string, ignv2 bool) (*Conf, error) {
+func (u *UserData) Render(ignv2 bool) (*Conf, error) {
+	return u.RenderForCtPlatform(ignv2, "")
+}
+
+// RenderForCtPlatform parses userdata and returns a new Conf. It returns an error if the
+// userdata can't be parsed.
+func (u *UserData) RenderForCtPlatform(ignv2 bool, ctPlatform string) (*Conf, error) {
 	c := &Conf{}
 
 	renderIgnition := func() error {

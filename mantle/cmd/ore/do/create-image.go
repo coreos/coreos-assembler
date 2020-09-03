@@ -195,7 +195,7 @@ systemd:
         WantedBy=multi-user.target
 `, imageURL)
 
-	conf, err := conf.ContainerLinuxConfig(clc).Render(ctplatform.DO, false)
+	conf, err := conf.ContainerLinuxConfig(clc).RenderForCtPlatform(false, ctplatform.DO)
 	if err != nil {
 		return "", fmt.Errorf("Couldn't render userdata: %v", err)
 	}
