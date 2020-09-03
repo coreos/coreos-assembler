@@ -193,7 +193,7 @@ func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *conf.Con
 	if !builder.InheritConsole {
 		builder.ConsoleToFile(filepath.Join(outdir, "console.txt"))
 	}
-	config, err := conf.Ignition("").Render("", kola.IsIgnitionV2())
+	config, err := conf.EmptyIgnition().Render(kola.IsIgnitionV2())
 	if err != nil {
 		return nil, nil, err
 	}

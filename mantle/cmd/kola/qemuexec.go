@@ -139,7 +139,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 	if !directIgnition {
 		if ignition == "" {
-			config, err = conf.Ignition("").Render("", kola.IsIgnitionV2())
+			config, err = conf.EmptyIgnition().Render(kola.IsIgnitionV2())
 			if err != nil {
 				return errors.Wrapf(err, "creating empty config")
 			}
@@ -148,7 +148,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			config, err = conf.Ignition(string(buf)).Render("", kola.IsIgnitionV2())
+			config, err = conf.Ignition(string(buf)).Render(kola.IsIgnitionV2())
 			if err != nil {
 				return errors.Wrapf(err, "parsing %s", ignition)
 			}
