@@ -704,13 +704,23 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		rand.Seed(time.Now().UnixNano())
 		wwn := rand.Uint64()
 
+		var bus string
+		switch system.RpmArch() {
+		case "x86_64", "ppc64le", "aarch64":
+			bus = "pci"
+		case "s390x":
+			bus = "ccw"
+		default:
+			panic(fmt.Sprintf("Mantle doesn't know which bus type to use on %s", system.RpmArch()))
+		}
+
 		for i := 0; i < 2; i++ {
 			if i == 1 {
 				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
 			}
 			pId := fmt.Sprintf("mpath%d%d", builder.diskId, i)
 			scsiId := fmt.Sprintf("scsi_%s", pId)
-			builder.Append("-device", fmt.Sprintf("virtio-scsi-pci,id=%s", scsiId))
+			builder.Append("-device", fmt.Sprintf("virtio-scsi-%s,id=%s", bus, scsiId))
 			builder.Append("-device",
 				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
 					scsiId, pId, wwn, opts))
