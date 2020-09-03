@@ -94,7 +94,7 @@ if [ -e "${build_semaphore}" ]; then
     fatal "${build_semaphore} found: another process is building ${image_type}"
 fi
 touch "${build_semaphore}"
-trap 'rm -rvf ${build_semaphore}' EXIT
+trap 'rm -rf ${build_semaphore}' EXIT
 
 # check if the image already exists in the meta.json
 meta_img=$(meta_key "images.${image_type}.path")
@@ -297,5 +297,8 @@ json.dump(j, sys.stdout, indent=4)
 cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
 /usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
 
+# Quiet for the rest of this so the last thing we see is a success message
+set +x
 # clean up the tmpild
 rm -rf "${tmp_builddir}"
+echo "Successfully generated: ${img}"
