@@ -102,7 +102,7 @@ type Install struct {
 }
 
 type InstalledMachine struct {
-	tempdir  string
+	Tempdir  string
 	QemuInst *QemuInstance
 }
 
@@ -150,8 +150,8 @@ func (inst *InstalledMachine) Destroy() error {
 		inst.QemuInst.Destroy()
 		inst.QemuInst = nil
 	}
-	if inst.tempdir != "" {
-		return os.RemoveAll(inst.tempdir)
+	if inst.Tempdir != "" {
+		return os.RemoveAll(inst.Tempdir)
 	}
 	return nil
 }
@@ -305,9 +305,17 @@ func (inst *Install) setup(kern *kernelSetup, legacy bool) (*installerRun, error
 		pxe.networkdevice = "e1000"
 		pxe.pxeimagepath = "/usr/share/syslinux/"
 		break
+	case "aarch64":
+		pxe.boottype = "grub"
+		pxe.networkdevice = "virtio-net-pci"
+		pxe.bootfile = "/boot/grub2/grubaa64.efi"
+		pxe.pxeimagepath = "/boot/efi/EFI/fedora/grubaa64.efi"
+		pxe.bootindex = "1"
+		break
 	case "ppc64le":
 		pxe.boottype = "grub"
 		pxe.networkdevice = "virtio-net-pci"
+		pxe.bootfile = "/boot/grub2/powerpc-ieee1275/core.elf"
 		break
 	case "s390x":
 		pxe.boottype = "pxe"
@@ -381,7 +389,6 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 	}
 	kargsStr := strings.Join(kargs, " ")
 
-	var bootfile string
 	switch t.pxe.boottype {
 	case "pxe":
 		pxeconfigdir := filepath.Join(t.tftpdir, "pxelinux.cfg")
@@ -420,17 +427,22 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 				}
 			}
 		}
-		bootfile = "/" + pxeimages[0]
+		t.pxe.bootfile = "/" + pxeimages[0]
 		break
 	case "grub":
-		bootfile = "/boot/grub2/powerpc-ieee1275/core.elf"
 		if err := exec.Command("grub2-mknetdir", "--net-directory="+t.tftpdir).Run(); err != nil {
 			return err
+		}
+		if t.pxe.pxeimagepath != "" {
+			dstpath := filepath.Join(t.tftpdir, "boot/grub2")
+			if err := exec.Command("/usr/lib/coreos-assembler/cp-reflink", t.pxe.pxeimagepath, dstpath).Run(); err != nil {
+				return err
+			}
 		}
 		ioutil.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
 			default=0
 			timeout=1
-			menuentry "CoreOS (BIOS)" {
+			menuentry "CoreOS (BIOS/UEFI)" {
 				echo "Loading kernel"
 				linux /%s %s
 				echo "Loading initrd"
@@ -441,8 +453,6 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 	default:
 		panic("Unhandled boottype " + t.pxe.boottype)
 	}
-
-	t.pxe.bootfile = bootfile
 
 	return nil
 }
@@ -469,6 +479,12 @@ func cat(outfile string, infiles ...string) error {
 
 func (t *installerRun) run() (*QemuInstance, error) {
 	builder := t.builder
+	// qmp device for switching boot order (needed for aarch64)
+	qmpPath := filepath.Join(t.tempdir, "qmp.sock")
+	qmpID := "pxe-qmp"
+	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpID, qmpPath))
+	builder.Append("-mon", fmt.Sprintf("chardev=%s,mode=control", qmpID))
+
 	netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", t.pxe.networkdevice)
 	if t.pxe.bootindex == "" {
 		builder.Append("-boot", "once=n", "-option-rom", "/usr/share/qemu/pxe-rtl8139.rom")
@@ -515,7 +531,7 @@ func (inst *Install) runPXE(kern *kernelSetup, legacy, offline bool) (*Installed
 	t.tempdir = "" // Transfer ownership
 	return &InstalledMachine{
 		QemuInst: qinst,
-		tempdir:  tempdir,
+		Tempdir:  tempdir,
 	}, nil
 }
 
@@ -641,6 +657,6 @@ WantedBy=multi-user.target
 	cleanupTempdir = false // Transfer ownership
 	return &InstalledMachine{
 		QemuInst: qinst,
-		tempdir:  tempdir,
+		Tempdir:  tempdir,
 	}, nil
 }
