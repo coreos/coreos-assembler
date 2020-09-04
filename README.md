@@ -222,6 +222,24 @@ This invokes QEMU on the image in `builds/latest`.  It uses `-snapshot`,
 so any changes are thrown away after you exit qemu.  To exit, type
 `Ctrl-a x`.  For more options, type `Ctrl-a ?`.
 
+### Running with customizations
+
+Using `coreos-assembler`, it is possible to run a CoreOS style qcow2 image
+that was built elsewhere.
+
+```
+$ cosa run --qemu-image ./coreos-style.qcow2
+```
+
+Additionally, it is possible to pass in a custom Ignition config file when
+running an image.  This requires the use of the `kola qemuexec` subcommand.
+
+```
+$ cosa kola qemuexec --ignition ./ignition.json --ignition-direct --qemu-image ./coreos-style.qcow2
+```
+
+There are other customizations that are posible; see the output of `cosa kola qemuexec --help`
+for more options.
 
 ### Hacking
 ---
