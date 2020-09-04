@@ -21,7 +21,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -39,7 +38,6 @@ import (
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
-	"github.com/digitalocean/go-qemu/qmp"
 )
 
 var (
@@ -140,13 +138,6 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 RequiredBy=multi-user.target
 `, signalCompleteString)
 
-type QOMDev struct {
-	Return []struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
-	} `json:"return"`
-}
-
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVarP(&legacy, "legacy", "K", false, "Test legacy installer")
@@ -173,7 +164,7 @@ func newBaseQemuBuilder() *platform.QemuBuilder {
 	return builder
 }
 
-func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
+func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	builder := newBaseQemuBuilder()
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
@@ -181,7 +172,7 @@ func newQemuBuilder(isPXE bool, outdir string) (*platform.QemuBuilder, *conf.Con
 	}
 
 	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
-	if (system.RpmArch() == "s390x" || system.RpmArch() == "aarch64") && isPXE {
+	if system.RpmArch() == "s390x" || system.RpmArch() == "aarch64" {
 		// s390x and aarch64 need to use bootindex as they don't support boot once
 		builder.AddDisk(&platform.Disk{
 			Size: "12G", // Arbitrary
@@ -374,71 +365,21 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Create a new QMP socket connection - also TBD to move these to its own package
-func newQMPMonitor(sockaddr string) (*qmp.SocketMonitor, error) {
-	qmpPath := filepath.Join(sockaddr, "qmp.sock")
-	var monitor *qmp.SocketMonitor
-	var err error
-	if err := util.Retry(10, 1*time.Second, func() error {
-		monitor, err = qmp.NewSocketMonitor("unix", qmpPath, 2*time.Second)
-		if err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return nil, errors.Wrapf(err, "Connecting to qemu monitor")
-	}
-	return monitor, nil
-}
-
-// Executes a query which provides the list of devices and their names
-func listQMPDevices(sockaddr string) (*qmp.SocketMonitor, *QOMDev, error) {
-	monitor, err := newQMPMonitor(sockaddr)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not open monitor")
-	}
-
-	monitor.Connect()
-	listcmd := []byte(`{ "execute": "qom-list", "arguments": { "path": "/machine/peripheral-anon" } }`)
-	out, err := monitor.Run(listcmd)
-	if err != nil {
-		return monitor, nil, errors.Wrapf(err, "Running QMP list command")
-	}
-
-	var devs QOMDev
-	if err = json.Unmarshal(out, &devs); err != nil {
-		return monitor, nil, errors.Wrapf(err, "De-serializing QMP output")
-	}
-	return monitor, &devs, nil
-}
-
-// Set the bootindex for the particular device
-func setBootIndexForDevice(monitor *qmp.SocketMonitor, device string, bootindex int) error {
-	cmd := fmt.Sprintf(`{ "execute":"qom-set", "arguments": { "path":"%s", "property":"bootindex", "value":%d } }`, device, bootindex)
-	if _, err := monitor.Run([]byte(cmd)); err != nil {
-		return errors.Wrapf(err, "Running QMP command")
-	}
-	return nil
-}
-
 // Currently effective on aarch64: switches the boot order to boot from disk on reboot. For s390x and aarch64, bootindex
 // is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
 // would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
 func switchBootOrder(tempdir string) error {
-	if tempdir == "" {
-		//Not applicable for iso installs
+	if tempdir == "" || (system.RpmArch() != "s390x" && system.RpmArch() != "aarch64") {
+		//Not applicable for iso installs and other arches
 		return nil
 	}
-
-	monitor, devs, err := listQMPDevices(tempdir)
+	monitor, devs, err := platform.ListQMPDevices(tempdir)
 	if monitor != nil {
 		defer monitor.Disconnect()
 	}
-
 	if err != nil {
 		return errors.Wrapf(err, "Could not list devices")
 	}
-
 	var blkdev string
 	var netdev string
 	for _, dev := range devs.Return {
@@ -453,19 +394,12 @@ func switchBootOrder(tempdir string) error {
 			break
 		}
 	}
-
-	if netdev == "" {
-		// Not relevant to x86 so just return
-		return nil
-	}
-
 	// unset bootindex for the network device
-	if err := setBootIndexForDevice(monitor, netdev, -1); err != nil {
+	if err := platform.SetBootIndexForDevice(monitor, netdev, -1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for netdev")
 	}
-
 	// set bootindex to 1 to boot from disk
-	if err := setBootIndexForDevice(monitor, blkdev, 1); err != nil {
+	if err := platform.SetBootIndexForDevice(monitor, blkdev, 1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for blkdev")
 	}
 	return nil
@@ -556,7 +490,7 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 		return err
 	}
 
-	builder, virtioJournalConfig, err := newQemuBuilder(true, outdir)
+	builder, virtioJournalConfig, err := newQemuBuilder(outdir)
 	if err != nil {
 		return err
 	}
@@ -609,7 +543,7 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 		return err
 	}
 
-	builder, virtioJournalConfig, err := newQemuBuilder(true, outdir)
+	builder, virtioJournalConfig, err := newQemuBuilder(outdir)
 	if err != nil {
 		return err
 	}
