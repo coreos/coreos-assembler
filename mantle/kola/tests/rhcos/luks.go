@@ -23,7 +23,7 @@ func init() {
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
 		Tags:                 []string{"luks", "tpm"},
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
@@ -50,7 +50,7 @@ func init() {
 		Name:                 `rhcos.luks.tang`,
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
 		Tags:                 []string{"luks", "tang", kola.NeedsInternetTag},
 	})
 	register.RegisterTest(&register.Test{
@@ -60,7 +60,7 @@ func init() {
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 	})
 	register.RegisterTest(&register.Test{
@@ -70,7 +70,7 @@ func init() {
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le"}, // no TPM support for s390x, ppc64le in qemu
+		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 	})
 }
