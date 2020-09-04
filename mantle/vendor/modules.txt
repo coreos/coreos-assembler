@@ -173,6 +173,12 @@ github.com/coreos/vcontext/tree
 github.com/coreos/vcontext/validate
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
+# github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7
+github.com/digitalocean/go-libvirt
+github.com/digitalocean/go-libvirt/internal/constants
+github.com/digitalocean/go-libvirt/internal/go-xdr/xdr2
+# github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
+github.com/digitalocean/go-qemu/qmp
 # github.com/digitalocean/godo v1.33.0
 github.com/digitalocean/godo
 # github.com/dimchansky/utfbom v1.1.0

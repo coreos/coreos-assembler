@@ -21,6 +21,8 @@ require (
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5 // indirect
+	github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 // indirect
+	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813

@@ -115,6 +115,10 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
+github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 h1:7469SEjOVNTL7ZRvLOJYp2jkQaLhggxYithWSHvXIGs=
+github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7/go.mod h1:UMlaMc4V1DeGbb53Bw12wwvepjpg/D8xhrdL0wfS6Hs=
+github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c h1:N2oJLGil1ov9DNz8wx0/IiBZ0kOlRQlHHwx2CFGmovA=
+github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c/go.mod h1:/YnlngP1PARC0SKAZx6kaAEMOp8bNTQGqS+Ka3MctNI=
 github.com/digitalocean/godo v1.33.0 h1:JNZ/0v/Wp//UAIh84YWZ/x5neB3V5lKgcCHzyqErMJQ=
 github.com/digitalocean/godo v1.33.0/go.mod h1:iJnN9rVu6K5LioLxLimlq0uRI+y/eAQjROUmeU/r0hY=
 github.com/dimchansky/utfbom v1.1.0 h1:FcM3g+nofKgUteL8dm/UpdRXNC9KmADgTpLKsu0TRo4=
