@@ -786,7 +786,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 
 	for _, executable := range executables {
 		testname := testprefix
-		if len(executables) > 1 || executable != InstalledTestDefaultTest {
+		if len(executables) > 1 || filepath.Base(executable) != InstalledTestDefaultTest {
 			testname = fmt.Sprintf("%s.%s", testname, filepath.Base(executable))
 		}
 		err := registerExternalTest(testname, executable, dependencydir, ignition, meta)
