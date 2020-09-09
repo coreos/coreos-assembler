@@ -392,7 +392,12 @@ runcompose() {
         sudo -E "$@"
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        runvm -- "$@"
+        compose_qemu_args=()
+        if [ -f "${workdir}/cache/cache2.qcow2" ]; then
+            compose_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+                                "-device" "virtio-blk,drive=cache")
+        fi
+        runvm "${compose_qemu_args[@]}" -- "$@"
     fi
 }
 
@@ -513,11 +518,6 @@ EOF
     if [ -L "${workdir}/src/config" ]; then
         # qemu follows symlinks
         base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
-    fi
-
-    if [ -f "${workdir}/cache/cache2.qcow2" ]; then
-        base_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
-                         "-device" "virtio-blk,drive=cache")
     fi
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
