@@ -37,8 +37,6 @@ const (
 	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
 	defaultQemuHostIPv4 = "10.0.2.2"
 
-	targetDevice = "/dev/vda"
-
 	// rebootUnit is a copy of the system one without the ConditionPathExists
 	rebootUnit = `[Unit]
 	Description=Reboot after CoreOS Installer
@@ -436,12 +434,6 @@ func cat(outfile string, infiles ...string) error {
 
 func (t *installerRun) run() (*QemuInstance, error) {
 	builder := t.builder
-	// qmp device for switching boot order (needed for aarch64)
-	qmpPath := filepath.Join(t.tempdir, "qmp.sock")
-	qmpID := "pxe-qmp"
-	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpID, qmpPath))
-	builder.Append("-mon", fmt.Sprintf("chardev=%s,mode=control", qmpID))
-
 	netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", t.pxe.networkdevice)
 	if t.pxe.bootindex == "" {
 		builder.Append("-boot", "once=n", "-option-rom", "/usr/share/qemu/pxe-rtl8139.rom")
@@ -575,6 +567,14 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		insecureOpt = "--insecure"
 	}
 	pointerIgnitionPath := "/var/opt/pointer.ign"
+
+	targetDevice := "/dev/vda"
+	// For aarch64, the cdrom is a pci blk device /dev/vda
+	// TBD: use the serial identifier and use /dev/disk/by-id to install
+	if system.RpmArch() == "aarch64" {
+		targetDevice = "/dev/vdb"
+	}
+
 	installerUnit := fmt.Sprintf(`
 [Unit]
 After=network-online.target

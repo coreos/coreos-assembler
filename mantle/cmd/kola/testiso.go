@@ -338,47 +338,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Currently effective on aarch64: switches the boot order to boot from disk on reboot. For s390x and aarch64, bootindex
-// is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
-// would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
-func switchBootOrder(tempdir string) error {
-	if tempdir == "" || (system.RpmArch() != "s390x" && system.RpmArch() != "aarch64") {
-		//Not applicable for iso installs and other arches
-		return nil
-	}
-	monitor, devs, err := platform.ListQMPDevices(tempdir)
-	if monitor != nil {
-		defer monitor.Disconnect()
-	}
-	if err != nil {
-		return errors.Wrapf(err, "Could not list devices")
-	}
-	var blkdev string
-	var netdev string
-	for _, dev := range devs.Return {
-		switch dev.Type {
-		case "child<virtio-net-pci>", "child<virtio-net-ccw>":
-			netdev = filepath.Join("/machine/peripheral-anon", dev.Name)
-			break
-		case "child<virtio-blk-device>", "child<virtio-blk-pci>", "child<virtio-blk-ccw>":
-			blkdev = filepath.Join("/machine/peripheral-anon", dev.Name)
-			break
-		default:
-			break
-		}
-	}
-	// unset bootindex for the network device
-	if err := platform.SetBootIndexForDevice(monitor, netdev, -1); err != nil {
-		return errors.Wrapf(err, "Could not set bootindex for netdev")
-	}
-	// set bootindex to 1 to boot from disk
-	if err := platform.SetBootIndexForDevice(monitor, blkdev, 1); err != nil {
-		return errors.Wrapf(err, "Could not set bootindex for blkdev")
-	}
-	return nil
-}
-
-func awaitCompletion(inst *platform.QemuInstance, outdir string, tempdir string, qchan *os.File, expected []string) error {
+func awaitCompletion(inst *platform.QemuInstance, outdir string, qchan *os.File, expected []string) error {
 	errchan := make(chan error)
 	go func() {
 		time.Sleep(installTimeout)
@@ -429,9 +389,9 @@ func awaitCompletion(inst *platform.QemuInstance, outdir string, tempdir string,
 				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
 				return
 			}
-			// switch the boot order here, we are well into the installation process. Only used for PXE test now
+			// switch the boot order here, we are well into the installation process - only for aarch64 and s390x
 			if line == liveOKSignal {
-				if err := switchBootOrder(tempdir); err != nil {
+				if err := inst.SwitchBootOrder(); err != nil {
 					errchan <- errors.Wrapf(err, "switching boot order failed")
 					return
 				}
@@ -494,7 +454,7 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outdir, mach.Tempdir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveIso(inst platform.Install, outdir string, offline bool) error {
@@ -535,7 +495,7 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outdir, "", completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveLogin(outdir string) error {
@@ -563,5 +523,5 @@ func testLiveLogin(outdir string) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach, outdir, "", completionChannel, []string{"coreos-liveiso-success"})
+	return awaitCompletion(mach, outdir, completionChannel, []string{"coreos-liveiso-success"})
 }
