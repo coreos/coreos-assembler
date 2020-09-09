@@ -194,6 +194,47 @@ func (inst *QemuInstance) Destroy() {
 	}
 }
 
+// Currently effective on aarch64: switches the boot order to boot from disk on reboot. For s390x and aarch64, bootindex
+// is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
+// would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
+func (inst *QemuInstance) SwitchBootOrder() error {
+	if system.RpmArch() != "s390x" && system.RpmArch() != "aarch64" {
+		//Not applicable for other arches
+		return nil
+	}
+	monitor, devs, err := listQMPDevices(inst.tempdir)
+	if monitor != nil {
+		defer monitor.Disconnect()
+	}
+	if err != nil {
+		return errors.Wrapf(err, "Could not list devices")
+	}
+	var blkdev string
+	var bootdev string
+	for _, dev := range devs.Return {
+		switch dev.Type {
+		// Boot device used for first boot - for aarch64 the cdrom is a pci blk device (used for ISO installs)
+		case "child<virtio-net-pci>", "child<virtio-blk-pci>", "child<virtio-net-ccw>":
+			bootdev = filepath.Join("/machine/peripheral-anon", dev.Name)
+			break
+		case "child<virtio-blk-device>", "child<virtio-blk-ccw>":
+			blkdev = filepath.Join("/machine/peripheral-anon", dev.Name)
+			break
+		default:
+			break
+		}
+	}
+	// unset bootindex for the network device
+	if err := setBootIndexForDevice(monitor, bootdev, -1); err != nil {
+		return errors.Wrapf(err, "Could not set bootindex for netdev")
+	}
+	// set bootindex to 1 to boot from disk
+	if err := setBootIndexForDevice(monitor, blkdev, 1); err != nil {
+		return errors.Wrapf(err, "Could not set bootindex for blkdev")
+	}
+	return nil
+}
+
 // QemuBuilder is a configurator that can then create a qemu instance
 type QemuBuilder struct {
 	// ConfigFile is a path to Ignition configuration
@@ -933,12 +974,8 @@ func (builder *QemuBuilder) setupIso() error {
 	// primary disk is selected. This allows us to have "boot once" functionality on
 	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
 	switch system.RpmArch() {
-	case "s390x", "ppc64le":
+	case "s390x", "ppc64le", "aarch64":
 		builder.Append("-cdrom", builder.iso.path)
-	case "aarch64":
-		// TODO - can we boot from a virtual USB CDROM or a USB flash drive here?
-		// https://fedoraproject.org/wiki/Architectures/AArch64/Install_with_QEMU#Installing_F23_aarch64_from_CDROM seems to claim yes
-		return fmt.Errorf("Architecture aarch64 does not support ISO")
 	default:
 		bootindexStr := ""
 		if builder.iso.bootindex != "" {
@@ -1161,6 +1198,12 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 
 	}
+
+	// Set up QMP (currently used to switch boot order after first boot on aarch64)
+	qmpPath := filepath.Join(builder.tempdir, "qmp.sock")
+	qmpID := "qemu-qmp"
+	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpID, qmpPath))
+	builder.Append("-mon", fmt.Sprintf("chardev=%s,mode=control", qmpID))
 
 	// Set up the virtio channel to get Ignition failures by default
 	journalPipeR, err := builder.VirtioChannelRead("com.coreos.ignition.journal")

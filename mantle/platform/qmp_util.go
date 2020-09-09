@@ -53,7 +53,7 @@ func newQMPMonitor(sockaddr string) (*qmp.SocketMonitor, error) {
 }
 
 // Executes a query which provides the list of devices and their names
-func ListQMPDevices(sockaddr string) (*qmp.SocketMonitor, *QOMDev, error) {
+func listQMPDevices(sockaddr string) (*qmp.SocketMonitor, *QOMDev, error) {
 	monitor, err := newQMPMonitor(sockaddr)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "Could not open monitor")
@@ -74,7 +74,7 @@ func ListQMPDevices(sockaddr string) (*qmp.SocketMonitor, *QOMDev, error) {
 }
 
 // Set the bootindex for the particular device
-func SetBootIndexForDevice(monitor *qmp.SocketMonitor, device string, bootindex int) error {
+func setBootIndexForDevice(monitor *qmp.SocketMonitor, device string, bootindex int) error {
 	cmd := fmt.Sprintf(`{ "execute":"qom-set", "arguments": { "path":"%s", "property":"bootindex", "value":%d } }`, device, bootindex)
 	if _, err := monitor.Run([]byte(cmd)); err != nil {
 		return errors.Wrapf(err, "Running QMP command")
