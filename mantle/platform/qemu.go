@@ -36,21 +36,25 @@ import (
 )
 
 var (
+	// ErrInitramfsEmergency is the marker error returned upon node blocking in emergency mode in initramfs.
 	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
 )
 
+// HostForwardPort contains details about port-forwarding for the VM.
 type HostForwardPort struct {
 	Service   string
 	HostPort  int
 	GuestPort int
 }
 
+// QemuMachineOptions is specialized MachineOption struct for QEMU.
 type QemuMachineOptions struct {
 	MachineOptions
 	HostForwardPorts []HostForwardPort
 	DisablePDeathSig bool
 }
 
+// Disk holds the details of a virtual disk.
 type Disk struct {
 	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
 	BackingFile   string   // raw disk image to use.
@@ -72,6 +76,7 @@ type bootIso struct {
 	bootindex string
 }
 
+// QemuInstance holds an instantiated VM throuhg its lifecycle.
 type QemuInstance struct {
 	qemu               exec.Cmd
 	tmpConfig          string
@@ -83,15 +88,17 @@ type QemuInstance struct {
 	journalPipe *os.File
 }
 
+// Pid returns the PID of this instance.
 func (inst *QemuInstance) Pid() int {
 	return inst.qemu.Pid()
 }
 
+// Kill kills the VM instance.
 func (inst *QemuInstance) Kill() error {
 	return inst.qemu.Kill()
 }
 
-// Get the IP address with the forwarded port
+// SSHAddress returns the IP address with the forwarded port (host-side).
 func (inst *QemuInstance) SSHAddress() (string, error) {
 	for _, fwdPorts := range inst.hostForwardedPorts {
 		if fwdPorts.Service == "ssh" {
@@ -167,6 +174,7 @@ func (inst *QemuInstance) WaitAll() error {
 	return <-c
 }
 
+// Destroy kills the instance and associated sidecar processes.
 func (inst *QemuInstance) Destroy() {
 	if inst.journalPipe != nil {
 		inst.journalPipe.Close()
@@ -194,6 +202,7 @@ func (inst *QemuInstance) Destroy() {
 	}
 }
 
+// SwitchBootOrder tweaks the boot order for the instance.
 // Currently effective on aarch64: switches the boot order to boot from disk on reboot. For s390x and aarch64, bootindex
 // is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
 // would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
@@ -247,7 +256,7 @@ type QemuBuilder struct {
 	Memory int
 	// Processors < 0 means to use host count, unset means 1, values > 1 are directly used
 	Processors int
-	Uuid       string
+	UUID       string
 	Firmware   string
 	Swtpm      bool
 	Pdeathsig  bool
@@ -284,15 +293,16 @@ type QemuBuilder struct {
 	requestedHostForwardPorts []HostForwardPort
 
 	finalized bool
-	diskId    uint
+	diskID    uint
 	disks     []*Disk
-	fs9pId    uint
-	// virtioSerialId is incremented for each device
-	virtioSerialId uint
+	fs9pID    uint
+	// virtioSerialID is incremented for each device
+	virtioSerialID uint
 	// fds is file descriptors we own to pass to qemu
 	fds []*os.File
 }
 
+// NewBuilder creates a new build for QEMU with default settings.
 func NewBuilder() *QemuBuilder {
 	ret := QemuBuilder{
 		Firmware:      "bios",
@@ -375,10 +385,13 @@ func virtio(device, args string) string {
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
 
+// ConsoleToFile configures the instance to have a serial console, logging to `path`.
 func (builder *QemuBuilder) ConsoleToFile(path string) {
 	builder.Append("-display", "none", "-chardev", "file,id=log,path="+path, "-serial", "chardev:log")
 }
 
+// EnableUsermodeNetworking configure forwarding for all requested ports,
+// via usermode network helpers.
 func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort) {
 	builder.UsermodeNetworking = true
 	builder.requestedHostForwardPorts = h
@@ -415,13 +428,13 @@ func (builder *QemuBuilder) setupNetworking() error {
 // Mount9p sets up a mount point from the host to guest.  To be replaced
 // with https://virtio-fs.gitlab.io/ once it lands everywhere.
 func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
-	builder.fs9pId += 1
+	builder.fs9pID++
 	readonlyStr := ""
 	if readonly {
 		readonlyStr = ",readonly"
 	}
-	builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", builder.fs9pId, source, readonlyStr))
-	builder.Append("-device", virtio("9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pId, destHint)))
+	builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", builder.fs9pID, source, readonlyStr))
+	builder.Append("-device", virtio("9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pID, destHint)))
 }
 
 // supportsFwCfg if the target system supports injecting
@@ -477,12 +490,12 @@ func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, e
 	// Set guestfish backend to direct in order to avoid libvirt as backend.
 	// Using libvirt can lead to permission denied issues if it does not have access
 	// rights to the qcow image
-	guestfish_args := []string{"--listen"}
+	guestfishArgs := []string{"--listen"}
 	if diskSectorSize != 0 {
-		guestfish_args = append(guestfish_args, fmt.Sprintf("--blocksize=%d", diskSectorSize))
+		guestfishArgs = append(guestfishArgs, fmt.Sprintf("--blocksize=%d", diskSectorSize))
 	}
-	guestfish_args = append(guestfish_args, "-a", diskImagePath)
-	cmd := exec.Command("guestfish", guestfish_args...)
+	guestfishArgs = append(guestfishArgs, "-a", diskImagePath)
+	cmd := exec.Command("guestfish", guestfishArgs...)
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 	// make sure it inherits stderr so we see any error message
 	cmd.Stderr = os.Stderr
@@ -674,7 +687,7 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 		disk.attachEndPoint = fmt.Sprintf("nbd:unix:%s", socketName)
 	}
 
-	builder.diskId += 1
+	builder.diskID++
 	builder.disks = append(builder.disks, disk)
 	return nil
 }
@@ -709,7 +722,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			}
 		}
 		if !foundserial {
-			diskOpts = append(diskOpts, "serial="+fmt.Sprintf("disk%d", builder.diskId))
+			diskOpts = append(diskOpts, "serial="+fmt.Sprintf("disk%d", builder.diskID))
 		}
 	}
 	channel := disk.Channel
@@ -730,7 +743,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		opts = "," + strings.Join(diskOpts, ",")
 	}
 
-	id := fmt.Sprintf("d%d", builder.diskId)
+	id := fmt.Sprintf("d%d", builder.diskID)
 
 	// Avoid file locking detection, and the disks we create
 	// here are always currently ephemeral.
@@ -759,14 +772,14 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			if i == 1 {
 				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
 			}
-			pId := fmt.Sprintf("mpath%d%d", builder.diskId, i)
-			scsiId := fmt.Sprintf("scsi_%s", pId)
-			builder.Append("-device", fmt.Sprintf("virtio-scsi-%s,id=%s", bus, scsiId))
+			pID := fmt.Sprintf("mpath%d%d", builder.diskID, i)
+			scsiID := fmt.Sprintf("scsi_%s", pID)
+			builder.Append("-device", fmt.Sprintf("virtio-scsi-%s,id=%s", bus, scsiID))
 			builder.Append("-device",
 				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
-					scsiId, pId, wwn, opts))
+					scsiID, pID, wwn, opts))
 			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=raw,file=%s,media=disk,%s",
-				pId, disk.attachEndPoint, defaultDiskOpts))
+				pID, disk.attachEndPoint, defaultDiskOpts))
 		}
 	} else {
 		if !disk.NbdDisk {
@@ -792,6 +805,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	return nil
 }
 
+// AddPrimaryDisk sets up the primary disk for the instance.
 func (builder *QemuBuilder) AddPrimaryDisk(disk *Disk) error {
 	if builder.primaryDisk != nil {
 		panic("Multiple primary disks specified")
@@ -803,6 +817,7 @@ func (builder *QemuBuilder) AddPrimaryDisk(disk *Disk) error {
 	return nil
 }
 
+// AddDisk adds a secondary disk for the instance.
 func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 	return builder.addDiskImpl(disk, false)
 }
@@ -843,6 +858,7 @@ func (builder *QemuBuilder) finalize() {
 	builder.finalized = true
 }
 
+// Append appends additional arguments for QEMU.
 func (builder *QemuBuilder) Append(args ...string) {
 	builder.Argv = append(builder.Argv, args...)
 }
@@ -909,7 +925,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		builder.Append("-machine", "q35")
 	case "aarch64":
 		if secureBoot {
-			return fmt.Errorf("Architecture %s doesn't have support for secure boot in kola.", system.RpmArch())
+			return fmt.Errorf("architecture %s doesn't have support for secure boot in kola", system.RpmArch())
 		}
 		vars, err := ioutil.TempFile("", "mantle-qemu")
 		if err != nil {
@@ -996,11 +1012,11 @@ func (builder *QemuBuilder) VirtioChannelRead(name string) (*os.File, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "virtioChannelRead creating pipe")
 	}
-	if builder.virtioSerialId == 0 {
+	if builder.virtioSerialID == 0 {
 		builder.Append("-device", "virtio-serial")
 	}
-	builder.virtioSerialId += 1
-	id := fmt.Sprintf("virtioserial%d", builder.virtioSerialId)
+	builder.virtioSerialID++
+	id := fmt.Sprintf("virtioserial%d", builder.virtioSerialID)
 	// https://www.redhat.com/archives/libvir-list/2015-December/msg00305.html
 	builder.Append("-chardev", fmt.Sprintf("file,id=%s,path=%s,append=on", id, builder.AddFd(w)))
 	builder.Append("-device", fmt.Sprintf("virtserialport,chardev=%s,name=%s", id, name))
@@ -1048,6 +1064,7 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 	return stream, nil
 }
 
+// Exec tries to run a QEMU instance with the given settings.
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
 	var err error
@@ -1103,8 +1120,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// We always provide a random source
 	argv = append(argv, "-object", "rng-random,filename=/dev/urandom,id=rng0",
 		"-device", virtio("rng", "rng=rng0"))
-	if builder.Uuid != "" {
-		argv = append(argv, "-uuid", builder.Uuid)
+	if builder.UUID != "" {
+		argv = append(argv, "-uuid", builder.UUID)
 	}
 
 	// We never want a popup window
@@ -1210,10 +1227,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	inst.journalPipe = journalPipeR
 
 	fdnum := 3 // first additional file starts at position 3
-	for i, _ := range builder.fds {
+	for i := range builder.fds {
 		fdset := i + 1 // Start at 1
 		argv = append(argv, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset))
-		fdnum += 1
+		fdnum++
 	}
 
 	// And the custom arguments
@@ -1250,6 +1267,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	return &inst, nil
 }
 
+// Close drops all resources owned by the builder.
 func (builder *QemuBuilder) Close() {
 	if builder.fds == nil {
 		return

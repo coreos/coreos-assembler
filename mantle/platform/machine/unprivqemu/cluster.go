@@ -100,7 +100,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 	builder.ConfigFile = confPath
 	defer builder.Close()
-	builder.Uuid = qm.id
+	builder.UUID = qm.id
 	builder.Firmware = qc.flight.opts.Firmware
 	builder.Swtpm = qc.flight.opts.Swtpm
 	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())

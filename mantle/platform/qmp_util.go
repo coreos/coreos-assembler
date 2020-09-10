@@ -28,6 +28,7 @@ import (
 	"github.com/digitalocean/go-qemu/qmp"
 )
 
+// QOMDev is a QMP monitor, for interactions with a QEMU instance.
 type QOMDev struct {
 	Return []struct {
 		Name string `json:"name"`
