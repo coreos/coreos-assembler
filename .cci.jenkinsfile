@@ -89,7 +89,7 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
     }
 
     stage("Compress") {
-            cosa_cmd("compress")
+            cosa_cmd("compress --fast")
     }
 
     stage("Upload Dry Run") {
