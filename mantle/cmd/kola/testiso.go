@@ -21,6 +21,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -213,6 +214,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --build")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	targetScenarios := make(map[string]bool)
 	for _, scenario := range scenarios {
@@ -278,7 +281,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(instPxe, filepath.Join(outputDir, scenarioPXEInstall), false); err != nil {
+		if err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEInstall), false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioPXEInstall)
 
 		}
@@ -292,7 +295,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true); err != nil {
+		if err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioPXEOfflineInstall)
 
 		}
@@ -304,7 +307,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(instIso, filepath.Join(outputDir, scenarioISOInstall), false); err != nil {
+		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOInstall)
 		}
 		printSuccess(scenarioISOInstall)
@@ -315,7 +318,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true); err != nil {
+		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOOfflineInstall)
 		}
 		printSuccess(scenarioISOOfflineInstall)
@@ -325,7 +328,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
 		ranTest = true
-		if err := testLiveLogin(filepath.Join(outputDir, scenarioISOLiveLogin)); err != nil {
+		if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin)); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
 		}
 		printSuccess(scenarioISOLiveLogin)
@@ -338,7 +341,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func awaitCompletion(inst *platform.QemuInstance, outdir string, qchan *os.File, expected []string) error {
+func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, expected []string) error {
 	errchan := make(chan error)
 	go func() {
 		time.Sleep(installTimeout)
@@ -346,7 +349,7 @@ func awaitCompletion(inst *platform.QemuInstance, outdir string, qchan *os.File,
 	}()
 	if !console {
 		go func() {
-			errBuf, err := inst.WaitIgnitionError()
+			errBuf, err := inst.WaitIgnitionError(ctx)
 			if err == nil {
 				if errBuf != "" {
 					msg := fmt.Sprintf("entered emergency.target in initramfs")
@@ -411,7 +414,7 @@ func printSuccess(mode string) {
 	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
 }
 
-func testPXE(inst platform.Install, outdir string, offline bool) error {
+func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
@@ -454,10 +457,10 @@ func testPXE(inst platform.Install, outdir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveIso(inst platform.Install, outdir string, offline bool) error {
+func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
@@ -495,10 +498,10 @@ func testLiveIso(inst platform.Install, outdir string, offline bool) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveLogin(outdir string) error {
+func testLiveLogin(ctx context.Context, outdir string) error {
 	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return err
 	}
@@ -523,5 +526,5 @@ func testLiveLogin(outdir string) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(mach, outdir, completionChannel, []string{"coreos-liveiso-success"})
+	return awaitCompletion(ctx, mach, outdir, completionChannel, []string{"coreos-liveiso-success"})
 }
