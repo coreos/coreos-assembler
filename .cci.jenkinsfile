@@ -1,88 +1,86 @@
 // Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
 
 pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memory: "9Gi") {
-      checkout scm
+    checkout scm
 
-      stage("Build") {
-          shwrap("""
+    stage("Build") {
+        shwrap("""
             dnf install -y git
             git submodule update --init
             ./build.sh
-          """)
-      }
+        """)
+    }
 
-      stage("Test") {
-          parallel check: {
-              shwrap("""
+    stage("Test") {
+        parallel check: {
+            shwrap("""
                 make check
                 make unittest
-              """)
-          },
-          build: {
-              shwrap("chown builder: /srv")
-              // just split into separate invocations to make it easier to see where it fails
-              cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
-              cosa_cmd("fetch --strict")
-              cosa_cmd("build --strict")
-          }
-          parallel kola: {
-              try {
+            """)
+        }, build: {
+            shwrap("chown builder: /srv")
+            // just split into separate invocations to make it easier to see where it fails
+            cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
+            cosa_cmd("fetch --strict")
+            cosa_cmd("build --strict")
+        }
+        parallel kola: {
+            try {
                 cosa_cmd("kola --basic-qemu-scenarios")
                 cosa_cmd("kola run --parallel 8")
                 cosa_cmd("kola --upgrades")
-              } finally {
+            } finally {
                 shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
                 archiveArtifacts allowEmptyArchive: true, artifacts: 'kola.tar.xz'
-              }
-              // sanity check kola actually ran and dumped its output in tmp/
-              shwrap("test -d /srv/tmp/kola")
-          },
-          kolaself: {
-            try {
-              shwrap("cd /srv && ${env.WORKSPACE}/ci/run-kola-self-tests")
-            } finally {
-              shwrap("cd /srv && tar -cf - tmp/kolaself | xz -c9 > ${env.WORKSPACE}/kolaself.tar.xz")
-              archiveArtifacts allowEmptyArchive: true, artifacts: 'kolaself.tar.xz'
             }
-          },
-          buildextend: {
-              parallel metal: {
-                 cosa_cmd("buildextend-metal")
-                 cosa_cmd("buildextend-metal4k")
-              }
-              parallel artifacts: {
-                  cosa_cmd("buildextend-live --fast")
-                  cosa_cmd("buildextend-openstack")
-                  cosa_cmd("buildextend-vmware")
-              }
-              cosa_cmd("compress")
-              // quick schema validation"
-              cosa_cmd("meta --get name")
-              cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
-          }
-      }
-
-      stage("Image tests") {
-        try {
-          parallel metal: {
-              shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal")
-          }, metal4k: {
-              shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal4k --no-pxe --qemu-native-4k")
-          }
-        } finally {
-          shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
-          shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal4k/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal4k.tar.xz")
-          archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
+            // sanity check kola actually ran and dumped its output in tmp/
+            shwrap("test -d /srv/tmp/kola")
+        }, kolaself: {
+            try {
+                shwrap("cd /srv && ${env.WORKSPACE}/ci/run-kola-self-tests")
+            } finally {
+                shwrap("cd /srv && tar -cf - tmp/kolaself | xz -c9 > ${env.WORKSPACE}/kolaself.tar.xz")
+                archiveArtifacts allowEmptyArchive: true, artifacts: 'kolaself.tar.xz'
+            }
+        },
+        buildextend: {
+            parallel metal: {
+                cosa_cmd("buildextend-metal")
+                cosa_cmd("buildextend-metal4k")
+            }
+            parallel artifacts: {
+                cosa_cmd("buildextend-live --fast")
+                cosa_cmd("buildextend-openstack")
+                cosa_cmd("buildextend-vmware")
+            }
+            cosa_cmd("compress")
+            // quick schema validation"
+            cosa_cmd("meta --get name")
+            cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
         }
-      }
+    }
 
-      // Random other tests that aren't about building
-      stage("CLI/build tests") {
+    stage("Image tests") {
+        try {
+            parallel metal: {
+                shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal")
+            }, metal4k: {
+                shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal4k --no-pxe --qemu-native-4k")
+            }
+        } finally {
+            shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
+            shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal4k/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal4k.tar.xz")
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
+        }
+    }
+
+    // Random other tests that aren't about building
+    stage("CLI/build tests") {
         shwrap("""
-          cd /srv
-          sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh
+            cd /srv
+            sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh
         """)
-      }
+    }
 }
 
 def cosa_cmd(args) {
