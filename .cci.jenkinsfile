@@ -1,6 +1,6 @@
 // Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
 
-pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memory: "9Gi") {
+pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memory: "10Gi") {
     checkout scm
 
     stage("Build") {
@@ -11,56 +11,60 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
         """)
     }
 
-    stage("Test") {
-        parallel check: {
-            shwrap("""
-                make check
-                make unittest
-            """)
-        }, build: {
-            shwrap("chown builder: /srv")
-            // just split into separate invocations to make it easier to see where it fails
-            cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
-            cosa_cmd("fetch --strict")
-            cosa_cmd("build --strict")
-        }
-        parallel kola: {
+    stage("Unit Test") {
+        shwrap("""
+            make check
+            make unittest
+        """)
+    }
+
+    stage("Build FCOS") {
+        shwrap("chown builder: /srv")
+        // just split into separate invocations to make it easier to see where it fails
+        cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
+        cosa_cmd("fetch --strict")
+        cosa_cmd("build --strict")
+    }
+
+    stage("Kola QEMU") {
+        parallel run: {
             try {
                 cosa_cmd("kola --basic-qemu-scenarios")
                 cosa_cmd("kola run --parallel 8")
-                cosa_cmd("kola --upgrades")
             } finally {
-                shwrap("cd /srv && tar -cf - tmp/kola/ | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
+                shwrap("tar -c -C /srv/tmp kola | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
                 archiveArtifacts allowEmptyArchive: true, artifacts: 'kola.tar.xz'
             }
-            // sanity check kola actually ran and dumped its output in tmp/
-            shwrap("test -d /srv/tmp/kola")
-        }, kolaself: {
+        }, run_upgrade: {
+            try {
+                cosa_cmd("kola --upgrades")
+            } finally {
+                shwrap("tar -c -C /srv/tmp kola-upgrade | xz -c9 > ${env.WORKSPACE}/kola-upgrade.tar.xz")
+                archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-upgrade.tar.xz'
+            }
+        }, self: {
             try {
                 shwrap("cd /srv && ${env.WORKSPACE}/ci/run-kola-self-tests")
             } finally {
-                shwrap("cd /srv && tar -cf - tmp/kolaself | xz -c9 > ${env.WORKSPACE}/kolaself.tar.xz")
+                shwrap("tar -c -C /srv/tmp kolaself | xz -c9 > ${env.WORKSPACE}/kolaself.tar.xz")
                 archiveArtifacts allowEmptyArchive: true, artifacts: 'kolaself.tar.xz'
             }
-        },
-        buildextend: {
-            parallel metal: {
-                cosa_cmd("buildextend-metal")
-                cosa_cmd("buildextend-metal4k")
-            }
-            parallel artifacts: {
-                cosa_cmd("buildextend-live --fast")
-                cosa_cmd("buildextend-openstack")
-                cosa_cmd("buildextend-vmware")
-            }
-            cosa_cmd("compress")
-            // quick schema validation"
-            cosa_cmd("meta --get name")
-            cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
         }
     }
 
-    stage("Image tests") {
+    stage("Build Metal") {
+        parallel metal: {
+            cosa_cmd("buildextend-metal")
+        }, metal4k: {
+            cosa_cmd("buildextend-metal4k")
+        }
+    }
+
+    stage("Build Live Images") {
+        cosa_cmd("buildextend-live --fast")
+    }
+
+    stage("Test Live Images") {
         try {
             parallel metal: {
                 shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal")
@@ -74,8 +78,27 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
         }
     }
 
-    // Random other tests that aren't about building
-    stage("CLI/build tests") {
+    stage("Build Cloud Images") {
+        def clouds = ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP", "OpenStack", "VMware", "Vultr"]
+        parallel clouds.inject([:]) { d, i -> d[i] = {
+            cosa_cmd("buildextend-${i.toLowerCase()}")
+        }; d }
+
+        // quick schema validation
+        cosa_cmd("meta --get name")
+    }
+
+    stage("Compress") {
+            cosa_cmd("compress")
+    }
+
+    stage("Upload Dry Run") {
+        cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
+    }
+
+    // Random other tests that aren't about building. XXX: These should be part of `make
+    // check` or something and use dummy cosa builds.
+    stage("CLI Tests") {
         shwrap("""
             cd /srv
             sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh
