@@ -29,7 +29,15 @@ parser.add_argument("--compressor",
                     choices=['xz', 'gzip'],
                     default=DEFAULT_COMPRESSOR,
                     help=f"Compressor to use, default is {DEFAULT_COMPRESSOR}")
+parser.add_argument("--fast", action='store_true',
+                    help="Override compression to `gzip -1`")
 args = parser.parse_args()
+
+# that's the tool default
+gzip_level = 6
+if args.fast:
+    args.compressor = 'gzip'
+    gzip_level = 1
 
 # find extension for --compressor
 ext_dict = {'xz': '.xz', 'gzip': '.gz'}
@@ -117,7 +125,7 @@ def compress_one_builddir(builddir):
                     t = xz_threads()
                     run_verbose(['xz', '-c9', f'-T{t}', filepath], stdout=f)
                 else:
-                    run_verbose(['gzip', '-c', filepath], stdout=f)
+                    run_verbose(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)
             file_with_ext = file + ext
             filepath_with_ext = filepath + ext
             compressed_size = os.path.getsize(tmpfile)
