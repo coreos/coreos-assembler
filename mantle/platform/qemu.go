@@ -409,10 +409,8 @@ func (builder *QemuBuilder) AddFd(fd *os.File) string {
 func virtio(device, args string) string {
 	var suffix string
 	switch system.RpmArch() {
-	case "x86_64", "ppc64le":
+	case "x86_64", "ppc64le", "aarch64":
 		suffix = "pci"
-	case "aarch64":
-		suffix = "device"
 	case "s390x":
 		suffix = "ccw"
 	default:
