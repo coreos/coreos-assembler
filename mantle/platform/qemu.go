@@ -16,6 +16,7 @@ package platform
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -117,7 +118,7 @@ func (inst *QemuInstance) Wait() error {
 // failed inside the initramfs.  The resulting string will
 // be a newline-delimited stream of JSON strings, as returned
 // by `journalctl -o json`.
-func (inst *QemuInstance) WaitIgnitionError() (string, error) {
+func (inst *QemuInstance) WaitIgnitionError(ctx context.Context) (string, error) {
 	b := bufio.NewReaderSize(inst.journalPipe, 64768)
 	var r strings.Builder
 	iscorrupted := false
@@ -134,6 +135,10 @@ func (inst *QemuInstance) WaitIgnitionError() (string, error) {
 		return "", errors.Wrapf(err, "Reading from journal")
 	}
 	for {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+
 		line, prefix, err := b.ReadLine()
 		if err != nil {
 			return r.String(), errors.Wrapf(err, "Reading from journal channel")
@@ -155,22 +160,36 @@ func (inst *QemuInstance) WaitIgnitionError() (string, error) {
 
 // WaitAll wraps the process exit as well as WaitIgnitionError,
 // returning an error if either fail.
-func (inst *QemuInstance) WaitAll() error {
+func (inst *QemuInstance) WaitAll(ctx context.Context) error {
 	c := make(chan error)
+	waitCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Early stop due to failure in initramfs.
 	go func() {
-		buf, err := inst.WaitIgnitionError()
+		buf, err := inst.WaitIgnitionError(waitCtx)
 		if err != nil {
 			c <- err
-		} else {
-			// TODO parse buf and try to nicely render something
-			if buf != "" {
-				c <- ErrInitramfsEmergency
-			}
+			return
+		}
+
+		// TODO: parse buf and try to nicely render something.
+		if buf != "" {
+			c <- ErrInitramfsEmergency
+			return
 		}
 	}()
+
+	// Machine terminated.
 	go func() {
-		c <- inst.Wait()
+		select {
+		case <-waitCtx.Done():
+			c <- waitCtx.Err()
+		case c <- inst.Wait():
+		}
+
 	}()
+
 	return <-c
 }
 

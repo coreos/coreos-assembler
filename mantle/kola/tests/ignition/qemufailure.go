@@ -15,6 +15,7 @@
 package ignition
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -64,9 +65,13 @@ func ignitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 	defer inst.Destroy()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	errchan := make(chan error)
 	go func() {
-		err := inst.WaitAll()
+		err := inst.WaitAll(ctx)
 		if err == nil {
 			err = fmt.Errorf("Ignition unexpectedly succeeded")
 		} else if err == platform.ErrInitramfsEmergency {
@@ -77,10 +82,11 @@ func ignitionFailure(c cluster.TestCluster) error {
 		}
 		errchan <- err
 	}()
+
 	select {
-	case <-time.After(2 * time.Minute):
+	case <-ctx.Done():
 		inst.Kill()
-		return errors.New("timed out waiting for initramfs error")
+		return errors.Wrapf(ctx.Err(), "timed out waiting for initramfs error")
 	case err := <-errchan:
 		if err != nil {
 			return err

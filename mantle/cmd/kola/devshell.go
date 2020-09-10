@@ -18,6 +18,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -88,7 +89,7 @@ func displaySerialMsg(serialMsg string) {
 	fmt.Printf("\033[2K\r%s", stripControlCharacters(s))
 }
 
-func runDevShellSSH(builder *platform.QemuBuilder, conf *conf.Conf) error {
+func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf) error {
 	if !terminal.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
 	}
@@ -152,7 +153,7 @@ func runDevShellSSH(builder *platform.QemuBuilder, conf *conf.Conf) error {
 	errchan := make(chan error)
 	readychan := make(chan struct{})
 	go func() {
-		buf, err := inst.WaitIgnitionError()
+		buf, err := inst.WaitIgnitionError(ctx)
 		if err != nil {
 			errchan <- err
 		} else {

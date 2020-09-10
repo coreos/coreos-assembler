@@ -15,6 +15,7 @@
 package qemuiso
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"time"
@@ -63,7 +64,8 @@ func (m *machine) SSH(cmd string) ([]byte, []byte, error) {
 }
 
 func (m *machine) IgnitionError() error {
-	buf, err := m.inst.WaitIgnitionError()
+	ctx := context.Background()
+	buf, err := m.inst.WaitIgnitionError(ctx)
 	if err != nil {
 		return err
 	}

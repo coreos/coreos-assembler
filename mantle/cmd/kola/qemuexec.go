@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -107,6 +108,9 @@ func parseBindOpt(s string) (string, string, error) {
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 	var config *conf.Conf
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	if devshellConsole {
 		devshell = true
@@ -242,7 +246,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder.Append(args...)
 
 	if devshell && !devshellConsole {
-		return runDevShellSSH(builder, config)
+		return runDevShellSSH(ctx, builder, config)
 	}
 	if config != nil {
 		if directIgnition {
@@ -260,7 +264,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	defer inst.Destroy()
 
 	if propagateInitramfsFailure {
-		err := inst.WaitAll()
+		err := inst.WaitAll(ctx)
 		if err != nil {
 			return err
 		}
