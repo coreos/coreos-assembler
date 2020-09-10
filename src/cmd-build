@@ -402,7 +402,7 @@ cat > tmp/buildmeta.json <<EOF
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.code-source": "${src_location}",
  "coreos-assembler.container-config-git": $(jq -M '.git' ${PWD}/coreos-assembler-config-git.json),
- "coreos-assembler.meta-stamp": $(python -c 'import time; print(time.time_ns())'),
+ "coreos-assembler.meta-stamp": $(python3 -c 'import time; print(time.time_ns())'),
  "coreos-assembler.delayed-meta-merge": ${DELAY_META_MERGE}
 }
 EOF
