@@ -43,9 +43,9 @@ cmd=${1:-}
 # commands we'd expect to use in the local dev path
 build_commands="init fetch build run prune clean list"
 # commands more likely to be used in a prod pipeline only
-advanced_build_commands="buildprep buildupload oscontainer upload-oscontainer oc-adm-release"
-buildextend_commands="aws azure digitalocean gcp ibmcloud live metal metal4k openstack qemu vmware vultr exoscale"
-utility_commands="tag sign compress koji-upload kola aws-replicate remote-prune"
+advanced_build_commands="buildprep buildupload oc-adm-release oscontainer upload-oscontainer"
+buildextend_commands="aws azure digitalocean exoscale gcp ibmcloud live metal metal4k openstack qemu vmware vultr"
+utility_commands="aws-replicate compress koji-upload kola remote-prune sign tag"
 other_commands="shell meta"
 if [ -z "${cmd}" ]; then
     echo Usage: "coreos-assembler CMD ..."
