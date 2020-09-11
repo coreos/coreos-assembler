@@ -88,7 +88,7 @@ type QemuInstance struct {
 	journalPipe *os.File
 }
 
-// Pid returns the PID of this instance.
+// Pid returns the PID of QEMU process.
 func (inst *QemuInstance) Pid() int {
 	return inst.qemu.Pid()
 }
