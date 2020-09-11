@@ -76,7 +76,7 @@ type bootIso struct {
 	bootindex string
 }
 
-// QemuInstance holds an instantiated VM throuhg its lifecycle.
+// QemuInstance holds an instantiated VM through its lifecycle.
 type QemuInstance struct {
 	qemu               exec.Cmd
 	tmpConfig          string
