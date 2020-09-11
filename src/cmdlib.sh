@@ -504,7 +504,7 @@ EOF
     echo "$@" > "${tmp_builddir}"/cmd.sh
 
     touch "${runvm_console}"
-    kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none)
+    kola_args=(kola qemuexec -m 1024 --auto-cpus -U --workdir none '--qemu-swtpm=false')
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
                     -device 'virtio-blk,drive=root'
                     -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \

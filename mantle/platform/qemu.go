@@ -1072,10 +1072,21 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "qemu estimating processors")
 		}
-		// cap qemu smp at some reasonable level; sometimes our tooling runs
-		// on 32-core servers (64 hyperthreads) and there's no reason to
-		// try to match that.
-		if nproc > 16 {
+
+		pf, err := ioutil.ReadFile("/proc/1/cgroup")
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to determine cgroup to estimate qemu processors")
+		}
+
+		if strings.Contains(string(pf), "kubepods") {
+			// When running under K8S, the scehduling may be much more restrictive than
+			// physical core count, and the code below will assign that count, leading
+			// to a VM hang. (e.g. 64 vcpu's to a 1 cpu assignment...)
+			nproc = 1
+		} else if nproc > 16 {
+			// cap qemu smp at some reasonable level; sometimes our tooling runs
+			// on 32-core servers (64 hyperthreads) and there's no reason to
+			// try to match that.
 			nproc = 16
 		}
 
