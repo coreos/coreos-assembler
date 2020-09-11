@@ -73,6 +73,7 @@ type QemuMachineOptions struct {
 type Disk struct {
 	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
 	BackingFile   string   // raw disk image to use.
+	BackingFormat string   // qcow2, raw, etc.  If unspecified will be autodetected.
 	Channel       string   // virtio (default), nvme
 	DeviceOpts    []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
 	SectorSize    int      // if not 0, override disk sector size
@@ -687,6 +688,17 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 			return err
 		}
 		qcow2Opts += fmt.Sprintf(",backing_file=%s,lazy_refcounts=on", backingFile)
+		format := disk.BackingFormat
+		if format == "" {
+			// QEMU 5 warns if format is omitted, let's do detection for the common case
+			// on our own.
+			if strings.HasSuffix(backingFile, "qcow2") {
+				format = "qcow2"
+			}
+		}
+		if format != "" {
+			qcow2Opts += fmt.Sprintf(",backing_fmt=%s", format)
+		}
 	}
 	imgOpts = append(imgOpts, "-o", qcow2Opts)
 
