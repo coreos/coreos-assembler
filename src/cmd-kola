@@ -4,6 +4,7 @@ import argparse
 import re
 import subprocess
 import os
+import platform
 import sys
 import yaml
 
@@ -11,6 +12,7 @@ import yaml
 # do ostree upgrades with uefi etc.  But we don't really need the *full*
 # suite...if podman somehow broke with nvme or uefi I'd be amazed and impressed.
 BASIC_SCENARIOS = ["nvme=true", "firmware=uefi", "firmware=uefi-secure"]
+arch = platform.machine()
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
@@ -75,8 +77,15 @@ kolaargs.extend(unknown_args)
 kolaargs.extend(denylist_args)
 
 if args.basic_qemu_scenarios:
-    for scenario in BASIC_SCENARIOS:
-        subargs = kolaargs + ['--qemu-' + scenario, 'basic']
+    if arch == "x86_64":
+        for scenario in BASIC_SCENARIOS:
+            subargs = kolaargs + ['--qemu-' + scenario, 'basic']
+            print(subprocess.list2cmdline(subargs), flush=True)
+            subprocess.check_call(subargs)
+    else:
+        # Basic qemu scenarios using nvme and uefi
+        # are not supported on multi-arch
+        subargs = kolaargs + ['basic']
         print(subprocess.list2cmdline(subargs), flush=True)
         subprocess.check_call(subargs)
 elif args.upgrades:
