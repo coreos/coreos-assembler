@@ -143,14 +143,6 @@ prepare_build() {
     preflight
     if ! [ -d builds ]; then
         fatal "No $(pwd)/builds found; did you run coreos-assembler init?"
-    elif ! has_privileges; then
-        # "cache2" has an explicit label so we can find it in qemu easily
-        if [ ! -f cache/cache2.qcow2 ]; then
-            qemu-img create -f qcow2 cache/cache2.qcow2 10G
-            LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs --label=cosa-cache -a cache/cache2.qcow2
-        fi
-        # And remove the old one
-        rm -vf cache/cache.qcow2
     fi
 
     workdir="$(pwd)"
@@ -393,11 +385,16 @@ runcompose() {
         sudo -E "$@"
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        compose_qemu_args=()
-        if [ -f "${workdir}/cache/cache2.qcow2" ]; then
-            compose_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
-                                "-device" "virtio-blk,drive=cache")
+        # "cache2" has an explicit label so we can find it in qemu easily
+        if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
+            qemu-img create -f qcow2 cache2.qcow2.tmp 10G
+            LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs --label=cosa-cache -a cache2.qcow2.tmp &&
+            mv -T cache2.qcow2.tmp "${workdir}"/cache/cache2.qcow2
         fi
+        # And remove the old one
+        rm -vf "${workdir}"/cache/cache.qcow2
+        compose_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+                            "-device" "virtio-blk,drive=cache")
         runvm "${compose_qemu_args[@]}" -- "$@"
     fi
 }
