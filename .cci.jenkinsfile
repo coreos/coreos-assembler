@@ -8,7 +8,9 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
             dnf install -y git
             git submodule update --init
             ./build.sh
+            rpm -qa | sort > rpmdb.txt
         """)
+        archiveArtifacts artifacts: 'rpmdb.txt'
     }
 
     stage("Unit Test") {
