@@ -136,8 +136,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		MultiPathDisk: multiPathDisk,
 	}
 
-	if err = builder.AddPrimaryDisk(&primaryDisk); err != nil {
-		return nil, errors.Wrapf(err, "adding primary disk")
+	err = builder.AddBootDisk(&primaryDisk)
+	if err != nil {
+		return nil, err
 	}
 	for _, disk := range options.AdditionalDisks {
 		if err = builder.AddDisk(&platform.Disk{

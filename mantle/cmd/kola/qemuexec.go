@@ -204,15 +204,16 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if kola.QEMUOptions.Native4k {
 			sectorSize = 4096
 		}
-		if err = builder.AddPrimaryDisk(&platform.Disk{
+		err = builder.AddBootDisk(&platform.Disk{
 			BackingFile:   kola.QEMUOptions.DiskImage,
 			Channel:       channel,
 			Size:          kola.QEMUOptions.DiskSize,
 			SectorSize:    sectorSize,
 			MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
 			NbdDisk:       kola.QEMUOptions.NbdDisk,
-		}); err != nil {
-			return errors.Wrapf(err, "adding primary disk")
+		})
+		if err != nil {
+			return err
 		}
 	}
 	if kola.QEMUIsoOptions.IsoPath != "" {

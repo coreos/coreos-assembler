@@ -288,6 +288,8 @@ type QemuBuilder struct {
 
 	iso         *bootIso
 	primaryDisk *Disk
+	// primaryIsBoot is true if the only boot media should be the primary disk
+	primaryIsBoot bool
 
 	MultiPathDisk bool
 
@@ -822,12 +824,21 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 // AddPrimaryDisk sets up the primary disk for the instance.
 func (builder *QemuBuilder) AddPrimaryDisk(disk *Disk) error {
 	if builder.primaryDisk != nil {
-		panic("Multiple primary disks specified")
+		return errors.New("Multiple primary disks specified")
 	}
 	// We do this one lazily in order to break an ordering requirement
 	// for SetConfig() and AddPrimaryDisk() in the case where the
 	// config needs to be injected into the disk.
 	builder.primaryDisk = disk
+	return nil
+}
+
+// AddBootDisk sets the instance to boot only from the target disk
+func (builder *QemuBuilder) AddBootDisk(disk *Disk) error {
+	if err := builder.AddPrimaryDisk(disk); err != nil {
+		return err
+	}
+	builder.primaryIsBoot = true
 	return nil
 }
 
@@ -1151,6 +1162,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	if builder.primaryDisk != nil {
 		if err := builder.addDiskImpl(builder.primaryDisk, true); err != nil {
 			return nil, err
+		}
+		if builder.primaryIsBoot {
+			argv = append(argv, "-boot", "order=c,strict=on")
 		}
 	}
 
