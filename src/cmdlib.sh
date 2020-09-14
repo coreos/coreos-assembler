@@ -453,10 +453,8 @@ runvm() {
     local rpms
     # then add all the base deps
     # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
-    [ -n "${ISFEDORA}" ] && filter='^#FEDORA '
-    [ -n "${ISEL}" ]     && filter='^#EL7 '
-    rpms=$(sed "s/${filter}//" "${DIR}"/vmdeps.txt | grep -v '^#')
-    archrpms=$(sed "s/${filter}//" "${DIR}"/vmdeps-"$(arch)".txt | grep -v '^#')
+    rpms=$(grep -v '^#' < "${DIR}"/vmdeps.txt)
+    archrpms=$(grep -v '^#' < "${DIR}"/vmdeps-"$(arch)".txt)
 
     # shellcheck disable=SC2086
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms $archrpms
