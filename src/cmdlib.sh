@@ -154,6 +154,16 @@ prepare_build() {
     fi
 
     workdir="$(pwd)"
+
+    # Be nice to people who have older versions that
+    # didn't create this in `init`.
+    mkdir -p "${workdir}"/tmp
+
+    # Allocate temporary space for this build
+    export tmp_builddir="${workdir}/tmp/build${IMAGE_TYPE:+.$IMAGE_TYPE}"
+    rm "${tmp_builddir}" -rf
+    mkdir "${tmp_builddir}"
+
     configdir=${workdir}/src/config
     manifest=${configdir}/manifest.yaml
     # for the base lockfile, we default to JSON since that's what rpm-ostree
@@ -173,10 +183,6 @@ prepare_build() {
         (cd "${configdir}" && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
     fi
     echo "Using manifest: ${manifest}"
-
-    # Be nice to people who have older versions that
-    # didn't create this in `init`.
-    mkdir -p "${workdir}"/tmp
 
     # backcompat for local setups that initialized with `ln -sr`
     if [ -L "${configdir}" ]; then
@@ -202,7 +208,7 @@ prepare_build() {
     fi
     export configdir_gitrepo
 
-    manifest_tmp_json=${workdir}/tmp/manifest.json
+    manifest_tmp_json=${tmp_builddir}/manifest.json
     rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${manifest_tmp_json}"
 
     # Abuse the rojig/name as the name of the VM images
@@ -233,11 +239,6 @@ prepare_build() {
     mkdir -p tmp/fastbuilds
     fastbuilddir=$(pwd)/tmp/fastbuild
     export fastbuilddir
-
-    # Allocate temporary space for this build
-    export tmp_builddir="${workdir}/tmp/build${IMAGE_TYPE:+.$IMAGE_TYPE}"
-    rm "${tmp_builddir}" -rf
-    mkdir "${tmp_builddir}"
 
     # And everything after this assumes it's in the temp builddir
     # In case `cd` fails:  https://github.com/koalaman/shellcheck/wiki/SC2164
