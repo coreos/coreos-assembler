@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// qemu.go is a Go interface to running `qemu` as a subprocess.
+//
+// Why not libvirt?
+// Two main reasons.  First, we really do want to use qemu, and not
+// something else.  We rely on qemu features/APIs and there's a general
+// assumption that the qemu process is local (e.g. we expose 9p filesystem
+// sharing).  Second, libvirt runs as a daemon, but we want the
+// VMs "lifecycle bound" to their creating process (e.g. kola),
+// so that e.g. Ctrl-C (SIGINT) kills both reliably.
+//
+// Other related projects (as a reference to share ideas if not code)
+// https://github.com/google/syzkaller/blob/3e84253bf41d63c55f92679b1aab9102f2f4949a/vm/qemu/qemu.go
+// https://github.com/intel/govmm
+
 package platform
 
 import (
