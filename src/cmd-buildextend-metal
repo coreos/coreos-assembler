@@ -246,7 +246,6 @@ fi
 kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
-save_var_subdirs="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("save-var-subdirs-for-selabel-workaround", "NONE"))' < "$configdir/image.yaml")"
 
 qemu-img create -f ${image_format} "${path}.tmp" "${image_size}"
 # We support deploying a commit directly instead of a ref
@@ -274,7 +273,6 @@ runvm "${target_drive[@]}" -- \
             --ostree-ref "${ref_arg}" \
             --ostree-remote "${ostree_remote}" \
             --ostree-repo "${ostree_repo}" \
-            --save-var-subdirs "${save_var_subdirs}" \
             --rootfs-size "${rootfs_size}" \
             --rootfs "${rootfs_type}" \
             "${disk_args[@]}"

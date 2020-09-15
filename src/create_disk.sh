@@ -36,7 +36,6 @@ Options:
     --ostree-ref: the OSTRee reference to install
     --ostree-remote: the ostree remote
     --ostree-repo: location of the ostree repo
-    --save-var-subdirs: "yes" to workaround selabel issue for RHCOS
     --rootfs-size: Create the root filesystem with specified size
     --boot-verity: Provide this to enable ext4 fs-verity for /boot
     --rootfs: xfs|ext4verity|luks
@@ -70,7 +69,6 @@ do
         --ostree-ref)            ref="${1}"; shift;;
         --ostree-remote)         remote_name="${1}"; shift;;
         --ostree-repo)           ostree="${1}"; shift;;
-        --save-var-subdirs)      save_var_subdirs="${1}"; shift;;
         --rootfs-size)           rootfs_size="${1}"; shift;;
         --boot-verity)           boot_verity=1;;
         --rootfs)                rootfs_type="${1}" shift;;
@@ -96,7 +94,6 @@ ref="${ref:?--ostree-ref must be defined}"
 remote_name="${remote_name:?--ostree-remote must be defined}"
 grub_script="${grub_script:?--grub-script must be defined}"
 os_name="${os_name:?--os_name must be defined}"
-save_var_subdirs="${save_var_subdirs:?--save_var_subdirs must be defined}"
 
 case "${rootfs_type}" in
     xfs|ext4verity|luks|btrfs) ;;
@@ -312,15 +309,6 @@ cat > $rootfs/.coreos-aleph-version.json << EOF
 	"imgid": "${imgid}"
 }
 EOF
-
-# /var hack: we'd like to remove all of /var, but SELinux issues prevent that.
-# see https://github.com/coreos/ignition-dracut/pull/79#issuecomment-488446949
-if [ "${save_var_subdirs}" != NONE ]; then
-	vardir=$rootfs/ostree/deploy/${os_name}/var
-	mkdir -p ${vardir}/{home,log/journal,lib/systemd}
-	# And /home is the only one that doesn't have a filename transition today
-	chcon -h $(matchpathcon -n /home) ${vardir}/home
-fi
 
 # we use pure BLS on most architectures; this may
 # be overridden below
