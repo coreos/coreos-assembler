@@ -17,7 +17,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/coreos/ign-converter v0.0.0-20200706175125-8bea9183aea9
 	github.com/coreos/ignition v0.35.0
-	github.com/coreos/ignition/v2 v2.6.0
+	github.com/coreos/ignition/v2 v2.6.1-0.20200915175921-4b92d7310de4
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5 // indirect

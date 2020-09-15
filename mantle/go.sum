@@ -100,6 +100,8 @@ github.com/coreos/ignition/v2 v2.1.1/go.mod h1:RqmqU64zxarUJa3l4cHtbhcSwfQLpUhv0
 github.com/coreos/ignition/v2 v2.3.0/go.mod h1:85dmM/CERMZXNrJsXqtNLIxR/dn8G9qlL1CmEjCugp0=
 github.com/coreos/ignition/v2 v2.6.0 h1:7KeLB91XXliK7s5jsueOWotmX3Zz3c+uBuWrAbcRun0=
 github.com/coreos/ignition/v2 v2.6.0/go.mod h1:gbJjVG+q2kDxVQE9vRvlByW5XYq12vuaGfrnwC5+oh4=
+github.com/coreos/ignition/v2 v2.6.1-0.20200915175921-4b92d7310de4 h1:aF0PoXdHHUsXkz7j+gTLbikWfbJWv8yofYnM9IBCoGk=
+github.com/coreos/ignition/v2 v2.6.1-0.20200915175921-4b92d7310de4/go.mod h1:gbJjVG+q2kDxVQE9vRvlByW5XYq12vuaGfrnwC5+oh4=
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b h1:mpeSDqY0vMUyJmazX0p62MrHtgwlmOf7Y8rqOYL1cmc=
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b/go.mod h1:JIWRG8HSwVYUrjdR/JsFg7DEby0nhQcWFPIQvXJyih8=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbpBpLoyyu8B6e44T7hJy6potg=
