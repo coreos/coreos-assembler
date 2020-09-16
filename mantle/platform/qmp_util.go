@@ -36,6 +36,13 @@ type QOMDev struct {
 	} `json:"return"`
 }
 
+type QOMBlkDev struct {
+	Return []struct {
+		Device     string `json:"device"`
+		DevicePath string `json:"qdev"`
+	} `json:"return"`
+}
+
 // Create a new QMP socket connection
 func newQMPMonitor(sockaddr string) (*qmp.SocketMonitor, error) {
 	qmpPath := filepath.Join(sockaddr, "qmp.sock")
@@ -54,24 +61,33 @@ func newQMPMonitor(sockaddr string) (*qmp.SocketMonitor, error) {
 }
 
 // Executes a query which provides the list of devices and their names
-func listQMPDevices(sockaddr string) (*qmp.SocketMonitor, *QOMDev, error) {
-	monitor, err := newQMPMonitor(sockaddr)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not open monitor")
-	}
-
-	monitor.Connect()
+func listQMPDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMDev, error) {
 	listcmd := []byte(`{ "execute": "qom-list", "arguments": { "path": "/machine/peripheral-anon" } }`)
 	out, err := monitor.Run(listcmd)
 	if err != nil {
-		return monitor, nil, errors.Wrapf(err, "Running QMP list command")
+		return nil, errors.Wrapf(err, "Running QMP list command")
 	}
 
 	var devs QOMDev
 	if err = json.Unmarshal(out, &devs); err != nil {
-		return monitor, nil, errors.Wrapf(err, "De-serializing QMP output")
+		return nil, errors.Wrapf(err, "De-serializing QMP output")
 	}
-	return monitor, &devs, nil
+	return &devs, nil
+}
+
+// Executes a query which provides the list of block devices and their names
+func listQMPBlkDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMBlkDev, error) {
+	listcmd := []byte(`{ "execute": "query-block" }`)
+	out, err := monitor.Run(listcmd)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Running QMP list command")
+	}
+
+	var devs QOMBlkDev
+	if err = json.Unmarshal(out, &devs); err != nil {
+		return nil, errors.Wrapf(err, "De-serializing QMP output")
+	}
+	return &devs, nil
 }
 
 // Set the bootindex for the particular device

@@ -36,6 +36,8 @@ const (
 	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
 	defaultQemuHostIPv4 = "10.0.2.2"
 
+	targetDevice = "/dev/vda"
+
 	// rebootUnit is a copy of the system one without the ConditionPathExists
 	rebootUnit = `[Unit]
 	Description=Reboot after CoreOS Installer
@@ -561,13 +563,6 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		insecureOpt = "--insecure"
 	}
 	pointerIgnitionPath := "/var/opt/pointer.ign"
-
-	targetDevice := "/dev/vda"
-	// For aarch64, the cdrom is a pci blk device /dev/vda
-	// TBD: use the serial identifier and use /dev/disk/by-id to install
-	if system.RpmArch() == "aarch64" {
-		targetDevice = "/dev/vdb"
-	}
 
 	installerUnit := fmt.Sprintf(`
 [Unit]

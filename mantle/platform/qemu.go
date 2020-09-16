@@ -245,31 +245,48 @@ func (inst *QemuInstance) SwitchBootOrder() error {
 		//Not applicable for other arches
 		return nil
 	}
-	monitor, devs, err := listQMPDevices(inst.tempdir)
-	if monitor != nil {
-		defer monitor.Disconnect()
-	}
+	monitor, err := newQMPMonitor(inst.tempdir)
 	if err != nil {
-		return errors.Wrapf(err, "Could not list devices")
+		return errors.Wrapf(err, "Could not connect to QMP device")
 	}
+	monitor.Connect()
+	defer monitor.Disconnect()
+	devs, err := listQMPDevices(monitor, inst.tempdir)
+	if err != nil {
+		return errors.Wrapf(err, "Could not list devices through qmp")
+	}
+	blkdevs, err := listQMPBlkDevices(monitor, inst.tempdir)
+	if err != nil {
+		return errors.Wrapf(err, "Could not list blk devices through qmp")
+	}
+
 	var blkdev string
 	var bootdev string
+	// Get bootdevice for pxe boot
 	for _, dev := range devs.Return {
 		switch dev.Type {
-		// Boot device used for first boot - for aarch64 the cdrom is a pci blk device (used for ISO installs)
-		case "child<virtio-net-pci>", "child<virtio-blk-pci>", "child<virtio-net-ccw>":
+		case "child<virtio-net-pci>", "child<virtio-net-ccw>":
 			bootdev = filepath.Join("/machine/peripheral-anon", dev.Name)
-			break
-		case "child<virtio-blk-device>", "child<virtio-blk-ccw>":
-			blkdev = filepath.Join("/machine/peripheral-anon", dev.Name)
-			break
 		default:
 			break
 		}
 	}
-	// unset bootindex for the network device
+	// Get boot device (for iso-installs) and block device
+	for _, dev := range blkdevs.Return {
+		devpath := filepath.Clean(strings.Trim(dev.DevicePath, "virtio-backend"))
+		switch dev.Device {
+		case "installiso":
+			bootdev = devpath
+		case "d1":
+			blkdev = devpath
+		default:
+			break
+		}
+	}
+
+	// unset bootindex for the boot device
 	if err := setBootIndexForDevice(monitor, bootdev, -1); err != nil {
-		return errors.Wrapf(err, "Could not set bootindex for netdev")
+		return errors.Wrapf(err, "Could not set bootindex for bootdev")
 	}
 	// set bootindex to 1 to boot from disk
 	if err := setBootIndexForDevice(monitor, blkdev, 1); err != nil {
@@ -1045,7 +1062,7 @@ func (builder *QemuBuilder) setupIso() error {
 	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
 	switch system.RpmArch() {
 	case "s390x", "ppc64le", "aarch64":
-		builder.Append("-cdrom", builder.iso.path)
+		builder.Append("-drive", "file="+builder.iso.path+",id=installiso,index=2,media=cdrom")
 	default:
 		bootindexStr := ""
 		if builder.iso.bootindex != "" {
