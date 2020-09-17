@@ -1,4 +1,10 @@
-## Using coreos-assembler to build custom FCOS derivatives
+---
+layout: default
+title: Building a custom OS with CoreOS Assembler
+nav_order: 3
+---
+
+# Using coreos-assembler to build custom FCOS derivatives
 
 The primary goal of Fedora CoreOS is to be useful directly, and
 to have users deploy containers for applications, etc.
