@@ -1,13 +1,14 @@
-# Guide to update build process svg
+---
+layout: default
+nav_exclude: true
+---
 
-<img src="./build-process.svg?sanitize=true">
+# Guide to update the build process SVG
 
+<img src="../build-process.svg?sanitize=true">
 
-## Update Build Process Svg
-
-* Go to [mermaid-live-editor](https://mermaidjs.github.io/mermaid-live-editor)
-
-* Copy paste script
+- Go to [mermaid-live-editor](https://mermaidjs.github.io/mermaid-live-editor)
+- Copy paste script:
 
 ```mermaid
 graph LR
@@ -26,4 +27,4 @@ classDef rpms fill:#ef4d5b,stroke-width:1px, color:#fff;
 class D rpms;
 ```
 
-* Export to Svg and update `build-process.svg`
+- Export to Svg and update `build-process.svg`
