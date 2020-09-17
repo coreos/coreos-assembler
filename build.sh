@@ -53,10 +53,6 @@ install_rpms() {
     # https://github.com/coreos/coreos-assembler/issues/1496
     yum -y downgrade cryptsetup-2.3.0-1.fc32
 
-    # XXX: Cherry-pick 5.8.9 for https://github.com/coreos/coreos-assembler/issues/1723.
-    # XXX: Drop when >= 5.8.9 is in repos
-    yum -y install https://kojipkgs.fedoraproject.org//packages/kernel/5.8.9/200.fc32/"${arch}"/kernel-{core,modules}-5.8.9-200.fc32."${arch}".rpm
-
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
