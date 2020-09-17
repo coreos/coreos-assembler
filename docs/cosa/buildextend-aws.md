@@ -1,5 +1,10 @@
-coreos-assembler and AWS
-===
+---
+layout: default
+parent: CoreOS Assembler Command Line Reference
+nav_order: 1
+---
+
+# cosa buildextend-aws
 
 Using `cosa buildextend-aws` looks for AWS credentials in the standard places;
 Common methods are `AWS_ACCESS_KEY_ID`
