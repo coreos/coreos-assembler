@@ -441,6 +441,48 @@ def generate_iso():
                       '-no-emul-boot', '-eltorito-boot',
                       os.path.join(os.path.relpath(tmpisoimages, tmpisoroot), 'cdboot.img')]
 
+    kernel_chksum = sha256sum_file(os.path.join(tmpisoimagespxe, kernel_img))
+    # this may not be the same as the initramfs we publish, based on
+    # legacy_pxe, so just always recalculate for now
+    initramfs_chksum = sha256sum_file(os.path.join(tmpisoimagespxe, "initrd.img"))
+    rootfs_chksum = sha256sum_file(os.path.join(tmpisoimagespxe, "rootfs.img"))
+
+    # Add a productmd treeinfo
+    treeinfo = f"""
+[header]
+type = productmd.treeinfo
+version = 1.1
+
+[release]
+name = {base_name}
+version = {args.build}
+
+[tree]
+arch = {basearch}
+build_timestamp = {buildmeta["coreos-assembler.build-timestamp"]}
+
+[general]
+family = {base_name}
+version = {args.build}
+name = {base_name} {args.build}
+arch = {basearch}
+timestamp = {buildmeta["coreos-assembler.build-timestamp"]}
+variant = CoreOS
+
+[checksums]
+images/pxeboot/initrd.img = sha256:{kernel_chksum}
+images/pxeboot/rootfs.img = sha256:{rootfs_chksum}
+images/pxeboot/vmlinuz = sha256:{initramfs_chksum}
+
+[images-{basearch}]
+initrd = images/pxeboot/initrd.img
+kernel = images/pxeboot/vmlinuz
+; this one is non-standard, though hopefully tools will learn to e.g. append it
+rootfs = images/pxeboot/rootfs.img
+"""
+    with open(os.path.join(tmpisoroot, ".treeinfo"), 'w') as f:
+        f.write(treeinfo)
+
     # For x86_64 and aarch64 UEFI booting
     if basearch in ("x86_64", "aarch64"):
         # Create the efiboot.img file. This is a fat32 formatted
@@ -544,7 +586,7 @@ def generate_iso():
     buildmeta['images'].update({
         'live-kernel': {
             'path': kernel_name,
-            'sha256': sha256sum_file(kernel_file)
+            'sha256': kernel_chksum
         },
         'live-initramfs': {
             'path': initramfs_name,
