@@ -26,9 +26,15 @@ from cosalib.meta import GenericBuildMeta
 
 def ostree_extract_efi(repo, commit, destdir):
     """Given an OSTree commit, extract the EFI parts"""
-    ostreeefidir = "/usr/lib/ostree-boot/efi/EFI"
+    efidir = "/usr/lib/ostree-boot/efi/EFI"
+    # Handle both "with bootupd" and without.
+    # https://github.com/coreos/bootupd/
+    # See also create_disk.py
+    if subprocess.run(['ostree', f'--repo={repo}', 'ls', commit, '/usr/lib/bootupd'],
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        efidir = "/usr/lib/bootupd/updates/EFI"
     run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
-                 '--user-mode', '--subpath', ostreeefidir,
+                 '--user-mode', '--subpath', efidir,
                  commit, destdir])
 
 
