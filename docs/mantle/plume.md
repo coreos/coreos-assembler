@@ -22,7 +22,7 @@ images without making them public).
 
 ## plume release
 
-Publish a new Container Linux release. This makes the images uploaded by pre-release public and uploads
+Publish a new CoreOS/Cloud release. This makes the images uploaded by pre-release public and uploads
 images that pre-release could not. It copies the release artifacts to public storage buckets and updates
 the directory index.
 
@@ -151,19 +151,6 @@ Save this to: `plume-s3-sse-role-policy.json`:
 
 ## Testing
 
-### Build a release image with the SDK
-
-```sh
-export COREOS_BUILD_ID=$(date +%Y-%m-%d-%H%M)
-KEYID="<keyid>"
-gpg2 --armor --export "$KEYID" > ~/keyfile
-./build_packages
-./build_image --upload --sign="$KEYID" prod
-for format in ami_vmdk azure gce; do
-    ./image_to_vm.sh --format=$format --upload --sign="$KEYID"
-done
-```
-
 ### Perform the "release"
 
 ```sh
@@ -209,6 +196,4 @@ Here is an example of doing a Fedora Cloud release with plume:
 
 Delete:
 
-- Stuff uploaded into `gs://users.developer.core-os.net/$USER`
-- GCE image in `coreos-gce-testing`
 - AWS AMIs and snapshots in `us-west-1`, `us-west-2`, and `us-east-2`

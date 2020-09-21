@@ -7,7 +7,7 @@ nav_order: 9
 
 # Mantle
 
-This repository is a collection of utilities for developing Container Linux.
+This repository is a collection of utilities for developing CoreOS systems.
 Most of the tools are for uploading, running, and interacting with Fedora
 CoreOS and Red Hat CoreOS instances running locally or in a cloud.
 
