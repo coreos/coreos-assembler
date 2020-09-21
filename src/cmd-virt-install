@@ -28,9 +28,11 @@ parser.add_argument("--connect", "-c", help="libvirt URI", default="qemu:///syst
 parser.add_argument("--ignition", "-i", help="Ignition config", required=True)
 parser.add_argument("--build", help="Build ID")
 parser.add_argument("--image", help="Image path")
-parser.add_argument("--pool", help="storage pool", default="default")
+parser.add_argument("--pool", help="Storage pool", default="default")
 parser.add_argument("--name", help="Prefix for libvirt resources")
 parser.add_argument("--instid", help="Suffix appended to libvirt resources")
+parser.add_argument("--console", action='store_true',
+                    help="Connect to serial console after install")
 args, vinstall_args = parser.parse_known_args()
 
 builds = Builds()
@@ -126,3 +128,5 @@ basevinstall_args = ['virt-install', f"--connect={args.connect}",
                      f'--qemu-commandline={qemu_args}',
                      '--noautoconsole']
 cmdlib.run_verbose(basevinstall_args + vinstall_args)
+if args.console:
+    os.execlp("virsh", "virsh", "console", domname)
