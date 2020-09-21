@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
@@ -230,12 +232,14 @@ func syncOptionsImpl(useCosa bool) error {
 		if kola.Options.CosaWorkdir != "" && kola.Options.CosaWorkdir != "none" {
 			localbuild, err := sdk.GetLatestLocalBuild(kola.Options.CosaWorkdir)
 			if err != nil {
-				return err
+				if !os.IsNotExist(errors.Cause(err)) {
+					return err
+				}
+			} else {
+				kola.Options.CosaBuildId = localbuild.Meta.BuildID
+				kola.CosaBuild = localbuild
+				foundCosa = true
 			}
-
-			kola.Options.CosaBuildId = localbuild.Meta.BuildID
-			kola.CosaBuild = localbuild
-			foundCosa = true
 		}
 	}
 
