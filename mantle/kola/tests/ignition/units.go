@@ -22,7 +22,7 @@ import (
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Name:        "coreos.ignition.instantiated.enable-service",
+		Name:        "coreos.ignition.instantiated.enable-unit",
 		Run:         enableSystemdInstantiatedService,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
@@ -33,6 +33,10 @@ func init() {
 			"name": "echo@.service",
 			"contents": "[Unit]\nDescription=f\n[Service]\nType=oneshot\nExecStart=/bin/echo %i\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n"
 		  },
+		  {
+		  "name": "echo@.timer",
+		  "contents": "[Unit]\nDescription=echo timer template\n[Timer]\nOnUnitInactiveSec=10s\n[Install]\nWantedBy=timers.target"
+		},
 		{
 		  "enabled": true,
 		  "name": "echo@bar.service"
@@ -40,6 +44,10 @@ func init() {
 		{
 		  "enabled": true,
 		  "name": "echo@foo.service"
+		},
+		{
+			"enabled": true,
+			"name": "echo@foo.timer"
 		}]
     }
 }`),
@@ -59,4 +67,6 @@ func enableSystemdInstantiatedService(c cluster.TestCluster) {
 	c.MustSSH(m, "systemctl -q is-active echo@bar.service")
 	c.MustSSH(m, "systemctl -q is-enabled echo@foo.service")
 	c.MustSSH(m, "systemctl -q is-enabled echo@bar.service")
+	c.MustSSH(m, "systemctl -q is-active echo@foo.timer")
+	c.MustSSH(m, "systemctl -q is-enabled echo@foo.timer")
 }
