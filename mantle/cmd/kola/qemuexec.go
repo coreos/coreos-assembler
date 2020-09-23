@@ -61,6 +61,8 @@ var (
 
 	devshell        bool
 	devshellConsole bool
+
+	consoleFile string
 )
 
 func init() {
@@ -81,6 +83,7 @@ func init() {
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
 	cmdQemuExec.Flags().BoolVar(&propagateInitramfsFailure, "propagate-initramfs-failure", false, "Error out if the system fails in the initramfs")
+	cmdQemuExec.Flags().StringVarP(&consoleFile, "console-to-file", "", "", "Filepath in which to save serial console logs")
 
 }
 
@@ -114,6 +117,10 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	if devshellConsole {
 		devshell = true
+
+		if consoleFile != "" {
+			return fmt.Errorf("Cannot use console devshell and --console-to-file")
+		}
 	}
 	if devshell {
 		if directIgnition {
@@ -244,6 +251,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		builder.EnableUsermodeNetworking(h)
 	}
 	builder.InheritConsole = true
+	builder.ConsoleFile = consoleFile
 	builder.Append(args...)
 
 	if devshell && !devshellConsole {
