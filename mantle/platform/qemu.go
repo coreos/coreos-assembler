@@ -1307,6 +1307,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	if builder.ConsoleFile != "" {
 		builder.Append("-display", "none", "-chardev", "file,id=log,path="+builder.ConsoleFile, "-serial", "chardev:log")
+	} else {
+		builder.Append("-serial", "mon:stdio")
 	}
 
 	// And the custom arguments
