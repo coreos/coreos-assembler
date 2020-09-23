@@ -500,7 +500,8 @@ EOF
     echo "$@" > "${tmp_builddir}"/cmd.sh
 
     touch "${runvm_console}"
-    kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none)
+    kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none \
+               --console-to-file "${runvm_console}")
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
                     -device 'virtio-blk,drive=root'
                     -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
@@ -518,7 +519,6 @@ EOF
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
         if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
-            -serial file:"${runvm_console}" \
             -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
             -chardev stdio,id=virtioserial0 \
             "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
