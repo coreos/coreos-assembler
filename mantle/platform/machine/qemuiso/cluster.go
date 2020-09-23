@@ -102,7 +102,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.Firmware = qc.flight.opts.Firmware
 	}
 	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
-	builder.ConsoleToFile(qm.consolePath)
+	builder.ConsoleFile = qm.consolePath
 
 	if qc.flight.opts.Memory != "" {
 		memory, err := strconv.ParseInt(qc.flight.opts.Memory, 10, 32)

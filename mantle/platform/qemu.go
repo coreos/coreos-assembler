@@ -303,6 +303,9 @@ type QemuBuilder struct {
 	ForceConfigInjection bool
 	configInjected       bool
 
+	// File to which to redirect the serial console
+	ConsoleFile string
+
 	// Memory defaults to 1024 on most architectures, others it may be 2048
 	Memory int
 	// Processors < 0 means to use host count, unset means 1, values > 1 are directly used
@@ -434,11 +437,6 @@ func virtio(device, args string) string {
 		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", system.RpmArch()))
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
-}
-
-// ConsoleToFile configures the instance to have a serial console, logging to `path`.
-func (builder *QemuBuilder) ConsoleToFile(path string) {
-	builder.Append("-display", "none", "-chardev", "file,id=log,path="+path, "-serial", "chardev:log")
 }
 
 // EnableUsermodeNetworking configure forwarding for all requested ports,
@@ -1305,6 +1303,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		fdset := i + 1 // Start at 1
 		argv = append(argv, "-add-fd", fmt.Sprintf("fd=%d,set=%d", fdnum, fdset))
 		fdnum++
+	}
+
+	if builder.ConsoleFile != "" {
+		builder.Append("-display", "none", "-chardev", "file,id=log,path="+builder.ConsoleFile, "-serial", "chardev:log")
 	}
 
 	// And the custom arguments

@@ -185,7 +185,7 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	}
 
 	if !builder.InheritConsole {
-		builder.ConsoleToFile(filepath.Join(outdir, "console.txt"))
+		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
 	}
 	config, err := conf.EmptyIgnition().Render(kola.IsIgnitionV2())
 	if err != nil {
