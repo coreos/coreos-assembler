@@ -247,7 +247,7 @@ def generate_iso():
                 os.path.join(tmpisoimagespxe, initrd_img)
             )
 
-    # Generate initramfs stamp file which says whether it's a live or legacy
+    # Generate initramfs stamp file indicating that this is a live
     # initramfs.  Store the build ID in it.
     stamppath = os.path.join(tmpinitrd_base, 'etc/coreos-live-initramfs')
     os.makedirs(os.path.dirname(stamppath), exist_ok=True)
@@ -337,7 +337,7 @@ def generate_iso():
     kargs = ' '.join(kargs_array)
     print(f'Substituting ISO kernel arguments: {kargs}')
 
-    # Grab all the contents from the installer dir from the configs
+    # Grab all the contents from the live dir from the configs
     for srcdir, _, filenames in os.walk(srcdir_prefix):
         dir_suffix = srcdir.replace(srcdir_prefix, '', 1)
         dstdir = os.path.join(tmpisoroot, dir_suffix)
