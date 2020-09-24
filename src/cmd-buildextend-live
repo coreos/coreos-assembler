@@ -112,13 +112,14 @@ tmpisoroot = os.path.join(tmpdir, 'live')
 tmpisoimages = os.path.join(tmpisoroot, 'images')
 tmpisoimagespxe = os.path.join(tmpisoimages, 'pxeboot')
 tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
+tmpisotools = os.path.join(tmpisoroot, 'tools')
 # contents of initramfs on both PXE and ISO
 tmpinitrd_base = os.path.join(tmpdir, 'initrd')
 # contents of rootfs image
 tmpinitrd_rootfs = os.path.join(tmpdir, 'initrd-rootfs')
 
 for d in (tmpdir, tmpisoroot, tmpisoimages, tmpisoimagespxe, tmpisoisolinux,
-        tmpinitrd_base, tmpinitrd_rootfs):
+        tmpisotools, tmpinitrd_base, tmpinitrd_rootfs):
     os.mkdir(d)
 
 # Number of padding bytes at the end of the ISO initramfs for embedding
@@ -246,6 +247,13 @@ def generate_iso():
                 os.path.join(tmpisoimagespxe, initramfs_img),
                 os.path.join(tmpisoimagespxe, initrd_img)
             )
+
+    # Also copy coreos-installer for ease of user access
+    # Note that this doesn't address the availability of library or binary
+    # dependencies on the user's host system
+    run_verbose(['/usr/bin/ostree', 'checkout', '--force-copy', '--repo', repo,
+                 '--user-mode', '--subpath', '/usr/bin/coreos-installer',
+                 f"{buildmeta_commit}", tmpisotools])
 
     # Generate initramfs stamp file indicating that this is a live
     # initramfs.  Store the build ID in it.
