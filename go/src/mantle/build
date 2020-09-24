@@ -10,28 +10,31 @@ if [[ $# -eq 0 ]]; then
 	set -- cmd/* schema
 fi
 
+export COSA_GO="$(realpath ./../../)"
+export COSA_PATH="$(realpath ${COSA_GO}/..)"
+export GOPATH="$(realpath .):${COSA_GO}:${GOPATH}"
 version=$(git describe --tags --always --dirty)
 version="${version#v}"
 version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 schema_generate() {
-    export GOBIN="${PWD}/bin"
+    export GOBIN="${COSA_GO}/bin"
     mkdir -p ${GOBIN}
     if [ ! -x "${GOBIN}/schematyper" ]; then
         (
             echo "Building schematyper"
-            cd schematyper &&
-                go build -mod vendor -o "${GOBIN}/schematyper" .
+            cd ${COSA_GO}/src/schematyper &&
+                go build -o "${GOBIN}/schematyper" .
         )
     fi
 
     schema_version="v1"
-    schema_json="../src/schema/${schema_version}.json"
+    schema_json="${COSA_PATH}/src/schema/${schema_version}.json"
     echo "Generating COSA Schema ${schema_version}"
 
     out="cosa/cosa_${schema_version}.go"
     "${GOBIN}/schematyper" \
-        "../src/schema/${schema_version}.json" \
+        "../../../src/schema/v1.json" \
         -o "${out}.tmp" \
         --package="cosa" \
         --root-type=Build \
@@ -58,7 +61,6 @@ host_build() {
 	echo "Building $1"
 	go build -i \
 		-ldflags "${ldflags}" \
-		-mod vendor \
 		-o "bin/$1" \
 		"${REPO_PATH}/cmd/$1"
 }
@@ -70,7 +72,7 @@ cross_build() {
 		echo "Building $a/$1"
 		mkdir -p "bin/$a"
 		CGO_ENABLED=0 GOARCH=$a \
-			go build -mod=vendor -ldflags "${ldflags}" \
+			go build -ldflags "${ldflags}" \
 			-o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
 	done
 }
