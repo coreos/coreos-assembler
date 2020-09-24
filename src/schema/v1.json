@@ -183,6 +183,7 @@
    "pkgdiff",
    "parent-pkgdiff",
    "release-payload",
+   "ibmcloud",
 
    "coreos-assembler.basearch",
    "coreos-assembler.build-timestamp",
@@ -346,6 +347,7 @@
        "digitalocean",
        "exoscale",
        "gcp",
+       "ibmcloud",
        "initramfs",
        "iso",
        "kernel",
@@ -487,6 +489,12 @@
          "title":"DigitalOcean",
          "$ref": "#/definitions/artifact"
         },
+       "ibmcloud": {
+         "$id":"#/properties/images/properties/ibmcloud",
+         "type":"object",
+         "title":"IBM Cloud",
+         "$ref": "#/definitions/artifact"
+       },
        "gcp": {
          "$id":"#/properties/images/properties/gcp",
          "type":"object",
