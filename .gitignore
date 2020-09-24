@@ -8,3 +8,4 @@ maipo/
 *.pyo
 *.shellchecked
 .coverage
+go/bin/*
