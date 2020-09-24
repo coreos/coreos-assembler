@@ -81,7 +81,7 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
     }
 
     stage("Build Cloud Images") {
-        def clouds = ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP", "OpenStack", "VMware", "Vultr"]
+        def clouds = ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP", "IBMCloud", "OpenStack", "VMware", "Vultr"]
         parallel clouds.inject([:]) { d, i -> d[i] = {
             cosa_cmd("buildextend-${i.toLowerCase()}")
         }; d }
