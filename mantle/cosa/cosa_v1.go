@@ -73,6 +73,7 @@ type BuildArtifacts struct {
 	DigitalOcean  *Artifact `json:"digitalocean,omitempty"`
 	Exoscale      *Artifact `json:"exoscale,omitempty"`
 	Gcp           *Artifact `json:"gcp,omitempty"`
+	IbmCloud      *Artifact `json:"ibmcloud,omitempty"`
 	Initramfs     *Artifact `json:"initramfs,omitempty"`
 	Iso           *Artifact `json:"iso,omitempty"`
 	Kernel        *Artifact `json:"kernel,omitempty"`
