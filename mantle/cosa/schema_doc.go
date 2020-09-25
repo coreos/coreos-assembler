@@ -175,18 +175,19 @@ var generatedSchemaJSON = `{
      "summary"
  ],
  "optional": [
-   "images",
    "aliyun",
    "amis",
    "azure",
    "azurestack",
    "build-url",
    "digitalocean",
-   "gcp",
    "exoscale",
+   "gcp",
+   "ibmcloud",
+   "images",
    "oscontainer",
-   "pkgdiff",
    "parent-pkgdiff",
+   "pkgdiff",
    "release-payload",
 
    "coreos-assembler.basearch",
@@ -351,6 +352,7 @@ var generatedSchemaJSON = `{
        "digitalocean",
        "exoscale",
        "gcp",
+       "ibmcloud",
        "initramfs",
        "iso",
        "kernel",
@@ -492,6 +494,12 @@ var generatedSchemaJSON = `{
          "title":"DigitalOcean",
          "$ref": "#/definitions/artifact"
         },
+       "ibmcloud": {
+         "$id":"#/properties/images/properties/ibmcloud",
+         "type":"object",
+         "title":"IBM Cloud",
+         "$ref": "#/definitions/artifact"
+       },
        "gcp": {
          "$id":"#/properties/images/properties/gcp",
          "type":"object",
