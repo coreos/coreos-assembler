@@ -9,9 +9,9 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install
+.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install entry
 
-all: mantle
+all: mantle entry
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -60,6 +60,9 @@ mantle:
 mantle-check:
 	cd mantle && $(MAKE) test
 
+entry:
+	cd entrypoint && $(MAKE)
+
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler $$(find src/ -maxdepth 1 -type f)
@@ -74,3 +77,4 @@ install:
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
 	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
+	cd entrypoint && $(MAKE) install DESTDIR=$(DESTDIR)

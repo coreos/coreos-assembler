@@ -4,6 +4,11 @@ set -euo pipefail
 # Currently this just wraps the two binaries we have today
 # under a global entrypoint with subcommands.
 
+# Setting COSA_CI_ENTRY=1 executes COSA via entry.
+if [ "${COSA_CI_ENTRY:-0}" -eq 1 ]; then
+    exec env --unset=COSA_CI_ENTRY /usr/bin/entry "${@}";
+fi
+
 # Set PYTHONUNBUFFERED=1 so that we get unbuffered output. We should
 # be able to do this on the shebang lines but env doesn't support args
 # right now. In Fedora we should be able to use the `env -S` option.
