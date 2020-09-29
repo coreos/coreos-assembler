@@ -8,15 +8,25 @@ PREFIX ?= /usr
 DESTDIR ?=
 ARCH:=$(shell uname -m)
 
+pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
-build: clean
+build: test
 	@mkdir -p bin
-	@find cmd -iname *.go -exec go build  -i -ldflags "${ldflags}" -mod vendor -o bin {} \;
+	find cmd -iname *.go -exec go build  -i -ldflags "${ldflags}" -mod vendor -v -o bin {} \;
+
+.PHONY: fmt
+fmt:
+	gofmt -d -e -l $(shell find . -iname "*.go"  -not -path "./vendor/*")
+
+.PHONY: fmt test
+test:
+	go test -mod=vendor -i ${pkgs}
+	go test -mod=vendor -cover ${pkgs}
 
 .PHONY: clean
 clean:
 	@go clean .
-	@rm -rfv bin
+	@rm -rf bin
 
 .PHONY: install
 install: clean build
