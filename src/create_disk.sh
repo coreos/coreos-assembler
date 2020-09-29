@@ -361,6 +361,7 @@ set prefix=($prefix)
 configfile $prefix/grub2/grub.cfg
 boot
 EOF
+    install_grub_cfg
 }
 
 # copy the grub config and any other files we might need
@@ -382,7 +383,6 @@ x86_64)
         --boot-directory $rootfs/boot \
         $disk
     fi
-    install_grub_cfg
     ;;
 aarch64)
     # Our aarch64 is UEFI only.
