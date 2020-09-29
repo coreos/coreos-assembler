@@ -240,9 +240,10 @@ tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # On each s390x hypervisor, a tty would be automatically detected by the kernel
 # and systemd, there is no need to specify one. However, we keep DEFAULT_TERMINAL
 # as ttysclp0, which is helpful for building/testing with KVM+virtio (cmd-run).
-if [ "$basearch" == "s390x" ]; then
-    tty=
-fi
+# For aarch64, ttyAMA0 is used as the default console
+case "$basearch" in
+    "aarch64"|"s390x") tty= ;;
+esac
 kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
