@@ -63,6 +63,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 	builder.Memory = 1024
+	builder.Firmware = kola.QEMUOptions.Firmware
 	inst, err := builder.Exec()
 	if err != nil {
 		return err
