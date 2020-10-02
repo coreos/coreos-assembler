@@ -15,8 +15,9 @@
 package network
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -30,7 +31,6 @@ import (
 const (
 	defaultPort = 22
 	defaultUser = "core"
-	rsaKeySize  = 2048
 )
 
 // DefaultSSHDir is a process-global path that can be set, and
@@ -57,7 +57,7 @@ type SSHAgent struct {
 // NewSSHAgent constructs a new SSHAgent using dialer to create ssh
 // connections.
 func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
-	key, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
