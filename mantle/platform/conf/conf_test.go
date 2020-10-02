@@ -52,7 +52,7 @@ func TestConfCopyKey(t *testing.T) {
 
 		str := conf.String()
 
-		if !strings.Contains(str, "ssh-rsa ") || !strings.Contains(str, " core@default") {
+		if !strings.Contains(str, "ecdsa-sha2-nistp256 ") || !strings.Contains(str, " core@default") {
 			t.Errorf("ssh public key not found in config %d: %s", i, str)
 			continue
 		}
