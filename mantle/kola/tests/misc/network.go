@@ -126,6 +126,13 @@ func NetworkListeners(c cluster.TestCluster) {
 	expectedListeners := []listener{
 		{"tcp", "22", "sshd"},
 		{"udp", "323", "chronyd"},
+		// DNS via systemd-resolved
+		{"tcp", "53", "systemd-resolve"},
+		{"udp", "53", "systemd-resolve"},
+		// systemd-resolved also listens on 5355 for Link-Local Multicast Name Resolution
+		// https://serverfault.com/a/929642
+		{"tcp", "5355", "systemd-resolve"},
+		{"udp", "5355", "systemd-resolve"},
 	}
 	checkList := func() error {
 		return checkListeners(c, expectedListeners)
