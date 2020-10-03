@@ -38,22 +38,22 @@ else:
     default_cmd = 'run'
     default_output_dir = "tmp/kola"
 
+# XXX: teach to kola to auto-detect based on prefix; see discussions in
+# https://github.com/coreos/coreos-assembler/pull/85
+kolaargs = ['kola']
+
 # automatically add tests from denylist specified in the src config
-denylist_args = []
-denylist_path = "src/config/kola-denylist.yaml"
-if os.path.isfile(denylist_path):
-    with open(denylist_path) as f:
+try:
+    with open("src/config/kola-denylist.yaml") as f:
         denylist = yaml.safe_load(f)
         for obj in (denylist or []):
             # if there are any arches specified, skip tests only for those arches. if not skip unconditionally.
             if basearch in obj.get('arches', [basearch]):
                 print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
                 print(f"⚠️  {obj['tracker']}")
-                denylist_args += ['--denylist-test', obj['pattern']]
-
-# XXX: teach to kola to auto-detect based on prefix; see discussions in
-# https://github.com/coreos/coreos-assembler/pull/85
-kolaargs = ['kola']
+                kolaargs.extend(['--denylist-test', obj['pattern']])
+except FileNotFoundError:
+    pass
 
 r = re.compile("-p(=.+)?|--platform(=.+)?")
 platformargs = list(filter(r.match, unknown_args))
@@ -68,8 +68,6 @@ kolaargs.extend(['--output-dir', outputdir])
 subargs = args.subargs or [default_cmd]
 kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
-
-kolaargs.extend(denylist_args)
 
 if args.basic_qemu_scenarios:
     if arch == "x86_64":
