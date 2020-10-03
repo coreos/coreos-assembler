@@ -41,11 +41,6 @@ else:
 # automatically add tests from denylist specified in the src config
 denylist_args = []
 denylist_path = "src/config/kola-denylist.yaml"
-old_denylist_path = "src/config/kola-blacklist.yaml"
-if os.path.isfile(old_denylist_path):
-    print(f"⛔ Detected an old filename for denylist; please update your filename to `kola-denylist.yaml`")
-    denylist_path = old_denylist_path
-
 if os.path.isfile(denylist_path):
     with open(denylist_path) as f:
         denylist = yaml.safe_load(f)
