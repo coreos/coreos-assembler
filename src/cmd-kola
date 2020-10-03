@@ -46,12 +46,18 @@ kolaargs = ['kola']
 try:
     with open("src/config/kola-denylist.yaml") as f:
         denylist = yaml.safe_load(f)
+        # also load the FCOS stream name if applicable in case we need it below
+        with open("src/config/manifest.yaml") as g:
+            manifest = yaml.safe_load(g)
+            stream = manifest.get('add-commit-metadata', {}).get('fedora-coreos.stream')
         for obj in (denylist or []):
-            # if there are any arches specified, skip tests only for those arches. if not skip unconditionally.
-            if basearch in obj.get('arches', [basearch]):
-                print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
-                print(f"⚠️  {obj['tracker']}")
-                kolaargs.extend(['--denylist-test', obj['pattern']])
+            if basearch not in obj.get('arches', [basearch]):
+                continue
+            if stream is not None and stream not in obj.get('streams', [stream]):
+                continue
+            print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
+            print(f"⚠️  {obj['tracker']}")
+            kolaargs.extend(['--denylist-test', obj['pattern']])
 except FileNotFoundError:
     pass
 
