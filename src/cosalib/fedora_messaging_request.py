@@ -112,7 +112,7 @@ def start_consumer_thread(cond, request_type, request_id, environment):
                          daemon=True)
     t.start()
     registered.wait()
-    print(f"Successfully started consumer thread")
+    print("Successfully started consumer thread")
 
 
 def watch_finished_messages(cond, registered,

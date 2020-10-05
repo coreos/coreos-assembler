@@ -156,4 +156,4 @@ for arch in builds.get_build_arches(build):
     changed.append(compress_one_builddir(builddir))
 
 if not any(changed):
-    print(f"All builds already compressed")
+    print("All builds already compressed")

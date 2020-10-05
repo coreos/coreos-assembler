@@ -243,7 +243,7 @@ class QemuVariantImage(_Build):
                               f" found: '{img_info.get('format')}'"))
 
         if self.mutate_callback:
-            log.info(f"Processing work image callback")
+            log.info("Processing work image callback")
             self.mutate_callback(work_img)
 
         if self.tar_members:
