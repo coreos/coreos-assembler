@@ -87,6 +87,8 @@ case "$speed" in
     *)         exit 1      ;;
 esac
 
+# We don't want double quotes because passing '' is not what we want
+# shellcheck disable=SC2086
 RUST_BACKTRACE=full "${coreinst}" osmet pack /dev/disk/by-id/virtio-osmet \
     --description "${description}" \
     --checksum "${checksum}" \
