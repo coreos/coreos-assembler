@@ -12,7 +12,7 @@ from cosalib.cmdlib import parse_date_string
 def main():
     builds = Builds()
     if len(builds.get_builds()) == 0:
-        print(f"No builds!")
+        print("No builds!")
         return
 
     tags = {}

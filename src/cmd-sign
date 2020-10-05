@@ -135,7 +135,7 @@ def robosign_ostree(args, s3, build, gpgkey):
     validate_response(response)
 
     # download back sig and verify it in a throwaway repo
-    print(f"Verifying OSTree signature")
+    print("Verifying OSTree signature")
     with tempfile.TemporaryDirectory(prefix="cosa-sign", dir="tmp") as d:
         repo = OSTree.Repo.new(Gio.File.new_for_path(d))
         repo.create(OSTree.RepoMode.ARCHIVE)

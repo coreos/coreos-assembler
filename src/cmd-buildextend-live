@@ -70,7 +70,7 @@ squashfs_compression = 'lz4' if args.fast else image_yaml.get('squashfs-compress
 # validating its output.
 osmet_pack_with_cosa_coreinst = image_yaml.get('osmet-pack-with-cosa-coreinst', False)
 
-srcdir_prefix = f"src/config/live/"
+srcdir_prefix = "src/config/live/"
 
 if not os.path.isdir(srcdir_prefix):
     raise Exception(f"missing directory {srcdir_prefix}")
@@ -272,13 +272,13 @@ def generate_iso():
     # Add osmet files
     tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
     tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
-    print(f'Generating osmet file for 512b metal image')
+    print('Generating osmet file for 512b metal image')
     run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                  img_metal, '512', tmp_osmet, img_metal_checksum,
                  'fast' if args.fast else 'normal',
                  '/usr/bin/coreos-installer' if osmet_pack_with_cosa_coreinst
                  else ''])
-    print(f'Generating osmet file for 4k metal image')
+    print('Generating osmet file for 4k metal image')
     run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                  img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
                  'fast' if args.fast else 'normal',
