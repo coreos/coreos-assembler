@@ -1042,7 +1042,7 @@ func (builder *QemuBuilder) setupIso() error {
 		if err != nil {
 			return err
 		}
-		instCmd := exec.Command("coreos-installer", "iso", "embed", isoEmbeddedPath)
+		instCmd := exec.Command("coreos-installer", "iso", "ignition", "embed", isoEmbeddedPath)
 		instCmd.Stdin = configf
 		instCmd.Stderr = os.Stderr
 		if err := instCmd.Run(); err != nil {
