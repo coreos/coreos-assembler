@@ -35,12 +35,12 @@ parser.add_argument("--console", action='store_true',
                     help="Connect to serial console after install")
 args, vinstall_args = parser.parse_known_args()
 
-builds = Builds()
 if args.image:
     qemupath = args.image
     if args.name is None:
         args.name = os.path.basename(qemupath)
 else:
+    builds = Builds()
     if args.build is None:
         args.build = builds.get_latest()
     builddir = builds.get_build_dir(args.build)
