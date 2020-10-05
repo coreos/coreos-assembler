@@ -140,7 +140,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 
 		cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s", string(dir), wwwRoot, image)
 		out := c.MustSSH(m, cmd)
-		id = string(out)[0:12]
+		id = string(out)[0:64]
 
 		podIsRunning := func() error {
 			b, err := c.SSH(m, `curl -f http://localhost 2>/dev/null`)
@@ -179,7 +179,10 @@ func podmanWorkflow(c cluster.TestCluster) {
 
 		found := false
 		for _, container := range psInfo.containers {
-			if container.ID == id {
+			// Sometime between podman 1.x and 2.x podman started putting
+			// full 64 character IDs into the json output. Dynamically detect
+			// the length of the ID and compare that number of characters.
+			if container.ID == id[0:len(container.ID)] {
 				found = true
 				if !strings.Contains(strings.ToLower(container.Status), "exited") {
 					c.Fatalf("Container %s was not stopped. Current status: %s", id, container.Status)
