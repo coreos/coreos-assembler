@@ -66,6 +66,11 @@ print(f"Targeting build: {args.build}")
 with open('src/config/image.yaml') as fh:
     image_yaml = yaml.safe_load(fh)
 squashfs_compression = 'lz4' if args.fast else image_yaml.get('squashfs-compression', 'zstd')
+# This is a short-term hack to work around building f33 FCOS on f32 cosa
+# https://github.com/coreos/coreos-assembler/issues/1761
+# Note that the osmet file has some basic versioning and we also have testiso
+# validating its output.
+osmet_pack_with_cosa_coreinst = image_yaml.get('osmet-pack-with-cosa-coreinst', False)
 
 srcdir_prefix = f"src/config/live/"
 
@@ -272,11 +277,15 @@ def generate_iso():
     print(f'Generating osmet file for 512b metal image')
     run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                  img_metal, '512', tmp_osmet, img_metal_checksum,
-                 'fast' if args.fast else 'normal'])
+                 'fast' if args.fast else 'normal',
+                 '/usr/bin/coreos-installer' if osmet_pack_with_cosa_coreinst
+                 else ''])
     print(f'Generating osmet file for 4k metal image')
     run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                  img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
-                 'fast' if args.fast else 'normal'])
+                 'fast' if args.fast else 'normal',
+                 '/usr/bin/coreos-installer' if osmet_pack_with_cosa_coreinst
+                 else ''])
 
     # Generate root squashfs
     print(f'Compressing squashfs with {squashfs_compression}')
