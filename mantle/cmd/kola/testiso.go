@@ -26,7 +26,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -154,11 +153,6 @@ func newQemuBuilder(isPXE bool) *platform.QemuBuilder {
 }
 
 func runTestIso(cmd *cobra.Command, args []string) error {
-	// SKIP testiso due issues in POWER. Check issue #1757
-	if runtime.GOARCH == "ppc64le" {
-		fmt.Println("The testiso is disabled for ppc64le")
-		return nil
-	}
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --cosa-build")
 	}
