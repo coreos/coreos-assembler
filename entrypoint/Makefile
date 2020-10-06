@@ -12,14 +12,15 @@ pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build: test
 	@mkdir -p bin
-	find cmd -iname *.go -exec go build  -i -ldflags "${ldflags}" -mod vendor -v -o bin {} \;
+	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/entry .
 
 .PHONY: fmt
 fmt:
 	gofmt -d -e -l $(shell find . -iname "*.go"  -not -path "./vendor/*")
+	golint ${pkgs}
 
-.PHONY: fmt test
-test:
+.PHONY: test
+test: fmt
 	go test -mod=vendor -i ${pkgs}
 	go test -mod=vendor -cover ${pkgs}
 
@@ -31,3 +32,25 @@ clean:
 .PHONY: install
 install: clean build
 	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/entry
+
+my_uid = $(shell id -u)
+.PHONY: devtest
+devtest: build
+	mkdir -p srv
+	podman run --rm -i --tty \
+		-a=stdin -a=stdout -a=stderr \
+		--uidmap=$(my_uid):0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536 \
+		--security-opt label=disable --privileged=true \
+		--device /dev/fuse \
+		--device /dev/kvm \
+		--tmpfs /tmp \
+		--volume=/var/tmp:/var/tmp \
+		--volume=$(shell realpath .)/srv:/srv \
+		--env="BUILD=`jq -cM "." ocp/build.json`" \
+		--env="SOURCE_REPOSITORY=http://github.com/coreos/fedora-coreos-config" \
+		--env="SOURCE_REF=testing-devel" \
+		--env='COSA_CMDS=cosa fetch; cosa build;' \
+		--volume=$(shell realpath .)/bin:/run/bin \
+		--entrypoint='["/usr/bin/dumb-init", "/run/bin/entry"]' \
+		quay.io/coreos-assembler/coreos-assembler:latest \
+		builder
