@@ -78,7 +78,12 @@ deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1
 description=$(. "${deploydir}/etc/os-release" && echo "${PRETTY_NAME}")
 
 if [ -z "${coreinst}" ]; then
-    coreinst=${deploydir}/usr/bin/coreos-installer
+    # if we weren't given a custom coreos-installer, then we want to use the one
+    # from the target system itself; chroot into it to avoid linking issues
+    for mnt in dev proc sys run var tmp; do
+        mount --rbind /$mnt "${deploydir}/$mnt"
+    done
+    coreinst="chroot ${deploydir} coreos-installer"
 fi
 
 case "$speed" in
@@ -87,10 +92,12 @@ case "$speed" in
     *)         exit 1      ;;
 esac
 
-# We don't want double quotes because passing '' is not what we want
+# We don't want double quotes (for both `coreinst` and `fast`, which may be '')
 # shellcheck disable=SC2086
-RUST_BACKTRACE=full "${coreinst}" osmet pack /dev/disk/by-id/virtio-osmet \
+RUST_BACKTRACE=full ${coreinst} osmet pack /dev/disk/by-id/virtio-osmet \
     --description "${description}" \
     --checksum "${checksum}" \
     ${real_rootdev:+--real-rootdev ${real_rootdev}} \
-    --output "${osmet_dest}" $fast
+    --output /tmp/osmet.bin $fast
+
+mv /tmp/osmet.bin "${osmet_dest}"
