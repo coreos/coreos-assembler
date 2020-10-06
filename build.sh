@@ -51,6 +51,11 @@ install_rpms() {
     # https://github.com/coreos/coreos-assembler/issues/1496
     yum -y downgrade cryptsetup-2.2.1-1.fc31
 
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1884854
+    if [ "$arch" == "ppc64le" ]; then
+        yum -y downgrade grub2-tools-2.02-100.fc31
+    fi
+
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it

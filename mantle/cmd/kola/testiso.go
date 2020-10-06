@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
@@ -77,11 +76,6 @@ func init() {
 }
 
 func runTestIso(cmd *cobra.Command, args []string) error {
-	// SKIP testio due issues in POWER. Check issue #1757
-	if runtime.GOARCH == "ppc64le" {
-		fmt.Println("The testiso is disabled for ppc64le")
-		return nil
-	}
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --cosa-build")
 	}
