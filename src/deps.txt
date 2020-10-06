@@ -83,3 +83,6 @@ fcct
 
 # Support for meta.json file locking
 python3-flufl-lock
+
+# entrypoint uses bsdtar for automatic compression detection
+bsdtar
