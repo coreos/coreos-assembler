@@ -820,14 +820,7 @@ func RegisterExternalTestsWithPrefix(dir, prefix string) error {
 // RegisterExternalTests iterates over a directory, and finds subdirectories
 // that have exactly one executable binary.
 func RegisterExternalTests(dir string) error {
-	// eval symlinks to turn e.g. src/config into fedora-coreos-config
-	// for the test basename.
-	realdir, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		return err
-	}
-	basename := fmt.Sprintf("ext.%s", filepath.Base(realdir))
-
+	basename := fmt.Sprintf("ext.%s", filepath.Base(dir))
 	return RegisterExternalTestsWithPrefix(dir, basename)
 }
 
