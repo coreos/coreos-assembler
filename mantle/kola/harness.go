@@ -665,6 +665,12 @@ ExecStart=%s
 `, KoletExtTestUnit, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
 	config.AddSystemdUnit(KoletExtTestUnit, unit, conf.NoState)
 
+	// Architectures using 64k pages use slightly more memory, ask for more than requested
+	// to make sure that we don't run out of it. Currently only ppc64le uses 64k pages.
+	if system.RpmArch() == "ppc64le" && targetMeta.MinMemory < 8192 {
+		targetMeta.MinMemory = 8192
+	}
+
 	t := &register.Test{
 		Name:          testname,
 		ClusterSize:   1, // Hardcoded for now
