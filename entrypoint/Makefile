@@ -30,7 +30,7 @@ clean:
 	@rm -rf bin
 
 .PHONY: install
-install: clean build
+install: bin/entry
 	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/entry
 
 my_uid = $(shell id -u)
