@@ -341,7 +341,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, expected []string) error {
+func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string) error {
 	errchan := make(chan error)
 	go func() {
 		time.Sleep(installTimeout)
@@ -392,16 +392,17 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
 				return
 			}
-			// switch the boot order here, we are well into the installation process - only for aarch64 and s390x
-			if line == liveOKSignal {
-				if err := inst.SwitchBootOrder(); err != nil {
-					errchan <- errors.Wrapf(err, "switching boot order failed")
-					return
-				}
-			}
 		}
 		// OK!
 		errchan <- nil
+	}()
+	go func() {
+		//check for error when switching boot order
+		if booterrchan != nil {
+			if err := <-booterrchan; err != nil {
+				errchan <- err
+			}
+		}
 	}()
 	return <-errchan
 }
@@ -457,7 +458,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
@@ -498,7 +499,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveLogin(ctx context.Context, outdir string) error {
@@ -526,5 +527,5 @@ func testLiveLogin(ctx context.Context, outdir string) error {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach, outdir, completionChannel, []string{"coreos-liveiso-success"})
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"coreos-liveiso-success"})
 }
