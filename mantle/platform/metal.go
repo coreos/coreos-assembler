@@ -15,6 +15,7 @@
 package platform
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -37,6 +38,8 @@ const (
 	defaultQemuHostIPv4 = "10.0.2.2"
 
 	targetDevice = "/dev/vda"
+
+	bootStartedSignal = "boot-started-OK"
 
 	// rebootUnit is a copy of the system one without the ConditionPathExists
 	rebootUnit = `[Unit]
@@ -67,6 +70,23 @@ var (
 		"aarch64": "ttyAMA0",
 		"s390x":   "ttysclp0",
 	}
+
+	bootStartedUnit = fmt.Sprintf(`[Unit]
+	Requires=dev-virtio\\x2dports-bootstarted.device
+	OnFailure=emergency.target
+	OnFailureJobMode=isolate
+	[Service]
+	Type=oneshot
+	RemainAfterExit=yes
+	ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/bootstarted'
+	[Install]
+	# In the embedded ISO scenario we're using the default multi-user.target
+	# because we write out and enable our own coreos-installer service units
+	RequiredBy=multi-user.target
+	# In the PXE case we are passing kargs and the coreos-installer-generator
+	# will switch us to target coreos-installer.target
+	RequiredBy=coreos-installer.target
+	`, bootStartedSignal)
 )
 
 // NewMetalQemuBuilderDefault returns a QEMU builder instance with some
@@ -94,8 +114,9 @@ type Install struct {
 }
 
 type InstalledMachine struct {
-	Tempdir  string
-	QemuInst *QemuInstance
+	Tempdir                 string
+	QemuInst                *QemuInstance
+	BootStartedErrorChannel chan error
 }
 
 func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offline bool) (*InstalledMachine, error) {
@@ -216,6 +237,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	}
 	// This code will ensure to add an SSH key to `pxe-live.ign` config.
 	inst.liveIgnition.AddAutoLogin()
+	inst.liveIgnition.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
 	if err := inst.liveIgnition.WriteFile(filepath.Join(tftpdir, "pxe-live.ign")); err != nil {
 		return nil, err
 	}
@@ -408,6 +430,32 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 	return nil
 }
 
+func switchBootOrderSignal(qinst *QemuInstance, bootstartedchan *os.File, booterrchan *chan error) {
+	*booterrchan = make(chan error)
+	go func() {
+		r := bufio.NewReader(bootstartedchan)
+		l, err := r.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				*booterrchan <- fmt.Errorf("Got EOF from boot started channel, %s expected", bootStartedSignal)
+			} else {
+				*booterrchan <- errors.Wrapf(err, "reading from boot started channel")
+			}
+			return
+		}
+		line := strings.TrimSpace(l)
+		// switch the boot order here, we are well into the installation process - only for aarch64 and s390x
+		if line == bootStartedSignal {
+			if err := qinst.SwitchBootOrder(); err != nil {
+				*booterrchan <- errors.Wrapf(err, "switching boot order failed")
+				return
+			}
+		}
+		// OK!
+		*booterrchan <- nil
+	}()
+}
+
 func cat(outfile string, infiles ...string) error {
 	out, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -457,6 +505,11 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	}
 	defer t.destroy()
 
+	bootStartedChan, err := inst.Builder.VirtioChannelRead("bootstarted")
+	if err != nil {
+		return nil, err
+	}
+
 	kargs := renderBaseKargs()
 	kargs = append(kargs, inst.kargs...)
 	kargs = append(kargs, fmt.Sprintf("ignition.config.url=%s/pxe-live.ign", t.baseurl))
@@ -471,10 +524,12 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	}
 	tempdir := t.tempdir
 	t.tempdir = "" // Transfer ownership
-	return &InstalledMachine{
+	instmachine := InstalledMachine{
 		QemuInst: qinst,
 		Tempdir:  tempdir,
-	}, nil
+	}
+	switchBootOrderSignal(qinst, bootStartedChan, &instmachine.BootStartedErrorChannel)
+	return &instmachine, nil
 }
 
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, offline bool) (*InstalledMachine, error) {
@@ -582,10 +637,16 @@ WantedBy=multi-user.target
 
 	inst.liveIgnition.AddSystemdUnit("coreos-installer.service", installerUnit, conf.Enable)
 	inst.liveIgnition.AddSystemdUnit("coreos-installer-reboot.service", rebootUnitP, conf.Enable)
+	inst.liveIgnition.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
 	inst.liveIgnition.AddFile(pointerIgnitionPath, "/", serializedTargetConfig, mode)
 	inst.liveIgnition.AddAutoLogin()
 
 	qemubuilder := inst.Builder
+	bootStartedChan, err := qemubuilder.VirtioChannelRead("bootstarted")
+	if err != nil {
+		return nil, err
+	}
+
 	qemubuilder.SetConfig(&inst.liveIgnition, inst.IgnitionSpec2)
 	qemubuilder.AddIso(srcisopath, "bootindex=2")
 
@@ -598,8 +659,10 @@ WantedBy=multi-user.target
 		return nil, err
 	}
 	cleanupTempdir = false // Transfer ownership
-	return &InstalledMachine{
+	instmachine := InstalledMachine{
 		QemuInst: qinst,
 		Tempdir:  tempdir,
-	}, nil
+	}
+	switchBootOrderSignal(qinst, bootStartedChan, &instmachine.BootStartedErrorChannel)
+	return &instmachine, nil
 }
