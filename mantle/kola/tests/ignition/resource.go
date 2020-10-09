@@ -123,7 +123,7 @@ func init() {
 			      "filesystem": "root",
 			      "path": "/var/resource/http",
 			      "contents": {
-				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
+				  "source": "http://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
 			      },
 			      "mode": 420
 			  },
@@ -131,7 +131,7 @@ func init() {
 			      "filesystem": "root",
 			      "path": "/var/resource/https",
 			      "contents": {
-				  "source": "https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
+				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
 			      },
 			      "mode": 420
 			  },
@@ -139,7 +139,7 @@ func init() {
 			      "filesystem": "root",
 			      "path": "/var/resource/s3-anon",
 			      "contents": {
-				  "source": "s3://kola-fixtures/resources/anonymous"
+				  "source": "s3://rh-kola-fixtures/resources/anonymous"
 			      },
 			      "mode": 420
 			  }
@@ -155,21 +155,21 @@ func init() {
 			  {
 			      "path": "/var/resource/http",
 			      "contents": {
-				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
+				  "source": "http://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
 			      },
 			      "mode": 420
 			  },
 			  {
 			      "path": "/var/resource/https",
 			      "contents": {
-				  "source": "https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous"
+				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
 			      },
 			      "mode": 420
 			  },
 			  {
 			      "path": "/var/resource/s3-anon",
 			      "contents": {
-				  "source": "s3://kola-fixtures/resources/anonymous"
+				  "source": "s3://rh-kola-fixtures/resources/anonymous"
 			      },
 			      "mode": 420
 			  }
@@ -187,7 +187,7 @@ func init() {
 		      "version": "2.1.0",
 		      "config": {
 		          "append": [{
-		              "source": "s3://kola-fixtures/resources/authenticated-var.ign"
+		              "source": "s3://rh-kola-fixtures/resources/authenticated-var.ign"
 		          }]
 		      }
 		  },
@@ -197,7 +197,7 @@ func init() {
 			      "filesystem": "root",
 			      "path": "/var/resource/s3-auth",
 			      "contents": {
-				  "source": "s3://kola-fixtures/resources/authenticated"
+				  "source": "s3://rh-kola-fixtures/resources/authenticated"
 			      },
 			      "mode": 420
 			  }
@@ -209,7 +209,7 @@ func init() {
 		      "version": "3.0.0",
 		      "config": {
 		          "merge": [{
-		              "source": "s3://kola-fixtures/resources/authenticated-var-v3.ign"
+		              "source": "s3://rh-kola-fixtures/resources/authenticated-var-v3.ign"
 		          }]
 		      }
 		  },
@@ -218,7 +218,7 @@ func init() {
 			  {
 			      "path": "/var/resource/s3-auth",
 			      "contents": {
-				  "source": "s3://kola-fixtures/resources/authenticated"
+				  "source": "s3://rh-kola-fixtures/resources/authenticated"
 			      },
 			      "mode": 420
 			  }
@@ -246,7 +246,7 @@ func init() {
 			      "filesystem": "root",
 			      "path": "/var/resource/original",
 			      "contents": {
-				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=null"
+				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned?versionId=Ym98GTx0npVaJznSAd0I1eUjFoZMP8Zo"
 			      },
 			      "mode": 420
 			  },
@@ -254,7 +254,7 @@ func init() {
 			      "filesystem": "root",
 			      "path": "/var/resource/latest",
 			      "contents": {
-				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=RDWqxfnlcJOSDf1.5jy6ZP.oK9Bt7_Id"
+				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned"
 			      },
 			      "mode": 420
 			  }
@@ -270,14 +270,14 @@ func init() {
 			  {
 			      "path": "/var/resource/original",
 			      "contents": {
-				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=null"
+				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned?versionId=Ym98GTx0npVaJznSAd0I1eUjFoZMP8Zo"
 			      },
 			      "mode": 420
 			  },
 			  {
 			      "path": "/var/resource/latest",
 			      "contents": {
-				  "source": "http://s3-us-west-2.amazonaws.com/kola-fixtures/resources/versioned?versionId=RDWqxfnlcJOSDf1.5jy6ZP.oK9Bt7_Id"
+				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned"
 			      },
 			      "mode": 420
 			  }
@@ -345,14 +345,14 @@ func resourceS3(c cluster.TestCluster) {
 
 	// verify that the objects are inaccessible anonymously
 	for _, objectName := range []string{"authenticated", "authenticated.ign"} {
-		_, _, err := m.SSH("curl -sf https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/" + objectName)
+		_, _, err := m.SSH("curl -sf https://rh-kola-fixtures.s3.amazonaws.com/resources/" + objectName)
 		if err == nil {
 			c.Fatal("anonymously fetching authenticated resource should have failed, but did not")
 		}
 	}
 
 	// ...but that the anonymous object is accessible
-	c.MustSSH(m, "curl -sf https://s3-us-west-2.amazonaws.com/kola-fixtures/resources/anonymous")
+	c.MustSSH(m, "curl -sf https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous")
 }
 
 func resourceS3Versioned(c cluster.TestCluster) {
