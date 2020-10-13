@@ -256,7 +256,7 @@ commit_overlay() {
     echo -n "Committing ${name}: ${path} ... "
     ostree commit --repo="${tmprepo}" --tree=dir="${respath}" -b "${name}" \
         --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
-        --timestamp "${git_timestamp}"
+        --mode-ro-executables --timestamp "${git_timestamp}"
 }
 
 # Implement support for automatic local overrides:
