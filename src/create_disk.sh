@@ -37,7 +37,6 @@ Options:
     --ostree-repo: location of the ostree repo
     --rootfs-size: Create the root filesystem with specified size
     --boot-verity: Provide this to enable ext4 fs-verity for /boot
-    --rootfs: xfs|ext4verity|luks
     --no-x86-bios-partition: don't create a BIOS partition on x86_64
 
 You probably don't want to run this script by hand. This script is
@@ -45,10 +44,10 @@ run as part of 'coreos-assembler build'.
 EOC
 }
 
+config=
 disk=
 rootfs_size="0"
 boot_verity=0
-rootfs_type="xfs"
 x86_bios_partition=1
 extrakargs=""
 
@@ -56,6 +55,7 @@ while [ $# -gt 0 ];
 do
     flag="${1}"; shift;
     case "${flag}" in
+        --config)                config="${1}"; shift;;
         --disk)                  disk="${1}"; shift;;
         --buildid)               buildid="${1}"; shift;;
         --imgid)                 imgid="${1}"; shift;;
@@ -68,7 +68,6 @@ do
         --ostree-repo)           ostree="${1}"; shift;;
         --rootfs-size)           rootfs_size="${1}"; shift;;
         --boot-verity)           boot_verity=1;;
-        --rootfs)                rootfs_type="${1}" shift;;
         --no-x86-bios-partition) x86_bios_partition=0;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
@@ -84,6 +83,7 @@ arch="$(uname -m)"
 
 disk=$(realpath /dev/disk/by-id/virtio-target)
 
+config="${config:?--config must be defined}"
 buildid="${buildid:?--buildid must be defined}"
 imgid="${imgid:?--imgid must be defined}"
 ostree="${ostree:?--ostree-repo must be defined}"
@@ -92,6 +92,17 @@ remote_name="${remote_name:?--ostree-remote must be defined}"
 grub_script="${grub_script:?--grub-script must be defined}"
 os_name="${os_name:?--os_name must be defined}"
 
+getconfig() {
+    k=$1
+    jq -re .$k < ${config}
+}
+
+# First parse the old luks_rootfs flag (a custom "stringified bool")
+if test "$(getconfig luks_rootfs)" = "yes"; then
+    rootfs_type=luks
+else
+    rootfs_type=$(getconfig rootfs)
+fi
 case "${rootfs_type}" in
     xfs|ext4verity|luks|btrfs) ;;
     *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;

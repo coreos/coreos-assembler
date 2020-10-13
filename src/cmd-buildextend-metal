@@ -151,15 +151,19 @@ if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
     ignition_platform_id=metal
 fi
 
+yaml2json() {
+    python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout)' < "$1" > "$2"
+}
+
+# Convert the image.yaml to JSON so that it can be more easily parsed
+# by the shell script in create_disk.sh.
+yaml2json "$configdir/image.yaml" image-config.json
+yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
+cat image-default.json image-config.json | jq -s add > image.json
+
 # bootfs
 bootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("bootfs", "ext4"))' < "$configdir/image.yaml")"
-
-# First parse the old luks_rootfs flag (a custom "stringified bool")
-rootfs_type="$(python3 -c 'import sys, yaml; lf=yaml.safe_load(sys.stdin).get("luks_rootfs", ""); print("luks" if lf.lower() in ("yes", "true") else "")' < "$configdir/image.yaml")"
-if [ -z "${rootfs_type}" ]; then
-    # Now the newer rootfs flag
-    rootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("rootfs", "xfs"))' < "$configdir/image.yaml")"
-fi
+rootfs_type=$(jq -re .rootfs < image.json)
 
 # fs-verity requires block size = page size. We need to take that into account
 # in the disk size estimation due to higher fragmentation on larger blocks.
@@ -253,6 +257,7 @@ target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tm
 
 runvm "${target_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
+            --config "$(pwd)"/image.json \
             --buildid "${build}" \
             --imgid "${img}" \
             --grub-script /usr/lib/coreos-assembler/grub.cfg \
@@ -262,7 +267,6 @@ runvm "${target_drive[@]}" -- \
             --ostree-remote "${ostree_remote}" \
             --ostree-repo "${ostree_repo}" \
             --rootfs-size "${rootfs_size}" \
-            --rootfs "${rootfs_type}" \
             "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
 
