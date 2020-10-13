@@ -28,7 +28,7 @@ EOF
 
 UPDATE_LOCKFILE=
 OUTPUT_LOCKFILE=
-WITH_COSA_OVERRIDES=
+IGNORE_COSA_OVERRIDES_ARG=--ignore-cosa-overrides
 DRY_RUN=
 STRICT=
 rc=0
@@ -53,7 +53,7 @@ while true; do
             OUTPUT_LOCKFILE=$1
             ;;
         --with-cosa-overrides)
-            WITH_COSA_OVERRIDES=1
+            IGNORE_COSA_OVERRIDES_ARG=
             ;;
         --dry-run)
             DRY_RUN=1
@@ -107,11 +107,9 @@ if [ -n "${STRICT}" ]; then
 fi
 
 # By default, we ignore cosa overrides since they're temporary. With
-# WITH_COSA_OVERRIDES, we don't ignore them (and thus don't need to fetch any
+# --with-cosa-overrides, we don't ignore them (and thus don't need to fetch any
 # overridden packages).
-if [ -n "${WITH_COSA_OVERRIDES}" ]; then
-    prepare_compose_overlays
-fi
+prepare_compose_overlays ${IGNORE_COSA_OVERRIDES_ARG}
 
 # shellcheck disable=SC2086
 runcompose --download-only ${args}
