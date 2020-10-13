@@ -256,6 +256,7 @@ extra_compose_args+=("$parent_arg")
 composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
 # Put this under tmprepo so it gets automatically chown'ed if needed
 lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
+# shellcheck disable=SC2119
 prepare_compose_overlays
 # See https://github.com/coreos/coreos-assembler/pull/1379 - we want the local
 # dev case to explicitly fetch updates when they want them, plus CI pipelines

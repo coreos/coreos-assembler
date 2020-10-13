@@ -266,6 +266,15 @@ commit_overlay() {
 # as overrides/{rootfs} to OSTree commits, and also handles
 # overrides/rpm.
 prepare_compose_overlays() {
+    local with_cosa_overrides=1
+    while [ $# -gt 0 ]; do
+        flag="${1}"; shift;
+        case "${flag}" in
+            --ignore-cosa-overrides) with_cosa_overrides=;;
+             *) echo "${flag} is not understood."; exit 1;;
+         esac;
+    done
+
     local overridesdir=${workdir}/overrides
     local tmp_overridesdir=${TMPDIR}/override
     local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
@@ -319,7 +328,7 @@ EOF
     fi
 
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
-    if [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
+    if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
         # synthesize an override lockfile to force rpm-ostree to pick up our
         # override RPMS -- we try to be nice here and allow multiple versions of
