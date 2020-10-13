@@ -1,0 +1,2 @@
+# This file contains defaults for image.yaml that is used by create_disk.sh
+rootfs: "xfs"
