@@ -39,6 +39,7 @@ system and run as a systemd unit, along with an optional Ignition config named
 Concretely then, an external test directory can have the following content:
 
 - `config.ign` (optional): Ignition config provided
+- `config.fcc` (optional): See https://github.com/coreos/fcct
 - `kola.json` (optional): JSON file described below
 - `data` (optional): Directory (or symlink to dir): Will be uploaded and
   available as `${KOLA_EXT_DATA}`
