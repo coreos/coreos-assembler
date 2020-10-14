@@ -108,19 +108,17 @@ fi
 # by prepare_build since the config might've changed since then
 name=$(meta_key name)
 ref=$(meta_key ref)
-ref_is_temp=""
 if [ "${ref}" = "None" ]; then
-    ref="tmpref-${name}"
-    ref_is_temp=1
+    ref=""
 fi
 commit=$(meta_key ostree-commit)
 
 ostree_repo=${tmprepo}
-rev_parsed=$(ostree rev-parse --repo="${ostree_repo}" "${ref}" 2>/dev/null || :)
+rev_parsed=$(ostree rev-parse --repo="${ostree_repo}" "${build}" 2>/dev/null || :)
 if [ "${rev_parsed}" != "${commit}" ]; then
     # Probably an older commit or tmp/ was wiped. Let's extract it to a separate
     # temporary repo (not to be confused with ${tmprepo}...) so we can feed it
-    # as a ref (if not temp) to Anaconda.
+    # as a ref (if not temp) to create_disk.
     echo "Cache for build ${build} is gone"
     echo "Importing commit ${commit} into temporary OSTree repo"
     mkdir -p tmp/repo
@@ -130,11 +128,6 @@ if [ "${rev_parsed}" != "${commit}" ]; then
     fi
     tar -C tmp/repo -xf "${builddir}/${commit_tar_name}"
     ostree_repo=$PWD/tmp/repo
-    if [ -n "${ref_is_temp}" ]; then
-        # this gets promptly "dereferenced" back in run_virtinstall, but it
-        # keeps the code below simple so it can work in both temp/not temp cases
-        ostree refs --repo="${ostree_repo}" "${commit}" --create "${ref}"
-    fi # otherwise, the repo already has a ref, so no need to create
 fi
 
 image_format=raw
@@ -175,7 +168,7 @@ fi
 echo "Estimating disk size..."
 # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
 # and doing so has apparently negative performance implications.
-/usr/lib/coreos-assembler/estimate-commit-disk-size ${BLKSIZE:+--blksize ${BLKSIZE}} --repo "$ostree_repo" "$ref" --add-percent 35 > "$PWD/tmp/ostree-size.json"
+/usr/lib/coreos-assembler/estimate-commit-disk-size ${BLKSIZE:+--blksize ${BLKSIZE}} --repo "$ostree_repo" "$commit" --add-percent 35 > "$PWD/tmp/ostree-size.json"
 rootfs_size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # extra size is the non-ostree partitions, see create_disk.sh
 image_size="$(( rootfs_size + 513 ))M"
@@ -241,11 +234,6 @@ kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
 
 qemu-img create -f ${image_format} "${path}.tmp" "${image_size}"
-# We support deploying a commit directly instead of a ref
-ref_arg=${ref}
-if [ -n "${ref_is_temp}" ]; then
-    ref_arg=${commit}
-fi
 
 extra_target_device_opts=""
 # we need 4096 block size for ECKD DASD and (obviously) metal4k
@@ -263,7 +251,8 @@ runvm "${target_drive[@]}" -- \
             --grub-script /usr/lib/coreos-assembler/grub.cfg \
             --kargs "\"${kargs}\"" \
             --osname "${name}" \
-            --ostree-ref "${ref_arg}" \
+            --ostree-commit "${commit}" \
+            --ostree-ref "${ref:-NONE}" \
             --ostree-remote "${ostree_remote}" \
             --ostree-repo "${ostree_repo}" \
             --rootfs-size "${rootfs_size}" \
