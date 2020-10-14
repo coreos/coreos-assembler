@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""
+Creates a KeyLime Hashlist for an image.
+
+See: https://keylime.dev/
+"""
+
+import argparse
+import datetime
+import glob
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+from cosalib import meta
+from cosalib.cmdlib import (
+    sha256sum_file,
+    import_ostree_commit)
+
+
+class HashListV1(dict):
+    """
+    Abstraction of a HashList in the version 1 series
+
+    See: https://github.com/keylime/enhancements/blob/master/16_remote_allowlist_retrieval.md
+    """
+
+    def __init__(self, metadata, release=None, generator=None, timestamp=None):
+        """
+        Initialize HashListV1 instance.
+
+        :param metadata: Loaded metadata instance
+        :type metadata: GenericBuildMeta
+        :param release: Optional release override
+        :type release: str
+        :param generator: Optional generator override
+        :type generator: str
+        :param timestamp: Optional timestamp override
+        :type timestamp: str
+        :raises: KeyError
+        """
+        super()
+        self._metadata = metadata
+        if release is None:
+            release = self._metadata['buildid']
+        self['release'] = release
+
+        self['meta'] = {}
+        if generator is None:
+            generator = 'coreos-assembler-' + self._metadata['coreos-assembler.container-image-git']['commit']  # noqa
+        self['meta']['generator'] = generator
+        if timestamp is None:
+            timestamp = datetime.datetime.utcnow().isoformat()
+        self['meta']['timestamp'] = timestamp
+        self['meta']['image'] = os.path.sep.join([
+            'builds', self._metadata['ostree-version'],
+            self._metadata['coreos-assembler.basearch'],
+            self._metadata['images']['qemu']['path']])
+
+        self['hashes'] = {}
+
+    def populate_hash_list(self):
+        """
+        Populates the hashlist instance with ostree and initramfs hashes.
+
+        :param checksum: The ostree checksum from the metadata
+        :type checksum: str
+        :param commit: The ostree commit
+        :type commit: str
+        :param commit_tar: Path to the ostree tar from the metadata
+        :type commit_tar: str
+        :param hashlist: Initialized hash list instance
+        :type hashlist: HashListV1
+        :returns: Nothing
+        :rtype: None
+        :raises: IndexError
+        """
+        checkout = 'tmp/repo/tmp/keylime-checkout'
+        commit_tar = os.path.join(
+            self._metadata.build_dir,
+            self._metadata['images']['ostree']['path'])
+
+        import_ostree_commit(
+            'tmp/repo',
+            self._metadata['ostree-commit'],
+            commit_tar,
+            force=True)
+        subprocess.check_call([
+            'ostree', 'checkout',
+            '--repo=tmp/repo', '-U',
+            self._metadata['ostree-commit'], checkout])
+        self.hash_from_path(checkout)
+
+        # Extract initramfs contents
+        initramfs_path = glob.glob(
+            os.path.join(
+                checkout, 'usr/lib/modules/*/initramfs.img'))[0]
+        initramfs_path = os.path.realpath(initramfs_path)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            skipcpio = subprocess.Popen(
+                ['/usr/lib/dracut/skipcpio', initramfs_path],
+                stdout=subprocess.PIPE)
+            gunzip = subprocess.Popen(
+                ['gunzip', '-c'],
+                stdin=skipcpio.stdout,
+                stdout=subprocess.PIPE)
+            cpio = subprocess.Popen(
+                ['cpio', '-idmv'],
+                stdin=gunzip.stdout,
+                cwd=tmpdir)
+            cpio.wait(timeout=300)  # timeout of 5 minutes
+            self.hash_from_path(tmpdir)
+
+    def hash_from_path(self, toppath):
+        """
+        Create hashes from files starting at a specific path.
+
+        .. note:: If a file can not be read it is skipped
+
+        :param toppath: The starting path to go through
+        :type toppath: str
+        :returns: Nothing
+        :rtype: None
+        """
+        for dirpath, _, filenames in os.walk(toppath):
+            for fname in filenames:
+                filepath = os.path.join(dirpath, fname)
+                # Skip symlinks
+                if os.path.islink(filepath):
+                    print(f'Skipping symlink {filepath}')
+                    continue
+                try:
+                    filehash = sha256sum_file(filepath)
+                    relpath = filepath.replace(toppath, '')
+                    self['hashes'][relpath] = [{'sha256': filehash}]
+                except (PermissionError, FileNotFoundError) as err:
+                    print(f'Unable to hash {filepath}: {err}')
+
+    def write(self, output):
+        """
+        Renders the HashList structure to disk.
+
+        :param output: Where to write the file
+        :type output: str
+        :raises: FileNotFoundError, IsADirectoryError, PermissionError
+        """
+        with open(output, 'w') as out:
+            out.write(json.dumps(self, indent=4))
+
+
+def main():
+    """
+    Main entry point.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    # parser.add_argument(
+    #     '-s', '--sign',
+    #     help='If set to a key a signature will be created as well')
+    parser.add_argument(
+        '-g', '--generator', help='Override the generator name')
+    parser.add_argument(
+        '-t', '--timestamp', help='Override the timestamp')
+    parser.add_argument(
+        '-r', '--release', help='Override the release')
+    parser.add_argument(
+        '-o', '--output',
+        help='Where the output should be written', default='hashlist.json')
+
+    # Parse arguments and ignore anything we didn't explicitly request
+    args = parser.parse_args()
+
+    # Load metadata
+    metadata = meta.GenericBuildMeta(schema=None)
+
+    # Step 0: Initialize the HashList instance
+    hashlist = HashListV1(
+        metadata, args.release, args.generator, args.timestamp)
+
+    # Step 1: Populate the hashlist
+    hashlist.populate_hash_list()
+
+    # Step 2: Write the hashlist to disk
+    hashlist.write(args.output)
+    print(f'Hash list created at {args.output}')
+
+
+if __name__ == '__main__':
+    main()
