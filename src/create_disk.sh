@@ -63,7 +63,8 @@ do
         --help)                  usage; exit;;
         --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
         --osname)                os_name="${1}"; shift;;
-        --ostree-ref)            ref="${1}"; shift;;
+        --ostree-commit)         commit="${1}"; shift;;
+        --ostree-ref)            ref="${1}"; if test "${ref}" = NONE; then ref=""; fi; shift;;
         --ostree-remote)         remote_name="${1}"; shift;;
         --ostree-repo)           ostree="${1}"; shift;;
         --rootfs-size)           rootfs_size="${1}"; shift;;
@@ -87,7 +88,7 @@ config="${config:?--config must be defined}"
 buildid="${buildid:?--buildid must be defined}"
 imgid="${imgid:?--imgid must be defined}"
 ostree="${ostree:?--ostree-repo must be defined}"
-ref="${ref:?--ostree-ref must be defined}"
+commit="${commit:?--ostree-commit must be defined}"
 remote_name="${remote_name:?--ostree-remote must be defined}"
 grub_script="${grub_script:?--grub-script must be defined}"
 os_name="${os_name:?--os_name must be defined}"
@@ -264,18 +265,18 @@ fi
 
 # Now that we have the basic disk layout, initialize the basic
 # OSTree layout, load in the ostree commit and deploy it.
-ostree_commit=$(ostree --repo="${ostree}" rev-parse "${ref}")
 ostree admin init-fs --modern $rootfs
 if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
-remote_arg=
 deploy_ref="${ref}"
 if [ "${remote_name}" != NONE ]; then
-    remote_arg="--remote=${remote_name}"
     deploy_ref="${remote_name}:${ref}"
+    time ostree pull-local --repo $rootfs/ostree/repo --remote="${remote_name}" "$ostree" "$ref"
+else
+    deploy_ref=$commit
+    time ostree pull-local --repo $rootfs/ostree/repo "$ostree" "$commit"
 fi
-time ostree pull-local "$ostree" "$ref" --repo $rootfs/ostree/repo $remote_arg
 ostree admin os-init "$os_name" --sysroot $rootfs
 # Note that $ignition_firstboot is interpreted by grub at boot time,
 # *not* the shell here.  Hence the backslash escape.
@@ -287,7 +288,7 @@ do
 done
 ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
 
-deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${ostree_commit}.0"
+deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${commit}.0"
 test -d "${deploy_root}"
 
 # This will allow us to track the version that an install
@@ -309,7 +310,7 @@ cat > $rootfs/.coreos-aleph-version.json << EOF
 {
 	"build": "${buildid}",
 	"ref": "${ref}",
-	"ostree-commit": "${ostree_commit}",
+	"ostree-commit": "${commit}",
 	"imgid": "${imgid}"
 }
 EOF

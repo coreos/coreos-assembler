@@ -208,12 +208,7 @@ prepare_build() {
     # Also grab rojig summary for image upload descriptions
     name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
     summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
-    ref=$(jq -r '.ref' < "${manifest_tmp_json}")
-    ref_is_temp=""
-    if [ "${ref}" = "null" ]; then
-        ref="tmpref-${name}"
-        ref_is_temp=1
-    fi
+    ref=$(jq -r '.ref//""' < "${manifest_tmp_json}")
     export name ref summary
     # And validate fields coreos-assembler requires, but not rpm-ostree
     required_fields=("automatic-version-prefix")
@@ -292,7 +287,7 @@ prepare_compose_overlays() {
         exit 1
     fi
 
-    if [ -d "${overridesdir}" ] || [ -n "${ref_is_temp}" ] || [ -d "${ovld}" ]; then
+    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ]; then
         mkdir -p "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${manifest}
@@ -303,10 +298,6 @@ EOF
         cp "${workdir}"/src/config/*.repo "${tmp_overridesdir}"/
         manifest=${override_manifest}
     fi
-    if [ -n "${ref_is_temp}" ]; then
-        echo 'ref: "'"${ref}"'"' >> "${override_manifest}"
-    fi
-
 
     if [ -d "${ovld}" ]; then
         for n in "${ovld}"/*; do
