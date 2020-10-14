@@ -346,6 +346,8 @@ echo "New image input checksum: ${image_input_checksum}"
 init_build_meta_json "${commit}" tmp/
 buildid=$(jq -r '.["buildid"]' < tmp/meta.json)
 echo "New build ID: ${buildid}"
+# Also write out a ref with the build ID
+ostree --repo="${tmprepo}" refs --create "${buildid}" "${commit}"
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 

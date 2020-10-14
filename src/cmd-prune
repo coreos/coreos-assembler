@@ -176,6 +176,7 @@ error_during_pruning = False
 for build in builds_to_delete:
     print(f"Pruning build {build.id}")
     try:
+        subprocess.check_call(['ostree', '--repo=tmp/repo', 'refs', '--delete', build.id])
         rmtree(os.path.join(builds_dir, build.id))
     except Exception as e:
         error_during_pruning = True
