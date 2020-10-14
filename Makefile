@@ -70,6 +70,9 @@ minio:
 	git submodule update --init minio
 	cd minio && $(MAKE)
 
+update-external-deps:
+	curl -L -o src/generate_list.sh https://raw.githubusercontent.com/keylime/keylime/master/scripts/create_whitelist.sh
+
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler $$(find src/ -maxdepth 1 -type f)
