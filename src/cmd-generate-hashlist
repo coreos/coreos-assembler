@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""
+Creates a KeyLime Hashlist for an image.
+
+See: https://keylime.dev/
+"""
+
+import argparse
+import datetime
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+from cosalib import meta
+
+#: CREATE_HASH_FCCT is FCCT yaml that translate into ignition that we
+#: pass to kola to execute the hash creation script in the running system
+CREATE_HASH_FCCT="""\
+variant: fcos
+version: 1.1.0
+systemd:
+  units:
+    - name: createhash.service
+      enabled: true
+      contents: |
+          [Unit]
+          Description=Generate Keylime Hashes
+          After=network.target
+          [Service]
+          Type=oneshot
+          TimeoutSec=600
+          ExecStart=/bin/bash -c '/var/mnt/hashmount/generate_list.sh /var/mnt/hashmount/hashes.txt sha256sum && poweroff'
+          RemainAfterExit=true
+          StandardOutput=journal
+          [Install]
+          WantedBy=multi-user.target"""
+
+
+class HashListV1(dict):
+    """
+    Abstraction of a HashList in the version 1 series
+    """
+
+    def __init__(self, release=None, generator=None, timestamp=None):
+        """
+        Initialize HashListV1 instance.
+
+        :param release: Optional release override
+        :type release: str
+        :param generator: Optional generator override
+        :type generator: str
+        :param timestamp: Optional timestamp override
+        :type timestamp: str
+        :raises: KeyError
+        """
+        super()
+        metadata = meta.GenericBuildMeta()
+        if release is None:
+            release = metadata['buildid']
+        self['release'] = release
+
+        self['meta'] = {}
+        if generator is None:
+            generator = 'coreos-assembler-' + metadata['coreos-assembler.container-image-git']['commit']  # noqa
+        self['meta']['generator'] = generator
+        if timestamp is None:
+            timestamp = datetime.datetime.utcnow().isoformat()
+        self['meta']['timestamp'] = timestamp
+        self['meta']['image'] = os.path.sep.join([
+            'builds', metadata['ostree-version'],
+            metadata['coreos-assembler.basearch'],
+            metadata['images']['qemu']['path']])
+
+        self['hashes'] = {}
+
+    def convert_file(self, file_path):
+        """
+        Converts the output from KeyLimes create_list.sh into
+        the HashList hash structure.
+
+        :param file_path: Path to the KeyLime list file
+        :type file_path: str
+        :raises: FileNotFoundError, IsADirectoryError, PermissionError
+        """
+        with open(file_path, 'r') as wp:
+            for line in wp.readlines():
+                sha256, path = line[:-1].split('  ')
+                self['hashes'][path] = [{'sha256': sha256}]
+
+    def write(self, output):
+        """
+        Renders the HashList structure to disk.
+
+        :param output: Where to write the file
+        :type output: str
+        :raises: FileNotFoundError, IsADirectoryError, PermissionError
+        """
+        with open(output, 'w') as out:
+            out.write(json.dumps(self, indent=4))
+
+
+def create_list(hashlist):
+    """
+    Starts up a VM and gets the list created.
+
+    :param hashlist: Iniitialized HashList instance
+    :type hashlist: HashListV1
+    :raises: CalledProcessError, PermissionError
+    """
+    try:
+        os.mkdir('hashmount')
+    except FileExistsError:
+        # It's OK if it already exists
+        pass
+    shutil.copy('/usr/lib/coreos-assembler/generate_list.sh', 'hashmount/generate_list.sh')
+    with tempfile.NamedTemporaryFile(mode='w') as fcct_yaml:
+            fcct_yaml.write(CREATE_HASH_FCCT)
+            fcct_yaml.flush()
+            ign_file = tempfile.mktemp()
+            subprocess.check_call(['/usr/bin/fcct', fcct_yaml.name, '-o', ign_file])
+            subprocess.check_call([
+                '/usr/bin/kola', 'qemuexec', '-i', ign_file,
+                '--bind-rw', '/srv/hashmount,/var/mnt/hashmount',
+                '--qemu-image', hashlist['meta']['image']])
+
+
+def main():
+    """
+    Main entry point.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    # parser.add_argument(
+    #     '-s', '--sign',
+    #     help='If set to a key a signature will be created as well')
+    parser.add_argument(
+        '-g', '--generator', help='Override the generator name')
+    parser.add_argument(
+        '-t', '--timestamp', help='Override the timestamp')
+    parser.add_argument(
+        '-r', '--release', help='Override the release')
+    parser.add_argument(
+        '-l', '--list',
+        default='hashmount/hashes.txt',
+        help='Path to the list to read')
+    parser.add_argument(
+        '-o', '--output',
+        help='Where the output should be written', default='hashlist.json')
+
+    # Parse arguments and ignore anything we didn't explicitly request
+    args, _ = parser.parse_known_args()
+
+    # Step 0: Initialize the HashList instance
+    hashlist = HashListV1(args.release, args.generator, args.timestamp)
+
+    # Step 1: Create the list
+    create_list(hashlist)
+
+    # Step 2: Convert the list to a HashList and write it to disk
+    hashlist.convert_file(args.list)
+    hashlist.write(args.output)
+    print(f'Hash list created at {args.output}')
+
+
+if __name__ == '__main__':
+    main()
