@@ -17,6 +17,18 @@ nav_order: 1
 3. Edit the file and add your test(s), ensuring that you register your new test(s) in the packages `init()`
 4. Commit, push, and PR your result
 
+## Relationship to external tests
+
+If your test can be run as an [external test](external-tests.md) (i.e. from a
+script which runs directly on the host), then that approach is preferred. Most
+likely, the test would live in the fedora-coreos-config repo (or if tightly
+coupled to a specific project, in that project's repo; there are plans to make
+those more consumable by FCOS/RHCOS).
+
+If your test needs richer information about e.g. the cosa build, or multiple
+nodes, or more support code from outside the test subject, then adding a
+native kola test as described here is a better fit.
+
 ### Example
 
 Say we wanted to add a simple [noop](https://en.wikipedia.org/wiki/NOP_(code)) test in the `podman` test package. If we follow the above instructions it would look like this:
