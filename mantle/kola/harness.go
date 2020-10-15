@@ -731,6 +731,19 @@ ExecStart=%s
 	return nil
 }
 
+// testIsDenyListed returns true if the test was denied on the CLI. This is
+// used as an early filtering before the main filterTests function.
+func testIsDenyListed(testname string) (bool, error) {
+	for _, bl := range DenylistedTests {
+		if match, err := filepath.Match(bl, testname); err != nil {
+			return false, err
+		} else if match {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // registerTestDir parses one test directory and registers it as a test
 func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 	var dependencydir string
@@ -795,6 +808,16 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 		if len(executables) > 1 || filepath.Base(executable) != InstalledTestDefaultTest {
 			testname = fmt.Sprintf("%s.%s", testname, filepath.Base(executable))
 		}
+
+		// don't even register the test if it's denied; this allows us to avoid
+		// erroring on Ignition config versions which we can't parse
+		if denied, err := testIsDenyListed(testname); err != nil {
+			return err
+		} else if denied {
+			plog.Debugf("Skipping denylisted external test %s", testname)
+			continue
+		}
+
 		err := registerExternalTest(testname, executable, dependencydir, ignition, meta)
 		if err != nil {
 			return err
