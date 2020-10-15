@@ -97,10 +97,6 @@ preflight() {
         fatal "$(pwd) must be a volume"
     fi
 
-    if ! stat /dev/kvm >/dev/null; then
-        fatal "Unable to find /dev/kvm"
-    fi
-
     # See https://pagure.io/centos-infra/issue/48
     if test "$(umask)" = 0000; then
         fatal "Your umask is unset, please use umask 0022 or so"
@@ -108,13 +104,19 @@ preflight() {
 
     # permissions on /dev/kvm vary by (host) distro.  If it's
     # not writable, recreate it.
-    if ! [ -w /dev/kvm ]; then
-        if ! has_privileges; then
-            fatal "running unprivileged, and /dev/kvm not writable"
-        else
-            sudo rm -f /dev/kvm
-            sudo mknod /dev/kvm c 10 232
-            sudo setfacl -m u:"$USER":rw /dev/kvm
+
+    if test -z "${COSA_NO_KVM:-}"; then
+        if ! test -c /dev/kvm; then
+            fatal "Missing /dev/kvm"
+        fi
+        if ! [ -w /dev/kvm ]; then
+            if ! has_privileges; then
+                fatal "running unprivileged, and /dev/kvm not writable"
+            else
+                sudo rm -f /dev/kvm
+                sudo mknod /dev/kvm c 10 232
+                sudo setfacl -m u:"$USER":rw /dev/kvm
+            fi
         fi
     fi
 
