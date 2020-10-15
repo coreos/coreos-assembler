@@ -17,7 +17,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/coreos/ign-converter v0.0.0-20200706175125-8bea9183aea9
 	github.com/coreos/ignition v0.35.0
-	github.com/coreos/ignition/v2 v2.6.1-0.20200915175921-4b92d7310de4
+	github.com/coreos/ignition/v2 v2.7.0
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5 // indirect
@@ -27,6 +27,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/godbus/dbus v0.0.0-20181025153459-66d97aec3384 // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
 	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
@@ -45,11 +46,13 @@ require (
 	github.com/vmware/govmomi v0.15.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sys v0.0.0-20200610111108-226ff32320da
-	golang.org/x/text v0.3.2
+	golang.org/x/text v0.3.3
 	google.golang.org/api v0.29.0
+	google.golang.org/appengine v1.6.6 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
