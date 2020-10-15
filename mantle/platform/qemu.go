@@ -935,33 +935,41 @@ func (builder *QemuBuilder) Append(args ...string) {
 // baseQemuArgs takes a board and returns the basic qemu
 // arguments needed for the current architecture.
 func baseQemuArgs() []string {
+	accel := "accel=kvm"
+	kvm := true
+	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok {
+		accel = "accel=tcg"
+		kvm = false
+	}
+	var ret []string
 	switch system.RpmArch() {
 	case "x86_64":
-		return []string{
+		ret = []string{
 			"qemu-system-x86_64",
-			"-machine", "accel=kvm",
-			"-cpu", "host",
+			"-machine", accel,
 		}
 	case "aarch64":
-		return []string{
+		ret = []string{
 			"qemu-system-aarch64",
-			"-machine", "virt,accel=kvm,gic-version=max",
-			"-cpu", "host",
+			"-machine", "virt,gic-version=max," + accel,
 		}
 	case "s390x":
-		return []string{
+		ret = []string{
 			"qemu-system-s390x",
-			"-machine", "s390-ccw-virtio,accel=kvm",
-			"-cpu", "host",
+			"-machine", "s390-ccw-virtio," + accel,
 		}
 	case "ppc64le":
-		return []string{
+		ret = []string{
 			"qemu-system-ppc64",
-			"-machine", "pseries,accel=kvm,kvm-type=HV,vsmt=8",
+			"-machine", "pseries,kvm-type=HV,vsmt=8," + accel,
 		}
 	default:
 		panic(fmt.Sprintf("RpmArch %s combo not supported for qemu ", system.RpmArch()))
 	}
+	if kvm {
+		ret = append(ret, "-cpu", "host")
+	}
+	return ret
 }
 
 func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
