@@ -1,0 +1,5 @@
+FROM quay.io/coreos-assembler/coreos-assembler:latest
+WORKDIR /root/containerbuild
+
+USER builder
+ENTRYPOINT ["/usr/bin/entry", "builder"]

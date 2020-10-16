@@ -1,0 +1,15 @@
+FROM quay.io/coreos-assembler/coreos-assembler:latest
+WORKDIR /root/containerbuild
+
+USER root
+
+COPY ./ /root/containerbuild/
+RUN cd /root/containerbuild/entrypoint && \
+    make && \
+    make install DESTDIR=/ && \
+    install -v -D -t /usr/lib/coreos-assembler /root/containerbuild/src/*.{sh,txt}
+
+WORKDIR /srv/
+
+USER builder
+ENTRYPOINT ["/usr/bin/entry", "builder"]

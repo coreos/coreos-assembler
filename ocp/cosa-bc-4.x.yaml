@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Template
+labels:
+  app: cosa
+  template: cosa-template
+metadata:
+  annotations:
+    description: CoreOS Assembler Images
+    openshift.io/display-name: CoreOS Assembler
+    tags: cosa,coreos-assembler
+  name: cosa-images
+
+parameters:
+  - description: Git source URI
+    name: REPO_URL
+    value: https://github.com/coreos/fedora-coreos-config
+  - description: Git branch/tag reference
+    name: REPO_REF
+    value: testing-devel
+  - description: Name of the image; use e.g. joe-cosa for your own build
+    name: IMAGE
+    value: coreos-assembler
+  - description: Image Tag to use
+    name: IMAGE_TAG
+    value: buildconfig-master
+  - description: Service Account
+    name: SA
+    value: cosa-builder
+  - description: Tag to use for this template
+    name: TAG
+    value: master
+
+objects:
+
+# Create the Service Account for COSA
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      coreos-assembler.coreos.com/type: "service account"
+    name: ${SA}
+  name: ${SA}
+
+- apiVersion: authorization.openshift.io/v1
+  kind: Role
+  metadata:
+    name: ${SA}_Secrets
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - watch
+    - get
+    - list
+
+- apiVersion: v1
+  groupNames: null
+  kind: RoleBinding
+  metadata:
+    name: ${SA}_Secrets
+  roleRef:
+    name: edit
+  subjects:
+  - kind: ServiceAccount
+    name: ${SA}
+
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+    labels:
+      app: cosa-runner
+      template: cosa-runner-template
+    name: cosa-runner-${TAG}
+  spec:
+    failedBuildsHistoryLimit: 25
+    successfulBuildsHistoryLimit: 25
+    nodeSelector: null
+    output: {}
+    postCommit: {}
+    resources:
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+        devices.kubevirt.io/kvm: "1"
+      requests:
+        memory: "4Gi"
+        cpu: "2000m"
+        devices.kubevirt.io/kvm: "1"
+    securityContext:
+      privileged: true
+    runPolicy: Parallel
+    serviceAccount: ${SA}
+    source:
+      git:
+        ref: ${REPO_REF}
+        uri: ${REPO_URL}
+      type: Git
+    strategy:
+      customStrategy:
+        env:
+        - name: OCP_CUSTOM_BUILDER
+          value: "1"
+        - name: COSA_SKIP_OVERLAY
+          value: "skip"
+        - name: FORCE_UNPRIVILEGED
+          value: "1"
+        - name: COSA_CMDS
+          value: 'cosa fetch; cosa build;'
+        from:
+          kind: ImageStreamTag
+          name: ${IMAGE}:${IMAGE_TAG}
+      type: Custom
+    triggers: []
