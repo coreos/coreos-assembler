@@ -50,11 +50,6 @@ func ocpBuildClient() error {
 	}
 	log.Info("Host is running as an OpenShift custom strategy builder.")
 
-	// BuildConfigs do not use overlays. And when running in Buildconfig
-	// mode, force running as unprivileged.
-	os.Setenv("COSA_SKIP_OVERLAY", "skip")
-	os.Setenv("FORCE_UNPRIVILEGED", "1")
-
 	// Check to make sure that we have a valid contextDir
 	// Almost _always_ this should be in /srv for COSA.
 	cDir := apiBuild.Spec.Source.ContextDir

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	ee "github.com/coreos/entrypoint/exec"
@@ -29,12 +30,13 @@ func cloneJobSpec(url, ref, specFile string) (*JobSpec, error) {
 
 	// Clone the JobSpec Repo
 	jsD := filepath.Join(tmpd, "jobspec")
-	gitCmd := []string{"git", "clone"}
+	args := []string{"clone"}
 	if ref != "" {
-		gitCmd = append(gitCmd, "--branch", ref)
+		args = append(args, "--branch", ref)
 	}
-	gitCmd = append(gitCmd, url, jsD)
-	rc, err := ee.RunCmds(gitCmd)
+	args = append(args, url, jsD)
+	cmd := exec.Command("git", args...)
+	rc, err := ee.RunCmds(cmd)
 	if rc != 0 {
 		if err == nil {
 			err = errors.New("non-zero exit from command")

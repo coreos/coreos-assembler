@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"text/template"
 
@@ -32,6 +33,9 @@ var (
 	// changed in the future.
 	spec     rhjobspec.JobSpec
 	specFile string
+
+	// entryEnvars are set for command execution
+	entryEnvVars []string
 
 	// shellCmd is the default command to execute commands.
 	shellCmd = []string{"/bin/bash", "-x"}
@@ -78,6 +82,8 @@ func init() {
 			cosaDir = filepath.Dir(path)
 		}
 	}
+
+	entryEnvVars = os.Environ()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
@@ -132,7 +138,10 @@ func runScripts(c *cobra.Command, args []string) error {
 	log.Infof("Executing %d script(s)", len(rendered))
 	for i, v := range rendered {
 		log.WithFields(log.Fields{"script": i}).Info("Startig script")
-		rc, err := ee.RunCmds(append(shellCmd, v.Name()))
+		cArgs := append(shellCmd, v.Name())
+		cmd := exec.Command(cArgs[0], cArgs[1:]...)
+		cmd.Env = entryEnvVars
+		rc, err := ee.RunCmds(cmd)
 		if rc != 0 {
 			return fmt.Errorf("Script exited with return code %d", rc)
 		}
@@ -162,7 +171,9 @@ func runSingle(c *cobra.Command, args []string) {
 	}
 
 	log.Infof("Executing commands: %v", args)
-	rc, err := ee.RunCmds(args)
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Env = entryEnvVars
+	rc, err := ee.RunCmds(cmd)
 	if rc != 0 || err != nil {
 		log.WithFields(log.Fields{
 			"return code": rc,
