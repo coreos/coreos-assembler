@@ -39,6 +39,7 @@ import (
 	"time"
 )
 
+// RemoveZombies cleans up any zombie processes
 func RemoveZombies(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		var status syscall.WaitStatus
@@ -82,24 +83,6 @@ func Run(cmd *exec.Cmd) error {
 	// stdout and stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	// Create a dedicated pidgroup
-	// used to forward signals to
-	// main process and all children
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Goroutine for signals forwarding
-	go func() {
-		for sig := range sigs {
-			// Ignore SIGCHLD signals since
-			// thez are only usefull for go-init
-			if sig != syscall.SIGCHLD {
-				// Forward signal to main process and all children
-				syscall.Kill(-cmd.Process.Pid, sig.(syscall.Signal))
-				os.Exit(1)
-			}
-		}
-	}()
 
 	// Start defined command
 	err := cmd.Start()

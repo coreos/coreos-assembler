@@ -3,7 +3,6 @@ version = $(shell date +%Y-%m-%d).$(shell git rev-parse --short HEAD)~$(shell te
 cosa_dir = $(shell test -d /usr/lib/coreos-assembler && echo /usr/lib/coreos-assembler)
 ldflags=-X main.version=${version} -X main.cosaDir=${cosa_dir}
 
-
 PREFIX ?= /usr
 DESTDIR ?=
 ARCH:=$(shell uname -m)
@@ -21,8 +20,8 @@ fmt:
 
 .PHONY: test
 test: fmt
-	go test -mod=vendor -i ${pkgs}
-	go test -mod=vendor -cover ${pkgs}
+		go test -mod=vendor -tags ci -i ${pkgs} && \
+		go test -mod=vendor -tags ci -cover ${pkgs}
 
 .PHONY: clean
 clean:
