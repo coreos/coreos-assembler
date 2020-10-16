@@ -1,21 +1,22 @@
 package main
 
+/*
+	Definition for the main entry command. This defined the "human"
+	interfaces for `run` and `run-steps`
+*/
+
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sync"
 	"text/template"
 
 	ee "github.com/coreos/entrypoint/exec"
 	rhjobspec "github.com/coreos/entrypoint/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 const cosaContainerDir = "/usr/lib/coreos-assembler"
@@ -32,6 +33,7 @@ var (
 	spec     rhjobspec.JobSpec
 	specFile string
 
+	// shellCmd is the default command to execute commands.
 	shellCmd = []string{"/bin/bash", "-x"}
 
 	cmdRoot = &cobra.Command{
@@ -59,10 +61,11 @@ Wrapper for COSA commands and templates`,
 	}
 
 	cmdSteps = &cobra.Command{
-		Use:   "run-steps",
-		Short: "Run Steps from [file]",
-		Args:  cobra.MinimumNArgs(1),
-		Run:   runSteps,
+		Use:          "run-scripts",
+		Short:        "Run Steps from [file]",
+		Args:         cobra.MinimumNArgs(1),
+		RunE:         runScripts,
+		SilenceUsage: true,
 	}
 )
 
@@ -100,47 +103,46 @@ func main() {
 	os.Exit(0)
 }
 
-// runSteps reads ARGs as files and executes the rendered templates.
-func runSteps(c *cobra.Command, args []string) {
+// runScripts reads ARGs as files and executes the rendered templates.
+func runScripts(c *cobra.Command, args []string) error {
 	rendered := make(map[string]*os.File)
 	for _, v := range args {
 		in, err := ioutil.ReadFile(v)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		t, err := ioutil.TempFile("", "rendered")
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		defer os.Remove(t.Name())
 		rendered[v] = t
 
 		tmpl, err := template.New("args").Parse(string(in))
 		if err != nil {
-			log.Fatal("failed to parse")
+			return fmt.Errorf("Failed to parse %s", err)
 		}
 
 		err = tmpl.Execute(t, spec)
 		if err != nil {
-			log.Fatal("failed render template", err)
+			return fmt.Errorf("Failed render template: %v", err)
 		}
 	}
 
-	log.Infof("executing %d script(s)", len(rendered))
+	log.Infof("Executing %d script(s)", len(rendered))
 	for i, v := range rendered {
-		log.Infof("executing script %q", i)
-
-		rc, err := runCmds(append(shellCmd, v.Name()))
+		log.WithFields(log.Fields{"script": i}).Info("Startig script")
+		rc, err := ee.RunCmds(append(shellCmd, v.Name()))
 		if rc != 0 {
-			log.WithFields(log.Fields{
-				"script":      i,
-				"return code": rc,
-				"error":       err,
-			}).Error("failed")
-			os.Exit(rc)
+			return fmt.Errorf("Script exited with return code %d", rc)
 		}
+		if err != nil {
+			return err
+		}
+		log.WithFields(log.Fields{"script": i}).Info("Script complete")
 	}
-	log.Info("done")
+	log.Infof("Execution complete")
+	return nil
 }
 
 // runSingle renders args as templates and executes the command.
@@ -148,68 +150,40 @@ func runSingle(c *cobra.Command, args []string) {
 	for i, v := range args {
 		tmpl, err := template.New("args").Parse(v)
 		if err != nil {
-			log.WithFields(log.Fields{"input": v}).Fatalf("failed to parse template")
+			log.WithFields(log.Fields{"input": v}).Fatalf("Failed to parse template")
 		}
 
 		var out bytes.Buffer
 		err = tmpl.Execute(&out, spec)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Fatal("failed to render template")
+			log.WithFields(log.Fields{"error": err}).Fatal("Failed to render template")
 		}
 		args[i] = out.String()
 	}
 
-	log.Infof("executing commands: %v", args)
-	rc, err := runCmds(args)
+	log.Infof("Executing commands: %v", args)
+	rc, err := ee.RunCmds(args)
 	if rc != 0 || err != nil {
 		log.WithFields(log.Fields{
 			"return code": rc,
 			"error":       err,
 			"command":     args,
-		}).Error("failed")
+		}).Error("Failed")
 		os.Exit(rc)
 	}
 	log.Infof("Done")
 }
 
-// runCmds runs args as a command and ensures that each
-func runCmds(args []string) (int, error) {
-	if len(args) <= 1 {
-		os.Exit(0)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go ee.RemoveZombies(ctx, &wg)
-
-	var rc int
-	cmd := exec.Command(args[0], args[1:]...)
-	err := ee.Run(cmd)
-	if err != nil {
-		rc = 1
-	}
-
-	cancel()
-	wg.Wait()
-	return rc, err
-}
-
 // preRun processes the spec file.
 func preRun(c *cobra.Command, args []string) {
 	if specFile == "" {
-		log.Debug("no spec configuration found")
 		return
 	}
 
-	in, err := ioutil.ReadFile(specFile)
+	ns, err := rhjobspec.JobSpecFromFile(specFile)
 	if err != nil {
 		log.WithFields(log.Fields{"input file": specFile, "error": err}).Fatal(
-			"failed reading file")
+			"Failed reading file")
 	}
-
-	if err = yaml.Unmarshal(in, &spec); err != nil {
-		log.WithFields(log.Fields{"input file": specFile, "error": err}).Fatal(
-			"failed unmarshalling yaml")
-	}
+	spec = *ns
 }

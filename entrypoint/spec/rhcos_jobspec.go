@@ -10,6 +10,15 @@
 
 package spec
 
+import (
+	"bufio"
+	"io"
+	"io/ioutil"
+	"os"
+
+	"gopkg.in/yaml.v2"
+)
+
 // JobSpec is the root-level item for the JobSpec
 type JobSpec struct {
 	Archives    *Archives    `yaml:"archives,omitempty"`
@@ -18,6 +27,16 @@ type JobSpec struct {
 	Oscontainer *Oscontainer `yaml:"oscontainer,omitempty"`
 	Recipe      *Recipe      `yaml:"recipe,omitempty"`
 	Spec        *Spec        `yaml:"spec,omitempty"`
+}
+
+// Artifacts describe the expect build outputs.
+//  All: name of the all the artifacts
+//  Primary: Non-cloud builds
+//  Clouds: Cloud publication stages.
+type Artifacts struct {
+	All     []string `yaml:"all,omitempty"`
+	Primary []string `yaml:"primary,omitempty"`
+	Clouds  []string `yaml:"clouds,omitempty"`
 }
 
 // Aliyun is nested under CloudsCfgs and describes where
@@ -41,6 +60,7 @@ type Archives struct {
 //  Public: when true, mark as public
 //  Regions: name of AWS regions to push to.
 type Aws struct {
+	Enabled bool     `yaml:"enabled,omitempty"`
 	AmiPath string   `yaml:"ami_path,omitempty"`
 	Public  bool     `yaml:"public,omitempty"`
 	Regions []string `yaml:"regions,omitempty"`
@@ -113,9 +133,9 @@ type Recipe struct {
 //   Bucket: name of the S3 bucket
 //   Path: the path inside the bucket
 type S3 struct {
-	ACL    string `yaml:"acl,omitempty"`
-	Bucket string `yaml:"bucket,omitempty"`
-	Path   string `yaml:"path,omitempty"`
+	ACL    string `yaml:"acl,omitempty" envVar:"S3_ACL"`
+	Bucket string `yaml:"bucket,omitempty" envVar:"S3_BUCKET"`
+	Path   string `yaml:"path,omitempty" envVar:"S3_PATH"`
 }
 
 // Spec describes the RHCOS JobSpec.
@@ -129,4 +149,31 @@ type Spec struct {
 // Oscontainer describes the location to push the OS Container to.
 type Oscontainer struct {
 	PushURL string `yaml:"push_url,omitempty"`
+}
+
+// JobSpecReader takes and io.Reader and returns a ptr to the JobSpec and err
+func JobSpecReader(in io.Reader) (*JobSpec, error) {
+	s := &JobSpec{}
+
+	d, err := ioutil.ReadAll(in)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(d, s)
+	if err != nil {
+		return nil, err
+	}
+	return s, err
+}
+
+// JobSpecFromFile return a JobSpec read from a file
+func JobSpecFromFile(f string) (*JobSpec, error) {
+	in, err := os.Open(f)
+	if err != nil {
+		return nil, err
+	}
+	defer in.Close()
+	b := bufio.NewReader(in)
+	return JobSpecReader(b)
 }
