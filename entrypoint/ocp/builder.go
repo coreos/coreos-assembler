@@ -41,6 +41,9 @@ type Builder struct {
 	JobSpecFile   string `envVar:"COSA_JOBSPEC_FILE"`
 	CosaCmds      string `envVar:"COSA_CMDS"`
 
+	// EnvVars is a listing of specific envVars to set
+	EnvVars []string
+
 	// Internal copy of the JobSpec
 	JobSpec *spec.JobSpec
 }
@@ -73,8 +76,13 @@ func NewBuilder() (*Builder, error) {
 	if buildAPIErr != nil && buildAPIErr != ErrNoOCPBuildSpec {
 		log.Errorf("Failed to initalized the OpenShift Build API Client: %v", buildAPIErr)
 		return nil, buildAPIErr
+	} else {
+		v.EnvVars = append(
+			os.Environ(),
+			"COSA_SKIP_OVERLAY=skip",
+			"FORCE_UNPRIVILEGED=1",
+		)
 	}
-
 	// Builder requires either a Build API Client or Kuberneres Cluster client.
 	if k8sAPIErr != nil && buildAPIErr != nil {
 		return nil, ErrInvalidOCPMode
@@ -95,14 +103,26 @@ func (o *Builder) PrepareEnv() error {
 
 	// Load secrets directly from the Kubernetes API that are
 	// are "well-known" secrets.
-	if err := kubernetesSecretsSetup(cosaSrvDir); err != nil {
+	ks, err := kubernetesSecretsSetup(cosaSrvDir)
+	if err != nil {
 		log.Errorf("Failed to setup Service Account Secrets: %v", err)
+	} else {
+		log.Infof("Mapped %d secrets from Kubernetes", len(ks))
 	}
 
 	// Read setup the secrets locally.
-	if err := buildSecretsSetup(cosaSrvDir); err != nil {
+	bs, err := buildSecretsSetup(cosaSrvDir)
+	if err != nil {
 		log.Errorf("Failed to setup OCP Build Secrets: %v", err)
+	} else {
+		log.Infof("Mapped %d secrets from Kubernetes", len(bs))
 	}
+
+	preCount := len(o.EnvVars)
+	o.EnvVars = append(o.EnvVars, bs...)
+	o.EnvVars = append(o.EnvVars, ks...)
+	addedCount := len(o.EnvVars) - preCount
+	log.Infof("Added %d secret envVar mappings", addedCount)
 
 	// Extract any binary sources first. If a binary payload is delivered,
 	// then blindly execute any script ending in .cosa.sh
@@ -121,7 +141,7 @@ func (o *Builder) PrepareEnv() error {
 	// If there is no binary payload, then init COSA
 	// With OCP its either binary _or_ source.
 	if !bin {
-		if err := cosaInit(); err != ErrNoSourceInput {
+		if err := cosaInit(o.EnvVars); err != ErrNoSourceInput {
 			return err
 		}
 		log.Info("No source input, relying solely on envVars...this won't end well.")

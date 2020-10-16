@@ -1,6 +1,7 @@
 package ocp
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -96,26 +97,23 @@ func getSecretMapping(s string) (*secretMap, bool) {
 	return nil, false
 }
 
-func (sm *secretMap) writeSecretEnvVars(d map[string][]byte) (int, error) {
-	count := 0
+func (sm *secretMap) writeSecretEnvVars(d map[string][]byte, ret *[]string) error {
 	for k, v := range d {
 		envKey, ok := sm.envVarMap[k]
 		if !ok {
 			continue
 		}
 		log.Debugf("Set envVar %s from secret", envKey)
-		os.Setenv(envKey, strings.TrimSuffix(string(v), "\n"))
-		count++
+		*ret = append(*ret, fmt.Sprintf("%s=%s", envKey, strings.TrimSuffix(string(v), "\n")))
 	}
-	return count, nil
+	return nil
 }
 
-func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte) (int, error) {
+func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte, ret *[]string) error {
 	sDir := filepath.Join(toDir, name)
 	if err := os.MkdirAll(sDir, 0755); err != nil {
-		return 0, err
+		return err
 	}
-	count := 0
 	for k, v := range d {
 		eKey, ok := sm.fileVarMap[k]
 		if !ok {
@@ -123,28 +121,28 @@ func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte) (
 		}
 		f := filepath.Join(sDir, k)
 		if err := ioutil.WriteFile(k, v, 0555); err != nil {
-			return count, err
+			return err
 		}
-		os.Setenv(eKey, f)
-		log.Debugf("Set envVar %s to filepath %s", eKey, f)
-		count++
+		*ret = append(*ret, fmt.Sprintf("%s=%s", eKey, f))
 	}
-	return count, nil
+	return nil
 }
 
 // kubernetesSecretSetup looks for matching secrets in the environment matching
 // 'coreos-assembler.coreos.com/secret=k' and then maps the secret
 // automatically in. "k" must be in the "known" secrets type to be mapped
 // automatically.
-func kubernetesSecretsSetup(toDir string) error {
+func kubernetesSecretsSetup(toDir string) ([]string, error) {
 	lo := metav1.ListOptions{
 		LabelSelector: secretLabelName,
 		Limit:         100,
 	}
 
+	var ret []string
+
 	secrets, err := apiClient.Secrets(projectNamespace).List(lo)
 	if err != nil {
-		return err
+		return ret, err
 	}
 	log.Infof("Found %d secrets to consider", len(secrets.Items))
 
@@ -162,18 +160,14 @@ func kubernetesSecretsSetup(toDir string) error {
 			}
 			log.Infof("Known secret type for %s found, mapping automatically", v)
 
-			c, err := m.writeSecretEnvVars(secret.Data)
-			if err != nil {
+			if err := m.writeSecretEnvVars(secret.Data, &ret); err != nil {
 				log.Errorf("Failed to set envVars for %s: %s", sName, err)
 			}
-			log.Infof("Set %d envVars from %s", c, sName)
 
-			c, err = m.writeSecretFiles(toDir, sName, secret.Data)
-			if err != nil {
+			if err := m.writeSecretFiles(toDir, sName, secret.Data, &ret); err != nil {
 				log.Errorf("Failed to set files envVars for %s: %s", sName, err)
 			}
-			log.Infof("Set %d envVars to files from %s", c, sName)
 		}
 	}
-	return nil
+	return ret, nil
 }

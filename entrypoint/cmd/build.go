@@ -43,6 +43,8 @@ func runOCP(c *cobra.Command, args []string) {
 		log.Info("Jobspec will apply to templated commands.")
 	}
 
+	entryEnvVars = append(entryEnvVars, b.EnvVars...)
+
 	b.Exec(func(v []string) error {
 		return runScripts(c, v)
 	})

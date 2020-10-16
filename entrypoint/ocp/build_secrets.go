@@ -17,7 +17,7 @@ import (
 
 // copySecret is a hack. OpenShift presents secrets with 0400.
 // Since syscall.SetUid is blocked, we need to use sudo read the file.
-func copySecret(inDir, name, from string) error {
+func copySecret(inDir, name, from string, ret *[]string) error {
 	sDir := filepath.Join(inDir, "secrets", name)
 	if err := os.MkdirAll(sDir, 0755); err != nil {
 		return err
@@ -53,8 +53,7 @@ func copySecret(inDir, name, from string) error {
 			return fmt.Errorf("%s envVar should be in format 'K=V', not %s", e, ev)
 		}
 		if v[1] == baseName {
-			os.Setenv(v[0], to)
-			log.Debugf("Set envVar: %s=%s", v[0], to)
+			*ret = append(*ret, fmt.Sprintf("%s=%s", v[0], to))
 		}
 	}
 
@@ -65,13 +64,14 @@ func copySecret(inDir, name, from string) error {
 // able to read them. Secrets on 3.x clusters are mapped to 0400 and owned by root.
 // To allow the non-privilaged build user access, they need to be copied before
 // /usr/lib/coreos-assembler sudo's to the builder user.
-func buildSecretsSetup(contextDir string) error {
+func buildSecretsSetup(contextDir string) ([]string, error) {
+	var ret []string
 	if apiBuild.Spec.Source.Secrets == nil {
-		return nil
+		return ret, nil
 	}
 	secrets := apiBuild.Spec.Source.Secrets
 	if len(secrets) == 0 {
-		return nil
+		return ret, nil
 	}
 
 	log.Infof("Build has defined %d secrets.", len(secrets))
@@ -83,16 +83,16 @@ func buildSecretsSetup(contextDir string) error {
 		fs, err := filepath.Glob(fmt.Sprintf("%s/%s/*/*", ocpSecretDir, s.Secret.Name))
 		if err != nil {
 			log.Errorf("Failed to get file listing: %v", err)
-			return err
+			return ret, err
 		}
 
 		for _, f := range fs {
 			log.Infof("Processing secret: %s at %s", s.Secret.Name, f)
-			if err := copySecret(contextDir, s.Secret.Name, f); err != nil {
-				return err
+			if err := copySecret(contextDir, s.Secret.Name, f, &ret); err != nil {
+				return ret, err
 			}
 		}
 	}
 
-	return nil
+	return ret, nil
 }

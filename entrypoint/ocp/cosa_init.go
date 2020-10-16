@@ -3,6 +3,7 @@ package ocp
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"strings"
 
 	ee "github.com/coreos/entrypoint/exec"
@@ -13,7 +14,7 @@ import (
 // based builds first, check the API client, then check envVars. The use of envVars
 // in this case is *safe*; `SOURCE_{URI,REF} == apiBuild.Spec.Source.Git.{URI,REF}`. That
 // is, SOURCE_* envVars will always match the apiBuild.Spec.Source.Git.* values.
-func cosaInit() error {
+func cosaInit(envVars []string) error {
 	var gitURI, gitRef string
 	if apiBuild.Spec.Source.Git != nil {
 		gitURI = apiBuild.Spec.Source.Git.URI
@@ -27,16 +28,18 @@ func cosaInit() error {
 		return ErrNoSourceInput
 	}
 
-	initCmd := []string{"cosa", "init"}
+	args := []string{"init"}
 	if gitRef != "" {
-		initCmd = append(initCmd, "--force", "--branch", gitRef)
+		args = append(args, "--force", "--branch", gitRef)
 	}
-	initCmd = append(initCmd, gitURI)
-	log.Infof("running '%v'", strings.Join(initCmd, " "))
-	rc, err := ee.RunCmds(initCmd)
+	args = append(args, gitURI)
+	log.Infof("running 'git %v'", strings.Join(args, " "))
+	cmd := exec.Command("cosa", args...)
+	cmd.Env = envVars
+	rc, err := ee.RunCmds(cmd)
 	if rc != 0 || err != nil {
 		log.WithFields(log.Fields{
-			"cmd":         initCmd,
+			"cmd":         args,
 			"return code": rc,
 			"error":       err,
 		}).Error("Failed to checkout respository")
