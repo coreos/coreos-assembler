@@ -32,11 +32,6 @@ fi
 # set the umask so that anyone in the group can rwx
 umask 002
 
-mkdir -p /etc/pki
-mount -t 9p -o rw,trans=virtio,version=9p2000.L etcpki /etc/pki
-stat /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
-stat /etc/pki/tls/certs/ca-bundle.crt
-
 # set up workdir
 mkdir -p "${workdir:?}"
 mount -t 9p -o rw,trans=virtio,version=9p2000.L workdir "${workdir}"

@@ -519,22 +519,19 @@ EOF
     kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none \
                --console-to-file "${runvm_console}")
 
-    # multidevs=remap is needed in situations where /srv and /etc share the same file-system (when used
-    # as a buildConfig. See https://wiki.qemu.org/Documentation/9psetup.
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
                     -device 'virtio-blk,drive=root'
                     -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
                     -no-reboot -nodefaults \
                     -device virtio-serial \
-                    -virtfs 'local,id=etcpki,path='/etc/pki',security_model=none,mount_tag=etcpki,multidevs=remap' \
-                    -virtfs 'local,id=workdir,path='"${workdir}"',security_model=none,mount_tag=workdir,multidevs=remap' \
+                    -virtfs 'local,id=workdir,path='"${workdir}"',security_model=none,mount_tag=workdir' \
                     -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
                    )
 
     # support local dev cases where src/config is a symlink
     if [ -L "${workdir}/src/config" ]; then
         # qemu follows symlinks
-        base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source,multidevs=remap')
+        base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
     fi
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
