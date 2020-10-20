@@ -15,6 +15,8 @@
 package network
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -57,17 +59,42 @@ type SSHAgent struct {
 // NewSSHAgent constructs a new SSHAgent using dialer to create ssh
 // connections.
 func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
-	key, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
+	keyring := agent.NewKeyring()
+
+	// For now add both a rsa key and a ecdsa key.
+	// Using an ecdsa key allows us to workaround the updated
+	// crypto policies in F33+ that disallow the RSA SHA-1 keyexchange
+	// algorithm, but we still need an ssh-rsa key because AWS only
+	// supports ssh-rsa keys and a key gets generated and added to
+	// AWS every time we start a kola run. We'll add the rsa key
+	// first since platform/machine/aws/flight.go only adds the first
+	// key (keys[0]). We should be able to go back to RSA keys only
+	// when the golang library is updated. More info in:
+	// https://github.com/coreos/coreos-assembler/issues/1772
+
+	// rsa key
+	rsakey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
+	if err != nil {
+		return nil, err
+	}
+	addedkey := agent.AddedKey{
+		PrivateKey: rsakey,
+		Comment:    "core@default",
+	}
+	err = keyring.Add(addedkey)
 	if err != nil {
 		return nil, err
 	}
 
-	addedkey := agent.AddedKey{
-		PrivateKey: key,
+	// ecdsa key
+	ecdsakey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	addedkey = agent.AddedKey{
+		PrivateKey: ecdsakey,
 		Comment:    "core@default",
 	}
-
-	keyring := agent.NewKeyring()
 	err = keyring.Add(addedkey)
 	if err != nil {
 		return nil, err
