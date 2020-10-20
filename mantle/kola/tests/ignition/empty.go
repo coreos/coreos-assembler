@@ -37,7 +37,7 @@ func init() {
 		Name:             "fcos.ignition.v3.noop",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu", "esx", "openstack"},
+		ExcludePlatforms: []string{"qemu", "esx"},
 		Distros:          []string{"fcos"},
 		Flags:            []register.Flag{register.NoSSHKeyInUserData},
 		UserData:         conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
