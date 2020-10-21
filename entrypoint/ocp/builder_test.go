@@ -1,12 +1,15 @@
 package ocp
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
 )
 
 const testDataFile = "build.json"
+
+var testCtx = context.Background()
 
 func init() {
 	cosaSrvDir, _ = os.Getwd()
@@ -31,7 +34,7 @@ func TestOCPBuild(t *testing.T) {
 		}
 	}()
 
-	newO, err := NewBuilder()
+	newO, err := NewBuilder(testCtx)
 	if err != nil {
 		t.Errorf("failed to read OCP envvars: %v", err)
 	}

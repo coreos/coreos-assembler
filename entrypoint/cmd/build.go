@@ -9,16 +9,22 @@ package main
 */
 
 import (
+	"context"
+
 	"github.com/coreos/entrypoint/ocp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var cmdOCP = &cobra.Command{
-	Use:   "builder",
-	Short: "Execute as an OCP Builder",
-	Run:   runOCP,
-}
+var (
+	cmdOCP = &cobra.Command{
+		Use:   "builder",
+		Short: "Execute as an OCP Builder",
+		Run:   runOCP,
+	}
+
+	ctx, cancel = context.WithCancel(context.Background())
+)
 
 func init() {
 	cmdRoot.AddCommand(cmdOCP)
@@ -27,7 +33,9 @@ func init() {
 // runOCP executes the Custom Build Strategy based on
 // source or binary build strategies.
 func runOCP(c *cobra.Command, args []string) {
-	b, err := ocp.NewBuilder()
+	defer cancel()
+
+	b, err := ocp.NewBuilder(ctx)
 	if err != nil {
 		log.Fatal("Failed to find the OCP build environment.")
 	}
@@ -43,9 +51,9 @@ func runOCP(c *cobra.Command, args []string) {
 		log.Info("Jobspec will apply to templated commands.")
 	}
 
-	entryEnvVars = append(entryEnvVars, b.EnvVars...)
-
-	b.Exec(func(v []string) error {
-		return runScripts(c, v)
-	})
+	if err := b.Exec(ctx); err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Fatal("Failed to prepare environment.")
+	}
 }
