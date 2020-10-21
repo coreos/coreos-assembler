@@ -337,11 +337,12 @@ def generate_iso():
             newbuf = buf.replace('@@KERNEL-ARGS@@', kargs)
             # if we injected kargs, also check for an embed area
             if buf != newbuf:
+                karg_area_start = re.search(r'@@KERNEL-ARGS@@', buf)
                 buf = newbuf
-                karg_area = re.search(r'(#+) COREOS_KARG_EMBED_AREA\n', buf)
-                if karg_area is not None:
-                    length = len(karg_area[1])
-                    files_with_karg_embed_areas[filename] = karg_area.start()
+                karg_area_end = re.search(r'(#+) COREOS_KARG_EMBED_AREA\n', buf)
+                if karg_area_end is not None:
+                    length = karg_area_end.start() + len(karg_area_end[1]) - karg_area_start.start()
+                    files_with_karg_embed_areas[filename] = karg_area_start.start()
                     if karg_embed_area_length == 0:
                         karg_embed_area_length = length
                     elif length != karg_embed_area_length:
