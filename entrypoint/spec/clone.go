@@ -1,13 +1,11 @@
 package spec
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 
-	ee "github.com/coreos/entrypoint/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,11 +34,7 @@ func cloneJobSpec(url, ref, specFile string) (*JobSpec, error) {
 	}
 	args = append(args, url, jsD)
 	cmd := exec.Command("git", args...)
-	rc, err := ee.RunCmds(cmd)
-	if rc != 0 {
-		if err == nil {
-			err = errors.New("non-zero exit from command")
-		}
+	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
 

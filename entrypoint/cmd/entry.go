@@ -6,15 +6,11 @@ package main
 */
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"text/template"
 
-	ee "github.com/coreos/entrypoint/exec"
 	rhjobspec "github.com/coreos/entrypoint/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -111,44 +107,8 @@ func main() {
 
 // runScripts reads ARGs as files and executes the rendered templates.
 func runScripts(c *cobra.Command, args []string) error {
-	rendered := make(map[string]*os.File)
-	for _, v := range args {
-		in, err := ioutil.ReadFile(v)
-		if err != nil {
-			return err
-		}
-		t, err := ioutil.TempFile("", "rendered")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(t.Name())
-		rendered[v] = t
-
-		tmpl, err := template.New("args").Parse(string(in))
-		if err != nil {
-			return fmt.Errorf("Failed to parse %s", err)
-		}
-
-		err = tmpl.Execute(t, spec)
-		if err != nil {
-			return fmt.Errorf("Failed render template: %v", err)
-		}
-	}
-
-	log.Infof("Executing %d script(s)", len(rendered))
-	for i, v := range rendered {
-		log.WithFields(log.Fields{"script": i}).Info("Startig script")
-		cArgs := append(shellCmd, v.Name())
-		cmd := exec.Command(cArgs[0], cArgs[1:]...)
-		cmd.Env = entryEnvVars
-		rc, err := ee.RunCmds(cmd)
-		if rc != 0 {
-			return fmt.Errorf("Script exited with return code %d", rc)
-		}
-		if err != nil {
-			return err
-		}
-		log.WithFields(log.Fields{"script": i}).Info("Script complete")
+	if err := spec.RendererExecuter(ctx, entryEnvVars, args...); err != nil {
+		log.Fatalf("Failed to execute scripts: %v", err)
 	}
 	log.Infof("Execution complete")
 	return nil
@@ -156,31 +116,15 @@ func runScripts(c *cobra.Command, args []string) error {
 
 // runSingle renders args as templates and executes the command.
 func runSingle(c *cobra.Command, args []string) {
-	for i, v := range args {
-		tmpl, err := template.New("args").Parse(v)
-		if err != nil {
-			log.WithFields(log.Fields{"input": v}).Fatalf("Failed to parse template")
-		}
-
-		var out bytes.Buffer
-		err = tmpl.Execute(&out, spec)
-		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Fatal("Failed to render template")
-		}
-		args[i] = out.String()
+	x, err := spec.ExecuteTemplateFromString(args...)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	log.Infof("Executing commands: %v", args)
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = entryEnvVars
-	rc, err := ee.RunCmds(cmd)
-	if rc != 0 || err != nil {
-		log.WithFields(log.Fields{
-			"return code": rc,
-			"error":       err,
-			"command":     args,
-		}).Error("Failed")
-		os.Exit(rc)
+	cmd := exec.CommandContext(ctx, x[0], x[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
 	}
 	log.Infof("Done")
 }

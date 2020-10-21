@@ -1,6 +1,9 @@
 package spec
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"gopkg.in/yaml.v2"
@@ -44,9 +47,9 @@ oscontainer:
   push_url: registry.mock.example.org/mockOS-devel/machine-os-content
 `
 
-func wantedGot(want, got string, t *testing.T) {
+func wantedGot(want, got interface{}, t *testing.T) {
 	if want != got {
-		t.Errorf("wanted: %s\n   got: %s", want, got)
+		t.Errorf("wanted: %v\n   got: %v", want, got)
 	}
 }
 
@@ -58,4 +61,34 @@ func TestJobSpec(t *testing.T) {
 	}
 
 	wantedGot("mockOS-99", js.Job.BuildName, t)
+
+	// Test rendering from a string
+	s, err := js.ExecuteTemplateFromString("good {{ .Job.BuildName }}")
+	wantedGot(nil, err, t)
+	wantedGot("good mockOS-99", s[0], t)
+	wantedGot(1, len(s), t)
+
+	// Test rendering for a slice of strings
+	s, err = js.ExecuteTemplateFromString("good", "{{ .Job.BuildName }}")
+	wantedGot(nil, err, t)
+	wantedGot("mockOS-99", s[1], t)
+	wantedGot(2, len(s), t)
+
+	// Test a failure
+	s, err = js.ExecuteTemplateFromString("this", "wont", "{{ .Work }}")
+	if err == nil {
+		t.Errorf("template should not render")
+	}
+
+	// Test a script
+	f, err := ioutil.TempFile("", "meh")
+	defer os.Remove(f.Name())
+	wantedGot(nil, err, t)
+	err = ioutil.WriteFile(f.Name(), []byte("echo {{ .Job.BuildName }}"), 0444)
+	wantedGot(nil, err, t)
+
+	ctx := context.Background()
+	err = js.RendererExecuter(ctx, []string{}, f.Name())
+	wantedGot(nil, err, t)
+
 }

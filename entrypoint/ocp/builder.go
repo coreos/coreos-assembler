@@ -10,11 +10,14 @@
 package ocp
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 
 	"github.com/coreos/entrypoint/spec"
 	rhjobspec "github.com/coreos/entrypoint/spec"
@@ -26,6 +29,8 @@ var (
 	// cosaSrvDir is where the build directory should be. When the build API
 	// defines a contextDir then it will be used. In most cases this should be /srv
 	cosaSrvDir = defaultContextDir
+
+	ctx context.Context
 )
 
 func init() {
@@ -49,7 +54,12 @@ type Builder struct {
 }
 
 // NewBuilder reads the environment options and returns a Builder and error.
-func NewBuilder() (*Builder, error) {
+func NewBuilder(c context.Context) (*Builder, error) {
+	if c == nil {
+		return nil, errors.New("context must be defined")
+	}
+	ctx = c
+
 	v := Builder{}
 	rv := reflect.TypeOf(v)
 	for i := 0; i < rv.NumField(); i++ {
@@ -76,13 +86,13 @@ func NewBuilder() (*Builder, error) {
 	if buildAPIErr != nil && buildAPIErr != ErrNoOCPBuildSpec {
 		log.Errorf("Failed to initalized the OpenShift Build API Client: %v", buildAPIErr)
 		return nil, buildAPIErr
-	} else {
-		v.EnvVars = append(
-			os.Environ(),
-			"COSA_SKIP_OVERLAY=skip",
-			"FORCE_UNPRIVILEGED=1",
-		)
 	}
+	v.EnvVars = append(
+		os.Environ(),
+		"COSA_SKIP_OVERLAY=skip",
+		"FORCE_UNPRIVILEGED=1",
+	)
+
 	// Builder requires either a Build API Client or Kuberneres Cluster client.
 	if k8sAPIErr != nil && buildAPIErr != nil {
 		return nil, ErrInvalidOCPMode
@@ -151,38 +161,38 @@ func (o *Builder) PrepareEnv() error {
 }
 
 // Exec executes the command using the closure for the commands
-func (o *Builder) Exec(f func(args []string) error) error {
+func (o *Builder) Exec(ctx context.Context) error {
 	curD, _ := os.Getwd()
 	defer os.Chdir(curD)
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return err
 	}
 
-	// By default, binary payloads override all envvars directives.
-	// OCP does not allow envVars with binary builds.
-	if apiBuild.Spec.Source.Binary != nil {
-		scripts, err := filepath.Glob("*.cosa.sh")
+	var scripts []string
+
+	// Handle EnvVar interface first
+	if o.CosaCmds != "" {
+		tmpf, err := ioutil.TempFile("", "cosa-")
 		if err != nil {
 			return err
 		}
-		return f(scripts)
+		defer os.Remove(tmpf.Name())
+		content := fmt.Sprintf(strictModeBashTemplate, o.CosaCmds, o.CosaCmds)
+		if _, err = tmpf.WriteString(content); err != nil {
+			return err
+		}
+		if err := os.Chmod(tmpf.Name(), 0755); err != nil {
+			return err
+		}
 	}
 
-	// If there are no binary payloads, write then envVars to
-	// to a temporary file, and use that for execution.
-	tmpf, err := ioutil.TempFile("", "cosa-")
+	// Look for any scripts
+	foundScripts, err := filepath.Glob("*.cosa.sh")
 	if err != nil {
-		return err
+		scripts = foundScripts
 	}
-	defer os.Remove(tmpf.Name())
-	content := fmt.Sprintf(strictModeBashTemplate, o.CosaCmds, o.CosaCmds)
-	if _, err = tmpf.WriteString(content); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmpf.Name(), 0755); err != nil {
-		return err
-	}
-	return f(
-		[]string{tmpf.Name()},
-	)
+
+	// Run the scripts in sorted order
+	sort.Strings(scripts)
+	return o.JobSpec.RendererExecuter(ctx, o.EnvVars, scripts...)
 }

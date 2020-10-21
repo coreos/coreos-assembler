@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"strings"
 
-	ee "github.com/coreos/entrypoint/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,12 +35,10 @@ func cosaInit(envVars []string) error {
 	log.Infof("running 'git %v'", strings.Join(args, " "))
 	cmd := exec.Command("cosa", args...)
 	cmd.Env = envVars
-	rc, err := ee.RunCmds(cmd)
-	if rc != 0 || err != nil {
+	if err := cmd.Run(); err != nil {
 		log.WithFields(log.Fields{
-			"cmd":         args,
-			"return code": rc,
-			"error":       err,
+			"cmd":   args,
+			"error": err,
 		}).Error("Failed to checkout respository")
 		return errors.New("failed to run cosa init")
 	}
