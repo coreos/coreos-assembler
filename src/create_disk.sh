@@ -266,7 +266,13 @@ ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
 
 deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${ostree_commit}.0"
 test -d "${deploy_root}"
-
+case $(arch) in
+    s390x)
+        # remove immutable bit as ostree in rhcos does not have this fix:
+        # https://github.com/ostreedev/ostree/pull/2179
+        chattr -i ${deploy_root}
+    ;;
+esac
 # This will allow us to track the version that an install
 # originally used; if we later need to understand something
 # like "exactly what mkfs.xfs version was used" we can do
