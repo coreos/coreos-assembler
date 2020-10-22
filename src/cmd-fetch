@@ -108,7 +108,9 @@ fi
 
 # By default, we ignore cosa overrides since they're temporary. With
 # --with-cosa-overrides, we don't ignore them (and thus don't need to fetch any
-# overridden packages).
+# overridden packages). Disable SC2086 since we don't want an extra arg in the
+# empty case.
+# shellcheck disable=SC2086
 prepare_compose_overlays ${IGNORE_COSA_OVERRIDES_ARG}
 
 # shellcheck disable=SC2086
