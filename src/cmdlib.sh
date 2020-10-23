@@ -472,10 +472,6 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
 
-    # resolv.conf may be symlink.
-    mkdir -p "${vmpreparedir}/etc"
-    cp -Lv /etc/resolv.conf "${vmpreparedir}/etc/resolv.conf"
-
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
     cat > "${vmpreparedir}/init" <<EOF
