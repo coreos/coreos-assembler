@@ -1,3 +1,5 @@
+// +build integration,!ci
+
 package ocp
 
 import (

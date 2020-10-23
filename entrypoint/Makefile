@@ -2,6 +2,7 @@ my_dir := $(abspath $(shell dirname $(lastword $(MAKEFILE_LIST))))
 version = $(shell date +%Y-%m-%d).$(shell git rev-parse --short HEAD)~$(shell test -n "`git status -s`" && echo dirty || echo clean)
 cosa_dir = $(shell test -d /usr/lib/coreos-assembler && echo /usr/lib/coreos-assembler)
 ldflags=-X main.version=${version} -X main.cosaDir=${cosa_dir}
+test_tags := $(shell which minio 2> /dev/null &>1 && echo "ci,integration" || echo "ci")
 
 export PATH := $(my_dir)/bin:$(PATH)
 PREFIX ?= /usr
@@ -10,23 +11,17 @@ ARCH:=$(shell uname -m)
 
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
-build: test minio
+build: test
 	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/entry .
 
 .PHONY: fmt
 fmt:
 	gofmt -d -e -l $(shell find . -iname "*.go"  -not -path "./vendor/*")
 	golint ${pkgs}
-
-.PHONY: minio
-minio:
-	@mkdir -p bin
-	@test -x bin/minio || env GOBIN="${my_dir}/bin" go get github.com/minio/minio
-
 .PHONY: test
-test: fmt minio
-	go test -mod=vendor -tags ci -i ${pkgs} && \
-	go test -mod=vendor -tags ci -cover ${pkgs}
+test: fmt
+	go test -mod=vendor -tags ${test_tags} -i ${pkgs} && \
+	go test -mod=vendor -tags ${test_tags} -cover ${pkgs}
 
 .PHONY: clean
 clean:
@@ -34,9 +29,8 @@ clean:
 	@rm -rf bin
 
 .PHONY: install
-install: bin/entry bin/minio
+install: bin/entry
 	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/entry
-	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/minio
 
 my_uid = $(shell id -u)
 .PHONY: devtest
