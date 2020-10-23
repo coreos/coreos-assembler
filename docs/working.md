@@ -109,7 +109,7 @@ In the future, it's likely coreos-assembler will also support something
 like `overrides/src` which could be a directory of symlinks to local
 git repositories.
 
-## Using cosa run --ro-bind for even faster iteration
+## Using cosa run --bind-ro for even faster iteration
 
 If you're working on e.g. the kernel or Ignition (things that go into the initramfs),
 then you probably need a `cosa build` workflow (or `cosa buildinitramfs-fast`, see below).
@@ -118,7 +118,18 @@ than doing a full image build each time, a fast way to test out changes is to us
 something like this:
 
 ```
-$ cosa run --ro-bind ~/src/github/containers/libpod,/run/workdir
+$ cosa run --bind-ro ~/src/github/containers/podman,/run/workdir
+```
+
+If you are running cosa in a container, you will have to change your current
+working directory to a parent directory common to both project directories and
+use relative paths:
+
+```
+$ cd ~
+$ cosa run \
+      --qemu-image src/fcos/build/latest/x86_64/fedora-coreos-*.x86_64.qcow2 \
+      --bind-ro src/github/containers/podman,/run/workdir
 ```
 
 Then in the booted VM, `/run/workdir` will point to the `libpod` directory on your host,
@@ -134,11 +145,21 @@ the VM's rootfs.
 Another related trick is:
 
 ```
-$ cosa run --ro-bind /usr/bin,/run/hostbin
+$ cosa run --bind-ro /usr/bin,/run/hostbin
 ```
 
 Then in the VM you have e.g. `/run/hostbin/strace`.  (This may fail in some scenarios
 where your dev container is different than the target).
+
+If you are running cosa in a container, you will only have access to the binary
+installed in this container. You can install binaries before launching the VM
+with:
+
+```
+$ cosa shell
+$ sudo dnf install ...
+$ cosa run --bind-ro /usr/bin,/run/hostbin
+```
 
 ## Using cosa buildinitramfs-fast
 
