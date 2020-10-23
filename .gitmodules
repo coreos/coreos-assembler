@@ -1,0 +1,4 @@
+[submodule "minio"]
+	path = minio
+	url = https://github.com/minio/minio
+	branch = ccc55fbc2cc26fbdd316eda83698f4c9983200a2
