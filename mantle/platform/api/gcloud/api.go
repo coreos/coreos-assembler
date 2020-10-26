@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
-	"google.golang.org/api/compute/v0.beta"
+	"google.golang.org/api/compute/v1"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"

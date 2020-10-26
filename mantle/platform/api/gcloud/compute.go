@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh/agent"
-	"google.golang.org/api/compute/v0.beta"
+	"google.golang.org/api/compute/v1"
 )
 
 func (a *API) vmname() string {
