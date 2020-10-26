@@ -47,11 +47,12 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
-	golang.org/x/net v0.0.0-20200625001655-4c5254603344
-	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/sys v0.0.0-20200610111108-226ff32320da
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
+	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
 	golang.org/x/text v0.3.3
-	google.golang.org/api v0.29.0
+	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
+	google.golang.org/api v0.34.0
 	google.golang.org/appengine v1.6.6 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
