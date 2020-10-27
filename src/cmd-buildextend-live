@@ -318,6 +318,7 @@ def generate_iso():
     print(f'Substituting ISO kernel arguments: {kargs}')
 
     files_with_karg_embed_areas = {}
+    cmdline = ''
     karg_embed_area_length = 0
     # Grab all the contents from the live dir from the configs
     for srcdir, _, filenames in os.walk(srcdir_prefix):
@@ -341,6 +342,12 @@ def generate_iso():
                 buf = newbuf
                 karg_area_end = re.search(r'(#+) COREOS_KARG_EMBED_AREA\n', buf)
                 if karg_area_end is not None:
+                    file_kargs = buf[karg_area_start.start():karg_area_end.start()]
+                    if len(cmdline) == 0:
+                        cmdline = file_kargs
+                    elif cmdline != file_kargs:
+                        raise Exception(f'Default cmdline is different: "{cmdline}" != "{file_kargs}"')
+
                     length = karg_area_end.start() + len(karg_area_end[1]) - karg_area_start.start()
                     files_with_karg_embed_areas[filename] = karg_area_start.start()
                     if karg_embed_area_length == 0:
@@ -351,6 +358,9 @@ def generate_iso():
                 fh.write(buf)
             shutil.copystat(srcfile, dstfile)
             print(f'{srcfile} -> {dstfile}')
+
+    with open(os.path.join(tmpisoroot, '.cmdline'), 'w') as fh:
+        fh.write(cmdline)
 
     # These sections are based on lorax templates
     # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
@@ -526,8 +536,8 @@ def generate_iso():
         # coreos-installer side first
         INITRDFMT = '<8s2Q'
         assert struct.calcsize(INITRDFMT) == 24
-        KARGSFMT = f"<8s{MAX_KARG_FILES+1}Q"  # +1 for area length
-        assert struct.calcsize(KARGSFMT) == 64
+        KARGSFMT = f"<8s{MAX_KARG_FILES+1+1}Q"  # +1 for area length and +1 for offset to default read-only '.cmdline'
+        assert struct.calcsize(KARGSFMT) == 72
 
         # Start of the Ignition padding within the ISO
         offset = file_offset_in_iso(isoinfo, ignition_img)
@@ -540,11 +550,14 @@ def generate_iso():
             # Write header at the end of the System Area
             isofh.seek(ISO_SYSTEM_AREA_SIZE - (struct.calcsize(INITRDFMT) +
                                                struct.calcsize(KARGSFMT)))
-            offsets = [0] * MAX_KARG_FILES
+
+            offsets = [0] * (MAX_KARG_FILES + 1)  # +1 for offset to default
+            # This is ours default read-only '.cmdline' file, which is used for `coreos-installer iso kargs reset ISO`
+            offsets[0] = file_offset_in_iso(isoinfo, '.cmdline')
 
             for i, fn in enumerate(files_with_karg_embed_areas):
                 offset_in_file = files_with_karg_embed_areas[fn]
-                offsets[i] = file_offset_in_iso(isoinfo, fn) + offset_in_file
+                offsets[i + 1] = file_offset_in_iso(isoinfo, fn) + offset_in_file
             isofh.write(struct.pack(KARGSFMT, b'corekarg', karg_embed_area_length, *offsets))
             # Magic number + offset + length
             isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, initrd_ignition_padding))
