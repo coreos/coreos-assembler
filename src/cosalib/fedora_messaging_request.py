@@ -44,6 +44,9 @@ def send_request_and_wait_for_response(request_type,
                                        environment='prod',
                                        request_timeout=DEFAULT_REQUEST_TIMEOUT_SEC,
                                        body={}):
+    assert environment in ['prod', 'stg']
+    assert request_type in ['ostree-sign', 'artifacts-sign', 'ostree-import']
+
     # Generate a unique id for this request
     request_id = str(uuid.uuid4())
 
