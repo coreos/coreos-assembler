@@ -17,16 +17,12 @@ package rhcos
 import (
 	"path/filepath"
 
-	"github.com/coreos/pkg/capnslog"
-
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform/conf"
 )
-
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/upgrade")
 
 func init() {
 	register.RegisterUpgradeTest(&register.Test{
