@@ -122,26 +122,26 @@ if [ "${rootfs_size}" != "0" ]; then
 fi
 case "$arch" in
     x86_64)
+        EFIPN=2
         set -- -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+        -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B
         if [ "${x86_bios_partition}" = 1 ]; then
             set -- "$@" -n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649
         fi
         set -- "$@" -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk "$@"
         sgdisk -p "$disk"
-        EFIPN=2
         ;;
     aarch64)
+        EFIPN=2
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n 2:0:+127M -c 2:EFI-SYSTEM -t 2:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
+        -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
-        EFIPN=2
         ;;
     s390x)
         sgdisk -Z $disk \
