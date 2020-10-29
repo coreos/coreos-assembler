@@ -113,8 +113,8 @@ set -x
 # Partition and create fs's. The 0...4...a...1 uuid is a sentinal used by coreos-gpt-setup
 # in ignition-dracut. It signals that the disk needs to have it's uuid randomized and the
 # backup header moved to the end of the disk.
-# Pin /boot and / to the partition number 1 and 4 respectivelly
-BOOTPN=1
+# Pin /boot and / to the partition number 3 and 4 respectively
+BOOTPN=3
 ROOTPN=4
 # Make the size relative
 if [ "${rootfs_size}" != "0" ]; then
@@ -124,13 +124,13 @@ case "$arch" in
     x86_64)
         EFIPN=2
         set -- -Z $disk \
-        -U "${uninitialized_gpt_uuid}" \
-        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+        -U "${uninitialized_gpt_uuid}"
         if [ "${x86_bios_partition}" = 1 ]; then
-            set -- "$@" -n 3:0:+1M -c 3:BIOS-BOOT -t 3:21686148-6449-6E6F-744E-656564454649
+            set -- "$@" -n 1:0:+1M -c 1:BIOS-BOOT -t 1:21686148-6449-6E6F-744E-656564454649
         fi
-        set -- "$@" -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        set -- "$@" -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
+        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
+        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk "$@"
         sgdisk -p "$disk"
         ;;
@@ -138,8 +138,8 @@ case "$arch" in
         EFIPN=2
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
-        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
+        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
@@ -152,7 +152,6 @@ case "$arch" in
         ;;
     ppc64le)
         PREPPN=1
-        BOOTPN=2
         # ppc64le doesn't use special uuid for root partition
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
