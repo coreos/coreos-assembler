@@ -77,6 +77,29 @@ def send_request_and_wait_for_response(request_type,
     return wait_for_response(cond, request_timeout)
 
 
+# This is used for informational messages for which don't expect a reply.
+# Supported broadcast types:
+# - build.state.change: sent by build pipeline when build started or finished
+# - stream.release: sent by release pipeline when a new stream release occurred
+# - stream.metadata.update: sent by metadata sync job when stream metadata is updated
+def broadcast_fedmsg(broadcast_type,
+                     config=None,
+                     environment='prod',
+                     body={}):
+    assert environment in ['prod', 'stg']
+    assert broadcast_type in ['build.state.change', 'stream.release',
+                              'stream.metadata.update']
+
+    # Send the message/request
+    send_message(config=config,
+                 topic=get_broadcast_topic(broadcast_type, environment),
+                 body=body)
+
+
+def get_broadcast_topic(broadcast_type, environment):
+    return f'{FEDORA_MESSAGING_COREOS_TOPIC_PREFIX[environment]}.{broadcast_type}'
+
+
 def get_request_topic(request_type, environment):
     return f'{FEDORA_MESSAGING_COREOS_TOPIC_PREFIX[environment]}.build.request.{request_type}'
 
