@@ -128,9 +128,9 @@ case "$arch" in
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B
         if [ "${x86_bios_partition}" = 1 ]; then
-            set -- "$@" -n 3:0:+1M   -c 3:BIOS-BOOT  -t 3:21686148-6449-6E6F-744E-656564454649
+            set -- "$@" -n 3:0:+1M -c 3:BIOS-BOOT -t 3:21686148-6449-6E6F-744E-656564454649
         fi
-        set -- "$@" -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        set -- "$@" -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk "$@"
         sgdisk -p "$disk"
         ;;
@@ -140,25 +140,25 @@ case "$arch" in
         -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
-        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
     s390x)
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root       -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
     ppc64le)
-        BOOTPN=2
         PREPPN=1
+        BOOTPN=2
         # ppc64le doesn't use special uuid for root partition
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
-        -n ${PREPPN}:0:+4M   -c ${PREPPN}:PowerPC-PReP-boot -t ${PREPPN}:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
+        -n ${PREPPN}:0:+4M -c ${PREPPN}:PowerPC-PReP-boot -t ${PREPPN}:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:${rootfs_size}     -c ${ROOTPN}:root              -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
 esac
@@ -218,8 +218,8 @@ fi
 mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot -U "${bootfs_uuid}"
 if [ ${EFIPN:+x} ]; then
        mkfs.fat "${disk}${EFIPN}" -n EFI-SYSTEM
-       # partition $BIOPN has no FS, its for bios grub
-       # partition $PREPPN has no FS, its for PowerPC PReP Boot
+       # BIOS boot partition has no FS; it's for BIOS GRUB
+       # partition $PREPPN has no FS; it's for PowerPC PReP Boot
 fi
 case "${rootfs_type}" in
     ext4verity)
