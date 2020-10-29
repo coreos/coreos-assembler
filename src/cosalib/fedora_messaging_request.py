@@ -71,8 +71,7 @@ def send_request_and_wait_for_response(request_type,
 
     # Send the message/request
     send_message(config=config,
-                 request_type=request_type,
-                 environment=environment,
+                 topic=get_request_topic(request_type, environment),
                  body={**body, 'request_id': request_id})
     # Wait for the response to come back
     return wait_for_response(cond, request_timeout)
@@ -86,8 +85,8 @@ def get_request_finished_topic(request_type, environment):
     return get_request_topic(request_type, environment) + '.finished'
 
 
-def send_message(config, request_type, environment, body):
-    print(f"Sending {request_type} request for build {body['build_id']}")
+def send_message(config, topic, body):
+    print(f"Sending {topic} for build {body['build_id']}")
     # This is a bit hacky; we fork to publish the message here so that we can
     # load the publishing fedora-messaging config. The TL;DR is: we need auth
     # to publish, but we need to use the public endpoint for consuming so we
@@ -95,16 +94,16 @@ def send_message(config, request_type, environment, body):
     # inherit anything by default (like the Twisted state).
     ctx = mp.get_context('spawn')
     p = ctx.Process(target=send_message_impl,
-                    args=(config, request_type, environment, body))
+                    args=(config, topic, body))
     p.start()
     p.join()
 
 
-def send_message_impl(config, request_type, environment, body):
+def send_message_impl(config, topic, body):
     if config:
         conf.load_config(config)
     publish(
-        message.Message(body=body, topic=get_request_topic(request_type, environment))
+        message.Message(body=body, topic=topic)
     )
 
 
