@@ -278,7 +278,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		return nil
-	} else {
-		return inst.Wait()
 	}
+	return inst.Wait()
 }

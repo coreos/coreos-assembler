@@ -85,14 +85,14 @@ will be ignored.
 		SilenceUsage: true,
 	}
 
-	cmdHttpServer = &cobra.Command{
+	cmdHTTPServer = &cobra.Command{
 		Use:   "http-server",
 		Short: "Run a static webserver",
 		Long: `Run a simple static webserver
 
 This can be useful for e.g. serving locally built OSTree repos to qemu.
 `,
-		RunE: runHttpServer,
+		RunE: runHTTPServer,
 
 		SilenceUsage: true,
 	}
@@ -131,8 +131,8 @@ func init() {
 	cmdList.Flags().StringVarP(&listPlatform, "platform", "p", "all", "filter output by platform")
 	cmdList.Flags().StringVarP(&listDistro, "distro", "b", "all", "filter output by distro")
 
-	root.AddCommand(cmdHttpServer)
-	cmdHttpServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
+	root.AddCommand(cmdHTTPServer)
+	cmdHTTPServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
 
 	root.AddCommand(cmdIgnConvert)
 
@@ -168,11 +168,11 @@ func registerExternals() error {
 	}
 	for _, d := range runExternals {
 		if d == "." {
-			if cwd, err := os.Getwd(); err != nil {
+			cwd, err := os.Getwd()
+			if err != nil {
 				return err
-			} else {
-				d = cwd
 			}
+			d = cwd
 		}
 		err := kola.RegisterExternalTests(d)
 		if err != nil {
@@ -412,9 +412,8 @@ func (i *item) updateValues() {
 		if len(include) == 0 && len(exclude) == 0 {
 			if listJSON {
 				return all
-			} else {
-				return []string{"all"}
 			}
+			return []string{"all"}
 		}
 		var retItems []string
 		if len(exclude) > 0 {
@@ -448,7 +447,7 @@ func (i item) String() string {
 	return fmt.Sprintf("%v\t%v\t%v\t%v", i.Name, i.Platforms, i.Architectures, i.Distros)
 }
 
-func runHttpServer(cmd *cobra.Command, args []string) error {
+func runHTTPServer(cmd *cobra.Command, args []string) error {
 	directory := "."
 
 	http.Handle("/", http.FileServer(http.Dir(directory)))
@@ -509,7 +508,7 @@ func runUpgradeCleanup() {
 func syncFindParentImageOptions() error {
 	var err error
 
-	var parentBaseUrl string
+	var parentBaseURL string
 	skipSignature := false
 	switch kola.Options.Distribution {
 	case "fcos":
@@ -519,13 +518,13 @@ func syncFindParentImageOptions() error {
 			return errors.New("no ref in build metadata")
 		}
 		stream := filepath.Base(kola.CosaBuild.Meta.BuildRef)
-		parentBaseUrl, err = getParentFcosBuildBase(stream)
+		parentBaseURL, err = getParentFcosBuildBase(stream)
 		if err != nil {
 			return err
 		}
 	case "rhcos":
 		// Hardcoded for now based on https://github.com/openshift/installer/blob/release-4.3/data/data/rhcos.json
-		parentBaseUrl = fmt.Sprintf("https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/rhcos-4.3/43.81.202003111353.0/%s/", system.RpmArch())
+		parentBaseURL = fmt.Sprintf("https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/rhcos-4.3/43.81.202003111353.0/%s/", system.RpmArch())
 		// sigh...someday we'll get the stuff signed by ART or maybe https://github.com/openshift/enhancements/pull/201 will just happen
 		skipSignature = true
 	default:
@@ -533,7 +532,7 @@ func syncFindParentImageOptions() error {
 	}
 
 	var parentCosaBuild *cosa.Build
-	parentCosaBuild, err = cosa.FetchAndParseBuild(parentBaseUrl + "meta.json")
+	parentCosaBuild, err = cosa.FetchAndParseBuild(parentBaseURL + "meta.json")
 	if err != nil {
 		return err
 	}
@@ -548,9 +547,9 @@ func syncFindParentImageOptions() error {
 			}
 			qemuImageDirIsTemp = true
 		}
-		qcowUrl := parentBaseUrl + parentCosaBuild.BuildArtifacts.Qemu.Path
+		qcowURL := parentBaseURL + parentCosaBuild.BuildArtifacts.Qemu.Path
 		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.BuildArtifacts.Qemu.Path)
-		decompressedQcowLocal, err := downloadImageAndDecompress(qcowUrl, qcowLocal, skipSignature)
+		decompressedQcowLocal, err := downloadImageAndDecompress(qcowURL, qcowLocal, skipSignature)
 		if err != nil {
 			return err
 		}

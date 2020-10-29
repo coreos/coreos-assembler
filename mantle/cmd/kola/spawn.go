@@ -203,7 +203,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		}
 		if jsonInfoFile != nil {
 			if err := platform.WriteJSONInfo(mach, jsonInfoFile); err != nil {
-				return fmt.Errorf("Failed writing JSON info: %v\n", err)
+				return fmt.Errorf("Failed writing JSON info: %v", err)
 			}
 		}
 
@@ -218,9 +218,9 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 			}
 		}
 		for {
-			var bootId string
+			var bootID string
 			if spawnReconnect {
-				if bootId, err = platform.GetMachineBootId(someMach); err != nil {
+				if bootID, err = platform.GetMachineBootId(someMach); err != nil {
 					return errors.Wrapf(err, "failed getting boot id")
 				}
 			}
@@ -230,7 +230,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 			}
 			if _, ok := errors.Cause(err).(*ssh.ExitMissingError); ok {
 				fmt.Printf("Reconnecting (press Ctrl-C to abort)... ")
-				if err = someMach.WaitForReboot(120*time.Second, bootId); err != nil {
+				if err = someMach.WaitForReboot(120*time.Second, bootID); err != nil {
 					return errors.Wrapf(err, "failed to reboot")
 				}
 				fmt.Println()
