@@ -9,9 +9,9 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install entry entry-check minio
+.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install entry entry-check tools
 
-all: mantle minio entry
+all: tools mantle entry
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -66,8 +66,8 @@ entry:
 entry-check:
 	cd entrypoint && $(MAKE) test
 
-minio:
-	test -e minio/minio || { git submodule update --init minio; cd minio && $(MAKE); }
+tools:
+	cd tools && $(MAKE)
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -82,6 +82,6 @@ install:
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
+	cd tools && $(MAKE) install DESTDIR=$(DESTDIR)
 	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
-	install -v -D -t $(DESTDIR)$(PREFIX)/bin minio/minio
 	cd entrypoint && $(MAKE) install DESTDIR=$(DESTDIR)
