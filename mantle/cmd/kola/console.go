@@ -71,12 +71,12 @@ func runCheckConsole(cmd *cobra.Command, args []string) error {
 		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
-			errorcount += 1
+			errorcount++
 			continue
 		}
 		for _, badness := range kola.CheckConsole(console, nil) {
 			fmt.Printf("%v: %v\n", sourceName, badness)
-			errorcount += 1
+			errorcount++
 		}
 	}
 	if errorcount > 0 {

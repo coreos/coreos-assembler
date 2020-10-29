@@ -247,7 +247,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	scenarios = []string{}
-	for scenario, _ := range targetScenarios {
+	for scenario := range targetScenarios {
 		scenarios = append(scenarios, scenario)
 	}
 	fmt.Printf("Testing scenarios: %s\n", scenarios)
