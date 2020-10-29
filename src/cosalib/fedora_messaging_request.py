@@ -26,12 +26,14 @@ FEDORA_MESSAGING_PUBLIC_CONF = {
     'prod': '/etc/fedora-messaging/fedora.toml',
     'stg': '/etc/fedora-messaging/fedora.stg.toml',
 }
+
+FEDORA_MESSAGING_COREOS_TOPIC_PREFIX = {
+    'prod': 'org.fedoraproject.prod.coreos',
+    'stg': 'org.fedoraproject.stg.coreos',
+}
+
 # https://apps.fedoraproject.org/datagrepper/raw?topic=org.fedoraproject.prod.coreos.build.request.ostree-sign&delta=100000
 # https://apps.fedoraproject.org/datagrepper/raw?topic=org.fedoraproject.prod.coreos.build.request.artifacts-sign&delta=100000
-FEDORA_MESSAGING_TOPIC_PREFIX = {
-    'prod': 'org.fedoraproject.prod.coreos.build.request',
-    'stg': 'org.fedoraproject.stg.coreos.build.request',
-}
 
 # Default to timeout after 60 seconds
 DEFAULT_REQUEST_TIMEOUT_SEC = 60
@@ -64,7 +66,7 @@ def send_request_and_wait_for_response(request_type,
 
 
 def get_request_topic(request_type, environment):
-    return f'{FEDORA_MESSAGING_TOPIC_PREFIX[environment]}.{request_type}'
+    return f'{FEDORA_MESSAGING_COREOS_TOPIC_PREFIX[environment]}.build.request.{request_type}'
 
 
 def get_request_finished_topic(request_type, environment):
