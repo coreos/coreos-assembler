@@ -17,7 +17,7 @@ build: test
 .PHONY: fmt
 fmt:
 	gofmt -d -e -l $(shell find . -iname "*.go"  -not -path "./vendor/*")
-	golint ${pkgs}
+
 .PHONY: test
 test: fmt
 	go test -mod=vendor -tags ${test_tags} -i ${pkgs} && \

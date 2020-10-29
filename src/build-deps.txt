@@ -1,3 +1,2 @@
 # Used by mantle
 golang
-golang-x-lint
