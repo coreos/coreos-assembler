@@ -54,6 +54,9 @@ clean:
 	find . -name "*.py[co]" -type f | xargs rm -f
 	find . -name "__pycache__" -type d | xargs rm -rf
 
+golint:
+	bash -x ci/golinter.sh
+
 mantle:
 	cd mantle && $(MAKE)
 

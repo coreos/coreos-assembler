@@ -1,5 +1,15 @@
 // Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
 
+pod(image: 'quay.io/coreos-assembler/coreos-assembler:latest', kvm: false, memory: "1Gi") {
+    checkout scm
+    stage("Linting") {
+        shwrap("""
+            make golint
+            make check
+        """)
+    }
+}
+
 pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memory: "10Gi") {
     checkout scm
 
@@ -15,7 +25,6 @@ pod(image: 'registry.fedoraproject.org/fedora:32', runAsUser: 0, kvm: true, memo
 
     stage("Unit Test") {
         shwrap("""
-            make check
             make unittest
         """)
     }
