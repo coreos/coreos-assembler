@@ -63,7 +63,7 @@ func TestSortedKeys(t *testing.T) {
 
 	// test is pointless if map iterates in-order by random chance
 	mapKeys := make([]string, 0, len(testMap))
-	for k, _ := range testMap {
+	for k := range testMap {
 		mapKeys = append(mapKeys, k)
 	}
 	if sort.StringsAreSorted(mapKeys) {
@@ -89,7 +89,7 @@ func TestNaturalKeys(t *testing.T) {
 
 	// test is pointless if map iterates in-order by random chance
 	mapKeys := make([]string, 0, len(testMap))
-	for k, _ := range testMap {
+	for k := range testMap {
 		mapKeys = append(mapKeys, k)
 	}
 	if natsort.StringsAreSorted(mapKeys) {
