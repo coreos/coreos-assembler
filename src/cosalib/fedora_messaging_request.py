@@ -109,7 +109,7 @@ def get_request_finished_topic(request_type, environment):
 
 
 def send_message(config, topic, body):
-    print(f"Sending {topic} for build {body['build_id']}")
+    print(f"Sending {topic} with body {body}")
     # This is a bit hacky; we fork to publish the message here so that we can
     # load the publishing fedora-messaging config. The TL;DR is: we need auth
     # to publish, but we need to use the public endpoint for consuming so we
