@@ -4,7 +4,7 @@ DESTDIR ?=
 build:
 	mkdir -p bin
 	test -e bin/minio || \
-	go build -o bin/minio ./vendor/github.com/minio/minio/cmd
+	go build -o bin/minio ./vendor/github.com/minio/minio
 	test -e bin/golangci-lint || \
 	go build -o bin/golangci-lint ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
 	test -e bin/gosec || \
