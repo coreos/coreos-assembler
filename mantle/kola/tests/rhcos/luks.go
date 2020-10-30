@@ -176,20 +176,20 @@ func b64Encode(s string) string {
 func mustMatch(c cluster.TestCluster, r string, output []byte) {
 	m, err := regexp.Match(r, output)
 	if err != nil {
-		c.Fatal("Failed to match regexp %s: %v", r, err)
+		c.Fatalf("Failed to match regexp %s: %v", r, err)
 	}
 	if !m {
-		c.Fatal("Regexp %s did not match text: %s", r, output)
+		c.Fatalf("Regexp %s did not match text: %s", r, output)
 	}
 }
 
 func mustNotMatch(c cluster.TestCluster, r string, output []byte) {
 	m, err := regexp.Match(r, output)
 	if err != nil {
-		c.Fatal("Failed to match regexp %s: %v", r, err)
+		c.Fatalf("Failed to match regexp %s: %v", r, err)
 	}
 	if m {
-		c.Fatal("Regexp %s matched text: %s", r, output)
+		c.Fatalf("Regexp %s matched text: %s", r, output)
 	}
 }
 
@@ -208,7 +208,10 @@ func luksSanityTest(c cluster.TestCluster, m platform.Machine, pin string) {
 		c.MustSSH(m, "sudo rpm-ostree kargs --append ip=dhcp --append rd.neednet=1")
 	}
 	// And validate we can automatically unlock it on reboot
-	m.Reboot()
+	err := m.Reboot()
+	if err != nil {
+		c.Fatalf("Failed to reboot the machine: %v", err)
+	}
 	luksDump = c.MustSSH(m, "sudo cryptsetup luksDump /dev/disk/by-partlabel/luks_root")
 	mustMatch(c, "Cipher: *aes", luksDump)
 }
