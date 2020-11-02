@@ -16,6 +16,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -68,7 +69,7 @@ func readCache(cachePath string) (*oauth2.Token, error) {
 
 	// make sure token is refreshable
 	if tok != nil && !tok.Valid() {
-		ts := conf.TokenSource(oauth2.NoContext, tok)
+		ts := conf.TokenSource(context.TODO(), tok)
 		tok, err = ts.Token()
 		if err != nil || !tok.Valid() {
 			fmt.Printf("Could not refresh cached token: %v\n", err)
@@ -98,7 +99,7 @@ func getToken() (*oauth2.Token, error) {
 		if _, err := fmt.Scan(&code); err != nil {
 			return nil, err
 		}
-		tok, err = conf.Exchange(oauth2.NoContext, code)
+		tok, err = conf.Exchange(context.TODO(), code)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +121,7 @@ func GoogleClient() (*http.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return conf.Client(oauth2.NoContext, tok), nil
+	return conf.Client(context.TODO(), tok), nil
 }
 
 // GoogleTokenSource provides an outh2.TokenSource authorized in the
@@ -130,7 +131,7 @@ func GoogleTokenSource() (oauth2.TokenSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return conf.TokenSource(oauth2.NoContext, tok), nil
+	return conf.TokenSource(context.TODO(), tok), nil
 }
 
 // GoogleServiceClient fetchs a token from Google Compute Engine's
@@ -162,7 +163,7 @@ func GoogleClientFromJSONKey(jsonKey []byte, scope ...string) (*http.Client, err
 		return nil, err
 	}
 
-	return jwtConf.Client(oauth2.NoContext), nil
+	return jwtConf.Client(context.TODO()), nil
 
 }
 
@@ -178,5 +179,5 @@ func GoogleTokenSourceFromJSONKey(jsonKey []byte, scope ...string) (oauth2.Token
 		return nil, err
 	}
 
-	return jwtConf.TokenSource(oauth2.NoContext), nil
+	return jwtConf.TokenSource(context.TODO()), nil
 }
