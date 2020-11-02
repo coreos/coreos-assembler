@@ -476,15 +476,18 @@ func runArtifactIgnitionVersion(cmd *cobra.Command, args []string) error {
 }
 
 func preRunUpgrade(cmd *cobra.Command, args []string) error {
-	// unlike `kola run`, we *require* the --build arg -- XXX: figure out
-	// how to get this working using cobra's MarkFlagRequired()
-	if kola.Options.CosaBuildId == "" {
-		errors.New("Error: missing required argument --build")
-	}
-
+	// note we pass `false` here for useCosa because we want to customize the
+	// *starting* image for upgrade tests
 	err := syncOptionsImpl(false)
 	if err != nil {
 		return err
+	}
+
+	// Unlike `kola run`, we *require* a cosa build. We check this after
+	// syncOptionsImpl so that it may be auto-filled in based on either an
+	// explicit `--build` or $PWD or `--workdir`.
+	if kola.Options.CosaBuildId == "" {
+		return errors.New("Error: missing required argument --build")
 	}
 
 	if findParentImage {
