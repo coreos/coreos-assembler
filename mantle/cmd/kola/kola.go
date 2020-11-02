@@ -36,7 +36,6 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 
@@ -115,9 +114,8 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	qemuImageDir       string
 	qemuImageDirIsTemp bool
 
-	extDependencyDir string
-	runExternals     []string
-	runMultiply      int
+	runExternals []string
+	runMultiply  int
 )
 
 func init() {
@@ -467,12 +465,6 @@ func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
 	}
 	_, err = os.Stdout.Write([]byte(config.String()))
 	return err
-}
-
-func runArtifactIgnitionVersion(cmd *cobra.Command, args []string) error {
-	artifact := args[0]
-	fmt.Printf("%s\n", sdk.TargetIgnitionVersionFromName(artifact))
-	return nil
 }
 
 func preRunUpgrade(cmd *cobra.Command, args []string) error {
