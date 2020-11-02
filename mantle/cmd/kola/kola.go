@@ -36,7 +36,6 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 
@@ -115,7 +114,6 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	qemuImageDir       string
 	qemuImageDirIsTemp bool
 
-	extDependencyDir string
 	runExternals     []string
 	runMultiply      int
 )
@@ -469,17 +467,11 @@ func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func runArtifactIgnitionVersion(cmd *cobra.Command, args []string) error {
-	artifact := args[0]
-	fmt.Printf("%s\n", sdk.TargetIgnitionVersionFromName(artifact))
-	return nil
-}
-
 func preRunUpgrade(cmd *cobra.Command, args []string) error {
 	// unlike `kola run`, we *require* the --build arg -- XXX: figure out
 	// how to get this working using cobra's MarkFlagRequired()
 	if kola.Options.CosaBuildId == "" {
-		errors.New("Error: missing required argument --build")
+		return errors.New("Error: missing required argument --build")
 	}
 
 	err := syncOptionsImpl(false)
