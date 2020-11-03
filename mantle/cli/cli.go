@@ -70,14 +70,6 @@ func Execute(main *cobra.Command) {
 	os.Exit(0)
 }
 
-func setRepoLogLevel(repo string, l capnslog.LogLevel) {
-	r, err := capnslog.GetRepoLogger(repo)
-	if err != nil {
-		return // don't care if it isn't linked in
-	}
-	r.SetRepoLogLevel(l)
-}
-
 func startLogging(cmd *cobra.Command) {
 	switch {
 	case logDebug:
