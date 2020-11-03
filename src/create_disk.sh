@@ -311,40 +311,10 @@ EOF
 # be overridden below
 bootloader_backend=none
 
-install_uefi_without_bootupd() {
-    # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
-    # In the future it'd be better to get this stuff out of the OSTree commit and
-    # change our build process to download+extract it separately.
-    local source_efidir="${deploy_root}/usr/lib/ostree-boot/efi"
-    local target_efi="$rootfs/boot/efi"
-    local src_grubefi=$(find "${source_efidir}"/EFI/ -maxdepth 1 -type d | grep -v BOOT)
-    local vendor_id="${src_grubefi##*/}"
-    local vendordir="${target_efi}/EFI/${vendor_id}"
-
-    # Some of the files in EFI/BOOT are _symlinks_ to EFI/$VENDOR
-    # in the OS tree. We need to make copies here.
-    mkdir -p "${target_efi}"/EFI/BOOT "${vendordir}"
-    for t in BOOT "${vendor_id}";
-    do
-        (
-            cd "${source_efidir}"/EFI/${t}
-            for i in *; do
-                /usr/lib/coreos-assembler/cp-reflink -vRL \
-                    $(readlink -f $i) \
-                    "${target_efi}"/EFI/"${t}"/
-            done
-        )
-    done
-}
-
 install_uefi() {
-    if test -d "${deploy_root}"/usr/lib/bootupd/updates; then
-        # https://github.com/coreos/fedora-coreos-tracker/issues/510
-        # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
-        /usr/bin/bootupctl backend install --src-root="${deploy_root}" "${rootfs}"
-    else
-        install_uefi_without_bootupd
-    fi
+    # https://github.com/coreos/fedora-coreos-tracker/issues/510
+    # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
+    /usr/bin/bootupctl backend install --src-root="${deploy_root}" "${rootfs}"
     # We have a "static" grub config file that basically configures grub to look
     # in the partition labeled "boot".
     local target_efi="$rootfs/boot/efi"
