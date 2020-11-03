@@ -288,6 +288,7 @@ else
     # creation.
     commit=$(ostree rev-parse --repo="${tmprepo}" "${ref}")
     image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
+    echo "commit: ${commit} image: ${image_input_checksum}"
     # Note we may not actually have a previous build in the case of
     # successfully composing an ostree but failing the image on the
     # first build.
