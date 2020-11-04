@@ -7,7 +7,6 @@ require (
 	github.com/Azure/go-autorest v9.1.0+incompatible
 	github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.30.28
@@ -25,12 +24,8 @@ require (
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
-	github.com/godbus/dbus v0.0.0-20181025153459-66d97aec3384 // indirect
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gophercloud/gophercloud v0.0.0-20180817041643-185230dfbd12
-	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
 	github.com/packethost/packngo v0.0.0-20180426081943-80f62d78849d
@@ -46,15 +41,11 @@ require (
 	github.com/vmware/govmomi v0.15.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
 	golang.org/x/text v0.3.3
-	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
 	google.golang.org/api v0.34.0
-	google.golang.org/appengine v1.6.6 // indirect
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
 replace google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d

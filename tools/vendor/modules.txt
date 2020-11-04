@@ -32,6 +32,11 @@ github.com/StackExchange/wmi
 # github.com/alecthomas/participle v0.2.1
 github.com/alecthomas/participle
 github.com/alecthomas/participle/lexer
+# github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
+github.com/alecthomas/template
+github.com/alecthomas/template/parse
+# github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
+github.com/alecthomas/units
 # github.com/bcicen/jstream v0.0.0-20190220045926-16c1f8af81c2
 github.com/bcicen/jstream
 # github.com/beevik/ntp v0.3.0
@@ -96,6 +101,9 @@ github.com/fatih/color
 github.com/fatih/structs
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
+# github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
+## explicit
+github.com/gedex/inflector
 # github.com/go-critic/go-critic v0.5.2
 github.com/go-critic/go-critic/checkers
 github.com/go-critic/go-critic/checkers/internal/astwalk
@@ -273,6 +281,10 @@ github.com/hashicorp/vault/sdk/helper/hclutil
 github.com/hashicorp/vault/sdk/helper/jsonutil
 github.com/hashicorp/vault/sdk/helper/parseutil
 github.com/hashicorp/vault/sdk/helper/strutil
+# github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
+## explicit
+github.com/idubinskiy/schematyper
+github.com/idubinskiy/schematyper/stringset
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03
@@ -942,6 +954,8 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/pluginpb
+# gopkg.in/alecthomas/kingpin.v2 v2.2.6
+gopkg.in/alecthomas/kingpin.v2
 # gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d
 gopkg.in/asn1-ber.v1
 # gopkg.in/ini.v1 v1.57.0
