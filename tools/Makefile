@@ -9,11 +9,13 @@ build:
 	go build -o bin/golangci-lint ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
 	test -e bin/gosec || \
 	go build -o bin/gosec ./vendor/github.com/securego/gosec/cmd/gosec
+	test -f bin/schematyper || \
+	go build -o bin/schematyper ./vendor/github.com/idubinskiy/schematyper
 
 clean:
 	rm -rfv bin
 
-install: bin/minio bin/golangci-lint bin/gosec
+install: bin/minio bin/golangci-lint bin/gosec bin/schematyper
 	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/{minio,golangci-lint,gosec}
 
 go-deps:
