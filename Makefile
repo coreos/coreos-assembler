@@ -51,6 +51,7 @@ unittest:
 
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
+	rm -rf tools/bin
 	find . -name "*.py[co]" -type f | xargs rm -f
 	find . -name "__pycache__" -type d | xargs rm -rf
 
