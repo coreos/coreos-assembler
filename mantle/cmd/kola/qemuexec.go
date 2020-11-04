@@ -92,7 +92,6 @@ func renderFragments(fragments []string, c *conf.Conf) error {
 		switch fragtype {
 		case "autologin":
 			c.AddAutoLogin()
-			break
 		default:
 			return fmt.Errorf("Unknown fragment: %s", fragtype)
 		}
@@ -228,7 +227,10 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if kola.QEMUIsoOptions.IsoPath != "" {
-		builder.AddIso(kola.QEMUIsoOptions.IsoPath, "")
+		err := builder.AddIso(kola.QEMUIsoOptions.IsoPath, "")
+		if err != nil {
+			return err
+		}
 	}
 	builder.Hostname = hostname
 	if memory != 0 {
