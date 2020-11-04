@@ -196,14 +196,17 @@ loop:
 				return err
 			}
 		case <-sigintChan:
-			serialLog.Seek(0, os.SEEK_SET)
-			_, err := io.Copy(os.Stderr, serialLog)
+			_, err := serialLog.Seek(0, io.SeekStart)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(os.Stderr, serialLog)
 			if err != nil {
 				return err
 			}
 			// Caught SIGINT, we're done
 			return fmt.Errorf("Caught SIGINT before successful login")
-		case _ = <-readychan:
+		case <-readychan:
 			fmt.Printf("\033[2K\rvirtio journal connected - sshd started\n")
 			break loop
 		}
@@ -216,7 +219,7 @@ loop:
 	go func() {
 		for {
 			select {
-			case _ = <-serialChan:
+			case <-serialChan:
 			case err := <-errchan:
 				fmt.Fprintf(os.Stderr, "errchan: %v", err)
 			}
@@ -308,7 +311,9 @@ loop:
 					Pid: inst.Pid(),
 				}
 				poweroffStarted = true
-				proc.Signal(os.Interrupt)
+				if err := proc.Signal(os.Interrupt); err != nil {
+					fmt.Println("Failed to power off")
+				}
 				break
 			}
 		}
