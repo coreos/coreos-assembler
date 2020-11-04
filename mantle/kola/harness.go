@@ -175,6 +175,10 @@ var (
 			desc:  "core dump",
 			match: regexp.MustCompile("[Cc]ore dump"),
 		},
+		{
+			desc:  "systemd ordering cycle",
+			match: regexp.MustCompile("Ordering cycle found"),
+		},
 	}
 )
 
