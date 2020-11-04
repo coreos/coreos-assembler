@@ -15,7 +15,7 @@ version="${version#v}"
 version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 schema_generate() {
-    export GOBIN="${PWD}/bin"
+    export GOBIN="../tools/bin"
     mkdir -p ${GOBIN}
     if [ ! -x "${GOBIN}/schematyper" ]; then
         (
