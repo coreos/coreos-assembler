@@ -30,6 +30,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
+	networkFloatingIPs "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
@@ -63,13 +64,13 @@ type Options struct {
 	Network string
 	// Domain ID
 	Domain string
-	// Floating IP Pool
-	FloatingIPPool string
+	// Network to use when creating a Floating IP
+	FloatingIPNetwork string
 }
 
 type Server struct {
 	Server     *servers.Server
-	FloatingIP *floatingips.FloatingIP
+	FloatingIP *networkFloatingIPs.FloatingIP
 }
 
 type API struct {
@@ -140,7 +141,7 @@ func New(opts *Options) (*API, error) {
 	}
 
 	if a.opts.Network != "" {
-		tmp, err := a.resolveNetwork()
+		tmp, err := a.resolveNetwork(a.opts.Network)
 		if err != nil {
 			return nil, fmt.Errorf("resolving network: %v", err)
 		}
@@ -216,19 +217,19 @@ func (a *API) ResolveImage(img string) (string, error) {
 	return "", fmt.Errorf("specified image %q not found", img)
 }
 
-func (a *API) resolveNetwork() (string, error) {
+func (a *API) resolveNetwork(network string) (string, error) {
 	networks, err := a.getNetworks()
 	if err != nil {
 		return "", err
 	}
 
-	for _, network := range networks {
-		if network.ID == a.opts.Network || network.Name == a.opts.Network {
-			return network.ID, nil
+	for _, net := range networks {
+		if net.ID == network || net.Name == network {
+			return net.ID, nil
 		}
 	}
 
-	return "", fmt.Errorf("specified network %q not found", a.opts.Network)
+	return "", fmt.Errorf("specified network %q not found", network)
 }
 
 func (a *API) PreflightCheck() error {
@@ -290,15 +291,16 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		return nil, fmt.Errorf("waiting for instance to run: %v", err)
 	}
 
-	var floatingip *floatingips.FloatingIP
-	if a.opts.FloatingIPPool != "" {
-		floatingip, err = a.createFloatingIP()
+	var floatingip *networkFloatingIPs.FloatingIP
+	if a.opts.FloatingIPNetwork != "" {
+		// Create and assign a floating IP to the instance
+		floatingip, err = a.createFloatingIP(a.opts.FloatingIPNetwork)
 		if err != nil {
 			a.DeleteServer(serverID)
 			return nil, fmt.Errorf("creating floating ip: %v", err)
 		}
 		err = floatingips.AssociateInstance(a.computeClient, serverID, floatingips.AssociateOpts{
-			FloatingIP: floatingip.IP,
+			FloatingIP: floatingip.FloatingIP,
 		}).ExtractErr()
 		if err != nil {
 			a.DeleteServer(serverID)
@@ -416,9 +418,13 @@ func (a *API) deleteSecurityGroup(id string) error {
 	return groups.Delete(a.networkClient, id).ExtractErr()
 }
 
-func (a *API) createFloatingIP() (*floatingips.FloatingIP, error) {
-	return floatingips.Create(a.computeClient, floatingips.CreateOpts{
-		Pool: a.opts.FloatingIPPool,
+func (a *API) createFloatingIP(network string) (*networkFloatingIPs.FloatingIP, error) {
+	networkID, err := a.resolveNetwork(network)
+	if err != nil {
+		return nil, fmt.Errorf("resolving network: %v", err)
+	}
+	return networkFloatingIPs.Create(a.networkClient, networkFloatingIPs.CreateOpts{
+		FloatingNetworkID: networkID,
 	}).Extract()
 }
 
@@ -429,7 +435,7 @@ func (a *API) disassociateFloatingIP(serverID, id string) error {
 }
 
 func (a *API) deleteFloatingIP(id string) error {
-	return floatingips.Delete(a.computeClient, id).ExtractErr()
+	return networkFloatingIPs.Delete(a.networkClient, id).ExtractErr()
 }
 
 func (a *API) findFloatingIP(serverID string) (*floatingips.FloatingIP, error) {

@@ -40,7 +40,7 @@ func (om *machine) ID() string {
 
 func (om *machine) IP() string {
 	if om.mach.FloatingIP != nil {
-		return om.mach.FloatingIP.IP
+		return om.mach.FloatingIP.FloatingIP
 	} else {
 		return om.mach.Server.AccessIPv4
 	}

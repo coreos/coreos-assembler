@@ -124,7 +124,7 @@ func init() {
 	sv(&kola.OpenStackOptions.Flavor, "openstack-flavor", "1", "OpenStack flavor ref")
 	sv(&kola.OpenStackOptions.Network, "openstack-network", "", "OpenStack network")
 	sv(&kola.OpenStackOptions.Domain, "openstack-domain", "", "OpenStack domain ID")
-	sv(&kola.OpenStackOptions.FloatingIPPool, "openstack-floating-ip-pool", "", "OpenStack floating IP pool for Compute v2 networking")
+	sv(&kola.OpenStackOptions.FloatingIPNetwork, "openstack-floating-ip-network", "", "OpenStack network to use when creating a floating IP")
 
 	// packet-specific options
 	sv(&kola.PacketOptions.ConfigPath, "packet-config-file", "", "Packet config file (default \"~/"+auth.PacketConfigPath+"\")")
