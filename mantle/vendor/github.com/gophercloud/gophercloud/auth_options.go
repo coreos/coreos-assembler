@@ -45,6 +45,9 @@ type AuthOptions struct {
 
 	Password string `json:"password,omitempty"`
 
+	// Passcode is used in TOTP authentication method
+	Passcode string `json:"passcode,omitempty"`
+
 	// At most one of DomainID and DomainName must be provided if using Username
 	// with Identity V3. Otherwise, either are optional.
 	DomainID   string `json:"-"`
@@ -84,6 +87,12 @@ type AuthOptions struct {
 
 	// Scope determines the scoping of the authentication request.
 	Scope *AuthScope `json:"-"`
+
+	// Authentication through Application Credentials requires supplying name, project and secret
+	// For project we can use TenantID
+	ApplicationCredentialID     string `json:"-"`
+	ApplicationCredentialName   string `json:"-"`
+	ApplicationCredentialSecret string `json:"-"`
 }
 
 // AuthScope allows a created token to be limited to a specific domain or project.
@@ -92,6 +101,7 @@ type AuthScope struct {
 	ProjectName string
 	DomainID    string
 	DomainName  string
+	System      bool
 }
 
 // ToTokenV2CreateMap allows AuthOptions to satisfy the AuthOptionsBuilder
@@ -127,6 +137,8 @@ func (opts AuthOptions) ToTokenV2CreateMap() (map[string]interface{}, error) {
 	return map[string]interface{}{"auth": authMap}, nil
 }
 
+// ToTokenV3CreateMap allows AuthOptions to satisfy the AuthOptionsBuilder
+// interface in the v3 tokens package
 func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[string]interface{}, error) {
 	type domainReq struct {
 		ID   *string `json:"id,omitempty"`
@@ -142,7 +154,8 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 	type userReq struct {
 		ID       *string    `json:"id,omitempty"`
 		Name     *string    `json:"name,omitempty"`
-		Password string     `json:"password"`
+		Password *string    `json:"password,omitempty"`
+		Passcode *string    `json:"passcode,omitempty"`
 		Domain   *domainReq `json:"domain,omitempty"`
 	}
 
@@ -154,10 +167,23 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 		ID string `json:"id"`
 	}
 
+	type applicationCredentialReq struct {
+		ID     *string  `json:"id,omitempty"`
+		Name   *string  `json:"name,omitempty"`
+		User   *userReq `json:"user,omitempty"`
+		Secret *string  `json:"secret,omitempty"`
+	}
+
+	type totpReq struct {
+		User *userReq `json:"user,omitempty"`
+	}
+
 	type identityReq struct {
-		Methods  []string     `json:"methods"`
-		Password *passwordReq `json:"password,omitempty"`
-		Token    *tokenReq    `json:"token,omitempty"`
+		Methods               []string                  `json:"methods"`
+		Password              *passwordReq              `json:"password,omitempty"`
+		Token                 *tokenReq                 `json:"token,omitempty"`
+		ApplicationCredential *applicationCredentialReq `json:"application_credential,omitempty"`
+		TOTP                  *totpReq                  `json:"totp,omitempty"`
 	}
 
 	type authReq struct {
@@ -172,7 +198,7 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 	// if insufficient or incompatible information is present.
 	var req request
 
-	if opts.Password == "" {
+	if opts.Password == "" && opts.Passcode == "" {
 		if opts.TokenID != "" {
 			// Because we aren't using password authentication, it's an error to also provide any of the user-based authentication
 			// parameters.
@@ -194,13 +220,80 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 			req.Auth.Identity.Token = &tokenReq{
 				ID: opts.TokenID,
 			}
+
+		} else if opts.ApplicationCredentialID != "" {
+			// Configure the request for ApplicationCredentialID authentication.
+			// https://github.com/openstack/keystoneauth/blob/stable/rocky/keystoneauth1/identity/v3/application_credential.py#L48-L67
+			// There are three kinds of possible application_credential requests
+			// 1. application_credential id + secret
+			// 2. application_credential name + secret + user_id
+			// 3. application_credential name + secret + username + domain_id / domain_name
+			if opts.ApplicationCredentialSecret == "" {
+				return nil, ErrAppCredMissingSecret{}
+			}
+			req.Auth.Identity.Methods = []string{"application_credential"}
+			req.Auth.Identity.ApplicationCredential = &applicationCredentialReq{
+				ID:     &opts.ApplicationCredentialID,
+				Secret: &opts.ApplicationCredentialSecret,
+			}
+		} else if opts.ApplicationCredentialName != "" {
+			if opts.ApplicationCredentialSecret == "" {
+				return nil, ErrAppCredMissingSecret{}
+			}
+
+			var userRequest *userReq
+
+			if opts.UserID != "" {
+				// UserID could be used without the domain information
+				userRequest = &userReq{
+					ID: &opts.UserID,
+				}
+			}
+
+			if userRequest == nil && opts.Username == "" {
+				// Make sure that Username or UserID are provided
+				return nil, ErrUsernameOrUserID{}
+			}
+
+			if userRequest == nil && opts.DomainID != "" {
+				userRequest = &userReq{
+					Name:   &opts.Username,
+					Domain: &domainReq{ID: &opts.DomainID},
+				}
+			}
+
+			if userRequest == nil && opts.DomainName != "" {
+				userRequest = &userReq{
+					Name:   &opts.Username,
+					Domain: &domainReq{Name: &opts.DomainName},
+				}
+			}
+
+			// Make sure that DomainID or DomainName are provided among Username
+			if userRequest == nil {
+				return nil, ErrDomainIDOrDomainName{}
+			}
+
+			req.Auth.Identity.Methods = []string{"application_credential"}
+			req.Auth.Identity.ApplicationCredential = &applicationCredentialReq{
+				Name:   &opts.ApplicationCredentialName,
+				User:   userRequest,
+				Secret: &opts.ApplicationCredentialSecret,
+			}
 		} else {
-			// If no password or token ID are available, authentication can't continue.
+			// If no password or token ID or ApplicationCredential are available, authentication can't continue.
 			return nil, ErrMissingPassword{}
 		}
 	} else {
 		// Password authentication.
-		req.Auth.Identity.Methods = []string{"password"}
+		if opts.Password != "" {
+			req.Auth.Identity.Methods = append(req.Auth.Identity.Methods, "password")
+		}
+
+		// TOTP authentication.
+		if opts.Passcode != "" {
+			req.Auth.Identity.Methods = append(req.Auth.Identity.Methods, "totp")
+		}
 
 		// At least one of Username and UserID must be specified.
 		if opts.Username == "" && opts.UserID == "" {
@@ -224,23 +317,46 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 				}
 
 				// Configure the request for Username and Password authentication with a DomainID.
-				req.Auth.Identity.Password = &passwordReq{
-					User: userReq{
-						Name:     &opts.Username,
-						Password: opts.Password,
-						Domain:   &domainReq{ID: &opts.DomainID},
-					},
+				if opts.Password != "" {
+					req.Auth.Identity.Password = &passwordReq{
+						User: userReq{
+							Name:     &opts.Username,
+							Password: &opts.Password,
+							Domain:   &domainReq{ID: &opts.DomainID},
+						},
+					}
+				}
+				if opts.Passcode != "" {
+					req.Auth.Identity.TOTP = &totpReq{
+						User: &userReq{
+							Name:     &opts.Username,
+							Passcode: &opts.Passcode,
+							Domain:   &domainReq{ID: &opts.DomainID},
+						},
+					}
 				}
 			}
 
 			if opts.DomainName != "" {
 				// Configure the request for Username and Password authentication with a DomainName.
-				req.Auth.Identity.Password = &passwordReq{
-					User: userReq{
-						Name:     &opts.Username,
-						Password: opts.Password,
-						Domain:   &domainReq{Name: &opts.DomainName},
-					},
+				if opts.Password != "" {
+					req.Auth.Identity.Password = &passwordReq{
+						User: userReq{
+							Name:     &opts.Username,
+							Password: &opts.Password,
+							Domain:   &domainReq{Name: &opts.DomainName},
+						},
+					}
+				}
+
+				if opts.Passcode != "" {
+					req.Auth.Identity.TOTP = &totpReq{
+						User: &userReq{
+							Name:     &opts.Username,
+							Passcode: &opts.Passcode,
+							Domain:   &domainReq{Name: &opts.DomainName},
+						},
+					}
 				}
 			}
 		}
@@ -255,8 +371,22 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 			}
 
 			// Configure the request for UserID and Password authentication.
-			req.Auth.Identity.Password = &passwordReq{
-				User: userReq{ID: &opts.UserID, Password: opts.Password},
+			if opts.Password != "" {
+				req.Auth.Identity.Password = &passwordReq{
+					User: userReq{
+						ID:       &opts.UserID,
+						Password: &opts.Password,
+					},
+				}
+			}
+
+			if opts.Passcode != "" {
+				req.Auth.Identity.TOTP = &totpReq{
+					User: &userReq{
+						ID:       &opts.UserID,
+						Passcode: &opts.Passcode,
+					},
+				}
 			}
 		}
 	}
@@ -273,6 +403,8 @@ func (opts *AuthOptions) ToTokenV3CreateMap(scope map[string]interface{}) (map[s
 	return b, nil
 }
 
+// ToTokenV3ScopeMap builds a scope from AuthOptions and satisfies interface in
+// the v3 tokens package.
 func (opts *AuthOptions) ToTokenV3ScopeMap() (map[string]interface{}, error) {
 	// For backwards compatibility.
 	// If AuthOptions.Scope was not set, try to determine it.
@@ -288,6 +420,14 @@ func (opts *AuthOptions) ToTokenV3ScopeMap() (map[string]interface{}, error) {
 				opts.Scope.DomainName = opts.DomainName
 			}
 		}
+	}
+
+	if opts.Scope.System {
+		return map[string]interface{}{
+			"system": map[string]interface{}{
+				"all": true,
+			},
+		}, nil
 	}
 
 	if opts.Scope.ProjectName != "" {
@@ -359,5 +499,16 @@ func (opts *AuthOptions) ToTokenV3ScopeMap() (map[string]interface{}, error) {
 }
 
 func (opts AuthOptions) CanReauth() bool {
+	if opts.Passcode != "" {
+		// cannot reauth using TOTP passcode
+		return false
+	}
+
 	return opts.AllowReauth
+}
+
+// ToTokenV3HeadersMap allows AuthOptions to satisfy the AuthOptionsBuilder
+// interface in the v3 tokens package.
+func (opts *AuthOptions) ToTokenV3HeadersMap(map[string]interface{}) (map[string]string, error) {
+	return nil, nil
 }
