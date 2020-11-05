@@ -47,6 +47,7 @@ require (
 	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
 	golang.org/x/text v0.3.3
 	google.golang.org/api v0.34.0
+	gopkg.in/yaml.v2 v2.3.0
 )
 
 replace google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d

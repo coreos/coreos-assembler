@@ -16,6 +16,7 @@ package openstack
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -40,6 +41,8 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
+
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -80,26 +83,41 @@ type API struct {
 	networkClient *gophercloud.ServiceClient
 }
 
-func New(opts *Options) (*API, error) {
-	// The clientconfig library tries to find a clouds.yaml in:
-	//     1. OS_CLIENT_CONFIG_FILE
-	//     2. Current directory.
-	//     3. unix-specific user_config_dir (~/.config/openstack/clouds.yaml)
-	//     4. unix-specific site_config_dir (/etc/openstack/clouds.yaml)
-	// See https://github.com/gophercloud/utils/blob/8677e053dcf1f05d0fa0a616094aace04690eb94/openstack/clientconfig/utils.go#L93-L112
-	//
-	// If the user provided a path to a config file set the
-	// $OS_CLIENT_CONFIG_FILE env var to it.
+// LoadCloudsYAML defines how to load a clouds.yaml file.
+// By default, this calls the local LoadCloudsYAML function.
+func (opts Options) LoadCloudsYAML() (map[string]clientconfig.Cloud, error) {
 	if opts.ConfigPath != "" {
-		os.Setenv("OS_CLIENT_CONFIG_FILE", opts.ConfigPath)
+		var clouds clientconfig.Clouds
+		if content, err := ioutil.ReadFile(opts.ConfigPath); err != nil {
+			return nil, err
+		} else if err := yaml.Unmarshal(content, &clouds); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal yaml %s: %v", opts.ConfigPath, err)
+		}
+		return clouds.Clouds, nil
 	}
+	return clientconfig.LoadCloudsYAML()
+}
 
+// LoadSecureCloudsYAML defines how to load a secure.yaml file.
+// By default, this calls the local LoadSecureCloudsYAML function.
+func (opts Options) LoadSecureCloudsYAML() (map[string]clientconfig.Cloud, error) {
+	return clientconfig.LoadSecureCloudsYAML()
+}
+
+// LoadPublicCloudsYAML defines how to load a public-secure.yaml file.
+// By default, this calls the local LoadPublicCloudsYAML function.
+func (opts Options) LoadPublicCloudsYAML() (map[string]clientconfig.Cloud, error) {
+	return clientconfig.LoadPublicCloudsYAML()
+}
+
+func New(opts *Options) (*API, error) {
 	if opts.Profile == "" {
 		opts.Profile = "openstack"
 	}
 
 	osOpts := &clientconfig.ClientOpts{
-		Cloud: opts.Profile,
+		Cloud:    opts.Profile,
+		YAMLOpts: opts,
 	}
 
 	if opts.Region != "" {
