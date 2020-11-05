@@ -20,7 +20,6 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/platform/api/openstack"
 )
@@ -38,8 +37,8 @@ var (
 )
 
 func init() {
-	OpenStack.PersistentFlags().StringVar(&options.ConfigPath, "config-file", "", "config file (default \"~/"+auth.OpenStackConfigPath+"\")")
-	OpenStack.PersistentFlags().StringVar(&options.Profile, "profile", "", "profile (default \"default\")")
+	OpenStack.PersistentFlags().StringVar(&options.ConfigPath, "config-file", "", "Path to a clouds.yaml formatted OpenStack config file. The underlying library defaults to ./clouds.yaml")
+	OpenStack.PersistentFlags().StringVar(&options.Profile, "profile", "", "OpenStack profile within clouds.yaml (default \"openstack\")")
 	cli.WrapPreRun(OpenStack, preflightCheck)
 }
 

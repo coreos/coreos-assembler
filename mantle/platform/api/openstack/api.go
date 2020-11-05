@@ -34,9 +34,9 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/utils/openstack/clientconfig"
 	utilsSecurityGroups "github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups"
 
-	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
@@ -80,60 +80,40 @@ type API struct {
 }
 
 func New(opts *Options) (*API, error) {
-	profiles, err := auth.ReadOpenStackConfig(opts.ConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't read OpenStack config: %v", err)
-	}
 
 	if opts.Profile == "" {
-		opts.Profile = "default"
-	}
-	profile, ok := profiles[opts.Profile]
-	if !ok {
-		return nil, fmt.Errorf("no such profile %q", opts.Profile)
+		opts.Profile = "openstack"
 	}
 
-	if opts.Domain == "" {
-		opts.Domain = profile.Domain
+	osOpts := &clientconfig.ClientOpts{
+		Cloud: opts.Profile,
 	}
 
-	osOpts := gophercloud.AuthOptions{
-		IdentityEndpoint: profile.AuthURL,
-		TenantID:         profile.TenantID,
-		TenantName:       profile.TenantName,
-		Username:         profile.Username,
-		Password:         profile.Password,
-		DomainID:         opts.Domain,
+	if opts.Region != "" {
+		osOpts.RegionName = opts.Region
 	}
 
-	provider, err := openstack.AuthenticatedClient(osOpts)
+	provider, err := clientconfig.AuthenticatedClient(osOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating provider: %v", err)
 	}
 
-	if opts.Region == "" {
-		opts.Region = profile.Region
-	}
-
 	computeClient, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
-		Name:   "nova",
-		Region: opts.Region,
+		Name: "nova",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create compute client: %v", err)
 	}
 
 	imageClient, err := openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
-		Name:   "glance",
-		Region: opts.Region,
+		Name: "glance",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create image client: %v", err)
 	}
 
 	networkClient, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Name:   "neutron",
-		Region: opts.Region,
+		Name: "neutron",
 	})
 
 	a := &API{
@@ -165,10 +145,6 @@ func New(opts *Options) (*API, error) {
 			return nil, fmt.Errorf("resolving network: %v", err)
 		}
 		a.opts.Network = tmp
-	}
-
-	if a.opts.FloatingIPPool == "" {
-		a.opts.FloatingIPPool = profile.FloatingIPPool
 	}
 
 	return a, nil
