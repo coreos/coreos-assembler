@@ -26,6 +26,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gophercloud/gophercloud v0.13.0
+	github.com/gophercloud/utils v0.0.0-20201101202656-8677e053dcf1
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
 	github.com/packethost/packngo v0.0.0-20180426081943-80f62d78849d

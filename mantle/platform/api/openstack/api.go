@@ -34,6 +34,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
+	utilsSecurityGroups "github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
@@ -360,7 +361,7 @@ func (a *API) getNetworks() ([]networks.Network, error) {
 }
 
 func (a *API) getSecurityGroup() (string, error) {
-	id, err := groups.IDFromName(a.networkClient, "kola")
+	id, err := utilsSecurityGroups.IDFromName(a.networkClient, "kola")
 	if err != nil {
 		if _, ok := err.(gophercloud.ErrResourceNotFound); ok {
 			return a.createSecurityGroup()

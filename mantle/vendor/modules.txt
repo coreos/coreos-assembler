@@ -219,6 +219,8 @@ github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/r
 github.com/gophercloud/gophercloud/openstack/networking/v2/networks
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
+# github.com/gophercloud/utils v0.0.0-20201101202656-8677e053dcf1
+github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/jmespath/go-jmespath v0.3.0
