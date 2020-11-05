@@ -49,7 +49,7 @@ var (
 type Options struct {
 	*platform.Options
 
-	// Config file. Defaults to $HOME/.config/openstack.json.
+	// Config file. The path to a clouds.yaml file.
 	ConfigPath string
 	// Profile name
 	Profile string
@@ -81,6 +81,18 @@ type API struct {
 }
 
 func New(opts *Options) (*API, error) {
+	// The clientconfig library tries to find a clouds.yaml in:
+	//     1. OS_CLIENT_CONFIG_FILE
+	//     2. Current directory.
+	//     3. unix-specific user_config_dir (~/.config/openstack/clouds.yaml)
+	//     4. unix-specific site_config_dir (/etc/openstack/clouds.yaml)
+	// See https://github.com/gophercloud/utils/blob/8677e053dcf1f05d0fa0a616094aace04690eb94/openstack/clientconfig/utils.go#L93-L112
+	//
+	// If the user provided a path to a config file set the
+	// $OS_CLIENT_CONFIG_FILE env var to it.
+	if opts.ConfigPath != "" {
+		os.Setenv("OS_CLIENT_CONFIG_FILE", opts.ConfigPath)
+	}
 
 	if opts.Profile == "" {
 		opts.Profile = "openstack"
