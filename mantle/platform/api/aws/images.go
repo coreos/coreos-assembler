@@ -617,13 +617,14 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		}
 	}
 
-	var snapshotID string
 	image, err := a.describeImage(imageID)
 	if err != nil {
 		return ImageData{}, err
 	}
-	if image.BlockDeviceMappings[0].Ebs.SnapshotId != nil {
-		snapshotID = *image.BlockDeviceMappings[0].Ebs.SnapshotId
+
+	snapshotID, err := getImageSnapshotID(image)
+	if err != nil {
+		return ImageData{}, err
 	}
 
 	if len(snapshotTags) > 0 {
