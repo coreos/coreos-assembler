@@ -16,6 +16,7 @@ package openstack
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -40,6 +41,8 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
+
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -49,7 +52,7 @@ var (
 type Options struct {
 	*platform.Options
 
-	// Config file. Defaults to $HOME/.config/openstack.json.
+	// Config file. The path to a clouds.yaml file.
 	ConfigPath string
 	// Profile name
 	Profile string
@@ -80,14 +83,41 @@ type API struct {
 	networkClient *gophercloud.ServiceClient
 }
 
-func New(opts *Options) (*API, error) {
+// LoadCloudsYAML defines how to load a clouds.yaml file.
+// By default, this calls the local LoadCloudsYAML function.
+func (opts Options) LoadCloudsYAML() (map[string]clientconfig.Cloud, error) {
+	if opts.ConfigPath != "" {
+		var clouds clientconfig.Clouds
+		if content, err := ioutil.ReadFile(opts.ConfigPath); err != nil {
+			return nil, err
+		} else if err := yaml.Unmarshal(content, &clouds); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal yaml %s: %v", opts.ConfigPath, err)
+		}
+		return clouds.Clouds, nil
+	}
+	return clientconfig.LoadCloudsYAML()
+}
 
+// LoadSecureCloudsYAML defines how to load a secure.yaml file.
+// By default, this calls the local LoadSecureCloudsYAML function.
+func (opts Options) LoadSecureCloudsYAML() (map[string]clientconfig.Cloud, error) {
+	return clientconfig.LoadSecureCloudsYAML()
+}
+
+// LoadPublicCloudsYAML defines how to load a public-secure.yaml file.
+// By default, this calls the local LoadPublicCloudsYAML function.
+func (opts Options) LoadPublicCloudsYAML() (map[string]clientconfig.Cloud, error) {
+	return clientconfig.LoadPublicCloudsYAML()
+}
+
+func New(opts *Options) (*API, error) {
 	if opts.Profile == "" {
 		opts.Profile = "openstack"
 	}
 
 	osOpts := &clientconfig.ClientOpts{
-		Cloud: opts.Profile,
+		Cloud:    opts.Profile,
+		YAMLOpts: opts,
 	}
 
 	if opts.Region != "" {
