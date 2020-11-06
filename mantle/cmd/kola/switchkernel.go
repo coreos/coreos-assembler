@@ -90,7 +90,10 @@ var (
 
 func init() {
 	cmdSwitchKernel.Flags().StringVar(&rtKernelRpmDir, "kernel-rt", "", "Path to kernel rt rpm directory")
-	cmdSwitchKernel.MarkFlagRequired("kernel-rt")
+	err := cmdSwitchKernel.MarkFlagRequired("kernel-rt")
+	if err != nil {
+		panic(err)
+	}
 	root.AddCommand(cmdSwitchKernel)
 }
 
@@ -177,8 +180,8 @@ func switchDefaultToRtKernel(c platform.Cluster, m platform.Machine) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to run %s", cmd)
 	}
-	fmt.Println(fmt.Sprintf("%s", stderr))
-	fmt.Println(fmt.Sprintf("%s", stdout))
+	fmt.Printf("%s\n", stderr)
+	fmt.Printf("%s\n", stdout)
 
 	// reboot the machine to switch kernel
 	fmt.Println("Rebooting machine...")
@@ -207,8 +210,8 @@ func switchRtKernelToDefault(c platform.Cluster, m platform.Machine) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to run %s", cmd)
 	}
-	fmt.Println(fmt.Sprintf("%s", stderr))
-	fmt.Println(fmt.Sprintf("%s", stdout))
+	fmt.Printf("%s\n", stderr)
+	fmt.Printf("%s\n", stdout)
 
 	// reboot the machine to switch kernel
 	fmt.Println("Rebooting machine...")
