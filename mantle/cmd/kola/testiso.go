@@ -168,17 +168,23 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
 	if system.RpmArch() == "s390x" || system.RpmArch() == "aarch64" {
 		// s390x and aarch64 need to use bootindex as they don't support boot once
-		builder.AddDisk(&platform.Disk{
+		err := builder.AddDisk(&platform.Disk{
 			Size: "12G", // Arbitrary
 
 			SectorSize: sectorSize,
 		})
+		if err != nil {
+			return nil, nil, err
+		}
 	} else {
-		builder.AddPrimaryDisk(&platform.Disk{
+		err := builder.AddPrimaryDisk(&platform.Disk{
 			Size: "12G", // Arbitrary
 
 			SectorSize: sectorSize,
 		})
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return nil, nil, err
@@ -352,8 +358,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			errBuf, err := inst.WaitIgnitionError(ctx)
 			if err == nil {
 				if errBuf != "" {
-					msg := fmt.Sprintf("entered emergency.target in initramfs")
-					plog.Info(msg)
+					plog.Info("entered emergency.target in initramfs")
 					path := filepath.Join(outdir, "ignition-virtio-dump.txt")
 					if err := ioutil.WriteFile(path, []byte(errBuf), 0644); err != nil {
 						plog.Errorf("Failed to write journal: %v", err)
@@ -367,8 +372,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 		}()
 	}
 	go func() {
-		var err error
-		err = inst.Wait()
+		err := inst.Wait()
 		if err != nil {
 			errchan <- err
 		}
@@ -456,7 +460,11 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 	if err != nil {
 		return errors.Wrapf(err, "running PXE")
 	}
-	defer mach.Destroy()
+	defer func() {
+		if err := mach.Destroy(); err != nil {
+			plog.Errorf("Failed to destroy PXE: %v", err)
+		}
+	}()
 
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
@@ -497,7 +505,11 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	if err != nil {
 		return errors.Wrapf(err, "running iso install")
 	}
-	defer mach.Destroy()
+	defer func() {
+		if err := mach.Destroy(); err != nil {
+			plog.Errorf("Failed to destroy iso: %v", err)
+		}
+	}()
 
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
@@ -511,7 +523,9 @@ func testLiveLogin(ctx context.Context, outdir string) error {
 	builder := newBaseQemuBuilder()
 	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-	builder.AddIso(isopath, "")
+	if err := builder.AddIso(isopath, ""); err != nil {
+		return err
+	}
 
 	completionChannel, err := builder.VirtioChannelRead("coreos.liveiso-success")
 	if err != nil {
