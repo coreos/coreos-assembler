@@ -1,7 +1,6 @@
 package ocp
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -9,13 +8,11 @@ import (
 
 const testDataFile = "build.json"
 
-var testCtx = context.Background()
-
-func init() {
-	cosaSrvDir, _ = os.Getwd()
-}
-
 func TestOCPBuild(t *testing.T) {
+	tmpd, _ := ioutil.TempDir("", "test")
+	defer os.RemoveAll(tmpd)
+	cosaSrvDir = tmpd
+
 	bData, err := ioutil.ReadFile(testDataFile)
 	if err != nil {
 		t.Errorf("failed to read %s: %v", testDataFile, err)
@@ -34,7 +31,7 @@ func TestOCPBuild(t *testing.T) {
 		}
 	}()
 
-	newO, err := NewBuilder(testCtx)
+	newO, err := newBC()
 	if err != nil {
 		t.Errorf("failed to read OCP envvars: %v", err)
 	}

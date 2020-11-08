@@ -40,7 +40,7 @@ func (j *JobSpec) ExecuteTemplateFromString(s ...string) ([]string, error) {
 		r := strings.NewReader(x)
 		b, err := j.executeTemplate(r)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to render strings: %v", err)
 		}
 		ret = append(ret, string(b))
 	}

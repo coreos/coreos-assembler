@@ -44,7 +44,7 @@ objects:
 - apiVersion: authorization.openshift.io/v1
   kind: Role
   metadata:
-    name: ${SA}_Secrets
+    name: ${SA}_secrets
   rules:
   - apiGroups:
     - ""
@@ -59,9 +59,34 @@ objects:
   groupNames: null
   kind: RoleBinding
   metadata:
-    name: ${SA}_Secrets
+    name: ${SA}_secrets
   roleRef:
     name: edit
+  subjects:
+  - kind: ServiceAccount
+    name: ${SA}
+
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name:  ${SA}_cosa-reader
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - pods
+    verbs:
+    - get
+    - watch
+    - list
+    - create
+
+- kind: RoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
+    name: ${SA}_cosa-reader
+  roleRef:
+    name: ${SA}_cosa-reader
   subjects:
   - kind: ServiceAccount
     name: ${SA}
@@ -91,8 +116,6 @@ objects:
     strategy:
       customStrategy:
         env:
-        - name: OCP_CUSTOM_BUILDER
-          value: "1"
         - name: COSA_SKIP_OVERLAY
           value: "skip"
         - name: COSA_CMDS

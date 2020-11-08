@@ -19,14 +19,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// JobSpec is the root-level item for the JobSpec
+// JobSpec is the root-level item for the JobSpec.
 type JobSpec struct {
-	Archives    *Archives    `yaml:"archives,omitempty"`
-	CloudsCfgs  *CloudsCfgs  `yaml:"clouds_cfgs,omitempty"`
-	Job         *Job         `yaml:"job,omitempty"`
-	Oscontainer *Oscontainer `yaml:"oscontainer,omitempty"`
-	Recipe      *Recipe      `yaml:"recipe,omitempty"`
-	Spec        *Spec        `yaml:"spec,omitempty"`
+	Archives    Archives    `yaml:"archives,omitempty"`
+	CloudsCfgs  CloudsCfgs  `yaml:"clouds_cfgs,omitempty"`
+	Job         Job         `yaml:"job,omitempty"`
+	Oscontainer Oscontainer `yaml:"oscontainer,omitempty"`
+	Recipe      Recipe      `yaml:"recipe,omitempty"`
+	Spec        Spec        `yaml:"spec,omitempty"`
+
+	// Stages are specific stages to be run. Stages are
+	// only supported by entrypoint; they do not appear in the
+	// Groovy Jenkins Scripts.
+	Stages []Stage `yaml:"stages,omitempty"`
 }
 
 // Artifacts describe the expect build outputs.
@@ -94,10 +99,10 @@ type Brew struct {
 // CloudsCfgs (yes Clouds) is a nested struct of all
 // supported cloudClonfigurations.
 type CloudsCfgs struct {
-	Aliyun *Aliyun `yaml:"aliyun,omitempty"`
-	Aws    *Aws    `yaml:"aws,omitempty"`
-	Azure  *Azure  `yaml:"azure,omitempty"`
-	Gcp    *Gcp    `yaml:"gcp,omitempty"`
+	Aliyun Aliyun `yaml:"aliyun,omitempty"`
+	Aws    Aws    `yaml:"aws,omitempty"`
+	Azure  Azure  `yaml:"azure,omitempty"`
+	Gcp    Gcp    `yaml:"gcp,omitempty"`
 }
 
 // Gcp describes deploiying to the GCP environment
@@ -113,10 +118,12 @@ type Gcp struct {
 // Job refers to the Jenkins options
 //   BuildName: i.e. rhcos-4.7
 //   IsProduction: enforce KOLA tests
+//   StrictMode: only run explicitly defined stages
 //   VersionSuffix: name to append, ie. devel
 type Job struct {
 	BuildName     string `yaml:"build_name,omitempty"`
 	IsProduction  bool   `yaml:"is_production,omitempty"`
+	StrictMode    bool   `yaml:"strict,omitempty"`
 	VersionSuffix string `yaml:"version_suffix,omitempty"`
 }
 
@@ -152,26 +159,24 @@ type Oscontainer struct {
 }
 
 // JobSpecReader takes and io.Reader and returns a ptr to the JobSpec and err
-func JobSpecReader(in io.Reader) (*JobSpec, error) {
-	s := &JobSpec{}
-
+func JobSpecReader(in io.Reader) (j JobSpec, err error) {
 	d, err := ioutil.ReadAll(in)
 	if err != nil {
-		return nil, err
+		return j, err
 	}
 
-	err = yaml.Unmarshal(d, s)
+	err = yaml.Unmarshal(d, &j)
 	if err != nil {
-		return nil, err
+		return j, err
 	}
-	return s, err
+	return j, err
 }
 
 // JobSpecFromFile return a JobSpec read from a file
-func JobSpecFromFile(f string) (*JobSpec, error) {
+func JobSpecFromFile(f string) (j JobSpec, err error) {
 	in, err := os.Open(f)
 	if err != nil {
-		return nil, err
+		return j, err
 	}
 	defer in.Close()
 	b := bufio.NewReader(in)

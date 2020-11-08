@@ -20,4 +20,11 @@ var (
 
 	// ErrNoSourceInput is used to signal no source found.
 	ErrNoSourceInput = errors.New("no source repo or binary payload defined")
+
+	// ErrNotWorkPod is returned when the pod is not a work pod
+	ErrNotWorkPod = errors.New("not a work pod")
+
+	// ErrNoWorkFound is returned when the build client is neither a
+	// workPod or BuildConfig.
+	ErrNoWorkFound = errors.New("neither a buildconfig or workspec found")
 )

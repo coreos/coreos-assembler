@@ -5,7 +5,6 @@ import (
 	"os"
 
 	buildapiv1 "github.com/openshift/api/build/v1"
-	buildscheme "github.com/openshift/client-go/build/clientset/versioned/scheme"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -13,8 +12,8 @@ import (
 
 var (
 	// These are used to parse the OpenShift API
-	buildScheme       = runtime.NewScheme()
-	buildCodecFactory = serializer.NewCodecFactory(buildscheme.Scheme)
+	//buildScheme       = runtime.NewScheme()
+	buildCodecFactory = serializer.NewCodecFactory(runtime.NewScheme())
 	buildJSONCodec    runtime.Codec
 
 	// API Client for OCP builds.
