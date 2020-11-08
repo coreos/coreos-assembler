@@ -12,17 +12,18 @@ import (
 // DefaultJobSpecFile is the default JobSpecFile name.
 const DefaultJobSpecFile = "jobspec.yaml"
 
-// cloneJobSpec clones the a jobspec from git repo.
-func cloneJobSpec(url, ref, specFile string) (*JobSpec, error) {
+// JobSpecFromRepo clones a git repo and returns the jobspec and error.
+func JobSpecFromRepo(url, ref, specFile string) (JobSpec, error) {
 	// Fetch the remote jobspec
+	var j JobSpec
 	if url == "" {
 		log.Debug("jobpsec url is not defined, skipping")
-		return nil, nil
+		return j, nil
 	}
 
 	tmpd, err := ioutil.TempDir("", "*-entry")
 	if err != nil {
-		return nil, err
+		return j, err
 	}
 	defer os.RemoveAll(tmpd)
 
@@ -35,7 +36,7 @@ func cloneJobSpec(url, ref, specFile string) (*JobSpec, error) {
 	args = append(args, url, jsD)
 	cmd := exec.Command("git", args...)
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return j, err
 	}
 
 	jsF := specFile
@@ -44,7 +45,7 @@ func cloneJobSpec(url, ref, specFile string) (*JobSpec, error) {
 	}
 	ns, err := JobSpecFromFile(filepath.Join(jsD, jsF))
 	if err != nil {
-		return nil, err
+		return j, err
 	}
 	log.Infof("found jobspec for %q", ns.Job.BuildName)
 	return ns, nil

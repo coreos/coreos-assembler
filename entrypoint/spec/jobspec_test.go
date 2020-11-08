@@ -75,7 +75,7 @@ func TestJobSpec(t *testing.T) {
 	wantedGot(2, len(s), t)
 
 	// Test a failure
-	s, err = js.ExecuteTemplateFromString("this", "wont", "{{ .Work }}")
+	_, err = js.ExecuteTemplateFromString("this", "wont", "{{ .Work }}")
 	if err == nil {
 		t.Errorf("template should not render")
 	}

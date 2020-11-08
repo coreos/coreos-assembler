@@ -1,5 +1,3 @@
-// +build integration,!ci
-
 package ocp
 
 import (
@@ -11,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,41 +19,46 @@ func TestFiler(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpd)
 
-	testBucket := "test"
+	testBucket := "testbucket"
 	testFileContents := "this is a test"
 
-	ctx, cancel := context.WithCancel(context.Background())
-	if err := startMinio(ctx, tmpd); err != nil {
-		t.Fatalf("Failed to start minio")
-	}
+	c, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	defer ctx.Done()
 
-	objCtx := context.Background()
-	mC, err := minio.New("127.0.0.1:9000",
-		&minio.Options{
-			Creds:  credentials.NewStaticV4(minioAccessKey, minioSecretKey, ""),
-			Secure: false,
-		})
-	if err != nil {
-		t.Fatalf("Failed to open minio client")
+	m := newMinioServer()
+	m.Host = "localhost"
+	m.dir = tmpd
+	if err := m.start(c); err != nil {
+		t.Fatalf("Failed to start minio: %v", err)
 	}
 
-	if err := mC.MakeBucket(objCtx, testBucket, minio.MakeBucketOptions{}); err != nil {
-		t.Fatalf("Failed to create test bucket")
+	mc, err := m.client()
+	if err != nil {
+		t.Errorf("Failed to create test minio client")
+	}
+
+	if err := mc.MakeBucket(c, testBucket, minio.MakeBucketOptions{}); err != nil {
+		t.Errorf("Failed to create test bucket %s: %v", testBucket, err)
 	}
 
 	r := strings.NewReader(testFileContents)
-	if _, err := mC.PutObject(objCtx, testBucket, "test", r, -1, minio.PutObjectOptions{}); err != nil {
-		t.Fatalf("Failed to place test file")
+	if _, err := mc.PutObject(c, testBucket, "test", r, -1, minio.PutObjectOptions{}); err != nil {
+		t.Errorf("Failed to place test file")
 	}
 
-	f, err := ioutil.ReadFile(filepath.Join(tmpd, testBucket, "test"))
+	tfp := filepath.Join(tmpd, testBucket, "test")
+	f, err := ioutil.ReadFile(tfp)
 	if err != nil {
-		t.Fatalf("Failed to find file: %v", err)
+		t.Errorf("Failed to find file: %v", err)
 	}
 	if string(f) != testFileContents {
-		t.Fatalf("Test file should be %q, got %q", testFileContents, f)
+		t.Errorf("Test file should be %q, got %q", testFileContents, f)
 	}
+
+	testBucket = "tb1"
+	if err = m.putter(c, testBucket, "test", tfp, false); err != nil {
+		t.Errorf("error: %v", err)
+	}
+
 	log.Info("Done")
 }

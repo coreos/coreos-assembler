@@ -18,14 +18,13 @@ func init() {
 }
 
 func TestNoEnv(t *testing.T) {
-	_, err := NewBuilder(testCtx)
-	if err != ErrInvalidOCPMode {
+	if _, err := newBC(); err != ErrInvalidOCPMode {
 		t.Errorf("failed to raise: %v", ErrInvalidOCPMode)
 	}
 }
 
 func TestNoOCP(t *testing.T) {
-	newO, err := NewBuilder(testCtx)
+	newO, err := newBC()
 	if newO != nil {
 		t.Errorf("should return nil")
 	}

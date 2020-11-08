@@ -63,7 +63,7 @@ var (
 	// create the secret mappings for the supported Clouds
 	secretMaps = []*secretMap{
 		// Definition for AWS
-		&secretMap{
+		{
 			label: "aws",
 			envVarMap: varMap{
 				"aws_access_key_id":     "AWS_ACCESS_KEY_ID",
@@ -76,7 +76,7 @@ var (
 			},
 		},
 		// Definition for GCP
-		&secretMap{
+		{
 			label: "gcp",
 			fileVarMap: varMap{
 				// gce is the legacy name for GCP

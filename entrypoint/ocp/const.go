@@ -10,23 +10,4 @@ const (
 
 	// secretLabelName is the label to search for secrets to automatically use
 	secretLabelName = "coreos-assembler.coreos.com/secret"
-
-	// ocpSecretDir is where OpenShift mounts the secrets locally
-	ocpSecretDir = "/var/run/secrets/openshift.io/build"
-
-	// SECRET_MAP_FILE_ prefix is used to map a secret name
-	// to set $ENVAR = $FILE
-	cosaSecretMapFile = "SECRET_MAP_FILE_"
-
-	strictModeBashTemplate = `#!/bin/bash
-cat <<EOM
-===========================================
-Executing Commands:
-%s
-===========================================
-EOM
-
-set -euo pipefail
-%s
-`
 )

@@ -140,5 +140,5 @@ func preRun(c *cobra.Command, args []string) {
 		log.WithFields(log.Fields{"input file": specFile, "error": err}).Fatal(
 			"Failed reading file")
 	}
-	spec = *ns
+	spec = ns
 }
