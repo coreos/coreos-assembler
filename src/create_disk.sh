@@ -37,7 +37,7 @@ Options:
     --ostree-repo: location of the ostree repo
     --rootfs-size: Create the root filesystem with specified size
     --boot-verity: Provide this to enable ext4 fs-verity for /boot
-    --no-x86-bios-partition: don't create a BIOS partition on x86_64
+    --no-x86-bios-bootloader: don't install BIOS bootloader on x86_64
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -48,7 +48,7 @@ config=
 disk=
 rootfs_size="0"
 boot_verity=0
-x86_bios_partition=1
+x86_bios_bootloader=1
 extrakargs=""
 
 while [ $# -gt 0 ];
@@ -68,7 +68,7 @@ do
         --ostree-repo)           ostree="${1}"; shift;;
         --rootfs-size)           rootfs_size="${1}"; shift;;
         --boot-verity)           boot_verity=1;;
-        --no-x86-bios-partition) x86_bios_partition=0;;
+        --no-x86-bios-bootloader) x86_bios_bootloader=0;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -123,15 +123,12 @@ fi
 case "$arch" in
     x86_64)
         EFIPN=2
-        set -- -Z $disk \
-        -U "${uninitialized_gpt_uuid}"
-        if [ "${x86_bios_partition}" = 1 ]; then
-            set -- "$@" -n 1:0:+1M -c 1:BIOS-BOOT -t 1:21686148-6449-6E6F-744E-656564454649
-        fi
-        set -- "$@" -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
+        sgdisk -Z $disk \
+        -U "${uninitialized_gpt_uuid}" \
+        -n 1:0:+1M -c 1:BIOS-BOOT -t 1:21686148-6449-6E6F-744E-656564454649 \
+        -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
-        sgdisk "$@"
         sgdisk -p "$disk"
         ;;
     aarch64)
@@ -352,7 +349,7 @@ case "$arch" in
 x86_64)
     # UEFI
     install_uefi
-    if [ "${x86_bios_partition}" = 1 ]; then
+    if [ "${x86_bios_bootloader}" = 1 ]; then
         # And BIOS grub in addition.  See also
         # https://github.com/coreos/fedora-coreos-tracker/issues/32
         grub2-install \
