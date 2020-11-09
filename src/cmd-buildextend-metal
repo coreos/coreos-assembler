@@ -198,7 +198,7 @@ case "${image_type}" in
 esac
 
 if [ "${image_type}" == metal4k ]; then
-    disk_args+=("--no-x86-bios-partition")
+    disk_args+=("--no-x86-bios-bootloader")
 fi
 
 set -x
