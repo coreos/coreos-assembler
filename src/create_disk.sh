@@ -262,8 +262,8 @@ chcon $(matchpathcon -n /boot) $rootfs/boot
 # FAT doesn't support SELinux labeling, it uses "genfscon", so we
 # don't need to give it a label manually.
 if [ ${EFIPN:+x} ]; then
-       mkdir $rootfs/boot/efi
-       mount "${disk}${EFIPN}" $rootfs/boot/efi
+    mkdir $rootfs/boot/efi
+    mount "${disk}${EFIPN}" $rootfs/boot/efi
 fi
 
 # Now that we have the basic disk layout, initialize the basic
@@ -357,9 +357,9 @@ x86_64)
         # And BIOS grub in addition.  See also
         # https://github.com/coreos/fedora-coreos-tracker/issues/32
         grub2-install \
-        --target i386-pc \
-        --boot-directory $rootfs/boot \
-        $disk
+            --target i386-pc \
+            --boot-directory $rootfs/boot \
+            $disk
     fi
     ;;
 aarch64)
@@ -373,31 +373,31 @@ ppc64le)
     ;;
 s390x)
     bootloader_backend=zipl
-	# current zipl expects 'title' to be first line, and no blank lines in BLS file
-	# see https://github.com/ibm-s390-tools/s390-tools/issues/64
-	blsfile=$(find $rootfs/boot/loader/entries/*.conf)
-	tmpfile=$(mktemp)
-	for f in title version linux initrd options; do
-		echo $(grep $f $blsfile) >> $tmpfile
-	done
-	cat $tmpfile > $blsfile
-	# we force firstboot in building base image on s390x, ignition-dracut hook will remove
-	# this and update zipl for second boot
-	# this is only a temporary solution until we are able to do firstboot check at bootloader
-	# stage on s390x, either through zipl->grub2-emu or zipl standalone.
-	# See https://github.com/coreos/ignition-dracut/issues/84
-	# A similar hack is present in https://github.com/coreos/coreos-assembler/blob/master/src/gf-platformid#L55
-	echo "$(grep options $blsfile) ignition.firstboot" > $tmpfile
+    # current zipl expects 'title' to be first line, and no blank lines in BLS file
+    # see https://github.com/ibm-s390-tools/s390-tools/issues/64
+    blsfile=$(find $rootfs/boot/loader/entries/*.conf)
+    tmpfile=$(mktemp)
+    for f in title version linux initrd options; do
+        echo $(grep $f $blsfile) >> $tmpfile
+    done
+    cat $tmpfile > $blsfile
+    # we force firstboot in building base image on s390x, ignition-dracut hook will remove
+    # this and update zipl for second boot
+    # this is only a temporary solution until we are able to do firstboot check at bootloader
+    # stage on s390x, either through zipl->grub2-emu or zipl standalone.
+    # See https://github.com/coreos/ignition-dracut/issues/84
+    # A similar hack is present in https://github.com/coreos/coreos-assembler/blob/master/src/gf-platformid#L55
+    echo "$(grep options $blsfile) ignition.firstboot" > $tmpfile
 
-	# ideally we want to invoke zipl with bls and zipl.conf but we might need
-	# to chroot to $rootfs/ to do so. We would also do that when FCOS boot on its own.
-	# without chroot we can use --target option in zipl but it requires kernel + initramfs
-	# pair instead
-	zipl --verbose \
-		--target $rootfs/boot \
-		--image $rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
-		--ramdisk $rootfs/boot/"$(grep initrd $blsfile | cut -d' ' -f2)" \
-		--parmfile $tmpfile
+    # ideally we want to invoke zipl with bls and zipl.conf but we might need
+    # to chroot to $rootfs/ to do so. We would also do that when FCOS boot on its own.
+    # without chroot we can use --target option in zipl but it requires kernel + initramfs
+    # pair instead
+    zipl --verbose \
+        --target $rootfs/boot \
+        --image $rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
+        --ramdisk $rootfs/boot/"$(grep initrd $blsfile | cut -d' ' -f2)" \
+        --parmfile $tmpfile
     ;;
 esac
 
