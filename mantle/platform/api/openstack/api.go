@@ -85,7 +85,9 @@ type API struct {
 
 // LoadCloudsYAML defines how to load a clouds.yaml file.
 // By default, this calls the local LoadCloudsYAML function.
+// See https://github.com/gophercloud/utils/blob/master/openstack/clientconfig/requests.go
 func (opts Options) LoadCloudsYAML() (map[string]clientconfig.Cloud, error) {
+	// If provided a path to a config file then we load it here.
 	if opts.ConfigPath != "" {
 		var clouds clientconfig.Clouds
 		if content, err := ioutil.ReadFile(opts.ConfigPath); err != nil {
@@ -95,6 +97,9 @@ func (opts Options) LoadCloudsYAML() (map[string]clientconfig.Cloud, error) {
 		}
 		return clouds.Clouds, nil
 	}
+
+	// If not provided a path to a config, fall back to
+	// LoadCloudsYAML() from the clientconfig library.
 	return clientconfig.LoadCloudsYAML()
 }
 
