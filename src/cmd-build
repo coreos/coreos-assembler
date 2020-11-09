@@ -268,6 +268,9 @@ if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
 fi
 # --cache-only is here since `fetch` is a separate verb
 # shellcheck disable=SC2086
+if test -n "${previous_commit}"; then
+    extra_compose_args+=(--previous-commit "${previous_commit}")
+fi
 RUNVM_NONET=1 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}".tmp \
@@ -283,10 +286,7 @@ if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
     # Save this in case the image build fails
     cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
-    # Pick up from tmprepo; that's what rpm-ostree is comparing against. It may
-    # be the same as previous_commit, or newer if a previous build failed image
-    # creation.
-    commit=$(ostree rev-parse --repo="${tmprepo}" "${ref}")
+    commit="${previous_commit}"
     image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
     echo "commit: ${commit} image: ${image_input_checksum}"
     # Note we may not actually have a previous build in the case of
