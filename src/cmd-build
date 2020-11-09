@@ -161,7 +161,7 @@ if [ -n "${previous_commit}" ]; then
     fi
 
     # and point the ref to it if there isn't one already (in which case it might be newer, but e.g. creating disk failed)
-    if test -n "${ref}" && ! ostree rev-parse --repo="${tmprepo}" "${ref}" &>/dev/null; then
+    if ! ostree rev-parse --repo="${tmprepo}" "${ref}" &>/dev/null; then
         ostree refs --repo="${tmprepo}" --create "${ref}" "${previous_commit}"
     fi
 
@@ -373,9 +373,10 @@ if [ "${commit}" == "${previous_commit}" ] && \
     fi
 else
     ostree init --repo=repo --mode=archive
-    # Pass the ref if it's set
-    # shellcheck disable=SC2086
-    ostree pull-local --repo=repo "${tmprepo}" "${buildid}" ${ref}
+    ostree pull-local --repo=repo "${tmprepo}" "${ref}"
+    if [ -n "${ref_is_temp}" ]; then
+        ostree refs --repo=repo --delete "${ref}"
+    fi
     # Don't compress; archive repos are already compressed individually and we'd
     # gain ~20M at best. We could probably have better gains if we compress the
     # whole repo in bare/bare-user mode, but that's a different story...
@@ -444,7 +445,7 @@ fi
 cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/diff.json tmp/parent-diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Filter out `ref` if it's temporary
-if [ -z "${ref}" ]; then
+if [ -n "${ref_is_temp}" ]; then
     jq 'del(.ref)' < meta.json > meta.json.new
     /usr/lib/coreos-assembler/finalize-artifact meta.json{.new,}
 fi
