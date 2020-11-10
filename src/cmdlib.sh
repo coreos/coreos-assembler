@@ -101,10 +101,6 @@ preflight() {
     if test "$(umask)" = 0000; then
         fatal "Your umask is unset, please use umask 0022 or so"
     fi
-
-    if ! has_privileges && [ -n "${ISEL}" ]; then
-        fatal "running on EL requires privileged mode"
-    fi
 }
 
 preflight_kvm() {
