@@ -140,7 +140,10 @@ var (
 )
 
 func run(cmd *cobra.Command, args []string) {
-	cmd.Usage()
+	err := cmd.Usage()
+	if err != nil {
+		plog.Error(err)
+	}
 	os.Exit(2)
 }
 
@@ -157,7 +160,9 @@ func registerTestMap(m map[string]*register.Test) {
 			nativeFuncWrap := testObj.NativeFuncs[nativeName]
 			nativeRun := func(cmd *cobra.Command, args []string) {
 				if len(args) != 0 {
-					cmd.Usage()
+					if err := cmd.Usage(); err != nil {
+						plog.Error(err)
+					}
 					os.Exit(2)
 				}
 				if err := nativeFuncWrap.NativeFunc(); err != nil {
@@ -194,8 +199,8 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 
 	switch state {
 	case "inactive":
-		sdconn.StartUnit(unitname, "fail", nil)
-		return false, nil
+		_, err := sdconn.StartUnit(unitname, "fail", nil)
+		return false, err
 	case "activating":
 		return false, nil
 	case "active":
@@ -297,7 +302,10 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Check the status now to avoid any race conditions
-	dispatchRunExtUnit(unitname, sdconn)
+	_, err = dispatchRunExtUnit(unitname, sdconn)
+	if err != nil {
+		return err
+	}
 	// Watch for changes in the target unit
 	filterFunc := func(n string) bool {
 		return n != unitname
