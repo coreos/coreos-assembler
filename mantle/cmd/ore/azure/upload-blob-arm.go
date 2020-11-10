@@ -93,15 +93,15 @@ func runUploadBlobARM(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
 
-	if kr.Keys == nil {
+	if kr.Keys == nil || len(*kr.Keys) == 0 {
 		plog.Fatalf("No storage service keys found")
 	}
 
-	for _, k := range *kr.Keys {
-		if err := api.UploadBlob(ubo.storageacct, *k.Value, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite); err != nil {
-			plog.Fatalf("Uploading blob failed: %v", err)
-		}
-		break
+	//only use the first service key to avoid uploading twice
+	//see https://github.com/coreos/coreos-assembler/pull/1849
+	k := (*kr.Keys)[0]
+	if err := api.UploadBlob(ubo.storageacct, *k.Value, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite); err != nil {
+		plog.Fatalf("Uploading blob failed: %v", err)
 	}
 
 	err = json.NewEncoder(os.Stdout).Encode(&struct {
@@ -109,4 +109,8 @@ func runUploadBlobARM(cmd *cobra.Command, args []string) {
 	}{
 		URL: fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", ubo.storageacct, ubo.container, ubo.blob),
 	})
+
+	if err != nil {
+		plog.Fatal(err)
+	}
 }
