@@ -102,6 +102,12 @@ preflight() {
         fatal "Your umask is unset, please use umask 0022 or so"
     fi
 
+    if ! has_privileges && [ -n "${ISEL}" ]; then
+        fatal "running on EL requires privileged mode"
+    fi
+}
+
+preflight_kvm() {
     # permissions on /dev/kvm vary by (host) distro.  If it's
     # not writable, recreate it.
 
@@ -118,10 +124,6 @@ preflight() {
                 sudo setfacl -m u:"$USER":rw /dev/kvm
             fi
         fi
-    fi
-
-    if ! has_privileges && [ -n "${ISEL}" ]; then
-        fatal "running on EL requires privileged mode"
     fi
 }
 
@@ -143,6 +145,7 @@ pick_yaml_or_else_json() {
 
 prepare_build() {
     preflight
+    preflight_kvm
     if ! [ -d builds ]; then
         fatal "No $(pwd)/builds found; did you run coreos-assembler init?"
     fi
