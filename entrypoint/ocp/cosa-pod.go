@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -23,17 +24,10 @@ import (
 )
 
 const (
-	defaultOCPVersion = "4"
-	ocpVersionEnvVar  = "COSA_OCP_VER"
-
 	kvmLabel = "devices.kubevirt.io/kvm"
 )
 
 var (
-	// Allow the ocpVersion to be set via ldflags at compile time
-	// and to be changed for testing.
-	ocpVersion = defaultOCPVersion
-
 	// volumes are the volumes used in all pods created
 	volumes = []v1.Volume{
 		{
@@ -94,19 +88,27 @@ var (
 	}
 )
 
-func init() {
-	ocpV, ok := os.LookupEnv(ocpVersionEnvVar)
-	if !ok {
-		log.Warnf("EnvVar %s was not set, assuming OpenShift v%s", ocpVersionEnvVar, ocpVersion)
-		ocpV = ocpVersion
+// setPodDefaults checks the Kubernetes version to determine if
+// we're on OCP 3.11 (v1.11) or 4.3(v1.16)+.
+func setPodDefaults() error {
+	vi, err := apiClientSet.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return fmt.Errorf("failed to query the kubernetes version: %w", err)
 	}
 
-	log.Infof("Creating container with Openshift v%s.x defaults", ocpV)
-	if ocpV == "3" {
-		ocpRequirements = ocp3Requirements
-		ocpInitCommand = ocp3InitCommand
-		ocpSecContext = ocp3SecContext
+	log.Infof("Kubernetes version of cluster is %s.%s", vi.Major, vi.Minor)
+	if minor, err := strconv.Atoi(vi.Minor); err != nil {
+		if minor >= 16 {
+			log.Info("Detected OpenShift 4.x cluster")
+			return nil
+		}
 	}
+
+	log.Infof("Creating container with Openshift v3.x defaults")
+	ocpRequirements = ocp3Requirements
+	ocpInitCommand = ocp3InitCommand
+	ocpSecContext = ocp3SecContext
+	return nil
 }
 
 func ptrInt(i int64) *int64 { return &i }
@@ -117,6 +119,10 @@ func ptrBool(b bool) *bool { return &b }
 // process finishes
 // Inspired by https://github.com/kubernetes/client-go/blob/master/examples/create-update-delete-deployment/main.go
 func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
+	if err := setPodDefaults(); err != nil {
+		log.WithField("err", err).Error("assuming OpenShift version v4.x")
+	}
+
 	podName := fmt.Sprintf("%s-%s-worker-%d",
 		apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 		apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],

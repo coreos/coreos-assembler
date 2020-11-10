@@ -21,6 +21,9 @@ var (
 	// apiClient is v1 Client Interface for interacting Kubernetes
 	apiClient corev1.CoreV1Interface
 
+	// apiClientSet is a generic Kubernetes Client Set
+	apiClientSet *kubernetes.Clientset
+
 	// projectNamespace is the current namespace
 	projectNamespace string
 
@@ -50,7 +53,7 @@ func k8sAPIClient() error {
 		return err
 	}
 	apiClient = nc.CoreV1()
-	//appClient = nc.AppsV1()
+	apiClientSet = nc
 
 	pname, err := ioutil.ReadFile(clusterNamespaceFile)
 	if err != nil {
