@@ -182,7 +182,11 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
 	if uploadForce {
-		API.RemoveImage(uploadAMIName, s3BucketName, s3ObjectPath)
+		err := API.RemoveImage(uploadAMIName, s3BucketName, s3ObjectPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	// if no snapshot was specified, check for an existing one or a
