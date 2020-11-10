@@ -26,7 +26,7 @@ func init() {
 		Name:             "coreos.ignition.ssh.key",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu"}, // redundant on qemu
+		ExcludePlatforms: []string{"qemu", "openstack"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         conf.Ignition(`{"ignition":{"version":"2.0.0"}}`),
 		UserDataV3:       conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
