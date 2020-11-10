@@ -1,10 +1,9 @@
 my_dir := $(abspath $(shell dirname $(lastword $(MAKEFILE_LIST))))
 version = $(shell date +%Y-%m-%d).$(shell git rev-parse --short HEAD)~$(shell test -n "`git status -s`" && echo dirty || echo clean)
-cosa_dir = $(shell test -d /usr/lib/coreos-assembler && echo /usr/lib/coreos-assembler)
-ldflags=-X main.version=${version} -X main.cosaDir=${cosa_dir}
+cosa_dir = $(shell test -d /usr/lib/coreos-assembler && echo /usr/lib/coreos-assembler || echo $(shell readlink -f ../))
+ldflags=-X main.version=${version} -X main.cosaDir=$(cosa_dir)
 
 export PATH := $(my_dir)/bin:$(shell readlink -f ../tools/bin):$(PATH)
-
 PREFIX ?= /usr
 DESTDIR ?=
 ARCH:=$(shell uname -m)
@@ -12,7 +11,8 @@ ARCH:=$(shell uname -m)
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build: test
-	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/entry .
+	cd cmd && \
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '${ldflags} -extldflags "-static -W"' -tags netgo,usercgo -o ../bin/entry
 
 .PHONY: fmt
 fmt:
@@ -21,15 +21,15 @@ fmt:
 
 .PHONY: test
 test: fmt
-	go test -mod=vendor -tags ${test_tags} -v  -i ${pkgs} && \
-	go test -mod=vendor -tags ${test_tags} -v -cover ${pkgs}
+	go test -mod=vendor -v  -i ${pkgs} && \
+	go test -mod=vendor -v -cover ${pkgs}
 
 .PHONY: clean
 clean:
 	@go clean .
 	@rm -rf bin
 
-.PHYON: schema
+.PHONY: schema
 schema: schema_version = v1
 schema:
 	schematyper \
