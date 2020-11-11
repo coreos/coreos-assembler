@@ -1,4 +1,4 @@
-module github.com/coreos/entrypoint
+module github.com/coreos/gangplank
 
 go 1.14
 

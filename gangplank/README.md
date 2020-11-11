@@ -1,6 +1,8 @@
-# Entrypoint
+# Gangplank
 
-Introduced as [part of PR 1739](https://github.com/coreos/coreos-assembler/pull/1739), the GoLang Entrypoint a CI-specific alternative "entrypoint" for executing CoreOS Assemlber (COSA).
+Arr matey....
+
+Introduced as [part of PR 1739](https://github.com/coreos/coreos-assembler/pull/1739), the GoLang Gangplank a CI-specific alternative "entrypoint" for executing CoreOS Assemlber (COSA).
 
 ## Jenkins Pipeline are Greedy
 

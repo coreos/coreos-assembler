@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/entrypoint/ocp"
+	"github.com/coreos/gangplank/ocp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

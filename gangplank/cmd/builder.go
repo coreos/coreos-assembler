@@ -6,7 +6,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/coreos/entrypoint/remote"
+	"github.com/coreos/gangplank/remote"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"

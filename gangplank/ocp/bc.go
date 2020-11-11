@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/coreos/entrypoint/cosa"
-	"github.com/coreos/entrypoint/spec"
+	"github.com/coreos/gangplank/cosa"
+	"github.com/coreos/gangplank/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 )

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/entrypoint/spec"
+	"github.com/coreos/gangplank/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
