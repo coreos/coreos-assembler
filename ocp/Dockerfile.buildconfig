@@ -2,4 +2,4 @@ FROM quay.io/coreos-assembler/coreos-assembler:latest
 
 WORKDIR /srv/
 USER builder
-ENTRYPOINT ["/usr/bin/entry", "builder"]
+ENTRYPOINT ["/usr/bin/gangplank", "builder"]
