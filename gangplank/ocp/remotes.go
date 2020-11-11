@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/coreos/entrypoint/cosa"
+	"github.com/coreos/gangplank/cosa"
 	log "github.com/sirupsen/logrus"
 )
 

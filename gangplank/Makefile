@@ -12,7 +12,7 @@ ARCH:=$(shell uname -m)
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build: test
-	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/entry .
+	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/gangplank .
 
 .PHONY: fmt
 fmt:
@@ -40,8 +40,8 @@ schema:
 	                --ptr-for-omit
 
 .PHONY: install
-install: bin/entry
-	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/entry
+install: bin/gangplank
+	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/gangplank
 
 .PHONY: go-deps
 go-deps:
@@ -67,6 +67,6 @@ devtest: build
 		--env="SOURCE_REF=testing-devel" \
 		--env='COSA_CMDS=cosa fetch; cosa build;' \
 		--volume=$(shell realpath .)/bin:/run/bin \
-		--entrypoint='["/usr/bin/dumb-init", "/run/bin/entry"]' \
+		--entrypoint='["/usr/bin/dumb-init", "/run/bin/gangplank"]' \
 		quay.io/coreos-assembler/coreos-assembler:latest \
 		builder

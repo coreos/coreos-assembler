@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	jobspec "github.com/coreos/entrypoint/spec"
+	jobspec "github.com/coreos/gangplank/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -37,8 +37,8 @@ var (
 
 	cmdRoot = &cobra.Command{
 		Use:   "entry [command]",
-		Short: "COSA entrypoint",
-		Long: `Entrypoint for CoreOS Assemlber
+		Short: "COSA Gangplank",
+		Long: `Openshift COSA Job Runner
 Wrapper for COSA commands and templates`,
 		PersistentPreRun: preRun,
 	}
@@ -97,7 +97,7 @@ func init() {
 }
 
 func main() {
-	log.Infof("CoreOS-Assembler Entrypoint, %s", version)
+	log.Infof("Gangplank: COSA OpenShift job runner, %s", version)
 	if err := cmdRoot.Execute(); err != nil {
 		log.Fatal(err)
 	}
