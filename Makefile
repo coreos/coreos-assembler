@@ -9,9 +9,9 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install entry entry-check tools
+.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install gangplank gangplank-check tools
 
-all: tools mantle entry
+all: tools mantle gangplank
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -30,7 +30,7 @@ endif
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-check entry-check
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-check gangplank-check
 	echo OK
 
 pycheck:
@@ -61,11 +61,11 @@ mantle:
 mantle-check:
 	cd mantle && $(MAKE) test
 
-entry:
-	cd entrypoint && $(MAKE)
+gangplank:
+	cd gangplank && $(MAKE)
 
-entry-check:
-	cd entrypoint && $(MAKE) test
+gangplank-check:
+	cd gangplank && $(MAKE) test
 
 tools:
 	cd tools && $(MAKE)
@@ -85,4 +85,4 @@ install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
 	cd tools && $(MAKE) install DESTDIR=$(DESTDIR)
 	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
-	cd entrypoint && $(MAKE) install DESTDIR=$(DESTDIR)
+	cd gangplank && $(MAKE) install DESTDIR=$(DESTDIR)
