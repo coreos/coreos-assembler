@@ -108,14 +108,24 @@ func createSnapshot() error {
 	if err != nil {
 		return err
 	}
-	defer API.DeleteKey(ctx, keyID)
+	defer func() {
+		err := API.DeleteKey(ctx, keyID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		}
+	}()
 
 	droplet, err := API.CreateDroplet(ctx, imageName+"-install", keyID, userdata)
 	if err != nil {
 		return fmt.Errorf("couldn't create droplet: %v", err)
 	}
 	dropletID := droplet.ID
-	defer API.DeleteDroplet(ctx, dropletID)
+	defer func() {
+		err := API.DeleteDroplet(ctx, dropletID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		}
+	}()
 
 	// the droplet will power itself off when install completes
 	err = util.WaitUntilReady(10*time.Minute, 15*time.Second, func() (bool, error) {
