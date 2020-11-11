@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	rhjobspec "github.com/coreos/entrypoint/spec"
+	jobspec "github.com/coreos/entrypoint/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -25,9 +25,8 @@ var (
 	// cosaContainerDir and is set via `-ldflags` at build time.
 	cosaDir string
 
-	// spec is an RHCOS spec. It is anticipated that this will be
-	// changed in the future.
-	spec     rhjobspec.JobSpec
+	// spec is a job spec.
+	spec     jobspec.JobSpec
 	specFile string
 
 	// entryEnvars are set for command execution
@@ -135,7 +134,7 @@ func preRun(c *cobra.Command, args []string) {
 		return
 	}
 
-	ns, err := rhjobspec.JobSpecFromFile(specFile)
+	ns, err := jobspec.JobSpecFromFile(specFile)
 	if err != nil {
 		log.WithFields(log.Fields{"input file": specFile, "error": err}).Fatal(
 			"Failed reading file")

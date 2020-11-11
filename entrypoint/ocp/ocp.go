@@ -12,8 +12,8 @@ import (
 
 var (
 	// These are used to parse the OpenShift API
-	//buildScheme       = runtime.NewScheme()
-	buildCodecFactory = serializer.NewCodecFactory(runtime.NewScheme())
+	buildScheme       = runtime.NewScheme()
+	buildCodecFactory = serializer.NewCodecFactory(buildScheme)
 	buildJSONCodec    runtime.Codec
 
 	// API Client for OCP builds.

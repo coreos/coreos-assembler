@@ -96,12 +96,19 @@ func newBC() (*buildConfig, error) {
 			apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 			apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
 		)
-		hIP, err := getPodIP(v.HostPod)
-		if err != nil {
-			log.Errorf("Failed to determine buildconfig's pod")
+
+		_, ok := apiBuild.Annotations[ciRunnerTag]
+		if ok {
+			v.HostIP = apiBuild.Annotations[fmt.Sprintf(ciAnnotation, "IP")]
+		} else {
+			log.Info("Querying for pod ID")
+			hIP, err := getPodIP(v.HostPod)
+			if err != nil {
+				log.Errorf("Failed to determine buildconfig's pod")
+			}
+			v.HostIP = hIP
 		}
 
-		v.HostIP = hIP
 		log.WithFields(log.Fields{
 			"buildconfig/name":   apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 			"buildconfig/number": apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
