@@ -116,12 +116,11 @@ objects:
     strategy:
       customStrategy:
         env:
-        - name: COSA_SKIP_OVERLAY
-          value: "skip"
         - name: COSA_CMDS
           value: 'cosa fetch; cosa build;'
         from:
           kind: ImageStreamTag
           name: ${IMAGE}:${IMAGE_TAG}
+        forcePull: true
       type: Custom
     triggers: []

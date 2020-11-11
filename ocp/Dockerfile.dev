@@ -4,7 +4,7 @@ WORKDIR /root/containerbuild
 USER root
 
 COPY ./ /root/containerbuild/
-RUN cd /root/containerbuild/entrypoint && \
+RUN cd /root/containerbuild/gangplank && \
     make && \
     make install DESTDIR=/ && \
     install -v -D -t /usr/lib/coreos-assembler /root/containerbuild/src/*.{sh,txt}
@@ -12,4 +12,4 @@ RUN cd /root/containerbuild/entrypoint && \
 WORKDIR /srv/
 
 USER builder
-ENTRYPOINT ["/usr/bin/entry", "builder"]
+ENTRYPOINT ["/usr/bin/gangplank", "builder"]
