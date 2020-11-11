@@ -63,7 +63,7 @@ func runOCP(c *cobra.Command, args []string) {
 
 	b, err := ocp.NewBuilder(ctx)
 	if err != nil {
-		log.Fatal("Failed to find the OCP build environment.")
+		log.Fatal("Failed to find the build environment.")
 	}
 
 	if err := b.Exec(ctx); err != nil {

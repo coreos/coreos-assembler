@@ -160,11 +160,6 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 		cosaInit.Args = ocpInitCommand[1:]
 	}
 
-	// This ensures that the buildconfig owns the pod
-	// and that the pod will be repeaed by the buildconfig.
-	oRef := apiBuild.GetOwnerReferences()
-	oRef[0].BlockOwnerDeletion = ptrBool(false)
-
 	req := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -172,10 +167,6 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
-			// This is a bit of deep magic -- by setting the owner reference
-			// we ensure that the pod will be deleted and garbage collected
-			// later.
-			OwnerReferences: oRef,
 
 			// Cargo-cult the labels comming from the parent.
 			Labels: apiBuild.Labels,
@@ -211,21 +202,15 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 	if err != nil {
 		return err
 	}
+	defer w.Stop()
 
-	lf := log.Fields{
-		"podname": podName,
-	}
+	l := log.WithField("podname", podName)
 
 	// ender is our clean-up that kill our pods
 	ender := func() {
-		log.WithFields(lf).Infof("terminating")
-		w.Stop()
+		l.Infof("terminating")
 		if err := apiClient.Pods(projectNamespace).Delete(podName, &metav1.DeleteOptions{}); err != nil {
-			lF := log.Fields{
-				"podname": podName,
-				"err":     err,
-			}
-			log.WithFields(lF).Error("Failed delete on pod, yolo.")
+			l.WithField("err", err).Error("Failed delete on pod, yolo.")
 		}
 	}
 	defer ender()
@@ -239,40 +224,36 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 		select {
 		case events, ok := <-w.ResultChan():
 			if !ok {
-				log.Errorf("failed to get status on pod %v", podName)
-				ender()
+				l.Error("failed waitching pod")
 				return fmt.Errorf("orphaned pod")
 			}
 			resp = events.Object.(*v1.Pod)
 			status = resp.Status
 
-			lF := log.Fields{
+			l := log.WithFields(log.Fields{
 				"podname": podName,
 				"status":  resp.Status.Phase,
-			}
+			})
 			switch sp := status.Phase; sp {
 			case v1.PodSucceeded:
-				log.WithFields(lF).Infof("Pod successfully completed")
+				l.Infof("Pod successfully completed")
 				return nil
 			case v1.PodRunning:
-				log.WithFields(lF).Infof("Pod successfully completed")
+				l.Infof("Pod successfully completed")
 				if err := streamPodLogs(&logStarted, req); err != nil {
-					log.WithFields(log.Fields{
-						"err":     err,
-						"podname": podName,
-					}).Error("failed to open logging")
+					l.WithField("err", err).Error("failed to open logging")
 				}
 			case v1.PodFailed:
-				log.WithFields(lF).Infof("Pod failed")
+				l.WithField("message", status.Message).Error("Pod failed")
 				return fmt.Errorf("Pod is a failure in its life")
 			default:
-				log.WithFields(lF).Infof("waiting...")
+				l.WithField("message", status.Message).Info("waiting...")
 			}
 
 		// Ensure a dreadful and uncerimonious end to our job in case of
 		// a timeout, the buildconfig is terminated, or there's a cancellation.
 		case <-time.After(90 * time.Minute):
-			return errors.New("Pod did not complete work in time.")
+			return errors.New("Pod did not complete work in time")
 		case <-sigs:
 			ender()
 			return errors.New("Termination requested")
