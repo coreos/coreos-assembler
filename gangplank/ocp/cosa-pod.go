@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -89,19 +90,22 @@ var (
 )
 
 // setPodDefaults checks the Kubernetes version to determine if
-// we're on OCP 3.11 (v1.11) or 4.3(v1.16)+.
+// we're on OCP 3.11 (v1.11) or 4.2(v1.15) or later.
+// https://docs.openshift.com/container-platform/4.2/release_notes/ocp-4-2-release-notes.html#ocp-4-2-about-this-release
 func setPodDefaults() error {
 	vi, err := apiClientSet.DiscoveryClient.ServerVersion()
 	if err != nil {
 		return fmt.Errorf("failed to query the kubernetes version: %w", err)
 	}
 
-	log.Infof("Kubernetes version of cluster is %s.%s", vi.Major, vi.Minor)
-	if minor, err := strconv.Atoi(vi.Minor); err != nil {
-		if minor >= 16 {
-			log.Info("Detected OpenShift 4.x cluster")
-			return nil
-		}
+	minor, err := strconv.Atoi(strings.TrimRight(vi.Minor, "+"))
+	log.Infof("Kubernetes version of cluster is %s %s.%d", vi.String(), vi.Major, minor)
+	if err != nil {
+		return fmt.Errorf("failed to detect OCP cluster version: %v", err)
+	}
+	if minor >= 15 {
+		log.Info("Detected OpenShift 4.x cluster")
+		return nil
 	}
 
 	log.Infof("Creating container with Openshift v3.x defaults")
