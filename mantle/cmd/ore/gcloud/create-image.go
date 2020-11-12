@@ -15,6 +15,7 @@
 package gcloud
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -92,7 +93,8 @@ func runCreateImage(cmd *cobra.Command, args []string) {
 		createImageBoard, createImageVersion, createImageName), "/")
 	imageNameGCE := gceSanitize(createImageFamily + "-" + createImageVersion)
 
-	storageAPI, err := storage.New(api.Client())
+	ctx := context.Background()
+	storageAPI, err := storage.NewService(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
