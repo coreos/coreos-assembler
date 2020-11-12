@@ -62,6 +62,13 @@ type SecretMapper interface {
 var (
 	// create the secret mappings for the supported Clouds
 	secretMaps = []*secretMap{
+		// Definition for Aliyun
+		{
+			label: "aliyun",
+			fileVarMap: varMap{
+				"config.json": "ALIYUN_CONFIG_FILE",
+			},
+		},
 		// Definition for AWS
 		{
 			label: "aws",
@@ -73,6 +80,22 @@ var (
 			},
 			fileVarMap: varMap{
 				"config": "AWS_CONFIG_FILE",
+			},
+		},
+		// Definition for AWS-CN
+		{
+			label: "aws-cn",
+			fileVarMap: varMap{
+				"config": "AWS_CONFIG_FILE",
+			},
+		},
+		// Definition for Azure
+		{
+			label: "azure",
+			fileVarMap: varMap{
+				"azure.json":        "AZURE_CONFIG",
+				"azure.pem":         "AZURE_CERT_KEY",
+				"azureProfile.json": "AZURE_PROFILE",
 			},
 		},
 		// Definition for GCP
@@ -120,7 +143,7 @@ func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte, r
 			continue
 		}
 		f := filepath.Join(sDir, k)
-		if err := ioutil.WriteFile(k, v, 0555); err != nil {
+		if err := ioutil.WriteFile(f, v, 0555); err != nil {
 			return err
 		}
 		*ret = append(*ret, fmt.Sprintf("%s=%s", eKey, f))
@@ -159,12 +182,11 @@ func kubernetesSecretsSetup(toDir string) ([]string, error) {
 				continue
 			}
 			log.Infof("Known secret type for %s found, mapping automatically", v)
-
 			if err := m.writeSecretEnvVars(secret.Data, &ret); err != nil {
 				log.Errorf("Failed to set envVars for %s: %s", sName, err)
 			}
-
-			if err := m.writeSecretFiles(toDir, sName, secret.Data, &ret); err != nil {
+			dirName := fmt.Sprintf(".%s", v)
+			if err := m.writeSecretFiles(toDir, dirName, secret.Data, &ret); err != nil {
 				log.Errorf("Failed to set files envVars for %s: %s", sName, err)
 			}
 		}
