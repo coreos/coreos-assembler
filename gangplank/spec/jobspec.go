@@ -29,7 +29,7 @@ type JobSpec struct {
 	Spec        Spec        `yaml:"spec,omitempty"`
 
 	// Stages are specific stages to be run. Stages are
-	// only supported by entrypoint; they do not appear in the
+	// only supported by Gangplank; they do not appear in the
 	// Groovy Jenkins Scripts.
 	Stages []Stage `yaml:"stages,omitempty"`
 }

@@ -5,7 +5,7 @@ package main
 
 	"builder" is the sub-command that should be used as an
 	the container entrypoint, i.e.:
-		/usr/bin/dumbinit /usr/bin/entry builder
+		/usr/bin/dumbinit /usr/bin/gangplank builder
 
 
 	Using the 'oc' binary was seriouslly considereed. However, the goals

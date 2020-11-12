@@ -21,7 +21,7 @@ func JobSpecFromRepo(url, ref, specFile string) (JobSpec, error) {
 		return j, nil
 	}
 
-	tmpd, err := ioutil.TempDir("", "*-entry")
+	tmpd, err := ioutil.TempDir("", "arrmatey")
 	if err != nil {
 		return j, err
 	}

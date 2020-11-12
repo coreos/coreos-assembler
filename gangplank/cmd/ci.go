@@ -27,7 +27,7 @@ func init() {
 	cmdRoot.PersistentFlags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
 }
 
-// runCI is the Jenkins/CI interface into entrypoint. It "mocks"
+// runCI is the Jenkins/CI interface into Gangplank. It "mocks"
 // the OpenShift buildconfig API with just-enough information to be
 // useful.
 func runCI(c *cobra.Command, args []string) {
@@ -37,7 +37,7 @@ func runCI(c *cobra.Command, args []string) {
 		log.Fatalf("failed to define CI builder: %v", err)
 	}
 
-	log.Info("Starting entrypoint in CI Mode")
+	log.Info("Starting Gangplank in CI Mode")
 	if err := m.Exec(ctx); err != nil {
 		log.Fatalf("failed to execute CI builder: %v", err)
 	}
