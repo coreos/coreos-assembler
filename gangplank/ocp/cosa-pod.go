@@ -62,8 +62,8 @@ var (
 	ocpInitCommand = []string{}
 
 	// on OCP v3, /dev/kvm is unlikely to world RW. So we have to give ourselves
-	// permission. Entrypoint will run as root but `cosa` commands run as the builder
-	// user. Note: on OCP v4, entrypoint will run unprivileged and OCP setups /dev/kvm
+	// permission. Gangplank will run as root but `cosa` commands run as the builder
+	// user. Note: on OCP v4, gangplank will run unprivileged and OCP setups /dev/kvm
 	// the way we need it.
 	ocp3InitCommand = []string{
 		"/bin/bash",
@@ -137,7 +137,7 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 			"/usr/bin/dumb-init",
 		},
 		Args: []string{
-			"/usr/bin/entry",
+			"/usr/bin/gangplank",
 			"builder",
 		},
 		Env:             eVars,

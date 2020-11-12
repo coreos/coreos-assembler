@@ -20,8 +20,8 @@ import (
 )
 
 /*
-	A CIBuilder is a ci interface for running entrypoint as part
-	of a legacy CI system (i.e. Jenkins) while benefiting from the BuildConfig
+	A CIBuilder is a ci interface for running Gangplank as part
+	of a CI system (i.e. Jenkins) while benefiting from the BuildConfig
 	niceties.
 
 	While it does not require running as a BuildConfig, it does require that the
@@ -50,7 +50,7 @@ var (
 )
 
 const (
-	ciLabel      = "ci-entry.coreos-assembler.coreos.com"
+	ciLabel      = "gangplank.coreos-assembler.coreos.com"
 	ciAnnotation = ciLabel + "%s"
 	ciRunnerTag  = "cosa-ci-runner"
 )

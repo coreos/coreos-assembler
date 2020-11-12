@@ -1,7 +1,7 @@
 package main
 
 /*
-	Definition for the main entry command. This defined the "human"
+	Definition for the main Gangplank command. This defined the "human"
 	interfaces for `run` and `run-steps`
 */
 
@@ -29,14 +29,14 @@ var (
 	spec     jobspec.JobSpec
 	specFile string
 
-	// entryEnvars are set for command execution
-	entryEnvVars []string
+	// envVars are set for command execution
+	envVars []string
 
 	// shellCmd is the default command to execute commands.
 	shellCmd = []string{"/bin/bash", "-x"}
 
 	cmdRoot = &cobra.Command{
-		Use:   "entry [command]",
+		Use:   "gangplank [command]",
 		Short: "COSA Gangplank",
 		Long: `Openshift COSA Job Runner
 Wrapper for COSA commands and templates`,
@@ -47,7 +47,7 @@ Wrapper for COSA commands and templates`,
 		Use:   "version",
 		Short: "Print the version number and exit.",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("entry/%s version %s\n",
+			cmd.Printf("gangplank/%s version %s\n",
 				cmd.Root().Name(), version)
 		},
 	}
@@ -78,7 +78,7 @@ func init() {
 		}
 	}
 
-	entryEnvVars = os.Environ()
+	envVars = os.Environ()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
@@ -106,7 +106,7 @@ func main() {
 
 // runScripts reads ARGs as files and executes the rendered templates.
 func runScripts(c *cobra.Command, args []string) error {
-	if err := spec.RendererExecuter(ctx, entryEnvVars, args...); err != nil {
+	if err := spec.RendererExecuter(ctx, envVars, args...); err != nil {
 		log.Fatalf("Failed to execute scripts: %v", err)
 	}
 	log.Infof("Execution complete")

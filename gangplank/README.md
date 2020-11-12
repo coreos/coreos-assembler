@@ -61,7 +61,7 @@ In fact, the problem is a bit deeper:
 
 ## The Solution
 
-The `entrypoint` is proposed as the "thing" to provide stable interface(s) into COSA. [Previously an envVar interface](https://github.com/coreos/enhancements/pull/1) was proposed. Bluntly speaking, the idea was not well-recieved. The `entrypoint` seeks to provide a set of interfaces into COSA that:
+Gangplank is proposed as the "thing" to provide stable interface(s) into COSA. [Previously an envVar interface](https://github.com/coreos/enhancements/pull/1) was proposed. Bluntly speaking, the idea was not well-recieved. Gangplank seeks to provide a set of interfaces into COSA that:
 - provides a means of file-based instrutions to COSA
 - provides a means of templating the COSA commands
 - initially provide the RHCOS JobSpec to templated COSA commands
@@ -70,7 +70,7 @@ The `entrypoint` is proposed as the "thing" to provide stable interface(s) into 
 - provide testable code for parsing the commands
 - avoid migrating Jenkins pipeline to Tekton
 
-While `entrypoint` current supports the RHCOS JobSpec, it is anticipated that other "specficiations" will be introduced such as OCP's BuildConfig Specification.
+While `gangplank` current supports the RHCOS JobSpec, it is anticipated that other "specficiations" will be introduced such as OCP's BuildConfig Specification.
 
 ## GoLang to the rescue
 
@@ -88,7 +88,7 @@ GoLang was chosen over Bash or Python several reasons:
 
 An early lesson learned writing the RHCOS pipeline is that while an OpenShift template is trivial, they tend to pollute the namespace. OpenShift templates are great for deploying an application, but become tedious when deploying arbitrary configruations. For example, using an OpenShift template to deploy test, dev, and production configurations could require three seperate deployements when all that changes is a single variable.
 
-The vision of the `entrypoint` is to create a templated execution of COSA based the file interface. That is, instead of managing different deployments, COSA will take a configuration (the JobSpec) and `run-steps`. A single `buildconfig` can service the needs of developers and production enviroments.
+The vision of the `gangplank` is to create a templated execution of COSA based the file interface. That is, instead of managing different deployments, COSA will take a configuration (the JobSpec) and `run-steps`. A single `buildconfig` can service the needs of developers and production enviroments.
 
 ## Jenkins as a helper
 
@@ -109,7 +109,7 @@ Where `cosa_oc` is the wrapper that:
 - creates a `build.tar` containing the `JobSpec`, `build.steps`
 - calls `oc start-build bc/cosa-priv --from-archive=build.tar --follow=true`
 
-In this world, the Secrets would exist outside of Jenkins and would be stored in the OpenShift environment and referenced in the `buildConfig` itself. Then `entrypoint`, which will support the OpenShift `buildConfig` spec will:
+In this world, the Secrets would exist outside of Jenkins and would be stored in the OpenShift environment and referenced in the `buildConfig` itself. Gangplank supports the OpenShift BuildAPI and the Kubernetes APIS.
 - unpack `build.tar`
 - find the `jobspec` and the `build.steps`
 - execute the steps
@@ -123,7 +123,7 @@ Ideally, there would be BuildConfigs for:
 
 ## Development and Pipeline Parity
 
-A profound pain point for COSA _and_ pipeline development is that environmental differences between the developer (and, by extension their pet container), and COSA, FCOS and RHCOS pipelines can cause a rousing round of "fix a bug whack-a-mole." (Where the code works in one pipeline, but not another) `entrpyoint` seeks to solve that by removing Jenkins from the Pod execution by allowing the developer to run pipeline code locally. That is, a developer should have reasonable assurances that if they run locally run steps via `podman -it --entrypoint /usr/bin/entry coreos-assembler....` it will succeed in one of the pipelines.
+A profound pain point for COSA _and_ pipeline development is that environmental differences between the developer (and, by extension their pet container), and COSA, FCOS and RHCOS pipelines can cause a rousing round of "fix a bug whack-a-mole." (Where the code works in one pipeline, but not another) `entrpyoint` seeks to solve that by removing Jenkins from the Pod execution by allowing the developer to run pipeline code locally. That is, a developer should have reasonable assurances that if they run locally run steps via `podman -it --entrypoint /usr/bin/gangplank coreos-assembler....` it will succeed in one of the pipelines.
 
 ## `cosa remote`
 

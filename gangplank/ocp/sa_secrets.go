@@ -35,7 +35,7 @@ import (
 	for secrets with the label 'coreos-assembler.coreos.com/secret'
 	and then look for a matching configuration.
 
-	If the secret is defined, then entrypoint will map in the envVars to the common
+	If the secret is defined, then gangplank will map in the envVars to the common
 	CLI envars, otherwise the secret will be written to a file by its name
 	to the path /srv/secrets/<NAME>/<< data.key >>
 
