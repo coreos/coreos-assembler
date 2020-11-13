@@ -15,6 +15,7 @@
 package gcloud
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -50,11 +51,17 @@ var (
 
 func init() {
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "gs://bucket/prefix/")
-	cmdUpload.MarkFlagRequired("bucket")
+	if err := cmdUpload.MarkFlagRequired("bucket"); err != nil {
+		panic(err)
+	}
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name for uploaded image")
-	cmdUpload.MarkFlagRequired("name")
+	if err := cmdUpload.MarkFlagRequired("name"); err != nil {
+		panic(err)
+	}
 	cmdUpload.Flags().StringVar(&uploadFile, "file", "", "path to image .tar.gz file to upload")
-	cmdUpload.MarkFlagRequired("file")
+	if err := cmdUpload.MarkFlagRequired("file"); err != nil {
+		panic(err)
+	}
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCE images without prompt")
 	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
 	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
@@ -97,7 +104,8 @@ func runUpload(cmd *cobra.Command, args []string) {
 	// Sanitize the image name for GCE
 	imageNameGCE := gceSanitize(uploadImageName)
 
-	storageAPI, err := storage.New(api.Client())
+	ctx := context.Background()
+	storageAPI, err := storage.NewService(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
