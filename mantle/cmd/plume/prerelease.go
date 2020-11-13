@@ -94,16 +94,18 @@ func AddSpecFlags(flags *pflag.FlagSet) {
 	board := sdk.DefaultBoard()
 	flags.StringVarP(&specBoard, "board", "B", board, "target board")
 	flags.StringVarP(&specChannel, "channel", "C", "testing", "target channel")
-	flags.MarkDeprecated("channel", "use --stream instead")
+	if err := flags.MarkDeprecated("channel", "use --stream instead"); err != nil {
+		panic(err)
+	}
 	flags.StringVarP(&specChannel, "stream", "S", "testing", "target stream")
 	flags.StringVarP(&specVersion, "version", "V", "", "release version")
 }
 
 func init() {
-	for k, _ := range platforms {
+	for k := range platforms {
 		platformList = append(platformList, k)
 	}
-	sort.Sort(sort.StringSlice(platformList))
+	sort.Strings(platformList)
 
 	cmdPreRelease.Flags().StringSliceVar(&selectedPlatforms, "platform", platformList, "platform to pre-release")
 	cmdPreRelease.Flags().StringVar(&selectedDistro, "distro", "fedora", "system to pre-release")
@@ -392,7 +394,7 @@ func getSpecAWSImageMetadata(spec *channelSpec) (map[string]string, error) {
 	return awsImageMetaData, nil
 }
 
-func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, error) {
+func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imagePath string) (map[string]string, error) {
 	plog.Printf("Connecting to %v...", part.Name)
 	api, err := aws.New(&aws.Options{
 		CredentialsFile: awsCredentialsFile,
@@ -415,8 +417,8 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 	}
 
 	imageFileName := awsImageMetadata["imageFileName"]
-	imageName = awsImageMetadata["imageName"]
-	imageDescription = awsImageMetadata["imageDescription"]
+	imageName := awsImageMetadata["imageName"]
+	imageDescription := awsImageMetadata["imageDescription"]
 
 	var s3ObjectPath string
 	switch selectedDistro {
@@ -541,8 +543,6 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 	}
 
 	imageFileName := awsImageMetadata["imageFileName"]
-	imageName := awsImageMetadata["imageName"]
-	imageDescription := awsImageMetadata["imageDescription"]
 
 	imagePath, err := getImageFile(client, spec, src, imageFileName)
 	if err != nil {
@@ -551,7 +551,7 @@ func awsPreRelease(ctx context.Context, client *http.Client, src *storage.Bucket
 
 	var amis amiList
 	for i := range spec.AWS.Partitions {
-		amiMap, err := awsUploadToPartition(spec, &spec.AWS.Partitions[i], imageName, imageDescription, imagePath)
+		amiMap, err := awsUploadToPartition(spec, &spec.AWS.Partitions[i], imagePath)
 		if err != nil {
 			return err
 		}
