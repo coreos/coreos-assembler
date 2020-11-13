@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 /*
@@ -155,7 +156,7 @@ func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte, r
 // 'coreos-assembler.coreos.com/secret=k' and then maps the secret
 // automatically in. "k" must be in the "known" secrets type to be mapped
 // automatically.
-func kubernetesSecretsSetup(toDir string) ([]string, error) {
+func kubernetesSecretsSetup(ac *kubernetes.Clientset, ns, toDir string) ([]string, error) {
 	lo := metav1.ListOptions{
 		LabelSelector: secretLabelName,
 		Limit:         100,
@@ -163,7 +164,7 @@ func kubernetesSecretsSetup(toDir string) ([]string, error) {
 
 	var ret []string
 
-	secrets, err := apiClient.Secrets(projectNamespace).List(lo)
+	secrets, err := ac.CoreV1().Secrets(ns).List(lo)
 	if err != nil {
 		return ret, err
 	}

@@ -32,7 +32,7 @@ func init() {
 // useful.
 func runCI(c *cobra.Command, args []string) {
 	defer cancel()
-	m, err := ocp.NewCIBuilder(ctx, cosaOverrideImage, serviceAccount, specFile)
+	m, err := ocp.NewCIBuilder(ctx, true, cosaOverrideImage, serviceAccount, specFile)
 	if err != nil {
 		log.Fatalf("failed to define CI builder: %v", err)
 	}

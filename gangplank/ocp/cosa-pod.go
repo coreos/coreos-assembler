@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -89,48 +90,88 @@ var (
 	}
 )
 
-// setPodDefaults checks the Kubernetes version to determine if
-// we're on OCP 3.11 (v1.11) or 4.2(v1.15) or later.
-// https://docs.openshift.com/container-platform/4.2/release_notes/ocp-4-2-release-notes.html#ocp-4-2-about-this-release
-func setPodDefaults() error {
-	vi, err := apiClientSet.DiscoveryClient.ServerVersion()
+// cosaPod is a COSA pod
+type cosaPod struct {
+	apiBuild     *buildapiv1.Build
+	apiClientSet *kubernetes.Clientset
+	project      string
+
+	ocpInitCommand  []string
+	ocpRequirements v1.ResourceList
+	ocpSecContext   *v1.SecurityContext
+	volumes         []v1.Volume
+	volumeMounts    []v1.VolumeMount
+
+	ctx   context.Context
+	index int
+	pod   *v1.Pod
+}
+
+// CosaPodder create COSA capable pods.
+type CosaPodder interface {
+	WorkerRunner(envVar []v1.EnvVar) error
+}
+
+// a cosaPod is a CosaPodder
+var _ = CosaPodder(&cosaPod{})
+
+// NewCosaPodder creates a CosaPodder
+func NewCosaPodder(
+	ctx context.Context,
+	apiBuild *buildapiv1.Build,
+	apiClientSet *kubernetes.Clientset,
+	project string,
+	index int) (CosaPodder, error) {
+
+	cp := &cosaPod{
+		apiBuild:     apiBuild,
+		apiClientSet: apiClientSet,
+		project:      project,
+		ctx:          ctx,
+		index:        index,
+
+		// Set defaults for OCP4.x
+		ocpRequirements: ocpRequirements,
+		ocpSecContext:   ocpSecContext,
+		ocpInitCommand:  ocpInitCommand,
+
+		volumes:      volumes,
+		volumeMounts: volumeMounts,
+	}
+
+	vi, err := cp.apiClientSet.DiscoveryClient.ServerVersion()
 	if err != nil {
-		return fmt.Errorf("failed to query the kubernetes version: %w", err)
+		return nil, fmt.Errorf("failed to query the kubernetes version: %w", err)
 	}
 
 	minor, err := strconv.Atoi(strings.TrimRight(vi.Minor, "+"))
 	log.Infof("Kubernetes version of cluster is %s %s.%d", vi.String(), vi.Major, minor)
 	if err != nil {
-		return fmt.Errorf("failed to detect OCP cluster version: %v", err)
+		return nil, fmt.Errorf("failed to detect OCP cluster version: %v", err)
 	}
 	if minor >= 15 {
 		log.Info("Detected OpenShift 4.x cluster")
-		return nil
+		return cp, nil
 	}
 
 	log.Infof("Creating container with Openshift v3.x defaults")
-	ocpRequirements = ocp3Requirements
-	ocpInitCommand = ocp3InitCommand
-	ocpSecContext = ocp3SecContext
-	return nil
+	cp.ocpRequirements = ocp3Requirements
+	cp.ocpSecContext = ocp3SecContext
+	cp.ocpInitCommand = ocp3InitCommand
+
+	return cp, nil
 }
 
 func ptrInt(i int64) *int64 { return &i }
 
 func ptrBool(b bool) *bool { return &b }
 
-// Create creates a pod and ensures that the pod is cleaned up when the
-// process finishes
-// Inspired by https://github.com/kubernetes/client-go/blob/master/examples/create-update-delete-deployment/main.go
-func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
-	if err := setPodDefaults(); err != nil {
-		log.WithField("err", err).Error("assuming OpenShift version v4.x")
-	}
-
+// WorkerRunner runs a worker pod and watches until finished
+func (cp *cosaPod) WorkerRunner(envVars []v1.EnvVar) error {
 	podName := fmt.Sprintf("%s-%s-worker-%d",
-		apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
-		apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
-		index,
+		cp.apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
+		cp.apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
+		cp.index,
 	)
 	log.Infof("Creating pod %s", podName)
 
@@ -144,10 +185,10 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 			"/usr/bin/gangplank",
 			"builder",
 		},
-		Env:             eVars,
+		Env:             envVars,
 		WorkingDir:      "/srv",
-		VolumeMounts:    volumeMounts,
-		SecurityContext: ocpSecContext,
+		VolumeMounts:    cp.volumeMounts,
+		SecurityContext: cp.ocpSecContext,
 		Resources: v1.ResourceRequirements{
 			Limits:   ocpRequirements,
 			Requests: ocpRequirements,
@@ -187,15 +228,16 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 		},
 	}
 
-	resp, err := apiClient.Pods(projectNamespace).Create(req)
+	ac := cp.apiClientSet.CoreV1()
+	resp, err := ac.Pods(cp.project).Create(req)
 	if err != nil {
 		return fmt.Errorf("failed to create pod %s: %w", podName, err)
 	}
-
 	log.Infof("Pod created: %s", podName)
+	cp.pod = req
 
 	status := resp.Status
-	w, err := apiClient.Pods(projectNamespace).Watch(
+	w, err := ac.Pods(cp.project).Watch(
 		metav1.ListOptions{
 			Watch:           true,
 			ResourceVersion: resp.ResourceVersion,
@@ -213,7 +255,7 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 	// ender is our clean-up that kill our pods
 	ender := func() {
 		l.Infof("terminating")
-		if err := apiClient.Pods(projectNamespace).Delete(podName, &metav1.DeleteOptions{}); err != nil {
+		if err := ac.Pods(cp.project).Delete(podName, &metav1.DeleteOptions{}); err != nil {
 			l.WithField("err", err).Error("Failed delete on pod, yolo.")
 		}
 	}
@@ -244,7 +286,7 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 				return nil
 			case v1.PodRunning:
 				l.Infof("Pod successfully completed")
-				if err := streamPodLogs(&logStarted, req); err != nil {
+				if err := cp.streamPodLogs(&logStarted, req); err != nil {
 					l.WithField("err", err).Error("failed to open logging")
 				}
 			case v1.PodFailed:
@@ -261,7 +303,7 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 		case <-sigs:
 			ender()
 			return errors.New("Termination requested")
-		case <-ctx.Done():
+		case <-cp.ctx.Done():
 			return nil
 		}
 	}
@@ -271,7 +313,7 @@ func createWorkerPod(ctx context.Context, index int, eVars []v1.EnvVar) error {
 // pods are responsible for their work, but not for their logs.
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return
-func streamPodLogs(logging *bool, pod *v1.Pod) error {
+func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
 	if logging != nil && *logging {
 		return nil
 	}
@@ -279,7 +321,7 @@ func streamPodLogs(logging *bool, pod *v1.Pod) error {
 	podLogOpts := v1.PodLogOptions{
 		Follow: true,
 	}
-	req := apiClient.Pods(projectNamespace).GetLogs(pod.Name, &podLogOpts)
+	req := cp.apiClientSet.CoreV1().Pods(cp.project).GetLogs(pod.Name, &podLogOpts)
 	podLogs, err := req.Stream()
 	if err != nil {
 		return err

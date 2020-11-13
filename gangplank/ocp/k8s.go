@@ -11,64 +11,52 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 )
 
 const clusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 var (
-	// apiClient is v1 Client Interface for interacting Kubernetes
-	apiClient corev1.CoreV1Interface
-
-	// apiClientSet is a generic Kubernetes Client Set
-	apiClientSet *kubernetes.Clientset
-
-	// projectNamespace is the current namespace
-	projectNamespace string
-
 	// forceNotInCluster is used for testing. This is set to
 	// true for when testing is run with `-tag ci`
 	forceNotInCluster = false
 )
 
-// k8sAPIClient opens an in-cluster Kubernetes API client.
+// k8sInClusterClient opens an in-cluster Kubernetes API client.
 // The running pod must have a service account defined in the PodSpec.
-func k8sAPIClient() error {
+func k8sInClusterClient() (*kubernetes.Clientset, string, error) {
 	_, kport := os.LookupEnv("KUBERNETES_SERVICE_PORT")
 	_, khost := os.LookupEnv("KUBERNETES_SERVICE_HOST")
 	if !khost || !kport || forceNotInCluster {
-		return ErrNotInCluster
+		return nil, "", ErrNotInCluster
 	}
 
 	// creates the in-cluster config
 	cc, err := rest.InClusterConfig()
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 
 	// creates the clientset
 	nc, err := kubernetes.NewForConfig(cc)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
-	apiClient = nc.CoreV1()
-	apiClientSet = nc
 
 	pname, err := ioutil.ReadFile(clusterNamespaceFile)
 	if err != nil {
-		return fmt.Errorf("Failed determining the current namespace: %v", err)
+		return nil, "", fmt.Errorf("Failed determining the current namespace: %v", err)
 	}
-	projectNamespace = string(pname)
+	pn := string(pname)
 
-	log.Infof("Current project/namespace is %s", projectNamespace)
-	return nil
+	log.Infof("Current project/namespace is %s", pn)
+	return nc, pn, nil
 }
 
 // getPodiP returns the IP of a pod. getPodIP blocks pending until the podIP
 // is recieved.
-func getPodIP(podName string) (string, error) {
-	w, err := apiClient.Pods(projectNamespace).Watch(
+func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, error) {
+	w, err := cs.CoreV1().Pods(podNamespace).Watch(
 		metav1.ListOptions{
 			Watch:         true,
 			FieldSelector: fields.Set{"metadata.name": podName}.AsSelector().String(),

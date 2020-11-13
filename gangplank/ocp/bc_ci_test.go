@@ -19,7 +19,7 @@ func init() {
 
 func TestNoEnv(t *testing.T) {
 	if _, err := newBC(); err != ErrInvalidOCPMode {
-		t.Errorf("failed to raise: %v", ErrInvalidOCPMode)
+		t.Errorf("failed to raise error\n   want: %v\n    got: %v", ErrInvalidOCPMode, err)
 	}
 }
 

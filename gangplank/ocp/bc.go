@@ -74,19 +74,18 @@ func newBC() (*buildConfig, error) {
 		}
 	}
 
-	// Init the API Client for k8s itself
-	// The API client requires that the pod/buildconfig include a service account.
-	k8sAPIErr := k8sAPIClient()
-	if k8sAPIErr != nil && k8sAPIErr != ErrNotInCluster {
-		log.Errorf("Failed to initalized Kubernetes in cluster API client: %v", k8sAPIErr)
-		return nil, k8sAPIErr
-	}
+	// Open the Kubernetes Client
+	ac, pn, kubeErr := k8sInClusterClient()
 
 	// Init the OpenShift Build API Client.
 	buildAPIErr := ocpBuildClient()
 	if buildAPIErr != nil && buildAPIErr != ErrNoOCPBuildSpec {
 		log.Errorf("Failed to initalized the OpenShift Build API Client: %v", buildAPIErr)
 		return nil, buildAPIErr
+	}
+
+	if kubeErr != nil && buildAPIErr != nil {
+		return nil, ErrInvalidOCPMode
 	}
 
 	// Query Kubernetes to find out what this pods network identity is.
@@ -102,7 +101,7 @@ func newBC() (*buildConfig, error) {
 			v.HostIP = apiBuild.Annotations[fmt.Sprintf(ciAnnotation, "IP")]
 		} else {
 			log.Info("Querying for pod ID")
-			hIP, err := getPodIP(v.HostPod)
+			hIP, err := getPodIP(ac, pn, v.HostPod)
 			if err != nil {
 				log.Errorf("Failed to determine buildconfig's pod")
 			}
@@ -115,11 +114,6 @@ func newBC() (*buildConfig, error) {
 			"podname":            v.HostPod,
 			"podIP":              v.HostIP,
 		}).Info("found build.openshift.io/buildconfig identity")
-	}
-
-	// Build requires either a Build API Client or Kuberneres Cluster client.
-	if k8sAPIErr != nil && buildAPIErr != nil {
-		return nil, ErrInvalidOCPMode
 	}
 
 	if _, err := os.Stat(cosaSrvDir); os.IsNotExist(err) {
@@ -156,6 +150,11 @@ func (bc *buildConfig) Exec(ctx context.Context) error {
 
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return err
+	}
+
+	ac, pn, err := k8sInClusterClient()
+	if err != nil {
+		return fmt.Errorf("failed create a kubernetes client: %w", err)
 	}
 
 	// Define, but do not start minio.
@@ -297,7 +296,12 @@ binary build interface.`)
 		}
 
 		index := n + 1
-		if err := createWorkerPod(ctx, index, eVars); err != nil {
+		cpod, err := NewCosaPodder(ctx, apiBuild, ac, pn, index)
+		if err != nil {
+			log.Errorf("FAILED TO CREATE POD DEFINITION: %v", err)
+			continue
+		}
+		if err := cpod.WorkerRunner(eVars); err != nil {
 			log.Errorf("FAILED stage: %v", err)
 		}
 	}
