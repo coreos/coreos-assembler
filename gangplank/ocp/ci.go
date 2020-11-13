@@ -31,9 +31,18 @@ import (
 */
 
 type ci struct {
-	jobSpecFile string
-	bc          *buildConfig
-	ciBuild     string
+	apibuild *buildapiv1.Build
+	bc       *buildConfig
+	js       *spec.JobSpec
+
+	pod *v1.Pod
+
+	hostname         string
+	image            string
+	ipaddr           string
+	jobSpecFile      string
+	projectNamespace string
+	serviceAccount   string
 }
 
 // CIBuilder is the manual/unbounded Build interface.
@@ -57,16 +66,14 @@ const (
 
 func (c *ci) Exec(ctx context.Context) error {
 	log.Info("Executing unbounded builder")
+	if c.bc == nil {
+		return errors.New("buildconfig is nil")
+	}
 	return c.bc.Exec(ctx)
 }
 
 // NewCIBuilder returns a CIBuilder ready for execution.
-func NewCIBuilder(ctx context.Context, image, serviceAccount, jsF string) (CIBuilder, error) {
-	// Require a Kubernetes Service Account Client
-	if err := k8sAPIClient(); err != nil {
-		return nil, fmt.Errorf("failed create a kubernetes client: %w", err)
-	}
-
+func NewCIBuilder(ctx context.Context, inCluster bool, image, serviceAccount, jsF string) (CIBuilder, error) {
 	// Directly inject the jobspec
 	js, err := spec.JobSpecFromFile(jsF)
 	if err != nil {
@@ -75,56 +82,71 @@ func NewCIBuilder(ctx context.Context, image, serviceAccount, jsF string) (CIBui
 	if js.Recipe.GitURL == "" {
 		return nil, errors.New("JobSpec does inclue a Git Recipe")
 	}
-	os.Setenv("SOURCE_REF", js.Recipe.GitRef)
-	os.Setenv("SOURCE_URI", js.Recipe.GitURL)
 
-	log.WithFields(log.Fields{
-		"override image": image,
-		"source ref":     js.Recipe.GitRef,
-		"source uri":     js.Recipe.GitURL,
-	}).Info("jobspec defined source")
-
-	// Get the ci API
-	ciBuild, err := ciAPIBuild(&js, image, serviceAccount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a ci API build object")
+	c := &ci{
+		js:             &js,
+		jobSpecFile:    jsF,
+		serviceAccount: serviceAccount,
+		image:          image,
 	}
-	os.Setenv("BUILD", ciBuild)
+
+	// TODO: implement out-of-cluster
+	if err := c.setInCluster(); err != nil {
+		return nil, fmt.Errorf("failed setting incluster options: %v", err)
+	}
+
+	// Generate the build.openshift.io/v1 object
+	if err := c.generateAPIBuild(); err != nil {
+		return nil, fmt.Errorf("failed to generate api build: %v", err)
+	}
+	ciBuild, err := c.encodeAPIBuild()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode apibuild: %v", err)
+	}
 
 	// Create the buildConfig object
+	os.Setenv("BUILD", ciBuild)
+	os.Setenv("SOURCE_REF", js.Recipe.GitRef)
+	os.Setenv("SOURCE_URI", js.Recipe.GitURL)
 	bc, err := newBC()
 	if err != nil {
 		return nil, err
 	}
 	bc.JobSpec = js
 	bc.JobSpecFile = jsF
+	c.bc = bc
 
-	c := &ci{
-		jobSpecFile: jsF,
-		bc:          bc,
-		ciBuild:     ciBuild,
-	}
 	return c, nil
 }
 
-func ciAPIBuild(js *spec.JobSpec, image, serviceAccount string) (string, error) {
+func (c *ci) setInCluster() error {
 	// Dig deep and query find out what Kubernetes thinks this pod
 	// Discover where this running
 	hostname, ok := os.LookupEnv("HOSTNAME")
 	if !ok {
-		return "", errors.New("Unable to find hostname")
+		return errors.New("Unable to find hostname")
 	}
+	c.hostname = hostname
 
-	myIP, err := getPodIP(hostname)
+	// Open the Kubernetes Client
+	ac, pn, err := k8sInClusterClient()
 	if err != nil {
-		return "", fmt.Errorf("failed to query my hostname: %w", err)
+		return fmt.Errorf("failed create a kubernetes client: %w", err)
 	}
+	c.projectNamespace = pn
+
+	myIP, err := getPodIP(ac, pn, hostname)
+	if err != nil {
+		return fmt.Errorf("failed to query my hostname: %w", err)
+	}
+	c.ipaddr = myIP
 
 	// Discover where this running
-	myPod, err := apiClient.Pods(projectNamespace).Get(hostname, metav1.GetOptions{})
+	myPod, err := ac.CoreV1().Pods(pn).Get(hostname, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return err
 	}
+	c.pod = myPod
 
 	// find the running pod this is running on.
 	var myContainer *v1.Container = nil
@@ -139,24 +161,19 @@ func ciAPIBuild(js *spec.JobSpec, image, serviceAccount string) (string, error) 
 	}
 
 	// allow both the service account and the image to be overriden
-	if serviceAccount == "" {
-		serviceAccount = myPod.Spec.ServiceAccountName
+	if c.serviceAccount == "" {
+		c.serviceAccount = myPod.Spec.ServiceAccountName
 	}
-	if image == "" {
-		image = myContainer.Image
+	if c.image == "" {
+		c.image = myContainer.Image
 	}
-	if serviceAccount == "" || image == "" {
-		return "", errors.New("serviceAccount and image must be defined by running pod or via overrides")
+	if c.serviceAccount == "" || c.image == "" {
+		return errors.New("serviceAccount and image must be defined by running pod or via overrides")
 	}
+	return nil
+}
 
-	l := log.WithFields(log.Fields{
-		"ip":             myIP,
-		"image":          image,
-		"serviceAccount": serviceAccount,
-		"host":           myContainer.Name,
-	})
-	l.Info("identified pod")
-
+func (c *ci) generateAPIBuild() error {
 	// Create just _enough_ of the OpenShift BuildConfig spec
 	// Create a "ci" build.openshift.io/v1 specification.
 	ciBuildNumber := time.Now().Format("20060102150405")
@@ -167,7 +184,7 @@ func ciAPIBuild(js *spec.JobSpec, image, serviceAccount string) (string, error) 
 		// ciRunnerTag is tested for to determine if this is
 		// a buildconfig or a faked one
 		ciRunnerTag:                     "true",
-		fmt.Sprintf(ciAnnotation, "IP"): myIP,
+		fmt.Sprintf(ciAnnotation, "IP"): c.ipaddr,
 		// Required Labels
 		buildapiv1.BuildConfigAnnotation: "ci-cosa-bc",
 		buildapiv1.BuildNumberAnnotation: ciBuildNumber,
@@ -180,25 +197,33 @@ func ciAPIBuild(js *spec.JobSpec, image, serviceAccount string) (string, error) 
 
 	// Populate the Spec
 	a.Spec = buildapiv1.BuildSpec{}
-	a.Spec.ServiceAccount = myPod.Spec.ServiceAccountName
+	a.Spec.ServiceAccount = c.serviceAccount
 	a.Spec.Strategy = buildapiv1.BuildStrategy{}
 	a.Spec.Strategy.CustomStrategy = new(buildapiv1.CustomBuildStrategy)
 	a.Spec.Strategy.CustomStrategy.From = corev1.ObjectReference{
-		Name: image,
+		Name: c.image,
 	}
 	a.Spec.Source = buildapiv1.BuildSource{
 		ContextDir: cosaSrvDir,
 		Git: &buildapiv1.GitBuildSource{
-			Ref: js.Recipe.GitRef,
-			URI: js.Recipe.GitURL,
+			Ref: c.js.Recipe.GitRef,
+			URI: c.js.Recipe.GitURL,
 		},
 	}
 
-	// Render the ci buildapiv1 object to a JSON object.
-	// JSON is the messaginging interface for Kubernetes.
+	c.apibuild = &a
+	return nil
+}
+
+// encodeAPIBuilder the ci buildapiv1 object to a JSON object.
+// JSON is the messaginging interface for Kubernetes.
+func (c *ci) encodeAPIBuild() (string, error) {
+	if c.apibuild == nil {
+		return "", errors.New("apibuild is not defined yet")
+	}
 	aW := bytes.NewBuffer([]byte{})
 	s := json.NewYAMLSerializer(json.DefaultMetaFactory, buildScheme, buildScheme)
-	if err := s.Encode(&a, aW); err != nil {
+	if err := s.Encode(c.apibuild, aW); err != nil {
 		return "", err
 	}
 	d, err := ioutil.ReadAll(aW)

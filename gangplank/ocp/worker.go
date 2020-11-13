@@ -49,12 +49,6 @@ func newWorkSpec(ctx context.Context) (*workSpec, error) {
 	if err := ws.Unmarshal(r); err != nil {
 		return nil, err
 	}
-
-	// Require a Kubernetes Service Account Client
-	if err := k8sAPIClient(); err != nil {
-		return nil, fmt.Errorf("failed create a kubernetes client: %w", err)
-	}
-
 	if _, err := os.Stat(cosaSrvDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("Context dir %q does not exist", cosaSrvDir)
 	}
@@ -85,12 +79,17 @@ func (ws *workSpec) Marshal() ([]byte, error) {
 
 // Exec executes the work spec tasks.
 func (ws *workSpec) Exec(ctx context.Context) error {
+	ac, pn, err := k8sInClusterClient()
+	if err != nil {
+		return fmt.Errorf("failed create a kubernetes client: %w", err)
+	}
+
 	// Workers always will use /srv
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return fmt.Errorf("unable to switch to %s: %w", cosaSrvDir, err)
 	}
 
-	ks, err := kubernetesSecretsSetup(cosaSrvDir)
+	ks, err := kubernetesSecretsSetup(ac, pn, cosaSrvDir)
 	if err != nil {
 		log.Errorf("Failed to setup Service Account Secrets: %v", err)
 	}
