@@ -91,7 +91,7 @@ func (build *Build) FindGCPImage() (string, error) {
 func (build *Build) WriteMeta(path string, validate bool) error {
 	if validate {
 		if err := build.Validate(); len(err) != 0 {
-			errors.New("data is not compliant with schema")
+			return errors.New("data is not compliant with schema")
 		}
 	}
 	out, err := json.MarshalIndent(build, "", "    ")
