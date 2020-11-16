@@ -26,17 +26,8 @@ Fedora CoreOS style disk image from an OS Tree.
 
 Options:
     --disk: disk device to use
-    --buildid: buildid
-    --imgid: imageid
-    --grub-script: grub script to install
     --help: show this helper
     --kargs: kernel CLI args
-    --osname: the OS name to use, e.g. fedora
-    --ostree-ref: the OSTRee reference to install
-    --ostree-remote: the ostree remote
-    --ostree-repo: location of the ostree repo
-    --rootfs-size: Create the root filesystem with specified size
-    --boot-verity: Provide this to enable ext4 fs-verity for /boot
     --no-x86-bios-bootloader: don't install BIOS bootloader on x86_64
 
 You probably don't want to run this script by hand. This script is
@@ -46,8 +37,6 @@ EOC
 
 config=
 disk=
-rootfs_size="0"
-boot_verity=0
 x86_bios_bootloader=1
 extrakargs=""
 
@@ -57,18 +46,8 @@ do
     case "${flag}" in
         --config)                config="${1}"; shift;;
         --disk)                  disk="${1}"; shift;;
-        --buildid)               buildid="${1}"; shift;;
-        --imgid)                 imgid="${1}"; shift;;
-        --grub-script)           grub_script="${1}"; shift;;
         --help)                  usage; exit;;
         --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
-        --osname)                os_name="${1}"; shift;;
-        --ostree-commit)         commit="${1}"; shift;;
-        --ostree-ref)            ref="${1}"; if test "${ref}" = NONE; then ref=""; fi; shift;;
-        --ostree-remote)         remote_name="${1}"; shift;;
-        --ostree-repo)           ostree="${1}"; shift;;
-        --rootfs-size)           rootfs_size="${1}"; shift;;
-        --boot-verity)           boot_verity=1;;
         --no-x86-bios-bootloader) x86_bios_bootloader=0;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
@@ -85,17 +64,19 @@ arch="$(uname -m)"
 disk=$(realpath /dev/disk/by-id/virtio-target)
 
 config="${config:?--config must be defined}"
-buildid="${buildid:?--buildid must be defined}"
-imgid="${imgid:?--imgid must be defined}"
-ostree="${ostree:?--ostree-repo must be defined}"
-commit="${commit:?--ostree-commit must be defined}"
-remote_name="${remote_name:?--ostree-remote must be defined}"
-grub_script="${grub_script:?--grub-script must be defined}"
-os_name="${os_name:?--os_name must be defined}"
 
+# Parse the passed config JSON and extract a mandatory value
 getconfig() {
     k=$1
-    jq -re .$k < ${config}
+    jq -re .'"'$k'"' < ${config}
+}
+# Return a configuration value, or default if not set
+getconfig_def() {
+    k=$1
+    shift
+    default=$1
+    shift
+    jq -re .'"'$k'"'//'"'${default}'"' < ${config}
 }
 
 # First parse the old luks_rootfs flag (a custom "stringified bool")
@@ -108,6 +89,18 @@ case "${rootfs_type}" in
     xfs|ext4verity|luks|btrfs) ;;
     *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;
 esac
+
+bootfs=$(getconfig "bootfs")
+grub_script=$(getconfig "grub-script")
+ostree=$(getconfig "ostree-repo")
+commit=$(getconfig "ostree-commit")
+ref=$(getconfig "ostree-ref")
+# We support not setting a remote name (used by RHCOS)
+remote_name=$(getconfig_def "ostree-remote" "")
+os_name=$(getconfig "osname")
+rootfs_size=$(getconfig "rootfs-size")
+buildid=$(getconfig "buildid")
+imgid=$(getconfig "imgid")
 
 set -x
 
@@ -211,11 +204,15 @@ if [ "${rootfs_type}" = "luks" ]; then
 fi
 
 bootargs=
-if [ "${boot_verity}" = 1 ]; then
-    # Need blocks to match host page size; TODO
-    # really mkfs.ext4 should know this.
-    bootargs="-b $(getconf PAGE_SIZE) -O verity"
-fi
+case "${bootfs}" in
+    ext4verity)
+        # Need blocks to match host page size; TODO
+        # really mkfs.ext4 should know this.
+        bootargs="-b $(getconf PAGE_SIZE) -O verity"
+        ;;
+    ext4) ;;
+    *) echo "Unhandled bootfs: ${bootfs}" 1>&2; exit 1 ;;
+esac
 mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot -U "${bootfs_uuid}"
 if [ ${EFIPN:+x} ]; then
        mkfs.fat "${disk}${EFIPN}" -n EFI-SYSTEM
@@ -273,8 +270,8 @@ ostree admin init-fs --modern $rootfs
 if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
-deploy_ref="${ref}"
-if [ "${remote_name}" != NONE ]; then
+deploy_ref=
+if test -n "${remote_name}"; then
     deploy_ref="${remote_name}:${ref}"
     time ostree pull-local --repo $rootfs/ostree/repo --remote="${remote_name}" "$ostree" "$ref"
 else

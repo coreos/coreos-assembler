@@ -152,11 +152,11 @@ yaml2json() {
 # by the shell script in create_disk.sh.
 yaml2json "$configdir/image.yaml" image-config.json
 yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
-cat image-default.json image-config.json | jq -s add > image.json
+# Combine with the defaults
+cat image-default.json image-config.json | jq -s add > image-configured.json
 
-# bootfs
-bootfs_type="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("bootfs", "ext4"))' < "$configdir/image.yaml")"
-rootfs_type=$(jq -re .rootfs < image.json)
+# We do some extra handling of the rootfs here; it feeds into size estimation.
+rootfs_type=$(jq -re .rootfs < image-configured.json)
 
 # fs-verity requires block size = page size. We need to take that into account
 # in the disk size estimation due to higher fragmentation on larger blocks.
@@ -195,31 +195,6 @@ if [ "${image_type}" == metal4k ]; then
 fi
 
 set -x
-# Extract the target kernel config, which may inform how we build disks.
-kconfig="${tmp_builddir:-tmp}/target-kernel.config"
-target_moduledir=$(ostree --repo="${ostree_repo}" ls "${commit}" /usr/lib/modules | grep -o '/usr/lib/modules/.*')
-ostree --repo="${ostree_repo}" cat "${commit}" "${target_moduledir}/config" > "${kconfig}"
-# Part of: https://github.com/ostreedev/ostree/pull/1959
-# We need to support kernels that don't have this enabled yet, including RHEL8
-# and current Fedora 31.
-# https://bugzilla.redhat.com/show_bug.cgi?id=1765933
-# For a while this was enabled by default, but we backed it out due to the use
-# case of running coreos-installer from old systems (e.g. Debian stable), or
-# ones without CONFIG_FS_VERITY.
-case "${bootfs_type}" in
-  ext4verity)
-        if grep -Eq '^CONFIG_FS_VERITY=y' "${kconfig}"; then
-            disk_args+=("--boot-verity")
-        else
-            echo 'error: Missing CONFIG_FS_VERITY from target kernel config' 1>&2
-            exit 1
-        fi
-        ;;
-  ext4) ;;
-  *) echo "Unsupported bootfs: ${bootfs_type}" 1>&2; exit 1;;
-esac
-rm -f "${kconfig}"
-
 kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # On each s390x hypervisor, a tty would be automatically detected by the kernel
@@ -231,8 +206,6 @@ case "$basearch" in
 esac
 kargs="$kargs $tty ignition.platform.id=$ignition_platform_id"
 
-ostree_remote="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin).get("ostree-remote", "NONE"))' < "$configdir/image.yaml")"
-
 qemu-img create -f ${image_format} "${path}.tmp" "${image_size}"
 
 extra_target_device_opts=""
@@ -243,19 +216,23 @@ fi
 target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
               "-device" "virtio-blk,serial=target,drive=target${extra_target_device_opts}")
 
+# Generate the JSON describing the disk we want to build
+cat >image-dynamic.json << EOF
+{
+    "rootfs-size": "${rootfs_size}",
+    "osname": "${name}",
+    "buildid": "${build}",
+    "imgid": "${img}",
+    "ostree-commit": "${commit}",
+    "ostree-ref": "${ref}",
+    "ostree-repo": "${ostree_repo}"
+}
+EOF
+cat image-configured.json image-dynamic.json | jq -s add > image.json
 runvm "${target_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
             --config "$(pwd)"/image.json \
-            --buildid "${build}" \
-            --imgid "${img}" \
-            --grub-script /usr/lib/coreos-assembler/grub.cfg \
             --kargs "\"${kargs}\"" \
-            --osname "${name}" \
-            --ostree-commit "${commit}" \
-            --ostree-ref "${ref:-NONE}" \
-            --ostree-remote "${ostree_remote}" \
-            --ostree-repo "${ostree_repo}" \
-            --rootfs-size "${rootfs_size}" \
             "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
 

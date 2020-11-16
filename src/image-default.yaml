@@ -1,2 +1,4 @@
 # This file contains defaults for image.yaml that is used by create_disk.sh
+bootfs: "ext4"
 rootfs: "xfs"
+grub-script: "/usr/lib/coreos-assembler/grub.cfg"
