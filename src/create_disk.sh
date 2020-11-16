@@ -415,9 +415,11 @@ touch $rootfs/boot/ignition.firstboot
 chattr +i $rootfs
 
 fstrim -a -v
-# Ensure the filesystem journal is flushed
-mount -o remount,ro $rootfs
-xfs_freeze -f $rootfs
+# Ensure the filesystem journals are flushed
+for fs in $rootfs/boot $rootfs; do
+    mount -o remount,ro $fs
+    xfs_freeze -f $fs
+done
 umount -R $rootfs
 
 rmdir $rootfs
