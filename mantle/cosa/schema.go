@@ -67,6 +67,10 @@ func (build *Build) Validate() []error {
 		schema.NewStringLoader(string(data)),
 	)
 
+	if err != nil {
+		return append(e, err)
+	}
+
 	if result.Valid() {
 		return nil
 	}
