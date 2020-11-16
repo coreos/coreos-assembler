@@ -138,7 +138,7 @@ class HashListV1(dict):
                 try:
                     filehash = sha256sum_file(filepath)
                     relpath = filepath.replace(toppath, '')
-                    self['hashes'][relpath] = [{'sha256': filehash}]
+                    self['hashes'][relpath] = [filehash]
                 except (PermissionError, FileNotFoundError) as err:
                     print(f'Unable to hash {filepath}: {err}')
 
