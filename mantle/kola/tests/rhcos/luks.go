@@ -53,16 +53,16 @@ func init() {
 		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
 		Tags:                 []string{"luks", "tang", kola.NeedsInternetTag},
 	})
-	register.RegisterTest(&register.Test{
-		Run:                  luksSSST1Test,
-		ClusterSize:          0,
-		Name:                 `rhcos.luks.sss.t1`,
-		Flags:                []register.Flag{},
-		Distros:              []string{"rhcos"},
-		Platforms:            []string{"qemu-unpriv"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
-		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
-	})
+	//register.RegisterTest(&register.Test{
+	//	Run:                  luksSSST1Test,
+	//	ClusterSize:          0,
+	//	Name:                 `rhcos.luks.sss.t1`,
+	//	Flags:                []register.Flag{},
+	//	Distros:              []string{"rhcos"},
+	//	Platforms:            []string{"qemu-unpriv"},
+	//	ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
+	//	Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
+	//})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2Test,
 		ClusterSize:          0,
@@ -250,35 +250,35 @@ func luksTangTest(c cluster.TestCluster) {
 	luksSanityTest(c, m, "tang")
 }
 
-// Verify that the rootfs is encrypted with SSS with t=1
-func luksSSST1Test(c cluster.TestCluster) {
-	address, thumbprint := setupTangMachine(c)
-	encodedSSST1Pin := getEncodedSSSPin(c, 1, false, address, thumbprint)
-
-	ignition := conf.Ignition(fmt.Sprintf(`{
-		"ignition": {
-			"version": "3.0.0"
-		},
-		"storage": {
-			"files": [
-				{
-					"filesystem": "root",
-					"path": "/etc/clevis.json",
-					"contents": {
-						"source": "data:text/plain;base64,%s"
-					},
-					"mode": 420
-				}
-			]
-		}
-	}`, encodedSSST1Pin))
-
-	m, err := c.NewMachine(ignition)
-	if err != nil {
-		c.Fatalf("Unable to create test machine: %v", err)
-	}
-	luksSanityTest(c, m, "sss")
-}
+//// Verify that the rootfs is encrypted with SSS with t=1
+//func luksSSST1Test(c cluster.TestCluster) {
+//	address, thumbprint := setupTangMachine(c)
+//	encodedSSST1Pin := getEncodedSSSPin(c, 1, false, address, thumbprint)
+//
+//	ignition := conf.Ignition(fmt.Sprintf(`{
+//		"ignition": {
+//			"version": "3.0.0"
+//		},
+//		"storage": {
+//			"files": [
+//				{
+//					"filesystem": "root",
+//					"path": "/etc/clevis.json",
+//					"contents": {
+//						"source": "data:text/plain;base64,%s"
+//					},
+//					"mode": 420
+//				}
+//			]
+//		}
+//	}`, encodedSSST1Pin))
+//
+//	m, err := c.NewMachine(ignition)
+//	if err != nil {
+//		c.Fatalf("Unable to create test machine: %v", err)
+//	}
+//	luksSanityTest(c, m, "sss")
+//}
 
 // Verify that the rootfs is encrypted with SSS with t=2
 func luksSSST2Test(c cluster.TestCluster) {
