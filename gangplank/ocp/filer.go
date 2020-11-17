@@ -1,6 +1,7 @@
 package ocp
 
 import (
+
 	// minio is needed for moving files around in OpenShift.
 
 	"context"
@@ -11,7 +12,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -53,6 +56,7 @@ type minioServer struct {
 	Port         int    `json:"port"`
 	dir          string
 	minioOptions minio.Options
+	cmd          *exec.Cmd
 }
 
 // newMinioSever defines an ephemeral minio config. To prevent random pods/people
@@ -95,6 +99,10 @@ func (m *minioServer) start(ctx context.Context) error {
 	//	  valueFrom:
 	// 	    fieldRef:
 	//     	 fieldPath: status.podIP
+	if m.cmd != nil {
+		return errors.New("minio is already running")
+	}
+
 	if m.Host == "" {
 		host, ok := os.LookupEnv("COSA_POD_IP")
 		if ok {
@@ -128,15 +136,34 @@ func (m *minioServer) start(ctx context.Context) error {
 		fmt.Sprintf("MINIO_ACCESS_KEY=%s", m.AccessKey),
 		fmt.Sprintf("MINIO_SECRET_KEY=%s", m.SecretKey),
 	)
-	if err := cmd.Start(); err != nil {
+
+	err = cmd.Start()
+	if err != nil {
 		stdoutStderr, _ := cmd.CombinedOutput()
 		l.WithFields(log.Fields{
 			"err": err,
 			"out": stdoutStderr,
 		}).Error("Failed to start minio")
-		return err
 	}
-	return nil
+
+	// Ensure the process gets terminated on shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	go func() {
+		<-sigs
+		m.kill()
+	}()
+
+	m.cmd = cmd
+	return err
+}
+
+// kill terminates the minio server.
+func (m *minioServer) kill() {
+	if m.cmd == nil {
+		return
+	}
+	_ = m.cmd.Process.Kill()
 }
 
 func randomString(n int) (string, error) {

@@ -24,6 +24,7 @@ func TestFiler(t *testing.T) {
 
 	c, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	defer c.Done()
 
 	m := newMinioServer()
 	m.Host = "localhost"
@@ -36,6 +37,7 @@ func TestFiler(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create test minio client")
 	}
+	defer m.kill()
 
 	if err := mc.MakeBucket(c, testBucket, minio.MakeBucketOptions{}); err != nil {
 		t.Errorf("Failed to create test bucket %s: %v", testBucket, err)

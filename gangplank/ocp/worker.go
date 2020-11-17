@@ -57,6 +57,7 @@ func newWorkSpec(ctx context.Context) (*workSpec, error) {
 		return nil, fmt.Errorf("Failed to switch to context dir: %s: %v", cosaSrvDir, err)
 	}
 
+	log.Info("Running as a worker pod")
 	return &ws, nil
 }
 
@@ -79,21 +80,28 @@ func (ws *workSpec) Marshal() ([]byte, error) {
 
 // Exec executes the work spec tasks.
 func (ws *workSpec) Exec(ctx context.Context) error {
-	ac, pn, err := k8sInClusterClient()
-	if err != nil {
-		return fmt.Errorf("failed create a kubernetes client: %w", err)
-	}
-
 	// Workers always will use /srv
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return fmt.Errorf("unable to switch to %s: %w", cosaSrvDir, err)
 	}
+	envVars := os.Environ()
 
-	ks, err := kubernetesSecretsSetup(ac, pn, cosaSrvDir)
-	if err != nil {
-		log.Errorf("Failed to setup Service Account Secrets: %v", err)
+	// Setup the incluster client
+	ac, pn, err := k8sInClusterClient()
+	if err == ErrNotInCluster && forceNotInCluster {
+		log.Info("Worker is out-of-clstuer, no secrets will be available")
+	} else if err != nil {
+		return fmt.Errorf("failed create a kubernetes client: %w", err)
 	}
-	envVars := append(os.Environ(), ks...)
+
+	// Only setup secrets for in-cluster use
+	if ac != nil {
+		ks, err := kubernetesSecretsSetup(ac, pn, cosaSrvDir)
+		if err != nil {
+			log.Errorf("Failed to setup Service Account Secrets: %v", err)
+		}
+		envVars = append(envVars, ks...)
+	}
 
 	for _, f := range ws.RemoteFiles {
 		destf := filepath.Join(cosaSrvDir, f.Bucket, f.Object)
@@ -134,8 +142,10 @@ func (ws *workSpec) Exec(ctx context.Context) error {
 	// remote object storage. Then meta.json is written to /dev/console
 	// and /dev/termination-log.
 	defer func() {
-		err := ws.Return.Run(ctx)
-		log.WithField("error", err).Info("processed uploads")
+		if ws.Return != nil {
+			err := ws.Return.Run(ctx)
+			log.WithField("error", err).Info("processed uploads")
+		}
 
 		b, _, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
 		if err != nil && b != nil {

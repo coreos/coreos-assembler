@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/gangplank/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (
@@ -56,6 +57,9 @@ type buildConfig struct {
 
 	// Internal copy of the JobSpec
 	JobSpec spec.JobSpec
+
+	KubeClient  *kubernetes.Clientset
+	KubeProject string
 }
 
 // newBC accepts a context and returns a buildConfig
@@ -74,31 +78,30 @@ func newBC() (*buildConfig, error) {
 		}
 	}
 
-	// Open the Kubernetes Client
-	ac, pn, kubeErr := k8sInClusterClient()
-
 	// Init the OpenShift Build API Client.
-	buildAPIErr := ocpBuildClient()
-	if buildAPIErr != nil && buildAPIErr != ErrNoOCPBuildSpec {
-		log.Errorf("Failed to initalized the OpenShift Build API Client: %v", buildAPIErr)
-		return nil, buildAPIErr
-	}
-
-	if kubeErr != nil && buildAPIErr != nil {
-		return nil, ErrInvalidOCPMode
+	if err := ocpBuildClient(); err != nil {
+		log.WithError(err).Error("Failed to initalized the OpenShift Build API Client")
+		return nil, err
 	}
 
 	// Query Kubernetes to find out what this pods network identity is.
 	// TODO: remove this CI exception once we have a kubernetes mock
 	if !forceNotInCluster {
+		ac, pn, kubeErr := k8sInClusterClient()
+		if kubeErr != nil {
+			return nil, ErrInvalidOCPMode
+		}
+		v.KubeClient = ac
+		v.KubeProject = pn
+
 		v.HostPod = fmt.Sprintf("%s-%s-build",
 			apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 			apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
 		)
 
-		_, ok := apiBuild.Annotations[ciRunnerTag]
+		_, ok := apiBuild.Annotations[podBuildRunnerTag]
 		if ok {
-			v.HostIP = apiBuild.Annotations[fmt.Sprintf(ciAnnotation, "IP")]
+			v.HostIP = apiBuild.Annotations[fmt.Sprintf(podBuildAnnotation, "IP")]
 		} else {
 			log.Info("Querying for pod ID")
 			hIP, err := getPodIP(ac, pn, v.HostPod)
@@ -140,6 +143,8 @@ func newBC() (*buildConfig, error) {
 			v.JobSpec = njs
 		}
 	}
+
+	log.Info("Running Pod in buildconfig mode.")
 	return &v, nil
 }
 
@@ -150,11 +155,6 @@ func (bc *buildConfig) Exec(ctx context.Context) error {
 
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return err
-	}
-
-	ac, pn, err := k8sInClusterClient()
-	if err != nil {
-		return fmt.Errorf("failed create a kubernetes client: %w", err)
 	}
 
 	// Define, but do not start minio.
@@ -200,6 +200,7 @@ binary build interface.`)
 	if err := m.start(ctx); err != nil {
 		return fmt.Errorf("failed to start Minio: %w", err)
 	}
+	defer m.kill()
 
 	if err := m.ensureBucketExists(ctx, "builds"); err != nil {
 		return err
@@ -296,12 +297,12 @@ binary build interface.`)
 		}
 
 		index := n + 1
-		cpod, err := NewCosaPodder(ctx, apiBuild, ac, pn, index)
+		cpod, err := NewCosaPodder(ctx, apiBuild, bc.KubeClient, bc.KubeProject, index)
 		if err != nil {
 			log.Errorf("FAILED TO CREATE POD DEFINITION: %v", err)
 			continue
 		}
-		if err := cpod.WorkerRunner(eVars); err != nil {
+		if err := cpod.WorkerRunner(ctx, eVars); err != nil {
 			log.Errorf("FAILED stage: %v", err)
 		}
 	}

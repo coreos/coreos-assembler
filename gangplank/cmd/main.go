@@ -38,7 +38,7 @@ var (
 	cmdRoot = &cobra.Command{
 		Use:   "gangplank [command]",
 		Short: "COSA Gangplank",
-		Long: `Openshift COSA Job Runner
+		Long: `OpenShift COSA Job Runner
 Wrapper for COSA commands and templates`,
 		PersistentPreRun: preRun,
 	}

@@ -1,6 +1,7 @@
 PREFIX ?= /usr
 DESTDIR ?=
 
+export CGO_ENABLED=0
 build:
 	mkdir -p bin
 	test -e bin/minio || \
