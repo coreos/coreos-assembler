@@ -157,7 +157,9 @@ func (t *TestCluster) MustSSH(m platform.Machine, cmd string) []byte {
 	if err != nil {
 		if t.SSHOnTestFailure() {
 			plog.Errorf("dropping to shell: %q failed: output %s, status %v", cmd, out, err)
-			platform.Manhole(m)
+			if err := platform.Manhole(m); err != nil {
+				plog.Error(err)
+			}
 		}
 		t.Fatalf("%q failed: output %s, status %v", cmd, out, err)
 	}
