@@ -24,6 +24,12 @@ import (
 	of a CI system (i.e. Jenkins) while benefiting from the BuildConfig
 	niceties.
 
+	Gangplank refers to non-buildconfig builders as "unbound"; they are not
+	bound to a buildconfig and therefore run as part of some other procress such
+	as a bare-pod, CI system, or CLI run. When run unbounded a mock OpenShift
+	build.openshift.io/v1 object is created; this ensures that the same execution
+	mode between all modes of running Gangplank.
+
 	While it does not require running as a BuildConfig, it does require that the
 	running pod exposes a service account with:
 	- secret access
@@ -66,6 +72,7 @@ const (
 	podBuildRunnerTag  = "cosa-podBuild-runner"
 )
 
+// Exec start the unbounded build.
 func (pb *podBuild) Exec(ctx context.Context, workDir string) error {
 	log.Info("Executing unbounded builder")
 	return pb.bc.Exec(ctx)
@@ -122,6 +129,8 @@ func NewPodBuilder(ctx context.Context, inCluster bool, image, serviceAccount, j
 	return pb, nil
 }
 
+// setInCluster does the nessasary setup for unbounded builder running as
+// an in-cluster build.
 func (pb *podBuild) setInCluster() error {
 	// Dig deep and query find out what Kubernetes thinks this pod
 	// Discover where this running
@@ -151,7 +160,9 @@ func (pb *podBuild) setInCluster() error {
 	}
 	pb.pod = myPod
 
-	// find the running pod this is running on.
+	// Find the running pod this is running on. The controller pod should be
+	// have "cosa" or "coreos-assembler" in the image name, otherwise the
+	// image should be explicitly defined.
 	var myContainer *v1.Container = nil
 	for _, k := range myPod.Spec.Containers {
 		lk := strings.ToLower(k.Image)
@@ -163,7 +174,7 @@ func (pb *podBuild) setInCluster() error {
 		}
 	}
 
-	// allow both the service account and the image to be overriden
+	// Allow both the service account and the image to be overriden.
 	if pb.serviceAccount == "" {
 		pb.serviceAccount = myPod.Spec.ServiceAccountName
 	}
@@ -176,6 +187,8 @@ func (pb *podBuild) setInCluster() error {
 	return nil
 }
 
+// generateAPIBuild creates a "mock" buildconfig.openshift.io/v1 Kubernetes
+// object that is consumed by `bc.go`.
 func (pb *podBuild) generateAPIBuild() error {
 	// Create just _enough_ of the OpenShift BuildConfig spec
 	// Create a "ci" build.openshift.io/v1 specification.

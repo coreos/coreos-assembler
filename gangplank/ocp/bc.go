@@ -299,11 +299,11 @@ binary build interface.`)
 		index := n + 1
 		cpod, err := NewCosaPodder(ctx, apiBuild, bc.KubeClient, bc.KubeProject, index)
 		if err != nil {
-			log.Errorf("FAILED TO CREATE POD DEFINITION: %v", err)
+			log.WithError(err).Error("Failed to create pod definition")
 			continue
 		}
 		if err := cpod.WorkerRunner(ctx, eVars); err != nil {
-			log.Errorf("FAILED stage: %v", err)
+			log.WithError(err).Error("Failed stage execution")
 		}
 	}
 
