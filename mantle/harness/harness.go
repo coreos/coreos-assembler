@@ -121,7 +121,10 @@ func (c *H) flushToParent(format string, args ...interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	outputBufferCopy := c.output
-	outputBufferCopy.WriteTo(p.w)
+	if _, err := outputBufferCopy.WriteTo(p.w); err != nil {
+		c.Logf(format, args...)
+		c.Fail()
+	}
 }
 
 type indenter struct {
@@ -232,7 +235,9 @@ func (c *H) FailNow() {
 func (c *H) log(s string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.logger.Output(3, s)
+	if err := c.logger.Output(3, s); err != nil {
+		c.logger.Fatal(err)
+	}
 }
 
 // Log formats its arguments using default formatting, analogous to Println,
@@ -390,7 +395,7 @@ func tRunner(t *H, fn func(t *H)) {
 	// a call to runtime.Goexit, record the duration and send
 	// a signal saying that the test is done.
 	defer func() {
-		t.duration += time.Now().Sub(t.start)
+		t.duration += time.Since(t.start)
 		// If the test panicked, print any test output before dying.
 		err := recover()
 		if !t.finished && err == nil {
