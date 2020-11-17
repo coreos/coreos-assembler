@@ -17,8 +17,7 @@ import (
 const clusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 var (
-	// forceNotInCluster is used for testing. This is set to
-	// true for when testing is run with `-tag ci`
+	// forceNotInCluster is used for testing and in unbound/localmost.
 	forceNotInCluster = false
 )
 
@@ -53,8 +52,7 @@ func k8sInClusterClient() (*kubernetes.Clientset, string, error) {
 	return nc, pn, nil
 }
 
-// getPodiP returns the IP of a pod. getPodIP blocks pending until the podIP
-// is recieved.
+// getPodIP returns the IP of a pod. getPodIP blocks pending until the podIP is recieved.
 func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, error) {
 	w, err := cs.CoreV1().Pods(podNamespace).Watch(
 		metav1.ListOptions{

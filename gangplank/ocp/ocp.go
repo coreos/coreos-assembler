@@ -16,7 +16,7 @@ var (
 	buildCodecFactory = serializer.NewCodecFactory(buildScheme)
 	buildJSONCodec    runtime.Codec
 
-	// API Client for OCP builds.
+	// API Client for OpenShift builds.
 	apiBuild *buildapiv1.Build
 )
 
@@ -24,7 +24,7 @@ func init() {
 	buildJSONCodec = buildCodecFactory.LegacyCodec(buildapiv1.SchemeGroupVersion)
 }
 
-// ocpBuildClient initalizes the OCP Build Client API.
+// ocpBuildClient initalizes the OpenShift Build Client API.
 func ocpBuildClient() error {
 	// Use the OpenShift API to parse the build meta-data.
 	envVarBuild, okay := os.LookupEnv("BUILD")

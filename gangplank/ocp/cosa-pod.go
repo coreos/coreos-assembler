@@ -515,8 +515,8 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 		return fmt.Errorf("failed to create container: %w", err)
 	}
 
-	// Mannually end to ensure that we get all the logs first.
-	// Here be hacks: the API is dreadfullly for streaming logs. Podman,
+	// Manually terminate the pod to ensure that we get all the logs first.
+	// Here be hacks: the API is dreadful for streaming logs. Podman,
 	// in this case, is a better UX. There likely is a much better way, but meh,
 	// this works.
 	logCmd := exec.CommandContext(ctx, "podman", "logs", "--follow", podSpec.Name)
