@@ -199,19 +199,19 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod {
 		VolumeMounts:    cp.volumeMounts,
 		SecurityContext: cp.ocpSecContext,
 		Resources: v1.ResourceRequirements{
-			Limits:   ocpRequirements,
-			Requests: ocpRequirements,
+			Limits:   cp.ocpRequirements,
+			Requests: cp.ocpRequirements,
 		},
 	}
 
 	cosaWork := []v1.Container{cosaBasePod}
 
 	cosaInit := []v1.Container{}
-	if len(ocpInitCommand) > 0 {
+	if len(cp.ocpInitCommand) > 0 {
 		log.Infof("InitContainer has been defined")
 		cosaInit := cosaBasePod.DeepCopy()
-		cosaInit.Command = ocpInitCommand[:0]
-		cosaInit.Args = ocpInitCommand[1:]
+		cosaInit.Command = cp.ocpInitCommand[:0]
+		cosaInit.Args = cp.ocpInitCommand[1:]
 	}
 
 	return &v1.Pod{
