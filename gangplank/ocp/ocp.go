@@ -47,13 +47,13 @@ func ocpBuildClient() error {
 	if strategy.Type != "" && strategy.Type != "Custom" {
 		return fmt.Errorf("unsupported build strategy")
 	}
-	log.Info("Host is running as an OpenShift custom strategy builder.")
+	log.Info("Executing OpenShift custom strategy builder.")
 
 	// Check to make sure that we have a valid contextDir
 	// Almost _always_ this should be in /srv for COSA.
 	cDir := apiBuild.Spec.Source.ContextDir
 	if cDir != "" && cDir != "/" {
-		log.Infof("Using %s as the custom context directory.", cDir)
+		log.Infof("Using %s as in-pod working directory.", cDir)
 		cosaSrvDir = cDir
 	}
 

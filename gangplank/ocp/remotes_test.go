@@ -31,7 +31,6 @@ func TestRemote(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	defer ctx.Done()
 
 	m := newMinioServer()
 	m.dir = srvd
@@ -40,6 +39,7 @@ func TestRemote(t *testing.T) {
 	if err := m.start(ctx); err != nil {
 		t.Fatalf("failed to start test minio server: %v", err)
 	}
+	defer m.kill()
 
 	r := RemoteFile{
 		Bucket: testBucket,

@@ -38,6 +38,9 @@ type Returner interface {
 
 // Run executes the report by walking the build path.
 func (r *Return) Run(ctx context.Context) error {
+	if r.Minio == nil {
+		return nil
+	}
 	b, path, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
 	if err != nil {
 		return err

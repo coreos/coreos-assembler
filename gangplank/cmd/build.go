@@ -45,6 +45,7 @@ func init() {
 // source or binary build strategies.
 func runOCP(c *cobra.Command, args []string) {
 	defer cancel()
+	defer ctx.Done()
 
 	// Terminal "keep alive" helper. When following logs via the `oc` commands,
 	// cloud-deployed will send an EOF. To get around the EOF, the func sends a
