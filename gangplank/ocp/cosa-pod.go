@@ -276,7 +276,7 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 	ender := func() {
 		l.Infof("terminating")
 		if err := ac.Pods(cp.project).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil {
-			l.WithField("err", err).Error("Failed delete on pod, yolo.")
+			l.WithError(err).Error("Failed delete on pod, yolo.")
 		}
 	}
 	defer ender()
@@ -390,7 +390,7 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
 				log.WithFields(log.Fields{
 					"pod":   pod.Name,
 					"error": fmt.Sprintf("%v", err),
-				}).Warnf("error scanning output")
+				}).Warn("error scanning output")
 			}
 		}
 	}(logging, logf)
@@ -512,7 +512,7 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 
 	r, err := containers.CreateWithSpec(connText, s)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create container: %w", err)
 	}
 
 	// Mannually end to ensure that we get all the logs first.
