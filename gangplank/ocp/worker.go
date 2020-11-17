@@ -144,7 +144,7 @@ func (ws *workSpec) Exec(ctx context.Context) error {
 	defer func() {
 		if ws.Return != nil {
 			err := ws.Return.Run(ctx)
-			log.WithField("error", err).Info("processed uploads")
+			log.WithError(err).Info("processed uploads")
 		}
 
 		b, _, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
@@ -169,10 +169,11 @@ func (ws *workSpec) Exec(ctx context.Context) error {
 		log.Infof("Stage commands: %v", stage.Commands)
 		if err != nil {
 			e = err
+			continue
 		}
 
 		if err := stage.Execute(ctx, &ws.JobSpec, envVars); err != nil {
-			log.Errorf("failed stage execution")
+			log.WithError(err).Error("failed stage execution")
 			e = err
 		}
 	}
