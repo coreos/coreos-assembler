@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:32
+FROM registry.fedoraproject.org/fedora:33
 WORKDIR /root/containerbuild
 
 # We split into multiple steps here so that local dev workflows which involve

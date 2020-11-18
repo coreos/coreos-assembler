@@ -50,9 +50,6 @@ install_rpms() {
     # Process our base dependencies + build dependencies and install
     (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
-    # https://github.com/coreos/coreos-assembler/issues/1496
-    yum -y downgrade cryptsetup-2.3.0-1.fc32
-
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
