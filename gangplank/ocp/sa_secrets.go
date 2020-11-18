@@ -108,6 +108,37 @@ var (
 				"gcp.json": "GCP_IMAGE_UPLOAD_CONFIG",
 			},
 		},
+		// Definition of Internal CA
+		{
+			label: "internal-ca",
+			fileVarMap: varMap{
+				"ca.crt": "SSL_CERT_FILE",
+			},
+		},
+		// Push Secret
+		{
+			label: "push-secret",
+			fileVarMap: varMap{
+				"docker.cfg": "PUSH_AUTH_JSON",
+			},
+		},
+		// Pull Secret
+		{
+			label: "pull-secret",
+			fileVarMap: varMap{
+				"docker.cfg": "PULL_AUTH_JSON",
+			},
+		},
+		// Koji Keytab
+		{
+			label: "koji-keytab",
+			fileVarMap: varMap{
+				"keytab": "KOJI_KEYTAB",
+			},
+			envVarMap: varMap{
+				"principal": "KOJI_PRINCIPAL",
+			},
+		},
 	}
 )
 
