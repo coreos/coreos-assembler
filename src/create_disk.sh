@@ -142,6 +142,10 @@ case "$arch" in
         sgdisk -p "$disk"
         ;;
     s390x)
+        # NB: in the bare metal case when targeting ECKD DASD disks, this
+        # partition table is not what actually gets written to disk in the end:
+        # coreos-installer has code which transforms it into a DASD-compatible
+        # partition table and copies each partition individually bitwise.
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
