@@ -151,17 +151,17 @@ var (
 		{
 			// https://github.com/coreos/bugs/issues/2435
 			desc:  "Ignition fetch cancellation race",
-			match: regexp.MustCompile("ignition\\[[0-9]+\\]: failed to fetch config: context canceled"),
+			match: regexp.MustCompile(`ignition\[[0-9]+\]: failed to fetch config: context canceled`),
 		},
 		{
 			// https://github.com/coreos/bugs/issues/2526
 			desc:  "initrd-cleanup.service terminated",
-			match: regexp.MustCompile("initrd-cleanup\\.service: Main process exited, code=killed, status=15/TERM"),
+			match: regexp.MustCompile(`initrd-cleanup\.service: Main process exited, code=killed, status=15/TERM`),
 		},
 		{
 			// kernel 4.14.11
 			desc:  "bad page table",
-			match: regexp.MustCompile("mm/pgtable-generic.c:\\d+: bad (p.d|pte)"),
+			match: regexp.MustCompile(`mm/pgtable-generic.c:\d+: bad (p.d|pte)`),
 		},
 		{
 			desc:  "Go panic",
@@ -544,12 +544,12 @@ func RunUpgradeTests(patterns []string, pltfrm, outputDir string, propagateTestE
 
 // externalTestMeta is parsed from kola.json in external tests
 type externalTestMeta struct {
-	Architectures   string   `json:",architectures,omitempty"`
-	Platforms       string   `json:",platforms,omitempty"`
-	Distros         string   `json:",distros,omitempty"`
-	Tags            string   `json:",tags,omitempty"`
-	AdditionalDisks []string `json:",additionalDisks,omitempty"`
-	MinMemory       int      `json:",minMemory,omitempty"`
+	Architectures   string   `json:"architectures,omitempty"`
+	Platforms       string   `json:"platforms,omitempty"`
+	Distros         string   `json:"distros,omitempty"`
+	Tags            string   `json:"tags,omitempty"`
+	AdditionalDisks []string `json:"additionalDisks,omitempty"`
+	MinMemory       int      `json:"minMemory,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -586,7 +586,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	return meta, nil
 }
 
-// runExternalTest is an implmenetation of the "external" test framework.
+// runExternalTest is an implementation of the "external" test framework.
 // See README-kola-ext.md as well as the comments in kolet.go for reboot
 // handling.
 func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
@@ -606,7 +606,6 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 			if err := platform.InstallFile(strings.NewReader(contents), mach, "/run/kola-runext-env"); err != nil {
 				return err
 			}
-			previousRebootState = ""
 		}
 		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(KoletExtTestUnit)))
 		if err != nil {
@@ -700,7 +699,9 @@ ExecStart=%s
 				}
 				if Options.SSHOnTestFailure {
 					plog.Errorf("dropping to shell: kolet failed: %v: %s", err, stderr)
-					platform.Manhole(mach)
+					if err := platform.Manhole(mach); err != nil {
+						plog.Errorf("failed to get terminal via ssh: %v", err)
+					}
 				}
 				c.Fatalf(errors.Wrapf(err, "kolet failed: %s", stderr).Error())
 			}
@@ -1004,7 +1005,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 				}
 				defer f.Close()
 				out := tcluster.MustSSHf(mach, "journalctl -t %s", unit)
-				f.WriteString(string(out))
+				if _, err = f.WriteString(string(out)); err != nil {
+					h.Errorf("failed to write journal: %v", err)
+				}
 			}(mach)
 		}
 	}
