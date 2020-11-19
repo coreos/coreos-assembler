@@ -11,7 +11,7 @@ ARCH:=$(shell uname -m)
 
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
-build: test
+build:
 	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/gangplank .
 
 .PHONY: fmt
