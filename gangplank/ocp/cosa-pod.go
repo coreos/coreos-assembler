@@ -80,9 +80,8 @@ var (
 	// permission. Gangplank will run as root but `cosa` commands run as the builder
 	// user. Note: on 4.x, gangplank will run unprivileged.
 	ocp3InitCommand = []string{
-		"/bin/bash",
-		"-c",
-		"'chmod 0666 /dev/kvm'",
+		"/usr/bin/chmod 0666 /dev/kvm || echo missing kvm",
+		"/usr/bin/stat /dev/kvm || :",
 	}
 
 	// Define the base requirements
@@ -167,6 +166,13 @@ func NewCosaPodder(
 			cp.ocpSecContext = ocp3SecContext
 			cp.ocpInitCommand = ocp3InitCommand
 		}
+
+		if err := cp.addVolumesFromSecretLabels(); err != nil {
+			return nil, fmt.Errorf("failed to add secret volumes and mounts: %w", err)
+		}
+		if err := cp.addVolumesFromConfigMapLabels(); err != nil {
+			return nil, fmt.Errorf("failed to add configMap volumes and mountsi: %w", err)
+		}
 	}
 
 	return cp, nil
@@ -205,13 +211,17 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod {
 	}
 
 	cosaWork := []v1.Container{cosaBasePod}
-
 	cosaInit := []v1.Container{}
 	if len(cp.ocpInitCommand) > 0 {
 		log.Infof("InitContainer has been defined")
-		cosaInit := cosaBasePod.DeepCopy()
-		cosaInit.Command = cp.ocpInitCommand[:0]
-		cosaInit.Args = cp.ocpInitCommand[1:]
+		initCtr := cosaBasePod.DeepCopy()
+		initCtr.Name = "init"
+		initCtr.Args = []string{"/bin/bash", "-xc", fmt.Sprintf(`#!/bin/bash
+export PATH=/usr/sbin:/usr/bin
+%s
+`, strings.Join(cp.ocpInitCommand, "\n"))}
+
+		cosaInit = []v1.Container{*initCtr}
 	}
 
 	return &v1.Pod{
@@ -233,7 +243,7 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod {
 			RestartPolicy:                 v1.RestartPolicyNever,
 			ServiceAccountName:            apiBuild.Spec.ServiceAccount,
 			TerminationGracePeriodSeconds: ptrInt(300),
-			Volumes:                       volumes,
+			Volumes:                       cp.volumes,
 		},
 	}
 }
@@ -248,6 +258,12 @@ func (cp *cosaPod) WorkerRunner(ctx context.Context, envVars []v1.EnvVar) error 
 
 func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 	pod := cp.getPodSpec(envVars)
+	podJSON, err := encodeToJSON(pod, nil, "yaml")
+	if err != nil {
+		return fmt.Errorf("failed to encode pod to json: %w", err)
+	}
+	fmt.Println(podJSON)
+
 	ac := cp.apiClientSet.CoreV1()
 	resp, err := ac.Pods(cp.project).Create(pod)
 	if err != nil {
@@ -284,7 +300,7 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
-	logStarted := false
+	logStarted := make(map[string]*bool)
 	// Block waiting for the pod to finish or timeout.
 	for {
 		select {
@@ -306,11 +322,21 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 				return nil
 			case v1.PodRunning:
 				l.Infof("Pod successfully completed")
-				if err := cp.streamPodLogs(&logStarted, pod); err != nil {
-					l.WithField("err", err).Error("failed to open logging")
+				for _, c := range pod.Spec.InitContainers {
+					logStarted[c.Name] = ptrBool(false)
+					if err := cp.streamPodLogs(logStarted[c.Name], pod, c.Name); err != nil {
+						l.WithField("err", err).Error("failed to open logging for init container")
+					}
+				}
+				for _, c := range pod.Spec.Containers {
+					logStarted[c.Name] = ptrBool(false)
+					if err := cp.streamPodLogs(logStarted[c.Name], pod, c.Name); err != nil {
+						l.WithField("err", err).Error("failed to open logging")
+					}
 				}
 			case v1.PodFailed:
 				l.WithField("message", status.Message).Error("Pod failed")
+				time.Sleep(1 * time.Minute)
 				return fmt.Errorf("Pod is a failure in its life")
 			default:
 				l.WithField("message", status.Message).Info("waiting...")
@@ -333,13 +359,15 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 // pods are responsible for their work, but not for their logs.
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return
-func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
+func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) error {
 	if logging != nil && *logging {
 		return nil
 	}
+
 	*logging = true
 	podLogOpts := v1.PodLogOptions{
-		Follow: true,
+		Follow:    true,
+		Container: container,
 	}
 	req := cp.apiClientSet.CoreV1().Pods(cp.project).GetLogs(pod.Name, &podLogOpts)
 	podLogs, err := req.Stream()
@@ -350,13 +378,13 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
 	lF := log.Fields{"pod": pod.Name}
 
 	logD := filepath.Join(cosaSrvDir, "logs")
-	podLog := filepath.Join(logD, fmt.Sprintf("%s.log", pod.Name))
+	podLog := filepath.Join(logD, fmt.Sprintf("%s-%s.log", pod.Name, container))
 	if err := os.MkdirAll(logD, 0755); err != nil {
 		return fmt.Errorf("failed to create logs directory: %w", err)
 	}
 	logf, err := os.OpenFile(podLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to create log for pod %s: %w", pod.Name, err)
+		return fmt.Errorf("failed to create log for pod %s/%s container: %w", pod.Name, container, err)
 	}
 
 	// Make the logging non-blocking to allow for concurrent pods
@@ -370,16 +398,18 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
 
 		startTime := time.Now()
 
+		l := log.WithFields(log.Fields{
+			"pod":       pod.Name,
+			"container": container,
+		})
+
 		for {
 			scanner := bufio.NewScanner(podLogs)
 			for scanner.Scan() {
 				since := time.Since(startTime).Truncate(time.Millisecond)
-				fmt.Printf("%s [+%v]: %s\n", pod.Name, since, scanner.Text())
+				fmt.Printf("%s [+%v]: %s\n", container, since, scanner.Text())
 				if _, err := logf.Write(scanner.Bytes()); err != nil {
-					log.WithFields(log.Fields{
-						"pod":   pod.Name,
-						"error": fmt.Sprintf("%v", err),
-					}).Warnf("unable to log to file")
+					l.WithError(err).Warnf("unable to log to file")
 				}
 			}
 			if err := scanner.Err(); err != nil {
@@ -387,10 +417,7 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
 					log.WithFields(lF).Info("Log closed")
 					return
 				}
-				log.WithFields(log.Fields{
-					"pod":   pod.Name,
-					"error": fmt.Sprintf("%v", err),
-				}).Warn("error scanning output")
+				l.WithError(err).Warn("error scanning output")
 			}
 		}
 	}(logging, logf)
@@ -401,16 +428,24 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod) error {
 // encodeToJSON renders the JSON definition of a COSA pod. Podman prefers
 // non-pretty JSON.
 //nolint
-func encodeToJSON(pod *v1.Pod, envVars []v1.EnvVar) (string, error) {
+func encodeToJSON(pod *v1.Pod, envVars []v1.EnvVar, jsonType string) (string, error) {
 	scheme := runtime.NewScheme()
 	if err := corev1.AddToScheme(scheme); err != nil {
 		return "", err
 	}
+
+	jsOpts := json.SerializerOptions{}
+	switch jsonType {
+	case "yaml":
+		jsOpts.Yaml = true
+	case "json":
+		jsOpts.Yaml = false
+		jsOpts.Pretty = true
+	}
+
 	s := runtime.NewScheme()
 	e := kubeJSON.NewSerializerWithOptions(
-		kubeJSON.DefaultMetaFactory, s, s,
-		//kubeJSON.SerializerOptions{Pretty: true}
-		json.SerializerOptions{Yaml: true, Pretty: false},
+		kubeJSON.DefaultMetaFactory, s, s, jsOpts,
 	)
 
 	var d bytes.Buffer
