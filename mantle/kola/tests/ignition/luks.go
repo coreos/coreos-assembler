@@ -11,6 +11,7 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
 
@@ -18,13 +19,12 @@ func init() {
 	// Create 0 cluster size to allow starting and setup of Tang as needed per test
 	// See: https://github.com/coreos/coreos-assembler/pull/1310#discussion_r401908836
 	register.RegisterTest(&register.Test{
-		Run:                  luksTangTest,
-		ClusterSize:          0,
-		Name:                 `luks.tang`,
-		Flags:                []register.Flag{},
-		Distros:              []string{"rhcos"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
-		Tags:                 []string{"luks", "tang", kola.NeedsInternetTag},
+		Run:         luksTangTest,
+		ClusterSize: 0,
+		Name:        `luks.tang`,
+		Flags:       []register.Flag{},
+		Distros:     []string{"rhcos"},
+		Tags:        []string{"luks", "tang", kola.NeedsInternetTag},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST1Test,
@@ -95,7 +95,12 @@ func setupTangMachine(c cluster.TestCluster) tangServer {
 
 	// TODO: move container image to centralized namespace
 	// container source: https://github.com/mike-nguyen/tang-docker-container/
-	containerID, errMsg, err := m.SSH("sudo podman run -d -p 80:80 quay.io/mike_nguyen/tang")
+	containerImage := "quay.io/mike_nguyen/tang"
+	if system.RpmArch() != "x86_64" {
+		containerImage = "quay.io/multi-arch/tang:" + system.RpmArch()
+	}
+
+	containerID, errMsg, err := m.SSH("sudo podman run -d -p 80:80 " + containerImage)
 	if err != nil {
 		c.Fatalf("Unable to start Tang container: %v\n%s", err, string(errMsg))
 	}
@@ -143,7 +148,13 @@ func mustNotMatch(c cluster.TestCluster, r string, output []byte) {
 }
 
 func luksSanityTest(c cluster.TestCluster, tangd tangServer, m platform.Machine, tpm2, killTangAfterFirstBoot bool) {
-	luksDump := c.MustSSH(m, "sudo cryptsetup luksDump /dev/disk/by-partlabel/root")
+	rootPart := "/dev/disk/by-partlabel/root"
+	// hacky,  but needed for s390x because of gpt issue with naming on big endian systems: https://bugzilla.redhat.com/show_bug.cgi?id=1899990
+	if system.RpmArch() == "s390x" {
+		rootPart = "/dev/disk/by-id/virtio-primary-disk-part4"
+	}
+
+	luksDump := c.MustSSH(m, "sudo cryptsetup luksDump "+rootPart)
 	// Yes, some hacky regexps.  There is luksDump --debug-json but we'd have to massage the JSON
 	// out of other debug output and it's not clear to me it's going to be more stable.
 	// We're just going for a basic sanity check here.
@@ -152,7 +163,7 @@ func luksSanityTest(c cluster.TestCluster, tangd tangServer, m platform.Machine,
 	mustMatch(c, "0: *clevis", luksDump)
 	mustNotMatch(c, "9: *coreos", luksDump)
 
-	s := c.MustSSH(m, "sudo clevis luks list -d /dev/disk/by-partlabel/root")
+	s := c.MustSSH(m, "sudo clevis luks list -d "+rootPart)
 	mustMatch(c, "tang", s)
 	if tpm2 {
 		mustMatch(c, "tpm2", s)
@@ -166,7 +177,7 @@ func luksSanityTest(c cluster.TestCluster, tangd tangServer, m platform.Machine,
 	if err != nil {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
-	luksDump = c.MustSSH(m, "sudo cryptsetup luksDump /dev/disk/by-partlabel/root")
+	luksDump = c.MustSSH(m, "sudo cryptsetup luksDump "+rootPart)
 	mustMatch(c, "Cipher: *aes", luksDump)
 }
 
@@ -180,7 +191,7 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 			"luks": [
 				{
 					"name": "root",
-					"device": "/dev/disk/by-partlabel/root",
+					"device": "/dev/disk/by-label/root",
 					"clevis": {
 						"tpm2": %v,
 						"tang": [
