@@ -19,9 +19,13 @@ boot=$(coreos_gf findfs-label boot)
 coreos_gf debug sh "fsck.ext4 -f -n ${boot}"
 
 # ESP, if it exists
-if [ "$(coreos_gf part-get-gpt-type /dev/sda 1)" = "${EFI_SYSTEM_PARTITION_GUID}" ]; then
-    coreos_gf debug sh "fsck.vfat -f -n /dev/sda1"
-fi
+partitions="$(coreos_gf list-partitions)"
+for pt in $partitions; do
+    label="$(coreos_gf vfs-label "${pt}")"
+    if [ "$label" == "EFI-SYSTEM" ]; then
+        coreos_gf debug sh "fsck.vfat -f -n ${pt}"
+    fi
+done
 
 # And fsck the main rootfs
 rootfstype=$(coreos_gf vfs-type /dev/sda4)
