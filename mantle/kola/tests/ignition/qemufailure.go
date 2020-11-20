@@ -89,7 +89,9 @@ func ignitionFailure(c cluster.TestCluster) error {
 
 	select {
 	case <-ctx.Done():
-		inst.Kill()
+		if err := inst.Kill(); err != nil {
+			return errors.Wrapf(err, "failed to kill the vm instance")
+		}
 		return errors.Wrapf(ctx.Err(), "timed out waiting for initramfs error")
 	case err := <-errchan:
 		if err != nil {
