@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 	"google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/platform/api/gcloud"
@@ -105,7 +106,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 	imageNameGCE := gceSanitize(uploadImageName)
 
 	ctx := context.Background()
-	storageAPI, err := storage.NewService(ctx)
+	storageAPI, err := storage.NewService(ctx, option.WithHTTPClient(api.Client()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage client failed: %v\n", err)
 		os.Exit(1)
