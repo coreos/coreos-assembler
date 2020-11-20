@@ -382,7 +382,9 @@ func dockerOldClient(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	cluster.DropFile(c.Machines(), oldclient)
+	if err := cluster.DropFile(c.Machines(), oldclient); err != nil {
+		c.Error(err)
+	}
 
 	genDockerContainer(c, m, "echo", []string{"echo"})
 
@@ -494,7 +496,7 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 	c.MustSSH(m, "sudo kill "+string(pid))
 
 	// retry polling its state
-	util.Retry(12, 6*time.Second, func() error {
+	if err := util.Retry(12, 6*time.Second, func() error {
 		state := c.MustSSH(m, "systemctl show containerd -p SubState --value")
 		switch string(state) {
 		case "running":
@@ -503,7 +505,9 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 			c.Fatalf("containerd entered stopped state")
 		}
 		return fmt.Errorf("containerd failed to restart")
-	})
+	}); err != nil {
+		c.Error(err)
+	}
 
 	// verify systemd started it and that it's pid is different
 	newPid := c.MustSSH(m, "systemctl show containerd -p MainPID --value")
