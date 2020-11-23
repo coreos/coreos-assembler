@@ -25,6 +25,7 @@ import (
 
 	ignconverterv30tov22 "github.com/coreos/ign-converter/translate/v30tov22"
 	ignconverterv31tov24 "github.com/coreos/ign-converter/translate/v31tov24"
+	ignconverterv32tov24 "github.com/coreos/ign-converter/translate/v32tov24"
 
 	ct "github.com/coreos/container-linux-config-transpiler/config"
 	systemdunit "github.com/coreos/go-systemd/unit"
@@ -278,7 +279,11 @@ func (u *UserData) RenderForCtPlatform(ignv2 bool, ctPlatform string) (*Conf, er
 			c.ignitionV32 = &ignc32
 
 			if ignv2 {
-				return fmt.Errorf("cannot convert Ignition from v3.2 to v2")
+				newCfg, err := ignconverterv32tov24.Translate(*c.ignitionV32)
+				if err != nil {
+					return err
+				}
+				c.ignitionV24 = &newCfg
 			}
 
 			return nil
