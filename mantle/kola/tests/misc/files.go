@@ -42,7 +42,7 @@ func Filesystem(c cluster.TestCluster) {
 
 func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
 	m := c.Machines()[0]
-	badfiles := make([]string, 0, 0)
+	badfiles := make([]string, 0)
 
 	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path /sys -prune -o -path /proc -prune -o -path /sysroot/ostree -prune -o -type f -perm -%v -print", mode))
 
@@ -59,7 +59,7 @@ func sugidFiles(c cluster.TestCluster, validfiles []string, mode string) {
 				valid = true
 			}
 		}
-		if valid != true {
+		if !valid {
 			badfiles = append(badfiles, file)
 		}
 	}
