@@ -647,7 +647,7 @@ WantedBy=multi-user.target
 		return nil, err
 	}
 
-	qemubuilder.SetConfig(&inst.liveIgnition, inst.IgnitionSpec2)
+	qemubuilder.SetConfig(&inst.liveIgnition)
 	qemubuilder.AddIso(srcisopath, "bootindex=2")
 
 	if offline {

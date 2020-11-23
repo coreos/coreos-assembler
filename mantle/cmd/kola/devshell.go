@@ -38,7 +38,6 @@ import (
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
 
-	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 )
 
@@ -117,7 +116,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 
 	readyReader := bufio.NewReader(journalPipe)
 
-	builder.SetConfig(conf, kola.IsIgnitionV2())
+	builder.SetConfig(conf)
 
 	serialChan := make(chan string)
 	serialPipe, err := builder.SerialPipe()

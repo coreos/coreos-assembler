@@ -338,9 +338,7 @@ type QemuBuilder struct {
 
 	// ignition is a config object that can be used instead of
 	// ConfigFile.
-	ignition *conf.Conf
-	// ignitionSpec2 says to convert to Ignition spec 2
-	ignitionSpec2    bool
+	ignition         *conf.Conf
 	ignitionSet      bool
 	ignitionRendered bool
 
@@ -383,7 +381,7 @@ func (builder *QemuBuilder) ensureTempdir() error {
 }
 
 // SetConfig injects Ignition; this can be used in place of ConfigFile.
-func (builder *QemuBuilder) SetConfig(config *conf.Conf, convSpec2 bool) {
+func (builder *QemuBuilder) SetConfig(config *conf.Conf) {
 	if builder.ignitionRendered {
 		panic("SetConfig called after config rendered")
 	}
@@ -391,7 +389,6 @@ func (builder *QemuBuilder) SetConfig(config *conf.Conf, convSpec2 bool) {
 		panic("SetConfig called multiple times")
 	}
 	builder.ignition = config
-	builder.ignitionSpec2 = convSpec2
 	builder.ignitionSet = true
 }
 
