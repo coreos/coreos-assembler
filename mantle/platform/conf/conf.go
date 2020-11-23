@@ -124,7 +124,7 @@ func EmptyIgnition() *UserData {
 // stable supported Ignition spec.
 func Ignition(data string) *UserData {
 	if data == "" {
-		data = `{"ignition": {"version": "3.1.0"}}`
+		data = `{"ignition": {"version": "3.2.0"}}`
 	}
 	return &UserData{
 		kind: kindIgnition,
