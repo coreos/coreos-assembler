@@ -26,13 +26,14 @@ import (
 
 func init() {
 	register.RegisterUpgradeTest(&register.Test{
-		Run:         rhcosUpgradeLuks,
+		Run:         rhcosUpgrade,
 		ClusterSize: 1,
 		// if renaming this, also rename the command in kolet-httpd.service below
-		Name:     "rhcos.upgrade.luks",
-		FailFast: true,
-		Tags:     []string{"upgrade"},
-		Distros:  []string{"rhcos"},
+		Name:                 "rhcos.upgrade.luks",
+		FailFast:             true,
+		Tags:                 []string{"upgrade"},
+		Distros:              []string{"rhcos"},
+		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
@@ -50,11 +51,27 @@ func init() {
 			}
 		}`),
 	})
+
+	register.RegisterUpgradeTest(&register.Test{
+		Run:         rhcosUpgradeBasic,
+		ClusterSize: 1,
+		// if renaming this, also rename the command in kolet-httpd.service below
+		Name:     "rhcos.upgrade.basic",
+		FailFast: true,
+		Tags:     []string{"upgrade"},
+		Distros:  []string{"rhcos"},
+		UserDataV3: conf.Ignition(`{
+                        "ignition": {
+                                "version": "3.0.0"
+                        }
+                }`),
+	})
+
 }
 
 // Ensure that we can still boot into a system with LUKS rootfs after
 // an upgrade.
-func rhcosUpgradeLuks(c cluster.TestCluster) {
+func rhcosUpgrade(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 	ostreeTarName := kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path
@@ -92,5 +109,21 @@ func rhcosUpgradeLuks(c cluster.TestCluster) {
 			c.Fatalf("Got booted checksum=%s expected=%s", d.Checksum, kola.CosaBuild.Meta.OstreeCommit)
 		}
 		// And we should also like systemctl --failed here and stuff
+	})
+}
+
+// A basic non-LUKS upgrade test which will test the migration of rootfs from crypt_rootfs to regular root
+func rhcosUpgradeBasic(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	rhcosUpgrade(c)
+	c.Run("rootfs-migration", func(c cluster.TestCluster) {
+		err := m.Reboot()
+		if err != nil {
+			c.Fatalf("Failed to reboot machine: %v", err)
+		}
+	})
+
+	c.Run("verify-rootfs-migration", func(c cluster.TestCluster) {
+		c.MustSSH(m, "ls /dev/disk/by-label/root")
 	})
 }
