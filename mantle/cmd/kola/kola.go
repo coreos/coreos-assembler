@@ -519,7 +519,17 @@ func syncFindParentImageOptions() error {
 		}
 	case "rhcos":
 		// Hardcoded for now based on https://github.com/openshift/installer/blob/release-4.3/data/data/rhcos.json
-		parentBaseURL = fmt.Sprintf("https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/rhcos-4.3/43.81.202003111353.0/%s/", system.RpmArch())
+		tag := "rhcos-4.3"
+		release := "43.81.202003111353.0"
+		switch system.RpmArch() {
+		case "s390x":
+			tag += "-" + system.RpmArch()
+			release = "43.81.202003172338.0"
+		case "ppc64le":
+			tag += "-" + system.RpmArch()
+			release = "43.81.202003172241.0"
+		}
+		parentBaseURL = fmt.Sprintf("https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/%s/%s/%s/", tag, release, system.RpmArch())
 		// sigh...someday we'll get the stuff signed by ART or maybe https://github.com/openshift/enhancements/pull/201 will just happen
 		skipSignature = true
 	default:
