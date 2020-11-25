@@ -299,7 +299,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 		// check the metadata to make sure everything went well
 		if len(postUninstallStatus.Deployments) != 2 {
-			c.Fatal("Expected %d deployments, got %d", 2, len(postUninstallStatus.Deployments))
+			c.Fatalf("Expected %d deployments, got %d", 2, len(postUninstallStatus.Deployments))
 		}
 
 		if postUninstallStatus.Deployments[0].Checksum != originalCsum {
