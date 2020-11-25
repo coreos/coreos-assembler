@@ -86,7 +86,7 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	// let's validate that the version from the JSON matches the normal output
 	var rpmOstreeVersion string
 	rpmOstreeStatusOut := c.MustSSH(m, "rpm-ostree status")
-	reVersion, err := regexp.Compile(rpmOstreeVersionRegex)
+	reVersion, _ := regexp.Compile(rpmOstreeVersionRegex)
 	statusArray := strings.Split(string(rpmOstreeStatusOut), "\n")
 	for _, line := range statusArray {
 		versionMatch := reVersion.FindStringSubmatch(strings.Trim(line, " "))
