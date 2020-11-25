@@ -274,7 +274,7 @@ func undoZincatiDisablement(c cluster.TestCluster, m platform.Machine) {
 func (g *Graph) sync(c cluster.TestCluster, m platform.Machine) {
 	b, err := json.Marshal(g)
 	if err != nil {
-		c.Fatalf("failed to marshal graph: %v")
+		c.Fatalf("failed to marshal graph: %v", err)
 	}
 
 	if err := platform.InstallFile(bytes.NewReader(b), m, "graph.json"); err != nil {
