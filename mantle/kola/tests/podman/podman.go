@@ -21,14 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/net/context"
-
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	tutil "github.com/coreos/mantle/kola/tests/util"
-	"github.com/coreos/mantle/lang/worker"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 )
@@ -190,7 +186,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 			}
 		}
 
-		if found == false {
+		if !found {
 			c.Fatalf("Unable to find container %s in podman ps -a output", id)
 		}
 	})
@@ -211,7 +207,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 			}
 		}
 
-		if found == true {
+		if found {
 			c.Fatalf("Container %s should be removed. %v", id, psInfo.containers)
 		}
 	})
@@ -283,74 +279,6 @@ func podmanResources(c cluster.TestCluster) {
 		if err != nil {
 			c.Fatalf("Failed to run %q: output: %q status: %q", cmd, output, err)
 		}
-	}
-}
-
-// Test: Verify network connectivity from containers on two different machines
-func podmanNetworkTest(c cluster.TestCluster) {
-	machines := c.Machines()
-	src, dest := machines[0], machines[1]
-
-	c.Log("creating ncat containers")
-
-	tutil.GenPodmanScratchContainer(c, src, "ncat", []string{"ncat"})
-	tutil.GenPodmanScratchContainer(c, dest, "ncat", []string{"ncat"})
-
-	listener := func(ctx context.Context) error {
-		// Will block until a message is recieved
-		out, err := c.SSH(dest,
-			`echo "HELLO FROM SERVER" | sudo podman run -i -p 9988:9988 ncat ncat --idle-timeout 20 --listen 0.0.0.0 9988`,
-		)
-		if err != nil {
-			return err
-		}
-
-		if !bytes.Equal(out, []byte("HELLO FROM CLIENT")) {
-			return fmt.Errorf("unexpected result from listener: %q", out)
-		}
-
-		return nil
-	}
-
-	talker := func(ctx context.Context) error {
-		// Wait until listener is ready before trying anything
-		for {
-			_, err := c.SSH(dest, "sudo ss -tulpn | grep 9988")
-			if err == nil {
-				break // socket is ready
-			}
-
-			exit, ok := err.(*ssh.ExitError)
-			if !ok || exit.Waitmsg.ExitStatus() != 1 { // 1 is the expected exit of grep -q
-				return err
-			}
-
-			select {
-			case <-ctx.Done():
-				return fmt.Errorf("timeout waiting for server")
-			default:
-				time.Sleep(100 * time.Millisecond)
-			}
-		}
-
-		srcCmd := fmt.Sprintf(`echo "HELLO FROM CLIENT" | sudo podman run -i ncat ncat %s 9988`, dest.PrivateIP())
-		out, err := c.SSH(src, srcCmd)
-		if err != nil {
-			return err
-		}
-
-		if !bytes.Equal(out, []byte("HELLO FROM SERVER")) {
-			return fmt.Errorf(`unexpected result from listener: "%v"`, out)
-		}
-
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	if err := worker.Parallel(ctx, listener, talker); err != nil {
-		c.Fatal(err)
 	}
 }
 
