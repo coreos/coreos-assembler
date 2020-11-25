@@ -254,7 +254,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 		}
 
 		if rollbackStatus.Deployments[0].Unlocked != "none" {
-			c.Fatalf(`Rollback did not remove hotfix mode; got: $q`, rollbackStatus.Deployments[0].Unlocked)
+			c.Fatalf(`Rollback did not remove hotfix mode; got: %q`, rollbackStatus.Deployments[0].Unlocked)
 		}
 
 		_, secCmdErr := c.SSH(m, ("command -v " + rpmName))
