@@ -34,8 +34,9 @@ def parse_args():
 
     delete = subparsers.add_parser("delete",
                                    help="Delete a tag from the metadata")
-    delete.add_argument("--tag", help="Tag to delete from metadata",
-                        required=True)
+    delete.add_argument("--tag", help="Tag to delete from metadata")
+    delete.add_argument("--all", help="Delete all tags",
+                        action="store_true")
     delete.set_defaults(func=cmd_delete)
 
     list_tags = subparsers.add_parser("list", help="List available tags in "
@@ -124,13 +125,19 @@ def cmd_delete(args):
     # drop the entry we want
     builds = Builds()
     build_data = builds.raw()
-    avail_tags = available_tags(build_data)
 
-    if args.tag not in avail_tags:
-        fatal("Cannot delete a tag that does not exist")
+    if args.all:
+        if "tags" in build_data:
+            del build_data["tags"]
+    elif args.tag:
+        avail_tags = available_tags(build_data)
+        if args.tag not in avail_tags:
+            fatal("Cannot delete a tag that does not exist")
+        build_data["tags"] = [t for t in build_data["tags"]
+                              if t["name"] != args.tag]
+    else:
+        fatal("Either --tag or --all required")
 
-    build_data["tags"] = [t for t in build_data["tags"]
-                          if t["name"] != args.tag]
     builds.flush()
 
 
