@@ -31,7 +31,9 @@ import (
 
 func TestExitStatusZero(t *testing.T) {
 	client := NewMockClient(func(s *Session) {
-		s.Exit(0)
+		if err := s.Exit(0); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
@@ -47,7 +49,9 @@ func TestExitStatusZero(t *testing.T) {
 
 func TestExitStatusNonzero(t *testing.T) {
 	client := NewMockClient(func(s *Session) {
-		s.Exit(42)
+		if err := s.Exit(42); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
@@ -86,7 +90,9 @@ func TestCat(t *testing.T) {
 		if _, err := io.Copy(s.Stdout, s.Stdin); err != nil {
 			t.Error(err)
 		}
-		s.Exit(0)
+		if err := s.Exit(0); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
@@ -108,9 +114,15 @@ func TestCat(t *testing.T) {
 
 func TestStderr(t *testing.T) {
 	client := NewMockClient(func(s *Session) {
-		io.WriteString(s.Stdout, "Stdout")
-		io.WriteString(s.Stderr, "Stderr")
-		s.Exit(0)
+		if _, err := io.WriteString(s.Stdout, "Stdout"); err != nil {
+			t.Error(err)
+		}
+		if _, err := io.WriteString(s.Stderr, "Stderr"); err != nil {
+			t.Error(err)
+		}
+		if err := s.Exit(0); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
@@ -140,7 +152,9 @@ func TestExec(t *testing.T) {
 		if s.Exec != cmd {
 			t.Errorf("got %q wanted %q", s.Exec, cmd)
 		}
-		s.Exit(0)
+		if err := s.Exit(0); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
@@ -160,7 +174,9 @@ func TestEnv(t *testing.T) {
 		if !reflect.DeepEqual(s.Env, expect) {
 			t.Errorf("got %v wanted %v", s.Env, expect)
 		}
-		s.Exit(0)
+		if err := s.Exit(0); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
@@ -186,7 +202,9 @@ func TestEnv(t *testing.T) {
 func TestShell(t *testing.T) {
 	client := NewMockClient(func(s *Session) {
 		t.Errorf("executed shell")
-		s.Exit(0)
+		if err := s.Exit(0); err != nil {
+			t.Error(err)
+		}
 	})
 	defer client.Close()
 
