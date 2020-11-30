@@ -114,7 +114,9 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 			if err != nil {
 				return
 			}
-			go agent.ServeAgent(a, conn)
+			go func() {
+				_ = agent.ServeAgent(a, conn)
+			}()
 		}
 	}()
 
