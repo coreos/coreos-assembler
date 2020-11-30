@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+# RPMs as operating system extensions, distinct from the base ostree commit/image
+# https://github.com/openshift/enhancements/blob/master/enhancements/rhcos/extensions.md
+
+import os
+import sys
+import yaml
+from cosalib import cmdlib
+
+destdir = sys.argv[1]
+tmpdir = 'tmp'
+# yum wants this to be absolute
+configdir = os.path.abspath('src/config')
+extsrcpath = f'{configdir}/extensions.yaml'
+extjson = f'{tmpdir}/extensions.json'
+basearch = cmdlib.get_basearch()
+
+with open(extsrcpath) as f:
+    extensions = yaml.safe_load(f)
+
+# The "v2" format here is that there's an extensions/ directory, with subdirectories
+# for each extension - except you should ignore "repodata/".
+edestdir = f'{destdir}/extensions'
+os.mkdir(edestdir)
+
+# Stuff that's not part of the extension
+dependenciesdir = f'{edestdir}/dependencies'
+os.mkdir(dependenciesdir)
+
+
+# Downloads packages from specified repos
+def yumdownload(destdir, pkgs):
+    # FIXME eventually use rpm-ostree for this
+    # shellcheck disable=SC2068
+    args = ['yum', f'--setopt=reposdir={configdir}', f'--arch={basearch}', 'download']
+    args.extend(pkgs)
+    cmdlib.run_verbose(args, cwd=destdir)
+
+
+# Reuseable function for setting up an extension
+# Assumes it is running in "${destdir}/extensions"
+# 1 = extension name
+# 2 = package string/glob
+# 3 = OPTIONAL: dependencies string/glob
+def createext(extname, pkgs):
+    print(f"Creating extension {extname}")
+    extdir = f"{edestdir}/{extname}"
+    os.mkdir(extdir)
+    primary = pkgs[0]
+    yumdownload(extdir, [primary])
+
+    deps = pkgs[1:]
+    if len(deps) > 0:
+        print(f"Downloading dependencies for {extname}")
+        yumdownload(dependenciesdir, deps)
+
+
+for (name, ext) in extensions['extensions'].items():
+    pkgs = ext['packages']
+    extarches = ext.get('architectures')
+    if extarches is not None and basearch not in extarches:
+        print(f"Skipping extension {name} for this architecture")
+        continue
+    createext(name, pkgs)
+
+# Create the yum/dnf repo
+cmdlib.run_verbose(['createrepo_c', '--no-database', '.'], cwd=destdir)
