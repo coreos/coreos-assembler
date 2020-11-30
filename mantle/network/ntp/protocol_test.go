@@ -87,7 +87,9 @@ func TestHeaderMarshal(t *testing.T) {
 func BenchmarkHeaderMarshal(b *testing.B) {
 	h := testData[0].Header
 	for i := 0; i < b.N; i++ {
-		h.MarshalBinary()
+		if _, err := h.MarshalBinary(); err != nil {
+			b.Error(err)
+		}
 	}
 }
 
@@ -97,7 +99,9 @@ func TestHeaderUnmarshal(t *testing.T) {
 			t.Errorf("testData[%d].Raw is invalid", i)
 		}
 		h := Header{}
-		h.UnmarshalBinary(d.Raw)
+		if err := h.UnmarshalBinary(d.Raw); err != nil {
+			t.Errorf("testData[%d] unmarshal binary Raw failed: %v", i, err)
+		}
 		if diff := pretty.Compare(d.Header, h); diff != "" {
 			t.Errorf("testData[%d] failed: %v", i, diff)
 		}
@@ -108,7 +112,9 @@ func BenchmarkHeaderUnmarshal(b *testing.B) {
 	h := Header{}
 	d := testData[0].Raw
 	for i := 0; i < b.N; i++ {
-		h.UnmarshalBinary(d)
+		if err := h.UnmarshalBinary(d); err != nil {
+			b.Error(err)
+		}
 	}
 }
 
