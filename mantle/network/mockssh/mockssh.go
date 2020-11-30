@@ -158,7 +158,7 @@ func (m *mockServer) handleServerConn(conn net.Conn) {
 
 func (m *mockServer) handleServerChannel(newChannel ssh.NewChannel) {
 	if newChannel.ChannelType() != "session" {
-		newChannel.Reject(ssh.UnknownChannelType, "unknown channel type")
+		_ = newChannel.Reject(ssh.UnknownChannelType, "unknown channel type")
 		return
 	}
 
@@ -178,30 +178,30 @@ func (m *mockServer) handleServerChannel(newChannel ssh.NewChannel) {
 	// shell and pty requests are not implemented.
 	for req := range requests {
 		if session == nil {
-			req.Reply(false, nil)
+			_ = req.Reply(false, nil)
 		}
 		switch req.Type {
 		case "exec":
 			v := struct{ Value string }{}
 			if err := ssh.Unmarshal(req.Payload, &v); err != nil {
-				req.Reply(false, nil)
+				_ = req.Reply(false, nil)
 			} else {
 				session.Exec = v.Value
-				req.Reply(true, nil)
+				_ = req.Reply(true, nil)
 				go m.handler(session)
 			}
 			session = nil
 		case "env":
 			kv := struct{ Key, Value string }{}
 			if err := ssh.Unmarshal(req.Payload, &kv); err != nil {
-				req.Reply(false, nil)
+				_ = req.Reply(false, nil)
 			} else {
 				env := fmt.Sprintf("%s=%s", kv.Key, kv.Value)
 				session.Env = append(session.Env, env)
-				req.Reply(true, nil)
+				_ = req.Reply(true, nil)
 			}
 		default:
-			req.Reply(false, nil)
+			_ = req.Reply(false, nil)
 		}
 	}
 }
