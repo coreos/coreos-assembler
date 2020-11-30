@@ -8,12 +8,16 @@ import (
 	"os"
 )
 
+// CosaArchive describes the directory names to create empty directories in the tar ball
+// and the directories to include when creating the tar ball
 type CosaArchive struct {
-	CreateDirs []string
-	Includes   []string
+	CreateDirs []string //create empty dirs when creating tar ball
+	Includes   []string //create bar ball with the dirs
 }
 
+// CreateArchive creates tar ball
 func (a *CosaArchive) CreateArchive(dest string) error {
+	// delete the tar ball file dest if it already exists
 	_, err := os.Stat(dest)
 	if os.IsExist(err) {
 		log.Tracef("dest %s already exists", dest)
@@ -22,6 +26,8 @@ func (a *CosaArchive) CreateArchive(dest string) error {
 		}
 		log.Tracef("original dest %s deleted\n", dest)
 	}
+
+	// create the tar ball file dest
 	tarFile, err := os.Create(dest)
 	if err != nil {
 		return err
@@ -34,6 +40,7 @@ func (a *CosaArchive) CreateArchive(dest string) error {
 	tarFileWriter := tar.NewWriter(gWriter)
 	defer tarFileWriter.Close()
 
+	// write directories to the tar ball
 	for _, path := range a.Includes {
 		file, err := os.Open(path)
 		if err != nil {
@@ -48,6 +55,7 @@ func (a *CosaArchive) CreateArchive(dest string) error {
 		log.Debugf("wrote %s to tarball", path)
 	}
 
+	// create empty directories in the tar ball
 	for _, dir := range a.CreateDirs {
 		err := os.Mkdir(dir, 0755)
 		if err != nil {
@@ -70,6 +78,7 @@ func (a *CosaArchive) CreateArchive(dest string) error {
 	return nil
 }
 
+// writeArchive writes files and directories recursively to the tar ball
 func writeArchive(file *os.File, prefix string, writer *tar.Writer) error {
 	info, err := file.Stat()
 	if err != nil {
@@ -133,6 +142,7 @@ func writeArchive(file *os.File, prefix string, writer *tar.Writer) error {
 	return nil
 }
 
+// createDirInArchive write directory itself to the tar ball
 func createDirInArchive(file *os.File, prefix string, writer *tar.Writer) error {
 	info, err := file.Stat()
 	if err != nil {
