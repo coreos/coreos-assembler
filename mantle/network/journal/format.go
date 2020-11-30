@@ -57,7 +57,9 @@ func (s *shortWriter) WriteEntry(entry Entry) error {
 	}
 
 	if s.isReboot(entry) {
-		io.WriteString(s.w, "-- Reboot --\n")
+		if _, err := io.WriteString(s.w, "-- Reboot --\n"); err != nil {
+			return err
+		}
 	}
 
 	var buf bytes.Buffer
