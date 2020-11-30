@@ -381,7 +381,7 @@ func Serve() error {
 	go func() {
 		http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Content-Type", "text/plain")
-			w.Write([]byte("kola-http"))
+			_, _ = w.Write([]byte("kola-http"))
 		})
 		err := http.ListenAndServe(":80", nil)
 		fmt.Println(err)
@@ -391,7 +391,7 @@ func Serve() error {
 		readHandler := func(filename string, r io.ReaderFrom) error {
 			switch filename {
 			case "/tftp":
-				r.ReadFrom(bytes.NewBufferString("kola-tftp"))
+				_, _ = r.ReadFrom(bytes.NewBufferString("kola-tftp"))
 			default:
 				return fmt.Errorf("404 not found")
 			}
