@@ -131,6 +131,12 @@ func (m *minioServer) start(ctx context.Context) error {
 
 	args := []string{mpath, "server", m.dir}
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Foreground: false,           // Background the process
+		Pdeathsig:  syscall.SIGTERM, // Let minio finish before killing
+		Pgid:       0,               // Use the pid of the minio as the pgroup id
+		Setpgid:    true,            // Set the pgroup
+	}
 	cmd.Env = append(
 		os.Environ(),
 		fmt.Sprintf("MINIO_ACCESS_KEY=%s", m.AccessKey),
@@ -163,7 +169,10 @@ func (m *minioServer) kill() {
 	if m.cmd == nil {
 		return
 	}
-	_ = m.cmd.Process.Kill()
+	// Note the "-" before the processes PID. A negative pid to
+	// syscall.Kill kills the processes Pid group ensuring all forks/execs
+	// of minio are killed too.
+	_ = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGTERM)
 }
 
 func randomString(n int) (string, error) {
