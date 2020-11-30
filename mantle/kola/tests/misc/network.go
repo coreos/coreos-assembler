@@ -147,7 +147,9 @@ func NetworkListeners(c cluster.TestCluster) {
 func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	m.Reboot()
+	if err := m.Reboot(); err != nil {
+		c.Errorf("failed to reboot the machine: %v", err)
+	}
 
 	// get journal lines from the current boot
 	output := c.MustSSH(m, "journalctl -b 0 -o cat -u initrd-switch-root.target -u systemd-networkd.service")
