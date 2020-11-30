@@ -264,23 +264,40 @@ func TestPipeWriteClose2(t *testing.T) {
 
 func TestWriteEmpty(t *testing.T) {
 	r, w := Pipe()
+	errs := make(chan error)
 	go func() {
-		w.Write([]byte{})
+		_, err := w.Write([]byte{})
+		errs <- err
 		w.Close()
 	}()
+	err := <-errs
+	if err != nil {
+		t.Fatalf("failed to write empty: %v", err)
+	}
+
 	var b [2]byte
-	io.ReadFull(r, b[0:2])
+	if _, err := io.ReadFull(r, b[0:2]); err.Error() != "EOF" {
+		t.Fatalf("failed to read empty: %v", err)
+	}
 	r.Close()
 }
 
 func TestWriteNil(t *testing.T) {
 	r, w := Pipe()
+	errs := make(chan error)
 	go func() {
-		w.Write(nil)
+		_, err := w.Write(nil)
+		errs <- err
 		w.Close()
 	}()
+	err := <-errs
+	if err != nil {
+		t.Fatalf("failed to write nil: %v", err)
+	}
 	var b [2]byte
-	io.ReadFull(r, b[0:2])
+	if _, err := io.ReadFull(r, b[0:2]); err.Error() != "EOF" {
+		t.Fatalf("failed to read nil: %v", err)
+	}
 	r.Close()
 }
 
