@@ -46,7 +46,9 @@ func (d *NsDialer) Dial(network, address string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer nsExit()
+	defer func() {
+		_ = nsExit()
+	}()
 
 	return d.RetryDialer.Dial(network, address)
 }
