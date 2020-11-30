@@ -156,8 +156,9 @@ func ServeTLS(customFile []byte) error {
 	}
 
 	caserver := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(customFile)
+		_, _ = w.Write(customFile)
 	}))
+
 	l, err := net.Listen("tcp", ":443")
 	if err != nil {
 		return err
