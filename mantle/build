@@ -55,12 +55,24 @@ EOM
 }
 
 host_build() {
-	echo "Building $1"
+	local cmd=$1; shift
+	echo "Building $cmd"
 	go build -i \
 		-ldflags "${ldflags}" \
 		-mod vendor \
-		-o "bin/$1" \
-		"${REPO_PATH}/cmd/$1"
+		-o "bin/$cmd" \
+		"$@" "${REPO_PATH}/cmd/$cmd"
+}
+
+host_static_build() {
+	local cmd=$1; shift
+	echo "Building $cmd (static)"
+	go build \
+		-ldflags "${ldflags} -extldflags=-static" \
+		-mod vendor \
+		-o "bin/$cmd" \
+		-tags osusergo,netgo \
+		"${REPO_PATH}/cmd/$cmd"
 }
 
 # Unused now, but kept in case we want it in the future
@@ -76,10 +88,14 @@ cross_build() {
 }
 
 for arg in "$@"; do
-    if [ "${arg}" = "schema" ]; then
-        schema_generate
-    else
-	    cmd=$(basename "${arg}")
-	    host_build "${cmd}"
-    fi
+	if [ "${arg}" = "schema" ]; then
+		schema_generate
+	else
+		cmd=$(basename "${arg}")
+		if [ "${cmd}" = "kolet" ]; then
+			host_static_build kolet
+		else
+			host_build "${cmd}"
+		fi
+	fi
 done
