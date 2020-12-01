@@ -111,6 +111,8 @@ github.com/coreos/container-linux-config-transpiler/config/templating
 github.com/coreos/container-linux-config-transpiler/config/types
 github.com/coreos/container-linux-config-transpiler/config/types/util
 github.com/coreos/container-linux-config-transpiler/internal/util
+# github.com/coreos/go-json v0.0.0-20170920214419-6a2fe990e083
+github.com/coreos/go-json
 # github.com/coreos/go-semver v0.3.0
 github.com/coreos/go-semver/semver
 # github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -146,7 +148,7 @@ github.com/coreos/ignition/config/validate
 github.com/coreos/ignition/config/validate/astjson
 github.com/coreos/ignition/config/validate/astnode
 github.com/coreos/ignition/config/validate/report
-# github.com/coreos/ignition/v2 v2.7.0
+# github.com/coreos/ignition/v2 v2.8.0
 github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/shared/errors
 github.com/coreos/ignition/v2/config/shared/validations
@@ -165,7 +167,7 @@ github.com/coreos/ioprogress
 # github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
-# github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5
+# github.com/coreos/vcontext v0.0.0-20201120045928-b0e13dab675c
 github.com/coreos/vcontext/json
 github.com/coreos/vcontext/path
 github.com/coreos/vcontext/report
