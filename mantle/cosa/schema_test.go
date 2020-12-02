@@ -27,7 +27,7 @@ func TestSchema(t *testing.T) {
 			t.Errorf("failed to read %s: %v", df, err)
 		}
 		if b == nil {
-			t.Errorf("failed to render build")
+			t.Fatalf("failed to render build")
 		}
 
 		// Render it invalid
