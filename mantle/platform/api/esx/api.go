@@ -388,7 +388,7 @@ func (a *API) CreateBaseDevice(name, ovaPath string) error {
 		return fmt.Errorf("getting ESX defaults: %v", err)
 	}
 
-	arch, cisr, err := a.buildCreateImportSpecRequest(name, ovaPath, defaults.finder, defaults.network, defaults.resourcePool, defaults.datastore)
+	arch, cisr, err := a.buildCreateImportSpecRequest(name, ovaPath, defaults.finder, defaults.resourcePool, defaults.datastore)
 	if err != nil {
 		return fmt.Errorf("building CreateImportSpecRequest: %v", err)
 	}
@@ -443,13 +443,7 @@ func (a *API) deleteDevice(vm *object.VirtualMachine) error {
 	return task.Wait(a.ctx)
 }
 
-func (a *API) buildCreateImportSpecRequest(name string, ovaPath string, finder *find.Finder, defaultNetwork object.NetworkReference, resourcePool *object.ResourcePool, datastore *object.Datastore) (*archive, *types.OvfCreateImportSpecResult, error) {
-	var nets []types.OvfNetworkMapping
-	nets = append(nets, types.OvfNetworkMapping{
-		Name:    "mantle",
-		Network: defaultNetwork.Reference(),
-	})
-
+func (a *API) buildCreateImportSpecRequest(name string, ovaPath string, finder *find.Finder, resourcePool *object.ResourcePool, datastore *object.Datastore) (*archive, *types.OvfCreateImportSpecResult, error) {
 	arch := &archive{ovaPath}
 	envelope, err := arch.readEnvelope("*.ovf")
 	if err != nil {
