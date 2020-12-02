@@ -109,11 +109,13 @@ func (a *API) GetIPAddresses(name, publicIPName, resourceGroup string) (string, 
 	}
 
 	configs := *nic.InterfacePropertiesFormat.IPConfigurations
+
 	for _, conf := range configs {
 		if conf.PrivateIPAddress == nil {
 			return "", "", fmt.Errorf("PrivateIPAddress is nil")
+		} else {
+			return publicIP, *conf.PrivateIPAddress, nil
 		}
-		return publicIP, *conf.PrivateIPAddress, nil
 	}
 	return "", "", fmt.Errorf("no ip configurations found")
 }
