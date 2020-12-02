@@ -26,7 +26,9 @@ import (
 
 func (a *API) vmname() string {
 	b := make([]byte, 10)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		plog.Error(err)
+	}
 	return fmt.Sprintf("%s-%x", a.options.BaseName, b)
 }
 
