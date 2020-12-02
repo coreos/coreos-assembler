@@ -191,6 +191,9 @@ func getBlobMetaData(client storage.BlobStorageClient, containerName, blobName s
 	if md5Hash != "" {
 		return nil, BlobExistsError(blobName)
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	blobMetaData, err := metadata.NewMetadataFromBlob(client, containerName, blobName)
 	if err != nil {
