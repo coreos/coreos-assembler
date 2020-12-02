@@ -147,7 +147,9 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 		return true, nil
 	})
 	if err != nil {
-		a.TerminateInstance(name, resourceGroup)
+		if errTerminate := a.TerminateInstance(name, resourceGroup); errTerminate != nil {
+			return nil, fmt.Errorf("terminating machines failed: %v after the machines failed to become active: %v", errTerminate, err)
+		}
 		return nil, fmt.Errorf("waiting for machine to become active: %v", err)
 	}
 
