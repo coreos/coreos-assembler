@@ -164,7 +164,9 @@ func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, user
 		return droplet.Status == "active", nil
 	})
 	if err != nil {
-		a.DeleteDroplet(ctx, dropletID)
+		if errDelete := a.DeleteDroplet(ctx, dropletID); errDelete != nil {
+			return nil, fmt.Errorf("deleting droplet failed: %v after running droplet failed: %v", errDelete, err)
+		}
 		return nil, fmt.Errorf("waiting for droplet to run: %v", err)
 	}
 
@@ -261,7 +263,9 @@ func (a *API) CreateCustomImage(ctx context.Context, name string, url string) (*
 		return image.Status == "available", nil
 	})
 	if err != nil {
-		a.DeleteImage(ctx, imageID)
+		if errDelete := a.DeleteImage(ctx, imageID); errDelete != nil {
+			return nil, fmt.Errorf("deleting image failed: %v after creating image failed: %v", errDelete, err)
+		}
 		return nil, fmt.Errorf("waiting for image creation: %v", err)
 	}
 
