@@ -16,6 +16,8 @@
 package gcloud
 
 import (
+	"context"
+	"google.golang.org/api/option"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -71,6 +73,9 @@ func New(opts *Options) (*API, error) {
 			plog.Fatal(err)
 		}
 		client, err = auth.GoogleClientFromJSONKey(b)
+		if err != nil {
+			plog.Error(err)
+		}
 	} else {
 		client, err = auth.GoogleClient()
 	}
@@ -79,14 +84,16 @@ func New(opts *Options) (*API, error) {
 		return nil, err
 	}
 
-	capi, err := compute.New(client)
+	ctx := context.Background()
+
+	computeService, err := compute.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return nil, err
 	}
 
 	api := &API{
 		client:  client,
-		compute: capi,
+		compute: computeService,
 		options: opts,
 	}
 
