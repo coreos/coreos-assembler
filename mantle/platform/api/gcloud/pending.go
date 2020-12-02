@@ -54,7 +54,7 @@ func (p *Pending) Wait() error {
 	for {
 		op, err = p.do.Do()
 		if err == nil {
-			err := p.Progress(p.desc, time.Now().Sub(start), op)
+			err := p.Progress(p.desc, time.Since(start), op)
 			if err != nil {
 				return err
 			}
