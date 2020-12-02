@@ -200,7 +200,9 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		return true, nil
 	})
 	if err != nil {
-		a.TerminateInstances(ids)
+		if errTerminate := a.TerminateInstances(ids); errTerminate != nil {
+			return nil, fmt.Errorf("terminating instances failed: %v after instances failed to run: %v", errTerminate, err)
+		}
 		return nil, fmt.Errorf("waiting for instances to run: %v", err)
 	}
 
