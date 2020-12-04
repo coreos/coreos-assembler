@@ -16,7 +16,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/coreos/ign-converter v0.0.0-20201123014402-35e810ace1bf
 	github.com/coreos/ignition v0.35.0
-	github.com/coreos/ignition/v2 v2.8.0
+	github.com/coreos/ignition/v2 v2.8.1
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 // indirect
