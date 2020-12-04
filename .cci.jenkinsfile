@@ -6,16 +6,12 @@ def imageName = buildImage()
 
 pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     checkout scm
-    stage("Build FCOS") {
 
-        shwrap("rpm -qa | sort > rpmdb.txt")
-        archiveArtifacts artifacts: 'rpmdb.txt'
+    shwrap("rpm -qa | sort > rpmdb.txt")
+    archiveArtifacts artifacts: 'rpmdb.txt'
 
-        // just split into separate invocations to make it easier to see where it fails
-        cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
-        cosa_cmd("fetch --strict")
-        cosa_cmd("build --strict")
-    }
+    // Run stage Build FCOS (init, fetch and build)
+    fcosBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
 
     stage("Kola QEMU") {
         parallel run: {
