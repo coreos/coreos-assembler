@@ -17,6 +17,7 @@ package upgrade
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -304,6 +305,8 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 	}
 }
 
+// getZincatiMetrics retrieves service metrics from Zincati over the local
+// Unix socket.
 func getZincatiMetrics(c cluster.TestCluster, m platform.Machine) string {
 	// do this in a loop in case it was just started and hasn't created the
 	// socket yet.
@@ -317,6 +320,19 @@ func getZincatiMetrics(c cluster.TestCluster, m platform.Machine) string {
 	return string(c.MustSSHf(m, "sudo socat - UNIX-CONNECT:%s", zincatiMetricsSocket))
 }
 
+// ensureZincatiUpdatesEnabled checks Zincati metrics to make sure that
+// auto-updates logic is enabled.
+func ensureZincatiUpdatesEnabled(c cluster.TestCluster, m platform.Machine) error {
+	for i := 0; i < 10; i++ {
+		metrics := getZincatiMetrics(c, m)
+		if strings.Contains(metrics, "zincati_update_agent_updates_enabled 1") {
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+	return errors.New("failed to find 'zincati_update_agent_updates_enabled 1' on Zincati metrics.promsock")
+}
+
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
 	// we have to do this every time in case e.g. we've just rebased from an
 	// official pipeline build to a developer build
@@ -327,9 +343,8 @@ func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version 
 		c.MustSSH(m, "sudo systemctl start zincati.service")
 
 		// sanity-check that Zincati has updates enabled
-		metrics := getZincatiMetrics(c, m)
-		if !strings.Contains(metrics, "zincati_update_agent_updates_enabled 1") {
-			c.Fatalf("failed to find 'zincati_update_agent_updates_enabled 1' on Zincati metrics.promsock")
+		if err := ensureZincatiUpdatesEnabled(c, m); err != nil {
+			c.Fatalf("%s", err)
 		}
 	})
 }
