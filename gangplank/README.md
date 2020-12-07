@@ -2,7 +2,7 @@
 
 Arr matey....
 
-Introduced as [part of PR 1739](https://github.com/coreos/coreos-assembler/pull/1739), the GoLang Gangplank a CI-specific alternative "entrypoint" for executing CoreOS Assemlber (COSA).
+Introduced as [part of PR 1739](https://github.com/coreos/coreos-assembler/pull/1739), the GoLang Gangplank a CI-specific alternative "entrypoint" for executing CoreOS Assembler (COSA).
 
 ## Jenkins Pipeline are Greedy
 
@@ -25,7 +25,7 @@ While its possible to run cross-cluster with Jenkins, in reality, its almost is 
 
 ## Jenkins has become a templating engine
 
-In the RHCOS case, a considerable amount of Groovy has been written to parse, check and emit "cosa <TARGET> <CLI ARGS>" commands. The FCOS pipleine is easier to maintain and understand; the RHCOS pipeline a is special snowflake of variable-controled rules. The complexity of RHCOS's pipeline comes from the business rules requiring special logic. FCOS's pipeline only has to support a single configuation, while RHCOS has to support at least three releases on four architectures.
+In the RHCOS case, a considerable amount of Groovy has been written to parse, check and emit "cosa <TARGET> <CLI ARGS>" commands. The FCOS pipleine is easier to maintain and understand; the RHCOS pipeline a is special snowflake of variable-controlled rules. The complexity of RHCOS's pipeline comes from the business rules requiring special logic. FCOS's pipeline only has to support a single configuration, while RHCOS has to support at least three releases on four architectures.
 
 Initially the RCHOS pipeline uses OpenShift BuildConfig with envVars. Over time, almost all of these envVars and even Jenkins job parameters were removed. As it turns out, converting YAML to envVars to Groovy to Shell is ripe for type errors; this was especially true when dealing with truthiness.
 
@@ -55,14 +55,14 @@ While the JobSpec provided a means of GitOps controlled execution of the Jenkins
 
 In fact, the problem is a bit deeper:
 - COSA assumes an order of operations. This order of operation is codified in the code, but is not documented. The Jenkins pipelines are quasi-authoritative in the order of operations. To whit: `cosa build` must preceed a `cosa buildextend`, some artifacts require the `metal*` artifacts while others require just the `qcow2`.
-- The CLI interface is inconsient. Some commands are Bash, others Python and use different styled arguments.
-- The notion of `build` is baed on positional perception: COSA considers building the OSTree a build, but by default it builds the `qcow2`. Pipelines consider creating `artifacts` as "building". And users consider a "build" to be _all_ the produced artifacts.
+- The CLI interface is inconsistent. Some commands are Bash, others Python and use different styled arguments.
+- The notion of `build` is based on positional perception: COSA considers building the OSTree a build, but by default it builds the `qcow2`. Pipelines consider creating `artifacts` as "building". And users consider a "build" to be _all_ the produced artifacts.
 - When COSA changes, all the pipelines have to change.
 
 ## The Solution
 
-Gangplank is proposed as the "thing" to provide stable interface(s) into COSA. [Previously an envVar interface](https://github.com/coreos/enhancements/pull/1) was proposed. Bluntly speaking, the idea was not well-recieved. Gangplank seeks to provide a set of interfaces into COSA that:
-- provides a means of file-based instrutions to COSA
+Gangplank is proposed as the "thing" to provide stable interface(s) into COSA. [Previously an envVar interface](https://github.com/coreos/enhancements/pull/1) was proposed. Bluntly speaking, the idea was not well-received. Gangplank seeks to provide a set of interfaces into COSA that:
+- provides a means of file-based instructions to COSA
 - provides a means of templating the COSA commands
 - initially provide the RHCOS JobSpec to templated COSA commands
 - act as a CI `ENTRYPOINT` for COSA containers built to run in OCP
@@ -84,15 +84,15 @@ GoLang was chosen over Bash or Python several reasons:
 - Bash is largely untestable.
 - GoLang avoids previous COSA disputes regarding OOO and style.
 
-## Why not OpenShift Tempalates?
+## Why not OpenShift Templates?
 
-An early lesson learned writing the RHCOS pipeline is that while an OpenShift template is trivial, they tend to pollute the namespace. OpenShift templates are great for deploying an application, but become tedious when deploying arbitrary configruations. For example, using an OpenShift template to deploy test, dev, and production configurations could require three seperate deployements when all that changes is a single variable.
+An early lesson learned writing the RHCOS pipeline is that while an OpenShift template is trivial, they tend to pollute the namespace. OpenShift templates are great for deploying an application, but become tedious when deploying arbitrary configurations. For example, using an OpenShift template to deploy test, dev, and production configurations could require three separate deployments when all that changes is a single variable.
 
-The vision of the `gangplank` is to create a templated execution of COSA based the file interface. That is, instead of managing different deployments, COSA will take a configuration (the JobSpec) and `run-steps`. A single `buildconfig` can service the needs of developers and production enviroments.
+The vision of the `gangplank` is to create a templated execution of COSA based on the file interface. That is, instead of managing different deployments, COSA will take a configuration (the JobSpec) and `run-steps`. A single `buildconfig` can service the needs of developers and production environments.
 
 ## Jenkins as a helper
 
-Jenkins is NOT going away in this world view. Rather, Jenkins will not be directly scheduling the pods. A new set of COSA CI Libs will be created that provide wrappers around the `oc` binary for calling Openshift BuildConfig.
+Jenkins is NOT going away in this world view. Rather, Jenkins will not be directly scheduling the pods. A new set of COSA CI Libs will be created that provide wrappers around the `oc` binary for calling OpenShift BuildConfig.
 
 And example invocation might look like:
 ```
@@ -129,7 +129,7 @@ A profound pain point for COSA _and_ pipeline development is that environmental 
 
 In the "Jenkins as a Helper" section, a curious opening appears -- the ability to run `cosa` commands _remotely_ in an OpenShift Cluster.
 
-For those unlucky enough to be obtian their internet access from a major US-based cable monopoly, an incredible pain point is the "build-upload" cylce:
+For those unlucky enough to obtain their internet access from a major US-based cable monopoly, an incredible pain point is the "build-upload" cycle:
 1. developer begs around for $CLOUD credentials
 1. they hack on COSA, RPM's, overrides, etc.
 1. build
