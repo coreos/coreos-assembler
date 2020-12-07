@@ -149,7 +149,9 @@ func (am *machine) saveConsole(origConsole string) error {
 		return err
 	}
 	defer f.Close()
-	f.WriteString(am.console)
+	if _, err := f.WriteString(am.console); err != nil {
+		return err
+	}
 
 	return nil
 }
