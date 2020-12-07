@@ -37,25 +37,16 @@ func (lc *LocalCluster) NewCommand(name string, arg ...string) exec.Cmd {
 	return cmd
 }
 
-func (lc *LocalCluster) hostIP() string {
-	// hackydoo
-	bridge := "br0"
-	for _, seg := range lc.flight.Dnsmasq.Segments {
-		if bridge == seg.BridgeName {
-			return seg.BridgeIf.DHCPv4[0].IP.String()
-		}
-	}
-	panic("Not a valid bridge!")
-}
-
-func (lc *LocalCluster) NewTap(bridge string) (*TunTap, error) {
+func (lc *LocalCluster) NewTap(bridge string) (tap *TunTap, err error) {
 	nsExit, err := ns.Enter(lc.flight.nshandle)
 	if err != nil {
 		return nil, err
 	}
-	defer nsExit()
+	defer func() {
+		err = nsExit()
+	}()
 
-	tap, err := AddLinkTap("")
+	tap, err = AddLinkTap("")
 	if err != nil {
 		return nil, fmt.Errorf("tap failed: %v", err)
 	}
