@@ -178,26 +178,34 @@ func (a *API) CreateDevice(hostname string, conf *conf.Conf, console Console) (*
 		err := a.startConsole(deviceID, console)
 		consoleStarted = true
 		if err != nil {
-			a.DeleteDevice(deviceID)
+			if errDelete := a.DeleteDevice(deviceID); errDelete != nil {
+				return nil, fmt.Errorf("deleting device failed: %v after starting console failed: %v", errDelete, err)
+			}
 			return nil, err
 		}
 	}
 
 	device, err = a.waitForActive(deviceID)
 	if err != nil {
-		a.DeleteDevice(deviceID)
+		if errDelete := a.DeleteDevice(deviceID); errDelete != nil {
+			return nil, fmt.Errorf("deleting device failed: %v after waiting for device to be active failed: %v", errDelete, err)
+		}
 		return nil, err
 	}
 
 	ipAddress := a.GetDeviceAddress(device, 4, true)
 	if ipAddress == "" {
-		a.DeleteDevice(deviceID)
+		if errDelete := a.DeleteDevice(deviceID); errDelete != nil {
+			return nil, fmt.Errorf("deleting device failed: %v after no public IP address found for %v", errDelete, err)
+		}
 		return nil, fmt.Errorf("no public IP address found for %v", deviceID)
 	}
 
 	err = waitForInstall(ipAddress)
 	if err != nil {
-		a.DeleteDevice(deviceID)
+		if errDelete := a.DeleteDevice(deviceID); errDelete != nil {
+			return nil, fmt.Errorf("deleting device failed: %v after timed out waiting for coreos-installer: %v", errDelete, err)
+		}
 		return nil, fmt.Errorf("timed out waiting for coreos-installer: %v", err)
 	}
 
@@ -455,7 +463,7 @@ func waitForInstall(address string) (err error) {
 		conn, err = dialer.Dial("tcp", address+":9")
 		if err == nil {
 			defer conn.Close()
-			conn.SetDeadline(deadline)
+			conn.SetDeadline(deadline) //nolint
 			_, err = conn.Read([]byte{0})
 			if err == io.EOF {
 				err = nil
@@ -466,7 +474,7 @@ func waitForInstall(address string) (err error) {
 			// If Dial returned an error before the timeout,
 			// e.g. because the device returned ECONNREFUSED,
 			// wait out the rest of the interval.
-			time.Sleep(installPollInterval - time.Now().Sub(start))
+			time.Sleep(installPollInterval - time.Since(start))
 		}
 	}
 	return
