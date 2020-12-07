@@ -16,8 +16,6 @@
 package local
 
 import (
-	"sync/atomic"
-
 	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/lang/destructor"
@@ -67,7 +65,9 @@ func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalF
 		lf.Destroy()
 		return nil, err
 	}
-	defer nsExit()
+	defer func() {
+		_ = nsExit()
+	}()
 
 	lf.Dnsmasq, err = NewDnsmasq()
 	if err != nil {
@@ -103,10 +103,6 @@ func (lf *LocalFlight) NewCluster(rconf *platform.RuntimeConfig) (*LocalCluster,
 	// does not lf.AddCluster() since we are not the top-level object
 
 	return lc, nil
-}
-
-func (lf *LocalFlight) newListenPort() int {
-	return int(atomic.AddInt32(&lf.listenPort, 1))
 }
 
 func (lf *LocalFlight) Destroy() {
