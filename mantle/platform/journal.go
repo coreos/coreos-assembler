@@ -93,7 +93,7 @@ func (j *Journal) Start(ctx context.Context, m Machine, oldBootId string) error 
 	if j.cancel != nil {
 		j.cancel()
 		j.cancel = nil
-		j.recorder.Wait() // Just need to consume the status.
+		_ = j.recorder.Wait() // Just need to consume the status.
 	}
 	ctx, cancel := context.WithCancel(ctx)
 
