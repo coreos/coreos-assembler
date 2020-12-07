@@ -151,6 +151,9 @@ func New(opts *Options) (*API, error) {
 	networkClient, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
 		Name: "neutron",
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create network client: %v", err)
+	}
 
 	a := &API{
 		opts:          opts,
@@ -322,7 +325,9 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		return server.Status == "ACTIVE", nil
 	})
 	if err != nil {
-		a.DeleteServer(serverID)
+		if errDelete := a.DeleteServer(serverID); errDelete != nil {
+			return nil, fmt.Errorf("deleting server: %v after waiting for instance to run: %v", errDelete, err)
+		}
 		return nil, fmt.Errorf("waiting for instance to run: %v", err)
 	}
 
@@ -331,23 +336,31 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		// Create and assign a floating IP to the instance
 		floatingip, err = a.createFloatingIP(a.opts.FloatingIPNetwork)
 		if err != nil {
-			a.DeleteServer(serverID)
+			if errDelete := a.DeleteServer(serverID); errDelete != nil {
+				return nil, fmt.Errorf("deleting server: %v after creating floating ip: %v", errDelete, err)
+			}
 			return nil, fmt.Errorf("creating floating ip: %v", err)
 		}
 		err = floatingips.AssociateInstance(a.computeClient, serverID, floatingips.AssociateOpts{
 			FloatingIP: floatingip.FloatingIP,
 		}).ExtractErr()
 		if err != nil {
-			a.DeleteServer(serverID)
+			if errDelete := a.DeleteServer(serverID); errDelete != nil {
+				return nil, fmt.Errorf("deleting server: %v after associating floating ip: %v", errDelete, err)
+			}
 			// Explicitly delete the floating ip as DeleteServer only deletes floating IPs that are
 			// associated with servers
-			a.deleteFloatingIP(floatingip.ID)
+			if errDeleteFIP := a.deleteFloatingIP(floatingip.ID); errDeleteFIP != nil {
+				return nil, fmt.Errorf("deleting floating ip: %v after associating floating ip: %v", errDeleteFIP, err)
+			}
 			return nil, fmt.Errorf("associating floating ip: %v", err)
 		}
 
 		server, err = servers.Get(a.computeClient, serverID).Extract()
 		if err != nil {
-			a.DeleteServer(serverID)
+			if errDelete := a.DeleteServer(serverID); errDelete != nil {
+				return nil, fmt.Errorf("deleting server: %v after retrieving server info: %v", errDelete, err)
+			}
 			return nil, fmt.Errorf("retrieving server info: %v", err)
 		}
 	}
@@ -441,7 +454,9 @@ func (a *API) createSecurityGroup() (string, error) {
 			RemoteIPPrefix: rule.RemoteIPPrefix,
 		}).Extract()
 		if err != nil {
-			a.deleteSecurityGroup(securityGroup.ID)
+			if errDelete := a.deleteSecurityGroup(securityGroup.ID); errDelete != nil {
+				return "", fmt.Errorf("deleting security group: %v after adding security rule: %v", errDelete, err)
+			}
 			return "", fmt.Errorf("adding security rule: %v", err)
 		}
 	}
@@ -536,14 +551,18 @@ func (a *API) UploadImage(name, path string) (string, error) {
 
 	data, err := os.Open(path)
 	if err != nil {
-		a.DeleteImage(image.ID)
+		if errDelete := a.DeleteImage(image.ID); errDelete != nil {
+			return "", fmt.Errorf("deleting image: %v after opening image file: %v", errDelete, err)
+		}
 		return "", fmt.Errorf("opening image file: %v", err)
 	}
 	defer data.Close()
 
 	err = imagedata.Upload(a.imageClient, image.ID, data).ExtractErr()
 	if err != nil {
-		a.DeleteImage(image.ID)
+		if errDelete := a.DeleteImage(image.ID); errDelete != nil {
+			return "", fmt.Errorf("deleting image: %v after uploading image data: %v", errDelete, err)
+		}
 		return "", fmt.Errorf("uploading image data: %v", err)
 	}
 
