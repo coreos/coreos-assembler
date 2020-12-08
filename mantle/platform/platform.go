@@ -275,7 +275,7 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 	dir := filepath.Dir(to)
 	out, stderr, err := m.SSH(fmt.Sprintf("sudo mkdir -p %s", dir))
 	if err != nil {
-		return fmt.Errorf("failed creating directory %s: %s: %s", dir, stderr, err)
+		return fmt.Errorf("failed creating directory %s: %q: %s: %s", dir, out, stderr, err)
 	}
 
 	client, err := m.SSHClient()
@@ -307,7 +307,7 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 func CopyDirToMachine(inputdir string, m Machine, destdir string) error {
 	out, stderr, err := m.SSH(fmt.Sprintf("sudo mkdir -p %s", shellquote.Join(destdir)))
 	if err != nil {
-		return errors.Wrapf(err, "failed creating directory %s: %s", destdir, stderr)
+		return errors.Wrapf(err, "failed creating directory %s: %q: %s", destdir, out, stderr)
 	}
 
 	client, err := m.SSHClient()
