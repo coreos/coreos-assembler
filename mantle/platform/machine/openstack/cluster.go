@@ -89,7 +89,9 @@ func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 
 func (oc *cluster) vmname() string {
 	b := make([]byte, 5)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		plog.Errorf("failed to generate a random vmname: %v", err)
+	}
 	return fmt.Sprintf("%s-%x", oc.Name()[0:13], b)
 }
 
