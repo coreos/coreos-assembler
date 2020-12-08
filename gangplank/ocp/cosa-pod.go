@@ -540,6 +540,8 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 			Source:      cosaSrvDir,
 		},
 	}
+	s.Entrypoint = []string{"/usr/bin/dumb-init"}
+	s.Command = []string{"/usr/bin/gangplank", "builder"}
 
 	if err := s.Validate(); err != nil {
 		l.WithError(err).Error("Validation failed")
