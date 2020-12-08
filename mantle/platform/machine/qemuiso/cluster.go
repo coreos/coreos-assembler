@@ -112,7 +112,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.Memory = int(memory)
 	}
 
-	builder.AddIso(qc.flight.opts.IsoPath, "")
+	if err := builder.AddIso(qc.flight.opts.IsoPath, ""); err != nil {
+		return nil, errors.Wrapf(err, "adding ISO image")
+	}
 
 	for _, disk := range options.AdditionalDisks {
 		if err = builder.AddDisk(&platform.Disk{
