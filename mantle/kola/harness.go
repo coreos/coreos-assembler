@@ -670,9 +670,12 @@ ExecStart=%s
 	config.AddSystemdUnit(KoletExtTestUnit, unit, conf.NoState)
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
-	// to make sure that we don't run out of it. Currently only ppc64le uses 64k pages.
-	if system.RpmArch() == "ppc64le" && targetMeta.MinMemory < 8192 {
-		targetMeta.MinMemory = 8192
+	// to make sure that we don't run out of it. Currently ppc64le and aarch64 use 64k pages.
+	switch system.RpmArch() {
+	case "ppc64le", "aarch64":
+		if targetMeta.MinMemory < 8192 {
+			targetMeta.MinMemory = 8192
+		}
 	}
 
 	t := &register.Test{

@@ -33,7 +33,7 @@ func init() {
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
+		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 	})
 	register.RegisterTest(&register.Test{
@@ -43,7 +43,7 @@ func init() {
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
+		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 	})
 }
@@ -219,6 +219,11 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 
 	opts := platform.MachineOptions{
 		MinMemory: 4096,
+	}
+	// ppc64le and aarch64 use 64K pages
+	switch system.RpmArch() {
+	case "ppc64le", "aarch64":
+		opts.MinMemory = 8192
 	}
 	m, err := c.NewMachineWithOptions(ignition, opts)
 	if err != nil {

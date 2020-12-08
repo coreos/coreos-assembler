@@ -33,7 +33,7 @@ func init() {
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
 		Distros:              []string{"rhcos"},
-		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"}, // no TPM support for s390x, ppc64le, aarch64 in qemu
+		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
@@ -56,10 +56,10 @@ func init() {
 		Run:         rhcosUpgradeBasic,
 		ClusterSize: 1,
 		// if renaming this, also rename the command in kolet-httpd.service below
-		Name:     "rhcos.upgrade.basic",
-		FailFast: true,
-		Tags:     []string{"upgrade"},
-		Distros:  []string{"rhcos"},
+		Name:                 "rhcos.upgrade.basic",
+		FailFast:             true,
+		Tags:                 []string{"upgrade"},
+		Distros:              []string{"rhcos"},
 		UserDataV3: conf.Ignition(`{
                         "ignition": {
                                 "version": "3.0.0"
