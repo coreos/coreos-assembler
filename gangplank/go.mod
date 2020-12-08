@@ -1,34 +1,25 @@
 module github.com/coreos/gangplank
 
-go 1.14
+go 1.13
 
 require (
 	github.com/containers/libpod v1.9.3
-	github.com/containers/storage v1.18.2
-	github.com/golang/protobuf v1.4.2 // indirect
-	github.com/google/go-cmp v0.5.2 // indirect
-	github.com/kr/text v0.2.0 // indirect
-	github.com/minio/minio-go/v7 v7.0.6-0.20200929220449-755b5633803a
-	github.com/opencontainers/runtime-spec v0.1.2-0.20190618234442-a950415649c7
-	github.com/openshift/api v0.0.0-20201005153912-821561a7f2a2
+	github.com/containers/storage v1.20.2
+	github.com/minio/minio-go/v7 v7.0.6
+	github.com/opencontainers/runtime-spec v1.0.3-0.20200520003142-237cc4f519e2
+	github.com/openshift/api v0.0.0-20201119214056-f1dea5ee7f60
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
-	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spf13/cobra v1.1.1
-	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
-	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.19.0
-	k8s.io/apimachinery v0.19.0
-	k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
-	k8s.io/utils v0.0.0-20201005171033-6301aaf42dc7 // indirect
+	gopkg.in/yaml.v2 v2.4.0
+	k8s.io/api v0.19.4
+	k8s.io/apimachinery v0.19.4
+	k8s.io/client-go v11.0.0+incompatible
 )
 
 replace (
+	github.com/containers/storage => github.com/containers/storage v1.20.2
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.0
 	k8s.io/api => k8s.io/api v0.17.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.17.0

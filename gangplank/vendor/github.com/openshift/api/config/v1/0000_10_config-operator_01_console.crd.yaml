@@ -3,6 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   name: consoles.config.openshift.io
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 spec:
   scope: Cluster
