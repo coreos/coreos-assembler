@@ -47,9 +47,10 @@ type Artifacts struct {
 // Aliyun is nested under CloudsCfgs and describes where
 // the Aliyun/Alibaba artifacts should be uploaded to.
 type Aliyun struct {
-	Bucket  string   `yaml:"bucket,omitempty"`
-	Enabled bool     `yaml:"enabled,omitempty"`
-	Regions []string `yaml:"regions,omitempty"`
+	Bucket    string   `yaml:"bucket,omitempty"`
+	Enabled   bool     `yaml:"enabled,omitempty" envVar:"ALIYUN_ENABLED"`
+	Regions   []string `yaml:"regions,omitempty" envVar:"ALIYUN_REGIONS"`
+	ExtraArgs string   `yaml:"extra_args" envVar:"ALIYUN_EXTRA_ARGS"`
 }
 
 // Archives describes the location of artifacts to push to
@@ -65,10 +66,11 @@ type Archives struct {
 //  Public: when true, mark as public
 //  Regions: name of AWS regions to push to.
 type Aws struct {
-	Enabled bool     `yaml:"enabled,omitempty"`
-	AmiPath string   `yaml:"ami_path,omitempty"`
-	Public  bool     `yaml:"public,omitempty"`
-	Regions []string `yaml:"regions,omitempty"`
+	Enabled   bool     `yaml:"enabled,omitempty"`
+	AmiPath   string   `yaml:"ami_path,omitempty" envVar:"AWS_AMI_PATH"`
+	Public    bool     `yaml:"public,omitempty" envVar:"AWS_PUBLIC"`
+	Regions   []string `yaml:"regions,omitempty" envVar:"AWS_REGIONS"`
+	ExtraArgs string   `yaml:"extra_args" envVar:"AWS_EXTRA_ARGS"`
 }
 
 // Azure describes upload options for Azure images.
@@ -79,10 +81,11 @@ type Aws struct {
 //   StorageLocation: name of the Azure region, i.e. us-east-1
 type Azure struct {
 	Enabled          bool   `yaml:"enabled,omitempty"`
-	ResourceGroup    string `yaml:"resource_group,omitempty"`
-	StorageAccount   string `yaml:"storage_account,omitempty"`
-	StorageContainer string `yaml:"storage_container,omitempty"`
-	StorageLocation  string `yaml:"storage_location,omitempty"`
+	ResourceGroup    string `yaml:"resource_group,omitempty" envVar:"AZURE_RESOURCE_GROUP"`
+	StorageAccount   string `yaml:"storage_account,omitempty" envVar:"AZURE_STORAGE_ACCOUNT"`
+	StorageContainer string `yaml:"storage_container,omitempty" envVar:"AZURE_STORAGE_CONTAINER"`
+	StorageLocation  string `yaml:"storage_location,omitempty" envVar:"AZURE_STORAGE_LOCATION"`
+	ExtraArgs        string `yaml:"extra_args" envVar:"AZURE_EXTRA_ARGS"`
 }
 
 // Brew is the RHEL Koji instance for storing artifacts.
@@ -110,9 +113,10 @@ type CloudsCfgs struct {
 //   Enabled: when true, publish to GCP
 //   Project: name of the GCP project to use
 type Gcp struct {
-	Bucket  string `yaml:"bucket,omitempty"`
-	Enabled bool   `yaml:"enabled,omitempty"`
-	Project string `yaml:"project,omitempty"`
+	Bucket    string `yaml:"bucket,omitempty" envVar:"GCP_BUCKET"`
+	Enabled   bool   `yaml:"enabled,omitempty`
+	Project   string `yaml:"project,omitempty" envVar:"GCP_PROJECT"`
+	ExtraArgs string `yaml:"extra_args" envVar:"GCP_EXTRA_ARGS"`
 }
 
 // Job refers to the Jenkins options

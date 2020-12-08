@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -72,6 +73,18 @@ type Stage struct {
 
 	// PostAlways ensures that the PostCommands are always run.
 	PostAlways bool `yaml:"post_always"`
+
+	// Publication
+	PublishArtifacts PublishArtifact `yaml:"publish_artifacts,flow"`
+}
+
+// PublishArtifact describes a cloud artifact that will
+// be pushed to the cloud
+type PublishArtifact struct {
+	Aliyun Aliyun `yaml:"aliyun,omitempty"`
+	Aws    Aws    `yaml:"aws,omitempty"`
+	Azure  Azure  `yaml:"azure,omitempty"`
+	Gcp    Gcp    `yaml:"gcp,omitempty"`
 }
 
 // cosaBuildCmds checks if b is a buildable artifact type and then
@@ -107,6 +120,40 @@ func (s *Stage) getCommands() ([]string, error) {
 	return ret, nil
 }
 
+func (s *Stage) getPublishArtifacts() PublishArtifact {
+	return s.PublishArtifacts
+}
+
+func (s *Stage) getPublishArtifactEnvVars() []string {
+	var envVars []string
+	var deeper func(i interface{})
+
+	deeper = func(i interface{}) {
+		typ := reflect.TypeOf(i)
+		val := reflect.ValueOf(i)
+
+		if typ.Kind() == reflect.Struct {
+			for j := 0; j < typ.NumField(); j++ {
+				if typ.Field(j).Type.Kind() == reflect.Struct {
+					deeper(val.Field(j).Interface())
+				} else {
+					log.Info("name: ", typ.Field(j).Name)
+					log.Info("val: ", val.Field(j))
+					tag := typ.Field(j).Tag.Get("envVar")
+					if tag == "" {
+						continue
+					}
+					envVars = append(envVars, fmt.Sprintf("%s=%s", tag, val.Field(j)))
+
+				}
+			}
+		}
+	}
+
+	deeper(s.getPublishArtifacts())
+	return envVars
+}
+
 // Execute runs the commands of a stage.
 func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) error {
 	if ctx == nil {
@@ -131,6 +178,7 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 		return err
 	}
 	defer os.RemoveAll(tmpd)
+	envVars = append(envVars, s.getPublishArtifactEnvVars()...)
 
 	// Render the pre and post scripts.
 	prepScript := filepath.Join(tmpd, "prep.sh")

@@ -189,6 +189,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	for _, s := range ws.ExecuteStages {
 		log.Infof("Executing Stage: %s", s)
 		stage, err := ws.JobSpec.GetStage(s)
+
 		log.Infof("Stage commands: %v", stage.Commands)
 		if err != nil {
 			e = err
