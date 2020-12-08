@@ -34,14 +34,21 @@ import (
 // session on the Machine m. Manhole blocks until the shell session has ended.
 // If os.Stdin does not refer to a TTY, Manhole returns immediately with a nil
 // error.
-func Manhole(m Machine) error {
+func Manhole(m Machine) (err error) {
 	fd := int(os.Stdin.Fd())
 	if !terminal.IsTerminal(fd) {
 		return nil
 	}
 
 	tstate, _ := terminal.MakeRaw(fd)
-	defer terminal.Restore(fd, tstate)
+	defer func() {
+		e := terminal.Restore(fd, tstate)
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 
 	client, err := m.SSHClient()
 	if err != nil {
