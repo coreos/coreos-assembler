@@ -128,7 +128,9 @@ func (om *machine) saveConsole() error {
 		return err
 	}
 	defer f.Close()
-	f.WriteString(om.console)
+	if _, err := f.WriteString(om.console); err != nil {
+		return err
+	}
 
 	return nil
 }
