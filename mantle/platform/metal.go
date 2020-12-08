@@ -277,19 +277,16 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		pxe.boottype = "pxe"
 		pxe.networkdevice = "e1000"
 		pxe.pxeimagepath = "/usr/share/syslinux/"
-		break
 	case "aarch64":
 		pxe.boottype = "grub"
 		pxe.networkdevice = "virtio-net-pci"
 		pxe.bootfile = "/boot/grub2/grubaa64.efi"
 		pxe.pxeimagepath = "/boot/efi/EFI/fedora/grubaa64.efi"
 		pxe.bootindex = "1"
-		break
 	case "ppc64le":
 		pxe.boottype = "grub"
 		pxe.networkdevice = "virtio-net-pci"
 		pxe.bootfile = "/boot/grub2/powerpc-ieee1275/core.elf"
-		break
 	case "s390x":
 		pxe.boottype = "pxe"
 		pxe.networkdevice = "virtio-net-ccw"
@@ -306,7 +303,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		return nil, err
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
-	// Yeah this leaks
+	//nolint // Yeah this leaks
 	go func() {
 		http.Serve(listener, mux)
 	}()
@@ -380,7 +377,9 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 		if system.RpmArch() == "s390x" {
 			pxeconfig = []byte(kargsStr)
 		}
-		ioutil.WriteFile(filepath.Join(pxeconfigdir, "default"), pxeconfig, 0777)
+		if err := ioutil.WriteFile(filepath.Join(pxeconfigdir, "default"), pxeconfig, 0777); err != nil {
+			return err
+		}
 
 		// this is only for s390x where the pxe image has to be created;
 		// s390 doesn't seem to have a pre-created pxe image although have to check on this
@@ -401,7 +400,6 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 			}
 		}
 		t.pxe.bootfile = "/" + pxeimages[0]
-		break
 	case "grub":
 		if err := exec.Command("grub2-mknetdir", "--net-directory="+t.tftpdir).Run(); err != nil {
 			return err
@@ -412,7 +410,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 				return err
 			}
 		}
-		ioutil.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
+		if err := ioutil.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
 			default=0
 			timeout=1
 			menuentry "CoreOS (BIOS/UEFI)" {
@@ -421,8 +419,9 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 				echo "Loading initrd"
 				initrd %s
 			}
-		`, t.kern.kernel, kargsStr, t.kern.initramfs)), 0777)
-		break
+		`, t.kern.kernel, kargsStr, t.kern.initramfs)), 0777); err != nil {
+			return err
+		}
 	default:
 		panic("Unhandled boottype " + t.pxe.boottype)
 	}
@@ -503,7 +502,9 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	if err != nil {
 		return nil, err
 	}
-	defer t.destroy()
+	defer func() {
+		err = t.destroy()
+	}()
 
 	bootStartedChan, err := inst.Builder.VirtioChannelRead("bootstarted")
 	if err != nil {
@@ -593,7 +594,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 			return nil, err
 		}
 		port := listener.Addr().(*net.TCPAddr).Port
-		// Yeah this leaks
+		//nolint // Yeah this leaks
 		go func() {
 			http.Serve(listener, mux)
 		}()
@@ -648,7 +649,9 @@ WantedBy=multi-user.target
 	}
 
 	qemubuilder.SetConfig(&inst.liveIgnition)
-	qemubuilder.AddIso(srcisopath, "bootindex=2")
+	if err := qemubuilder.AddIso(srcisopath, "bootindex=2"); err != nil {
+		return nil, err
+	}
 
 	if offline {
 		qemubuilder.Append("-nic", "none")
