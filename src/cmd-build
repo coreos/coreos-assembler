@@ -410,13 +410,14 @@ cat > tmp/buildmeta.json <<EOF
 }
 EOF
 
+ostree_tarfile_size=$(stat --format=%s "${ostree_tarfile_path}")
 cat > tmp/images.json <<EOF
 {
   "images": {
     "ostree": {
         "path": "${ostree_tarfile_path}",
         "sha256": "${ostree_tarfile_sha256}",
-        "size": $(stat --format=%s "${ostree_tarfile_path}")
+        "size": ${ostree_tarfile_size}
     }
   }
 }
