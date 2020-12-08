@@ -21,10 +21,10 @@ following tools:
   commands:
   - To learn how to use COSA, see the
     [Building Fedora CoreOS](docs/building-fcos.md) guide and the
-    [Working with CoreOS Assembler](docs/cosa-working.md) guide.
+    [Working with CoreOS Assembler](docs/working.md) guide.
   - To learn how to develop on COSA, see the
-    [CoreOS Assembler Design](docs/cosa-design.md) guide and the
-    [Working on CoreOS Assembler](docs/cosa-devel.md) guide.
+    [CoreOS Assembler Design](docs/design.md) guide and the
+    [Working on CoreOS Assembler](docs/devel.md) guide.
 - [`kola`](docs/kola.md): for launching instances and running tests on them
 - [`kolet`](docs/kola.md#kolet): an agent for kola that runs on instances
 - [`ore`](docs/mantle/ore.md): for interfacing with cloud providers
