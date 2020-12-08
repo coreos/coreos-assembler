@@ -22,6 +22,7 @@ type Scheduler struct {
 }
 
 type SchedulerSpec struct {
+	// DEPRECATED: the scheduler Policy API has been deprecated and will be removed in a future release.
 	// policy is a reference to a ConfigMap containing scheduler policy which has
 	// user specified predicates and priorities. If this ConfigMap is not available
 	// scheduler will default to use DefaultAlgorithmProvider.

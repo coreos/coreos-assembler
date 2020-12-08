@@ -3,6 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   name: featuregates.config.openshift.io
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 spec:
   group: config.openshift.io
