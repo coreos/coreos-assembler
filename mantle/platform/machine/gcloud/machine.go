@@ -107,7 +107,9 @@ func (gm *machine) saveConsole() error {
 		return err
 	}
 	defer f.Close()
-	f.WriteString(gm.console)
+	if _, err := f.WriteString(gm.console); err != nil {
+		return err
+	}
 
 	return nil
 }
