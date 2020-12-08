@@ -89,7 +89,7 @@ func (ws *workSpec) Exec(ctx context.Context) error {
 	// Setup the incluster client
 	ac, pn, err := k8sInClusterClient()
 	if err == ErrNotInCluster && forceNotInCluster {
-		log.Info("Worker is out-of-clstuer, no secrets will be available")
+		log.Info("Worker is out-of-cluster, no secrets will be available")
 	} else if err != nil {
 		return fmt.Errorf("failed create a kubernetes client: %w", err)
 	}
