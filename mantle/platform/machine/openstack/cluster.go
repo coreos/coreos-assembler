@@ -89,7 +89,7 @@ func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 
 func (oc *cluster) vmname() string {
 	b := make([]byte, 5)
-	rand.Read(b)
+	rand.Read(b) //nolint
 	return fmt.Sprintf("%s-%x", oc.Name()[0:13], b)
 }
 
