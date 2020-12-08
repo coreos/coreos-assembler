@@ -81,7 +81,6 @@ type Disk struct {
 	MultiPathDisk bool     // if true, present multiple paths
 
 	attachEndPoint string   // qemuPath to attach to
-	fd             *os.File // builder file descriptor location, e.g. /proc/self/fd/
 	dstFileName    string   // the prepared file
 	nbdServCmd     exec.Cmd // command to serve the disk
 }
@@ -95,7 +94,6 @@ type bootIso struct {
 // QemuInstance holds an instantiated VM through its lifecycle.
 type QemuInstance struct {
 	qemu               exec.Cmd
-	tmpConfig          string
 	tempdir            string
 	swtpm              exec.Cmd
 	nbdServers         []exec.Cmd
@@ -219,12 +217,12 @@ func (inst *QemuInstance) Destroy() {
 		plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
 	}
 	if inst.swtpm != nil {
-		inst.swtpm.Kill() // Ignore errors
+		inst.swtpm.Kill() //nolint // Ignore errors
 		inst.swtpm = nil
 	}
 	for _, nbdServ := range inst.nbdServers {
 		if nbdServ != nil {
-			nbdServ.Kill() // Ignore errors
+			nbdServ.Kill() //nolint // Ignore errors
 		}
 	}
 	inst.nbdServers = nil
@@ -240,17 +238,27 @@ func (inst *QemuInstance) Destroy() {
 // Currently effective on aarch64: switches the boot order to boot from disk on reboot. For s390x and aarch64, bootindex
 // is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
 // would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
-func (inst *QemuInstance) SwitchBootOrder() error {
+func (inst *QemuInstance) SwitchBootOrder() (err error) {
 	if system.RpmArch() != "s390x" && system.RpmArch() != "aarch64" {
 		//Not applicable for other arches
 		return nil
 	}
 	monitor, err := newQMPMonitor(inst.tempdir)
 	if err != nil {
+		return fmt.Errorf("could not create QMP connection: %v", err)
+	}
+	if err := monitor.Connect(); err != nil {
 		return errors.Wrapf(err, "Could not connect to QMP device")
 	}
-	monitor.Connect()
-	defer monitor.Disconnect()
+
+	defer func() {
+		e := monitor.Disconnect()
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 	devs, err := listQMPDevices(monitor, inst.tempdir)
 	if err != nil {
 		return errors.Wrapf(err, "Could not list devices through qmp")
@@ -1017,7 +1025,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		}
 
 		fdset := builder.AddFd(vars)
-		builder.Append("-drive", fmt.Sprintf("file=/usr/share/edk2/aarch64/QEMU_EFI-pflash.raw,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off"))
+		builder.Append("-drive", "file=/usr/share/edk2/aarch64/QEMU_EFI-pflash.raw,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off")
 		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
 	default:
 		panic(fmt.Sprintf("Architecture %s doesn't have support for UEFI in qemu.", system.RpmArch()))
@@ -1280,6 +1288,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			_, err := os.Stat(swtpmSock)
 			return err
 		})
+		if err != nil {
+			return nil, err
+		}
 		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm")
 		// There are different device backends on each architecture
 		switch system.RpmArch() {
@@ -1302,6 +1313,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// Set up the virtio channel to get Ignition failures by default
 	journalPipeR, err := builder.VirtioChannelRead("com.coreos.ignition.journal")
 	inst.journalPipe = journalPipeR
+	if err != nil {
+		return nil, err
+	}
 
 	fdnum := 3 // first additional file starts at position 3
 	for i := range builder.fds {
