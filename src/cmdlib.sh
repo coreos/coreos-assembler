@@ -647,6 +647,10 @@ prepare_git_artifacts() {
 
     info "Directory ${gitd}, is from branch ${branch}, commit ${rev}"
 
+    local checksum name size
+    checksum=$(sha256sum "${tarball}" | awk '{print$1}')
+    name=$(basename "${tarball}")
+    size=$(stat --format=%s "${tarball}")
     # shellcheck disable=SC2046 disable=SC2086
     cat > "${json}" <<EOC
 {
@@ -658,11 +662,11 @@ prepare_git_artifacts() {
         "dirty": "${is_dirty}"
     },
     "file": {
-        "checksum": "$(sha256sum ${tarball} | awk '{print$1}')",
+        "checksum": "${checksum}",
         "checksum_type": "sha256",
         "format": "tar.gz",
-        "name": "$(basename ${tarball})",
-        "size": $(stat --format=%s ${tarball})
+        "name": "${name}",
+        "size": "${size}"
     }
 }
 EOC
