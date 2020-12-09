@@ -72,6 +72,9 @@ func generateKeyRingFromDir(dir string) (openpgp.EntityList, error) {
 	var keyring openpgp.EntityList
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.Mode().IsRegular() {
 			return nil
 		}

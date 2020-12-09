@@ -16,6 +16,7 @@ package sdk
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
+	"google.golang.org/api/option"
 	"google.golang.org/api/storage/v1"
 
 	"github.com/coreos/mantle/util"
@@ -45,7 +47,7 @@ func DownloadFile(file, fileURL string, client *http.Client) error {
 		if client == nil {
 			client = http.DefaultClient
 		}
-		api, err := storage.New(client)
+		api, err := storage.NewService(context.Background(), option.WithHTTPClient(client))
 		if err != nil {
 			return err
 		}
@@ -175,24 +177,6 @@ func DownloadSignedFile(file, url string, client *http.Client, verifyKeyFile str
 
 	plog.Infof("Verified file: %s", file)
 	return nil
-}
-
-func getUrlStream(url string, client *http.Client) (*http.Response, error) {
-	if client == nil {
-		client = http.DefaultClient
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
 }
 
 // false if both files do not exist
