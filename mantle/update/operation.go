@@ -136,7 +136,7 @@ func (op *Operation) replace(dst *os.File, src io.Reader) error {
 			length -= excess
 		}
 
-		if _, err := dst.Seek(offset, os.SEEK_SET); err != nil {
+		if _, err := dst.Seek(offset, io.SeekStart); err != nil {
 			return err
 		}
 		if _, err := io.CopyN(dst, src, length); err != nil {

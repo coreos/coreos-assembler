@@ -62,7 +62,7 @@ func FullUpdate(path string) (*Procedure, error) {
 		return nil, err
 	}
 
-	if _, err := payload.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := payload.Seek(0, io.SeekStart); err != nil {
 		payload.Close()
 		return nil, err
 	}

@@ -114,7 +114,7 @@ func (u *Updater) updateCommon(proc *metadata.InstallProcedure, procName, srcPat
 }
 
 func VerifyInfo(file *os.File, info *metadata.InstallInfo) error {
-	if _, err := file.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 

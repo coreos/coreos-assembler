@@ -16,10 +16,8 @@ package generator
 
 import (
 	"crypto/sha256"
-	"io"
-	"os"
-
 	"github.com/golang/protobuf/proto"
+	"io"
 
 	"github.com/coreos/mantle/update/metadata"
 )
@@ -31,7 +29,7 @@ func NewInstallInfo(r io.ReadSeeker) (*metadata.InstallInfo, error) {
 		return nil, err
 	}
 
-	if _, err := r.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
 

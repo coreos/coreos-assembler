@@ -16,6 +16,7 @@ package generator
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -51,7 +52,7 @@ func TestGenerateWithoutPartition(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +105,7 @@ func TestGenerateOneBlockPartition(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		t.Fatal(err)
 	}
 

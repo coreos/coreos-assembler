@@ -111,7 +111,7 @@ func downloadFile(file, url string, client *http.Client) error {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if pos != 0 {
-			if _, err := dst.Seek(0, os.SEEK_SET); err != nil {
+			if _, err := dst.Seek(0, io.SeekStart); err != nil {
 				return err
 			}
 			if err := dst.Truncate(0); err != nil {
@@ -128,7 +128,7 @@ func downloadFile(file, url string, client *http.Client) error {
 			return fmt.Errorf("Bad Content-Range for %s", resp.Request.URL)
 		}
 
-		if _, err := dst.Seek(pos, os.SEEK_SET); err != nil {
+		if _, err := dst.Seek(pos, io.SeekStart); err != nil {
 			return err
 		}
 		plog.Infof("Resuming from byte %d", pos)
