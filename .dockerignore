@@ -1,0 +1,2 @@
+# kola_temp can include socket files that the build process does not like
+/mantle/_kola_temp
