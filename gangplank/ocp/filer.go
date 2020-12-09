@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -173,6 +174,12 @@ func (m *minioServer) kill() {
 	// syscall.Kill kills the processes Pid group ensuring all forks/execs
 	// of minio are killed too.
 	_ = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGTERM)
+
+	// Purge the minio files since they are used per-session.
+	if err := os.RemoveAll(filepath.Join(m.dir, ".minio.sys")); err != nil {
+		log.WithError(err).Error("failed to remove minio files")
+	}
+
 }
 
 func randomString(n int) (string, error) {

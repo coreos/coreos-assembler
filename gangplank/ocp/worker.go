@@ -1,7 +1,6 @@
 package ocp
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,7 +38,7 @@ const (
 )
 
 // newWorkSpec returns a workspec from the environment
-func newWorkSpec(ctx context.Context) (*workSpec, error) {
+func newWorkSpec(ctx ClusterContext) (*workSpec, error) {
 	w, ok := os.LookupEnv(CosaWorkPodEnvVarName)
 	if !ok {
 		return nil, ErrNotWorkPod
@@ -79,7 +78,7 @@ func (ws *workSpec) Marshal() ([]byte, error) {
 }
 
 // Exec executes the work spec tasks.
-func (ws *workSpec) Exec(ctx context.Context) error {
+func (ws *workSpec) Exec(ctx ClusterContext) error {
 	// Workers always will use /srv
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return fmt.Errorf("unable to switch to %s: %w", cosaSrvDir, err)
@@ -88,7 +87,7 @@ func (ws *workSpec) Exec(ctx context.Context) error {
 
 	// Setup the incluster client
 	ac, pn, err := k8sInClusterClient()
-	if err == ErrNotInCluster && forceNotInCluster {
+	if err == ErrNotInCluster {
 		log.Info("Worker is out-of-clstuer, no secrets will be available")
 	} else if err != nil {
 		return fmt.Errorf("failed create a kubernetes client: %w", err)

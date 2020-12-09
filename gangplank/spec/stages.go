@@ -103,6 +103,7 @@ func (s *Stage) getCommands() ([]string, error) {
 	for i, c := range s.Commands {
 		ret[(numBuildArtifacts + i)] = c
 	}
+	fmt.Printf("%v", ret)
 	return ret, nil
 }
 
