@@ -16,7 +16,6 @@ package sdk
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -31,22 +30,6 @@ type LocalBuild struct {
 	Dir  string
 	Arch string
 	Meta *cosa.Build
-}
-
-func isDir(dir string) bool {
-	stat, err := os.Stat(dir)
-	return err == nil && stat.IsDir()
-}
-
-func envDir(env string) string {
-	dir := os.Getenv(env)
-	if dir == "" {
-		return ""
-	}
-	if !filepath.IsAbs(dir) {
-		log.Fatalf("%s is not an absolute path: %q", env, dir)
-	}
-	return dir
 }
 
 func IsCosaRoot(root string) (bool, error) {
