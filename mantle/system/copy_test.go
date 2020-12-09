@@ -33,6 +33,9 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 	if info.Mode() != mode {
 		t.Fatalf("Unexpected mode: %s != %s %s", info.Mode(), mode, path)
 	}
+	if err != nil {
+		t.Error(err)
+	}
 
 	newData, err := ioutil.ReadAll(file)
 	if err != nil {

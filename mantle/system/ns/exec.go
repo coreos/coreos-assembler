@@ -15,6 +15,7 @@
 package ns
 
 import (
+	"fmt"
 	"github.com/vishvananda/netns"
 
 	"github.com/coreos/mantle/system/exec"
@@ -32,42 +33,72 @@ func Command(ns netns.NsHandle, name string, arg ...string) *Cmd {
 	}
 }
 
-func (cmd *Cmd) CombinedOutput() ([]byte, error) {
+func (cmd *Cmd) CombinedOutput() (bytes []byte, err error) {
 	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return nil, err
 	}
-	defer nsExit()
+	defer func() {
+		e := nsExit()
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 
-	return cmd.ExecCmd.CombinedOutput()
+	bytes, err = cmd.ExecCmd.CombinedOutput()
+	return bytes, err
 }
 
-func (cmd *Cmd) Output() ([]byte, error) {
+func (cmd *Cmd) Output() (bytes []byte, err error) {
 	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return nil, err
 	}
-	defer nsExit()
+	defer func() {
+		e := nsExit()
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 
-	return cmd.ExecCmd.Output()
+	bytes, err = cmd.ExecCmd.Output()
+	return bytes, err
 }
 
-func (cmd *Cmd) Run() error {
+func (cmd *Cmd) Run() (err error) {
 	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return err
 	}
-	defer nsExit()
+	defer func() {
+		e := nsExit()
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 
 	return cmd.ExecCmd.Run()
 }
 
-func (cmd *Cmd) Start() error {
+func (cmd *Cmd) Start() (err error) {
 	nsExit, err := Enter(cmd.NsHandle)
 	if err != nil {
 		return err
 	}
-	defer nsExit()
+	defer func() {
+		e := nsExit()
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 
 	return cmd.ExecCmd.Start()
 }

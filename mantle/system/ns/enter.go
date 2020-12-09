@@ -15,6 +15,7 @@
 package ns
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/vishvananda/netns"
@@ -51,7 +52,7 @@ func Enter(ns netns.NsHandle) (func() error, error) {
 
 // NsCreate returns a handle to a new network namespace.
 // NsEnter must be used to safely enter and exit the new namespace.
-func Create() (netns.NsHandle, error) {
+func Create() (nsHandle netns.NsHandle, err error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -60,7 +61,15 @@ func Create() (netns.NsHandle, error) {
 		return netns.None(), err
 	}
 	defer origns.Close()
-	defer netns.Set(origns)
+	defer func() {
+		e := netns.Set(origns)
+		if err != nil {
+			err = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err = e
+		}
+	}()
 
-	return netns.New()
+	nsHandle, err = netns.New()
+	return nsHandle, err
 }
