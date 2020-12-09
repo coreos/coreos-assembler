@@ -650,7 +650,7 @@ prepare_git_artifacts() {
     local checksum name size
     checksum=$(sha256sum "${tarball}" | awk '{print$1}')
     name=$(basename "${tarball}")
-    size=$(stat --format=%s "${tarball}")
+    size=$(find "${tarball}" -printf %s)
     # shellcheck disable=SC2046 disable=SC2086
     cat > "${json}" <<EOC
 {
