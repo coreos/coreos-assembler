@@ -2,7 +2,6 @@ package ocp
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -37,12 +36,12 @@ import (
 */
 
 type podBuild struct {
-	apibuild  *buildapiv1.Build
-	bc        *buildConfig
-	js        *spec.JobSpec
-	inCluster bool
+	apibuild *buildapiv1.Build
+	bc       *buildConfig
+	js       *spec.JobSpec
 
-	pod *v1.Pod
+	clusterCtx ClusterContext
+	pod        *v1.Pod
 
 	hostname         string
 	image            string
@@ -57,7 +56,7 @@ type podBuild struct {
 // A PodBuilder uses a build.openshift.io/v1 Build interface
 // to use the exact same code path between the two.
 type PodBuilder interface {
-	Exec(ctx context.Context, workDir string) error
+	Exec(ctx ClusterContext) error
 }
 
 var (
@@ -73,13 +72,13 @@ const (
 )
 
 // Exec start the unbounded build.
-func (pb *podBuild) Exec(ctx context.Context, workDir string) error {
+func (pb *podBuild) Exec(ctx ClusterContext) error {
 	log.Info("Executing unbounded builder")
 	return pb.bc.Exec(ctx)
 }
 
 // NewPodBuilder returns a ClusterPodBuilder ready for execution.
-func NewPodBuilder(ctx context.Context, inCluster bool, image, serviceAccount, jsF, workDir string) (PodBuilder, error) {
+func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir string) (PodBuilder, error) {
 	// Directly inject the jobspec
 	js, err := spec.JobSpecFromFile(jsF)
 	if jsF != "" && err != nil {
@@ -90,21 +89,16 @@ func NewPodBuilder(ctx context.Context, inCluster bool, image, serviceAccount, j
 	}
 
 	pb := &podBuild{
+		clusterCtx:     ctx,
 		image:          image,
-		inCluster:      inCluster,
 		jobSpecFile:    jsF,
 		js:             &js,
 		serviceAccount: serviceAccount,
 		workDir:        workDir,
 	}
 
-	if inCluster {
-		if err := pb.setInCluster(); err != nil {
-			return nil, fmt.Errorf("failed setting incluster options: %v", err)
-		}
-	} else {
-		log.Info("Forcing podman mode")
-		forceNotInCluster = true
+	if err := pb.setInCluster(); err != nil {
+		return nil, fmt.Errorf("failed setting in-cluster options: %v", err)
 	}
 
 	// Generate the build.openshift.io/v1 object
@@ -118,7 +112,7 @@ func NewPodBuilder(ctx context.Context, inCluster bool, image, serviceAccount, j
 
 	// Create the buildConfig object
 	os.Setenv("BUILD", pbb)
-	bc, err := newBC()
+	bc, err := newBC(ctx, &Cluster{})
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +126,14 @@ func NewPodBuilder(ctx context.Context, inCluster bool, image, serviceAccount, j
 // setInCluster does the nessasary setup for unbounded builder running as
 // an in-cluster build.
 func (pb *podBuild) setInCluster() error {
+	c, err := GetCluster(pb.clusterCtx)
+	if err == nil && (c.podman || !c.inCluster) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
 	// Dig deep and query find out what Kubernetes thinks this pod
 	// Discover where this running
 	hostname, ok := os.LookupEnv("HOSTNAME")

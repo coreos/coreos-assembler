@@ -23,7 +23,6 @@ import (
 	"github.com/coreos/gangplank/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/kubernetes"
 )
 
 var (
@@ -58,13 +57,11 @@ type buildConfig struct {
 	// Internal copy of the JobSpec
 	JobSpec spec.JobSpec
 
-	KubeClient  *kubernetes.Clientset
-	KubeProject string
+	ClusterCtx ClusterContext
 }
 
 // newBC accepts a context and returns a buildConfig
-func newBC() (*buildConfig, error) {
-
+func newBC(ctx context.Context, c *Cluster) (*buildConfig, error) {
 	var v buildConfig
 	rv := reflect.TypeOf(v)
 	for i := 0; i < rv.NumField(); i++ {
@@ -84,16 +81,14 @@ func newBC() (*buildConfig, error) {
 		return nil, err
 	}
 
-	// Query Kubernetes to find out what this pods network identity is.
-	// TODO: remove this CI exception once we have a kubernetes mock
-	if !forceNotInCluster {
-		ac, pn, kubeErr := k8sInClusterClient()
-		if kubeErr != nil {
-			return nil, ErrInvalidOCPMode
-		}
-		v.KubeClient = ac
-		v.KubeProject = pn
+	// Add the ClusterContext to the BuildConfig
+	v.ClusterCtx = NewClusterContext(ctx, *c.toKubernetesCluster())
+	ac, ns, kubeErr := GetClient(v.ClusterCtx)
+	if kubeErr != nil {
+		log.WithError(kubeErr).Info("Running without a cluster client")
+	}
 
+	if kubeErr != nil && ac != nil {
 		v.HostPod = fmt.Sprintf("%s-%s-build",
 			apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 			apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
@@ -104,7 +99,7 @@ func newBC() (*buildConfig, error) {
 			v.HostIP = apiBuild.Annotations[fmt.Sprintf(podBuildAnnotation, "IP")]
 		} else {
 			log.Info("Querying for pod ID")
-			hIP, err := getPodIP(ac, pn, v.HostPod)
+			hIP, err := getPodIP(ac, ns, v.HostPod)
 			if err != nil {
 				log.Errorf("Failed to determine buildconfig's pod")
 			}
@@ -149,7 +144,7 @@ func newBC() (*buildConfig, error) {
 }
 
 // Exec executes the command using the closure for the commands
-func (bc *buildConfig) Exec(ctx context.Context) error {
+func (bc *buildConfig) Exec(ctx ClusterContext) error {
 	curD, _ := os.Getwd()
 	defer func(c string) { _ = os.Chdir(c) }(curD)
 
@@ -175,6 +170,7 @@ func (bc *buildConfig) Exec(ctx context.Context) error {
 		return fmt.Errorf("failed to process binary input: %w", err)
 	}
 	remoteFiles = append(remoteFiles, r...)
+	defer func() { _ = os.RemoveAll(filepath.Join(cosaSrvDir, sourceSubPath)) }()
 
 	// Discover the stages and render each command into a script.
 	r, err = bc.discoverStages(m)
@@ -297,7 +293,7 @@ binary build interface.`)
 		}
 
 		index := n + 1
-		cpod, err := NewCosaPodder(ctx, apiBuild, bc.KubeClient, bc.KubeProject, index)
+		cpod, err := NewCosaPodder(ctx, apiBuild, index)
 		if err != nil {
 			log.WithError(err).Error("Failed to create pod definition")
 			continue

@@ -180,13 +180,16 @@ func toStringFields(bf byteFields) stringFields {
 // addVolumesFromConfigMapLabels discovers configMaps with matching labels and if known,
 // adds the defined volume mount from volMaps.
 func (cp *cosaPod) addVolumesFromConfigMapLabels() error {
-	ac := cp.apiClientSet
+	ac, ns, err := GetClient(cp.clusterCtx)
+	if err != nil {
+		return err
+	}
 	lo := metav1.ListOptions{
 		LabelSelector: mountRefLabel,
 		Limit:         100,
 	}
 
-	cfgMaps, err := ac.CoreV1().ConfigMaps(cp.project).List(lo)
+	cfgMaps, err := ac.CoreV1().ConfigMaps(ns).List(lo)
 	if err != nil {
 		return err
 	}
@@ -205,13 +208,16 @@ func (cp *cosaPod) addVolumesFromConfigMapLabels() error {
 // addVolumesFromSecretLabels discovers secrets with matching labels and if known,
 // adds the defined volume mount from volMaps.
 func (cp *cosaPod) addVolumesFromSecretLabels() error {
-	ac := cp.apiClientSet
+	ac, ns, err := GetClient(cp.clusterCtx)
+	if err != nil {
+		return err
+	}
 	lo := metav1.ListOptions{
 		LabelSelector: mountRefLabel,
 		Limit:         100,
 	}
 
-	secrets, err := ac.CoreV1().Secrets(cp.project).List(lo)
+	secrets, err := ac.CoreV1().Secrets(ns).List(lo)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@ package ocp
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containers/libpod/libpod"
 	"github.com/containers/libpod/libpod/define"
 	"github.com/containers/libpod/pkg/bindings"
 	"github.com/containers/libpod/pkg/bindings/containers"
@@ -34,7 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	kubeJSON "k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
@@ -103,9 +103,8 @@ var (
 
 // cosaPod is a COSA pod
 type cosaPod struct {
-	apiBuild     *buildapiv1.Build
-	apiClientSet *kubernetes.Clientset
-	project      string
+	apiBuild   *buildapiv1.Build
+	clusterCtx ClusterContext
 
 	ocpInitCommand  []string
 	ocpRequirements v1.ResourceList
@@ -119,7 +118,7 @@ type cosaPod struct {
 
 // CosaPodder create COSA capable pods.
 type CosaPodder interface {
-	WorkerRunner(ctx context.Context, envVar []v1.EnvVar) error
+	WorkerRunner(ctx ClusterContext, envVar []v1.EnvVar) error
 }
 
 // a cosaPod is a CosaPodder
@@ -127,17 +126,14 @@ var _ = CosaPodder(&cosaPod{})
 
 // NewCosaPodder creates a CosaPodder
 func NewCosaPodder(
-	ctx context.Context,
+	ctx ClusterContext,
 	apiBuild *buildapiv1.Build,
-	apiClientSet *kubernetes.Clientset,
-	project string,
 	index int) (CosaPodder, error) {
 
 	cp := &cosaPod{
-		apiBuild:     apiBuild,
-		apiClientSet: apiClientSet,
-		project:      project,
-		index:        index,
+		apiBuild:   apiBuild,
+		clusterCtx: ctx,
+		index:      index,
 
 		// Set defaults for OpenShift 4.x
 		ocpRequirements: ocpRequirements,
@@ -148,8 +144,13 @@ func NewCosaPodder(
 		volumeMounts: volumeMounts,
 	}
 
-	if cp.apiClientSet != nil {
-		vi, err := cp.apiClientSet.DiscoveryClient.ServerVersion()
+	ac, _, err := GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if ac != nil {
+		vi, err := ac.DiscoveryClient.ServerVersion()
 		if err != nil {
 			return nil, fmt.Errorf("failed to query the kubernetes version: %w", err)
 		}
@@ -249,23 +250,26 @@ export PATH=/usr/sbin:/usr/bin
 }
 
 // WorkerRunner runs a worker pod and watches until finished
-func (cp *cosaPod) WorkerRunner(ctx context.Context, envVars []v1.EnvVar) error {
-	if cp.apiClientSet != nil {
+func (cp *cosaPod) WorkerRunner(ctx ClusterContext, envVars []v1.EnvVar) error {
+	cluster, err := GetCluster(ctx)
+	if err != nil {
+		return err
+	}
+	if cluster.inCluster {
 		return clusterRunner(ctx, cp, envVars)
 	}
 	return podmanRunner(ctx, cp, envVars)
 }
 
-func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
-	pod := cp.getPodSpec(envVars)
-	podJSON, err := encodeToJSON(pod, nil, "yaml")
+func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
+	cs, ns, err := GetClient(cp.clusterCtx)
 	if err != nil {
-		return fmt.Errorf("failed to encode pod to json: %w", err)
+		return err
 	}
-	fmt.Println(podJSON)
+	pod := cp.getPodSpec(envVars)
 
-	ac := cp.apiClientSet.CoreV1()
-	resp, err := ac.Pods(cp.project).Create(pod)
+	ac := cs.CoreV1()
+	resp, err := ac.Pods(ns).Create(pod)
 	if err != nil {
 		return fmt.Errorf("failed to create pod %s: %w", pod.Name, err)
 	}
@@ -273,7 +277,7 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 	cp.pod = pod
 
 	status := resp.Status
-	w, err := ac.Pods(cp.project).Watch(
+	w, err := ac.Pods(ns).Watch(
 		metav1.ListOptions{
 			Watch:           true,
 			ResourceVersion: resp.ResourceVersion,
@@ -291,7 +295,7 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 	// ender is our clean-up that kill our pods
 	ender := func() {
 		l.Infof("terminating")
-		if err := ac.Pods(cp.project).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil {
+		if err := ac.Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil {
 			l.WithError(err).Error("Failed delete on pod, yolo.")
 		}
 	}
@@ -360,6 +364,10 @@ func clusterRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error 
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return
 func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) error {
+	cs, ns, err := GetClient(cp.clusterCtx)
+	if err != nil {
+		return err
+	}
 	if logging != nil && *logging {
 		return nil
 	}
@@ -369,7 +377,7 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) e
 		Follow:    true,
 		Container: container,
 	}
-	req := cp.apiClientSet.CoreV1().Pods(cp.project).GetLogs(pod.Name, &podLogOpts)
+	req := cs.CoreV1().Pods(ns).GetLogs(pod.Name, &podLogOpts)
 	podLogs, err := req.Stream()
 	if err != nil {
 		return err
@@ -458,13 +466,25 @@ func encodeToJSON(pod *v1.Pod, envVars []v1.EnvVar, jsonType string) (string, er
 	return d.String(), nil
 }
 
+// outWriteCloser is a noop closer
+type outWriteCloser struct {
+	*os.File
+}
+
+func (o *outWriteCloser) Close() error {
+	return nil
+}
+
+func newNoopFileWriterCloser(f *os.File) *outWriteCloser {
+	return &outWriteCloser{f}
+}
+
 // podmanRunner runs the work in a Podman container using workDir as `/srv`
 // `podman kube play` does not work well due to permission mappings; there is
 // no way to do id mappings.
-func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
-	envVars = append(envVars, v1.EnvVar{Name: localPodEnvVar, Value: "1"})
-
+func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 	// Populate pod envvars
+	envVars = append(envVars, v1.EnvVar{Name: localPodEnvVar, Value: "1"})
 	mapEnvVars := map[string]string{
 		localPodEnvVar: "1",
 	}
@@ -493,9 +513,40 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 		return err
 	}
 
+	rt, err := libpod.NewRuntime(connText)
+	if err != nil {
+		return fmt.Errorf("failed to get container runtime: %w", err)
+	}
+
+	// Get the StdIO from the cluster context.
+	clusterCtx, err := GetCluster(ctx)
+	if err != nil {
+		return err
+	}
+	stdIn, stdOut, stdErr := clusterCtx.GetStdIO()
+	if stdOut == nil {
+		stdOut = os.Stdout
+	}
+	if stdErr == nil {
+		stdErr = os.Stdout
+	}
+	if stdIn == nil {
+		stdIn = os.Stdin
+	}
+
+	streams := &define.AttachStreams{
+		AttachError:  true,
+		AttachOutput: true,
+		AttachInput:  true,
+		InputStream:  bufio.NewReader(stdIn),
+		OutputStream: newNoopFileWriterCloser(stdOut),
+		ErrorStream:  newNoopFileWriterCloser(stdErr),
+	}
+
 	s := specgen.NewSpecGenerator(podSpec.Spec.Containers[0].Image)
 	s.CapAdd = podmanCaps
 	s.Name = podSpec.Name
+	s.Entrypoint = []string{"/usr/bin/dumb-init", "/usr/bin/gangplank", "builder"}
 	s.ContainerNetworkConfig = specgen.ContainerNetworkConfig{
 		NetNS: specgen.Namespace{
 			NSMode: specgen.Host,
@@ -520,7 +571,6 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 		},
 	}
 	s.Env = mapEnvVars
-	s.WorkDir = "/srv"
 	s.Stdin = true
 	s.Terminal = true
 	s.Devices = []cspec.LinuxDevice{
@@ -533,38 +583,78 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 			Type: "char",
 		},
 	}
+
+	// Ensure that /srv in the COSA container is defined.
+	srvDir := clusterCtx.podmanSrvDir
+	if srvDir == "" {
+		// ioutil.TempDir does not create the directory with the appropriate perms
+		tmpSrvDir := filepath.Join(cosaSrvDir, s.Name)
+		if err := os.MkdirAll(tmpSrvDir, 0755); err != nil {
+			return fmt.Errorf("failed to create emphemeral srv dir for pod: %w", err)
+		}
+		srvDir = tmpSrvDir
+	}
+
+	l.WithField("bind mount", srvDir).Info("using host directory for /srv")
+	s.WorkDir = "/srv"
 	s.Mounts = []cspec.Mount{
 		{
 			Type:        "bind",
 			Destination: "/srv",
-			Source:      cosaSrvDir,
+			Source:      srvDir,
 		},
 	}
 	s.Entrypoint = []string{"/usr/bin/dumb-init"}
 	s.Command = []string{"/usr/bin/gangplank", "builder"}
 
+	// Validate and define the container spec
 	if err := s.Validate(); err != nil {
 		l.WithError(err).Error("Validation failed")
 	}
-
 	r, err := containers.CreateWithSpec(connText, s)
 	if err != nil {
 		return fmt.Errorf("failed to create container: %w", err)
+	}
+	// Look up the container.
+	lb, err := rt.LookupContainer(r.ID)
+	if err != nil {
+		return fmt.Errorf("failed to find container: %w", err)
 	}
 
 	// Manually terminate the pod to ensure that we get all the logs first.
 	// Here be hacks: the API is dreadful for streaming logs. Podman,
 	// in this case, is a better UX. There likely is a much better way, but meh,
 	// this works.
-	logCmd := exec.CommandContext(ctx, "podman", "logs", "--follow", podSpec.Name)
-	logCmd.Stderr = os.Stdout
-	logCmd.Stdout = os.Stdout
 	ender := func() {
 		time.Sleep(1 * time.Second)
 		_ = containers.Remove(connText, r.ID, ptrBool(true), ptrBool(true))
-		_ = logCmd.Process.Kill()
+		if clusterCtx.podmanSrvDir != "" {
+			return
+		}
+
+		l.Info("Cleaning up ephemeral /srv")
+		defer os.RemoveAll(srvDir) //nolint
+
+		s.Entrypoint = []string{"/bin/rm", "-rvf", "/srv/"}
+		s.Name = fmt.Sprintf("%s-cleaner", s.Name)
+		cR, _ := containers.CreateWithSpec(connText, s)
+		defer containers.Remove(connText, cR.ID, ptrBool(true), ptrBool(true)) //nolint
+
+		if err := containers.Start(connText, cR.ID, nil); err != nil {
+			l.WithError(err).Info("Failed to start cleanup conatiner")
+			return
+		}
+		_, err := containers.Wait(connText, cR.ID, nil)
+		if err != nil {
+			l.WithError(err).Error("Failed")
+		}
 	}
 	defer ender()
+
+	if err := containers.Start(connText, r.ID, nil); err != nil {
+		l.WithError(err).Error("Start of pod failed")
+		return err
+	}
 
 	// Ensure clean-up on signal, i.e. ctrl-c
 	sigs := make(chan os.Signal, 1)
@@ -574,31 +664,11 @@ func podmanRunner(ctx context.Context, cp *cosaPod, envVars []v1.EnvVar) error {
 		ender()
 	}()
 
-	l.Info("Starting pod")
-	if err := containers.Start(connText, r.ID, nil); err != nil {
-		l.WithError(err).Error("Start of pod failed")
-		return err
-	}
-
-	l.Info("Checking on pod")
-	running := define.ContainerStateRunning
-	if _, err = containers.Wait(connText, r.ID, &running); err != nil {
-		l.WithError(err).Error("Check failed")
-	}
-
-	// Start logging
-	go func() {
-		_ = logCmd.Run()
-	}()
-
-	rc, err := containers.Wait(connText, r.ID, nil)
-	if err != nil {
-		l.WithError(err).Error("Failed")
-	}
-	if rc != 0 {
-		l.WithField("rc", rc).Error("Failed to execute pod")
-		return errors.New("pod workload failed")
-	}
-
-	return nil
+	l.WithFields(log.Fields{
+		"stdIn":  stdIn.Name(),
+		"stdOut": stdOut.Name(),
+		"stdErr": stdErr.Name(),
+	}).Info("binding stdio to continater")
+	resize := make(chan remotecommand.TerminalSize)
+	return lb.Attach(streams, "", resize)
 }

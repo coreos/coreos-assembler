@@ -8,14 +8,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const sourceBin = "source.bin"
+const (
+	// sourceBin stores binary input
+	sourceBin = "source.bin"
+
+	// sourceSubPath is used when extracting binary inputs
+	sourceSubPath = "source"
+)
 
 // extractInputBinary processes the provided input stream as directed by BinaryBuildSource
 // into dir. OpenShift sends binary builds over stdin. To make our life easier,
 // use the OpenShift API to process the input. Returns the name of the file
 // written.
 func recieveInputBinary() (string, error) {
-	srcd := filepath.Join(cosaSrvDir, "source")
+	srcd := filepath.Join(cosaSrvDir, sourceSubPath)
 	if err := os.MkdirAll(srcd, 0777); err != nil {
 		return "", err
 	}

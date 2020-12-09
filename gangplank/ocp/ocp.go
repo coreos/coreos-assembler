@@ -53,7 +53,7 @@ func ocpBuildClient() error {
 	// Almost _always_ this should be in /srv for COSA.
 	cDir := apiBuild.Spec.Source.ContextDir
 	if cDir != "" && cDir != "/" {
-		log.Infof("Using %s as in-pod working directory.", cDir)
+		log.Infof("Using %s as working directory.", cDir)
 		cosaSrvDir = cDir
 	}
 

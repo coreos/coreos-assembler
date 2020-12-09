@@ -1,7 +1,6 @@
 package ocp
 
 import (
-	"context"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -9,7 +8,7 @@ import (
 
 // Builder implements the Build
 type Builder interface {
-	Exec(ctx context.Context) error
+	Exec(ctx ClusterContext) error
 }
 
 var (
@@ -18,21 +17,20 @@ var (
 	cosaSrvDir = defaultContextDir
 )
 
-func init() {
-	if _, ok := os.LookupEnv(localPodEnvVar); ok {
-		log.Infof("EnvVar %s defined, using local pod mode", localPodEnvVar)
-		forceNotInCluster = true
-	}
-}
-
 // NewBuilder returns a Builder. NewBuilder determines what
 // "Builder" to return.
-func NewBuilder(ctx context.Context) (Builder, error) {
+func NewBuilder(ctx ClusterContext) (Builder, error) {
+	inCluster := true
+	if _, ok := os.LookupEnv(localPodEnvVar); ok {
+		log.Infof("EnvVar %s defined, using local pod mode", localPodEnvVar)
+		inCluster = false
+	}
+
 	ws, err := newWorkSpec(ctx)
 	if err == nil {
 		return ws, nil
 	}
-	bc, err := newBC()
+	bc, err := newBC(ctx, &Cluster{inCluster: inCluster})
 	if err == nil {
 		return bc, nil
 	}

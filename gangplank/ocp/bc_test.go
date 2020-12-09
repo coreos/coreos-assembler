@@ -1,6 +1,7 @@
 package ocp
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -31,7 +32,8 @@ func TestOCPBuild(t *testing.T) {
 		}
 	}()
 
-	newO, err := newBC()
+	c := Cluster{inCluster: false}
+	newO, err := newBC(context.Background(), &c)
 	if err != nil {
 		t.Errorf("failed to read OCP envvars: %v", err)
 	}

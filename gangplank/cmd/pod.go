@@ -30,8 +30,11 @@ var (
 	// Run CI pod via podman (out of cluster)
 	cosaViaPodman bool
 
-	// workDir is used for podman mode
+	// cosaWorkDir is used for podman mode and is where the "builds" directory will live
 	cosaWorkDir string
+
+	// cosaSrvDir is used as the scratch directory builds.
+	cosaSrvDir string
 )
 
 func init() {
@@ -40,6 +43,7 @@ func init() {
 	cmdPod.Flags().StringSliceVarP(&cosaCmds, "cmd", "c", []string{}, "commands to run")
 	cmdPod.Flags().StringVarP(&cosaOverrideImage, "image", "i", "", "use an alternative image")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
+	cmdPod.Flags().StringVarP(&cosaSrvDir, "srvDir", "S", "", "podman mode - directory to mount as /srv")
 	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
 }
 
@@ -49,11 +53,11 @@ func init() {
 func runPod(c *cobra.Command, args []string) {
 	defer cancel()
 
-	inCluster := true
-	launchMode := "OpenShift"
+	cluster := ocp.NewCluster(true, "")
+
 	if cosaViaPodman {
-		inCluster = false
-		launchMode = "Podman"
+		cluster = ocp.NewCluster(false, "")
+		cluster.SetPodman(cosaSrvDir)
 		if cosaOverrideImage == "" {
 			cosaOverrideImage = cosaDefaultImage
 		}
@@ -61,13 +65,15 @@ func runPod(c *cobra.Command, args []string) {
 			cosaWorkDir, _ = os.Getwd()
 		}
 	}
-	pb, err := ocp.NewPodBuilder(ctx, inCluster, cosaOverrideImage, serviceAccount, specFile, cosaWorkDir)
+
+	clusterCtx := ocp.NewClusterContext(ctx, cluster)
+
+	pb, err := ocp.NewPodBuilder(clusterCtx, cosaOverrideImage, serviceAccount, specFile, cosaWorkDir)
 	if err != nil {
 		log.Fatalf("failed to define builder pod: %v", err)
 	}
 
-	log.Infof("Lauching %s worker pod(s)", launchMode)
-	if err := pb.Exec(ctx, cosaWorkDir); err != nil {
+	if err := pb.Exec(clusterCtx); err != nil {
 		log.Fatalf("failed to execute CI builder: %v", err)
 	}
 }
