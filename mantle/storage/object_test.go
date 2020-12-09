@@ -27,7 +27,6 @@ const (
 </head></html>
 `
 	testPageCRC  = "xH9jaw=="
-	testPageMD5  = "2a6rirkVBEsl0bzTOzNtzA=="
 	testPageSize = 83
 )
 
@@ -86,7 +85,9 @@ func TestCRCSumAndEq(t *testing.T) {
 	if err := crcSum(&a, r); err != nil {
 		t.Fatal(err)
 	}
-	r.Seek(0, 0)
+	if _, err := r.Seek(0, 0); err != nil {
+		t.Error(err)
+	}
 	if err := crcSum(&b, r); err != nil {
 		t.Fatal(err)
 	}

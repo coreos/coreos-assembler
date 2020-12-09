@@ -26,6 +26,7 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 	"google.golang.org/api/storage/v1"
 )
 
@@ -50,7 +51,7 @@ type Bucket struct {
 }
 
 func NewBucket(client *http.Client, bucketURL string) (*Bucket, error) {
-	service, err := storage.New(client)
+	service, err := storage.NewService(context.Background(), option.WithHTTPClient(client))
 	if err != nil {
 		return nil, err
 	}
