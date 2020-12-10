@@ -79,11 +79,35 @@ func (ws *workSpec) Marshal() ([]byte, error) {
 
 // Exec executes the work spec tasks.
 func (ws *workSpec) Exec(ctx ClusterContext) error {
+	envVars := os.Environ()
+
+	// Check stdin for binary input
+	inF, err := recieveInputBinary()
+	if err == nil {
+		log.WithField("file", inF).Info("Worker recieved binary input")
+
+		f, err := os.Open(inF)
+		if err != nil {
+			return err
+		}
+		if err := decompress(f, cosaSrvDir); err != nil {
+			return err
+		}
+
+		// Add select paths to the path for developer overrides
+		for i, ev := range envVars {
+			kvs := strings.Split(ev, "=")
+			if kvs[0] == "PATH" {
+				envVars[i] = fmt.Sprintf("%s/bin:%s/cosa/src/:%s", cosaSrvDir, cosaSrvDir, kvs[1])
+			}
+		}
+
+	}
+
 	// Workers always will use /srv
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return fmt.Errorf("unable to switch to %s: %w", cosaSrvDir, err)
 	}
-	envVars := os.Environ()
 
 	// Setup the incluster client
 	ac, pn, err := k8sInClusterClient()
