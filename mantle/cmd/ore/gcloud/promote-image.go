@@ -92,6 +92,9 @@ func runPromoteImage(cmd *cobra.Command, args []string) {
 			continue
 		}
 		// Some debug messages which are useful when needed.
+		//nolint // Add nolint to pass golang-ci lint,
+		// drop it when the error is gone, it's already fixed
+		// see https://github.com/googleapis/google-api-go-client/issues/767
 		if image.Deprecated != nil {
 			plog.Debugf("Deprecation state for %v is %v",
 				image.Name, image.Deprecated.State)
