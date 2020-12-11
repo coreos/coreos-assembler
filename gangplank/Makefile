@@ -17,7 +17,10 @@ build:
 .PHONY: fmt
 fmt:
 	gofmt -d -e -l $(shell find . -iname "*.go"  -not -path "./vendor/*")
-	golangci-lint run -v --timeout 5m ./...
+
+.PHONY: staticanalysis
+staticanalysis:
+	golangci-lint run -v ./...
 
 .PHONY: test
 test: fmt

@@ -67,6 +67,9 @@ gangplank:
 gangplank-check:
 	cd gangplank && $(MAKE) test
 
+staticanalysis:
+	cd gangplank && $(MAKE) staticanalysis
+
 tools:
 	cd tools && $(MAKE)
 
