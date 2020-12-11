@@ -1,0 +1,72 @@
+#!/usr/bin/python3
+
+import argparse
+import os
+import sys
+import boto3
+
+from tenacity import retry
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from cosalib.cmdlib import retry_stop, retry_boto_exception, retry_callback  # noqa: E402
+
+# set metadata caching to 5m
+CACHE_MAX_AGE_METADATA = 60 * 5
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", help="Just print and exit",
+                        action='store_true')
+    parser.add_argument("--hashlist", help="Path to the hashlist to upload",
+                        required=True)
+    parser.add_argument("--api-version", required=True,
+                        help="KeyLime hashlist API version")
+    parser.add_argument("--arch", required=True,
+                        help="Architecture for the hashlist")
+    parser.add_argument("--os-variant", required=True,
+                    help="OS Variant (fcos, rhcos, etc..)")
+    parser.add_argument("--release", required=True,
+                        help="Release (EG: 32.20200824.3.0)")
+    parser.add_argument("--bucket", metavar='<BUCKET>', required=True,
+                        help="Bucket in which to upload")
+    parser.add_argument("--acl", help="ACL for objects",
+                        action='store', default='private')
+
+    args = parser.parse_args()
+    upload_hashlist(args)
+
+
+def upload_hashlist(args):
+    """
+    Upload a hashlist to an s3 bucket
+    """
+    bucket_path = f"api/v{args.api_version}/{args.os_variant}/{args.arch}/{args.release}/hash.json"  # noqa: E402
+    s3_upload(args.hashlist, args.bucket, bucket_path,
+            CACHE_MAX_AGE_METADATA, args.acl, args.dry_run)
+
+
+@retry(stop=retry_stop, retry=retry_boto_exception, retry_error_callback=retry_callback)
+def s3_upload(src, bucket, key, max_age, acl, dry_run=False):
+    """
+    Do the upload!
+    """
+    upload_args = {
+        'ContentType': 'application/json',
+        'CacheControl': f'max-age={max_age}',
+        'ACL': acl,
+    }
+
+    print((f"{'Would upload' if dry_run else 'Uploading'} {src} to "
+            f"s3://{bucket}/{key} {upload_args if len(upload_args) else ''}"))
+
+    if dry_run:
+        return
+
+    s3 = boto3.client('s3')
+    s3.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
