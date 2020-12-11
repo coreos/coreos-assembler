@@ -64,4 +64,4 @@ for (name, ext) in extensions['extensions'].items():
     createext(name, pkgs)
 
 # Create the yum/dnf repo
-cmdlib.run_verbose(['createrepo_c', '--no-database', '.'], cwd=destdir)
+cmdlib.run_verbose(['createrepo_c', '--no-database', '.'], cwd=edestdir)
