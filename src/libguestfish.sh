@@ -22,7 +22,7 @@ if [ "$arch" = "ppc64le" ] ; then
     qemu_wrapper=${tmp_qemu_wrapper}/qemu-wrapper.sh
 	cat <<-'EOF' > "${qemu_wrapper}"
 	#!/bin/bash -
-	exec qemu-system-ppc64 "$@" -machine pseries,accel=kvm:tcg,vsmt=8
+	exec qemu-system-ppc64 "$@" -machine pseries,accel=kvm:tcg,vsmt=8,cap-fwnmi=off
 	EOF
     chmod +x "${qemu_wrapper}"
     export LIBGUESTFS_HV="${qemu_wrapper}"
