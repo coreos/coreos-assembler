@@ -33,7 +33,7 @@ func init() {
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
 		Distros:              []string{"rhcos"},
-		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
+		ExcludeArchitectures: []string{"s390x", "aarch64"}, // no TPM backend support for s390x and upgrade test not valid for aarch64
 		UserDataV3: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
@@ -60,6 +60,7 @@ func init() {
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
 		Distros:              []string{"rhcos"},
+		ExcludeArchitectures: []string{"aarch64"}, //upgrade test not valid for aarch64
 		UserDataV3: conf.Ignition(`{
                         "ignition": {
                                 "version": "3.0.0"
