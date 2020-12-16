@@ -22,7 +22,6 @@ import (
 // JobSpec is the root-level item for the JobSpec.
 type JobSpec struct {
 	Archives    Archives    `yaml:"archives,omitempty"`
-	CloudsCfgs  CloudsCfgs  `yaml:"clouds_cfgs,omitempty"`
 	Job         Job         `yaml:"job,omitempty"`
 	Oscontainer Oscontainer `yaml:"oscontainer,omitempty"`
 	Recipe      Recipe      `yaml:"recipe,omitempty"`
@@ -46,11 +45,14 @@ type Artifacts struct {
 
 // Aliyun is nested under CloudsCfgs and describes where
 // the Aliyun/Alibaba artifacts should be uploaded to.
+//   Bucket: name of Aliyun bucket to store image in
+//   Enabled: when true, publish to GCP
+//   Regions: name of Aliyun regions to push to.
 type Aliyun struct {
-	Bucket    string   `yaml:"bucket,omitempty"`
-	Enabled   bool     `yaml:"enabled,omitempty" envVar:"ALIYUN_ENABLED"`
-	Regions   []string `yaml:"regions,omitempty" envVar:"ALIYUN_REGIONS"`
-	ExtraArgs string   `yaml:"extra_args" envVar:"ALIYUN_EXTRA_ARGS"`
+	// Commented fields are common fields and found in PublishArtifact struct
+	// Bucket    string   `yaml:"bucket,omitempty"`
+	// Enabled   bool     `yaml:"enabled,omitempty" envVar:"ENABLED"`
+	// Regions   []string `yaml:"regions,omitempty" envVar:"REGIONS"`
 }
 
 // Archives describes the location of artifacts to push to
@@ -66,26 +68,26 @@ type Archives struct {
 //  Public: when true, mark as public
 //  Regions: name of AWS regions to push to.
 type Aws struct {
-	Enabled   bool     `yaml:"enabled,omitempty"`
-	AmiPath   string   `yaml:"ami_path,omitempty" envVar:"AWS_AMI_PATH"`
-	Public    bool     `yaml:"public,omitempty" envVar:"AWS_PUBLIC"`
-	Regions   []string `yaml:"regions,omitempty" envVar:"AWS_REGIONS"`
-	ExtraArgs string   `yaml:"extra_args" envVar:"AWS_EXTRA_ARGS"`
+	// Commented fields are common fields and found in PublishArtifact struct
+	// Enabled bool     `yaml:"enabled,omitempty" envVar:"ENABLED"`
+	// Regions []string `yaml:"regions,omitempty" envVar:"REGIONS"`
+	AmiPath string `yaml:"ami_path,omitempty" envVar:"AMI_PATH"`
+	Public  bool   `yaml:"public,omitempty" envVar:"PUBLIC"`
 }
 
 // Azure describes upload options for Azure images.
-//   Enabled: upload if true
+//   Enabled: upload if true (common see)
 //   ResourceGroup: the name of the Azure resource group
 //   StorageAccount: name of the storage account
 //   StorageContainer: name of the storage container
 //   StorageLocation: name of the Azure region, i.e. us-east-1
 type Azure struct {
-	Enabled          bool   `yaml:"enabled,omitempty"`
-	ResourceGroup    string `yaml:"resource_group,omitempty" envVar:"AZURE_RESOURCE_GROUP"`
-	StorageAccount   string `yaml:"storage_account,omitempty" envVar:"AZURE_STORAGE_ACCOUNT"`
-	StorageContainer string `yaml:"storage_container,omitempty" envVar:"AZURE_STORAGE_CONTAINER"`
-	StorageLocation  string `yaml:"storage_location,omitempty" envVar:"AZURE_STORAGE_LOCATION"`
-	ExtraArgs        string `yaml:"extra_args" envVar:"AZURE_EXTRA_ARGS"`
+	// Commented fields are common fields and found in PublishArtifact struct
+	// Enabled          bool   `yaml:"enabled,omitempty" envVar:"ENABLED"`
+	ResourceGroup    string `yaml:"resource_group,omitempty" envVar:"RESOURCE_GROUP"`
+	StorageAccount   string `yaml:"storage_account,omitempty" envVar:"STORAGE_ACCOUNT"`
+	StorageContainer string `yaml:"storage_container,omitempty" envVar:"STORAGE_CONTAINER"`
+	StorageLocation  string `yaml:"storage_location,omitempty" envVar:"STORAGE_LOCATION"`
 }
 
 // Brew is the RHEL Koji instance for storing artifacts.
@@ -99,24 +101,15 @@ type Brew struct {
 	Tag       string `yaml:"tag,omitempty"`
 }
 
-// CloudsCfgs (yes Clouds) is a nested struct of all
-// supported cloudClonfigurations.
-type CloudsCfgs struct {
-	Aliyun Aliyun `yaml:"aliyun,omitempty"`
-	Aws    Aws    `yaml:"aws,omitempty"`
-	Azure  Azure  `yaml:"azure,omitempty"`
-	Gcp    Gcp    `yaml:"gcp,omitempty"`
-}
-
-// Gcp describes deploiying to the GCP environment
+// Gcp describes deploying to the GCP environment
 //   Bucket: name of GCP bucket to store image in
 //   Enabled: when true, publish to GCP
 //   Project: name of the GCP project to use
 type Gcp struct {
-	Bucket    string `yaml:"bucket,omitempty" envVar:"GCP_BUCKET"`
-	Enabled   bool   `yaml:"enabled,omitempty`
-	Project   string `yaml:"project,omitempty" envVar:"GCP_PROJECT"`
-	ExtraArgs string `yaml:"extra_args" envVar:"GCP_EXTRA_ARGS"`
+	// Commented fields are common fields and found in PublishArtifact struct
+	// Bucket    string `yaml:"bucket,omitempty" envVar:"BUCKET"`
+	// Enabled   bool   `yaml:"enabled,omitempty envVar:"ENABLED"`
+	Project string `yaml:"project,omitempty" envVar:"PROJECT"`
 }
 
 // Job refers to the Jenkins options
