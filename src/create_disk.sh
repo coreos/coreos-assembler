@@ -325,14 +325,21 @@ install_uefi() {
     # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
     /usr/bin/bootupctl backend install --src-root="${deploy_root}" "${rootfs}"
     # We have a "static" grub config file that basically configures grub to look
-    # in the partition labeled "boot".
+    # in the RAID called "md-boot", if it exists, or the partition labeled "boot".
     local target_efi="$rootfs/boot/efi"
     local grubefi=$(find "${target_efi}/EFI/" -maxdepth 1 -type d | grep -v BOOT)
     local vendor_id="${grubefi##*/}"
     local vendordir="${target_efi}/EFI/${vendor_id}"
     mkdir -p "${vendordir}"
 	cat > ${vendordir}/grub.cfg << 'EOF'
-search --label boot --set prefix
+if [ -e (md/md-boot) ]; then
+  # The search command might pick a RAID component rather than the RAID,
+  # since the /boot RAID currently uses superblock 1.0.  See the comment in
+  # the main grub.cfg.
+  set prefix=md/md-boot
+else
+  search --label boot --set prefix
+fi
 set prefix=($prefix)/grub2
 configfile $prefix/grub.cfg
 boot
@@ -357,6 +364,7 @@ x86_64)
         grub2-install \
             --target i386-pc \
             --boot-directory $rootfs/boot \
+            --modules mdraid1x \
             $disk
     fi
     ;;
