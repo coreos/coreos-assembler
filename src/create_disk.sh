@@ -333,8 +333,8 @@ install_uefi() {
     mkdir -p "${vendordir}"
 	cat > ${vendordir}/grub.cfg << 'EOF'
 search --label boot --set prefix
-set prefix=($prefix)
-configfile $prefix/grub2/grub.cfg
+set prefix=($prefix)/grub2
+configfile $prefix/grub.cfg
 boot
 EOF
     install_grub_cfg
