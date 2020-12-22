@@ -270,13 +270,12 @@ ostree admin init-fs --modern $rootfs
 if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
-deploy_ref=
+time ostree pull-local --repo $rootfs/ostree/repo "$ostree" "$commit"
 if test -n "${remote_name}"; then
     deploy_ref="${remote_name}:${ref}"
-    time ostree pull-local --repo $rootfs/ostree/repo --remote="${remote_name}" "$ostree" "$ref"
+    ostree refs --repo $rootfs/ostree/repo --create "${deploy_ref}" "${commit}"
 else
     deploy_ref=$commit
-    time ostree pull-local --repo $rootfs/ostree/repo "$ostree" "$commit"
 fi
 ostree admin os-init "$os_name" --sysroot $rootfs
 # Note that $ignition_firstboot is interpreted by grub at boot time,
