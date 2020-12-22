@@ -31,7 +31,7 @@ fi
 # the later umount doesn't affect the host potentially
 if [ -e /sys/fs/selinux/status ]; then
     if [ -z "${coreos_assembler_unshared:-}" ]; then
-        exec sudo -- env coreos_assembler_unshared=1 unshare -m -- runuser -u "${USER}" -- "$0" "$@"
+        exec sudo -E -- env coreos_assembler_unshared=1 unshare -m -- runuser -u "${USER}" -- "$0" "$@"
     else
         # Work around https://github.com/containers/libpod/issues/1448
         # https://github.com/cgwalters/coretoolbox/blob/04e36894cdb912cd4d4c91b26436c57a2d96707d/src/coretoolbox.rs#L616
