@@ -109,6 +109,7 @@ func (inst *QemuInstance) Pid() int {
 
 // Kill kills the VM instance.
 func (inst *QemuInstance) Kill() error {
+	plog.Debugf("Killing qemu (%v)", inst.qemu.Pid())
 	return inst.qemu.Kill()
 }
 
@@ -213,7 +214,7 @@ func (inst *QemuInstance) Destroy() {
 		inst.journalPipe = nil
 	}
 	// kill is safe if already dead
-	if err := inst.qemu.Kill(); err != nil {
+	if err := inst.Kill(); err != nil {
 		plog.Errorf("Error killing qemu instance %v: %v", inst.Pid(), err)
 	}
 	if inst.swtpm != nil {
@@ -1353,6 +1354,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	if err = inst.qemu.Start(); err != nil {
 		return nil, err
 	}
+
+	plog.Debugf("Started qemu (%v) with args: %v", inst.qemu.Pid(), argv)
 
 	// Transfer ownership of the tempdir
 	inst.tempdir = builder.tempdir
