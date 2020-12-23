@@ -215,11 +215,13 @@ def generate_iso():
     tmpisofile = os.path.join(tmpdir, iso_name)
 
     img_metal_obj = buildmeta.get_artifact_meta("metal", unmerged=True)["images"].get("metal")
-    img_metal4k_obj = buildmeta.get_artifact_meta("metal4k", unmerged=True)["images"].get("metal4k")
-    if img_metal_obj is None or img_metal4k_obj is None:
-        raise Exception("Live image generation requires `metal` and `metal4k` images")
+    if img_metal_obj is None:
+        raise Exception("Live image generation requires `metal` image")
     img_metal = os.path.join(builddir, img_metal_obj['path'])
     img_metal_checksum = img_metal_obj['sha256']
+    img_metal4k_obj = buildmeta.get_artifact_meta("metal4k", unmerged=True)["images"].get("metal4k")
+    if img_metal4k_obj is None:
+        raise Exception("Live image generation requires `metal4k` image")
     img_metal4k = os.path.join(builddir, img_metal4k_obj['path'])
     img_metal4k_checksum = img_metal4k_obj['sha256']
 
@@ -266,11 +268,11 @@ def generate_iso():
 
     # Add osmet files
     tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
-    tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
     print('Generating osmet file for 512b metal image')
     run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                  img_metal, '512', tmp_osmet, img_metal_checksum,
                  'fast' if args.fast else 'normal'])
+    tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
     print('Generating osmet file for 4k metal image')
     run_verbose(['/usr/lib/coreos-assembler/osmet-pack',
                  img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
