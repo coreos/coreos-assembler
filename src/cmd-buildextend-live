@@ -366,7 +366,10 @@ def generate_iso():
             shutil.copystat(srcfile, dstfile)
             print(f'{srcfile} -> {dstfile}')
 
+    assert(karg_embed_area_length > len(cmdline))
     with open(os.path.join(tmpisoroot, '.cmdline'), 'w') as fh:
+        fh.write('#' * karg_embed_area_length)
+        fh.seek(0)
         fh.write(cmdline)
 
     # These sections are based on lorax templates
