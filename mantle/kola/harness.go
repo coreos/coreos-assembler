@@ -673,8 +673,8 @@ ExecStart=%s
 	// to make sure that we don't run out of it. Currently ppc64le and aarch64 use 64k pages.
 	switch system.RpmArch() {
 	case "ppc64le", "aarch64":
-		if targetMeta.MinMemory < 8192 {
-			targetMeta.MinMemory = 8192
+		if targetMeta.MinMemory <= 4096 {
+			targetMeta.MinMemory = targetMeta.MinMemory * 2
 		}
 	}
 
