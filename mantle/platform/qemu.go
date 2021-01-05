@@ -30,6 +30,7 @@ package platform
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -1033,6 +1034,21 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 	return nil
 }
 
+// Checks whether coreos-installer has
+// https://github.com/coreos/coreos-installer/pull/341. Can be dropped once
+// that PR is in all the cosa branches we care about.
+func coreosInstallerSupportsISOKargs() (bool, error) {
+	cmd := exec.Command("coreos-installer", "iso", "--help")
+	cmd.Stderr = os.Stderr
+	var outb bytes.Buffer
+	cmd.Stdout = &outb
+	if err := cmd.Run(); err != nil {
+		return false, errors.Wrapf(err, "running coreos-installer iso --help")
+	}
+	out := outb.String()
+	return strings.Contains(out, "kargs"), nil
+}
+
 func (builder *QemuBuilder) setupIso() error {
 	if builder.ConfigFile != "" {
 		if builder.configInjected {
@@ -1060,8 +1076,24 @@ func (builder *QemuBuilder) setupIso() error {
 		if err := instCmd.Run(); err != nil {
 			return errors.Wrapf(err, "running coreos-installer iso embed")
 		}
-		builder.iso.path = isoEmbeddedPath
 		builder.configInjected = true
+
+		if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
+			return err
+		} else if kargsSupported {
+			consoleArg := fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()])
+			instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", consoleArg, isoEmbeddedPath)
+			var stderrb bytes.Buffer
+			instCmdKargs.Stderr = &stderrb
+			if err := instCmdKargs.Run(); err != nil {
+				// Don't make this a hard error yet; we may be operating on an old
+				// live ISO
+				stderr := stderrb.String()
+				plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
+				plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
+			}
+		}
+		builder.iso.path = isoEmbeddedPath
 	}
 
 	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
