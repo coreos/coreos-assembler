@@ -168,7 +168,8 @@ func fetchURL(url string) ([]byte, error) {
 	return body, nil
 }
 
-func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
+func FetchAndParseCanonicalReleaseIndex(stream string) (*ReleaseIndex, error) {
+	url := buildHostUrl + fmt.Sprintf(canonicalReleaseIndexLocation, stream)
 	body, err := fetchURL(url)
 	if err != nil {
 		return nil, err
@@ -182,11 +183,8 @@ func FetchAndParseReleaseIndex(url string) (*ReleaseIndex, error) {
 	return index, nil
 }
 
-func FetchAndParseCanonicalReleaseIndex(stream string) (*ReleaseIndex, error) {
-	return FetchAndParseReleaseIndex(buildHostUrl + fmt.Sprintf(canonicalReleaseIndexLocation, stream))
-}
-
-func FetchAndParseStreamMetadata(url string) (*StreamMetadata, error) {
+func FetchAndParseCanonicalStreamMetadata(stream string) (*StreamMetadata, error) {
+	url := buildHostUrl + fmt.Sprintf(canonicalStreamMetadataLocation, stream)
 	body, err := fetchURL(url)
 	if err != nil {
 		return nil, err
@@ -198,10 +196,6 @@ func FetchAndParseStreamMetadata(url string) (*StreamMetadata, error) {
 	}
 
 	return meta, nil
-}
-
-func FetchAndParseCanonicalStreamMetadata(stream string) (*StreamMetadata, error) {
-	return FetchAndParseStreamMetadata(buildHostUrl + fmt.Sprintf(canonicalStreamMetadataLocation, stream))
 }
 
 func FetchCanonicalStreamArtifacts(stream, architecture string) (*StreamArtifacts, error) {
