@@ -356,7 +356,7 @@ def generate_iso():
                         raise Exception(f'Default cmdline is different: "{cmdline}" != "{file_kargs}"')
 
                     length = karg_area_end.start() + len(karg_area_end[1]) - karg_area_start.start()
-                    files_with_karg_embed_areas[filename] = karg_area_start.start()
+                    files_with_karg_embed_areas[dstfile] = karg_area_start.start()
                     if karg_embed_area_length == 0:
                         karg_embed_area_length = length
                     elif length != karg_embed_area_length:
@@ -541,6 +541,12 @@ def generate_iso():
 
         # number of karg files we allow for in the format
         MAX_KARG_FILES = 6
+
+        # prune out karg files which don't exist anymore
+        files_with_karg_embed_areas = {k: v for (k, v) in
+                                       files_with_karg_embed_areas.items() if
+                                       os.path.exists(k)}
+
         assert len(files_with_karg_embed_areas) <= MAX_KARG_FILES
 
         # these can really never change without ratcheting on the
@@ -568,7 +574,7 @@ def generate_iso():
 
             for i, fn in enumerate(files_with_karg_embed_areas):
                 offset_in_file = files_with_karg_embed_areas[fn]
-                offsets[i + 1] = file_offset_in_iso(isoinfo, fn) + offset_in_file
+                offsets[i + 1] = file_offset_in_iso(isoinfo, os.path.basename(fn)) + offset_in_file
             isofh.write(struct.pack(KARGSFMT, b'corekarg', karg_embed_area_length, *offsets))
             # Magic number + offset + length
             isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, initrd_ignition_padding))
