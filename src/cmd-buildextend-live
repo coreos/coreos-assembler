@@ -491,9 +491,10 @@ def generate_iso():
 
     run_verbose(genisoargs)
 
-    # Add MBR for x86_64 legacy (BIOS) boot when ISO is copied to a USB stick
+    # Add MBR, and GPT with ESP, for x86_64 BIOS/UEFI boot when ISO is
+    # copied to a USB stick
     if basearch == "x86_64":
-        run_verbose(['/usr/bin/isohybrid', tmpisofile])
+        run_verbose(['/usr/bin/isohybrid', '--uefi', tmpisofile])
 
     isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
                           stdout=subprocess.PIPE, text=True).stdout
