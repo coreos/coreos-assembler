@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/platform/api/aws"
 	"github.com/coreos/mantle/storage"
+	"github.com/coreos/stream-metadata-go/release"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -206,7 +206,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatal(err)
 	}
 
-	var releaseIdx fcos.ReleaseIndex
+	var releaseIdx release.Index
 	err = json.Unmarshal(data, &releaseIdx)
 	if err != nil {
 		plog.Fatalf("unmarshaling release metadata json: %v", err)
@@ -229,24 +229,24 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("reading release metadata: %v", err)
 	}
 
-	var rel fcos.Release
+	var rel release.Release
 	err = json.Unmarshal(releaseData, &rel)
 	if err != nil {
 		plog.Fatalf("unmarshaling release metadata: %v", err)
 	}
 
-	var commits []fcos.ReleaseCommit
+	var commits []release.IndexReleaseCommit
 	for arch, vals := range rel.Architectures {
-		commits = append(commits, fcos.ReleaseCommit{
+		commits = append(commits, release.IndexReleaseCommit{
 			Architecture: arch,
 			Checksum:     vals.Commit,
 		})
 	}
 
-	newIdxRelease := fcos.ReleaseIndexRelease{
-		CommitHash: commits,
-		Version:    specVersion,
-		Endpoint:   url.String(),
+	newIdxRelease := release.IndexRelease{
+		Commits:     commits,
+		Version:     specVersion,
+		MetadataURL: url.String(),
 	}
 
 	for i, rel := range releaseIdx.Releases {
@@ -255,7 +255,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 				plog.Fatalf("build is already present and is not the latest release")
 			}
 
-			comp := compareCommits(rel.CommitHash, newIdxRelease.CommitHash)
+			comp := compareCommits(rel.Commits, newIdxRelease.Commits)
 			if comp == 0 {
 				// the build is already the latest release, exit
 				return
@@ -272,23 +272,23 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	}
 
 	for _, archs := range rel.Architectures {
-		for name, media := range archs.Media {
-			if name == "aws" {
-				for region, ami := range media.Images {
-					aws_api, err := aws.New(&aws.Options{
-						CredentialsFile: awsCredentialsFile,
-						Profile:         specProfile,
-						Region:          region,
-					})
-					if err != nil {
-						plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
-					}
+		awsmedia := archs.Media.Aws
+		if awsmedia == nil {
+			continue
+		}
+		for region, ami := range awsmedia.Images {
+			aws_api, err := aws.New(&aws.Options{
+				CredentialsFile: awsCredentialsFile,
+				Profile:         specProfile,
+				Region:          region,
+			})
+			if err != nil {
+				plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
+			}
 
-					err = aws_api.PublishImage(ami.Image)
-					if err != nil {
-						plog.Fatalf("couldn't publish image in %v: %v", region, err)
-					}
-				}
+			err = aws_api.PublishImage(ami.Image)
+			if err != nil {
+				plog.Fatalf("couldn't publish image in %v: %v", region, err)
 			}
 		}
 	}
@@ -312,15 +312,15 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	}
 }
 
-func compareStaticReleaseInfo(a, b fcos.ReleaseIndexRelease) bool {
-	if a.Version != b.Version || a.Endpoint != b.Endpoint {
+func compareStaticReleaseInfo(a, b release.IndexRelease) bool {
+	if a.Version != b.Version || a.MetadataURL != b.MetadataURL {
 		return false
 	}
 	return true
 }
 
 // returns -1 if a is a subset of b, 0 if equal, 1 if a is not a subset of b
-func compareCommits(a, b []fcos.ReleaseCommit) int {
+func compareCommits(a, b []release.IndexReleaseCommit) int {
 	if len(a) > len(b) {
 		return 1
 	}
