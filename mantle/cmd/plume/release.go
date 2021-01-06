@@ -229,14 +229,14 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("reading release metadata: %v", err)
 	}
 
-	var release fcos.Release
-	err = json.Unmarshal(releaseData, &release)
+	var rel fcos.Release
+	err = json.Unmarshal(releaseData, &rel)
 	if err != nil {
 		plog.Fatalf("unmarshaling release metadata: %v", err)
 	}
 
 	var commits []fcos.ReleaseCommit
-	for arch, vals := range release.Architectures {
+	for arch, vals := range rel.Architectures {
 		commits = append(commits, fcos.ReleaseCommit{
 			Architecture: arch,
 			Checksum:     vals.Commit,
@@ -271,7 +271,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		}
 	}
 
-	for _, archs := range release.Architectures {
+	for _, archs := range rel.Architectures {
 		for name, media := range archs.Media {
 			if name == "aws" {
 				for region, ami := range media.Images {
