@@ -131,11 +131,20 @@ func New(opts *Options) (*API, error) {
 		if err != nil {
 			return nil, err
 		}
-		disk, err := fcos.GetPlatformDiskArtifact(artifacts.Metal, "raw.xz")
-		if err != nil {
-			return nil, err
+
+		metal, ok := artifacts.Artifacts["metal"]
+		if !ok {
+			return nil, fmt.Errorf("stream metadata missing metal image")
 		}
-		opts.ImageURL = disk.Location
+		f, ok := metal.Formats["raw.xz"]
+		if !ok {
+			return nil, fmt.Errorf("stream metadata missing raw.xz format")
+		}
+		d := f.Disk
+		if d == nil {
+			return nil, fmt.Errorf("stream metadata missing raw.xz format disk")
+		}
+		opts.ImageURL = d.Location
 	}
 
 	client := packngo.NewClient("github.com/coreos/coreos-assembler", opts.ApiKey, nil)
