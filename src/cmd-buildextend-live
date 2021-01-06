@@ -73,7 +73,7 @@ if not os.path.isdir(srcdir_prefix):
 workdir = os.path.abspath(os.getcwd())
 builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
-buildmeta = GenericBuildMeta(workdir=workdir)
+buildmeta = GenericBuildMeta(workdir=workdir, build=args.build)
 
 # used to lock
 build_semaphore = os.path.join(buildmeta.build_dir, ".live.building")
