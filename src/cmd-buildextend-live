@@ -347,7 +347,7 @@ def generate_iso():
             if buf != newbuf:
                 karg_area_start = re.search(r'@@KERNEL-ARGS@@', buf)
                 buf = newbuf
-                karg_area_end = re.search(r'(#+) COREOS_KARG_EMBED_AREA\n', buf)
+                karg_area_end = re.search(r'(#+)# COREOS_KARG_EMBED_AREA\n', buf)
                 if karg_area_end is not None:
                     file_kargs = buf[karg_area_start.start():karg_area_end.start()]
                     if len(cmdline) == 0:
