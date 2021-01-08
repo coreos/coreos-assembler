@@ -534,7 +534,7 @@ def generate_iso():
     #
     # Recently, we also play a similar trick for injecting kernel arguments: we
     # store the location of "karg embed areas" at the end of the System Area
-    # (in the 64 bytes before the 24 bytes for the initrd info). This is then
+    # (in the 72 bytes before the 24 bytes for the initrd info). This is then
     # picked up by `coreos-installer iso embed-kargs`.
     if basearch != "s390x":
         # size of System Area section at start of ISO9660 images
