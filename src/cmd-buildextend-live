@@ -576,7 +576,7 @@ def generate_iso():
             for i, fn in enumerate(files_with_karg_embed_areas):
                 offset_in_file = files_with_karg_embed_areas[fn]
                 offsets[i + 1] = file_offset_in_iso(isoinfo, os.path.basename(fn)) + offset_in_file
-            isofh.write(struct.pack(KARGSFMT, b'corekarg', karg_embed_area_length, *offsets))
+            isofh.write(struct.pack(KARGSFMT, b'coreKarg', karg_embed_area_length, *offsets))
             # Magic number + offset + length
             isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, initrd_ignition_padding))
             print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
