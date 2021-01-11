@@ -172,6 +172,7 @@ type Options struct {
 	Distribution    string
 	IgnitionVersion string
 	SystemdDropins  []SystemdDropin
+	Stream          string
 
 	CosaWorkdir string
 	CosaBuildId string

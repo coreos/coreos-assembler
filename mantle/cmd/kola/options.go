@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/auth"
+	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
@@ -62,6 +63,7 @@ func init() {
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
+	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
 	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")
 	// rhcos-specific options
@@ -218,6 +220,10 @@ func syncOptionsImpl(useCosa bool) error {
 
 		kola.CosaBuild = localbuild
 		foundCosa = true
+	} else if kola.Options.Stream != "" {
+		if err := syncStreamOptions(); err != nil {
+			return err
+		}
 	} else {
 		if kola.Options.CosaWorkdir == "" {
 			// specified neither --build nor --workdir; only opportunistically
@@ -318,6 +324,43 @@ func syncCosaOptions() error {
 	}
 
 	runExternals = append(runExternals, filepath.Join(kola.Options.CosaWorkdir, "src/config"))
+
+	return nil
+}
+
+// syncStreamOptions sets the underlying raw options based on a stream
+// Currently this only handles AWS to demonstrate the idea; we'll
+// add generic code to map between streams and cosa builds soon.
+func syncStreamOptions() error {
+	if kola.Options.Stream == "" {
+		return nil
+	}
+	switch kola.Options.Distribution {
+	case "":
+		return fmt.Errorf("Must specify -b/--distro with --stream")
+	case "fcos":
+		break
+	default:
+		return fmt.Errorf("Unhandled stream for distribution %s", kola.Options.Distribution)
+	}
+
+	artifacts, err := fcos.FetchStreamThisArchitecture(kola.Options.Stream)
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch stream")
+	}
+
+	release := ""
+
+	switch kolaPlatform {
+	case "aws":
+		regionimg := artifacts.Images.Aws.Regions[kola.AWSOptions.Region]
+		release = regionimg.Release
+		kola.AWSOptions.AMI = regionimg.Image
+	default:
+		return fmt.Errorf("Unhandled platform %s for stream", kolaPlatform)
+	}
+
+	fmt.Printf("Resolved stream %s for platform %s to release %s\n", kola.Options.Stream, kolaPlatform, release)
 
 	return nil
 }

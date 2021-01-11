@@ -89,6 +89,12 @@ func FetchCanonicalStreamArtifacts(stream, architecture string) (*stream.Arch, e
 	return &arch, nil
 }
 
+// FetchStreamThisArchitecture returns artifacts for the current architecture from
+// the given stream.
+func FetchStreamThisArchitecture(stream string) (*stream.Arch, error) {
+	return FetchCanonicalStreamArtifacts(stream, system.RpmArch())
+}
+
 // GetCosaBuildURL returns a URL prefix for the coreos-assembler build.
 func GetCosaBuildURL(stream, buildid string) string {
 	u := fcosinternals.GetCosaBuild(stream, buildid, system.RpmArch())
