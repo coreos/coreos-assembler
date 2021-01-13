@@ -112,7 +112,7 @@ To see test examples look under
 [kola/tests](https://github.com/coreos/coreos-assembler/blob/master/mantle/kola/tests)
 in the mantle codebase.
 
-For a quickstart see [kola/README.md](kola/README.md).
+For a quickstart see [kola/adding-tests.md](kola/adding-tests.md).
 
 ## kola native code
 
