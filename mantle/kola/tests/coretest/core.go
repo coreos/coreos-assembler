@@ -53,7 +53,7 @@ func init() {
 			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
 			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
 			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
-			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowpart, []string{"fcos"}...),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
 			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
 		},
 	})
@@ -383,36 +383,32 @@ func TestMachineID() error {
 	return nil
 }
 
-// TestRHCOSGrowpart tests whether rhcos-growpart.service was run successfully
-// and check that filesystem size has been grown to at least 15 GB.
-func TestRHCOSGrowpart() error {
-	// check that rhcos-growpart.service was run and exited normally
-	err := checkService("rhcos-growpart.service")
+func testGrowfs(size int) error {
+	// check that ignition-ostree-growfs.service was run and exited normally
+	err := checkService("ignition-ostree-growfs.service")
 	if err != nil {
 		return err
 	}
-	// check that filesystem size is >= 15 GB
-	err = checkFilesystemSize(15 * 1024 * 1024 * 1024)
+	err = checkFilesystemSize(size)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+// TestRHCOSGrowfs tests whether ignition-ostree-growfs.service was run
+// successfully and check that filesystem size has been grown to at least 15
+// GB.
+func TestRHCOSGrowfs() error {
+	// check that filesystem size is >= 15 GB
+	return testGrowfs(15 * 1024 * 1024 * 1024)
+}
+
 // TestFCOSGrowfs tests whether ignition-ostree-growfs.service was run successfully
 // and check that filesystem size has been grown to at least 7 GB.
 func TestFCOSGrowfs() error {
-	// check that ignition-ostree-growfs.service was run and exited normally
-	err := checkService("ignition-ostree-growfs.service")
-	if err != nil {
-		return err
-	}
 	// check that filesystem size is >= 7 GB
-	err = checkFilesystemSize(7 * 1024 * 1024 * 1024)
-	if err != nil {
-		return err
-	}
-	return nil
+	return testGrowfs(7 * 1024 * 1024 * 1024)
 }
 
 func checkService(unit string) error {
