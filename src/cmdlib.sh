@@ -542,6 +542,10 @@ EOF
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
     rc="$(cat "${rc_file}")"
+    # if there's a failure, we might as well provide more info to help debug
+    if [ "${rc}" != 0 ]; then
+        cat "${runvm_console}"
+    fi
     return "${rc}"
 }
 
