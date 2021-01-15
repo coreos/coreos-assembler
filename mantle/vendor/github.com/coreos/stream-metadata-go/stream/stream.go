@@ -1,8 +1,30 @@
+// Package stream models a CoreOS "stream", which is
+// a description of the recommended set of binary images for CoreOS.   Use
+// this API to find cloud images, bare metal disk images, etc.
 package stream
+
+// Stream contains artifacts available in a stream
+type Stream struct {
+	Stream        string          `json:"stream"`
+	Metadata      Metadata        `json:"metadata"`
+	Architectures map[string]Arch `json:"architectures"`
+}
 
 // Metadata for a release or stream
 type Metadata struct {
 	LastModified string `json:"last-modified"`
+}
+
+// Arch contains release details for a particular hardware architecture
+type Arch struct {
+	Artifacts map[string]PlatformArtifacts `json:"artifacts"`
+	Images    Images                       `json:"images,omitempty"`
+}
+
+// PlatformArtifacts contains images for a platform
+type PlatformArtifacts struct {
+	Release string                 `json:"release"`
+	Formats map[string]ImageFormat `json:"formats"`
 }
 
 // ImageFormat contains all artifacts for a single OS image
@@ -20,32 +42,6 @@ type Artifact struct {
 	Sha256    string `json:"sha256"`
 }
 
-// GcpImage represents a GCP cloud image
-type GcpImage struct {
-	Project string `json:"project,omitempty"`
-	Family  string `json:"family,omitempty"`
-	Name    string `json:"name,omitempty"`
-}
-
-// Stream contains artifacts available in a stream
-type Stream struct {
-	Stream        string          `json:"stream"`
-	Metadata      Metadata        `json:"metadata"`
-	Architectures map[string]Arch `json:"architectures"`
-}
-
-// Architecture release details
-type Arch struct {
-	Artifacts map[string]PlatformArtifacts `json:"artifacts"`
-	Images    Images                       `json:"images,omitempty"`
-}
-
-// PlatformArtifacts contains images for a platform
-type PlatformArtifacts struct {
-	Release string                 `json:"release"`
-	Formats map[string]ImageFormat `json:"formats"`
-}
-
 // Images contains images available in cloud providers
 type Images struct {
 	Aws *AwsImage `json:"aws,omitempty"`
@@ -61,4 +57,11 @@ type AwsImage struct {
 type AwsRegionImage struct {
 	Release string `json:"release"`
 	Image   string `json:"image"`
+}
+
+// GcpImage represents a GCP cloud image
+type GcpImage struct {
+	Project string `json:"project,omitempty"`
+	Family  string `json:"family,omitempty"`
+	Name    string `json:"name,omitempty"`
 }
