@@ -8,6 +8,7 @@ from argparse import ArgumentParser, FileType
 from datetime import datetime
 import json
 import os
+import sys
 
 from cosalib.builds import Builds
 
@@ -32,6 +33,7 @@ def get_extension(path, modifier, arch):
 parser = ArgumentParser()
 parser.add_argument("--workdir", help="cosa workdir")
 parser.add_argument("--build-id", help="build id")
+parser.add_argument("--output", help="Output to file; default is build directory")
 args = parser.parse_args()
 
 # FIXME: Remove this once https://github.com/coreos/fedora-coreos-pipeline/ is ported
@@ -54,12 +56,15 @@ def gather_buildmeta_from_workdir():
     return (base_builddir, [os.path.join(base_builddir, arch, "meta.json") for arch in arches])
 
 (builddir, archbuilds) = gather_buildmeta_from_workdir()
-release_file = os.path.join(builddir, "release.json")
 out = {}
-if os.path.exists(release_file):
-    with open(release_file, 'r') as w:
+# Default to writing into the builddir for now
+if args.output is None:
+    args.output = os.path.join(builddir, "release.json")
+# If any existing data, inherit it
+if os.path.exists(args.output):
+    with open(args.output, 'r') as w:
         out = json.load(w)
-        print(f"Using existing release file {release_file}")
+        print(f"Using existing release file {args.output}")
 
 for f in archbuilds:
     with open(f, 'r') as w:
@@ -168,6 +173,6 @@ for f in archbuilds:
                 else:
                     raise Exception("differing content detected for media type '{}'".format(media_type))
 
-with open(release_file, 'w') as w:
+with open(args.output, 'w') as w:
     json.dump(out, w)
-    print(f"Successfully wrote release file at {release_file}")
+    print(f"Successfully wrote release file at {args.output}")
