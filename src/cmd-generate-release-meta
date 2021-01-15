@@ -7,6 +7,7 @@
 from argparse import ArgumentParser
 import json
 import os
+import requests
 
 from cosalib.builds import Builds
 
@@ -35,12 +36,8 @@ parser = ArgumentParser()
 parser.add_argument("--workdir", help="cosa workdir")
 parser.add_argument("--build-id", help="build id")
 parser.add_argument("--output", help="Output to file; default is build directory")
+parser.add_argument("url", metavar='URL', help="URL to a coreos-assembler meta.json", default=[], nargs='*')
 args = parser.parse_args()
-
-# FIXME: Remove this once https://github.com/coreos/fedora-coreos-pipeline/ is ported
-# not to pass --workdir (it always uses `.` anyways)
-if args.workdir not in (None, '.'):
-    os.chdir(args.workdir)
 
 
 def gather_buildmeta_from_workdir():
@@ -53,15 +50,32 @@ def gather_buildmeta_from_workdir():
     print(f"Creating release.json for build {buildid}")
     base_builddir = f"builds/{buildid}"
     arches = builds.get_build_arches(buildid)
+    parsed_builds = []
+    for arch in arches:
+        with open(os.path.join(base_builddir, arch, "meta.json")) as f:
+            parsed_builds.append(json.load(f))
 
-    return (base_builddir, [os.path.join(base_builddir, arch, "meta.json") for arch in arches])
+    return (base_builddir, parsed_builds)
 
 
-(builddir, archbuilds) = gather_buildmeta_from_workdir()
 out = {}
-# Default to writing into the builddir for now
-if args.output is None:
-    args.output = os.path.join(builddir, "release.json")
+parsed_builds = []
+
+if len(args.url) == 0:
+    # FIXME: Remove this once https://github.com/coreos/fedora-coreos-pipeline/ is ported
+    # not to pass --workdir (it always uses `.` anyways)
+    if args.workdir not in (None, '.'):
+        os.chdir(args.workdir)
+
+    (builddir, parsed_builds) = gather_buildmeta_from_workdir()
+    # Default to writing into the builddir for now
+    if args.output is None:
+        args.output = os.path.join(builddir, "release.json")
+else:
+    for url in args.url:
+        print(f"Downloading {url}...")
+        parsed_builds.append(requests.get(url).json())
+
 # If any existing data, inherit it
 if os.path.exists(args.output):
     with open(args.output, 'r') as w:
@@ -175,9 +189,8 @@ def append_build(out, input_):
                 raise Exception("differing content detected for media type '{}'".format(media_type))
 
 
-for path in archbuilds:
-    with open(path) as f:
-        append_build(out, json.load(f))
+for build in parsed_builds:
+    append_build(out, build)
 
 with open(args.output, 'w') as w:
     json.dump(out, w)
