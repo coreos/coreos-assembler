@@ -76,8 +76,8 @@ else:
         print(f"Downloading {url}...")
         parsed_builds.append(requests.get(url).json())
 
-# If any existing data, inherit it
-if os.path.exists(args.output):
+# If any existing data, inherit it (if it's non-empty)
+if os.path.exists(args.output) and os.stat(args.output).st_size > 0:
     with open(args.output, 'r') as w:
         out = json.load(w)
         print(f"Using existing release file {args.output}")
