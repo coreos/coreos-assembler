@@ -68,112 +68,116 @@ if os.path.exists(args.output):
         out = json.load(w)
         print(f"Using existing release file {args.output}")
 
-for f in archbuilds:
-    with open(f, 'r') as w:
-        input_ = json.load(w)
 
-        arch = input_.get("coreos-assembler.basearch")
+# Append the coreos-assembler build json `input_` to `out`, the target release stream.
+def append_build(out, input_):
+    arch = input_.get("coreos-assembler.basearch")
 
-        ensure_dup(input_, out, "buildid", "release")
-        ensure_dup(input_.get('coreos-assembler.container-config-git'), out, 'branch', 'stream')
+    ensure_dup(input_, out, "buildid", "release")
+    ensure_dup(input_.get('coreos-assembler.container-config-git'), out, 'branch', 'stream')
 
-        def artifact(i):
-            base_url = url_builder(out.get('stream'), out.get('release'), arch, i.get('path'))
-            return {
-                "location": base_url,
-                "signature": "{}.sig".format(base_url),
-                "sha256": i.get("sha256")
-            }
+    def artifact(i):
+        base_url = url_builder(out.get('stream'), out.get('release'), arch, i.get('path'))
+        return {
+            "location": base_url,
+            "signature": "{}.sig".format(base_url),
+            "sha256": i.get("sha256")
+        }
 
-        print(f"{out['stream']} stream")
-        print(f"  {arch} images:")
-        # build the architectures dict
-        arch_dict = {"media": {}}
-        ensure_dup(input_, arch_dict, "ostree-commit", "commit")
-        platforms = ["aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "openstack", "qemu", "vmware", "vultr"]
-        for platform in platforms:
-            if input_.get("images", {}).get(platform, None) is not None:
-                print(f"   - {platform}")
-                i = input_.get("images").get(platform)
-                ext = get_extension(i.get('path'), platform, arch)
-                arch_dict['media'][platform] = {
-                    "artifacts": {
-                        ext: {
-                            "disk": artifact(i)
-                        }
+    print(f"{out['stream']} stream")
+    print(f"  {arch} images:")
+    # build the architectures dict
+    arch_dict = {"media": {}}
+    ensure_dup(input_, arch_dict, "ostree-commit", "commit")
+    platforms = ["aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "openstack", "qemu", "vmware", "vultr"]
+    for platform in platforms:
+        if input_.get("images", {}).get(platform, None) is not None:
+            print(f"   - {platform}")
+            i = input_.get("images").get(platform)
+            ext = get_extension(i.get('path'), platform, arch)
+            arch_dict['media'][platform] = {
+                "artifacts": {
+                    ext: {
+                        "disk": artifact(i)
                     }
                 }
-
-        # AMI specific additions
-        if input_.get("amis", None) is not None:
-            arch_dict["media"]["aws"] = arch_dict["media"].get("aws", {})
-            arch_dict["media"]["aws"]["images"] = arch_dict["media"]["aws"].get("images", {})
-            for ami_dict in input_.get("amis"):
-                arch_dict["media"]["aws"]["images"][ami_dict["name"]] = {
-                    "image": ami_dict["hvm"]
-                }
-
-        # GCP specific additions
-        if input_.get("gcp", None) is not None:
-            arch_dict["media"]["gcp"] = arch_dict["media"].get("gcp", {})
-            arch_dict["media"]["gcp"]["image"] = arch_dict["media"]["gcp"].get("image", {})
-            arch_dict["media"]["gcp"]["image"].update(input_.get("gcp", {}))
-            arch_dict["media"]["gcp"]["image"]["name"] = arch_dict["media"]["gcp"]["image"].pop("image")
-            # remove the url as we haven't decided to expose that information publicly yet
-            arch_dict["media"]["gcp"]["image"].pop("url")
-
-        # metal specific additions
-        arch_dict["media"]["metal"] = arch_dict["media"].get("metal", {})
-        arch_dict["media"]["metal"]["artifacts"] = arch_dict["media"]["metal"].get("artifacts", {})
-        i = input_.get("images", {}).get("metal4k", None)
-        if i is not None:
-            # the 4k image is kinda weird; we want it at the same level as e.g.
-            # the regular 512b image, which normally is under `raw.xz`
-            ext = get_extension(i['path'], 'metal4k', arch)
-            arch_dict["media"]["metal"]["artifacts"][f"4k.{ext}"] = {
-                "disk": artifact(i)
             }
-        i = input_.get("images", {}).get("iso", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"]["installer.iso"] = {
-                "disk": artifact(i)
-            }
-        i = input_.get("images", {}).get("kernel", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"].setdefault("installer-pxe", {})["kernel"] = artifact(i)
-        i = input_.get("images", {}).get("initramfs", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"].setdefault("installer-pxe", {})["initramfs"] = artifact(i)
-        i = input_.get("images", {}).get("live-iso", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"]["iso"] = {
-                "disk": artifact(i)
-            }
-        i = input_.get("images", {}).get("live-kernel", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["kernel"] = artifact(i)
-        i = input_.get("images", {}).get("live-initramfs", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["initramfs"] = artifact(i)
-        i = input_.get("images", {}).get("live-rootfs", None)
-        if i is not None:
-            arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["rootfs"] = artifact(i)
 
-        # if architectures as a whole or the individual arch is empty just push our changes
-        if out.get('architectures', None) is None or out['architectures'].get(arch, None) is None:
-            oa = out.get('architectures', {})
-            oa[arch] = arch_dict
-            out['architectures'] = oa
-        # else check media warning if key present, appending if not
-        else:
-            out_arch = out['architectures'][arch]
-            for media_type, val in arch_dict.get('media').items():
-                if media_type not in out_arch['media']:
-                    out['architectures'][arch]['media'].update({media_type: val})
-                elif val == out_arch['media'][media_type]:
-                    continue
-                else:
-                    raise Exception("differing content detected for media type '{}'".format(media_type))
+    # AMI specific additions
+    if input_.get("amis", None) is not None:
+        arch_dict["media"]["aws"] = arch_dict["media"].get("aws", {})
+        arch_dict["media"]["aws"]["images"] = arch_dict["media"]["aws"].get("images", {})
+        for ami_dict in input_.get("amis"):
+            arch_dict["media"]["aws"]["images"][ami_dict["name"]] = {
+                "image": ami_dict["hvm"]
+            }
+
+    # GCP specific additions
+    if input_.get("gcp", None) is not None:
+        arch_dict["media"]["gcp"] = arch_dict["media"].get("gcp", {})
+        arch_dict["media"]["gcp"]["image"] = arch_dict["media"]["gcp"].get("image", {})
+        arch_dict["media"]["gcp"]["image"].update(input_.get("gcp", {}))
+        arch_dict["media"]["gcp"]["image"]["name"] = arch_dict["media"]["gcp"]["image"].pop("image")
+        # remove the url as we haven't decided to expose that information publicly yet
+        arch_dict["media"]["gcp"]["image"].pop("url")
+
+    # metal specific additions
+    arch_dict["media"]["metal"] = arch_dict["media"].get("metal", {})
+    arch_dict["media"]["metal"]["artifacts"] = arch_dict["media"]["metal"].get("artifacts", {})
+    i = input_.get("images", {}).get("metal4k", None)
+    if i is not None:
+        # the 4k image is kinda weird; we want it at the same level as e.g.
+        # the regular 512b image, which normally is under `raw.xz`
+        ext = get_extension(i['path'], 'metal4k', arch)
+        arch_dict["media"]["metal"]["artifacts"][f"4k.{ext}"] = {
+            "disk": artifact(i)
+        }
+    i = input_.get("images", {}).get("iso", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"]["installer.iso"] = {
+            "disk": artifact(i)
+        }
+    i = input_.get("images", {}).get("kernel", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"].setdefault("installer-pxe", {})["kernel"] = artifact(i)
+    i = input_.get("images", {}).get("initramfs", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"].setdefault("installer-pxe", {})["initramfs"] = artifact(i)
+    i = input_.get("images", {}).get("live-iso", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"]["iso"] = {
+            "disk": artifact(i)
+        }
+    i = input_.get("images", {}).get("live-kernel", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["kernel"] = artifact(i)
+    i = input_.get("images", {}).get("live-initramfs", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["initramfs"] = artifact(i)
+    i = input_.get("images", {}).get("live-rootfs", None)
+    if i is not None:
+        arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["rootfs"] = artifact(i)
+
+    # if architectures as a whole or the individual arch is empty just push our changes
+    if out.get('architectures', None) is None or out['architectures'].get(arch, None) is None:
+        oa = out.get('architectures', {})
+        oa[arch] = arch_dict
+        out['architectures'] = oa
+    # else check media warning if key present, appending if not
+    else:
+        out_arch = out['architectures'][arch]
+        for media_type, val in arch_dict.get('media').items():
+            if media_type not in out_arch['media']:
+                out['architectures'][arch]['media'].update({media_type: val})
+            elif val == out_arch['media'][media_type]:
+                continue
+            else:
+                raise Exception("differing content detected for media type '{}'".format(media_type))
+
+
+for path in archbuilds:
+    with open(path) as f:
+        append_build(out, json.load(f))
 
 with open(args.output, 'w') as w:
     json.dump(out, w)
