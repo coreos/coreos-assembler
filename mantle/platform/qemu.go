@@ -68,6 +68,7 @@ type QemuMachineOptions struct {
 	MachineOptions
 	HostForwardPorts []HostForwardPort
 	DisablePDeathSig bool
+	MultiPathDisk    bool
 }
 
 // Disk holds the details of a virtual disk.
