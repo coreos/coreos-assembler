@@ -124,7 +124,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	if qc.flight.opts.Native4k {
 		sectorSize = 4096
 	}
-	multiPathDisk := qc.flight.opts.MultiPathDisk
+	multiPathDisk := options.MultiPathDisk || qc.flight.opts.MultiPathDisk
 	primaryDisk := platform.Disk{
 		BackingFile:   qc.flight.opts.DiskImage,
 		Channel:       channel,
