@@ -9,6 +9,7 @@ from datetime import datetime
 import json
 import os
 
+from cosalib.builds import Builds
 
 def ensure_dup(inp, out, inp_key, out_key):
     '''
@@ -29,39 +30,38 @@ def get_extension(path, modifier, arch):
 
 
 parser = ArgumentParser()
-parser.add_argument("--workdir", help="cosa workdir", required=True)
-parser.add_argument("--build-id", help="build id", required=False)
+parser.add_argument("--workdir", help="cosa workdir")
+parser.add_argument("--build-id", help="build id")
 args = parser.parse_args()
 
-arches = []
+# FIXME: Remove this once https://github.com/coreos/fedora-coreos-pipeline/ is ported
+# not to pass --workdir (it always uses `.` anyways)
+if args.workdir not in (None, '.'):
+    os.chdir(args.workdir)
 
-with open(os.path.join(args.workdir, "builds", "builds.json"), 'r') as build_file:
-    build_json = json.load(build_file)
-    if len(build_json.get('builds', [])) > 0:
-        individual_build = {}
-        if args.build_id is None:
-            individual_build = build_json.get('builds')[0]
-            args.build_id = individual_build.get('id')
-        else:
-            for build in build_json.get('builds'):
-                if build.get('id') == args.build_id:
-                    individual_build = build
-                    break
-        print(f"Creating release.json for build {individual_build['id']} ")
-        arches = individual_build.get('arches')
 
-outer_dir = os.path.join(args.workdir, "builds", args.build_id)
-release_file = os.path.join(outer_dir, "release.json")
+def gather_buildmeta_from_workdir():
+    builds = Builds()
+    # default to latest build if not specified
+    if args.build_id:
+        buildid = args.build
+    else:
+        buildid = builds.get_latest()
+    print(f"Creating release.json for build {buildid}")
+    base_builddir = f"builds/{buildid}"
+    arches = builds.get_build_arches(buildid)
 
+    return (base_builddir, [os.path.join(base_builddir, arch, "meta.json") for arch in arches])
+
+(builddir, archbuilds) = gather_buildmeta_from_workdir()
+release_file = os.path.join(builddir, "release.json")
 out = {}
 if os.path.exists(release_file):
     with open(release_file, 'r') as w:
         out = json.load(w)
         print(f"Using existing release file {release_file}")
 
-files = [os.path.join(outer_dir, arch, "meta.json") for arch in arches]
-
-for f in files:
+for f in archbuilds:
     with open(f, 'r') as w:
         input_ = json.load(w)
 
