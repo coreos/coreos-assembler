@@ -4,13 +4,12 @@
 # See also https://github.com/coreos/fedora-coreos-tracker/blob/master/Design.md#release-streams
 
 
-from argparse import ArgumentParser, FileType
-from datetime import datetime
+from argparse import ArgumentParser
 import json
 import os
-import sys
 
 from cosalib.builds import Builds
+
 
 def ensure_dup(inp, out, inp_key, out_key):
     '''
@@ -18,13 +17,15 @@ def ensure_dup(inp, out, inp_key, out_key):
     to be equal to the inp dictionaries inp_key value, if it does exist
     ensure the values are equal between the two dictionaries
     '''
-    if out.get(out_key, None) == None:
+    if out.get(out_key, None) is None:
         out[out_key] = inp.get(inp_key)
     if out.get(out_key) != inp.get(inp_key):
         raise Exception("Input Files do not appear to be for the same release")
 
+
 def url_builder(stream, version, arch, path):
     return f"https://builds.coreos.fedoraproject.org/prod/streams/{stream}/builds/{version}/{arch}/{path}"
+
 
 def get_extension(path, modifier, arch):
     return path.rsplit(f'{modifier}.{arch}')[1][1:]
@@ -54,6 +55,7 @@ def gather_buildmeta_from_workdir():
     arches = builds.get_build_arches(buildid)
 
     return (base_builddir, [os.path.join(base_builddir, arch, "meta.json") for arch in arches])
+
 
 (builddir, archbuilds) = gather_buildmeta_from_workdir()
 out = {}
