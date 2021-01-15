@@ -107,6 +107,9 @@ github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbp
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/coreos/stream-metadata-go v0.0.0-20210107232620-d808ce9d237c h1:7VO10dpKljeaYJUQtObhqjNxpuTCUDELTviJsGy9OeM=
 github.com/coreos/stream-metadata-go v0.0.0-20210107232620-d808ce9d237c/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
+github.com/coreos/stream-metadata-go v0.0.0-20210112152733-52b38c241a3d h1:a65dhEcT+kL9Bf5pDpdoOMdT5w0VjwUXE+XO2MoFuSg=
+github.com/coreos/stream-metadata-go v0.0.0-20210115160721-ba77d4e64952 h1:t7IgMcyflINfXWPISnHTXwa/F+NxLgWGRGejoyfHUII=
+github.com/coreos/stream-metadata-go v0.0.0-20210115160721-ba77d4e64952/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
 github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068 h1:y2aHj7QqyAJ6YBBONTAr17YxHHiogDkYnTsJvFNhxwY=
 github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068/go.mod h1:E+6hug9bFSe0KZ2ZAzr8M9F5JlArJjv5D1JS7KSkPKE=
 github.com/coreos/vcontext v0.0.0-20201120045928-b0e13dab675c h1:jA28WeORitsxGFVWhyWB06sAG2HbLHPQuHwDydhU2CQ=
