@@ -386,7 +386,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 		if t.pxe.pxeimagepath == "" {
 			kernelpath := filepath.Join(t.builddir, t.kern.kernel)
 			initrdpath := filepath.Join(t.builddir, t.kern.initramfs)
-			err := exec.Command("/usr/share/s390-tools/netboot/mk-s390image", kernelpath, "-r", initrdpath,
+			err := exec.Command("/usr/bin/mk-s390image", kernelpath, "-r", initrdpath,
 				"-p", filepath.Join(pxeconfigdir, "default"), filepath.Join(t.tftpdir, pxeimages[0])).Run()
 			if err != nil {
 				return err
