@@ -14,7 +14,7 @@ nav_order: 2
 The following schema summarize the build process used with COSA to build Fedora
 CoreOS:
 
-<img src="../build-process.svg?sanitize=true">
+<img src="./build-process.svg?sanitize=true">
 
 See [Updating the build process SVG](build-process-mermaid.md) to update this
 schema.
