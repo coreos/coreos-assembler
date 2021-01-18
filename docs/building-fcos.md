@@ -14,7 +14,11 @@ nav_order: 2
 The following schema summarize the build process used with COSA to build Fedora
 CoreOS:
 
-<img src="./build-process.svg?sanitize=true">
+<!-- The path to this SVG is fixed here to make sure that it is correctly
+displayed both on the coreos.github.io website rendered by Jekyll and on
+github.com while browsing the repository view. The main downside here is that
+this will not be updated for branches -->
+<img src="https://coreos.github.io/coreos-assembler/build-process.svg?sanitize=true">
 
 See [Updating the build process SVG](build-process-mermaid.md) to update this
 schema.

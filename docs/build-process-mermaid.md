@@ -5,7 +5,11 @@ nav_exclude: true
 
 # Guide to update the build process SVG
 
-<img src="../build-process.svg?sanitize=true">
+<!-- The path to this SVG is fixed here to make sure that it is correctly
+displayed both on the coreos.github.io website rendered by Jekyll and on
+github.com while browsing the repository view. The main downside here is that
+this will not be updated for branches -->
+<img src="https://coreos.github.io/coreos-assembler/build-process.svg?sanitize=true">
 
 - Go to [mermaid-live-editor](https://mermaidjs.github.io/mermaid-live-editor)
 - Copy paste script:
