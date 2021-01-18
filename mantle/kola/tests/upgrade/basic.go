@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	mantleUtil "github.com/coreos/mantle/util"
 )
 
 const ostreeRepo = "/srv/ostree"
@@ -305,32 +306,25 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 	}
 }
 
-// getZincatiMetrics retrieves service metrics from Zincati over the local
-// Unix socket.
-func getZincatiMetrics(c cluster.TestCluster, m platform.Machine) string {
-	// do this in a loop in case it was just started and hasn't created the
-	// socket yet.
-	for i := 0; i < 10; i++ {
-		if _, err := c.SSHf(m, "test -S %s", zincatiMetricsSocket); err == nil {
-			break
-		}
-		time.Sleep(time.Second)
-	}
-	// either it exists, or we fail trying now
-	return string(c.MustSSHf(m, "sudo socat - UNIX-CONNECT:%s", zincatiMetricsSocket))
-}
-
 // ensureZincatiUpdatesEnabled checks Zincati metrics to make sure that
 // auto-updates logic is enabled.
 func ensureZincatiUpdatesEnabled(c cluster.TestCluster, m platform.Machine) error {
-	for i := 0; i < 10; i++ {
-		metrics := getZincatiMetrics(c, m)
-		if strings.Contains(metrics, "zincati_update_agent_updates_enabled 1") {
+	metricsCheck := func() error {
+		metrics, err := c.SSHf(m, "sudo socat - UNIX-CONNECT:%s", zincatiMetricsSocket)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(metrics), "zincati_update_agent_updates_enabled 1") {
 			return nil
 		}
-		time.Sleep(time.Second)
+		return errors.New("failed to find 'zincati_update_agent_updates_enabled 1' on Zincati metrics.promsock")
 	}
-	return errors.New("failed to find 'zincati_update_agent_updates_enabled 1' on Zincati metrics.promsock")
+
+	if err := mantleUtil.Retry(120, time.Second, metricsCheck); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
