@@ -11,6 +11,8 @@ import requests
 
 from cosalib.builds import Builds
 
+FCOS_STREAM_ENDPOINT = "https://builds.coreos.fedoraproject.org/prod/streams"
+
 
 def ensure_dup(inp, out, inp_key, out_key):
     '''
@@ -36,7 +38,7 @@ parser = ArgumentParser()
 parser.add_argument("--workdir", help="cosa workdir")
 parser.add_argument("--build-id", help="build id")
 parser.add_argument("--stream-name", help="Override the stream ID (default is derived from coreos-assembler)")
-parser.add_argument("--stream-baseurl", help="Prefix URL for stream content", default="https://builds.coreos.fedoraproject.org/prod/streams")
+parser.add_argument("--stream-baseurl", help="Prefix URL for stream content", default=FCOS_STREAM_ENDPOINT)
 parser.add_argument("--output", help="Output to file; default is build directory")
 parser.add_argument("url", metavar='URL', help="URL to a coreos-assembler meta.json", default=[], nargs='*')
 args = parser.parse_args()
