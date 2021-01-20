@@ -197,38 +197,10 @@ See this [Stack Overflow question](https://stackoverflow.com/questions/26028971/
 
 ## Running CoreOS Assembler in OpenShift on Google Compute Platform
 
-This is a guide to run a COSA pod in an OpenShift 4.2+ cluster in Google
+This is a guide to run a COSA pod in an OpenShift 4.6+ cluster in Google
 Compute Platform (GCP).
 
-First, stand up a 4.2+ devel cluster in GCP.
-
-Find the RHCOS image created by the installer (I browsed in the console, but
-you can also use the `gcloud` CLI).  The image name will start with
-a prefix of your cluster name.
-
-Follow [the nested virt instructions](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances) to create a new "blessed" image with the license:
-
-```
-gcloud compute images create walters-rhcos-nested-virt \
-                                   --source-image walter-f57qc-rhcos-image --source-image-project openshift-gce-devel \
-                                   --licenses "https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx"
-```
-
-One of the powerful advantages of OpenShift 4 is the machine API - you can dynamically reconfigure the workers
-by editing a custom resource.
-
-There are two approaches; you can [edit the existing machinesets](https://docs.openshift.com/container-platform/4.1/machine_management/modifying-machineset.html)
-or create a new one.
-
-Either way you choose, change the disk image:
-
-```
-          disks:
-          - ...
-            image: walters-rhcos-nested-virt
-```
-
-[Install the KVM device plugin](https://github.com/kubevirt/kubernetes-device-plugins/blob/master/docs/README.kvm.md) from KubeVirt.
+[Install the KVM device plugin](https://github.com/cgwalters/kvm-device-plugin).
 
 Up to this point, you needed to be `kubeadmin`.
 From this point on though, best practice is to switch to an "unprivileged" user.
