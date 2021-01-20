@@ -104,7 +104,8 @@ def append_build(out, input_):
         return {
             "location": base_url,
             "signature": "{}.sig".format(base_url),
-            "sha256": i.get("sha256")
+            "sha256": i.get("sha256"),
+            "uncompressed-sha256": i.get("uncompressed-sha256")
         }
 
     print(f"{out['stream']} stream")

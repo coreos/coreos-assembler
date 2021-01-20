@@ -9,9 +9,10 @@ func mapArtifact(ra *Artifact) *stream.Artifact {
 		return nil
 	}
 	return &stream.Artifact{
-		Location:  ra.Location,
-		Signature: ra.Signature,
-		Sha256:    ra.Sha256,
+		Location:           ra.Location,
+		Signature:          ra.Signature,
+		Sha256:             ra.Sha256,
+		UncompressedSha256: ra.UncompressedSha256,
 	}
 }
 
