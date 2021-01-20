@@ -19,7 +19,7 @@ require (
 	github.com/coreos/ignition/v2 v2.9.0
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
-	github.com/coreos/stream-metadata-go v0.0.0-20210115160721-ba77d4e64952
+	github.com/coreos/stream-metadata-go v0.0.0-20210120211222-7575c72c6f05
 	github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 // indirect
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0
