@@ -56,7 +56,9 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 	if streamBaseURL != "" {
 		childArgs = append(childArgs, "--stream-baseurl="+streamBaseURL)
 	}
-	childArgs = append(childArgs, args...)
+	for _, arg := range args {
+		childArgs = append(childArgs, fmt.Sprintf("--url="+arg))
+	}
 	c := exec.Command("cosa", childArgs...)
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
