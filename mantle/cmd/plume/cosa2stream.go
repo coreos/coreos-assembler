@@ -48,37 +48,47 @@ func init() {
 }
 
 func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
-	releaseTmpf, err := ioutil.TempFile("", "release")
-	if err != nil {
-		return err
-	}
-	childArgs := []string{"generate-release-meta", "--stream-name=" + streamName, "--output=" + releaseTmpf.Name()}
+	childArgs := []string{"generate-release-meta", "--stream-name=" + streamName}
 	if streamBaseURL != "" {
 		childArgs = append(childArgs, "--stream-baseurl="+streamBaseURL)
 	}
-	for _, arg := range args {
-		childArgs = append(childArgs, fmt.Sprintf("--url="+arg))
-	}
-	c := exec.Command("cosa", childArgs...)
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
-		return err
-	}
 
-	var rel release.Release
-	buf, err := ioutil.ReadAll(releaseTmpf)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(buf, &rel); err != nil {
-		return err
+	streamArches := make(map[string]stream.Arch)
+	for _, arg := range args {
+		releaseTmpf, err := ioutil.TempFile("", "release")
+		if err != nil {
+			return err
+		}
+		cosaArgs := append([]string{}, childArgs...)
+		cosaArgs = append(cosaArgs, []string{fmt.Sprintf("--url=" + arg), "--output=" + releaseTmpf.Name()}...)
+		c := exec.Command("cosa", cosaArgs...)
+		c.Stderr = os.Stderr
+		if err := c.Run(); err != nil {
+			return err
+		}
+
+		var rel release.Release
+		buf, err := ioutil.ReadAll(releaseTmpf)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(buf, &rel); err != nil {
+			return err
+		}
+		relarches := rel.ToStreamArchitectures()
+		for arch, relarchdata := range relarches {
+			if _, ok := streamArches[arch]; ok {
+				return fmt.Errorf("Duplicate architecture %s", arch)
+			}
+			streamArches[arch] = relarchdata
+		}
 	}
 
 	// Generate output stream from release
 	outStream := stream.Stream{
 		Stream:        streamName,
 		Metadata:      stream.Metadata{LastModified: time.Now().UTC().Format(time.RFC3339)},
-		Architectures: rel.ToStreamArchitectures(),
+		Architectures: streamArches,
 	}
 
 	// Serialize to JSON
