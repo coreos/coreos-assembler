@@ -1,27 +1,16 @@
 // Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
 
-pod(image: 'registry.fedoraproject.org/fedora:33', runAsUser: 0, kvm: true, memory: "10Gi") {
+// Build coreos-assembler image and create
+// an imageStream for it
+def imageName = buildImage()
+
+pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     checkout scm
-
-    stage("Build") {
-        shwrap("""
-            dnf install -y git
-            git submodule update --init
-            ./build.sh
-            rpm -qa | sort > rpmdb.txt
-        """)
-        archiveArtifacts artifacts: 'rpmdb.txt'
-    }
-
-    stage("Unit Test") {
-        shwrap("""
-            make check
-            make unittest
-        """)
-    }
-
     stage("Build FCOS") {
-        shwrap("chown builder: /srv")
+
+        shwrap("rpm -qa | sort > rpmdb.txt")
+        archiveArtifacts artifacts: 'rpmdb.txt'
+
         // just split into separate invocations to make it easier to see where it fails
         cosa_cmd("init https://github.com/coreos/fedora-coreos-config")
         cosa_cmd("fetch --strict")
