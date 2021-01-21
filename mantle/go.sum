@@ -112,6 +112,7 @@ github.com/coreos/stream-metadata-go v0.0.0-20210115160721-ba77d4e64952 h1:t7IgM
 github.com/coreos/stream-metadata-go v0.0.0-20210115160721-ba77d4e64952/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
 github.com/coreos/stream-metadata-go v0.0.0-20210120211222-7575c72c6f05 h1:GXgmcV54WyU3LDXRwf3vXtgkmajMHoYfQ/qCuPblr4A=
 github.com/coreos/stream-metadata-go v0.0.0-20210120211222-7575c72c6f05/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
+github.com/coreos/stream-metadata-go v0.0.0-20210121193119-2fbf8747cee7 h1:6LNM7FalzC7155uc5ecuUmD1x70QsOexZYGVHnLc4OE=
 github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068 h1:y2aHj7QqyAJ6YBBONTAr17YxHHiogDkYnTsJvFNhxwY=
 github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068/go.mod h1:E+6hug9bFSe0KZ2ZAzr8M9F5JlArJjv5D1JS7KSkPKE=
 github.com/coreos/vcontext v0.0.0-20201120045928-b0e13dab675c h1:jA28WeORitsxGFVWhyWB06sAG2HbLHPQuHwDydhU2CQ=
