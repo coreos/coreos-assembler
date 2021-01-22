@@ -79,11 +79,12 @@ func (ws *workSpec) Marshal() ([]byte, error) {
 
 // Exec executes the work spec tasks.
 func (ws *workSpec) Exec(ctx ClusterContext) error {
+	apiBuild = ws.APIBuild
 	envVars := os.Environ()
 
 	// Check stdin for binary input
 	inF, err := recieveInputBinary()
-	if err == nil {
+	if err == nil && inF != "" {
 		log.WithField("file", inF).Info("Worker recieved binary input")
 
 		f, err := os.Open(inF)
@@ -146,7 +147,6 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		}
 	}
 
-	apiBuild = ws.APIBuild
 	if apiBuild != nil {
 		bc := apiBuild.Annotations[buildapiv1.BuildConfigAnnotation]
 		bn := apiBuild.Annotations[buildapiv1.BuildNumberAnnotation]
