@@ -15,25 +15,17 @@
 package system
 
 import (
-	"fmt"
 	"runtime"
+
+	"github.com/coreos/stream-metadata-go/arch"
 )
 
 // RpmArch returns the architecture in RPM terms.
 func RpmArch() string {
-	goarch := runtime.GOARCH
-	switch goarch {
-	case "amd64":
-		return "x86_64"
-	case "arm64":
-		return "aarch64"
-	case "ppc64le", "s390x":
-		return goarch
-	default:
-		panic(fmt.Sprintf("RpmArch: No mapping defined for GOARCH %s", goarch))
-	}
+	return arch.CurrentRpmArch()
 }
 
+// PortageArch returns the Gentoo portage architecture
 func PortageArch() string {
 	arch := runtime.GOARCH
 	switch arch {
