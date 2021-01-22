@@ -20,10 +20,10 @@ def ensure_dup(inp, out, inp_key, out_key):
     to be equal to the inp dictionaries inp_key value, if it does exist
     ensure the values are equal between the two dictionaries
     '''
-    if out.get(out_key, None) is None:
-        out[out_key] = inp.get(inp_key)
-    if out.get(out_key) != inp.get(inp_key):
-        raise Exception("Input Files do not appear to be for the same release")
+    inv = inp.get(inp_key)
+    v = out.setdefault(out_key, inv)
+    if v != inv:
+        raise Exception(f"Input Files do not appear to be for the same release ({v} != {inv})")
 
 
 def url_builder(stream, version, arch, path):
