@@ -145,6 +145,14 @@ def append_build(out, input_):
         # remove the url as we haven't decided to expose that information publicly yet
         arch_dict["media"]["gcp"]["image"].pop("url")
 
+    # Azure: https://github.com/coreos/stream-metadata-go/issues/13
+    inputaz = input_.get("azure")
+    if inputaz is not None:
+        rhcosext = arch_dict.setdefault("rhel-coreos-extensions", {})
+        rhcosext["azure-disk"] = {
+            "url": inputaz["url"]
+        }
+
     # metal specific additions
     arch_dict["media"]["metal"] = arch_dict["media"].get("metal", {})
     arch_dict["media"]["metal"]["artifacts"] = arch_dict["media"]["metal"].get("artifacts", {})
