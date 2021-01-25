@@ -79,14 +79,9 @@ getconfig_def() {
     jq -re .'"'$k'"'//'"'${default}'"' < ${config}
 }
 
-# First parse the old luks_rootfs flag (a custom "stringified bool")
-if test "$(getconfig luks_rootfs)" = "yes"; then
-    rootfs_type=luks
-else
-    rootfs_type=$(getconfig rootfs)
-fi
+rootfs_type=$(getconfig rootfs)
 case "${rootfs_type}" in
-    xfs|ext4verity|luks|btrfs) ;;
+    xfs|ext4verity|btrfs) ;;
     *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;
 esac
 
@@ -160,48 +155,6 @@ esac
 udevtrig
 
 root_dev="${disk}${ROOTPN}"
-if [ "${rootfs_type}" = "luks" ]; then
-    root_dev=/dev/mapper/crypt_root
-    sgdisk -c ${ROOTPN}:luks_root "${disk}"
-
-    touch tmp.key
-    # Create the LUKS partition using the null_cipher and a sentinal
-    # UUID similiar to the one used by coreos-gpt-setup. This is used
-    # by ignition-dracut-reecrypt.  We use argon2i as it's the cryptsetup
-    # default today, but explicitly specify just 512Mb in order to support
-    # booting on smaller systems.
-    cryptsetup luksFormat \
-        -q \
-        --type luks2 \
-        --pbkdf argon2i \
-        --pbkdf-memory 524288 \
-        --label="crypt_rootfs" \
-        --cipher=cipher_null \
-        --key-file=tmp.key \
-        --uuid='00000000-0000-4000-a000-000000000002' \
-        "${disk}${ROOTPN}"
-
-    # 'echo ""' acts as a test that you can use an empty
-    # password. You can actually use _any_ string.
-    echo "" | cryptsetup luksOpen \
-        --allow-discards \
-        "${disk}${ROOTPN}" crypt_root \
-        --key-file=-
-
-    udevtrig
-
-    cryptsetup token import \
-        "${disk}${ROOTPN}" \
-        --token-id 9 \
-        --key-slot=0 \
-        <<<'{"type": "coreos", "keyslots": ["0"], "key": "", "ostree_ref": "'${ref}'"}'
-
-    # This enabled discards, which is probably not a great idea for
-    # those avoiding three-letter acronyms. For the vast majority of users
-    # this is fine. See warning at:
-    # https://gitlab.com/cryptsetup/cryptsetup/wikis/FrequentlyAskedQuestions
-    extrakargs="${extrakargs} rd.luks.options=discard"
-fi
 
 bootargs=
 case "${bootfs}" in
@@ -235,7 +188,7 @@ case "${rootfs_type}" in
     btrfs)
         mkfs.btrfs -L root "${root_dev}" -U "${rootfs_uuid}"
         ;;
-    xfs|luks|"")
+    xfs|"")
         mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
         ;;
     *)

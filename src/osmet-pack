@@ -54,24 +54,9 @@ coreinst=${1:-}
 
 set -x
 
-# Also hardcoded in redhat-coreos/.../coreos-cryptfs
-rhcos_luks_header_size_sectors=32768
-
 mkdir -p /sysroot
 rootfs=/dev/disk/by-id/virtio-osmet-part4
-roottype=$(blkid -p -s TYPE -o value "${rootfs}")
-real_rootdev=
-if [ "${roottype}" = "crypto_LUKS" ]; then
-  dev_size=$(($(blockdev --getsize ${rootfs}) - rhcos_luks_header_size_sectors))
-  # Unlike coreos-cryptfs we use the concise syntax which allows us to mark the blockdev
-  # as read-only, which is required for XFS to actually honor `-o ro` not replaying
-  # the journal.
-  dmsetup create --concise "rhcos-luks-root-nocrypt,,,ro,0 ${dev_size} linear ${rootfs} ${rhcos_luks_header_size_sectors}"
-  mount -o ro /dev/disk/by-label/root /sysroot
-  real_rootdev="${rootfs},${rhcos_luks_header_size_sectors}"
-else
-  mount -o ro "${rootfs}" /sysroot
-fi
+mount -o ro "${rootfs}" /sysroot
 osname=$(ls /sysroot/ostree/deploy)
 deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1 -type d)
 # shellcheck disable=SC1090
@@ -97,7 +82,6 @@ esac
 RUST_BACKTRACE=full ${coreinst} osmet pack /dev/disk/by-id/virtio-osmet \
     --description "${description}" \
     --checksum "${checksum}" \
-    ${real_rootdev:+--real-rootdev ${real_rootdev}} \
     --output /tmp/osmet.bin $fast
 
 mv /tmp/osmet.bin "${osmet_dest}"
