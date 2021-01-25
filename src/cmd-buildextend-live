@@ -43,7 +43,6 @@ live_exclude_kargs = set([
     'console',               # no serial console by default on ISO
     'ignition.platform.id',  # we hardcode "metal"
     'ostree',                # dracut finds the tree automatically
-    'rhcos.root',            # This one is set in RHCOS for the legacy LUKS path
 ])
 
 # Parse args and dispatch

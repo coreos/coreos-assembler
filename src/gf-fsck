@@ -28,10 +28,6 @@ for pt in $partitions; do
 done
 
 # And fsck the main rootfs
-rootfstype=$(coreos_gf vfs-type /dev/sda4)
-if [ "${rootfstype}" = "crypto_LUKS" ]; then
-    coreos_gf luks-open /dev/sda4 luks-00000000-0000-4000-a000-000000000002
-fi
 root=$(coreos_gf findfs-label root)
 coreos_gf debug sh "fsck.xfs -f -n ${root}"
 
