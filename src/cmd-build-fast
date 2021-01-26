@@ -73,7 +73,8 @@ fi
 # Depends https://github.com/ostreedev/ostree/pull/2041/commits/b3bbbd154225e81980546b2c0b5ed98714830696
 if ! ostree --repo="${tmprepo}" commit -b "${ref}" --base="${previous_commit}" --tree=dir="${rootfsoverrides}" \
     --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs \
-    --add-metadata-string=version="${version}" --fsync=0 "${commit_args[@]}"; then
+    --add-metadata-string=version="${version}" --parent="${previous_commit}" --keep-metadata='coreos-assembler.basearch' \
+    --keep-metadata='fedora-coreos.stream' --fsync=0 "${commit_args[@]}"; then
     restore_etc
     exit 1
 fi
