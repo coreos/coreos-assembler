@@ -71,6 +71,16 @@ type QemuMachineOptions struct {
 	MultiPathDisk    bool
 }
 
+// QEMUMachine represents a qemu instance.
+type QEMUMachine interface {
+	// Embedding the Machine interface
+	Machine
+
+	// RemovePrimaryBlockDevice removes the primary device from a given qemu
+	// instance and sets the secondary device as primary.
+	RemovePrimaryBlockDevice() error
+}
+
 // Disk holds the details of a virtual disk.
 type Disk struct {
 	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
@@ -241,7 +251,7 @@ func (inst *QemuInstance) Destroy() {
 // Currently effective on aarch64: switches the boot order to boot from disk on reboot. For s390x and aarch64, bootindex
 // is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
 // would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
-func (inst *QemuInstance) SwitchBootOrder() (err error) {
+func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 	if system.RpmArch() != "s390x" && system.RpmArch() != "aarch64" {
 		//Not applicable for other arches
 		return nil
@@ -256,10 +266,10 @@ func (inst *QemuInstance) SwitchBootOrder() (err error) {
 
 	defer func() {
 		e := monitor.Disconnect()
-		if err != nil {
-			err = fmt.Errorf("%v; %v", err, e)
+		if err2 != nil {
+			err2 = fmt.Errorf("%v; %v", err2, e)
 		} else {
-			err = e
+			err2 = e
 		}
 	}()
 	devs, err := listQMPDevices(monitor, inst.tempdir)
@@ -303,6 +313,64 @@ func (inst *QemuInstance) SwitchBootOrder() (err error) {
 	if err := setBootIndexForDevice(monitor, blkdev, 1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for blkdev")
 	}
+	return nil
+}
+
+// RemovePrimaryBlockDevice deletes the primary device from a qemu instance
+// and sets the seconday device as primary. It expects that all block devices
+// are mirrors.
+func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
+	var primaryDevice string
+	var secondaryDevicePath string
+	monitor, err := newQMPMonitor(inst.tempdir)
+	if err != nil {
+		return errors.Wrapf(err, "Could not connect to QMP device")
+	}
+	if err := monitor.Connect(); err != nil {
+		return errors.Wrapf(err, "Could not connect to QMP device")
+	}
+
+	defer func() {
+		e := monitor.Disconnect()
+		if err2 != nil {
+			err2 = fmt.Errorf("%v; %v", err, e)
+		} else {
+			err2 = e
+		}
+	}()
+	blkdevs, err := listQMPBlkDevices(monitor, inst.tempdir)
+	if err != nil {
+		return errors.Wrapf(err, "Could not list block devices through qmp")
+	}
+	// This tries to identify the primary device by looking into a `BackingFileDepth`
+	// parameter of a device and check if it is a removable device and part of
+	// `virtio-blk-pci` devices.
+	for _, dev := range blkdevs.Return {
+		if !dev.Removable && strings.Contains(dev.DevicePath, "virtio-backend") {
+			if dev.Inserted.BackingFileDepth == 1 {
+				primaryDevice = dev.DevicePath
+			} else {
+				secondaryDevicePath = dev.DevicePath
+			}
+		}
+	}
+	err = setBootIndexForDevice(monitor, primaryDevice, -1)
+	if err != nil {
+		return errors.Wrapf(err, "Could not set bootindex for %v", primaryDevice)
+	}
+	primaryDevice = primaryDevice[:strings.LastIndex(primaryDevice, "/")]
+	err = deleteBlockDevice(monitor, primaryDevice)
+	if err != nil {
+		return errors.Wrapf(err, "Could not delete primary device %v", primaryDevice)
+	}
+	if len(secondaryDevicePath) == 0 {
+		return errors.Wrapf(err, "Could not find secondary device")
+	}
+	err = setBootIndexForDevice(monitor, secondaryDevicePath, 1)
+	if err != nil {
+		return errors.Wrapf(err, "Could not set bootindex for  %v", secondaryDevicePath)
+	}
+
 	return nil
 }
 

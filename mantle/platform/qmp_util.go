@@ -40,6 +40,10 @@ type QOMBlkDev struct {
 	Return []struct {
 		Device     string `json:"device"`
 		DevicePath string `json:"qdev"`
+		Removable  bool   `json:"removable"`
+		Inserted   struct {
+			BackingFileDepth int `json:"backing_file_depth"`
+		} `json:"inserted"`
 	} `json:"return"`
 }
 
@@ -93,6 +97,15 @@ func listQMPBlkDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMBlkDev,
 // Set the bootindex for the particular device
 func setBootIndexForDevice(monitor *qmp.SocketMonitor, device string, bootindex int) error {
 	cmd := fmt.Sprintf(`{ "execute":"qom-set", "arguments": { "path":"%s", "property":"bootindex", "value":%d } }`, device, bootindex)
+	if _, err := monitor.Run([]byte(cmd)); err != nil {
+		return errors.Wrapf(err, "Running QMP command")
+	}
+	return nil
+}
+
+// Delete a block device for the particular qemu instance
+func deleteBlockDevice(monitor *qmp.SocketMonitor, device string) error {
+	cmd := fmt.Sprintf(`{ "execute": "device_del", "arguments": { "id":"%s" } }`, device)
 	if _, err := monitor.Run([]byte(cmd)); err != nil {
 		return errors.Wrapf(err, "Running QMP command")
 	}

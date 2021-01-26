@@ -112,3 +112,7 @@ func (m *machine) JournalOutput() string {
 	}
 	return string(data)
 }
+
+func (m *machine) RemovePrimaryBlockDevice() error {
+	return m.inst.RemovePrimaryBlockDevice()
+}
