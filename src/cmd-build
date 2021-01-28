@@ -271,7 +271,8 @@ fi
 if test -n "${previous_commit}"; then
     extra_compose_args+=(--previous-commit "${previous_commit}")
 fi
-RUNVM_NONET=1 runcompose --cache-only ${FORCE} --add-metadata-from-json "${commitmeta_input_json}" \
+RUNVM_NONET=1 runcompose_tree --cache-only ${FORCE} \
+           --add-metadata-from-json "${commitmeta_input_json}" \
            --write-composejson-to "${composejson}" \
            --ex-write-lockfile-to "${lockfile_out}".tmp \
            "${extra_compose_args[@]}"

@@ -369,26 +369,34 @@ EOF
 # such as `--repo` (which is auto-derived from the builddir) and
 # `--unified-core` that we always want.  Also dispatches to supermin if
 # we're running without support for nested containerization.
-runcompose() {
+runcompose_tree() {
     local tmp_overridesdir=${TMPDIR}/override
-
     if [ -f "${tmp_overridesdir}/local-overrides.json" ]; then
         # we need our overrides to be at the end of the list
         set - "$@" --ex-lockfile="${tmp_overridesdir}/local-overrides.json"
     fi
+    impl_rpmostree_compose tree --unified-core "${manifest}" "$@"
+    if has_privileges; then
+        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
+    fi
+}
+
+impl_rpmostree_compose() {
+    local cmd=$1; shift
+    local workdir=${workdir:-$(pwd)}
+    local repo=${tmprepo:-${workdir}/tmp/repo}
 
     rm -f "${changed_stamp}"
     # shellcheck disable=SC2086
-    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${tmprepo}" \
-            --cachedir="${workdir}"/cache --touch-if-changed "${changed_stamp}" \
-            --unified-core "${manifest}" ${COSA_RPMOSTREE_ARGS:-} "$@"
+    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose "${cmd}" --repo="${repo}" \
+            --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
+            ${COSA_RPMOSTREE_ARGS:-} "$@"
 
     echo "Running: $*"
 
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
         sudo -E "$@"
-        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
         # "cache2" has an explicit label so we can find it in qemu easily
         if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
