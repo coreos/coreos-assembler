@@ -381,6 +381,14 @@ runcompose_tree() {
     fi
 }
 
+runcompose_extensions() {
+    local outputdir=$1; shift
+    impl_rpmostree_compose extensions "$@" --output-dir "$outputdir"
+    if has_privileges; then
+        sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
+    fi
+}
+
 impl_rpmostree_compose() {
     local cmd=$1; shift
     local workdir=${workdir:-$(pwd)}

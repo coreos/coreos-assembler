@@ -186,6 +186,7 @@ var generatedSchemaJSON = `{
    "ibmcloud",
    "images",
    "oscontainer",
+   "extensions",
    "parent-pkgdiff",
    "pkgdiff",
    "release-payload",
@@ -523,6 +524,41 @@ var generatedSchemaJSON = `{
      "type":"object",
      "title":"Oscontainer",
      "$ref": "#/definitions/image"
+    },
+   "extensions": {
+     "$id":"#/properties/extensions",
+     "type":"object",
+     "title":"Extensions",
+     "required": [
+         "path",
+         "sha256",
+         "rpm-ostree-state",
+         "manifest"
+     ],
+     "properties": {
+       "path": {
+         "$id": "#/artifact/Path",
+         "type":"string",
+         "title":"Path"
+        },
+       "sha256": {
+         "$id": "#/artifact/sha256",
+         "type":"string",
+         "title":"SHA256"
+        },
+       "rpm-ostree-state": {
+         "$id":"#/properties/extensions/items/properties/rpm-ostree-state",
+         "type":"string",
+         "title":"RpmOstreeState",
+         "default":"",
+         "minLength": 64
+        },
+       "manifest": {
+         "$id":"#/properties/extensions/items/properties/manifest",
+         "type":"object",
+         "title":"Manifest"
+       }
+      }
     },
    "ostree-commit": {
      "$id":"#/properties/ostree-commit",

@@ -33,6 +33,8 @@ retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
                       retry_if_exception_type(IncompleteReadError) |
                       retry_if_exception_type(ReadTimeoutError))
 
+THISDIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def retry_callback(retry_state):
     print(f"Retrying after {retry_state.outcome.exception()}")
@@ -309,3 +311,12 @@ def image_info(image):
         return out
     except Exception as e:
         raise Exception(f"failed to inspect {image} with qemu", e)
+
+
+# Hackily run some bash code from cmdlib.sh helpers.
+def cmdlib_sh(script):
+    subprocess.check_call(['bash', '-c', f'''
+        set -euo pipefail
+        source {THISDIR}/../cmdlib.sh
+        {script}
+    '''])
