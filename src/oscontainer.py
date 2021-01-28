@@ -152,6 +152,13 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                     subprocess.check_call(['/usr/lib/coreos-assembler/cp-reflink', entry.path, dest])
                 print(f"Copied in content from: {d}")
 
+        # We use /noentry to trick `podman create` into not erroring out
+        # on a container with no cmd/entrypoint.  It won't actually be run.
+        config = ['--entrypoint', '["/noentry"]',
+                  '-l', OSCONTAINER_COMMIT_LABEL + '=' + rev]
+        if ostree_version is not None:
+            config += ['-l', 'version=' + ostree_version]
+
         # Generate pkglist.txt in to the oscontainer at /
         pkg_list_dest = os.path.join(mnt, 'pkglist.txt')
         pkgs = RpmOstree.db_query_all(r, rev, None)
@@ -161,13 +168,6 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             for nevra in nevras:
                 f.write(nevra)
                 f.write('\n')
-
-        # We use /noentry to trick `podman create` into not erroring out
-        # on a container with no cmd/entrypoint.  It won't actually be run.
-        config = ['--entrypoint', '["/noentry"]',
-                  '-l', OSCONTAINER_COMMIT_LABEL + '=' + rev]
-        if ostree_version is not None:
-            config += ['-l', 'version=' + ostree_version]
 
         if os.path.isfile('builds/builds.json'):
             with open('builds/builds.json') as fb:
