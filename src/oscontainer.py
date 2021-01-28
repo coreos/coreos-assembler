@@ -193,6 +193,13 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             os.makedirs(dest_dir, exist_ok=True)
             run_verbose(["tar", "-xf", tarball], cwd=dest_dir)
 
+            with open(os.path.join(dest_dir, 'extensions.json')) as f:
+                extensions = json.load(f)
+
+            extensions_label = ';'.join([ext for (ext, obj) in extensions['extensions'].items()
+                                         if obj.get('kind', 'os-extension') == 'os-extension'])
+            config += ['-l', f"com.coreos.os-extensions={extensions_label}"]
+
         if display_name is not None:
             config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
                        '-l', 'io.openshift.build.versions=machine-os=' + ostree_version]
