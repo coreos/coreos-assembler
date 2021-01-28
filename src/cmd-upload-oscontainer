@@ -108,6 +108,9 @@ cosa_argv.extend(['/usr/lib/coreos-assembler/oscontainer.py', '--workdir=./tmp',
 for d in args.add_directory:
     cosa_argv.append(f"--add-directory={d}")
 cosa_argv.append(f"--display-name={display_name}")
+if 'labeled-packages' in configyaml:
+    pkgs = ' '.join(configyaml['labeled-packages'])
+    cosa_argv.append(f"--labeled-packages={pkgs}")
 subprocess.check_call(cosa_argv +
     [f'--digestfile={digestfile}',
         '--push', tmprepo,

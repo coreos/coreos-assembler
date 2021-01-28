@@ -97,7 +97,7 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
 def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                       base_image, push=False, tls_verify=True,
                       add_directories=[], cert_dir="", authfile="", digestfile=None,
-                      display_name=None):
+                      display_name=None, labeled_pkgs=[]):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -159,11 +159,16 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         if ostree_version is not None:
             config += ['-l', 'version=' + ostree_version]
 
+        base_pkgs = RpmOstree.db_query_all(r, rev, None)
+        for pkg in base_pkgs:
+            name = pkg.get_name()
+            if name in labeled_pkgs:
+                config += ['-l', f"com.coreos.rpm.{name}={pkg.get_evr()}.{pkg.get_arch()}"]
+
         # Generate pkglist.txt in to the oscontainer at /
         pkg_list_dest = os.path.join(mnt, 'pkglist.txt')
-        pkgs = RpmOstree.db_query_all(r, rev, None)
         # should already be sorted, but just re-sort to be sure
-        nevras = sorted([pkg.get_nevra() for pkg in pkgs])
+        nevras = sorted([pkg.get_nevra() for pkg in base_pkgs])
         with open(pkg_list_dest, 'w') as f:
             for nevra in nevras:
                 f.write(nevra)
@@ -199,6 +204,11 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             extensions_label = ';'.join([ext for (ext, obj) in extensions['extensions'].items()
                                          if obj.get('kind', 'os-extension') == 'os-extension'])
             config += ['-l', f"com.coreos.os-extensions={extensions_label}"]
+
+            for pkgname in meta['extensions']['manifest']:
+                if pkgname in labeled_pkgs:
+                    evra = meta['extensions']['manifest'][pkgname]
+                    config += ['-l', f"com.coreos.rpm.{pkgname}={evra}"]
 
         if display_name is not None:
             config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
@@ -266,6 +276,7 @@ def main():
     parser_build.add_argument("--display-name", help="Name used for an OpenShift component")
     parser_build.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
                               metavar='DIR', action='append', default=[])
+    parser_build.add_argument("--labeled-packages", help="Packages whose NEVRAs are included as labels on the image")
     parser_build.add_argument(
         "--digestfile",
         help="Write image digest to file",
@@ -276,6 +287,10 @@ def main():
         help="Push to registry",
         action='store_true')
     args = parser.parse_args()
+
+    labeled_pkgs = []
+    if args.labeled_packages is not None:
+        labeled_pkgs = args.labeled_packages.split()
 
     containers_storage = None
     tmpdir = None
@@ -306,7 +321,8 @@ def main():
                 push=args.push,
                 tls_verify=not args.disable_tls_verify,
                 cert_dir=args.cert_dir,
-                authfile=args.authfile)
+                authfile=args.authfile,
+                labeled_pkgs=labeled_pkgs)
     finally:
         if containers_storage is not None and os.path.isdir(containers_storage):
             shutil.rmtree(containers_storage)
