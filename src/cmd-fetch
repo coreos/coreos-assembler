@@ -114,7 +114,7 @@ fi
 prepare_compose_overlays ${IGNORE_COSA_OVERRIDES_ARG}
 
 # shellcheck disable=SC2086
-runcompose --download-only ${args}
+runcompose_tree --download-only ${args}
 # This stamp file signifies we successfully fetched once; it's
 # validated in cmd-build.
 touch "${fetch_stamp}"
