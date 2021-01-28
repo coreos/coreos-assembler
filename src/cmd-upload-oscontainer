@@ -40,6 +40,14 @@ metapath = f"{latest_build_path}/meta.json"
 with open(metapath) as f:
     meta = json.load(f)
 
+# for backcompat, we auto-build extensions if they're missing
+if os.path.exists('src/config/extensions.yaml'):
+    if 'extensions' not in meta:
+        cmdlib.run_verbose(['coreos-assembler', 'buildextend-extensions'])
+        with open(metapath) as f:
+            meta = json.load(f)
+    assert 'extensions' in meta
+
 configdir = os.path.abspath('src/config')
 oscconfigpath = f'{configdir}/oscontainer.yaml'
 # XXX: fold oscontainer.yaml handling into oscontainer.py
@@ -50,15 +58,6 @@ if os.path.exists(oscconfigpath):
 
 if 'base' in configyaml:
     args.from_image = configyaml['base']
-
-extensions_src = 'src/config/extensions.yaml'
-extensions_destdir = None
-if os.path.exists(extensions_src):
-    extensions_destdir = 'tmp/extensions'
-    if os.path.exists(extensions_destdir):
-        shutil.rmtree(extensions_destdir)
-    os.mkdir(extensions_destdir)
-    cmdlib.run_verbose(['/usr/lib/coreos-assembler/download-extensions', extensions_destdir])
 
 print("Preparing to upload oscontainer for build: {}".format(latest_build))
 ostree_commit = meta['ostree-commit']
@@ -108,8 +107,6 @@ os.environ['REGISTRY_AUTH_FILE'] = authfile
 cosa_argv.extend(['/usr/lib/coreos-assembler/oscontainer.py', '--workdir=./tmp', 'build',  f"--from={args.from_image}"])
 for d in args.add_directory:
     cosa_argv.append(f"--add-directory={d}")
-if extensions_destdir is not None:
-    cosa_argv.append(f"--add-directory={extensions_destdir}")
 cosa_argv.append(f"--display-name={display_name}")
 subprocess.check_call(cosa_argv +
     [f'--digestfile={digestfile}',

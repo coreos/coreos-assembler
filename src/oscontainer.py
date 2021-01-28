@@ -169,12 +169,15 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                 f.write(nevra)
                 f.write('\n')
 
+        meta = {}
+        builddir = None
         if os.path.isfile('builds/builds.json'):
             with open('builds/builds.json') as fb:
                 builds = json.load(fb)['builds']
             latest_build = builds[0]['id']
             arch = cmdlib.get_basearch()
-            metapath = f"builds/{latest_build}/{arch}/meta.json"
+            builddir = f"builds/{latest_build}/{arch}"
+            metapath = f"{builddir}/meta.json"
             with open(metapath) as f:
                 meta = json.load(f)
             rhcos_commit = meta['coreos-assembler.container-config-git']['commit']
@@ -183,6 +186,12 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                 cosa_commit = imagegit['commit']
                 config += ['-l', f"com.coreos.coreos-assembler-commit={cosa_commit}"]
             config += ['-l', f"com.coreos.redhat-coreos-commit={rhcos_commit}"]
+
+        if 'extensions' in meta:
+            tarball = os.path.abspath(os.path.join(builddir, meta['extensions']['path']))
+            dest_dir = os.path.join(mnt, 'extensions')
+            os.makedirs(dest_dir, exist_ok=True)
+            run_verbose(["tar", "-xf", tarball], cwd=dest_dir)
 
         if display_name is not None:
             config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
