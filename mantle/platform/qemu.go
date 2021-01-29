@@ -342,9 +342,9 @@ func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 	if err != nil {
 		return errors.Wrapf(err, "Could not list block devices through qmp")
 	}
-	// This tries to identify the primary device by looking into a `BackingFileDepth`
-	// parameter of a device and check if it is a removable device and part of
-	// `virtio-blk-pci` devices.
+	// This tries to identify the primary device by looking into
+	// a `BackingFileDepth` parameter of a device and check if
+	// it is a removable and part of `virtio-blk-pci` devices.
 	for _, dev := range blkdevs.Return {
 		if !dev.Removable && strings.Contains(dev.DevicePath, "virtio-backend") {
 			if dev.Inserted.BackingFileDepth == 1 {
