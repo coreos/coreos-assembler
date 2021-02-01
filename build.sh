@@ -32,9 +32,6 @@ configure_yum_repos() {
 }
 
 install_rpms() {
-    local builddeps
-    local frozendeps
-
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
@@ -50,10 +47,8 @@ install_rpms() {
     # development version.
     builddeps=$(grep -v '^#' "${srcdir}"/src/build-deps.txt)
 
-    # Freeze kernel due to https://github.com/coreos/coreos-assembler/issues/2003
-    frozendeps=$(echo https://kojipkgs.fedoraproject.org//packages/kernel/5.9.16/200.fc33/"${arch}"/kernel-{core,modules}-5.9.16-200.fc33."${arch}".rpm)
     # Process our base dependencies + build dependencies and install
-    (echo "${frozendeps}" && echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
+    (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
