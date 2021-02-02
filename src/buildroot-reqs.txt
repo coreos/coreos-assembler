@@ -25,8 +25,13 @@ util-linux
 which
 xz
 
-# For rpm-ostree's CI at least
+# For rust projects like rpm-ostree
 rustfmt
 
+# Used by ostree/rpm-ostree CI
+parallel gjs
+
 # Also, add clang since it's useful at least in CI for C/C++ projects
-clang
+clang lld
+# All C/C++ projects should have CI that uses the sanitizers
+libubsan libasan libtsan
