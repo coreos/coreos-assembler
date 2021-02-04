@@ -147,20 +147,24 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if directIgnition && ignition == "" {
 		return fmt.Errorf("Cannot use ignition-direct without a path to an Ignition config")
 	}
-	if !directIgnition {
-		if ignition == "" {
+	if !directIgnition && ignition != "" {
+		buf, err := ioutil.ReadFile(ignition)
+		if err != nil {
+			return err
+		}
+		config, err = conf.Ignition(string(buf)).Render(kola.IsIgnitionV2())
+		if err != nil {
+			return errors.Wrapf(err, "parsing %s", ignition)
+		}
+	}
+
+	ensureConfig := func() {
+		if config == nil {
 			config, err = conf.EmptyIgnition().Render(kola.IsIgnitionV2())
 			if err != nil {
-				return errors.Wrapf(err, "creating empty config")
-			}
-		} else {
-			buf, err := ioutil.ReadFile(ignition)
-			if err != nil {
-				return err
-			}
-			config, err = conf.Ignition(string(buf)).Render(kola.IsIgnitionV2())
-			if err != nil {
-				return errors.Wrapf(err, "parsing %s", ignition)
+				// could try to handle this more gratefully, but meh... this
+				// really should never fail
+				panic(errors.Wrapf(err, "creating empty config"))
 			}
 		}
 	}
@@ -169,6 +173,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if directIgnition {
 			return fmt.Errorf("Cannot use fragments with direct ignition")
 		}
+		ensureConfig()
 		err := renderFragments(ignitionFragments, config)
 		if err != nil {
 			return errors.Wrapf(err, "rendering fragments")
@@ -186,6 +191,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		builder.Mount9p(src, dest, true)
+		ensureConfig()
 		config.Mount9p(dest, true)
 	}
 	for _, b := range bindrw {
@@ -197,6 +203,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		builder.Mount9p(src, dest, false)
+		ensureConfig()
 		config.Mount9p(dest, false)
 	}
 	builder.ForceConfigInjection = forceConfigInjection
