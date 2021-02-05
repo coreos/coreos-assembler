@@ -35,3 +35,5 @@ parallel gjs
 clang lld
 # All C/C++ projects should have CI that uses the sanitizers
 libubsan libasan libtsan
+# And all C/C++ projects should use clang-analyzer
+clang-analyzer
