@@ -391,6 +391,11 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		if allowed, excluded := isAllowed(Options.Distribution, t.Distros, t.ExcludeDistros); !allowed || excluded {
 			continue
 		}
+		if pltfrm == "qemu-unpriv" {
+			if allowed, excluded := isAllowed(QEMUOptions.Firmware, t.Firmwares, t.ExcludeFirmwares); !allowed || excluded {
+				continue
+			}
+		}
 
 		// Check native tests for arch-specific and distro-specfic exclusion
 		for k, NativeFuncWrap := range t.NativeFuncs {
