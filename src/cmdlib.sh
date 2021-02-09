@@ -2,7 +2,7 @@
 set -euo pipefail
 # Shared shell script library
 
-DIR=$(dirname "$0")
+DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
 # Detect what platform we are on
