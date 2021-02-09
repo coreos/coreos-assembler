@@ -15,12 +15,21 @@
 package azure
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/Microsoft/azure-vhd-utils/vhdcore/validator"
 	"github.com/spf13/cobra"
 )
+
+type azureBlobMeta struct {
+	Url  string `json:"url"`
+	Size string `json:"size"`
+	Md5  string `json:"md5"`
+}
 
 var (
 	cmdUploadBlob = &cobra.Command{
@@ -37,14 +46,17 @@ var (
 		vhd         string
 		overwrite   bool
 		validate    bool
+		metaOutput  string
 	}
 )
 
 func init() {
 	bv := cmdUploadBlob.Flags().BoolVar
+	sv := cmdUploadBlob.Flags().StringVar
 
 	bv(&ubo.overwrite, "overwrite", false, "overwrite blob")
 	bv(&ubo.validate, "validate", true, "validate blob as VHD file")
+	sv(&ubo.metaOutput, "meta-output", "", "File to write JSON with uploaded blob properties")
 
 	Azure.AddCommand(cmdUploadBlob)
 }
@@ -79,11 +91,25 @@ func runUploadBlob(cmd *cobra.Command, args []string) {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
 
-	if err := api.UploadBlob(ubo.storageacct, kr.PrimaryKey, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite); err != nil {
+	meta, err := api.UploadBlob(ubo.storageacct, kr.PrimaryKey, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite)
+	if err != nil {
 		plog.Fatalf("Uploading blob failed: %v", err)
 	}
 
 	uri := fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", ubo.storageacct, ubo.container, ubo.blob)
-
 	plog.Printf("Blob uploaded to %q", uri)
+
+	if ubo.metaOutput != "" {
+		metad := azureBlobMeta{
+			Url: uri,
+			// We always turn the size into a string to avoid JSON+64 bit issues
+			Size: fmt.Sprintf("%d", meta.FileMetaData.FileSize),
+			Md5:  hex.Dump(meta.FileMetaData.MD5Hash),
+		}
+		buf, err := json.Marshal(metad)
+		if err != nil {
+			plog.Fatalf("%v", err)
+		}
+		ioutil.WriteFile(ubo.metaOutput, buf, 0644)
+	}
 }

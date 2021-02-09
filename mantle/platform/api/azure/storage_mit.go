@@ -96,29 +96,29 @@ func (a *API) GetBlob(storageaccount, storagekey, container, name string) (io.Re
 	return bsc.GetBlob(container, name)
 }
 
-// UploadBlob uploads vhd to the given storage account, container, and blob name.
-//
+// UploadBlob uploads vhd to the given storage account, container, and blob name,
+// returning the metadata for the blob.
 // It returns BlobExistsError if the blob exists and overwrite is not true.
-func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string, overwrite bool) error {
+func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string, overwrite bool) (*metadata.MetaData, error) {
 	ds, err := diskstream.CreateNewDiskStream(vhd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer ds.Close()
 
 	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	bsc := sc.GetBlobService()
 	if _, err = bsc.CreateContainerIfNotExists(container, storage.ContainerAccessTypePrivate); err != nil {
-		return err
+		return nil, err
 	}
 
 	blobExists, err := bsc.BlobExists(container, blob)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resume := false
@@ -127,7 +127,7 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 		if !overwrite {
 			bm, err := getBlobMetaData(bsc, container, blob)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			blobMetaData = bm
 			resume = true
@@ -137,32 +137,32 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 
 	localMetaData, err := getLocalVHDMetaData(vhd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var rangesToSkip []*common.IndexRange
 	if resume {
 		if errs := metadata.CompareMetaData(blobMetaData, localMetaData); len(errs) != 0 {
-			return multierror.Error(errs)
+			return nil, multierror.Error(errs)
 		}
 		ranges, err := getAlreadyUploadedBlobRanges(bsc, container, blob)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rangesToSkip = ranges
 	} else {
 		if err := createBlob(bsc, container, blob, ds.GetSize(), localMetaData); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	uploadableRanges, err := upload.LocateUploadableRanges(ds, rangesToSkip, pageBlobPageSize)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	uploadableRanges, err = upload.DetectEmptyRanges(ds, uploadableRanges)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cxt := &upload.DiskUploadContext{
@@ -177,7 +177,17 @@ func (a *API) UploadBlob(storageaccount, storagekey, vhd, container, blob string
 		MD5Hash:               localMetaData.FileMetaData.MD5Hash,
 	}
 
-	return upload.Upload(cxt)
+	err = upload.Upload(cxt)
+	if err != nil {
+		return nil, err
+	}
+
+	bm, err := getBlobMetaData(bsc, container, blob)
+	if err != nil {
+		return nil, err
+	}
+
+	return bm, nil
 }
 
 // getBlobMetaData returns the custom metadata associated with a page blob which is set by createBlob method.

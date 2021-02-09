@@ -1,5 +1,7 @@
+import json
 import os
 import urllib
+import tempfile
 from cosalib.cmdlib import run_verbose
 from tenacity import (
     retry,
@@ -36,6 +38,7 @@ def azure_run_ore(build, args):
     :type build: Build
     """
     azure_vhd_name = f"{build.image_name_base}.vhd"
+    tmp_metaf = tempfile.NamedTemporaryFile(suffix="oremeta")
     ore_args = [
         'ore',
         '--log-level', args.log_level,
@@ -47,20 +50,20 @@ def azure_run_ore(build, args):
         '--file', f"{build.image_path}",
         '--container', args.container,
         '--resource-group', args.resource_group,
-        '--storage-account', args.storage_account
+        '--storage-account', args.storage_account,
+        '--meta-output', tmp_metaf.name,
     ]
     if args.force:
         ore_args.append('--overwrite')
     run_verbose(ore_args)
 
-    url_path = urllib.parse.quote((
-        f"{args.storage_account}.blob.core.windows.net/"
-        f"{args.container}/{azure_vhd_name}"
-    ))
-    build.meta['azure'] = {
-        'image': azure_vhd_name,
-        'url': f"https://{url_path}",
-    }
+    tmp_metaf.seek(0)
+    meta = json.load(tmp_metaf)
+    tmp_metaf.close()
+    # Translate the ad-hoc ore JSON to coreos-assembler schema, also
+    # add 'image'
+    meta['image'] = azure_vhd_name
+    build.meta['azure'] = meta
     build.meta_write()  # update build metadata
 
 

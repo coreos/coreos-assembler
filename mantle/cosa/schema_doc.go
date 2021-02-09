@@ -13,16 +13,16 @@ var generatedSchemaJSON = `{
              "type":"string",
              "title":"Path"
             },
-           "sha256": {
-             "$id": "#/artifact/sha256",
-             "type":"string",
-             "title":"SHA256"
-            },
-           "size": {
-             "$id": "#/artifact/size",
-             "type":"integer",
-             "title":"Size in bytes"
-            },
+            "sha256": {
+              "$id": "#/artifact/sha256",
+              "type":"string",
+              "title":"SHA256"
+             },
+             "size": {
+              "$id": "#/artifact/size",
+              "type":"integer",
+              "title":"Size in bytes"
+             },
            "uncompressed-sha256": {
              "$id": "#/artifact/uncompressed-sha256",
              "type":"string",
@@ -35,10 +35,10 @@ var generatedSchemaJSON = `{
             }
           },
           "optional": [
-              "size",
-              "uncompressed-sha256",
-              "uncompressed-size"
-          ],
+            "size",
+            "uncompressed-sha256",
+            "uncompressed-size"
+        ],
           "required": [
               "path",
               "sha256"
@@ -71,25 +71,58 @@ var generatedSchemaJSON = `{
             }
           }
       },
-      "cloudartifact": {
-         "type": "object",
-         "required": [
-             "image",
-             "url"
-         ],
-         "properties": {
+      "azureartifact": {
+        "type": "object",
+        "required": [
+            "url"
+        ],
+        "optional": [
+          "image",
+          "size",
+          "md5"
+        ],
+        "properties": {
+          "url": {
+            "$id":"#/azureartifact/url",
+            "type":"string",
+            "title":"URL"
+           },
            "image": {
-             "$id":"#/cloudartifact/image",
-             "type":"string",
-             "title":"Image"
-            },
-           "url": {
-             "$id":"#/cloudartifact/url",
-             "type":"string",
-             "title":"URL"
-            }
-          }
-     },
+            "$id":"#/azureartifact/image",
+            "type":"string",
+            "title":"Redundant name of the file"
+           },
+           "md5": {
+            "$id":"#/azureartifact/md5",
+            "type":"string",
+            "title":"MD5"
+           },
+           "size": {
+            "$id": "#/azureartifact/size",
+            "type":"integer",
+            "title":"Size in bytes"
+           }
+         }
+      },
+      "cloudartifact": {
+        "type": "object",
+        "required": [
+            "image",
+            "url"
+        ],
+        "properties": {
+          "image": {
+            "$id":"#/cloudartifact/image",
+            "type":"string",
+            "title":"Image"
+           },
+          "url": {
+            "$id":"#/cloudartifact/url",
+            "type":"string",
+            "title":"URL"
+           }
+         }
+    },
      "git": {
          "type": "object",
          "required": [
@@ -686,7 +719,7 @@ var generatedSchemaJSON = `{
      "$id":"#/properties/azure",
      "type":"object",
      "title":"Azure",
-     "$ref": "#/definitions/cloudartifact"
+     "$ref": "#/definitions/azureartifact"
     },
    "gcp": {
      "$id":"#/properties/gcp",

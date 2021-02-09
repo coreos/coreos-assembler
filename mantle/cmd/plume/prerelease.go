@@ -219,7 +219,7 @@ func uploadAzureBlob(spec *channelSpec, api *azure.API, storageKey storageservic
 		return nil
 	}
 
-	if err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
+	if _, err := api.UploadBlob(spec.Azure.StorageAccount, storageKey.PrimaryKey, vhdfile, container, blobName, false); err != nil {
 		if _, ok := err.(azure.BlobExistsError); !ok {
 			return fmt.Errorf("uploading file %q to account %q container %q failed: %v", vhdfile, spec.Azure.StorageAccount, container, err)
 		}

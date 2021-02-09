@@ -100,7 +100,7 @@ func runUploadBlobARM(cmd *cobra.Command, args []string) {
 	//only use the first service key to avoid uploading twice
 	//see https://github.com/coreos/coreos-assembler/pull/1849
 	k := (*kr.Keys)[0]
-	if err := api.UploadBlob(ubo.storageacct, *k.Value, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite); err != nil {
+	if _, err := api.UploadBlob(ubo.storageacct, *k.Value, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite); err != nil {
 		plog.Fatalf("Uploading blob failed: %v", err)
 	}
 
