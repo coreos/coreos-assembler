@@ -102,6 +102,12 @@ write_archive_info() {
     . "${srcdir}/src/cmdlib.sh"
     mkdir -p /cosa /lib/coreos-assembler
     touch -f /lib/coreos-assembler/.clean
+    # this is an alternative way to tackle the "OpenShift really doesn't like
+    # .git" issue by sneaking it into the build via a nested tarfile
+    if test -f git.tar.gz; then
+      tar -xf git.tar.gz
+      rm git.tar.gz
+    fi
     prepare_git_artifacts "${srcdir}" /cosa/coreos-assembler-git.tar.gz /cosa/coreos-assembler-git.json
 }
 
