@@ -96,6 +96,7 @@ VARIANTS = {
     "ibmcloud": {
         "image_format": "qcow2",
         "platform": "ibmcloud",
+        "virtual_size": "100G",
     },
     "openstack": {
         "image_format": "qcow2",
@@ -150,6 +151,7 @@ class QemuVariantImage(_Build):
             convert_options: optional qemu arguments
             platform: the name of the image.
             platform_image_name: in case you want to use a different name
+            virtual_size: in case you want to explicitly set a virtual size
 
         Alternatively, you can provide "variant=<variant>" and defaults will be
         used.
@@ -166,6 +168,7 @@ class QemuVariantImage(_Build):
         self.force = kwargs.get("force", False)
         self.tar_members = kwargs.pop("tar_members", None)
         self.tar_flags = kwargs.pop("tar_flags", [DEFAULT_TAR_FLAGS])
+        self.virtual_size = kwargs.pop("virtual_size", None)
 
         # this is used in case the image has a different disk
         # name than the platform
@@ -229,6 +232,13 @@ class QemuVariantImage(_Build):
 
         log.info(f"Staging temp image: {work_img}")
         self.set_platform()
+
+        # Resizing if requested
+        if self.virtual_size is not None:
+            resize_cmd = ['qemu-img', 'resize',
+                          self.tmp_image, self.virtual_size]
+            run_verbose(resize_cmd)
+
         cmd = ['qemu-img', 'convert', '-f', 'qcow2', '-O',
                self.image_format, self.tmp_image]
         for k, v in self.convert_options.items():
