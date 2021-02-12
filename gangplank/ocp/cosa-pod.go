@@ -321,9 +321,6 @@ func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 				"status":  resp.Status.Phase,
 			})
 			switch sp := status.Phase; sp {
-			case v1.PodSucceeded:
-				l.Infof("Pod successfully completed")
-				return nil
 			case v1.PodRunning:
 				l.Infof("Pod successfully completed")
 				for _, c := range pod.Spec.InitContainers {
@@ -338,6 +335,9 @@ func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 						l.WithField("err", err).Error("failed to open logging")
 					}
 				}
+			case v1.PodSucceeded:
+				l.Infof("Pod successfully completed")
+				return nil
 			case v1.PodFailed:
 				l.WithField("message", status.Message).Error("Pod failed")
 				time.Sleep(1 * time.Minute)

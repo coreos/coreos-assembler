@@ -86,8 +86,8 @@ type Azure struct {
 	// Enabled          bool   `yaml:"enabled,omitempty" envVar:"ENABLED"`
 	ResourceGroup    string `yaml:"resource_group,omitempty" envVar:"RESOURCE_GROUP"`
 	StorageAccount   string `yaml:"storage_account,omitempty" envVar:"STORAGE_ACCOUNT"`
-	StorageContainer string `yaml:"storage_container,omitempty" envVar:"STORAGE_CONTAINER"`
-	StorageLocation  string `yaml:"storage_location,omitempty" envVar:"STORAGE_LOCATION"`
+	StorageContainer string `yaml:"storage_container,omitempty" envVar:"CONTAINER"`
+	StorageLocation  string `yaml:"storage_location,omitempty" envVar:"LOCATION"`
 }
 
 // Brew is the RHEL Koji instance for storing artifacts.
@@ -109,7 +109,7 @@ type Gcp struct {
 	// Commented fields are common fields and found in PublishArtifact struct
 	// Bucket    string `yaml:"bucket,omitempty" envVar:"BUCKET"`
 	// Enabled   bool   `yaml:"enabled,omitempty envVar:"ENABLED"`
-	Project string `yaml:"project,omitempty" envVar:"PROJECT"`
+	Project string `yaml:"project,omitempty" envVar:"PROJECT_NAME"`
 }
 
 // Job refers to the Jenkins options

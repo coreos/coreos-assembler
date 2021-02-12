@@ -130,6 +130,13 @@ def aliyun_run_ore(build, args):
 
 
 def aliyun_cli(parser):
-    parser.add_argument("--bucket", help="OSS Bucket")
-    parser.add_argument("--name-suffix", help="Suffix for uploaded image name")
+    parser.add_argument(
+        "--bucket",
+        env_var="ALIYUN_BUCKET",
+        help="OSS Bucket"
+    )
+    parser.add_argument(
+        "--name-suffix",
+        help="Suffix for uploaded image name"
+    )
     return parser

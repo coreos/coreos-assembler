@@ -142,6 +142,12 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 	publishArtifacts := s.getPublishArtifacts()
 	for _, pa := range publishArtifacts {
 		envVars = append(envVars, pa.GetEnvVars()...)
+		pc, err := pa.GetPublishCommand()
+		if err != nil {
+			return err
+		}
+		log.Infof("Adding command %s to stage", pc)
+		cmds = append(cmds, pc)
 	}
 
 	// Render the pre and post scripts.
@@ -183,6 +189,21 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 		for _, v := range scripts {
 			if err := js.RendererExecuter(ctx, envVars, v); err != nil {
 				return err
+			}
+			mBuild, _, _ := cosa.ReadBuild("/srv", "", "")
+			if mBuild.BuildID != "" {
+				log.Infof("Setting environment variable COSA_BUILD=%s", mBuild.BuildID)
+				envVars = append(envVars, fmt.Sprintf("COSA_BUILD=%s", mBuild.BuildID))
+
+				for _, pa := range publishArtifacts {
+					envVars = append(envVars, pa.GetEnvVars()...)
+					pc, err := pa.GetPublishCommand()
+					if err != nil {
+						return err
+					}
+					log.Infof("Adding command %s to stage", pc)
+					cmds = append(cmds, pc)
+				}
 			}
 		}
 	} else {

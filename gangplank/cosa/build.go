@@ -96,7 +96,7 @@ func buildParser(r io.Reader) (*Build, error) {
 	return cosaBuild, nil
 }
 
-// ParseBuild parses the meta.json and reutrns a build
+// ParseBuild parses the meta.json and returns a build
 func ParseBuild(path string) (*Build, error) {
 	f, err := os.Open(path)
 	if err != nil {

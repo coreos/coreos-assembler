@@ -152,10 +152,25 @@ def aws_run_ore(build, args):
 
 
 def aws_cli(parser):
-    parser.add_argument("--bucket", help="S3 Bucket")
-    parser.add_argument("--name-suffix", help="Suffix for name")
-    parser.add_argument("--grant-user", help="Grant user launch permission",
-                        nargs="*", default=[])
-    parser.add_argument("--grant-user-snapshot", help="Grant user snapshot volume permission",
-                        nargs="*", default=[])
+    parser.add_argument(
+        "--bucket",
+        env_var="AWS_BUCKET",
+        help="S3 Bucket"
+    )
+    parser.add_argument(
+        "--name-suffix",
+        help="Suffix for name"
+    )
+    parser.add_argument(
+        "--grant-user",
+        help="Grant user launch permission",
+        nargs="*",
+        default=[]
+    )
+    parser.add_argument(
+        "--grant-user-snapshot",
+        help="Grant user snapshot volume permission",
+        nargs="*",
+        default=[]
+    )
     return parser

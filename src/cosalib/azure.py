@@ -79,7 +79,8 @@ def azure_cli(parser):
     parser.add_argument(
         '--auth',
         help='Path to Azure auth file',
-        default=os.environ.get("AZURE_AUTH"))
+        default=os.environ.get("AZURE_AUTH")
+    )
     parser.add_argument(
         '--container',
         help='Storage location to write to',

@@ -25,10 +25,27 @@ type PublishArtifact struct {
 
 	// Common to Gcp, Aws, and Aliyun
 	Bucket  string   `yaml:"bucket,omitempty" envVar:"BUCKET"`
-	Regions []string `yaml:"regions,omitempty" enVar:"REGIONS"`
+	Regions []string `yaml:"regions,omitempty" envVar:"REGIONS"`
 }
 
-// GetEnvVars returns envVars
+// GetPublishCommand returns the set of commands to upload an image to the
+// cloud provider
+func (p PublishArtifact) GetPublishCommand() (string, error) {
+	switch p.Name {
+	case "aws":
+		return fmt.Sprintf("PATH=$PATH:%s upload-ami --build $COSA_BUILD --region $COSA_AWS_REGIONS --bucket=s3://$COSA_AWS_AMI_PATH --skip-kola", "/srv/src/config/scripts"), nil
+	case "aws-cn":
+		return "upload-ami", nil
+	case "aliyun":
+		return "upload-ami", nil
+	case "gcp":
+		return "upload-ami", nil
+	default:
+		return "", fmt.Errorf("Not a valid cloud provider")
+	}
+}
+
+// GetEnvVars returns a set of environment variable from the yaml struct tags
 func (p *PublishArtifact) GetEnvVars() (envVars []string) {
 	var getNestedEnvTags func(interface{})
 
@@ -47,6 +64,8 @@ func (p *PublishArtifact) GetEnvVars() (envVars []string) {
 						continue
 					}
 					if !val.Field(j).IsZero() {
+						// Prefix environment variables with COSA_CLOUDNAME_
+						// so the cloud upload scripts can use it
 						envVars = append(envVars, fmt.Sprintf("COSA_%s_%s=%v", strings.ToUpper(p.Name), tag, fieldValue.Interface()))
 					}
 				}

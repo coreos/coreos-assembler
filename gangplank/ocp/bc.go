@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/gangplank/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -207,7 +208,7 @@ binary build interface.`)
 	c := 0
 	for _, s := range bc.JobSpec.Stages {
 		if c == 0 {
-			stageCmdIDs[0] = []string{s.ID}
+			stageCmdIDs[0] = append(stageCmdIDs[0], s.ID)
 			continue
 		}
 		if s.OwnPod && len(stageCmdIDs[c]) != 0 {
@@ -291,6 +292,9 @@ binary build interface.`)
 		if err != nil {
 			return err
 		}
+
+		// Add the buildid to the env vars to be used in the publication
+		eVars = append(eVars, v1.EnvVar{Name: "COSA_BUILD", Value: buildID})
 
 		index := n + 1
 		cpod, err := NewCosaPodder(ctx, apiBuild, index)
