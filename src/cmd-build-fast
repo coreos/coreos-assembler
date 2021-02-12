@@ -17,12 +17,21 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-projectdir=
-projectname=
-if [ -n "${COSA_DIR:-}" ]; then
+
+# Detect the case that we're in a git repo without COSA_DIR
+if test -d .git; then
+    if test -z "${COSA_DIR}"; then
+        # shellcheck disable=SC2016
+        fatal 'This command requires inheriting from a previous full OS build.
+Use e.g. `export COSA_DIR=/path/to/fcos` that has a previous
+run of `cosa build`.'
+    fi
     projectdir=$(pwd)
-    projectname=$(basename "${projectdir}")
     cd "${COSA_DIR}"
+else
+    # If it's not a git repo, assume it's a cosa dir
+    unset COSA_DIR
+    projectdir=
 fi
 
 prepare_build
@@ -40,16 +49,29 @@ if [ "${previous_qemu}" = "null" ]; then
 fi
 echo "Basing on previous build: ${previous_build:-none}"
 
-version="fastbuild-$(date +"%s")"
 if [ -n "${projectdir}" ]; then
     cd "${projectdir}"
     rm _install -rf
     make
     make install DESTDIR="$(pwd)/_install"
+    fastref="$(basename "${projectdir}")"
+    version="$(git describe --tags --abbrev=10)"
+    if ! git diff --quiet; then
+        version="${version}+dirty"
+    fi
+    outdir=${projectdir}/.cosa
     rootfsoverrides="${projectdir}/_install"
 else
+    fastref=fastbuild
+    version="$(date +"%s")"
+    outdir=tmp
     rootfsoverrides="${workdir}/overrides/rootfs"
 fi
+if test "$(find "${rootfsoverrides}" -maxdepth 1 | wc -l)" == 0; then
+    fatal "No rootfs overrides found"
+fi
+mkdir -p "${outdir}"
+
 etcdir="${rootfsoverrides}/etc"
 usretcdir="${rootfsoverrides}/usr/etc"
 etcmoved=0
@@ -64,14 +86,12 @@ restore_etc() {
     fi
 }
 set -x
-ref=fastbuild
 commit_args=()
 if [ -n "${projectdir}" ]; then
-    ref=fastbuild-${projectname}
     commit_args+=('--consume')  # nom nom nom
 fi
 # Depends https://github.com/ostreedev/ostree/pull/2041/commits/b3bbbd154225e81980546b2c0b5ed98714830696
-if ! ostree --repo="${tmprepo}" commit -b "${ref}" --base="${previous_commit}" --tree=dir="${rootfsoverrides}" \
+if ! ostree --repo="${tmprepo}" commit -b "${fastref}" --base="${previous_commit}" --tree=dir="${rootfsoverrides}" \
     --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs \
     --add-metadata-string=version="${version}" --parent="${previous_commit}" --keep-metadata='coreos-assembler.basearch' \
     --keep-metadata='fedora-coreos.stream' --fsync=0 "${commit_args[@]}"; then
@@ -79,23 +99,17 @@ if ! ostree --repo="${tmprepo}" commit -b "${ref}" --base="${previous_commit}" -
     exit 1
 fi
 set +x
-commit=$(ostree --repo="${tmprepo}" rev-parse "${ref}")
+commit=$(ostree --repo="${tmprepo}" rev-parse "${fastref}")
 if [ -z "${projectdir}" ]; then
     restore_etc
 fi
-fastbuild_qemu="fastbuild-${name}-qemu.qcow2"
-if [ -n "${projectdir}" ]; then
-    fastbuild_qemu="fastbuild-${name}-${projectname}-qemu.qcow2"
-fi
-tmpdir=${projectdir:-.}
-qemu-img create -f qcow2 -o backing_file="${previous_builddir}/${previous_qemu}" "${tmpdir}/${fastbuild_qemu}" 20G
-RUNVM_NONET=1 runvm -drive if=virtio,id=target,format=qcow2,file="${fastbuild_qemu}",cache=unsafe -- \
+imgname="${fastref}-${version}-qemu.qcow2"
+# Prune previous images
+rm -vf ${outdir}/fastbuild-*.qcow2
+qemu-img create -f qcow2 -o backing_fmt=qcow2,backing_file="${previous_builddir}/${previous_qemu}" "${imgname}.tmp" 20G
+RUNVM_NONET=1 runvm -drive if=virtio,id=target,format=qcow2,file="${imgname}.tmp",cache=unsafe -- \
     /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
-if [ -n "${projectdir}" ]; then
-    echo "Created: ${fastbuild_qemu}"
-else
-    cd "${workdir}"
-    rm "${fastbuilddir}" -rf
-    mv -nT "${tmp_builddir}" "${fastbuilddir}"
-    echo "Created: ${fastbuilddir}/${fastbuild_qemu}"
-fi
+mv "${imgname}.tmp" "${imgname}"
+mv "${imgname}" "${outdir}/${imgname}"
+rm "${tmp_builddir}" -rf
+echo "Created: ${outdir}/${imgname}"
