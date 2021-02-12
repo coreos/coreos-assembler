@@ -16,13 +16,20 @@ package sdk
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/system"
+)
+
+const (
+	// fastBuildCosaDir is used by build-fast
+	fastBuildCosaDir = ".cosa"
 )
 
 // Build is a parsed coreos-assembler build
@@ -51,6 +58,26 @@ func RequireCosaRoot(root string) error {
 		return fmt.Errorf("%s does not appear to be a coreos-assembler buildroot", root)
 	}
 	return nil
+}
+
+// GetLocalFastBuildQemu finds content written by `cosa build-fast`
+func GetLocalFastBuildQemu() (string, error) {
+	if _, err := os.Stat(fastBuildCosaDir); err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	ents, err := ioutil.ReadDir(fastBuildCosaDir)
+	if err != nil {
+		return "", err
+	}
+	for _, ent := range ents {
+		if strings.HasSuffix(ent.Name(), ".qcow2") {
+			return filepath.Join(".cosa", ent.Name()), nil
+		}
+	}
+	return "", nil
 }
 
 func GetLatestLocalBuild(root string) (*LocalBuild, error) {
