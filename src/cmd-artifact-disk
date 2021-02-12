@@ -75,6 +75,7 @@ def artifact_cli():
                         help="Ignition platform to set image to")
     manual.add_argument("--convert_options",
                         help="qemu-img options")
+    manual.add_argument("--virtual-size", help="Virtual Size to use")
 
     args = parser.parse_args()
 
@@ -97,6 +98,7 @@ def artifact_cli():
             'image_suffix': args.image_suffix,
             'platform': args.platform,
             'schema': args.schema,
+            'virtual_size': args.virtual_size,
         }
         if args.convert_options:
             kwargs["convert_options"] = {'-o': f'{args.convert_options}'}
