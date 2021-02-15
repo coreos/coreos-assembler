@@ -104,11 +104,6 @@ func GetLocalBuild(root, buildid string) (*LocalBuild, error) {
 	}, nil
 }
 
-func DefaultBoard() string {
-	defaultBoard := system.PortageArch() + "-usr"
-	return string(defaultBoard)
-}
-
 // TODO replace with coreos-assembler concepts
 func BoardRoot(board string) string {
 	return ""
