@@ -15,32 +15,10 @@
 package system
 
 import (
-	"runtime"
-
 	"github.com/coreos/stream-metadata-go/arch"
 )
 
 // RpmArch returns the architecture in RPM terms.
 func RpmArch() string {
 	return arch.CurrentRpmArch()
-}
-
-// PortageArch returns the Gentoo portage architecture
-func PortageArch() string {
-	arch := runtime.GOARCH
-	switch arch {
-	case "386":
-		arch = "x86"
-
-	// Go and Portage agree for these.
-	case "amd64":
-	case "arm":
-	case "arm64":
-	case "ppc64":
-	case "s390x":
-	case "ppc64le":
-	default:
-		panic("No portage arch defined for " + arch)
-	}
-	return arch
 }
