@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/mantle/platform/api/azure"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/storage"
+	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
 
@@ -91,8 +92,7 @@ type imageInfo struct {
 
 // Common switches between Fedora Cloud and Fedora CoreOS
 func AddSpecFlags(flags *pflag.FlagSet) {
-	board := sdk.DefaultBoard()
-	flags.StringVarP(&specBoard, "board", "B", board, "target board")
+	flags.StringVarP(&specArch, "arch", "A", system.RpmArch(), "target arch")
 	flags.StringVarP(&specChannel, "channel", "C", "testing", "target channel")
 	if err := flags.MarkDeprecated("channel", "use --stream instead"); err != nil {
 		panic(err)
@@ -190,7 +190,7 @@ func getFedoraImageFile(client *http.Client, spec *channelSpec, src *storage.Buc
 		return imagePath, nil
 	}
 
-	rawxzURI, err := url.Parse(fmt.Sprintf("%v/%v/compose/%v/%v/images/%v", spec.BaseURL, specComposeID, getImageTypeURI(), specBoard, fileName))
+	rawxzURI, err := url.Parse(fmt.Sprintf("%v/%v/compose/%v/%v/images/%v", spec.BaseURL, specComposeID, getImageTypeURI(), specArch, fileName))
 	if err != nil {
 		return "", err
 	}
@@ -368,7 +368,7 @@ func getSpecAWSImageMetadata(spec *channelSpec) (map[string]string, error) {
 		Timestamp: specTimestamp,
 		Respin:    specRespin,
 		ImageType: specImageType,
-		Arch:      specBoard,
+		Arch:      specArch,
 	}
 	t := template.Must(template.New("filename").Parse(imageFileName))
 	buffer := &bytes.Buffer{}
@@ -423,7 +423,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imagePath s
 	var s3ObjectPath string
 	switch selectedDistro {
 	case "fedora":
-		s3ObjectPath = fmt.Sprintf("%s/%s/%s", specBoard, specVersion, strings.TrimSuffix(imageFileName, filepath.Ext(imageFileName)))
+		s3ObjectPath = fmt.Sprintf("%s/%s/%s", specArch, specVersion, strings.TrimSuffix(imageFileName, filepath.Ext(imageFileName)))
 	}
 	s3ObjectURL := fmt.Sprintf("s3://%s/%s", part.Bucket, s3ObjectPath)
 
@@ -475,7 +475,7 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imagePath s
 			"Version":   specVersion,
 			"ComposeID": specComposeID,
 			"Date":      specTimestamp,
-			"Arch":      specBoard,
+			"Arch":      specArch,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("couldn't tag images: %v", err)

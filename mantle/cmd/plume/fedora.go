@@ -26,7 +26,7 @@ var (
 	specRespin      string
 	specImageType   string
 	specTimestamp   string
-	awsFedoraBoards = []string{
+	awsFedoraArches = []string{
 		"x86_64",
 		"aarch64",
 	}
@@ -77,7 +77,7 @@ var (
 	fedoraSpecs = map[string]channelSpec{
 		"rawhide": channelSpec{
 			BaseURL: "https://koji.fedoraproject.org/compose/rawhide",
-			Boards:  awsFedoraBoards,
+			Arches:  awsFedoraArches,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora Cloud Base AMI",
@@ -87,7 +87,7 @@ var (
 		},
 		"branched": channelSpec{
 			BaseURL: "https://koji.fedoraproject.org/compose/branched",
-			Boards:  awsFedoraBoards,
+			Arches:  awsFedoraArches,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora Cloud Base AMI",
@@ -97,7 +97,7 @@ var (
 		},
 		"updates": channelSpec{
 			BaseURL: "https://koji.fedoraproject.org/compose/updates",
-			Boards:  awsFedoraBoards,
+			Arches:  awsFedoraArches,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora Cloud Base AMI",
@@ -107,7 +107,7 @@ var (
 		},
 		"cloud": channelSpec{
 			BaseURL: "https://koji.fedoraproject.org/compose/cloud",
-			Boards:  awsFedoraBoards,
+			Arches:  awsFedoraArches,
 			AWS: awsSpec{
 				BaseName:        "Fedora",
 				BaseDescription: "Fedora Cloud Base AMI",
@@ -136,8 +136,8 @@ func ChannelFedoraSpec() (channelSpec, error) {
 	if specVersion == "" {
 		plog.Fatal("--version is required")
 	}
-	if len(specBoard) == 0 || specBoard == "amd64-usr" {
-		specBoard = "x86_64"
+	if specArch == "" {
+		specArch = "x86_64"
 	}
 
 	spec, ok := fedoraSpecs[specChannel]
@@ -148,15 +148,15 @@ func ChannelFedoraSpec() (channelSpec, error) {
 	if specEnv == "dev" {
 		spec.AWS.Partitions = awsFedoraDevAccountPartitions
 	}
-	boardOk := false
-	for _, board := range spec.Boards {
-		if specBoard == board {
-			boardOk = true
+	archOk := false
+	for _, arch := range spec.Arches {
+		if specArch == arch {
+			archOk = true
 			break
 		}
 	}
-	if !boardOk {
-		plog.Fatalf("Unknown board %q for channel %q", specBoard, specChannel)
+	if !archOk {
+		plog.Fatalf("Unknown arch %q for channel %q", specArch, specChannel)
 	}
 
 	return spec, nil
