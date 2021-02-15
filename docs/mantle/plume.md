@@ -171,7 +171,7 @@ Here is an example of doing a Fedora Cloud pre-release with plume:
   --version 30                            \
   --timestamp 20190819                    \
   --respin 0                              \
-  --board x86_64                          \
+  --arch x86_64                           \
   --compose-id Fedora-Cloud-30-20190819.0 \
   --image-type Cloud-Base                 \
   --debug
@@ -186,7 +186,7 @@ Here is an example of doing a Fedora Cloud release with plume:
   --version 30                            \
   --timestamp 20190819                    \
   --respin 0                              \
-  --board x86_64                          \
+  --arch x86_64                           \
   --compose-id Fedora-Cloud-30-20190819.0 \
   --image-type Cloud-Base                 \
   --debug

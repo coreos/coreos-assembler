@@ -17,8 +17,8 @@ package main
 type storageSpec struct {
 	BaseURL       string
 	Title         string // Replace the bucket name in index page titles
-	NamedPath     string // Copy to $BaseURL/$Board/$NamedPath
-	VersionPath   bool   // Copy to $BaseURL/$Board/$Version
+	NamedPath     string // Copy to $BaseURL/$Arch/$NamedPath
+	VersionPath   bool   // Copy to $BaseURL/$Arch/$Version
 	DirectoryHTML bool
 	IndexHTML     bool
 }
@@ -71,8 +71,8 @@ type awsSpec struct {
 }
 
 type channelSpec struct {
-	BaseURL      string // Copy from $BaseURL/$Board/$Version
-	Boards       []string
+	BaseURL      string // Copy from $BaseURL/$Arch/$Version
+	Arches       []string
 	Destinations []storageSpec
 	GCE          gceSpec
 	Azure        azureSpec
