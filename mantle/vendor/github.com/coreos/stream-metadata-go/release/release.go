@@ -4,6 +4,10 @@
 // with streams instead.
 package release
 
+import (
+	relrhcos "github.com/coreos/stream-metadata-go/release/rhcos"
+)
+
 // Index models the release index:
 // https://github.com/coreos/fedora-coreos-tracker/tree/master/metadata/release-index
 type Index struct {
@@ -41,8 +45,9 @@ type Metadata struct {
 
 // Arch release details
 type Arch struct {
-	Commit string `json:"commit"`
-	Media  Media  `json:"media"`
+	Commit               string               `json:"commit"`
+	Media                Media                `json:"media"`
+	RHELCoreOSExtensions *relrhcos.Extensions `json:"rhel-coreos-extensions,omitempty"`
 }
 
 // Media contains release details for various platforms
