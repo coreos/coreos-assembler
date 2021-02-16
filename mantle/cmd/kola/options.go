@@ -247,12 +247,14 @@ func syncOptionsImpl(useCosa bool) error {
 				kola.CosaBuild = localbuild
 				foundCosa = true
 			}
-		} else {
+		} else if kola.QEMUOptions.DiskImage == "" {
 			localbuild, err := sdk.GetLocalFastBuildQemu()
 			if err != nil {
 				return err
 			}
-			kola.QEMUOptions.DiskImage = localbuild
+			if localbuild != "" {
+				kola.QEMUOptions.DiskImage = localbuild
+			}
 		}
 	}
 
