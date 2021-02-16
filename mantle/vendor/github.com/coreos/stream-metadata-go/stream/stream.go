@@ -3,6 +3,10 @@
 // this API to find cloud images, bare metal disk images, etc.
 package stream
 
+import (
+	"github.com/coreos/stream-metadata-go/stream/rhcos"
+)
+
 // Stream contains artifacts available in a stream
 type Stream struct {
 	Stream        string          `json:"stream"`
@@ -19,6 +23,8 @@ type Metadata struct {
 type Arch struct {
 	Artifacts map[string]PlatformArtifacts `json:"artifacts"`
 	Images    Images                       `json:"images,omitempty"`
+	// RHELCoreOSExtensions is data specific to Red Hat Enterprise Linux CoreOS
+	RHELCoreOSExtensions *rhcos.Extensions `json:"rhel-coreos-extensions,omitempty"`
 }
 
 // PlatformArtifacts contains images for a platform
@@ -40,7 +46,7 @@ type Artifact struct {
 	Location           string `json:"location"`
 	Signature          string `json:"signature"`
 	Sha256             string `json:"sha256"`
-	UncompressedSha256 string `json:"uncompressed-sha256"`
+	UncompressedSha256 string `json:"uncompressed-sha256,omitempty"`
 }
 
 // Images contains images available in cloud providers

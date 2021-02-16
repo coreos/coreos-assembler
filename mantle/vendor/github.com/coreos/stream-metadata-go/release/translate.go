@@ -2,6 +2,7 @@ package release
 
 import (
 	"github.com/coreos/stream-metadata-go/stream"
+	"github.com/coreos/stream-metadata-go/stream/rhcos"
 )
 
 func mapArtifact(ra *Artifact) *stream.Artifact {
@@ -33,6 +34,11 @@ func mapFormats(m map[string]ImageFormat) map[string]stream.ImageFormat {
 func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 	artifacts := make(map[string]stream.PlatformArtifacts)
 	cloudImages := stream.Images{}
+	var rhcosExt *rhcos.Extensions
+	relRHCOSExt := releaseArch.RHELCoreOSExtensions
+	if relRHCOSExt != nil {
+		rhcosExt = &rhcos.Extensions{}
+	}
 	if releaseArch.Media.Aws != nil {
 		artifacts["aws"] = stream.PlatformArtifacts{
 			Release: rel.Release,
@@ -57,12 +63,17 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Formats: mapFormats(releaseArch.Media.Azure.Artifacts),
 		}
 
-		// Not enabled right now
-		// if az := releaseArch.Media.Azure.Images; az != nil && az.Global != nil && az.Global.Image != nil {
-		// 	azureImage := StreamCloudImage{}
-		// 	azureImage.Image = fmt.Sprintf("Fedora:CoreOS:%s:latest", rel.Stream)
-		// 	cloudImages.Azure = &azureImage
-		// }
+		if relRHCOSExt != nil {
+			az := relRHCOSExt.AzureDisk
+			if az != nil {
+				rhcosExt.AzureDisk = &rhcos.AzureDisk{
+					Release: rel.Release,
+					URL:     az.URL,
+				}
+			}
+		}
+		// In the future this is where we'd also add FCOS Marketplace data.
+		// See https://github.com/coreos/stream-metadata-go/issues/13
 	}
 
 	if releaseArch.Media.Aliyun != nil {
@@ -169,8 +180,9 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 	}
 
 	return stream.Arch{
-		Artifacts: artifacts,
-		Images:    cloudImages,
+		Artifacts:            artifacts,
+		Images:               cloudImages,
+		RHELCoreOSExtensions: rhcosExt,
 	}
 }
 
