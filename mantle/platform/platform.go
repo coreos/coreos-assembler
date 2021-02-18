@@ -444,15 +444,6 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		if len(out) > 0 {
 			return fmt.Errorf("some systemd units failed:\n%s", out)
 		}
-		// Also no SELinux denials; RHCOS currently ships auditd, FCOS doesn't, so handle
-		// both places.
-		out, stderr, err = m.SSH("if test -f /var/log/audit/audit.log; then grep 'avc.*denied' /var/log/audit/audit.log || true; else journalctl -q --no-pager --grep='avc.*denied' _TRANSPORT=audit || true; fi")
-		if err != nil {
-			return fmt.Errorf("failed to query audit logs: %s: %v: %s", out, err, stderr)
-		}
-		if len(out) > 0 {
-			return fmt.Errorf("Found SELinux AVC denials:\n%s", out)
-		}
 	}
 
 	return ctx.Err()
