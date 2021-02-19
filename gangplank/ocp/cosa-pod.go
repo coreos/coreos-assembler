@@ -22,6 +22,7 @@ import (
 	"github.com/containers/libpod/pkg/specgen"
 	"github.com/containers/storage"
 	"github.com/containers/storage/pkg/idtools"
+	"github.com/opencontainers/runc/libcontainer/user"
 	cspec "github.com/opencontainers/runtime-spec/specs-go"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
@@ -552,6 +553,12 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 			NSMode: specgen.Host,
 		},
 	}
+
+	u, err := user.CurrentUser()
+	if err != nil {
+		return fmt.Errorf("unable to lookup the current user: %v", err)
+	}
+
 	s.ContainerSecurityConfig = specgen.ContainerSecurityConfig{
 		Privileged: true,
 		User:       "builder",
@@ -559,12 +566,12 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 			UIDMap: []idtools.IDMap{
 				{
 					ContainerID: 0,
-					HostID:      1000,
+					HostID:      u.Uid,
 					Size:        1,
 				},
 				{
 					ContainerID: 1000,
-					HostID:      1000,
+					HostID:      u.Uid,
 					Size:        200000,
 				},
 			},
