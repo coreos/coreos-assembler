@@ -27,7 +27,11 @@ def ensure_dup(inp, out, inp_key, out_key):
 
 
 def url_builder(stream, version, arch, path):
-    return f"{args.stream_baseurl}/{stream}/builds/{version}/{arch}/{path}"
+    # This is a bug to be fixed with later work on https://github.com/openshift/os/issues/477
+    if args.distro == 'rhcos':
+        return f"{args.stream_baseurl}/{stream}/{version}/{arch}/{path}"
+    else:
+        return f"{args.stream_baseurl}/{stream}/builds/{version}/{arch}/{path}"
 
 
 def get_extension(path, modifier, arch):
@@ -37,8 +41,9 @@ def get_extension(path, modifier, arch):
 parser = ArgumentParser()
 parser.add_argument("--workdir", help="cosa workdir")
 parser.add_argument("--build-id", help="build id")
+parser.add_argument("--distro", help="Distro selects stream defaults such as baseurl and format", choices=['fcos', 'rhcos'])
 parser.add_argument("--stream-name", help="Override the stream ID (default is derived from coreos-assembler)")
-parser.add_argument("--stream-baseurl", help="Prefix URL for stream content", default=FCOS_STREAM_ENDPOINT)
+parser.add_argument("--stream-baseurl", help="Override prefix URL for stream content", default=FCOS_STREAM_ENDPOINT)
 parser.add_argument("--output", help="Output to file; default is build directory")
 parser.add_argument("--url", help="URL to a coreos-assembler meta.json", default=[], action='append')
 args = parser.parse_args()
@@ -78,7 +83,9 @@ if len(args.url) == 0:
 else:
     for url in args.url:
         print(f"Downloading {url}...")
-        parsed_builds.append(requests.get(url).json())
+        r = requests.get(url)
+        r.raise_for_status()
+        parsed_builds.append(r.json())
 
 # If any existing data, inherit it (if it's non-empty)
 if os.path.exists(args.output) and os.stat(args.output).st_size > 0:
