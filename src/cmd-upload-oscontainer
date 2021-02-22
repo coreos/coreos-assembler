@@ -42,12 +42,14 @@ with open(metapath) as f:
 
 configdir = os.path.abspath('src/config')
 oscconfigpath = f'{configdir}/oscontainer.yaml'
+# XXX: fold oscontainer.yaml handling into oscontainer.py
+configyaml = {}
 if os.path.exists(oscconfigpath):
     with open(oscconfigpath) as f:
-        c = yaml.safe_load(f)
-        base = c.get('base')
-        if base is not None:
-            args.from_image = base
+        configyaml = yaml.safe_load(f)
+
+if 'base' in configyaml:
+    args.from_image = configyaml['base']
 
 extensions_src = 'src/config/extensions.yaml'
 extensions_destdir = None
