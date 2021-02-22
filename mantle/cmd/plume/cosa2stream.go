@@ -16,15 +16,23 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/coreos/stream-metadata-go/release"
 	"github.com/coreos/stream-metadata-go/stream"
 	"github.com/spf13/cobra"
+)
+
+const (
+	// This will hopefully migrate to mirror.openshift.com, see https://github.com/openshift/os/issues/477
+	rhcosCosaEndpoint = "https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases"
 )
 
 var (
@@ -38,29 +46,85 @@ var (
 
 	streamBaseURL string
 	streamName    string
+	distro        string
+	target        string
 )
 
 func init() {
 	cmdCosaBuildToStream.Flags().StringVar(&streamBaseURL, "url", "", "Base URL for build")
 	cmdCosaBuildToStream.Flags().StringVar(&streamName, "name", "", "Stream name")
-	cmdCosaBuildToStream.MarkFlagRequired("name")
+	cmdCosaBuildToStream.Flags().StringVar(&distro, "distro", "", "Distribution (fcos, rhcos)")
+	cmdCosaBuildToStream.Flags().StringVar(&target, "target", "", "Modify this file in place (default: no source, print to stdout)")
 	root.AddCommand(cmdCosaBuildToStream)
 }
 
 func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
-	childArgs := []string{"generate-release-meta", "--stream-name=" + streamName}
+	var outStream stream.Stream
+
+	if target != "" {
+		buf, err := ioutil.ReadFile(target)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(buf, &outStream)
+		if err != nil {
+			return err
+		}
+	} else {
+		if streamName == "" {
+			return fmt.Errorf("--name must be provided (if no input file)")
+		}
+		outStream = stream.Stream{
+			Stream:        streamName,
+			Architectures: make(map[string]stream.Arch),
+		}
+	}
+	streamArches := outStream.Architectures
+
+	outStream.Metadata = stream.Metadata{LastModified: time.Now().UTC().Format(time.RFC3339)}
+
+	childArgs := []string{"generate-release-meta"}
+	if distro != "" {
+		childArgs = append(childArgs, "--distro="+distro)
+	}
 	if streamBaseURL != "" {
 		childArgs = append(childArgs, "--stream-baseurl="+streamBaseURL)
 	}
 
-	streamArches := make(map[string]stream.Arch)
 	for _, arg := range args {
 		releaseTmpf, err := ioutil.TempFile("", "release")
 		if err != nil {
 			return err
 		}
+		var archStreamName = streamName
+		if !strings.HasPrefix(arg, "https://") {
+			if distro != "rhcos" {
+				return errors.New("Arguments must be https:// URLs (or with --distro rhcos, ARCH=VERSION)")
+			}
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) < 2 {
+				return fmt.Errorf("Expecting ARCH=VERSION, found: %s", arg)
+			}
+			arch := parts[0]
+			ver := parts[1]
+			// Convert e.g. 48.82.<timestamp> to rhcos-4.8
+			archStreamName = fmt.Sprintf("rhcos-%s.%s", ver[0:1], ver[1:2])
+			if arch != "x86_64" {
+				archStreamName += "-" + arch
+			}
+			endpoint := rhcosCosaEndpoint
+			if streamBaseURL != "" {
+				endpoint = streamBaseURL
+			}
+			base := fmt.Sprintf("%s/%s", endpoint, archStreamName)
+			u := fmt.Sprintf("%s/%s/%s/meta.json", base, ver, arch)
+			arg = u
+			childArgs = append(childArgs, "--stream-baseurl="+endpoint)
+		}
 		cosaArgs := append([]string{}, childArgs...)
-		cosaArgs = append(cosaArgs, []string{fmt.Sprintf("--url=" + arg), "--output=" + releaseTmpf.Name()}...)
+		cosaArgs = append(cosaArgs, "--url="+arg)
+		cosaArgs = append(cosaArgs, "--stream-name="+archStreamName)
+		cosaArgs = append(cosaArgs, "--output="+releaseTmpf.Name())
 		c := exec.Command("cosa", cosaArgs...)
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
@@ -78,21 +142,27 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 		relarches := rel.ToStreamArchitectures()
 		for arch, relarchdata := range relarches {
 			if _, ok := streamArches[arch]; ok {
-				return fmt.Errorf("Duplicate architecture %s", arch)
+				if target == "" {
+					return fmt.Errorf("Duplicate architecture %s", arch)
+				}
 			}
 			streamArches[arch] = relarchdata
 		}
 	}
 
-	// Generate output stream from release
-	outStream := stream.Stream{
-		Stream:        streamName,
-		Metadata:      stream.Metadata{LastModified: time.Now().UTC().Format(time.RFC3339)},
-		Architectures: streamArches,
-	}
-
 	// Serialize to JSON
-	encoder := json.NewEncoder(os.Stdout)
+	var targetWriter io.Writer
+	if target != "" {
+		var err error
+		targetWriter, err = os.Create(target)
+		if err != nil {
+			return err
+		}
+	} else {
+		targetWriter = os.Stdout
+	}
+	encoder := json.NewEncoder(targetWriter)
+	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(&outStream); err != nil {
 		return fmt.Errorf("Error while encoding: %v", err)
 	}
