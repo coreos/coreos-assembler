@@ -13,7 +13,7 @@ sudo
 dumb-init
 
 # For composes
-rpm-ostree createrepo_c openssh-clients
+rpm-ostree createrepo_c openssh-clients python3-createrepo_c
 dnf-utils
 
 # For generating ISO images
