@@ -105,7 +105,7 @@ if [ -z "${projectdir}" ]; then
 fi
 imgname="${fastref}-${version}-qemu.qcow2"
 # Prune previous images
-rm -vf ${outdir}/fastbuild-*.qcow2
+rm -vf ${outdir}/*.qcow2
 qemu-img create -f qcow2 -o backing_fmt=qcow2,backing_file="${previous_builddir}/${previous_qemu}" "${imgname}.tmp" 20G
 RUNVM_NONET=1 runvm -drive if=virtio,id=target,format=qcow2,file="${imgname}.tmp",cache=unsafe -- \
     /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
