@@ -152,6 +152,7 @@ func getSecretMapping(s string) (*secretMap, bool) {
 	return nil, false
 }
 
+// writeSecretEnvVars creates envVars.
 func (sm *secretMap) writeSecretEnvVars(d map[string][]byte, ret *[]string) error {
 	for k, v := range d {
 		envKey, ok := sm.envVarMap[k]
@@ -164,6 +165,7 @@ func (sm *secretMap) writeSecretEnvVars(d map[string][]byte, ret *[]string) erro
 	return nil
 }
 
+// writeSecretFiles writes secrets to their location based on the map.
 func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte, ret *[]string) error {
 	sDir := filepath.Join(toDir, name)
 	if err := os.MkdirAll(sDir, 0755); err != nil {

@@ -16,10 +16,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-var (
-	// workSpec is a Builder.
-	_ = Builder(&workSpec{})
-)
+// workSpec is a Builder.
+var _ Builder = &workSpec{}
 
 // workSpec define job for remote worker to do
 // A workSpec is dispatched by a builder and is tightly coupled to
@@ -32,10 +30,8 @@ type workSpec struct {
 	Return        *Return           `json:"return"`
 }
 
-const (
-	// CosaWorkPodEnvVarName is the envVar used to identify WorkSpec json.
-	CosaWorkPodEnvVarName = "COSA_WORK_POD_JSON"
-)
+// CosaWorkPodEnvVarName is the envVar used to identify WorkSpec json.
+const CosaWorkPodEnvVarName = "COSA_WORK_POD_JSON"
 
 // newWorkSpec returns a workspec from the environment
 func newWorkSpec(ctx ClusterContext) (*workSpec, error) {
@@ -60,7 +56,7 @@ func newWorkSpec(ctx ClusterContext) (*workSpec, error) {
 	return &ws, nil
 }
 
-// Unmarshal decodes an io.Reader to a workSpec
+// Unmarshal decodes an io.Reader to a workSpec.
 func (ws *workSpec) Unmarshal(r io.Reader) error {
 	d, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -82,7 +78,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	apiBuild = ws.APIBuild
 	envVars := os.Environ()
 
-	// Check stdin for binary input
+	// Check stdin for binary input.
 	inF, err := recieveInputBinary()
 	if err == nil && inF != "" {
 		log.WithField("file", inF).Info("Worker recieved binary input")
@@ -105,7 +101,8 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 
 	}
 
-	// Workers always will use /srv
+	// Workers always will use /srv. The shell/Python code of COSA expects
+	// /srv to be on its own volume.
 	if err := os.Chdir(cosaSrvDir); err != nil {
 		return fmt.Errorf("unable to switch to %s: %w", cosaSrvDir, err)
 	}
@@ -127,6 +124,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		envVars = append(envVars, ks...)
 	}
 
+	// Fetch the remote files and write them to the local path.
 	for _, f := range ws.RemoteFiles {
 		destf := filepath.Join(cosaSrvDir, f.Bucket, f.Object)
 		destd := filepath.Dir(destf)
@@ -147,6 +145,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		}
 	}
 
+	// Identify the buildConfig that launched this instance.
 	if apiBuild != nil {
 		bc := apiBuild.Annotations[buildapiv1.BuildConfigAnnotation]
 		bn := apiBuild.Annotations[buildapiv1.BuildNumberAnnotation]
@@ -155,9 +154,9 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			return fmt.Errorf("failed to clone recipe: %w", err)
 		}
 	} else {
-		// Emit a warning about running an unbound worker. Unbound workers
+		// Inform that Gangplank is running as an unbound worker. Unbound workers
 		// require something else to create and manage the pod, such as Jenkins.
-		log.Warnf("Pod is running as a unbound worker")
+		log.Infof("Pod is running as a unbound worker")
 	}
 
 	// Ensure on shutdown that we record information that might be

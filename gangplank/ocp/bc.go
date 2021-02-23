@@ -30,8 +30,8 @@ var (
 	// files being served up
 	srvBucket = "source"
 
-	// buildConfigs is a builder.
-	_ = Builder(&buildConfig{})
+	// buildConfig is a builder.
+	_ Builder = &buildConfig{}
 )
 
 func init() {
