@@ -13,6 +13,10 @@ pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build:
 	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/gangplank .
+.PHONY: docs
+docs:
+	for i in ocp cosa spec; do cd ${my_dir}/$$i; pwd; gomarkdoc \
+		-u -o ../../docs/gangplank/api-$$i.md ./...; done \
 
 .PHONY: fmt
 fmt:
