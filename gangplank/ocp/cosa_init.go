@@ -15,7 +15,7 @@ const (
 )
 
 // cosaInit does the initial COSA setup. To support both pod and buildConfig
-// based builds first, check the API client, then check envVars. The use of envVars
+// based builds, first check the API client, then check envVars. The use of envVars
 // in this case is *safe*; `SOURCE_{URI,REF} == apiBuild.Spec.Source.Git.{URI,REF}`. That
 // is, SOURCE_* envVars will always match the apiBuild.Spec.Source.Git.* values.
 func cosaInit() error {

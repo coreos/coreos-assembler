@@ -23,10 +23,8 @@ type mountReferance struct {
 	addInitCommands []string
 }
 
-const (
-	// secretMountRefLabel is used for mounting of secrets
-	mountRefLabel = "coreos-assembler.coreos.com/mount-ref"
-)
+// secretMountRefLabel is used for mounting of secrets
+const mountRefLabel = "coreos-assembler.coreos.com/mount-ref"
 
 var (
 	volMaps = map[string]mountReferance{

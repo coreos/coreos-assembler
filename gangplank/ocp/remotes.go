@@ -38,7 +38,7 @@ func (r *RemoteFile) WriteToPath(ctx context.Context, path string) error {
 	return err
 }
 
-// Extract decompresses the remote file to the path
+// Extract decompresses the remote file to the path.
 func (r *RemoteFile) Extract(ctx context.Context, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err

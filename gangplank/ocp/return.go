@@ -12,10 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	// Return is a Returner
-	_ = Returner(&Return{})
-)
+// Return is a Returner
+var _ Returner = &Return{}
 
 // Return describes the location of where to send results.
 type Return struct {

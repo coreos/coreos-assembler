@@ -25,7 +25,7 @@ import (
 
 	Gangplank refers to non-buildconfig builders as "unbound"; they are not
 	bound to a buildconfig and therefore run as part of some other procress such
-	as a bare-pod, CI system, or CLI run. When run unbounded a mock OpenShift
+	as a bare-pod, CI system, or CLI run. When run unbounded, a mock OpenShift
 	build.openshift.io/v1 object is created; this ensures that the same execution
 	mode between all modes of running Gangplank.
 
@@ -59,11 +59,9 @@ type PodBuilder interface {
 	Exec(ctx ClusterContext) error
 }
 
-var (
-	// cli is a Builder (and a poor one at that too...)
-	// While a ClusterPodBuilder is a Builder, we treat it seperately.
-	_ = PodBuilder(&podBuild{})
-)
+// cli is a Builder (and a poor one at that too...)
+// While a ClusterPodBuilder is a Builder, we treat it seperately.
+var _ PodBuilder = &podBuild{}
 
 const (
 	podBuildLabel      = "gangplank.coreos-assembler.coreos.com"
@@ -71,7 +69,7 @@ const (
 	podBuildRunnerTag  = "cosa-podBuild-runner"
 )
 
-// Exec start the unbounded build.
+// Exec starts the unbounded build.
 func (pb *podBuild) Exec(ctx ClusterContext) error {
 	log.Info("Executing unbounded builder")
 	return pb.bc.Exec(ctx)

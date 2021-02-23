@@ -6,6 +6,7 @@ require (
 	github.com/containers/libpod v1.9.3
 	github.com/containers/storage v1.20.2
 	github.com/minio/minio-go/v7 v7.0.6
+	github.com/opencontainers/runc v1.0.0-rc90
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200520003142-237cc4f519e2
 	github.com/openshift/api v0.0.0-20201119214056-f1dea5ee7f60
 	github.com/pkg/errors v0.9.1

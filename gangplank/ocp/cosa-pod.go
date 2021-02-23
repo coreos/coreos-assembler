@@ -2,7 +2,6 @@ package ocp
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -26,15 +25,11 @@ import (
 	cspec "github.com/opencontainers/runtime-spec/specs-go"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	kubeJSON "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -123,7 +118,7 @@ type CosaPodder interface {
 }
 
 // a cosaPod is a CosaPodder
-var _ = CosaPodder(&cosaPod{})
+var _ CosaPodder = &cosaPod{}
 
 // NewCosaPodder creates a CosaPodder
 func NewCosaPodder(
@@ -150,6 +145,8 @@ func NewCosaPodder(
 		return nil, err
 	}
 
+	// If the builder is in-cluster (either as a BuildConfig or an unbound pod),
+	// discover the version of OpenShift/Kubernetes.
 	if ac != nil {
 		vi, err := ac.DiscoveryClient.ServerVersion()
 		if err != nil {
@@ -183,7 +180,7 @@ func NewCosaPodder(
 func ptrInt(i int64) *int64 { return &i }
 func ptrBool(b bool) *bool  { return &b }
 
-// getPodSpec returns a pod specification
+// getPodSpec returns a pod specification.
 func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod {
 	podName := fmt.Sprintf("%s-%s-worker-%d",
 		cp.apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
@@ -250,7 +247,8 @@ export PATH=/usr/sbin:/usr/bin
 	}
 }
 
-// WorkerRunner runs a worker pod and watches until finished
+// WorkerRunner runs a worker pod on either OpenShift/Kubernetes or
+// in as a podman container.
 func (cp *cosaPod) WorkerRunner(ctx ClusterContext, envVars []v1.EnvVar) error {
 	cluster, err := GetCluster(ctx)
 	if err != nil {
@@ -262,6 +260,8 @@ func (cp *cosaPod) WorkerRunner(ctx ClusterContext, envVars []v1.EnvVar) error {
 	return podmanRunner(ctx, cp, envVars)
 }
 
+// clusterRunner creates an OpenShift/Kubernetes pod for the work to be done.
+// The output of the pod is streamed and captured on the console.
 func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 	cs, ns, err := GetClient(cp.clusterCtx)
 	if err != nil {
@@ -363,7 +363,7 @@ func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 // streamPodLogs steams the pod's logs to logging and to disk. Worker
 // pods are responsible for their work, but not for their logs.
 // To make streamPodLogs thread safe and non-blocking, it expects
-// a pointer to a bool. If that pointer is nil or true, then we return
+// a pointer to a bool. If that pointer is nil or true, then we return.
 func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) error {
 	cs, ns, err := GetClient(cp.clusterCtx)
 	if err != nil {
@@ -384,7 +384,10 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) e
 		return err
 	}
 
-	lF := log.Fields{"pod": pod.Name}
+	l := log.WithFields(log.Fields{
+		"pod":       pod.Name,
+		"container": container,
+	})
 
 	logD := filepath.Join(cosaSrvDir, "logs")
 	podLog := filepath.Join(logD, fmt.Sprintf("%s-%s.log", pod.Name, container))
@@ -407,11 +410,6 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) e
 
 		startTime := time.Now()
 
-		l := log.WithFields(log.Fields{
-			"pod":       pod.Name,
-			"container": container,
-		})
-
 		for {
 			scanner := bufio.NewScanner(podLogs)
 			for scanner.Scan() {
@@ -423,7 +421,7 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) e
 			}
 			if err := scanner.Err(); err != nil {
 				if err == io.EOF {
-					log.WithFields(lF).Info("Log closed")
+					l.Info("Log closed")
 					return
 				}
 				l.WithError(err).Warn("error scanning output")
@@ -432,39 +430,6 @@ func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) e
 	}(logging, logf)
 
 	return nil
-}
-
-// encodeToJSON renders the JSON definition of a COSA pod. Podman prefers
-// non-pretty JSON.
-//nolint
-func encodeToJSON(pod *v1.Pod, envVars []v1.EnvVar, jsonType string) (string, error) {
-	scheme := runtime.NewScheme()
-	if err := corev1.AddToScheme(scheme); err != nil {
-		return "", err
-	}
-
-	jsOpts := json.SerializerOptions{}
-	switch jsonType {
-	case "yaml":
-		jsOpts.Yaml = true
-	case "json":
-		jsOpts.Yaml = false
-		jsOpts.Pretty = true
-	}
-
-	s := runtime.NewScheme()
-	e := kubeJSON.NewSerializerWithOptions(
-		kubeJSON.DefaultMetaFactory, s, s, jsOpts,
-	)
-
-	var d bytes.Buffer
-	dW := io.Writer(&d)
-
-	if err := e.Encode(pod, dW); err != nil {
-		return "", err
-	}
-
-	return d.String(), nil
 }
 
 // outWriteCloser is a noop closer

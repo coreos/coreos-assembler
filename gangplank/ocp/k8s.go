@@ -46,7 +46,7 @@ type KubernetesCluster interface {
 }
 
 // Cluster implements a KubernetesCluster
-var _ = KubernetesCluster(&Cluster{})
+var _ KubernetesCluster = &Cluster{}
 
 // NewCluster returns a Kubernetes cluster
 func NewCluster(inCluster bool, configFile string) KubernetesCluster {
