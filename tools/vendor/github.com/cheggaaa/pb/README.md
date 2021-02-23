@@ -1,13 +1,21 @@
+### Warning
+Please use v3 version ```go get github.com/cheggaaa/v3``` - it's a continuation of the v2, but  in the master branch and with the support of go modules
+
 # Terminal progress bar for Go  
 
-Simple progress bar for console programs.    
-   
-Please check the new version https://github.com/cheggaaa/pb/tree/v2 (currently, it's beta)
+[![Coverage Status](https://coveralls.io/repos/github/cheggaaa/pb/badge.svg?branch=v2)](https://coveralls.io/github/cheggaaa/pb?branch=v2)
+
+### It's beta, some features may be changed
+
+This is proposal for the second version of progress bar   
+- based on text/template   
+- can take custom elements   
+- using colors is easy   
 
 ## Installation
 
 ```
-go get gopkg.in/cheggaaa/pb.v1
+go get gopkg.in/cheggaaa/pb.v2
 ```   
 
 ## Usage   
@@ -16,162 +24,50 @@ go get gopkg.in/cheggaaa/pb.v1
 package main
 
 import (
-	"gopkg.in/cheggaaa/pb.v1"
+	"gopkg.in/cheggaaa/pb.v2"
 	"time"
 )
 
 func main() {
-	count := 100000
+	simple()
+	fromPreset()
+	customTemplate(`Custom template: {{counters . }}`)
+	customTemplate(`{{ red "With colors:" }} {{bar . | green}} {{speed . | blue }}`)
+	customTemplate(`{{ red "With funcs:" }} {{ bar . "<" "-" (cycle . "↖" "↗" "↘" "↙" ) "." ">"}} {{speed . | rndcolor }}`)
+	customTemplate(`{{ bar . "[<" "·····•·····" (rnd "ᗧ" "◔" "◕" "◷" ) "•" ">]"}}`)
+}
+
+func simple() {
+	count := 1000
 	bar := pb.StartNew(count)
 	for i := 0; i < count; i++ {
 		bar.Increment()
-		time.Sleep(time.Millisecond)
+		time.Sleep(time.Millisecond * 2)
 	}
-	bar.FinishPrint("The End!")
+	bar.Finish()
 }
 
-```
-
-Result will be like this:
-
-```
-> go run test.go
-37158 / 100000 [================>_______________________________] 37.16% 1m11s
-```
-
-## Customization
-
-```Go  
-// create bar
-bar := pb.New(count)
-
-// refresh info every second (default 200ms)
-bar.SetRefreshRate(time.Second)
-
-// show percents (by default already true)
-bar.ShowPercent = true
-
-// show bar (by default already true)
-bar.ShowBar = true
-
-// no counters
-bar.ShowCounters = false
-
-// show "time left"
-bar.ShowTimeLeft = true
-
-// show average speed
-bar.ShowSpeed = true
-
-// sets the width of the progress bar
-bar.SetWidth(80)
-
-// sets the width of the progress bar, but if terminal size smaller will be ignored
-bar.SetMaxWidth(80)
-
-// convert output to readable format (like KB, MB)
-bar.SetUnits(pb.U_BYTES)
-
-// and start
-bar.Start()
-``` 
-
-## Progress bar for IO Operations
-
-```go
-// create and start bar
-bar := pb.New(myDataLen).SetUnits(pb.U_BYTES)
-bar.Start()
-
-// my io.Reader
-r := myReader
-
-// my io.Writer
-w := myWriter
-
-// create proxy reader
-reader := bar.NewProxyReader(r)
-
-// and copy from pb reader
-io.Copy(w, reader)
-
-```
-
-```go
-// create and start bar
-bar := pb.New(myDataLen).SetUnits(pb.U_BYTES)
-bar.Start()
-
-// my io.Reader
-r := myReader
-
-// my io.Writer
-w := myWriter
-
-// create multi writer
-writer := io.MultiWriter(w, bar)
-
-// and copy
-io.Copy(writer, r)
-
-bar.Finish()
-```
-
-## Custom Progress Bar Look-and-feel
-
-```go
-bar.Format("<.- >")
-```
-
-## Multiple Progress Bars (experimental and unstable)
-
-Do not print to terminal while pool is active.
-
-```go
-package main
-
-import (
-    "math/rand"
-    "sync"
-    "time"
-
-    "gopkg.in/cheggaaa/pb.v1"
-)
-
-func main() {
-    // create bars
-    first := pb.New(200).Prefix("First ")
-    second := pb.New(200).Prefix("Second ")
-    third := pb.New(200).Prefix("Third ")
-    // start pool
-    pool, err := pb.StartPool(first, second, third)
-    if err != nil {
-        panic(err)
-    }
-    // update bars
-    wg := new(sync.WaitGroup)
-    for _, bar := range []*pb.ProgressBar{first, second, third} {
-        wg.Add(1)
-        go func(cb *pb.ProgressBar) {
-            for n := 0; n < 200; n++ {
-                cb.Increment()
-                time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
-            }
-            cb.Finish()
-            wg.Done()
-        }(bar)
-    }
-    wg.Wait()
-    // close pool
-    pool.Stop()
+func fromPreset() {
+	count := 1000
+	//bar := pb.Default.Start(total)
+	//bar := pb.Simple.Start(total)
+	bar := pb.Full.Start(count)
+	defer bar.Finish()
+	bar.Set("prefix", "fromPreset(): ")
+	for i := 0; i < count/2; i++ {
+		bar.Add(2)
+		time.Sleep(time.Millisecond * 4)
+	}
 }
-```
 
-The result will be as follows:
+func customTemplate(tmpl string) {
+	count := 1000
+	bar := pb.ProgressBarTemplate(tmpl).Start(count)
+	defer bar.Finish()
+	for i := 0; i < count/2; i++ {
+		bar.Add(2)
+		time.Sleep(time.Millisecond * 4)
+	}
+}
 
-```
-$ go run example/multiple.go 
-First  34 / 200 [=========>---------------------------------------------]  17.00% 00m08s
-Second  42 / 200 [===========>------------------------------------------]  21.00% 00m06s
-Third  36 / 200 [=========>---------------------------------------------]  18.00% 00m08s
 ```

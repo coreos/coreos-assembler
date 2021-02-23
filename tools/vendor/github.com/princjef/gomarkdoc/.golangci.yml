@@ -1,0 +1,43 @@
+linters:
+  enable:
+    - bodyclose
+    - golint
+    - unconvert
+    - gocyclo
+    - goimports
+    - maligned
+    - misspell
+    - lll
+    - gocritic
+    - gochecknoinits
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  maligned:
+    suggest-new: true
+  lll:
+    tab-width: 4
+  nakedret:
+    max-func-lines: 10
+  golint:
+    min-confidence: 0.5
+
+issues:
+  exclude-rules:
+    # Exclude assertion lines in tests from line length
+    - path: "_test\\.go"
+      linters:
+        - lll
+      source: "^\\s*is."
+
+    # Exclude documentation files from line length
+    - path: "doc\\.go"
+      linters:
+        - lll
+
+  exclude:
+    # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
+    - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
+
+  exclude-use-default: false
