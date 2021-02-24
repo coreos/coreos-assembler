@@ -55,6 +55,9 @@ type buildConfig struct {
 	HostIP  string
 	HostPod string
 
+	// SrvDir to fetch in unbounded pod mode
+	SrvDir string
+
 	// Internal copy of the JobSpec
 	JobSpec spec.JobSpec
 
@@ -201,6 +204,46 @@ binary build interface.`)
 
 	if err := m.ensureBucketExists(ctx, "builds"); err != nil {
 		return err
+	}
+
+	if err := m.ensureBucketExists(ctx, "binary"); err != nil {
+		return err
+	}
+	defer m.deleteBucket(ctx, "binary")
+
+	if bc.SrvDir != "" {
+		if _, err := os.Stat(bc.SrvDir); os.IsNotExist(err) {
+			return fmt.Errorf("Srv directory does not exist: %w", err)
+		}
+
+		if err != nil {
+			return err
+		}
+		bucket := "binary"
+		source := "source.tar.gz"
+		args := []string{"-C", bc.SrvDir, "-c", "-v", "-f", source, "builds"}
+		cmd := exec.Command("bsdtar", args...)
+		log.Info("Compressing...")
+
+		sourcePath := fmt.Sprintf("%s/%s/%s", bc.SrvDir, bucket, source)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		log.Infof("Output: %s", cmd.Output)
+		if err != nil {
+			return fmt.Errorf("unable to compress source: %w", err)
+		}
+		log.Infof("Renaming %s to %s", source, sourcePath)
+		if err := os.Rename(source, sourcePath); err != nil {
+			return fmt.Errorf("unable to rename file: %w", err)
+		}
+		defer os.Remove(sourcePath)
+		remoteFiles = append(remoteFiles, &RemoteFile{
+			Bucket:     "binary",
+			Minio:      m,
+			Object:     source,
+			Compressed: true,
+		})
 	}
 
 	// Determine what stages happen in what pod number.

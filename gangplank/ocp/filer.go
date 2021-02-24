@@ -216,6 +216,27 @@ func (m *minioServer) ensureBucketExists(ctx context.Context, bucket string) err
 	return nil
 }
 
+func (m *minioServer) deleteBucket(ctx context.Context, bucket string) error {
+	mc, err := m.client()
+	if err != nil {
+		return err
+	}
+
+	be, err := mc.BucketExists(ctx, bucket)
+	if err != nil {
+		return err
+	}
+
+	if !be {
+		return nil
+	}
+
+	if err := mc.RemoveBucket(ctx, bucket); err != nil {
+		return fmt.Errorf("Failed to remove bucket: %w", err)
+	}
+	return nil
+}
+
 // fetcher retrieves an object from a Minio server
 func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest io.Writer) error {
 	if m.Host == "" {

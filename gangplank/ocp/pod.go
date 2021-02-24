@@ -50,6 +50,7 @@ type podBuild struct {
 	projectNamespace string
 	serviceAccount   string
 	workDir          string
+	srcDir           string
 }
 
 // PodBuilder is the manual/unbounded Build interface.
@@ -78,7 +79,7 @@ func (pb *podBuild) Exec(ctx ClusterContext) error {
 }
 
 // NewPodBuilder returns a ClusterPodBuilder ready for execution.
-func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir string) (PodBuilder, error) {
+func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir, srcDir string) (PodBuilder, error) {
 	// Directly inject the jobspec
 	js, err := spec.JobSpecFromFile(jsF)
 	if jsF != "" && err != nil {
@@ -95,6 +96,7 @@ func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir strin
 		js:             &js,
 		serviceAccount: serviceAccount,
 		workDir:        workDir,
+		srcDir:         srcDir,
 	}
 
 	if err := pb.setInCluster(); err != nil {
@@ -118,6 +120,7 @@ func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir strin
 	}
 	bc.JobSpec = js
 	bc.JobSpecFile = jsF
+	bc.SrvDir = srcDir
 
 	pb.bc = bc
 	return pb, nil
