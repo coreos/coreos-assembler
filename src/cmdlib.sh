@@ -71,6 +71,11 @@ has_privileges() {
 }
 
 depcheck() {
+    # Allow suppressing this so we can e.g. override
+    # rpm-ostree in CI flows without building an RPM.
+    if test -n "${COSA_SUPPRESS_DEPCHECK:-}"; then
+        return
+    fi
     local deps
     deps=$(/usr/lib/coreos-assembler/print-dependencies.sh)
     # Explicitly check the packages in one rpm -q to avoid
