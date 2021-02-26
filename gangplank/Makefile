@@ -77,3 +77,7 @@ devtest: build
 		--entrypoint='["/usr/bin/dumb-init", "/run/bin/gangplank"]' \
 		quay.io/coreos-assembler/coreos-assembler:latest \
 		builder
+
+.PHONY: dev-image
+dev-image: build
+	$(MAKE) -C ../ocp build-dev
