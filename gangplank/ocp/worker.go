@@ -186,11 +186,15 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 
 	// Range over the stages and perform the actual work.
 	for _, s := range ws.ExecuteStages {
-		log.Infof("Executing Stage: %s", s)
 		stage, err := ws.JobSpec.GetStage(s)
-		log.Infof("Stage commands: %v", stage.Commands)
+		log.WithFields(log.Fields{
+			"stage id": s,
+			"stage":    fmt.Sprintf("%v", stage),
+		}).Info("Executing Stage")
+
 		if err != nil {
 			e = err
+			log.WithError(err).Info("Error fetching stage")
 			continue
 		}
 

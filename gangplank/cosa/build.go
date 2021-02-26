@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -153,6 +154,31 @@ func CanArtifact(artifact string) bool {
 	b.BuildArtifacts = new(BuildArtifacts)
 	_, ok := b.artifacts()[artifact]
 	return ok
+}
+
+// GetCommandBuildableArtifacts returns the string name of buildable artifacts
+// through the `cosa build-*` CLI.
+func GetCommandBuildableArtifacts() []string {
+	b := new(Build)
+	b.BuildArtifacts = new(BuildArtifacts)
+	ret := []string{}
+	liveAdded := false
+	for k := range b.artifacts() {
+		switch k {
+		case "ostree":
+			continue
+		case "kernel", "initramfs":
+			continue
+		case "iso", "live-iso", "live-kernel", "live-initramfs", "live-rootfs":
+			if !liveAdded {
+				ret = append(ret, "live-iso")
+				liveAdded = true
+			}
+		default:
+			ret = append(ret, k)
+		}
+	}
+	return sort.StringSlice(ret)
 }
 
 // artifact returns a string map of artifacts, where the key

@@ -89,6 +89,7 @@ func init() {
 	cmdRoot.PersistentFlags().StringVarP(&specFile, "spec", "s", "", "location of the spec")
 	cmdRoot.AddCommand(cmdVersion)
 	cmdRoot.AddCommand(cmdSingle)
+	spec.AddCliFlags(cmdRoot.PersistentFlags())
 
 	// cmdStep options
 	cmdRoot.AddCommand(cmdSteps)
