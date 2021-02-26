@@ -89,6 +89,7 @@ const (
 // cosaBuildCmds checks if b is a buildable artifact type and then
 // returns it.
 func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
+	log.WithField("command", b).Info("checking shorthand")
 	switch strings.ToLower(b) {
 	case "base":
 		if js.DelayedMetaMerge {
@@ -111,6 +112,7 @@ func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
 	totalCmds := len(s.Commands) + numBuildArtifacts
 	ret := make([]string, totalCmds)
 	for i, ba := range s.BuildArtifacts {
+		log.WithField("artifact", ba).Info("mapping artifact to command")
 		cmds, err := cosaBuildCmd(ba, js)
 		if err != nil {
 			return nil, err
@@ -133,6 +135,8 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 	if js == nil {
 		return errors.New("jobspec must not be nil")
 	}
+
+	log.Infof("Stage: %v", s)
 
 	cmds, err := s.getCommands(js)
 	if err != nil {

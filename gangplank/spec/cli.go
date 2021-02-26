@@ -13,7 +13,7 @@ import (
 
 const (
 	fedoraGitURL = "https://github.com/coreos/fedora-coreos-config"
-	fedoraGitRef = "master"
+	fedoraGitRef = "testing-devel"
 
 	rhcosGitURL = "https://github.com/openshift/os"
 	rhcosGitRef = "master"
