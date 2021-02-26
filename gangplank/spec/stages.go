@@ -34,53 +34,71 @@ func (j *JobSpec) GetStage(id string) (*Stage, error) {
 // Stage is a single stage.
 type Stage struct {
 	ID                  string `yaml:"id"`
-	Description         string `yaml:"description,omitempty"`
-	ConcurrentExecution bool   `yaml:"concurrent,omitempty"`
+	Description         string `yaml:"description,omitempty" json:"description,omitempty"`
+	ConcurrentExecution bool   `yaml:"concurrent,omitempty" json:"concurrent,omitempty"`
 
 	// DirectExec signals that the command should not be written
 	// to a file. Rather the command should directly executed.
-	DirectExec bool `yaml:"direct_exec"`
+	DirectExec bool `yaml:"direct_exec,omitempty" json:"direct_exec,omitempty"`
 
 	// OwnPod signals that the work should be done in a seperate pod.
-	OwnPod bool `yaml:"own_pod,omitempty"`
+	OwnPod bool `yaml:"own_pod,omitempty" json:"own_pod,omitempty"`
 
 	// NotBlocking means that the stage does not block another stage
 	// from starting execution (i.e. concurrent stage). If true,
 	// OwnPod should be true as well.
-	NotBlocking bool `yaml:"blocking,omitempty"`
+	NotBlocking bool `yaml:"not_blocking,omitempty" json:"not_blocking,omitempty"`
 
 	// RequireArtifacts is a name of the required artifacts. If the
 	// required artifact is missing (per the meta.json), the stage
 	// will not be executed. RequireArticts _implies_ sending builds/builds.json
 	// and builds/<BUILDID>/meta.json.
 	// TODO: IMPLEMENT
-	RequireArtifacts []string `yaml:"requires_artifacts,flow"`
+	RequireArtifacts []string `yaml:"requires_artifacts,flow,omitempty" json:"requires_artifacts,omitempty"`
 
 	// BuildArtifacts produces "known" artifacts. The special "base"
 	// will produce an OSTree and QCOWs.
-	BuildArtifacts []string `yaml:"build_artifacts,flow"`
+	BuildArtifacts []string `yaml:"build_artifacts,flow,omitempty" json:"build_artifacts,omitempty"`
 
 	// Commands are arbitrary commands run after an Artifact builds.
 	// Instead of running `cosa buildextend-?` as a command, its preferrable
 	// use the bare name in BuildArtifact.
-	Commands []string `yaml:"commands,flow"`
+	Commands []string `yaml:"commands,flow,omitempty" json:"commands,omitempty"`
 
 	// PrepCommands are run before Artifact builds, while
 	// PostCommands are run after. Prep and Post Commands are run serially.
-	PrepCommands []string `yaml:"prep_commands,flow"`
-	PostCommands []string `yaml:"post_commands,flow"`
+	PrepCommands []string `yaml:"prep_commands,flow,omitempty" json:"prep_commands,omitempty"`
+	PostCommands []string `yaml:"post_commands,flow,omitempty" json:"post_commands,omitempty"`
 
 	// PostAlways ensures that the PostCommands are always run.
-	PostAlways bool `yaml:"post_always"`
+	PostAlways bool `yaml:"post_always,omitempty" json:"post_always,omitempty"`
 }
+
+// These are the only hard-coded commands that Gangplank understand.
+const (
+	// defaultBaseCommand is the basic build command
+	defaultBaseCommand = "cosa fetch; cosa build;"
+	// defaultBaseDelayMergeCommand is used for distributed build using
+	// parallel workers pods.
+	defaultBaseDelayMergeCommand = "cosa fetch; cosa build --delay-meta-merge;"
+
+	// defaultFinalizeComamnd ensures that the meta.json is merged.
+	defaultFinalizeCommand = "cosa meta --finalize;"
+)
 
 // cosaBuildCmds checks if b is a buildable artifact type and then
 // returns it.
-func cosaBuildCmd(b string) ([]string, error) {
-	b = strings.ToLower(b)
-	if b == "base" {
-		return []string{"cosa fetch; cosa build;"}, nil
+func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
+	switch strings.ToLower(b) {
+	case "base":
+		if js.DelayedMetaMerge {
+			return []string{defaultBaseDelayMergeCommand}, nil
+		}
+		return []string{defaultBaseCommand}, nil
+	case "finalize":
+		return []string{defaultFinalizeCommand}, nil
 	}
+
 	if cosa.CanArtifact(b) {
 		return []string{fmt.Sprintf("cosa buildextend-%s", b)}, nil
 	}
@@ -88,13 +106,12 @@ func cosaBuildCmd(b string) ([]string, error) {
 }
 
 // getCommands renders the automatic artifacts.
-//
-func (s *Stage) getCommands() ([]string, error) {
+func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
 	numBuildArtifacts := len(s.BuildArtifacts)
 	totalCmds := len(s.Commands) + numBuildArtifacts
 	ret := make([]string, totalCmds)
 	for i, ba := range s.BuildArtifacts {
-		cmds, err := cosaBuildCmd(ba)
+		cmds, err := cosaBuildCmd(ba, js)
 		if err != nil {
 			return nil, err
 		}
@@ -117,8 +134,9 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 		return errors.New("jobspec must not be nil")
 	}
 
-	cmds, err := s.getCommands()
+	cmds, err := s.getCommands(js)
 	if err != nil {
+		log.WithError(err).Error("failed to get stage commands")
 		return err
 	}
 	if len(cmds) == 0 {
@@ -222,4 +240,100 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 	}
 
 	return nil
+}
+
+var (
+	// pseudoStages are special setup and tear down phases.
+	pseudoStages = []string{"base", "finalize"}
+	// buildableArtifacts are known artifacts types from the schema.
+	buildableArtifacts = append(pseudoStages, cosa.GetCommandBuildableArtifacts()...)
+)
+
+// GetArtifactShortHandNames returns shorthands for buildable stages
+func GetArtifactShortHandNames() []string {
+	return buildableArtifacts
+}
+
+// GenerateStages creates stages.
+func (j *JobSpec) GenerateStages(fromNames []string) {
+	if len(fromNames) == 0 {
+		return
+	}
+
+	j.DelayedMetaMerge = true
+	j.Job.StrictMode = true
+
+	baseStage := Stage{
+		ID:             "Generated Base Stage",
+		OwnPod:         true,
+		BuildArtifacts: []string{"base"},
+	}
+	finalizeStage := Stage{
+		ID:             "Generated Finalize Stage",
+		OwnPod:         true,
+		BuildArtifacts: []string{"finalize"},
+	}
+
+	requireBase := false
+	requireFinalize := false
+
+	var stages []Stage
+	var extra []Stage
+
+	for _, k := range fromNames {
+		switch k {
+		case "base":
+			requireBase = true
+		case "finalize":
+			requireFinalize = true
+		case "metal", "metal4k":
+			stages = append(stages,
+				Stage{
+					ID:               fmt.Sprintf("Generated %s build stage", k),
+					BuildArtifacts:   []string{"metal", "metal4k"},
+					OwnPod:           true,
+					RequireArtifacts: []string{"base"},
+				})
+		case "live-iso":
+			stages = append(stages,
+				Stage{
+					ID:               "Generated Live-ISO stage",
+					BuildArtifacts:   []string{"live-iso"},
+					OwnPod:           true,
+					RequireArtifacts: []string{"base", "metal", "metal4k"},
+				})
+		default:
+			extra = append(stages,
+				Stage{
+					ID:                  fmt.Sprintf("Generated %s stage", k),
+					BuildArtifacts:      []string{k},
+					OwnPod:              true,
+					RequireArtifacts:    []string{"base", "qemu"},
+					ConcurrentExecution: true,
+				})
+		}
+	}
+
+	appender := func(s ...Stage) {
+		j.Stages = append(j.Stages, s...)
+	}
+
+	// base stage must be first
+	if requireBase {
+		appender(baseStage)
+	}
+
+	// add middle stages if any
+	appender(stages...)
+	appender(extra...)
+
+	// finalize should happen after all other stages
+	if requireFinalize {
+		appender(finalizeStage)
+	}
+
+	if len(j.Stages) > 0 || requireFinalize {
+		appender(finalizeStage)
+	}
+
 }

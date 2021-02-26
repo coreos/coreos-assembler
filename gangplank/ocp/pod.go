@@ -46,7 +46,6 @@ type podBuild struct {
 	hostname         string
 	image            string
 	ipaddr           string
-	jobSpecFile      string
 	projectNamespace string
 	serviceAccount   string
 	workDir          string
@@ -76,21 +75,15 @@ func (pb *podBuild) Exec(ctx ClusterContext) error {
 }
 
 // NewPodBuilder returns a ClusterPodBuilder ready for execution.
-func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir string) (PodBuilder, error) {
-	// Directly inject the jobspec
-	js, err := spec.JobSpecFromFile(jsF)
-	if jsF != "" && err != nil {
-		return nil, fmt.Errorf("failed to read in jobspec from %s: %w", jsF, err)
-	}
+func NewPodBuilder(ctx ClusterContext, image, serviceAccount, workDir string, js *spec.JobSpec) (PodBuilder, error) {
 	if js.Recipe.GitURL == "" {
-		return nil, fmt.Errorf("JobSpec %q does inclue a Git Recipe", jsF)
+		return nil, errors.New("JobSpec does inclue a Git Recipe")
 	}
 
 	pb := &podBuild{
 		clusterCtx:     ctx,
 		image:          image,
-		jobSpecFile:    jsF,
-		js:             &js,
+		js:             js,
 		serviceAccount: serviceAccount,
 		workDir:        workDir,
 	}
@@ -114,8 +107,10 @@ func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir strin
 	if err != nil {
 		return nil, err
 	}
-	bc.JobSpec = js
-	bc.JobSpecFile = jsF
+
+	// Create a new clean copy of the jobpsec
+	var j spec.JobSpec = *js
+	bc.JobSpec = j
 
 	pb.bc = bc
 	return pb, nil

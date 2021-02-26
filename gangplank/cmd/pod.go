@@ -35,6 +35,9 @@ var (
 
 	// cosaSrvDir is used as the scratch directory builds.
 	cosaSrvDir string
+
+	// automaticBuildStages is used to create automatic build stages
+	automaticBuildStages []string
 )
 
 func init() {
@@ -65,10 +68,16 @@ func runPod(c *cobra.Command, args []string) {
 			cosaWorkDir, _ = os.Getwd()
 		}
 	}
-
 	clusterCtx := ocp.NewClusterContext(ctx, cluster)
 
-	pb, err := ocp.NewPodBuilder(clusterCtx, cosaOverrideImage, serviceAccount, specFile, cosaWorkDir)
+	if specFile != "" {
+		log.WithField("jobspec", specFile).Infof("Using jobspec from file")
+	} else {
+		log.Info("Generating jobspec from CLI arguments")
+		generateJobSpec()
+	}
+
+	pb, err := ocp.NewPodBuilder(clusterCtx, cosaOverrideImage, serviceAccount, cosaWorkDir, &spec)
 	if err != nil {
 		log.Fatalf("failed to define builder pod: %v", err)
 	}

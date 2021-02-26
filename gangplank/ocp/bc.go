@@ -202,18 +202,25 @@ binary build interface.`)
 		return err
 	}
 
+	// Dump the jobspec
+	log.Infof("Using JobSpec definition:")
+	if err := bc.JobSpec.WriteYAML(log.New().Out); err != nil {
+		return err
+	}
+
 	// Determine what stages happen in what pod number.
 	stageCmdIDs := make(map[int][]string)
 	c := 0
 	for _, s := range bc.JobSpec.Stages {
-		if c == 0 {
-			stageCmdIDs[0] = []string{s.ID}
-			continue
-		}
-		if s.OwnPod && len(stageCmdIDs[c]) != 0 {
+		log.WithFields(log.Fields{
+			"stage id": s.ID,
+		}).Info("Checking pod affinity for stage")
+
+		if s.OwnPod {
 			c++
 			log.Infof("Stage %q will be executed in its own pod", s.ID)
 		}
+
 		stageCmdIDs[c] = append(stageCmdIDs[c], s.ID)
 		log.Infof("Stage %q assigned to pod %d", s.ID, c)
 	}
