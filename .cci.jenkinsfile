@@ -13,31 +13,8 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     // Run stage Build FCOS (init, fetch and build)
     fcosBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
 
-    stage("Kola QEMU") {
-        parallel run: {
-            try {
-                cosa_cmd("kola --basic-qemu-scenarios")
-                cosa_cmd("kola run --parallel 8")
-            } finally {
-                shwrap("tar -c -C /srv/tmp kola | xz -c9 > ${env.WORKSPACE}/kola.tar.xz")
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'kola.tar.xz'
-            }
-        }, run_upgrade: {
-            try {
-                cosa_cmd("kola --upgrades")
-            } finally {
-                shwrap("tar -c -C /srv/tmp kola-upgrade | xz -c9 > ${env.WORKSPACE}/kola-upgrade.tar.xz")
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-upgrade.tar.xz'
-            }
-        }, self: {
-            try {
-                shwrap("cd /srv && ${env.WORKSPACE}/ci/run-kola-self-tests")
-            } finally {
-                shwrap("tar -c -C /srv/tmp kolaself | xz -c9 > ${env.WORKSPACE}/kolaself.tar.xz")
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'kolaself.tar.xz'
-            }
-        }
-    }
+    // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
+    fcosKola(basicScenarios: true, cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Build Metal") {
         parallel metal: {
