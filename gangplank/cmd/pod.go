@@ -2,13 +2,17 @@ package main
 
 import (
 	"os"
+	"os/exec"
 
 	"github.com/coreos/gangplank/ocp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-const cosaDefaultImage = "quay.io/coreos-assembler/coreos-assembler:latest"
+const (
+	cosaDefaultImage        = "quay.io/coreos-assembler/coreos-assembler:latest"
+	cosaWorkDirSelinuxLabel = "system_u:object_r:container_file_t:s0"
+)
 
 var (
 	cmdPod = &cobra.Command{
@@ -33,6 +37,10 @@ var (
 	// cosaWorkDir is used for podman mode and is where the "builds" directory will live
 	cosaWorkDir string
 
+	// cosaWorkDirContext when true, ensures that the selinux system_u:object_r:container_file_t:s0
+	// is set for the working directory.
+	cosaWorkDirContext bool
+
 	// cosaSrvDir is used as the scratch directory builds.
 	cosaSrvDir string
 
@@ -42,11 +50,12 @@ var (
 
 func init() {
 	cmdRoot.AddCommand(cmdPod)
+	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
 	cmdPod.Flags().StringSliceVarP(&cosaCmds, "cmd", "c", []string{}, "commands to run")
 	cmdPod.Flags().StringVarP(&cosaOverrideImage, "image", "i", "", "use an alternative image")
-	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVarP(&cosaSrvDir, "srvDir", "S", "", "podman mode - directory to mount as /srv")
+	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
 }
 
@@ -75,6 +84,15 @@ func runPod(c *cobra.Command, args []string) {
 	} else {
 		log.Info("Generating jobspec from CLI arguments")
 		generateJobSpec()
+	}
+
+	if cosaWorkDirContext {
+		log.WithField("work dir", cosaWorkDir).Infof("Applying selinux %q content", cosaWorkDirSelinuxLabel)
+		args := []string{"chcon", "-R", cosaWorkDirSelinuxLabel, cosaWorkDir}
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		if err := cmd.Run(); err != nil {
+			log.WithError(err).Fatalf("failed set workdir contenxt")
+		}
 	}
 
 	pb, err := ocp.NewPodBuilder(clusterCtx, cosaOverrideImage, serviceAccount, cosaWorkDir, &spec)
