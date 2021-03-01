@@ -289,6 +289,9 @@ binary build interface.`)
 				// Include any *json file
 				jsonPath := filepath.Join(cosaSrvDir, "builds", buildPath)
 				_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
+					if info == nil {
+						return nil
+					}
 					n := filepath.Base(info.Name())
 					if !(strings.HasPrefix(n, "meta") && strings.HasSuffix(n, ".json")) {
 						log.WithField("file", n).Warning("excluded")
