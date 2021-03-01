@@ -15,9 +15,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/coreos/gangplank/cosa"
 	"github.com/coreos/gangplank/spec"
@@ -144,7 +147,7 @@ func newBC(ctx context.Context, c *Cluster) (*buildConfig, error) {
 }
 
 // Exec executes the command using the closure for the commands
-func (bc *buildConfig) Exec(ctx ClusterContext) error {
+func (bc *buildConfig) Exec(ctx ClusterContext) (err error) {
 	curD, _ := os.Getwd()
 	defer func(c string) { _ = os.Chdir(c) }(curD)
 
@@ -171,6 +174,18 @@ func (bc *buildConfig) Exec(ctx ClusterContext) error {
 	}
 	remoteFiles = append(remoteFiles, r...)
 	defer func() { _ = os.RemoveAll(filepath.Join(cosaSrvDir, sourceSubPath)) }()
+
+	// Ensure that "builds/builds.json" is alway present if it exists.
+	buildsJSON := filepath.Join(cosaSrvDir, "builds", "builds.json")
+	if _, err := os.Stat(buildsJSON); err == nil {
+		remoteFiles = append(
+			remoteFiles,
+			&RemoteFile{
+				Bucket: "builds",
+				Object: "builds.json",
+				Minio:  m,
+			})
+	}
 
 	// Discover the stages and render each command into a script.
 	r, err = bc.discoverStages(m)
@@ -208,108 +223,142 @@ binary build interface.`)
 		return err
 	}
 
-	// Determine what stages happen in what pod number.
-	stageCmdIDs := make(map[int][]string)
-	c := 0
-	for _, s := range bc.JobSpec.Stages {
-		log.WithFields(log.Fields{
-			"stage id": s.ID,
-		}).Info("Checking pod affinity for stage")
-
-		if s.OwnPod {
-			c++
-			log.Infof("Stage %q will be executed in its own pod", s.ID)
-		}
-
-		stageCmdIDs[c] = append(stageCmdIDs[c], s.ID)
-		log.Infof("Stage %q assigned to pod %d", s.ID, c)
-	}
-
 	buildID := ""
 
-	log.Infof("Job will be run over %d pods", len(stageCmdIDs))
-	for n, s := range stageCmdIDs {
+	// Job control
+	podCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	terminate := make(chan bool)
+	errorCh := make(chan error)
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		select {
+		case e := <-errorCh:
+			if e != nil {
+				log.WithError(err).Error("Stage failed")
+				terminate <- true
+				cancel()
+				err = e
+			}
+		case <-sig:
+			terminate <- true
+			cancel()
+		}
+	}()
+
+	// Each stage is executed in its own pod
+	for idx, s := range bc.JobSpec.Stages {
 		ws := &workSpec{
 			APIBuild:      apiBuild,
-			ExecuteStages: s,
+			ExecuteStages: []string{s.ID},
 			JobSpec:       bc.JobSpec,
 			RemoteFiles:   remoteFiles,
 			Return:        returnTo,
 		}
 
-		// For _each_ stage, we need to check if a meta.json exists.
-		// mBuild - *cosa.Build representing meta.json
-		// buildPath - location of the build artifacts
-		// mErr - error or nil
-		mBuild, mPath, mErr := cosa.ReadBuild(cosaSrvDir, buildID, "")
-		artifactPath := filepath.Dir(mPath)
+		// Loop to wait for the artifacts are ready.
+		ready := false
+		for {
 
-		// The buildID may have been updated by worker pod.
-		// Log the fact for propserity.
-		if mBuild != nil && mBuild.BuildID != buildID {
-			log.WithField("buildID", mBuild.BuildID).Info("Found new build ID")
-		}
+			if ready {
+				log.WithField("stage id", s.ID).Info("Worker dependences have been defined")
+				break
+			}
 
-		// Include the base builds.json and meta.json.
-		if buildID != "" {
-			mPath := filepath.Join(buildID, cosa.CosaMetaJSON)
-			for _, k := range []string{mPath, cosa.CosaBuildsJSON} {
-				ws.RemoteFiles = append(ws.RemoteFiles, &RemoteFile{
-					Bucket: "builds",
-					Minio:  m,
-					Object: k,
+			select {
+			case <-ctx.Done():
+				break
+			case <-terminate:
+				return nil
+			default:
+				// For _each_ stage, we need to check if a meta.json exists.
+				// mBuild - *cosa.Build representing meta.json
+				mBuild, _, _ := cosa.ReadBuild(cosaSrvDir, buildID, "")
+
+				// The buildID may have been updated by worker pod.
+				// Log the fact for propserity.
+				if mBuild != nil && mBuild.BuildID != buildID {
+					log.WithField("buildID", mBuild.BuildID).Info("Found new build ID")
+					buildID = mBuild.BuildID
+				}
+
+				buildPath := filepath.Join(buildID, cosa.BuilderArch())
+
+				// Include any *json file
+				jsonPath := filepath.Join(cosaSrvDir, "builds", buildPath)
+				_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
+					n := filepath.Base(info.Name())
+					if !(strings.HasPrefix(n, "meta") && strings.HasSuffix(n, ".json")) {
+						log.WithField("file", n).Warning("excluded")
+						return nil
+					}
+					keyPath := filepath.Join(buildPath, n)
+					ws.RemoteFiles = append(
+						ws.RemoteFiles,
+						&RemoteFile{
+							Bucket: "builds",
+							Minio:  m,
+							Object: keyPath,
+						},
+					)
+					log.WithField("file", keyPath).Info("Sending meta-data to worker")
+					return nil
 				})
+
+				for _, artifact := range s.RequireArtifacts {
+					bArtifact, err := mBuild.GetArtifact(artifact)
+					if err != nil {
+						log.WithFields(log.Fields{
+							"stage":    s.ID,
+							"artifact": artifact,
+						}).Info("Waiting on artifact")
+						time.Sleep(15 * time.Second)
+						break
+					}
+
+					// get the Minio relative path for the object
+					// the full path needs to be broken in to <BUILDID>/<ARCH>/<FILE>
+					keyPath := filepath.Join(buildPath, filepath.Base(bArtifact.Path))
+
+					log.WithFields(log.Fields{
+						"artifact path": keyPath,
+						"artifact":      artifact,
+						"buildID":       buildID,
+						"stage":         s.ID,
+					}).Info("Found required artifact")
+
+					r := &RemoteFile{
+						Artifact: bArtifact,
+						Bucket:   "builds",
+						Minio:    m,
+						Object:   keyPath,
+					}
+					ws.RemoteFiles = append(ws.RemoteFiles, r)
+				}
+
+				log.WithField("stage", s.ID).Infof("All dependencies for stage have been meet")
+				ready = true
 			}
 		}
 
-		// Iterate over the stages and figure out what the required files are
-		for _, sID := range s {
-			S, _ := bc.JobSpec.GetStage(sID)
-			if len(S.RequireArtifacts) > 0 && mErr != nil {
-				return fmt.Errorf("stage %s requires artifacts %v but meta.json not found: %v",
-					sID, S.RequireArtifacts, err)
-			}
-
-			for _, artifact := range S.RequireArtifacts {
-				bArtifact, err := mBuild.GetArtifact(artifact)
-				if err != nil {
-					return fmt.Errorf("found to find artifact %s: %w", artifact, err)
-				}
-				keyPath := filepath.Join(artifactPath, bArtifact.Path)
-				keyPath = strings.Replace(keyPath, "", filepath.Join(cosaSrvDir, "builds"), 1)
-
-				log.WithFields(log.Fields{
-					"stage":         sID,
-					"artifact":      artifact,
-					"artifact path": keyPath,
-					"buildID":       buildID,
-				}).Info("required artifact")
-
-				r := &RemoteFile{
-					Artifact: bArtifact,
-					Bucket:   "builds",
-					Minio:    m,
-					Object:   keyPath,
-				}
-				ws.RemoteFiles = append(ws.RemoteFiles, r)
-			}
-		}
 		eVars, err := ws.getEnvVars()
 		if err != nil {
-			return err
+			errorCh <- err
 		}
 
-		index := n + 1
-		cpod, err := NewCosaPodder(ctx, apiBuild, index)
+		cpod, err := NewCosaPodder(podCtx, apiBuild, idx)
 		if err != nil {
 			log.WithError(err).Error("Failed to create pod definition")
-			continue
+			errorCh <- err
 		}
-		if err := cpod.WorkerRunner(ctx, eVars); err != nil {
+
+		if err := cpod.WorkerRunner(podCtx, eVars); err != nil {
 			log.WithError(err).Error("Failed stage execution")
+			errorCh <- err
 		}
 	}
-
 	// Yeah, this is lazy...
 	args := []string{"find", "/srv", "-type", "f"}
 	cmd := exec.Command(args[0], args[1:]...)

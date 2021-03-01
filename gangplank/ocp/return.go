@@ -91,6 +91,14 @@ func (r *Return) Run(ctx context.Context) error {
 
 	var e error = nil
 	for k, v := range upload {
+		// meta*json and builds.json are always overwritten.
+		// CoreOS Assembler updates these files, and to maintain integrity, Gangplank
+		// uses --delay-meta-merge to prevent collisions of updates.
+		base := filepath.Base(v)
+		if (strings.HasPrefix(base, "meta") || strings.HasPrefix(base, "builds")) && strings.HasSuffix(base, ".json") {
+			r.Overwrite = true
+		}
+
 		l := log.WithFields(log.Fields{
 			"host":          r.Minio.Host,
 			"file":          v,
@@ -99,7 +107,6 @@ func (r *Return) Run(ctx context.Context) error {
 			"overwrite":     r.Overwrite,
 		})
 
-		l.Info("uploading")
 		if err := r.Minio.putter(ctx, r.Bucket, k, v, r.Overwrite); err != nil {
 			l.WithField("err", err).Error("failed upload, tainting build")
 			e = fmt.Errorf("upload failed with at least one error: %w", err)

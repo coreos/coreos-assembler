@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -175,6 +176,9 @@ func (m *minioServer) kill() {
 	// of minio are killed too.
 	_ = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGTERM)
 
+	// Wait for the command to end.
+	_ = m.cmd.Wait()
+
 	// Purge the minio files since they are used per-session.
 	if err := os.RemoveAll(filepath.Join(m.dir, ".minio.sys")); err != nil {
 		log.WithError(err).Error("failed to remove minio files")
@@ -239,7 +243,20 @@ func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest i
 		"host":   m.Host,
 		"object": object,
 		"read":   n,
-	}).Info("processed")
+	}).Info("written")
+
+	// Set the attributes
+	f, ok := dest.(*os.File)
+	if ok {
+		info, err := src.Stat()
+		if err != nil {
+			return err
+		}
+		if err := os.Chtimes(f.Name(), info.LastModified, info.LastModified); err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 
@@ -252,18 +269,27 @@ func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, 
 	if err != nil {
 		return err
 	}
-	stamp := fmt.Sprintf("%d", fi.ModTime().UnixNano())
-
 	l := log.WithFields(log.Fields{
 		"bucket":    bucket,
+		"creator":   myHostName,
 		"from":      fpath,
 		"func":      "putter",
 		"object":    object,
 		"overwrite": overwrite,
 		"size":      fmt.Sprintf("%d", fi.Size()),
-		"stamp":     stamp,
 	})
-	l.Info("starting upload")
+
+	fo, err := os.Open(fpath)
+	if err != nil {
+		return err
+	}
+
+	l.Info("Calculating SHA256 for upload consideration")
+	sha256, err := calcSha256(fo)
+	if err != nil {
+		return err
+	}
+	l.WithField("sha256", sha256).Infof("Calculated SHA256")
 
 	mC, err := m.client()
 	if err != nil {
@@ -271,24 +297,31 @@ func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, 
 	}
 
 	s, err := mC.StatObject(ctx, bucket, object, minio.GetObjectOptions{})
-	if err != nil {
-		for k, v := range s.UserMetadata {
-			if k == "stamp" && stamp == v {
-				l.Info("already uploaded size matches, skipping")
+	if err == nil {
+		rSHA, ok := s.UserMetadata["X-Amz-Meta-Sha256"]
+		if ok {
+			if rSHA == sha256 && fi.Size() == s.Size {
+				l.Infof("Exact version has already been uploaded, skipping")
 				return nil
 			}
-			if v != myHostName && !overwrite {
-				l.Error("already uploaded by another host, skipping")
-				return fmt.Errorf("%s has already created %s/%s", v, bucket, object)
-			}
+			l.WithFields(log.Fields{
+				"remote sha":  rSHA,
+				"remote size": s.Size,
+			}).Info("Replacing remove version")
+		}
+
+		if !overwrite {
+			l.Warning("Skipping overwrite of file; overwrite set to false for the this file")
 		}
 	}
 
+	l.WithField("sha256", sha256).Info("Starting Upload")
 	i, err := mC.FPutObject(ctx, bucket, object, fpath,
 		minio.PutObjectOptions{
+			// When uploaded, user-metadata will be X-Amz-Meta-<key>
 			UserMetadata: map[string]string{
 				"creator": myHostName,
-				"stamp":   stamp,
+				"sha256":  sha256,
 			},
 		},
 	)
@@ -298,7 +331,17 @@ func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, 
 	l.WithFields(log.Fields{
 		"etag":        i.ETag,
 		"remote size": i.Size,
-	}).Info("uploaded")
+	}).Info("Uploaded")
 
 	return nil
+}
+
+// calcSha256 caluclates a SHA256 hash for the file.
+// io.Copy is buffered to 32Kb, so this is large-file safe.
+func calcSha256(f io.Reader) (string, error) {
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", nil
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
