@@ -41,12 +41,8 @@ type Stage struct {
 	// to a file. Rather the command should directly executed.
 	DirectExec bool `yaml:"direct_exec,omitempty" json:"direct_exec,omitempty"`
 
-	// OwnPod signals that the work should be done in a seperate pod.
-	OwnPod bool `yaml:"own_pod,omitempty" json:"own_pod,omitempty"`
-
 	// NotBlocking means that the stage does not block another stage
-	// from starting execution (i.e. concurrent stage). If true,
-	// OwnPod should be true as well.
+	// from starting execution (i.e. concurrent stage).
 	NotBlocking bool `yaml:"not_blocking,omitempty" json:"not_blocking,omitempty"`
 
 	// RequireArtifacts is a name of the required artifacts. If the
@@ -108,6 +104,9 @@ func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
 
 // getCommands renders the automatic artifacts.
 func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
+	if len(s.BuildArtifacts) > 0 {
+		log.WithField("mapping artifacts", s.BuildArtifacts).Infof("Mapping artifacts")
+	}
 	numBuildArtifacts := len(s.BuildArtifacts)
 	totalCmds := len(s.Commands) + numBuildArtifacts
 	ret := make([]string, totalCmds)
@@ -115,6 +114,7 @@ func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
 		log.WithField("artifact", ba).Info("mapping artifact to command")
 		cmds, err := cosaBuildCmd(ba, js)
 		if err != nil {
+			log.WithError(err).Errorf("failed to map build artifacts: %v", ba)
 			return nil, err
 		}
 		ret[i] = strings.Join(cmds, "\n")
@@ -269,12 +269,10 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 
 	baseStage := Stage{
 		ID:             "Generated Base Stage",
-		OwnPod:         true,
 		BuildArtifacts: []string{"base"},
 	}
 	finalizeStage := Stage{
 		ID:             "Generated Finalize Stage",
-		OwnPod:         true,
 		BuildArtifacts: []string{"finalize"},
 	}
 
@@ -295,7 +293,6 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 				Stage{
 					ID:               fmt.Sprintf("Generated %s build stage", k),
 					BuildArtifacts:   []string{"metal", "metal4k"},
-					OwnPod:           true,
 					RequireArtifacts: []string{"base"},
 				})
 		case "live-iso":
@@ -303,16 +300,14 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 				Stage{
 					ID:               "Generated Live-ISO stage",
 					BuildArtifacts:   []string{"live-iso"},
-					OwnPod:           true,
-					RequireArtifacts: []string{"base", "metal", "metal4k"},
+					RequireArtifacts: []string{"qemu", "metal", "metal4k"},
 				})
 		default:
 			extra = append(stages,
 				Stage{
 					ID:                  fmt.Sprintf("Generated %s stage", k),
 					BuildArtifacts:      []string{k},
-					OwnPod:              true,
-					RequireArtifacts:    []string{"base", "qemu"},
+					RequireArtifacts:    []string{"qemu"},
 					ConcurrentExecution: true,
 				})
 		}
@@ -332,10 +327,6 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 	appender(extra...)
 
 	// finalize should happen after all other stages
-	if requireFinalize {
-		appender(finalizeStage)
-	}
-
 	if len(j.Stages) > 0 || requireFinalize {
 		appender(finalizeStage)
 	}

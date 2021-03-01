@@ -124,6 +124,20 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		envVars = append(envVars, ks...)
 	}
 
+	// Identify the buildConfig that launched this instance.
+	if apiBuild != nil {
+		bc := apiBuild.Annotations[buildapiv1.BuildConfigAnnotation]
+		bn := apiBuild.Annotations[buildapiv1.BuildNumberAnnotation]
+		log.Infof("Worker is part of buildconfig.openshift.io/%s-%s", bc, bn)
+		if err := cosaInit(); err != nil && err != ErrNoSourceInput {
+			return fmt.Errorf("failed to clone recipe: %w", err)
+		}
+	} else {
+		// Inform that Gangplank is running as an unbound worker. Unbound workers
+		// require something else to create and manage the pod, such as Jenkins.
+		log.Infof("Pod is running as a unbound worker")
+	}
+
 	// Fetch the remote files and write them to the local path.
 	for _, f := range ws.RemoteFiles {
 		destf := filepath.Join(cosaSrvDir, f.Bucket, f.Object)
@@ -145,20 +159,6 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		}
 	}
 
-	// Identify the buildConfig that launched this instance.
-	if apiBuild != nil {
-		bc := apiBuild.Annotations[buildapiv1.BuildConfigAnnotation]
-		bn := apiBuild.Annotations[buildapiv1.BuildNumberAnnotation]
-		log.Infof("Worker is part of buildconfig.openshift.io/%s-%s", bc, bn)
-		if err := cosaInit(); err != nil && err != ErrNoSourceInput {
-			return fmt.Errorf("failed to clone recipe: %w", err)
-		}
-	} else {
-		// Inform that Gangplank is running as an unbound worker. Unbound workers
-		// require something else to create and manage the pod, such as Jenkins.
-		log.Infof("Pod is running as a unbound worker")
-	}
-
 	// Ensure on shutdown that we record information that might be
 	// needed for prosperity. First, build artifacts are sent off the
 	// remote object storage. Then meta.json is written to /dev/console
@@ -166,7 +166,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	defer func() {
 		if ws.Return != nil {
 			err := ws.Return.Run(ctx)
-			log.WithError(err).Info("processed uploads")
+			log.WithError(err).Info("Processed Uploads")
 		}
 
 		b, _, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
@@ -182,29 +182,28 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		}
 	}()
 
-	var e error = nil
-
 	// Range over the stages and perform the actual work.
 	for _, s := range ws.ExecuteStages {
 		stage, err := ws.JobSpec.GetStage(s)
 		log.WithFields(log.Fields{
-			"stage id": s,
-			"stage":    fmt.Sprintf("%v", stage),
+			"stage id":           s,
+			"build artifacts":    stage.BuildArtifacts,
+			"required artifacts": stage.RequireArtifacts,
+			"commands":           stage.Commands,
 		}).Info("Executing Stage")
 
 		if err != nil {
-			e = err
 			log.WithError(err).Info("Error fetching stage")
-			continue
+			return err
 		}
 
 		if err := stage.Execute(ctx, &ws.JobSpec, envVars); err != nil {
 			log.WithError(err).Error("failed stage execution")
-			e = err
+			return err
 		}
 	}
 	log.Infof("Finished execution")
-	return e
+	return nil
 }
 
 // getEnvVars returns the envVars to be exposed to the worker pod.

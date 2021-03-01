@@ -632,8 +632,12 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	go func() {
-		<-sigs
-		ender()
+		select {
+		case <-sigs:
+			ender()
+		case <-ctx.Done():
+			ender()
+		}
 	}()
 
 	l.WithFields(log.Fields{

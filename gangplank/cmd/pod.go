@@ -87,11 +87,16 @@ func runPod(c *cobra.Command, args []string) {
 	}
 
 	if cosaWorkDirContext {
-		log.WithField("work dir", cosaWorkDir).Infof("Applying selinux %q content", cosaWorkDirSelinuxLabel)
-		args := []string{"chcon", "-R", cosaWorkDirSelinuxLabel, cosaWorkDir}
-		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-		if err := cmd.Run(); err != nil {
-			log.WithError(err).Fatalf("failed set workdir contenxt")
+		for _, d := range []string{cosaWorkDir, cosaSrvDir} {
+			if d == "" {
+				continue
+			}
+			log.WithField("dir", d).Infof("Applying selinux %q content", cosaWorkDirSelinuxLabel)
+			args := []string{"chcon", "-R", cosaWorkDirSelinuxLabel, d}
+			cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+			if err := cmd.Run(); err != nil {
+				log.WithError(err).Fatalf("failed set dir context on %s", d)
+			}
 		}
 	}
 
