@@ -17,11 +17,7 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     fcosKola(basicScenarios: true, cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Build Metal") {
-        parallel metal: {
-            cosa_cmd("buildextend-metal")
-        }, metal4k: {
-            cosa_cmd("buildextend-metal4k")
-        }
+        cosaParallelCmds(cosaDir: "/srv", commands: ["metal", "metal4k"])
     }
 
     stage("Build Live Images") {
