@@ -646,5 +646,14 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 		"stdErr": stdErr.Name(),
 	}).Info("binding stdio to continater")
 	resize := make(chan remotecommand.TerminalSize)
-	return lb.Attach(streams, "", resize)
+
+	go func() {
+		_ = lb.Attach(streams, "", resize)
+	}()
+
+	rc, err := lb.Wait()
+	if rc != 0 {
+		return errors.New("work pod failed")
+	}
+	return nil
 }

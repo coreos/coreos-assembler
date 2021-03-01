@@ -230,21 +230,15 @@ binary build interface.`)
 	defer cancel()
 
 	terminate := make(chan bool)
-	errorCh := make(chan error)
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+
 		select {
-		case e := <-errorCh:
-			if e != nil {
-				log.WithError(err).Error("Stage failed")
-				terminate <- true
-				cancel()
-				err = e
-			}
 		case <-sig:
 			terminate <- true
-			cancel()
+		case <-ctx.Done():
+			terminate <- true
 		}
 	}()
 
@@ -268,8 +262,6 @@ binary build interface.`)
 			}
 
 			select {
-			case <-ctx.Done():
-				break
 			case <-terminate:
 				return nil
 			default:
@@ -348,28 +340,27 @@ binary build interface.`)
 
 		eVars, err := ws.getEnvVars()
 		if err != nil {
-			errorCh <- err
+			return err
 		}
 
 		cpod, err := NewCosaPodder(podCtx, apiBuild, idx)
 		if err != nil {
 			log.WithError(err).Error("Failed to create pod definition")
-			errorCh <- err
+			return err
 		}
 
 		if err := cpod.WorkerRunner(podCtx, eVars); err != nil {
 			log.WithError(err).Error("Failed stage execution")
-			errorCh <- err
+			return err
 		}
 	}
+
 	// Yeah, this is lazy...
 	args := []string{"find", "/srv", "-type", "f"}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
-
-	return nil
+	return cmd.Run()
 }
 
 func copyFile(src, dest string) error {
