@@ -21,7 +21,7 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     }
 
     stage("Build Live Images") {
-        cosa_cmd("buildextend-live --fast")
+        utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
     }
 
     stage("Test Live Images") {
@@ -45,15 +45,15 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
         }; d }
 
         // quick schema validation
-        cosa_cmd("meta --get name")
+        utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
     }
 
     stage("Compress") {
-            cosa_cmd("compress --fast")
+        utils.cosaCmd(cosaDir: "/srv", args: "compress --fast")
     }
 
     stage("Upload Dry Run") {
-        cosa_cmd("buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
+        utils.cosaCmd(cosaDir: "/srv", args: "buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
     }
 
     // Random other tests that aren't about building. XXX: These should be part of `make
