@@ -883,12 +883,9 @@ func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version
 		return nil, err
 	}
 
-	cfg := &platform.RuntimeConfig{
-		OutputDir:        testDir,
-		AllowFailedUnits: Options.SuppressDefaultChecks,
-	}
-
-	cluster, err := flight.NewCluster(cfg)
+	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
+		OutputDir: testDir,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating cluster for semver check")
 	}
