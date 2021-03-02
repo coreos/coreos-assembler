@@ -1,0 +1,6 @@
+#!/bin/bash
+# Intentionally cause a systemd unit failure that should be skipped with --no-default-checks
+set -xeuo pipefail
+systemd-run --wait --unit should-fail.service -q false || true
+echo "ok started failed service"
+

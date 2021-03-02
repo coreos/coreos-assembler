@@ -8,6 +8,9 @@ import platform
 import sys
 import yaml
 
+# Special pattern that skips systemd unit checks/SELinux AVCs for all tests
+SPECIAL_DEFAULT_CHECKS = 'default-checks'
+
 # Just test these boot to start with.  In the future we should at least
 # do ostree upgrades with uefi etc.  But we don't really need the *full*
 # suite...if podman somehow broke with nvme or uefi I'd be amazed and impressed.
@@ -57,7 +60,11 @@ try:
                 continue
             print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
             print(f"⚠️  {obj['tracker']}")
-            kolaargs.extend(['--denylist-test', obj['pattern']])
+            pattern = obj['pattern']
+            if pattern == SPECIAL_DEFAULT_CHECKS:
+                kolaargs.append('--no-default-checks')
+            else:
+                kolaargs.extend(['--denylist-test', pattern])
 except FileNotFoundError:
     pass
 

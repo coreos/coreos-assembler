@@ -3,6 +3,20 @@ set -euo pipefail
 dn=$(cd $(dirname $0) && pwd)
 toplevel=$(cd ${dn} && git rev-parse --show-toplevel)
 set -x
+# Unit failure
+if cosa kola run --output-dir tmp/kolaself -E ${toplevel}/tests/kola-ci-unit-failure 'ext.kola-ci*' |& tee tmp/err.txt; then
+    echo "expected kola-ci-unit-failure to fail" 1>&2
+    exit 1
+fi
+if ! grep -qF 'failed basic checks' tmp/err.txt; then
+    echo "Missing expected failed basic checks error" 1>&2
+    exit 1
+fi
+# And this run should pass
+cosa kola run --output-dir tmp/kolaself -E ${toplevel}/tests/kola-ci-unit-failure 'ext.kola-ci*' --no-default-checks
+
+rm tmp/kolaself -rf
+
 cosa kola run --output-dir tmp/kolaself -E ${toplevel}/tests/kola-ci-self 'ext.kola-ci-self*' "$@"
 log=$(find tmp/kolaself -type f -name kola-runext-autopkgtest-reboot.txt)
 test -n "${log}"
