@@ -185,8 +185,7 @@ type Options struct {
 	// inside of RenderUserData
 	OSContainer string
 
-	SSHOnTestFailure      bool
-	SuppressDefaultChecks bool
+	SSHOnTestFailure bool
 }
 
 // RuntimeConfig contains cluster-specific configuration.
