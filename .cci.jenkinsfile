@@ -24,19 +24,7 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
         utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
     }
 
-    stage("Test Live Images") {
-        try {
-            parallel metal: {
-                shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal")
-            }, metal4k: {
-                shwrap("cd /srv && env TMPDIR=\$(pwd)/tmp/ kola testiso -S --output-dir tmp/kola-testiso-metal4k --no-pxe --qemu-native-4k")
-            }
-        } finally {
-            shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
-            shwrap("cd /srv && tar -cf - tmp/kola-testiso-metal4k/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal4k.tar.xz")
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
-        }
-    }
+    fcosKolaTestIso(cosaDir: "/srv", extraArgs4k: "--no-pxe")
 
     stage("Build Cloud Images") {
         def clouds = ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP", "IBMCloud", "OpenStack", "VMware", "Vultr"]
