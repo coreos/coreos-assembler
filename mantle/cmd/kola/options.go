@@ -63,7 +63,7 @@ func init() {
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
-	bv(&kola.Options.SuppressDefaultChecks, "no-default-checks", false, "Disable default checks for failed systemd units and SELinux AVC denials")
+	bv(&kola.Options.AllowDefaultChecksFailures, "allow-default-checks-failures", false, "Checks for failed systemd units and SELinux AVC denials but don't fail on them")
 	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
 	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")
