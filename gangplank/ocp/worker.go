@@ -182,6 +182,13 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		}
 	}()
 
+	// Expose the jobspec and meta.json (if its available) for templating.
+	mBuild, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	rd := &spec.RenderData{
+		JobSpec: &ws.JobSpec,
+		Meta:    mBuild,
+	}
+
 	// Range over the stages and perform the actual work.
 	for _, s := range ws.ExecuteStages {
 		stage, err := ws.JobSpec.GetStage(s)
@@ -197,7 +204,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			return err
 		}
 
-		if err := stage.Execute(ctx, &ws.JobSpec, envVars); err != nil {
+		if err := stage.Execute(ctx, rd, envVars); err != nil {
 			log.WithError(err).Error("failed stage execution")
 			return err
 		}

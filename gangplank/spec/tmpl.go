@@ -11,34 +11,43 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/coreos/gangplank/cosa"
 	log "github.com/sirupsen/logrus"
 )
 
+// RenderData is used to render commands
+type RenderData struct {
+	JobSpec *JobSpec
+	Meta    *cosa.Build
+}
+
 // executeTemplate applies the template to r.
-func (j *JobSpec) executeTemplate(r io.Reader) ([]byte, error) {
+func (rd *RenderData) executeTemplate(r io.Reader) ([]byte, error) {
 	var in bytes.Buffer
 	if _, err := in.ReadFrom(r); err != nil {
 		return nil, err
 	}
+
+	var out bytes.Buffer
 	tmpl, err := template.New("args").Parse(in.String())
 	if err != nil {
 		return nil, err
 	}
 
-	var out bytes.Buffer
-	err = tmpl.Execute(&out, j)
+	err = tmpl.Execute(&out, rd)
 	if err != nil {
 		return nil, err
 	}
+
 	return out.Bytes(), nil
 }
 
 // ExecuteTemplateFromString returns strings.
-func (j *JobSpec) ExecuteTemplateFromString(s ...string) ([]string, error) {
+func (rd *RenderData) ExecuteTemplateFromString(s ...string) ([]string, error) {
 	var ret []string
 	for _, x := range s {
 		r := strings.NewReader(x)
-		b, err := j.executeTemplate(r)
+		b, err := rd.executeTemplate(r)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render strings: %v", err)
 		}
@@ -48,8 +57,8 @@ func (j *JobSpec) ExecuteTemplateFromString(s ...string) ([]string, error) {
 }
 
 // ExecuteTemplateToWriter renders an io.Reader to an io.Writer.
-func (j *JobSpec) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error {
-	d, err := j.executeTemplate(in)
+func (rd *RenderData) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error {
+	d, err := rd.executeTemplate(in)
 	if err != nil {
 		return err
 	}
@@ -60,7 +69,7 @@ func (j *JobSpec) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error {
 }
 
 // RendererExecuter renders a script with templates and then executes it
-func (j *JobSpec) RendererExecuter(ctx context.Context, env []string, scripts ...string) error {
+func (rd *RenderData) RendererExecuter(ctx context.Context, env []string, scripts ...string) error {
 	rendered := make(map[string]*os.File)
 	for _, script := range scripts {
 		in, err := os.Open(script)
@@ -74,7 +83,7 @@ func (j *JobSpec) RendererExecuter(ctx context.Context, env []string, scripts ..
 		defer os.Remove(t.Name())
 		rendered[script] = t
 
-		if err := j.ExecuteTemplateToWriter(in, t); err != nil {
+		if err := rd.ExecuteTemplateToWriter(in, t); err != nil {
 			return err
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/gangplank/cosa"
 	"gopkg.in/yaml.v2"
 )
 
@@ -18,8 +19,8 @@ var MockStageYaml = fmt.Sprintf(`
 stages:
   - description: Test Stage
     commands:
-       - echo {{ .Recipe.GitRef }}
-       - echo {{ .Job.BuildName }}
+       - echo {{ .JobSpec.Recipe.GitRef }}
+       - echo {{ .JobSpec.Job.BuildName }}
   - description: Concurrent Stage Test
     concurrent: true
     prep_commands:
@@ -37,6 +38,13 @@ stages:
 func TestStages(t *testing.T) {
 	tmpd, _ := ioutil.TempDir("", "teststages")
 	defer os.RemoveAll(tmpd)
+
+	rd := &RenderData{
+		JobSpec: new(JobSpec),
+		Meta:    new(cosa.Build),
+	}
+	rd.Meta.BuildID = "MockBuild"
+	rd.Meta.Architecture = "ARMv6"
 
 	checkFunc := func() error { return nil }
 	tCases := []struct {
@@ -68,8 +76,8 @@ func TestStages(t *testing.T) {
 				{
 					Description: "Dual concurrent should pass",
 					Commands: []string{
-						"echo {{ .Job.BuildName }}",
-						"echo {{ .Recipe.GitRef }}",
+						"echo {{ .JobSpec.Job.BuildName }}",
+						"echo {{ .JobSpec.Recipe.GitRef }}",
 					},
 					ConcurrentExecution: true,
 				},
@@ -137,6 +145,22 @@ func TestStages(t *testing.T) {
 				return nil
 			},
 		},
+		{
+			desc:    "Test Templating",
+			wantErr: false,
+			stages: []Stage{
+				{
+					Description: "Templating check",
+					Commands: []string{
+						fmt.Sprintf("touch %s/{{.Meta.BuildID}}.{{.Meta.Architecture}}", tmpd),
+					},
+				},
+			},
+			checkFunc: func() error {
+				_, err := os.Stat(filepath.Join(tmpd, fmt.Sprintf("%s.%s", rd.Meta.BuildID, rd.Meta.Architecture)))
+				return err
+			},
+		},
 	}
 
 	testEnv := []string{
@@ -154,7 +178,7 @@ func TestStages(t *testing.T) {
 		t.Logf(" * %s ", c.desc)
 		for _, stage := range c.stages {
 			t.Logf("  - test name: %s", stage.Description)
-			err := stage.Execute(ctx, &js, testEnv)
+			err := stage.Execute(ctx, rd, testEnv)
 			if c.wantErr && err == nil {
 				t.Error("    SHOULD error, but did not")
 			}
@@ -180,13 +204,19 @@ func TestStageYaml(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get jobspec: %v", err)
 	}
+
+	rd := &RenderData{
+		JobSpec: &js,
+		Meta:    nil,
+	}
+
 	c, cancel := context.WithCancel(context.Background())
 	defer c.Done()
 	defer cancel()
 
 	for _, stage := range js.Stages {
 		t.Logf("* executing stage: %s", stage.Description)
-		if err := stage.Execute(c, &js, []string{}); err != nil {
+		if err := stage.Execute(c, rd, []string{}); err != nil {
 			t.Errorf("failed inline stage execution: %v", err)
 		}
 	}

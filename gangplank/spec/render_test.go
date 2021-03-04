@@ -54,28 +54,28 @@ func wantedGot(want, got interface{}, t *testing.T) {
 }
 
 func TestJobSpec(t *testing.T) {
-	var js JobSpec
+	rd := new(RenderData)
 
-	if err := yaml.Unmarshal([]byte(MockOSJobSpec), &js); err != nil {
+	if err := yaml.Unmarshal([]byte(MockOSJobSpec), &rd.JobSpec); err != nil {
 		t.Errorf("failed to read mock jobspec")
 	}
 
-	wantedGot("mockOS-99", js.Job.BuildName, t)
+	wantedGot("mockOS-99", rd.JobSpec.Job.BuildName, t)
 
 	// Test rendering from a string
-	s, err := js.ExecuteTemplateFromString("good {{ .Job.BuildName }}")
+	s, err := rd.ExecuteTemplateFromString("good {{ .JobSpec.Job.BuildName }}")
 	wantedGot(nil, err, t)
 	wantedGot("good mockOS-99", s[0], t)
 	wantedGot(1, len(s), t)
 
 	// Test rendering for a slice of strings
-	s, err = js.ExecuteTemplateFromString("good", "{{ .Job.BuildName }}")
+	s, err = rd.ExecuteTemplateFromString("good", "{{ .JobSpec.Job.BuildName }}")
 	wantedGot(nil, err, t)
 	wantedGot("mockOS-99", s[1], t)
 	wantedGot(2, len(s), t)
 
 	// Test a failure
-	_, err = js.ExecuteTemplateFromString("this", "wont", "{{ .Work }}")
+	_, err = rd.ExecuteTemplateFromString("this", "wont", "{{ .Work }}")
 	if err == nil {
 		t.Errorf("template should not render")
 	}
@@ -84,11 +84,11 @@ func TestJobSpec(t *testing.T) {
 	f, err := ioutil.TempFile("", "meh")
 	defer os.Remove(f.Name())
 	wantedGot(nil, err, t)
-	err = ioutil.WriteFile(f.Name(), []byte("echo {{ .Job.BuildName }}"), 0444)
+	err = ioutil.WriteFile(f.Name(), []byte("echo {{ .JobSpec.Job.BuildName }}"), 0444)
 	wantedGot(nil, err, t)
 
 	ctx := context.Background()
-	err = js.RendererExecuter(ctx, []string{}, f.Name())
+	err = rd.RendererExecuter(ctx, []string{}, f.Name())
 	wantedGot(nil, err, t)
 
 }
