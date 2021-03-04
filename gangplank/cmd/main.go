@@ -107,7 +107,10 @@ func main() {
 
 // runScripts reads ARGs as files and executes the rendered templates.
 func runScripts(c *cobra.Command, args []string) error {
-	if err := spec.RendererExecuter(ctx, envVars, args...); err != nil {
+	rd := &jobspec.RenderData{
+		JobSpec: &spec,
+	}
+	if err := rd.RendererExecuter(ctx, envVars, args...); err != nil {
 		log.Fatalf("Failed to execute scripts: %v", err)
 	}
 	log.Infof("Execution complete")
@@ -116,7 +119,10 @@ func runScripts(c *cobra.Command, args []string) error {
 
 // runSingle renders args as templates and executes the command.
 func runSingle(c *cobra.Command, args []string) {
-	x, err := spec.ExecuteTemplateFromString(args...)
+	rd := &jobspec.RenderData{
+		JobSpec: &spec,
+	}
+	x, err := rd.ExecuteTemplateFromString(args...)
 	if err != nil {
 		log.Fatal(err)
 	}

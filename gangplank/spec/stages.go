@@ -103,7 +103,7 @@ func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
 }
 
 // getCommands renders the automatic artifacts.
-func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
+func (s *Stage) getCommands(rd *RenderData) ([]string, error) {
 	if len(s.BuildArtifacts) > 0 {
 		log.WithField("mapping artifacts", s.BuildArtifacts).Infof("Mapping artifacts")
 	}
@@ -112,7 +112,7 @@ func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
 	ret := make([]string, totalCmds)
 	for i, ba := range s.BuildArtifacts {
 		log.WithField("artifact", ba).Info("mapping artifact to command")
-		cmds, err := cosaBuildCmd(ba, js)
+		cmds, err := cosaBuildCmd(ba, rd.JobSpec)
 		if err != nil {
 			log.WithError(err).Errorf("failed to map build artifacts: %v", ba)
 			return nil, err
@@ -127,18 +127,18 @@ func (s *Stage) getCommands(js *JobSpec) ([]string, error) {
 }
 
 // Execute runs the commands of a stage.
-func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) error {
+func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) error {
 	if ctx == nil {
 		return errors.New("context must not be nil")
 	}
 
-	if js == nil {
-		return errors.New("jobspec must not be nil")
+	if rd == nil {
+		return errors.New("render data must not be nil")
 	}
 
 	log.Infof("Stage: %v", s)
 
-	cmds, err := s.getCommands(js)
+	cmds, err := s.getCommands(rd)
 	if err != nil {
 		log.WithError(err).Error("failed to get stage commands")
 		return err
@@ -159,7 +159,7 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 	if err := ioutil.WriteFile(prepScript, []byte(strings.Join(s.PrepCommands, "\n")), 0755); err != nil {
 		return err
 	}
-	if err := js.RendererExecuter(ctx, envVars, prepScript); err != nil {
+	if err := rd.RendererExecuter(ctx, envVars, prepScript); err != nil {
 		return fmt.Errorf("Failed execution of the prep stage: %w", err)
 	}
 
@@ -170,7 +170,7 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 	if s.PostAlways {
 		log.Info("PostCommand will be executed regardless of command success")
 		defer func() {
-			_ = js.RendererExecuter(ctx, envVars, postScript)
+			_ = rd.RendererExecuter(ctx, envVars, postScript)
 		}()
 	}
 
@@ -191,7 +191,7 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 		// break the run.
 		log.Infof("Executing %d stage commands serially", len(scripts))
 		for _, v := range scripts {
-			if err := js.RendererExecuter(ctx, envVars, v); err != nil {
+			if err := rd.RendererExecuter(ctx, envVars, v); err != nil {
 				return err
 			}
 		}
@@ -206,7 +206,7 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 			go func(s string, w *sync.WaitGroup, ctx context.Context) {
 				defer w.Done()
 				log.Infof("STARTING command: %s", s)
-				e := js.RendererExecuter(ctx, envVars, s)
+				e := rd.RendererExecuter(ctx, envVars, s)
 				errors <- e
 				if err != nil {
 					log.Infof("ERROR %s", s)
@@ -240,7 +240,7 @@ func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) erro
 
 	// If PostAlways, then the postScript is executed in defer call above.
 	if !s.PostAlways {
-		return js.RendererExecuter(ctx, envVars, postScript)
+		return rd.RendererExecuter(ctx, envVars, postScript)
 	}
 
 	return nil
