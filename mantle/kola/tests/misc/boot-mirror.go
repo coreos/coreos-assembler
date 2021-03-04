@@ -303,6 +303,10 @@ func init() {
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror`,
 		Platforms:   []string{"qemu-unpriv"},
+		// aarch64 and ppc64le are added temporarily to avoid test failure until
+		// we support specifying FCC directly in kola. For more information:
+		// https://github.com/coreos/coreos-assembler/issues/2035
+		ExcludeArchitectures: []string{"aarch64", "ppc64le", "s390x"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
