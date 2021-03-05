@@ -762,10 +762,18 @@ func testIsDenyListed(testname string) (bool, error) {
 func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 	var dependencydir string
 	var meta externalTestMeta
+	var err error
 	ignition := `{ "ignition": { "version": "3.0.0" } }`
 	executables := []string{}
 	for _, c := range children {
 		fpath := filepath.Join(dir, c.Name())
+		// follow symlinks; oddly, there's no IsSymlink()
+		if c.Mode()&os.ModeSymlink != 0 {
+			c, err = os.Stat(fpath)
+			if err != nil {
+				return errors.Wrapf(err, "stat %s", fpath)
+			}
+		}
 		isreg := c.Mode().IsRegular()
 		if isreg && (c.Mode().Perm()&0001) > 0 {
 			executables = append(executables, filepath.Join(dir, c.Name()))
