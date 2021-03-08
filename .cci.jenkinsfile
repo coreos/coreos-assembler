@@ -51,7 +51,3 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
         """)
     }
 }
-
-def cosa_cmd(args) {
-    shwrap("cd /srv && sudo -u builder cosa ${args}")
-}
