@@ -85,14 +85,16 @@ args=
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Put this under tmprepo so it gets automatically chown'ed if needed
     args="--ex-write-lockfile-to=${tmprepo}/tmp/manifest-lock.json"
-    if [ -f "${manifest_lock_arch_overrides}" ]; then
-        # Include the overrides in the resulting lockfile here; otherwise, we
-        # might not even be able to get a depsolve solely from the non-lockfile
-        # repos.
-        args+=" --ex-lockfile=${manifest_lock_arch_overrides}"
-    fi
+    # Include the overrides in the resulting lockfile here; otherwise, we
+    # might not even be able to get a depsolve solely from the non-lockfile
+    # repos.
+    for lock in "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
+      if [ -f "${lock}" ]; then
+          args+=" --ex-lockfile=${lock}"
+      fi
+    done
 else
-    for lock in "${manifest_lock}" "${manifest_lock_arch_overrides}"; do
+    for lock in "${manifest_lock}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
         if [ -f "${lock}" ]; then
             args+=" --ex-lockfile=${lock}"
         fi
