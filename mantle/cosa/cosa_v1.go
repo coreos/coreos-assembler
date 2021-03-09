@@ -50,13 +50,13 @@ type Build struct {
 	Name                      string                `json:"name"`
 	Oscontainer               *Image                `json:"oscontainer,omitempty"`
 	OstreeCommit              string                `json:"ostree-commit"`
-	OstreeContentBytesWritten int                   `json:"ostree-content-bytes-written"`
+	OstreeContentBytesWritten int                   `json:"ostree-content-bytes-written,omitempty"`
 	OstreeContentChecksum     string                `json:"ostree-content-checksum"`
-	OstreeNCacheHits          int                   `json:"ostree-n-cache-hits"`
-	OstreeNContentTotal       int                   `json:"ostree-n-content-total"`
-	OstreeNContentWritten     int                   `json:"ostree-n-content-written"`
-	OstreeNMetadataTotal      int                   `json:"ostree-n-metadata-total"`
-	OstreeNMetadataWritten    int                   `json:"ostree-n-metadata-written"`
+	OstreeNCacheHits          int                   `json:"ostree-n-cache-hits,omitempty"`
+	OstreeNContentTotal       int                   `json:"ostree-n-content-total,omitempty"`
+	OstreeNContentWritten     int                   `json:"ostree-n-content-written,omitempty"`
+	OstreeNMetadataTotal      int                   `json:"ostree-n-metadata-total,omitempty"`
+	OstreeNMetadataWritten    int                   `json:"ostree-n-metadata-written,omitempty"`
 	OstreeTimestamp           string                `json:"ostree-timestamp"`
 	OstreeVersion             string                `json:"ostree-version"`
 	OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`

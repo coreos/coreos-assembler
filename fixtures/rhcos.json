@@ -98,13 +98,7 @@
         "image": "registry.svc.ci.openshift.org/rhcos-devel/machine-os-content"
     },
     "ostree-commit": "9665ab0cfd4a995cf70f1a3bb678d3515a03f7d3b5bb87d723ba06c26f0daa6e",
-    "ostree-content-bytes-written": 156269945,
     "ostree-content-checksum": "e02647edba305ad68e2c7c5bb3a2c7765eb4ea6aadd1ebf8e538e459ebf99ed7",
-    "ostree-n-cache-hits": 19185,
-    "ostree-n-content-total": 3688,
-    "ostree-n-content-written": 1210,
-    "ostree-n-metadata-total": 9225,
-    "ostree-n-metadata-written": 3015,
     "ostree-timestamp": "2020-01-15T19:31:31Z",
     "ostree-version": "44devel.81.202001151926.0",
     "pkgdiff": [

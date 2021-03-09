@@ -240,13 +240,7 @@ var generatedSchemaJSON = `{
      "buildid",
      "name",
      "ostree-commit",
-     "ostree-content-bytes-written",
      "ostree-content-checksum",
-     "ostree-n-cache-hits",
-     "ostree-n-content-total",
-     "ostree-n-content-written",
-     "ostree-n-metadata-total",
-     "ostree-n-metadata-written",
      "ostree-timestamp",
      "ostree-version",
      "rpm-ostree-inputhash",
@@ -609,12 +603,6 @@ var generatedSchemaJSON = `{
      "default":"",
      "minLength": 64
     },
-   "ostree-content-bytes-written": {
-     "$id":"#/properties/ostree-content-bytes-written",
-     "type":"integer",
-     "title":"ostree-content-bytes-written",
-     "default": 0
-    },
    "ostree-content-checksum": {
      "$id":"#/properties/ostree-content-checksum",
      "type":"string",
@@ -622,34 +610,10 @@ var generatedSchemaJSON = `{
      "default":"",
      "minLength": 64
     },
-   "ostree-n-cache-hits": {
-     "$id":"#/properties/ostree-n-cache-hits",
-     "type":"integer",
-     "title":"ostree-n-cache-hits",
-     "default": 0
-    },
    "ostree-n-content-total": {
      "$id":"#/properties/ostree-n-content-total",
      "type":"integer",
      "title":"ostree-n-content-total",
-     "default": 0
-    },
-   "ostree-n-content-written": {
-     "$id":"#/properties/ostree-n-content-written",
-     "type":"integer",
-     "title":"ostree-n-content-written",
-     "default": 0
-    },
-   "ostree-n-metadata-total": {
-     "$id":"#/properties/ostree-n-metadata-total",
-     "type":"integer",
-     "title":"ostree-n-metadata-total",
-     "default": 0
-    },
-   "ostree-n-metadata-written": {
-     "$id":"#/properties/ostree-n-metadata-written",
-     "type":"integer",
-     "title":"ostree-n-metadata-written",
      "default": 0
     },
    "ostree-timestamp": {
@@ -904,13 +868,7 @@ type Build struct {
     Name                      string                `json:"name"`
     Oscontainer               *Image                `json:"oscontainer,omitempty"`
     OstreeCommit              string                `json:"ostree-commit"`
-    OstreeContentBytesWritten int                   `json:"ostree-content-bytes-written"`
     OstreeContentChecksum     string                `json:"ostree-content-checksum"`
-    OstreeNCacheHits          int                   `json:"ostree-n-cache-hits"`
-    OstreeNContentTotal       int                   `json:"ostree-n-content-total"`
-    OstreeNContentWritten     int                   `json:"ostree-n-content-written"`
-    OstreeNMetadataTotal      int                   `json:"ostree-n-metadata-total"`
-    OstreeNMetadataWritten    int                   `json:"ostree-n-metadata-written"`
     OstreeTimestamp           string                `json:"ostree-timestamp"`
     OstreeVersion             string                `json:"ostree-version"`
     OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`
