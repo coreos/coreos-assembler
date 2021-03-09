@@ -1,11 +1,5 @@
 {
     "ref": "fedora/x86_64/coreos/testing-devel",
-    "ostree-n-metadata-total": 9137,
-    "ostree-n-metadata-written": 21,
-    "ostree-n-content-total": 4774,
-    "ostree-n-content-written": 24,
-    "ostree-n-cache-hits": 15605,
-    "ostree-content-bytes-written": 76970521,
     "ostree-commit": "981ddd48f99d8d30caa85c81e02ab4f0d20b957f031db81b7bccfe8f54b679ce",
     "ostree-content-checksum": "a2ba5f894b56613d92f236ffc98719b18a6838081c24dd33f04fce3bdf366d82",
     "ostree-version": "31.20200310.20.0",
