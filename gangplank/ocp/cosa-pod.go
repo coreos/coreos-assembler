@@ -651,8 +651,7 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 		_ = lb.Attach(streams, "", resize)
 	}()
 
-	rc, err := lb.Wait()
-	if rc != 0 {
+	if rc, _ := lb.Wait(); rc != 0 {
 		return errors.New("work pod failed")
 	}
 	return nil
