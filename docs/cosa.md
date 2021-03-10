@@ -13,6 +13,7 @@ supported arguments.
 ## Main commands
 
 | Name | Description |
+| ---- | ----------- |
 | [build](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-build) | Build OSTree and image base artifacts from previously fetched packages
 | [clean](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-clean) | Delete all build artifacts
 | [fetch](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-fetch) | Fetch and import the latest packages
@@ -29,6 +30,7 @@ part that you are working on or you will not benefit from them (i.e. they will
 not produce an image with your changes):
 
 | Name | Description |
+| ---- | ----------- |
 | [build-fast](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-build-fast) | Creates a new QCOW2 image from an existing build and updates the ostree commit with local overrides. This will only change files located in the final root (i.e. part of an ostree commit).
 | [buildinitramfs-fast](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-buildinitramfs-fast) | Create a new QCOW2 image from an existing build and updates the initramfs with local overrides. This will not re-run dracut to rebuild the initramfs.
 
@@ -39,6 +41,7 @@ artifcats. Those commands extend those artifacts to make them functionnal on
 other platforms or cloud providers:
 
 | Name | Description |
+| ---- | ----------- |
 | buildextend-{aliyun,aws,azure,digitalocean,exoscale,gcp,vultr} | [ore-wrapper](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-ore-wrapper)
 | aliyun-replicate, aws-replicate | [ore-wrapper](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-ore-wrapper)
 | buildextend-{azurestack,ibmcloud,openstack,vmware} | [artifact-disk](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-artifact-disk)
@@ -51,6 +54,7 @@ other platforms or cloud providers:
 Those less commonly used commands are listed here:
 
 | Name | Description |
+| ---- | ----------- |
 | [basearch](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-basearch) | Convenient wrapper for getting the base architecture
 | [build-validate](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-build-validate) | Validate the checksum of a given build
 | [buildprep](https://github.com/coreos/coreos-assembler/blob/master/src/cmd-buildprep) | Fetches the bare minimum from external servers to create the next build
