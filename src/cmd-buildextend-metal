@@ -72,6 +72,7 @@ if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
     fatal "$basearch is not supported for building dasd images"
 fi
 
+# shellcheck disable=SC2031
 export LIBGUESTFS_BACKEND=direct
 export IMAGE_TYPE="${image_type}"
 prepare_build

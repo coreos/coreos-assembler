@@ -6,6 +6,7 @@ set -euo pipefail
 
 
 # We don't want to use libvirt for this, it inhibits debugging
+# shellcheck disable=SC2031
 export LIBGUESTFS_BACKEND=direct
 
 arch=$(uname -m)
