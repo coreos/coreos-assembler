@@ -3,8 +3,10 @@ package main
 import (
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/coreos/gangplank/ocp"
+	jobspec "github.com/coreos/gangplank/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -46,9 +48,17 @@ var (
 
 	// automaticBuildStages is used to create automatic build stages
 	automaticBuildStages []string
+
+	// repoURLs are URLs to install from
+	repoURLS []string
 )
 
 func init() {
+	r, ok := os.LookupEnv("COSA_YUM_REPOS")
+	if ok {
+		repoURLS = strings.Split(r, ",")
+	}
+
 	cmdRoot.AddCommand(cmdPod)
 	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
@@ -57,6 +67,7 @@ func init() {
 	cmdPod.Flags().StringVarP(&cosaSrvDir, "srvDir", "S", "", "podman mode - directory to mount as /srv")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
+	cmdPod.Flags().StringSliceVar(&repoURLS, "repo", repoURLS, "yum repos to include for base builds")
 }
 
 // runPod is the Jenkins/CI interface into Gangplank. It "mocks"
@@ -84,6 +95,16 @@ func runPod(c *cobra.Command, args []string) {
 	} else {
 		log.Info("Generating jobspec from CLI arguments")
 		generateJobSpec()
+	}
+
+	for _, r := range repoURLS {
+		if r != "" {
+			spec.Recipe.Repos = append(
+				spec.Recipe.Repos,
+				&jobspec.Repo{
+					URL: r,
+				})
+		}
 	}
 
 	if cosaWorkDirContext {

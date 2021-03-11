@@ -12,10 +12,15 @@ package spec
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -136,8 +141,50 @@ type Job struct {
 //   GitRef: branch/ref to fetch from
 //   GitUrl: url of the repo
 type Recipe struct {
-	GitRef string `yaml:"git_ref,omitempty" json:"git_ref,omitempty"`
-	GitURL string `yaml:"git_url,omitempty" json:"git_url,omitempty"`
+	GitRef string  `yaml:"git_ref,omitempty" json:"git_ref,omitempty"`
+	GitURL string  `yaml:"git_url,omitempty" json:"git_url,omitempty"`
+	Repos  []*Repo `yaml:"repos,omitempty" json:"repos,omitempty"`
+}
+
+// Repo is a yum/dnf repositories to use as an installation source.
+type Repo struct {
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+	URL  string `yaml:"url,omitempty" json:"url,omitempty"`
+}
+
+// Writer places the remote repo file into path. If the repo has no name,
+// then a SHA256 of the URL will be used. Returns path of the file and err.
+func (r *Repo) Writer(path string) (string, error) {
+	if r.URL == "" {
+		return "", errors.New("URL is undefined")
+	}
+	rname := r.Name
+	if rname == "" {
+		h := sha256.New()
+		if _, err := h.Write([]byte(r.URL)); err != nil {
+			return "", fmt.Errorf("failed to calculate name: %v", err)
+		}
+		rname = fmt.Sprintf("%x", h.Sum(nil))
+	}
+
+	f := filepath.Join(path, fmt.Sprintf("%s.repo", rname))
+	out, err := os.OpenFile(f, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		return f, fmt.Errorf("failed to open %s for writing: %v", f, err)
+	}
+	defer out.Close()
+
+	resp, err := http.Get(r.URL)
+	if err != nil {
+		return f, err
+	}
+	defer resp.Body.Close()
+
+	n, err := io.Copy(out, resp.Body)
+	if n == 0 {
+		return f, errors.New("No remote content fetched")
+	}
+	return f, err
 }
 
 // S3 describes the location of the S3 Resource.
