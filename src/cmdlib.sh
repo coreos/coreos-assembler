@@ -414,7 +414,8 @@ impl_rpmostree_compose() {
         # "cache2" has an explicit label so we can find it in qemu easily
         if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
             qemu-img create -f qcow2 cache2.qcow2.tmp 10G
-            LIBGUESTFS_BACKEND=direct virt-format --filesystem=xfs --label=cosa-cache -a cache2.qcow2.tmp &&
+            (source /usr/lib/coreos-assembler/libguestfish.sh
+            virt-format --filesystem=xfs --label=cosa-cache -a cache2.qcow2.tmp)
             mv -T cache2.qcow2.tmp "${workdir}"/cache/cache2.qcow2
         fi
         # And remove the old one
