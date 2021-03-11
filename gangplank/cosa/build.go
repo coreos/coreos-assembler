@@ -128,7 +128,7 @@ func (build *Build) WriteMeta(path string, validate bool) error {
 // GetArtifact returns an artifact by JSON tag
 func (build *Build) GetArtifact(artifact string) (*Artifact, error) {
 	r, ok := build.artifacts()[artifact]
-	if ok {
+	if ok && r.Path != "" {
 		return r, nil
 	}
 	return nil, errors.New("artifact not defined")
