@@ -159,6 +159,18 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		}
 	}
 
+	// Populate `src/config/<name.repo>`
+	for _, r := range ws.JobSpec.Recipe.Repos {
+		path, err := r.Writer(filepath.Join("src", "config"))
+		if err != nil {
+			return fmt.Errorf("failed to write remote repo: %v", err)
+		}
+		log.WithFields(log.Fields{
+			"path": path,
+			"url":  r.URL,
+		}).Info("Wrote repo definition from url")
+	}
+
 	// Ensure on shutdown that we record information that might be
 	// needed for prosperity. First, build artifacts are sent off the
 	// remote object storage. Then meta.json is written to /dev/console
