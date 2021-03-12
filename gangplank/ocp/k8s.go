@@ -159,11 +159,11 @@ func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, e
 			LabelSelector: labels.Everything().String(),
 		},
 	)
-	defer w.Stop()
 
 	if err != nil {
 		return "", err
 	}
+	defer w.Stop()
 
 	for {
 		events, ok := <-w.ResultChan()
