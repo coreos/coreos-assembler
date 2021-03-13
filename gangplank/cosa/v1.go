@@ -39,6 +39,7 @@ type Build struct {
 	CosaDelayedMetaMerge      bool                  `json:"coreos-assembler.delayed-meta-merge,omitempty"`
 	CosaImageChecksum         string                `json:"coreos-assembler.image-config-checksum,omitempty"`
 	CosaImageVersion          int                   `json:"coreos-assembler.image-genver,omitempty"`
+	Extensions                *Extensions           `json:"extensions,omitempty"`
 	FedoraCoreOsParentCommit  string                `json:"fedora-coreos.parent-commit,omitempty"`
 	FedoraCoreOsParentVersion string                `json:"fedora-coreos.parent-version,omitempty"`
 	Gcp                       *Gcp                  `json:"gcp,omitempty"`
@@ -49,7 +50,13 @@ type Build struct {
 	Name                      string                `json:"name"`
 	Oscontainer               *Image                `json:"oscontainer,omitempty"`
 	OstreeCommit              string                `json:"ostree-commit"`
+	OstreeContentBytesWritten int                   `json:"ostree-content-bytes-written,omitempty"`
 	OstreeContentChecksum     string                `json:"ostree-content-checksum"`
+	OstreeNCacheHits          int                   `json:"ostree-n-cache-hits,omitempty"`
+	OstreeNContentTotal       int                   `json:"ostree-n-content-total,omitempty"`
+	OstreeNContentWritten     int                   `json:"ostree-n-content-written,omitempty"`
+	OstreeNMetadataTotal      int                   `json:"ostree-n-metadata-total,omitempty"`
+	OstreeNMetadataWritten    int                   `json:"ostree-n-metadata-written,omitempty"`
 	OstreeTimestamp           string                `json:"ostree-timestamp"`
 	OstreeVersion             string                `json:"ostree-version"`
 	OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`
@@ -87,6 +94,13 @@ type BuildArtifacts struct {
 type Cloudartifact struct {
 	Image string `json:"image"`
 	URL   string `json:"url"`
+}
+
+type Extensions struct {
+	Manifest       map[string]interface{} `json:"manifest"`
+	Path           string                 `json:"path"`
+	RpmOstreeState string                 `json:"rpm-ostree-state"`
+	Sha256         string                 `json:"sha256"`
 }
 
 type Gcp struct {
