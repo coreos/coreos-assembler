@@ -91,9 +91,6 @@ func buildParser(r io.Reader) (*Build, error) {
 	if err := dec.Decode(&cosaBuild); err != nil {
 		return nil, errors.Wrapf(err, "failed to parse build")
 	}
-	if errs := cosaBuild.Validate(); len(errs) > 0 {
-		return nil, errors.Wrapf(ErrMetaFailsValidation, "%v", errs)
-	}
 	return cosaBuild, nil
 }
 
