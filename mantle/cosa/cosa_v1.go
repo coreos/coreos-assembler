@@ -14,11 +14,11 @@ type Amis struct {
 }
 
 type Artifact struct {
-	Path               string `json:"path"`
-	Sha256             string `json:"sha256"`
-	SizeInBytes        int    `json:"size,omitempty"`
-	UncompressedSha256 string `json:"uncompressed-sha256,omitempty"`
-	UncompressedSize   int    `json:"uncompressed-size,omitempty"`
+	Path               string  `json:"path"`
+	Sha256             string  `json:"sha256"`
+	SizeInBytes        float64 `json:"size,omitempty"`
+	UncompressedSha256 string  `json:"uncompressed-sha256,omitempty"`
+	UncompressedSize   int     `json:"uncompressed-size,omitempty"`
 }
 
 type Build struct {
