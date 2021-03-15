@@ -20,7 +20,7 @@ var generatedSchemaJSON = `{
             },
            "size": {
              "$id": "#/artifact/size",
-             "type":"integer",
+             "type":"number",
              "title":"Size in bytes"
             },
            "uncompressed-sha256": {
