@@ -73,7 +73,7 @@ fi
 
 # If the current working dir is not empty then error out
 # unless force provided
-if [ "$FORCE" != "1" ] && [ -n "$(ls -A ./)" ]; then
+if [ "$FORCE" != "1" ] && [ -n "$(ls ./)" ]; then
    fatal "init: current directory is not empty, override with --force"
 fi
 
