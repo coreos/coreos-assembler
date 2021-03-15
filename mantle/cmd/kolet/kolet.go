@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -136,6 +137,12 @@ var (
 		Short:        "Request a reboot",
 		RunE:         runReboot,
 		SilenceUsage: true,
+	}
+
+	cmdHttpd = &cobra.Command{
+		Use:   "httpd",
+		Short: "Start an HTTP server to serve the contents of the file system",
+		RunE:  runHttpd,
 	}
 )
 
@@ -369,6 +376,14 @@ func runReboot(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runHttpd(cmd *cobra.Command, args []string) error {
+	port, _ := cmd.Flags().GetString("port")
+	path, _ := cmd.Flags().GetString("path")
+	http.Handle("/", http.FileServer(http.Dir(path)))
+	plog.Info("Starting HTTP server")
+	return http.ListenAndServe(fmt.Sprintf("localhost:%s", port), nil)
+}
+
 func main() {
 	registerTestMap(register.Tests)
 	registerTestMap(register.UpgradeTests)
@@ -376,6 +391,10 @@ func main() {
 	root.AddCommand(cmdRunExtUnit)
 	cmdReboot.Args = cobra.ExactArgs(1)
 	root.AddCommand(cmdReboot)
+	cmdHttpd.Flags().StringP("port", "", "80", "port")
+	cmdHttpd.Flags().StringP("path", "", "./", "path to filesystem contents to serve")
+	cmdHttpd.Args = cobra.ExactArgs(0)
+	root.AddCommand(cmdHttpd)
 
 	cli.Execute(root)
 }

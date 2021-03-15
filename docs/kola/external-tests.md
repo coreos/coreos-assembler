@@ -103,6 +103,72 @@ it out.
 (Previously the API for this was to send `SIGTERM` to the current process; that
 method is deprecated and will be removed at some point)
 
+## HTTP Server
+
+The `kolet` binary is copied into the `core` user's home directory
+(`/var/home/core`) on the CoreOS system running the tests. Notably, it contains
+the built-in command `kolet httpd` for starting an HTTP file server to serve the
+contents of the file system.
+By default, it starts the server listening on port `80` and serves the contents of
+the file system at `./`; you can use the `--port` and `--path` flags to override
+the defaults.
+
+For example, if you're using a bash script as your test, you can start an HTTP
+server to serve the contents at `/var/home/core` like this:
+```
+echo testdata > /var/home/core/testdata.txt
+systemd-run /var/home/core/kolet httpd --path /var/home/core/
+# It may take some time for the server to start.
+sleep 1
+curl localhost/testdata.txt
+```
+
+Alternatively, you can create an Ignition config (or Fedora CoreOS config) and
+include it in your external test directory. This would start the HTTP server
+before your test is run and may be useful if you would like to predefine the
+files to serve.
+
+In the following Fedora CoreOS config example, the Ignition config includes a
+path unit and a service unit. The path unit ensures that the httpd service runs
+automatically once the Kolet binary is copied to the system. Note that the path
+unit has a `Before=` dependency on `kola-runext.service` to ensure that the
+server is brought up before the test is run.
+An HTTP server will be started at `localhost` and serve the files in `/var/www/`.
+Your test can then do e.g. `curl localhost/hello_world.txt`.
+
+Example:
+```
+variant: fcos
+version: 1.1.0
+systemd:
+  units:
+    - name: kolet-httpd.path
+      enabled: true
+      contents: |
+        [Unit]
+        Before=kola-runext.service
+        [Path]
+        PathExists=/var/home/core/kolet
+        [Install]
+        WantedBy=kola-runext.service
+    - name: kolet-httpd.service
+      contents: |
+        [Service]
+        ExecStart=/var/home/core/kolet httpd --path /var/www -v
+        [Install]
+        WantedBy=kola-runext.service
+storage:
+  files:
+    - path: /var/www/my-kola-test-data
+      contents:
+        inline: Hello, world!
+      mode: 0644
+      user:
+        name: core
+      group:
+        name: core
+```
+
 ## `kola.json`
 
 Kola internally supports limiting tests to specific architectures and plaforms,
