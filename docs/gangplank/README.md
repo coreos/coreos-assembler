@@ -3,7 +3,7 @@
 This directory contains the API documentation for Gangplank.
 
 ## General Documentation:
-- [Why Gangplank](why.md)
+- [Why Gangplank](WHY.md)
 - [Usage](usage.md)
 
 ## Developer Documentation
