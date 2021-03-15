@@ -73,6 +73,10 @@ staticanalysis:
 tools:
 	cd tools && $(MAKE)
 
+schema:
+	$(MAKE) -C gangplank schema
+	$(MAKE) -C mantle schema-update
+
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler $$(find src/ -maxdepth 1 -type f)
