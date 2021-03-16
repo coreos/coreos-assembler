@@ -11,6 +11,7 @@ package ocp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -175,18 +178,6 @@ func (bc *buildConfig) Exec(ctx ClusterContext) (err error) {
 	remoteFiles = append(remoteFiles, r...)
 	defer func() { _ = os.RemoveAll(filepath.Join(cosaSrvDir, sourceSubPath)) }()
 
-	// Ensure that "builds/builds.json" is alway present if it exists.
-	buildsJSON := filepath.Join(cosaSrvDir, "builds", "builds.json")
-	if _, err := os.Stat(buildsJSON); err == nil {
-		remoteFiles = append(
-			remoteFiles,
-			&RemoteFile{
-				Bucket: "builds",
-				Object: "builds.json",
-				Minio:  m,
-			})
-	}
-
 	// Discover the stages and render each command into a script.
 	r, err = bc.discoverStages(m)
 	if err != nil {
@@ -223,136 +214,277 @@ binary build interface.`)
 		return err
 	}
 
-	buildID := ""
-
-	// Job control
+	// Create a cancelable context from the core context.
 	podCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	terminate := make(chan bool)
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	type workFunction func(wg *sync.WaitGroup, terminate <-chan bool, errCh chan<- error)
+	workerFuncs := make(map[int][]workFunction)
 
-		select {
-		case <-sig:
-			terminate <- true
-		case <-ctx.Done():
-			terminate <- true
-		}
-	}()
+	// Range over the stages and create workFunction, which is added to the
+	// workerFuncs. Each workFunction is executed as a go routine that begins
+	// work as soon as the `build_dependencies` are available.
+	for idx, ss := range bc.JobSpec.Stages {
 
-	// Each stage is executed in its own pod
-	for idx, s := range bc.JobSpec.Stages {
-		ws := &workSpec{
-			APIBuild:      apiBuild,
-			ExecuteStages: []string{s.ID},
-			JobSpec:       bc.JobSpec,
-			RemoteFiles:   remoteFiles,
-			Return:        returnTo,
+		// copy the stage to prevent corruption
+		// using ss directly has proven to lead to memory corruptions (yikes!)
+		s, err := ss.DeepCopy()
+		if err != nil {
+			return err
 		}
 
-		// Loop to wait for the artifacts are ready.
-		ready := false
-		for {
+		l := log.WithFields(log.Fields{
+			"stage":              s.ID,
+			"required_artifacts": s.RequireArtifacts,
+		})
 
-			if ready {
-				log.WithField("stage id", s.ID).Info("Worker dependences have been defined")
-				break
+		cpod, err := NewCosaPodder(podCtx, apiBuild, idx)
+		if err != nil {
+			l.WithError(err).Error("Failed to create pod definition")
+			return err
+		}
+
+		l.Info("Pod definition created")
+
+		// ready spawns a go-routine that writes the return channel
+		// when the stage's dependencies have been meet.
+		ready := func(ws *workSpec, terminate <-chan bool) <-chan bool {
+			out := make(chan bool)
+
+			// TODO: allow for selectable build id, instead of default
+			//       to the latest build ID.
+			var buildID string
+
+			go func(out chan<- bool) {
+				check := func() bool {
+					// For _each_ stage, we need to check if a meta.json exists.
+					// mBuild - *cosa.Build representing meta.json
+					buildPath := filepath.Join(cosaSrvDir, "builds")
+					mBuild, _, err := cosa.ReadBuild(cosaSrvDir, buildID, "")
+					if err != nil {
+						l.WithField("build dir", buildPath).WithError(err).Warningf("Unable to locate build")
+					}
+
+					if mBuild != nil {
+						// If the buildID is not known AND the worker finds a build ID,
+						// then a new build has appeared.
+						if buildID == "" {
+							buildID = mBuild.BuildID
+							l = log.WithField("buildID", buildID)
+							log.WithField("buildID", mBuild.BuildID).Info("Found new build ID")
+						}
+
+						// Ensure that "builds/builds.json" is alway present if it exists.
+						// If we have a Build struct, then we know that a builds.json exists.
+						if buildID != "" {
+							l.WithField("file", "builds.json").Info("Required meta-data")
+							ws.RemoteFiles = append(
+								ws.RemoteFiles,
+								&RemoteFile{
+									Bucket: "builds",
+									Object: "builds.json",
+									Minio:  m,
+								})
+						}
+					}
+
+					// If no artfiacts are required we can skip checking for artifacts.
+					if mBuild == nil && len(s.RequireArtifacts) > 0 {
+						l.Debug("Waiting for build to appear")
+						return false
+					}
+
+					// base of the keys to fetch from minio "<buildid>/<arch>"
+					keyPathBase := filepath.Join(buildID, cosa.BuilderArch())
+
+					// Locate meta.*.json
+					jsonPath := filepath.Join(buildPath, buildID)
+					_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
+						if info == nil || info.IsDir() {
+							return nil
+						}
+						n := filepath.Base(info.Name())
+						if !(strings.HasPrefix(n, "meta") && strings.HasSuffix(n, ".json")) {
+							l.WithField("file", n).Warning("excluded")
+							return nil
+						}
+						key := filepath.Join(keyPathBase, n)
+						ws.RemoteFiles = append(
+							ws.RemoteFiles,
+							&RemoteFile{
+								Bucket: "builds",
+								Minio:  m,
+								Object: key,
+							},
+						)
+						l.WithFields(log.Fields{
+							"file":   info.Name(),
+							"bucket": "builds",
+							"key":    key,
+						}).Info("Included metadata")
+						return nil
+					})
+
+					foundCount := 0
+					for _, artifact := range s.RequireArtifacts {
+						bArtifact, err := mBuild.GetArtifact(artifact)
+						if err != nil {
+							l.WithField("artifact", artifact).Debug("stage artifact dependency not meet")
+							return false
+						}
+
+						// get the Minio relative path for the object
+						// the full path needs to be broken in to <BUILDID>/<ARCH>/<FILE>
+						keyPath := filepath.Join(keyPathBase, filepath.Base(bArtifact.Path))
+						r := &RemoteFile{
+							Artifact: bArtifact,
+							Bucket:   "builds",
+							Minio:    m,
+							Object:   keyPath,
+						}
+						ws.RemoteFiles = append(ws.RemoteFiles, r)
+						foundCount++
+					}
+
+					// Once all the dependencies are met, inform the out channel exit.
+					if len(s.RequireArtifacts) == foundCount {
+						out <- true
+						return true
+					}
+					return false
+				}
+
+				for {
+					if check() {
+						l.Debug("all dependencies for stage have been meet")
+						break
+					}
+					// Wait for the next check or terminate.
+					select {
+					case <-terminate:
+						return
+					case <-time.After(15 * time.Second):
+						return
+					}
+				}
+			}(out)
+			return out
+		}
+
+		// anonFunc performs the actual work..
+		anonFunc := func(wg *sync.WaitGroup, terminate <-chan bool, errCh chan<- error) {
+			defer wg.Done()
+
+			ws := &workSpec{
+				APIBuild:      apiBuild,
+				ExecuteStages: []string{s.ID},
+				JobSpec:       bc.JobSpec,
+				RemoteFiles:   remoteFiles,
+				Return:        returnTo,
 			}
 
 			select {
 			case <-terminate:
-				return nil
-			default:
-				// For _each_ stage, we need to check if a meta.json exists.
-				// mBuild - *cosa.Build representing meta.json
-				mBuild, _, _ := cosa.ReadBuild(cosaSrvDir, buildID, "")
-
-				// The buildID may have been updated by worker pod.
-				// Log the fact for propserity.
-				if mBuild != nil && mBuild.BuildID != buildID {
-					log.WithField("buildID", mBuild.BuildID).Info("Found new build ID")
-					buildID = mBuild.BuildID
+				l.Warning("Terminate signal recieved, aborting stage")
+				return
+			case <-time.After(60 * time.Minute):
+				l.Error("Timed out waiting for dependencies")
+				errCh <- errors.New("required artifacts never appeared")
+				return
+			case ok := <-ready(ws, terminate):
+				if !ok {
+					errCh <- fmt.Errorf("%s failed to become ready", s.ID)
+					return
 				}
 
-				buildPath := filepath.Join(buildID, cosa.BuilderArch())
-
-				// Include any *json file
-				jsonPath := filepath.Join(cosaSrvDir, "builds", buildPath)
-				_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
-					if info == nil {
-						return nil
-					}
-					n := filepath.Base(info.Name())
-					if !(strings.HasPrefix(n, "meta") && strings.HasSuffix(n, ".json")) {
-						log.WithField("file", n).Warning("excluded")
-						return nil
-					}
-					keyPath := filepath.Join(buildPath, n)
-					ws.RemoteFiles = append(
-						ws.RemoteFiles,
-						&RemoteFile{
-							Bucket: "builds",
-							Minio:  m,
-							Object: keyPath,
-						},
-					)
-					log.WithField("file", keyPath).Info("Sending meta-data to worker")
-					return nil
-				})
-
-				for _, artifact := range s.RequireArtifacts {
-					bArtifact, err := mBuild.GetArtifact(artifact)
-					if err != nil {
-						log.WithFields(log.Fields{
-							"stage":    s.ID,
-							"artifact": artifact,
-						}).Info("Waiting on artifact")
-						time.Sleep(15 * time.Second)
-						break
-					}
-
-					// get the Minio relative path for the object
-					// the full path needs to be broken in to <BUILDID>/<ARCH>/<FILE>
-					keyPath := filepath.Join(buildPath, filepath.Base(bArtifact.Path))
-
-					log.WithFields(log.Fields{
-						"artifact path": keyPath,
-						"artifact":      artifact,
-						"buildID":       buildID,
-						"stage":         s.ID,
-					}).Info("Found required artifact")
-
-					r := &RemoteFile{
-						Artifact: bArtifact,
-						Bucket:   "builds",
-						Minio:    m,
-						Object:   keyPath,
-					}
-					ws.RemoteFiles = append(ws.RemoteFiles, r)
+				l.Info("Worker dependences have been defined")
+				eVars, err := ws.getEnvVars()
+				if err != nil {
+					errCh <- err
+					return
 				}
 
-				log.WithField("stage", s.ID).Infof("All dependencies for stage have been meet")
-				ready = true
+				l.Info("Executing worker pod")
+				if err := cpod.WorkerRunner(podCtx, eVars); err != nil {
+					l.WithError(err).Error("Failed stage execution")
+					err = fmt.Errorf("%s failed: %w", s.ID, err)
+					errCh <- err
+					return
+				}
 			}
 		}
 
-		eVars, err := ws.getEnvVars()
-		if err != nil {
-			return err
+		// If there is no default execution order, default to 2
+		eOrder := s.ExecutionOrder
+		if eOrder == 0 {
+			eOrder = 2
 		}
+		workerFuncs[eOrder] = append(workerFuncs[eOrder], anonFunc)
+	}
 
-		cpod, err := NewCosaPodder(podCtx, apiBuild, idx)
-		if err != nil {
-			log.WithError(err).Error("Failed to create pod definition")
-			return err
-		}
+	// Sort the ordering of the workerFuncs
+	var order []int
+	for key := range workerFuncs {
+		order = append(order, key)
+	}
+	sort.Ints(order)
 
-		if err := cpod.WorkerRunner(podCtx, eVars); err != nil {
-			log.WithError(err).Error("Failed stage execution")
-			return err
+	/*
+		Job Control:
+			terminate channel: uses to tell workFunctions to ceases
+			errorCh channel: workFunctions report errors through this channel
+				when a error is recieved over the channel, a terminate is signaled
+			sig channel: this watches for sigterm and interrupts, which will
+				signal a terminate. (i.e. sigterm or crtl-c)
+
+			The go-routine will run until it recieves a terminate itself.
+	*/
+
+	terminate := make(chan bool)
+	errorCh := make(chan error)
+
+	go func(terminate chan bool, errorCh <-chan error) {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+
+		for {
+			select {
+			case err := <-errorCh:
+				if err != nil {
+					log.WithError(err).Error("Stage sent error, cancelling remaining work")
+					terminate <- true
+				}
+			case <-ctx.Done():
+				log.Warning("Recieved cancelation")
+				terminate <- true
+			case s := <-sig:
+				log.Errorf("recievied signal %d", s)
+				terminate <- true
+			case <-terminate:
+				// The select sends termination siganls to itself to ensure that cancel()
+				// to terminate the pods. Using context cancellation is standard in the Kube world.
+				cancel()
+				log.Info("Termination signaled")
+				return
+			}
 		}
+	}(terminate, errorCh)
+
+	// For each execution group, launch all workers and wait for the group
+	// to complete. If a workerFunc fails, then bail as soon as possible.
+	for _, idx := range order {
+		wg := &sync.WaitGroup{}
+		for _, f := range workerFuncs[idx] {
+			select {
+			// break as soon as we can if there is a problem
+			case <-terminate:
+				return errors.New("Work terminated before completion")
+			default:
+				wg.Add(1)
+				go f(wg, terminate, errorCh)
+			}
+		}
+		wg.Wait()
 	}
 
 	// Yeah, this is lazy...

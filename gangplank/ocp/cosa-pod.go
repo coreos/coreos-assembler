@@ -561,10 +561,18 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 	if srvDir == "" {
 		// ioutil.TempDir does not create the directory with the appropriate perms
 		tmpSrvDir := filepath.Join(cosaSrvDir, s.Name)
-		if err := os.MkdirAll(tmpSrvDir, 0755); err != nil {
+		if err := os.MkdirAll(tmpSrvDir, 0777); err != nil {
 			return fmt.Errorf("failed to create emphemeral srv dir for pod: %w", err)
 		}
 		srvDir = tmpSrvDir
+
+		// ensure that the correct selinux context is set, otherwise wierd errors
+		// in CoreOS Assembler will be emitted.
+		args := []string{"chcon", "-R", "system_u:object_r:container_file_t:s0", srvDir}
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		if err := cmd.Run(); err != nil {
+			l.WithError(err).Fatalf("failed set selinux context on %s", srvDir)
+		}
 	}
 
 	l.WithField("bind mount", srvDir).Info("using host directory for /srv")
@@ -607,6 +615,7 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 		l.Info("Cleaning up ephemeral /srv")
 		defer os.RemoveAll(srvDir) //nolint
 
+		s.User = "root"
 		s.Entrypoint = []string{"/bin/rm", "-rvf", "/srv/"}
 		s.Name = fmt.Sprintf("%s-cleaner", s.Name)
 		cR, _ := containers.CreateWithSpec(connText, s)
