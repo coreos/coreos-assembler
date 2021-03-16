@@ -414,7 +414,9 @@ binary build interface.`)
 			}
 		}
 
-		// If there is no default execution order, default to 2
+		// If there is no default execution order, default to 2. The default
+		// is due the short-hand defaults in stage.go that asssigns certain short-hands
+		// to certain execution groups.
 		eOrder := s.ExecutionOrder
 		if eOrder == 0 {
 			eOrder = 2
@@ -455,10 +457,10 @@ binary build interface.`)
 					terminate <- true
 				}
 			case <-ctx.Done():
-				log.Warning("Recieved cancelation")
+				log.Warning("Received cancellation")
 				terminate <- true
 			case s := <-sig:
-				log.Errorf("recievied signal %d", s)
+				log.Errorf("Receivied signal %d", s)
 				terminate <- true
 			case <-terminate:
 				// The select sends termination siganls to itself to ensure that cancel()
