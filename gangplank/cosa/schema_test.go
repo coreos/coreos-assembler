@@ -231,7 +231,7 @@ func TestMetaRegEx(t *testing.T) {
 			match: true,
 		},
 		{
-			data:  []byte("meta.foo.json"),
+			data:  []byte("meta.test.json"),
 			match: true,
 		},
 		{
@@ -240,6 +240,10 @@ func TestMetaRegEx(t *testing.T) {
 		},
 		{
 			data:  []byte("meta.json.bk"),
+			match: false,
+		},
+		{
+			data:  []byte("metafoo.json"),
 			match: false,
 		},
 	}

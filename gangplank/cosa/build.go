@@ -39,7 +39,7 @@ var (
 	ErrMetaNotFound = errors.New("meta.json was not found")
 
 	// reMetaJSON matches meta.json files use for merging
-	reMetaJSON = regexp.MustCompile(`^meta.*.json$`)
+	reMetaJSON = regexp.MustCompile(`^meta\.(json|.*\.json)$`)
 )
 
 const (
@@ -75,7 +75,6 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 			return nil, "", ErrNoBuildsFound
 		}
 		buildID = latest
-		log.WithField("buildID", buildID).Info("Identified build")
 	}
 
 	if buildID == "" {
@@ -94,6 +93,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 	}
 
 	// if delaydMetaMerge is set, then we need to load up and merge and meta.*.json
+	// into the memory model of the build
 	if b != nil && b.CosaDelayedMetaMerge {
 		log.Info("Searching for extra meta.json files")
 		err = filepath.Walk(p, func(path string, fi os.FileInfo, _ error) error {
@@ -105,6 +105,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 			}
 			log.WithField("extra meta.json", fi.Name()).Info("found meta")
 			f, err := os.Open(filepath.Join(p, fi.Name()))
+
 			if err != nil {
 				return err
 			}
