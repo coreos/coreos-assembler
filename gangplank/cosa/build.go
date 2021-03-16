@@ -22,11 +22,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -35,6 +37,9 @@ var (
 
 	// ErrMetaNotFound is thrown when a meta.json cannot be found
 	ErrMetaNotFound = errors.New("meta.json was not found")
+
+	// reMetaJSON matches meta.json files use for merging
+	reMetaJSON = regexp.MustCompile(`^meta.*.json$`)
 )
 
 const (
@@ -52,22 +57,25 @@ func BuilderArch() string {
 	return arch
 }
 
-// ReadBuild returns a build upon finding a meta.json.
-// If build is "", use latest
+// ReadBuild returns a build upon finding a meta.json. Returns a Build, the path string
+// to the build, and an error (if any). If the buildID is not set, "latest" is assumed.
 func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
+	log.WithField("dir", dir).Info("Looking for builds")
 	if arch == "" {
 		arch = BuilderArch()
 	}
 
 	if buildID == "" {
 		b, err := getBuilds(dir)
-		if err == nil {
-			latest, ok := b.getLatest(arch)
-			if !ok {
-				return nil, "", ErrNoBuildsFound
-			}
-			buildID = latest
+		if err != nil {
+			return nil, "", err
 		}
+		latest, ok := b.getLatest(arch)
+		if !ok {
+			return nil, "", ErrNoBuildsFound
+		}
+		buildID = latest
+		log.WithField("buildID", buildID).Info("Identified build")
 	}
 
 	if buildID == "" {
@@ -81,6 +89,30 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 	}
 
 	b, err := buildParser(f)
+	if err != nil {
+		return b, p, err
+	}
+
+	// if delaydMetaMerge is set, then we need to load up and merge and meta.*.json
+	if b != nil && b.CosaDelayedMetaMerge {
+		log.Info("Searching for extra meta.json files")
+		err = filepath.Walk(p, func(path string, fi os.FileInfo, _ error) error {
+			if fi == nil || fi.IsDir() || fi.Name() == CosaMetaJSON {
+				return nil
+			}
+			if !reMetaJSON.Match([]byte(fi.Name())) {
+				return nil
+			}
+			log.WithField("extra meta.json", fi.Name()).Info("found meta")
+			f, err := os.Open(filepath.Join(p, fi.Name()))
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			return b.mergeMeta(f)
+		})
+	}
+
 	return b, p, err
 }
 
@@ -125,7 +157,7 @@ func (build *Build) WriteMeta(path string, validate bool) error {
 // GetArtifact returns an artifact by JSON tag
 func (build *Build) GetArtifact(artifact string) (*Artifact, error) {
 	r, ok := build.artifacts()[artifact]
-	if ok {
+	if ok && r.Path != "" {
 		return r, nil
 	}
 	return nil, errors.New("artifact not defined")
@@ -215,4 +247,11 @@ func (build *Build) artifacts() map[string]*Artifact {
 		}
 	}
 	return ret
+}
+
+// mergeMeta uses JSON to merge in the data
+func (b *Build) mergeMeta(r io.Reader) error {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+	return dec.Decode(b)
 }

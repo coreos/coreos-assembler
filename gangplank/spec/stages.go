@@ -2,6 +2,7 @@ package spec
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -68,6 +69,10 @@ type Stage struct {
 
 	// PostAlways ensures that the PostCommands are always run.
 	PostAlways bool `yaml:"post_always,omitempty" json:"post_always,omitempty"`
+
+	// ExecutionOrder is a number value that defines the order of stages. If two stages
+	// share the same execution order number, then they are allowed to run concurrently to each other.
+	ExecutionOrder int `yaml:"execution_order,omitempty" json:"execution_order,omitempty"`
 }
 
 // These are the only hard-coded commands that Gangplank understand.
@@ -268,11 +273,14 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 	j.Job.StrictMode = true
 
 	baseStage := Stage{
-		ID:             "Generated Base Stage",
-		BuildArtifacts: []string{"base"},
+		ID:               "Generated Base Stage",
+		ExecutionOrder:   1,
+		BuildArtifacts:   []string{"base"},
+		RequireArtifacts: nil,
 	}
 	finalizeStage := Stage{
 		ID:             "Generated Finalize Stage",
+		ExecutionOrder: 999,
 		BuildArtifacts: []string{"finalize"},
 	}
 
@@ -292,6 +300,7 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 			stages = append(stages,
 				Stage{
 					ID:               fmt.Sprintf("Generated %s build stage", k),
+					ExecutionOrder:   2,
 					BuildArtifacts:   []string{"metal", "metal4k"},
 					RequireArtifacts: []string{"base"},
 				})
@@ -299,6 +308,7 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 			stages = append(stages,
 				Stage{
 					ID:               "Generated Live-ISO stage",
+					ExecutionOrder:   2,
 					BuildArtifacts:   []string{"live-iso"},
 					RequireArtifacts: []string{"qemu", "metal", "metal4k"},
 				})
@@ -306,6 +316,7 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 			extra = append(stages,
 				Stage{
 					ID:                  fmt.Sprintf("Generated %s stage", k),
+					ExecutionOrder:      3,
 					BuildArtifacts:      []string{k},
 					RequireArtifacts:    []string{"qemu"},
 					ConcurrentExecution: true,
@@ -331,4 +342,16 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 		appender(finalizeStage)
 	}
 
+}
+
+// DeepCopy does a lazy deep copy by rendering the stage to JSON
+// and then returning a new Stage defined by the JSON
+func (s *Stage) DeepCopy() (Stage, error) {
+	ns := Stage{}
+	out, err := json.Marshal(s)
+	if err != nil {
+		return ns, err
+	}
+	err = json.Unmarshal(out, &ns)
+	return ns, err
 }

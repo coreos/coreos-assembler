@@ -196,9 +196,23 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 
 	// Expose the jobspec and meta.json (if its available) for templating.
 	mBuild, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	if mBuild == nil {
+		mBuild = new(cosa.Build)
+	}
 	rd := &spec.RenderData{
 		JobSpec: &ws.JobSpec,
 		Meta:    mBuild,
+	}
+
+	// Ensure a latest symlink to the build exists
+	if mBuild != nil && mBuild.BuildID != "" {
+		latestLink := filepath.Join(cosaSrvDir, "builds", "latest")
+		latestTarget := filepath.Join(cosaSrvDir, "builds", mBuild.BuildID)
+		if _, err := os.Lstat(latestLink); os.IsNotExist(err) {
+			if err := os.Symlink(latestTarget, latestLink); err != nil {
+				return fmt.Errorf("unable to create latest symlink from %s to %s", latestTarget, latestLink)
+			}
+		}
 	}
 
 	// Range over the stages and perform the actual work.
