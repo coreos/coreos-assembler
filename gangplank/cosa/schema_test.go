@@ -223,34 +223,34 @@ func TestMergeMeta(t *testing.T) {
 
 func TestMetaRegEx(t *testing.T) {
 	testCases := []struct {
-		data  []byte
+		data  string
 		match bool
 	}{
 		{
-			data:  []byte("meta.json"),
+			data:  "meta.json",
 			match: true,
 		},
 		{
-			data:  []byte("meta.test.json"),
+			data:  "meta.test.json",
 			match: true,
 		},
 		{
-			data:  []byte("commitmmeta.json"),
+			data:  "commitmmeta.json",
 			match: false,
 		},
 		{
-			data:  []byte("meta.json.bk"),
+			data:  "meta.json.bk",
 			match: false,
 		},
 		{
-			data:  []byte("metafoo.json"),
+			data:  "metafoo.json",
 			match: false,
 		},
 	}
 
 	for idx, c := range testCases {
 		t.Run(fmt.Sprintf("regex test %d %q", idx, string(c.data)), func(t *testing.T) {
-			matched := reMetaJSON.Match(c.data)
+			matched := IsMetaJSON(c.data)
 			if matched != c.match {
 				t.Errorf("%s:\n want: %v\n  got: %v\n", string(c.data), c.match, matched)
 			}
