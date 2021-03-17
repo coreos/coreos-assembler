@@ -100,7 +100,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 			if fi == nil || fi.IsDir() || fi.Name() == CosaMetaJSON {
 				return nil
 			}
-			if !reMetaJSON.Match([]byte(fi.Name())) {
+			if !IsMetaJSON(fi.Name()) {
 				return nil
 			}
 			log.WithField("extra meta.json", fi.Name()).Info("found meta")
@@ -255,4 +255,10 @@ func (b *Build) mergeMeta(r io.Reader) error {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 	return dec.Decode(b)
+}
+
+// IsMetaJSON is a helper for identifying if a file is meta.json
+func IsMetaJSON(path string) bool {
+	b := filepath.Base(path)
+	return reMetaJSON.Match([]byte(b))
 }
