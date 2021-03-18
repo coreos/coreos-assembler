@@ -312,7 +312,7 @@ func addShorthandToStage(artifact string, stage *Stage) {
 
 	working := quickStage(artifact)
 
-	// remove is helper for removing the first from a slice
+	// remove is helper for removing the first matching item from a slice
 	remove := func(slice []string, key string) ([]string, bool) {
 		for x := 0; x < len(slice); x++ {
 			if slice[x] == key {
