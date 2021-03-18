@@ -70,7 +70,7 @@ func (r *Return) Run(ctx context.Context) error {
 		srcPath := filepath.Join(path, f.Name())
 
 		// Check if this a meta type
-		if strings.HasSuffix(f.Name(), ".json") {
+		if isKnownBuildMeta(f.Name()) {
 			upload[upKey] = srcPath
 		}
 		// Check if this a known build artifact
@@ -113,4 +113,25 @@ func (r *Return) Run(ctx context.Context) error {
 		}
 	}
 	return e
+}
+
+// isKnownBuildMeta checks if n is known and should be fetched and returned
+// by pods via Minio.
+func isKnownBuildMeta(n string) bool {
+	// check for specially named files
+	if strings.HasPrefix(n, "manifest-lock.generated") ||
+		n == "ostree-commit-object" ||
+		n == "commitmeta.json" {
+		return true
+	}
+	// check for meta*json files
+	if cosa.IsMetaJSON(n) {
+		return true
+	}
+
+	if n == "builds.json" {
+		return true
+	}
+
+	return false
 }

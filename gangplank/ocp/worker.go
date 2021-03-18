@@ -205,13 +205,26 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	}
 
 	// Ensure a latest symlink to the build exists
-	if mBuild != nil && mBuild.BuildID != "" {
-		latestLink := filepath.Join(cosaSrvDir, "builds", "latest")
-		latestTarget := filepath.Join(cosaSrvDir, "builds", mBuild.BuildID)
-		if _, err := os.Lstat(latestLink); os.IsNotExist(err) {
-			if err := os.Symlink(latestTarget, latestLink); err != nil {
-				return fmt.Errorf("unable to create latest symlink from %s to %s", latestTarget, latestLink)
+	if mBuild.BuildID != "" {
+		if err := func() error {
+			pwd, _ := os.Getwd()
+			defer os.Chdir(pwd) //nolint
+
+			if err := os.Chdir(filepath.Join(cosaSrvDir, "builds")); err != nil {
+				return fmt.Errorf("unable to change to builds dir: %v", err)
 			}
+
+			// create a relative symlink in the builds dir
+			latestLink := filepath.Join("latest")
+			latestTarget := filepath.Join(mBuild.BuildID)
+			if _, err := os.Lstat(latestLink); os.IsNotExist(err) {
+				if err := os.Symlink(latestTarget, latestLink); err != nil {
+					return fmt.Errorf("unable to create latest symlink from %s to %s", latestTarget, latestLink)
+				}
+			}
+			return nil
+		}(); err != nil {
+			return err
 		}
 	}
 
