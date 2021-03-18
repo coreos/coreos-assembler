@@ -215,7 +215,7 @@ binary build interface.`)
 		l := log.WithFields(log.Fields{
 			"prior build": lastBuild.BuildID,
 			"path":        lastBuild,
-			"to path":     filepath.Join("srv", "bulds", keyPath),
+			"to path":     filepath.Join("srv", "builds", keyPath),
 		})
 		l.Info("found prior build")
 		remoteFiles = append(
