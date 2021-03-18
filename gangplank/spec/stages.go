@@ -263,6 +263,124 @@ func GetArtifactShortHandNames() []string {
 	return buildableArtifacts
 }
 
+// addShorthandToStage adds in a build shorthand into the stage and
+// ensures that required dependencies are correclty ordered
+func addShorthandToStage(artifact string, stage *Stage) {
+
+	quickStage := func(noun string) *Stage {
+		switch noun {
+		case "base":
+			return &Stage{
+				ExecutionOrder:   1,
+				BuildArtifacts:   []string{"base"},
+				RequireArtifacts: []string{"base"},
+			}
+		case "finalize":
+			return &Stage{
+				BuildArtifacts: []string{"finalize"},
+				ExecutionOrder: 999,
+			}
+		case "live-iso":
+			return &Stage{
+				ExecutionOrder:   2,
+				BuildArtifacts:   []string{"live-iso"},
+				RequireArtifacts: []string{"qemu", "metal", "metal4k"},
+			}
+		case "metal":
+			return &Stage{
+				ExecutionOrder: 2,
+				BuildArtifacts: []string{"metal"},
+			}
+		case "metal4k":
+			return &Stage{
+				ExecutionOrder: 2,
+				BuildArtifacts: []string{"metal4k"},
+			}
+		default:
+			if !cosa.CanArtifact(artifact) {
+				break
+			}
+			return &Stage{
+				ExecutionOrder:   3,
+				BuildArtifacts:   []string{artifact},
+				RequireArtifacts: []string{"qemu"},
+			}
+		}
+		log.WithField("artifact", noun).Fatalf("unknown artifact type")
+		return nil
+	}
+
+	working := quickStage(artifact)
+
+	// remove is helper for removing the first from a slice
+	remove := func(slice []string, key string) ([]string, bool) {
+		for x := 0; x < len(slice); x++ {
+			if slice[x] == key {
+				return append(slice[:x], slice[x+1:]...), true
+			}
+		}
+		return slice, false
+	}
+
+	unique := func(strSlice []string) []string {
+		keys := make(map[string]bool)
+		list := []string{}
+		for _, entry := range strSlice {
+			if _, value := keys[entry]; !value {
+				keys[entry] = true
+				list = append(list, entry)
+			}
+		}
+		return list
+	}
+
+	stage.BuildArtifacts = append(stage.BuildArtifacts, working.BuildArtifacts...)
+	stage.RequireArtifacts = append(stage.RequireArtifacts, working.RequireArtifacts...)
+
+	// Assume the lowest stage execution order
+	if working.ExecutionOrder < stage.ExecutionOrder || stage.ExecutionOrder == 0 {
+		stage.ExecutionOrder = working.ExecutionOrder
+	}
+
+	stage.ID = fmt.Sprintf("Generated Stage in Execution Order %d", stage.ExecutionOrder)
+	stage.Description = fmt.Sprintf("Stage %d execution for %s",
+		stage.ExecutionOrder, strings.Join(stage.BuildArtifacts, ","))
+
+	// Get the order that artifacts should be built
+	artifactOrder := make(map[int][]string)
+	for _, v := range stage.BuildArtifacts {
+		fakeStage := quickStage(v)
+		artifactOrder[fakeStage.ExecutionOrder] = append(artifactOrder[fakeStage.ExecutionOrder], v)
+	}
+
+	newOrder := []string{}
+	for _, v := range artifactOrder {
+		newOrder = append(newOrder, v...)
+	}
+	stage.BuildArtifacts = unique(newOrder)
+
+	// If the syntetic stages requires an artifact, but also builds it
+	// then we need to remove it from the the requires.
+	realRequires := stage.RequireArtifacts
+
+	for _, ba := range stage.BuildArtifacts {
+		for _, ra := range stage.RequireArtifacts {
+			if ra == ba {
+				realRequires, _ = remove(realRequires, ra)
+			}
+		}
+	}
+	// base is short hand of ostree and qemu. Its handled specially
+	// since we have to consider that "qemu"
+	var foundBase bool
+	realRequires, foundBase = remove(realRequires, "base")
+	if foundBase {
+		realRequires, _ = remove(realRequires, "ostree")
+		realRequires, _ = remove(realRequires, "qemu")
+	}
+	stage.RequireArtifacts = unique(realRequires)
+}
+
 // GenerateStages creates stages.
 func (j *JobSpec) GenerateStages(fromNames []string) {
 	if len(fromNames) == 0 {
@@ -272,76 +390,13 @@ func (j *JobSpec) GenerateStages(fromNames []string) {
 	j.DelayedMetaMerge = true
 	j.Job.StrictMode = true
 
-	baseStage := Stage{
-		ID:               "Generated Base Stage",
-		ExecutionOrder:   1,
-		BuildArtifacts:   []string{"base"},
-		RequireArtifacts: nil,
-	}
-	finalizeStage := Stage{
-		ID:             "Generated Finalize Stage",
-		ExecutionOrder: 999,
-		BuildArtifacts: []string{"finalize"},
-	}
-
-	requireBase := false
-	requireFinalize := false
-
-	var stages []Stage
-	var extra []Stage
-
 	for _, k := range fromNames {
-		switch k {
-		case "base":
-			requireBase = true
-		case "finalize":
-			requireFinalize = true
-		case "metal", "metal4k":
-			stages = append(stages,
-				Stage{
-					ID:               fmt.Sprintf("Generated %s build stage", k),
-					ExecutionOrder:   2,
-					BuildArtifacts:   []string{"metal", "metal4k"},
-					RequireArtifacts: []string{"base"},
-				})
-		case "live-iso":
-			stages = append(stages,
-				Stage{
-					ID:               "Generated Live-ISO stage",
-					ExecutionOrder:   2,
-					BuildArtifacts:   []string{"live-iso"},
-					RequireArtifacts: []string{"qemu", "metal", "metal4k"},
-				})
-		default:
-			extra = append(stages,
-				Stage{
-					ID:                  fmt.Sprintf("Generated %s stage", k),
-					ExecutionOrder:      3,
-					BuildArtifacts:      []string{k},
-					RequireArtifacts:    []string{"qemu"},
-					ConcurrentExecution: true,
-				})
+		var s Stage
+		for _, k := range strings.Split(k, "+") {
+			addShorthandToStage(k, &s)
 		}
+		j.Stages = append(j.Stages, s)
 	}
-
-	appender := func(s ...Stage) {
-		j.Stages = append(j.Stages, s...)
-	}
-
-	// base stage must be first
-	if requireBase {
-		appender(baseStage)
-	}
-
-	// add middle stages if any
-	appender(stages...)
-	appender(extra...)
-
-	// finalize should happen after all other stages
-	if len(j.Stages) > 0 || requireFinalize {
-		appender(finalizeStage)
-	}
-
 }
 
 // DeepCopy does a lazy deep copy by rendering the stage to JSON
