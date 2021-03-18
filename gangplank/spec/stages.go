@@ -359,7 +359,7 @@ func addShorthandToStage(artifact string, stage *Stage) {
 	}
 	stage.BuildArtifacts = unique(newOrder)
 
-	// If the syntetic stages requires an artifact, but also builds it
+	// If the synthetic stages requires an artifact, but also builds it
 	// then we need to remove it from the the requires.
 	realRequires := stage.RequireArtifacts
 
