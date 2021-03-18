@@ -208,6 +208,25 @@ binary build interface.`)
 		return err
 	}
 
+	// Get the latest build that might have happened
+	lastBuild, lastPath, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	if err == nil {
+		keyPath := filepath.Join(lastBuild.BuildID, cosa.BuilderArch())
+		l := log.WithFields(log.Fields{
+			"prior build": lastBuild.BuildID,
+			"path":        lastBuild,
+			"to path":     filepath.Join("srv", "bulds", keyPath),
+		})
+		l.Info("found prior build")
+		remoteFiles = append(
+			remoteFiles,
+			getBuildMeta(lastPath, keyPath, m, l)...,
+		)
+	} else {
+		lastBuild = new(cosa.Build)
+		log.Debug("no prior build found")
+	}
+
 	// Dump the jobspec
 	log.Infof("Using JobSpec definition:")
 	if err := bc.JobSpec.WriteYAML(log.New().Out); err != nil {
@@ -265,6 +284,7 @@ binary build interface.`)
 						l.WithField("build dir", buildPath).WithError(err).Warningf("Unable to locate build")
 					}
 
+					var keyPathBase string
 					if mBuild != nil {
 						// If the buildID is not known AND the worker finds a build ID,
 						// then a new build has appeared.
@@ -286,6 +306,19 @@ binary build interface.`)
 									Minio:  m,
 								})
 						}
+
+						// base of the keys to fetch from minio "<buildid>/<arch>"
+						keyPathBase = filepath.Join(buildID, cosa.BuilderArch())
+
+						// Locate build meta data
+						jsonPath := filepath.Join(buildPath, buildID)
+						if lastBuild.BuildID != mBuild.BuildID {
+							ws.RemoteFiles = append(
+								ws.RemoteFiles,
+								getBuildMeta(jsonPath, keyPathBase, ws.Return.Minio, l)...,
+							)
+						}
+
 					}
 
 					// If no artfiacts are required we can skip checking for artifacts.
@@ -293,37 +326,6 @@ binary build interface.`)
 						l.Debug("Waiting for build to appear")
 						return false
 					}
-
-					// base of the keys to fetch from minio "<buildid>/<arch>"
-					keyPathBase := filepath.Join(buildID, cosa.BuilderArch())
-
-					// Locate meta.*.json
-					jsonPath := filepath.Join(buildPath, buildID)
-					_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
-						if info == nil || info.IsDir() {
-							return nil
-						}
-						n := filepath.Base(info.Name())
-						if !(strings.HasPrefix(n, "meta") && strings.HasSuffix(n, ".json")) {
-							l.WithField("file", n).Warning("excluded")
-							return nil
-						}
-						key := filepath.Join(keyPathBase, n)
-						ws.RemoteFiles = append(
-							ws.RemoteFiles,
-							&RemoteFile{
-								Bucket: "builds",
-								Minio:  m,
-								Object: key,
-							},
-						)
-						l.WithFields(log.Fields{
-							"file":   info.Name(),
-							"bucket": "builds",
-							"key":    key,
-						}).Info("Included metadata")
-						return nil
-					})
 
 					foundCount := 0
 					for _, artifact := range s.RequireArtifacts {
@@ -652,4 +654,39 @@ func (bc *buildConfig) ocpBinaryInput(m *minioServer) ([]*RemoteFile, error) {
 		}
 	}
 	return remoteFiles, nil
+}
+
+// getBuildMeta searches a path for all build meta files and creates remoteFiles
+// for them. The keyPathBase is the relative path for the object.
+func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []*RemoteFile {
+	var metas []*RemoteFile
+
+	_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
+		if info == nil || info.IsDir() {
+			return nil
+		}
+		n := filepath.Base(info.Name())
+
+		if !isKnownBuildMeta(n) {
+			l.WithField("file", n).Warning("excluded")
+			return nil
+		}
+
+		key := filepath.Join(keyPathBase, n)
+		metas = append(
+			metas,
+			&RemoteFile{
+				Bucket: "builds",
+				Minio:  m,
+				Object: key,
+			},
+		)
+		l.WithFields(log.Fields{
+			"file":   info.Name(),
+			"bucket": "builds",
+			"key":    key,
+		}).Info("Included metadata")
+		return nil
+	})
+	return metas
 }
