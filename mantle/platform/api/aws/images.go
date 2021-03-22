@@ -17,6 +17,7 @@ package aws
 import (
 	"fmt"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -329,10 +330,20 @@ func (a *API) CreateImportRole(bucket string) error {
 }
 
 func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string) (string, error) {
+	var awsArch string
+	switch runtime.GOARCH {
+	case "amd64":
+		awsArch = ec2.ArchitectureTypeX8664
+	case "arm64":
+		awsArch = ec2.ArchitectureTypeArm64
+	default:
+		return "", fmt.Errorf("unsupported ec2 architecture %q", runtime.GOARCH)
+	}
+
 	return a.createImage(&ec2.RegisterImageInput{
 		Name:               aws.String(name),
 		Description:        aws.String(description),
-		Architecture:       aws.String("x86_64"),
+		Architecture:       aws.String(awsArch),
 		VirtualizationType: aws.String("hvm"),
 		RootDeviceName:     aws.String("/dev/xvda"),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
