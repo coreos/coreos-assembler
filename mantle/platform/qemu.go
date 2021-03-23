@@ -1236,7 +1236,9 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 	[Service]
 	Type=simple
 	StandardOutput=file:/dev/virtio-ports/mantlejournal
-	ExecStart=/usr/bin/journalctl -q -b -f -o json --no-tail %s
+	# Wrap in /bin/bash to hack around SELinux
+	# https://bugzilla.redhat.com/show_bug.cgi?id=1942198
+	ExecStart=/usr/bin/bash -c "journalctl -q -b -f -o json --no-tail %s"
 	[Install]
 	RequiredBy=multi-user.target
 	`, queryArguments)
