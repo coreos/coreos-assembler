@@ -151,7 +151,7 @@ yaml2json() {
 
 # Convert the image.yaml to JSON so that it can be more easily parsed
 # by the shell script in create_disk.sh.
-yaml2json "$configdir/image.yaml" image-config.json
+yaml2json "${image_yaml}" image-config.json
 yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
 # Combine with the defaults
 cat image-default.json image-config.json | jq -s add > image-configured.json
@@ -185,7 +185,7 @@ case "${image_type}" in
         rootfs_size=0
         ;;
     qemu)
-        image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "$configdir/image.yaml")G"
+        image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "${image_yaml}")G"
         rootfs_size="${rootfs_size}M"
         ;;
     *) fatal "unreachable image_type ${image_type}";;
@@ -196,7 +196,7 @@ if [ "${image_type}" == metal4k ]; then
 fi
 
 set -x
-kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "$configdir/image.yaml")"
+kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "${image_yaml}")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # On each s390x hypervisor, a tty would be automatically detected by the kernel
 # and systemd, there is no need to specify one. However, we keep DEFAULT_TERMINAL

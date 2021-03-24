@@ -171,6 +171,9 @@ prepare_build() {
     manifest_lock_arch_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
     fetch_stamp="${workdir}"/cache/fetched-stamp
 
+    image_yaml="${workdir}/tmp/image.yaml"
+    flatten_image_yaml_to_file "${configdir}/image.yaml" "${image_yaml}"
+
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
     export fetch_stamp
 
@@ -754,4 +757,14 @@ builds = Builds('${workdir:-$(pwd)}')
 builds.insert_build('${buildid}')
 builds.bump_timestamp()
 print('Build ${buildid} was inserted')")
+}
+
+flatten_image_yaml_to_file() {
+    local srcfile=$1; shift
+    local outfile=$1; shift
+    (python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cosalib import cmdlib
+cmdlib.flatten_image_yaml_to_file('${srcfile}', '${outfile}')")
 }

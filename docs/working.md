@@ -48,6 +48,8 @@ This YAML file configures the output disk images.  Supported keys are:
 
 - `size`: Size in GB for cloud images (OpenStack, AWS, etc.)  Required.
 - `extra-kargs`: List of kernel arguments.
+- `include`: path to another YAML file to include. List values are appended. For other type,
+  the values in the sourcing config win.
 
 It's likely in the future we will extend this to support e.g. a separate `/var`
 partition or configuring the filesystem types.  If you want to do anything like

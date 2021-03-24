@@ -197,7 +197,7 @@ ks_path="${configdir}"/image.ks
 if [ -f "${ks_path}" ]; then
     fatal "Kickstart support was removed; migrate to image.yaml"
 fi
-image_input="${configdir}"/image.yaml
+image_input="${image_yaml}"
 if ! [ -f "${image_input}" ]; then
     fatal "Failed to find ${image_input}"
 fi

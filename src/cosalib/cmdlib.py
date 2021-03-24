@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import gi
+import yaml
 
 from botocore.exceptions import (
     ConnectionClosedError,
@@ -320,3 +321,39 @@ def cmdlib_sh(script):
         source {THISDIR}/../cmdlib.sh
         {script}
     '''])
+
+
+def flatten_image_yaml_to_file(srcfile, outfile):
+    flattened = flatten_image_yaml(srcfile)
+    with open(outfile, 'w') as f:
+        yaml.dump(flattened, f)
+
+
+def merge_lists(x, y, k):
+    x[k] = x.get(k, [])
+    assert type(x[k]) == list
+    y[k] = y.get(k, [])
+    assert type(y[k]) == list
+    x[k].extend(y[k])
+
+
+def flatten_image_yaml(srcfile, base=None):
+    if base is None:
+        base = {}
+
+    with open(srcfile) as f:
+        srcyaml = yaml.safe_load(f)
+
+    # first, special-case list values
+    merge_lists(base, srcyaml, 'extra-kargs')
+    merge_lists(base, srcyaml, 'ignition-network-kcmdline')
+
+    # then handle all the non-list values
+    base = merge_dicts(base, srcyaml)
+
+    if 'include' not in srcyaml:
+        return base
+
+    fn = os.path.join(os.path.dirname(srcfile), srcyaml['include'])
+    del base['include']
+    return flatten_image_yaml(fn, base)
