@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containers/storage/pkg/ioutils"
 	"github.com/minio/minio-go/v7"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,7 +27,7 @@ func TestFiler(t *testing.T) {
 	defer cancel()
 	defer c.Done()
 
-	m := newMinioServer()
+	m := newMinioServer("")
 	m.Host = "localhost"
 	m.dir = tmpd
 	if err := m.start(c); err != nil {
@@ -37,7 +38,7 @@ func TestFiler(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create test minio client")
 	}
-	defer m.kill()
+	defer m.Kill()
 
 	if err := mc.MakeBucket(c, testBucket, minio.MakeBucketOptions{}); err != nil {
 		t.Errorf("Failed to create test bucket %s: %v", testBucket, err)
@@ -63,4 +64,84 @@ func TestFiler(t *testing.T) {
 	}
 
 	log.Info("Done")
+}
+
+func TestMultipleStandAlones(t *testing.T) {
+	tmpd, _ := ioutils.TempDir("", "")
+	srvOne := filepath.Join(tmpd, "one")
+	srvTwo := filepath.Join(tmpd, "two")
+	oneCfg := filepath.Join(srvOne, "test.cfg")
+	twoCfg := filepath.Join(srvTwo, "test.cfg")
+
+	_ = os.MkdirAll(srvOne, 0755)
+	_ = os.MkdirAll(srvTwo, 0755)
+
+	ctx := context.Background()
+	one, err := StartStandaloneMinioServer(ctx, srvOne, oneCfg)
+	if err != nil {
+		t.Fatalf("failed to start first minio server")
+	}
+	defer one.Kill()
+
+	two, err := StartStandaloneMinioServer(ctx, srvTwo, twoCfg)
+	if err != nil {
+		t.Fatalf("failed to start first minio server")
+	}
+	defer two.Kill()
+
+	// Fire up the users of the stand alone Minio's
+	// This tests using a minio from CFG
+	oneUser := newMinioServer(oneCfg)
+	if err := oneUser.start(ctx); err != nil {
+		t.Errorf("failed to use first minio")
+	}
+	twoUser := newMinioServer(twoCfg)
+	if err := twoUser.start(ctx); err != nil {
+		t.Errorf("failed ot use second minio")
+	}
+
+	// Connect and make sure that the servers serve different content
+	// This tests that:
+	//   - host port selection is different
+	//   - that a new minio server is not started
+	//   - each server is using a different set of keys.
+	if err := oneUser.ensureBucketExists(ctx, "test1"); err != nil {
+		t.Errorf("failed to create bucket on first minio")
+	}
+	if err := twoUser.ensureBucketExists(ctx, "test2"); err != nil {
+		t.Errorf("failed to create bucket on first minio")
+	}
+
+	oneClient, _ := oneUser.client()
+	twoClient, _ := twoUser.client()
+
+	oneBuckets, oneErr := oneClient.ListBuckets(ctx)
+	twoBuckets, twoErr := twoClient.ListBuckets(ctx)
+
+	if oneErr != nil || twoErr != nil {
+		t.Fatalf("failed to list buckets")
+	}
+
+	for _, oneV := range oneBuckets {
+		for _, twoV := range twoBuckets {
+			if oneV.Name == twoV.Name && twoV.Name != "builds" {
+				t.Errorf("bucket two %q should not be in minio one", twoV.Name)
+			}
+		}
+	}
+
+	for _, twoV := range twoBuckets {
+		for _, oneV := range oneBuckets {
+			if oneV.Name == twoV.Name && twoV.Name != "builds" {
+				t.Errorf("bucket two %q should not be in minio one", twoV.Name)
+			}
+		}
+	}
+
+	// Try to access oneUser using twoUsers creds
+	oneUser.AccessKey = twoUser.AccessKey
+	oneUser.SecretKey = twoUser.SecretKey
+	if err := oneUser.ensureBucketExists(ctx, "bah"); err == nil {
+		t.Fatalf("using wrong credentials should fail")
+	}
 }

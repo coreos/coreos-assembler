@@ -135,6 +135,7 @@ type Job struct {
 	IsProduction  bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
 	StrictMode    bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
 	VersionSuffix string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
+	MinioCfgFile  string // not exported
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config

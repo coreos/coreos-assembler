@@ -64,7 +64,7 @@ var _ PodBuilder = &podBuild{}
 
 const (
 	podBuildLabel      = "gangplank.coreos-assembler.coreos.com"
-	podBuildAnnotation = podBuildLabel + "%s"
+	podBuildAnnotation = podBuildLabel + "-%s"
 	podBuildRunnerTag  = "cosa-podBuild-runner"
 )
 
@@ -106,6 +106,15 @@ func NewPodBuilder(ctx ClusterContext, image, serviceAccount, workDir string, js
 	bc, err := newBC(ctx, &Cluster{})
 	if err != nil {
 		return nil, err
+	}
+
+	if pb.ipaddr != "" {
+		log.WithFields(log.Fields{
+			"host name": pb.hostname,
+			"ip addr":   pb.ipaddr,
+		}).Info("Using IP address for remote minio instances")
+		bc.HostPod = pb.hostname
+		bc.HostIP = pb.ipaddr
 	}
 
 	// Create a new clean copy of the jobpsec

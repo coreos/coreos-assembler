@@ -32,14 +32,14 @@ func TestRemote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := newMinioServer()
+	m := newMinioServer("")
 	m.dir = srvd
 	log.Infof("Testing with key %s:%s", m.AccessKey, m.SecretKey)
 
 	if err := m.start(ctx); err != nil {
 		t.Fatalf("failed to start test minio server: %v", err)
 	}
-	defer m.kill()
+	defer m.Kill()
 
 	r := RemoteFile{
 		Bucket: testBucket,
