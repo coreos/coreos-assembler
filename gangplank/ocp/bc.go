@@ -92,24 +92,17 @@ func newBC(ctx context.Context, c *Cluster) (*buildConfig, error) {
 	ac, ns, kubeErr := GetClient(v.ClusterCtx)
 	if kubeErr != nil {
 		log.WithError(kubeErr).Info("Running without a cluster client")
-	}
-
-	if kubeErr != nil && ac != nil {
+	} else if ac != nil {
 		v.HostPod = fmt.Sprintf("%s-%s-build",
 			apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 			apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
 		)
 
-		_, ok := apiBuild.Annotations[podBuildRunnerTag]
-		if ok {
-			v.HostIP = apiBuild.Annotations[fmt.Sprintf(podBuildAnnotation, "IP")]
-		} else {
-			log.Info("Querying for pod ID")
-			hIP, err := getPodIP(ac, ns, v.HostPod)
-			if err != nil {
-				log.Errorf("Failed to determine buildconfig's pod")
-			}
-			v.HostIP = hIP
+		log.Info("Querying for host IP")
+		var e error
+		v.HostIP, e = getPodIP(ac, ns, getHostname())
+		if e != nil {
+			log.WithError(e).Info("failed to query for hostname")
 		}
 
 		log.WithFields(log.Fields{
@@ -159,9 +152,8 @@ func (bc *buildConfig) Exec(ctx ClusterContext) (err error) {
 	}
 
 	// Define, but do not start minio.
-	m := newMinioServer()
+	m := newMinioServer(bc.JobSpec.Job.MinioCfgFile)
 	m.dir = cosaSrvDir
-	m.Host = bc.HostIP
 
 	// returnTo informs the workers where to send their bits
 	returnTo := &Return{
@@ -202,10 +194,10 @@ binary build interface.`)
 	if err := m.start(ctx); err != nil {
 		return fmt.Errorf("failed to start Minio: %w", err)
 	}
-	defer m.kill()
+	defer m.Kill()
 
 	if err := m.ensureBucketExists(ctx, "builds"); err != nil {
-		return err
+		return fmt.Errorf("failed to ensure 'builds' bucket exists on minio: %v", err)
 	}
 
 	// Get the latest build that might have happened

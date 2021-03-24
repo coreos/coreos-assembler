@@ -107,6 +107,8 @@ func runPod(c *cobra.Command, args []string) {
 		}
 	}
 
+	spec.Job.MinioCfgFile = minioCfgFile
+
 	if cosaWorkDirContext {
 		for _, d := range []string{cosaWorkDir, cosaSrvDir} {
 			if d == "" {
