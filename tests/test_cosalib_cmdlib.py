@@ -187,3 +187,34 @@ def test_merge_dicts(tmpdir):
     assert m[1] == "yup"
     assert x[2] == m[2]
     assert m[3] == z[3]
+
+
+def test_flatten_image_yaml(tmpdir):
+    fn = f"{tmpdir}/image.yaml"
+    with open(fn, 'w') as f:
+        f.write("""
+size: 10
+extra-kargs:
+  - foobar
+unique-key-a: true
+""")
+    o = cmdlib.flatten_image_yaml(fn)
+    assert o['size'] == 10
+    assert o['extra-kargs'] == ['foobar']
+    assert o['unique-key-a']
+
+    with open(fn, 'a') as f:
+        f.write("include: image-base.yaml")
+    base_fn = f"{tmpdir}/image-base.yaml"
+    with open(base_fn, 'w') as f:
+        f.write("""
+size: 8
+extra-kargs:
+  - bazboo
+unique-key-b: true
+""")
+    o = cmdlib.flatten_image_yaml(fn)
+    assert o['size'] == 10
+    assert o['extra-kargs'] == ['foobar', 'bazboo']
+    assert o['unique-key-a']
+    assert o['unique-key-b']
