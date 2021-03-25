@@ -1,9 +1,0 @@
-# This is what the CoreOS developers tend to actively develop/own.
-# If you want to extend this, feel free to file a PR.
-ignition
-ostree
-librepo
-kernel
-systemd
-dracut
-podman
