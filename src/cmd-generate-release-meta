@@ -46,6 +46,7 @@ parser.add_argument("--stream-name", help="Override the stream ID (default is de
 parser.add_argument("--stream-baseurl", help="Override prefix URL for stream content", default=FCOS_STREAM_ENDPOINT)
 parser.add_argument("--output", help="Output to file; default is build directory")
 parser.add_argument("--url", help="URL to a coreos-assembler meta.json", default=[], action='append')
+parser.add_argument("--no-signatures", help="Disable signature references", action='store_true')
 args = parser.parse_args()
 
 
@@ -108,9 +109,12 @@ def append_build(out, input_):
 
     def artifact(i):
         base_url = url_builder(out.get('stream'), out.get('release'), arch, i.get('path'))
+        sig = "{}.sig".format(base_url)
+        if args.no_signatures:
+            sig = ''
         return {
             "location": base_url,
-            "signature": "{}.sig".format(base_url),
+            "signature": sig,
             "sha256": i.get("sha256"),
             "uncompressed-sha256": i.get("uncompressed-sha256")
         }

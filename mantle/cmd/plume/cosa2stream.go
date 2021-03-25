@@ -44,6 +44,7 @@ var (
 		SilenceUsage: true,
 	}
 
+	nosignatures  bool
 	streamBaseURL string
 	streamName    string
 	distro        string
@@ -55,6 +56,7 @@ func init() {
 	cmdCosaBuildToStream.Flags().StringVar(&streamName, "name", "", "Stream name")
 	cmdCosaBuildToStream.Flags().StringVar(&distro, "distro", "", "Distribution (fcos, rhcos)")
 	cmdCosaBuildToStream.Flags().StringVar(&target, "target", "", "Modify this file in place (default: no source, print to stdout)")
+	cmdCosaBuildToStream.Flags().BoolVar(&nosignatures, "no-signatures", false, "Omit signatures (useful to generate pre-release stream metadata)")
 	root.AddCommand(cmdCosaBuildToStream)
 }
 
@@ -89,6 +91,9 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 	}
 	if streamBaseURL != "" {
 		childArgs = append(childArgs, "--stream-baseurl="+streamBaseURL)
+	}
+	if nosignatures {
+		childArgs = append(childArgs, "--no-signatures")
 	}
 
 	for _, arg := range args {
