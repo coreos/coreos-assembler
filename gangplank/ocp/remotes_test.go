@@ -60,4 +60,36 @@ func TestRemote(t *testing.T) {
 	if testContent != string(d) {
 		t.Fatalf("test data mismatches")
 	}
+
+	r.ForcePath = destF
+	if err := r.WriteToPath(ctx, destF); err != nil {
+		t.Fatalf("Failed to force write file to path")
+	}
+
+	// create an old file to test the stamping
+	oldDestF := filepath.Join(destd, "old")
+	if err := ioutil.WriteFile(oldDestF, []byte(testContent), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	// stamp and update the file to test if newer
+	if err := m.stampFile(testBucket, "test"); err != nil {
+		t.Fatalf("Failed to stamp file")
+	}
+	stamp, err := m.getStamp(testBucket, "test")
+	if err != nil {
+		t.Fatalf("Failed to get stamp: %v", err)
+	}
+	if stamp == 0 {
+		t.Fatalf("File should have been stamped")
+	}
+	log.Infof("stamp is %d", stamp)
+
+	if err := ioutil.WriteFile(destF, []byte("udpated"), 0644); err != nil {
+		t.Fatalf("Failed to update the file")
+	}
+	newer, err := m.isLocalNewer(testBucket, "test", destF)
+	if !newer {
+		t.Fatalf("file should be newer: %v", err)
+	}
 }

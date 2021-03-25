@@ -206,7 +206,7 @@ binary build interface.`)
 		keyPath := filepath.Join(lastBuild.BuildID, cosa.BuilderArch())
 		l := log.WithFields(log.Fields{
 			"prior build": lastBuild.BuildID,
-			"path":        lastBuild,
+			"path":        lastPath,
 			"to path":     filepath.Join("srv", "builds", keyPath),
 		})
 		l.Info("found prior build")
@@ -214,6 +214,7 @@ binary build interface.`)
 			remoteFiles,
 			getBuildMeta(lastPath, keyPath, m, l)...,
 		)
+
 	} else {
 		lastBuild = new(cosa.Build)
 		log.Debug("no prior build found")
@@ -262,86 +263,21 @@ binary build interface.`)
 		ready := func(ws *workSpec, terminate <-chan bool) <-chan bool {
 			out := make(chan bool)
 
+			foundNewBuild := false
+			buildID := lastBuild.BuildID
+
 			// TODO: allow for selectable build id, instead of default
 			//       to the latest build ID.
-			var buildID string
-
 			go func(out chan<- bool) {
 				check := func() bool {
-					// For _each_ stage, we need to check if a meta.json exists.
-					// mBuild - *cosa.Build representing meta.json
-					buildPath := filepath.Join(cosaSrvDir, "builds")
-					mBuild, _, err := cosa.ReadBuild(cosaSrvDir, buildID, "")
-					if err != nil {
-						l.WithField("build dir", buildPath).WithError(err).Warningf("Unable to locate build")
+
+					build, foundRemoteFiles, err := getStageFiles(buildID, l, m, lastBuild, &s)
+					if build != nil && buildID != build.BuildID && !foundNewBuild {
+						l.WithField("build ID", build.BuildID).Info("Using new buildID for lifetime of this build")
+						buildID = build.BuildID
 					}
-
-					var keyPathBase string
-					if mBuild != nil {
-						// If the buildID is not known AND the worker finds a build ID,
-						// then a new build has appeared.
-						if buildID == "" {
-							buildID = mBuild.BuildID
-							l = log.WithField("buildID", buildID)
-							log.WithField("buildID", mBuild.BuildID).Info("Found new build ID")
-						}
-
-						// Ensure that "builds/builds.json" is alway present if it exists.
-						// If we have a Build struct, then we know that a builds.json exists.
-						if buildID != "" {
-							l.WithField("file", "builds.json").Info("Required meta-data")
-							ws.RemoteFiles = append(
-								ws.RemoteFiles,
-								&RemoteFile{
-									Bucket: "builds",
-									Object: "builds.json",
-									Minio:  m,
-								})
-						}
-
-						// base of the keys to fetch from minio "<buildid>/<arch>"
-						keyPathBase = filepath.Join(buildID, cosa.BuilderArch())
-
-						// Locate build meta data
-						jsonPath := filepath.Join(buildPath, buildID)
-						if lastBuild.BuildID != mBuild.BuildID {
-							ws.RemoteFiles = append(
-								ws.RemoteFiles,
-								getBuildMeta(jsonPath, keyPathBase, ws.Return.Minio, l)...,
-							)
-						}
-
-					}
-
-					// If no artfiacts are required we can skip checking for artifacts.
-					if mBuild == nil && len(s.RequireArtifacts) > 0 {
-						l.Debug("Waiting for build to appear")
-						return false
-					}
-
-					foundCount := 0
-					for _, artifact := range s.RequireArtifacts {
-						bArtifact, err := mBuild.GetArtifact(artifact)
-						if err != nil {
-							l.WithField("artifact", artifact).Debug("stage artifact dependency not meet")
-							return false
-						}
-
-						// get the Minio relative path for the object
-						// the full path needs to be broken in to <BUILDID>/<ARCH>/<FILE>
-						keyPath := filepath.Join(keyPathBase, filepath.Base(bArtifact.Path))
-						r := &RemoteFile{
-							Artifact: bArtifact,
-							Bucket:   "builds",
-							Minio:    m,
-							Object:   keyPath,
-						}
-						ws.RemoteFiles = append(ws.RemoteFiles, r)
-						foundCount++
-					}
-
-					// Once all the dependencies are met, inform the out channel exit.
-					if len(s.RequireArtifacts) == foundCount {
+					if err == nil {
+						ws.RemoteFiles = append(remoteFiles, foundRemoteFiles...)
 						out <- true
 						return true
 					}
@@ -660,7 +596,6 @@ func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []
 		n := filepath.Base(info.Name())
 
 		if !isKnownBuildMeta(n) {
-			l.WithField("file", n).Warning("excluded")
 			return nil
 		}
 
@@ -680,5 +615,158 @@ func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []
 		}).Info("Included metadata")
 		return nil
 	})
+
+	if _, err := os.Stat(filepath.Join(cosaSrvDir, "builds", "builds.json")); err == nil {
+		metas = append(
+			metas,
+			&RemoteFile{
+				Minio:     m,
+				Bucket:    "builds",
+				Object:    "builds.json",
+				ForcePath: "/srv/builds/builds.json",
+			},
+		)
+	}
+
 	return metas
+}
+
+// getStageFiles returns the newest build and RemoteFiles for the stage.
+// Depending on the stages dependencies, it will ensure that all meta-data
+// and artifacts are send. If the stage requires/requests the caches,  it will be
+// included in the RemoteFiles.
+func getStageFiles(buildID string,
+	l *log.Entry, m *minioServer, lastBuild *cosa.Build, s *spec.Stage) (*cosa.Build, []*RemoteFile, error) {
+	var remoteFiles []*RemoteFile
+	var keyPathBase string
+
+	errMissingArtifactDependency := errors.New("missing an artifact depenedency")
+
+	// For _each_ stage, we need to check if a meta.json exists.
+	// mBuild - *cosa.Build representing meta.json
+	buildPath := filepath.Join(cosaSrvDir, "builds")
+	mBuild, _, err := cosa.ReadBuild(cosaSrvDir, buildID, "")
+	if err != nil {
+		l.WithField("build dir", buildPath).WithError(err).Warningf("No builds found")
+	}
+
+	// Handle {Require,Request}{Cache,CacheRepo}
+	includeCache := func(tarball string, required, requested bool) error {
+		if !required && !requested {
+			return nil
+		}
+
+		cacheFound := m.Exists("cache", tarball)
+		if !cacheFound {
+			if required {
+				l.WithField("cache", tarball).Debug("Does not exists yet")
+				return errMissingArtifactDependency
+			}
+			return nil
+		}
+
+		remoteFiles = append(
+			remoteFiles,
+			&RemoteFile{
+				Bucket:           cacheBucket,
+				Compressed:       true,
+				ForceExtractPath: "/", // will extract to /srv/cache
+				Minio:            m,
+				Object:           tarball,
+			})
+		return nil
+	}
+	if err := includeCache(cacheTarballName, s.RequireCache, s.RequestCache); err != nil {
+		return nil, nil, errMissingArtifactDependency
+	}
+	if err := includeCache(cacheRepoTarballName, s.RequireCacheRepo, s.RequestCacheRepo); err != nil {
+		return nil, nil, errMissingArtifactDependency
+	}
+
+	if mBuild != nil {
+		// If the buildID is not known AND the worker finds a build ID,
+		// then a new build has appeared.
+		if buildID == "" {
+			buildID = mBuild.BuildID
+			l = log.WithField("buildID", buildID)
+			log.WithField("buildID", mBuild.BuildID).Info("Found new build ID")
+		}
+
+		// base of the keys to fetch from minio "<buildid>/<arch>"
+		keyPathBase = filepath.Join(buildID, cosa.BuilderArch())
+
+		// Locate build meta data
+		jsonPath := filepath.Join(buildPath, buildID)
+		if lastBuild.BuildID != mBuild.BuildID {
+			remoteFiles = append(
+				remoteFiles,
+				getBuildMeta(jsonPath, keyPathBase, m, l)...,
+			)
+		}
+	}
+
+	// If no artfiacts are required we can skip checking for artifacts.
+	if mBuild == nil {
+		if len(s.RequireArtifacts) > 0 {
+			l.Debug("Waiting for build to appear")
+			return nil, nil, errMissingArtifactDependency
+		}
+
+		l.Info("Didn't find a prior build")
+		return nil, remoteFiles, nil
+	}
+
+	// addArtifact is a helper function for adding artifacts
+	addArtifact := func(artifact string) error {
+		bArtifact, err := mBuild.GetArtifact(artifact)
+		if err != nil {
+			return errMissingArtifactDependency
+		}
+
+		// get the Minio relative path for the object
+		// the full path needs to be broken in to <BUILDID>/<ARCH>/<FILE>
+		keyPath := filepath.Join(keyPathBase, filepath.Base(bArtifact.Path))
+
+		// Check if the remote server has this
+		if !m.Exists("builds", keyPath) {
+			return errMissingArtifactDependency
+		}
+
+		r := &RemoteFile{
+			Artifact: bArtifact,
+			Bucket:   "builds",
+			Minio:    m,
+			Object:   keyPath,
+		}
+		remoteFiles = append(remoteFiles, r)
+		return nil
+	}
+
+	// Handle optional artifacts
+	for _, artifact := range s.RequestArtifacts {
+		if err = addArtifact(artifact); err != nil {
+			l.WithField("artifact", artifact).Debug("skipping optional artifact")
+		}
+	}
+
+	// Handle the required artifacts
+	foundCount := 0
+	for _, artifact := range s.RequireArtifacts {
+		if err := addArtifact(artifact); err != nil {
+			l.WithField("artifact", artifact).Warn("required artifact has not appeared yet")
+			return mBuild, nil, errMissingArtifactDependency
+		}
+		foundCount++
+	}
+
+	if len(s.RequireArtifacts) == foundCount {
+		for _, rf := range remoteFiles {
+			l.WithFields(log.Fields{
+				"bucket": rf.Bucket,
+				"object": rf.Object,
+			}).Debug("will request")
+		}
+		return mBuild, remoteFiles, nil
+	}
+	return mBuild, nil, errMissingArtifactDependency
 }

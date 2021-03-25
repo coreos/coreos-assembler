@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -31,11 +32,11 @@ type Return struct {
 
 // Returner sends the results to the ReportServer
 type Returner interface {
-	Run(ctx context.Context) error
+	Run(ctx context.Context, ws *workSpec) error
 }
 
 // Run executes the report by walking the build path.
-func (r *Return) Run(ctx context.Context) error {
+func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 	if r.Minio == nil {
 		return nil
 	}
@@ -66,6 +67,7 @@ func (r *Return) Run(ctx context.Context) error {
 		if f.IsDir() {
 			continue
 		}
+
 		upKey := filepath.Join(keyPath, f.Name())
 		srcPath := filepath.Join(path, f.Name())
 
@@ -73,9 +75,20 @@ func (r *Return) Run(ctx context.Context) error {
 		if isKnownBuildMeta(f.Name()) {
 			upload[upKey] = srcPath
 		}
-		// Check if this a known build artifact
+
+		// Check if this a known build artifact that was not fetched
 		if _, ok := b.IsArtifact(filepath.Base(f.Name())); ok {
-			upload[upKey] = srcPath
+			fetched := false
+			for _, v := range ws.RemoteFiles {
+				if upKey == v.Object {
+					log.WithField("local path", f.Name()).Debug("skipping upload of file that was fetched")
+					fetched = true
+					continue
+				}
+			}
+			if !fetched {
+				upload[upKey] = srcPath
+			}
 		}
 	}
 
@@ -91,23 +104,34 @@ func (r *Return) Run(ctx context.Context) error {
 
 	var e error = nil
 	for k, v := range upload {
-		// meta*json and builds.json are always overwritten.
-		// CoreOS Assembler updates these files, and to maintain integrity, Gangplank
-		// uses --delay-meta-merge to prevent collisions of updates.
-		base := filepath.Base(v)
-		if (strings.HasPrefix(base, "meta") || strings.HasPrefix(base, "builds")) && strings.HasSuffix(base, ".json") {
-			r.Overwrite = true
-		}
-
 		l := log.WithFields(log.Fields{
 			"host":          r.Minio.Host,
 			"file":          v,
 			"remote/bucket": r.Bucket,
 			"remote/key":    k,
-			"overwrite":     r.Overwrite,
 		})
 
-		if err := r.Minio.putter(ctx, r.Bucket, k, v, r.Overwrite); err != nil {
+		// only overwrite meta if newer.
+		if newer, err := r.Minio.isLocalNewer(r.Bucket, k, v); err != nil && newer {
+			base := filepath.Base(v)
+			if isKnownBuildMeta(base) {
+				if newer {
+					l.WithField("overrite", true).Info("overwrite meta-data with newer version")
+					r.Overwrite = true
+				} else {
+					l.Debug("meta-data is not newer than source, skipping")
+					continue
+				}
+			} else {
+				// If its not meta, and the file exists then flatly decline to upload
+				// the file -- its not safe.
+				// TODO: allow for artifact rebuilding
+				l.Debug("remote location already has file")
+				continue
+			}
+		}
+
+		if err := r.Minio.putter(ctx, r.Bucket, k, v); err != nil {
 			l.WithField("err", err).Error("failed upload, tainting build")
 			e = fmt.Errorf("upload failed with at least one error: %w", err)
 		}
@@ -134,4 +158,50 @@ func isKnownBuildMeta(n string) bool {
 	}
 
 	return false
+}
+
+// tarballCreatePrefix prepends the command for creating a tarball.
+// We have to use a package scope variable in order to allow for root-less
+// testing.
+var tarballCreatePrefix = []string{"sudo", "bash"}
+
+// returnPathTarBall returns a path as a tarball to minio server. This uses a shell call out
+// since we need to elevate permissions via sudo (bug in Golang <1.16 prevents elevating privs).
+// Gangplank runs as the builder user normally and since some files are written by root, Gangplank
+// will get permission denied.
+func returnPathTarBall(ctx context.Context, bucket, object, path string, r *Return) error {
+	tmpD, err := ioutil.TempDir("", "tarball-XXXXX")
+	if err != nil {
+		return err
+	}
+	rand, _ := randomString(10)
+	tmpf := filepath.Join(tmpD, fmt.Sprintf("cosa-%s.tar", rand))
+	tmpfgz := fmt.Sprintf("%s.gz", tmpf)
+
+	defer os.Remove(tmpD) //nolint
+
+	// Here be hacks: we set the tarball to be world-read writeable so that the
+	// defer above can clean-up without requiring root.
+	args := append(tarballCreatePrefix, "-c",
+		fmt.Sprintf("umask 000; tar -cf %s %s; stat %s; gzip --fast %s;", tmpf, tmpf, path, tmpf))
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	l := log.WithFields(log.Fields{
+		"path":     path,
+		"tarball":  tmpf,
+		"dest url": fmt.Sprintf("http://%s:%d/%s/%s", r.Minio.Host, r.Minio.Port, bucket, object),
+	})
+
+	l.WithField("shell command", args).Info("creating tartbal")
+	if err := cmd.Run(); err != nil {
+		l.WithError(err).Error("failed to create tarball")
+		return err
+	}
+
+	if err := r.Minio.putter(ctx, bucket, object, tmpfgz); err != nil {
+		l.WithError(err).WithField("path", path).Error("failed pushing tarball to minio")
+	}
+
+	return nil
 }

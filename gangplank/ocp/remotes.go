@@ -20,26 +20,62 @@ type RemoteFile struct {
 	Minio      *minioServer   `json:"remote,omitempty"`
 	Compressed bool           `json:"comptempty"`
 	Artifact   *cosa.Artifact `json:"artifact,omitempty"`
+
+	// ForcePath forces writing to, or uncompressing to a specific path
+	ForcePath string `json:"force_path,omitempty"`
+
+	// ForcePath forces writing to, or uncompressing to a specific path
+	ForceExtractPath string `json:"force_extract_path,omitempty"`
 }
 
 // WriteToPath fetches the remote file and writes it locally.
 func (r *RemoteFile) WriteToPath(ctx context.Context, path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	l := log.WithFields(log.Fields{
+		"path":   path,
+		"bucket": r.Bucket,
+		"object": r.Object,
+	})
+	if r.ForcePath != "" {
+		l.WithField("force path", r.ForcePath).Info("Writing to a forced path")
+		path = r.ForcePath
+	}
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0777); err != nil {
 		return err
 	}
 
-	dest, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0755)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+	}
+
+	dest, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
 	if err != nil {
 		return err
 	}
 	defer dest.Close()
 
-	err = r.Minio.fetcher(ctx, r.Bucket, r.Object, dest)
-	return err
+	return r.Minio.fetcher(ctx, r.Bucket, r.Object, dest)
 }
 
 // Extract decompresses the remote file to the path.
 func (r *RemoteFile) Extract(ctx context.Context, path string) error {
+	if path == "" {
+		path = cosaSrvDir
+	}
+	l := log.WithFields(log.Fields{
+		"path":   path,
+		"bucket": r.Bucket,
+		"object": r.Object,
+	})
+	if r.ForceExtractPath != "" {
+		l = l.WithField("force path", r.ForceExtractPath)
+		path = r.ForceExtractPath
+		l.Info("Forcing output to a specifc path")
+	}
+
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
@@ -59,7 +95,7 @@ func (r *RemoteFile) Extract(ctx context.Context, path string) error {
 	if _, err := tmpf.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("double oof, srly? %w", err)
 	}
-	return decompress(tmpf, cosaSrvDir)
+	return decompress(tmpf, path)
 }
 
 // decompress takes an open file and extracts its to directory.
