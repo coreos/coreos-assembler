@@ -141,12 +141,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	// Fetch the remote files and write them to the local path.
 	for _, f := range ws.RemoteFiles {
 		destf := filepath.Join(cosaSrvDir, f.Bucket, f.Object)
-		destd := filepath.Dir(destf)
-
 		log.Infof("Fetching remote file %s/%s", f.Bucket, f.Object)
-		if err := os.MkdirAll(destd, 0755); err != nil {
-			return err
-		}
 		// Decompress the file if needed.
 		if f.Compressed {
 			if err := f.Extract(ctx, cosaSrvDir); err != nil {
@@ -177,7 +172,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	// and /dev/termination-log.
 	defer func() {
 		if ws.Return != nil {
-			err := ws.Return.Run(ctx)
+			err := ws.Return.Run(ctx, ws)
 			log.WithError(err).Info("Processed Uploads")
 		}
 
@@ -231,22 +226,39 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	// Range over the stages and perform the actual work.
 	for _, s := range ws.ExecuteStages {
 		stage, err := ws.JobSpec.GetStage(s)
-		log.WithFields(log.Fields{
+		l := log.WithFields(log.Fields{
 			"stage id":           s,
 			"build artifacts":    stage.BuildArtifacts,
 			"required artifacts": stage.RequireArtifacts,
+			"optional artifacts": stage.RequestArtifacts,
 			"commands":           stage.Commands,
-		}).Info("Executing Stage")
+		})
+		l.Info("Executing Stage")
 
 		if err != nil {
-			log.WithError(err).Info("Error fetching stage")
+			l.WithError(err).Info("Error fetching stage")
 			return err
 		}
 
 		if err := stage.Execute(ctx, rd, envVars); err != nil {
-			log.WithError(err).Error("failed stage execution")
+			l.WithError(err).Error("failed stage execution")
 			return err
 		}
+
+		if stage.ReturnCache {
+			l.WithField("tarball", cacheTarballName).Infof("Sending %s back as a tarball", cosaSrvCache)
+			if err := returnPathTarBall(ctx, cacheBucket, cacheTarballName, cosaSrvCache, ws.Return); err != nil {
+				return err
+			}
+		}
+
+		if stage.ReturnCacheRepo {
+			l.WithField("tarball", cacheRepoTarballName).Infof("Sending %s back as a tarball", cosaSrvTmpRepo)
+			if err := returnPathTarBall(ctx, cacheBucket, cacheRepoTarballName, cosaSrvTmpRepo, ws.Return); err != nil {
+				return err
+			}
+		}
+
 	}
 	log.Infof("Finished execution")
 	return nil

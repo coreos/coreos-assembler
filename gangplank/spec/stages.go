@@ -50,8 +50,12 @@ type Stage struct {
 	// required artifact is missing (per the meta.json), the stage
 	// will not be executed. RequireArticts _implies_ sending builds/builds.json
 	// and builds/<BUILDID>/meta.json.
-	// TODO: IMPLEMENT
 	RequireArtifacts []string `yaml:"requires_artifacts,flow,omitempty" json:"requires_artifacts,omitempty"`
+
+	// RequestArtifacts are files that are provided if they are there. Examples include
+	// 'caches' for `/srv/cache` and `/srv/tmp/repo` tarballs or `ostree` which are really useful
+	// for base builds.
+	RequestArtifacts []string `yaml:"optional_artifacts,flow,omitempty" json:"optional_artifacts,omitempty"`
 
 	// BuildArtifacts produces "known" artifacts. The special "base"
 	// will produce an OSTree and QCOWs.
@@ -73,6 +77,20 @@ type Stage struct {
 	// ExecutionOrder is a number value that defines the order of stages. If two stages
 	// share the same execution order number, then they are allowed to run concurrently to each other.
 	ExecutionOrder int `yaml:"execution_order,omitempty" json:"execution_order,omitempty"`
+
+	// ReturnCache returns a tarball of `/srv/cache`, while RequireCahce ensures the tarball
+	// is fetched unpacked into `/srv/cahce`. RequestCache is a non-blocking, optional versopn
+	// of RequireCache.
+	ReturnCache  bool `yaml:"return_cache,omitempty" json:"return_cache,omitempty"`
+	RequireCache bool `yaml:"require_cache,omitempty" json:"require_cache_repo,omitempty"`
+	RequestCache bool `yaml:"request_cache,omitempty" json:"reqest_cache_repo,omitempty"`
+
+	// ReturnCacheRepo returns a tarball of `/srv/repo`, while RequireCacheRepo ensures the
+	// tarball is fetched and unpacked into `/srv/repo`. RequestCacheRepo is a non-blocking, optional
+	// version of RequireCacheRepo
+	ReturnCacheRepo  bool `yaml:"return_cache_repo,omitempty" json:"return_cache_repo,omitempty"`
+	RequireCacheRepo bool `yaml:"require_cache_repo,omitempty" json:"require_cache_repo_repo,omitempty"`
+	RequestCacheRepo bool `yaml:"request_cache_repo,omitempty" json:"request_cache_repo_repo,omitempty"`
 }
 
 // These are the only hard-coded commands that Gangplank understand.
@@ -271,9 +289,12 @@ func addShorthandToStage(artifact string, stage *Stage) {
 		switch noun {
 		case "base":
 			return &Stage{
-				ExecutionOrder:   1,
 				BuildArtifacts:   []string{"base"},
+				ExecutionOrder:   1,
+				RequestArtifacts: []string{"ostree"},
 				RequireArtifacts: []string{"base"},
+				RequestCache:     true,
+				RequestCacheRepo: true,
 			}
 		case "finalize":
 			return &Stage{
@@ -288,13 +309,23 @@ func addShorthandToStage(artifact string, stage *Stage) {
 			}
 		case "metal":
 			return &Stage{
-				ExecutionOrder: 2,
-				BuildArtifacts: []string{"metal"},
+				ExecutionOrder:   2,
+				BuildArtifacts:   []string{"metal"},
+				RequireArtifacts: []string{"ostree"},
 			}
 		case "metal4k":
 			return &Stage{
-				ExecutionOrder: 2,
-				BuildArtifacts: []string{"metal4k"},
+				ExecutionOrder:   2,
+				BuildArtifacts:   []string{"metal4k"},
+				RequireArtifacts: []string{"ostree"},
+			}
+		case "oscontainer":
+			return &Stage{
+				BuildArtifacts:   []string{"oscontainer"},
+				ExecutionOrder:   2,
+				RequireArtifacts: []string{"ostree"},
+				RequireCache:     true,
+				RequireCacheRepo: true,
 			}
 		default:
 			if !cosa.CanArtifact(artifact) {
@@ -334,6 +365,41 @@ func addShorthandToStage(artifact string, stage *Stage) {
 		return list
 	}
 
+	// if the stage returns cache/repo cache then it provides the requires
+	if working.RequireCache && !stage.ReturnCache {
+		stage.RequireCache = true
+		stage.RequestCache = false
+	}
+	if working.RequireCacheRepo && !stage.ReturnCacheRepo {
+		stage.RequireCacheRepo = true
+		stage.RequestCacheRepo = false
+	}
+
+	// Handle the return/requires for cache and repo cache
+	if working.ReturnCache {
+		stage.ReturnCache = working.ReturnCache
+	}
+	if working.ReturnCacheRepo {
+		stage.ReturnCacheRepo = working.ReturnCacheRepo
+	}
+
+	// Only set RequestCache[Repo] we don't require them.
+	if working.RequestCache && (!stage.RequireCache || !working.RequireCache) {
+		stage.RequestCache = true
+	}
+	if working.RequestCacheRepo && (!stage.RequireCacheRepo || !working.RequireCacheRepo) {
+		stage.RequestCacheRepo = true
+	}
+
+	// if the stage returns cache/repo cache then it provides the requires
+	if working.RequireCache && !stage.ReturnCache {
+		stage.RequireCache = true
+	}
+	if working.RequireCacheRepo && !stage.ReturnCacheRepo {
+		stage.RequireCacheRepo = true
+	}
+
+	stage.RequestArtifacts = append(stage.RequestArtifacts, working.RequestArtifacts...)
 	stage.BuildArtifacts = append(stage.BuildArtifacts, working.BuildArtifacts...)
 	stage.RequireArtifacts = append(stage.RequireArtifacts, working.RequireArtifacts...)
 
@@ -349,8 +415,13 @@ func addShorthandToStage(artifact string, stage *Stage) {
 	// Get the order that artifacts should be built
 	artifactOrder := make(map[int][]string)
 	for _, v := range stage.BuildArtifacts {
-		fakeStage := quickStage(v)
-		artifactOrder[fakeStage.ExecutionOrder] = append(artifactOrder[fakeStage.ExecutionOrder], v)
+		if v == "caches" {
+			stage.RequireCache = true
+			stage.RequireCacheRepo = true
+		} else {
+			fakeStage := quickStage(v)
+			artifactOrder[fakeStage.ExecutionOrder] = append(artifactOrder[fakeStage.ExecutionOrder], v)
+		}
 	}
 
 	newOrder := []string{}
@@ -359,9 +430,10 @@ func addShorthandToStage(artifact string, stage *Stage) {
 	}
 	stage.BuildArtifacts = unique(newOrder)
 
-	// If the synthetic stages requires an artifact, but also builds it
+	// If the synthetic stages requires/request optional artifact, but also builds it
 	// then we need to remove it from the the requires.
 	realRequires := stage.RequireArtifacts
+	realOptional := stage.RequestArtifacts
 
 	for _, ba := range stage.BuildArtifacts {
 		for _, ra := range stage.RequireArtifacts {
@@ -369,16 +441,25 @@ func addShorthandToStage(artifact string, stage *Stage) {
 				realRequires, _ = remove(realRequires, ra)
 			}
 		}
+		for _, oa := range stage.RequestArtifacts {
+			if oa == ba {
+				realOptional, _ = remove(realOptional, oa)
+			}
+		}
 	}
+
 	// base is short hand of ostree and qemu. Its handled specially
 	// since we have to consider that "qemu"
 	var foundBase bool
 	realRequires, foundBase = remove(realRequires, "base")
 	if foundBase {
-		realRequires, _ = remove(realRequires, "ostree")
-		realRequires, _ = remove(realRequires, "qemu")
+		for _, v := range []string{"ostree", "qemu"} {
+			realRequires, _ = remove(realRequires, v)
+			realOptional, _ = remove(realOptional, v)
+		}
 	}
 	stage.RequireArtifacts = unique(realRequires)
+	stage.RequestArtifacts = unique(realOptional)
 }
 
 // GenerateStages creates stages.

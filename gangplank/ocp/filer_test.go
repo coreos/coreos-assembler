@@ -59,7 +59,7 @@ func TestFiler(t *testing.T) {
 	}
 
 	testBucket = "tb1"
-	if err = m.putter(c, testBucket, "test", tfp, false); err != nil {
+	if err = m.putter(c, testBucket, "test", tfp); err != nil {
 		t.Errorf("error: %v", err)
 	}
 

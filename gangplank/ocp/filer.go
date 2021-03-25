@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,12 +17,14 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/minio/minio-go/v7/pkg/tags"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -266,7 +267,16 @@ func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest i
 	if m.Host == "" {
 		return errors.New("host is undefined")
 	}
-	log.Infof("Requesting remote http://%s/%s/%s", m.Host, bucket, object)
+	// Set the attributes
+	f, isFile := dest.(*os.File)
+	l := log.WithFields(log.Fields{
+		"bucket": bucket,
+		"host":   m.Host,
+		"object": object,
+	})
+
+	l.Info("Requesting remote object")
+
 	mc, err := m.client()
 	if err != nil {
 		return err
@@ -278,17 +288,13 @@ func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest i
 	}
 	defer src.Close()
 	n, err := io.Copy(dest, src)
-	log.WithFields(log.Fields{
-		"bucket": bucket,
-		"err":    err,
-		"host":   m.Host,
-		"object": object,
-		"read":   n,
-	}).Info("written")
+	if err != nil {
+		l.WithError(err).Error("failed to write the file")
+		return err
+	}
+	l.WithField("bytes", n).Info("Wrote file")
 
-	// Set the attributes
-	f, ok := dest.(*os.File)
-	if ok {
+	if isFile {
 		info, err := src.Stat()
 		if err != nil {
 			return err
@@ -302,7 +308,7 @@ func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest i
 }
 
 // putter uploads the contents of an io.Reader to a remote MinioServer
-func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, overwrite bool) error {
+func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string) error {
 	if err := m.ensureBucketExists(ctx, bucket); err != nil {
 		return fmt.Errorf("unable to validate %s bucket exists: %w", bucket, err)
 	}
@@ -311,78 +317,33 @@ func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, 
 		return err
 	}
 	l := log.WithFields(log.Fields{
-		"bucket":    bucket,
-		"from":      fpath,
-		"func":      "putter",
-		"object":    object,
-		"overwrite": overwrite,
-		"size":      fmt.Sprintf("%d", fi.Size()),
+		"bucket": bucket,
+		"from":   fpath,
+		"func":   "putter",
+		"object": object,
+		"size":   fmt.Sprintf("%d", fi.Size()),
 	})
-
-	fo, err := os.Open(fpath)
-	if err != nil {
-		return err
-	}
-
-	l.Info("Calculating SHA256 for upload consideration")
-	sha256, err := calcSha256(fo)
-	if err != nil {
-		return err
-	}
-	l.WithField("sha256", sha256).Infof("Calculated SHA256")
 
 	mC, err := m.client()
 	if err != nil {
 		return err
 	}
 
-	s, err := mC.StatObject(ctx, bucket, object, minio.GetObjectOptions{})
-	if err == nil {
-		rSHA, ok := s.UserMetadata["X-Amz-Meta-Sha256"]
-		if ok {
-			if rSHA == sha256 && fi.Size() == s.Size {
-				l.Infof("Exact version has already been uploaded, skipping")
-				return nil
-			}
-			l.WithFields(log.Fields{
-				"remote sha":  rSHA,
-				"remote size": s.Size,
-			}).Info("Replacing remove version")
-		}
-
-		if !overwrite {
-			l.Warning("Skipping overwrite of file; overwrite set to false for the this file")
-		}
-	}
-
-	l.WithField("sha256", sha256).Info("Starting Upload")
-	i, err := mC.FPutObject(ctx, bucket, object, fpath,
-		minio.PutObjectOptions{
-			// When uploaded, user-metadata will be X-Amz-Meta-<key>
-			UserMetadata: map[string]string{
-				"sha256": sha256,
-			},
-		},
-	)
+	i, err := mC.FPutObject(ctx, bucket, object, fpath, minio.PutObjectOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to upload to %s/%s: %w", bucket, object, err)
 	}
+	if err := m.stampFile(bucket, object); err != nil {
+		return fmt.Errorf("failed to stamp uploaded file %s/%s: %w", bucket, object, err)
+	}
+	stamp, _ := m.getStamp(bucket, object)
 	l.WithFields(log.Fields{
+		fileStampName: stamp,
 		"etag":        i.ETag,
 		"remote size": i.Size,
 	}).Info("Uploaded")
 
 	return nil
-}
-
-// calcSha256 caluclates a SHA256 hash for the file.
-// io.Copy is buffered to 32Kb, so this is large-file safe.
-func calcSha256(f io.Reader) (string, error) {
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", nil
-	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 // checkPort checks if a port is open
@@ -451,4 +412,106 @@ func minioCfgReader(in io.Reader) (m minioServer, err error) {
 func getHostname() string {
 	data, _ := ioutil.ReadFile("/proc/sys/kernel/hostname")
 	return strings.TrimSpace(string(data))
+}
+
+// Exists check if bucket/object exists.
+func (m *minioServer) Exists(bucket, object string) bool {
+	mc, err := m.client()
+	if err != nil {
+		return false
+	}
+	if _, err := mc.StatObject(context.Background(), bucket, object, minio.GetObjectOptions{}); err != nil {
+		return false
+	}
+	return true
+}
+
+const fileStampName = "gangplank.coreos.com/cosa/stamp"
+
+// newFileStamp returns the Unix nanoseconds of the file as a string
+// We use Unix nanoseconds for precision.
+func newFileStamp() string {
+	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+}
+
+// stampFile add the unique stamp
+func (m *minioServer) stampFile(bucket, object string) error {
+	mc, err := m.client()
+	if err != nil {
+		return err
+	}
+
+	tagMap := map[string]string{
+		fileStampName: newFileStamp(),
+	}
+
+	t, err := tags.NewTags(tagMap, true)
+	if err != nil {
+		return err
+	}
+
+	return mc.PutObjectTagging(context.Background(), bucket, object, t, minio.PutObjectTaggingOptions{})
+}
+
+// isLocalNewer checks if the file is newer than the remote file, if any. If the file
+// does not exist remotely, then it is considered newer.
+func (m *minioServer) isLocalNewer(bucket, object string, path string) (bool, error) {
+	curStamp, err := m.getStamp(bucket, object)
+	if err != nil {
+		return true, err
+	}
+
+	f, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+
+	modTime := f.ModTime().UTC().UnixNano()
+	if modTime > curStamp {
+		return true, nil
+	}
+	return false, nil
+}
+
+// getStamp returns the stamp. If the file does not exist remotely the stamp of
+// zero is returned. If the file exists but has not been stamped, then UTC
+// Unix epic in nanoseconds of the modification time is used (the stamps are lost
+// when the minio instance is reaped). The obvious flaw is that this does require
+// all hosts to have coordinate time; this should be the case for Kubernetes cluster
+// and podman based builds will always use the same time source.
+func (m *minioServer) getStamp(bucket, object string) (int64, error) {
+	mc, err := m.client()
+	if err != nil {
+		return 0, err
+	}
+
+	if !m.Exists(bucket, object) {
+		return 0, nil
+	}
+
+	tags, err := mc.GetObjectTagging(context.Background(), bucket, object, minio.GetObjectTaggingOptions{})
+	if err != nil {
+		return 0, err
+	}
+	if tags == nil {
+		return 0, nil
+	}
+
+	for k, v := range tags.ToMap() {
+		if k == fileStampName {
+			curStamp, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return 0, fmt.Errorf("failed to convert stamp %s to int64", v)
+			}
+			return curStamp, nil
+		}
+	}
+
+	// fallback to modtime
+	info, err := mc.StatObject(context.Background(), bucket, object, minio.GetObjectOptions{})
+	if err == nil {
+		return info.LastModified.UTC().UnixNano(), nil
+	}
+
+	return 0, err
 }

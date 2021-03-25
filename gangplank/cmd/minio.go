@@ -11,8 +11,8 @@ import (
 )
 
 /*
-	In enviroments (such as Jenkins) were something else handles the visiualization
-	of stages, using the inherent stages in Gangplank can produced jumbled garbage.
+	In enviroments where something else handles the visiualization of stages (such as Jenkins)
+	using the inherent stages in Gangplank can produced jumbled garbage.
 
 	Each Gangpplank worker requires a Minio Server running on the coordinating host/pod.
 	The `gangplank minio` command allows for starting a Minio instance and then saving
