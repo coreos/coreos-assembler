@@ -10,7 +10,7 @@ Ganplank sole purpouse in life is to codify the knowledge of running building Co
 
 ## Design Idea
 
-Gangplank's core design principle is that containers are the most suitable modern method of orchestrating builds. Gangplank grew out of the various Jenkins libraries and scripts codifying the execution of various versions of COSA. 
+Gangplank's core design principle is that containers are the most suitable modern method of orchestrating builds. Gangplank grew out of the various Jenkins libraries and scripts codifying the execution of various versions of COSA.
 
 Ganplank only knows _how to run COSA_, but running COSA does not require Gangplank. Today it understands how to:
 
@@ -30,39 +30,39 @@ The origin pod (the first instance of Gangplank) handles the orchestration of wo
 - sending work to worker pods and waiting for completion of work
 - life-cycle operations (create/delete/etc) for workers
 
-Previous build systems have used Jenkins Kubernetes plugins for the pod creation and life-cycling of the worker pods. The problem with approach is that each OpenShift/Kubernetes environment would have unique differences that caused pipeline drift. For example, the production pipeline for RHCOS uses a different set of secret names than the development location. 
+Previous build systems have used Jenkins Kubernetes plugins for the pod creation and life-cycling of the worker pods. The problem with approach is that each OpenShift/Kubernetes environment would have unique differences that caused pipeline drift. For example, the production pipeline for RHCOS uses a different set of secret names than the development location.
 
-Gangplank, therefore, evaulates its environment to determine the mode of the build. 
+Gangplank, therefore, evaulates its environment to determine the mode of the build.
 
 *NOTE: When running in a Kubernetes/OpenShift cluster, Gangplank requires a service account that can read secrets AND create/delete pods.*
 
 ## Execution Choices
 
-Gangplank has three execution modes each targeted at a different use-case. 
+Gangplank has three execution modes each targeted at a different use-case.
 
 ### OpenShift BuildConfig
 
-Gangplank originally started as an OpenShift BuildConfig custom-build strategy. As a result, Gangplank uses the OpenShift BuildAPI v1 object definition for performing builds. When run as a BuildConfig, Gangplank can perform builds via `oc start-build`. 
+Gangplank originally started as an OpenShift BuildConfig custom-build strategy. As a result, Gangplank uses the OpenShift BuildAPI v1 object definition for performing builds. When run as a BuildConfig, Gangplank can perform builds via `oc start-build`.
 
-The BuildConfig mode is intended for developer and re-build tasks. 
+The BuildConfig mode is intended for developer and re-build tasks.
 
 ### Unbounded Pods on OpenShift or Kubernetes
 
 Gangplank will execute happily on a generic Kubernetes or OpenShift 3.11 (requirement for an SCC privileged account, worker nodes must have a `/dev/kvm`) or OpenShift 4.5+ (must have access to the kube-virt labeled nodes)
 
-This mode of operation is called "unbounded" since the pod is not bound to a BuildConfig, and something else (such as CI) is corrdinating the pod's life-cycle. 
+This mode of operation is called "unbounded" since the pod is not bound to a BuildConfig, and something else (such as CI) is corrdinating the pod's life-cycle.
 
-Unbounded mode is targeted at Jenkins and other CI build systems. 
+Unbounded mode is targeted at Jenkins and other CI build systems.
 
 ### Podman mode (for Developers)
 
-For the developer use-case or even building on virtual machine, Gangplank supports running as a `podman` privileged pod. In podman, Ganplank will create worker pods. 
+For the developer use-case or even building on virtual machine, Gangplank supports running as a `podman` privileged pod. In podman, Ganplank will create worker pods.
 
-This requires the `podman-remote` package installed and enabled (enabled, via `systemctl --now enable podman.socket`). 
+This requires the `podman-remote` package installed and enabled (enabled, via `systemctl --now enable podman.socket`).
 
 Example command:
 ```
-$ gangplank pod 
+$ gangplank pod
   --podman \
   --workDir <dir>
   --spec <jobspec>
@@ -74,6 +74,13 @@ The following are optional commands:
 - `setWorkDirCtx` will set the proper selinux permmissions for `--workDir` and `--srvDir`
 
 If `--workDir` is defined, the build output will be emited to `<workDir>/builds`.
+
+*btrfs warning*: Ganplank can run multiple pods at a single time. When done on a `btrfs`, the clean-up can be are ridiciously slow/hang. If you are building on `btrfs` (default for Fedora Workstation 33+), it is recommended that you turn off copy-on-write (COW) and use a `--workDir` with that directory if using parallel stages. Example:
+```
+mkdir ~/workdir
+chattr +C file ~/workdir
+gangplank pod --workDir ~/workDir <options
+```
 
 #### Secret Discovery
 
@@ -94,21 +101,23 @@ For example:
         type: Opaque
 ```
 
-Gangplank tries to follow the upstream tooling convention regarding secrets; if the most popular tool uses an envVar secret then Gangplank will too. 
+Gangplank tries to follow the upstream tooling convention regarding secrets; if the most popular tool uses an envVar secret then Gangplank will too.
 
-In the above example, Gangplank will expose `AWS_DEFAULT_REGION` to be `us-east-1` and set `AWS_CONFIG_FILE` to the in-pod location of config file. 
+In the above example, Gangplank will expose `AWS_DEFAULT_REGION` to be `us-east-1` and set `AWS_CONFIG_FILE` to the in-pod location of config file.
 
 ### Workers and their Work
 
 The difference between an origin pod and worker is determinted by a single environment variable. If an envVar of `COSA_WORK_POD_JSON` is defined, then Gangplank will execute as a worker; if the OpenShift Build API envVar of `BUILD` is defined, then Gangplank will attempt to be an origin pod.
 
-At start, Gangplank will decode the envVar of `COSA_WORK_POD_JSON`, which is defined by the origin pod when constructing the pod definition of the worker. When the origin pod is ready to start work, a Minio instance will be started using a random access/secret keys that will be added to the `COSA_WORK_POD_JSON`. 
+At start, Gangplank will decode the envVar of `COSA_WORK_POD_JSON`, which is defined by the origin pod when constructing the pod definition of the worker. When the origin pod is ready to start work, a Minio instance will be started using a random access/secret keys that will be added to the `COSA_WORK_POD_JSON`.
 
-Once the required artifacts, if any, are found, Gangplank will then start the worker pod. The worker pod will always run `cosa init` before running any other command. Then, the worker pod, will request dependencies over Minio from the orgin Gangplank, process the work, and then return _known_ files back 
+Once the required artifacts, if any, are found, Gangplank will then start the worker pod. The worker pod will always run `cosa init` before running any other command. Then, the worker pod, will request dependencies over Minio from the orgin Gangplank, process the work, and then return _known_ files back.
+
+If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows for sharing a minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands.
 
 Regardless of where the pod is being run, Gangplank will stream logs from the worker pods. If the supervising Gangplank is terminated, the workers are terminated.
 
-When `builds.json` and `meta.json` are found, Gangplank will always transmit these files to the workers. `kola` test results, logs and all `meta.json` files are always returned to the origin Gangplank.
+All meta-data that is found will be provided to the workers. `kola` test results, logs and new meta-data and any new artifact generated are returned to the origin Gangplank.
 
 ### Build Short-hands
 
@@ -158,6 +167,8 @@ The JobSpec defines discrete, units of work as a "stage". Each stage supports fe
 - post_commands: a list of commands to run last (such as test or cleanup)
 - post_always: a bool that indicates whether the `post_commands` should _always_ be executed regardless of the success of the `commands` stage.
 - require_artifacts: the type of artifact that's required for work (i.e. `qemu` or `aws`). Stages will not start until the artifact appears.
+- request_artifacts: a list of optional artifacts that would be _nice_ to have, but are not blocking.
+- {return,require,request}{cache,cache_repo}: bool value that indicates whether to requires, require or return a tarball of the cache (`/srv/cache`) or the cache_repo (`/srv/tmp/repo`).
 
 To illustrate this, consider:
 ```yaml
@@ -166,6 +177,17 @@ To illustrate this, consider:
   - base
   post_commands:
   - cosa kola run --basic-qemu-scenarios
+  request_artifacts:
+  - oscontainer
+  request_cache_repo: true
+  request_cache: true
+  returns_cache: true
+  returns_cache_repo: true
+- id: oscontainer
+  build_artifacts:
+  - ostree
+  requires_cache: true
+  requires_cache_repo: true
 - id: clouds
   concurrent_execution: true
   build_artifacts:
@@ -180,15 +202,16 @@ To illustrate this, consider:
 
 In this example, Gangplank will:
 
-1. Build and test base artifacts in the first pod
-1. In a new pod, concurrently build AWS and GCP but only after the QEMU artifact is found.
-1. Combine meta.json together
+1. In the base stage, Gangplank will provide `/srv/cache` and `/srv/tmp/repo` from `cache/*` if the tarballs exist, and optionally provide the latest `oscontainer`. Gangplank will return the build artifacts and new cache tarballs.
+1. In the oscontainer stage, Ganglank will require the caches,
+1. In the `clouds` stage, a new pod will concurrently build AWS and GCP but only after the QEMU artifact is found.
+1. The final `finalize` stage will combine `meta.*.json` to produce a final `meta.json`
 
 ### Meta Data and JobSpec Templating
 
 Gangplank was initially started after belately realizing that the Jenkins Pipelines are, in fact, complicated templating engines. That is, a considerable amount of time, energy and development was put into translating data from YAML/JSON into execution rules.
 
-Gangplank supports rendering commands from the `meta.json` in CoreOS Assembler and the JobSpec via Golang templates. The caveat, however, is that `meta.json` variables appears _after_ the base build. Generally speaking, this means to a base build are defined in the Jobspec while artifacts generated from a base build may use both `meta.json` and the Jobspec. 
+Gangplank supports rendering commands from the `meta.json` in CoreOS Assembler and the JobSpec via Golang templates. The caveat, however, is that `meta.json` variables appears _after_ the base build. Generally speaking, this means to a base build are defined in the Jobspec while artifacts generated from a base build may use both `meta.json` and the Jobspec.
 
 #### JobSpec Example
 
@@ -205,12 +228,12 @@ stages:
     - cosa buildprep s3://{{.JobSpec.Archives.S3.Bucket}}/{{.JobSpec.Archives.S3.Path}}
 ```
 
-The above example will run the CoreOS Assembler command `cosa buildprep s3://darkarts/magicalmysteries`. 
+The above example will run the CoreOS Assembler command `cosa buildprep s3://darkarts/magicalmysteries`.
 
 #### meta.json
 
-`meta.json` fields become available for any stage that is executed after Gangplank detects a new `meta.json`. Data for a `meta.json` is prefixed using `.Meta`. `meta.json` is always read immediately before a stage is executed (if `meta.json` exists). 
- 
+`meta.json` fields become available for any stage that is executed after Gangplank detects a new `meta.json`. Data for a `meta.json` is prefixed using `.Meta`. `meta.json` is always read immediately before a stage is executed (if `meta.json` exists).
+
 ```
 stages:
  - id: build
@@ -223,7 +246,7 @@ stages:
 
 ### Templating Logic
 
-With the availability of GoLang templating, the possibility exists to do loops and to dynamically create commands. The following example, publishes an AMI to all AWS regions. 
+With the availability of GoLang templating, the possibility exists to do loops and to dynamically create commands. The following example, publishes an AMI to all AWS regions.
 
 NOTE: It may be tempting to turn Ganglank into a complicated templating engine. Users would well be advised to consider whether the added complexity helps. In most cases, using simple, clear, and easy to understand templating logic is the better choice.
 
@@ -235,7 +258,7 @@ archives:
 clouds_cfgs:
   aws:
     amipath: foobar
-    regions: 
+    regions:
      - us-east-1
      - us-west-1
 stages:
