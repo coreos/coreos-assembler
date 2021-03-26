@@ -61,6 +61,9 @@ type Stage struct {
 	// use the bare name in BuildArtifact.
 	Commands []string `yaml:"commands,flow,omitempty" json:"commands,omitempty"`
 
+	// PublishArtifacts will upload defined BuildArtifacts to the cloud providers
+	PublishArtifacts []string `yaml:"publish_artifacts,omitempty" json:"publish_artifacts,omitempty"`
+
 	// PrepCommands are run before Artifact builds, while
 	// PostCommands are run after. Prep and Post Commands are run serially.
 	PrepCommands []string `yaml:"prep_commands,flow,omitempty" json:"prep_commands,omitempty"`
@@ -120,13 +123,20 @@ func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
 	return nil, fmt.Errorf("%s is not a known buildable artifact", b)
 }
 
-// getCommands renders the automatic artifacts.
+// getCommands renders the automatic artifacts and publication commands
 func (s *Stage) getCommands(rd *RenderData) ([]string, error) {
+	pc, err := s.getPublishCommands(rd)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(s.BuildArtifacts) > 0 {
 		log.WithField("mapping artifacts", s.BuildArtifacts).Infof("Mapping artifacts")
 	}
 	numBuildArtifacts := len(s.BuildArtifacts)
-	totalCmds := len(s.Commands) + numBuildArtifacts
+	numPublishCommands := len(pc)
+	totalCmds := len(s.Commands) + numBuildArtifacts + numPublishCommands
+
 	ret := make([]string, totalCmds)
 	for i, ba := range s.BuildArtifacts {
 		log.WithField("artifact", ba).Info("mapping artifact to command")
@@ -140,8 +150,34 @@ func (s *Stage) getCommands(rd *RenderData) ([]string, error) {
 	for i, c := range s.Commands {
 		ret[(numBuildArtifacts + i)] = c
 	}
+	for i, p := range pc {
+		ret[(numBuildArtifacts + len(s.Commands) + i)] = p
+	}
 	fmt.Printf("%v", ret)
 	return ret, nil
+}
+
+func (s *Stage) getPublishCommands(rd *RenderData) ([]string, error) {
+	var publishCommands []string
+	c := rd.JobSpec.CloudsCfgs
+	for _, cloud := range s.PublishArtifacts {
+		if !cosa.CanArtifact(cloud) {
+			return nil, fmt.Errorf("Invalid cloud artifact: %v", cloud)
+		}
+
+		config, err := c.GetCloudCfg(cloud)
+		if err != nil {
+			return nil, err
+		}
+
+		pc, err := config.GetPublishCommand(rd.Meta.BuildID)
+		if err != nil {
+			return nil, err
+		}
+		publishCommands = append(publishCommands, pc)
+	}
+
+	return publishCommands, nil
 }
 
 // Execute runs the commands of a stage.
@@ -161,6 +197,7 @@ func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) e
 		log.WithError(err).Error("failed to get stage commands")
 		return err
 	}
+
 	if len(cmds) == 0 {
 		return errors.New("no commands to execute")
 	}
