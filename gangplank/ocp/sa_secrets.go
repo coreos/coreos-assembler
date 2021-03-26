@@ -84,10 +84,12 @@ var (
 			},
 		},
 		// Definition for AWS-CN
+		// Must use AWS_CN_CONFIG_FILE for environment variable name otherwise it
+		// overwrites the plain aws secret
 		{
 			label: "aws-cn",
 			fileVarMap: varMap{
-				"config": "AWS_CONFIG_FILE",
+				"config": "AWS_CN_CONFIG_FILE",
 			},
 		},
 		// Definition for Azure

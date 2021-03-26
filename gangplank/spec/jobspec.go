@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -54,45 +56,12 @@ type Artifacts struct {
 	Clouds  []string `yaml:"clouds,omitempty" json:"clouds,omitempty"`
 }
 
-// Aliyun is nested under CloudsCfgs and describes where
-// the Aliyun/Alibaba artifacts should be uploaded to.
-type Aliyun struct {
-	Bucket  string   `yaml:"bucket,omitempty" json:"bucket,omitempty"`
-	Enabled bool     `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	Regions []string `yaml:"regions,omitempty" json:"regions,omitempty"`
-}
-
 // Archives describes the location of artifacts to push to
 //   Brew is a nested Brew struct
 //   S3: publish to S3.
 type Archives struct {
 	Brew *Brew `yaml:"brew,omitempty" json:"brew,omitempty"`
 	S3   *S3   `yaml:"s3,omitempty" json:"s3,omitempty"`
-}
-
-// Aws describes the upload options for AWS images
-//  AmiPath: the bucket patch for pushing the AMI name
-//  Public: when true, mark as public
-//  Regions: name of AWS regions to push to.
-type Aws struct {
-	Enabled bool     `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	AmiPath string   `yaml:"ami_path,omitempty" json:"ami_path,omitempty"`
-	Public  bool     `yaml:"public,omitempty" json:"public,omitempty"`
-	Regions []string `yaml:"regions,omitempty" json:"regions,omitempty"`
-}
-
-// Azure describes upload options for Azure images.
-//   Enabled: upload if true
-//   ResourceGroup: the name of the Azure resource group
-//   StorageAccount: name of the storage account
-//   StorageContainer: name of the storage container
-//   StorageLocation: name of the Azure region, i.e. us-east-1
-type Azure struct {
-	Enabled          bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	ResourceGroup    string `yaml:"resource_group,omitempty" json:"resource_group,omitempty"`
-	StorageAccount   string `yaml:"storage_account,omitempty" json:"stoarge_account,omitempty"`
-	StorageContainer string `yaml:"storage_container,omitempty" json:"storage_container,omitempty"`
-	StorageLocation  string `yaml:"storage_location,omitempty" json:"storage_location,omitempty"`
 }
 
 // Brew is the RHEL Koji instance for storing artifacts.
@@ -109,20 +78,28 @@ type Brew struct {
 // CloudsCfgs (yes Clouds) is a nested struct of all
 // supported cloudClonfigurations.
 type CloudsCfgs struct {
-	Aliyun Aliyun `yaml:"aliyun,omitempty" json:"aliyun,omitempty"`
-	Aws    Aws    `yaml:"aws,omitempty" json:"aws,omitempty"`
-	Azure  Azure  `yaml:"azure,omitempty" json:"azure,omitempty"`
-	Gcp    Gcp    `yaml:"gcp,omitempty" json:"gcp,omitempty"`
+	Aliyun *Aliyun `yaml:"aliyun,omitempty" json:"aliyun,omitempty"`
+	Aws    *Aws    `yaml:"aws,omitempty" json:"aws,omitempty"`
+	AwsCn  *Aws    `yaml:"aws-cn,omitempty" json:"aws-cn,omitempty"`
+	Azure  *Azure  `yaml:"azure,omitempty" json:"azure,omitempty"`
+	Gcp    *Gcp    `yaml:"gcp,omitempty" json:"gcp,omitempty"`
 }
 
-// Gcp describes deploiying to the GCP environment
-//   Bucket: name of GCP bucket to store image in
-//   Enabled: when true, publish to GCP
-//   Project: name of the GCP project to use
-type Gcp struct {
-	Bucket  string `yaml:"bucket,omitempty" json:"bucket,omitempty"`
-	Enabled bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	Project string `yaml:"project,omitempty" json:"project,omitempty"`
+// getCloudsCfgs returns list of clouds that are defined in the jobspec. Since
+// omitempty is used when unmarshaling some objects will not be available
+func (c *CloudsCfgs) GetCloudCfg(cloud string) (Cloud, error) {
+	t := reflect.TypeOf(*c)
+	v := reflect.ValueOf(*c)
+	for i := 0; i < t.NumField(); i++ {
+		fieldName := strings.ToLower(t.Field(i).Name)
+		if strings.ReplaceAll(cloud, "-", "") == fieldName {
+			if ci, ok := v.Field(i).Interface().(Cloud); ok {
+				return ci, nil
+			}
+			return nil, fmt.Errorf("failed casting struct to Cloud interface for %q cloud", cloud)
+		}
+	}
+	return nil, fmt.Errorf("Could not find cloud config %s", cloud)
 }
 
 // Job refers to the Jenkins options
