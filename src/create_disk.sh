@@ -301,7 +301,9 @@ EOF
 
 # copy the grub config and any other files we might need
 install_grub_cfg() {
-    mkdir -p $rootfs/boot/grub2
+    # 0700 to match the RPM permissions which I think are mainly in case someone has
+    # manually set a grub password
+    mkdir -p -m 0700 $rootfs/boot/grub2
     cp -v $grub_script $rootfs/boot/grub2/grub.cfg
 }
 
