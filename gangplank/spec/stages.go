@@ -50,12 +50,12 @@ type Stage struct {
 	// required artifact is missing (per the meta.json), the stage
 	// will not be executed. RequireArticts _implies_ sending builds/builds.json
 	// and builds/<BUILDID>/meta.json.
-	RequireArtifacts []string `yaml:"requires_artifacts,flow,omitempty" json:"requires_artifacts,omitempty"`
+	RequireArtifacts []string `yaml:"require_artifacts,flow,omitempty" json:"require_artifacts,omitempty"`
 
 	// RequestArtifacts are files that are provided if they are there. Examples include
 	// 'caches' for `/srv/cache` and `/srv/tmp/repo` tarballs or `ostree` which are really useful
 	// for base builds.
-	RequestArtifacts []string `yaml:"optional_artifacts,flow,omitempty" json:"optional_artifacts,omitempty"`
+	RequestArtifacts []string `yaml:"request_artifacts,flow,omitempty" json:"request_artifacts,omitempty"`
 
 	// BuildArtifacts produces "known" artifacts. The special "base"
 	// will produce an OSTree and QCOWs.

@@ -247,7 +247,7 @@ binary build interface.`)
 
 		l := log.WithFields(log.Fields{
 			"stage":              s.ID,
-			"required_artifacts": s.RequireArtifacts,
+			"require_artifacts": s.RequireArtifacts,
 		})
 
 		cpod, err := NewCosaPodder(podCtx, apiBuild, idx)

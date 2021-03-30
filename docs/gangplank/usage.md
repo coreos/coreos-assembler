@@ -181,13 +181,13 @@ To illustrate this, consider:
   - oscontainer
   request_cache_repo: true
   request_cache: true
-  returns_cache: true
-  returns_cache_repo: true
+  return_cache: true
+  return_cache_repo: true
 - id: oscontainer
   build_artifacts:
   - ostree
-  requires_cache: true
-  requires_cache_repo: true
+  require_cache: true
+  require_cache_repo: true
 - id: clouds
   concurrent_execution: true
   build_artifacts:
