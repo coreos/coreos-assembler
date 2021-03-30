@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -85,11 +86,23 @@ func TestRemote(t *testing.T) {
 	}
 	log.Infof("stamp is %d", stamp)
 
+	time.Sleep(1 * time.Second) // ensure that this is older
 	if err := ioutil.WriteFile(destF, []byte("udpated"), 0644); err != nil {
 		t.Fatalf("Failed to update the file")
 	}
 	newer, err := m.isLocalNewer(testBucket, "test", destF)
+	if err != nil {
+		t.Fatalf("failed to get remote stamp: %v", err)
+	}
+	cur, err := getLocalFileStamp(destF)
+	if err != nil {
+		t.Fatalf("failed to get local stamp: %v", err)
+	}
+	stamp, err = m.getStamp(testBucket, "test")
+	if err != nil {
+		t.Fatalf("failed to get remote stamp; %v", err)
+	}
 	if !newer {
-		t.Fatalf("file should be newer: %v", err)
+		t.Fatalf("local file should be newer: local stamp %d should be larger than remote %d", cur, stamp)
 	}
 }
