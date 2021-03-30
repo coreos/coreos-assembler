@@ -487,17 +487,24 @@ func (m *minioServer) isLocalNewer(bucket, object string, path string) (bool, er
 	if err != nil {
 		return true, err
 	}
-
-	f, err := os.Stat(path)
+	modTime, err := getLocalFileStamp(path)
 	if err != nil {
 		return false, err
 	}
-
-	modTime := f.ModTime().UTC().UnixNano()
 	if modTime > curStamp {
 		return true, nil
 	}
 	return false, nil
+}
+
+// getLocalFileStamp returns the local file mod time in UTC Unix epic nanoseconds.
+func getLocalFileStamp(path string) (int64, error) {
+	f, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	modTime := f.ModTime().UTC().UnixNano()
+	return modTime, nil
 }
 
 // getStamp returns the stamp. If the file does not exist remotely the stamp of
