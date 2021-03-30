@@ -122,19 +122,46 @@ func (m *minioServer) client() (*minio.Client, error) {
 	)
 }
 
-// start a MinioServer based on the configuration. If the minioServer is external,
-// then is this noop.
+// start executes the minio server and returns an error if not ready.
 func (m *minioServer) start(ctx context.Context) error {
-
-	// If the server is external, we test it before proceeding.
+	started := false
 	if m.ExternalServer {
-		if err := m.ensureBucketExists(ctx, "builds"); err != nil {
-			return fmt.Errorf("failed to query Minio/S3 server: %v", err)
+		started = true
+	}
+
+	check := func() error {
+		if !started {
+			if err := m.exec(ctx); err != nil {
+				log.WithError(err).Warn("failed to start minio")
+				defer m.Kill() // throw this server away
+				return err
+			}
+			started = true
 		}
-		log.Info("Minio Server is listening and ready")
+
+		mc, err := m.client()
+		if err != nil {
+			return err
+		}
+		if _, err := mc.ListBuckets(ctx); err != nil {
+			return err
+		}
 		return nil
 	}
 
+	for x := 0; x <= 6; x++ {
+		if err := check(); err == nil {
+			return nil
+		}
+		sleep := time.Duration(x ^ 2)
+		log.WithField("time", sleep).Info("minio server is not ready, sleeping")
+		time.Sleep(sleep * time.Second)
+	}
+	return errors.New("minio serve failed to become ready")
+}
+
+// exec runs the minio command
+func (m *minioServer) exec(ctx context.Context) error {
 	if m.Host == "" {
 		m.Host = getHostname()
 	}
