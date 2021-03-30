@@ -41,56 +41,20 @@ objects:
     name: ${SA}
   name: ${SA}
 
-- apiVersion: authorization.openshift.io/v1
-  kind: Role
-  metadata:
-    name: ${SA}_secrets
-  rules:
-  - apiGroups:
-    - ""
-    resources:
-    - secrets
-    verbs:
-    - watch
-    - get
-    - list
-
-- apiVersion: v1
-  groupNames: null
+# Gangplank uses similar permissions to Jenkins
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
-    name: ${SA}_secrets
+    name: coreos-builder-editor-0
   roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
     name: edit
   subjects:
   - kind: ServiceAccount
     name: ${SA}
 
-- apiVersion: rbac.authorization.k8s.io/v1
-  kind: Role
-  metadata:
-    name:  ${SA}_cosa-reader
-  rules:
-  - apiGroups:
-    - ""
-    resources:
-    - pods
-    verbs:
-    - get
-    - watch
-    - list
-    - create
-
-- kind: RoleBinding
-  apiVersion: rbac.authorization.k8s.io/v1
-  metadata:
-    name: ${SA}_cosa-reader
-  roleRef:
-    name: ${SA}_cosa-reader
-  subjects:
-  - kind: ServiceAccount
-    name: ${SA}
-
+# Create the basic build config
 - apiVersion: build.openshift.io/v1
   kind: BuildConfig
   metadata:
