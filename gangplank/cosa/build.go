@@ -191,7 +191,8 @@ func CanArtifact(artifact string) bool {
 func GetCommandBuildableArtifacts() []string {
 	b := new(Build)
 	b.BuildArtifacts = new(BuildArtifacts)
-	ret := []string{}
+	// 'extensions' is a special case artifact that exists outside the images
+	ret := []string{"extensions"}
 	liveAdded := false
 	for k := range b.artifacts() {
 		switch k {
@@ -216,6 +217,12 @@ func GetCommandBuildableArtifacts() []string {
 // and the schema authoritative for adding and removing artifacts.
 func (build *Build) artifacts() map[string]*Artifact {
 	ret := make(map[string]*Artifact)
+
+	// Special case Extensions
+	// technically extentions are an artifact, albeit the meta-data located
+	// as a top level entry.
+	ret["extensions"] = build.Extensions.toArtifact()
+
 	var ba BuildArtifacts = *build.BuildArtifacts
 	rv := reflect.TypeOf(ba)
 	for i := 0; i < rv.NumField(); i++ {
@@ -247,6 +254,7 @@ func (build *Build) artifacts() map[string]*Artifact {
 			}
 		}
 	}
+
 	return ret
 }
 
@@ -261,4 +269,15 @@ func (b *Build) mergeMeta(r io.Reader) error {
 func IsMetaJSON(path string) bool {
 	b := filepath.Base(path)
 	return reMetaJSON.Match([]byte(b))
+}
+
+// toArtifact converts an Extension to an Artifact
+func (e *Extensions) toArtifact() *Artifact {
+	if e == nil {
+		return new(Artifact)
+	}
+	return &Artifact{
+		Path:   e.Path,
+		Sha256: e.Sha256,
+	}
 }
