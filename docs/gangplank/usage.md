@@ -160,7 +160,7 @@ The JobSpec defines discrete, units of work as a "stage". Each stage supports fe
 
 - id: the name of the stage; must be unique
 - command: a list of commands to execute
-- concurrent_execution: bool to indicate if the `commands` can be executed concurrently
+- concurrent: bool to indicate if the `commands` can be executed concurrently
 - build_artifacts: known artifacts to build
 - direct_execution: do not apply templating
 - prep_commands: a list of commands to run before command
@@ -189,7 +189,7 @@ To illustrate this, consider:
   require_cache: true
   require_cache_repo: true
 - id: clouds
-  concurrent_execution: true
+  concurrent: true
   build_artifacts:
   - aws
   - gcp
