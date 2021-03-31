@@ -37,7 +37,7 @@ type JobSpec struct {
 	// Stages are specific stages to be run. Stages are
 	// only supported by Gangplank; they do not appear in the
 	// Groovy Jenkins Scripts.
-	Stages []Stage `yaml:"stages,omitempty" json:"stages,omitempty"`
+	Stages []Stage `yaml:"stages" json:"stages"`
 
 	// DelayedMetaMerge ensures that 'cosa build' is called with
 	// --delayed-meta-merge
@@ -240,11 +240,12 @@ func JobSpecFromFile(f string) (j JobSpec, err error) {
 func (js *JobSpec) WriteJSON(w io.Writer) error {
 	encode := json.NewEncoder(w)
 	encode.SetIndent("", "  ")
-	return encode.Encode(*js)
+	return encode.Encode(js)
 }
 
 // WriteYAML returns the jobspec in YAML
 func (js *JobSpec) WriteYAML(w io.Writer) error {
 	encode := yaml.NewEncoder(w)
-	return encode.Encode(*js)
+	defer encode.Close()
+	return encode.Encode(js)
 }
