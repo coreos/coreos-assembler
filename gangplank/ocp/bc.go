@@ -246,7 +246,7 @@ binary build interface.`)
 		}
 
 		l := log.WithFields(log.Fields{
-			"stage":              s.ID,
+			"stage":             s.ID,
 			"require_artifacts": s.RequireArtifacts,
 		})
 
@@ -380,24 +380,25 @@ binary build interface.`)
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
 		for {
+			term := func() {
+				log.Info("Terminating existing stages")
+				terminate <- true
+				cancel()
+				log.Fatal("Exiting")
+			}
+
 			select {
 			case err := <-errorCh:
 				if err != nil {
-					log.WithError(err).Error("Stage sent error, cancelling remaining work")
-					terminate <- true
+					log.WithError(err).Error("Stage sent error")
+					term()
 				}
 			case <-ctx.Done():
 				log.Warning("Received cancellation")
-				terminate <- true
+				term()
 			case s := <-sig:
-				log.Errorf("Receivied signal %d", s)
-				terminate <- true
-			case <-terminate:
-				// The select sends termination siganls to itself to ensure that cancel()
-				// to terminate the pods. Using context cancellation is standard in the Kube world.
-				cancel()
-				log.Info("Termination signaled")
-				return
+				log.Errorf("Received signal %d", s)
+				term()
 			}
 		}
 	}(terminate, errorCh)
@@ -410,7 +411,7 @@ binary build interface.`)
 			select {
 			// break as soon as we can if there is a problem
 			case <-terminate:
-				return errors.New("Work terminated before completion")
+				return errors.New("work terminated before completion")
 			default:
 				wg.Add(1)
 				go f(wg, terminate, errorCh)
