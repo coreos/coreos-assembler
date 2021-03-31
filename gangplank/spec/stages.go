@@ -17,11 +17,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Stages describe the steps that a build should take.
-type Stages struct {
-	Stages []*Stage `yaml:"stage,omitempty"`
-}
-
 // GetStage returns the stage with the matching ID
 func (j *JobSpec) GetStage(id string) (*Stage, error) {
 	for _, stage := range j.Stages {
@@ -34,7 +29,7 @@ func (j *JobSpec) GetStage(id string) (*Stage, error) {
 
 // Stage is a single stage.
 type Stage struct {
-	ID                  string `yaml:"id"`
+	ID                  string `yaml:"id,omitempty" json:"id,omitempty"`
 	Description         string `yaml:"description,omitempty" json:"description,omitempty"`
 	ConcurrentExecution bool   `yaml:"concurrent,omitempty" json:"concurrent,omitempty"`
 
@@ -274,7 +269,21 @@ var (
 	pseudoStages = []string{"base", "finalize"}
 	// buildableArtifacts are known artifacts types from the schema.
 	buildableArtifacts = append(pseudoStages, cosa.GetCommandBuildableArtifacts()...)
+
+	// baseArtifacts are default built by the "base" short-hand
+	baseArtifacts = []string{"ostree", "qemu"}
 )
+
+// isBaseArtifact is a check function for determining if an artifact
+// is built by the base stage.
+func isBaseArtifact(artifact string) bool {
+	for _, k := range baseArtifacts {
+		if k == artifact {
+			return true
+		}
+	}
+	return false
+}
 
 // GetArtifactShortHandNames returns shorthands for buildable stages
 func GetArtifactShortHandNames() []string {
@@ -292,7 +301,6 @@ func addShorthandToStage(artifact string, stage *Stage) {
 				BuildArtifacts:   []string{"base"},
 				ExecutionOrder:   1,
 				RequestArtifacts: []string{"ostree"},
-				RequireArtifacts: []string{"base"},
 				RequestCache:     true,
 				RequestCacheRepo: true,
 			}
@@ -408,7 +416,8 @@ func addShorthandToStage(artifact string, stage *Stage) {
 		stage.ExecutionOrder = working.ExecutionOrder
 	}
 
-	stage.ID = fmt.Sprintf("Generated Stage in Execution Order %d", stage.ExecutionOrder)
+	randID := time.Now().UTC().UnixNano() // Ensure a random ID
+	stage.ID = fmt.Sprintf("ExecOrder %d Stage %d", stage.ExecutionOrder, randID)
 	stage.Description = fmt.Sprintf("Stage %d execution for %s",
 		stage.ExecutionOrder, strings.Join(stage.BuildArtifacts, ","))
 
@@ -429,6 +438,11 @@ func addShorthandToStage(artifact string, stage *Stage) {
 		newOrder = append(newOrder, v...)
 	}
 	stage.BuildArtifacts = unique(newOrder)
+
+	buildArtifacts, buildsBase := remove(unique(newOrder), "base")
+	if buildsBase {
+		stage.BuildArtifacts = append([]string{"base"}, buildArtifacts...)
+	}
 
 	// If the synthetic stages requires/request optional artifact, but also builds it
 	// then we need to remove it from the the requires.
@@ -452,8 +466,8 @@ func addShorthandToStage(artifact string, stage *Stage) {
 	// since we have to consider that "qemu"
 	var foundBase bool
 	realRequires, foundBase = remove(realRequires, "base")
-	if foundBase {
-		for _, v := range []string{"ostree", "qemu"} {
+	if foundBase || buildsBase {
+		for _, v := range baseArtifacts {
 			realRequires, _ = remove(realRequires, v)
 			realOptional, _ = remove(realOptional, v)
 		}
@@ -463,13 +477,18 @@ func addShorthandToStage(artifact string, stage *Stage) {
 }
 
 // GenerateStages creates stages.
-func (j *JobSpec) GenerateStages(fromNames []string) {
+func (j *JobSpec) GenerateStages(fromNames []string, singleStage bool) {
 	if len(fromNames) == 0 {
 		return
 	}
 
 	j.DelayedMetaMerge = true
 	j.Job.StrictMode = true
+
+	if singleStage && len(fromNames) > 0 {
+		newList := []string{strings.Join(fromNames, "+")}
+		fromNames = newList
+	}
 
 	for _, k := range fromNames {
 		var s Stage
