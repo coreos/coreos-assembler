@@ -48,7 +48,7 @@ systemd:
 )
 
 func init() {
-	// TODO: enable FCOS when FCCT exists
+	// TODO: enable FCOS when Butane exists
 	register.RegisterTest(&register.Test{
 		Run:            NFSv4,
 		ClusterSize:    0,

@@ -77,18 +77,18 @@ install_rpms() {
 }
 
 # Yes, this is a hack that loses sane auditing around what git commit
-# we used to build fcct, etc.  In the future we'll probably give in and package
+# we used to build butane, etc.  In the future we'll probably give in and package
 # it or something, see also https://github.com/coreos/fedora-coreos-tracker/issues/235
-build_fcct() {
+build_butane() {
     cd /tmp
-    git clone https://github.com/coreos/fcct
-    cd fcct
-    git describe --tags --always > /usr/share/fcct-build.revision
+    git clone https://github.com/coreos/butane
+    cd butane
+    git describe --tags --always > /usr/share/butane-build.revision
     ./build
-    fcct=$(find bin -type f -name fcct | head -1)
-    install -m 0755 -D -t /usr/bin "${fcct}"
+    butane=$(find bin -type f -name butane | head -1)
+    install -m 0755 -D -t /usr/bin "${butane}"
     cd /tmp
-    rm fcct -rf
+    rm butane -rf
 }
 
 make_and_makeinstall() {
