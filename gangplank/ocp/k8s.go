@@ -168,7 +168,7 @@ func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, e
 	for {
 		events, ok := <-w.ResultChan()
 		if !ok {
-			return "", fmt.Errorf("Failed query for pod IP on pod/%s", podName)
+			return "", fmt.Errorf("failed query for pod IP on pod/%s", podName)
 		}
 		resp := events.Object.(*v1.Pod)
 		if resp.Status.PodIP != "" {

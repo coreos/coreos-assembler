@@ -230,7 +230,7 @@ binary build interface.`)
 	podCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	type workFunction func(wg *sync.WaitGroup, terminate <-chan bool, errCh chan<- error)
+	type workFunction func(terminate <-chan bool) error
 	workerFuncs := make(map[int][]workFunction)
 
 	// Range over the stages and create workFunction, which is added to the
@@ -287,7 +287,7 @@ binary build interface.`)
 				for {
 					if check() {
 						l.Debug("all dependencies for stage have been meet")
-						break
+						return
 					}
 					// Wait for the next check or terminate.
 					select {
@@ -298,13 +298,12 @@ binary build interface.`)
 					}
 				}
 			}(out)
+
 			return out
 		}
 
 		// anonFunc performs the actual work..
-		anonFunc := func(wg *sync.WaitGroup, terminate <-chan bool, errCh chan<- error) {
-			defer wg.Done()
-
+		anonFunc := func(terminate <-chan bool) error {
 			ws := &workSpec{
 				APIBuild:      apiBuild,
 				ExecuteStages: []string{s.ID},
@@ -315,33 +314,26 @@ binary build interface.`)
 
 			select {
 			case <-terminate:
-				l.Warning("Terminate signal recieved, aborting stage")
-				return
+				return errors.New("terminate signal recieved, aborting stage")
 			case <-time.After(60 * time.Minute):
-				l.Error("Timed out waiting for dependencies")
-				errCh <- errors.New("required artifacts never appeared")
-				return
+				return errors.New("required artifacts never appeared")
 			case ok := <-ready(ws, terminate):
 				if !ok {
-					errCh <- fmt.Errorf("%s failed to become ready", s.ID)
-					return
+					return fmt.Errorf("%s failed to become ready", s.ID)
 				}
 
 				l.Info("Worker dependences have been defined")
 				eVars, err := ws.getEnvVars()
 				if err != nil {
-					errCh <- err
-					return
+					return err
 				}
 
 				l.Info("Executing worker pod")
-				if err := cpod.WorkerRunner(podCtx, eVars); err != nil {
-					l.WithError(err).Error("Failed stage execution")
-					err = fmt.Errorf("%s failed: %w", s.ID, err)
-					errCh <- err
-					return
+				if err := cpod.WorkerRunner(podCtx, terminate, eVars); err != nil {
+					return fmt.Errorf("%s failed: %w", s.ID, err)
 				}
 			}
+			return nil
 		}
 
 		// If there is no default execution order, default to 2. The default
@@ -372,56 +364,79 @@ binary build interface.`)
 			The go-routine will run until it recieves a terminate itself.
 	*/
 
-	terminate := make(chan bool)
 	errorCh := make(chan error)
 
-	go func(terminate chan bool, errorCh <-chan error) {
+	// Terminate is used to tell all go-routines to end
+	terminate := make(chan bool)
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithField("message", r).Warn("recovered from crash")
+		}
+		close(terminate)
+	}()
+
+	// Watch the channels for signals to terminate
+	go func() {
 		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
 		for {
-			term := func() {
-				log.Info("Terminating existing stages")
-				terminate <- true
-				cancel()
-				log.Fatal("Exiting")
-			}
-
 			select {
-			case err := <-errorCh:
+			case err, ok := <-errorCh:
+				if !ok {
+					return
+				}
 				if err != nil {
 					log.WithError(err).Error("Stage sent error")
-					term()
+					return
 				}
 			case <-ctx.Done():
 				log.Warning("Received cancellation")
-				term()
+				return
 			case s := <-sig:
 				log.Errorf("Received signal %d", s)
-				term()
+				return
+			case die, ok := <-terminate:
+				if !ok || die {
+					return
+				}
 			}
 		}
-	}(terminate, errorCh)
+	}()
 
 	// For each execution group, launch all workers and wait for the group
 	// to complete. If a workerFunc fails, then bail as soon as possible.
 	for _, idx := range order {
+		l := log.WithField("execution group", idx)
 		wg := &sync.WaitGroup{}
-		for _, f := range workerFuncs[idx] {
-			select {
-			// break as soon as we can if there is a problem
-			case <-terminate:
-				return errors.New("work terminated before completion")
-			default:
-				wg.Add(1)
-				go f(wg, terminate, errorCh)
+		halt := ptrBool(false)
+		for _, v := range workerFuncs[idx] {
+			wg.Add(1)
+			go func() {
+				defer func() {
+					wg.Done()
+					log.Debug("execution done")
+				}()
+				if err := v(terminate); err != nil {
+					log.WithError(err).Debug("execution for stage failed")
+					errorCh <- err
+					halt = ptrBool(true)
+				}
+			}()
+			if *halt {
+				break
 			}
 		}
 		wg.Wait()
+		l.Debug("done with execution group")
+
+		if *halt {
+			break
+		}
 	}
 
 	// Yeah, this is lazy...
-	args := []string{"find", "/srv", "-type", "f"}
+	args := []string{"find", "/srv/builds", "-type", "f"}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

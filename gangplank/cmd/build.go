@@ -19,8 +19,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/coreos/gangplank/ocp"
 	log "github.com/sirupsen/logrus"
@@ -46,21 +44,6 @@ func init() {
 func runOCP(c *cobra.Command, args []string) {
 	defer cancel()
 	defer ctx.Done()
-
-	// Terminal "keep alive" helper. When following logs via the `oc` commands,
-	// cloud-deployed will send an EOF. To get around the EOF, the func sends a
-	// null character that is not printed to the screen or reflected in the logs.
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				fmt.Print("\x00")
-				time.Sleep(1 * time.Second)
-			}
-		}
-	}()
 
 	b, err := ocp.NewBuilder(ctx)
 	if err != nil {

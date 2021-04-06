@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	jobspec "github.com/coreos/gangplank/spec"
 	log "github.com/sirupsen/logrus"
@@ -140,6 +141,21 @@ func preRun(c *cobra.Command, args []string) {
 	if specFile == "" {
 		return
 	}
+
+	// Terminal "keep alive" helper. When following logs via the `oc` commands,
+	// cloud-deployed instances will send an EOF. To get around the EOF, the func sends a
+	// null character that is not printed to the screen or reflected in the logs.
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(20 * time.Second):
+				fmt.Print("\x00")
+				time.Sleep(1 * time.Second)
+			}
+		}
+	}()
 
 	ns, err := jobspec.JobSpecFromFile(specFile)
 	if err != nil {
