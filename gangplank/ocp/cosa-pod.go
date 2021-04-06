@@ -7,11 +7,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/containers/libpod/libpod"
@@ -30,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -108,13 +107,17 @@ type cosaPod struct {
 	volumes         []v1.Volume
 	volumeMounts    []v1.VolumeMount
 
-	index int
-	pod   *v1.Pod
+	index     int
+	pod       *v1.Pod
+	terminate <-chan bool
+
+	kubeResultCh       func() <-chan watch.Event
+	kubeResultChCloser func()
 }
 
 // CosaPodder create COSA capable pods.
 type CosaPodder interface {
-	WorkerRunner(ctx ClusterContext, envVar []v1.EnvVar) error
+	WorkerRunner(ctx ClusterContext, term <-chan bool, envVar []v1.EnvVar) error
 }
 
 // a cosaPod is a CosaPodder
@@ -249,20 +252,20 @@ export PATH=/usr/sbin:/usr/bin
 
 // WorkerRunner runs a worker pod on either OpenShift/Kubernetes or
 // in as a podman container.
-func (cp *cosaPod) WorkerRunner(ctx ClusterContext, envVars []v1.EnvVar) error {
+func (cp *cosaPod) WorkerRunner(ctx ClusterContext, term <-chan bool, envVars []v1.EnvVar) error {
 	cluster, err := GetCluster(ctx)
 	if err != nil {
 		return err
 	}
 	if cluster.inCluster {
-		return clusterRunner(ctx, cp, envVars)
+		return clusterRunner(ctx, term, cp, envVars)
 	}
-	return podmanRunner(ctx, cp, envVars)
+	return podmanRunner(ctx, term, cp, envVars)
 }
 
 // clusterRunner creates an OpenShift/Kubernetes pod for the work to be done.
 // The output of the pod is streamed and captured on the console.
-func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
+func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []v1.EnvVar) error {
 	cs, ns, err := GetClient(cp.clusterCtx)
 	if err != nil {
 		return err
@@ -284,151 +287,239 @@ func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 			ResourceVersion: resp.ResourceVersion,
 			FieldSelector:   fields.Set{"metadata.name": pod.Name}.AsSelector().String(),
 			LabelSelector:   labels.Everything().String(),
+			TimeoutSeconds:  ptrInt(7200), // set a hard timeout to 2hrs
 		},
 	)
 	if err != nil {
 		return err
 	}
-	defer w.Stop()
+	// expose the Watch to other routines.
+	cp.kubeResultCh = w.ResultChan
+	cp.kubeResultChCloser = w.Stop
+
+	// open the terminate channel
+	cp.terminate = term
 
 	l := log.WithField("podname", pod.Name)
 
-	// ender is our clean-up that kill our pods
-	ender := func() {
-		l.Infof("terminating")
-		if err := ac.Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil {
+	defer func() {
+		l.Debug("Requesting termination of remaining contianers")
+		termOpts := &metav1.DeleteOptions{
+			// the default grace period on OCP 3.x is 5min and OCP 4.x is 1min
+			// If the pod is in an error state it will appear to be hang.
+			GracePeriodSeconds: ptrInt(0),
+		}
+		if err := ac.Pods(ns).Delete(pod.Name, termOpts); err != nil {
 			l.WithError(err).Error("Failed delete on pod, yolo.")
 		}
-	}
-	defer ender()
+		l.Debug("Pod work is returning to caller.")
+	}()
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	logStarted := false
 
-	logStarted := make(map[string]*bool)
 	// Block waiting for the pod to finish or timeout.
+	// HERE BE DEMOGORGRANS: in order for the termination logic to work, do
+	//      not put any blocking calls in the select.
 	for {
 		select {
-		case events, ok := <-w.ResultChan():
+		// Watch the events channel to get the status of the pod.
+		case events, ok := <-cp.kubeResultCh():
 			if !ok {
 				l.Error("failed waitching pod")
 				return fmt.Errorf("orphaned pod")
 			}
+
 			resp = events.Object.(*v1.Pod)
 			status = resp.Status
 
 			l := log.WithFields(log.Fields{
-				"podname": pod.Name,
-				"status":  resp.Status.Phase,
+				"podname":           pod.Name,
+				"reason":            status.Reason,
+				"phase":             status.Phase,
+				"message":           status.Message,
+				"containers status": status.ContainerStatuses,
 			})
+
+			// Check the _status_ of the pod
 			switch sp := status.Phase; sp {
+			case v1.PodRunning:
+				if !logStarted {
+					if err := cp.streamPodLogs(); err != nil {
+						return err
+					}
+					logStarted = true
+				}
+			case v1.PodFailed, v1.PodUnknown, v1.PodReasonUnschedulable:
+				l.Error("Pod failed")
+				return fmt.Errorf("pod is a failure in its life")
 			case v1.PodSucceeded:
 				l.Infof("Pod successfully completed")
 				return nil
-			case v1.PodRunning:
-				l.Infof("Pod successfully completed")
-				for _, c := range pod.Spec.InitContainers {
-					logStarted[c.Name] = ptrBool(false)
-					if err := cp.streamPodLogs(logStarted[c.Name], pod, c.Name); err != nil {
-						l.WithField("err", err).Error("failed to open logging for init container")
-					}
-				}
-				for _, c := range pod.Spec.Containers {
-					logStarted[c.Name] = ptrBool(false)
-					if err := cp.streamPodLogs(logStarted[c.Name], pod, c.Name); err != nil {
-						l.WithField("err", err).Error("failed to open logging")
-					}
-				}
-			case v1.PodFailed:
-				l.WithField("message", status.Message).Error("Pod failed")
-				time.Sleep(1 * time.Minute)
-				return fmt.Errorf("Pod is a failure in its life")
+			case v1.PodPending:
+				l.Info("waiting...")
 			default:
-				l.WithField("message", status.Message).Info("waiting...")
+				l.Fatal("my logic has failed me")
 			}
 
 		// Ensure a dreadful and uncerimonious end to our job in case of
-		// a timeout, the buildconfig is terminated, or there's a cancellation.
+		// a timeout or a termination.
 		case <-time.After(90 * time.Minute):
-			return errors.New("Pod did not complete work in time")
-		case <-sigs:
-			ender()
-			return errors.New("Termination requested")
-		case <-ctx.Done():
-			return nil
+			return fmt.Errorf("pod %s did not complete work in time", pod.Name)
+		case <-term:
+			return fmt.Errorf("pod %s was signalled to terminate by main process", pod.Name)
 		}
 	}
+}
+
+// consoleLogWriter is an io.Writer that emits fancy logs to a screen.
+type consoleLogWriter struct {
+	startTime time.Time
+	prefix    string
+}
+
+// consoleLogWriter is an io.Writer.
+var _ io.Writer = &consoleLogWriter{}
+
+// newConosleLogWriter is a helper function for getting a new writer.
+func newConsoleLogWriter(prefix string) *consoleLogWriter {
+	return &consoleLogWriter{
+		prefix:    prefix,
+		startTime: time.Now(),
+	}
+}
+
+// Write implements io.Writer for Console Writer with
+func (cw *consoleLogWriter) Write(b []byte) (int, error) {
+	since := time.Since(cw.startTime).Truncate(time.Millisecond)
+	prefix := []byte(fmt.Sprintf("%s [+%v]: ", cw.prefix, since))
+	suffix := []byte("\n")
+
+	_, _ = os.Stdout.Write(prefix)
+	n, err := os.Stdout.Write(b)
+	_, _ = os.Stdout.Write(suffix)
+	return n, err
+}
+
+// getLogStream returns the logs stream for a specific container in pod.
+func (cp *cosaPod) getLogStream(container string) (io.ReadCloser, error) {
+	cs, ns, err := GetClient(cp.clusterCtx)
+	if err != nil {
+		return nil, err
+	}
+	podLogOpts := v1.PodLogOptions{
+		Follow:    true,
+		Container: container,
+	}
+
+	req := cs.CoreV1().Pods(ns).GetLogs(cp.pod.Name, &podLogOpts)
+	return req.Stream()
+}
+
+// writeToWriters writes in to outs until in or outs are closed. When run a
+// go-routine, calls can terminate by closing "in".
+func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan error {
+	outCh := make(chan error)
+	go func() {
+		var err error
+		defer func() {
+			if err != nil {
+				l.WithError(err).Error("writeToWriters encountered an error")
+				outCh <- err
+			}
+			l.Debug("closed writer to logs")
+		}()
+
+		scanner := bufio.NewScanner(in)
+		outWriter := io.MultiWriter(outs...)
+		for scanner.Scan() {
+			_, err = outWriter.Write(scanner.Bytes())
+			if err != nil {
+				return
+			}
+		}
+		err = scanner.Err()
+		if err != nil {
+			return
+		}
+	}()
+	return outCh
 }
 
 // streamPodLogs steams the pod's logs to logging and to disk. Worker
 // pods are responsible for their work, but not for their logs.
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return.
-func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) error {
-	cs, ns, err := GetClient(cp.clusterCtx)
-	if err != nil {
-		return err
-	}
-	if logging != nil && *logging {
-		return nil
+func (cp *cosaPod) streamPodLogs() error {
+	if cp.kubeResultCh == nil {
+		return errors.New("result channel has not been opened")
 	}
 
-	*logging = true
-	podLogOpts := v1.PodLogOptions{
-		Follow:    true,
-		Container: container,
-	}
-	req := cs.CoreV1().Pods(ns).GetLogs(pod.Name, &podLogOpts)
-	podLogs, err := req.Stream()
-	if err != nil {
-		return err
-	}
+	for _, pC := range append(cp.pod.Spec.InitContainers, cp.pod.Spec.Containers...) {
+		container := pC.Name
 
-	l := log.WithFields(log.Fields{
-		"pod":       pod.Name,
-		"container": container,
-	})
-
-	logD := filepath.Join(cosaSrvDir, "logs")
-	podLog := filepath.Join(logD, fmt.Sprintf("%s-%s.log", pod.Name, container))
-	if err := os.MkdirAll(logD, 0755); err != nil {
-		return fmt.Errorf("failed to create logs directory: %w", err)
-	}
-	logf, err := os.OpenFile(podLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to create log for pod %s/%s container: %w", pod.Name, container, err)
-	}
-
-	// Make the logging non-blocking to allow for concurrent pods
-	// to be doing their thing(s).
-	// TODO: decide on whether to use logrus (structured logging), or leave
-	//       on screen (logrus was some ugly text). Logs are saved to
-	//       /srv/logs/<pod.Name>.log which should be good enough.
-	go func(logging *bool, logf *os.File) {
-		defer func() { logging = ptrBool(false) }()
-		defer podLogs.Close()
-
-		startTime := time.Now()
-
-		for {
-			scanner := bufio.NewScanner(podLogs)
-			for scanner.Scan() {
-				since := time.Since(startTime).Truncate(time.Millisecond)
-				fmt.Printf("%s [+%v]: %s\n", container, since, scanner.Text())
-				if _, err := logf.Write(scanner.Bytes()); err != nil {
-					l.WithError(err).Warnf("unable to log to file")
-				}
-			}
-			if err := scanner.Err(); err != nil {
-				if err == io.EOF {
-					l.Info("Log closed")
-					return
-				}
-				l.WithError(err).Warn("error scanning output")
-			}
+		streamer, err := cp.getLogStream(container)
+		if err != nil {
+			return nil
 		}
-	}(logging, logf)
 
+		// Create the deafault file log
+		logD := filepath.Join(cosaSrvDir, "logs")
+		logN := filepath.Join(logD, fmt.Sprintf("%s-%s.log", cp.pod.Name, container))
+		if err := os.MkdirAll(logD, 0755); err != nil {
+			return fmt.Errorf("failed to create logs directory: %w", err)
+		}
+		logf, err := os.OpenFile(logN, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to create log for pod %s/%s container: %w", cp.pod.Name, container, err)
+		}
+
+		l := log.WithFields(log.Fields{
+			"logfile":   logf.Name,
+			"container": container,
+			"pod":       cp.pod.Name,
+		})
+
+		// Watch the logs until the termination is singaled OR the logs stream fails.
+		go func() {
+
+			// the defer will ensure that writeToWriters errors and terminates
+			defer func() {
+				lerr := logf.Close()
+				serr := streamer.Close()
+				if lerr != nil || serr != nil {
+					l.WithFields(log.Fields{
+						"stream err": err,
+						"log err":    lerr,
+					}).Info("failed closing logs, likely will have dangling go-routines")
+				}
+				l.Info("logging terminated")
+			}()
+
+			for {
+				select {
+				case die, ok := <-cp.terminate:
+					if die || !ok {
+						return
+					}
+				case events, ok := <-cp.kubeResultCh():
+					if !ok {
+						return
+					}
+					resp := events.Object.(*v1.Pod)
+					status := resp.Status
+					if status.Phase != v1.PodRunning {
+						return
+					}
+					l.WithField("status", status.Phase).Debug("logging is waiting")
+				case err := <-writeToWriters(l, streamer, logf, newConsoleLogWriter(container)):
+					if err != nil {
+						l.WithError(err).Warn("error recieved from writer")
+						return
+					}
+				}
+			}
+		}()
+	}
 	return nil
 }
 
@@ -448,7 +539,7 @@ func newNoopFileWriterCloser(f *os.File) *outWriteCloser {
 // podmanRunner runs the work in a Podman container using workDir as `/srv`
 // `podman kube play` does not work well due to permission mappings; there is
 // no way to do id mappings.
-func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
+func podmanRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []v1.EnvVar) error {
 	// Populate pod envvars
 	envVars = append(envVars, v1.EnvVar{Name: localPodEnvVar, Value: "1"})
 	mapEnvVars := map[string]string{
@@ -637,14 +728,11 @@ func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error {
 		return err
 	}
 
-	// Ensure clean-up on signal, i.e. ctrl-c
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	go func() {
 		select {
-		case <-sigs:
-			ender()
 		case <-ctx.Done():
+			ender()
+		case <-term:
 			ender()
 		}
 	}()
