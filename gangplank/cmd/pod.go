@@ -44,6 +44,9 @@ var (
 	// cosaSrvDir is used as the scratch directory builds.
 	cosaSrvDir string
 
+	// cosaNamespace when defined will launch the pod in another namespace
+	cosaNamespace string
+
 	// automaticBuildStages is used to create automatic build stages
 	automaticBuildStages []string
 )
@@ -60,6 +63,7 @@ func init() {
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
 
+	cmdPod.Flags().StringVarP(&cosaNamespace, "namespace", "N", "", "use a different namespace")
 	cmdPod.Flags().StringSliceVar(&generateCommands, "singleCmd", []string{}, "commands to run in stage")
 	cmdPod.Flags().StringSliceVar(&generateSingleRequires, "singleReq", []string{}, "artifacts to require")
 }
@@ -70,10 +74,10 @@ func init() {
 func runPod(c *cobra.Command, args []string) {
 	defer cancel()
 
-	cluster := ocp.NewCluster(true, "")
+	cluster := ocp.NewCluster(true, cosaNamespace, "")
 
 	if cosaViaPodman {
-		cluster = ocp.NewCluster(false, "")
+		cluster = ocp.NewCluster(false, cosaNamespace, "")
 		cluster.SetPodman(cosaSrvDir)
 		if cosaOverrideImage == "" {
 			cosaOverrideImage = cosaDefaultImage
