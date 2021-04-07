@@ -199,7 +199,7 @@ func kubernetesSecretsSetup(ac *kubernetes.Clientset, ns, toDir string) ([]strin
 
 	secrets, err := ac.CoreV1().Secrets(ns).List(lo)
 	if err != nil {
-		return ret, err
+		return ret, nil
 	}
 	log.Infof("Found %d secrets to consider", len(secrets.Items))
 
