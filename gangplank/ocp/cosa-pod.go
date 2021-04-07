@@ -170,10 +170,10 @@ func NewCosaPodder(
 		}
 
 		if err := cp.addVolumesFromSecretLabels(); err != nil {
-			return nil, fmt.Errorf("failed to add secret volumes and mounts: %w", err)
+			log.WithError(err).Errorf("failed to add secret volumes and mounts")
 		}
 		if err := cp.addVolumesFromConfigMapLabels(); err != nil {
-			return nil, fmt.Errorf("failed to add configMap volumes and mountsi: %w", err)
+			log.WithError(err).Errorf("failed to add volumes from config maps")
 		}
 	}
 

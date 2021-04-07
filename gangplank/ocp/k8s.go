@@ -49,8 +49,9 @@ type KubernetesCluster interface {
 var _ KubernetesCluster = &Cluster{}
 
 // NewCluster returns a Kubernetes cluster
-func NewCluster(inCluster bool, configFile string) KubernetesCluster {
+func NewCluster(inCluster bool, namespace, configFile string) KubernetesCluster {
 	return &Cluster{
+		nameSpace:  namespace,
 		inCluster:  inCluster,
 		configFile: configFile,
 	}
@@ -113,7 +114,16 @@ func GetClient(ctx ClusterContext) (*kubernetes.Clientset, string, error) {
 	}
 
 	if c.inCluster {
-		c.cs, c.nameSpace, err = k8sInClusterClient()
+		var ns string
+		c.cs, ns, err = k8sInClusterClient()
+		if c.nameSpace == "" {
+			c.nameSpace = ns
+		} else {
+			log.WithFields(log.Fields{
+				"target":  c.nameSpace,
+				"current": ns,
+			}).Info("work will be done in another namespace")
+		}
 	}
 
 	return c.cs, c.nameSpace, err
