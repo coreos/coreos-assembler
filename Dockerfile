@@ -7,8 +7,8 @@ WORKDIR /root/containerbuild
 # Only need a few of our scripts for the first few steps
 COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
 COPY ./build.sh /root/containerbuild/
-RUN ./build.sh configure_yum_repos # nocache 20210318
-RUN ./build.sh install_rpms
+RUN ./build.sh configure_yum_repos
+RUN ./build.sh install_rpms  # nocache 20210408
 
 # Ok copy in the rest of them for the next few steps
 COPY ./ /root/containerbuild/
