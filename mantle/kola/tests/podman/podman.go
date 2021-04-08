@@ -263,15 +263,13 @@ func podmanResources(c cluster.TestCluster) {
 		// why we use 128m for memory
 		pCmd("--memory=128m --memory-swap=128m"),
 		pCmd("--memory-reservation=10m"),
-		pCmd("--kernel-memory=10m"),
 		pCmd("--cpu-shares=100"),
 		pCmd("--cpu-period=1000"),
 		pCmd("--cpuset-cpus=0"),
 		pCmd("--cpuset-mems=0"),
 		pCmd("--cpu-quota=1000"),
 		pCmd("--blkio-weight=10"),
-		pCmd("--memory=128m --oom-kill-disable=true"),
-		pCmd("--memory-swappiness=50"),
+		pCmd("--memory=128m"),
 		pCmd("--shm-size=1m"),
 	} {
 		cmd := podmanCmd
