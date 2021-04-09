@@ -147,6 +147,16 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if directIgnition && ignition == "" {
 		return fmt.Errorf("Cannot use --ignition-direct without --ignition")
 	}
+	if len(ignitionFragments) > 0 && directIgnition {
+		return fmt.Errorf("Cannot use --add-ignition with --ignition-direct")
+	}
+	if len(bindro) > 0 && directIgnition {
+		return fmt.Errorf("Cannot use --bind-ro with --ignition-direct")
+	}
+	if len(bindrw) > 0 && directIgnition {
+		return fmt.Errorf("Cannot use --bind-rw with --ignition-direct")
+	}
+
 	if !directIgnition && ignition != "" {
 		buf, err := ioutil.ReadFile(ignition)
 		if err != nil {
@@ -170,9 +180,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(ignitionFragments) > 0 {
-		if directIgnition {
-			return fmt.Errorf("Cannot use --add-ignition with --ignition-direct")
-		}
 		ensureConfig()
 		err := renderFragments(ignitionFragments, config)
 		if err != nil {
@@ -183,9 +190,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder := platform.NewBuilder()
 	defer builder.Close()
 	for _, b := range bindro {
-		if directIgnition {
-			return fmt.Errorf("Cannot use --bind-ro with --ignition-direct")
-		}
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
 			return err
@@ -195,9 +199,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		config.Mount9p(dest, true)
 	}
 	for _, b := range bindrw {
-		if directIgnition {
-			return fmt.Errorf("Cannot use --bind-rw with --ignition-direct")
-		}
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
 			return err
@@ -268,7 +269,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 	if config != nil {
 		if directIgnition {
-			return fmt.Errorf("Cannot use --add-ignition, --bind-ro, or --bind-rw with --ignition-direct")
+			// this shouldn't happen since we ruled out cases which trigger parsing earlier
+			panic("--ignition-direct requested, but we have a parsed config")
 		}
 		builder.SetConfig(config)
 	} else if directIgnition {
