@@ -157,6 +157,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Cannot use --bind-rw with --ignition-direct")
 	}
 
+	builder := platform.NewBuilder()
+	defer builder.Close()
+
 	if !directIgnition && ignition != "" {
 		buf, err := ioutil.ReadFile(ignition)
 		if err != nil {
@@ -187,8 +190,6 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	builder := platform.NewBuilder()
-	defer builder.Close()
 	for _, b := range bindro {
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
