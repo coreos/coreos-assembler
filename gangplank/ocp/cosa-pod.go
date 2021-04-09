@@ -28,8 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/kubernetes/pkg/client/conditions"
 )
 
 const (
@@ -110,9 +110,6 @@ type cosaPod struct {
 	index     int
 	pod       *v1.Pod
 	terminate <-chan bool
-
-	kubeResultCh       func() <-chan watch.Event
-	kubeResultChCloser func()
 }
 
 // CosaPodder create COSA capable pods.
@@ -170,10 +167,10 @@ func NewCosaPodder(
 		}
 
 		if err := cp.addVolumesFromSecretLabels(); err != nil {
-			return nil, fmt.Errorf("failed to add secret volumes and mounts: %w", err)
+			log.WithError(err).Errorf("failed to add secret volumes and mounts")
 		}
 		if err := cp.addVolumesFromConfigMapLabels(); err != nil {
-			return nil, fmt.Errorf("failed to add configMap volumes and mountsi: %w", err)
+			log.WithError(err).Errorf("failed to add volumes from config maps")
 		}
 	}
 
@@ -271,39 +268,20 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 		return err
 	}
 	pod := cp.getPodSpec(envVars)
+	cp.pod = pod
+	cp.terminate = term
+	l := log.WithField("podname", pod.Name)
 
+	// start the pod
 	ac := cs.CoreV1()
 	resp, err := ac.Pods(ns).Create(pod)
 	if err != nil {
 		return fmt.Errorf("failed to create pod %s: %w", pod.Name, err)
 	}
 	log.Infof("Pod created: %s", pod.Name)
-	cp.pod = pod
 
-	status := resp.Status
-	w, err := ac.Pods(ns).Watch(
-		metav1.ListOptions{
-			Watch:           true,
-			ResourceVersion: resp.ResourceVersion,
-			FieldSelector:   fields.Set{"metadata.name": pod.Name}.AsSelector().String(),
-			LabelSelector:   labels.Everything().String(),
-			TimeoutSeconds:  ptrInt(7200), // set a hard timeout to 2hrs
-		},
-	)
-	if err != nil {
-		return err
-	}
-	// expose the Watch to other routines.
-	cp.kubeResultCh = w.ResultChan
-	cp.kubeResultChCloser = w.Stop
-
-	// open the terminate channel
-	cp.terminate = term
-
-	l := log.WithField("podname", pod.Name)
-
+	// Ensure that the pod is always deleted
 	defer func() {
-		l.Debug("Requesting termination of remaining contianers")
 		termOpts := &metav1.DeleteOptions{
 			// the default grace period on OCP 3.x is 5min and OCP 4.x is 1min
 			// If the pod is in an error state it will appear to be hang.
@@ -312,62 +290,112 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 		if err := ac.Pods(ns).Delete(pod.Name, termOpts); err != nil {
 			l.WithError(err).Error("Failed delete on pod, yolo.")
 		}
-		l.Debug("Pod work is returning to caller.")
 	}()
 
-	logStarted := false
-
-	// Block waiting for the pod to finish or timeout.
-	// HERE BE DEMOGORGRANS: in order for the termination logic to work, do
-	//      not put any blocking calls in the select.
-	for {
-		select {
-		// Watch the events channel to get the status of the pod.
-		case events, ok := <-cp.kubeResultCh():
-			if !ok {
-				l.Error("failed waitching pod")
-				return fmt.Errorf("orphaned pod")
+	watcher := func() <-chan error {
+		retCh := make(chan error)
+		go func() {
+			logStarted := false
+			watchOpts := metav1.ListOptions{
+				Watch:           true,
+				ResourceVersion: resp.ResourceVersion,
+				FieldSelector:   fields.Set{"metadata.name": pod.Name}.AsSelector().String(),
+				LabelSelector:   labels.Everything().String(),
+				TimeoutSeconds:  ptrInt(7200), // set a hard timeout to 2hrs
+			}
+			w, err := ac.Pods(ns).Watch(watchOpts)
+			if err != nil {
+				retCh <- err
+				return
 			}
 
-			resp = events.Object.(*v1.Pod)
-			status = resp.Status
+			defer func() {
+				w.Stop()
+			}()
 
-			l := log.WithFields(log.Fields{
-				"podname":           pod.Name,
-				"reason":            status.Reason,
-				"phase":             status.Phase,
-				"message":           status.Message,
-				"containers status": status.ContainerStatuses,
-			})
+			for {
+				events, resultsOk := <-w.ResultChan()
+				if !resultsOk {
+					l.Error("failed waitching pod")
+					retCh <- fmt.Errorf("orphaned pod")
+					return
+				}
 
-			// Check the _status_ of the pod
-			switch sp := status.Phase; sp {
-			case v1.PodRunning:
-				if !logStarted {
+				resp, ok := events.Object.(*v1.Pod)
+				if !ok {
+					retCh <- fmt.Errorf("pod failed")
+					return
+				}
+
+				status := resp.Status
+				l := log.WithFields(log.Fields{"phase": status.Phase})
+
+				// OCP 3 hack: conditions.PodRunning() does not return false
+				//             with OCP if the conditions show completed.
+				for _, v := range resp.Status.ContainerStatuses {
+					if v.State.Terminated != nil && v.State.Terminated.ExitCode > 0 {
+						retCh <- fmt.Errorf("container %s exited with code %d", pod.Name, v.State.Terminated.ExitCode)
+						return
+					}
+				}
+				for _, v := range resp.Status.Conditions {
+					if v.Reason == "PodCompleted" {
+						retCh <- nil
+						return
+					}
+				}
+
+				// Check for running
+				running, err := conditions.PodRunning(events)
+				if err != nil {
+					if err == conditions.ErrPodCompleted {
+						retCh <- nil
+						return
+					}
+					l.WithError(err).Error("Pod was deleted")
+					retCh <- err
+					return
+				} else if running && !logStarted {
 					if err := cp.streamPodLogs(); err != nil {
-						return err
+						retCh <- err
+						return
 					}
 					logStarted = true
 				}
-			case v1.PodFailed, v1.PodUnknown, v1.PodReasonUnschedulable:
-				l.Error("Pod failed")
-				return fmt.Errorf("pod is a failure in its life")
-			case v1.PodSucceeded:
-				l.Infof("Pod successfully completed")
-				return nil
-			case v1.PodPending:
-				l.Info("waiting...")
-			default:
-				l.Fatal("my logic has failed me")
-			}
 
-		// Ensure a dreadful and uncerimonious end to our job in case of
-		// a timeout or a termination.
-		case <-time.After(90 * time.Minute):
-			return fmt.Errorf("pod %s did not complete work in time", pod.Name)
-		case <-term:
-			return fmt.Errorf("pod %s was signalled to terminate by main process", pod.Name)
+				// A pod can be running and completed, so do this _last_
+				// in case the pod has completed
+				completed, err := conditions.PodCompleted(events)
+				if err != nil {
+					l.WithError(err).Error("Pod was deleted")
+					retCh <- err
+					return
+				} else if completed {
+					l.Info("Pod has completed")
+					retCh <- nil
+					return
+				}
+
+				l.WithFields(log.Fields{
+					"completed": completed,
+					"running":   running,
+				}).Info("waiting...")
+			}
+		}()
+		return retCh
+	}
+
+	// Block on either the watch function returning, timeout or cancellation.
+	select {
+	case err, ok := <-watcher():
+		if !ok {
+			return nil
 		}
+		return err
+	case <-time.After(90 * time.Minute):
+		return fmt.Errorf("pod %s did not complete work in time", pod.Name)
+	case <-term:
+		return fmt.Errorf("pod %s was signalled to terminate by main process", pod.Name)
 	}
 }
 
@@ -426,7 +454,6 @@ func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan er
 				l.WithError(err).Error("writeToWriters encountered an error")
 				outCh <- err
 			}
-			l.Debug("closed writer to logs")
 		}()
 
 		scanner := bufio.NewScanner(in)
@@ -450,10 +477,6 @@ func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan er
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return.
 func (cp *cosaPod) streamPodLogs() error {
-	if cp.kubeResultCh == nil {
-		return errors.New("result channel has not been opened")
-	}
-
 	for _, pC := range append(cp.pod.Spec.InitContainers, cp.pod.Spec.Containers...) {
 		container := pC.Name
 
@@ -481,7 +504,6 @@ func (cp *cosaPod) streamPodLogs() error {
 
 		// Watch the logs until the termination is singaled OR the logs stream fails.
 		go func() {
-
 			// the defer will ensure that writeToWriters errors and terminates
 			defer func() {
 				lerr := logf.Close()
@@ -501,16 +523,6 @@ func (cp *cosaPod) streamPodLogs() error {
 					if die || !ok {
 						return
 					}
-				case events, ok := <-cp.kubeResultCh():
-					if !ok {
-						return
-					}
-					resp := events.Object.(*v1.Pod)
-					status := resp.Status
-					if status.Phase != v1.PodRunning {
-						return
-					}
-					l.WithField("status", status.Phase).Debug("logging is waiting")
 				case err := <-writeToWriters(l, streamer, logf, newConsoleLogWriter(container)):
 					if err != nil {
 						l.WithError(err).Warn("error recieved from writer")

@@ -368,39 +368,47 @@ binary build interface.`)
 
 	// Terminate is used to tell all go-routines to end
 	terminate := make(chan bool)
-	defer func() {
-		if r := recover(); r != nil {
-			log.WithField("message", r).Warn("recovered from crash")
-		}
-		close(terminate)
-	}()
 
 	// Watch the channels for signals to terminate
+	errored := false
 	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+		sig := make(chan os.Signal, 256)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
+
+		term := func() {
+			defer func() {
+				recover() // nolint
+			}()
+			terminate <- true
+		}
 
 		for {
 			select {
 			case err, ok := <-errorCh:
-				if !ok {
-					return
-				}
 				if err != nil {
-					log.WithError(err).Error("Stage sent error")
+					if err != nil {
+						errored = true
+						log.WithError(err).Error("Stage sent error")
+						term()
+					}
+				}
+				if !ok {
 					return
 				}
 			case <-ctx.Done():
 				log.Warning("Received cancellation")
-				return
+				term()
 			case s := <-sig:
-				log.Errorf("Received signal %d", s)
-				return
+				log.Warningf("Received signal %s", s)
+				term()
 			case die, ok := <-terminate:
 				if !ok || die {
+					log.Debug("Watch go-routine finished")
 					return
 				}
 			}
+			// Let the channel settle
+			time.Sleep(1 * time.Second)
 		}
 	}()
 
@@ -409,7 +417,6 @@ binary build interface.`)
 	for _, idx := range order {
 		l := log.WithField("execution group", idx)
 		wg := &sync.WaitGroup{}
-		halt := ptrBool(false)
 		for _, v := range workerFuncs[idx] {
 			wg.Add(1)
 			go func() {
@@ -417,30 +424,26 @@ binary build interface.`)
 					wg.Done()
 					log.Debug("execution done")
 				}()
-				if err := v(terminate); err != nil {
-					log.WithError(err).Debug("execution for stage failed")
-					errorCh <- err
-					halt = ptrBool(true)
-				}
+				errorCh <- v(terminate)
 			}()
-			if *halt {
-				break
-			}
 		}
 		wg.Wait()
 		l.Debug("done with execution group")
-
-		if *halt {
-			break
-		}
 	}
+
+	close(terminate)
 
 	// Yeah, this is lazy...
 	args := []string{"find", "/srv/builds", "-type", "f"}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_ = cmd.Run()
+
+	if errored {
+		return fmt.Errorf("process failed")
+	}
+	return nil
 }
 
 func copyFile(src, dest string) error {
