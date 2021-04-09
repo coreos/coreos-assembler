@@ -471,6 +471,15 @@ func (builder *QemuBuilder) SetConfig(config *conf.Conf) {
 	builder.ignitionSet = true
 }
 
+// Small wrapper around ioutil.Tempfile() to avoid leaking our tempdir to
+// others.
+func (builder *QemuBuilder) TempFile(pattern string) (*os.File, error) {
+	if err := builder.ensureTempdir(); err != nil {
+		return nil, err
+	}
+	return ioutil.TempFile(builder.tempdir, pattern)
+}
+
 // renderIgnition lazily renders a parsed config if one is set
 func (builder *QemuBuilder) renderIgnition() error {
 	if !builder.ignitionSet || builder.ignitionRendered {
