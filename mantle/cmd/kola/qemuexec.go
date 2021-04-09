@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -48,6 +49,7 @@ var (
 
 	hostname string
 	ignition string
+	butane   string
 	kargs    string
 	knetargs string
 
@@ -79,6 +81,7 @@ func init() {
 	cmdQemuExec.Flags().BoolVar(&devshell, "devshell", false, "Enable development shell")
 	cmdQemuExec.Flags().BoolVarP(&devshellConsole, "devshell-console", "c", false, "Connect directly to serial console in devshell mode")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to Ignition config")
+	cmdQemuExec.Flags().StringVarP(&butane, "butane", "B", "", "Path to Butane config")
 	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
 	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
@@ -144,8 +147,11 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if directIgnition && ignition == "" {
-		return fmt.Errorf("Cannot use --ignition-direct without --ignition")
+	if ignition != "" && butane != "" {
+		return fmt.Errorf("Cannot use both --ignition and --butane")
+	}
+	if directIgnition && ignition == "" && butane == "" {
+		return fmt.Errorf("Cannot use --ignition-direct without --ignition or --butane")
 	}
 	if len(ignitionFragments) > 0 && directIgnition {
 		return fmt.Errorf("Cannot use --add-ignition with --ignition-direct")
@@ -159,6 +165,20 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	builder := platform.NewBuilder()
 	defer builder.Close()
+
+	if butane != "" {
+		tmpf, err := builder.TempFile("ignition")
+		if err != nil {
+			return err
+		}
+		defer tmpf.Close()
+		cmd := exec.Command("fcct", butane)
+		cmd.Stdout = tmpf
+		if err = cmd.Run(); err != nil {
+			return err
+		}
+		ignition = tmpf.Name()
+	}
 
 	if !directIgnition && ignition != "" {
 		buf, err := ioutil.ReadFile(ignition)
