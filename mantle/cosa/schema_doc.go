@@ -188,6 +188,7 @@ var generatedSchemaJSON = `{
    "gcp",
    "ibmcloud",
    "images",
+   "koji",
    "oscontainer",
    "extensions",
    "parent-pkgdiff",
@@ -236,6 +237,26 @@ var generatedSchemaJSON = `{
      "default":"",
      "minLength": 1
     },
+   "koji": {
+     "type": "object",
+         "properties": {
+           "build_id": {
+             "$id":"#/properties/kojiid",
+             "type":"number",
+             "title":"Koji Build ID"
+           },
+           "token": {
+             "$id":"#/properties/kojitoken",
+             "type":"string",
+             "title":"Koji Token"
+           },
+           "release": {
+             "$id":"#/properties/buildrelease",
+             "type":"string",
+             "title":"Build Release"
+           }
+         }
+   },
    "coreos-assembler.basearch": {
      "$id":"#/properties/coreos-assembler.basearch",
      "type":"string",

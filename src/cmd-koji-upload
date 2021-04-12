@@ -29,7 +29,7 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
 
-from cosalib.cmdlib import get_basearch
+from cosalib.cmdlib import get_basearch, load_json, write_json
 
 try:
     from cosalib.build import _Build
@@ -106,6 +106,7 @@ class Build(_Build):
         self.platform = "koji"
         # Use a tempdir in builds/ because we want to use large scratch space
         self._tmpdir = tempfile.mkdtemp(prefix="koji-build", dir="builds/")
+        self._state_file_tpl = self._tmpdir + "/cosa-cmd-koji-upload-{name}-{version}-{release}"
         kwargs.update({
             "require_commit": True,
             "require_cosa": True,
@@ -333,7 +334,103 @@ def kinit(keytab, principle):
         raise Exception("failed to auth: ", err)
 
 
-class Upload():
+class _KojiBase():
+    """
+    Base class for classes requiring the ability to perform operations
+    in Koji.
+    """
+
+    def __init__(self, profile):
+        """
+        Creates a new instance of the _KojiBase.
+
+        :param profile: Koji profile name in /etc/koji.conf.d
+        :type str
+        """
+        self._session = None
+        self._profile = profile
+
+    @property
+    def session(self):
+        """
+        Return an authenticated Koji session
+        """
+        if self._session is not None:
+            return self._session
+
+        mykoji = koji.get_profile_module(self._profile)
+        opts = mykoji.grab_session_options(mykoji.config)
+        session = mykoji.ClientSession(mykoji.config.server, opts)
+
+        try:
+            klib.activate_session(session, mykoji.config)
+            assert session.logged_in
+            log.info("logged into koji server")
+        except Exception as e:
+            raise Exception(f"failed to authenticate to koji: {e}")
+
+        if session is None:
+            raise Exception("failed to get session from koji server")
+
+        self._session = session
+        return session
+
+
+class Reserve(_KojiBase):
+    """
+    Reserves a place in Koji for later archival.
+    """
+
+    def __init__(self, profile):
+        """
+        Creates a new instance for reservation.
+
+        :param profile: Koji profile name in /etc/koji.conf.d
+        :type str
+        """
+        super().__init__(profile)
+
+    def reserve_id(self, build, create_file=None):
+        """
+        Reserves a koji id for use during upload. This must be called
+        after build a meta.json is available for review.
+
+        See: https://docs.pagure.org/koji/content_generators/#api
+        """
+        log.debug("reserving a unique koji id")
+
+        release = datetime.datetime.utcnow().strftime("%H%M%S")
+
+        data = {
+            "name": build.build_name,
+            "release": release,
+            "version": f"{build.build_id.replace('-', '.')}",
+            "cg": "coreos-assembler",
+        }
+
+        log.debug(f"reserve payload {data}")
+        koji_reservation = self.session.CGInitBuild(data['cg'], data)
+
+        if create_file is not None:
+            state_file = build._state_file_tpl.format(
+                name=data['name'],
+                version=data['version'],
+                release=data['release'],
+                build_id=koji_reservation['build_id'],
+                token=koji_reservation['token'])
+            write_json(state_file, (data, koji_reservation))
+            log.info(f"reserve data written to {state_file}")
+            return state_file
+
+        build.meta['koji'] = {
+            'build_id': koji_reservation['build_id'],
+            'token': koji_reservation['token'],
+            'release': release
+        }
+        build.meta_write()
+
+
+class Upload(_KojiBase):
     """ Upload generates the manifest for a build and uploads to a
         Koji Server. Upload treats each instance as a separate build; multiple
         innovations of the Upload should be separate instances.
@@ -357,14 +454,19 @@ class Upload():
         upload is likely to be succeed. We want to fail early in-case there is
         missing required information.
         """
+        super().__init__(profile)
         self._build = in_build
+        self._build_id = None
         self._manifest = None
         self._owner = owner.split('@')[0]
-        self._profile = profile
+        self._token = None
         self._remote_directory = None
         self._session = None
         self._tag = tag
         self._image_files = None
+        self._release = None
+        self._reserve_id_file = None
+        self._retry_attempts = 2
         self._uploaded = False
 
         if self._tag is None:
@@ -456,16 +558,47 @@ class Upload():
         if self._manifest is not None:
             return self._manifest
 
-        source = self.build.get_meta_key(
-            "meta", self.build.ckey("container-config-git"))
-
         now = datetime.datetime.utcnow()
         stamp = now.strftime("%s")
+        self.release = now.strftime("%H%M%S")
+
+        """
+        Koji has a couple of checks to ensure the reservation data (build_Id, release, name
+        and version) that is passed in the build import matchs with the build data.
+        For our case, the release data is done using time (“%H%M%S”), it always to be a mismatch
+        with the release time created for the build.
+        Let's just replace the build_id and the release here, and let the further checks for Koji.
+        """
+        if self._reserve_id_file is not None:
+            if os.path.isfile(self._reserve_id_file):
+                log.debug(f"loading reservation data from state file {self._reserve_id_file}")
+                data = load_json(self._reserve_id_file)
+                self._build_id = data[1]['build_id']
+                self._release = data[0]['release']
+                self._token = data[1]["token"]
+
+                self.build.meta['koji'] = {
+                    'build_id': self._build_id
+                }
+                self.build.meta_write()
+        else:
+            try:
+                if self.build.meta['koji']['build_id'] is not None:
+                    log.debug(f"loading reservation data from {self.build.meta['koji']}")
+                    self._build_id = self.build.meta['koji']['build_id']
+                    self._release = self.build.meta['koji']['release']
+                    self._token = self.build.meta['koji']['token']
+            except:
+                pass
+
+        source = self.build.get_meta_key(
+            "meta", self.build.ckey("container-config-git"))
 
         log.debug(f"Preparing manifest for {(len(self.image_files))} files")
         self._manifest = {
             "metadata_version": 0,
             "build": {
+                "build_id": self._build_id,
                 "end_time": stamp,
                 "extra": {
                     "typeinfo": {
@@ -475,7 +608,7 @@ class Upload():
                     }
                 },
                 "name": self.build.build_name,
-                "release": now.strftime("%H%M%S"),
+                "release": self._release,
                 "owner": self._owner,
                 "source": source['origin'],
                 "start_time": stamp,
@@ -520,33 +653,8 @@ class Upload():
             }],
             "output": self.image_files
         }
+
         return self._manifest
-
-    @property
-    def session(self):
-        """
-        Return an authenticated Koji session
-        """
-
-        if self._session is not None:
-            return self._session
-
-        mykoji = koji.get_profile_module(self._profile)
-        opts = mykoji.grab_session_options(mykoji.config)
-        session = mykoji.ClientSession(mykoji.config.server, opts)
-
-        try:
-            klib.activate_session(session, mykoji.config)
-            assert session.logged_in
-            log.info("logged into koji server")
-        except Exception as e:
-            raise Exception(f"failed to authenticate to koji: {e}")
-
-        if session is None:
-            raise Exception("failed to get session from koji server")
-
-        self._session = session
-        return session
 
     def verify_tag(self, tag):
         """ Verify that a tag exists in this Koji instance """
@@ -579,7 +687,19 @@ class Upload():
 
         self._uploaded = True
         self._remote_directory = serverdir
-        cginfo = self.session.CGImport(self.manifest, serverdir)
+
+        """ If the final Import fails retry it """
+        for attempt in range(0, self._retry_attempts):
+            try:
+                cginfo = self.session.CGImport(self.manifest, serverdir, token=self._token)
+            except Exception as e:
+                if attempt < self._retry_attempts - 1:
+                    continue
+                else:
+                    print(e)
+                    sys.exit()
+            break
+
         log.info(json.dumps(cginfo, sort_keys=True, indent=3))
         log.info(f"recorded build {cginfo['nvr']}")
         return cginfo
@@ -588,11 +708,13 @@ class Upload():
 def cli():
     """ cli implements command-line innovation """
 
-    parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser()
+    parent_parser = argparse.ArgumentParser(
         prog="CoreOS Assembler Koji Uploader",
         description='Archive build artifacts, logs, and metadata in Koji.',
         usage="""
-Upload a CoreOS Assembler (COSA) created Build to a Koji Server.
+Reserve an id and upload a CoreOS Assembler (COSA) created Build to
+a Koji Server.
 
 Note: the typical use case for this program is in an automated fashion, and
 running from within the COSA container yourself. Unless you are debugging COSA,
@@ -603,12 +725,16 @@ To use this program, you will need:
     2) A Keytab file with your Kerberos Credentials
     3) A completed build.
 
-Example:
-    $ cmd-koji-upload \
-        --buildroot=/src/build \
+Examples:
+    $ cmd-koji-upload reserve-id \
+        --keytab keytab \
+        --profile koji \
+        --name rhcos \
+
+    $ cmd-koji-upload upload \
+        --reserve-id \
         --keytab keytab \
         --owner me@FEDORA.COM \
-        --tag rhaos-4.1-rhel-8-build \
         --profile koji
 
 Environment variables are supported:
@@ -618,56 +744,100 @@ Environment variables are supported:
     - KEYTAB will set the location for the keytab file"""
     )
 
-    parser.add_argument("--log-level",
+    parent_parser.add_argument("--log-level",
                         default=os.environ.get("COSA_LOG_LEVEL", "info"),
                         choices=["warn", "error", "debug", "info"],
                         help="Set the log level")
 
     # Options for finding the build.
-    parser.add_argument("--build", default="latest",
+    parent_parser.add_argument("--build", default="latest",
                         help="Override build id, defaults to latest")
-    parser.add_argument("--buildroot", default="builds",
+    parent_parser.add_argument("--buildroot", default="builds",
                         help="Build diretory")
-    parser.add_argument("--dump", default=False, action='store_true',
+    parent_parser.add_argument("--dump", default=False, action='store_true',
                         help="Dump the manfiest and exit")
-    parser.add_argument("--no-upload", default=False, action='store_true',
+    parent_parser.add_argument("--no-upload", default=False, action='store_true',
                         help="Do not upload, just parse the build")
-    parser.add_argument("--arch", default=get_basearch(),
+    parent_parser.add_argument("--arch", default=get_basearch(),
                         help="Set the build architecture")
 
     # Koji specific options
-    parser.add_argument("--no-auth", action='store_false', dest="auth",
+    parent_parser.add_argument("--no-auth", action='store_false', dest="auth",
                         help="Skip Kerberos auth, use if already auth'd")
-    parser.add_argument("--keytab",
+    parent_parser.add_argument("--keytab",
                         default=os.environ.get("KOJI_KEYTAB", None),
                         help="location of the keytab file to use for auth")
-    parser.add_argument('--owner', required=True,
+    parent_parser.add_argument('--owner', required=False,
                         default=os.environ.get("KOJI_USERNAME", None),
                         help='koji user name that owns this build')
-    parser.add_argument('--tag', required=True,
-                        default=os.environ.get("KOJI_TAG", None),
-                        help='tag this build, eg. awesome-candidate')
-    parser.add_argument('--profile', required=True,
+    # REQUIRED for session
+    parent_parser.add_argument('--profile', required=False,
                         default=os.environ.get("KOJI_PROFILE", None),
                         help='profile to use, e.g. prod, stage, test')
-    args = parser.parse_args()
 
+    sub_commands = parser.add_subparsers(
+        dest="_command",
+        help="Other commands")
+
+    upload_cmd = sub_commands.add_parser(
+        "upload", help="Uploads to koji", parents=[parent_parser], add_help=False)
+
+    sub_commands.add_parser(
+        "reserve-id", help="Reserves a koji id", parents=[parent_parser], add_help=False)
+
+    upload_cmd.add_argument(
+        '--tag', required=True,
+        default=os.environ.get("KOJI_TAG", None),
+        help='tag this build, eg. awesome-candidate')
+
+    upload_cmd.add_argument(
+        '--retry-attempts', required=False,
+        help='If the upload fails retry it n times')
+
+    upload_cmd.add_argument(
+        '--reserve-id', required=False, action='store_true',
+        help='Creates a reservation ID in the upload process')
+
+    upload_cmd.add_argument(
+        '--reserve-id-state-file', required=False,
+        help='Uses the path for a reservation file previous created')
+
+    args, extra_args = parser.parse_known_args()
     set_logger(args.log_level)
 
+    if args._command is None:
+        sys.argv.insert(3, 'upload')
+        log.warning(
+            f'Calling {sys.argv[0]} a subcommand is deprecated. Please update'
+            ' your command call with a subcommand. Defaulting to "upload"'
+            ' for subcommandless run.')
+
+    args = parser.parse_args(namespace=args)
+
     build = Build(buildroot=args.buildroot, build=args.build, arch=args.arch)
+
     if args.auth:
         kinit(args.keytab, args.owner)
 
-    build.build_artifacts()
-    upload = Upload(build, args.owner, args.tag, args.profile)
-    if args.dump:
-        print((json.dumps(upload.manifest, sort_keys=True, indent=3)))
-        return
+    if args._command == 'upload':
 
-    if args.no_upload is False:
         upload = Upload(build, args.owner, args.tag, args.profile)
 
-    upload.upload()
+        if args.dump:
+            print((json.dumps(upload.manifest, sort_keys=True, indent=3)))
+            return
+        if args.no_upload is False:
+            upload = Upload(build, args.owner, args.tag, args.profile)
+        if args.retry_attempts:
+            upload._retry_attempts = int(args.retry_attempts)
+        if args.reserve_id:
+            Reserve(args.profile).reserve_id(build)
+        if args.reserve_id_state_file:
+            upload._reserve_id_file = args.reserve_id_state_file
+        build.build_artifacts()
+        upload.upload()
+    elif args._command == 'reserve-id':
+        return Reserve(args.profile).reserve_id(build, "create_file")
 
 
 if __name__ == '__main__':
