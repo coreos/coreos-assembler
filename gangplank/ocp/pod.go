@@ -12,7 +12,6 @@ import (
 	"github.com/coreos/gangplank/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -140,7 +139,7 @@ func (pb *podBuild) setInCluster() error {
 	// Discover where this running
 	hostname, ok := os.LookupEnv("HOSTNAME")
 	if !ok {
-		return errors.New("Unable to find hostname")
+		return errors.New("unable to find hostname")
 	}
 	pb.hostname = hostname
 
@@ -220,7 +219,7 @@ func (pb *podBuild) generateAPIBuild() error {
 	a.Spec.ServiceAccount = pb.serviceAccount
 	a.Spec.Strategy = buildapiv1.BuildStrategy{}
 	a.Spec.Strategy.CustomStrategy = new(buildapiv1.CustomBuildStrategy)
-	a.Spec.Strategy.CustomStrategy.From = corev1.ObjectReference{
+	a.Spec.Strategy.CustomStrategy.From = v1.ObjectReference{
 		Name: pb.image,
 	}
 	a.Spec.Source = buildapiv1.BuildSource{

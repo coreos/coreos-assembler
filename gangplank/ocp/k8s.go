@@ -152,7 +152,7 @@ func k8sInClusterClient() (*kubernetes.Clientset, string, error) {
 
 	pname, err := ioutil.ReadFile(clusterNamespaceFile)
 	if err != nil {
-		return nil, "", fmt.Errorf("Failed determining the current namespace: %v", err)
+		return nil, "", fmt.Errorf("failed determining the current namespace: %v", err)
 	}
 	pn := string(pname)
 

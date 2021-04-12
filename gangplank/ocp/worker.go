@@ -45,11 +45,11 @@ func newWorkSpec(ctx ClusterContext) (*workSpec, error) {
 		return nil, err
 	}
 	if _, err := os.Stat(cosaSrvDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Context dir %q does not exist", cosaSrvDir)
+		return nil, fmt.Errorf("context dir %q does not exist", cosaSrvDir)
 	}
 
 	if err := os.Chdir(cosaSrvDir); err != nil {
-		return nil, fmt.Errorf("Failed to switch to context dir: %s: %v", cosaSrvDir, err)
+		return nil, fmt.Errorf("failed to switch to context dir: %s: %v", cosaSrvDir, err)
 	}
 
 	log.Info("Running as a worker pod")
