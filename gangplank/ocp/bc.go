@@ -31,14 +31,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	// srvBucket is the name of the bucket to use for remote
-	// files being served up
-	srvBucket = "source"
+// srvBucket is the name of the bucket to use for remote
+// files being served up
+var srvBucket = "source"
 
-	// buildConfig is a builder.
-	_ Builder = &buildConfig{}
-)
+// buildConfig is a builder.
+var _ Builder = &buildConfig{}
+
+// stageDependencyTimeOut is the length of time to wait for a stage's dependencies.
+var stageDependencyTimeOut = 1 * time.Hour
 
 func init() {
 	buildJSONCodec = buildCodecFactory.LegacyCodec(buildapiv1.SchemeGroupVersion)
@@ -114,11 +115,11 @@ func newBC(ctx context.Context, c *Cluster) (*buildConfig, error) {
 	}
 
 	if _, err := os.Stat(cosaSrvDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Context dir %q does not exist", cosaSrvDir)
+		return nil, fmt.Errorf("context dir %q does not exist", cosaSrvDir)
 	}
 
 	if err := os.Chdir(cosaSrvDir); err != nil {
-		return nil, fmt.Errorf("Failed to switch to context dir: %s: %v", cosaSrvDir, err)
+		return nil, fmt.Errorf("failed to switch to context dir: %s: %v", cosaSrvDir, err)
 	}
 
 	// Locate the jobspec from local input OR from a remote repo.
@@ -315,7 +316,7 @@ binary build interface.`)
 			select {
 			case <-terminate:
 				return errors.New("terminate signal recieved, aborting stage")
-			case <-time.After(60 * time.Minute):
+			case <-time.After(stageDependencyTimeOut):
 				return errors.New("required artifacts never appeared")
 			case ok := <-ready(ws, terminate):
 				if !ok {
@@ -419,13 +420,13 @@ binary build interface.`)
 		wg := &sync.WaitGroup{}
 		for _, v := range workerFuncs[idx] {
 			wg.Add(1)
-			go func() {
+			go func(v workFunction) {
 				defer func() {
 					wg.Done()
 					log.Debug("execution done")
 				}()
 				errorCh <- v(terminate)
-			}()
+			}(v)
 		}
 		wg.Wait()
 		l.Debug("done with execution group")

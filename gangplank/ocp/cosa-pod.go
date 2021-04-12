@@ -96,6 +96,9 @@ var (
 	}
 )
 
+// podTimeOut is the lenght of time to wait for a pod to complete its work.
+var podTimeOut = 90 * time.Minute
+
 // cosaPod is a COSA pod
 type cosaPod struct {
 	apiBuild   *buildapiv1.Build
@@ -392,7 +395,7 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 			return nil
 		}
 		return err
-	case <-time.After(90 * time.Minute):
+	case <-time.After(podTimeOut):
 		return fmt.Errorf("pod %s did not complete work in time", pod.Name)
 	case <-term:
 		return fmt.Errorf("pod %s was signalled to terminate by main process", pod.Name)
