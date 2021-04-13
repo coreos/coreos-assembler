@@ -15,14 +15,18 @@
 package misc
 
 import (
+	"encoding/base64"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/util"
 )
 
@@ -45,6 +49,15 @@ func init() {
 		Name:             "coreos.network.initramfs.second-boot",
 		ExcludePlatforms: []string{"do"},
 		ExcludeDistros:   []string{"fcos", "rhcos"},
+	})
+	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
+	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.
+	register.RegisterTest(&register.Test{
+		Run:         NetworkSecondaryNics,
+		ClusterSize: 0,
+		Name:        "rhcos.network.multipleNics",
+		Distros:     []string{"rhcos"},
+		Platforms:   []string{"qemu-unpriv"},
 	})
 }
 
@@ -171,4 +184,248 @@ func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 	if lines[0] != "Reached target Switch Root." {
 		c.Fatal("networkd started in initramfs")
 	}
+}
+
+var (
+	defaultLinkConfig = `[Link]
+          NamePolicy=mac
+          MACAddressPolicy=persistent
+`
+
+	dhcpConfig = `[main]
+          dhcp=dhclient
+`
+
+	captureMacsScript = `#!/usr/bin/env bash
+          set -ex
+          echo "Processing MAC addresses"
+          cmdline=( $(</proc/cmdline) )
+          karg() {
+              local name="$1" value="${2:-}"
+              for arg in "${cmdline[@]}"; do
+                  if [[ "${arg%%=*}" == "${name}" ]]; then
+                      value="${arg#*=}"
+                  fi
+              done
+              echo "${value}"
+          }
+          udevadm settle
+          macs="$(karg macAddressList)"
+          if [[ -z $macs ]]; then
+            echo "No MAC addresses specified."
+            exit 1
+          fi
+          export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
+          export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
+          mount "/dev/disk/by-label/boot" /var/mnt
+          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /var/mnt/mac_addresses
+          umount /var/mnt
+	`
+
+	setupOvsScript = `#!/usr/bin/env bash
+          set -ex
+          if [[ ! -f /boot/mac_addresses ]] ; then
+            echo "no mac address configuration file found .. skipping setup-ovs"
+            exit 0
+          fi
+          
+          if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
+            echo "configure ovs bonding"
+            primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
+            secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
+            
+            default_device=""
+            secondary_device=""
+            profile_name=""
+            secondary_profile_name=""
+            
+            
+            for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
+              dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
+              case $dev_mac in
+                $primary_mac)
+                  default_device=$dev
+                  profile_name=$(nmcli -g GENERAL.CONNECTION dev show $dev)
+                  ;;
+                $secondary_mac)
+                  secondary_device=$dev
+                  secondary_profile_name=$(nmcli -g GENERAL.CONNECTION dev show $dev)
+                  ;;
+                *)
+                  ;;
+               esac
+            done
+            echo -e "default dev: $default_device ($profile_name)\nsecondary dev: $secondary_device ($secondary_profile_name)"
+            
+            mac=$(sudo nmcli -g GENERAL.HWADDR dev show $default_device | sed -e 's/\\//g')
+          
+            # delete old bridge if it exists
+            ovs-vsctl --if-exists del-br brcnv
+            
+            # make bridge
+            nmcli conn add type ovs-bridge conn.interface brcnv
+            nmcli conn add type ovs-port conn.interface brcnv-port master brcnv
+            nmcli conn add type ovs-interface \
+                           conn.id brcnv-iface \
+                           conn.interface brcnv master brcnv-port \
+                           ipv4.method auto \
+                           ipv4.dhcp-client-id "mac" \
+                           connection.autoconnect no \
+                           802-3-ethernet.cloned-mac-address $mac
+  
+            # make bond
+            nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb
+            nmcli conn add type ethernet conn.interface $default_device master bond0
+            nmcli conn add type ethernet conn.interface $secondary_device master bond0
+            nmcli conn down "$profile_name" || true
+            nmcli conn mod "$profile_name" connection.autoconnect no || true
+            nmcli conn down "$secondary_profile_name" || true
+            nmcli conn mod "$secondary_profile_name" connection.autoconnect no || true
+            if ! nmcli conn up brcnv-iface; then
+                nmcli conn up "$profile_name" || true
+                nmcli conn mod "$profile_name" connection.autoconnect yes
+                nmcli conn up "$secondary_profile_name" || true
+                nmcli conn mod "$secondary_profile_name" connection.autoconnect yes
+                nmcli c delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
+            else
+                nmcli conn mod brcnv-iface connection.autoconnect yes
+            fi
+          else
+              echo "ovs bridge already present"
+          fi
+`
+)
+
+// NetworkSecondaryNics verifies that secondary NICs are created on the node
+func NetworkSecondaryNics(c cluster.TestCluster) {
+	primaryMac := "52:55:00:d1:56:00"
+	secondaryMac := "52:55:00:d1:56:01"
+
+	setupMultipleNetworkTest(c, primaryMac, secondaryMac)
+
+	checkOvsBridge(c, primaryMac)
+}
+
+func checkOvsBridge(c cluster.TestCluster, setPrimaryMac string) {
+	var err error
+	machineIdx := 0
+
+	ovsBridgeName := "brcnv-iface"
+	bondInterfaceMACAddress, err := getBondIfaceMAC(c, machineIdx, ovsBridgeName)
+	if err != nil {
+		c.Fatalf("failed to fetch bond MAC Address: %v", err)
+	}
+
+	// check bond interface got the primary MAC
+	if bondInterfaceMACAddress != setPrimaryMac {
+		c.Fatalf("ovs-bridge %s primary MAC %s does not match expected IP", ovsBridgeName, bondInterfaceMACAddress, setPrimaryMac)
+	}
+}
+
+func getBondIfaceMAC(c cluster.TestCluster, machineIdx int, interfaceName string) (string, error) {
+	m := c.Machines()[machineIdx]
+
+	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g 802-3-ethernet.cloned-mac-address connection show %s", interfaceName)))
+	output = strings.Replace(output, "\\:", ":", -1)
+
+	var macAddress net.HardwareAddr
+	var err error
+	if macAddress, err = net.ParseMAC(output); err != nil {
+		return "", fmt.Errorf("failed to parse MAC address %v for interface Name %s: %v", output, interfaceName, err)
+	}
+
+	return macAddress.String(), nil
+}
+
+func addKernelArgs(c cluster.TestCluster, m platform.Machine, args []string) {
+	if len(args) == 0 {
+		return
+	}
+
+	rpmOstreeCommand := "sudo rpm-ostree kargs"
+	for _, arg := range args {
+		rpmOstreeCommand = fmt.Sprintf("%s --append %s", rpmOstreeCommand, arg)
+	}
+
+	c.MustSSH(m, rpmOstreeCommand)
+
+	err := m.Reboot()
+	if err != nil {
+		c.Fatalf("failed to reboot the machine: %v", err)
+	}
+}
+
+func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac string) {
+	var m platform.Machine
+	var err error
+
+	options := platform.QemuMachineOptions{
+		SecondaryNics: 2,
+	}
+
+	var userdata *conf.UserData = conf.Ignition(fmt.Sprintf(`{
+		"ignition": {
+			"version": "3.2.0"
+		},
+		"storage": {
+			"files": [
+				{
+					"path": "/etc/systemd/network/99-default.link",
+					"contents": { "source": "data:text/plain;base64,%s" },
+					"mode": 420
+				},
+				{
+					"path": "/etc/NetworkManager/conf.d/10-dhcp-config.conf",
+					"contents": { "source": "data:text/plain;base64,%s" },
+					"mode": 420
+				},
+				{
+					"path": "/usr/local/bin/capture-macs",
+					"contents": { "source": "data:text/plain;base64,%s" },
+					"mode": 755
+				},
+				{
+					"path": "/usr/local/bin/setup-ovs",
+					"contents": { "source": "data:text/plain;base64,%s" },
+					"mode": 755
+				}
+			]
+		},
+		"systemd": {
+			"units": [
+				{
+					"enabled": true,
+					"name": "openvswitch.service"
+				},
+				{
+					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nAfter=network-online.target\nAfter=openvswitch.service\nConditionKernelCommandLine=macAddressList\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"enabled": true,
+					"name": "capture-macs.service"
+				},
+				{
+					"contents": "[Unit]\nDescription=Setup OVS bonding\nAfter=capture-macs.service\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/setup-ovs\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"enabled": true,
+					"name": "setup-ovs.service"
+				}
+
+			]
+		}
+	}`, base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)), base64.StdEncoding.EncodeToString([]byte(dhcpConfig)), base64.StdEncoding.EncodeToString([]byte(captureMacsScript)), base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
+
+	switch pc := c.Cluster.(type) {
+	// These cases have to be separated because when put together to the same case statement
+	// the golang compiler no longer checks that the individual types in the case have the
+	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
+	// does which fails
+	case *unprivqemu.Cluster:
+		m, err = pc.NewMachineWithQemuOptions(userdata, options)
+	default:
+		panic("unreachable")
+	}
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	// Add karg needed for the ignition to configure the network properly.
+	addKernelArgs(c, m, []string{fmt.Sprintf("macAddressList=%s,%s", primaryMac, secondaryMac)})
 }
