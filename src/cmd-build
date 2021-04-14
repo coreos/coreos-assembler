@@ -282,6 +282,14 @@ strip_out_lockfile_digests "$lockfile_out".tmp
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
     commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
+    if test -n "${COSA_IMA_KEY:-}"; then
+        echo Running rpm-ostree ima-sign with key ${COSA_IMA_KEY}
+        sudo rpm-ostree ima-sign --repo=${workdir}/tmp/repo --ref=${commit} --write-ref=tmp-ima --key=${COSA_IMA_KEY}
+        commit=$(ostree --repo=${workdir}/tmp/repo rev-parse tmp-ima)
+        ostree --repo=${workdir}/tmp/repo refs --delete tmp-ima
+        (cat "${composejson}" && echo '{ "ostree-commit": "'${commit}'"}') | jq -s add > tmp/newcompose.json
+        mv -f tmp/newcompose.json "${composejson}"
+    fi
     # Clean up prior versions
     rm -f "${workdir}"/tmp/compose-*.json
     # Save this in case the image build fails
