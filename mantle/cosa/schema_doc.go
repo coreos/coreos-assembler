@@ -152,6 +152,15 @@ var generatedSchemaJSON = `{
          "default":"",
          "minLength": 1
         }
+      },
+     "advisory-items": {
+       "type":"array",
+       "title":"Advisory diff",
+       "items": {
+         "$id":"#/advisory-diff/items/item",
+         "title":"Items",
+         "default":""
+        }
       }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
@@ -183,6 +192,8 @@ var generatedSchemaJSON = `{
    "extensions",
    "parent-pkgdiff",
    "pkgdiff",
+   "parent-advisories-diff",
+   "advisories-diff",
    "release-payload",
 
    "coreos-assembler.basearch",
@@ -632,6 +643,18 @@ var generatedSchemaJSON = `{
      "type":"array",
      "title":"pkgdiff against parent",
      "$ref": "#/definitions/pkg-items"
+    },
+   "advisories-diff": {
+     "$id":"#/properties/advisories-diff",
+     "type":"array",
+     "title":"advisory diff between builds",
+     "$ref": "#/definitions/advisory-items"
+    },
+   "parent-advisories-diff": {
+     "$id":"#/properties/parent-advisory-diff",
+     "type":"array",
+     "title":"advisory diff against parent",
+     "$ref": "#/definitions/advisory-items"
     },
    "rpm-ostree-inputhash": {
      "$id":"#/properties/rpm-ostree-inputhash",
