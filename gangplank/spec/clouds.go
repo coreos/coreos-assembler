@@ -58,7 +58,7 @@ type Aws struct {
 	AmiPath           string   `yaml:"ami_path,omitempty" json:"ami_path,omitempty"`
 	Geo               string   `yaml:"geo,omitempty" json:"geo,omitempty"`
 	GrantUser         []string `yaml:"grant_user,omitempty" json:"grant_user,omitempty"`
-	GrantUserSnapshot []string `yaml:"grant_user_snapshot,omitempty" json:grant_user_snapshot,omitempty"`
+	GrantUserSnapshot []string `yaml:"grant_user_snapshot,omitempty" json:"grant_user_snapshot,omitempty"`
 	Public            bool     `yaml:"public,omitempty" json:"public,omitempty"`
 	Regions           []string `yaml:"regions,omitempty" json:"regions,omitempty"`
 }
@@ -66,7 +66,7 @@ type Aws struct {
 // GetPublishCommand returns the cosa upload command for Aws
 func (a *Aws) GetPublishCommand(buildID string) (string, error) {
 	if buildID == "" {
-		return "", fmt.Errorf("No build provided")
+		return "", fmt.Errorf("no build provided")
 	}
 
 	if !a.Enabled {
@@ -118,7 +118,7 @@ type Azure struct {
 // GetPublishCommand returns the cosa upload command for Azure
 func (a *Azure) GetPublishCommand(buildID string) (string, error) {
 	if buildID == "" {
-		return "", fmt.Errorf("No build provided")
+		return "", fmt.Errorf("no build provided")
 	}
 
 	if !a.Enabled {
@@ -128,9 +128,9 @@ func (a *Azure) GetPublishCommand(buildID string) (string, error) {
 	baseCmd := "coreos-assembler buildextend-azure"
 	args := []string{"--upload",
 		fmt.Sprintf("--build %s", buildID),
-		fmt.Sprintf("--auth $AZURE_CONFIG"),
+		"--auth $AZURE_CONFIG",
 		fmt.Sprintf("--container %s", a.StorageContainer),
-		fmt.Sprintf("--profile $AZURE_PROFILE"),
+		"--profile $AZURE_PROFILE",
 		fmt.Sprintf("--resource-group %s", a.ResourceGroup),
 		fmt.Sprintf("--storage-account %s", a.StorageAccount)}
 
@@ -171,7 +171,7 @@ type Gcp struct {
 // GetPublishCommand returns the cosa upload command for GCP
 func (g *Gcp) GetPublishCommand(buildID string) (string, error) {
 	if buildID == "" {
-		return "", fmt.Errorf("No build provided")
+		return "", fmt.Errorf("no build provided")
 	}
 
 	if !g.Enabled {
@@ -183,7 +183,7 @@ func (g *Gcp) GetPublishCommand(buildID string) (string, error) {
 		fmt.Sprintf("--build %s", buildID),
 		fmt.Sprintf("--project %s", g.Project),
 		fmt.Sprintf("--bucket gs://%s", g.Bucket),
-		fmt.Sprintf("--json $GCP_IMAGE_UPLOAD_CONFIG")}
+		"--json $GCP_IMAGE_UPLOAD_CONFIG"}
 
 	if g.Public {
 		args = append(args, "--public")
