@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -124,6 +125,23 @@ func NewPodBuilder(ctx ClusterContext, image, serviceAccount, workDir string, js
 	return pb, nil
 }
 
+// getNetIP gets the IPV4 address of a pod when the pod's service account lacks
+// permissions to obtain its own IP address.
+func getNetIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", errors.New("unable to determine IP address")
+}
+
 // setInCluster does the nessasary setup for unbounded builder running as
 // an in-cluster build.
 func (pb *podBuild) setInCluster() error {
@@ -152,7 +170,10 @@ func (pb *podBuild) setInCluster() error {
 
 	myIP, err := getPodIP(ac, pn, hostname)
 	if err != nil {
-		return fmt.Errorf("failed to query my hostname: %w", err)
+		log.WithError(err).Error("failed to query my hostname")
+		if myIP, err := getNetIP(); err != nil {
+			log.WithField("ip4", myIP).Info("Using discovered IP address")
+		}
 	}
 	pb.ipaddr = myIP
 
