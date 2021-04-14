@@ -326,19 +326,19 @@ fi
 
 if [ -n "${previous_build}" ]; then
     # do it once for the terminal
-    rpm-ostree --repo="${tmprepo}" db diff "${previous_commit}" "${commit}"
-    # and once more for the metadata, but only keep the pkgdiff key
-    rpm-ostree --repo="${tmprepo}" db diff --format=json \
+    rpm-ostree --repo="${tmprepo}" db diff --advisories "${previous_commit}" "${commit}"
+    # and once more for the metadata, but only keep the pkgdiff and advisories keys
+    rpm-ostree --repo="${tmprepo}" db diff --advisories --format=json \
             "${previous_commit}" "${commit}" | \
-        jq '{pkgdiff: .pkgdiff}' > tmp/diff.json
+        jq '{"pkgdiff": .pkgdiff, "advisories-diff": .advisories}' > tmp/diff.json
 else
     echo '{}' > tmp/diff.json
 fi
 
 if [ -n "${PARENT_BUILD}" ] && [[ ${PARENT} != "${previous_commit}" ]]; then
-    rpm-ostree --repo="${tmprepo}" db diff --format=json \
+    rpm-ostree --repo="${tmprepo}" db diff --advisories --format=json \
             "${PARENT}" "${commit}" | \
-        jq '{"parent-pkgdiff": .pkgdiff}' > tmp/parent-diff.json
+        jq '{"parent-pkgdiff": .pkgdiff, "parent-advisories-diff": .advisories}' > tmp/parent-diff.json
 else
     echo '{}' > tmp/parent-diff.json
 fi
