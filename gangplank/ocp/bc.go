@@ -231,7 +231,7 @@ binary build interface.`)
 	podCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	type workFunction func(terminate <-chan bool) error
+	type workFunction func(terminate termChan) error
 	workerFuncs := make(map[int][]workFunction)
 
 	// Range over the stages and create workFunction, which is added to the
@@ -304,7 +304,7 @@ binary build interface.`)
 		}
 
 		// anonFunc performs the actual work..
-		anonFunc := func(terminate <-chan bool) error {
+		anonFunc := func(terminate termChan) error {
 			ws := &workSpec{
 				APIBuild:      apiBuild,
 				ExecuteStages: []string{s.ID},
@@ -330,7 +330,7 @@ binary build interface.`)
 				}
 
 				l.Info("Executing worker pod")
-				if err := cpod.WorkerRunner(podCtx, terminate, eVars); err != nil {
+				if err := cpod.WorkerRunner(terminate, eVars); err != nil {
 					return fmt.Errorf("%s failed: %w", s.ID, err)
 				}
 			}

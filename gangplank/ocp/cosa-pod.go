@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubernetes/pkg/client/conditions"
 )
@@ -99,6 +100,9 @@ var (
 // podTimeOut is the lenght of time to wait for a pod to complete its work.
 var podTimeOut = 90 * time.Minute
 
+// termChan is a channel used to singal a termination
+type termChan <-chan bool
+
 // cosaPod is a COSA pod
 type cosaPod struct {
 	apiBuild   *buildapiv1.Build
@@ -110,14 +114,18 @@ type cosaPod struct {
 	volumes         []v1.Volume
 	volumeMounts    []v1.VolumeMount
 
-	index     int
-	pod       *v1.Pod
-	terminate <-chan bool
+	index int
+}
+
+func (cp *cosaPod) GetClusterCtx() ClusterContext {
+	return cp.clusterCtx
 }
 
 // CosaPodder create COSA capable pods.
 type CosaPodder interface {
-	WorkerRunner(ctx ClusterContext, term <-chan bool, envVar []v1.EnvVar) error
+	WorkerRunner(term termChan, envVar []v1.EnvVar) error
+	GetClusterCtx() ClusterContext
+	getPodSpec([]v1.EnvVar) (*v1.Pod, error)
 }
 
 // a cosaPod is a CosaPodder
@@ -163,6 +171,7 @@ func NewCosaPodder(
 		}
 		// Hardcode the version for OpenShift 3.x.
 		if minor == 11 {
+
 			log.Infof("Creating container with OpenShift v3.x defaults")
 			cp.ocpRequirements = ocp3Requirements
 			cp.ocpSecContext = ocp3SecContext
@@ -184,7 +193,7 @@ func ptrInt(i int64) *int64 { return &i }
 func ptrBool(b bool) *bool  { return &b }
 
 // getPodSpec returns a pod specification.
-func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod {
+func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error) {
 	podName := fmt.Sprintf("%s-%s-worker-%d",
 		cp.apiBuild.Annotations[buildapiv1.BuildConfigAnnotation],
 		cp.apiBuild.Annotations[buildapiv1.BuildNumberAnnotation],
@@ -226,7 +235,7 @@ export PATH=/usr/sbin:/usr/bin
 		cosaInit = []v1.Container{*initCtr}
 	}
 
-	return &v1.Pod{
+	pod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
@@ -248,36 +257,40 @@ export PATH=/usr/sbin:/usr/bin
 			Volumes:                       cp.volumes,
 		},
 	}
+
+	return pod, nil
 }
 
 // WorkerRunner runs a worker pod on either OpenShift/Kubernetes or
 // in as a podman container.
-func (cp *cosaPod) WorkerRunner(ctx ClusterContext, term <-chan bool, envVars []v1.EnvVar) error {
-	cluster, err := GetCluster(ctx)
+func (cp *cosaPod) WorkerRunner(term termChan, envVars []v1.EnvVar) error {
+	cluster, err := GetCluster(cp.clusterCtx)
 	if err != nil {
 		return err
 	}
 	if cluster.inCluster {
-		return clusterRunner(ctx, term, cp, envVars)
+		return clusterRunner(term, cp, envVars)
 	}
-	return podmanRunner(ctx, term, cp, envVars)
+	return podmanRunner(term, cp, envVars)
 }
 
 // clusterRunner creates an OpenShift/Kubernetes pod for the work to be done.
 // The output of the pod is streamed and captured on the console.
-func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []v1.EnvVar) error {
-	cs, ns, err := GetClient(cp.clusterCtx)
+func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
+	cs, ns, err := GetClient(cp.GetClusterCtx())
 	if err != nil {
 		return err
 	}
-	pod := cp.getPodSpec(envVars)
-	cp.pod = pod
-	cp.terminate = term
+
+	pod, err := cp.getPodSpec(envVars)
+	if err != nil {
+		return err
+	}
 	l := log.WithField("podname", pod.Name)
 
 	// start the pod
 	ac := cs.CoreV1()
-	resp, err := ac.Pods(ns).Create(pod)
+	createResp, err := ac.Pods(ns).Create(pod)
 	if err != nil {
 		return fmt.Errorf("failed to create pod %s: %w", pod.Name, err)
 	}
@@ -301,7 +314,7 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 			logStarted := false
 			watchOpts := metav1.ListOptions{
 				Watch:           true,
-				ResourceVersion: resp.ResourceVersion,
+				ResourceVersion: createResp.ResourceVersion,
 				FieldSelector:   fields.Set{"metadata.name": pod.Name}.AsSelector().String(),
 				LabelSelector:   labels.Everything().String(),
 				TimeoutSeconds:  ptrInt(7200), // set a hard timeout to 2hrs
@@ -341,13 +354,17 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 						return
 					}
 				}
+
+				reasons := []string{}
 				for _, v := range resp.Status.Conditions {
+					if v.Reason != "" {
+						reasons = append(reasons, v.Reason)
+					}
 					if v.Reason == "PodCompleted" {
 						retCh <- nil
 						return
 					}
 				}
-
 				// Check for running
 				running, err := conditions.PodRunning(events)
 				if err != nil {
@@ -358,8 +375,12 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 					l.WithError(err).Error("Pod was deleted")
 					retCh <- err
 					return
-				} else if running && !logStarted {
-					if err := cp.streamPodLogs(); err != nil {
+				}
+
+				if !logStarted && running {
+					l.Info("Starting logging")
+					if err := streamPodLogs(cs, ns, pod, term); err != nil {
+						log.WithError(err).Info("failure in code")
 						retCh <- err
 						return
 					}
@@ -380,8 +401,10 @@ func clusterRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []
 				}
 
 				l.WithFields(log.Fields{
-					"completed": completed,
-					"running":   running,
+					"completed":  completed,
+					"running":    running,
+					"pod status": resp.Status.Phase,
+					"conditions": reasons,
 				}).Info("waiting...")
 			}
 		}()
@@ -431,21 +454,6 @@ func (cw *consoleLogWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// getLogStream returns the logs stream for a specific container in pod.
-func (cp *cosaPod) getLogStream(container string) (io.ReadCloser, error) {
-	cs, ns, err := GetClient(cp.clusterCtx)
-	if err != nil {
-		return nil, err
-	}
-	podLogOpts := v1.PodLogOptions{
-		Follow:    true,
-		Container: container,
-	}
-
-	req := cs.CoreV1().Pods(ns).GetLogs(cp.pod.Name, &podLogOpts)
-	return req.Stream()
-}
-
 // writeToWriters writes in to outs until in or outs are closed. When run a
 // go-routine, calls can terminate by closing "in".
 func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan error {
@@ -454,6 +462,10 @@ func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan er
 		var err error
 		defer func() {
 			if err != nil {
+				if err.Error() == "http2: response body closed" {
+					outCh <- nil
+					return
+				}
 				l.WithError(err).Error("writeToWriters encountered an error")
 				outCh <- err
 			}
@@ -464,6 +476,7 @@ func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan er
 		for scanner.Scan() {
 			_, err = outWriter.Write(scanner.Bytes())
 			if err != nil {
+				l.WithError(err).Error("failed to write to logs")
 				return
 			}
 		}
@@ -479,30 +492,36 @@ func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan er
 // pods are responsible for their work, but not for their logs.
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return.
-func (cp *cosaPod) streamPodLogs() error {
-	for _, pC := range append(cp.pod.Spec.InitContainers, cp.pod.Spec.Containers...) {
+func streamPodLogs(client *kubernetes.Clientset, namespace string, pod *v1.Pod, term termChan) error {
+	for _, pC := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 		container := pC.Name
+		podLogOpts := v1.PodLogOptions{
+			Follow:       true,
+			SinceSeconds: ptrInt(300),
+			Container:    container,
+		}
 
-		streamer, err := cp.getLogStream(container)
+		req := client.CoreV1().Pods(namespace).GetLogs(pod.Name, &podLogOpts)
+		streamer, err := req.Stream()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		// Create the deafault file log
 		logD := filepath.Join(cosaSrvDir, "logs")
-		logN := filepath.Join(logD, fmt.Sprintf("%s-%s.log", cp.pod.Name, container))
+		logN := filepath.Join(logD, fmt.Sprintf("%s-%s.log", pod.Name, container))
 		if err := os.MkdirAll(logD, 0755); err != nil {
 			return fmt.Errorf("failed to create logs directory: %w", err)
 		}
 		logf, err := os.OpenFile(logN, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			return fmt.Errorf("failed to create log for pod %s/%s container: %w", cp.pod.Name, container, err)
+			return fmt.Errorf("failed to create log for pod %s/%s container: %w", pod.Name, container, err)
 		}
 
 		l := log.WithFields(log.Fields{
 			"logfile":   logf.Name,
 			"container": container,
-			"pod":       cp.pod.Name,
+			"pod":       pod.Name,
 		})
 
 		// Watch the logs until the termination is singaled OR the logs stream fails.
@@ -522,11 +541,14 @@ func (cp *cosaPod) streamPodLogs() error {
 
 			for {
 				select {
-				case die, ok := <-cp.terminate:
+				case die, ok := <-term:
 					if die || !ok {
 						return
 					}
-				case err := <-writeToWriters(l, streamer, logf, newConsoleLogWriter(container)):
+				case err, ok := <-writeToWriters(l, streamer, logf, newConsoleLogWriter(container)):
+					if !ok {
+						return
+					}
 					if err != nil {
 						l.WithError(err).Warn("error recieved from writer")
 						return
@@ -554,7 +576,8 @@ func newNoopFileWriterCloser(f *os.File) *outWriteCloser {
 // podmanRunner runs the work in a Podman container using workDir as `/srv`
 // `podman kube play` does not work well due to permission mappings; there is
 // no way to do id mappings.
-func podmanRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []v1.EnvVar) error {
+func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
+	ctx := cp.GetClusterCtx()
 	// Populate pod envvars
 	envVars = append(envVars, v1.EnvVar{Name: localPodEnvVar, Value: "1"})
 	mapEnvVars := map[string]string{
@@ -565,7 +588,10 @@ func podmanRunner(ctx ClusterContext, term <-chan bool, cp *cosaPod, envVars []v
 	}
 
 	// Get our pod spec
-	podSpec := cp.getPodSpec(nil)
+	podSpec, err := cp.getPodSpec(envVars)
+	if err != nil {
+		return err
+	}
 	l := log.WithFields(log.Fields{
 		"method":  "podman",
 		"image":   podSpec.Spec.Containers[0].Image,

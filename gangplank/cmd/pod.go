@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/coreos/gangplank/ocp"
 	log "github.com/sirupsen/logrus"
@@ -21,8 +23,8 @@ var (
 		Run:   runPod,
 	}
 
-	// cosaOverrideImage uses a different image
-	cosaOverrideImage string
+	// cosaImage uses a different image
+	cosaImage string
 
 	// serviceAccount is the service acount to use for pod creation
 	// and reading of the secrets.
@@ -49,6 +51,9 @@ var (
 
 	// automaticBuildStages is used to create automatic build stages
 	automaticBuildStages []string
+
+	// remoteKubeConfig sets Gangplank in remote mode
+	remoteKubeConfig string
 )
 
 func init() {
@@ -58,14 +63,16 @@ func init() {
 	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
 	cmdPod.Flags().StringSliceVarP(&cosaCmds, "cmd", "c", []string{}, "commands to run")
-	cmdPod.Flags().StringVarP(&cosaOverrideImage, "image", "i", "", "use an alternative image")
+	cmdPod.Flags().StringVarP(&cosaImage, "image", "i", "", "use an alternative image")
 	cmdPod.Flags().StringVarP(&cosaSrvDir, "srvDir", "S", "", "podman mode - directory to mount as /srv")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
 
+	cmdPod.Flags().StringVarP(&remoteKubeConfig, "remoteKubeConfig", "R", "", "launch COSA in a remote cluster")
 	cmdPod.Flags().StringVarP(&cosaNamespace, "namespace", "N", "", "use a different namespace")
 	cmdPod.Flags().StringSliceVar(&generateCommands, "singleCmd", []string{}, "commands to run in stage")
 	cmdPod.Flags().StringSliceVar(&generateSingleRequires, "singleReq", []string{}, "artifacts to require")
+
 }
 
 // runPod is the Jenkins/CI interface into Gangplank. It "mocks"
@@ -74,18 +81,32 @@ func init() {
 func runPod(c *cobra.Command, args []string) {
 	defer cancel()
 
-	cluster := ocp.NewCluster(true, cosaNamespace, "")
+	cluster := ocp.NewCluster(true)
 
 	if cosaViaPodman {
-		cluster = ocp.NewCluster(false, cosaNamespace, "")
+		cluster = ocp.NewCluster(false)
 		cluster.SetPodman(cosaSrvDir)
-		if cosaOverrideImage == "" {
-			cosaOverrideImage = cosaDefaultImage
-		}
+	}
+
+	if cosaViaPodman || remoteKubeConfig != "" {
 		if cosaWorkDir == "" {
 			cosaWorkDir, _ = os.Getwd()
 		}
+		if cosaImage == "" {
+			log.WithField("image", cosaDefaultImage).Info("Using default COSA image")
+			cosaImage = cosaDefaultImage
+		}
 	}
+
+	if remoteKubeConfig != "" {
+		log.Info("Using a hop pod via a remote cluster")
+		cluster.SetRemoteCluster(remoteKubeConfig, cosaNamespace)
+		if cosaWorkDir == "" {
+			cosaWorkDir, _ = os.Getwd()
+		}
+		log.Infof("Logs will written to %s/logs", cosaWorkDir)
+	}
+
 	clusterCtx := ocp.NewClusterContext(ctx, cluster)
 
 	if specFile != "" {
@@ -121,7 +142,28 @@ func runPod(c *cobra.Command, args []string) {
 		}
 	}
 
-	pb, err := ocp.NewPodBuilder(clusterCtx, cosaOverrideImage, serviceAccount, cosaWorkDir, &spec)
+	if remoteKubeConfig != "" {
+		h := ocp.NewHopPod(clusterCtx, cosaImage, serviceAccount, cosaWorkDir, &spec)
+		term := make(chan bool)
+
+		sig := make(chan os.Signal, 256)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
+		go func() {
+			<-sig
+			term <- true
+		}()
+		defer func() {
+			term <- true
+		}()
+
+		err := h.WorkerRunner(term, nil)
+		if err != nil {
+			log.WithError(err).Fatal("failed remote exection of a pod")
+		}
+	}
+
+	// Run in cluster or podman mode
+	pb, err := ocp.NewPodBuilder(clusterCtx, cosaImage, serviceAccount, cosaWorkDir, &spec)
 	if err != nil {
 		log.Fatalf("failed to define builder pod: %v", err)
 	}

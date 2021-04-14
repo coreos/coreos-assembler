@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const clusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
@@ -21,10 +22,13 @@ const clusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/name
 type Cluster struct {
 	cs         *kubernetes.Clientset
 	nameSpace  string
-	configFile string
+	kubeConfig string
 
 	// inCluster indicates the client should use the Kubernetes in-cluster client
 	inCluster bool
+
+	// remoteCluster indicates Gangplank should run the supervising Gangplank in pod
+	remoteCluster bool
 
 	// podman indicates that the container should be built using Podman
 	podman bool
@@ -42,19 +46,27 @@ type Cluster struct {
 type KubernetesCluster interface {
 	SetStdIO(stdIn, stdOut, stdErr *os.File)
 	GetStdIO() (*os.File, *os.File, *os.File)
-	SetPodman(string)
+	SetPodman(srvDir string)
+	SetRemoteCluster(kubeConfig string, namespace string)
 }
 
 // Cluster implements a KubernetesCluster
 var _ KubernetesCluster = &Cluster{}
 
 // NewCluster returns a Kubernetes cluster
-func NewCluster(inCluster bool, namespace, configFile string) KubernetesCluster {
+func NewCluster(inCluster bool) KubernetesCluster {
 	return &Cluster{
-		nameSpace:  namespace,
-		inCluster:  inCluster,
-		configFile: configFile,
+		inCluster: inCluster,
 	}
+}
+
+// SetRemote uses a remote cluster
+func (c *Cluster) SetRemoteCluster(kubeConfig, namespace string) {
+	c.inCluster = true
+	c.kubeConfig = kubeConfig
+	c.nameSpace = namespace
+	c.remoteCluster = true
+	c.podman = false
 }
 
 // SetPodman forces out-of-cluster execution via Podman.
@@ -113,17 +125,19 @@ func GetClient(ctx ClusterContext) (*kubernetes.Clientset, string, error) {
 		return c.cs, c.nameSpace, nil
 	}
 
-	if c.inCluster {
-		var ns string
-		c.cs, ns, err = k8sInClusterClient()
-		if c.nameSpace == "" {
-			c.nameSpace = ns
-		} else {
-			log.WithFields(log.Fields{
-				"target":  c.nameSpace,
-				"current": ns,
-			}).Info("work will be done in another namespace")
+	if c.remoteCluster {
+		log.WithField("config", c.kubeConfig).Info("Loading kubeConfig from path")
+		config, err := clientcmd.BuildConfigFromFlags("", c.kubeConfig)
+		if err != nil {
+			return nil, "", err
 		}
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			return nil, "", err
+		}
+		c.cs = clientset
+	} else if c.inCluster {
+		c.cs, c.nameSpace, err = k8sInClusterClient()
 	}
 
 	return c.cs, c.nameSpace, err
