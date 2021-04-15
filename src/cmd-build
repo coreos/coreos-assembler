@@ -226,7 +226,7 @@ prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar
 
 extra_compose_args=()
 
-for lock in "${manifest_lock}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
+for lock in "${manifest_lock}" "${manifest_lock_fast_track}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
     if [ -f "${lock}" ]; then
         extra_compose_args+=("--ex-lockfile=${lock}")
     fi

@@ -88,13 +88,13 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Include the overrides in the resulting lockfile here; otherwise, we
     # might not even be able to get a depsolve solely from the non-lockfile
     # repos.
-    for lock in "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
+    for lock in "${manifest_lock_fast_track}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
       if [ -f "${lock}" ]; then
           args+=" --ex-lockfile=${lock}"
       fi
     done
 else
-    for lock in "${manifest_lock}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
+    for lock in "${manifest_lock}" "${manifest_lock_fast_track}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
         if [ -f "${lock}" ]; then
             args+=" --ex-lockfile=${lock}"
         fi

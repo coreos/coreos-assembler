@@ -167,6 +167,7 @@ prepare_build() {
     # for the base lockfile, we default to JSON since that's what rpm-ostree
     # actually outputs
     manifest_lock=$(pick_yaml_or_else_json "${configdir}/manifest-lock.${basearch}" json)
+    manifest_lock_fast_track=${configdir}/manifest-lock.fast-track.yaml
     manifest_lock_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides")
     manifest_lock_arch_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
     fetch_stamp="${workdir}"/cache/fetched-stamp
@@ -174,7 +175,7 @@ prepare_build() {
     image_yaml="${workdir}/tmp/image.yaml"
     flatten_image_yaml_to_file "${configdir}/image.yaml" "${image_yaml}"
 
-    export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
+    export workdir configdir manifest manifest_lock manifest_lock_fast_track manifest_lock_overrides manifest_lock_arch_overrides
     export fetch_stamp
 
     if ! [ -f "${manifest}" ]; then
