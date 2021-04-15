@@ -37,15 +37,9 @@ clean:
 	@go clean .
 	@rm -rf bin
 
-.PHYON: schema
-schema: schema_version = v1
+.PHONY: schema
 schema:
-	schematyper \
-	                ../src/schema/$(schema_version).json \
-	                -o cosa/v1.go \
-	                --package=cosa \
-	                --root-type=Build \
-	                --ptr-for-omit
+	$(MAKE) -C ../tools schema
 
 .PHONY: install
 install: bin/gangplank
