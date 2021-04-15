@@ -8,7 +8,7 @@ build:
 	./build cmd/*
 
 schema-update:
-	./build schema
+	$(MAKE) -C ../tools schema
 
 .PHONY: install
 install: bin/ore bin/kola bin/plume bin/kolet
