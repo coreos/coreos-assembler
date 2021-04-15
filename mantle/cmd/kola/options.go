@@ -20,12 +20,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreos/stream-metadata-go/stream"
 	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/rhcos"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 )
@@ -72,6 +74,7 @@ func init() {
 	// aws-specific options
 	defaultRegion := os.Getenv("AWS_REGION")
 	if defaultRegion == "" {
+		// As everyone knows, this is the one, true region.  Everything else is a mirage.
 		defaultRegion = "us-east-1"
 	}
 	sv(&kola.AWSOptions.CredentialsFile, "aws-credentials-file", "", "AWS credentials file (default \"~/.aws/credentials\")")
@@ -343,32 +346,40 @@ func syncStreamOptions() error {
 	if kola.Options.Stream == "" {
 		return nil
 	}
+	var err error
+	var artifacts *stream.Arch
 	switch kola.Options.Distribution {
 	case "":
 		return fmt.Errorf("Must specify -b/--distro with --stream")
 	case "fcos":
+		artifacts, err = fcos.FetchStreamThisArchitecture(kola.Options.Stream)
+		if err != nil {
+			return errors.Wrapf(err, "failed to fetch stream")
+		}
+	case "rhcos":
+		artifacts, err = rhcos.FetchStreamThisArchitecture(kola.Options.Stream)
+		if err != nil {
+			return errors.Wrapf(err, "failed to fetch stream")
+		}
 		break
 	default:
 		return fmt.Errorf("Unhandled stream for distribution %s", kola.Options.Distribution)
 	}
 
-	artifacts, err := fcos.FetchStreamThisArchitecture(kola.Options.Stream)
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch stream")
-	}
-
 	release := ""
+	extra := ""
 
 	switch kolaPlatform {
 	case "aws":
 		regionimg := artifacts.Images.Aws.Regions[kola.AWSOptions.Region]
 		release = regionimg.Release
 		kola.AWSOptions.AMI = regionimg.Image
+		extra = fmt.Sprintf("(region %s, %s)", kola.AWSOptions.Region, kola.AWSOptions.AMI)
 	default:
 		return fmt.Errorf("Unhandled platform %s for stream", kolaPlatform)
 	}
 
-	fmt.Printf("Resolved stream %s for platform %s to release %s\n", kola.Options.Stream, kolaPlatform, release)
+	fmt.Printf("Resolved distro=%s stream=%s platform=%s to release=%s %s\n", kola.Options.Distribution, kola.Options.Stream, kolaPlatform, release, extra)
 
 	return nil
 }
