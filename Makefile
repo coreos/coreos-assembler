@@ -74,8 +74,7 @@ tools:
 	cd tools && $(MAKE)
 
 schema:
-	$(MAKE) -C gangplank schema
-	$(MAKE) -C mantle schema-update
+	$(MAKE) -C tools schema
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler

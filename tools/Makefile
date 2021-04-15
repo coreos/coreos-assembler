@@ -27,4 +27,7 @@ go-deps:
 	go mod download
 	go mod vendor
 
+.PHONY:
+schema:
+	./generate-schema.sh
 
