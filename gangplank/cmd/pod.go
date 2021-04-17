@@ -30,9 +30,6 @@ var (
 	// and reading of the secrets.
 	serviceAccount string
 
-	// cosaCmds is used to define the commands to run
-	cosaCmds []string
-
 	// Run CI pod via podman (out of cluster)
 	cosaViaPodman bool
 
@@ -62,17 +59,13 @@ func init() {
 	spec.AddCliFlags(cmdPod.Flags())
 	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
-	cmdPod.Flags().StringSliceVarP(&cosaCmds, "cmd", "c", []string{}, "commands to run")
 	cmdPod.Flags().StringVarP(&cosaImage, "image", "i", "", "use an alternative image")
-	cmdPod.Flags().StringVarP(&cosaSrvDir, "srvDir", "S", "", "podman mode - directory to mount as /srv")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
 
 	cmdPod.Flags().StringVarP(&remoteKubeConfig, "remoteKubeConfig", "R", "", "launch COSA in a remote cluster")
 	cmdPod.Flags().StringVarP(&cosaNamespace, "namespace", "N", "", "use a different namespace")
-	cmdPod.Flags().StringSliceVar(&generateCommands, "singleCmd", []string{}, "commands to run in stage")
-	cmdPod.Flags().StringSliceVar(&generateSingleRequires, "singleReq", []string{}, "artifacts to require")
-
+	cmdPod.Flags().AddFlagSet(specCommonFlags)
 }
 
 // runPod is the Jenkins/CI interface into Gangplank. It "mocks"
@@ -108,24 +101,7 @@ func runPod(c *cobra.Command, args []string) {
 	}
 
 	clusterCtx := ocp.NewClusterContext(ctx, cluster)
-
-	if specFile != "" {
-		log.WithFields(log.Fields{
-			"jobspec":          specFile,
-			"ingored cli args": "-A|--artifact|--singleReq|--singleCmd",
-		}).Info("Using jobspec from file, some cli arguments will be ignored")
-		if spec.Recipe.Repos == nil {
-			spec.AddRepos()
-		}
-	} else {
-		log.Info("Generating jobspec from CLI arguments")
-		if generateCommands != nil || generateSingleRequires != nil {
-			log.Info("--cmd and --req forces single stage mode, only one stage will be run")
-			generateSingleStage = true
-		}
-		generateJobSpec()
-	}
-
+	setCliSpec()
 	spec.Job.MinioCfgFile = minioCfgFile
 
 	if cosaWorkDirContext {

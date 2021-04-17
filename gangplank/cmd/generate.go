@@ -63,8 +63,24 @@ func init() {
 	cmdGenerateSingle.Flags().StringSliceVar(&generateSingleRequires, "req", []string{}, "artifacts to require")
 }
 
-// generateJobSpec creates a jobspec from the commandline.
-func generateJobSpec() {
+// setCliSpec reads or generates a jobspec based on CLI arguments.
+func setCliSpec() {
+	if specFile != "" {
+		log.WithFields(log.Fields{
+			"jobspec":          specFile,
+			"ingored cli args": "-A|--artifact|--singleReq|--singleCmd",
+		}).Info("Using jobspec from file, some cli arguments will be ignored")
+		if spec.Recipe.Repos == nil {
+			spec.AddRepos()
+		}
+		return
+	}
+
+	log.Info("Generating jobspec from CLI arguments")
+	if generateCommands != nil || generateSingleRequires != nil {
+		log.Info("--cmd and --req forces single stage mode, only one stage will be run")
+		generateSingleStage = true
+	}
 	if specFile != "" {
 		js, err := jobspec.JobSpecFromFile(specFile)
 		if err != nil {
@@ -104,7 +120,7 @@ func generateCLICommand(*cobra.Command, []string) {
 		defer f.Close()
 		out = f
 	}
-	generateJobSpec()
+	setCliSpec()
 	defer out.Sync() //nolint
 
 	now := time.Now().Format(time.RFC3339)
