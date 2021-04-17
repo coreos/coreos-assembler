@@ -60,13 +60,16 @@ Wrapper for COSA commands and templates`,
 		Run:   runSingle,
 	}
 
-	cmdSteps = &cobra.Command{
-		Use:          "run-scripts",
-		Short:        "Run Steps from [file]",
-		Args:         cobra.MinimumNArgs(1),
-		RunE:         runScripts,
-		SilenceUsage: true,
+	cmdPodless = &cobra.Command{
+		Use:   "podless",
+		Short: "Run outisde of pod (via prow/ci)",
+		RunE:  runSpecLocally,
 	}
+)
+
+var (
+	// cosaInit indicates that cosa init should be run
+	cosaInit bool
 )
 
 func init() {
@@ -90,12 +93,13 @@ func init() {
 	cmdRoot.PersistentFlags().StringVarP(&specFile, "spec", "s", "", "location of the spec")
 	cmdRoot.AddCommand(cmdVersion)
 	cmdRoot.AddCommand(cmdSingle)
+	cmdRoot.Flags().StringVarP(&specFile, "spec", "s", "", "location of the spec")
 	spec.AddCliFlags(cmdRoot.PersistentFlags())
 
-	// cmdStep options
-	cmdRoot.AddCommand(cmdSteps)
-	cmdSteps.Flags().StringVarP(&specFile, "spec", "s", "", "location of the spec")
-	cmdSteps.Flags().StringArrayVarP(&shellCmd, "shell", "S", shellCmd, "shellcommand to execute")
+	// cmdPodless options
+	cmdRoot.AddCommand(cmdPodless)
+	cmdPodless.Flags().AddFlagSet(specCommonFlags)
+	cmdPodless.Flags().BoolVar(&cosaInit, "init", false, "force initialize srv dir")
 }
 
 func main() {
@@ -106,14 +110,39 @@ func main() {
 	os.Exit(0)
 }
 
-// runScripts reads ARGs as files and executes the rendered templates.
-func runScripts(c *cobra.Command, args []string) error {
+// runSpecLocally executes a jobspec locally.
+func runSpecLocally(c *cobra.Command, args []string) error {
+	myDir, _ := os.Getwd()
+	defer func() {
+		ctx.Done()
+		_ = os.Chdir(myDir)
+	}()
+
+	if _, err := os.Stat("src"); err != nil || cosaInit {
+		log.WithField("dir", cosaSrvDir).Info("Initalizing Build Tree")
+		spec.Stages = append(spec.Stages, jobspec.Stage{
+			ID:             "Initialization",
+			ExecutionOrder: 0,
+			Commands: []string{
+				"cosa init --force --branch {{ .JobSpec.Recipe.GitRef }} --force {{ .JobSpec.Recipe.GitURL}} ",
+			},
+		})
+	}
+
+	setCliSpec()
 	rd := &jobspec.RenderData{
 		JobSpec: &spec,
 	}
-	if err := rd.RendererExecuter(ctx, envVars, args...); err != nil {
-		log.Fatalf("Failed to execute scripts: %v", err)
+
+	if err := os.Chdir(cosaSrvDir); err != nil {
+		log.WithError(err).Fatal("failed to change to srv dir")
 	}
+	for _, stage := range spec.Stages {
+		if err := stage.Execute(ctx, rd, envVars); err != nil {
+			log.WithError(err).Fatal("failed to execute job")
+		}
+	}
+
 	log.Infof("Execution complete")
 	return nil
 }
@@ -138,10 +167,6 @@ func runSingle(c *cobra.Command, args []string) {
 
 // preRun processes the spec file.
 func preRun(c *cobra.Command, args []string) {
-	if specFile == "" {
-		return
-	}
-
 	// Terminal "keep alive" helper. When following logs via the `oc` commands,
 	// cloud-deployed instances will send an EOF. To get around the EOF, the func sends a
 	// null character that is not printed to the screen or reflected in the logs.
@@ -156,11 +181,4 @@ func preRun(c *cobra.Command, args []string) {
 			}
 		}
 	}()
-
-	ns, err := jobspec.JobSpecFromFile(specFile)
-	if err != nil {
-		log.WithFields(log.Fields{"input file": specFile, "error": err}).Fatal(
-			"Failed reading file")
-	}
-	spec = ns
 }
