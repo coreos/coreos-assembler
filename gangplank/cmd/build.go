@@ -45,12 +45,15 @@ func runOCP(c *cobra.Command, args []string) {
 	defer cancel()
 	defer ctx.Done()
 
-	b, err := ocp.NewBuilder(ctx)
+	cluster := ocp.NewCluster(true)
+	clusterCtx := ocp.NewClusterContext(ctx, cluster)
+
+	b, err := ocp.NewBuilder(clusterCtx)
 	if err != nil {
 		log.Fatal("Failed to find the build environment.")
 	}
 
-	if err := b.Exec(ctx); err != nil {
+	if err := b.Exec(clusterCtx); err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
 		}).Fatal("Failed to prepare environment.")
