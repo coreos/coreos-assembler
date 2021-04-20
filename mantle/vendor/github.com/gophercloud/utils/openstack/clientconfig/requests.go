@@ -1,8 +1,10 @@
 package clientconfig
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/utils/env"
 	"github.com/gophercloud/utils/gnocchi"
+	"github.com/gophercloud/utils/internal"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -121,7 +124,7 @@ func LoadCloudsYAML() (map[string]Cloud, error) {
 	var clouds Clouds
 	err = yaml.Unmarshal(content, &clouds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	return clouds.Clouds, nil
@@ -137,7 +140,7 @@ func LoadSecureCloudsYAML() (map[string]Cloud, error) {
 
 	_, content, err := FindAndReadSecureCloudsYAML()
 	if err != nil {
-		if err.Error() == "no secure.yaml file found" {
+		if errors.Is(err, os.ErrNotExist) {
 			// secure.yaml is optional so just ignore read error
 			return secureClouds.Clouds, nil
 		}
@@ -146,7 +149,7 @@ func LoadSecureCloudsYAML() (map[string]Cloud, error) {
 
 	err = yaml.Unmarshal(content, &secureClouds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	return secureClouds.Clouds, nil
@@ -162,7 +165,7 @@ func LoadPublicCloudsYAML() (map[string]Cloud, error) {
 
 	_, content, err := FindAndReadPublicCloudsYAML()
 	if err != nil {
-		if err.Error() == "no clouds-public.yaml file found" {
+		if errors.Is(err, os.ErrNotExist) {
 			// clouds-public.yaml is optional so just ignore read error
 			return publicClouds.Clouds, nil
 		}
@@ -172,7 +175,7 @@ func LoadPublicCloudsYAML() (map[string]Cloud, error) {
 
 	err = yaml.Unmarshal(content, &publicClouds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	return publicClouds.Clouds, nil
@@ -188,7 +191,7 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 
 	clouds, err := yamlOpts.LoadCloudsYAML()
 	if err != nil {
-		return nil, fmt.Errorf("unable to load clouds.yaml: %s", err)
+		return nil, fmt.Errorf("unable to load clouds.yaml: %w", err)
 	}
 
 	// Determine which cloud to use.
@@ -235,7 +238,7 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 		if profileName != "" {
 			publicClouds, err := yamlOpts.LoadPublicCloudsYAML()
 			if err != nil {
-				return nil, fmt.Errorf("unable to load clouds-public.yaml: %s", err)
+				return nil, fmt.Errorf("unable to load clouds-public.yaml: %w", err)
 			}
 
 			publicCloud, ok := publicClouds[profileName]
@@ -254,7 +257,7 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 	// can be found or merged.
 	secureClouds, err := yamlOpts.LoadSecureCloudsYAML()
 	if err != nil {
-		return nil, fmt.Errorf("unable to load secure.yaml: %s", err)
+		return nil, fmt.Errorf("unable to load secure.yaml: %w", err)
 	}
 
 	if secureClouds != nil {
@@ -296,6 +299,16 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 	if cloud.Verify == nil {
 		iTrue := true
 		cloud.Verify = &iTrue
+	}
+
+	// merging per-region value overrides
+	if opts.RegionName != "" {
+		for _, v := range cloud.Regions {
+			if opts.RegionName == v.Name {
+				cloud, err = mergeClouds(v.Values, cloud)
+				break
+			}
+		}
 	}
 
 	// TODO: this is where reading vendor files should go be considered when not found in
@@ -743,8 +756,58 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		}
 	}
 
+	// Check if a custom CA cert was provided.
+	// First, check if the CACERT environment variable is set.
+	var caCertPath string
+	if v := env.Getenv(envPrefix + "CACERT"); v != "" {
+		caCertPath = v
+	}
+	// Next, check if the cloud entry sets a CA cert.
+	if v := cloud.CACertFile; v != "" {
+		caCertPath = v
+	}
+
+	// Check if a custom client cert was provided.
+	// First, check if the CERT environment variable is set.
+	var clientCertPath string
+	if v := env.Getenv(envPrefix + "CERT"); v != "" {
+		clientCertPath = v
+	}
+	// Next, check if the cloud entry sets a client cert.
+	if v := cloud.ClientCertFile; v != "" {
+		clientCertPath = v
+	}
+
+	// Check if a custom client key was provided.
+	// First, check if the KEY environment variable is set.
+	var clientKeyPath string
+	if v := env.Getenv(envPrefix + "KEY"); v != "" {
+		clientKeyPath = v
+	}
+	// Next, check if the cloud entry sets a client key.
+	if v := cloud.ClientKeyFile; v != "" {
+		clientKeyPath = v
+	}
+
+	// Define whether or not SSL API requests should be verified.
+	var insecurePtr *bool
+	if cloud.Verify != nil {
+		// Here we take the boolean pointer negation.
+		insecure := !*cloud.Verify
+		insecurePtr = &insecure
+	}
+
+	tlsConfig, err := internal.PrepareTLSConfig(caCertPath, clientCertPath, clientKeyPath, insecurePtr)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get a Provider Client
-	pClient, err := AuthenticatedClient(opts)
+	ao, err := AuthOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+	pClient, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -752,6 +815,16 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 	// If an HTTPClient was specified, use it.
 	if opts.HTTPClient != nil {
 		pClient.HTTPClient = *opts.HTTPClient
+	} else {
+		// Otherwise create a new HTTP client with the generated TLS config.
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = tlsConfig
+		pClient.HTTPClient = http.Client{Transport: transport}
+	}
+
+	err = openstack.Authenticate(pClient, *ao)
+	if err != nil {
+		return nil, err
 	}
 
 	// Determine the region to use.
