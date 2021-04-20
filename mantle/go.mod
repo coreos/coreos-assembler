@@ -25,10 +25,11 @@ require (
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/golang/protobuf v1.4.2
-	github.com/google/renameio v1.0.0
-	github.com/gophercloud/gophercloud v0.13.0
+	github.com/google/renameio v1.0.0 // indirect
+	github.com/gophercloud/gophercloud v0.17.0
 	github.com/gophercloud/utils v0.0.0-20201101202656-8677e053dcf1
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
 	github.com/packethost/packngo v0.0.0-20180426081943-80f62d78849d
 	github.com/pborman/uuid v1.2.0
@@ -42,12 +43,13 @@ require (
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
 	github.com/vmware/govmomi v0.15.0
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
+	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 	golang.org/x/text v0.3.3
 	google.golang.org/api v0.34.0
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
 
