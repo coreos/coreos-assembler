@@ -27,7 +27,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/renameio v1.0.0 // indirect
 	github.com/gophercloud/gophercloud v0.17.0
-	github.com/gophercloud/utils v0.0.0-20201101202656-8677e053dcf1
+	github.com/gophercloud/utils v0.0.0-20210323225332-7b186010c04f
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
@@ -50,7 +50,7 @@ require (
 	golang.org/x/text v0.3.3
 	google.golang.org/api v0.34.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 replace google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d
