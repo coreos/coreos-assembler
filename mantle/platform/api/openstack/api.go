@@ -23,7 +23,6 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
@@ -129,28 +128,17 @@ func New(opts *Options) (*API, error) {
 		osOpts.RegionName = opts.Region
 	}
 
-	provider, err := clientconfig.AuthenticatedClient(osOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed creating provider: %v", err)
-	}
-
-	computeClient, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
-		Name: "nova",
-	})
+	computeClient, err := clientconfig.NewServiceClient("compute", osOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create compute client: %v", err)
 	}
 
-	imageClient, err := openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
-		Name: "glance",
-	})
+	imageClient, err := clientconfig.NewServiceClient("image", osOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create image client: %v", err)
 	}
 
-	networkClient, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Name: "neutron",
-	})
+	networkClient, err := clientconfig.NewServiceClient("network", osOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create network client: %v", err)
 	}
