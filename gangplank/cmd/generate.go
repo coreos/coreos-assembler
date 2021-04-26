@@ -66,6 +66,12 @@ func init() {
 // setCliSpec reads or generates a jobspec based on CLI arguments.
 func setCliSpec() {
 	if specFile != "" {
+		js, err := jobspec.JobSpecFromFile(specFile)
+		if err != nil {
+			log.WithError(err).Fatal("failed to read jobspec")
+		}
+		spec = js
+
 		log.WithFields(log.Fields{
 			"jobspec":          specFile,
 			"ingored cli args": "-A|--artifact|--singleReq|--singleCmd",
@@ -81,13 +87,7 @@ func setCliSpec() {
 		log.Info("--cmd and --req forces single stage mode, only one stage will be run")
 		generateSingleStage = true
 	}
-	if specFile != "" {
-		js, err := jobspec.JobSpecFromFile(specFile)
-		if err != nil {
-			log.WithError(err).Fatal("failed to read jobspec")
-		}
-		spec = js
-	}
+
 	log.Info("Generating stages")
 	spec.GenerateStages(automaticBuildStages, generateSingleStage)
 	log.Infof("Adding commands %v to first stage", generateCommands)
