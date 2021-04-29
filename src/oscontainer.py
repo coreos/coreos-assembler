@@ -253,6 +253,7 @@ def main():
     parser.add_argument("--workdir", help="Temporary working directory")
     parser.add_argument("--disable-tls-verify",
                         help="Disable TLS for pushes and pulls",
+                        default=(True if os.environ.get("DISABLE_TLS_VERIFICATION", False) else False),
                         action="store_true")
     parser.add_argument("--cert-dir", help="Extra certificate directories",
                         default=os.environ.get("OSCONTAINER_CERT_DIR", ''))

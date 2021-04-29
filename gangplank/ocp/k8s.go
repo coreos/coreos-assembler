@@ -16,7 +16,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const clusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+const (
+	clusterNamespaceFile    = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	serviceAccountTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+)
 
 // Cluster describes a Kubnetenes Cluster.
 type Cluster struct {
