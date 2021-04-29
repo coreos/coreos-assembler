@@ -89,6 +89,9 @@ type Stage struct {
 	ReturnCacheRepo  bool `yaml:"return_cache_repo,omitempty" json:"return_cache_repo,omitempty"`
 	RequireCacheRepo bool `yaml:"require_cache_repo,omitempty" json:"require_cache_repo_repo,omitempty"`
 	RequestCacheRepo bool `yaml:"request_cache_repo,omitempty" json:"request_cache_repo_repo,omitempty"`
+
+	// KolaTests are shorthands for testing.
+	KolaTests []string `yaml:"kola_tests,omitempty" json:"kola_tests,omitempty"`
 }
 
 // These are the only hard-coded commands that Gangplank understand.
@@ -125,17 +128,11 @@ func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
 
 // getCommands renders the automatic artifacts and publication commands
 func (s *Stage) getCommands(rd *RenderData) ([]string, error) {
-	pc, err := s.getPublishCommands(rd)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(s.BuildArtifacts) > 0 {
 		log.WithField("mapping artifacts", s.BuildArtifacts).Infof("Mapping artifacts")
 	}
 	numBuildArtifacts := len(s.BuildArtifacts)
-	numPublishCommands := len(pc)
-	totalCmds := len(s.Commands) + numBuildArtifacts + numPublishCommands
+	totalCmds := len(s.Commands) + numBuildArtifacts
 
 	ret := make([]string, totalCmds)
 	for i, ba := range s.BuildArtifacts {
@@ -150,13 +147,33 @@ func (s *Stage) getCommands(rd *RenderData) ([]string, error) {
 	for i, c := range s.Commands {
 		ret[(numBuildArtifacts + i)] = c
 	}
-	for i, p := range pc {
-		ret[(numBuildArtifacts + len(s.Commands) + i)] = p
-	}
-	fmt.Printf("%v", ret)
 	return ret, nil
 }
 
+// getPostCommands generates the post commands from a synthatis of pre-defined
+// post commands, kola tests and the cloud publication steps.
+func (s *Stage) getPostCommands(rd *RenderData) ([]string, error) {
+	ret := s.PostCommands
+
+	log.WithField("mapping tests", s.KolaTests).Infof("Resolving test definitions")
+	for _, kolaTest := range s.KolaTests {
+		tk, ok := kolaTestDefinitions[kolaTest]
+		if !ok {
+			return nil, fmt.Errorf("test %q is an unknown short hand", kolaTest)
+		}
+		ret = append(ret, tk.PostCommands...)
+	}
+
+	pc, err := s.getPublishCommands(rd)
+	if err != nil {
+		return nil, err
+	}
+
+	ret = append(ret, pc...)
+	return ret, nil
+}
+
+// getPublishCommands returns the cloud publication commands.
 func (s *Stage) getPublishCommands(rd *RenderData) ([]string, error) {
 	var publishCommands []string
 	c := rd.JobSpec.CloudsCfgs
@@ -198,7 +215,13 @@ func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) e
 		return err
 	}
 
-	if len(cmds) == 0 {
+	postCommands, err := s.getPostCommands(rd)
+	if err != nil {
+		log.WithError(err).Error("failed to get post commands")
+		return err
+	}
+
+	if len(s.PrepCommands) == 0 && len(cmds) == 0 && len(postCommands) == 0 {
 		return errors.New("no commands to execute")
 	}
 	log.WithField("cmd", cmds).Info("stage commands readied")
@@ -219,7 +242,7 @@ func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) e
 	}
 
 	postScript := filepath.Join(tmpd, "post.sh")
-	if err := ioutil.WriteFile(postScript, []byte(strings.Join(s.PostCommands, "\n")), 0755); err != nil {
+	if err := ioutil.WriteFile(postScript, []byte(strings.Join(postCommands, "\n")), 0755); err != nil {
 		return err
 	}
 	if s.PostAlways {
@@ -329,6 +352,12 @@ func GetArtifactShortHandNames() []string {
 
 // addShorthandToStage adds in a build shorthand into the stage and
 // ensures that required dependencies are correclty ordered
+// Ordering assumptions:
+//  1. Base builds
+//  2. Basic Kola Tests
+//  3. Metal and Live ISO images
+//  4. Metal and Live ISO testings
+//  5. Cloud stages
 func addShorthandToStage(artifact string, stage *Stage) {
 
 	quickStage := func(noun string) *Stage {
@@ -364,13 +393,13 @@ func addShorthandToStage(artifact string, stage *Stage) {
 			}
 		case "metal":
 			return &Stage{
-				ExecutionOrder:   2,
+				ExecutionOrder:   3,
 				BuildArtifacts:   []string{"metal"},
 				RequireArtifacts: []string{"ostree"},
 			}
 		case "metal4k":
 			return &Stage{
-				ExecutionOrder:   2,
+				ExecutionOrder:   3,
 				BuildArtifacts:   []string{"metal4k"},
 				RequireArtifacts: []string{"ostree"},
 			}
@@ -383,11 +412,17 @@ func addShorthandToStage(artifact string, stage *Stage) {
 				RequireCacheRepo: true,
 			}
 		default:
+			// check if the short hand is a test stage
+			testStage, ok := kolaTestDefinitions[noun]
+			if ok {
+				return &testStage
+			}
+			// otherwise its likely a cloud stage
 			if !cosa.CanArtifact(artifact) {
 				break
 			}
 			return &Stage{
-				ExecutionOrder:   3,
+				ExecutionOrder:   5,
 				BuildArtifacts:   []string{artifact},
 				RequireArtifacts: []string{"qemu"},
 			}
@@ -454,6 +489,11 @@ func addShorthandToStage(artifact string, stage *Stage) {
 		stage.RequireCacheRepo = true
 	}
 
+	// Add the commands if defined
+	stage.Commands = append(stage.Commands, working.Commands...)
+	stage.PrepCommands = append(stage.PrepCommands, working.PrepCommands...)
+	stage.PostCommands = append(stage.PostCommands, working.PostCommands...)
+
 	stage.RequestArtifacts = append(stage.RequestArtifacts, working.RequestArtifacts...)
 	stage.BuildArtifacts = append(stage.BuildArtifacts, working.BuildArtifacts...)
 	stage.RequireArtifacts = append(stage.RequireArtifacts, working.RequireArtifacts...)
@@ -465,8 +505,8 @@ func addShorthandToStage(artifact string, stage *Stage) {
 
 	randID := time.Now().UTC().UnixNano() // Ensure a random ID
 	stage.ID = fmt.Sprintf("ExecOrder %d Stage %d", stage.ExecutionOrder, randID)
-	stage.Description = fmt.Sprintf("Stage %d execution for %s",
-		stage.ExecutionOrder, strings.Join(stage.BuildArtifacts, ","))
+	stage.Description = fmt.Sprintf("Stage %d execution %s",
+		stage.ExecutionOrder, strings.Join(append(stage.BuildArtifacts, stage.KolaTests...), ","))
 
 	// Get the order that artifacts should be built
 	artifactOrder := make(map[int][]string)
@@ -524,26 +564,36 @@ func addShorthandToStage(artifact string, stage *Stage) {
 }
 
 // GenerateStages creates stages.
-func (j *JobSpec) GenerateStages(fromNames []string, singleStage bool) {
-	if len(fromNames) == 0 {
-		return
-	}
-
+func (j *JobSpec) GenerateStages(fromNames, testNames []string, singleStage bool) error {
 	j.DelayedMetaMerge = true
 	j.Job.StrictMode = true
 
+	for _, k := range fromNames {
+		if !cosa.CanArtifact(k) {
+			return fmt.Errorf("artifact %s is an invalid artifact", k)
+		}
+	}
+	for _, k := range testNames {
+		if _, ok := kolaTestDefinitions[k]; !ok {
+			return fmt.Errorf("kola test %s is an invalid kola name", k)
+		}
+
+	}
+
 	if singleStage && len(fromNames) > 0 {
-		newList := []string{strings.Join(fromNames, "+")}
+		newList := []string{strings.Join(append(fromNames, testNames...), "+")}
 		fromNames = newList
 	}
 
-	for _, k := range fromNames {
+	for _, k := range append(fromNames, testNames...) {
 		var s Stage
 		for _, k := range strings.Split(k, "+") {
 			addShorthandToStage(k, &s)
 		}
 		j.Stages = append(j.Stages, s)
 	}
+
+	return nil
 }
 
 // DeepCopy does a lazy deep copy by rendering the stage to JSON

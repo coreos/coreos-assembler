@@ -33,9 +33,6 @@ var (
 	// envVars are set for command execution
 	envVars []string
 
-	// shellCmd is the default command to execute commands.
-	shellCmd = []string{"/bin/bash", "-x"}
-
 	cmdRoot = &cobra.Command{
 		Use:   "gangplank [command]",
 		Short: "COSA Gangplank",

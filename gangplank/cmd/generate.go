@@ -55,12 +55,14 @@ func init() {
 	// Define cmdGenerate flags
 	cmdRoot.AddCommand(cmdGenerate)
 	cmdGenerate.Flags().StringVar(&generateFileName, "yaml-out", "", "write YAML to file")
+	jobspec.AddKolaTestFlags(&cosaKolaTests, cmdGenerate.Flags())
 
 	// Define cmdGenerateSingle flags
 	cmdRoot.AddCommand(cmdGenerateSingle)
 	cmdGenerateSingle.Flags().StringVar(&generateFileName, "yaml-out", "", "write YAML to file")
 	cmdGenerateSingle.Flags().StringSliceVar(&generateCommands, "cmd", []string{}, "commands to run in stage")
 	cmdGenerateSingle.Flags().StringSliceVar(&generateSingleRequires, "req", []string{}, "artifacts to require")
+	jobspec.AddKolaTestFlags(&cosaKolaTests, cmdGenerateSingle.Flags())
 }
 
 // setCliSpec reads or generates a jobspec based on CLI arguments.
@@ -83,14 +85,15 @@ func setCliSpec() {
 	}
 
 	log.Info("Generating jobspec from CLI arguments")
-	if generateCommands != nil || generateSingleRequires != nil {
+	if len(generateCommands) != 0 || len(generateSingleRequires) != 0 {
 		log.Info("--cmd and --req forces single stage mode, only one stage will be run")
 		generateSingleStage = true
 	}
 
 	log.Info("Generating stages")
-	spec.GenerateStages(automaticBuildStages, generateSingleStage)
-	log.Infof("Adding commands %v to first stage", generateCommands)
+	if err := spec.GenerateStages(automaticBuildStages, cosaKolaTests, generateSingleStage); err != nil {
+		log.WithError(err).Fatal("failed to generate the jobpsec")
+	}
 
 	if spec.Stages == nil {
 		spec.Stages = []jobspec.Stage{
