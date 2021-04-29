@@ -76,6 +76,7 @@ func (ws *workSpec) Marshal() ([]byte, error) {
 // Exec executes the work spec tasks.
 func (ws *workSpec) Exec(ctx ClusterContext) error {
 	apiBuild = ws.APIBuild
+
 	envVars := os.Environ()
 
 	// Check stdin for binary input.
@@ -90,15 +91,6 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		if err := decompress(f, cosaSrvDir); err != nil {
 			return err
 		}
-
-		// Add select paths to the path for developer overrides
-		for i, ev := range envVars {
-			kvs := strings.Split(ev, "=")
-			if kvs[0] == "PATH" {
-				envVars[i] = fmt.Sprintf("%s/bin:%s/cosa/src/:%s", cosaSrvDir, cosaSrvDir, kvs[1])
-			}
-		}
-
 	}
 
 	// Workers always will use /srv. The shell/Python code of COSA expects
@@ -245,6 +237,14 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			return err
 		}
 
+		next, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+		if next != nil && next.BuildArtifacts != nil && (mBuild.BuildArtifacts == nil || mBuild.BuildArtifacts.Ostree.Sha256 != next.BuildArtifacts.Ostree.Sha256) {
+			log.Debug("Stage produced a new OStree")
+			if err := uploadCustomBuildContainer(ctx, ws.APIBuild, next.BuildID); err != nil {
+				return err
+			}
+		}
+
 		if stage.ReturnCache {
 			l.WithField("tarball", cacheTarballName).Infof("Sending %s back as a tarball", cosaSrvCache)
 			if err := returnPathTarBall(ctx, cacheBucket, cacheTarballName, cosaSrvCache, ws.Return); err != nil {
@@ -273,10 +273,20 @@ func (ws *workSpec) getEnvVars() ([]v1.EnvVar, error) {
 		return nil, err
 	}
 
-	return []v1.EnvVar{
+	evars := []v1.EnvVar{
 		{
 			Name:  CosaWorkPodEnvVarName,
 			Value: string(d),
 		},
-	}, nil
+	}
+
+	if ws.JobSpec.Job.DisableTLSVerify {
+		evars = append(evars,
+			v1.EnvVar{
+				Name:  "DISABLE_TLS_VERIFICATION",
+				Value: "1",
+			})
+	}
+
+	return evars, nil
 }

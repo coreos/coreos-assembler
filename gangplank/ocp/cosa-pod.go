@@ -49,6 +49,30 @@ var (
 				},
 			},
 		},
+		{
+			Name: "pki-trust",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{
+					Medium: "",
+				},
+			},
+		},
+		{
+			Name: "pki-anchors",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{
+					Medium: "",
+				},
+			},
+		},
+		{
+			Name: "container-certs",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{
+					Medium: "",
+				},
+			},
+		},
 	}
 
 	// volumeMounts are the common mounts used in all pods
@@ -56,6 +80,32 @@ var (
 		{
 			Name:      "srv",
 			MountPath: "/srv",
+		},
+		{
+			Name:      "pki-trust",
+			MountPath: "/etc/pki/ca-trust/extracted",
+		},
+		{
+			Name:      "pki-anchors",
+			MountPath: "/etc/pki/ca-trust/anchors",
+		},
+		{
+			Name:      "container-certs",
+			MountPath: "/etc/containers/cert.d",
+		},
+	}
+
+	// Define basic envVars
+	ocpEnvVars = []v1.EnvVar{
+		{
+			// SSL_CERT_FILE is understood by Golang code as a pointer to alternative
+			// directory for certificates. The contents is populated by the ocpInitCommand
+			Name:  "SSL_CERT_FILE",
+			Value: "/etc/containers/cert.d/ca.crt",
+		},
+		{
+			Name:  "OSCONTAINER_CERT_DIR",
+			Value: "/etc/containers/cert.d",
 		},
 	}
 
@@ -69,16 +119,33 @@ var (
 		Privileged: ptrBool(true),
 	}
 
-	// InitCommands to be run before work pod is executed.
-	ocpInitCommand = []string{}
+	// InitCommands to be run before work in pod is executed.
+	ocpInitCommand = []string{
+		"mkdir -vp /etc/pki/ca-trust/extracted/{openssl,pem,java,edk2}",
+
+		// Add any extra anchors which are defined in sa_secrets.go
+		"cp -av /etc/pki/ca-trust/source/anchors2/*{crt,pem} /etc/pki/ca-trust/anchors/ || :",
+
+		// Always trust the cluster proivided certificates
+		"cp -av /run/secrets/kubernetes.io/serviceaccount/ca.crt /etc/pki/ca-trust/anchors/cluster-ca.crt || :",
+		"cp -av /run/secrets/kubernetes.io/serviceaccount/service-ca.crt /etc/pki/ca-trust/anchors/service-ca.crt || :",
+
+		// Update the CA Certs
+		"update-ca-trust",
+
+		// Explicitly add the cluster certs for podman/buildah/skopeo
+		"mkdir -vp /etc/containers/certs.d",
+		"cat /run/secrets/kubernetes.io/serviceaccount/*crt >> /etc/containers/certs.d/ca.crt || :",
+		"cat /etc/pki/ca-trust/extracted/pem/* >> /etc/containers/certs.d/ca.crt ||:",
+	}
 
 	// On OpenShift 3.x, /dev/kvm is unlikely to world RW. So we have to give ourselves
 	// permission. Gangplank will run as root but `cosa` commands run as the builder
 	// user. Note: on 4.x, gangplank will run unprivileged.
-	ocp3InitCommand = []string{
+	ocp3InitCommand = append(ocpInitCommand,
 		"/usr/bin/chmod 0666 /dev/kvm || echo missing kvm",
 		"/usr/bin/stat /dev/kvm || :",
-	}
+	)
 
 	// Define the base requirements
 	// cpu are in mils, memory is in mib
@@ -211,7 +278,7 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error) {
 			"/usr/bin/gangplank",
 			"builder",
 		},
-		Env:             envVars,
+		Env:             append(ocpEnvVars, envVars...),
 		WorkingDir:      "/srv",
 		VolumeMounts:    cp.volumeMounts,
 		SecurityContext: cp.ocpSecContext,
@@ -228,7 +295,7 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error) {
 		initCtr := cosaBasePod.DeepCopy()
 		initCtr.Name = "init"
 		initCtr.Args = []string{"/bin/bash", "-xc", fmt.Sprintf(`#!/bin/bash
-export PATH=/usr/sbin:/usr/bin
+export PATH=/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH
 %s
 `, strings.Join(cp.ocpInitCommand, "\n"))}
 

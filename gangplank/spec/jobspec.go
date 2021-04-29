@@ -108,11 +108,12 @@ func (c *CloudsCfgs) GetCloudCfg(cloud string) (Cloud, error) {
 //   StrictMode: only run explicitly defined stages
 //   VersionSuffix: name to append, ie. devel
 type Job struct {
-	BuildName     string `yaml:"build_name,omitempty" json:"build_name,omitempty"`
-	IsProduction  bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
-	StrictMode    bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
-	VersionSuffix string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
-	MinioCfgFile  string // not exported
+	BuildName        string `yaml:"build_name,omitempty" json:"build_name,omitempty"`
+	IsProduction     bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
+	StrictMode       bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
+	VersionSuffix    string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
+	DisableTLSVerify bool   `yaml:"disable_tls_verification" json:"disable_tls_verification"`
+	MinioCfgFile     string // not exported
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config

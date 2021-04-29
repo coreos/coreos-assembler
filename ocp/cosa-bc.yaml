@@ -54,6 +54,14 @@ objects:
   - kind: ServiceAccount
     name: ${SA}
 
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    name: machine-os-content
+  spec:
+    lookupPolicy:
+      local: true
+
 # Create the basic build config
 - apiVersion: build.openshift.io/v1
   kind: BuildConfig
@@ -67,7 +75,10 @@ objects:
     failedBuildsHistoryLimit: 25
     successfulBuildsHistoryLimit: 25
     nodeSelector: null
-    output: {}
+    output:
+    to:
+      kind: ImageStreamTag
+      name: machine-os-content:latest
     postCommit: {}
     resources: {}
     runPolicy: Parallel

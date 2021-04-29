@@ -32,14 +32,6 @@ var (
 		"internal-ca": {
 			volumes: []v1.Volume{
 				{
-					Name: "pki-trust",
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{
-							Medium: "",
-						},
-					},
-				},
-				{
 					Name: "pki",
 					VolumeSource: v1.VolumeSource{
 						Secret: &v1.SecretVolumeSource{
@@ -51,19 +43,9 @@ var (
 			},
 			volumeMounts: []v1.VolumeMount{
 				{
-					Name:      "pki-trust",
-					MountPath: "/etc/pki/ca-trust/extracted",
-				},
-				{
 					Name:      "pki",
-					MountPath: "/etc/pki/ca-trust/source/anchors/",
+					MountPath: "/etc/pki/ca-trust/source/anchors2/",
 				},
-			},
-			// Since /etc/pki/ca-trust/extraced is a volume, this works without being root.
-			addInitCommands: []string{
-				"mkdir -vp /etc/pki/ca-trust/extracted/{openssl,pem,java,edk2}",
-				"update-ca-trust",
-				"find /etc/pki/ca-trust/extracted",
 			},
 		},
 

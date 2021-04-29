@@ -99,7 +99,7 @@ osc_name_and_tag = "{}:{}".format(args.name, latest_build)
 # TODO: Remove --from
 digestfile = "tmp/oscontainer-digest"
 # We need to pass the auth file from the unpriv user to the root process
-cosa_argv = ['sudo', '--preserve-env=container,REGISTRY_AUTH_FILE']
+cosa_argv = ['sudo', '--preserve-env=container,DISABLE_TLS_VERIFICATION,SSL_CERT_DIR,SSL_CERT_FILE,REGISTRY_AUTH_FILE,OSCONTAINER_CERT_DIR']
 authfile = os.environ.get("REGISTRY_AUTH_FILE", os.path.expanduser('~/.docker/config.json'))
 if not os.path.isfile(authfile):
     raise SystemExit(f"Missing {authfile}")
