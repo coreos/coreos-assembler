@@ -283,13 +283,12 @@ class Build(_Build):
                 log.debug(f" * EXCLUDING: {msg}")
                 continue
 
-            fsize = '{}'.format(os.stat(lpath).st_size)
             log.debug(" * calculating checksum")
             self._found_files[lpath] = {
                 "local_path": lpath,
                 "upload_path": upload_path,
                 "md5": md5sum_file(lpath),
-                "size": int(fsize)
+                "size": os.stat(lpath).st_size
             }
             log.debug(f" * size is {self._found_files[lpath]['size']}")
             log.debug(f" * md5 is {self._found_files[lpath]['md5']}")
