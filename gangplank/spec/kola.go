@@ -55,7 +55,7 @@ var kolaTestDefinitions = kolaTests{
 	},
 	"metal4k": {
 		ID:               "Kola ISO Testing 4K Disks",
-		PostCommands:     []string{"kola testiso -S--qemu-native-4k --scenarios iso-install --output-dir tmp/kola-metal4k"},
+		PostCommands:     []string{"kola testiso -S --qemu-native-4k --scenarios iso-install --output-dir tmp/kola-metal4k"},
 		ExecutionOrder:   4,
 		RequireArtifacts: []string{"live-iso"},
 	},
