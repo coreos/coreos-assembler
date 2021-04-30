@@ -18,8 +18,7 @@ from cosalib.build import (
 from cosalib.cmdlib import (
     get_basearch,
     image_info,
-    run_verbose,
-    sha256sum_file
+    run_verbose
 )
 from cosalib.digitalocean import (
     mutate_digitalocean
@@ -283,24 +282,6 @@ class QemuVariantImage(_Build):
             shutil.move(work_img, final_img)
 
         return meta_patch
-
-    def get_artifact_meta(self, fname=None):
-        """
-        Get the articat's meta-data
-
-        :param fname: name of file to get meta-data for
-        :type fname: str
-        """
-        fsize = '{}'.format(os.stat(self.image_path).st_size)
-        if fname is None:
-            fname = self.image_name
-        fpath = os.path.join(self.build_dir, fname)
-        log.info(f"Calculating metadata for {fname}")
-        return {
-            "path": fname,
-            "sha256": sha256sum_file(fpath),
-            "size": int(fsize)
-        }
 
     def _build_artifacts(self, *args, **kwargs):
         """

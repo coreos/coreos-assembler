@@ -447,6 +447,12 @@ class _Build:
         return False
 
     def get_artifact_meta(self, fname=None):
+        """
+        Get the artifact's metadata
+
+        :param fname: name of file to get metadata for
+        :type fname: str
+        """
         fsize = '{}'.format(os.stat(self.image_path).st_size)
         if fname is None:
             fname = self.image_name
