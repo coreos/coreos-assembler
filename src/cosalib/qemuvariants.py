@@ -229,6 +229,7 @@ class QemuVariantImage(_Build):
                                 f"{self.image_name_base}.{self.image_format}")
         final_img = os.path.join(os.path.abspath(self.build_dir),
                                  self.image_name)
+        meta_patch = {}
 
         log.info(f"Staging temp image: {work_img}")
         self.set_platform()
@@ -254,7 +255,7 @@ class QemuVariantImage(_Build):
 
         if self.mutate_callback:
             log.info("Processing work image callback")
-            self.mutate_callback(work_img)
+            meta_patch.update(self.mutate_callback(work_img) or {})
 
         if self.tar_members:
             # Python does not create sparse Tarfiles, so we have do it via
@@ -280,6 +281,8 @@ class QemuVariantImage(_Build):
         else:
             log.info(f"Moving {work_img} to {final_img}")
             shutil.move(work_img, final_img)
+
+        return meta_patch
 
     def get_artifact_meta(self, fname=None):
         """
@@ -312,9 +315,10 @@ class QemuVariantImage(_Build):
             raise BuildExistsError(
                 f"{self.image_name} has already been built")
 
-        self.mutate_image()
+        meta_patch = self.mutate_image()
         imgs = self.meta.get("images", {})
         img_meta = self.get_artifact_meta()
+        img_meta.update(meta_patch or {})
         self._found_files[self.image_name] = img_meta
         imgs[self.platform] = img_meta
         self.meta_write(artifact_name=self.platform_image_name)
