@@ -446,20 +446,12 @@ class _Build:
             return True
         return False
 
-    def get_artifact_meta(self, fname=None):
-        """
-        Get the artifact's metadata
-
-        :param fname: name of file to get metadata for
-        :type fname: str
-        """
-        if fname is None:
-            fname = self.image_name
-        fpath = os.path.join(self.build_dir, fname)
-        log.info(f"Calculating metadata for {fname}")
+    def get_artifact_meta(self):
+        """Get the artifact's metadata"""
+        log.info(f"Calculating metadata for {self.image_name}")
         return {
-            "path": fname,
-            "sha256": sha256sum_file(fpath),
+            "path": self.image_name,
+            "sha256": sha256sum_file(self.image_path),
             "size": os.stat(self.image_path).st_size
         }
 
