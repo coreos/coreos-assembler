@@ -453,7 +453,6 @@ class _Build:
         :param fname: name of file to get metadata for
         :type fname: str
         """
-        fsize = '{}'.format(os.stat(self.image_path).st_size)
         if fname is None:
             fname = self.image_name
         fpath = os.path.join(self.build_dir, fname)
@@ -461,7 +460,7 @@ class _Build:
         return {
             "path": fname,
             "sha256": sha256sum_file(fpath),
-            "size": int(fsize)
+            "size": os.stat(self.image_path).st_size
         }
 
     def get_artifacts(self):
