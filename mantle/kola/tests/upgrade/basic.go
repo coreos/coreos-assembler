@@ -101,6 +101,11 @@ func init() {
         "mode": 420
       },
       {
+        "path": "/etc/zincati/config.d/99-agent-timing-speedup.toml",
+        "contents": { "source": "data:,agent.timing.steady_interval_secs%20%3D%2020%0A" },
+        "mode": 420
+      },
+      {
         "path": "/etc/ostree/remotes.d/fedora.conf",
         "contents": { "source": "data:,%5Bremote%20%22fedora%22%5D%0Aurl%3Dhttp%3A%2F%2Flocalhost%3A8080%0Agpg-verify%3Dfalse%0A" },
         "overwrite": true,
