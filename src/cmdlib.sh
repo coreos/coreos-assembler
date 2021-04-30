@@ -336,7 +336,10 @@ EOF
         # the same RPMs: the `dnf repoquery` below is to pick the latest one
         dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
             --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
-            --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' --quiet | python3 -c '
+            --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' --quiet \
+                > "${tmp_overridesdir}/overrides.txt"
+        # yes, don't need cat, but it's more legible that way
+        cat "${tmp_overridesdir}/overrides.txt" | python3 -c '
 import sys, json
 lockfile = {"packages": {}}
 for line in sys.stdin:
@@ -349,6 +352,9 @@ json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
         cat >> "${override_manifest}" <<EOF
 repos:
   - coreos-assembler-local-overrides
+repo-packages:
+  - repo: coreos-assembler-local-overrides
+    packages: [$(cut -f1 "${tmp_overridesdir}/overrides.txt")]
 EOF
         cat > "${tmp_overridesdir}"/coreos-assembler-local-overrides.repo <<EOF
 [coreos-assembler-local-overrides]
