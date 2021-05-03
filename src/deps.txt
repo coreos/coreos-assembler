@@ -27,7 +27,7 @@ genisoimage
 make git rpm-build
 
 # virt dependencies
-libguestfs-tools /usr/bin/qemu-img qemu-kvm swtpm
+libguestfs-tools libguestfs-tools-c /usr/bin/qemu-img qemu-kvm swtpm
 
 # Useful for moving files around
 rsync
