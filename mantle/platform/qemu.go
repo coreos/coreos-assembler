@@ -69,6 +69,7 @@ type QemuMachineOptions struct {
 	HostForwardPorts []HostForwardPort
 	DisablePDeathSig bool
 	MultiPathDisk    bool
+	SecondaryNics    int
 }
 
 // QEMUMachine represents a qemu instance.
