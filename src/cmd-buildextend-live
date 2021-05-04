@@ -436,12 +436,12 @@ def generate_iso():
         shutil.move(os.path.join(tmpisoimagespxe, kernel_img), kernel_dest)
         kernel_img = 'kernel.img'
 
-        # combine kernel, initramfs and cmdline using lorax/mk-s390-cdboot tool
-        run_verbose(['/usr/bin/mk-s390-cdboot',
-                     '-i', kernel_dest,
+        # combine kernel, initramfs and cmdline using the mk-s390image tool
+        run_verbose(['/usr/bin/mk-s390image',
+                     kernel_dest,
+                     os.path.join(tmpisoimages, 'cdboot.img'),
                      '-r', iso_initramfs,
-                     '-p', os.path.join(tmpisoimages, 'cdboot.prm'),
-                     '-o', os.path.join(tmpisoimages, 'cdboot.img')])
+                     '-p', os.path.join(tmpisoimages, 'cdboot.prm')])
         # generate .addrsize file for LPAR
         with open(os.path.join(tmpisoimages, 'initrd.addrsize'), 'wb') as addrsize:
             addrsize_data = struct.pack(">iiii", 0, int(INITRD_ADDRESS, 16), 0,
