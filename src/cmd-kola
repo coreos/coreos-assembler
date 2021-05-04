@@ -17,8 +17,12 @@ import yaml
 BASIC_SCENARIOS = ["firmware=uefi", "firmware=uefi-secure"]
 arch = platform.machine()
 
+qemu_cmd = f"qemu-system-{arch}"
+if arch == "ppc64le":
+    qemu_cmd = "qemu-system-ppc64"
+
 # time bomb for above XXX
-nvme_help = subprocess.check_output(['qemu-kvm', '-device', 'nvme,help'],
+nvme_help = subprocess.check_output([qemu_cmd, '-device', 'nvme,help'],
                                     encoding='utf-8')
 if 'bootindex' in nvme_help:
     raise Exception("NVMe now supports bootindex property; re-enable NVMe testing")
