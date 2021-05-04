@@ -145,9 +145,41 @@ INFO[0000] Gangplank: COSA OpenShift job runner, 2021-03-02.9dce8136~dirty
 # 2021-03-02T17:25:42-07:00
 job:
   strict: true
+
 recipe:
   git_ref: testing-devel
   git_url: https://github.com/coreos/fedora-coreos-config
+  repos:
+   # URLs point to remote endpoint that contains the repo file
+   - <URL>
+
+# publish_ocontainer describes locations to push the oscontainer to.
+publish_oscontainer:
+    # TLS verification for build strategy builds. Defaults to true
+    # Push registry comes from the build.openshift.io's build.spec.output
+    # specification.
+    buildstrategy_tls_verify: true
+
+    # list of push locations to push osconatiner to.
+    registries:
+      # push to a cluster address using an service account token
+      # to login to the regitry (only useful in cluster)
+      - url: "first.registry.example.com/stream/name:tag"
+        secret_type: token
+        tls_verify: false
+
+      # push with an inline secret
+      - url: "second.registry.example.com/stream/name:tag",
+        secret_type: inline
+        secret: "<STRING>"
+
+      # push using an incluser secret name "builder-secret"
+      # the service account running Gangplank will need to be
+      # able to read the secret
+      - url: "third.registry.exmaple.com/stream/name:tag",
+        secret_type: cluster
+        secret: builder-secret
+
 stages:
 - id: Generated Base Stage
   build_artifacts: [base]
