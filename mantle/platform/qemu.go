@@ -424,6 +424,7 @@ type QemuBuilder struct {
 	UsermodeNetworking        bool
 	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
+	secondaryNics             int
 
 	finalized bool
 	diskID    uint
@@ -531,6 +532,10 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort) {
 	builder.requestedHostForwardPorts = h
 }
 
+func (builder *QemuBuilder) AddSecondaryNics(secondaryNics int) {
+	builder.secondaryNics = secondaryNics
+}
+
 func (builder *QemuBuilder) setupNetworking() error {
 	netdev := "user,id=eth0"
 	for i := range builder.requestedHostForwardPorts {
@@ -556,6 +561,23 @@ func (builder *QemuBuilder) setupNetworking() error {
 	}
 
 	builder.Append("-netdev", netdev, "-device", virtio("net", "netdev=eth0"))
+	return nil
+}
+
+func (builder *QemuBuilder) setupSecondaryNetworking() error {
+	macCounter := 0
+	netOffset := 30
+	for i := 1; i <= builder.secondaryNics; i++ {
+		idSuffix := fmt.Sprintf("%d", i)
+		netSuffix := fmt.Sprintf("%d", netOffset+i)
+		macSuffix := fmt.Sprintf("%02x", macCounter)
+
+		netdev := fmt.Sprintf("user,id=eth%s,dhcpstart=10.0.2.%s", idSuffix, netSuffix)
+		device := virtio("net", fmt.Sprintf("netdev=eth%s,mac=52:55:00:d1:56:%s", idSuffix, macSuffix))
+		builder.Append("-netdev", netdev, "-device", device)
+		macCounter++
+	}
+
 	return nil
 }
 
@@ -1366,6 +1388,13 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			return nil, err
 		}
 		inst.hostForwardedPorts = builder.requestedHostForwardPorts
+	}
+
+	// Handle Secondary NICs networking
+	if builder.secondaryNics > 0 {
+		if err := builder.setupSecondaryNetworking(); err != nil {
+			return nil, err
+		}
 	}
 
 	// Handle Software TPM
