@@ -129,19 +129,30 @@ type Recipe struct {
 // Repo is a yum/dnf repositories to use as an installation source.
 type Repo struct {
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
-	URL  string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// URL indicates that the repo file is remote
+	URL *string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// Inline indicates that the repo file is inline
+	Inline *string `yaml:"inline,omitempty" json:"inline,omitempty"`
 }
 
 // Writer places the remote repo file into path. If the repo has no name,
 // then a SHA256 of the URL will be used. Returns path of the file and err.
 func (r *Repo) Writer(path string) (string, error) {
-	if r.URL == "" {
-		return "", errors.New("URL is undefined")
+	if r.URL == nil && r.Inline == nil {
+		return "", errors.New("repo must be a URL or inline data")
 	}
 	rname := r.Name
+	var data string
+	if r.URL != nil {
+		data = *r.URL
+	} else {
+		data = *r.Inline
+	}
 	if rname == "" {
 		h := sha256.New()
-		if _, err := h.Write([]byte(r.URL)); err != nil {
+		if _, err := h.Write([]byte(data)); err != nil {
 			return "", fmt.Errorf("failed to calculate name: %v", err)
 		}
 		rname = fmt.Sprintf("%x", h.Sum(nil))
@@ -154,13 +165,22 @@ func (r *Repo) Writer(path string) (string, error) {
 	}
 	defer out.Close()
 
-	resp, err := http.Get(r.URL)
-	if err != nil {
-		return f, err
+	closer := func() error { return nil }
+	var dataR io.Reader
+	if r.URL != nil && *r.URL != "" {
+		resp, err := http.Get(*r.URL)
+		if err != nil {
+			return f, err
+		}
+		dataR = resp.Body
+		closer = resp.Body.Close
+	} else {
+		dataR = strings.NewReader(*r.Inline)
 	}
-	defer resp.Body.Close()
 
-	n, err := io.Copy(out, resp.Body)
+	defer closer() //nolint
+
+	n, err := io.Copy(out, dataR)
 	if n == 0 {
 		return f, errors.New("No remote content fetched")
 	}
