@@ -221,3 +221,35 @@ func TestStageYaml(t *testing.T) {
 		}
 	}
 }
+
+func TestIsArtifactValid(t *testing.T) {
+	testCases := []struct {
+		artifact string
+		want     bool
+	}{
+		{
+			artifact: "base",
+			want:     true,
+		},
+		{
+			artifact: "AWS",
+			want:     true,
+		},
+		{
+			artifact: "finalize",
+			want:     true,
+		},
+		{
+			artifact: "mandrake+root",
+			want:     false,
+		},
+	}
+	for idx, tc := range testCases {
+		t.Run(fmt.Sprintf("test-%d-%s", idx, tc.artifact), func(t *testing.T) {
+			got := isValidArtifactShortHand(tc.artifact)
+			if got != tc.want {
+				t.Errorf("artifact %s should return %v but got %v", tc.artifact, tc.want, got)
+			}
+		})
+	}
+}
