@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/containers/libpod v1.9.3
 	github.com/containers/storage v1.20.2
+	github.com/google/uuid v1.1.1
 	github.com/minio/minio-go/v7 v7.0.6
 	github.com/opencontainers/runc v1.0.0-rc90
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200520003142-237cc4f519e2
