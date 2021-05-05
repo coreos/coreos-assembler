@@ -6,8 +6,6 @@ locally or in a cloud.
 
 ## Overview
 Mantle is composed of many utilities:
- - `cork` for handling the Container Linux SDK
- - `gangue` for downloading from Google Storage
  - `kola` for launching instances and running tests
  - `kolet` an agent for kola that runs on instances
  - `ore` for interfacing with cloud providers
@@ -17,36 +15,6 @@ All of the utilities support the `help` command to get a full listing of their s
 and options.
 
 ## Tools
-
-### cork
-Cork is a tool that helps working with Container Linux images and the SDK.
-
-#### cork create
-Download and unpack the Container Linux SDK.
-
-`cork create`
-
-#### cork enter
-Enter the SDK chroot, and optionally run a command. The command and its
-arguments can be given after `--`.
-
-`cork enter -- repo sync`
-
-#### cork download-image
-Download a Container Linux image into `$PWD/.cache/images`.
-
-`cork download-image --platform=qemu`
-
-#### Building Container Linux with cork
-See [Modifying Container Linux](https://coreos.com/os/docs/latest/sdk-modifying-coreos.html) for
-an example of using cork to build a Container Linux image.
-
-### gangue
-Gangue is a tool for downloading and verifying files from Google Storage with authenticated requests.
-It is primarily used by the SDK.
-
-#### gangue get
-Get a file from Google Storage and verify it using GPG.
 
 ### kola
 Kola is a framework for testing software integration in Container Linux instances
