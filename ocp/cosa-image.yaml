@@ -1,7 +1,7 @@
 # In this file, you will find the following:
 #   - ImageStream configs for importing Fedora images
 #   - ImageStream configs for importing coreos-assembler images
-#   - BuildConfig defining how coreos-assembler:master is built
+#   - BuildConfig defining how coreos-assembler:main is built
 #   - BuildConfig defining how coreos-assembler:buildconfig is built
 #
 # To use this file, you would do something like the following:
@@ -30,7 +30,7 @@ parameters:
     value: "https://github.com/coreos/coreos-assembler"
   - description: Git branch/tag reference
     name: REPO_REF
-    value: "master"
+    value: "main"
   - description: Name of the image; use e.g. joe-cosa for your own build
     name: IMAGE
     value: coreos-assembler
@@ -75,8 +75,8 @@ objects:
       lookupPolicy:
         local: true
       tags:
-        # import the `master` image just in-case
-        - name: master
+        # import the `main` image just in-case
+        - name: main
           from:
             kind: DockerImage
             name: quay.io/coreos-assembler/coreos-assembler:${REPO_REF}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Convert a coreos-assembler build into a "release.json"
-# Originally from https://github.com/coreos/fedora-coreos-releng-automation/blob/master/coreos-meta-translator/trans.py
-# See also https://github.com/coreos/fedora-coreos-tracker/blob/master/Design.md#release-streams
+# Originally from https://github.com/coreos/fedora-coreos-releng-automation/blob/main/coreos-meta-translator/trans.py
+# See also https://github.com/coreos/fedora-coreos-tracker/blob/main/Design.md#release-streams
 
 
 from argparse import ArgumentParser
