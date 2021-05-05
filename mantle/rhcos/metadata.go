@@ -28,7 +28,7 @@ import (
 
 const (
 	// If the branch ever renames this will break
-	StreamLatest = "master"
+	StreamLatest = "main"
 )
 
 func fetchURL(u url.URL) ([]byte, error) {

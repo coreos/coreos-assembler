@@ -42,7 +42,7 @@ func init() {
 	cmdCreateDevice.Flags().StringVar(&options.Facility, "facility", "sjc1", "facility code")
 	cmdCreateDevice.Flags().StringVar(&options.Plan, "plan", "", "plan slug (default arch-dependent, e.g. \"t1.small.x86\")")
 	cmdCreateDevice.Flags().StringVar(&options.Architecture, "architecture", "x86_64", "CPU architecture")
-	cmdCreateDevice.Flags().StringVar(&options.IPXEURL, "ipxe-url", "", "iPXE script URL (default arch-dependent, e.g. \"https://raw.githubusercontent.com/coreos/coreos-assembler/master/mantle/platform/api/packet/fcos-x86_64.ipxe\")")
+	cmdCreateDevice.Flags().StringVar(&options.IPXEURL, "ipxe-url", "", "iPXE script URL (default arch-dependent, e.g. \"https://raw.githubusercontent.com/coreos/coreos-assembler/main/mantle/platform/api/packet/fcos-x86_64.ipxe\")")
 	cmdCreateDevice.Flags().StringVar(&options.ImageURL, "image-url", "", "image URL (default arch-dependent, e.g. \"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/31.20200223.3.0/x86_64/fedora-coreos-31.20200223.3.0-metal.x86_64.raw.xz\")")
 	cmdCreateDevice.Flags().StringVar(&hostname, "hostname", "", "hostname to assign to device")
 	cmdCreateDevice.Flags().StringVar(&userDataPath, "userdata-file", "", "path to file containing userdata")

@@ -56,7 +56,7 @@ var (
 		"x86_64": "t1.small.x86",
 	}
 	defaultIPXEURL = map[string]string{
-		"x86_64": "https://raw.githubusercontent.com/coreos/coreos-assembler/master/mantle/platform/api/packet/fcos-x86_64.ipxe",
+		"x86_64": "https://raw.githubusercontent.com/coreos/coreos-assembler/main/mantle/platform/api/packet/fcos-x86_64.ipxe",
 	}
 )
 
@@ -78,7 +78,7 @@ type Options struct {
 	Plan string
 	// CPU architecture
 	Architecture string
-	// e.g. https://raw.githubusercontent.com/coreos/coreos-assembler/master/mantle/platform/api/packet/fcos-x86_64.ipxe
+	// e.g. https://raw.githubusercontent.com/coreos/coreos-assembler/main/mantle/platform/api/packet/fcos-x86_64.ipxe
 	IPXEURL string
 	// e.g. https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/31.20200223.3.0/x86_64/fedora-coreos-31.20200223.3.0-metal.x86_64.raw.xz
 	ImageURL string

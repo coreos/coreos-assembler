@@ -16,7 +16,7 @@ const (
 	fedoraGitRef = "testing-devel"
 
 	rhcosGitURL = "https://github.com/openshift/os"
-	rhcosGitRef = "master"
+	rhcosGitRef = "main"
 )
 
 // Default to building Fedora

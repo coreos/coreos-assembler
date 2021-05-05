@@ -660,7 +660,7 @@ prepare_git_artifacts() {
         # shellcheck disable=SC2086
         head_url="$($gc remote get-url origin 2> /dev/null || echo unknown)"
     else
-        # Get the ref name, e.g. remote/origin/master
+        # Get the ref name, e.g. remote/origin/main
         # shellcheck disable=SC2086
         head_ref="$($gc symbolic-ref -q HEAD)"
         # Find the remote name, e.g. origin.
