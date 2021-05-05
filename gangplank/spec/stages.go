@@ -563,17 +563,35 @@ func addShorthandToStage(artifact string, stage *Stage) {
 	stage.RequestArtifacts = unique(realOptional)
 }
 
+// isValidArtifactShortHand checks if the shortand is valid
+func isValidArtifactShortHand(a string) bool {
+	valid := false
+	for _, v := range strings.Split(strings.ToLower(a), "+") {
+		if cosa.CanArtifact(v) {
+			valid = true
+		}
+		for _, ps := range pseudoStages {
+			if v == ps {
+				valid = true
+				break
+			}
+		}
+	}
+	return valid
+}
+
 // GenerateStages creates stages.
 func (j *JobSpec) GenerateStages(fromNames, testNames []string, singleStage bool) error {
 	j.DelayedMetaMerge = true
 	j.Job.StrictMode = true
 
 	for _, k := range fromNames {
-		if !cosa.CanArtifact(k) {
+		if !isValidArtifactShortHand(k) {
 			return fmt.Errorf("artifact %s is an invalid artifact", k)
 		}
 	}
 	for _, k := range testNames {
+		k = strings.ToLower(k)
 		if _, ok := kolaTestDefinitions[k]; !ok {
 			return fmt.Errorf("kola test %s is an invalid kola name", k)
 		}
