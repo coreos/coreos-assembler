@@ -8,18 +8,34 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [--delay-meta-merge] [--force] [--force-image] [--skip-prune] [--strict] [--tag TAG] [--version VERSION] [TARGET...]
+       coreos-assembler build [OPTIONS]... [TARGET]...
 
   Build OSTree and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
 
-  - ostree
-  - qemu
-  - metal
-  - metal4k
+  - ostree     Compose an ostree commit
+  - qemu       Also create a QCOW2 image to run with QEMU
+  - metal      Also create a raw disk image
+  - metal4k    Also create a raw disk image for 4K native disks
 
   The "qemu" and "metal" targets imply "ostree". If unspecified, defaults to
   "qemu". They are equivalent to manually running buildextend-[TARGET] after.
+
+  The following options are supported:
+
+  --delay-meta-merge  Set 'coreos-assembler.delayed-meta-merge' in build metadata (default: false)
+  --force             Always create a new OSTree commit, even if nothing appears to have changed
+  --force-image       Force an image rebuild even if there were no changes to image input
+  --skip-prune        Skip prunning previous builds
+  --strict            Only allow installing locked packages when using lockfiles
+  --tag TAG           Set the given tag in the build metadata
+  --version VERSION   Use the given version instead of generating one based on current time
+
+  Additionnal environment variables supported:
+
+  RPMOSTREE_EXTRA_ARGS         To pass extra arguments to 'rpm-ostree compose tree ...'
+  RPMOSTREE_PRESERVE_TMPDIR    To keep the temporary compose rootfs from 'rpm-ostree compose tree ...'
+
 EOF
 }
 
