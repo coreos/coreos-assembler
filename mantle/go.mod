@@ -5,11 +5,13 @@ go 1.12
 require (
 	github.com/Azure/azure-sdk-for-go v8.1.0-beta+incompatible
 	github.com/Azure/go-autorest v9.1.0+incompatible
+	github.com/IBM-Cloud/bluemix-go v0.0.0-20210419045805-b50610722085
+	github.com/IBM/ibm-cos-sdk-go v1.6.1
 	github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
-	github.com/aws/aws-sdk-go v1.30.28
+	github.com/aws/aws-sdk-go v1.34.28
 	github.com/coreos/container-linux-config-transpiler v0.8.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -44,12 +46,11 @@ require (
 	github.com/vmware/govmomi v0.15.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
+	golang.org/x/sys v0.0.0-20210112080510-489259a85091
 	golang.org/x/text v0.3.3
 	google.golang.org/api v0.34.0
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
 
