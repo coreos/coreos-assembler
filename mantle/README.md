@@ -154,7 +154,7 @@ is not invoked manually.
 ### ore
 Ore provides a low-level interface for each cloud provider. It has commands
 related to launching instances on a variety of platforms (gcloud, aliyun, aws,
-azure, esx, and packet) within the latest SDK image. Ore mimics the underlying
+azure, esx, ibmcloud and packet) within the latest SDK image. Ore mimics the underlying
 api for each cloud provider closely, so the interface for each cloud provider
 is different. See each providers `help` command for the available actions.
 
@@ -183,7 +183,7 @@ Plume release handles this as well, so it does not need to be run as part of
 the release process.
 
 ## Platform Credentials
-Each platform reads the credentials it uses from different files. The `aliyun`, `aws`, `azure`, `do`, `esx` and `packet`
+Each platform reads the credentials it uses from different files. The `aliyun`, `aws`, `azure`, `do`, `esx`, `ibmcloud` and `packet`
 platforms support selecting from multiple configured credentials, call "profiles". The examples below
 are for the "default" profile, but other profiles can be specified in the credentials files and selected
 via the `--<platform-name>-profile` flag:
@@ -347,6 +347,30 @@ for more information about the `.boto` file.
 		"api_key": "your api key here",
 		"project": "project id here"
 	}
+}
+```
+
+### ibmcloud
+`ibmcloud` uses `~/.bluemix/apikey.json`. This can be populated by downloading the apikey from the IBMCloud UI (https://cloud.ibm.com/login) or by using the IBMCloud cli (https://cloud.ibm.com/docs/cli?topic=cli-install-ibmcloud-cli). This would require the user to login with the correct credentials:
+```
+$ ibmcloud login --sso
+```
+or by using an existing apikey:
+```
+$ ibmcloud login --apikey <user-api-key>
+```
+Once logged in, an api key can be created:
+```
+ $ ibmcloud iam api-key-create other_key --file ~/.bluemix/apikey.json --output json
+```
+
+The json file should have the following fields at the minimum with the api key being mandatory:
+```
+{
+	"name": "api key name here",
+	"description": "description of api key usage here",
+	"createdAt": "timestamp of creation here (UTC)",
+	"apikey": "api key here"
 }
 ```
 
