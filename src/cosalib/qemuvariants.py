@@ -18,7 +18,8 @@ from cosalib.build import (
 from cosalib.cmdlib import (
     get_basearch,
     image_info,
-    run_verbose
+    run_verbose,
+    sha256sum_file
 )
 from cosalib.digitalocean import (
     mutate_digitalocean
@@ -80,6 +81,7 @@ VARIANTS = {
         "image_format": "raw",
         "platform": "gcp",
         "image_suffix": "tar.gz",
+        "gzip": True,
         "convert_options": {
             '-o': 'preallocation=off'
         },
@@ -88,7 +90,6 @@ VARIANTS = {
         ],
         "tar_flags": [
             DEFAULT_TAR_FLAGS,
-            "-z",
             "--format=oldgnu"
         ]
     },
@@ -167,6 +168,7 @@ class QemuVariantImage(_Build):
         self.force = kwargs.get("force", False)
         self.tar_members = kwargs.pop("tar_members", None)
         self.tar_flags = kwargs.pop("tar_flags", [DEFAULT_TAR_FLAGS])
+        self.gzip = kwargs.pop("gzip", False)
         self.virtual_size = kwargs.pop("virtual_size", None)
 
         # this is used in case the image has a different disk
@@ -280,6 +282,18 @@ class QemuVariantImage(_Build):
         else:
             log.info(f"Moving {work_img} to {final_img}")
             shutil.move(work_img, final_img)
+
+        if self.gzip:
+            sha256 = sha256sum_file(final_img)
+            size = os.stat(final_img).st_size
+            temp_path = f"{final_img}.tmp"
+            with open(temp_path, "wb") as fh:
+                run_verbose(['gzip', '-9c', final_img], stdout=fh)
+            shutil.move(temp_path, final_img)
+            meta_patch.update({
+                'uncompressed-sha256': sha256,
+                'uncompressed-size': size,
+            })
 
         return meta_patch
 
