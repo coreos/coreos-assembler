@@ -606,7 +606,7 @@ class Upload(_KojiBase):
                         }
                     }
                 },
-                "name": self.build.build_name,
+                "name": f"{self.build.build_name}-{self.build.basearch}",
                 "release": self._release,
                 "owner": self._owner,
                 "source": source['origin'],
