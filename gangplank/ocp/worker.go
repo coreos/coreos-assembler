@@ -261,14 +261,14 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 
 		if stage.ReturnCache {
 			l.WithField("tarball", cacheTarballName).Infof("Sending %s back as a tarball", cosaSrvCache)
-			if err := returnPathTarBall(ctx, cacheBucket, cacheTarballName, cosaSrvCache, ws.Return); err != nil {
+			if err := uploadPathAsTarBall(ctx, cacheBucket, cacheTarballName, cosaSrvCache, "", ws.Return); err != nil {
 				return err
 			}
 		}
 
 		if stage.ReturnCacheRepo {
 			l.WithField("tarball", cacheRepoTarballName).Infof("Sending %s back as a tarball", cosaSrvTmpRepo)
-			if err := returnPathTarBall(ctx, cacheBucket, cacheRepoTarballName, cosaSrvTmpRepo, ws.Return); err != nil {
+			if err := uploadPathAsTarBall(ctx, cacheBucket, cacheRepoTarballName, cosaSrvTmpRepo, "", ws.Return); err != nil {
 				return err
 			}
 		}

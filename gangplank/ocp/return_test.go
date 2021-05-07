@@ -58,7 +58,7 @@ func TestTarballRemote(t *testing.T) {
 		Minio: m,
 	}
 
-	if err := returnPathTarBall(ctx, cacheBucket, "test.tar.gz", srcd, returner); err != nil {
+	if err := uploadPathAsTarBall(ctx, cacheBucket, "test.tar.gz", srcd, "", returner); err != nil {
 		t.Fatalf("Failed create tarball: %v", err)
 	}
 

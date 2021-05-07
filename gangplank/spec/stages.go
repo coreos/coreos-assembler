@@ -92,6 +92,9 @@ type Stage struct {
 
 	// KolaTests are shorthands for testing.
 	KolaTests []string `yaml:"kola_tests,omitempty" json:"kola_tests,omitempty"`
+
+	// Overrides is a list of Overrides to apply to the OS tree
+	Overrides []Override `yaml:"overrides,omitempty" json:"overrides,omitempty"`
 }
 
 // These are the only hard-coded commands that Gangplank understand.

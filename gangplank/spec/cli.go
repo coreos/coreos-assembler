@@ -45,6 +45,9 @@ func init() {
 	}
 }
 
+// strPtr is a helper for returning a string pointer
+func strPtr(s string) *string { return &s }
+
 // AddCliFlags returns the pflag set for use in the CLI.
 func (js *JobSpec) AddCliFlags(cmd *pflag.FlagSet) {
 
@@ -75,7 +78,7 @@ func (js *JobSpec) AddRepos() {
 			js.Recipe.Repos = append(
 				js.Recipe.Repos,
 				&Repo{
-					URL: r,
+					URL: &r,
 				})
 		}
 	}
