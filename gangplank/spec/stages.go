@@ -594,7 +594,6 @@ func (j *JobSpec) GenerateStages(fromNames, testNames []string, singleStage bool
 		}
 	}
 	for _, k := range testNames {
-		k = strings.ToLower(k)
 		if _, ok := kolaTestDefinitions[k]; !ok {
 			return fmt.Errorf("kola test %s is an invalid kola name", k)
 		}
