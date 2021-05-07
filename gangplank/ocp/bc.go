@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -567,7 +568,7 @@ func (bc *buildConfig) ocpBinaryInput(m *minioServer) ([]*RemoteFile, error) {
 			Compressed: true,
 		}
 		remoteFiles = append(remoteFiles, r)
-		log.Info("Binary input will be served to remote mos.")
+		log.Info("Binary input will be served to remote workers")
 	}
 
 	// Look for a jobspec in the binary payload.
@@ -731,9 +732,6 @@ func getStageFiles(buildID string,
 			l.Debug("Waiting for build to appear")
 			return nil, nil, errMissingArtifactDependency
 		}
-
-		l.Info("Didn't find a prior build")
-		return nil, remoteFiles, nil
 	}
 
 	// addArtifact is a helper function for adding artifacts
@@ -779,14 +777,51 @@ func getStageFiles(buildID string,
 		foundCount++
 	}
 
-	if len(s.RequireArtifacts) == foundCount {
-		for _, rf := range remoteFiles {
-			l.WithFields(log.Fields{
-				"bucket": rf.Bucket,
-				"object": rf.Object,
-			}).Debug("will request")
-		}
-		return mBuild, remoteFiles, nil
+	if len(s.RequireArtifacts) != foundCount {
+		return mBuild, nil, errMissingArtifactDependency
 	}
-	return mBuild, nil, errMissingArtifactDependency
+
+	// Create a single tarball of from all the arbitrary overrides, then place in the cache directory.
+	if len(s.Overrides) > 0 {
+		overrideToken, _ := randomString(10)
+		tmpD, err := ioutil.TempDir("", "override")
+		if err != nil {
+			return nil, nil, err
+		}
+		defer os.RemoveAll(tmpD) //nolint
+
+		for _, override := range s.Overrides {
+			l.WithField("override", override.URI).Info("Processing Override")
+			if err := override.Fetch(l, tmpD, decompress); err != nil {
+				return nil, nil, fmt.Errorf("failed to write remote file: %v", err)
+			}
+		}
+
+		tball := fmt.Sprintf("overrides-%s.tar.gz", overrideToken)
+		if err := uploadPathAsTarBall(
+			context.Background(), cacheBucket, tball, ".", tmpD,
+			&Return{Minio: m}); err != nil {
+			return nil, nil, err
+		}
+		remoteFiles = append(
+			remoteFiles,
+			&RemoteFile{
+				Bucket:           cacheBucket,
+				Compressed:       true,
+				ForceExtractPath: "/srv",
+				Minio:            m,
+				Object:           tball,
+			},
+		)
+	}
+
+	for _, rf := range remoteFiles {
+		l.WithFields(log.Fields{
+			"bucket": rf.Bucket,
+			"object": rf.Object,
+		}).Debug("will request")
+	}
+
+	return mBuild, remoteFiles, nil
+
 }
