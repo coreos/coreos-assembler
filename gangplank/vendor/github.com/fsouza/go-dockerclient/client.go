@@ -87,32 +87,29 @@ func NewAPIVersion(input string) (APIVersion, error) {
 }
 
 func (version APIVersion) String() string {
-	var str string
+	parts := make([]string, len(version))
 	for i, val := range version {
-		str += strconv.Itoa(val)
-		if i < len(version)-1 {
-			str += "."
-		}
+		parts[i] = strconv.Itoa(val)
 	}
-	return str
+	return strings.Join(parts, ".")
 }
 
-// LessThan is a function for comparing APIVersion structs
+// LessThan is a function for comparing APIVersion structs.
 func (version APIVersion) LessThan(other APIVersion) bool {
 	return version.compare(other) < 0
 }
 
-// LessThanOrEqualTo is a function for comparing APIVersion structs
+// LessThanOrEqualTo is a function for comparing APIVersion structs.
 func (version APIVersion) LessThanOrEqualTo(other APIVersion) bool {
 	return version.compare(other) <= 0
 }
 
-// GreaterThan is a function for comparing APIVersion structs
+// GreaterThan is a function for comparing APIVersion structs.
 func (version APIVersion) GreaterThan(other APIVersion) bool {
 	return version.compare(other) > 0
 }
 
-// GreaterThanOrEqualTo is a function for comparing APIVersion structs
+// GreaterThanOrEqualTo is a function for comparing APIVersion structs.
 func (version APIVersion) GreaterThanOrEqualTo(other APIVersion) bool {
 	return version.compare(other) >= 0
 }
@@ -320,7 +317,7 @@ func NewVersionedTLSClientFromBytes(endpoint string, certPEMBlock, keyPEMBlock, 
 			return nil, err
 		}
 	}
-	tlsConfig := &tls.Config{}
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
 	if certPEMBlock != nil && keyPEMBlock != nil {
 		tlsCert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 		if err != nil {
@@ -512,7 +509,6 @@ type streamOptions struct {
 	context           context.Context
 }
 
-// if error in context, return that instead of generic http error
 func chooseError(ctx context.Context, err error) error {
 	select {
 	case <-ctx.Done():
@@ -545,7 +541,16 @@ func (c *Client) streamURL(method, url string, streamOptions streamOptions) erro
 			return err
 		}
 	}
-	req, err := http.NewRequest(method, url, streamOptions.in)
+
+	// make a sub-context so that our active cancellation does not affect parent
+	ctx := streamOptions.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	subCtx, cancelRequest := context.WithCancel(ctx)
+	defer cancelRequest()
+
+	req, err := http.NewRequestWithContext(ctx, method, url, streamOptions.in)
 	if err != nil {
 		return err
 	}
@@ -565,14 +570,6 @@ func (c *Client) streamURL(method, url string, streamOptions streamOptions) erro
 	if streamOptions.stderr == nil {
 		streamOptions.stderr = ioutil.Discard
 	}
-
-	// make a sub-context so that our active cancellation does not affect parent
-	ctx := streamOptions.context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	subCtx, cancelRequest := context.WithCancel(ctx)
-	defer cancelRequest()
 
 	if protocol == unixProtocol || protocol == namedPipeProtocol {
 		var dial net.Conn
@@ -780,10 +777,9 @@ func (c *Client) hijack(method, path string, hijackOptions hijackOptions) (Close
 	errs := make(chan error, 1)
 	quit := make(chan struct{})
 	go func() {
-		//nolint:staticcheck
+		//lint:ignore SA1019 the alternative doesn't quite work, so keep using the deprecated thing.
 		clientconn := httputil.NewClientConn(dial, nil)
 		defer clientconn.Close()
-		//nolint:bodyclose
 		clientconn.Do(req)
 		if hijackOptions.success != nil {
 			hijackOptions.success <- struct{}{}
@@ -1061,7 +1057,8 @@ func parseEndpoint(endpoint string, tls bool) (*url.URL, error) {
 	case "http", "https", "tcp":
 		_, port, err := net.SplitHostPort(u.Host)
 		if err != nil {
-			if e, ok := err.(*net.AddrError); ok {
+			var e *net.AddrError
+			if errors.As(err, &e) {
 				if e.Err == "missing port in address" {
 					return u, nil
 				}

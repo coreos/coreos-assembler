@@ -2,16 +2,20 @@ package parent
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/pkg/errors"
 
+	"github.com/rootless-containers/rootlesskit/pkg/api"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	"github.com/rootless-containers/rootlesskit/pkg/port/builtin/msg"
 	"github.com/rootless-containers/rootlesskit/pkg/port/builtin/opaque"
@@ -53,6 +57,14 @@ type driver struct {
 	nextID             int
 }
 
+func (d *driver) Info(ctx context.Context) (*api.PortDriverInfo, error) {
+	info := &api.PortDriverInfo{
+		Driver: "builtin",
+		Protos: []string{"tcp", "tcp4", "tcp6", "udp", "udp4", "udp6"},
+	}
+	return info, nil
+}
+
 func (d *driver) OpaqueForChild() map[string]string {
 	return map[string]string{
 		opaque.SocketPath:         d.socketPath,
@@ -84,6 +96,40 @@ func (d *driver) RunParentDriver(initComplete chan struct{}, quit <-chan struct{
 	return nil
 }
 
+func isEPERM(err error) bool {
+	k := "permission denied"
+	// As of Go 1.14, errors.Is(err, syscall.EPERM) does not seem to work for
+	// "listen tcp 0.0.0.0:80: bind: permission denied" error from net.ListenTCP().
+	return errors.Is(err, syscall.EPERM) || strings.Contains(err.Error(), k)
+}
+
+// annotateEPERM annotates origErr for human-readability
+func annotateEPERM(origErr error, spec port.Spec) error {
+	// Read "net.ipv4.ip_unprivileged_port_start" value (typically 1024)
+	// TODO: what for IPv6?
+	// NOTE: sync.Once should not be used here
+	b, e := ioutil.ReadFile("/proc/sys/net/ipv4/ip_unprivileged_port_start")
+	if e != nil {
+		return origErr
+	}
+	start, e := strconv.Atoi(strings.TrimSpace(string(b)))
+	if e != nil {
+		return origErr
+	}
+	if spec.ParentPort >= start {
+		// origErr is unrelated to ip_unprivileged_port_start
+		return origErr
+	}
+	text := fmt.Sprintf("cannot expose privileged port %d, you can add 'net.ipv4.ip_unprivileged_port_start=%d' to /etc/sysctl.conf (currently %d)", spec.ParentPort, spec.ParentPort, start)
+	if filepath.Base(os.Args[0]) == "rootlesskit" {
+		// NOTE: The following sentence is appended only if Args[0] == "rootlesskit", because it does not apply to Podman (as of Podman v1.9).
+		// Podman launches the parent driver in the child user namespace (but in the parent network namespace), which disables the file capability.
+		text += ", or set CAP_NET_BIND_SERVICE on rootlesskit binary"
+	}
+	text += fmt.Sprintf(", or choose a larger port number (>= %d)", start)
+	return errors.Wrap(origErr, text)
+}
+
 func (d *driver) AddPort(ctx context.Context, spec port.Spec) (*port.Status, error) {
 	d.mu.Lock()
 	err := portutil.ValidatePortSpec(spec, d.ports)
@@ -97,15 +143,18 @@ func (d *driver) AddPort(ctx context.Context, spec port.Spec) (*port.Status, err
 		return nil // FIXME
 	}
 	switch spec.Proto {
-	case "tcp":
+	case "tcp", "tcp4", "tcp6":
 		err = tcp.Run(d.socketPath, spec, routineStopCh, d.logWriter)
-	case "udp":
+	case "udp", "udp4", "udp6":
 		err = udp.Run(d.socketPath, spec, routineStopCh, d.logWriter)
 	default:
 		// NOTREACHED
 		return nil, errors.New("spec was not validated?")
 	}
 	if err != nil {
+		if isEPERM(err) {
+			err = annotateEPERM(err, spec)
+		}
 		return nil, err
 	}
 	d.mu.Lock()

@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containers/libpod/libpod"
-	"github.com/containers/libpod/libpod/define"
-	"github.com/containers/libpod/pkg/bindings"
-	"github.com/containers/libpod/pkg/bindings/containers"
-	"github.com/containers/libpod/pkg/specgen"
+	"github.com/containers/podman/v3/libpod"
+	"github.com/containers/podman/v3/libpod/define"
+	"github.com/containers/podman/v3/pkg/bindings"
+	"github.com/containers/podman/v3/pkg/bindings/containers"
+	"github.com/containers/podman/v3/pkg/specgen"
 	"github.com/containers/storage"
 	"github.com/containers/storage/pkg/idtools"
 	"github.com/opencontainers/runc/libcontainer/user"
@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubernetes/pkg/client/conditions"
 )
 
@@ -708,7 +707,7 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		ErrorStream:  newNoopFileWriterCloser(stdErr),
 	}
 
-	s := specgen.NewSpecGenerator(podSpec.Spec.Containers[0].Image)
+	s := specgen.NewSpecGenerator(podSpec.Spec.Containers[0].Image, false)
 	s.CapAdd = podmanCaps
 	s.Name = podSpec.Name
 	s.Entrypoint = []string{"/usr/bin/dumb-init", "/usr/bin/gangplank", "builder"}
@@ -790,7 +789,7 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	if err := s.Validate(); err != nil {
 		l.WithError(err).Error("Validation failed")
 	}
-	r, err := containers.CreateWithSpec(connText, s)
+	r, err := containers.CreateWithSpec(connText, s, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create container: %w", err)
 	}
@@ -806,7 +805,7 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	// this works.
 	ender := func() {
 		time.Sleep(1 * time.Second)
-		_ = containers.Remove(connText, r.ID, ptrBool(true), ptrBool(true))
+		_ = containers.Remove(connText, r.ID, new(containers.RemoveOptions).WithForce(true).WithVolumes(true))
 		if clusterCtx.podmanSrvDir != "" {
 			return
 		}
@@ -817,8 +816,8 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		s.User = "root"
 		s.Entrypoint = []string{"/bin/rm", "-rvf", "/srv/"}
 		s.Name = fmt.Sprintf("%s-cleaner", s.Name)
-		cR, _ := containers.CreateWithSpec(connText, s)
-		defer containers.Remove(connText, cR.ID, ptrBool(true), ptrBool(true)) //nolint
+		cR, _ := containers.CreateWithSpec(connText, s, nil)
+		defer containers.Remove(connText, cR.ID, new(containers.RemoveOptions).WithForce(true).WithVolumes(true)) //nolint
 
 		if err := containers.Start(connText, cR.ID, nil); err != nil {
 			l.WithError(err).Info("Failed to start cleanup conatiner")
@@ -850,13 +849,13 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		"stdOut": stdOut.Name(),
 		"stdErr": stdErr.Name(),
 	}).Info("binding stdio to continater")
-	resize := make(chan remotecommand.TerminalSize)
+	resize := make(chan define.TerminalSize)
 
 	go func() {
 		_ = lb.Attach(streams, "", resize)
 	}()
 
-	if rc, _ := lb.Wait(); rc != 0 {
+	if rc, _ := lb.Wait(connText); rc != 0 {
 		return errors.New("work pod failed")
 	}
 	return nil

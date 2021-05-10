@@ -1,10 +1,10 @@
-// +build windows
-
 package config
 
-// Defaults for linux/unix if none are specified
-const (
-	cniConfigDir = "C:\\cni\\etc\\net.d\\"
-)
+import "os"
 
-var cniBinDir = []string{"C:\\cni\\bin\\"}
+func customConfigFile() (string, error) {
+	if path, found := os.LookupEnv("CONTAINERS_CONF"); found {
+		return path, nil
+	}
+	return os.Getenv("APPDATA") + "\\containers\\containers.conf", nil
+}

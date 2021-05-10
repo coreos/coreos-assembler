@@ -30,7 +30,7 @@ const (
 	DockerV2ListMediaType = "application/vnd.docker.distribution.manifest.list.v2+json"
 	// DockerV2Schema2ForeignLayerMediaType is the MIME type used for schema 2 foreign layers.
 	DockerV2Schema2ForeignLayerMediaType = "application/vnd.docker.image.rootfs.foreign.diff.tar"
-	// DockerV2Schema2ForeignLayerMediaType is the MIME type used for gzippped schema 2 foreign layers.
+	// DockerV2Schema2ForeignLayerMediaType is the MIME type used for gzipped schema 2 foreign layers.
 	DockerV2Schema2ForeignLayerMediaTypeGzip = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
 )
 
@@ -132,9 +132,16 @@ func GuessMIMEType(manifest []byte) string {
 		if err := json.Unmarshal(manifest, &ociMan); err != nil {
 			return ""
 		}
-		if ociMan.Config.MediaType == imgspecv1.MediaTypeImageConfig {
+		switch ociMan.Config.MediaType {
+		case imgspecv1.MediaTypeImageConfig:
 			return imgspecv1.MediaTypeImageManifest
+		case DockerV2Schema2ConfigMediaType:
+			// This case should not happen since a Docker image
+			// must declare a top-level media type and
+			// `meta.MediaType` has already been checked.
+			return DockerV2Schema2MediaType
 		}
+		// Maybe an image index or an OCI artifact.
 		ociIndex := struct {
 			Manifests []imgspecv1.Descriptor `json:"manifests"`
 		}{}
@@ -145,9 +152,13 @@ func GuessMIMEType(manifest []byte) string {
 			if ociMan.Config.MediaType == "" {
 				return imgspecv1.MediaTypeImageIndex
 			}
+			// FIXME: this is mixing media types of manifests and configs.
 			return ociMan.Config.MediaType
 		}
-		return DockerV2Schema2MediaType
+		// It's most likely an OCI artifact with a custom config media
+		// type which is not (and cannot) be covered by the media-type
+		// checks cabove.
+		return imgspecv1.MediaTypeImageManifest
 	}
 	return ""
 }
@@ -255,14 +266,4 @@ func FromBlob(manblob []byte, mt string) (Manifest, error) {
 	}
 	// Note that this may not be reachable, NormalizedMIMEType has a default for unknown values.
 	return nil, fmt.Errorf("Unimplemented manifest MIME type %s (normalized as %s)", mt, nmt)
-}
-
-// layerInfosToStrings converts a list of layer infos, presumably obtained from a Manifest.LayerInfos()
-// method call, into a format suitable for inclusion in a types.ImageInspectInfo structure.
-func layerInfosToStrings(infos []LayerInfo) []string {
-	layers := make([]string, len(infos))
-	for i, info := range infos {
-		layers[i] = info.Digest.String()
-	}
-	return layers
 }

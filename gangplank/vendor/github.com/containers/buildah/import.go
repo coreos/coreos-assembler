@@ -3,6 +3,7 @@ package buildah
 import (
 	"context"
 
+	"github.com/containers/buildah/define"
 	"github.com/containers/buildah/docker"
 	"github.com/containers/buildah/util"
 	"github.com/containers/image/v5/image"
@@ -93,7 +94,7 @@ func importBuilderDataFromImage(ctx context.Context, store storage.Store, system
 		ImageAnnotations: map[string]string{},
 		ImageCreatedBy:   "",
 		NamespaceOptions: defaultNamespaceOptions,
-		IDMappingOptions: IDMappingOptions{
+		IDMappingOptions: define.IDMappingOptions{
 			HostUIDMapping: len(uidmap) == 0,
 			HostGIDMapping: len(uidmap) == 0,
 			UIDMap:         uidmap,
@@ -154,7 +155,7 @@ func importBuilderFromImage(ctx context.Context, store storage.Store, options Im
 
 	_, img, err := util.FindImage(store, "", systemContext, options.Image)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error locating image %q for importing settings", options.Image)
+		return nil, errors.Wrapf(err, "importing settings")
 	}
 
 	builder, err := importBuilderDataFromImage(ctx, store, systemContext, img.ID, "", "")
