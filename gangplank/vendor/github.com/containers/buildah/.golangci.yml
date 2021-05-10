@@ -4,40 +4,21 @@ run:
     - apparmor
     - seccomp
     - selinux
-  concurrency: 6
-  deadline: 5m
+  # Don't exceed number of threads available when running under CI
+  concurrency: 4
 linters:
-  disable-all: true
-  enable:
-    - bodyclose
-    - deadcode
-    - depguard
+  enable-all: true
+  disable:
+    # All these break for one reason or another
     - dupl
-    - errcheck
-    - gofmt
-    - goimports
-    - golint
-    - gosimple
-    - govet
-    - ineffassign
-    - interfacer
-    - misspell
-    - nakedret
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    # - gochecknoglobals
-    # - gochecknoinits
-    # - goconst
-    # - gocritic
-    # - gocyclo
-    # - gosec
-    # - lll
-    # - maligned
-    # - prealloc
-    # - scopelint
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gosec
+    - lll
+    - maligned
+    - prealloc
+    - scopelint

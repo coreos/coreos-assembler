@@ -111,7 +111,7 @@ func (r *SnappyConverter) Convert(in io.Reader, w io.Writer) (int64, error) {
 			// Add empty last block
 			r.block.reset(nil)
 			r.block.last = true
-			err := r.block.encodeLits(false)
+			err := r.block.encodeLits(r.block.literals, false)
 			if err != nil {
 				return written, err
 			}
@@ -178,7 +178,7 @@ func (r *SnappyConverter) Convert(in io.Reader, w io.Writer) (int64, error) {
 				r.err = ErrSnappyCorrupt
 				return written, r.err
 			}
-			err = r.block.encode(false)
+			err = r.block.encode(nil, false, false)
 			switch err {
 			case errIncompressible:
 				r.block.popOffsets()
@@ -188,7 +188,7 @@ func (r *SnappyConverter) Convert(in io.Reader, w io.Writer) (int64, error) {
 					println("snappy.Decode:", err)
 					return written, err
 				}
-				err = r.block.encodeLits(false)
+				err = r.block.encodeLits(r.block.literals, false)
 				if err != nil {
 					return written, err
 				}
@@ -235,7 +235,7 @@ func (r *SnappyConverter) Convert(in io.Reader, w io.Writer) (int64, error) {
 				r.err = ErrSnappyCorrupt
 				return written, r.err
 			}
-			err := r.block.encodeLits(false)
+			err := r.block.encodeLits(r.block.literals, false)
 			if err != nil {
 				return written, err
 			}
@@ -417,7 +417,7 @@ var crcTable = crc32.MakeTable(crc32.Castagnoli)
 // https://github.com/google/snappy/blob/master/framing_format.txt
 func snappyCRC(b []byte) uint32 {
 	c := crc32.Update(0, crcTable, b)
-	return uint32(c>>15|c<<17) + 0xa282ead8
+	return c>>15 | c<<17 + 0xa282ead8
 }
 
 // snappyDecodedLen returns the length of the decoded block and the number of bytes
