@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containers/podman/v3/libpod"
-	"github.com/containers/podman/v3/libpod/define"
 	"github.com/containers/podman/v3/pkg/bindings"
 	"github.com/containers/podman/v3/pkg/bindings/containers"
 	"github.com/containers/podman/v3/pkg/specgen"
@@ -677,11 +675,6 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		return err
 	}
 
-	rt, err := libpod.NewRuntime(connText)
-	if err != nil {
-		return fmt.Errorf("failed to get container runtime: %w", err)
-	}
-
 	// Get the StdIO from the cluster context.
 	clusterCtx, err := GetCluster(ctx)
 	if err != nil {
@@ -696,15 +689,6 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	}
 	if stdIn == nil {
 		stdIn = os.Stdin
-	}
-
-	streams := &define.AttachStreams{
-		AttachError:  true,
-		AttachOutput: true,
-		AttachInput:  true,
-		InputStream:  bufio.NewReader(stdIn),
-		OutputStream: newNoopFileWriterCloser(stdOut),
-		ErrorStream:  newNoopFileWriterCloser(stdErr),
 	}
 
 	s := specgen.NewSpecGenerator(podSpec.Spec.Containers[0].Image, false)
@@ -793,11 +777,6 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	if err != nil {
 		return fmt.Errorf("failed to create container: %w", err)
 	}
-	// Look up the container.
-	lb, err := rt.LookupContainer(r.ID)
-	if err != nil {
-		return fmt.Errorf("failed to find container: %w", err)
-	}
 
 	// Manually terminate the pod to ensure that we get all the logs first.
 	// Here be hacks: the API is dreadful for streaming logs. Podman,
@@ -849,13 +828,15 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		"stdOut": stdOut.Name(),
 		"stdErr": stdErr.Name(),
 	}).Info("binding stdio to continater")
-	resize := make(chan define.TerminalSize)
 
 	go func() {
-		_ = lb.Attach(streams, "", resize)
+		_ = containers.Attach(connText, r.ID,
+			bufio.NewReader(stdIn),
+			newNoopFileWriterCloser(stdOut),
+			newNoopFileWriterCloser(stdErr), nil, nil)
 	}()
 
-	if rc, _ := lb.Wait(connText); rc != 0 {
+	if rc, _ := containers.Wait(connText, r.ID, nil); rc != 0 {
 		return errors.New("work pod failed")
 	}
 	return nil
