@@ -662,10 +662,6 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		"podName": podSpec.Name,
 	})
 
-	cmd := exec.Command("systemctl", "--user", "start", "podman.socket")
-	if err := cmd.Run(); err != nil {
-		l.WithError(err).Fatal("Failed to start podman socket")
-	}
 	sockDir := os.Getenv("XDG_RUNTIME_DIR")
 	socket := "unix:" + sockDir + "/podman/podman.sock"
 
