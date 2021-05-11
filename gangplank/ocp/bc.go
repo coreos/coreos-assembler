@@ -799,7 +799,7 @@ func getStageFiles(buildID string,
 
 		tball := fmt.Sprintf("overrides-%s.tar.gz", overrideToken)
 		if err := uploadPathAsTarBall(
-			context.Background(), cacheBucket, tball, ".", tmpD,
+			context.Background(), cacheBucket, tball, ".", tmpD, false,
 			&Return{Minio: m}); err != nil {
 			return nil, nil, err
 		}

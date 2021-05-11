@@ -160,10 +160,13 @@ func isKnownBuildMeta(n string) bool {
 	return false
 }
 
-// tarballCreatePrefix prepends the command for creating a tarball.
-// We have to use a package scope variable in order to allow for root-less
-// testing.
-var tarballCreatePrefix = []string{"sudo", "bash", "-c"}
+var (
+	// sudoBashCmd is used for shelling out to comamnds.
+	sudoBashCmd = []string{"sudo", "bash", "-c"}
+
+	// bashCmd is used for shelling out to commands
+	bashCmd = []string{"bash", "-c"}
+)
 
 // uploadPathAsTarBall returns a path as a tarball to minio server. This uses a shell call out
 // since we need to elevate permissions via sudo (bug in Golang <1.16 prevents elevating privs).
@@ -172,13 +175,16 @@ var tarballCreatePrefix = []string{"sudo", "bash", "-c"}
 //
 // The tarball creation will be done relative to workDir. If workDir is an empty string, it will default
 // to the current working directory.
-func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir string, r *Return) error {
+func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir string, sudo bool, r *Return) error {
 	tmpD, err := ioutil.TempDir("", "tarball")
 	if err != nil {
 		return err
 	}
 
 	tmpf, err := ioutil.TempFile("", "")
+	if err != nil {
+		return err
+	}
 	tmpf.Close()
 	tmpfgz := fmt.Sprintf("%s.gz", tmpf.Name())
 
@@ -192,10 +198,15 @@ func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir stri
 		workDir, _ = os.Getwd()
 	}
 
+	prefix := bashCmd
+	if sudo {
+		prefix = sudoBashCmd
+	}
+
 	// Here be hacks: we set the tarball to be world-read writeable so that the
 	// defer above can clean-up without requiring root.
 	args := append(
-		tarballCreatePrefix,
+		prefix,
 		fmt.Sprintf("umask 000; find %s; tar -cf %s %s; stat %s; gzip --fast %s;",
 			path, tmpf.Name(), path, tmpf.Name(), tmpf.Name()))
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
