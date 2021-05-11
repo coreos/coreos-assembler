@@ -207,8 +207,8 @@ func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir stri
 	// defer above can clean-up without requiring root.
 	args := append(
 		prefix,
-		fmt.Sprintf("umask 000; find %s; tar -cf %s %s; stat %s; gzip --fast %s;",
-			path, tmpf.Name(), path, tmpf.Name(), tmpf.Name()))
+		fmt.Sprintf("umask 000; tar -cf %s %s; stat %s; gzip --fast %s;",
+			path, path, tmpf.Name(), tmpf.Name()))
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = workDir
 	cmd.Stderr = os.Stderr
