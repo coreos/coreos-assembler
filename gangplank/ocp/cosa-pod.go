@@ -662,8 +662,16 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		"podName": podSpec.Name,
 	})
 
-	sockDir := os.Getenv("XDG_RUNTIME_DIR")
-	socket := "unix:" + sockDir + "/podman/podman.sock"
+	// If a URI for the container API server has been specified
+	// by the user then let's honor that. Else construct one.
+	socket := os.Getenv("CONTAINER_HOST")
+	if socket == "" {
+		// Once podman 3.2.0 is released use this instead:
+		//      import "github.com/containers/podman/v3/pkg/util"
+		//      socket = util.SocketPath()
+		sockDir := os.Getenv("XDG_RUNTIME_DIR")
+		socket = "unix:" + sockDir + "/podman/podman.sock"
+	}
 
 	// Connect to Podman socket
 	connText, err := bindings.NewConnection(ctx, socket)
