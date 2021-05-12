@@ -96,16 +96,6 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		SilenceUsage: true,
 	}
 
-	cmdIgnConvert = &cobra.Command{
-		Use:   "ign-convert2",
-		Short: "Translate Ignition spec 3 to Ignition spec 2",
-		Long: `Accept an Ignition spec 3 JSON on stdin and output spec 2
-
-This can be useful for e.g. serving locally built OSTree repos to qemu.
-`,
-		RunE: runIgnitionConvert2,
-	}
-
 	listJSON           bool
 	listPlatform       string
 	listDistro         string
@@ -131,8 +121,6 @@ func init() {
 
 	root.AddCommand(cmdHTTPServer)
 	cmdHTTPServer.Flags().IntVarP(&httpPort, "port", "P", 8000, "Listen on provided port")
-
-	root.AddCommand(cmdIgnConvert)
 
 	root.AddCommand(cmdRunUpgrade)
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
@@ -452,19 +440,6 @@ func runHTTPServer(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
 	return http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil)
-}
-
-func runIgnitionConvert2(cmd *cobra.Command, args []string) error {
-	buf, err := ioutil.ReadAll(os.Stdin)
-	if err != nil {
-		return err
-	}
-	config, err := conf.Ignition(string(buf)).Render(true)
-	if err != nil {
-		return errors.Wrapf(err, "could not convert the given config to spec 2")
-	}
-	_, err = os.Stdout.Write([]byte(config.String()))
-	return err
 }
 
 func preRunUpgrade(cmd *cobra.Command, args []string) error {
