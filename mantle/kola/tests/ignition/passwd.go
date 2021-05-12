@@ -30,28 +30,6 @@ func init() {
 		Run:         groups,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
-		UserData: conf.Ignition(`{
-		             "ignition": { "version": "2.0.0" },
-		             "systemd": {
-		               "units": [{
-		                 "name": "system-cloudinit@usr-share-coreos-developer_data.service",
-		                 "mask": true
-		               }]
-		             },
-		             "passwd": {
-		               "groups": [
-		                 {
-		                   "name": "group1",
-		                   "gid":  501
-		                 },
-		                 {
-		                   "name": "group2",
-		                   "gid":  502,
-		                   "passwordHash": "foobar"
-		                 }
-		               ]
-		             }
-		           }`),
 		UserDataV3: conf.Ignition(`{
 		             "ignition": { "version": "3.0.0" },
 		             "systemd": {
@@ -80,28 +58,6 @@ func init() {
 		Run:         users,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
-		UserData: conf.Ignition(`{
-		             "ignition": { "version": "2.0.0" },
-		             "passwd": {
-		               "users": [
-		                 {
-		                   "name": "core",
-		                   "passwordHash": "foobar"
-		                 },
-		                 {
-		                   "name": "user1",
-		                   "create": {}
-		                 },
-		                 {
-		                   "name": "user2",
-		                   "create": {
-		                     "uid": 1010,
-		                     "groups": [ "sudo" ]
-		                   }
-		                 }
-		               ]
-		             }
-		           }`),
 		UserDataV3: conf.Ignition(`{
 		             "ignition": { "version": "3.0.0" },
 		             "passwd": {

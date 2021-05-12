@@ -24,23 +24,6 @@ import (
 
 func init() {
 	// Set the hostname
-	configV2 := conf.Ignition(`{
-		          "ignition": {
-		              "version": "2.0.0"
-		          },
-		          "storage": {
-		              "files": [
-		                  {
-		                      "filesystem": "root",
-		                      "path": "/etc/hostname",
-		                      "mode": 420,
-		                      "contents": {
-		                          "source": "data:,core1"
-		                      }
-		                  }
-		              ]
-		          }
-		      }`)
 	configV3 := conf.Ignition(`{
 		          "ignition": {
 		              "version": "3.0.0"
@@ -66,7 +49,6 @@ func init() {
 		Name:             "coreos.ignition.sethostname",
 		Run:              setHostname,
 		ClusterSize:      1,
-		UserData:         configV2,
 		UserDataV3:       configV3,
 		ExcludePlatforms: []string{"azure"},
 		Tags:             []string{"ignition"},
