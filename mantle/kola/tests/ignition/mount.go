@@ -19,7 +19,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	ignconverter "github.com/coreos/ign-converter/translate/v30tov22"
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -117,20 +116,6 @@ func createClusterValidate(c cluster.TestCluster, options platform.MachineOption
 
 	var serializedConfig []byte
 	switch c.IgnitionVersion() {
-	case "v2":
-		v2ignconfig, err := ignconverter.Translate(v3IgnitionConfig)
-		if err != nil {
-			break
-		}
-		for i := 0; i < len(v2ignconfig.Storage.Disks); i++ {
-			v2ignconfig.Storage.Disks[i].Partitions[0].Size = v2size
-			v2ignconfig.Storage.Disks[i].Partitions[0].Start = 0
-		}
-		buf, err := json.Marshal(v2ignconfig)
-		if err != nil {
-			break
-		}
-		serializedConfig = buf
 	case "v3":
 		for i := 0; i < len(v3IgnitionConfig.Storage.Disks); i++ {
 			v3IgnitionConfig.Storage.Disks[i].Partitions[0].SizeMiB = &v3sizeMiB

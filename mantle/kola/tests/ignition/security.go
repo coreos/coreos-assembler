@@ -32,23 +32,6 @@ import (
 )
 
 var (
-	localSecurityClient = conf.Ignition(`{
-        "ignition": {
-            "version": "2.2.0",
-            "config": {
-                "append": [{
-                    "source": "https://$IP"
-                }]
-            },
-            "security": {
-                "tls": {
-                    "certificateAuthorities": [{
-                        "source": "$KEY"
-                    }]
-                }
-            }
-        }
-    }`)
 	localSecurityClientV3 = conf.Ignition(`{
         "ignition": {
             "version": "3.0.0",
@@ -74,7 +57,6 @@ func init() {
 		Run:         securityTLS,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{
-			"TLSServe":   register.CreateNativeFuncWrap(TLSServe),
 			"TLSServeV3": register.CreateNativeFuncWrap(TLSServeV3),
 		},
 		Tags: []string{"ignition"},
@@ -113,9 +95,6 @@ EOF
 	var serveFunc string
 	var conf *conf.UserData
 	switch c.IgnitionVersion() {
-	case "v2":
-		serveFunc = "TLSServe"
-		conf = localSecurityClient
 	case "v3":
 		serveFunc = "TLSServeV3"
 		conf = localSecurityClientV3
@@ -169,20 +148,6 @@ func ServeTLS(customFile []byte) error {
 	caserver.StartTLS()
 
 	select {}
-}
-
-func TLSServe() error {
-	customFile := []byte(`{
-        "ignition": { "version": "2.1.0" },
-        "storage": {
-            "files": [{
-                "filesystem": "root",
-                "path": "/var/resource/data",
-                "contents": { "source": "data:,kola-data" }
-            }]
-        }
-    }`)
-	return ServeTLS(customFile)
 }
 
 func TLSServeV3() error {

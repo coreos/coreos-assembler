@@ -30,39 +30,6 @@ import (
 )
 
 var (
-	localClient = conf.Ignition(`{
-		  "ignition": {
-		      "version": "2.1.0"
-		  },
-		  "storage": {
-		      "files": [
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/data",
-			      "contents": {
-				  "source": "data:,kola-data"
-			      },
-			      "mode": 420
-			  },
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/http",
-			      "contents": {
-				  "source": "http://$IP/http"
-			      },
-			      "mode": 420
-			  },
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/tftp",
-			      "contents": {
-				  "source": "tftp://$IP/tftp"
-			      },
-			      "mode": 420
-			  }
-		      ]
-		  }
-	      }`)
 	localClientV3 = conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
@@ -115,39 +82,6 @@ func init() {
 		Tags:        []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
-		UserData: conf.Ignition(`{
-		  "ignition": {
-		      "version": "2.1.0"
-		  },
-		  "storage": {
-		      "files": [
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/http",
-			      "contents": {
-				  "source": "http://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
-			      },
-			      "mode": 420
-			  },
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/https",
-			      "contents": {
-				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
-			      },
-			      "mode": 420
-			  },
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/s3-anon",
-			      "contents": {
-				  "source": "s3://rh-kola-fixtures/resources/anonymous"
-			      },
-			      "mode": 420
-			  }
-		      ]
-		  }
-	      }`),
 		UserDataV3: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
@@ -185,28 +119,6 @@ func init() {
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
 		Tags:        []string{"ignition"},
-		UserData: conf.Ignition(`{
-		  "ignition": {
-		      "version": "2.1.0",
-		      "config": {
-		          "append": [{
-		              "source": "s3://rh-kola-fixtures/resources/authenticated-var.ign"
-		          }]
-		      }
-		  },
-		  "storage": {
-		      "files": [
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/s3-auth",
-			      "contents": {
-				  "source": "s3://rh-kola-fixtures/resources/authenticated"
-			      },
-			      "mode": 420
-			  }
-		      ]
-		  }
-	      }`),
 		UserDataV3: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0",
@@ -240,31 +152,6 @@ func init() {
 		Tags:        []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
-		UserData: conf.Ignition(`{
-		  "ignition": {
-		      "version": "2.1.0"
-		  },
-		  "storage": {
-		      "files": [
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/original",
-			      "contents": {
-				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned?versionId=Ym98GTx0npVaJznSAd0I1eUjFoZMP8Zo"
-			      },
-			      "mode": 420
-			  },
-			  {
-			      "filesystem": "root",
-			      "path": "/var/resource/latest",
-			      "contents": {
-				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned"
-			      },
-			      "mode": 420
-			  }
-		      ]
-		  }
-	      }`),
 		UserDataV3: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
@@ -305,8 +192,6 @@ func resourceLocal(c cluster.TestCluster) {
 
 	var conf *conf.UserData
 	switch c.IgnitionVersion() {
-	case "v2":
-		conf = localClient
 	case "v3":
 		conf = localClientV3
 	default:
