@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 
 	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 )
@@ -56,52 +55,6 @@ var (
         label: wasteland
         wipe_filesystem: true`)
 )
-
-func init() {
-	register.RegisterTest(&register.Test{
-		// This test needs additional disks which is only supported on qemu since Ignition
-		// does not support deleting partitions without wiping the partition table and the
-		// disk doesn't have room for new partitions.
-		// TODO(ajeddeloh): change this to delete partition 9 and replace it with 9 and 10
-		// once Ignition supports it.
-		Run:         RootOnRaid,
-		ClusterSize: 0,
-		Platforms:   []string{"qemu"},
-		Name:        "cl.disk.raid.root",
-		Distros:     []string{"cl"},
-	})
-	register.RegisterTest(&register.Test{
-		Run:         DataOnRaid,
-		ClusterSize: 1,
-		Name:        "cl.disk.raid.data",
-		UserData: conf.ContainerLinuxConfig(`storage:
-  raid:
-    - name: "DATA"
-      level: "raid1"
-      devices:
-        - "/dev/disk/by-partlabel/OEM-CONFIG"
-        - "/dev/disk/by-partlabel/USR-B"
-  filesystems:
-    - name: "DATA"
-      mount:
-        device: "/dev/md/DATA"
-        format: "ext4"
-        label: DATA
-systemd:
-  units:
-    - name: "var-lib-data.mount"
-      enable: true
-      contents: |
-          [Mount]
-          What=/dev/md/DATA
-          Where=/var/lib/data
-          Type=ext4
-          
-          [Install]
-          WantedBy=local-fs.target`),
-		Distros: []string{"cl"},
-	})
-}
 
 func RootOnRaid(c cluster.TestCluster) {
 	var m platform.Machine
