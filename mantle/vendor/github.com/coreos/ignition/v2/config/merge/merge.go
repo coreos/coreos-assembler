@@ -211,8 +211,9 @@ func MergeStructTranscribe(parent, child interface{}) (interface{}, Transcript) 
 }
 
 // parent and child MUST be the same type
-// we transcribe all leaf fields, and all intermediate structs that wholly
-// originate from either parent or child
+// the transcript lists children before parents
+// all interior nodes that have contributions from both parent and child
+// receive separate transcript mappings for parent and child, in that order
 func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflect.Value, childPath path.ContextPath, resultPath path.ContextPath, transcript *Transcript) reflect.Value {
 	// use New() so it's settable, addr-able, etc
 	result := reflect.New(parent.Type()).Elem()
@@ -237,14 +238,26 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 			// ended up in the Clevis and Luks structs in spec 3.2.0
 			// https://github.com/coreos/ignition/issues/1132
 			resultField.Set(mergeStruct(parentField.Elem(), parentFieldPath, childField.Elem(), childFieldPath, resultFieldPath, transcript).Addr())
+			transcribeOne(parentFieldPath, resultFieldPath, transcript)
+			transcribeOne(childFieldPath, resultFieldPath, transcript)
 		case kind == reflect.Ptr && childField.IsNil():
 			resultField.Set(parentField)
 			transcribe(parentFieldPath, resultFieldPath, resultField, fieldMeta, transcript)
 		case kind == reflect.Ptr && !childField.IsNil():
 			resultField.Set(childField)
 			transcribe(childFieldPath, resultFieldPath, resultField, fieldMeta, transcript)
+		case kind == reflect.Struct && childField.IsZero():
+			resultField.Set(parentField)
+			transcribe(parentFieldPath, resultFieldPath, resultField, fieldMeta, transcript)
+		case kind == reflect.Struct && parentField.IsZero():
+			resultField.Set(childField)
+			transcribe(childFieldPath, resultFieldPath, resultField, fieldMeta, transcript)
 		case kind == reflect.Struct:
 			resultField.Set(mergeStruct(parentField, parentFieldPath, childField, childFieldPath, resultFieldPath, transcript))
+			if !fieldMeta.Anonymous {
+				transcribeOne(parentFieldPath, resultFieldPath, transcript)
+				transcribeOne(childFieldPath, resultFieldPath, transcript)
+			}
 		case kind == reflect.Slice && info.ignoreField(fieldMeta.Name):
 			if parentField.Len()+childField.Len() == 0 {
 				continue
@@ -260,6 +273,13 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 				appendToSlice(resultField, item)
 				transcribe(childFieldPath.Append(i), resultFieldPath.Append(parentField.Len()+i), item, fieldMeta, transcript)
 			}
+			// transcribe the list itself
+			if parentField.Len() > 0 {
+				transcribeOne(parentFieldPath, resultFieldPath, transcript)
+			}
+			if childField.Len() > 0 {
+				transcribeOne(childFieldPath, resultFieldPath, transcript)
+			}
 		case kind == reflect.Slice && !info.ignoreField(fieldMeta.Name):
 			// ooph, this is a doosey
 			maxlen := parentField.Len() + childField.Len()
@@ -268,6 +288,7 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 			}
 			resultField.Set(reflect.MakeSlice(parentField.Type(), 0, parentField.Len()+childField.Len()))
 			parentKeys := getKeySet(parentField)
+			var itemFromParent, itemFromChild bool
 
 			// walk parent items
 			for i := 0; i < parentField.Len(); i++ {
@@ -280,6 +301,10 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 					if childList == fieldMeta.Name {
 						// case 1: in child config in same list
 						childItemPath := childFieldPath.Append(childListIndex)
+						// record the contribution of both parent and child, even if one wins
+						// or cancels the other
+						itemFromParent = true
+						itemFromChild = true
 						if childItem.Kind() == reflect.Struct {
 							// If HTTP header Value is nil, it means that we should remove the
 							// parent header from the result.
@@ -287,6 +312,8 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 								continue
 							}
 							appendToSlice(resultField, mergeStruct(parentItem, parentItemPath, childItem, childItemPath, resultItemPath, transcript))
+							transcribeOne(parentItemPath, resultItemPath, transcript)
+							transcribeOne(childItemPath, resultItemPath, transcript)
 						} else if util.IsPrimitive(childItem.Kind()) {
 							appendToSlice(resultField, childItem)
 							transcribe(childItemPath, resultItemPath, childItem, fieldMeta, transcript)
@@ -300,6 +327,7 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 					// case 3: not in child config, append it
 					appendToSlice(resultField, parentItem)
 					transcribe(parentItemPath, resultItemPath, parentItem, fieldMeta, transcript)
+					itemFromParent = true
 				}
 			}
 			// append child items not in parent
@@ -313,7 +341,14 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 					// then it would be skipped as case 2 above
 					appendToSlice(resultField, childItem)
 					transcribe(childItemPath, resultItemPath, childItem, fieldMeta, transcript)
+					itemFromChild = true
 				}
+			}
+			if itemFromParent {
+				transcribeOne(parentFieldPath, resultFieldPath, transcript)
+			}
+			if itemFromChild {
+				transcribeOne(childFieldPath, resultFieldPath, transcript)
 			}
 		default:
 			panic("unreachable code reached")
@@ -329,20 +364,13 @@ func mergeStruct(parent reflect.Value, parentPath path.ContextPath, child reflec
 // transcribing all of its populated leaves.  It returns true if we
 // transcribed anything.
 func transcribe(fromPath path.ContextPath, toPath path.ContextPath, value reflect.Value, fieldMeta reflect.StructField, transcript *Transcript) bool {
-	add := func(from, to path.ContextPath) {
-		transcript.Mappings = append(transcript.Mappings, Mapping{
-			From: from.Copy(),
-			To:   to.Copy(),
-		})
-	}
-
 	kind := value.Kind()
 	switch {
 	case util.IsPrimitive(kind):
-		if value.Interface() == reflect.Zero(value.Type()).Interface() {
+		if value.IsZero() {
 			return false
 		}
-		add(fromPath, toPath)
+		transcribeOne(fromPath, toPath, transcript)
 	case kind == reflect.Ptr:
 		if value.IsNil() {
 			return false
@@ -353,7 +381,7 @@ func transcribe(fromPath path.ContextPath, toPath path.ContextPath, value reflec
 			// https://github.com/coreos/ignition/issues/1132
 			return transcribe(fromPath, toPath, value.Elem(), fieldMeta, transcript)
 		}
-		add(fromPath, toPath)
+		transcribeOne(fromPath, toPath, transcript)
 	case kind == reflect.Struct:
 		var transcribed bool
 		for i := 0; i < value.NumField(); i++ {
@@ -362,7 +390,7 @@ func transcribe(fromPath path.ContextPath, toPath path.ContextPath, value reflec
 		}
 		// embedded structs and empty structs should be invisible
 		if transcribed && !fieldMeta.Anonymous {
-			add(fromPath, toPath)
+			transcribeOne(fromPath, toPath, transcript)
 		}
 		return transcribed
 	case kind == reflect.Slice:
@@ -370,11 +398,22 @@ func transcribe(fromPath path.ContextPath, toPath path.ContextPath, value reflec
 		for i := 0; i < value.Len(); i++ {
 			transcribed = transcribe(fromPath.Append(i), toPath.Append(i), value.Index(i), fieldMeta, transcript) || transcribed
 		}
+		if transcribed {
+			transcribeOne(fromPath, toPath, transcript)
+		}
 		return transcribed
 	default:
 		panic("unreachable code reached")
 	}
 	return true
+}
+
+// transcribeOne records one Mapping into a Transcript.
+func transcribeOne(from, to path.ContextPath, transcript *Transcript) {
+	transcript.Mappings = append(transcript.Mappings, Mapping{
+		From: from.Copy(),
+		To:   to.Copy(),
+	})
 }
 
 // getKeySet takes a value of a slice and returns the set of all the Key() values in that slice

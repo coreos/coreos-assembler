@@ -15,45 +15,31 @@
 package types
 
 import (
-	"path"
-
 	"github.com/coreos/ignition/v2/config/shared/errors"
 	"github.com/coreos/ignition/v2/config/util"
 
-	vpath "github.com/coreos/vcontext/path"
+	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
 
-func (n Node) Key() string {
-	return n.Path
+func (c Clevis) IsPresent() bool {
+	return c.Custom.Pin != "" ||
+		len(c.Tang) > 0 ||
+		util.IsTrue(c.Tpm2) ||
+		c.Threshold != nil && *c.Threshold != 0
 }
 
-func (n Node) Validate(c vpath.ContextPath) (r report.Report) {
-	r.AddOnError(c.Append("path"), validatePath(n.Path))
-	return
-}
-
-func (n Node) Depth() int {
-	count := 0
-	for p := path.Clean(string(n.Path)); p != "/"; count++ {
-		p = path.Dir(p)
+func (cu ClevisCustom) Validate(c path.ContextPath) (r report.Report) {
+	if cu.Pin == "" && cu.Config == "" && !util.IsTrue(cu.NeedsNetwork) {
+		return
 	}
-	return count
-}
-
-func validateIDorName(id *int, name *string) error {
-	if id != nil && util.NotEmpty(name) {
-		return errors.ErrBothIDAndNameSet
+	switch cu.Pin {
+	case "tpm2", "tang", "sss":
+	default:
+		r.AddOnError(c.Append("pin"), errors.ErrUnknownClevisPin)
 	}
-	return nil
-}
-
-func (nu NodeUser) Validate(c vpath.ContextPath) (r report.Report) {
-	r.AddOnError(c, validateIDorName(nu.ID, nu.Name))
-	return
-}
-
-func (ng NodeGroup) Validate(c vpath.ContextPath) (r report.Report) {
-	r.AddOnError(c, validateIDorName(ng.ID, ng.Name))
+	if cu.Config == "" {
+		r.AddOnError(c.Append("config"), errors.ErrClevisConfigRequired)
+	}
 	return
 }
