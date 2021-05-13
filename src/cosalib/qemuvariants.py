@@ -21,9 +21,6 @@ from cosalib.cmdlib import (
     run_verbose,
     sha256sum_file
 )
-from cosalib.digitalocean import (
-    mutate_digitalocean
-)
 
 
 # BASEARCH is the current machine architecture
@@ -74,7 +71,7 @@ VARIANTS = {
         "image_format": "qcow2",
         "image_suffix": "qcow2.gz",
         "platform": "digitalocean",
-        "mutate-callback": mutate_digitalocean,
+        "gzip": True
     },
     "gcp": {
         # See https://cloud.google.com/compute/docs/import/import-existing-image#requirements_for_the_image_file
