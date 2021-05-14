@@ -205,7 +205,7 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	if !builder.InheritConsole {
 		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
 	}
-	config, err := conf.EmptyIgnition().Render(kola.IsIgnitionV2())
+	config, err := conf.EmptyIgnition().Render()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -282,8 +282,6 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		Native4k:        kola.QEMUOptions.Native4k,
 		MultiPathDisk:   kola.QEMUOptions.MultiPathDisk,
 		PxeAppendRootfs: pxeAppendRootfs,
-
-		IgnitionSpec2: kola.IsIgnitionV2(),
 	}
 
 	if instInsecure {

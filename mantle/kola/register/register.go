@@ -53,7 +53,6 @@ type Test struct {
 	Name                 string // should be unique
 	Run                  func(cluster.TestCluster)
 	NativeFuncs          map[string]NativeFuncWrap
-	UserData             *conf.UserData
 	UserDataV3           *conf.UserData
 	ClusterSize          int
 	Platforms            []string // allowlist of platforms to run test against -- defaults to all

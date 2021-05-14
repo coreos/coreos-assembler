@@ -108,12 +108,10 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 	if spawnSetSSHKeys {
 		if userdata == nil {
 			switch kola.Options.IgnitionVersion {
-			case "v2":
-				userdata = conf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
 			case "v3":
 				userdata = conf.Ignition(`{"ignition": {"version": "3.0.0"}}`)
 			default:
-				return fmt.Errorf("Invalid Ignition version")
+				return fmt.Errorf("Invalid or unsupported Ignition version")
 			}
 		}
 		// If the user explicitly passed empty userdata, the userdata

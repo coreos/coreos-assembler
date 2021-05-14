@@ -34,15 +34,30 @@ func TestConfCopyKey(t *testing.T) {
 	}
 
 	tests := []*UserData{
-		ContainerLinuxConfig(""),
-		Ignition(`{ "ignition": { "version": "2.2.0" } }`),
-		Ignition(`{ "ignition": { "version": "2.1.0" } }`),
-		Ignition(`{ "ignition": { "version": "2.0.0" } }`),
 		Ignition(`{ "ignitionVersion": 1 }`),
+		Ignition(`{ "ignition": { "version": "2.0.0" } }`),
+		Ignition(`{ "ignition": { "version": "2.1.0" } }`),
+		Ignition(`{ "ignition": { "version": "2.2.0" } }`),
+		Ignition(`{ "ignition": { "version": "2.3.0" } }`),
+		Ignition(`{ "ignition": { "version": "2.4.0" } }`),
+	}
+
+	for _, tt := range tests {
+		_, err := tt.Render()
+		if err == nil {
+			t.Errorf("parsed an unsupported config!")
+			continue
+		}
+	}
+
+	tests = []*UserData{
+		Ignition(`{ "ignition": { "version": "3.0.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.1.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.2.0" } }`),
 	}
 
 	for i, tt := range tests {
-		conf, err := tt.Render(false)
+		conf, err := tt.Render()
 		if err != nil {
 			t.Errorf("failed to parse config %d: %v", i, err)
 			continue

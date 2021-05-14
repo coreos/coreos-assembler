@@ -218,7 +218,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		config, err = conf.Ignition(string(buf)).Render(kola.IsIgnitionV2())
+		config, err = conf.Ignition(string(buf)).Render()
 		if err != nil {
 			return errors.Wrapf(err, "parsing %s", ignition)
 		}
@@ -226,7 +226,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	ensureConfig := func() {
 		if config == nil {
-			config, err = conf.EmptyIgnition().Render(kola.IsIgnitionV2())
+			config, err = conf.EmptyIgnition().Render()
 			if err != nil {
 				// could try to handle this more gratefully, but meh... this
 				// really should never fail

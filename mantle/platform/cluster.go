@@ -182,8 +182,6 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionVars map[string]string) (*platformConf.Conf, error) {
 	if userdata == nil {
 		switch bc.IgnitionVersion() {
-		case "v2":
-			userdata = platformConf.Ignition(`{"ignition": {"version": "2.0.0"}}`)
 		case "v3":
 			userdata = platformConf.Ignition(`{"ignition": {"version": "3.0.0"}}`)
 		default:
@@ -198,7 +196,7 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		}
 	}
 
-	conf, err := userdata.RenderForCtPlatform(bc.IgnitionVersion() == "v2", bc.bf.ctPlatform)
+	conf, err := userdata.RenderForCtPlatform(bc.bf.ctPlatform)
 	if err != nil {
 		return nil, err
 	}

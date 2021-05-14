@@ -235,12 +235,6 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 	return
 }
 
-// IsIgnitionV2 returns true if Ignition spec 2 support was asked on the command
-// line.
-func IsIgnitionV2() bool {
-	return Options.IgnitionVersion == "v2"
-}
-
 // matchesPatterns returns true if `s` matches one of the patterns in `patterns`.
 func matchesPatterns(s string, patterns []string) (bool, error) {
 	for _, pattern := range patterns {
@@ -651,7 +645,7 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 }
 
 func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
-	config, err := conf.Ignition(ignition).Render(IsIgnitionV2())
+	config, err := conf.Ignition(ignition).Render()
 	if err != nil {
 		return errors.Wrapf(err, "Parsing config.ign")
 	}
@@ -718,7 +712,7 @@ ExecStart=%s
 			}
 		},
 
-		UserDataV3: conf.Ignition(config.String()),
+		UserData: conf.Ignition(config.String()),
 	}
 
 	// To avoid doubling the duplication here with register.Test, we support
@@ -888,50 +882,18 @@ func RegisterExternalTests(dir string) error {
 // getClusterSemVer returns the CoreOS semantic version via starting a
 // machine and checking
 func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version, error) {
-	var err error
-
 	testDir := filepath.Join(outputDir, "get_cluster_semver")
 	if err := os.MkdirAll(testDir, 0777); err != nil {
 		return nil, err
 	}
 
-	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
-		OutputDir: testDir,
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating cluster for semver check")
-	}
-	defer cluster.Destroy()
-
-	m, err := cluster.NewMachine(nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating new machine for semver check")
-	}
-
-	out, stderr, err := m.SSH("grep ^VERSION_ID= /etc/os-release")
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing /etc/os-release: %s", stderr)
-	}
-	ver := strings.Split(string(out), "=")[1]
-
 	// TODO: add distro specific version handling
 	switch Options.Distribution {
-	case "cl":
-		return parseCLVersion(ver)
 	case "rhcos":
 		return &semver.Version{}, nil
 	}
 
 	return nil, fmt.Errorf("no case to handle version parsing for distribution %q", Options.Distribution)
-}
-
-func parseCLVersion(input string) (*semver.Version, error) {
-	version, err := semver.NewVersion(input)
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing os-release semver")
-	}
-
-	return version, nil
 }
 
 // runTest is a harness for running a single test.
@@ -971,12 +933,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}()
 
 	if t.ClusterSize > 0 {
-		var userdata *conf.UserData
-		if IsIgnitionV2() && t.UserData != nil {
-			userdata = t.UserData
-		} else {
-			userdata = t.UserDataV3
-		}
+		var userdata *conf.UserData = t.UserData
 
 		options := platform.MachineOptions{
 			AdditionalDisks: t.AdditionalDisks,

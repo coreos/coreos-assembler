@@ -47,7 +47,7 @@ func runIgnitionFailure(c cluster.TestCluster) {
 func ignitionFailure(c cluster.TestCluster) error {
 	// We can't create files in / due to the immutable bit OSTree creates, so
 	// this is a convenient way to test Ignition failure.
-	failConfig, err := conf.EmptyIgnition().Render(kola.IsIgnitionV2())
+	failConfig, err := conf.EmptyIgnition().Render()
 	if err != nil {
 		return errors.Wrapf(err, "creating empty config")
 	}
