@@ -23,7 +23,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/spf13/cobra"
 
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
@@ -147,7 +146,8 @@ func createSnapshot() error {
 }
 
 func makeUserData() (string, error) {
-	clc := fmt.Sprintf(`storage:
+	// TODO: This needs to be updated for Fedora CoreOS
+	config := fmt.Sprintf(`storage:
   files:
     - filesystem: root
       path: /root/initramfs/etc/resolv.conf
@@ -205,7 +205,7 @@ systemd:
         WantedBy=multi-user.target
 `, imageURL)
 
-	conf, err := conf.ContainerLinuxConfig(clc).RenderForCtPlatform(false, ctplatform.DO)
+	conf, err := conf.Ignition(config).Render()
 	if err != nil {
 		return "", fmt.Errorf("Couldn't render userdata: %v", err)
 	}
