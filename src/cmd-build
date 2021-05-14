@@ -31,7 +31,7 @@ Usage: coreos-assembler build --help
   --tag TAG           Set the given tag in the build metadata
   --version VERSION   Use the given version instead of generating one based on current time
 
-  Additionnal environment variables supported:
+  Additional environment variables supported:
 
   RPMOSTREE_EXTRA_ARGS         To pass extra arguments to 'rpm-ostree compose tree ...'
   RPMOSTREE_PRESERVE_TMPDIR    To keep the temporary compose rootfs from 'rpm-ostree compose tree ...'
