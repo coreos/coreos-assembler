@@ -22,7 +22,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform/conf"
 )
 
@@ -63,7 +62,7 @@ func runCreateDevice(cmd *cobra.Command, args []string) error {
 		}
 		userdata = conf.Unknown(string(data))
 	}
-	conf, err := userdata.RenderForCtPlatform(false, ctplatform.Packet)
+	conf, err := userdata.Render()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't parse userdata file %v: %v\n", userDataPath, err)
 		os.Exit(1)
