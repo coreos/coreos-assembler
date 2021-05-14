@@ -102,7 +102,6 @@ type Install struct {
 	CosaBuild       *sdk.LocalBuild
 	Builder         *QemuBuilder
 	Insecure        bool
-	IgnitionSpec2   bool
 	Native4k        bool
 	MultiPathDisk   bool
 	PxeAppendRootfs bool
@@ -622,7 +621,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 		// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
 		// when it arrives
-		targetConfig, err := conf.EmptyIgnition().Render(inst.IgnitionSpec2)
+		targetConfig, err := conf.EmptyIgnition().Render()
 		if err != nil {
 			return nil, err
 		}

@@ -25,7 +25,7 @@ import (
 // TargetIgnitionVersionFromName returns the Ignition spec version that should
 // be provided to a given OS, as identified by a string that can
 // be a disk image or the "name" of a coreos-assembler stream.
-func TargetIgnitionVersionFromName(artifact string) string {
+func TargetIgnitionVersionFromName(artifact string) (string, error) {
 	basename := filepath.Base(artifact)
 	ignition_spec2_openshift_releases := []int{1, 2, 3, 4, 5}
 	// The output from the RHCOS pipeline names images like
@@ -34,13 +34,13 @@ func TargetIgnitionVersionFromName(artifact string) string {
 	for _, v := range ignition_spec2_openshift_releases {
 		if strings.HasPrefix(basename, fmt.Sprintf("rhcos-4%d", v)) ||
 			strings.HasPrefix(basename, fmt.Sprintf("rhcos-4.%d", v)) {
-			return "v2"
+			return "", fmt.Errorf("Ignition v2 is not supported anymore")
 		}
 	}
-	return "v3"
+	return "v3", nil
 }
 
-func TargetIgnitionVersion(build *cosa.Build) string {
+func TargetIgnitionVersion(build *cosa.Build) (string, error) {
 	if build.BuildArtifacts == nil {
 		panic("TargetIgnitionVersion couldn't find artifact")
 	}

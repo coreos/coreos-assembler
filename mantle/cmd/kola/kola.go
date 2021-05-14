@@ -35,7 +35,6 @@ import (
 	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 

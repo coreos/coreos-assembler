@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
+	"github.com/coreos/ignition/v2/config/v3_0/types"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
@@ -28,7 +28,7 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-var v3IgnitionConfig ignv3types.Config
+var v3IgnitionConfig types.Config
 
 func init() {
 	// mount disks to `/var/log` and `/var/lib/containers`
@@ -58,10 +58,10 @@ func testMountDisks(c cluster.TestCluster) {
 		AdditionalDisks: []string{"1024M", "1024M"},
 	}
 
-	ignDisks := []ignv3types.Disk{
+	ignDisks := []types.Disk{
 		{
 			Device: "/dev/disk/by-id/virtio-disk1",
-			Partitions: []ignv3types.Partition{
+			Partitions: []types.Partition{
 				{
 					Label:              util.StrToPtr("CONTR"),
 					GUID:               util.StrToPtr("63194b49-e4b7-43f9-9a8b-df0fd8279bb7"),
@@ -72,7 +72,7 @@ func testMountDisks(c cluster.TestCluster) {
 		},
 		{
 			Device: "/dev/disk/by-id/virtio-disk2",
-			Partitions: []ignv3types.Partition{
+			Partitions: []types.Partition{
 				{
 					Label:              util.StrToPtr("LOG"),
 					GUID:               util.StrToPtr("6385b84e-2c7b-4488-a870-667c565e01a8"),
@@ -88,10 +88,10 @@ func testMountDisks(c cluster.TestCluster) {
 func testMountPartitions(c cluster.TestCluster) {
 	setupIgnitionConfig()
 
-	ignDisks := []ignv3types.Disk{
+	ignDisks := []types.Disk{
 		{
 			Device: "/dev/vda",
-			Partitions: []ignv3types.Partition{
+			Partitions: []types.Partition{
 				{
 					Label:              util.StrToPtr("CONTR"),
 					GUID:               util.StrToPtr("63194b49-e4b7-43f9-9a8b-df0fd8279bb7"),
@@ -109,7 +109,7 @@ func testMountPartitions(c cluster.TestCluster) {
 	createClusterValidate(c, platform.MachineOptions{}, ignDisks, 2097152, 1024)
 }
 
-func createClusterValidate(c cluster.TestCluster, options platform.MachineOptions, ignDisks []ignv3types.Disk, v2size int, v3sizeMiB int) {
+func createClusterValidate(c cluster.TestCluster, options platform.MachineOptions, ignDisks []types.Disk, v2size int, v3sizeMiB int) {
 	var m platform.Machine
 	var err error
 	v3IgnitionConfig.Storage.Disks = ignDisks
@@ -160,12 +160,12 @@ func setupIgnitionConfig() {
 		logpartdeviceid = "by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8"
 	}
 
-	v3IgnitionConfig = ignv3types.Config{
-		Ignition: ignv3types.Ignition{
+	v3IgnitionConfig = types.Config{
+		Ignition: types.Ignition{
 			Version: "3.0.0",
 		},
-		Storage: ignv3types.Storage{
-			Filesystems: []ignv3types.Filesystem{
+		Storage: types.Storage{
+			Filesystems: []types.Filesystem{
 				{
 					Device:         "/dev/disk/" + containerpartdeviceid,
 					Path:           util.StrToPtr("/var/lib/containers"),
@@ -181,24 +181,24 @@ func setupIgnitionConfig() {
 					WipeFilesystem: util.BoolToPtr(true),
 				},
 			},
-			Files: []ignv3types.File{
+			Files: []types.File{
 				{
-					Node: ignv3types.Node{
+					Node: types.Node{
 						Path: "/var/lib/containers/hello.txt",
 					},
-					FileEmbedded1: ignv3types.FileEmbedded1{
-						Contents: ignv3types.FileContents{
+					FileEmbedded1: types.FileEmbedded1{
+						Contents: types.FileContents{
 							Source: util.StrToPtr("data:,hello%20world%0A"),
 						},
 						Mode: util.IntToPtr(420),
 					},
 				},
 				{
-					Node: ignv3types.Node{
+					Node: types.Node{
 						Path: "/var/log/hello.txt",
 					},
-					FileEmbedded1: ignv3types.FileEmbedded1{
-						Contents: ignv3types.FileContents{
+					FileEmbedded1: types.FileEmbedded1{
+						Contents: types.FileContents{
 							Source: util.StrToPtr("data:,hello%20world%0A"),
 						},
 						Mode: util.IntToPtr(420),
@@ -206,8 +206,8 @@ func setupIgnitionConfig() {
 				},
 			},
 		},
-		Systemd: ignv3types.Systemd{
-			Units: []ignv3types.Unit{
+		Systemd: types.Systemd{
+			Units: []types.Unit{
 				{
 					Name:     "var-lib-containers.mount",
 					Contents: util.StrToPtr("[Mount]\nWhat=/dev/disk/" + containerpartdeviceid + "\nWhere=/var/lib/containers\nType=xfs\nOptions=defaults\n[Install]\nWantedBy=local-fs.target"),

@@ -39,7 +39,6 @@ var (
 	kolaPlatforms               = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
 	kolaDistros                 = []string{"fcos", "rhcos"}
 	kolaIgnitionVersionDefaults = map[string]string{
-		"cl":    "v2",
 		"fcos":  "v3",
 		"rhcos": "v3",
 	}
@@ -60,7 +59,7 @@ func init() {
 	root.PersistentFlags().BoolVarP(&kola.Options.NoTestExitError, "no-test-exit-error", "T", false, "Don't exit with non-zero if tests fail")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Can be specified multiple times.")
-	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: v2, v3")
+	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: only v3 supported")
 	ssv(&kola.DenylistedTests, "denylist-test", []string{}, "Test pattern to add to denylist. Can be specified multiple times.")
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
@@ -268,7 +267,11 @@ func syncOptionsImpl(useCosa bool) error {
 	}
 
 	if kola.Options.IgnitionVersion == "" && kola.QEMUOptions.DiskImage != "" {
-		kola.Options.IgnitionVersion = sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
+		ver, err := sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
+		if err != nil {
+			return err
+		}
+		kola.Options.IgnitionVersion = ver
 	}
 
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
@@ -322,7 +325,11 @@ func syncCosaOptions() error {
 
 	if kola.Options.IgnitionVersion == "" && kola.QEMUOptions.DiskImage == "" {
 		if kola.CosaBuild != nil {
-			kola.Options.IgnitionVersion = sdk.TargetIgnitionVersion(kola.CosaBuild.Meta)
+			ver, err := sdk.TargetIgnitionVersion(kola.CosaBuild.Meta)
+			if err != nil {
+				return err
+			}
+			kola.Options.IgnitionVersion = ver
 		}
 	}
 
