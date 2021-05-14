@@ -43,14 +43,9 @@ import (
 
 const devshellHostname = "cosa-devsh"
 
-func devshellSSH(configPath, keyPath string, silent bool, args ...string) exec.Cmd {
+func devshellSSH(configPath, keyPath string, args ...string) exec.Cmd {
 	sshArgs := append([]string{"-i", keyPath, "-F", configPath, devshellHostname}, args...)
 	sshCmd := exec.Command("ssh", sshArgs...)
-	if !silent {
-		sshCmd.Stdin = os.Stdin
-		sshCmd.Stdout = os.Stdout
-		sshCmd.Stderr = os.Stderr
-	}
 	sshCmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGTERM,
 	}
@@ -280,8 +275,12 @@ loop:
 	}
 
 	err = util.Retry(10, 1*time.Second, func() error {
-		cmd := devshellSSH(sshConfigPath, sshKeyPath, true, "true")
-		return cmd.Run()
+		cmd := devshellSSH(sshConfigPath, sshKeyPath, "true")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("ssh failed: %w\n%s", err, out)
+		}
+		return nil
 	})
 	if err != nil {
 		return err
@@ -301,7 +300,10 @@ loop:
 			// if poweroffStarted {
 			// 	break
 			// }
-			cmd := devshellSSH(sshConfigPath, sshKeyPath, false)
+			cmd := devshellSSH(sshConfigPath, sshKeyPath, "true")
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
 			if err := cmd.Run(); err != nil {
 				fmt.Println("Disconnected, attempting to reconnect (Ctrl-C to exit)")
 				time.Sleep(1 * time.Second)
