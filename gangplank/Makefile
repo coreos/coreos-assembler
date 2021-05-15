@@ -13,7 +13,9 @@ ARCH:=$(shell uname -m)
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build:
-	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/gangplank .
+	cd "${my_dir}/cmd/gangway" && env CGO_ENABLED=0 go build  -ldflags "${ldflags}" -tags usergo,netgo,!podman,!minio -mod vendor -v -o ${my_dir}/bin/gangway
+	cd "${my_dir}/cmd/gangplank" && go build -ldflags "${ldflags}" -tags podman,minio -mod vendor -v -o ${my_dir}/bin/gangplank .
+
 .PHONY: docs
 docs:
 	for i in ocp cosa spec; do cd ${my_dir}/$$i; pwd; gomarkdoc \
@@ -44,6 +46,7 @@ schema:
 .PHONY: install
 install: bin/gangplank
 	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/gangplank
+	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/gangway
 
 .PHONY: go-deps
 go-deps:
