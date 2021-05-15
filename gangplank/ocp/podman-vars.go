@@ -1,3 +1,5 @@
+// +build podman
+
 package ocp
 
 var (
