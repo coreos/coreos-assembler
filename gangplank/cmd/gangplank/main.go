@@ -6,6 +6,7 @@ package main
 */
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,6 +21,8 @@ import (
 const cosaContainerDir = "/usr/lib/coreos-assembler"
 
 var (
+	ctx, cancel = context.WithCancel(context.Background())
+
 	version = "devel"
 
 	// cosaDir is the installed location of COSA. This defaults to
