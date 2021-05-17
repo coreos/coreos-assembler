@@ -92,17 +92,8 @@ EOF
 ) -extensions SAN'`, "$IP", ip, -1))
 	publicKey := c.MustSSH(server, "sudo cat /var/tls/server.crt")
 
-	var serveFunc string
-	var conf *conf.UserData
-	switch c.IgnitionVersion() {
-	case "v3":
-		serveFunc = "TLSServe"
-		conf = localSecurityClient
-	default:
-		c.Fatal("unknown ignition version")
-	}
-
-	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s %s", c.H.Name(), serveFunc))
+	var conf *conf.UserData = localSecurityClient
+	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s TLSServe", c.H.Name()))
 
 	client, err := c.NewMachine(conf.Subst("$IP", ip).Subst("$KEY", dataurl.EncodeBytes(publicKey)))
 	if err != nil {

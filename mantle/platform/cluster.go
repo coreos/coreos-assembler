@@ -181,12 +181,7 @@ func (bc *BaseCluster) Keys() ([]*agent.Key, error) {
 
 func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionVars map[string]string) (*platformConf.Conf, error) {
 	if userdata == nil {
-		switch bc.IgnitionVersion() {
-		case "v3":
-			userdata = platformConf.Ignition(`{"ignition": {"version": "3.0.0"}}`)
-		default:
-			return nil, fmt.Errorf("unknown ignition version")
-		}
+		userdata = platformConf.EmptyIgnition()
 	}
 
 	// hacky solution for unified ignition metadata variables
@@ -262,10 +257,6 @@ func (bc *BaseCluster) Destroy() {
 
 func (bc *BaseCluster) Distribution() string {
 	return bc.bf.baseopts.Distribution
-}
-
-func (bc *BaseCluster) IgnitionVersion() string {
-	return bc.bf.baseopts.IgnitionVersion
 }
 
 func (bc *BaseCluster) SSHOnTestFailure() bool {

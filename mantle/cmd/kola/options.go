@@ -33,15 +33,11 @@ import (
 )
 
 var (
-	outputDir                   string
-	kolaPlatform                string
-	kolaArchitectures           = []string{"amd64"}
-	kolaPlatforms               = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
-	kolaDistros                 = []string{"fcos", "rhcos"}
-	kolaIgnitionVersionDefaults = map[string]string{
-		"fcos":  "v3",
-		"rhcos": "v3",
-	}
+	outputDir         string
+	kolaPlatform      string
+	kolaArchitectures = []string{"amd64"}
+	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
+	kolaDistros       = []string{"fcos", "rhcos"}
 )
 
 func init() {
@@ -59,7 +55,6 @@ func init() {
 	root.PersistentFlags().BoolVarP(&kola.Options.NoTestExitError, "no-test-exit-error", "T", false, "Don't exit with non-zero if tests fail")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Can be specified multiple times.")
-	sv(&kola.Options.IgnitionVersion, "ignition-version", "", "Ignition version override: only v3 supported")
 	ssv(&kola.DenylistedTests, "denylist-test", []string{}, "Test pattern to add to denylist. Can be specified multiple times.")
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
@@ -266,14 +261,6 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 	}
 
-	if kola.Options.IgnitionVersion == "" && kola.QEMUOptions.DiskImage != "" {
-		ver, err := sdk.TargetIgnitionVersionFromName(kola.QEMUOptions.DiskImage)
-		if err != nil {
-			return err
-		}
-		kola.Options.IgnitionVersion = ver
-	}
-
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
 	for _, unit := range units {
 		kola.Options.SystemdDropins = append(kola.Options.SystemdDropins, platform.SystemdDropin{
@@ -291,14 +278,6 @@ func syncOptionsImpl(useCosa bool) error {
 		kola.Options.Distribution = kolaDistros[0]
 	} else if err := validateOption("distro", kola.Options.Distribution, kolaDistros); err != nil {
 		return err
-	}
-
-	if kola.Options.IgnitionVersion == "" {
-		var ok bool
-		kola.Options.IgnitionVersion, ok = kolaIgnitionVersionDefaults[kola.Options.Distribution]
-		if !ok {
-			return fmt.Errorf("Distribution %q has no default Ignition version", kola.Options.Distribution)
-		}
 	}
 
 	return nil
@@ -320,16 +299,6 @@ func syncCosaOptions() error {
 	case "qemu-iso":
 		if kola.QEMUIsoOptions.IsoPath == "" && kola.CosaBuild.Meta.BuildArtifacts.LiveIso != nil {
 			kola.QEMUIsoOptions.IsoPath = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-		}
-	}
-
-	if kola.Options.IgnitionVersion == "" && kola.QEMUOptions.DiskImage == "" {
-		if kola.CosaBuild != nil {
-			ver, err := sdk.TargetIgnitionVersion(kola.CosaBuild.Meta)
-			if err != nil {
-				return err
-			}
-			kola.Options.IgnitionVersion = ver
 		}
 	}
 

@@ -190,14 +190,7 @@ func resourceLocal(c cluster.TestCluster) {
 		ip = server.IP()
 	}
 
-	var conf *conf.UserData
-	switch c.IgnitionVersion() {
-	case "v3":
-		conf = localClient
-	default:
-		c.Fatal("unknown ignition version")
-	}
-
+	var conf *conf.UserData = localClient
 	client, err := c.NewMachine(conf.Subst("$IP", ip))
 	if err != nil {
 		c.Fatalf("starting client: %v", err)
