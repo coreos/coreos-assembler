@@ -115,24 +115,15 @@ func createClusterValidate(c cluster.TestCluster, options platform.MachineOption
 	config.Storage.Disks = ignDisks
 
 	var serializedConfig []byte
-	switch c.IgnitionVersion() {
-	case "v3":
-		for i := 0; i < len(config.Storage.Disks); i++ {
-			config.Storage.Disks[i].Partitions[0].SizeMiB = &v3sizeMiB
-			config.Storage.Disks[i].Partitions[0].StartMiB = util.IntToPtr(0)
-		}
-		buf, err := json.Marshal(config)
-		if err != nil {
-			break
-		}
-		serializedConfig = buf
-	default:
-		c.Fatal("unsupported ignition version")
+	for i := 0; i < len(config.Storage.Disks); i++ {
+		config.Storage.Disks[i].Partitions[0].SizeMiB = &v3sizeMiB
+		config.Storage.Disks[i].Partitions[0].StartMiB = util.IntToPtr(0)
 	}
-
+	buf, err := json.Marshal(config)
 	if err != nil {
 		c.Fatal(err)
 	}
+	serializedConfig = buf
 
 	m, err = c.NewMachineWithOptions(conf.Ignition(string(serializedConfig)), options)
 	if err != nil {

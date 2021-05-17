@@ -251,26 +251,24 @@ func writeProps() error {
 		Swtpm     bool   `json:"swtpm"`
 	}
 	return enc.Encode(&struct {
-		Cmdline         []string  `json:"cmdline"`
-		Platform        string    `json:"platform"`
-		Distro          string    `json:"distro"`
-		IgnitionVersion string    `json:"ignitionversion"`
-		Board           string    `json:"board"`
-		OSContainer     string    `json:"oscontainer"`
-		AWS             AWS       `json:"aws"`
-		Azure           Azure     `json:"azure"`
-		DO              DO        `json:"do"`
-		ESX             ESX       `json:"esx"`
-		GCE             GCE       `json:"gce"`
-		OpenStack       OpenStack `json:"openstack"`
-		Packet          Packet    `json:"packet"`
-		QEMU            QEMU      `json:"qemu"`
+		Cmdline     []string  `json:"cmdline"`
+		Platform    string    `json:"platform"`
+		Distro      string    `json:"distro"`
+		Board       string    `json:"board"`
+		OSContainer string    `json:"oscontainer"`
+		AWS         AWS       `json:"aws"`
+		Azure       Azure     `json:"azure"`
+		DO          DO        `json:"do"`
+		ESX         ESX       `json:"esx"`
+		GCE         GCE       `json:"gce"`
+		OpenStack   OpenStack `json:"openstack"`
+		Packet      Packet    `json:"packet"`
+		QEMU        QEMU      `json:"qemu"`
 	}{
-		Cmdline:         os.Args,
-		Platform:        kolaPlatform,
-		Distro:          kola.Options.Distribution,
-		IgnitionVersion: kola.Options.IgnitionVersion,
-		OSContainer:     kola.Options.OSContainer,
+		Cmdline:     os.Args,
+		Platform:    kolaPlatform,
+		Distro:      kola.Options.Distribution,
+		OSContainer: kola.Options.OSContainer,
 		AWS: AWS{
 			Region:       kola.AWSOptions.Region,
 			AMI:          kola.AWSOptions.AMI,

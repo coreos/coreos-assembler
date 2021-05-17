@@ -22,32 +22,6 @@ import (
 	"github.com/coreos/mantle/cosa"
 )
 
-// TargetIgnitionVersionFromName returns the Ignition spec version that should
-// be provided to a given OS, as identified by a string that can
-// be a disk image or the "name" of a coreos-assembler stream.
-func TargetIgnitionVersionFromName(artifact string) (string, error) {
-	basename := filepath.Base(artifact)
-	ignition_spec2_openshift_releases := []int{1, 2, 3, 4, 5}
-	// The output from the RHCOS pipeline names images like
-	// rhcos-42.81.$datestamp.  The images are renamed when
-	// placed at e.g. https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.2/4.2.0/
-	for _, v := range ignition_spec2_openshift_releases {
-		if strings.HasPrefix(basename, fmt.Sprintf("rhcos-4%d", v)) ||
-			strings.HasPrefix(basename, fmt.Sprintf("rhcos-4.%d", v)) {
-			return "", fmt.Errorf("Ignition v2 is not supported anymore")
-		}
-	}
-	return "v3", nil
-}
-
-func TargetIgnitionVersion(build *cosa.Build) (string, error) {
-	if build.BuildArtifacts == nil {
-		panic("TargetIgnitionVersion couldn't find artifact")
-	}
-	// Most cosa builds should have an "ostree"
-	return TargetIgnitionVersionFromName(build.BuildArtifacts.Ostree.Path)
-}
-
 // TargetDistroFromName returns the distribution given
 // the path to an artifact (usually a disk image).
 func TargetDistroFromName(artifact string) string {

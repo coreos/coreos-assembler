@@ -125,10 +125,6 @@ type Cluster interface {
 	// Distribution returns the Distribution
 	Distribution() string
 
-	// IgnitionVersion returns the version of Ignition supported by the
-	// cluster
-	IgnitionVersion() string
-
 	// SSHOnTestFailure returns whether the cluster should Manhole into
 	// a machine when a MustSSH call fails
 	SSHOnTestFailure() bool
@@ -168,11 +164,10 @@ type SystemdDropin struct {
 
 // Options contains the base options for all clusters.
 type Options struct {
-	BaseName        string
-	Distribution    string
-	IgnitionVersion string
-	SystemdDropins  []SystemdDropin
-	Stream          string
+	BaseName       string
+	Distribution   string
+	SystemdDropins []SystemdDropin
+	Stream         string
 
 	CosaWorkdir string
 	CosaBuildId string
