@@ -114,6 +114,34 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 	var config *conf.Conf
 
+	/// Qemu allows passing disk images directly, but this bypasses all of our snapshot
+	/// infrastructure and it's too easy to accidentally do `cosa run foo.qcow2` instead of
+	/// the more verbose (but correct) `cosa run --qemu-image foo.qcow2`.
+	/// Anyone who wants persistence can add it as a disk manually.
+	removeIdx := -1
+	prevIsArg := false
+	for i, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			prevIsArg = true
+		} else {
+			if !prevIsArg {
+				if strings.HasSuffix(arg, ".qcow2") {
+					if kola.QEMUOptions.DiskImage != "" {
+						return fmt.Errorf("Multiple disk images provided")
+					}
+					kola.QEMUOptions.DiskImage = arg
+					removeIdx = i
+					continue
+				}
+				return fmt.Errorf("Unhandled non-option argument passed for qemu: %s", arg)
+			}
+			prevIsArg = false
+		}
+	}
+	if removeIdx != -1 {
+		args = append(args[:removeIdx], args[removeIdx+1:]...)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
