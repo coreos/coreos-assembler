@@ -13,7 +13,7 @@ ARCH:=$(shell uname -m)
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build:
-	cd "${my_dir}/cmd/gangway" && env CGO_ENABLED=0 go build  -ldflags "${ldflags}" -tags usergo,netgo,!podman,!minio -mod vendor -v -o ${my_dir}/bin/gangway
+	cd "${my_dir}/cmd/gangway" && go build -ldflags "${ldflags}" -tags !podman,!minio -mod vendor -v -o ${my_dir}/bin/gangway
 	cd "${my_dir}/cmd/gangplank" && go build -ldflags "${ldflags}" -tags podman,minio -mod vendor -v -o ${my_dir}/bin/gangplank .
 
 .PHONY: docs
