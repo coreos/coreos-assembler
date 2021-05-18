@@ -72,6 +72,7 @@ var (
 	}
 
 	bootStartedUnit = fmt.Sprintf(`[Unit]
+	Description=TestISO Boot Started
 	Requires=dev-virtio\\x2dports-bootstarted.device
 	OnFailure=emergency.target
 	OnFailureJobMode=isolate
@@ -622,6 +623,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 	installerUnit := fmt.Sprintf(`
 [Unit]
+Description=TestISO CoreOS Installer
 After=network-online.target
 Wants=network-online.target
 OnFailure=emergency.target
