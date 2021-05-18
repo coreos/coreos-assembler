@@ -168,24 +168,19 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 		sectorSize = 4096
 	}
 
+	disk := platform.Disk{
+		Size:       "12G", // Arbitrary
+		SectorSize: sectorSize,
+	}
+
 	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
 	if system.RpmArch() == "s390x" || system.RpmArch() == "aarch64" {
 		// s390x and aarch64 need to use bootindex as they don't support boot once
-		err := builder.AddDisk(&platform.Disk{
-			Size: "12G", // Arbitrary
-
-			SectorSize: sectorSize,
-		})
-		if err != nil {
+		if err := builder.AddDisk(&disk); err != nil {
 			return nil, nil, err
 		}
 	} else {
-		err := builder.AddPrimaryDisk(&platform.Disk{
-			Size: "12G", // Arbitrary
-
-			SectorSize: sectorSize,
-		})
-		if err != nil {
+		if err := builder.AddPrimaryDisk(&disk); err != nil {
 			return nil, nil, err
 		}
 	}
