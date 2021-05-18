@@ -300,7 +300,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 	for _, size := range addDisks {
 		if err := builder.AddDisk(&platform.Disk{
-			Size: size,
+			Size:          size,
+			MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
 		}); err != nil {
 			return errors.Wrapf(err, "adding additional disk")
 		}

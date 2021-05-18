@@ -138,6 +138,18 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 RequiredBy=multi-user.target
 `, signalCompleteString)
 
+var multipathedRoot = fmt.Sprintf(`[Unit]
+Description=TestISO Verify Multipathed Root
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+Before=coreos-test-installer.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c '[[ $(findmnt -nvro SOURCE /sysroot) == /dev/mapper/mpatha4 ]]'
+[Install]
+RequiredBy=multi-user.target`)
+
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
@@ -171,6 +183,8 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	disk := platform.Disk{
 		Size:       "12G", // Arbitrary
 		SectorSize: sectorSize,
+
+		MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
 	}
 
 	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
@@ -266,6 +280,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	baseInst := platform.Install{
 		CosaBuild:       kola.CosaBuild,
 		Native4k:        kola.QEMUOptions.Native4k,
+		MultiPathDisk:   kola.QEMUOptions.MultiPathDisk,
 		PxeAppendRootfs: pxeAppendRootfs,
 
 		IgnitionSpec2: kola.IsIgnitionV2(),
@@ -414,7 +429,11 @@ func printSuccess(mode string) {
 	if kola.QEMUOptions.Native4k {
 		metaltype = "metal4k"
 	}
-	fmt.Printf("Successfully tested scenario %s for %s on %s (%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype)
+	onMultipath := ""
+	if kola.QEMUOptions.MultiPathDisk {
+		onMultipath = " on multipath"
+	}
+	fmt.Printf("Successfully tested scenario %s for %s on %s (%s%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype, onMultipath)
 }
 
 func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
@@ -498,6 +517,9 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
+	if inst.MultiPathDisk {
+		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
+	}
 
 	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, offline)
 	if err != nil {
