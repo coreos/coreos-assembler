@@ -85,6 +85,7 @@ var allScenarios = map[string]bool{
 
 var liveOKSignal = "live-test-OK"
 var liveSignalOKUnit = fmt.Sprintf(`[Unit]
+Description=TestISO Signal Install Completion
 Requires=dev-virtio\\x2dports-testisocompletion.device
 OnFailure=emergency.target
 OnFailureJobMode=isolate
@@ -103,6 +104,7 @@ RequiredBy=coreos-installer.target
 `, liveOKSignal)
 
 var downloadCheck = `[Unit]
+Description=TestISO Verify CoreOS Installer Download
 After=coreos-installer.service
 Before=coreos-installer.target
 # Can be dropped with coreos-installer v0.5.1
@@ -124,6 +126,7 @@ RequiredBy=coreos-installer-reboot.service
 
 var signalCompleteString = "coreos-installer-test-OK"
 var signalCompletionUnit = fmt.Sprintf(`[Unit]
+Description=TestISO Signal Completion
 Requires=dev-virtio\\x2dports-testisocompletion.device
 OnFailure=emergency.target
 OnFailureJobMode=isolate
