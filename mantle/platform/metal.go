@@ -669,7 +669,7 @@ WantedBy=multi-user.target
 		return nil, err
 	}
 
-	if err := qemubuilder.AddIso(srcisopath, "bootindex=2"); err != nil {
+	if err := qemubuilder.AddIso(srcisopath, "bootindex=3"); err != nil {
 		return nil, err
 	}
 
