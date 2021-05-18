@@ -164,10 +164,14 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		for {
 			readyMsg, err := readTrimmedLine(readyReader)
 			if err != nil {
-				errchan <- err
+				if err != io.EOF {
+					errchan <- err
+				}
+				break
 			}
 			if !strings.Contains(readyMsg, "Started OpenSSH server daemon") {
 				errchan <- fmt.Errorf("Unexpected journal message: %s", readyMsg)
+				break
 			}
 			var s struct{}
 			readychan <- s
