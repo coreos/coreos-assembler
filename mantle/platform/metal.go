@@ -534,7 +534,7 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	return &instmachine, nil
 }
 
-func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, offline bool) (*InstalledMachine, error) {
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline bool) (*InstalledMachine, error) {
 	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
@@ -562,6 +562,10 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	}()
 
 	if err := inst.ignition.WriteFile(filepath.Join(tempdir, "target.ign")); err != nil {
+		return nil, err
+	}
+	// and write it once more in the output dir for debugging
+	if err := inst.ignition.WriteFile(filepath.Join(outdir, "config-target.ign")); err != nil {
 		return nil, err
 	}
 
@@ -613,6 +617,11 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		}
 		targetConfig.AddConfigSource(baseurl + "/target.ign")
 		serializedTargetConfig = targetConfig.String()
+
+		// also save pointer config into the output dir for debugging
+		if err := targetConfig.WriteFile(filepath.Join(outdir, "config-target-pointer.ign")); err != nil {
+			return nil, err
+		}
 	}
 
 	insecureOpt := ""
@@ -651,6 +660,13 @@ WantedBy=multi-user.target
 	}
 
 	qemubuilder.SetConfig(&inst.liveIgnition)
+
+	// also save live config into the output dir for debugging
+	liveConfigPath := filepath.Join(outdir, "config-live.ign")
+	if err := inst.liveIgnition.WriteFile(liveConfigPath); err != nil {
+		return nil, err
+	}
+
 	if err := qemubuilder.AddIso(srcisopath, "bootindex=2"); err != nil {
 		return nil, err
 	}
