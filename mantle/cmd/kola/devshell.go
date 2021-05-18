@@ -300,7 +300,7 @@ loop:
 			// if poweroffStarted {
 			// 	break
 			// }
-			cmd := devshellSSH(sshConfigPath, sshKeyPath, "true")
+			cmd := devshellSSH(sshConfigPath, sshKeyPath)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
