@@ -161,15 +161,17 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		qemuWaitChan <- inst.Wait()
 	}()
 	go func() {
-		readyMsg, err := readTrimmedLine(readyReader)
-		if err != nil {
-			errchan <- err
+		for {
+			readyMsg, err := readTrimmedLine(readyReader)
+			if err != nil {
+				errchan <- err
+			}
+			if !strings.Contains(readyMsg, "Started OpenSSH server daemon") {
+				errchan <- fmt.Errorf("Unexpected journal message: %s", readyMsg)
+			}
+			var s struct{}
+			readychan <- s
 		}
-		if !strings.Contains(readyMsg, "Started OpenSSH server daemon") {
-			errchan <- fmt.Errorf("Unexpected journal message: %s", readyMsg)
-		}
-		var s struct{}
-		readychan <- s
 	}()
 	sigintChan := make(chan os.Signal, 1)
 	signal.Notify(sigintChan, os.Interrupt)
@@ -214,6 +216,7 @@ loop:
 		for {
 			select {
 			case <-serialChan:
+			case <-readychan:
 			case err := <-errchan:
 				fmt.Fprintf(os.Stderr, "errchan: %v", err)
 			}
