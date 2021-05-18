@@ -499,7 +499,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 
-	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, offline)
+	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, offline)
 	if err != nil {
 		return errors.Wrapf(err, "running iso install")
 	}
