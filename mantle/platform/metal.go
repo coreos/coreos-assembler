@@ -37,8 +37,6 @@ const (
 	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
 	defaultQemuHostIPv4 = "10.0.2.2"
 
-	targetDevice = "/dev/vda"
-
 	bootStartedSignal = "boot-started-OK"
 
 	// rebootUnit is a copy of the system one without the ConditionPathExists
@@ -106,6 +104,7 @@ type Install struct {
 	Insecure        bool
 	IgnitionSpec2   bool
 	Native4k        bool
+	MultiPathDisk   bool
 	PxeAppendRootfs bool
 
 	// These are set by the install path
@@ -544,8 +543,18 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Meta.Name)
 	}
 
+	// XXX: we do support this now, via `coreos-installer iso kargs`
 	if len(inst.kargs) > 0 {
 		return nil, errors.New("injecting kargs is not supported yet, see https://github.com/coreos/coreos-installer/issues/164")
+	}
+
+	targetDevice := "/dev/vda"
+	appendMultipathKargs := ""
+
+	if inst.MultiPathDisk {
+		// we only have one multipath device so it has to be that
+		targetDevice = "/dev/mapper/mpatha"
+		appendMultipathKargs = "--append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root"
 	}
 
 	inst.kargs = kargs
@@ -642,10 +651,10 @@ OnFailureJobMode=isolate
 [Service]
 RemainAfterExit=yes
 Type=oneshot
-ExecStart=/usr/bin/coreos-installer install %s --ignition %s %s %s
+ExecStart=/usr/bin/coreos-installer install %s --ignition %s %s %s %s
 [Install]
 WantedBy=multi-user.target
-`, srcOpt, pointerIgnitionPath, insecureOpt, targetDevice)
+`, srcOpt, pointerIgnitionPath, insecureOpt, targetDevice, appendMultipathKargs)
 	mode := 0644
 	rebootUnitP := string(rebootUnit)
 
@@ -654,6 +663,22 @@ WantedBy=multi-user.target
 	inst.liveIgnition.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
 	inst.liveIgnition.AddFile(pointerIgnitionPath, "/", serializedTargetConfig, mode)
 	inst.liveIgnition.AddAutoLogin()
+
+	if inst.MultiPathDisk {
+		inst.liveIgnition.AddSystemdUnit("coreos-installer-multipath.service", `[Unit]
+Description=TestISO Enable Multipath
+Before=multipathd.service
+DefaultDependencies=no
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/mpathconf --enable
+[Install]
+WantedBy=multi-user.target`, conf.Enable)
+		inst.liveIgnition.AddSystemdUnitDropin("coreos-installer.service", "wait-for-mpath-target.conf", `[Unit]
+Requires=dev-mapper-mpatha.device
+After=dev-mapper-mpatha.device`)
+	}
 
 	qemubuilder := inst.Builder
 	bootStartedChan, err := qemubuilder.VirtioChannelRead("bootstarted")
