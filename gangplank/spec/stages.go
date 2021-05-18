@@ -372,8 +372,6 @@ func addShorthandToStage(artifact string, stage *Stage) {
 				RequestArtifacts: []string{"ostree"},
 				RequestCache:     true,
 				RequestCacheRepo: true,
-				ReturnCache:      true,
-				ReturnCacheRepo:  true,
 			}
 		case "extensions":
 			return &Stage{
