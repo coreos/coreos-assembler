@@ -535,8 +535,10 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 }
 
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline bool) (*InstalledMachine, error) {
-	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
+	if !inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
+	} else if inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative == nil {
+		return nil, fmt.Errorf("Build %s must have a `metal4k` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	}
 	if inst.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
 		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Meta.Name)
