@@ -186,6 +186,7 @@ func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir stri
 		return err
 	}
 	tmpf.Close()
+	_ = os.Remove(tmpf.Name()) // we just want the file name
 	tmpfgz := fmt.Sprintf("%s.gz", tmpf.Name())
 
 	defer func() {
