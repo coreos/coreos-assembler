@@ -208,7 +208,7 @@ func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir stri
 	args := append(
 		prefix,
 		fmt.Sprintf("umask 000; tar -cf %s %s; stat %s; gzip --fast %s;",
-			path, path, tmpf.Name(), tmpf.Name()))
+			tmpf.Name(), path, tmpf.Name(), tmpf.Name()))
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = workDir
 	cmd.Stderr = os.Stderr
