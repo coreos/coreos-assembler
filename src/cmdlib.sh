@@ -144,6 +144,11 @@ pick_yaml_or_else_json() {
     fi
 }
 
+# Given a YAML file at first path, write it as JSON to file at second path
+yaml2json() {
+    python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout)' < "$1" > "$2"
+}
+
 prepare_build() {
     preflight
     preflight_kvm
@@ -173,9 +178,13 @@ prepare_build() {
 
     image_yaml="${workdir}/tmp/image.yaml"
     flatten_image_yaml_to_file "${configdir}/image.yaml" "${image_yaml}"
+    # Convert the image.yaml to JSON so that it can be more easily parsed
+    # by the shell script in create_disk.sh.
+    image_json="${workdir}/tmp/image.json"
+    yaml2json "${image_yaml}" "${image_json}"
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
-    export fetch_stamp
+    export fetch_stamp image_json
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"

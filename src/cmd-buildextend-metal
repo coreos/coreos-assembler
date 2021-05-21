@@ -145,16 +145,9 @@ if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
     ignition_platform_id=metal
 fi
 
-yaml2json() {
-    python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout)' < "$1" > "$2"
-}
-
-# Convert the image.yaml to JSON so that it can be more easily parsed
-# by the shell script in create_disk.sh.
-yaml2json "${image_yaml}" image-config.json
 yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
 # Combine with the defaults
-cat image-default.json image-config.json | jq -s add > image-configured.json
+cat image-default.json "${image_json}" | jq -s add > image-configured.json
 
 # We do some extra handling of the rootfs here; it feeds into size estimation.
 rootfs_type=$(jq -re .rootfs < image-configured.json)
