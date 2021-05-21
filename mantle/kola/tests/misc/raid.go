@@ -161,9 +161,9 @@ func checkIfMountpointIsRaid(c cluster.TestCluster, m platform.Machine, mountpoi
 		c.Fatalf("couldn't unmarshal lsblk output: %v", err)
 	}
 
-	foundRoot := checkIfMountpointIsRaidWalker(c, l.Blockdevices, mountpoint)
-	if !foundRoot {
-		c.Fatalf("didn't find root mountpoint in lsblk output")
+	foundDevice := checkIfMountpointIsRaidWalker(c, l.Blockdevices, mountpoint)
+	if !foundDevice {
+		c.Fatalf("didn't find %q mountpoint in lsblk output", mountpoint)
 	}
 }
 
@@ -179,8 +179,8 @@ func checkIfMountpointIsRaidWalker(c cluster.TestCluster, bs []blockdevice, moun
 			}
 			return true
 		}
-		foundRoot := checkIfMountpointIsRaidWalker(c, b.Children, mountpoint)
-		if foundRoot {
+		foundDevice := checkIfMountpointIsRaidWalker(c, b.Children, mountpoint)
+		if foundDevice {
 			return true
 		}
 	}
