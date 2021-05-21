@@ -401,7 +401,7 @@ class Reserve(_KojiBase):
         release = datetime.datetime.utcnow().strftime("%H%M%S")
 
         data = {
-            "name": build.build_name,
+            "name": f"{build.build_name}-{build.basearch}",
             "release": release,
             "version": f"{build.build_id.replace('-', '.')}",
             "cg": "coreos-assembler",
@@ -606,7 +606,7 @@ class Upload(_KojiBase):
                         }
                     }
                 },
-                "name": self.build.build_name,
+                "name": f"{self.build.build_name}-{self.build.basearch}",
                 "release": self._release,
                 "owner": self._owner,
                 "source": source['origin'],
