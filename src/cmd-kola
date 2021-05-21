@@ -11,21 +11,8 @@ import yaml
 # Just test these boot to start with.  In the future we should at least
 # do ostree upgrades with uefi etc.  But we don't really need the *full*
 # suite...if podman somehow broke with nvme or uefi I'd be amazed and impressed.
-# XXX: temporarily don't run on NVMe due to:
-# https://bugzilla.redhat.com/show_bug.cgi?id=1956429
-# BASIC_SCENARIOS = ["nvme=true", "firmware=uefi", "firmware=uefi-secure"]
-BASIC_SCENARIOS = ["firmware=uefi", "firmware=uefi-secure"]
+BASIC_SCENARIOS = ["nvme=true", "firmware=uefi", "firmware=uefi-secure"]
 arch = platform.machine()
-
-qemu_cmd = f"qemu-system-{arch}"
-if arch == "ppc64le":
-    qemu_cmd = "qemu-system-ppc64"
-
-# time bomb for above XXX
-nvme_help = subprocess.check_output([qemu_cmd, '-device', 'nvme,help'],
-                                    encoding='utf-8')
-if 'bootindex' in nvme_help:
-    raise Exception("NVMe now supports bootindex property; re-enable NVMe testing")
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
