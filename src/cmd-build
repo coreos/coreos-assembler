@@ -374,11 +374,11 @@ if [ ! -f /lib/coreos-assembler/.clean ]; then
     src_location="bind mount"
 fi
 
-# And create the ostree repo tarball containing the commit
-ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
+# And create the ostree repo export containing the commit
 ostree_tarfile_sha256=
 if [ "${commit}" == "${previous_commit}" ] && \
     [ -f "${previous_builddir}/${previous_ostree_tarfile_path}" ]; then
+    ostree_tarfile_path=$(jq -r '.images.ostree.path' < "${previous_builddir}/meta.json")
     cp-reflink "${previous_builddir}/${previous_ostree_tarfile_path}" "${ostree_tarfile_path}"
     ostree_tarfile_sha256=$(jq -r '.images.ostree.sha256' < "${previous_builddir}/meta.json")
     # backcompat: allow older build without this field
@@ -386,22 +386,30 @@ if [ "${commit}" == "${previous_commit}" ] && \
         ostree_tarfile_sha256=
     fi
 else
-    ostree init --repo=repo --mode=archive
-    # Pass the ref if it's set
-    # shellcheck disable=SC2086
-    if ! ostree pull-local --repo=repo "${tmprepo}" "${buildid}" ${ref}; then
-        echo '(maybe https://github.com/coreos/coreos-assembler/issues/972 ?)'
-        exit 1
-    fi
-    # Don't compress; archive repos are already compressed individually and we'd
-    # gain ~20M at best. We could probably have better gains if we compress the
-    # whole repo in bare/bare-user mode, but that's a different story...
-    tar -cf "${ostree_tarfile_path}".tmp -C repo .
+    ostree_format=$(jq -r '.["ostree-format"]' < "${image_json}")
+    case "${ostree_format}" in
+        null|tar)
+            ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
+            ostree init --repo=repo --mode=archive
+            # Pass the ref if it's set
+            # shellcheck disable=SC2086
+            if ! ostree pull-local --repo=repo "${tmprepo}" "${buildid}" ${ref}; then
+                echo '(maybe https://github.com/coreos/coreos-assembler/issues/972 ?)'
+                exit 1
+            fi
+            # Don't compress; archive repos are already compressed individually and we'd
+            # gain ~20M at best. We could probably have better gains if we compress the
+            # whole repo in bare/bare-user mode, but that's a different story...
+            tar -cf "${ostree_tarfile_path}".tmp -C repo .
+            rm -rf repo
+            ;;
+        oci)
+            ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
+            rpm-ostree ex-container 'export' --repo="${tmprepo}" "${buildid}" oci-archive:"${ostree_tarfile_path}".tmp
+            ;;
+        *) fatal "Unknown ostree-format: ${ostree_format}"
+    esac
     /usr/lib/coreos-assembler/finalize-artifact "${ostree_tarfile_path}"{.tmp,}
-    rm -rf repo
-fi
-
-if [ -z "${ostree_tarfile_sha256:-}" ]; then
     ostree_tarfile_sha256=$(sha256sum "${ostree_tarfile_path}" | awk '{print$1}')
 fi
 
