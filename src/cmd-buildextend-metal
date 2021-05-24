@@ -123,10 +123,7 @@ if [ "${rev_parsed}" != "${commit}" ]; then
     echo "Cache for build ${build} is gone"
     echo "Importing commit ${commit} into temporary OSTree repo"
     mkdir -p tmp/repo
-    commit_tar_name=$(jq -r .images.ostree.path < "${builddir}/meta.json")
-    if [ "${commit_tar_name}" = null ]; then
-        commit_tar_name=ostree-commit.tar
-    fi
+    commit_tar_name=$(jq -re .images.ostree.path < "${builddir}/meta.json")
     tar -C tmp/repo -xf "${builddir}/${commit_tar_name}"
     ostree_repo=$PWD/tmp/repo
 fi

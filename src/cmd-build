@@ -149,10 +149,7 @@ previous_commit=
 previous_ostree_tarfile_path=
 if [ -n "${previous_build}" ]; then
     previous_commit=$(jq -r '.["ostree-commit"]' < "${previous_builddir}/meta.json")
-    previous_ostree_tarfile_path=$(jq -r '.images.ostree.path' < "${previous_builddir}/meta.json")
-    if [ "${previous_ostree_tarfile_path}" = "null" ]; then
-        previous_ostree_tarfile_path=ostree-commit.tar
-    fi
+    previous_ostree_tarfile_path=$(jq -re '.images.ostree.path' < "${previous_builddir}/meta.json")
 fi
 echo "Previous commit: ${previous_commit:-none}"
 
