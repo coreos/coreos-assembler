@@ -122,7 +122,7 @@ def test_import_ostree_commit(monkeypatch, tmpdir):
                     'ostree', 'init', '--repo', tmpdir, '--mode=archive']
             if self.check_call_count == 1:
                 assert args[0][0:2] == ['tar', '-C']
-                assert args[0][3:5] == ['-xf', './tarfile']
+                assert args[0][3:5] == ['-xf', './tarfile.tar']
             if self.check_call_count == 2:
                 assert args[0][0:4] == [
                     'ostree', 'pull-local', '--repo', tmpdir]
@@ -142,7 +142,7 @@ def test_import_ostree_commit(monkeypatch, tmpdir):
         'ostree-commit': 'commit',
         'images': {
             'ostree': {
-                'path': 'tarfile'
+                'path': 'tarfile.tar'
             }
         }
     }

@@ -249,10 +249,29 @@ def import_ostree_commit(repo, buildpath, buildmeta, force=False):
         return
 
     # extract in a new tmpdir inside the repo itself so we can still hardlink
-    with tempfile.TemporaryDirectory(dir=repo) as d:
-        subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
-        subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
-                               d, commit])
+    if tarfile.endswith('.tar'):
+        with tempfile.TemporaryDirectory(dir=repo) as d:
+            subprocess.check_call(['tar', '-C', d, '-xf', tarfile])
+            subprocess.check_call(['ostree', 'pull-local', '--repo', repo,
+                                   d, commit])
+    elif tarfile.endswith('.ociarchive'):
+        # We do this in two stages, because right now ex-container only writes to
+        # non-archive repos.  Also, in the privileged case we need sudo to write
+        # to `repo-build`, though it might be good to change this by default.
+        if os.environ.get('COSA_PRIVILEGED', '') == '1':
+            build_repo = os.path.join(repo, '../../cache/repo-build')
+            subprocess.check_call(['sudo', 'rpm-ostree', 'ex-container', 'import', '--repo', build_repo,
+                                   '--write-ref', buildmeta['buildid'], 'oci-archive:' + tarfile])
+            subprocess.check_call(['sudo', 'ostree', f'--repo={repo}', 'pull-local', build_repo, buildmeta['buildid']])
+            uid = os.getuid()
+            gid = os.getgid()
+            subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo])
+        else:
+            with tempfile.TemporaryDirectory() as tmpd:
+                subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
+                subprocess.check_call(['rpm-ostree', 'ex-container', 'import', '--repo', tmpd,
+                                       '--write-ref', buildmeta['buildid'], 'oci-archive:' + tarfile])
+                subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
 
 
 def get_basearch():
