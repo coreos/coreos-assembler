@@ -78,9 +78,7 @@ def main():
     buildmeta = load_json(f'builds/{builddir}/meta.json')
 
     if args.ostree:
-        f = 'ostree-commit.tar'
-        if 'ostree' in buildmeta['images']:
-            f = buildmeta['images']['ostree']['path']
+        f = buildmeta['images']['ostree']['path']
         fetcher.fetch(f'{builddir}/{f}')
 
     # and finally the symlink

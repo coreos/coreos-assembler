@@ -72,9 +72,7 @@ if not os.path.isdir(tmprepo) and os.path.exists(tmprepo):
 # the tarfile
 if not os.path.exists(tmprepo):
     os.makedirs(tmprepo, exist_ok=True)
-    ostree_commit_tar = 'ostree-commit.tar'
-    if 'ostree' in meta['images']:
-        ostree_commit_tar = meta['images']['ostree']['path']
+    ostree_commit_tar = meta['images']['ostree']['path']
     subprocess.check_call(['tar', '-xf',
                            f'{latest_build_path}/{ostree_commit_tar}',
                            '-C', tmprepo])
