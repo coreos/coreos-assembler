@@ -16,7 +16,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"reflect"
@@ -434,13 +433,6 @@ binary build interface.`)
 	}
 
 	close(terminate)
-
-	// Yeah, this is lazy...
-	args := []string{"find", "/srv/builds", "-type", "f"}
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
 
 	if errored {
 		return fmt.Errorf("process failed")
