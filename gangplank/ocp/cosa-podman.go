@@ -173,7 +173,7 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 			Source:      srvDir,
 		},
 	}
-	s.Entrypoint = []string{"/usr/bin/dumb-init", "-v"}
+	s.Entrypoint = []string{"/usr/bin/dumb-init"}
 	s.Command = []string{gangwayCmd}
 
 	// Validate and define the container spec
