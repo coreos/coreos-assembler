@@ -260,14 +260,10 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error) {
 	log.Infof("Creating pod %s", podName)
 
 	cosaBasePod := v1.Container{
-		Name:  podName,
-		Image: apiBuild.Spec.Strategy.CustomStrategy.From.Name,
-		Command: []string{
-			"/usr/bin/dumb-init", "-v",
-		},
-		Args: []string{
-			gangwayCmd,
-		},
+		Name:            podName,
+		Image:           apiBuild.Spec.Strategy.CustomStrategy.From.Name,
+		Command:         []string{"/usr/bin/dumb-init"},
+		Args:            []string{gangwayCmd},
 		Env:             append(ocpEnvVars, envVars...),
 		WorkingDir:      "/srv",
 		VolumeMounts:    cp.volumeMounts,
