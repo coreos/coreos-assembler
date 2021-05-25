@@ -74,20 +74,17 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 		// Check if this a meta type
 		if isKnownBuildMeta(f.Name()) {
 			upload[upKey] = srcPath
+			continue
 		}
 
 		// Check if this a known build artifact that was not fetched
 		if _, ok := b.IsArtifact(filepath.Base(f.Name())); ok {
-			fetched := false
 			for _, v := range ws.RemoteFiles {
 				if upKey == v.Object {
 					log.WithField("local path", f.Name()).Debug("skipping upload of file that was fetched")
-					fetched = true
-					continue
+					upload[upKey] = srcPath
+					break
 				}
-			}
-			if !fetched {
-				upload[upKey] = srcPath
 			}
 		}
 	}
