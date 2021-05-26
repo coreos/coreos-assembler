@@ -141,9 +141,13 @@ github.com/containers/podman/v3/libpod/driver
 github.com/containers/podman/v3/libpod/events
 github.com/containers/podman/v3/libpod/image
 github.com/containers/podman/v3/pkg/api/handlers
+github.com/containers/podman/v3/pkg/api/handlers/types
+github.com/containers/podman/v3/pkg/auth
 github.com/containers/podman/v3/pkg/bindings
 github.com/containers/podman/v3/pkg/bindings/containers
+github.com/containers/podman/v3/pkg/bindings/images
 github.com/containers/podman/v3/pkg/bindings/internal/util
+github.com/containers/podman/v3/pkg/bindings/volumes
 github.com/containers/podman/v3/pkg/cgroups
 github.com/containers/podman/v3/pkg/copy
 github.com/containers/podman/v3/pkg/domain/entities
