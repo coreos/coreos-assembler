@@ -33,11 +33,13 @@ fi
 umask 002
 
 # set up workdir
+# For 9p mounts set msize to 100MiB
+# https://github.com/coreos/coreos-assembler/issues/2171
 mkdir -p "${workdir:?}"
-mount -t 9p -o rw,trans=virtio,version=9p2000.L workdir "${workdir}"
+mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 workdir "${workdir}"
 if [ -L "${workdir}"/src/config ]; then
     mkdir -p "$(readlink "${workdir}"/src/config)"
-    mount -t 9p -o rw,trans=virtio,version=9p2000.L source "${workdir}"/src/config
+    mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 source "${workdir}"/src/config
 fi
 mkdir -p "${workdir}"/cache
 cachedev=$(blkid -lt LABEL=cosa-cache -o device || true)
