@@ -12,7 +12,8 @@ from cosalib import (
     digitalocean,
     gcp,
     vultr,
-    exoscale
+    exoscale,
+    ibmcloud
 )
 
 CLOUD_CLI_TARGET = {
@@ -37,6 +38,12 @@ CLOUD_CLI_TARGET = {
     "exoscale":     (exoscale.exoscale_cli,
                      exoscale.exoscale_run_ore,
                      exoscale.exoscale_run_ore_replicate),
+    "ibmcloud":     (ibmcloud.ibmcloud_cli,
+                     ibmcloud.ibmcloud_run_ore,
+                     ibmcloud.ibmcloud_run_ore_replicate),
+    "powervs":      (ibmcloud.ibmcloud_cli,
+                     ibmcloud.ibmcloud_run_ore,
+                     ibmcloud.ibmcloud_run_ore_replicate),
 }
 
 

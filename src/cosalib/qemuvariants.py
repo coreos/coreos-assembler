@@ -90,11 +90,6 @@ VARIANTS = {
             "--format=oldgnu"
         ]
     },
-    "ibmcloud": {
-        "image_format": "qcow2",
-        "platform": "ibmcloud",
-        "virtual_size": "100G",
-    },
     "openstack": {
         "image_format": "qcow2",
         "platform": "openstack",

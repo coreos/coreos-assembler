@@ -15,6 +15,7 @@ from cosalib.cli import (
     BuildCli
 )
 from cosalib.qemuvariants import get_qemu_variant
+from cosalib.ibmcloud import get_ibmcloud_variant
 
 if __name__ == '__main__':
     log.basicConfig(
@@ -96,7 +97,10 @@ Each target has its own sub options. To access them us:
         sys.exit()
 
     # Now _extend the parser with the cloud targets_
-    build = get_qemu_variant(target, args)
+    if target in ['ibmcloud', 'powervs']:
+        build = get_ibmcloud_variant(target, args)
+    else:
+        build = get_qemu_variant(target, args)
     log.info(f"operating on {build.image_name}")
     if args.build_artifact:
         if args.force:

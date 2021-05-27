@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ovf:Envelope xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ovf:References>
+    <ovf:File href="disk.raw" id="file1" size="{image_size}"/>
+  </ovf:References>
+  <ovf:DiskSection>
+    <ovf:Info>Disk Section</ovf:Info>
+    <ovf:Disk capacity="128849018880" capacityAllocationUnits="byte" diskId="disk1" fileRef="file1"/>
+  </ovf:DiskSection>
+  <ovf:VirtualSystemCollection>
+    <ovf:VirtualSystem ovf:id="vs0">
+      <ovf:Name>{image}</ovf:Name>
+      <ovf:Info></ovf:Info>
+      <ovf:ProductSection>
+        <ovf:Info/>
+        <ovf:Product/>
+      </ovf:ProductSection>
+      <ovf:OperatingSystemSection ovf:id="79">
+        <ovf:Info/>
+        <ovf:Description>{image_description}</ovf:Description>
+        <ns0:architecture xmlns:ns0="ibmpvc">ppc64le</ns0:architecture>
+      </ovf:OperatingSystemSection>
+      <ovf:VirtualHardwareSection>
+        <ovf:Info>Storage resources</ovf:Info>
+        <ovf:Item>
+          <rasd:Description>Temporary clone for export</rasd:Description>
+          <rasd:ElementName>disk.raw</rasd:ElementName>
+          <rasd:HostResource>ovf:/disk/disk1</rasd:HostResource>
+          <rasd:InstanceID>1</rasd:InstanceID>
+          <rasd:ResourceType>17</rasd:ResourceType>
+          <ns1:boot xmlns:ns1="ibmpvc">True</ns1:boot>
+        </ovf:Item>
+      </ovf:VirtualHardwareSection>
+    </ovf:VirtualSystem>
+    <ovf:Info/>
+    <ovf:Name>{image}</ovf:Name>
+  </ovf:VirtualSystemCollection>
+</ovf:Envelope>
