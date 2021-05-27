@@ -40,6 +40,9 @@ var (
 
 	// reMetaJSON matches meta.json files use for merging
 	reMetaJSON = regexp.MustCompile(`^meta\.(json|.*\.json)$`)
+
+	// forceArch when not empty will override the build arch
+	forceArch, _ = os.LookupEnv("COSA_FORCE_ARCH")
 )
 
 const (
@@ -47,9 +50,17 @@ const (
 	CosaMetaJSON = "meta.json"
 )
 
+// SetArch overrides the build arch
+func SetArch(a string) {
+	forceArch = a
+}
+
 // BuilderArch converts the GOARCH to the build arch.
 // In other words, it translates amd64 to x86_64.
 func BuilderArch() string {
+	if forceArch != "" {
+		return forceArch
+	}
 	arch := runtime.GOARCH
 	if arch == "amd64" {
 		arch = "x86_64"
