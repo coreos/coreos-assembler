@@ -95,7 +95,7 @@ mkdir -p src
  if ! test -e config; then
      case "${source}" in
          /*) ln -s "${source}/${subdir}" config;;
-         *) git clone ${BRANCH:+--branch=${BRANCH}} --recurse-submodules "${source}" config
+         *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
             if [ -n "${subdir}" ]; then
                 mv config config-git
                 ln -sr config-git/"${subdir}" config
