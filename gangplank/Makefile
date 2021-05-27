@@ -13,8 +13,8 @@ ARCH:=$(shell uname -m)
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build:
-	cd "${my_dir}/cmd/gangway" && go build -ldflags "${ldflags}" -tags !podman,!minio -mod vendor -v -o ${my_dir}/bin/gangway
-	cd "${my_dir}/cmd/gangplank" && go build -ldflags "${ldflags}" -tags podman,minio -mod vendor -v -o ${my_dir}/bin/gangplank .
+	cd "${my_dir}/cmd/gangway" && go build -ldflags "${ldflags}" -tags gangway -mod vendor -v -o ${my_dir}/bin/gangway
+	cd "${my_dir}/cmd/gangplank" && go build -ldflags "${ldflags}" -mod vendor -v -o ${my_dir}/bin/gangplank .
 
 .PHONY: docs
 docs:

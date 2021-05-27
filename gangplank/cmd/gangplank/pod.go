@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/coreos/gangplank/ocp"
@@ -14,6 +15,10 @@ import (
 const (
 	cosaDefaultImage        = "quay.io/coreos-assembler/coreos-assembler:latest"
 	cosaWorkDirSelinuxLabel = "system_u:object_r:container_file_t:s0"
+
+	// podmanRemoteEnvVar is the podman-remote envVar used to tell the podman
+	// remote API to use a remote host.
+	podmanRemoteEnvVar = "CONTAINER_HOST"
 )
 
 var (
@@ -32,6 +37,9 @@ var (
 
 	// Run CI pod via podman (out of cluster)
 	cosaViaPodman bool
+
+	// Run podman remotely
+	cosaViaRemotePodman, _ = os.LookupEnv(podmanRemoteEnvVar)
 
 	// cosaWorkDir is used for podman mode and is where the "builds" directory will live
 	cosaWorkDir string
@@ -59,13 +67,15 @@ func init() {
 	spec.AddCliFlags(cmdPod.Flags())
 	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
+	cmdPod.Flags().StringVar(&cosaViaRemotePodman, "remote", "", "address of the remote podman to execute task")
 	cmdPod.Flags().StringVarP(&cosaImage, "image", "i", "", "use an alternative image")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
-	cmdPod.Flags().StringVarP(&serviceAccount, "serviceaccount", "a", "", "service account to use")
+	cmdPod.Flags().StringVar(&serviceAccount, "serviceaccount", "", "service account to use")
 
 	cmdPod.Flags().StringVarP(&remoteKubeConfig, "remoteKubeConfig", "R", "", "launch COSA in a remote cluster")
 	cmdPod.Flags().StringVarP(&cosaNamespace, "namespace", "N", "", "use a different namespace")
 	cmdPod.Flags().AddFlagSet(specCommonFlags)
+	cmdPod.Flags().AddFlagSet(sshFlags)
 }
 
 // runPod is the Jenkins/CI interface into Gangplank. It "mocks"
@@ -77,6 +87,21 @@ func runPod(c *cobra.Command, args []string) {
 	cluster := ocp.NewCluster(true)
 
 	if cosaViaPodman {
+		if cosaViaRemotePodman != "" {
+			os.Setenv(podmanRemoteEnvVar, cosaViaRemotePodman)
+			minioSshRemoteHost = containerHost()
+			if strings.Contains(minioSshRemoteHost, "@") {
+				parts := strings.Split(minioSshRemoteHost, "@")
+				minioSshRemoteHost = parts[1]
+				minioSshRemoteUser = parts[0]
+			}
+			log.WithFields(log.Fields{
+				"remote user":     minioSshRemoteUser,
+				"ssh foward host": minioSshRemoteHost,
+				"container host":  cosaViaRemotePodman,
+			}).Info("Minio will be forwarded to remote host")
+		}
+
 		cluster = ocp.NewCluster(false)
 		cluster.SetPodman(cosaSrvDir)
 	}
@@ -102,7 +127,6 @@ func runPod(c *cobra.Command, args []string) {
 
 	clusterCtx := ocp.NewClusterContext(ctx, cluster)
 	setCliSpec()
-	spec.Job.MinioCfgFile = minioCfgFile
 
 	if cosaWorkDirContext {
 		for _, d := range []string{cosaWorkDir, cosaSrvDir} {
@@ -147,4 +171,16 @@ func runPod(c *cobra.Command, args []string) {
 	if err := pb.Exec(clusterCtx); err != nil {
 		log.Fatalf("failed to execute CI builder: %v", err)
 	}
+}
+
+func containerHost() string {
+	containerHost, ok := os.LookupEnv(podmanRemoteEnvVar)
+	if !ok {
+		return ""
+	}
+	if !strings.HasPrefix(containerHost, "ssh://") {
+		return ""
+	}
+	parts := strings.Split(strings.TrimPrefix(containerHost, "ssh://"), "/")
+	return parts[0]
 }

@@ -114,7 +114,14 @@ type Job struct {
 	IsProduction  bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
 	StrictMode    bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
 	VersionSuffix string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
-	MinioCfgFile  string // not exported
+	// ForceArch forces a specific architecutre.
+	ForceArch string `yaml:"force_arch,omitempty" json:"force_arch,omitempty"`
+	// Unexported minio valued (run-time options)
+	MinioCfgFile string // not exported
+
+	// Runtime config options for SSH. Not exported for safety.
+	MinioSSHForward string
+	MinioSSHUser    string
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config

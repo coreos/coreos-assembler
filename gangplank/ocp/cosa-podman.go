@@ -1,18 +1,21 @@
-// +build podman
+// +build !gangway
 
 package ocp
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/containers/podman/v3/pkg/bindings"
 	"github.com/containers/podman/v3/pkg/bindings/containers"
+	podImages "github.com/containers/podman/v3/pkg/bindings/images"
+	podVolumes "github.com/containers/podman/v3/pkg/bindings/volumes"
+	"github.com/containers/podman/v3/pkg/domain/entities"
 	"github.com/containers/podman/v3/pkg/specgen"
 	"github.com/containers/storage"
 	"github.com/containers/storage/pkg/idtools"
@@ -21,6 +24,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
+
+// podmanContainerHostEnvVar is used by both Gangplank and the podman API
+// to decide if the execution of the pod should happen over SSH.
+const podmanContainerHostEnvVar = "CONTAINER_HOST"
 
 func init() {
 	podmanFunc = podmanRunner
@@ -44,11 +51,14 @@ func newNoopFileWriterCloser(f *os.File) *outWriteCloser {
 // no way to do id mappings.
 func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	ctx := cp.GetClusterCtx()
+
 	// Populate pod envvars
-	envVars = append(envVars, v1.EnvVar{Name: localPodEnvVar, Value: "1"})
-	mapEnvVars := map[string]string{
-		localPodEnvVar: "1",
-	}
+	envVars = append(
+		envVars,
+		v1.EnvVar{Name: localPodEnvVar, Value: "1"},
+		v1.EnvVar{Name: "XDG_RUNTIME_DIR", Value: "/srv"},
+	)
+	mapEnvVars := map[string]string{}
 	for _, v := range envVars {
 		mapEnvVars[v.Name] = v.Value
 	}
@@ -66,8 +76,13 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 
 	// If a URI for the container API server has been specified
 	// by the user then let's honor that. Else construct one.
-	socket := os.Getenv("CONTAINER_HOST")
-	if socket == "" {
+	podmanRemote := false
+	socket := os.Getenv(podmanContainerHostEnvVar)
+	if strings.HasPrefix(socket, "ssh://") {
+		l = l.WithField("podman socket", socket)
+		l.Info("Lauching remote pod")
+		podmanRemote = true
+	} else {
 		// Once podman 3.2.0 is released use this instead:
 		//      import "github.com/containers/podman/v3/pkg/util"
 		//      socket = util.SocketPath()
@@ -145,36 +160,41 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		},
 	}
 
-	// Ensure that /srv in the COSA container is defined.
-	srvDir := clusterCtx.podmanSrvDir
-	if srvDir == "" {
-		// ioutil.TempDir does not create the directory with the appropriate perms
-		tmpSrvDir := filepath.Join(cosaSrvDir, s.Name)
-		if err := os.MkdirAll(tmpSrvDir, 0777); err != nil {
-			return fmt.Errorf("failed to create emphemeral srv dir for pod: %w", err)
+	var srvVol *entities.VolumeConfigResponse = nil
+	if podmanRemote || clusterCtx.podmanSrvDir == "" {
+		// If running podman remotely or the srvDir is undefined, create and use an ephemeral
+		// volume. The volume will be removed via ender()
+		srvVol, err = podVolumes.Create(connText, entities.VolumeCreateOptions{Name: podSpec.Name}, nil)
+		if err != nil {
+			return err
 		}
-		srvDir = tmpSrvDir
-
-		// ensure that the correct selinux context is set, otherwise wierd errors
-		// in CoreOS Assembler will be emitted.
-		args := []string{"chcon", "-R", "system_u:object_r:container_file_t:s0", srvDir}
-		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-		if err := cmd.Run(); err != nil {
-			l.WithError(err).Fatalf("failed set selinux context on %s", srvDir)
+		s.Volumes = []*specgen.NamedVolume{
+			{
+				Name:    srvVol.Name,
+				Options: []string{},
+				Dest:    "/srv",
+			},
+		}
+		l.WithField("ephemeral vol", srvVol.Name).Info("using ephemeral volule for /srv")
+	} else {
+		// Otherwise, create a mount from the host container for /srv.
+		l.WithField("bind mount", clusterCtx.podmanSrvDir).Info("using host directory for /srv")
+		s.Mounts = []cspec.Mount{
+			{
+				Type:        "bind",
+				Destination: "/srv",
+				Source:      clusterCtx.podmanSrvDir,
+			},
 		}
 	}
 
-	l.WithField("bind mount", srvDir).Info("using host directory for /srv")
 	s.WorkDir = "/srv"
-	s.Mounts = []cspec.Mount{
-		{
-			Type:        "bind",
-			Destination: "/srv",
-			Source:      srvDir,
-		},
-	}
 	s.Entrypoint = []string{"/usr/bin/dumb-init"}
 	s.Command = []string{gangwayCmd}
+
+	if err := mustHaveImage(connText, s.Image); err != nil {
+		return fmt.Errorf("failed checking/pulling image: %v", err)
+	}
 
 	// Validate and define the container spec
 	if err := s.Validate(); err != nil {
@@ -192,26 +212,8 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	ender := func() {
 		time.Sleep(1 * time.Second)
 		_ = containers.Remove(connText, r.ID, new(containers.RemoveOptions).WithForce(true).WithVolumes(true))
-		if clusterCtx.podmanSrvDir != "" {
-			return
-		}
-
-		l.Info("Cleaning up ephemeral /srv")
-		defer os.RemoveAll(srvDir) //nolint
-
-		s.User = "root"
-		s.Entrypoint = []string{"/bin/rm", "-rvf", "/srv/"}
-		s.Name = fmt.Sprintf("%s-cleaner", s.Name)
-		cR, _ := containers.CreateWithSpec(connText, s, nil)
-		defer containers.Remove(connText, cR.ID, new(containers.RemoveOptions).WithForce(true).WithVolumes(true)) //nolint
-
-		if err := containers.Start(connText, cR.ID, nil); err != nil {
-			l.WithError(err).Info("Failed to start cleanup conatiner")
-			return
-		}
-		_, err := containers.Wait(connText, cR.ID, nil)
-		if err != nil {
-			l.WithError(err).Error("Failed")
+		if srvVol != nil {
+			_ = podVolumes.Remove(connText, srvVol.Name, nil)
 		}
 	}
 	defer ender()
@@ -247,4 +249,17 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		return errors.New("work pod failed")
 	}
 	return nil
+}
+
+// mustHaveImage pulls the image if it is not found
+func mustHaveImage(ctx context.Context, image string) error {
+	found, err := podImages.Exists(ctx, image, nil)
+	if err != nil {
+		return err
+	}
+	if found {
+		return nil
+	}
+	_, err = podImages.Pull(ctx, image, nil)
+	return err
 }

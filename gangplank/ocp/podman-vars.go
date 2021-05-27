@@ -1,4 +1,4 @@
-// +build podman
+// +build !gangway
 
 package ocp
 

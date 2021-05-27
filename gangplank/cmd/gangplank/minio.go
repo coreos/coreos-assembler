@@ -2,8 +2,6 @@ package main
 
 import (
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/coreos/gangplank/ocp"
 	log "github.com/sirupsen/logrus"
@@ -48,6 +46,7 @@ func init() {
 	cmdRoot.AddCommand(cmdMinio)
 	cmdRoot.PersistentFlags().StringVarP(&minioCfgFile, "minioCfgFile", "m", "", "location of where to create of external minio config file")
 	cmdMinio.Flags().StringVarP(&minioServeDir, "minioServeDir", "d", "", "location to service minio from")
+	cmdMinio.Flags().AddFlagSet(sshFlags)
 }
 
 func runMinio(c *cobra.Command, args []string) {
@@ -64,7 +63,12 @@ func runMinio(c *cobra.Command, args []string) {
 		log.Fatalf("existing minio configuration exists, refusing to overwrite")
 	}
 
-	m, err := ocp.StartStandaloneMinioServer(ctx, minioServeDir, minioCfgFile)
+	minioSSH := &ocp.SSHForwardPort{
+		Host: minioSshRemoteHost,
+		User: minioSshRemoteUser,
+	}
+
+	m, err := ocp.StartStandaloneMinioServer(ctx, minioServeDir, minioCfgFile, minioSSH)
 	if err != nil {
 		log.WithError(err).Fatalf("failed to start minio server")
 	}
@@ -72,14 +76,5 @@ func runMinio(c *cobra.Command, args []string) {
 
 	log.Info("Waiting for kill signal for minio")
 
-	sig := make(chan os.Signal, 4)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
-
-	select {
-	case <-sig:
-		m.Kill()
-	case <-ctx.Done():
-		m.Kill()
-	}
-
+	m.Wait()
 }

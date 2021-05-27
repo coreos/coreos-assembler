@@ -296,6 +296,10 @@ func (ws *workSpec) getEnvVars() ([]v1.EnvVar, error) {
 			Name:  "XDG_RUNTIME_DIR",
 			Value: cosaSrvDir,
 		},
+		{
+			Name:  "COSA_FORCE_ARCH",
+			Value: cosa.BuilderArch(),
+		},
 	}
 	return evars, nil
 }

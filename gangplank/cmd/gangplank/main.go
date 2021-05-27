@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/coreos/gangplank/cosa"
 	jobspec "github.com/coreos/gangplank/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -70,6 +71,9 @@ Wrapper for COSA commands and templates`,
 var (
 	// cosaInit indicates that cosa init should be run
 	cosaInit bool
+
+	// buildArch indicates the target architecture to build
+	buildArch = cosa.BuilderArch()
 )
 
 func init() {
@@ -90,6 +94,7 @@ func init() {
 	os.Setenv("PATH", newPath)
 
 	// cmdRoot options
+	cmdRoot.PersistentFlags().StringVarP(&buildArch, "arch", "a", buildArch, "override the build arch")
 	cmdRoot.PersistentFlags().StringVarP(&specFile, "spec", "s", "", "location of the spec")
 	cmdRoot.AddCommand(cmdVersion)
 	cmdRoot.AddCommand(cmdSingle)
@@ -167,6 +172,12 @@ func runSingle(c *cobra.Command, args []string) {
 
 // preRun processes the spec file.
 func preRun(c *cobra.Command, args []string) {
+	// Set the build arch from the commandline
+	if buildArch != cosa.BuilderArch() {
+		cosa.SetArch(buildArch)
+		log.WithField("arch", cosa.BuilderArch()).Info("Using non-native arch")
+	}
+
 	// Terminal "keep alive" helper. When following logs via the `oc` commands,
 	// cloud-deployed instances will send an EOF. To get around the EOF, the func sends a
 	// null character that is not printed to the screen or reflected in the logs.
