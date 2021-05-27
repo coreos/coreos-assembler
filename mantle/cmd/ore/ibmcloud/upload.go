@@ -86,7 +86,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	// check if the s3 bucket exists
 	// create s3 client
-	err = API.NewS3Client(cloudObjectStorage, region)
+	err = API.NewS3Client(uploadCloudObjectStorage, region)
 	if err != nil {
 		return err
 	}
