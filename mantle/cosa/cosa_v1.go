@@ -50,6 +50,7 @@ type Build struct {
 	FedoraCoreOsParentVersion string                `json:"fedora-coreos.parent-version,omitempty"`
 	Gcp                       *Gcp                  `json:"gcp,omitempty"`
 	GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
+	IbmCloud                  *Cloudartifact        `json:"ibmcloud,omitempty"`
 	ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
 	InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
 	Koji                      *Koji                 `json:"koji,omitempty"`
@@ -69,33 +70,35 @@ type Build struct {
 	OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`
 	PkgdiffAgainstParent      PackageSetDifferences `json:"parent-pkgdiff,omitempty"`
 	PkgdiffBetweenBuilds      PackageSetDifferences `json:"pkgdiff,omitempty"`
+	PowerVirtualServer        *Cloudartifact        `json:"powervs,omitempty"`
 	ReleasePayload            *Image                `json:"release-payload,omitempty"`
 }
 
 type BuildArtifacts struct {
-	Aliyun        *Artifact `json:"aliyun,omitempty"`
-	Aws           *Artifact `json:"aws,omitempty"`
-	Azure         *Artifact `json:"azure,omitempty"`
-	AzureStack    *Artifact `json:"azurestack,omitempty"`
-	Dasd          *Artifact `json:"dasd,omitempty"`
-	DigitalOcean  *Artifact `json:"digitalocean,omitempty"`
-	Exoscale      *Artifact `json:"exoscale,omitempty"`
-	Gcp           *Artifact `json:"gcp,omitempty"`
-	IbmCloud      *Artifact `json:"ibmcloud,omitempty"`
-	Initramfs     *Artifact `json:"initramfs,omitempty"`
-	Iso           *Artifact `json:"iso,omitempty"`
-	Kernel        *Artifact `json:"kernel,omitempty"`
-	LiveInitramfs *Artifact `json:"live-initramfs,omitempty"`
-	LiveIso       *Artifact `json:"live-iso,omitempty"`
-	LiveKernel    *Artifact `json:"live-kernel,omitempty"`
-	LiveRootfs    *Artifact `json:"live-rootfs,omitempty"`
-	Metal         *Artifact `json:"metal,omitempty"`
-	Metal4KNative *Artifact `json:"metal4k,omitempty"`
-	OpenStack     *Artifact `json:"openstack,omitempty"`
-	Ostree        Artifact  `json:"ostree"`
-	Qemu          *Artifact `json:"qemu,omitempty"`
-	Vmware        *Artifact `json:"vmware,omitempty"`
-	Vultr         *Artifact `json:"vultr,omitempty"`
+	Aliyun             *Artifact `json:"aliyun,omitempty"`
+	Aws                *Artifact `json:"aws,omitempty"`
+	Azure              *Artifact `json:"azure,omitempty"`
+	AzureStack         *Artifact `json:"azurestack,omitempty"`
+	Dasd               *Artifact `json:"dasd,omitempty"`
+	DigitalOcean       *Artifact `json:"digitalocean,omitempty"`
+	Exoscale           *Artifact `json:"exoscale,omitempty"`
+	Gcp                *Artifact `json:"gcp,omitempty"`
+	IbmCloud           *Artifact `json:"ibmcloud,omitempty"`
+	Initramfs          *Artifact `json:"initramfs,omitempty"`
+	Iso                *Artifact `json:"iso,omitempty"`
+	Kernel             *Artifact `json:"kernel,omitempty"`
+	LiveInitramfs      *Artifact `json:"live-initramfs,omitempty"`
+	LiveIso            *Artifact `json:"live-iso,omitempty"`
+	LiveKernel         *Artifact `json:"live-kernel,omitempty"`
+	LiveRootfs         *Artifact `json:"live-rootfs,omitempty"`
+	Metal              *Artifact `json:"metal,omitempty"`
+	Metal4KNative      *Artifact `json:"metal4k,omitempty"`
+	OpenStack          *Artifact `json:"openstack,omitempty"`
+	Ostree             Artifact  `json:"ostree"`
+	PowerVirtualServer *Artifact `json:"powervs,omitempty"`
+	Qemu               *Artifact `json:"qemu,omitempty"`
+	Vmware             *Artifact `json:"vmware,omitempty"`
+	Vultr              *Artifact `json:"vultr,omitempty"`
 }
 
 type Cloudartifact struct {

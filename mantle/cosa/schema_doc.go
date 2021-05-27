@@ -187,6 +187,7 @@ var generatedSchemaJSON = `{
    "exoscale",
    "gcp",
    "ibmcloud",
+   "powervs",
    "images",
    "koji",
    "oscontainer",
@@ -380,6 +381,7 @@ var generatedSchemaJSON = `{
        "exoscale",
        "gcp",
        "ibmcloud",
+       "powervs",
        "initramfs",
        "iso",
        "kernel",
@@ -527,6 +529,12 @@ var generatedSchemaJSON = `{
          "title":"IBM Cloud",
          "$ref": "#/definitions/artifact"
        },
+       "powervs": {
+        "$id":"#/properties/images/properties/powervs",
+        "type":"object",
+        "title":"Power Virtual Server",
+        "$ref": "#/definitions/artifact"
+      },
        "gcp": {
          "$id":"#/properties/images/properties/gcp",
          "type":"object",
@@ -796,6 +804,18 @@ var generatedSchemaJSON = `{
          "title":"Image Family"
         }
       }
+    },
+   "ibmcloud": {
+      "$id":"#/properties/ibmcloud",
+      "type":"object",
+      "title":"IBM Cloud",
+      "$ref": "#/definitions/cloudartifact"
+    },
+   "powervs": {
+      "$id":"#/properties/powervs",
+      "type":"object",
+      "title":"Power Virtual Server",
+      "$ref": "#/definitions/cloudartifact"
     },
     "release-payload": {
       "$id":"#/properties/release-payload",
