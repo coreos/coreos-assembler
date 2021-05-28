@@ -59,7 +59,7 @@ rootfs=/dev/disk/by-id/virtio-osmet-part4
 mount -o ro "${rootfs}" /sysroot
 osname=$(ls /sysroot/ostree/deploy)
 deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1 -type d)
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC1091
 description=$(. "${deploydir}/etc/os-release" && echo "${PRETTY_NAME}")
 
 if [ -z "${coreinst}" ]; then
