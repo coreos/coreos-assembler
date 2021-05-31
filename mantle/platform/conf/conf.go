@@ -45,7 +45,6 @@ type kind int
 const (
 	kindEmpty kind = iota
 	kindIgnition
-	kindContainerLinuxConfig
 )
 
 type systemdUnitState int
@@ -84,15 +83,6 @@ func Empty() *UserData {
 	}
 }
 
-// ContainerLinuxConfig creates a Container Linux Config Userdata struct from
-// the provided string.
-func ContainerLinuxConfig(data string) *UserData {
-	return &UserData{
-		kind: kindContainerLinuxConfig,
-		data: data,
-	}
-}
-
 // EmptyIgnition returns an a default empty config using the latest
 // stable supported Ignition spec.
 func EmptyIgnition() *UserData {
@@ -117,20 +107,14 @@ func Unknown(data string) *UserData {
 		data: data,
 	}
 
+	// Try to parse the config only to detect if we were provided an empty one
 	_, _, err := v3.Parse([]byte(data))
 	switch err {
 	case ignerr.ErrEmpty:
 		u.kind = kindEmpty
 	default:
-		// Guess whether this is an Ignition config or a CLC.
-		// This treats an invalid Ignition config as a CLC, and a
-		// CLC in the JSON subset of YAML as an Ignition config.
-		var decoded interface{}
-		if err := json.Unmarshal([]byte(data), &decoded); err != nil {
-			u.kind = kindContainerLinuxConfig
-		} else {
-			u.kind = kindIgnition
-		}
+		// We only support Ignition configs now, thus assume that
+		u.kind = kindIgnition
 	}
 
 	return u
@@ -155,19 +139,9 @@ func (u *UserData) AddKey(key agent.Key) *UserData {
 	return &ret
 }
 
-func (u *UserData) IsIgnitionCompatible() bool {
-	return u.kind == kindIgnition || u.kind == kindContainerLinuxConfig
-}
-
 // Render parses userdata and returns a new Conf. It returns an error if the
 // userdata can't be parsed.
 func (u *UserData) Render() (*Conf, error) {
-	return u.RenderForCtPlatform("")
-}
-
-// RenderForCtPlatform parses userdata and returns a new Conf. It returns an
-// error if the userdata can't be parsed.
-func (u *UserData) RenderForCtPlatform(ctPlatform string) (*Conf, error) {
 	c := &Conf{}
 
 	renderIgnition := func() error {

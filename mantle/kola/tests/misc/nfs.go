@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	nfsserverconf = conf.ContainerLinuxConfig(`storage:
+	// TODO: Needs to be update for Fedora CoreOS support
+	nfsserverconf = conf.Ignition(`storage:
   files:
     - filesystem: "root"
       path: "/etc/hostname"
@@ -82,7 +83,8 @@ func testNFS(c cluster.TestCluster, nfsversion int, remotePath string) {
 		nfstype = "nfs4"
 	}
 
-	c2 := conf.ContainerLinuxConfig(fmt.Sprintf(`storage:
+	// TODO: Needs to be update for Fedora CoreOS support
+	c2 := conf.Ignition(fmt.Sprintf(`storage:
   files:
     - filesystem: "root"
       path: "/etc/hostname"

@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
-	ctplatform "github.com/coreos/container-linux-config-transpiler/config/platform"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/do"
 )
@@ -46,7 +45,7 @@ func NewFlight(opts *do.Options) (platform.Flight, error) {
 		return nil, err
 	}
 
-	bf, err := platform.NewBaseFlight(opts.Options, Platform, ctplatform.DO)
+	bf, err := platform.NewBaseFlight(opts.Options, Platform)
 	if err != nil {
 		return nil, err
 	}

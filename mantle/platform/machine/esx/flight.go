@@ -43,7 +43,7 @@ func NewFlight(opts *esx.Options) (platform.Flight, error) {
 		return nil, err
 	}
 
-	bf, err := platform.NewBaseFlight(opts.Options, Platform, "")
+	bf, err := platform.NewBaseFlight(opts.Options, Platform)
 	if err != nil {
 		return nil, err
 	}

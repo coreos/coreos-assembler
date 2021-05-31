@@ -44,7 +44,7 @@ var (
 )
 
 func NewFlight(opts *Options) (platform.Flight, error) {
-	bf, err := platform.NewBaseFlight(opts.Options, Platform, "")
+	bf, err := platform.NewBaseFlight(opts.Options, Platform)
 	if err != nil {
 		return nil, err
 	}
