@@ -17,8 +17,6 @@ package register
 import (
 	"fmt"
 
-	"github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/platform/conf"
 )
@@ -81,16 +79,6 @@ type Test struct {
 	// FailFast skips any sub-test that occurs after a sub-test has
 	// failed.
 	FailFast bool
-
-	// MinVersion prevents the test from executing on CoreOS machines
-	// less than MinVersion. This will be ignored if the name fully
-	// matches without globbing.
-	MinVersion semver.Version
-
-	// EndVersion prevents the test from executing on CoreOS machines
-	// greater than or equal to EndVersion. This will be ignored if
-	// the name fully matches without globbing.
-	EndVersion semver.Version
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names
@@ -109,11 +97,6 @@ func Register(m map[string]*Test, t *Test) {
 	if ok {
 		panic(fmt.Sprintf("test %v already registered", t.Name))
 	}
-
-	if (t.EndVersion != semver.Version{}) && !t.MinVersion.LessThan(t.EndVersion) {
-		panic(fmt.Sprintf("test %v has an invalid version range", t.Name))
-	}
-
 	m[t.Name] = t
 }
 

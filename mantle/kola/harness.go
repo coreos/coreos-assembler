@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
@@ -274,7 +273,7 @@ func testRequiresInternet(test *register.Test) bool {
 	return false
 }
 
-func filterTests(tests map[string]*register.Test, patterns []string, pltfrm string, version semver.Version) (map[string]*register.Test, error) {
+func filterTests(tests map[string]*register.Test, patterns []string, pltfrm string) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
 	checkPlatforms := []string{pltfrm}
@@ -346,11 +345,6 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			continue
 		}
 
-		// Check the test's min and end versions when running more than one test
-		if !hasString(t.Name, patterns) && versionOutsideRange(version, t.MinVersion, t.EndVersion) {
-			continue
-		}
-
 		isAllowed := func(item string, include, exclude []string) (bool, bool) {
 			allowed, excluded := true, false
 			for _, i := range include {
@@ -413,25 +407,6 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 	return r, nil
 }
 
-// versionOutsideRange checks to see if version is outside [min, end). If end
-// is a zero value, it is ignored and there is no upper bound. If version is a
-// zero value, the bounds are ignored.
-func versionOutsideRange(version, minVersion, endVersion semver.Version) bool {
-	if version == (semver.Version{}) {
-		return false
-	}
-
-	if version.LessThan(minVersion) {
-		return true
-	}
-
-	if (endVersion != semver.Version{}) && !version.LessThan(endVersion) {
-		return true
-	}
-
-	return false
-}
-
 // runProvidedTests is a harness for running multiple tests in parallel.
 // Filters tests based on a glob pattern and by platform. Has access to all
 // tests either registered in this package or by imported packages that
@@ -446,17 +421,9 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 	// 1) none of the selected tests care about the version
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
-	tests, err := filterTests(tests, patterns, pltfrm, semver.Version{})
+	tests, err := filterTests(tests, patterns, pltfrm)
 	if err != nil {
 		plog.Fatal(err)
-	}
-
-	skipGetVersion := true
-	for name, t := range tests {
-		if !hasString(name, patterns) && (t.MinVersion != semver.Version{} || t.EndVersion != semver.Version{}) {
-			skipGetVersion = false
-			break
-		}
 	}
 
 	if multiply > 1 {
@@ -479,22 +446,6 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 		plog.Fatalf("Flight failed: %v", err)
 	}
 	defer flight.Destroy()
-
-	if !skipGetVersion {
-		plog.Info("Creating cluster to check semver...")
-		version, err := getClusterSemver(flight, outputDir)
-		if err != nil {
-			plog.Fatal(err)
-		}
-
-		versionStr = version.String()
-
-		// one more filter pass now that we know real version
-		tests, err = filterTests(tests, patterns, pltfrm, *version)
-		if err != nil {
-			plog.Fatal(err)
-		}
-	}
 
 	opts := harness.Options{
 		OutputDir: outputDir,
@@ -877,23 +828,6 @@ func RegisterExternalTestsWithPrefix(dir, prefix string) error {
 func RegisterExternalTests(dir string) error {
 	basename := fmt.Sprintf("ext.%s", filepath.Base(dir))
 	return RegisterExternalTestsWithPrefix(dir, basename)
-}
-
-// getClusterSemVer returns the CoreOS semantic version via starting a
-// machine and checking
-func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version, error) {
-	testDir := filepath.Join(outputDir, "get_cluster_semver")
-	if err := os.MkdirAll(testDir, 0777); err != nil {
-		return nil, err
-	}
-
-	// TODO: add distro specific version handling
-	switch Options.Distribution {
-	case "rhcos":
-		return &semver.Version{}, nil
-	}
-
-	return nil, fmt.Errorf("no case to handle version parsing for distribution %q", Options.Distribution)
 }
 
 // runTest is a harness for running a single test.
