@@ -37,10 +37,7 @@ func init() {
 		Name:        "fcos.network.listeners",
 		Distros:     []string{"fcos"},
 		// be sure to notice listeners in the docker stack
-		UserData: conf.ContainerLinuxConfig(`systemd:
-  units:
-    - name: docker.service
-      enabled: true`),
+		UserData: conf.EmptyIgnition(),
 	})
 	// TODO: rewrite test for NetworkManager
 	register.RegisterTest(&register.Test{
