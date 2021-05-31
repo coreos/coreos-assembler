@@ -25,7 +25,7 @@ pkgs=$(go list -mod=vendor $PKG | grep -v /vendor/)
 src=$(find . -name '*.go' -not -path "./vendor/*")
 
 echo "Building tests..."
-go test -mod=vendor -i "$@" $pkgs
+go test -mod=vendor "$@" $pkgs
 go install -mod=vendor $pkgs
 
 echo "Running tests..."
