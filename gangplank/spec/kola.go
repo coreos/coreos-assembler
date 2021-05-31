@@ -42,7 +42,7 @@ var kolaTestDefinitions = kolaTests{
 	},
 	"upgrade": {
 		ID:             "Kola Upgrade Test",
-		PostCommands:   []string{"kola run-upgrade --ignition-version v2 --output-dir tmp/kola-upgrade"},
+		PostCommands:   []string{"kola run-upgrade --output-dir tmp/kola-upgrade"},
 		ExecutionOrder: 2,
 	},
 
