@@ -4,13 +4,13 @@
 # Concretely for example if used on a pristine disk image, Ignition
 # will not have run.
 #
-# Example usage to upgrade *from* RHCOS 4.2 to a just-built 4.4 OSTree tree,
+# Example usage to upgrade *from* RHCOS 4.6 to a just-built 4.8 OSTree tree,
 # then do a kola basic run on it.
 #
-# cd /path/to/rhcos-4.4
-# cp --reflink=auto /path/to/rhcos-4.2.0-x86_64-qemu.qcow2 tmp/
-# cosa offline-update tmp/rhcos-4.2.0-x86_64-qemu.qcow2
-# kola run --ignition-version v2 -p qemu-unpriv -b rhcos --qemu-image tmp/rhcos-4.2.0-x86_64-qemu.qcow2 basic
+# cd /path/to/rhcos-4.8
+# cp --reflink=auto /path/to/rhcos-4.6.0-x86_64-qemu.qcow2 tmp/
+# cosa offline-update tmp/rhcos-4.6.0-x86_64-qemu.qcow2
+# kola run -p qemu-unpriv -b rhcos --qemu-image tmp/rhcos-4.6.0-x86_64-qemu.qcow2 basic
 
 set -euo pipefail
 
