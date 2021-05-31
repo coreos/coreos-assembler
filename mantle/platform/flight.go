@@ -29,19 +29,18 @@ type BaseFlight struct {
 	clusterlock sync.Mutex
 	clustermap  map[string]Cluster
 
-	name       string
-	platform   Name
-	ctPlatform string
-	baseopts   *Options
+	name     string
+	platform Name
+	baseopts *Options
 
 	agent *network.SSHAgent
 }
 
-func NewBaseFlight(opts *Options, platform Name, ctPlatform string) (*BaseFlight, error) {
-	return NewBaseFlightWithDialer(opts, platform, ctPlatform, network.NewRetryDialer())
+func NewBaseFlight(opts *Options, platform Name) (*BaseFlight, error) {
+	return NewBaseFlightWithDialer(opts, platform, network.NewRetryDialer())
 }
 
-func NewBaseFlightWithDialer(opts *Options, platform Name, ctPlatform string, dialer network.Dialer) (*BaseFlight, error) {
+func NewBaseFlightWithDialer(opts *Options, platform Name, dialer network.Dialer) (*BaseFlight, error) {
 	agent, err := network.NewSSHAgent(dialer)
 	if err != nil {
 		return nil, err
@@ -51,7 +50,6 @@ func NewBaseFlightWithDialer(opts *Options, platform Name, ctPlatform string, di
 		clustermap: make(map[string]Cluster),
 		name:       fmt.Sprintf("%s-%s", opts.BaseName, uuid.New()),
 		platform:   platform,
-		ctPlatform: ctPlatform,
 		baseopts:   opts,
 		agent:      agent,
 	}

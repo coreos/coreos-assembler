@@ -185,13 +185,11 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 	}
 
 	// hacky solution for unified ignition metadata variables
-	if userdata.IsIgnitionCompatible() {
-		for k, v := range ignitionVars {
-			userdata = userdata.Subst(k, v)
-		}
+	for k, v := range ignitionVars {
+		userdata = userdata.Subst(k, v)
 	}
 
-	conf, err := userdata.RenderForCtPlatform(bc.bf.ctPlatform)
+	conf, err := userdata.Render()
 	if err != nil {
 		return nil, err
 	}
