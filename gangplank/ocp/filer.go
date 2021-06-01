@@ -160,6 +160,10 @@ func (m *minioServer) start(ctx context.Context) error {
 			return err
 		}
 
+		if m.ExternalServer {
+			return nil
+		}
+
 		if m.overSSH != nil {
 			m.overSSH.port = m.Port
 			log.WithField("host", m.overSSH.Host).Info("Setting up remote SSH forwarding")

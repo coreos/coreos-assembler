@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/gangplank/cosa"
 	"github.com/coreos/gangplank/spec"
+	"github.com/minio/minio-go/v7"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 )
@@ -155,9 +156,11 @@ func (bc *buildConfig) Exec(ctx ClusterContext) (err error) {
 	// Define, but do not start minio.
 	m := newMinioServer(bc.JobSpec.Job.MinioCfgFile)
 	m.dir = cosaSrvDir
-	if mf := getSshMinioForwarder(&bc.JobSpec); mf != nil {
-		m.overSSH = mf
-		m.Host = "127.0.0.1"
+	if !m.ExternalServer {
+		if mf := getSshMinioForwarder(&bc.JobSpec); mf != nil {
+			m.overSSH = mf
+			m.Host = "127.0.0.1"
+		}
 	}
 
 	// returnTo informs the workers where to send their bits
@@ -201,28 +204,38 @@ binary build interface.`)
 	}
 	defer m.Kill()
 
+	// Set the cosa builds IO Backend to minio.
+	mc, err := m.client()
+	if err != nil {
+		return fmt.Errorf("failed to get minio client")
+	}
 	if err := m.ensureBucketExists(ctx, "builds"); err != nil {
 		return fmt.Errorf("failed to ensure 'builds' bucket exists on minio: %v", err)
 	}
 
-	// Get the latest build that might have happened
-	lastBuild, lastPath, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	// Set the cosa backend to minio. This allows for Gangplank to use
+	// either a local directory (via minio) or remote object store (AWS or minio)
+	// as the artifact store.
+	if err := cosa.SetIOBackendMinio(ctx, mc); err != nil {
+		return err
+	}
+
+	// Find the last build, if any.
+	lastBuild, _, err := cosa.ReadBuild("", "", cosa.BuilderArch())
 	if err == nil {
 		keyPath := filepath.Join(lastBuild.BuildID, cosa.BuilderArch())
 		l := log.WithFields(log.Fields{
 			"prior build": lastBuild.BuildID,
-			"path":        lastPath,
-			"to path":     filepath.Join("srv", "builds", keyPath),
 		})
 		l.Info("found prior build")
 		remoteFiles = append(
 			remoteFiles,
-			getBuildMeta(lastPath, keyPath, m, l)...,
+			getBuildMeta(lastBuild.BuildID, keyPath, m, l)...,
 		)
 
 	} else {
 		lastBuild = new(cosa.Build)
-		log.Debug("no prior build found")
+		log.Info("no prior build found")
 	}
 
 	// Dump the jobspec
@@ -606,34 +619,48 @@ func (bc *buildConfig) ocpBinaryInput(m *minioServer) ([]*RemoteFile, error) {
 func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []*RemoteFile {
 	var metas []*RemoteFile
 
-	_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
-		if info == nil || info.IsDir() {
-			return nil
-		}
-		n := filepath.Base(info.Name())
+	mc, err := m.client()
+	if err != nil {
+		log.WithError(err).Warn("failed to get client")
+		return nil
+	}
 
+	v := mc.ListObjects(context.Background(), "builds",
+		minio.ListObjectsOptions{
+			Recursive: true,
+			Prefix:    jsonPath,
+		},
+	)
+	for {
+		info, ok := <-v
+		if !ok {
+			break
+		}
+		if strings.HasSuffix(info.Key, "/") {
+			continue
+		}
+
+		n := filepath.Base(info.Key)
 		if !isKnownBuildMeta(n) {
-			return nil
+			continue
 		}
 
-		key := filepath.Join(keyPathBase, n)
 		metas = append(
 			metas,
 			&RemoteFile{
-				Bucket: "builds",
-				Minio:  m,
-				Object: key,
+				Bucket:    "builds",
+				Minio:     m,
+				Object:    info.Key,
+				ForcePath: fmt.Sprintf("/srv/builds/%s", info.Key),
 			},
 		)
 		l.WithFields(log.Fields{
-			"file":   info.Name(),
 			"bucket": "builds",
-			"key":    key,
+			"key":    info.Key,
 		}).Info("Included metadata")
-		return nil
-	})
+	}
 
-	if _, err := os.Stat(filepath.Join(cosaSrvDir, "builds", "builds.json")); err == nil {
+	if _, err := mc.StatObject(context.Background(), "builds", "builds.json", minio.StatObjectOptions{}); err == nil {
 		metas = append(
 			metas,
 			&RemoteFile{
@@ -661,10 +688,9 @@ func getStageFiles(buildID string,
 
 	// For _each_ stage, we need to check if a meta.json exists.
 	// mBuild - *cosa.Build representing meta.json
-	buildPath := filepath.Join(cosaSrvDir, "builds")
-	mBuild, _, err := cosa.ReadBuild(cosaSrvDir, buildID, "")
+	mBuild, _, err := cosa.ReadBuild("", buildID, "")
 	if err != nil {
-		l.WithField("build dir", buildPath).WithError(err).Warningf("No builds found")
+		l.Info("No build history found")
 	}
 
 	// Handle {Require,Request}{Cache,CacheRepo}
@@ -713,11 +739,10 @@ func getStageFiles(buildID string,
 		keyPathBase = filepath.Join(buildID, cosa.BuilderArch())
 
 		// Locate build meta data
-		jsonPath := filepath.Join(buildPath, buildID)
 		if lastBuild.BuildID != mBuild.BuildID {
 			remoteFiles = append(
 				remoteFiles,
-				getBuildMeta(jsonPath, keyPathBase, m, l)...,
+				getBuildMeta(buildID, keyPathBase, m, l)...,
 			)
 		}
 	}

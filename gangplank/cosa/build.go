@@ -71,7 +71,6 @@ func BuilderArch() string {
 // ReadBuild returns a build upon finding a meta.json. Returns a Build, the path string
 // to the build, and an error (if any). If the buildID is not set, "latest" is assumed.
 func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
-	log.WithField("dir", dir).Info("Looking for builds")
 	if arch == "" {
 		arch = BuilderArch()
 	}
@@ -93,7 +92,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 	}
 
 	p := filepath.Join(dir, "builds", buildID, arch)
-	f, err := os.Open(filepath.Join(p, CosaMetaJSON))
+	f, err := Open(filepath.Join(p, CosaMetaJSON))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to open %s to read meta.json: %w", p, err)
 	}
@@ -107,22 +106,28 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 	// into the memory model of the build
 	if b != nil && b.CosaDelayedMetaMerge {
 		log.Info("Searching for extra meta.json files")
-		err = filepath.Walk(p, func(path string, fi os.FileInfo, _ error) error {
+		files := walkFn(p)
+		for {
+			fi, ok := <-files
+			if !ok {
+				break
+			}
 			if fi == nil || fi.IsDir() || fi.Name() == CosaMetaJSON {
-				return nil
+				continue
 			}
 			if !IsMetaJSON(fi.Name()) {
-				return nil
+				continue
 			}
 			log.WithField("extra meta.json", fi.Name()).Info("found meta")
-			f, err := os.Open(filepath.Join(p, fi.Name()))
-
+			f, err := Open(filepath.Join(p, fi.Name()))
 			if err != nil {
-				return err
+				return b, p, err
 			}
 			defer f.Close()
-			return b.mergeMeta(f)
-		})
+			if err := b.mergeMeta(f); err != nil {
+				return b, p, err
+			}
+		}
 	}
 
 	return b, p, err
@@ -140,7 +145,7 @@ func buildParser(r io.Reader) (*Build, error) {
 
 // ParseBuild parses the meta.json and reutrns a build
 func ParseBuild(path string) (*Build, error) {
-	f, err := os.Open(path)
+	f, err := Open(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open %s", path)
 	}
@@ -152,7 +157,7 @@ func ParseBuild(path string) (*Build, error) {
 	return b, err
 }
 
-// WriteMeta records the meta-data
+// WriteMeta records the meta-data. Writes are local only.
 func (build *Build) WriteMeta(path string, validate bool) error {
 	if validate {
 		if err := build.Validate(); len(err) != 0 {
