@@ -19,6 +19,8 @@ const (
 	// podmanRemoteEnvVar is the podman-remote envVar used to tell the podman
 	// remote API to use a remote host.
 	podmanRemoteEnvVar = "CONTAINER_HOST"
+	// podmanSshKeyEnvVar is the podman-remote envVar for the ssh key to use
+	podmanSshKeyEnvVar = "CONTAINER_SSHKEY"
 )
 
 var (
@@ -38,8 +40,11 @@ var (
 	// Run CI pod via podman (out of cluster)
 	cosaViaPodman bool
 
-	// Run podman remotely
-	cosaViaRemotePodman string
+	// Remote URI for podman
+	cosaPodmanRemote string
+
+	// SSH Key to use for remote Podman calls
+	cosaPodmanRemoteSshKey string
 
 	// cosaWorkDir is used for podman mode and is where the "builds" directory will live
 	cosaWorkDir string
@@ -67,7 +72,8 @@ func init() {
 	spec.AddCliFlags(cmdPod.Flags())
 	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
-	cmdPod.Flags().StringVar(&cosaViaRemotePodman, "remote", os.Getenv(podmanRemoteEnvVar), "address of the remote podman to execute task")
+	cmdPod.Flags().StringVar(&cosaPodmanRemote, "remote", os.Getenv(podmanRemoteEnvVar), "address of the remote podman to execute task")
+	cmdPod.Flags().StringVar(&cosaPodmanRemoteSshKey, "sshkey", os.Getenv(podmanSshKeyEnvVar), "address of the remote podman to execute task")
 	cmdPod.Flags().StringVarP(&cosaImage, "image", "i", "", "use an alternative image")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVar(&serviceAccount, "serviceaccount", "", "service account to use")
@@ -87,18 +93,23 @@ func runPod(c *cobra.Command, args []string) {
 	cluster := ocp.NewCluster(true)
 
 	if cosaViaPodman {
-		if cosaViaRemotePodman != "" {
-			os.Setenv(podmanRemoteEnvVar, cosaViaRemotePodman)
+		if cosaPodmanRemote != "" {
+			os.Setenv(podmanRemoteEnvVar, cosaPodmanRemote)
 			minioSshRemoteHost = containerHost()
 			if strings.Contains(minioSshRemoteHost, "@") {
 				parts := strings.Split(minioSshRemoteHost, "@")
 				minioSshRemoteHost = parts[1]
 				minioSshRemoteUser = parts[0]
 			}
+			if cosaPodmanRemoteSshKey != "" {
+				os.Setenv(podmanSshKeyEnvVar, cosaPodmanRemoteSshKey)
+				minioSshRemoteKey = cosaPodmanRemoteSshKey
+			}
 			log.WithFields(log.Fields{
 				"remote user":     minioSshRemoteUser,
+				"ssh key":         cosaPodmanRemoteSshKey,
 				"ssh foward host": minioSshRemoteHost,
-				"container host":  cosaViaRemotePodman,
+				"container host":  cosaPodmanRemote,
 			}).Info("Minio will be forwarded to remote host")
 		}
 

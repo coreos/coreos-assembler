@@ -17,6 +17,7 @@ import (
 type SSHForwardPort struct {
 	Host string
 	User string
+	Key  string
 
 	// port is not exported
 	port int
@@ -32,6 +33,7 @@ func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort {
 	return &SSHForwardPort{
 		Host: j.Job.MinioSSHForward,
 		User: j.Job.MinioSSHUser,
+		Key:  j.Job.MinioSSHKey,
 	}
 }
 
@@ -55,6 +57,10 @@ func sshForwarder(ctx context.Context, cfg *SSHForwardPort) (chan<- bool, error)
 			"-o", "StrictHostKeyChecking=no",
 			"-N", "-R",
 			fmt.Sprintf("%d:127.0.0.1:%d", cfg.port, cfg.port), host,
+		}
+
+		if cfg.Key != "" {
+			args = append(args, "-i", cfg.Key)
 		}
 
 		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
