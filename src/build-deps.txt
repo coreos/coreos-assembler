@@ -1,8 +1,2 @@
 # Used by mantle
 golang
-
-# Used by Gangplank
-gpgme-devel
-btrfs-progs-devel
-device-mapper-devel
-libblockdev-btrfs-devel
