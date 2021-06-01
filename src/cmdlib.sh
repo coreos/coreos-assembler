@@ -267,6 +267,11 @@ commit_overlay() {
     name=$1
     path=$2
     respath=$(realpath "${path}")
+    # Only keep write bit for owner for all overlay files/dirs. This modifies
+    # the source config, but meh... git doesn't track it anyway and it's easier
+    # than using ostree's --statoverride when dealing with executable files.
+    # See: https://github.com/ostreedev/ostree/issues/2368
+    chmod -cR go-w "${respath}"
     echo -n "Committing ${name}: ${path} ... "
     ostree commit --repo="${tmprepo}" --tree=dir="${respath}" -b "${name}" \
         --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
