@@ -49,7 +49,11 @@ func sshForwarder(ctx context.Context, cfg *SSHForwardPort) (chan<- bool, error)
 		if cfg.User != "" && !strings.Contains(cfg.Host, "@") {
 			host = fmt.Sprintf("%s@%s", cfg.User, cfg.Host)
 		}
-		args := []string{"ssh", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=5", "-N", "-R",
+		args := []string{"ssh",
+			"-o", "ServerAliveInterval=15",
+			"-o", "ServerAliveCountMax=5",
+			"-o", "StrictHostKeyChecking=no",
+			"-N", "-R",
 			fmt.Sprintf("%d:127.0.0.1:%d", cfg.port, cfg.port), host,
 		}
 
