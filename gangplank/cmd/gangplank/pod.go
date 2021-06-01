@@ -94,25 +94,31 @@ func runPod(c *cobra.Command, args []string) {
 
 	if cosaViaPodman {
 		if cosaPodmanRemote != "" {
-			os.Setenv(podmanRemoteEnvVar, cosaPodmanRemote)
-			minioSshRemoteHost = containerHost()
-			if strings.Contains(minioSshRemoteHost, "@") {
-				parts := strings.Split(minioSshRemoteHost, "@")
-				minioSshRemoteHost = parts[1]
-				minioSshRemoteUser = parts[0]
-			}
 			if cosaPodmanRemoteSshKey != "" {
 				os.Setenv(podmanSshKeyEnvVar, cosaPodmanRemoteSshKey)
-				minioSshRemoteKey = cosaPodmanRemoteSshKey
 			}
-			log.WithFields(log.Fields{
-				"remote user":     minioSshRemoteUser,
-				"ssh key":         cosaPodmanRemoteSshKey,
-				"ssh foward host": minioSshRemoteHost,
-				"container host":  cosaPodmanRemote,
-			}).Info("Minio will be forwarded to remote host")
-		}
+			os.Setenv(podmanRemoteEnvVar, cosaPodmanRemote)
 
+			if minioCfgFile == "" {
+				minioSshRemoteHost = containerHost()
+				if strings.Contains(minioSshRemoteHost, "@") {
+					parts := strings.Split(minioSshRemoteHost, "@")
+					minioSshRemoteHost = parts[1]
+					minioSshRemoteUser = parts[0]
+					minioSshRemoteKey = cosaPodmanRemoteSshKey
+				}
+				log.WithFields(log.Fields{
+					"remote user":    minioSshRemoteUser,
+					"remote key":     cosaPodmanRemoteSshKey,
+					"container host": minioSshRemoteHost,
+				}).Info("Minio will be forwarded to remote host")
+			}
+
+			log.WithFields(log.Fields{
+				"ssh key":        cosaPodmanRemoteSshKey,
+				"container host": cosaPodmanRemote,
+			}).Info("Podman container will be executed on a remote host")
+		}
 		cluster = ocp.NewCluster(false)
 		cluster.SetPodman(cosaSrvDir)
 	}

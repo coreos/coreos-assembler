@@ -72,8 +72,7 @@ func setCliSpec() {
 		if spec.Recipe.Repos == nil {
 			spec.AddRepos()
 		}
-		if minioSshRemoteHost != "" {
-			log.WithField("ssh host", minioSshRemoteHost).Info("Minio will be forwarded to remote host")
+		if minioSshRemoteHost != "" && minioCfgFile == "" {
 			spec.Job.MinioSSHForward = minioSshRemoteHost
 			spec.Job.MinioSSHUser = minioSshRemoteUser
 			spec.Job.MinioSSHKey = minioSshRemoteKey
