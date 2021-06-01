@@ -122,6 +122,7 @@ type Job struct {
 	// Runtime config options for SSH. Not exported for safety.
 	MinioSSHForward string
 	MinioSSHUser    string
+	MinioSSHKey     string
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config

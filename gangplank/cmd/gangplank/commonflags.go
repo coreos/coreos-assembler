@@ -21,8 +21,8 @@ var (
 	// minioSshRemoteUser is the name of the SSH user to use with minioSshRemoteHost
 	minioSshRemoteUser string
 
-	// minioSshRemotePassword is the password of the SSH user to use with minioSshRemoteHost
-	minioSshRemotePassword string
+	// minioSshRemoteKey is the SSH key to use with minioSshRemoteHost
+	minioSshRemoteKey string
 )
 
 // cosaKolaTests are used to generate automatic Kola stages.
@@ -37,5 +37,5 @@ func init() {
 	user, _ := user.Current()
 	sshFlags.StringVar(&minioSshRemoteHost, "forwardMinioSSH", containerHost(), "forward and use minio to ssh host")
 	sshFlags.StringVar(&minioSshRemoteUser, "sshUser", user.Username, "name of SSH; used with forwardMinioSSH")
-	sshFlags.StringVar(&minioSshRemotePassword, "sshPass", "", "password for remote SSH; used with forwardMinioSSH")
+	sshFlags.StringVar(&minioSshRemoteKey, "sshKey", "", "path to SSH key; used with forwardMinioSSH")
 }

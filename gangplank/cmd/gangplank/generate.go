@@ -76,6 +76,7 @@ func setCliSpec() {
 			log.WithField("ssh host", minioSshRemoteHost).Info("Minio will be forwarded to remote host")
 			spec.Job.MinioSSHForward = minioSshRemoteHost
 			spec.Job.MinioSSHUser = minioSshRemoteUser
+			spec.Job.MinioSSHKey = minioSshRemoteKey
 		}
 		if minioCfgFile != "" {
 			spec.Job.MinioCfgFile = minioCfgFile
