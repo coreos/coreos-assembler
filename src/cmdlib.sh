@@ -422,7 +422,9 @@ impl_rpmostree_compose() {
 
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
-        sudo -E "$@"
+        # we hardcode a umask of 0022 here to make sure that composes are run
+        # with a consistent value, regardless of the environment
+        (umask 0022 && sudo -E "$@")
     else
         # "cache2" has an explicit label so we can find it in qemu easily
         if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
@@ -537,7 +539,10 @@ EOF
     fi
 
     # this is the command run in the supermin container
-    echo "$@" > "${tmp_builddir}"/cmd.sh
+    # we hardcode a umask of 0022 here to make sure that composes are run
+    # with a consistent value, regardless of the environment
+    echo "umask 0022" > "${tmp_builddir}"/cmd.sh
+    echo "$@" >> "${tmp_builddir}"/cmd.sh
 
     touch "${runvm_console}"
     kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none \
