@@ -39,7 +39,7 @@ var (
 	cosaViaPodman bool
 
 	// Run podman remotely
-	cosaViaRemotePodman, _ = os.LookupEnv(podmanRemoteEnvVar)
+	cosaViaRemotePodman string
 
 	// cosaWorkDir is used for podman mode and is where the "builds" directory will live
 	cosaWorkDir string
@@ -67,7 +67,7 @@ func init() {
 	spec.AddCliFlags(cmdPod.Flags())
 	cmdPod.Flags().BoolVar(&cosaWorkDirContext, "setWorkDirCtx", false, "set workDir's selinux content")
 	cmdPod.Flags().BoolVarP(&cosaViaPodman, "podman", "", false, "use podman to execute task")
-	cmdPod.Flags().StringVar(&cosaViaRemotePodman, "remote", "", "address of the remote podman to execute task")
+	cmdPod.Flags().StringVar(&cosaViaRemotePodman, "remote", os.Getenv(podmanRemoteEnvVar), "address of the remote podman to execute task")
 	cmdPod.Flags().StringVarP(&cosaImage, "image", "i", "", "use an alternative image")
 	cmdPod.Flags().StringVarP(&cosaWorkDir, "workDir", "w", "", "podman mode - workdir to use")
 	cmdPod.Flags().StringVar(&serviceAccount, "serviceaccount", "", "service account to use")
