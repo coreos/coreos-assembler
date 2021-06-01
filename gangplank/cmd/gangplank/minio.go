@@ -63,11 +63,13 @@ func runMinio(c *cobra.Command, args []string) {
 		log.Fatalf("existing minio configuration exists, refusing to overwrite")
 	}
 
-	minioSSH := &ocp.SSHForwardPort{
-		Host: minioSshRemoteHost,
-		User: minioSshRemoteUser,
+	var minioSSH *ocp.SSHForwardPort
+	if minioSshRemoteHost != "" {
+		minioSSH = &ocp.SSHForwardPort{
+			Host: minioSshRemoteHost,
+			User: minioSshRemoteUser,
+		}
 	}
-
 	m, err := ocp.StartStandaloneMinioServer(ctx, minioServeDir, minioCfgFile, minioSSH)
 	if err != nil {
 		log.WithError(err).Fatalf("failed to start minio server")
