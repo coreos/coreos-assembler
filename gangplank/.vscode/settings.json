@@ -1,0 +1,6 @@
+{
+    "go buildtags": "containers_image_openpgp",
+    "go.toolsEnvVars": {
+         "CGO_ENABLED": "0"
+     }
+}
