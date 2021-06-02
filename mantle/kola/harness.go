@@ -74,6 +74,9 @@ const InstalledTestDefaultTest = "test.sh"
 // Specifying this in the tags list is required to denote a need for Internet access
 const NeedsInternetTag = "needs-internet"
 
+// Don't e.g. check console for kernel errors, SELinux AVCs, etc.
+const SkipBaseChecksTag = "skip-base-checks"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
@@ -739,6 +742,7 @@ ExecStart=%s
 		t.Distros = strings.Fields(targetMeta.Distros)
 	}
 	t.Tags = append(t.Tags, strings.Fields(targetMeta.Tags)...)
+	// TODO validate tags here
 
 	register.RegisterTest(t)
 
@@ -948,6 +952,12 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 	defer func() {
 		c.Destroy()
+		for _, k := range t.Tags {
+			if k == SkipBaseChecksTag {
+				plog.Debugf("Skipping base checks for %s", t.Name)
+				return
+			}
+		}
 		for id, output := range c.ConsoleOutput() {
 			for _, badness := range CheckConsole([]byte(output), t) {
 				h.Errorf("Found %s on machine %s console", badness, id)
