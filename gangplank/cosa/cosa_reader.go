@@ -3,7 +3,6 @@ package cosa
 import (
 	"context"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,10 +94,22 @@ type objectInfo struct {
 	name string
 }
 
+// TODO: drop with GoLang 1.16. This is a backport of the interface from 1.16.
+// var _ os.FileInfo = &objectInfo{}
+type fileMode uint32
+type fileInfo interface {
+	Name() string       // base name of the file
+	Size() int64        // length in bytes for regular files; system-dependent for others
+	Mode() fileMode     // file mode bits
+	ModTime() time.Time // modification time
+	IsDir() bool        // abbreviation for Mode().IsDir()
+	Sys() interface{}   // underlying data source (can return nil)
+}
+
 // objectInfo implements the os.FileInfo interface.
 // This allows for abstracting any file or object to be compared as if they were
 // local files regardless of location.
-var _ os.FileInfo = &objectInfo{}
+var _ fileInfo = &objectInfo{}
 
 // IsDir implements the os.FileInfo IsDir func. For minio objects,
 // the answer is always false.
@@ -114,7 +125,7 @@ func (ao *objectInfo) ModTime() time.Time {
 
 // Mode implements the os.FileInfo Mode func. Since there is not simple
 // way to convert an ACL into Unix permisions, it blindly returns 0644.
-func (ao *objectInfo) Mode() fs.FileMode {
+func (ao *objectInfo) Mode() fileMode {
 	return 0644
 }
 
@@ -155,14 +166,14 @@ func SetIOBackendFile() {
 }
 
 // walkerFn is a function that implements the walk func
-type walkerFn func(string) <-chan os.FileInfo
+type walkerFn func(string) <-chan fileInfo
 
 // walkFn is used to walk paths
 var walkFn walkerFn = defaultWalkFunc
 
 // defaultWalkFunc walks over a directory and returns a channel of os.FileInfo
-func defaultWalkFunc(p string) <-chan os.FileInfo {
-	ret := make(chan os.FileInfo)
+func defaultWalkFunc(p string) <-chan fileInfo {
+	ret := make(chan fileInfo)
 	go func() {
 		defer close(ret) //nolint
 		_ = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
@@ -186,8 +197,8 @@ func defaultWalkFunc(p string) <-chan os.FileInfo {
 // createMinioWalkFunc creates a new func a minio client. The returned function
 // will list the remote objects and return os.FileInfo compliant interfaces.
 func createMinioWalkFunc(m *minio.Client) walkerFn {
-	return func(p string) <-chan os.FileInfo {
-		ret := make(chan os.FileInfo)
+	return func(p string) <-chan fileInfo {
+		ret := make(chan fileInfo)
 		go func() {
 			defer close(ret) //nolint
 
