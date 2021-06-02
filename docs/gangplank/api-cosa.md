@@ -12,8 +12,17 @@ import "github.com/coreos/gangplank/cosa"
 - [Variables](<#variables>)
 - [func BuilderArch() string](<#func-builderarch>)
 - [func CanArtifact(artifact string) bool](<#func-canartifact>)
+- [func GetCommandBuildableArtifacts() []string](<#func-getcommandbuildableartifacts>)
+- [func IsMetaJSON(path string) bool](<#func-ismetajson>)
+- [func Open(p string) (io.ReadCloser, error)](<#func-open>)
+- [func SetArch(a string)](<#func-setarch>)
+- [func SetIOBackendFile()](<#func-setiobackendfile>)
+- [func SetIOBackendMinio(ctx context.Context, m *minio.Client) error](<#func-setiobackendminio>)
 - [func SetSchemaFromFile(r io.Reader) error](<#func-setschemafromfile>)
+- [func defaultWalkFunc(p string) <-chan fileInfo](<#func-defaultwalkfunc>)
 - [func init()](<#func-init>)
+- [type AdvisoryDiff](<#type-advisorydiff>)
+- [type AdvisoryDiffItems](<#type-advisorydiffitems>)
 - [type AliyunImage](<#type-aliyunimage>)
 - [type Amis](<#type-amis>)
 - [type Artifact](<#type-artifact>)
@@ -26,16 +35,39 @@ import "github.com/coreos/gangplank/cosa"
   - [func (build *Build) Validate() []error](<#func-build-validate>)
   - [func (build *Build) WriteMeta(path string, validate bool) error](<#func-build-writemeta>)
   - [func (build *Build) artifacts() map[string]*Artifact](<#func-build-artifacts>)
+  - [func (b *Build) mergeMeta(r io.Reader) error](<#func-build-mergemeta>)
 - [type BuildArtifacts](<#type-buildartifacts>)
 - [type Cloudartifact](<#type-cloudartifact>)
+- [type Extensions](<#type-extensions>)
+  - [func (e *Extensions) toArtifact() *Artifact](<#func-extensions-toartifact>)
 - [type Gcp](<#type-gcp>)
 - [type Git](<#type-git>)
 - [type Image](<#type-image>)
-- [type Items](<#type-items>)
+- [type Koji](<#type-koji>)
 - [type PackageSetDifferences](<#type-packagesetdifferences>)
+- [type PackageSetDifferencesItems](<#type-packagesetdifferencesitems>)
+- [type build](<#type-build>)
 - [type buildsJSON](<#type-buildsjson>)
   - [func getBuilds(dir string) (*buildsJSON, error)](<#func-getbuilds>)
   - [func (b *buildsJSON) getLatest(arch string) (string, bool)](<#func-buildsjson-getlatest>)
+- [type fileInfo](<#type-fileinfo>)
+- [type fileMode](<#type-filemode>)
+- [type ioBackendFile](<#type-iobackendfile>)
+  - [func (i *ioBackendFile) Name() string](<#func-iobackendfile-name>)
+  - [func (i *ioBackendFile) Open(p string) (io.ReadCloser, error)](<#func-iobackendfile-open>)
+- [type ioBackendMinio](<#type-iobackendminio>)
+  - [func (im *ioBackendMinio) Open(p string) (io.ReadCloser, error)](<#func-iobackendminio-open>)
+- [type ioBackender](<#type-iobackender>)
+  - [func newBackend() ioBackender](<#func-newbackend>)
+- [type objectInfo](<#type-objectinfo>)
+  - [func (ao *objectInfo) IsDir() bool](<#func-objectinfo-isdir>)
+  - [func (ao *objectInfo) ModTime() time.Time](<#func-objectinfo-modtime>)
+  - [func (ao *objectInfo) Mode() fileMode](<#func-objectinfo-mode>)
+  - [func (ao *objectInfo) Name() string](<#func-objectinfo-name>)
+  - [func (ao *objectInfo) Size() int64](<#func-objectinfo-size>)
+  - [func (ao *objectInfo) Sys() interface{}](<#func-objectinfo-sys>)
+- [type walkerFn](<#type-walkerfn>)
+  - [func createMinioWalkFunc(m *minio.Client) walkerFn](<#func-createminiowalkfunc>)
 
 
 ## Constants
@@ -63,6 +95,12 @@ var (
 
     // ErrMetaNotFound is thrown when a meta.json cannot be found
     ErrMetaNotFound = errors.New("meta.json was not found")
+
+    // reMetaJSON matches meta.json files use for merging
+    reMetaJSON = regexp.MustCompile(`^meta\.(json|.*\.json)$`)
+
+    // forceArch when not empty will override the build arch
+    forceArch, _ = os.LookupEnv("COSA_FORCE_ARCH")
 )
 ```
 
@@ -71,6 +109,10 @@ var (
     // ErrNoBuildsFound is thrown when a build is missing
     ErrNoBuildsFound = errors.New("no COSA builds found")
 )
+```
+
+```go
+var ErrNoMinioClient = errors.New("minio client is not defined")
 ```
 
 ```go
@@ -98,7 +140,7 @@ var generatedSchemaJSON = `{
             },
            "size": {
              "$id": "#/artifact/size",
-             "type":"integer",
+             "type":"number",
              "title":"Size in bytes"
             },
            "uncompressed-sha256": {
@@ -230,6 +272,15 @@ var generatedSchemaJSON = `{
          "default":"",
          "minLength": 1
         }
+      },
+     "advisory-items": {
+       "type":"array",
+       "title":"Advisory diff",
+       "items": {
+         "$id":"#/advisory-diff/items/item",
+         "title":"Items",
+         "default":""
+        }
       }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
@@ -258,8 +309,11 @@ var generatedSchemaJSON = `{
    "ibmcloud",
    "images",
    "oscontainer",
+   "extensions",
    "parent-pkgdiff",
    "pkgdiff",
+   "parent-advisories-diff",
+   "advisories-diff",
    "release-payload",
 
    "coreos-assembler.basearch",
@@ -596,12 +650,53 @@ var generatedSchemaJSON = `{
      "title":"Oscontainer",
      "$ref": "#/definitions/image"
     },
+   "extensions": {
+     "$id":"#/properties/extensions",
+     "type":"object",
+     "title":"Extensions",
+     "required": [
+         "path",
+         "sha256",
+         "rpm-ostree-state",
+         "manifest"
+     ],
+     "properties": {
+       "path": {
+         "$id": "#/artifact/Path",
+         "type":"string",
+         "title":"Path"
+        },
+       "sha256": {
+         "$id": "#/artifact/sha256",
+         "type":"string",
+         "title":"SHA256"
+        },
+       "rpm-ostree-state": {
+         "$id":"#/properties/extensions/items/properties/rpm-ostree-state",
+         "type":"string",
+         "title":"RpmOstreeState",
+         "default":"",
+         "minLength": 64
+        },
+       "manifest": {
+         "$id":"#/properties/extensions/items/properties/manifest",
+         "type":"object",
+         "title":"Manifest"
+       }
+      }
+    },
    "ostree-commit": {
      "$id":"#/properties/ostree-commit",
      "type":"string",
      "title":"ostree-commit",
      "default":"",
      "minLength": 64
+    },
+   "ostree-content-bytes-written": {
+     "$id":"#/properties/ostree-content-bytes-written",
+     "type":"integer",
+     "title":"ostree-content-bytes-written",
+     "default": 0
     },
    "ostree-content-checksum": {
      "$id":"#/properties/ostree-content-checksum",
@@ -610,10 +705,34 @@ var generatedSchemaJSON = `{
      "default":"",
      "minLength": 64
     },
+   "ostree-n-cache-hits": {
+     "$id":"#/properties/ostree-n-cache-hits",
+     "type":"integer",
+     "title":"ostree-n-cache-hits",
+     "default": 0
+    },
    "ostree-n-content-total": {
      "$id":"#/properties/ostree-n-content-total",
      "type":"integer",
      "title":"ostree-n-content-total",
+     "default": 0
+    },
+   "ostree-n-content-written": {
+     "$id":"#/properties/ostree-n-content-written",
+     "type":"integer",
+     "title":"ostree-n-content-written",
+     "default": 0
+    },
+   "ostree-n-metadata-total": {
+     "$id":"#/properties/ostree-n-metadata-total",
+     "type":"integer",
+     "title":"ostree-n-metadata-total",
+     "default": 0
+    },
+   "ostree-n-metadata-written": {
+     "$id":"#/properties/ostree-n-metadata-written",
+     "type":"integer",
+     "title":"ostree-n-metadata-written",
      "default": 0
     },
    "ostree-timestamp": {
@@ -644,6 +763,18 @@ var generatedSchemaJSON = `{
      "type":"array",
      "title":"pkgdiff against parent",
      "$ref": "#/definitions/pkg-items"
+    },
+   "advisories-diff": {
+     "$id":"#/properties/advisories-diff",
+     "type":"array",
+     "title":"advisory diff between builds",
+     "$ref": "#/definitions/advisory-items"
+    },
+   "parent-advisories-diff": {
+     "$id":"#/properties/parent-advisory-diff",
+     "type":"array",
+     "title":"advisory diff against parent",
+     "$ref": "#/definitions/advisory-items"
     },
    "rpm-ostree-inputhash": {
      "$id":"#/properties/rpm-ostree-inputhash",
@@ -792,6 +923,54 @@ func CanArtifact(artifact string) bool
 
 CanArtifact reports whether an artifact name is buildable by COSA based on the meta\.json name\. CanArtifact is used to signal if the artifact is a known artifact type\.
 
+## func GetCommandBuildableArtifacts
+
+```go
+func GetCommandBuildableArtifacts() []string
+```
+
+GetCommandBuildableArtifacts returns the string name of buildable artifacts through the \`cosa build\-\*\` CLI\.
+
+## func IsMetaJSON
+
+```go
+func IsMetaJSON(path string) bool
+```
+
+IsMetaJSON is a helper for identifying if a file is meta\.json
+
+## func Open
+
+```go
+func Open(p string) (io.ReadCloser, error)
+```
+
+Open calls the backend's open function\.
+
+## func SetArch
+
+```go
+func SetArch(a string)
+```
+
+SetArch overrides the build arch
+
+## func SetIOBackendFile
+
+```go
+func SetIOBackendFile()
+```
+
+SetIOBackendFile sets the backend to the default file backend\.
+
+## func SetIOBackendMinio
+
+```go
+func SetIOBackendMinio(ctx context.Context, m *minio.Client) error
+```
+
+SetIOBackendMinio sets the backend to minio\. The client must be provided by the caller\, including authorization\.
+
 ## func SetSchemaFromFile
 
 ```go
@@ -800,10 +979,30 @@ func SetSchemaFromFile(r io.Reader) error
 
 SetSchemaFromFile sets the validation JSON Schema
 
+## func defaultWalkFunc
+
+```go
+func defaultWalkFunc(p string) <-chan fileInfo
+```
+
+defaultWalkFunc walks over a directory and returns a channel of os\.FileInfo
+
 ## func init
 
 ```go
 func init()
+```
+
+## type AdvisoryDiff
+
+```go
+type AdvisoryDiff []AdvisoryDiffItems
+```
+
+## type AdvisoryDiffItems
+
+```go
+type AdvisoryDiffItems interface{}
 ```
 
 ## type AliyunImage
@@ -829,11 +1028,11 @@ type Amis struct {
 
 ```go
 type Artifact struct {
-    Path               string `json:"path"`
-    Sha256             string `json:"sha256"`
-    SizeInBytes        int    `json:"size,omitempty"`
-    UncompressedSha256 string `json:"uncompressed-sha256,omitempty"`
-    UncompressedSize   int    `json:"uncompressed-size,omitempty"`
+    Path               string  `json:"path"`
+    Sha256             string  `json:"sha256"`
+    SizeInBytes        float64 `json:"size,omitempty"`
+    UncompressedSha256 string  `json:"uncompressed-sha256,omitempty"`
+    UncompressedSize   int     `json:"uncompressed-size,omitempty"`
 }
 ```
 
@@ -841,6 +1040,8 @@ type Artifact struct {
 
 ```go
 type Build struct {
+    AdvisoryDiffAgainstParent AdvisoryDiff          `json:"parent-advisories-diff,omitempty"`
+    AdvisoryDiffBetweenBuilds AdvisoryDiff          `json:"advisories-diff,omitempty"`
     AlibabaAliyunUploads      []AliyunImage         `json:"aliyun,omitempty"`
     Amis                      []Amis                `json:"amis,omitempty"`
     Architecture              string                `json:"coreos-assembler.basearch,omitempty"`
@@ -858,17 +1059,25 @@ type Build struct {
     CosaDelayedMetaMerge      bool                  `json:"coreos-assembler.delayed-meta-merge,omitempty"`
     CosaImageChecksum         string                `json:"coreos-assembler.image-config-checksum,omitempty"`
     CosaImageVersion          int                   `json:"coreos-assembler.image-genver,omitempty"`
+    Extensions                *Extensions           `json:"extensions,omitempty"`
     FedoraCoreOsParentCommit  string                `json:"fedora-coreos.parent-commit,omitempty"`
     FedoraCoreOsParentVersion string                `json:"fedora-coreos.parent-version,omitempty"`
     Gcp                       *Gcp                  `json:"gcp,omitempty"`
     GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
     ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
     InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
+    Koji                      *Koji                 `json:"koji,omitempty"`
     MetaStamp                 float64               `json:"coreos-assembler.meta-stamp,omitempty"`
     Name                      string                `json:"name"`
     Oscontainer               *Image                `json:"oscontainer,omitempty"`
     OstreeCommit              string                `json:"ostree-commit"`
+    OstreeContentBytesWritten int                   `json:"ostree-content-bytes-written,omitempty"`
     OstreeContentChecksum     string                `json:"ostree-content-checksum"`
+    OstreeNCacheHits          int                   `json:"ostree-n-cache-hits,omitempty"`
+    OstreeNContentTotal       int                   `json:"ostree-n-content-total,omitempty"`
+    OstreeNContentWritten     int                   `json:"ostree-n-content-written,omitempty"`
+    OstreeNMetadataTotal      int                   `json:"ostree-n-metadata-total,omitempty"`
+    OstreeNMetadataWritten    int                   `json:"ostree-n-metadata-written,omitempty"`
     OstreeTimestamp           string                `json:"ostree-timestamp"`
     OstreeVersion             string                `json:"ostree-version"`
     OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`
@@ -892,7 +1101,7 @@ ParseBuild parses the meta\.json and reutrns a build
 func ReadBuild(dir, buildID, arch string) (*Build, string, error)
 ```
 
-ReadBuild returns a build upon finding a meta\.json\. If build is ""\, use latest
+ReadBuild returns a build upon finding a meta\.json\. Returns a Build\, the path string to the build\, and an error \(if any\)\. If the buildID is not set\, "latest" is assumed\.
 
 ### func buildParser
 
@@ -930,7 +1139,7 @@ Validate checks the build against the schema\.
 func (build *Build) WriteMeta(path string, validate bool) error
 ```
 
-WriteMeta records the meta\-data
+WriteMeta records the meta\-data\. Writes are local only\.
 
 ### func \(\*Build\) artifacts
 
@@ -939,6 +1148,14 @@ func (build *Build) artifacts() map[string]*Artifact
 ```
 
 artifact returns a string map of artifacts\, where the key is the JSON tag\. Reflection was over a case statement to make meta\.json and the schema authoritative for adding and removing artifacts\.
+
+### func \(\*Build\) mergeMeta
+
+```go
+func (b *Build) mergeMeta(r io.Reader) error
+```
+
+mergeMeta uses JSON to merge in the data
 
 ## type BuildArtifacts
 
@@ -979,6 +1196,25 @@ type Cloudartifact struct {
 }
 ```
 
+## type Extensions
+
+```go
+type Extensions struct {
+    Manifest       map[string]interface{} `json:"manifest"`
+    Path           string                 `json:"path"`
+    RpmOstreeState string                 `json:"rpm-ostree-state"`
+    Sha256         string                 `json:"sha256"`
+}
+```
+
+### func \(\*Extensions\) toArtifact
+
+```go
+func (e *Extensions) toArtifact() *Artifact
+```
+
+toArtifact converts an Extension to an Artifact
+
 ## type Gcp
 
 ```go
@@ -1011,16 +1247,37 @@ type Image struct {
 }
 ```
 
-## type Items
+## type Koji
 
 ```go
-type Items interface{}
+type Koji struct {
+    BuildRelease string  `json:"release,omitempty"`
+    KojiBuildID  float64 `json:"build_id,omitempty"`
+    KojiToken    string  `json:"token,omitempty"`
+}
 ```
 
 ## type PackageSetDifferences
 
 ```go
-type PackageSetDifferences []Items
+type PackageSetDifferences []PackageSetDifferencesItems
+```
+
+## type PackageSetDifferencesItems
+
+```go
+type PackageSetDifferencesItems interface{}
+```
+
+## type build
+
+build represents the build struct in a buildJSON
+
+```go
+type build struct {
+    ID     string   `json:"id"`
+    Arches []string `json:"arches"`
+}
 ```
 
 ## type buildsJSON
@@ -1029,12 +1286,9 @@ buildsJSON represents the JSON that records the builds TODO: this should be gene
 
 ```go
 type buildsJSON struct {
-    SchemaVersion string `json:"schema-version"`
-    Builds        []struct {
-        ID     string   `json:"id"`
-        Arches []string `json:"arches"`
-    }   `json:"builds"`
-    TimeStamp string `json:"timestamp"`
+    SchemaVersion string  `json:"schema-version"`
+    Builds        []build `json:"builds"`
+    TimeStamp     string  `json:"timestamp"`
 }
 ```
 
@@ -1051,6 +1305,190 @@ func (b *buildsJSON) getLatest(arch string) (string, bool)
 ```
 
 getLatest returns the latest build for the arch\.
+
+## type fileInfo
+
+```go
+type fileInfo interface {
+    Name() string       // base name of the file
+    Size() int64        // length in bytes for regular files; system-dependent for others
+    Mode() fileMode     // file mode bits
+    ModTime() time.Time // modification time
+    IsDir() bool        // abbreviation for Mode().IsDir()
+    Sys() interface{}   // underlying data source (can return nil)
+}
+```
+
+objectInfo implements the os\.FileInfo interface\. This allows for abstracting any file or object to be compared as if they were local files regardless of location\.
+
+```go
+var _ fileInfo = &objectInfo{}
+```
+
+## type fileMode
+
+TODO: drop with GoLang 1\.16\. This is a backport of the interface from 1\.16\. var \_ os\.FileInfo = &objectInfo\{\}
+
+```go
+type fileMode uint32
+```
+
+## type ioBackendFile
+
+ioBackendFile is a file based backend
+
+```go
+type ioBackendFile struct {
+    *os.File
+    path string
+}
+```
+
+### func \(\*ioBackendFile\) Name
+
+```go
+func (i *ioBackendFile) Name() string
+```
+
+### func \(\*ioBackendFile\) Open
+
+```go
+func (i *ioBackendFile) Open(p string) (io.ReadCloser, error)
+```
+
+Open implements ioBackender Open interface\.
+
+## type ioBackendMinio
+
+ioBackendMinio is a minio based backend
+
+```go
+type ioBackendMinio struct {
+    ctx  context.Context
+    m    *minio.Client
+    obj  *minio.Object
+    name string
+}
+```
+
+### func \(\*ioBackendMinio\) Open
+
+```go
+func (im *ioBackendMinio) Open(p string) (io.ReadCloser, error)
+```
+
+Open implements ioBackender's and os\.File's Open interface\.
+
+## type ioBackender
+
+ioBackender is the basic interface\.
+
+```go
+type ioBackender interface {
+    Open(string) (io.ReadCloser, error)
+}
+```
+
+ioBackendMinio is an ioBackender\.
+
+```go
+var _ ioBackender = &ioBackendMinio{}
+```
+
+default ioBackend is file backend
+
+```go
+var ioBackend ioBackender = new(ioBackendFile)
+```
+
+### func newBackend
+
+```go
+func newBackend() ioBackender
+```
+
+newBackend returns a new backend
+
+## type objectInfo
+
+objectInfo holds basic information about either a file object or a remote minio object\.
+
+```go
+type objectInfo struct {
+    info minio.ObjectInfo
+    name string
+}
+```
+
+### func \(\*objectInfo\) IsDir
+
+```go
+func (ao *objectInfo) IsDir() bool
+```
+
+IsDir implements the os\.FileInfo IsDir func\. For minio objects\, the answer is always false\.
+
+### func \(\*objectInfo\) ModTime
+
+```go
+func (ao *objectInfo) ModTime() time.Time
+```
+
+ModTime implements the os\.FileInfo ModTime func\. The returned value is remote aodification time\.
+
+### func \(\*objectInfo\) Mode
+
+```go
+func (ao *objectInfo) Mode() fileMode
+```
+
+Mode implements the os\.FileInfo Mode func\. Since there is not simple way to convert an ACL into Unix permisions\, it blindly returns 0644\.
+
+### func \(\*objectInfo\) Name
+
+```go
+func (ao *objectInfo) Name() string
+```
+
+Name implements the os\.FileInfo interface Name func\.
+
+### func \(\*objectInfo\) Size
+
+```go
+func (ao *objectInfo) Size() int64
+```
+
+Size implements the os\.FileInfo size func\.
+
+### func \(\*objectInfo\) Sys
+
+```go
+func (ao *objectInfo) Sys() interface{}
+```
+
+Sys implements the os\.FileInfo interface Sys func\. The interface spec allows for returning a nil\.
+
+## type walkerFn
+
+walkerFn is a function that implements the walk func
+
+```go
+type walkerFn func(string) <-chan fileInfo
+```
+
+walkFn is used to walk paths
+
+```go
+var walkFn walkerFn = defaultWalkFunc
+```
+
+### func createMinioWalkFunc
+
+```go
+func createMinioWalkFunc(m *minio.Client) walkerFn
+```
+
+createMinioWalkFunc creates a new func a minio client\. The returned function will list the remote objects and return os\.FileInfo compliant interfaces\.
 
 
 

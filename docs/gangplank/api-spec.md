@@ -9,36 +9,120 @@ import "github.com/coreos/gangplank/spec"
 ## Index
 
 - [Constants](<#constants>)
-- [func cosaBuildCmd(b string) ([]string, error)](<#func-cosabuildcmd>)
+- [Variables](<#variables>)
+- [func AddKolaTestFlags(targetVar *[]string, fs *pflag.FlagSet)](<#func-addkolatestflags>)
+- [func GetArtifactShortHandNames() []string](<#func-getartifactshorthandnames>)
+- [func addShorthandToStage(artifact string, stage *Stage)](<#func-addshorthandtostage>)
+- [func cosaBuildCmd(b string, js *JobSpec) ([]string, error)](<#func-cosabuildcmd>)
+- [func init()](<#func-init>)
+- [func isBaseArtifact(artifact string) bool](<#func-isbaseartifact>)
+- [func isValidArtifactShortHand(a string) bool](<#func-isvalidartifactshorthand>)
+- [func strPtr(s string) *string](<#func-strptr>)
 - [type Aliyun](<#type-aliyun>)
+  - [func (a *Aliyun) GetPublishCommand(buildID string) (string, error)](<#func-aliyun-getpublishcommand>)
 - [type Archives](<#type-archives>)
 - [type Artifacts](<#type-artifacts>)
 - [type Aws](<#type-aws>)
+  - [func (a *Aws) GetPublishCommand(buildID string) (string, error)](<#func-aws-getpublishcommand>)
 - [type Azure](<#type-azure>)
+  - [func (a *Azure) GetPublishCommand(buildID string) (string, error)](<#func-azure-getpublishcommand>)
 - [type Brew](<#type-brew>)
+- [type Cloud](<#type-cloud>)
 - [type CloudsCfgs](<#type-cloudscfgs>)
+  - [func (c *CloudsCfgs) GetCloudCfg(cloud string) (Cloud, error)](<#func-cloudscfgs-getcloudcfg>)
 - [type Gcp](<#type-gcp>)
+  - [func (g *Gcp) GetPublishCommand(buildID string) (string, error)](<#func-gcp-getpublishcommand>)
 - [type Job](<#type-job>)
 - [type JobSpec](<#type-jobspec>)
   - [func JobSpecFromFile(f string) (j JobSpec, err error)](<#func-jobspecfromfile>)
   - [func JobSpecFromRepo(url, ref, specFile string) (JobSpec, error)](<#func-jobspecfromrepo>)
   - [func JobSpecReader(in io.Reader) (j JobSpec, err error)](<#func-jobspecreader>)
-  - [func (j *JobSpec) ExecuteTemplateFromString(s ...string) ([]string, error)](<#func-jobspec-executetemplatefromstring>)
-  - [func (j *JobSpec) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error](<#func-jobspec-executetemplatetowriter>)
+  - [func (js *JobSpec) AddCliFlags(cmd *pflag.FlagSet)](<#func-jobspec-addcliflags>)
+  - [func (js *JobSpec) AddRepos()](<#func-jobspec-addrepos>)
+  - [func (j *JobSpec) GenerateStages(fromNames, testNames []string, singleStage bool) error](<#func-jobspec-generatestages>)
   - [func (j *JobSpec) GetStage(id string) (*Stage, error)](<#func-jobspec-getstage>)
-  - [func (j *JobSpec) RendererExecuter(ctx context.Context, env []string, scripts ...string) error](<#func-jobspec-rendererexecuter>)
-  - [func (j *JobSpec) executeTemplate(r io.Reader) ([]byte, error)](<#func-jobspec-executetemplate>)
-- [type Oscontainer](<#type-oscontainer>)
+  - [func (js *JobSpec) WriteJSON(w io.Writer) error](<#func-jobspec-writejson>)
+  - [func (js *JobSpec) WriteYAML(w io.Writer) error](<#func-jobspec-writeyaml>)
+- [type Override](<#type-override>)
+  - [func (o *Override) Fetch(l *log.Entry, path string, wf TarDecompressorFunc) error](<#func-override-fetch>)
+  - [func (o *Override) writePath(basePath string) (string, error)](<#func-override-writepath>)
+- [type PublishOscontainer](<#type-publishoscontainer>)
+- [type PushSecretType](<#type-pushsecrettype>)
 - [type Recipe](<#type-recipe>)
+- [type Registry](<#type-registry>)
+- [type RenderData](<#type-renderdata>)
+  - [func (rd *RenderData) ExecuteTemplateFromString(s ...string) ([]string, error)](<#func-renderdata-executetemplatefromstring>)
+  - [func (rd *RenderData) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error](<#func-renderdata-executetemplatetowriter>)
+  - [func (rd *RenderData) RendererExecuter(ctx context.Context, env []string, scripts ...string) error](<#func-renderdata-rendererexecuter>)
+  - [func (rd *RenderData) executeTemplate(r io.Reader) ([]byte, error)](<#func-renderdata-executetemplate>)
+- [type Repo](<#type-repo>)
+  - [func (r *Repo) Writer(path string) (string, error)](<#func-repo-writer>)
 - [type S3](<#type-s3>)
 - [type Spec](<#type-spec>)
 - [type Stage](<#type-stage>)
-  - [func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) error](<#func-stage-execute>)
-  - [func (s *Stage) getCommands() ([]string, error)](<#func-stage-getcommands>)
-- [type Stages](<#type-stages>)
+  - [func (s *Stage) AddCommands(args []string)](<#func-stage-addcommands>)
+  - [func (s *Stage) AddRequires(args []string)](<#func-stage-addrequires>)
+  - [func (s *Stage) DeepCopy() (Stage, error)](<#func-stage-deepcopy>)
+  - [func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) error](<#func-stage-execute>)
+  - [func (s *Stage) getCommands(rd *RenderData) ([]string, error)](<#func-stage-getcommands>)
+  - [func (s *Stage) getPostCommands(rd *RenderData) ([]string, error)](<#func-stage-getpostcommands>)
+  - [func (s *Stage) getPublishCommands(rd *RenderData) ([]string, error)](<#func-stage-getpublishcommands>)
+- [type TarDecompressorFunc](<#type-tardecompressorfunc>)
+- [type kolaTests](<#type-kolatests>)
 
 
 ## Constants
+
+```go
+const (
+    fedoraGitURL = "https://github.com/coreos/fedora-coreos-config"
+    fedoraGitRef = "testing-devel"
+
+    rhcosGitURL = "https://github.com/openshift/os"
+    rhcosGitRef = "main"
+)
+```
+
+Supported push secret types\.
+
+```go
+const (
+    // PushSecretTypeInline means that the secret string is a string literal
+    // of the docker auth.json.
+    PushSecretTypeInline = "inline"
+    // PushSecretTypeCluster indicates that the named secret in PushRegistry should be
+    // fetched via the service account from the cluster.
+    PushSecretTypeCluster = "cluster"
+    // PushSecretTypeToken indicates that the service account associated with the token
+    // has access to the push repository.
+    PushSecretTypeToken = "token"
+)
+```
+
+```go
+const (
+    TarballTypeAll    = "all"
+    TarballTypeRpms   = "rpms"
+    TarballTypeRpm    = "rpm"
+    TarballTypeRootfs = "rootfs"
+    overrideBasePath  = "overrides"
+)
+```
+
+These are the only hard\-coded commands that Gangplank understand\.
+
+```go
+const (
+    // defaultBaseCommand is the basic build command
+    defaultBaseCommand = "cosa fetch; cosa build;"
+    // defaultBaseDelayMergeCommand is used for distributed build using
+    // parallel workers pods.
+    defaultBaseDelayMergeCommand = "cosa fetch; cosa build --delay-meta-merge;"
+
+    // defaultFinalizeComamnd ensures that the meta.json is merged.
+    defaultFinalizeCommand = "cosa meta --finalize;"
+)
+```
 
 DefaultJobSpecFile is the default JobSpecFile name\.
 
@@ -46,13 +130,147 @@ DefaultJobSpecFile is the default JobSpecFile name\.
 const DefaultJobSpecFile = "jobspec.yaml"
 ```
 
+## Variables
+
+Default to building Fedora
+
+```go
+var (
+    gitRef = fedoraGitRef
+    gitURL = fedoraGitURL
+
+    // repos is a list a URLs that is added to the Repos.
+    repos []string
+)
+```
+
+```go
+var (
+    // pseudoStages are special setup and tear down phases.
+    pseudoStages = []string{"base", "finalize"}
+    // buildableArtifacts are known artifacts types from the schema.
+    buildableArtifacts = append(pseudoStages, cosa.GetCommandBuildableArtifacts()...)
+
+    // baseArtifacts are default built by the "base" short-hand
+    baseArtifacts = []string{"ostree", "qemu"}
+)
+```
+
+kolaTestDefinitions contain a map of the kola tests\.
+
+```go
+var kolaTestDefinitions = kolaTests{
+    "basicBios": {
+        ID:               "Kola Basic BIOS Test",
+        PostCommands:     []string{"cosa kola run --qemu-nvme=true basic"},
+        RequireArtifacts: []string{"qemu"},
+        ExecutionOrder:   2,
+    },
+    "basicQemu": {
+        ID:               "Kola Basic Qemu",
+        PostCommands:     []string{"cosa kola --basic-qemu-scenarios"},
+        RequireArtifacts: []string{"qemu"},
+        ExecutionOrder:   2,
+    },
+    "basicUEFI": {
+        ID:               "Basic UEFI Test",
+        PostCommands:     []string{"cosa kola run --qemu-firmware=uefi basic"},
+        RequireArtifacts: []string{"qemu"},
+        ExecutionOrder:   2,
+    },
+    "external": {
+        ID:               "Enternal Kola Test",
+        PostCommands:     []string{"cosa kola run 'ext.*'"},
+        RequireArtifacts: []string{"qemu"},
+        ExecutionOrder:   2,
+    },
+    "long": {
+        ID:             "Kola Long Tests",
+        PostCommands:   []string{"cosa kola run --parallel 3"},
+        ExecutionOrder: 2,
+    },
+    "upgrade": {
+        ID:             "Kola Upgrade Test",
+        PostCommands:   []string{"kola run-upgrade --ignition-version v2 --output-dir tmp/kola-upgrade"},
+        ExecutionOrder: 2,
+    },
+
+    "iso": {
+        ID:               "Kola ISO Testing",
+        PostCommands:     []string{"kola testiso -S"},
+        ExecutionOrder:   4,
+        RequireArtifacts: []string{"live-iso"},
+    },
+    "metal4k": {
+        ID:               "Kola ISO Testing 4K Disks",
+        PostCommands:     []string{"kola testiso -S --qemu-native-4k --scenarios iso-install --output-dir tmp/kola-metal4k"},
+        ExecutionOrder:   4,
+        RequireArtifacts: []string{"live-iso"},
+    },
+}
+```
+
+## func AddKolaTestFlags
+
+```go
+func AddKolaTestFlags(targetVar *[]string, fs *pflag.FlagSet)
+```
+
+AddKolaTestFlags adds a StringVar flag for populating supported supported test into a string slice\.
+
+## func GetArtifactShortHandNames
+
+```go
+func GetArtifactShortHandNames() []string
+```
+
+GetArtifactShortHandNames returns shorthands for buildable stages
+
+## func addShorthandToStage
+
+```go
+func addShorthandToStage(artifact string, stage *Stage)
+```
+
+addShorthandToStage adds in a build shorthand into the stage and ensures that required dependencies are correclty ordered Ordering assumptions: 1\. Base builds 2\. Basic Kola Tests 3\. Metal and Live ISO images 4\. Metal and Live ISO testings 5\. Cloud stages
+
 ## func cosaBuildCmd
 
 ```go
-func cosaBuildCmd(b string) ([]string, error)
+func cosaBuildCmd(b string, js *JobSpec) ([]string, error)
 ```
 
 cosaBuildCmds checks if b is a buildable artifact type and then returns it\.
+
+## func init
+
+```go
+func init()
+```
+
+## func isBaseArtifact
+
+```go
+func isBaseArtifact(artifact string) bool
+```
+
+isBaseArtifact is a check function for determining if an artifact is built by the base stage\.
+
+## func isValidArtifactShortHand
+
+```go
+func isValidArtifactShortHand(a string) bool
+```
+
+isValidArtifactShortHand checks if the shortand is valid
+
+## func strPtr
+
+```go
+func strPtr(s string) *string
+```
+
+strPtr is a helper for returning a string pointer
 
 ## type Aliyun
 
@@ -60,11 +278,20 @@ Aliyun is nested under CloudsCfgs and describes where the Aliyun/Alibaba artifac
 
 ```go
 type Aliyun struct {
-    Bucket  string   `yaml:"bucket,omitempty"`
-    Enabled bool     `yaml:"enabled,omitempty"`
-    Regions []string `yaml:"regions,omitempty"`
+    Bucket  string   `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+    Enabled bool     `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+    Public  bool     `yaml:"public,omitempty" json:"public,omitempty"`
+    Regions []string `yaml:"regions,omitempty" json:"regions,omitempty"`
 }
 ```
+
+### func \(\*Aliyun\) GetPublishCommand
+
+```go
+func (a *Aliyun) GetPublishCommand(buildID string) (string, error)
+```
+
+GetPublishCommand returns the cosa upload command for Aliyun
 
 ## type Archives
 
@@ -72,8 +299,8 @@ Archives describes the location of artifacts to push to Brew is a nested Brew st
 
 ```go
 type Archives struct {
-    Brew *Brew `yaml:"brew,omitempty"`
-    S3   *S3   `yaml:"s3,omitempty"`
+    Brew *Brew `yaml:"brew,omitempty" json:"brew,omitempty"`
+    S3   *S3   `yaml:"s3,omitempty" json:"s3,omitempty"`
 }
 ```
 
@@ -83,24 +310,33 @@ Artifacts describe the expect build outputs\. All: name of the all the artifacts
 
 ```go
 type Artifacts struct {
-    All     []string `yaml:"all,omitempty"`
-    Primary []string `yaml:"primary,omitempty"`
-    Clouds  []string `yaml:"clouds,omitempty"`
+    All     []string `yaml:"all,omitempty" json:"all,omitempty"`
+    Primary []string `yaml:"primary,omitempty" json:"primary,omitempty"`
+    Clouds  []string `yaml:"clouds,omitempty" json:"clouds,omitempty"`
 }
 ```
 
 ## type Aws
 
-Aws describes the upload options for AWS images AmiPath: the bucket patch for pushing the AMI name Public: when true\, mark as public Regions: name of AWS regions to push to\.
-
 ```go
 type Aws struct {
-    Enabled bool     `yaml:"enabled,omitempty"`
-    AmiPath string   `yaml:"ami_path,omitempty"`
-    Public  bool     `yaml:"public,omitempty"`
-    Regions []string `yaml:"regions,omitempty"`
+    Enabled           bool     `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+    AmiPath           string   `yaml:"ami_path,omitempty" json:"ami_path,omitempty"`
+    Geo               string   `yaml:"geo,omitempty" json:"geo,omitempty"`
+    GrantUser         []string `yaml:"grant_user,omitempty" json:"grant_user,omitempty"`
+    GrantUserSnapshot []string `yaml:"grant_user_snapshot,omitempty" json:"grant_user_snapshot,omitempty"`
+    Public            bool     `yaml:"public,omitempty" json:"public,omitempty"`
+    Regions           []string `yaml:"regions,omitempty" json:"regions,omitempty"`
 }
 ```
+
+### func \(\*Aws\) GetPublishCommand
+
+```go
+func (a *Aws) GetPublishCommand(buildID string) (string, error)
+```
+
+GetPublishCommand returns the cosa upload command for Aws
 
 ## type Azure
 
@@ -108,13 +344,22 @@ Azure describes upload options for Azure images\. Enabled: upload if true Resour
 
 ```go
 type Azure struct {
-    Enabled          bool   `yaml:"enabled,omitempty"`
-    ResourceGroup    string `yaml:"resource_group,omitempty"`
-    StorageAccount   string `yaml:"storage_account,omitempty"`
-    StorageContainer string `yaml:"storage_container,omitempty"`
-    StorageLocation  string `yaml:"storage_location,omitempty"`
+    Enabled          bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+    ResourceGroup    string `yaml:"resource_group,omitempty" json:"resource_group,omitempty"`
+    StorageAccount   string `yaml:"storage_account,omitempty" json:"stoarge_account,omitempty"`
+    StorageContainer string `yaml:"storage_container,omitempty" json:"storage_container,omitempty"`
+    StorageLocation  string `yaml:"storage_location,omitempty" json:"storage_location,omitempty"`
+    Force            bool   `yaml:"force,omitempty" json:"force,omitempty"`
 }
 ```
+
+### func \(\*Azure\) GetPublishCommand
+
+```go
+func (a *Azure) GetPublishCommand(buildID string) (string, error)
+```
+
+GetPublishCommand returns the cosa upload command for Azure
 
 ## type Brew
 
@@ -122,10 +367,18 @@ Brew is the RHEL Koji instance for storing artifacts\. Principle: the Kerberos u
 
 ```go
 type Brew struct {
-    Enabled   bool   `yaml:"enabled,omitempty"`
-    Principle string `yaml:"principle,omitempty"`
-    Profile   string `yaml:"profile,omitempty"`
-    Tag       string `yaml:"tag,omitempty"`
+    Enabled   bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+    Principle string `yaml:"principle,omitempty" json:"principle,omitempty"`
+    Profile   string `yaml:"profile,omitempty" json:"profile,omitempty"`
+    Tag       string `yaml:"tag,omitempty" json:"tag,omitempty"`
+}
+```
+
+## type Cloud
+
+```go
+type Cloud interface {
+    GetPublishCommand(string) (string, error)
 }
 ```
 
@@ -135,24 +388,48 @@ CloudsCfgs \(yes Clouds\) is a nested struct of all supported cloudClonfiguratio
 
 ```go
 type CloudsCfgs struct {
-    Aliyun Aliyun `yaml:"aliyun,omitempty"`
-    Aws    Aws    `yaml:"aws,omitempty"`
-    Azure  Azure  `yaml:"azure,omitempty"`
-    Gcp    Gcp    `yaml:"gcp,omitempty"`
+    Aliyun *Aliyun `yaml:"aliyun,omitempty" json:"aliyun,omitempty"`
+    Aws    *Aws    `yaml:"aws,omitempty" json:"aws,omitempty"`
+    AwsCn  *Aws    `yaml:"aws-cn,omitempty" json:"aws-cn,omitempty"`
+    Azure  *Azure  `yaml:"azure,omitempty" json:"azure,omitempty"`
+    Gcp    *Gcp    `yaml:"gcp,omitempty" json:"gcp,omitempty"`
 }
 ```
+
+### func \(\*CloudsCfgs\) GetCloudCfg
+
+```go
+func (c *CloudsCfgs) GetCloudCfg(cloud string) (Cloud, error)
+```
+
+getCloudsCfgs returns list of clouds that are defined in the jobspec\. Since omitempty is used when unmarshaling some objects will not be available
 
 ## type Gcp
 
-Gcp describes deploiying to the GCP environment Bucket: name of GCP bucket to store image in Enabled: when true\, publish to GCP Project: name of the GCP project to use
+Gcp describes deploying to the GCP environment Bucket: name of GCP bucket to store image in Enabled: when true\, publish to GCP Project: name of the GCP project to use CreateImage: Whether or not to create an image in GCP after upload Deprecated: If the image should be marked as deprecated Description: The description that should be attached to the image Enabled: toggle for uploading to GCP Family: GCP image family to attach image to License: The licenses that should be attached to the image LogLevel: log level\-\-DEBUG\, WARN\, INFO Project: GCP project name Public: If the image should be given public ACLs
 
 ```go
 type Gcp struct {
-    Bucket  string `yaml:"bucket,omitempty"`
-    Enabled bool   `yaml:"enabled,omitempty"`
-    Project string `yaml:"project,omitempty"`
+    Bucket      string   `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+    CreateImage bool     `yaml:"create_image" json:"create_image"`
+    Deprecated  bool     `yaml:"deprecated" json:"deprecated"`
+    Description string   `yaml:"description" json:"description"`
+    Enabled     bool     `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+    Family      string   `yaml:"family" json:"family"`
+    License     []string `yaml:"license" json:"license"`
+    LogLevel    string   `yaml:"log_level" json:"log_level"`
+    Project     string   `yaml:"project,omitempty" json:"project,omitempty"`
+    Public      bool     `yaml:"public,omitempty" json:"public,omitempty"`
 }
 ```
+
+### func \(\*Gcp\) GetPublishCommand
+
+```go
+func (g *Gcp) GetPublishCommand(buildID string) (string, error)
+```
+
+GetPublishCommand returns the cosa upload command for GCP
 
 ## type Job
 
@@ -160,10 +437,19 @@ Job refers to the Jenkins options BuildName: i\.e\. rhcos\-4\.7 IsProduction: en
 
 ```go
 type Job struct {
-    BuildName     string `yaml:"build_name,omitempty"`
-    IsProduction  bool   `yaml:"is_production,omitempty"`
-    StrictMode    bool   `yaml:"strict,omitempty"`
-    VersionSuffix string `yaml:"version_suffix,omitempty"`
+    BuildName     string `yaml:"build_name,omitempty" json:"build_name,omitempty"`
+    IsProduction  bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
+    StrictMode    bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
+    VersionSuffix string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
+    // ForceArch forces a specific architecutre.
+    ForceArch string `yaml:"force_arch,omitempty" json:"force_arch,omitempty"`
+    // Unexported minio valued (run-time options)
+    MinioCfgFile string // not exported
+
+    // Runtime config options for SSH. Not exported for safety.
+    MinioSSHForward string
+    MinioSSHUser    string
+    MinioSSHKey     string
 }
 ```
 
@@ -173,17 +459,23 @@ JobSpec is the root\-level item for the JobSpec\.
 
 ```go
 type JobSpec struct {
-    Archives    Archives    `yaml:"archives,omitempty"`
-    CloudsCfgs  CloudsCfgs  `yaml:"clouds_cfgs,omitempty"`
-    Job         Job         `yaml:"job,omitempty"`
-    Oscontainer Oscontainer `yaml:"oscontainer,omitempty"`
-    Recipe      Recipe      `yaml:"recipe,omitempty"`
-    Spec        Spec        `yaml:"spec,omitempty"`
+    Archives   Archives   `yaml:"archives,omitempty" json:"archives,omitempty"`
+    CloudsCfgs CloudsCfgs `yaml:"clouds_cfgs,omitempty" json:"cloud_cofgs,omitempty"`
+    Job        Job        `yaml:"job,omitempty" json:"job,omitempty"`
+    Recipe     Recipe     `yaml:"recipe,omitempty" json:"recipe,omitempty"`
+    Spec       Spec       `yaml:"spec,omitempty" json:"spec,omitempty"`
+
+    // PublishOscontainer is a list of push locations for the oscontainer
+    PublishOscontainer PublishOscontainer `yaml:"publish_oscontainer,omitempty" json:"publish_oscontainer,omitempty"`
 
     // Stages are specific stages to be run. Stages are
     // only supported by Gangplank; they do not appear in the
     // Groovy Jenkins Scripts.
-    Stages []Stage `yaml:"stages,omitempty"`
+    Stages []Stage `yaml:"stages" json:"stages"`
+
+    // DelayedMetaMerge ensures that 'cosa build' is called with
+    // --delayed-meta-merge
+    DelayedMetaMerge bool `yaml:"delay_meta_merge" json:"delay_meta_meta,omitempty"`
 }
 ```
 
@@ -211,21 +503,29 @@ func JobSpecReader(in io.Reader) (j JobSpec, err error)
 
 JobSpecReader takes and io\.Reader and returns a ptr to the JobSpec and err
 
-### func \(\*JobSpec\) ExecuteTemplateFromString
+### func \(\*JobSpec\) AddCliFlags
 
 ```go
-func (j *JobSpec) ExecuteTemplateFromString(s ...string) ([]string, error)
+func (js *JobSpec) AddCliFlags(cmd *pflag.FlagSet)
 ```
 
-ExecuteTemplateFromString returns strings\.
+AddCliFlags returns the pflag set for use in the CLI\.
 
-### func \(\*JobSpec\) ExecuteTemplateToWriter
+### func \(\*JobSpec\) AddRepos
 
 ```go
-func (j *JobSpec) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error
+func (js *JobSpec) AddRepos()
 ```
 
-ExecuteTemplateToWriter renders an io\.Reader to an io\.Writer\.
+AddRepos adds an repositories from the CLI
+
+### func \(\*JobSpec\) GenerateStages
+
+```go
+func (j *JobSpec) GenerateStages(fromNames, testNames []string, singleStage bool) error
+```
+
+GenerateStages creates stages\.
 
 ### func \(\*JobSpec\) GetStage
 
@@ -235,30 +535,79 @@ func (j *JobSpec) GetStage(id string) (*Stage, error)
 
 GetStage returns the stage with the matching ID
 
-### func \(\*JobSpec\) RendererExecuter
+### func \(\*JobSpec\) WriteJSON
 
 ```go
-func (j *JobSpec) RendererExecuter(ctx context.Context, env []string, scripts ...string) error
+func (js *JobSpec) WriteJSON(w io.Writer) error
 ```
 
-RendererExecuter renders a script with templates and then executes it
+WriteJSON returns the jobspec
 
-### func \(\*JobSpec\) executeTemplate
+### func \(\*JobSpec\) WriteYAML
 
 ```go
-func (j *JobSpec) executeTemplate(r io.Reader) ([]byte, error)
+func (js *JobSpec) WriteYAML(w io.Writer) error
 ```
 
-executeTemplate applies the template to r\.
+WriteYAML returns the jobspec in YAML
 
-## type Oscontainer
+## type Override
 
-Oscontainer describes the location to push the OS Container to\.
+Override describes RPMs or Tarballs to include as an override in the OSTree compose\.
 
 ```go
-type Oscontainer struct {
-    PushURL string `yaml:"push_url,omitempty"`
+type Override struct {
+    // URI is a string prefixed with "file://" or "http(s)://" and a path.
+    URI string `yaml:"uri,omitempty" json:"uri,omitempty"`
+
+    // Rpm indicates that the file is RPM and should be placed in overrides/rpm
+    Rpm *bool `yaml:"rpm,omitempty" json:"rpm,omitempty"`
+
+    // Tarball indicates that the file is a tarball and will be extracted to overrides.
+    Tarball *bool `yaml:"tarball,omitempty" json:"tarball,omitempty"`
+
+    // Tarball type is an override Tarball type
+    TarballType *string `yaml:"tarball_type,omitempty" json:"tarball_type,omitempty"`
 }
+```
+
+### func \(\*Override\) Fetch
+
+```go
+func (o *Override) Fetch(l *log.Entry, path string, wf TarDecompressorFunc) error
+```
+
+Fetch reads the source and writes it to disk\. The decompressor function is likely lazy\, but allows for testing\.
+
+### func \(\*Override\) writePath
+
+```go
+func (o *Override) writePath(basePath string) (string, error)
+```
+
+writePath gets the path that the file should be extract to
+
+## type PublishOscontainer
+
+PublishOscontainer describes where to push the OSContainer to\.
+
+```go
+type PublishOscontainer struct {
+    // BuildStrategyTLSVerify indicates whether to verify TLS certificates when pushing as part of a OCP Build Strategy.
+    // By default, TLS verification is turned on.
+    BuildStrategyTLSVerify *bool `yaml:"buildstrategy_tls_verify" json:"buildstrategy_tls_verify"`
+
+    // Registries is a list of locations to push to.
+    Registries []Registry `yaml:"registries" json:"regristries"`
+}
+```
+
+## type PushSecretType
+
+PushSecretType describes the type of push secret\.
+
+```go
+type PushSecretType string
 ```
 
 ## type Recipe
@@ -267,10 +616,98 @@ Recipe describes where to get the build recipe/config\, i\.e fedora\-coreos\-con
 
 ```go
 type Recipe struct {
-    GitRef string `yaml:"git_ref,omitempty"`
-    GitURL string `yaml:"git_url,omitempty"`
+    GitRef string  `yaml:"git_ref,omitempty" json:"git_ref,omitempty"`
+    GitURL string  `yaml:"git_url,omitempty" json:"git_url,omitempty"`
+    Repos  []*Repo `yaml:"repos,omitempty" json:"repos,omitempty"`
 }
 ```
+
+## type Registry
+
+Registry describes the push locations\.
+
+```go
+type Registry struct {
+    // URL is the location that should be used to push the secret.
+    URL string `yaml:"url" json:"url"`
+
+    // TLSVerify tells when to verify TLS. By default, its true
+    TLSVerify *bool `yaml:"tls_verify,omitempty" json:"tls_verify,omitempty"`
+
+    // SecretType is name the secret to expect, should PushSecretType*s
+    SecretType PushSecretType `yaml:"secret_type,omitempty" json:"secret_type,omitempty"`
+
+    // If the secret is inline, the string data, else, the cluster secret name
+    Secret string `yaml:"secret,omitempty" json:"secret,omitempty"`
+}
+```
+
+## type RenderData
+
+RenderData is used to render commands
+
+```go
+type RenderData struct {
+    JobSpec *JobSpec
+    Meta    *cosa.Build
+}
+```
+
+### func \(\*RenderData\) ExecuteTemplateFromString
+
+```go
+func (rd *RenderData) ExecuteTemplateFromString(s ...string) ([]string, error)
+```
+
+ExecuteTemplateFromString returns strings\.
+
+### func \(\*RenderData\) ExecuteTemplateToWriter
+
+```go
+func (rd *RenderData) ExecuteTemplateToWriter(in io.Reader, out io.Writer) error
+```
+
+ExecuteTemplateToWriter renders an io\.Reader to an io\.Writer\.
+
+### func \(\*RenderData\) RendererExecuter
+
+```go
+func (rd *RenderData) RendererExecuter(ctx context.Context, env []string, scripts ...string) error
+```
+
+RendererExecuter renders a script with templates and then executes it
+
+### func \(\*RenderData\) executeTemplate
+
+```go
+func (rd *RenderData) executeTemplate(r io.Reader) ([]byte, error)
+```
+
+executeTemplate applies the template to r\.
+
+## type Repo
+
+Repo is a yum/dnf repositories to use as an installation source\.
+
+```go
+type Repo struct {
+    Name string `yaml:"name,omitempty" json:"name,omitempty"`
+
+    // URL indicates that the repo file is remote
+    URL *string `yaml:"url,omitempty" json:"url,omitempty"`
+
+    // Inline indicates that the repo file is inline
+    Inline *string `yaml:"inline,omitempty" json:"inline,omitempty"`
+}
+```
+
+### func \(\*Repo\) Writer
+
+```go
+func (r *Repo) Writer(path string) (string, error)
+```
+
+Writer places the remote repo file into path\. If the repo has no name\, then a SHA256 of the URL will be used\. Returns path of the file and err\.
 
 ## type S3
 
@@ -278,9 +715,9 @@ S3 describes the location of the S3 Resource\. Acl: is the s3 acl to use\, usual
 
 ```go
 type S3 struct {
-    ACL    string `yaml:"acl,omitempty" envVar:"S3_ACL"`
-    Bucket string `yaml:"bucket,omitempty" envVar:"S3_BUCKET"`
-    Path   string `yaml:"path,omitempty" envVar:"S3_PATH"`
+    ACL    string `yaml:"acl,omitempty" envVar:"S3_ACL" json:"acl,omitempty"`
+    Bucket string `yaml:"bucket,omitempty" envVar:"S3_BUCKET" json:"bucket,omitempty"`
+    Path   string `yaml:"path,omitempty" envVar:"S3_PATH" json:"path,omitempty"`
 }
 ```
 
@@ -290,8 +727,8 @@ Spec describes the RHCOS JobSpec\. GitRef: branch/ref to fetch from GitUrl: url 
 
 ```go
 type Spec struct {
-    GitRef string `yaml:"git_ref,omitempty"`
-    GitURL string `yaml:"git_url,omitempty"`
+    GitRef string `yaml:"git_ref,omitempty" json:"git_ref,omitempty"`
+    GitURL string `yaml:"git_url,omitempty" json:"git_url,omitempty"`
 }
 ```
 
@@ -301,52 +738,103 @@ Stage is a single stage\.
 
 ```go
 type Stage struct {
-    ID                  string `yaml:"id"`
-    Description         string `yaml:"description,omitempty"`
-    ConcurrentExecution bool   `yaml:"concurrent,omitempty"`
+    ID                  string `yaml:"id,omitempty" json:"id,omitempty"`
+    Description         string `yaml:"description,omitempty" json:"description,omitempty"`
+    ConcurrentExecution bool   `yaml:"concurrent,omitempty" json:"concurrent,omitempty"`
 
     // DirectExec signals that the command should not be written
     // to a file. Rather the command should directly executed.
-    DirectExec bool `yaml:"direct_exec"`
-
-    // OwnPod signals that the work should be done in a seperate pod.
-    OwnPod bool `yaml:"own_pod,omitempty"`
+    DirectExec bool `yaml:"direct_exec,omitempty" json:"direct_exec,omitempty"`
 
     // NotBlocking means that the stage does not block another stage
-    // from starting execution (i.e. concurrent stage). If true,
-    // OwnPod should be true as well.
-    NotBlocking bool `yaml:"blocking,omitempty"`
+    // from starting execution (i.e. concurrent stage).
+    NotBlocking bool `yaml:"not_blocking,omitempty" json:"not_blocking,omitempty"`
 
     // RequireArtifacts is a name of the required artifacts. If the
     // required artifact is missing (per the meta.json), the stage
     // will not be executed. RequireArticts _implies_ sending builds/builds.json
     // and builds/<BUILDID>/meta.json.
-    // TODO: IMPLEMENT
-    RequireArtifacts []string `yaml:"requires_artifacts,flow"`
+    RequireArtifacts []string `yaml:"require_artifacts,flow,omitempty" json:"require_artifacts,omitempty"`
+
+    // RequestArtifacts are files that are provided if they are there. Examples include
+    // 'caches' for `/srv/cache` and `/srv/tmp/repo` tarballs or `ostree` which are really useful
+    // for base builds.
+    RequestArtifacts []string `yaml:"request_artifacts,flow,omitempty" json:"request_artifacts,omitempty"`
 
     // BuildArtifacts produces "known" artifacts. The special "base"
     // will produce an OSTree and QCOWs.
-    BuildArtifacts []string `yaml:"build_artifacts,flow"`
+    BuildArtifacts []string `yaml:"build_artifacts,flow,omitempty" json:"build_artifacts,omitempty"`
 
     // Commands are arbitrary commands run after an Artifact builds.
     // Instead of running `cosa buildextend-?` as a command, its preferrable
     // use the bare name in BuildArtifact.
-    Commands []string `yaml:"commands,flow"`
+    Commands []string `yaml:"commands,flow,omitempty" json:"commands,omitempty"`
+
+    // PublishArtifacts will upload defined BuildArtifacts to the cloud providers
+    PublishArtifacts []string `yaml:"publish_artifacts,omitempty" json:"publish_artifacts,omitempty"`
 
     // PrepCommands are run before Artifact builds, while
     // PostCommands are run after. Prep and Post Commands are run serially.
-    PrepCommands []string `yaml:"prep_commands,flow"`
-    PostCommands []string `yaml:"post_commands,flow"`
+    PrepCommands []string `yaml:"prep_commands,flow,omitempty" json:"prep_commands,omitempty"`
+    PostCommands []string `yaml:"post_commands,flow,omitempty" json:"post_commands,omitempty"`
 
     // PostAlways ensures that the PostCommands are always run.
-    PostAlways bool `yaml:"post_always"`
+    PostAlways bool `yaml:"post_always,omitempty" json:"post_always,omitempty"`
+
+    // ExecutionOrder is a number value that defines the order of stages. If two stages
+    // share the same execution order number, then they are allowed to run concurrently to each other.
+    ExecutionOrder int `yaml:"execution_order,omitempty" json:"execution_order,omitempty"`
+
+    // ReturnCache returns a tarball of `/srv/cache`, while RequireCahce ensures the tarball
+    // is fetched unpacked into `/srv/cahce`. RequestCache is a non-blocking, optional versopn
+    // of RequireCache.
+    ReturnCache  bool `yaml:"return_cache,omitempty" json:"return_cache,omitempty"`
+    RequireCache bool `yaml:"require_cache,omitempty" json:"require_cache_repo,omitempty"`
+    RequestCache bool `yaml:"request_cache,omitempty" json:"reqest_cache_repo,omitempty"`
+
+    // ReturnCacheRepo returns a tarball of `/srv/repo`, while RequireCacheRepo ensures the
+    // tarball is fetched and unpacked into `/srv/repo`. RequestCacheRepo is a non-blocking, optional
+    // version of RequireCacheRepo
+    ReturnCacheRepo  bool `yaml:"return_cache_repo,omitempty" json:"return_cache_repo,omitempty"`
+    RequireCacheRepo bool `yaml:"require_cache_repo,omitempty" json:"require_cache_repo_repo,omitempty"`
+    RequestCacheRepo bool `yaml:"request_cache_repo,omitempty" json:"request_cache_repo_repo,omitempty"`
+
+    // KolaTests are shorthands for testing.
+    KolaTests []string `yaml:"kola_tests,omitempty" json:"kola_tests,omitempty"`
+
+    // Overrides is a list of Overrides to apply to the OS tree
+    Overrides []Override `yaml:"overrides,omitempty" json:"overrides,omitempty"`
 }
 ```
+
+### func \(\*Stage\) AddCommands
+
+```go
+func (s *Stage) AddCommands(args []string)
+```
+
+AddCommands adds commands to a stage
+
+### func \(\*Stage\) AddRequires
+
+```go
+func (s *Stage) AddRequires(args []string)
+```
+
+AddRequires adds in requires based on the arifacts that a stage requires inconsideration of what the stage builds
+
+### func \(\*Stage\) DeepCopy
+
+```go
+func (s *Stage) DeepCopy() (Stage, error)
+```
+
+DeepCopy does a lazy deep copy by rendering the stage to JSON and then returning a new Stage defined by the JSON
 
 ### func \(\*Stage\) Execute
 
 ```go
-func (s *Stage) Execute(ctx context.Context, js *JobSpec, envVars []string) error
+func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) error
 ```
 
 Execute runs the commands of a stage\.
@@ -354,19 +842,39 @@ Execute runs the commands of a stage\.
 ### func \(\*Stage\) getCommands
 
 ```go
-func (s *Stage) getCommands() ([]string, error)
+func (s *Stage) getCommands(rd *RenderData) ([]string, error)
 ```
 
-getCommands renders the automatic artifacts\.
+getCommands renders the automatic artifacts and publication commands
 
-## type Stages
-
-Stages describe the steps that a build should take\.
+### func \(\*Stage\) getPostCommands
 
 ```go
-type Stages struct {
-    Stages []*Stage `yaml:"stage,omitempty"`
-}
+func (s *Stage) getPostCommands(rd *RenderData) ([]string, error)
+```
+
+getPostCommands generates the post commands from a synthatis of pre\-defined post commands\, kola tests and the cloud publication steps\.
+
+### func \(\*Stage\) getPublishCommands
+
+```go
+func (s *Stage) getPublishCommands(rd *RenderData) ([]string, error)
+```
+
+getPublishCommands returns the cloud publication commands\.
+
+## type TarDecompressorFunc
+
+TarDecompressorFunc is a function that handles decompressing a file\.
+
+```go
+type TarDecompressorFunc func(io.ReadCloser, string) error
+```
+
+## type kolaTests
+
+```go
+type kolaTests map[string]Stage
 ```
 
 
