@@ -181,7 +181,7 @@ Here's an example `kola.json`:
 {
     "architectures": "!s390x ppc64le",
     "platforms": "qemu-unpriv",
-    "tags": "sometagname needs-internet othertag",
+    "tags": "sometagname needs-internet skip-base-checks othertag",
     "additionalDisks": [ "5G" ],
     "minMemory": 4096
 }
@@ -197,9 +197,12 @@ string, the value instead declares exclusions i.e. `ExclusiveArchitectures`
 instead  of `Architectures` in reference to kola internals.
 
 In this example, `sometagname` and `othertag` are arbitrary tags one can use
-with `kola run --tags`, but the `needs-internet` tag has semantic meaning, also
-taken from the Autopkgtest (linked above).  Currently only the `qemu` platform
-enforces this restriction.
+with `kola run --tags`, but some tags have semantic meaning.
+
+Tags with semantic meaning:
+
+ - `needs-internet`: Taken from the Autopkgtest (linked above).  Currently only the `qemu` platform enforces this restriction.   
+ - `skip-base-checks`: Skip built-in checks for e.g. kernel warnings on the console.
 
 The `additionalDisks` key has the same semantics as the `--add-disk` argument
 to `qemuexec`. It is currently only supported on `qemu-unpriv`.
