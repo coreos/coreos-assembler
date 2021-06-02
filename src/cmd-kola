@@ -11,10 +11,7 @@ import yaml
 # Just test these boot to start with.  In the future we should at least
 # do ostree upgrades with uefi etc.  But we don't really need the *full*
 # suite...if podman somehow broke with nvme or uefi I'd be amazed and impressed.
-# XXX: nvme=true is is currently disabled due to a regression. See:
-# https://github.com/coreos/coreos-assembler/issues/2184
-# BASIC_SCENARIOS = ["nvme=true", "firmware=uefi", "firmware=uefi-secure"]
-BASIC_SCENARIOS = ["firmware=uefi", "firmware=uefi-secure"]
+BASIC_SCENARIOS = ["nvme=true", "firmware=uefi", "firmware=uefi-secure"]
 arch = platform.machine()
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
