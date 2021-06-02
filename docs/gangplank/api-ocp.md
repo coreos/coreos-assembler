@@ -11,27 +11,45 @@ import "github.com/coreos/gangplank/ocp"
 - [Constants](<#constants>)
 - [Variables](<#variables>)
 - [func GetClient(ctx ClusterContext) (*kubernetes.Clientset, string, error)](<#func-getclient>)
-- [func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error](<#func-clusterrunner>)
+- [func checkPort(port int) error](<#func-checkport>)
+- [func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error](<#func-clusterrunner>)
 - [func copyFile(src, dest string) error](<#func-copyfile>)
 - [func cosaInit() error](<#func-cosainit>)
-- [func decompress(in *os.File, dir string) error](<#func-decompress>)
+- [func decompress(in io.ReadCloser, dir string) error](<#func-decompress>)
+- [func getHostname() string](<#func-gethostname>)
+- [func getLocalFileStamp(path string) (int64, error)](<#func-getlocalfilestamp>)
+- [func getNetIP() (string, error)](<#func-getnetip>)
 - [func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, error)](<#func-getpodip>)
+- [func getPortOrNext(port int) int](<#func-getportornext>)
+- [func getPushTagless(s string) (string, string)](<#func-getpushtagless>)
 - [func init()](<#func-init>)
+- [func isKnownBuildMeta(n string) bool](<#func-isknownbuildmeta>)
 - [func k8sInClusterClient() (*kubernetes.Clientset, string, error)](<#func-k8sinclusterclient>)
 - [func kubernetesSecretsSetup(ac *kubernetes.Clientset, ns, toDir string) ([]string, error)](<#func-kubernetessecretssetup>)
+- [func mustHaveImage(ctx context.Context, image string) error](<#func-musthaveimage>)
+- [func newFileStamp() string](<#func-newfilestamp>)
 - [func ocpBuildClient() error](<#func-ocpbuildclient>)
-- [func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error](<#func-podmanrunner>)
+- [func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error](<#func-podmanrunner>)
 - [func ptrBool(b bool) *bool](<#func-ptrbool>)
 - [func ptrInt(i int64) *int64](<#func-ptrint>)
 - [func ptrInt32(i int32) *int32](<#func-ptrint32>)
+- [func pushOstreeToRegistry(ctx ClusterContext, push *spec.Registry, build *cosa.Build) error](<#func-pushostreetoregistry>)
 - [func randomString(n int) (string, error)](<#func-randomstring>)
 - [func recieveInputBinary() (string, error)](<#func-recieveinputbinary>)
+- [func sshForwarder(ctx context.Context, cfg *SSHForwardPort) (chan<- bool, error)](<#func-sshforwarder>)
+- [func streamPodLogs(client *kubernetes.Clientset, namespace string, pod *v1.Pod, term termChan) error](<#func-streampodlogs>)
+- [func tokenRegistryLogin(ctx ClusterContext, tlsVerify *bool, registry string) error](<#func-tokenregistrylogin>)
+- [func uploadCustomBuildContainer(ctx ClusterContext, tlsVerify *bool, apiBuild *buildapiv1.Build, build *cosa.Build) error](<#func-uploadcustombuildcontainer>)
+- [func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir string, sudo bool, r *Return) error](<#func-uploadpathastarball>)
+- [func writeDockerSecret(ctx ClusterContext, clusterSecretName, authPath string) error](<#func-writedockersecret>)
+- [func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan error](<#func-writetowriters>)
 - [type Builder](<#type-builder>)
   - [func NewBuilder(ctx ClusterContext) (Builder, error)](<#func-newbuilder>)
 - [type Cluster](<#type-cluster>)
   - [func GetCluster(ctx ClusterContext) (*Cluster, error)](<#func-getcluster>)
   - [func (c *Cluster) GetStdIO() (*os.File, *os.File, *os.File)](<#func-cluster-getstdio>)
   - [func (c *Cluster) SetPodman(srvDir string)](<#func-cluster-setpodman>)
+  - [func (c *Cluster) SetRemoteCluster(kubeConfig, namespace string)](<#func-cluster-setremotecluster>)
   - [func (c *Cluster) SetStdIO(stdIn, stdOut, stdErr *os.File)](<#func-cluster-setstdio>)
   - [func (c *Cluster) toKubernetesCluster() *KubernetesCluster](<#func-cluster-tokubernetescluster>)
 - [type ClusterContext](<#type-clustercontext>)
@@ -41,38 +59,62 @@ import "github.com/coreos/gangplank/ocp"
     ctx ClusterContext,
     apiBuild *buildapiv1.Build,
     index int) (CosaPodder, error)](<#func-newcosapodder>)
+  - [func NewHopPod(ctx ClusterContext, image, serviceAccount, workDir string, js *spec.JobSpec) CosaPodder](<#func-newhoppod>)
 - [type KubernetesCluster](<#type-kubernetescluster>)
-  - [func NewCluster(inCluster bool, configFile string) KubernetesCluster](<#func-newcluster>)
+  - [func NewCluster(inCluster bool) KubernetesCluster](<#func-newcluster>)
 - [type PodBuilder](<#type-podbuilder>)
-  - [func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir string) (PodBuilder, error)](<#func-newpodbuilder>)
+  - [func NewPodBuilder(ctx ClusterContext, image, serviceAccount, workDir string, js *spec.JobSpec) (PodBuilder, error)](<#func-newpodbuilder>)
 - [type RemoteFile](<#type-remotefile>)
+  - [func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []*RemoteFile](<#func-getbuildmeta>)
+  - [func getStageFiles(buildID string,
+    l *log.Entry, m *minioServer, lastBuild *cosa.Build, s *spec.Stage) (*cosa.Build, []*RemoteFile, error)](<#func-getstagefiles>)
   - [func (r *RemoteFile) Extract(ctx context.Context, path string) error](<#func-remotefile-extract>)
   - [func (r *RemoteFile) WriteToPath(ctx context.Context, path string) error](<#func-remotefile-writetopath>)
 - [type Return](<#type-return>)
-  - [func (r *Return) Run(ctx context.Context) error](<#func-return-run>)
+  - [func (r *Return) Run(ctx context.Context, ws *workSpec) error](<#func-return-run>)
 - [type Returner](<#type-returner>)
+- [type SSHForwardPort](<#type-sshforwardport>)
+  - [func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort](<#func-getsshminioforwarder>)
 - [type SecretMapper](<#type-secretmapper>)
 - [type buildConfig](<#type-buildconfig>)
   - [func newBC(ctx context.Context, c *Cluster) (*buildConfig, error)](<#func-newbc>)
-  - [func (bc *buildConfig) Exec(ctx ClusterContext) error](<#func-buildconfig-exec>)
+  - [func (bc *buildConfig) Exec(ctx ClusterContext) (err error)](<#func-buildconfig-exec>)
   - [func (bc *buildConfig) discoverStages(m *minioServer) ([]*RemoteFile, error)](<#func-buildconfig-discoverstages>)
   - [func (bc *buildConfig) ocpBinaryInput(m *minioServer) ([]*RemoteFile, error)](<#func-buildconfig-ocpbinaryinput>)
 - [type byteFields](<#type-bytefields>)
 - [type clusterCtxKey](<#type-clusterctxkey>)
+- [type consoleLogWriter](<#type-consolelogwriter>)
+  - [func newConsoleLogWriter(prefix string) *consoleLogWriter](<#func-newconsolelogwriter>)
+  - [func (cw *consoleLogWriter) Write(b []byte) (int, error)](<#func-consolelogwriter-write>)
 - [type cosaPod](<#type-cosapod>)
-  - [func (cp *cosaPod) WorkerRunner(ctx ClusterContext, envVars []v1.EnvVar) error](<#func-cosapod-workerrunner>)
+  - [func (cp *cosaPod) GetClusterCtx() ClusterContext](<#func-cosapod-getclusterctx>)
+  - [func (cp *cosaPod) WorkerRunner(term termChan, envVars []v1.EnvVar) error](<#func-cosapod-workerrunner>)
   - [func (cp *cosaPod) addVolumeFromObjectLabel(obj metav1.Object, fields stringFields) error](<#func-cosapod-addvolumefromobjectlabel>)
   - [func (cp *cosaPod) addVolumesFromConfigMapLabels() error](<#func-cosapod-addvolumesfromconfigmaplabels>)
   - [func (cp *cosaPod) addVolumesFromSecretLabels() error](<#func-cosapod-addvolumesfromsecretlabels>)
-  - [func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod](<#func-cosapod-getpodspec>)
-  - [func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) error](<#func-cosapod-streampodlogs>)
+  - [func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error)](<#func-cosapod-getpodspec>)
+- [type hopPod](<#type-hoppod>)
+  - [func (h *hopPod) GetClusterCtx() ClusterContext](<#func-hoppod-getclusterctx>)
+  - [func (h *hopPod) WorkerRunner(term termChan, _ []v1.EnvVar) error](<#func-hoppod-workerrunner>)
+  - [func (h *hopPod) getPodSpec([]v1.EnvVar) (*v1.Pod, error)](<#func-hoppod-getpodspec>)
 - [type minioServer](<#type-minioserver>)
-  - [func newMinioServer() *minioServer](<#func-newminioserver>)
+  - [func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string, overSSH *SSHForwardPort) (*minioServer, error)](<#func-startstandaloneminioserver>)
+  - [func minioCfgFromFile(f string) (mk minioServer, err error)](<#func-miniocfgfromfile>)
+  - [func minioCfgReader(in io.Reader) (m minioServer, err error)](<#func-miniocfgreader>)
+  - [func newMinioServer(cfgFile string) *minioServer](<#func-newminioserver>)
+  - [func (m *minioServer) Exists(bucket, object string) bool](<#func-minioserver-exists>)
+  - [func (m *minioServer) Kill()](<#func-minioserver-kill>)
+  - [func (m *minioServer) Wait()](<#func-minioserver-wait>)
+  - [func (m *minioServer) WriteJSON(w io.Writer) error](<#func-minioserver-writejson>)
+  - [func (m *minioServer) WriteToFile(f string) error](<#func-minioserver-writetofile>)
   - [func (m *minioServer) client() (*minio.Client, error)](<#func-minioserver-client>)
   - [func (m *minioServer) ensureBucketExists(ctx context.Context, bucket string) error](<#func-minioserver-ensurebucketexists>)
+  - [func (m *minioServer) exec(ctx context.Context) error](<#func-minioserver-exec>)
   - [func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest io.Writer) error](<#func-minioserver-fetcher>)
-  - [func (m *minioServer) kill()](<#func-minioserver-kill>)
-  - [func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, overwrite bool) error](<#func-minioserver-putter>)
+  - [func (m *minioServer) getStamp(bucket, object string) (int64, error)](<#func-minioserver-getstamp>)
+  - [func (m *minioServer) isLocalNewer(bucket, object string, path string) (bool, error)](<#func-minioserver-islocalnewer>)
+  - [func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string) error](<#func-minioserver-putter>)
+  - [func (m *minioServer) stampFile(bucket, object string) error](<#func-minioserver-stampfile>)
   - [func (m *minioServer) start(ctx context.Context) error](<#func-minioserver-start>)
 - [type mountReferance](<#type-mountreferance>)
 - [type outWriteCloser](<#type-outwritecloser>)
@@ -83,12 +125,14 @@ import "github.com/coreos/gangplank/ocp"
   - [func (pb *podBuild) encodeAPIBuild() (string, error)](<#func-podbuild-encodeapibuild>)
   - [func (pb *podBuild) generateAPIBuild() error](<#func-podbuild-generateapibuild>)
   - [func (pb *podBuild) setInCluster() error](<#func-podbuild-setincluster>)
+- [type podmanRunnerFunc](<#type-podmanrunnerfunc>)
 - [type secretMap](<#type-secretmap>)
   - [func getSecretMapping(s string) (*secretMap, bool)](<#func-getsecretmapping>)
   - [func (sm *secretMap) writeSecretEnvVars(d map[string][]byte, ret *[]string) error](<#func-secretmap-writesecretenvvars>)
   - [func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte, ret *[]string) error](<#func-secretmap-writesecretfiles>)
 - [type stringFields](<#type-stringfields>)
   - [func toStringFields(bf byteFields) stringFields](<#func-tostringfields>)
+- [type termChan](<#type-termchan>)
 - [type varMap](<#type-varmap>)
 - [type workSpec](<#type-workspec>)
   - [func newWorkSpec(ctx ClusterContext) (*workSpec, error)](<#func-newworkspec>)
@@ -111,6 +155,21 @@ const (
 
     // secretLabelName is the label to search for secrets to automatically use
     secretLabelName = "coreos-assembler.coreos.com/secret"
+
+    // cosaSrvCache is the location of the cache files
+    cosaSrvCache = "/srv/cache"
+
+    // cosaSrvTmpRepo is the location the repo files
+    cosaSrvTmpRepo = "/srv/tmp/repo"
+
+    // cacheTarballName is the name of the file used when Stage.{Require,Return}Cache is true
+    cacheTarballName = "cache.tar.gz"
+
+    // cacheRepoTarballName is the name of the file used when Stage.{Require,Return}RepoCache is true
+    cacheRepoTarballName = "repo.tar.gz"
+
+    // cacheBucket is used for storing the cache
+    cacheBucket = "cache"
 )
 ```
 
@@ -130,8 +189,15 @@ const (
 
 ```go
 const (
+    clusterNamespaceFile    = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+    serviceAccountTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+)
+```
+
+```go
+const (
     podBuildLabel      = "gangplank.coreos-assembler.coreos.com"
-    podBuildAnnotation = podBuildLabel + "%s"
+    podBuildAnnotation = podBuildLabel + "-%s"
     podBuildRunnerTag  = "cosa-podBuild-runner"
 )
 ```
@@ -153,14 +219,7 @@ const CosaWorkPodEnvVarName = "COSA_WORK_POD_JSON"
 ```
 
 ```go
-const (
-    // MinioRegion is a "fake" region
-    MinioRegion = "darkarts-1"
-)
-```
-
-```go
-const clusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+const fileStampName = "gangplank.coreos.com/cosa/stamp"
 ```
 
 secretMountRefLabel is used for mounting of secrets
@@ -169,14 +228,46 @@ secretMountRefLabel is used for mounting of secrets
 const mountRefLabel = "coreos-assembler.coreos.com/mount-ref"
 ```
 
+podmanContainerHostEnvVar is used by both Gangplank and the podman API to decide if the execution of the pod should happen over SSH\.
+
+```go
+const podmanContainerHostEnvVar = "CONTAINER_HOST"
+```
+
 ## Variables
 
 ```go
 var (
+    gangwayCmd = "/usr/bin/gangway"
+
     // volumes are the volumes used in all pods created
     volumes = []v1.Volume{
         {
             Name: "srv",
+            VolumeSource: v1.VolumeSource{
+                EmptyDir: &v1.EmptyDirVolumeSource{
+                    Medium: "",
+                },
+            },
+        },
+        {
+            Name: "pki-trust",
+            VolumeSource: v1.VolumeSource{
+                EmptyDir: &v1.EmptyDirVolumeSource{
+                    Medium: "",
+                },
+            },
+        },
+        {
+            Name: "pki-anchors",
+            VolumeSource: v1.VolumeSource{
+                EmptyDir: &v1.EmptyDirVolumeSource{
+                    Medium: "",
+                },
+            },
+        },
+        {
+            Name: "container-certs",
             VolumeSource: v1.VolumeSource{
                 EmptyDir: &v1.EmptyDirVolumeSource{
                     Medium: "",
@@ -191,6 +282,31 @@ var (
             Name:      "srv",
             MountPath: "/srv",
         },
+        {
+            Name:      "pki-trust",
+            MountPath: "/etc/pki/ca-trust/extracted",
+        },
+        {
+            Name:      "pki-anchors",
+            MountPath: "/etc/pki/ca-trust/anchors",
+        },
+        {
+            Name:      "container-certs",
+            MountPath: "/etc/containers/cert.d",
+        },
+    }
+
+    // Define basic envVars
+    ocpEnvVars = []v1.EnvVar{
+        {
+
+            Name:  "SSL_CERT_FILE",
+            Value: "/etc/containers/cert.d/ca.crt",
+        },
+        {
+            Name:  "OSCONTAINER_CERT_DIR",
+            Value: "/etc/containers/cert.d",
+        },
     }
 
     // Define the Securite Contexts
@@ -203,16 +319,29 @@ var (
         Privileged: ptrBool(true),
     }
 
-    // InitCommands to be run before work pod is executed.
-    ocpInitCommand = []string{}
+    // InitCommands to be run before work in pod is executed.
+    ocpInitCommand = []string{
+        "mkdir -vp /etc/pki/ca-trust/extracted/{openssl,pem,java,edk2}",
+
+        "cp -av /etc/pki/ca-trust/source/anchors2/*{crt,pem} /etc/pki/ca-trust/anchors/ || :",
+
+        "cp -av /run/secrets/kubernetes.io/serviceaccount/ca.crt /etc/pki/ca-trust/anchors/cluster-ca.crt || :",
+        "cp -av /run/secrets/kubernetes.io/serviceaccount/service-ca.crt /etc/pki/ca-trust/anchors/service-ca.crt || :",
+
+        "update-ca-trust",
+
+        "mkdir -vp /etc/containers/certs.d",
+        "cat /run/secrets/kubernetes.io/serviceaccount/*crt >> /etc/containers/certs.d/ca.crt || :",
+        "cat /etc/pki/ca-trust/extracted/pem/* >> /etc/containers/certs.d/ca.crt ||:",
+    }
 
     // On OpenShift 3.x, /dev/kvm is unlikely to world RW. So we have to give ourselves
     // permission. Gangplank will run as root but `cosa` commands run as the builder
     // user. Note: on 4.x, gangplank will run unprivileged.
-    ocp3InitCommand = []string{
+    ocp3InitCommand = append(ocpInitCommand,
         "/usr/bin/chmod 0666 /dev/kvm || echo missing kvm",
         "/usr/bin/stat /dev/kvm || :",
-    }
+    )
 
     // Define the base requirements
     // cpu are in mils, memory is in mib
@@ -273,17 +402,38 @@ var (
 )
 ```
 
+```go
+var (
+    // sudoBashCmd is used for shelling out to comamnds.
+    sudoBashCmd = []string{"sudo", "bash", "-c"}
+
+    // bashCmd is used for shelling out to commands
+    bashCmd = []string{"bash", "-c"}
+)
+```
+
+consoleLogWriter is an io\.Writer\.
+
+```go
+var _ io.Writer = &consoleLogWriter{}
+```
+
+decompress is a spec TarDecompressorFunc
+
+```go
+var _ spec.TarDecompressorFunc = decompress
+```
+
 cosaSrvDir is where the build directory should be\. When the build API defines a contextDir then it will be used\. In most cases this should be /srv
 
 ```go
 var cosaSrvDir = defaultContextDir
 ```
 
+podTimeOut is the lenght of time to wait for a pod to complete its work\.
+
 ```go
-var (
-    // myHostName used for determining the hostname
-    myHostName string
-)
+var podTimeOut = 90 * time.Minute
 ```
 
 ```go
@@ -347,7 +497,7 @@ var (
         {
             label: "aws-cn",
             fileVarMap: varMap{
-                "config": "AWS_CONFIG_FILE",
+                "config": "AWS_CN_CONFIG_FILE",
             },
         },
 
@@ -403,20 +553,24 @@ var (
 )
 ```
 
+srvBucket is the name of the bucket to use for remote files being served up
+
+```go
+var srvBucket = "source"
+```
+
+stageDependencyTimeOut is the length of time to wait for a stage's dependencies\.
+
+```go
+var stageDependencyTimeOut = 1 * time.Hour
+```
+
 ```go
 var (
     volMaps = map[string]mountReferance{
 
         "internal-ca": {
             volumes: []v1.Volume{
-                {
-                    Name: "pki-trust",
-                    VolumeSource: v1.VolumeSource{
-                        EmptyDir: &v1.EmptyDirVolumeSource{
-                            Medium: "",
-                        },
-                    },
-                },
                 {
                     Name: "pki",
                     VolumeSource: v1.VolumeSource{
@@ -429,19 +583,9 @@ var (
             },
             volumeMounts: []v1.VolumeMount{
                 {
-                    Name:      "pki-trust",
-                    MountPath: "/etc/pki/ca-trust/extracted",
-                },
-                {
                     Name:      "pki",
-                    MountPath: "/etc/pki/ca-trust/source/anchors/",
+                    MountPath: "/etc/pki/ca-trust/source/anchors2/",
                 },
-            },
-
-            addInitCommands: []string{
-                "mkdir -vp /etc/pki/ca-trust/extracted/{openssl,pem,java,edk2}",
-                "update-ca-trust",
-                "find /etc/pki/ca-trust/extracted",
             },
         },
 
@@ -540,10 +684,18 @@ func GetClient(ctx ClusterContext) (*kubernetes.Clientset, string, error)
 
 GetClient fetches the Kubernetes Client from a ClusterContext\.
 
+## func checkPort
+
+```go
+func checkPort(port int) error
+```
+
+checkPort checks if a port is open
+
 ## func clusterRunner
 
 ```go
-func clusterRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error
+func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error
 ```
 
 clusterRunner creates an OpenShift/Kubernetes pod for the work to be done\. The output of the pod is streamed and captured on the console\.
@@ -565,10 +717,34 @@ cosaInit does the initial COSA setup\. To support both pod and buildConfig based
 ## func decompress
 
 ```go
-func decompress(in *os.File, dir string) error
+func decompress(in io.ReadCloser, dir string) error
 ```
 
-decompress takes an open file and extracts its to directory\.
+decompress takes an io\.ReadCloser extracts its to directory\.
+
+## func getHostname
+
+```go
+func getHostname() string
+```
+
+getHostname gets the current hostname
+
+## func getLocalFileStamp
+
+```go
+func getLocalFileStamp(path string) (int64, error)
+```
+
+getLocalFileStamp returns the local file mod time in UTC Unix epic nanoseconds\.
+
+## func getNetIP
+
+```go
+func getNetIP() (string, error)
+```
+
+getNetIP gets the IPV4 address of a pod when the pod's service account lacks permissions to obtain its own IP address\.
 
 ## func getPodIP
 
@@ -578,11 +754,35 @@ func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, e
 
 getPodIP returns the IP of a pod\. getPodIP blocks pending until the podIP is recieved\.
 
+## func getPortOrNext
+
+```go
+func getPortOrNext(port int) int
+```
+
+getNextPort iterates and finds the next available port
+
+## func getPushTagless
+
+```go
+func getPushTagless(s string) (string, string)
+```
+
+getPushTagless returns the registry\, and push path i\.e registry\.svc:5000/image/bar:tag returns "registry\.svc:5000" and "image/bar"
+
 ## func init
 
 ```go
 func init()
 ```
+
+## func isKnownBuildMeta
+
+```go
+func isKnownBuildMeta(n string) bool
+```
+
+isKnownBuildMeta checks if n is known and should be fetched and returned by pods via Minio\.
 
 ## func k8sInClusterClient
 
@@ -600,6 +800,22 @@ func kubernetesSecretsSetup(ac *kubernetes.Clientset, ns, toDir string) ([]strin
 
 kubernetesSecretSetup looks for matching secrets in the environment matching 'coreos\-assembler\.coreos\.com/secret=k' and then maps the secret automatically in\. "k" must be in the "known" secrets type to be mapped automatically\.
 
+## func mustHaveImage
+
+```go
+func mustHaveImage(ctx context.Context, image string) error
+```
+
+mustHaveImage pulls the image if it is not found
+
+## func newFileStamp
+
+```go
+func newFileStamp() string
+```
+
+newFileStamp returns the Unix nanoseconds of the file as a string We use Unix nanoseconds for precision\.
+
 ## func ocpBuildClient
 
 ```go
@@ -611,7 +827,7 @@ ocpBuildClient initalizes the OpenShift Build Client API\.
 ## func podmanRunner
 
 ```go
-func podmanRunner(ctx ClusterContext, cp *cosaPod, envVars []v1.EnvVar) error
+func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error
 ```
 
 podmanRunner runs the work in a Podman container using workDir as \`/srv\` \`podman kube play\` does not work well due to permission mappings; there is no way to do id mappings\.
@@ -636,6 +852,14 @@ func ptrInt32(i int32) *int32
 
 ptrInt32 converts an int32 to a ptr of the int32
 
+## func pushOstreeToRegistry
+
+```go
+func pushOstreeToRegistry(ctx ClusterContext, push *spec.Registry, build *cosa.Build) error
+```
+
+pushOstreetoRegistry pushes the OStree to the defined registry location\.
+
 ## func randomString
 
 ```go
@@ -650,6 +874,64 @@ func recieveInputBinary() (string, error)
 
 extractInputBinary processes the provided input stream as directed by BinaryBuildSource into dir\. OpenShift sends binary builds over stdin\. To make our life easier\, use the OpenShift API to process the input\. Returns the name of the file written\.
 
+## func sshForwarder
+
+```go
+func sshForwarder(ctx context.Context, cfg *SSHForwardPort) (chan<- bool, error)
+```
+
+sshForwarder is a generic forwarder from the local host to a remote host
+
+## func streamPodLogs
+
+```go
+func streamPodLogs(client *kubernetes.Clientset, namespace string, pod *v1.Pod, term termChan) error
+```
+
+streamPodLogs steams the pod's logs to logging and to disk\. Worker pods are responsible for their work\, but not for their logs\. To make streamPodLogs thread safe and non\-blocking\, it expects a pointer to a bool\. If that pointer is nil or true\, then we return\.
+
+## func tokenRegistryLogin
+
+```go
+func tokenRegistryLogin(ctx ClusterContext, tlsVerify *bool, registry string) error
+```
+
+tokenRegistryLogin logins to a registry using a service account
+
+## func uploadCustomBuildContainer
+
+```go
+func uploadCustomBuildContainer(ctx ClusterContext, tlsVerify *bool, apiBuild *buildapiv1.Build, build *cosa.Build) error
+```
+
+uploadCustomBuildContainer implements the custom build strategy optional step to report the results to the registry as an OCI image\. uploadCustomBuildContainer must be called from a worker pod\. The token used is associated with the service account with the worker pod\.
+
+## func uploadPathAsTarBall
+
+```go
+func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir string, sudo bool, r *Return) error
+```
+
+uploadPathAsTarBall returns a path as a tarball to minio server\. This uses a shell call out since we need to elevate permissions via sudo \(bug in Golang \<1\.16 prevents elevating privs\)\. Gangplank runs as the builder user normally and since some files are written by root\, Gangplank will get permission denied\.
+
+The tarball creation will be done relative to workDir\. If workDir is an empty string\, it will default to the current working directory\.
+
+## func writeDockerSecret
+
+```go
+func writeDockerSecret(ctx ClusterContext, clusterSecretName, authPath string) error
+```
+
+writeDockerSecret writes the \.dockerCfg or \.dockerconfig to the correct path\. It accepts the cluster context\, the name of the secret and the location to write to\.
+
+## func writeToWriters
+
+```go
+func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan error
+```
+
+writeToWriters writes in to outs until in or outs are closed\. When run a go\-routine\, calls can terminate by closing "in"\.
+
 ## type Builder
 
 Builder implements the Build
@@ -660,15 +942,10 @@ type Builder interface {
 }
 ```
 
-```go
-var (
-    // srvBucket is the name of the bucket to use for remote
-    // files being served up
-    srvBucket = "source"
+buildConfig is a builder\.
 
-    // buildConfig is a builder.
-    _   Builder = &buildConfig{}
-)
+```go
+var _ Builder = &buildConfig{}
 ```
 
 workSpec is a Builder\.
@@ -693,10 +970,13 @@ Cluster describes a Kubnetenes Cluster\.
 type Cluster struct {
     cs         *kubernetes.Clientset
     nameSpace  string
-    configFile string
+    kubeConfig string
 
     // inCluster indicates the client should use the Kubernetes in-cluster client
     inCluster bool
+
+    // remoteCluster indicates Gangplank should run the supervising Gangplank in pod
+    remoteCluster bool
 
     // podman indicates that the container should be built using Podman
     podman bool
@@ -734,6 +1014,14 @@ func (c *Cluster) SetPodman(srvDir string)
 ```
 
 SetPodman forces out\-of\-cluster execution via Podman\.
+
+### func \(\*Cluster\) SetRemoteCluster
+
+```go
+func (c *Cluster) SetRemoteCluster(kubeConfig, namespace string)
+```
+
+SetRemote uses a remote cluster
 
 ### func \(\*Cluster\) SetStdIO
 
@@ -773,7 +1061,9 @@ CosaPodder create COSA capable pods\.
 
 ```go
 type CosaPodder interface {
-    WorkerRunner(ctx ClusterContext, envVar []v1.EnvVar) error
+    WorkerRunner(term termChan, envVar []v1.EnvVar) error
+    GetClusterCtx() ClusterContext
+    getPodSpec([]v1.EnvVar) (*v1.Pod, error)
 }
 ```
 
@@ -781,6 +1071,12 @@ a cosaPod is a CosaPodder
 
 ```go
 var _ CosaPodder = &cosaPod{}
+```
+
+hopPod implements the CosaPodder interface\.
+
+```go
+var _ CosaPodder = &hopPod{}
 ```
 
 ### func NewCosaPodder
@@ -794,6 +1090,14 @@ func NewCosaPodder(
 
 NewCosaPodder creates a CosaPodder
 
+### func NewHopPod
+
+```go
+func NewHopPod(ctx ClusterContext, image, serviceAccount, workDir string, js *spec.JobSpec) CosaPodder
+```
+
+NewHopPod returns a PodBuilder\.
+
 ## type KubernetesCluster
 
 KubernetesCluster is the Gangplank interface to using a cluster\.
@@ -802,7 +1106,8 @@ KubernetesCluster is the Gangplank interface to using a cluster\.
 type KubernetesCluster interface {
     SetStdIO(stdIn, stdOut, stdErr *os.File)
     GetStdIO() (*os.File, *os.File, *os.File)
-    SetPodman(string)
+    SetPodman(srvDir string)
+    SetRemoteCluster(kubeConfig string, namespace string)
 }
 ```
 
@@ -815,7 +1120,7 @@ var _ KubernetesCluster = &Cluster{}
 ### func NewCluster
 
 ```go
-func NewCluster(inCluster bool, configFile string) KubernetesCluster
+func NewCluster(inCluster bool) KubernetesCluster
 ```
 
 NewCluster returns a Kubernetes cluster
@@ -839,7 +1144,7 @@ var _ PodBuilder = &podBuild{}
 ### func NewPodBuilder
 
 ```go
-func NewPodBuilder(ctx ClusterContext, image, serviceAccount, jsF, workDir string) (PodBuilder, error)
+func NewPodBuilder(ctx ClusterContext, image, serviceAccount, workDir string, js *spec.JobSpec) (PodBuilder, error)
 ```
 
 NewPodBuilder returns a ClusterPodBuilder ready for execution\.
@@ -855,8 +1160,31 @@ type RemoteFile struct {
     Minio      *minioServer   `json:"remote,omitempty"`
     Compressed bool           `json:"comptempty"`
     Artifact   *cosa.Artifact `json:"artifact,omitempty"`
+
+    // ForcePath forces writing to, or uncompressing to a specific path
+    ForcePath string `json:"force_path,omitempty"`
+
+    // ForcePath forces writing to, or uncompressing to a specific path
+    ForceExtractPath string `json:"force_extract_path,omitempty"`
 }
 ```
+
+### func getBuildMeta
+
+```go
+func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []*RemoteFile
+```
+
+getBuildMeta searches a path for all build meta files and creates remoteFiles for them\. The keyPathBase is the relative path for the object\.
+
+### func getStageFiles
+
+```go
+func getStageFiles(buildID string,
+    l *log.Entry, m *minioServer, lastBuild *cosa.Build, s *spec.Stage) (*cosa.Build, []*RemoteFile, error)
+```
+
+getStageFiles returns the newest build and RemoteFiles for the stage\. Depending on the stages dependencies\, it will ensure that all meta\-data and artifacts are send\. If the stage requires/requests the caches\,  it will be included in the RemoteFiles\.
 
 ### func \(\*RemoteFile\) Extract
 
@@ -896,7 +1224,7 @@ type Return struct {
 ### func \(\*Return\) Run
 
 ```go
-func (r *Return) Run(ctx context.Context) error
+func (r *Return) Run(ctx context.Context, ws *workSpec) error
 ```
 
 Run executes the report by walking the build path\.
@@ -907,7 +1235,7 @@ Returner sends the results to the ReportServer
 
 ```go
 type Returner interface {
-    Run(ctx context.Context) error
+    Run(ctx context.Context, ws *workSpec) error
 }
 ```
 
@@ -916,6 +1244,27 @@ Return is a Returner
 ```go
 var _ Returner = &Return{}
 ```
+
+## type SSHForwardPort
+
+```go
+type SSHForwardPort struct {
+    Host string
+    User string
+    Key  string
+
+    // port is not exported
+    port int
+}
+```
+
+### func getSshMinioForwarder
+
+```go
+func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort
+```
+
+getSshMinioForwarder returns an SSHForwardPort from the jobspec definition for forwarding a minio server\, or nil if forwarding is not enabled\.
 
 ## type SecretMapper
 
@@ -965,7 +1314,7 @@ newBC accepts a context and returns a buildConfig
 ### func \(\*buildConfig\) Exec
 
 ```go
-func (bc *buildConfig) Exec(ctx ClusterContext) error
+func (bc *buildConfig) Exec(ctx ClusterContext) (err error)
 ```
 
 Exec executes the command using the closure for the commands
@@ -1004,6 +1353,33 @@ type clusterCtxKey int
 const clusterObj clusterCtxKey = 0
 ```
 
+## type consoleLogWriter
+
+consoleLogWriter is an io\.Writer that emits fancy logs to a screen\.
+
+```go
+type consoleLogWriter struct {
+    startTime time.Time
+    prefix    string
+}
+```
+
+### func newConsoleLogWriter
+
+```go
+func newConsoleLogWriter(prefix string) *consoleLogWriter
+```
+
+newConosleLogWriter is a helper function for getting a new writer\.
+
+### func \(\*consoleLogWriter\) Write
+
+```go
+func (cw *consoleLogWriter) Write(b []byte) (int, error)
+```
+
+Write implements io\.Writer for Console Writer with
+
 ## type cosaPod
 
 cosaPod is a COSA pod
@@ -1020,14 +1396,19 @@ type cosaPod struct {
     volumeMounts    []v1.VolumeMount
 
     index int
-    pod   *v1.Pod
 }
+```
+
+### func \(\*cosaPod\) GetClusterCtx
+
+```go
+func (cp *cosaPod) GetClusterCtx() ClusterContext
 ```
 
 ### func \(\*cosaPod\) WorkerRunner
 
 ```go
-func (cp *cosaPod) WorkerRunner(ctx ClusterContext, envVars []v1.EnvVar) error
+func (cp *cosaPod) WorkerRunner(term termChan, envVars []v1.EnvVar) error
 ```
 
 WorkerRunner runs a worker pod on either OpenShift/Kubernetes or in as a podman container\.
@@ -1059,18 +1440,49 @@ addVolumesFromSecretLabels discovers secrets with matching labels and if known\,
 ### func \(\*cosaPod\) getPodSpec
 
 ```go
-func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) *v1.Pod
+func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error)
 ```
 
 getPodSpec returns a pod specification\.
 
-### func \(\*cosaPod\) streamPodLogs
+## type hopPod
+
+hopPod describes a remote pod for running Gangplank in a cluster remotely\.
 
 ```go
-func (cp *cosaPod) streamPodLogs(logging *bool, pod *v1.Pod, container string) error
+type hopPod struct {
+    clusterCtx ClusterContext
+    js         *spec.JobSpec
+
+    image          string
+    ns             string
+    serviceAccount string
+}
 ```
 
-streamPodLogs steams the pod's logs to logging and to disk\. Worker pods are responsible for their work\, but not for their logs\. To make streamPodLogs thread safe and non\-blocking\, it expects a pointer to a bool\. If that pointer is nil or true\, then we return\.
+### func \(\*hopPod\) GetClusterCtx
+
+```go
+func (h *hopPod) GetClusterCtx() ClusterContext
+```
+
+GetClusterCtx returns the cluster context of a hopPod
+
+### func \(\*hopPod\) WorkerRunner
+
+```go
+func (h *hopPod) WorkerRunner(term termChan, _ []v1.EnvVar) error
+```
+
+Exec Gangplank locally through a remote/hop pod that runs Gangplank in a cluster\.
+
+### func \(\*hopPod\) getPodSpec
+
+```go
+func (h *hopPod) getPodSpec([]v1.EnvVar) (*v1.Pod, error)
+```
+
+getSpec createa a very generic pod that can run on any Cluster\. The pod will mimic a build api pod\.
 
 ## type minioServer
 
@@ -1078,23 +1490,97 @@ minioServer describes a Minio S3 Object stoarge to start\.
 
 ```go
 type minioServer struct {
-    AccessKey    string `json:"accesskey"`
-    SecretKey    string `json:"secretkey"`
-    Host         string `json:"host"`
-    Port         int    `json:"port"`
+    AccessKey      string `json:"accesskey"`
+    SecretKey      string `json:"secretkey"`
+    Host           string `json:"host"`
+    Port           int    `json:"port"`
+    ExternalServer bool   `json:"external_server"` //indicates that a server should not be started
+    Region         string `json:"region"`
+
+    // overSSH describes how to forward the Minio Port over SSH
+    // This option is only useful with envVar CONTAINER_HOST running
+    // in podman mode.
+    overSSH *SSHForwardPort
+    // sshStopCh is used to shutdown the SSH port forwarding.
+    sshStopCh chan<- bool
+
     dir          string
     minioOptions minio.Options
     cmd          *exec.Cmd
 }
 ```
 
+### func StartStandaloneMinioServer
+
+```go
+func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string, overSSH *SSHForwardPort) (*minioServer, error)
+```
+
+StartStanaloneMinioServer starts a standalone minio server\.
+
+### func minioCfgFromFile
+
+```go
+func minioCfgFromFile(f string) (mk minioServer, err error)
+```
+
+minioCfgFromFile returns a minio configuration from a file
+
+### func minioCfgReader
+
+```go
+func minioCfgReader(in io.Reader) (m minioServer, err error)
+```
+
+minioKeysReader takes an io\.Reader and returns a minio cfg
+
 ### func newMinioServer
 
 ```go
-func newMinioServer() *minioServer
+func newMinioServer(cfgFile string) *minioServer
 ```
 
-newMinioSever defines an ephemeral minio config\. To prevent random pods/people accessing or relying on the server\, we use entirely random keys\.
+newMinioSever defines an ephemeral minioServer from a config or creates a new one\. To prevent random pods/people accessing or relying on the server\, we use entirely random keys\.
+
+### func \(\*minioServer\) Exists
+
+```go
+func (m *minioServer) Exists(bucket, object string) bool
+```
+
+Exists check if bucket/object exists\.
+
+### func \(\*minioServer\) Kill
+
+```go
+func (m *minioServer) Kill()
+```
+
+Kill terminates the minio server\.
+
+### func \(\*minioServer\) Wait
+
+```go
+func (m *minioServer) Wait()
+```
+
+Wait blocks until Minio is finished\.
+
+### func \(\*minioServer\) WriteJSON
+
+```go
+func (m *minioServer) WriteJSON(w io.Writer) error
+```
+
+WriteJSON returns the jobspec
+
+### func \(\*minioServer\) WriteToFile
+
+```go
+func (m *minioServer) WriteToFile(f string) error
+```
+
+minioKeysFromFile writes the minio keys to a file
 
 ### func \(\*minioServer\) client
 
@@ -1110,6 +1596,14 @@ GetClient returns a Minio Client
 func (m *minioServer) ensureBucketExists(ctx context.Context, bucket string) error
 ```
 
+### func \(\*minioServer\) exec
+
+```go
+func (m *minioServer) exec(ctx context.Context) error
+```
+
+exec runs the minio command
+
 ### func \(\*minioServer\) fetcher
 
 ```go
@@ -1118,21 +1612,37 @@ func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest i
 
 fetcher retrieves an object from a Minio server
 
-### func \(\*minioServer\) kill
+### func \(\*minioServer\) getStamp
 
 ```go
-func (m *minioServer) kill()
+func (m *minioServer) getStamp(bucket, object string) (int64, error)
 ```
 
-kill terminates the minio server\.
+getStamp returns the stamp\. If the file does not exist remotely the stamp of zero is returned\. If the file exists but has not been stamped\, then UTC Unix epic in nanoseconds of the modification time is used \(the stamps are lost when the minio instance is reaped\)\. The obvious flaw is that this does require all hosts to have coordinate time; this should be the case for Kubernetes cluster and podman based builds will always use the same time source\.
+
+### func \(\*minioServer\) isLocalNewer
+
+```go
+func (m *minioServer) isLocalNewer(bucket, object string, path string) (bool, error)
+```
+
+isLocalNewer checks if the file is newer than the remote file\, if any\. If the file does not exist remotely\, then it is considered newer\.
 
 ### func \(\*minioServer\) putter
 
 ```go
-func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string, overwrite bool) error
+func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string) error
 ```
 
 putter uploads the contents of an io\.Reader to a remote MinioServer
+
+### func \(\*minioServer\) stampFile
+
+```go
+func (m *minioServer) stampFile(bucket, object string) error
+```
+
+stampFile add the unique stamp
 
 ### func \(\*minioServer\) start
 
@@ -1140,7 +1650,7 @@ putter uploads the contents of an io\.Reader to a remote MinioServer
 func (m *minioServer) start(ctx context.Context) error
 ```
 
-start a MinioServer based on the configuration\.
+start executes the minio server and returns an error if not ready\.
 
 ## type mountReferance
 
@@ -1191,7 +1701,6 @@ type podBuild struct {
     hostname         string
     image            string
     ipaddr           string
-    jobSpecFile      string
     projectNamespace string
     serviceAccount   string
     workDir          string
@@ -1229,6 +1738,20 @@ func (pb *podBuild) setInCluster() error
 ```
 
 setInCluster does the nessasary setup for unbounded builder running as an in\-cluster build\.
+
+## type podmanRunnerFunc
+
+```go
+type podmanRunnerFunc func(termChan, CosaPodder, []v1.EnvVar) error
+```
+
+podmanFunc is set to unimplemented by default\.
+
+```go
+var podmanFunc podmanRunnerFunc = func(termChan, CosaPodder, []v1.EnvVar) error {
+    return errors.New("build was not compiled with podman supprt")
+}
+```
 
 ## type secretMap
 
@@ -1279,6 +1802,14 @@ func toStringFields(bf byteFields) stringFields
 ```
 
 toStringFields is used to convert from a byteFields to a stringFields
+
+## type termChan
+
+termChan is a channel used to singal a termination
+
+```go
+type termChan <-chan bool
+```
 
 ## type varMap
 
