@@ -35,6 +35,9 @@ type JobSpec struct {
 	Recipe     Recipe     `yaml:"recipe,omitempty" json:"recipe,omitempty"`
 	Spec       Spec       `yaml:"spec,omitempty" json:"spec,omitempty"`
 
+	// Minio describes the configuration for corrdinating objects for builds
+	Minio Minio `yaml:"minio,omitempty" json:"minio,omitempty"`
+
 	// PublishOscontainer is a list of push locations for the oscontainer
 	PublishOscontainer PublishOscontainer `yaml:"publish_oscontainer,omitempty" json:"publish_oscontainer,omitempty"`
 
@@ -118,11 +121,19 @@ type Job struct {
 	ForceArch string `yaml:"force_arch,omitempty" json:"force_arch,omitempty"`
 	// Unexported minio valued (run-time options)
 	MinioCfgFile string // not exported
+}
 
-	// Runtime config options for SSH. Not exported for safety.
-	MinioSSHForward string
-	MinioSSHUser    string
-	MinioSSHKey     string
+type Minio struct {
+	// Bucket is the bucket to put all the bits
+	Bucket string `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+	// MinioKeyPrefix is the root path in the bucket to start looking for paths.
+	// The prefix is treated as a path prefix
+	KeyPrefix string `yaml:"key_prefix,omitempty" json:"key_prefix,omitempty"`
+	// Unexported minio valued (run-time options)
+	ConfigFile string `yaml:",omitempty" json:",omitempty"`
+	SSHForward string `yaml:",omitempty" json:",omitempty"`
+	SSHUser    string `yaml:",omitempty" json:",omitempty"`
+	SSHKey     string `yaml:",omitempty" json:",omitempty"`
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config

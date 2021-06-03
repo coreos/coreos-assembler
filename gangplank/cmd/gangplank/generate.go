@@ -23,6 +23,12 @@ var (
 
 	// generateSingleRequires insdicates all the artifacts that can be required
 	generateSingleRequires []string
+
+	// minioBucket defines the minio bucket to use
+	minioBucket string
+
+	// minioPathPrefix desings the minio path to use relative to the bucket
+	minioPathPrefix string
 )
 
 var (
@@ -47,6 +53,9 @@ var (
 func init() {
 	cmdRoot.PersistentFlags().StringSliceVarP(&automaticBuildStages, "build-artifact", "A", []string{},
 		fmt.Sprintf("build artifact for any of: %v", jobspec.GetArtifactShortHandNames()))
+
+	cmdRoot.PersistentFlags().StringVar(&minioBucket, "bucket", "builder", "name minio bucket to use")
+	cmdRoot.PersistentFlags().StringVar(&minioPathPrefix, "keyPathPrefix", "", "path prefix to use inside the bucket")
 
 	// Add the jobspec flags to the CLI
 	spec.AddCliFlags(cmdGenerate.Flags())
@@ -73,13 +82,20 @@ func setCliSpec() {
 			spec.AddRepos()
 		}
 		if minioSshRemoteHost != "" && minioCfgFile == "" {
-			spec.Job.MinioSSHForward = minioSshRemoteHost
-			spec.Job.MinioSSHUser = minioSshRemoteUser
-			spec.Job.MinioSSHKey = minioSshRemoteKey
+			spec.Minio.SSHForward = minioSshRemoteHost
+			spec.Minio.SSHUser = minioSshRemoteUser
+			spec.Minio.SSHKey = minioSshRemoteKey
 		}
 		if minioCfgFile != "" {
-			spec.Job.MinioCfgFile = minioCfgFile
+			spec.Minio.ConfigFile = minioCfgFile
 		}
+		if spec.Minio.KeyPrefix == "" {
+			spec.Minio.KeyPrefix = minioPathPrefix
+		}
+		if spec.Minio.Bucket == "" {
+			spec.Minio.Bucket = minioBucket
+		}
+		log.WithFields(log.Fields{"prefix": minioPathPrefix, "bucket": minioBucket}).Info("Remote paths defined")
 	}()
 
 	if specFile != "" {

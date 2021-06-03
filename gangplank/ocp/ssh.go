@@ -27,13 +27,13 @@ type SSHForwardPort struct {
 // definition for forwarding a minio server, or nil if forwarding is
 // not enabled.
 func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort {
-	if j.Job.MinioSSHForward == "" {
+	if j.Minio.SSHForward == "" {
 		return nil
 	}
 	return &SSHForwardPort{
-		Host: j.Job.MinioSSHForward,
-		User: j.Job.MinioSSHUser,
-		Key:  j.Job.MinioSSHKey,
+		Host: j.Minio.SSHForward,
+		User: j.Minio.SSHUser,
+		Key:  j.Minio.SSHKey,
 	}
 }
 

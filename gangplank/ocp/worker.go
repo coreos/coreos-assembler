@@ -22,6 +22,10 @@ import (
 // workSpec is a Builder.
 var _ Builder = &workSpec{}
 
+// workerBuild Dir is hard coded. Workers always read builds relative to their
+// local paths and assume the build location is on /srv
+var workerBuildDir string = filepath.Join("/srv", "builds")
+
 // workSpec define job for remote worker to do
 // A workSpec is dispatched by a builder and is tightly coupled to
 // to the dispatching pod.
@@ -171,7 +175,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			log.WithError(err).Info("Processed Uploads")
 		}
 
-		b, _, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+		b, _, err := cosa.ReadBuild(workerBuildDir, "", cosa.BuilderArch())
 		if err != nil && b != nil {
 			_ = b.WriteMeta(os.Stdout.Name(), false)
 
@@ -185,7 +189,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	}()
 
 	// Expose the jobspec and meta.json (if its available) for templating.
-	mBuild, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	mBuild, _, _ := cosa.ReadBuild(workerBuildDir, "", cosa.BuilderArch())
 	if mBuild == nil {
 		mBuild = new(cosa.Build)
 	}
@@ -240,7 +244,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			return err
 		}
 
-		next, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+		next, _, _ := cosa.ReadBuild(workerBuildDir, "", cosa.BuilderArch())
 		if next != nil && next.BuildArtifacts != nil && (mBuild.BuildArtifacts == nil || mBuild.BuildArtifacts.Ostree.Sha256 != next.BuildArtifacts.Ostree.Sha256) {
 			log.Debug("Stage produced a new OStree")
 

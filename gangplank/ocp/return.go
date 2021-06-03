@@ -20,6 +20,7 @@ var _ Returner = &Return{}
 type Return struct {
 	Minio     *minioServer `json:"remote"`
 	Bucket    string       `json:"bucket"`
+	KeyPrefix string       `json:"key_prefix"`
 	Overwrite bool         `json:"overwrite"`
 
 	// ArtifactTypes will return only artifacts that known and defined
@@ -40,7 +41,8 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 	if r.Minio == nil {
 		return nil
 	}
-	b, path, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	baseBuildDir := filepath.Join(cosaSrvDir, "builds")
+	b, path, err := cosa.ReadBuild(baseBuildDir, "", cosa.BuilderArch())
 	if err != nil {
 		return err
 	}
@@ -104,6 +106,10 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 
 	var e error = nil
 	for k, v := range upload {
+		if r.KeyPrefix != "" {
+			k = filepath.Join(r.KeyPrefix, k)
+		}
+
 		l := log.WithFields(log.Fields{
 			"host":          r.Minio.Host,
 			"file":          v,
@@ -130,7 +136,6 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 				continue
 			}
 		}
-
 		if err := r.Minio.putter(ctx, r.Bucket, k, v); err != nil {
 			l.WithField("err", err).Error("failed upload, tainting build")
 			e = fmt.Errorf("upload failed with at least one error: %w", err)

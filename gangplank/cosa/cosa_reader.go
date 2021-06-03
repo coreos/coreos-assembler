@@ -10,6 +10,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -66,18 +67,37 @@ type ioBackendMinio struct {
 	m    *minio.Client
 	obj  *minio.Object
 	name string
+
+	bucket string
+	prefix string
 }
 
 var ErrNoMinioClient = errors.New("minio client is not defined")
+
+// getBucketAndPath returns the relative bucket and path.
+func (im *ioBackendMinio) getBucketAndPath(p string) (string, string) {
+	parts := strings.Split(p, "/")
+	path := strings.Join(parts[1:], "/")
+
+	bucket := parts[0]
+	if im.bucket != "" {
+		bucket = im.bucket
+		path = p
+	}
+	if im.prefix != "" {
+		path = filepath.Join(im.prefix, path)
+	}
+	return bucket, path
+}
 
 // Open implements ioBackender's and os.File's Open interface.
 func (im *ioBackendMinio) Open(p string) (io.ReadCloser, error) {
 	if im.m == nil {
 		return nil, ErrNoMinioClient
 	}
-	parts := strings.Split(p, "/")
-	path := strings.Join(parts[1:], "/")
-	obj, err := im.m.GetObject(im.ctx, parts[0], path, minio.GetObjectOptions{})
+
+	bucket, path := im.getBucketAndPath(p)
+	obj, err := im.m.GetObject(im.ctx, bucket, path, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -147,16 +167,24 @@ func (ao *objectInfo) Sys() interface{} {
 
 // SetIOBackendMinio sets the backend to minio. The client must be provided
 // by the caller, including authorization.
-func SetIOBackendMinio(ctx context.Context, m *minio.Client) error {
+func SetIOBackendMinio(ctx context.Context, m *minio.Client, bucket, prefix string) error {
 	if m == nil {
 		return errors.New("minio client must not be nil")
 	}
+
+	log.WithFields(log.Fields{
+		"bucket": bucket,
+		"prefix": prefix,
+	}).Info("minio bucket and prefix defined")
+
 	backend := &ioBackendMinio{
-		m:   m,
-		ctx: ctx,
+		m:      m,
+		ctx:    ctx,
+		bucket: bucket,
+		prefix: prefix,
 	}
 	ioBackend = backend
-	walkFn = createMinioWalkFunc(m)
+	walkFn = createMinioWalkFunc(m, bucket, prefix)
 	return nil
 }
 
@@ -196,19 +224,16 @@ func defaultWalkFunc(p string) <-chan fileInfo {
 
 // createMinioWalkFunc creates a new func a minio client. The returned function
 // will list the remote objects and return os.FileInfo compliant interfaces.
-func createMinioWalkFunc(m *minio.Client) walkerFn {
+func createMinioWalkFunc(m *minio.Client, bucket, prefix string) walkerFn {
 	return func(p string) <-chan fileInfo {
 		ret := make(chan fileInfo)
 		go func() {
 			defer close(ret) //nolint
-
-			parts := strings.Split(p, "/")
-			bucket := parts[0]
 			ao := minio.ListObjectsOptions{
 				Recursive: true,
 			}
-			if len(parts) > 0 {
-				ao.Prefix = filepath.Join(parts[1:]...)
+			if prefix != "" {
+				ao.Prefix = prefix
 			}
 			info := m.ListObjects(context.Background(), bucket, ao)
 			for {
