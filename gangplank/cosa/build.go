@@ -218,7 +218,7 @@ func GetCommandBuildableArtifacts() []string {
 			continue
 		case "iso", "live-iso", "live-kernel", "live-initramfs", "live-rootfs":
 			if !liveAdded {
-				ret = append(ret, "live-iso")
+				ret = append(ret, "live")
 				liveAdded = true
 			}
 		default:
