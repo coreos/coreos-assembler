@@ -281,8 +281,7 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		return errors.Wrapf(err, "Could not list blk devices through qmp")
 	}
 
-	var blkdev string
-	var bootdev string
+	var bootdev, primarydev, secondarydev string
 	// Get bootdevice for pxe boot
 	for _, dev := range devs.Return {
 		switch dev.Type {
@@ -298,8 +297,10 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		switch dev.Device {
 		case "installiso":
 			bootdev = devpath
-		case "d1":
-			blkdev = devpath
+		case "d1", "mpath10":
+			primarydev = devpath
+		case "mpath11":
+			secondarydev = devpath
 		default:
 			break
 		}
@@ -310,8 +311,14 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		return errors.Wrapf(err, "Could not set bootindex for bootdev")
 	}
 	// set bootindex to 1 to boot from disk
-	if err := setBootIndexForDevice(monitor, blkdev, 1); err != nil {
-		return errors.Wrapf(err, "Could not set bootindex for blkdev")
+	if err := setBootIndexForDevice(monitor, primarydev, 1); err != nil {
+		return errors.Wrapf(err, "Could not set bootindex for primarydev")
+	}
+	// set bootindex to 2 for secondary multipath disk
+	if secondarydev != "" {
+		if err := setBootIndexForDevice(monitor, secondarydev, 2); err != nil {
+			return errors.Wrapf(err, "Could not set bootindex for secondarydev")
+		}
 	}
 	return nil
 }
