@@ -121,6 +121,8 @@ func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
 		return []string{defaultBaseCommand}, nil
 	case "finalize":
 		return []string{defaultFinalizeCommand}, nil
+	case "live":
+		return []string{fmt.Sprintf("cosa buildextend-%s", b)}, nil
 	}
 
 	if cosa.CanArtifact(b) {
@@ -329,7 +331,7 @@ func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) e
 
 var (
 	// pseudoStages are special setup and tear down phases.
-	pseudoStages = []string{"base", "finalize"}
+	pseudoStages = []string{"base", "finalize", "live"}
 	// buildableArtifacts are known artifacts types from the schema.
 	buildableArtifacts = append(pseudoStages, cosa.GetCommandBuildableArtifacts()...)
 
@@ -386,11 +388,11 @@ func addShorthandToStage(artifact string, stage *Stage) {
 				BuildArtifacts: []string{"finalize"},
 				ExecutionOrder: 999,
 			}
-		case "live-iso":
+		case "live":
 			return &Stage{
 				ExecutionOrder:   2,
-				BuildArtifacts:   []string{"live-iso"},
-				RequireArtifacts: []string{"qemu", "metal", "metal4k"},
+				BuildArtifacts:   []string{"live"},
+				RequireArtifacts: []string{"ostree", "metal", "metal4k"},
 			}
 		case "metal":
 			return &Stage{
