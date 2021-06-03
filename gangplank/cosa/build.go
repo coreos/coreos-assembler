@@ -91,7 +91,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 		return nil, "", fmt.Errorf("build is undefined")
 	}
 
-	p := filepath.Join(dir, "builds", buildID, arch)
+	p := filepath.Join(dir, buildID, arch)
 	f, err := Open(filepath.Join(p, CosaMetaJSON))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to open %s to read meta.json: %w", p, err)

@@ -41,11 +41,12 @@ import (
 // minioServer describes a Minio S3 Object stoarge to start.
 type minioServer struct {
 	AccessKey      string `json:"accesskey"`
-	SecretKey      string `json:"secretkey"`
+	ExternalServer bool   `json:"external_server"` //indicates that a server should not be started
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
-	ExternalServer bool   `json:"external_server"` //indicates that a server should not be started
 	Region         string `json:"region"`
+	SecretKey      string `json:"secretkey"`
+	Secure         bool   `json:"secure"` // indicates use of TLS
 
 	// overSSH describes how to forward the Minio Port over SSH
 	// This option is only useful with envVar CONTAINER_HOST running
@@ -126,11 +127,21 @@ func newMinioServer(cfgFile string) *minioServer {
 
 // GetClient returns a Minio Client
 func (m *minioServer) client() (*minio.Client, error) {
+	region := m.Region
+	var secure bool
+	if m.ExternalServer {
+		if strings.Contains(m.Host, "s3.amazonaws.com") {
+			secure = true
+			if m.Region == "" {
+				region = "us-east-1"
+			}
+		}
+	}
 	return minio.New(fmt.Sprintf("%s:%d", m.Host, m.Port),
 		&minio.Options{
 			Creds:  credentials.NewStaticV4(m.AccessKey, m.SecretKey, ""),
-			Secure: false,
-			Region: m.Region,
+			Secure: secure,
+			Region: region,
 		},
 	)
 }
@@ -152,14 +163,6 @@ func (m *minioServer) start(ctx context.Context) error {
 			started = true
 		}
 
-		mc, err := m.client()
-		if err != nil {
-			return err
-		}
-		if _, err := mc.ListBuckets(ctx); err != nil {
-			return err
-		}
-
 		if m.ExternalServer {
 			return nil
 		}
@@ -167,7 +170,8 @@ func (m *minioServer) start(ctx context.Context) error {
 		if m.overSSH != nil {
 			m.overSSH.port = m.Port
 			log.WithField("host", m.overSSH.Host).Info("Setting up remote SSH forwarding")
-			m.sshStopCh, err = sshForwarder(ctx, m.overSSH)
+			sshStopCh, err := sshForwarder(ctx, m.overSSH)
+			m.sshStopCh = sshStopCh
 			if err != nil {
 				log.WithError(err).Fatal("failed to create ssh tunnel")
 			}

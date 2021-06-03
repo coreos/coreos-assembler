@@ -108,8 +108,8 @@ func runPod(c *cobra.Command, args []string) {
 					minioSshRemoteKey = cosaPodmanRemoteSshKey
 				}
 				log.WithFields(log.Fields{
-					"remote user":    minioSshRemoteUser,
-					"remote key":     cosaPodmanRemoteSshKey,
+					"remote user": minioSshRemoteUser,
+					"remote key":  cosaPodmanRemoteSshKey,
 					"remote host": minioSshRemoteHost,
 				}).Info("Minio will be forwarded to remote host")
 			}

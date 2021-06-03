@@ -34,7 +34,7 @@ type buildsJSON struct {
 }
 
 func getBuilds(dir string) (*buildsJSON, error) {
-	path := filepath.Join(dir, "builds", CosaBuildsJSON)
+	path := filepath.Join(dir, CosaBuildsJSON)
 	f, err := Open(path)
 	if err != nil {
 		return nil, ErrNoBuildsFound
