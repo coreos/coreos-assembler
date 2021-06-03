@@ -82,7 +82,28 @@ chattr +C file ~/workdir
 gangplank pod --workDir ~/workDir <options
 ```
 
-#### Secret Discovery
+### Remote Podman
+
+Gangplank supports the use of remote Podman containers via the Podman GoLang bindings. Since the binding are controllable through envVars, Gangplank will blindly run remote containers in podman mode when `CONTAINER_HOST` is defined, although Gangplank tries to be smart about it.
+
+To use remote podman, users are advised to [follow the remote-podman guide](https://github.com/containers/podman/blob/master/docs/tutorials/remote_client.md).
+
+Example invocations:
+```
+$ gangplank pod --podman --remote ssh://tr@horcrux.dev/run/user/1000/podman/podman.sock -A base
+```
+
+or
+
+```
+$ export CONTAINER_HOST='ssh://tr@horcrux.dev/run/user/1000/podman/podman.sock'
+$ export CONTAINER_SSHKEY='/path/to/sskkey'
+$ gangplank pod --podman -A base
+```
+
+Unless an external Minio Server has been defined, Ganglank will forward Minio over SSH for return of the artifacts.
+
+#### Secret Discovery (Kubernetes/OCP)
 
 Gangplank has first-class secret discovery, but does not require them. To find secrets, Gangplank will iterate over all secrets that have been annotated using `coreos-assembler.coreos.com/secret` and check the value against known secrets (i.e. AWS, GCP, etc.). If the secret is known, then the _workers_ will have the secret exposed via envVar or with an envVar pointer to the files.
 
@@ -113,7 +134,7 @@ At start, Gangplank will decode the envVar of `COSA_WORK_POD_JSON`, which is def
 
 Once the required artifacts, if any, are found, Gangplank will then start the worker pod. The worker pod will always run `cosa init` before running any other command. Then, the worker pod, will request dependencies over Minio from the orgin Gangplank, process the work, and then return _known_ files back.
 
-If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows for sharing a minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands.
+If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows to use an shared or external minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands. Gangplank further, support the use of S3-compatible object stores (i.e. AWS) via the `-m` directive. Gangplank uses the object store backend for reading files and discovery of requirements.
 
 Regardless of where the pod is being run, Gangplank will stream logs from the worker pods. If the supervising Gangplank is terminated, the workers are terminated.
 
@@ -309,3 +330,40 @@ Gangplank used the schema for:
 - locating artifacts via their top level name (i.e. `qemu` or `metal4k`)
 - creating `cosa buildextend-*` commands
 - templating commands
+
+## Minio
+
+The choice of Minio was deliberate: its an open source S3-comptabile object store that is light weight, and has GoLang bindings. The use of Minio in the case of Gangplank is purely for the coordination files. Gangplank requires either Minio or access to an S3 object store.
+
+### Standalone mode
+
+If an external Minio/S3 server is not defined, Gangplank run Minio from directory defined as `--srvDir`. "Buckets" like `builds` and `cache` will be seen after a successful run.
+
+### External mode
+
+Running Minio in external mode is relatively easy:
+- [Simple OpenShift Deployment](https://github.com/darkmuggle/minio-ocp)
+- [Minio's Official Kubuernetes Documentation](https://docs.min.io/docs/deploy-minio-on-kubernetes.html)
+- Podman:
+```
+$ podman volume create minio
+$ podman create -p 9000 --name minio -v minio:/data \
+    -e MINIO_ACCESS_KEY=key \
+    -e MINIO_SECRET_ACCESS_KEY=key \
+    docker.io/minio/minio:latest \
+    server /data
+$ podman start minio
+```
+
+Gangplank understands how to use an external minio host via `-m config.json`. Where `config.json` has the following format:
+```
+{
+  "accesskey": "minioadmin",
+  "secretkey": "minioadmin",
+  "host": "192.168.3.9",
+  "port": 9000,
+  "external_server": true,
+  "region": ""
+}
+
+```
