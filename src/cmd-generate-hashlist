@@ -72,8 +72,6 @@ class HashListV1(dict):
         :type checksum: str
         :param commit: The ostree commit
         :type commit: str
-        :param commit_tar: Path to the ostree tar from the metadata
-        :type commit_tar: str
         :param hashlist: Initialized hash list instance
         :type hashlist: HashListV1
         :returns: Nothing
@@ -81,14 +79,11 @@ class HashListV1(dict):
         :raises: IndexError
         """
         checkout = 'tmp/repo/tmp/keylime-checkout'
-        commit_tar = os.path.join(
-            self._metadata.build_dir,
-            self._metadata['images']['ostree']['path'])
 
         import_ostree_commit(
             'tmp/repo',
-            self._metadata['ostree-commit'],
-            commit_tar,
+            self._metadata.build_dir,
+            self._metadata,
             force=True)
         subprocess.check_call([
             'ostree', 'checkout',

@@ -122,7 +122,7 @@ def test_import_ostree_commit(monkeypatch, tmpdir):
                     'ostree', 'init', '--repo', tmpdir, '--mode=archive']
             if self.check_call_count == 1:
                 assert args[0][0:2] == ['tar', '-C']
-                assert args[0][3:5] == ['-xf', 'tarfile']
+                assert args[0][3:5] == ['-xf', './tarfile']
             if self.check_call_count == 2:
                 assert args[0][0:4] == [
                     'ostree', 'pull-local', '--repo', tmpdir]
@@ -138,8 +138,15 @@ def test_import_ostree_commit(monkeypatch, tmpdir):
     # Monkey patch the subprocess function
     monkeypatch.setattr(subprocess, 'check_call', monkeyspcheck_call())
     monkeypatch.setattr(subprocess, 'call', monkeyspcall)
-    # Test
-    cmdlib.import_ostree_commit(tmpdir, 'commit', 'tarfile')
+    build = {
+        'ostree-commit': 'commit',
+        'images': {
+            'ostree': {
+                'path': 'tarfile'
+            }
+        }
+    }
+    cmdlib.import_ostree_commit(tmpdir, './', build)
 
 
 def test_image_info(tmpdir):

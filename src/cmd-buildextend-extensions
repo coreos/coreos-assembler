@@ -34,8 +34,7 @@ def main():
         raise Exception(f"Missing {extensions_src}")
 
     commit = buildmeta['ostree-commit']
-    ostree_tarball = os.path.join(builddir, buildmeta['images']['ostree']['path'])
-    cmdlib.import_ostree_commit('tmp/repo', commit, ostree_tarball)
+    cmdlib.import_ostree_commit('tmp/repo', builddir, buildmeta)
 
     tmpworkdir = prepare_tmpworkdir()
     changed = run_rpmostree(tmpworkdir, commit, treefile_src, extensions_src)
