@@ -232,7 +232,9 @@ def rm_allow_noent(path):
         pass
 
 
-def import_ostree_commit(repo, commit, tarfile, force=False):
+def import_ostree_commit(repo, buildpath, buildmeta, force=False):
+    commit = buildmeta['ostree-commit']
+    tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
     # create repo in case e.g. tmp/ was cleared out; idempotent
     subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
 

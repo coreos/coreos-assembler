@@ -195,7 +195,7 @@ def robosign_ostree(args, s3, build, gpgkey):
     # and finally add it to the tmprepo too so that buildextend-(qemu|metal)
     # will pull it: we could just nuke the repo to force a re-untar, but it
     # might nuke a more recent commit if we're not operating on the latest
-    import_ostree_commit('tmp/repo', checksum, commit_tarfile, force=True)
+    import_ostree_commit('tmp/repo', builddir, build, force=True)
 
 
 def robosign_images(args, s3, build, gpgkey):
