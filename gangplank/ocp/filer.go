@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -139,6 +140,11 @@ func (m *minioServer) client() (*minio.Client, error) {
 	}
 	return minio.New(fmt.Sprintf("%s:%d", m.Host, m.Port),
 		&minio.Options{
+			Transport: &http.Transport{
+				MaxIdleConns:       10,
+				IdleConnTimeout:    0,
+				DisableCompression: false, // force compression
+			},
 			Creds:  credentials.NewStaticV4(m.AccessKey, m.SecretKey, ""),
 			Secure: secure,
 			Region: region,
