@@ -1,26 +1,25 @@
 package ocp
 
 import (
-	"context"
-	"errors"
 	"fmt"
+	"io"
+	"net"
 	"os"
-	"os/exec"
-	"strings"
-	"syscall"
+	"strconv"
 	"time"
 
+	"github.com/containers/podman/v3/pkg/terminal"
 	"github.com/coreos/gangplank/spec"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 type SSHForwardPort struct {
-	Host string
-	User string
-	Key  string
-
-	// port is not exported
-	port int
+	Host    string
+	User    string
+	Key     string
+	SSHPort int
 }
 
 // getSshMinioForwarder returns an SSHForwardPort from the jobspec
@@ -37,107 +36,157 @@ func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort {
 	}
 }
 
-// sshForwarder is a generic forwarder from the local host to a remote host
-func sshForwarder(ctx context.Context, cfg *SSHForwardPort) (chan<- bool, error) {
-	termCh := make(chan bool, 2048)
-
-	if cfg == nil {
-		return nil, errors.New("configuration for SSH forwarding is nil")
+// sshClient is borrowed from libpod, and has been modified to return an sshClient.
+func sshClient(user, host, port string, secure bool, identity string) (*ssh.Client, error) {
+	var signers []ssh.Signer // order Signers are appended to this list determines which key is presented to server
+	if len(identity) > 0 {
+		s, err := terminal.PublicKey(identity, []byte(""))
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to parse identity %q", err, identity)
+		}
+		signers = append(signers, s)
 	}
 
-	var cmd *exec.Cmd
-	run := func() error {
-		host := cfg.Host
-		if cfg.User != "" && !strings.Contains(cfg.Host, "@") {
-			host = fmt.Sprintf("%s@%s", cfg.User, cfg.Host)
-		}
-		args := []string{"ssh",
-			"-o", "ServerAliveInterval=15",
-			"-o", "ServerAliveCountMax=5",
-			"-o", "StrictHostKeyChecking=no",
-			"-N", "-R",
-			fmt.Sprintf("%d:127.0.0.1:%d", cfg.port, cfg.port), host,
+	if sock, found := os.LookupEnv("SSH_AUTH_SOCK"); found {
+		c, err := net.Dial("unix", sock)
+		if err != nil {
+			return nil, err
 		}
 
-		if cfg.Key != "" {
-			args = append(args, "-i", cfg.Key)
+		agentSigners, err := agent.NewClient(c).Signers()
+		if err != nil {
+			return nil, err
 		}
-
-		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-		// wait for SSH to start
-		time.Sleep(5 * time.Second)
-		return nil
+		signers = append(signers, agentSigners...)
 	}
 
-	// Give a first start to make sure it works
-	if err := run(); err != nil {
-		return nil, err
+	var authMethods []ssh.AuthMethod
+	if len(signers) > 0 {
+		var dedup = make(map[string]ssh.Signer)
+		// Dedup signers based on fingerprint, ssh-agent keys override CONTAINER_SSHKEY
+		for _, s := range signers {
+			fp := ssh.FingerprintSHA256(s.PublicKey())
+			_ = dedup[fp]
+			dedup[fp] = s
+		}
+
+		var uniq []ssh.Signer
+		for _, s := range dedup {
+			uniq = append(uniq, s)
+		}
+		authMethods = append(authMethods, ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
+			return uniq, nil
+		}))
 	}
 
-	// Run and monitor ssh
+	if len(authMethods) == 0 {
+		callback := func() (string, error) {
+			pass, err := terminal.ReadPassword("Login password:")
+			return string(pass), err
+		}
+		authMethods = append(authMethods, ssh.PasswordCallback(callback))
+	}
+
+	callback := ssh.InsecureIgnoreHostKey()
+	if secure {
+		if port != "22" {
+			host = fmt.Sprintf("[%s]:%s", host, port)
+		}
+		key := terminal.HostKey(host)
+		if key != nil {
+			callback = ssh.FixedHostKey(key)
+		}
+	}
+
+	return ssh.Dial("tcp",
+		net.JoinHostPort(host, port),
+		&ssh.ClientConfig{
+			User:            user,
+			Auth:            authMethods,
+			HostKeyCallback: callback,
+			HostKeyAlgorithms: []string{
+				ssh.KeyAlgoRSA,
+				ssh.KeyAlgoDSA,
+				ssh.KeyAlgoECDSA256,
+				ssh.KeyAlgoECDSA384,
+				ssh.KeyAlgoECDSA521,
+				ssh.KeyAlgoED25519,
+			},
+			Timeout: 5 * time.Second,
+		},
+	)
+}
+
+// fowardOverSSH forwards the minio connection over SSH.
+func (m *minioServer) fowardOverSSH(termCh termChan, errCh chan<- error) error {
+	sshPort := 22
+	if m.overSSH.SSHPort != 0 {
+		sshPort = m.overSSH.SSHPort
+	}
+	sshport := strconv.Itoa(sshPort)
+
+	l := log.WithFields(log.Fields{
+		"remote host": m.overSSH.Host,
+		"remote user": m.overSSH.User,
+		"port":        m.Port,
+	})
+
+	l.Info("Forwarding local port over SSH to remote host")
+
+	client, err := sshClient(m.overSSH.User, m.overSSH.Host, sshport, false, m.overSSH.Key)
+	if err != nil {
+		return err
+	}
+
+	// Open the remote port over SSH
+	remotePort, err := client.Listen("tcp4", fmt.Sprintf("127.0.0.1:%d", m.Port))
+	if err != nil {
+		err = fmt.Errorf("%w: failed to open remote port over sshfor proxy", err)
+		return err
+	}
+
+	// copyIO is a blind copier that copies between source and destination
+	copyIO := func(src, dest net.Conn) {
+		defer src.Close()  //nolint
+		defer dest.Close() //nolint
+		_, _ = io.Copy(src, dest)
+	}
+
+	// proxy is a helper function that connects the local port to the remoteClient
+	proxy := func(conn net.Conn) {
+		proxy, err := net.Dial("tcp4", fmt.Sprintf("127.0.0.1:%d", m.Port))
+		if err != nil {
+			err = fmt.Errorf("%w: failed to open local port for proxy", err)
+			errCh <- err
+			return
+		}
+		go copyIO(conn, proxy)
+		go copyIO(proxy, conn)
+	}
+
 	go func() {
+		// When the termination signal is recieved, the defers in copyio will be triggered,
+		// resulting in the go-routines exiting.
+		<-termCh
+		l.Info("Shutting down ssh forwarding")
+		errCh <- remotePort.Close()
+		errCh <- client.Close()
+	}()
 
-		// term kills the SSH forwarding command, and then unsets
-		term := func() {
-			log.Info("terminating ssh forwarder")
-			_ = syscall.Kill(cmd.Process.Pid, syscall.SIGTERM)
-			cmd = nil
-		}
-
-		// monitor ensures that the ssh command is running
-		monitor := func() <-chan bool {
-			done := make(chan bool)
-			go func() {
-				for {
-					select {
-					// terminate the monitor function if singalled
-					case t, ok := <-termCh:
-						if t || !ok {
-							return
-						}
-					// wait until the command terminates
-					default:
-						// do nothing if cmd has been undefined
-						if cmd == nil {
-							continue
-						}
-						// wait until cmd completes
-						_ = cmd.Wait()
-						done <- true
-					}
-				}
-			}()
-			return done
-		}
-
-		failCount := 0
+	go func() {
+		// Loop checking for connections or termination.
 		for {
-			select {
-			// terminate the ssh command and exit on signal
-			case t, ok := <-termCh:
-				if t || !ok {
-					term()
+			// For each connection, create a proxy from the remote port to the local port
+			remoteClient, err := remotePort.Accept()
+			if err != nil {
+				if err == io.EOF {
 					return
 				}
-			// in case of exit from ssh, restart up to three times and log the message
-			case <-monitor():
-				log.Infof("ssh forwarder exited")
-				if failCount <= 3 {
-					log.Warn("restarting ssh")
-					_ = run()
-					failCount++
-					continue
-				}
-				log.Errorf("ssh forwarder exited with code %d", cmd.ProcessState.ExitCode())
-				return
+				log.WithError(err).Warn("SSH Client error")
 			}
+			proxy(remoteClient)
 		}
 	}()
 
-	return termCh, nil
+	return nil
 }

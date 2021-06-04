@@ -54,7 +54,9 @@ type minioServer struct {
 	// in podman mode.
 	overSSH *SSHForwardPort
 	// sshStopCh is used to shutdown the SSH port forwarding.
-	sshStopCh chan<- bool
+	sshStopCh chan bool
+	// sshErrCh is
+	sshErrCh chan error
 
 	dir          string
 	minioOptions minio.Options
@@ -69,6 +71,14 @@ func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string, ove
 
 	if err := m.start(ctx); err != nil {
 		return nil, err
+	}
+
+	if m.overSSH != nil {
+		m.sshStopCh = make(chan bool, 1)
+		m.sshErrCh = make(chan error, 256)
+		if err := m.fowardOverSSH(m.sshStopCh, m.sshErrCh); err != nil {
+			return nil, err
+		}
 	}
 
 	m.ExternalServer = true
@@ -168,21 +178,6 @@ func (m *minioServer) start(ctx context.Context) error {
 			}
 			started = true
 		}
-
-		if m.ExternalServer {
-			return nil
-		}
-
-		if m.overSSH != nil {
-			m.overSSH.port = m.Port
-			log.WithField("host", m.overSSH.Host).Info("Setting up remote SSH forwarding")
-			sshStopCh, err := sshForwarder(ctx, m.overSSH)
-			m.sshStopCh = sshStopCh
-			if err != nil {
-				log.WithError(err).Fatal("failed to create ssh tunnel")
-			}
-		}
-
 		return nil
 	}
 
@@ -283,6 +278,7 @@ func (m *minioServer) Kill() {
 	if m.cmd == nil {
 		return
 	}
+
 	// Kill any forward SSH connections.
 	if m.overSSH != nil && m.sshStopCh != nil {
 		m.sshStopCh <- true
