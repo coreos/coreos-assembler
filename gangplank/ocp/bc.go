@@ -388,6 +388,12 @@ binary build interface.`)
 	// Terminate is used to tell all go-routines to end
 	terminate := make(chan bool)
 
+	// If defined, startup SSH before any work begins
+	if m.overSSH != nil {
+		if err := m.fowardOverSSH(terminate, errorCh); err != nil {
+			return err
+		}
+	}
 	// Watch the channels for signals to terminate
 	errored := false
 	go func() {
