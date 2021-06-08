@@ -77,6 +77,10 @@ var generatedSchemaJSON = `{
              "image",
              "url"
          ],
+         "optional": [
+             "bucket",
+             "region"
+         ],
          "properties": {
            "image": {
              "$id":"#/cloudartifact/image",
@@ -87,6 +91,16 @@ var generatedSchemaJSON = `{
              "$id":"#/cloudartifact/url",
              "type":"string",
              "title":"URL"
+            },
+            "bucket": {
+             "$id":"#/cloudartifact/bucket",
+             "type":"string",
+             "title":"Bucket"
+            },
+            "region": {
+             "$id":"#/cloudartifact/region",
+             "type":"string",
+             "title":"Region"
             }
           }
      },

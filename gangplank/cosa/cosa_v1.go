@@ -102,8 +102,10 @@ type BuildArtifacts struct {
 }
 
 type Cloudartifact struct {
-	Image string `json:"image"`
-	URL   string `json:"url"`
+	Bucket string `json:"bucket,omitempty"`
+	Image  string `json:"image"`
+	Region string `json:"region,omitempty"`
+	URL    string `json:"url"`
 }
 
 type Extensions struct {
