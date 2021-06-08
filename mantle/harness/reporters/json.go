@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/coreos/mantle/harness/testresult"
@@ -31,6 +32,8 @@ type jsonReporter struct {
 	// Context variables
 	Platform string `json:"platform"`
 	Version  string `json:"version"`
+
+	mutex sync.Mutex
 }
 
 type jsonTest struct {
@@ -45,10 +48,14 @@ func NewJSONReporter(filename, platform, version string) *jsonReporter {
 		Platform: platform,
 		Version:  version,
 		filename: filename,
+		mutex:    sync.Mutex{},
 	}
 }
 
 func (r *jsonReporter) ReportTest(name string, result testresult.TestResult, duration time.Duration, b []byte) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	r.Tests = append(r.Tests, jsonTest{
 		Name:     name,
 		Result:   result,
