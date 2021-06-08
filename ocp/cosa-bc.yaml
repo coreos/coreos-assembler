@@ -22,13 +22,13 @@ parameters:
     value: coreos-assembler
   - description: Image Tag to use
     name: IMAGE_TAG
-    value: buildconfig-master
+    value: buildconfig-main
   - description: Service Account
     name: SA
     value: cosa-builder
   - description: Tag to use for this template
     name: TAG
-    value: master
+    value: main
 
 objects:
 
