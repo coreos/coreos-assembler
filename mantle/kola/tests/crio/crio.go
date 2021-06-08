@@ -182,10 +182,10 @@ func init() {
 		ClusterSize: 1,
 		Name:        `crio.base`,
 		// crio pods require fetching a kubernetes pause image
-		Flags:      []register.Flag{register.RequiresInternetAccess},
-		Distros:    []string{"rhcos"},
-		UserDataV3: enableCrioIgn,
-		Tags:       []string{"crio"},
+		Flags:    []register.Flag{register.RequiresInternetAccess},
+		Distros:  []string{"rhcos"},
+		UserData: enableCrioIgn,
+		Tags:     []string{"crio"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         crioNetwork,
@@ -193,7 +193,7 @@ func init() {
 		Name:        "crio.network",
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		Distros:     []string{"rhcos"},
-		UserDataV3:  enableCrioIgn,
+		UserData:    enableCrioIgn,
 		Tags:        []string{"crio"},
 		// qemu-unpriv machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu-unpriv"},

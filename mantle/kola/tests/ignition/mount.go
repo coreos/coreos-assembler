@@ -28,7 +28,7 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-var v3IgnitionConfig types.Config
+var config types.Config
 
 func init() {
 	// mount disks to `/var/log` and `/var/lib/containers`
@@ -112,16 +112,16 @@ func testMountPartitions(c cluster.TestCluster) {
 func createClusterValidate(c cluster.TestCluster, options platform.MachineOptions, ignDisks []types.Disk, v2size int, v3sizeMiB int) {
 	var m platform.Machine
 	var err error
-	v3IgnitionConfig.Storage.Disks = ignDisks
+	config.Storage.Disks = ignDisks
 
 	var serializedConfig []byte
 	switch c.IgnitionVersion() {
 	case "v3":
-		for i := 0; i < len(v3IgnitionConfig.Storage.Disks); i++ {
-			v3IgnitionConfig.Storage.Disks[i].Partitions[0].SizeMiB = &v3sizeMiB
-			v3IgnitionConfig.Storage.Disks[i].Partitions[0].StartMiB = util.IntToPtr(0)
+		for i := 0; i < len(config.Storage.Disks); i++ {
+			config.Storage.Disks[i].Partitions[0].SizeMiB = &v3sizeMiB
+			config.Storage.Disks[i].Partitions[0].StartMiB = util.IntToPtr(0)
 		}
-		buf, err := json.Marshal(v3IgnitionConfig)
+		buf, err := json.Marshal(config)
 		if err != nil {
 			break
 		}
@@ -160,7 +160,7 @@ func setupIgnitionConfig() {
 		logpartdeviceid = "by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8"
 	}
 
-	v3IgnitionConfig = types.Config{
+	config = types.Config{
 		Ignition: types.Ignition{
 			Version: "3.0.0",
 		},

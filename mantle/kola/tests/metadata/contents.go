@@ -42,7 +42,7 @@ func init() {
 		Run:         verifyAWS,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
-		UserDataV3:  enableMetadataService,
+		UserData:    enableMetadataService,
 		Distros:     []string{"fcos"},
 	})
 
@@ -51,7 +51,7 @@ func init() {
 		Run:         verifyAzure,
 		ClusterSize: 1,
 		Platforms:   []string{"azure"},
-		UserDataV3:  enableMetadataService,
+		UserData:    enableMetadataService,
 		Distros:     []string{"fcos"},
 	})
 
@@ -60,7 +60,7 @@ func init() {
 		Run:         verifyPacket,
 		ClusterSize: 1,
 		Platforms:   []string{"packet"},
-		UserDataV3:  enableMetadataService,
+		UserData:    enableMetadataService,
 		Distros:     []string{"fcos"},
 	})
 }

@@ -14,7 +14,7 @@ func init() {
 		Name:        `fips.enable`,
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 			"ignition": {
 				"config": {
 					"replace": {
@@ -62,7 +62,7 @@ func init() {
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu", "qemu-unpriv"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 			"ignition": {
 				"config": {
 					"replace": {

@@ -24,7 +24,7 @@ import (
 
 func init() {
 	// Set the hostname
-	configV3 := conf.Ignition(`{
+	config := conf.Ignition(`{
 		          "ignition": {
 		              "version": "3.0.0"
 		          },
@@ -49,7 +49,7 @@ func init() {
 		Name:             "coreos.ignition.sethostname",
 		Run:              setHostname,
 		ClusterSize:      1,
-		UserDataV3:       configV3,
+		UserData:         config,
 		ExcludePlatforms: []string{"azure"},
 		Tags:             []string{"ignition"},
 	})

@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	localSecurityClientV3 = conf.Ignition(`{
+	localSecurityClient = conf.Ignition(`{
         "ignition": {
             "version": "3.0.0",
             "config": {
@@ -57,7 +57,7 @@ func init() {
 		Run:         securityTLS,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{
-			"TLSServeV3": register.CreateNativeFuncWrap(TLSServeV3),
+			"TLSServe": register.CreateNativeFuncWrap(TLSServe),
 		},
 		Tags: []string{"ignition"},
 		// DO: https://github.com/coreos/bugs/issues/2205
@@ -96,8 +96,8 @@ EOF
 	var conf *conf.UserData
 	switch c.IgnitionVersion() {
 	case "v3":
-		serveFunc = "TLSServeV3"
-		conf = localSecurityClientV3
+		serveFunc = "TLSServe"
+		conf = localSecurityClient
 	default:
 		c.Fatal("unknown ignition version")
 	}
@@ -150,8 +150,8 @@ func ServeTLS(customFile []byte) error {
 	select {}
 }
 
-func TLSServeV3() error {
-	customFileV3 := []byte(`{
+func TLSServe() error {
+	customFile := []byte(`{
         "ignition": { "version": "3.0.0" },
         "storage": {
             "files": [{
@@ -160,5 +160,5 @@ func TLSServeV3() error {
             }]
         }
     }`)
-	return ServeTLS(customFileV3)
+	return ServeTLS(customFile)
 }

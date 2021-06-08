@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	localClientV3 = conf.Ignition(`{
+	localClient = conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
 		  },
@@ -82,7 +82,7 @@ func init() {
 		Tags:        []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
 		  },
@@ -119,7 +119,7 @@ func init() {
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
 		Tags:        []string{"ignition"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0",
 		      "config": {
@@ -152,7 +152,7 @@ func init() {
 		Tags:        []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205 for DO
 		ExcludePlatforms: []string{"do"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
 		  },
@@ -193,7 +193,7 @@ func resourceLocal(c cluster.TestCluster) {
 	var conf *conf.UserData
 	switch c.IgnitionVersion() {
 	case "v3":
-		conf = localClientV3
+		conf = localClient
 	default:
 		c.Fatal("unknown ignition version")
 	}

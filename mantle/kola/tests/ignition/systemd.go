@@ -30,7 +30,7 @@ func init() {
 		Tags:        []string{"ignition"},
 		// enable nfs-server, touch /etc/exports as it doesn't exist by default on Container Linux,
 		// and touch /var/lib/nfs/etab (https://bugzilla.redhat.com/show_bug.cgi?id=1394395) for RHCOS
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
     "ignition": {"version": "3.0.0"},
     "systemd": {
         "units": [{
