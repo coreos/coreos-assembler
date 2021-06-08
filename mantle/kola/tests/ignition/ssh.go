@@ -28,7 +28,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "openstack"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
-		UserDataV3:       conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
+		UserData:         conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
 		Tags:             []string{"ignition"},
 	})
 }

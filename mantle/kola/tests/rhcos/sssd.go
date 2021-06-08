@@ -29,7 +29,7 @@ func init() {
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 			"ignition": {
 				"version": "3.0.0"
 			}

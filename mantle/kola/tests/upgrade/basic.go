@@ -66,7 +66,7 @@ func init() {
 		// We use strings.Replace here because fmt.Sprintf would try to
 		// interpret the percent signs and there's too many of them to be worth
 		// escaping.
-		UserDataV3: conf.Ignition(strings.Replace(`{
+		UserData: conf.Ignition(strings.Replace(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {
     "units": [

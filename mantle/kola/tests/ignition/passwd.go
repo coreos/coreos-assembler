@@ -30,7 +30,7 @@ func init() {
 		Run:         groups,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 		             "ignition": { "version": "3.0.0" },
 		             "systemd": {
 		               "units": [{
@@ -58,7 +58,7 @@ func init() {
 		Run:         users,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 		             "ignition": { "version": "3.0.0" },
 		             "passwd": {
 		               "users": [

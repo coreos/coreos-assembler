@@ -26,7 +26,7 @@ func init() {
 		Run:         runsOnce,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
                              "ignition": { "version": "3.0.0" },
                              "storage": {
                                "files": [

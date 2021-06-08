@@ -38,7 +38,7 @@ func init() {
 		Name:        "rpmostree.install-uninstall",
 		Tags:        []string{"rpm-ostree"},
 		// this Ignition config lands the EPEL repo + key
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
   "ignition": {
     "version": "3.0.0"
   },

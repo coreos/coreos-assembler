@@ -35,7 +35,7 @@ func init() {
 		Run:         rhcosClusterInsecure,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.insecure",
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {
     "units": [
@@ -60,7 +60,7 @@ func init() {
 		Run:         rhcosClusterTLS,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.tls",
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {
     "units": [

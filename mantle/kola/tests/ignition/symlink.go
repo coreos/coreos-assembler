@@ -29,7 +29,7 @@ func init() {
 		ClusterSize: 1,
 		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
-		UserDataV3: conf.Ignition(`{
+		UserData: conf.Ignition(`{
 		  "ignition": {
 		      "version": "3.0.0"
 		  },
