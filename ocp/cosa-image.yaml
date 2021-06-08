@@ -55,8 +55,16 @@ objects:
       tags:
       - from:
           kind: DockerImage
-          name: 'registry.fedoraproject.org/fedora:32'
-        name: '32'
+          name: 'registry.fedoraproject.org/fedora:33'
+        name: '33'
+        referencePolicy:
+          type: Source
+        importPolicy:
+          scheduled: true
+      - from:
+          kind: DockerImage
+          name: 'registry.fedoraproject.org/fedora:34'
+        name: '34'
         referencePolicy:
           type: Source
         importPolicy:
