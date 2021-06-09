@@ -51,23 +51,24 @@ case $arch in
 esac
 export DEFAULT_TERMINAL
 
-_privileged=
+COSA_PRIVILEGED=
 has_privileges() {
-    if [ -z "${_privileged:-}" ]; then
+    if [ -z "${COSA_PRIVILEGED:-}" ]; then
         if [ -n "${FORCE_UNPRIVILEGED:-}" ]; then
             info "Detected FORCE_UNPRIVILEGED; using virt"
-            _privileged=0
+            COSA_PRIVILEGED=0
         elif ! capsh --print | grep -q 'Bounding.*cap_sys_admin'; then
             info "Missing CAP_SYS_ADMIN; using virt"
-            _privileged=0
+            COSA_PRIVILEGED=0
         elif [ "$(id -u)" != "0" ] && ! sudo true; then
             info "Missing sudo privs; using virt"
-            _privileged=0
+            COSA_PRIVILEGED=0
         else
-            _privileged=1
+            COSA_PRIVILEGED=1
         fi
+        export COSA_PRIVILEGED
     fi
-    [ ${_privileged} == 1 ]
+    [ ${COSA_PRIVILEGED} == 1 ]
 }
 
 depcheck() {
