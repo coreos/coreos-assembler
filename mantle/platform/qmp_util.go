@@ -19,13 +19,8 @@ package platform
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"time"
 
-	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
-
-	"github.com/digitalocean/go-qemu/qmp"
 )
 
 // QOMDev is a QMP monitor, for interactions with a QEMU instance.
@@ -47,27 +42,18 @@ type QOMBlkDev struct {
 	} `json:"return"`
 }
 
-// Create a new QMP socket connection
-func newQMPMonitor(sockaddr string) (*qmp.SocketMonitor, error) {
-	qmpPath := filepath.Join(sockaddr, "qmp.sock")
-	var monitor *qmp.SocketMonitor
-	var err error
-	if err := util.Retry(10, 1*time.Second, func() error {
-		monitor, err = qmp.NewSocketMonitor("unix", qmpPath, 2*time.Second)
-		if err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return nil, errors.Wrapf(err, "Connecting to qemu monitor")
+// runQmpCommand executes a qemu command over the QMP socket.
+func (inst *QemuInstance) runQmpCommand(cmd string) ([]byte, error) {
+	if inst.qmpSocket == nil {
+		return nil, errors.New("qmp socket is not open")
 	}
-	return monitor, nil
+	return inst.qmpSocket.Run([]byte(cmd))
 }
 
-// Executes a query which provides the list of devices and their names
-func listQMPDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMDev, error) {
-	listcmd := []byte(`{ "execute": "qom-list", "arguments": { "path": "/machine/peripheral-anon" } }`)
-	out, err := monitor.Run(listcmd)
+// listDevices used the qmp socket to query which for device and their names.
+func (inst *QemuInstance) listDevices() (*QOMDev, error) {
+	listcmd := `{ "execute": "qom-list", "arguments": { "path": "/machine/peripheral-anon" } }`
+	out, err := inst.runQmpCommand(listcmd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Running QMP list command")
 	}
@@ -79,10 +65,10 @@ func listQMPDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMDev, error
 	return &devs, nil
 }
 
-// Executes a query which provides the list of block devices and their names
-func listQMPBlkDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMBlkDev, error) {
-	listcmd := []byte(`{ "execute": "query-block" }`)
-	out, err := monitor.Run(listcmd)
+// Executes a query which provides the list of block devices and their names.
+func (inst *QemuInstance) listBlkDevices() (*QOMBlkDev, error) {
+	listcmd := `{ "execute": "query-block" }`
+	out, err := inst.runQmpCommand(listcmd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Running QMP list command")
 	}
@@ -94,19 +80,20 @@ func listQMPBlkDevices(monitor *qmp.SocketMonitor, sockaddr string) (*QOMBlkDev,
 	return &devs, nil
 }
 
-// Set the bootindex for the particular device
-func setBootIndexForDevice(monitor *qmp.SocketMonitor, device string, bootindex int) error {
-	cmd := fmt.Sprintf(`{ "execute":"qom-set", "arguments": { "path":"%s", "property":"bootindex", "value":%d } }`, device, bootindex)
-	if _, err := monitor.Run([]byte(cmd)); err != nil {
+// setBootIndenx uses the qmp socket to the bootindex for the particular device.
+func (inst *QemuInstance) setBootIndexForDevice(device string, bootindex int) error {
+	cmd := fmt.Sprintf(`{ "execute":"qom-set", "arguments": { "path":"%s", "property":"bootindex", "value":%d } }`,
+		device, bootindex)
+	if _, err := inst.runQmpCommand(cmd); err != nil {
 		return errors.Wrapf(err, "Running QMP command")
 	}
 	return nil
 }
 
-// Delete a block device for the particular qemu instance
-func deleteBlockDevice(monitor *qmp.SocketMonitor, device string) error {
+// deleteBlockDevice uses the qmp socket to remote a block device.
+func (inst *QemuInstance) deleteBlockDevice(device string) error {
 	cmd := fmt.Sprintf(`{ "execute": "device_del", "arguments": { "id":"%s" } }`, device)
-	if _, err := monitor.Run([]byte(cmd)); err != nil {
+	if _, err := inst.runQmpCommand(cmd); err != nil {
 		return errors.Wrapf(err, "Running QMP command")
 	}
 	return nil

@@ -45,6 +45,7 @@ import (
 
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
+	"github.com/digitalocean/go-qemu/qmp"
 
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
@@ -113,6 +114,9 @@ type QemuInstance struct {
 	hostForwardedPorts []HostForwardPort
 
 	journalPipe *os.File
+
+	qmpSocket     *qmp.SocketMonitor
+	qmpSocketPath string
 }
 
 // Pid returns the PID of QEMU process.
@@ -222,6 +226,11 @@ func (inst *QemuInstance) WaitAll(ctx context.Context) error {
 
 // Destroy kills the instance and associated sidecar processes.
 func (inst *QemuInstance) Destroy() {
+	if inst.qmpSocket != nil {
+		inst.qmpSocket.Disconnect() //nolint // Ignore Errors
+		inst.qmpSocket = nil
+		os.Remove(inst.qmpSocketPath) //nolint // Ignore Errors
+	}
 	if inst.journalPipe != nil {
 		inst.journalPipe.Close()
 		inst.journalPipe = nil
@@ -257,27 +266,11 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		//Not applicable for other arches
 		return nil
 	}
-	monitor, err := newQMPMonitor(inst.tempdir)
-	if err != nil {
-		return fmt.Errorf("could not create QMP connection: %v", err)
-	}
-	if err := monitor.Connect(); err != nil {
-		return errors.Wrapf(err, "Could not connect to QMP device")
-	}
-
-	defer func() {
-		e := monitor.Disconnect()
-		if err2 != nil {
-			err2 = fmt.Errorf("%v; %v", err2, e)
-		} else {
-			err2 = e
-		}
-	}()
-	devs, err := listQMPDevices(monitor, inst.tempdir)
+	devs, err := inst.listDevices()
 	if err != nil {
 		return errors.Wrapf(err, "Could not list devices through qmp")
 	}
-	blkdevs, err := listQMPBlkDevices(monitor, inst.tempdir)
+	blkdevs, err := inst.listBlkDevices()
 	if err != nil {
 		return errors.Wrapf(err, "Could not list blk devices through qmp")
 	}
@@ -308,16 +301,16 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 	}
 
 	// unset bootindex for the boot device
-	if err := setBootIndexForDevice(monitor, bootdev, -1); err != nil {
+	if err := inst.setBootIndexForDevice(bootdev, -1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for bootdev")
 	}
 	// set bootindex to 1 to boot from disk
-	if err := setBootIndexForDevice(monitor, primarydev, 1); err != nil {
+	if err := inst.setBootIndexForDevice(primarydev, 1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for primarydev")
 	}
 	// set bootindex to 2 for secondary multipath disk
 	if secondarydev != "" {
-		if err := setBootIndexForDevice(monitor, secondarydev, 2); err != nil {
+		if err := inst.setBootIndexForDevice(secondarydev, 2); err != nil {
 			return errors.Wrapf(err, "Could not set bootindex for secondarydev")
 		}
 	}
@@ -330,23 +323,8 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 	var primaryDevice string
 	var secondaryDevicePath string
-	monitor, err := newQMPMonitor(inst.tempdir)
-	if err != nil {
-		return errors.Wrapf(err, "Could not connect to QMP device")
-	}
-	if err := monitor.Connect(); err != nil {
-		return errors.Wrapf(err, "Could not connect to QMP device")
-	}
 
-	defer func() {
-		e := monitor.Disconnect()
-		if err2 != nil {
-			err2 = fmt.Errorf("%v; %v", err, e)
-		} else {
-			err2 = e
-		}
-	}()
-	blkdevs, err := listQMPBlkDevices(monitor, inst.tempdir)
+	blkdevs, err := inst.listBlkDevices()
 	if err != nil {
 		return errors.Wrapf(err, "Could not list block devices through qmp")
 	}
@@ -362,20 +340,17 @@ func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 			}
 		}
 	}
-	err = setBootIndexForDevice(monitor, primaryDevice, -1)
-	if err != nil {
+	if err := inst.setBootIndexForDevice(primaryDevice, -1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for %v", primaryDevice)
 	}
 	primaryDevice = primaryDevice[:strings.LastIndex(primaryDevice, "/")]
-	err = deleteBlockDevice(monitor, primaryDevice)
-	if err != nil {
+	if err := inst.deleteBlockDevice(primaryDevice); err != nil {
 		return errors.Wrapf(err, "Could not delete primary device %v", primaryDevice)
 	}
 	if len(secondaryDevicePath) == 0 {
 		return errors.Wrapf(err, "Could not find secondary device")
 	}
-	err = setBootIndexForDevice(monitor, secondaryDevicePath, 1)
-	if err != nil {
+	if err := inst.setBootIndexForDevice(secondaryDevicePath, 1); err != nil {
 		return errors.Wrapf(err, "Could not set bootindex for  %v", secondaryDevicePath)
 	}
 
@@ -1452,10 +1427,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	}
 
-	// Set up QMP (currently used to switch boot order after first boot on aarch64)
-	qmpPath := filepath.Join(builder.tempdir, "qmp.sock")
+	// Set up QMP (currently used to switch boot order after first boot on aarch64.
+	// The qmp socket path must be unique to the instance.
+	inst.qmpSocketPath = filepath.Join(builder.tempdir, fmt.Sprintf("qmp-%d.sock", time.Now().UnixNano()))
 	qmpID := "qemu-qmp"
-	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpID, qmpPath))
+	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpID, inst.qmpSocketPath))
 	builder.Append("-mon", fmt.Sprintf("chardev=%s,mode=control", qmpID))
 
 	// Set up the virtio channel to get Ignition failures by default
@@ -1510,6 +1486,22 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	inst.tempdir = builder.tempdir
 	builder.tempdir = ""
 	cleanupInst = false
+
+	// create the qmp.SocketMonitor
+	if err := util.Retry(10, 1*time.Second,
+		func() error {
+			sockMonitor, err := qmp.NewSocketMonitor("unix", inst.qmpSocketPath, 2*time.Second)
+			if err != nil {
+				return err
+			}
+			inst.qmpSocket = sockMonitor
+			return nil
+		}); err != nil {
+		return nil, fmt.Errorf("failed to establish qmp connection: %w", err)
+	}
+	if err := inst.qmpSocket.Connect(); err != nil {
+		return nil, fmt.Errorf("failed to connect over qmp to qemu instance")
+	}
 
 	return &inst, nil
 }
