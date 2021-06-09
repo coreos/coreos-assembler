@@ -46,11 +46,13 @@ host_static_build() {
 # Unused now, but kept in case we want it in the future
 cross_build() {
 	local a
+	local r
 	for a in amd64 arm64 s390x ppc64le; do
+		[[ "${a}" =~ s390x ]] && r= || r="-race"
 		echo "Building $a/$1"
 		mkdir -p "bin/$a"
 		CGO_ENABLED=0 GOARCH=$a \
-			go build -mod=vendor -ldflags "${ldflags}" ${race} \
+			go build -mod=vendor -ldflags "${ldflags}" ${r} \
 			-o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
 	done
 }
