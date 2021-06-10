@@ -22,8 +22,7 @@ import (
 	"strings"
 
 	systemdunit "github.com/coreos/go-systemd/unit"
-	ignerr "github.com/coreos/ignition/config/shared/errors"
-	ign3err "github.com/coreos/ignition/v2/config/shared/errors"
+	ignerr "github.com/coreos/ignition/v2/config/shared/errors"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	v31 "github.com/coreos/ignition/v2/config/v3_1"
@@ -149,7 +148,7 @@ func (u *UserData) Render() (*Conf, error) {
 		if err == nil {
 			c.ignitionV3 = &ignc3
 			return nil
-		} else if err != ign3err.ErrUnknownVersion {
+		} else if err != ignerr.ErrUnknownVersion {
 			plog.Errorf("invalid userdata: %v", report3)
 			return err
 		}
@@ -158,7 +157,7 @@ func (u *UserData) Render() (*Conf, error) {
 		if err == nil {
 			c.ignitionV31 = &ignc31
 			return nil
-		} else if err != ign3err.ErrUnknownVersion {
+		} else if err != ignerr.ErrUnknownVersion {
 			plog.Errorf("invalid userdata: %v", report31)
 			return err
 		}
@@ -167,7 +166,7 @@ func (u *UserData) Render() (*Conf, error) {
 		if err == nil {
 			c.ignitionV32 = &ignc32
 			return nil
-		} else if err != ign3err.ErrUnknownVersion {
+		} else if err != ignerr.ErrUnknownVersion {
 			plog.Errorf("invalid userdata: %v", report32)
 			return err
 		}
@@ -176,7 +175,7 @@ func (u *UserData) Render() (*Conf, error) {
 		if err == nil {
 			c.ignitionV33exp = &ignc33exp
 			return nil
-		} else if err != ign3err.ErrUnknownVersion {
+		} else if err != ignerr.ErrUnknownVersion {
 			plog.Errorf("invalid userdata: %v", report33exp)
 			return err
 		}
