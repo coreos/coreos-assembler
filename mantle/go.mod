@@ -8,16 +8,12 @@ require (
 	github.com/IBM-Cloud/bluemix-go v0.0.0-20210419045805-b50610722085
 	github.com/IBM/ibm-cos-sdk-go v1.6.1
 	github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
-	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
-	github.com/coreos/container-linux-config-transpiler v0.8.0 // indirect
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/go-systemd/v22 v22.0.0
-	github.com/coreos/ign-converter v0.0.0-20201123014402-35e810ace1bf // indirect
-	github.com/coreos/ignition v0.35.0 // indirect
 	github.com/coreos/ignition/v2 v2.10.1
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
@@ -27,11 +23,9 @@ require (
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/golang/protobuf v1.4.2
-	github.com/google/renameio v1.0.0 // indirect
 	github.com/gophercloud/gophercloud v0.17.0
 	github.com/gophercloud/utils v0.0.0-20210323225332-7b186010c04f
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
-	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
 	github.com/packethost/packngo v0.0.0-20180426081943-80f62d78849d
 	github.com/pborman/uuid v1.2.0
