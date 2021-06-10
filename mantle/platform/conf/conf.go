@@ -19,12 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"reflect"
 	"strings"
 
 	systemdunit "github.com/coreos/go-systemd/unit"
 	ignerr "github.com/coreos/ignition/config/shared/errors"
-	ignvalidate "github.com/coreos/ignition/config/validate"
 	ign3err "github.com/coreos/ignition/v2/config/shared/errors"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
@@ -34,7 +32,7 @@ import (
 	v32types "github.com/coreos/ignition/v2/config/v3_2/types"
 	v33exp "github.com/coreos/ignition/v2/config/v3_3_experimental"
 	v33exptypes "github.com/coreos/ignition/v2/config/v3_3_experimental/types"
-	ign3validate "github.com/coreos/ignition/v2/config/validate"
+	"github.com/coreos/ignition/v2/config/validate"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/crypto/ssh/agent"
@@ -254,36 +252,21 @@ func (c *Conf) ValidConfig() bool {
 	if !c.IsIgnition() {
 		return false
 	}
-	val := c.getIgnitionValidateValue()
 	if c.ignitionV3 != nil {
-		rpt := ign3validate.ValidateWithContext(c.ignitionV3, nil)
+		rpt := validate.ValidateWithContext(c.ignitionV3, nil)
 		return !rpt.IsFatal()
 	} else if c.ignitionV31 != nil {
-		rpt := ign3validate.ValidateWithContext(c.ignitionV31, nil)
+		rpt := validate.ValidateWithContext(c.ignitionV31, nil)
 		return !rpt.IsFatal()
 	} else if c.ignitionV32 != nil {
-		rpt := ign3validate.ValidateWithContext(c.ignitionV32, nil)
+		rpt := validate.ValidateWithContext(c.ignitionV32, nil)
 		return !rpt.IsFatal()
 	} else if c.ignitionV33exp != nil {
-		rpt := ign3validate.ValidateWithContext(c.ignitionV33exp, nil)
+		rpt := validate.ValidateWithContext(c.ignitionV33exp, nil)
 		return !rpt.IsFatal()
 	} else {
-		rpt := ignvalidate.ValidateWithoutSource(val)
-		return !rpt.IsFatal()
+		return false
 	}
-}
-
-func (c *Conf) getIgnitionValidateValue() reflect.Value {
-	if c.ignitionV3 != nil {
-		return reflect.ValueOf(c.ignitionV3)
-	} else if c.ignitionV31 != nil {
-		return reflect.ValueOf(c.ignitionV31)
-	} else if c.ignitionV32 != nil {
-		return reflect.ValueOf(c.ignitionV32)
-	} else if c.ignitionV33exp != nil {
-		return reflect.ValueOf(c.ignitionV33exp)
-	}
-	return reflect.ValueOf(nil)
 }
 
 // WriteFile writes the userdata in Conf to a local file.
