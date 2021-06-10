@@ -21,6 +21,8 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     }
 
     stage("Build Live Images") {
+        // Explicitly test re-importing the ostree repo
+        shwrap("cd /srv && rm tmp/repo -rf")
         utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
     }
 
