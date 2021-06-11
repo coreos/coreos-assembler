@@ -48,7 +48,7 @@ cross_build() {
 	local a
 	local r
 	for a in amd64 arm64 s390x ppc64le; do
-		[[ "${a}" =~ s390x ]] && r= || r="-race"
+		( [[ "${a}" =~ s390x ]] || [ -z "${ENABLE_GO_RACE_DETECTOR:-}" ] ) && r= || r="-race"
 		echo "Building $a/$1"
 		mkdir -p "bin/$a"
 		CGO_ENABLED=0 GOARCH=$a \
