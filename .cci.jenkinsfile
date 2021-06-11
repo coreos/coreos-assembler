@@ -2,7 +2,7 @@
 
 // Build coreos-assembler image and create
 // an imageStream for it
-def imageName = buildImage()
+def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1"])
 
 pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     checkout scm
