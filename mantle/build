@@ -11,7 +11,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 race=
-if [[ ! "$(uname -m)" =~ "s390" ]]; then
+if [ -n "${ENABLE_GO_RACE_DETECTOR:-}" ] && [[ ! "$(uname -m)" =~ "s390" ]]; then
     race="-race"
 fi
 
