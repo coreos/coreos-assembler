@@ -186,6 +186,8 @@ type Options struct {
 	OSContainer string
 
 	SSHOnTestFailure bool
+	// SuppressDefaultChecks will skip built-in checks for systemd unit failures and SELinux AVC denials, etc.
+	SuppressDefaultChecks bool
 }
 
 // RuntimeConfig contains cluster-specific configuration.
@@ -435,18 +437,44 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		return fmt.Errorf("not a supported instance: %v", string(out))
 	}
 
-	if !m.RuntimeConf().AllowFailedUnits {
-		// ensure no systemd units failed during boot
-		out, stderr, err = m.SSH("systemctl --no-legend --state failed list-units")
-		if err != nil {
-			return fmt.Errorf("systemctl: %s: %v: %s", out, err, stderr)
-		}
-		if len(out) > 0 {
-			return fmt.Errorf("some systemd units failed:\n%s", out)
-		}
+	// Validate that nothing is wrong before we even run the test
+	if err := CheckMachineBasics(ctx, m); err != nil {
+		return err
 	}
 
 	return ctx.Err()
+}
+
+// CheckMachineBasics validates that no systemd units have
+// failed and no SELinux AVC denials were logged.  It may be
+// extended in the future - the idea is these are "baseline"
+// errors that shouldn't be seen across any tests.
+func CheckMachineBasics(ctx context.Context, m Machine) error {
+	if m.RuntimeConf().AllowFailedUnits {
+		plog.Debug("Allowing failed units")
+		return nil
+	}
+
+	// ensure no systemd units failed during boot
+	out, stderr, err := m.SSH("systemctl --no-legend --state failed list-units")
+	if err != nil {
+		return fmt.Errorf("systemctl: %s: %v: %s", out, err, stderr)
+	}
+	if len(out) > 0 {
+		return fmt.Errorf("some systemd units failed:\n%s", out)
+	}
+	// Also no SELinux denials; RHCOS currently ships auditd, FCOS doesn't, so handle
+	// both places.
+	out, stderr, err = m.SSH("if test -f /var/log/audit/audit.log; then grep 'avc.*denied' /var/log/audit/audit.log || true; else journalctl -q --no-pager --grep='avc.*denied' _TRANSPORT=audit || true; fi")
+	if err != nil {
+		return fmt.Errorf("failed to query audit logs: %s: %v: %s", out, err, stderr)
+	}
+	if len(out) > 0 {
+		return fmt.Errorf("Found SELinux AVC denials:\n%s", out)
+	}
+	plog.Debug("Validated machine")
+
+	return nil
 }
 
 type machineInfo struct {

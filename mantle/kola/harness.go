@@ -16,6 +16,7 @@ package kola
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -895,9 +896,12 @@ func getClusterSemver(flight platform.Flight, outputDir string) (*semver.Version
 		return nil, err
 	}
 
-	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
-		OutputDir: testDir,
-	})
+	cfg := &platform.RuntimeConfig{
+		OutputDir:        testDir,
+		AllowFailedUnits: Options.SuppressDefaultChecks,
+	}
+
+	cluster, err := flight.NewCluster(cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating cluster for semver check")
 	}
@@ -945,6 +949,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
 		InternetAccess:     testRequiresInternet(t),
+		AllowFailedUnits:   Options.SuppressDefaultChecks,
 	}
 	c, err := flight.NewCluster(rconf)
 	if err != nil {
@@ -1054,6 +1059,12 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// run test
 	t.Run(tcluster)
+
+	for _, mach := range c.Machines() {
+		if err := platform.CheckMachineBasics(context.TODO(), mach); err != nil {
+			h.Errorf("Machine %s failed basic checks: %v", mach.ID(), err)
+		}
+	}
 }
 
 // scpKolet searches for a kolet binary and copies it to the machine.
