@@ -96,6 +96,7 @@ os_name=$(getconfig "osname")
 rootfs_size=$(getconfig "rootfs-size")
 buildid=$(getconfig "buildid")
 imgid=$(getconfig "imgid")
+bootfs_metadata_csum_seed=$(getconfig_def "bootfs_metadata_csum_seed" "false")
 
 set -x
 
@@ -157,6 +158,14 @@ udevtrig
 root_dev="${disk}${ROOTPN}"
 
 bootargs=
+# If the bootfs_metadata_csum_seed image.yaml knob is set to true then
+# we'll enable the metadata_csum_seed filesystem feature. This is
+# gated behind an image.yaml knob because support for this feature
+# flag was only recently added to grub.
+# https://lists.gnu.org/archive/html/grub-devel/2021-06/msg00031.html
+if [ "${bootfs_metadata_csum_seed}" == "true" ]; then
+    bootargs="-O metadata_csum_seed"
+fi
 case "${bootfs}" in
     ext4verity)
         # Need blocks to match host page size; TODO
