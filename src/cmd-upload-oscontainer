@@ -19,6 +19,8 @@ sys.path.insert(0, cosa_dir)
 from cosalib import cmdlib
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--arch-tag", help="append arch name to push tag",
+                    action='store_true')
 parser.add_argument("--name", help="oscontainer name",
                     action='store', required=True)
 parser.add_argument("--from", help="Base image", default='scratch',
@@ -89,8 +91,10 @@ if display_name == "":
     raise SystemExit(f"Failed to find NAME= in /usr/lib/os-release in commit {ostree_commit}")
 shutil.rmtree(tmp_osreleasedir)
 
-# The build ID is the container tag
-osc_name_and_tag = "{}:{}".format(args.name, latest_build)
+osc_name_and_tag = f"{args.name}:{latest_build}"
+if args.arch_tag:
+    arch = meta.get("coreos-assembler.basearch", cmdlib.get_basearch)
+    osc_name_and_tag = f"{args.name}:{latest_build}-{arch}"
 
 # TODO: Use labels for the build hash and avoid pulling the oscontainer
 # every time we want to poll.
