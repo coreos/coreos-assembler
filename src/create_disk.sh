@@ -170,7 +170,7 @@ case "${bootfs}" in
     ext4verity)
         # Need blocks to match host page size; TODO
         # really mkfs.ext4 should know this.
-        bootargs="-b $(getconf PAGE_SIZE) -O verity"
+        bootargs+=" -b $(getconf PAGE_SIZE) -O verity"
         ;;
     ext4) ;;
     *) echo "Unhandled bootfs: ${bootfs}" 1>&2; exit 1 ;;
