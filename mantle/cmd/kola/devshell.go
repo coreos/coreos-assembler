@@ -175,6 +175,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 			}
 			var s struct{}
 			readychan <- s
+			break
 		}
 	}()
 	sigintChan := make(chan os.Signal, 1)
@@ -214,6 +215,16 @@ loop:
 
 	// Later Ctrl-c after this should just kill us
 	signal.Reset(os.Interrupt)
+
+	// This one takes ownership of the readyReader
+	poweroffStarted := false
+	go func() {
+		msg, _ := readTrimmedLine(readyReader)
+		if msg == "poweroff" {
+			poweroffStarted = true
+		}
+	}()
+
 
 	// Ignore other status messages, and just print errors for now
 	go func() {
@@ -292,14 +303,6 @@ loop:
 	if err != nil {
 		return err
 	}
-
-	poweroffStarted := false
-	go func() {
-		msg, _ := readTrimmedLine(readyReader)
-		if msg == "poweroff" {
-			poweroffStarted = true
-		}
-	}()
 
 	go func() {
 		for {
