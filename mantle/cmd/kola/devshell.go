@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -216,15 +217,13 @@ loop:
 	// Later Ctrl-c after this should just kill us
 	signal.Reset(os.Interrupt)
 
-	// This one takes ownership of the readyReader
-	poweroffStarted := false
+	var poweroffStarted int32
 	go func() {
 		msg, _ := readTrimmedLine(readyReader)
 		if msg == "poweroff" {
-			poweroffStarted = true
+			atomic.StoreInt32(&poweroffStarted, 1)
 		}
 	}()
-
 
 	// Ignore other status messages, and just print errors for now
 	go func() {
@@ -321,7 +320,7 @@ loop:
 				proc := os.Process{
 					Pid: inst.Pid(),
 				}
-				poweroffStarted = true
+				atomic.StoreInt32(&poweroffStarted, 1)
 				if err := proc.Signal(os.Interrupt); err != nil {
 					fmt.Println("Failed to power off")
 				}
@@ -331,7 +330,7 @@ loop:
 	}()
 	err = <-qemuWaitChan
 	if err == nil {
-		if !poweroffStarted {
+		if atomic.LoadInt32(&poweroffStarted) == 0 {
 			fmt.Println("QEMU powered off unexpectedly")
 		}
 	}
