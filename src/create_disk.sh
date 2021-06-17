@@ -259,12 +259,15 @@ test -d "${deploy_root}"
 #                convenient to have here as a strong cross-reference.
 # imgid:         The full image name, the same as will end up in the
 #                `images` dict in `meta.json`.
+# build-kernel:  The version of the kernel used to generate the filesystems.
+#                This could be useful when trying to diagnose the XFS layout.
 cat > $rootfs/.coreos-aleph-version.json << EOF
 {
 	"build": "${buildid}",
 	"ref": "${ref}",
 	"ostree-commit": "${commit}",
-	"imgid": "${imgid}"
+	"imgid": "${imgid}",
+	"build-kernel": "$(uname -r)"
 }
 EOF
 
