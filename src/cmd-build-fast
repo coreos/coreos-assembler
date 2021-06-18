@@ -19,7 +19,8 @@ dn=$(dirname "$0")
 
 
 # Detect the case that we're in a git repo without COSA_DIR
-if test -d .git; then
+# Note we use -e and not -d here so it also works in git worktrees.
+if test -e .git; then
     if test -z "${COSA_DIR}"; then
         # shellcheck disable=SC2016
         fatal 'This command requires inheriting from a previous full OS build.
