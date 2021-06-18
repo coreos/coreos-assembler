@@ -47,7 +47,7 @@ case $arch in
     "ppc64le") DEFAULT_TERMINAL="hvc0"    ;;
     "aarch64") DEFAULT_TERMINAL="ttyAMA0" ;;
     "s390x")   DEFAULT_TERMINAL="ttysclp0";;
-    *)         fatal "Architecture $(arch) not supported"
+    *)         fatal "Architecture ${arch} not supported"
 esac
 export DEFAULT_TERMINAL
 
@@ -500,7 +500,7 @@ runvm() {
     # then add all the base deps
     # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
     rpms=$(grep -v '^#' < "${DIR}"/vmdeps.txt)
-    archrpms=$(grep -v '^#' < "${DIR}"/vmdeps-"$(arch)".txt)
+    archrpms=$(grep -v '^#' < "${DIR}/vmdeps-${arch}.txt")
 
     # shellcheck disable=SC2086
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms $archrpms
@@ -551,7 +551,18 @@ EOF
     echo "$@" >> "${tmp_builddir}"/cmd.sh
 
     touch "${runvm_console}"
-    kola_args=(kola qemuexec -m 2048 --auto-cpus -U --workdir none \
+
+    case $arch in
+    "x86_64")  memory=2048 ;;
+    # Power 8 page faults with 2G of memory in rpm-ostree
+    # Most probably due to radix and 64k overhead.
+    "ppc64le") memory=4096 ;;
+    "aarch64") memory=2048 ;;
+    "s390x")   memory=2048 ;;
+    *)         fatal "Architecture ${arch} not supported"
+    esac
+
+    kola_args=(kola qemuexec -m "${memory}" --auto-cpus -U --workdir none \
                --console-to-file "${runvm_console}")
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
