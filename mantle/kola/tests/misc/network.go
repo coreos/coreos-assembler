@@ -189,7 +189,7 @@ var (
           MACAddressPolicy=persistent
 `
 
-	dhcpConfig = `[main]
+	dhcpClientConfig = `[main]
           dhcp=dhclient
 `
 
@@ -407,7 +407,11 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 
 			]
 		}
-	}`, base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)), base64.StdEncoding.EncodeToString([]byte(dhcpConfig)), base64.StdEncoding.EncodeToString([]byte(captureMacsScript)), base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
+	}`,
+	base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)),
+	base64.StdEncoding.EncodeToString([]byte(dhcpClientConfig)),
+	base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
+	base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
 
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
