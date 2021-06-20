@@ -297,31 +297,26 @@ var (
 func NetworkSecondaryNics(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
+	ovsBridgeInterface := "brcnv-iface"
 
 	setupMultipleNetworkTest(c, primaryMac, secondaryMac)
 
-	checkOvsBridge(c, primaryMac)
+	m := c.Machines()[0]
+	checkExpectedMAC(c, m, ovsBridgeInterface, primaryMac)
 }
 
-func checkOvsBridge(c cluster.TestCluster, setPrimaryMac string) {
-	var err error
-	machineIdx := 0
-
-	ovsBridgeName := "brcnv-iface"
-	bondInterfaceMACAddress, err := getBondIfaceMAC(c, machineIdx, ovsBridgeName)
+func checkExpectedMAC(c cluster.TestCluster, m platform.Machine, interfaceName, expectedMac string) {
+	interfaceMACAddress, err := getInterfaceMAC(c, m, interfaceName)
 	if err != nil {
-		c.Fatalf("failed to fetch bond MAC Address: %v", err)
+		c.Fatalf("failed to fetch interface %s MAC Address: %v", interfaceName, err)
 	}
 
-	// check bond interface got the primary MAC
-	if bondInterfaceMACAddress != setPrimaryMac {
-		c.Fatalf("ovs-bridge %s primary MAC %s does not match expected IP", ovsBridgeName, bondInterfaceMACAddress, setPrimaryMac)
+	if interfaceMACAddress != expectedMac {
+		c.Fatalf("interface %s MAC %s does not match expected MAC %s", interfaceName, interfaceMACAddress, expectedMac)
 	}
 }
 
-func getBondIfaceMAC(c cluster.TestCluster, machineIdx int, interfaceName string) (string, error) {
-	m := c.Machines()[machineIdx]
-
+func getInterfaceMAC(c cluster.TestCluster, m platform.Machine, interfaceName string) (string, error) {
 	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g 802-3-ethernet.cloned-mac-address connection show %s", interfaceName)))
 	output = strings.Replace(output, "\\:", ":", -1)
 
@@ -332,6 +327,29 @@ func getBondIfaceMAC(c cluster.TestCluster, machineIdx int, interfaceName string
 	}
 
 	return macAddress.String(), nil
+}
+
+func checkExpectedIP(c cluster.TestCluster, m platform.Machine, interfaceName, expectedIP string) {
+	interfaceIPAddress, err := getInterfaceIP(c, m, interfaceName)
+	if err != nil {
+		c.Fatalf("failed to fetch bond IP Address: %v", err)
+	}
+
+	if interfaceIPAddress != expectedIP {
+		c.Fatalf("interface %s IP %s does not match expected IP %s", interfaceName, interfaceIPAddress, expectedIP)
+	}
+}
+
+func getInterfaceIP(c cluster.TestCluster, m platform.Machine, interfaceName string) (string, error) {
+	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g ip4.address connection show %s", interfaceName)))
+
+	var ipAddress net.IP
+	var err error
+	if ipAddress, _, err = net.ParseCIDR(output); err != nil {
+		return "", fmt.Errorf("failed to parse IP address %v for interface Name %s: %v", output, interfaceName, err)
+	}
+
+	return ipAddress.String(), nil
 }
 
 func addKernelArgs(c cluster.TestCluster, m platform.Machine, args []string) {
@@ -408,10 +426,10 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 			]
 		}
 	}`,
-	base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)),
-	base64.StdEncoding.EncodeToString([]byte(dhcpClientConfig)),
-	base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
-	base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
+		base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)),
+		base64.StdEncoding.EncodeToString([]byte(dhcpClientConfig)),
+		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
+		base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
 
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
