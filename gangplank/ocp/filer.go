@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -41,11 +42,21 @@ import (
 // minioServer describes a Minio S3 Object stoarge to start.
 type minioServer struct {
 	AccessKey      string `json:"accesskey"`
-	SecretKey      string `json:"secretkey"`
+	ExternalServer bool   `json:"external_server"` //indicates that a server should not be started
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
-	ExternalServer bool   `json:"external_server"` //indicates that a server should not be started
 	Region         string `json:"region"`
+	SecretKey      string `json:"secretkey"`
+	Secure         bool   `json:"secure"` // indicates use of TLS
+
+	// overSSH describes how to forward the Minio Port over SSH
+	// This option is only useful with envVar CONTAINER_HOST running
+	// in podman mode.
+	overSSH *SSHForwardPort
+	// sshStopCh is used to shutdown the SSH port forwarding.
+	sshStopCh chan bool
+	// sshErrCh is
+	sshErrCh chan error
 
 	dir          string
 	minioOptions minio.Options
@@ -53,12 +64,21 @@ type minioServer struct {
 }
 
 // StartStanaloneMinioServer starts a standalone minio server.
-func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string) (*minioServer, error) {
+func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string, overSSH *SSHForwardPort) (*minioServer, error) {
 	m := newMinioServer("")
+	m.overSSH = overSSH
 	m.dir = srvDir
 
 	if err := m.start(ctx); err != nil {
 		return nil, err
+	}
+
+	if m.overSSH != nil {
+		m.sshStopCh = make(chan bool, 1)
+		m.sshErrCh = make(chan error, 256)
+		if err := m.fowardOverSSH(m.sshStopCh, m.sshErrCh); err != nil {
+			return nil, err
+		}
 	}
 
 	m.ExternalServer = true
@@ -96,7 +116,7 @@ func newMinioServer(cfgFile string) *minioServer {
 	minioAccessKey, _ := randomString(12)
 	minioSecretKey, _ := randomString(12)
 
-	return &minioServer{
+	m := &minioServer{
 		AccessKey:      minioAccessKey,
 		SecretKey:      minioSecretKey,
 		Host:           host,
@@ -109,15 +129,35 @@ func newMinioServer(cfgFile string) *minioServer {
 		},
 	}
 
+	if m.overSSH != nil {
+		m.Host = "127.0.0.1"
+	}
+
+	return m
 }
 
 // GetClient returns a Minio Client
 func (m *minioServer) client() (*minio.Client, error) {
+	region := m.Region
+	var secure bool
+	if m.ExternalServer {
+		if strings.Contains(m.Host, "s3.amazonaws.com") {
+			secure = true
+			if m.Region == "" {
+				region = "us-east-1"
+			}
+		}
+	}
 	return minio.New(fmt.Sprintf("%s:%d", m.Host, m.Port),
 		&minio.Options{
+			Transport: &http.Transport{
+				MaxIdleConns:       10,
+				IdleConnTimeout:    0,
+				DisableCompression: false, // force compression
+			},
 			Creds:  credentials.NewStaticV4(m.AccessKey, m.SecretKey, ""),
-			Secure: false,
-			Region: m.Region,
+			Secure: secure,
+			Region: region,
 		},
 	)
 }
@@ -138,14 +178,6 @@ func (m *minioServer) start(ctx context.Context) error {
 			}
 			started = true
 		}
-
-		mc, err := m.client()
-		if err != nil {
-			return err
-		}
-		if _, err := mc.ListBuckets(ctx); err != nil {
-			return err
-		}
 		return nil
 	}
 
@@ -153,10 +185,12 @@ func (m *minioServer) start(ctx context.Context) error {
 		if err := check(); err == nil {
 			return nil
 		}
+
 		sleep := time.Duration(x ^ 2)
 		log.WithField("time", sleep).Info("minio server is not ready, sleeping")
 		time.Sleep(sleep * time.Second)
 	}
+
 	return errors.New("minio serve failed to become ready")
 }
 
@@ -223,9 +257,9 @@ func (m *minioServer) exec(ctx context.Context) error {
 	}
 
 	// Ensure the process gets terminated on shutdown
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 		<-sigs
 		m.Kill()
 	}()
@@ -234,11 +268,22 @@ func (m *minioServer) exec(ctx context.Context) error {
 	return err
 }
 
+// Wait blocks until Minio is finished.
+func (m *minioServer) Wait() {
+	_ = m.cmd.Wait()
+}
+
 // Kill terminates the minio server.
 func (m *minioServer) Kill() {
 	if m.cmd == nil {
 		return
 	}
+
+	// Kill any forward SSH connections.
+	if m.overSSH != nil && m.sshStopCh != nil {
+		m.sshStopCh <- true
+	}
+
 	// Note the "-" before the processes PID. A negative pid to
 	// syscall.Kill kills the processes Pid group ensuring all forks/execs
 	// of minio are killed too.

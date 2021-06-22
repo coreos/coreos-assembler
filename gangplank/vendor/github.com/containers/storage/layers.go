@@ -117,6 +117,11 @@ type Layer struct {
 
 	// ReadOnly is true if this layer resides in a read-only layer store.
 	ReadOnly bool `json:"-"`
+
+	// BigDataNames is a list of names of data items that we keep for the
+	// convenience of the caller.  They can be large, and are only in
+	// memory when being read from or written to disk.
+	BigDataNames []string `json:"big-data-names,omitempty"`
 }
 
 type layerMountPoint struct {
@@ -137,6 +142,7 @@ type DiffOptions struct {
 type ROLayerStore interface {
 	ROFileBasedStore
 	ROMetadataStore
+	ROLayerBigDataStore
 
 	// Exists checks if a layer with the specified name or ID is known.
 	Exists(id string) bool
@@ -194,6 +200,7 @@ type LayerStore interface {
 	RWFileBasedStore
 	RWMetadataStore
 	FlaggableStore
+	RWLayerBigDataStore
 
 	// Create creates a new layer, optionally giving it a specified ID rather than
 	// a randomly-generated one, either inheriting data from another specified
@@ -243,6 +250,11 @@ type LayerStore interface {
 	// LoadLocked wraps Load in a locked state. This means it loads the store
 	// and cleans-up invalid layers if needed.
 	LoadLocked() error
+
+	// PutAdditionalLayer creates a layer using the diff contained in the additional layer
+	// store.
+	// This API is experimental and can be changed without bumping the major version number.
+	PutAdditionalLayer(id string, parentLayer *Layer, names []string, aLayer drivers.AdditionalLayer) (layer *Layer, err error)
 }
 
 type layerStore struct {
@@ -278,6 +290,7 @@ func copyLayer(l *Layer) *Layer {
 		UncompressedSize:   l.UncompressedSize,
 		CompressionType:    l.CompressionType,
 		ReadOnly:           l.ReadOnly,
+		BigDataNames:       copyStringSlice(l.BigDataNames),
 		Flags:              copyStringInterfaceMap(l.Flags),
 		UIDMap:             copyIDMap(l.UIDMap),
 		GIDMap:             copyIDMap(l.GIDMap),
@@ -602,6 +615,58 @@ func (r *layerStore) Status() ([][2]string, error) {
 	return r.driver.Status(), nil
 }
 
+func (r *layerStore) PutAdditionalLayer(id string, parentLayer *Layer, names []string, aLayer drivers.AdditionalLayer) (layer *Layer, err error) {
+	if duplicateLayer, idInUse := r.byid[id]; idInUse {
+		return duplicateLayer, ErrDuplicateID
+	}
+	for _, name := range names {
+		if _, nameInUse := r.byname[name]; nameInUse {
+			return nil, ErrDuplicateName
+		}
+	}
+
+	parent := ""
+	if parentLayer != nil {
+		parent = parentLayer.ID
+	}
+
+	info, err := aLayer.Info()
+	if err != nil {
+		return nil, err
+	}
+	defer info.Close()
+	layer = &Layer{}
+	if err := json.NewDecoder(info).Decode(layer); err != nil {
+		return nil, err
+	}
+	layer.ID = id
+	layer.Parent = parent
+	layer.Created = time.Now().UTC()
+
+	if err := aLayer.CreateAs(id, parent); err != nil {
+		return nil, err
+	}
+
+	// TODO: check if necessary fields are filled
+	r.layers = append(r.layers, layer)
+	r.idindex.Add(id)
+	r.byid[id] = layer
+	for _, name := range names { // names got from the additional layer store won't be used
+		r.byname[name] = layer
+	}
+	if layer.CompressedDigest != "" {
+		r.bycompressedsum[layer.CompressedDigest] = append(r.bycompressedsum[layer.CompressedDigest], layer.ID)
+	}
+	if layer.UncompressedDigest != "" {
+		r.byuncompressedsum[layer.CompressedDigest] = append(r.byuncompressedsum[layer.CompressedDigest], layer.ID)
+	}
+	if err := r.Save(); err != nil {
+		r.driver.Remove(id)
+		return nil, err
+	}
+	return copyLayer(layer), nil
+}
+
 func (r *layerStore) Put(id string, parentLayer *Layer, names []string, mountLabel string, options map[string]string, moreOptions *LayerOptions, writeable bool, flags map[string]interface{}, diff io.Reader) (layer *Layer, size int64, err error) {
 	if !r.IsReadWrite() {
 		return nil, -1, errors.Wrapf(ErrStoreIsReadOnly, "not allowed to create new layers at %q", r.layerspath())
@@ -694,14 +759,15 @@ func (r *layerStore) Put(id string, parentLayer *Layer, names []string, mountLab
 	}
 	if err == nil {
 		layer = &Layer{
-			ID:         id,
-			Parent:     parent,
-			Names:      names,
-			MountLabel: mountLabel,
-			Created:    time.Now().UTC(),
-			Flags:      make(map[string]interface{}),
-			UIDMap:     copyIDMap(moreOptions.UIDMap),
-			GIDMap:     copyIDMap(moreOptions.GIDMap),
+			ID:           id,
+			Parent:       parent,
+			Names:        names,
+			MountLabel:   mountLabel,
+			Created:      time.Now().UTC(),
+			Flags:        make(map[string]interface{}),
+			UIDMap:       copyIDMap(moreOptions.UIDMap),
+			GIDMap:       copyIDMap(moreOptions.GIDMap),
+			BigDataNames: []string{},
 		}
 		r.layers = append(r.layers, layer)
 		r.idindex.Add(id)
@@ -772,7 +838,20 @@ func (r *layerStore) Mounted(id string) (int, error) {
 }
 
 func (r *layerStore) Mount(id string, options drivers.MountOpts) (string, error) {
-	if !r.IsReadWrite() {
+
+	// check whether options include ro option
+	hasReadOnlyOpt := func(opts []string) bool {
+		for _, item := range opts {
+			if item == "ro" {
+				return true
+			}
+		}
+		return false
+	}
+
+	// You are not allowed to mount layers from readonly stores if they
+	// are not mounted read/only.
+	if !r.IsReadWrite() && !hasReadOnlyOpt(options.Options) {
 		return "", errors.Wrapf(ErrStoreIsReadOnly, "not allowed to update mount locations for layers at %q", r.mountspath())
 	}
 	r.mountsLockfile.Lock()
@@ -894,11 +973,11 @@ func (r *layerStore) ParentOwners(id string) (uids, gids []int, err error) {
 	for dir := filepath.Dir(layer.MountPoint); dir != "" && dir != string(os.PathSeparator); dir = filepath.Dir(dir) {
 		st, err := system.Stat(dir)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error reading ownership of directory %q", dir)
+			return nil, nil, errors.Wrap(err, "read directory ownership")
 		}
 		lst, err := system.Lstat(dir)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error reading ownership of directory-in-case-it's-a-symlink %q", dir)
+			return nil, nil, err
 		}
 		fsuid := int(st.UID())
 		fsgid := int(st.GID())
@@ -957,6 +1036,80 @@ func (r *layerStore) SetNames(id string, names []string) error {
 	return ErrLayerUnknown
 }
 
+func (r *layerStore) datadir(id string) string {
+	return filepath.Join(r.layerdir, id)
+}
+
+func (r *layerStore) datapath(id, key string) string {
+	return filepath.Join(r.datadir(id), makeBigDataBaseName(key))
+}
+
+func (r *layerStore) BigData(id, key string) (io.ReadCloser, error) {
+	if key == "" {
+		return nil, errors.Wrapf(ErrInvalidBigDataName, "can't retrieve layer big data value for empty name")
+	}
+	layer, ok := r.lookup(id)
+	if !ok {
+		return nil, errors.Wrapf(ErrLayerUnknown, "error locating layer with ID %q", id)
+	}
+	return os.Open(r.datapath(layer.ID, key))
+}
+
+func (r *layerStore) SetBigData(id, key string, data io.Reader) error {
+	if key == "" {
+		return errors.Wrapf(ErrInvalidBigDataName, "can't set empty name for layer big data item")
+	}
+	if !r.IsReadWrite() {
+		return errors.Wrapf(ErrStoreIsReadOnly, "not allowed to save data items associated with layers at %q", r.layerspath())
+	}
+	layer, ok := r.lookup(id)
+	if !ok {
+		return errors.Wrapf(ErrLayerUnknown, "error locating layer with ID %q to write bigdata", id)
+	}
+	err := os.MkdirAll(r.datadir(layer.ID), 0700)
+	if err != nil {
+		return err
+	}
+
+	// NewAtomicFileWriter doesn't overwrite/truncate the existing inode.
+	// BigData() relies on this behaviour when opening the file for read
+	// so that it is either accessing the old data or the new one.
+	writer, err := ioutils.NewAtomicFileWriter(r.datapath(layer.ID, key), 0600)
+	if err != nil {
+		return errors.Wrapf(err, "error opening bigdata file")
+	}
+
+	if _, err := io.Copy(writer, data); err != nil {
+		writer.Close()
+		return errors.Wrapf(err, "error copying bigdata for the layer")
+
+	}
+	if err := writer.Close(); err != nil {
+		return errors.Wrapf(err, "error closing bigdata file for the layer")
+	}
+
+	addName := true
+	for _, name := range layer.BigDataNames {
+		if name == key {
+			addName = false
+			break
+		}
+	}
+	if addName {
+		layer.BigDataNames = append(layer.BigDataNames, key)
+		return r.Save()
+	}
+	return nil
+}
+
+func (r *layerStore) BigDataNames(id string) ([]string, error) {
+	layer, ok := r.lookup(id)
+	if !ok {
+		return nil, errors.Wrapf(ErrImageUnknown, "error locating layer with ID %q to retrieve bigdata names", id)
+	}
+	return copyStringSlice(layer.BigDataNames), nil
+}
+
 func (r *layerStore) Metadata(id string) (string, error) {
 	if layer, ok := r.lookup(id); ok {
 		return layer.Metadata, nil
@@ -991,6 +1144,7 @@ func (r *layerStore) deleteInternal(id string) error {
 	err := r.driver.Remove(id)
 	if err == nil {
 		os.Remove(r.tspath(id))
+		os.RemoveAll(r.datadir(id))
 		delete(r.byid, id)
 		for _, name := range layer.Names {
 			delete(r.byname, name)
@@ -1000,6 +1154,7 @@ func (r *layerStore) deleteInternal(id string) error {
 		if layer.MountPoint != "" {
 			delete(r.bymount, layer.MountPoint)
 		}
+		r.deleteInDigestMap(id)
 		toDeleteIndex := -1
 		for i, candidate := range r.layers {
 			if candidate.ID == id {
@@ -1029,6 +1184,27 @@ func (r *layerStore) deleteInternal(id string) error {
 		}
 	}
 	return err
+}
+
+func (r *layerStore) deleteInDigestMap(id string) {
+	for digest, layers := range r.bycompressedsum {
+		for i, layerID := range layers {
+			if layerID == id {
+				layers = append(layers[:i], layers[i+1:]...)
+				r.bycompressedsum[digest] = layers
+				break
+			}
+		}
+	}
+	for digest, layers := range r.byuncompressedsum {
+		for i, layerID := range layers {
+			if layerID == id {
+				layers = append(layers[:i], layers[i+1:]...)
+				r.byuncompressedsum[digest] = layers
+				break
+			}
+		}
+	}
 }
 
 func (r *layerStore) Delete(id string) error {
@@ -1294,6 +1470,7 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 	if err != nil {
 		return -1, err
 	}
+	defer uncompressed.Close()
 	uncompressedDigest := digest.Canonical.Digester()
 	uncompressedCounter := ioutils.NewWriteCounter(uncompressedDigest.Hash())
 	uidLog := make(map[uint32]struct{})
@@ -1307,6 +1484,7 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 	if err != nil {
 		return -1, err
 	}
+	defer idLogger.Close()
 	payload, err := asm.NewInputTarStream(io.TeeReader(uncompressed, io.MultiWriter(uncompressedCounter, idLogger)), metadata, storage.NewDiscardFilePutter())
 	if err != nil {
 		return -1, err
@@ -1321,7 +1499,6 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 		return -1, err
 	}
 	compressor.Close()
-	idLogger.Close()
 	if err == nil {
 		if err := os.MkdirAll(filepath.Dir(r.tspath(layer.ID)), 0700); err != nil {
 			return -1, err

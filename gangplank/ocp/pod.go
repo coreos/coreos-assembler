@@ -8,9 +8,9 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/coreos/gangplank/spec"
+	"github.com/google/uuid"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -216,7 +216,8 @@ func (pb *podBuild) setInCluster() error {
 func (pb *podBuild) generateAPIBuild() error {
 	// Create just _enough_ of the OpenShift BuildConfig spec
 	// Create a "ci" build.openshift.io/v1 specification.
-	podBuildNumber := time.Now().Format("20060102150405")
+	u := uuid.New()
+	podBuildNumber := u.String()
 	a := buildapiv1.Build{}
 
 	// Create annotations

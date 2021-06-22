@@ -77,13 +77,13 @@ func TestMultipleStandAlones(t *testing.T) {
 	_ = os.MkdirAll(srvTwo, 0755)
 
 	ctx := context.Background()
-	one, err := StartStandaloneMinioServer(ctx, srvOne, oneCfg)
+	one, err := StartStandaloneMinioServer(ctx, srvOne, oneCfg, nil)
 	if err != nil {
 		t.Fatalf("failed to start first minio server")
 	}
 	defer one.Kill()
 
-	two, err := StartStandaloneMinioServer(ctx, srvTwo, twoCfg)
+	two, err := StartStandaloneMinioServer(ctx, srvTwo, twoCfg, nil)
 	if err != nil {
 		t.Fatalf("failed to start first minio server")
 	}

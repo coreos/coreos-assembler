@@ -1,8 +1,9 @@
 package cosa
 
 import (
+	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -33,13 +34,18 @@ type buildsJSON struct {
 }
 
 func getBuilds(dir string) (*buildsJSON, error) {
-	path := filepath.Join(dir, "builds", CosaBuildsJSON)
-	d, err := ioutil.ReadFile(path)
+	path := filepath.Join(dir, CosaBuildsJSON)
+	f, err := Open(path)
 	if err != nil {
 		return nil, ErrNoBuildsFound
 	}
+	d := []byte{}
+	bufD := bytes.NewBuffer(d)
+	if _, err := io.Copy(bufD, f); err != nil {
+		return nil, err
+	}
 	b := &buildsJSON{}
-	if err := json.Unmarshal(d, b); err != nil {
+	if err := json.Unmarshal(bufD.Bytes(), b); err != nil {
 		return nil, err
 	}
 	return b, nil

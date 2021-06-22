@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -202,4 +203,28 @@ func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, e
 			return resp.Status.PodIP, nil
 		}
 	}
+}
+
+// tokenRegistryLogin logins to a registry using a service account
+func tokenRegistryLogin(ctx ClusterContext, tlsVerify *bool, registry string) error {
+	token, err := ioutil.ReadFile(serviceAccountTokenFile)
+	if err != nil {
+		return fmt.Errorf("failed reading the service account token: %v", err)
+	}
+
+	loginCmd := []string{"buildah", "login"}
+	if tlsVerify != nil && !*tlsVerify {
+		log.WithField("registry", registry).Warn("Skipping TLS verification for login to registry")
+		loginCmd = append(loginCmd, "--tls-verify=false")
+	}
+	loginCmd = append(loginCmd, "-u", "serviceaccount", "-p", string(token), registry)
+
+	cmd := exec.CommandContext(ctx, loginCmd[0], loginCmd[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to login into registry: %v", err)
+	}
+
+	return nil
 }

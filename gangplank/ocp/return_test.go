@@ -12,12 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func init() {
-	// tarballCreateCommand uses sudo which is inappropriate/unneeded for
-	// running our tests.
-	tarballCreatePrefix = tarballCreatePrefix[1:]
-}
-
 func TestTarballRemote(t *testing.T) {
 	tmpd, _ := ioutil.TempDir("", "remotes")
 	srvd := filepath.Join(tmpd, "serve")
@@ -58,7 +52,7 @@ func TestTarballRemote(t *testing.T) {
 		Minio: m,
 	}
 
-	if err := returnPathTarBall(ctx, cacheBucket, "test.tar.gz", srcd, returner); err != nil {
+	if err := uploadPathAsTarBall(ctx, cacheBucket, "test.tar.gz", srcd, "", false, returner); err != nil {
 		t.Fatalf("Failed create tarball: %v", err)
 	}
 

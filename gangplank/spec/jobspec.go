@@ -29,12 +29,17 @@ import (
 
 // JobSpec is the root-level item for the JobSpec.
 type JobSpec struct {
-	Archives    Archives    `yaml:"archives,omitempty" json:"archives,omitempty"`
-	CloudsCfgs  CloudsCfgs  `yaml:"clouds_cfgs,omitempty" json:"cloud_cofgs,omitempty"`
-	Job         Job         `yaml:"job,omitempty" json:"job,omitempty"`
-	Oscontainer Oscontainer `yaml:"oscontainer,omitempty" json:"oscontainer,omitempty"`
-	Recipe      Recipe      `yaml:"recipe,omitempty" json:"recipe,omitempty"`
-	Spec        Spec        `yaml:"spec,omitempty" json:"spec,omitempty"`
+	Archives   Archives   `yaml:"archives,omitempty" json:"archives,omitempty"`
+	CloudsCfgs CloudsCfgs `yaml:"clouds_cfgs,omitempty" json:"cloud_cofgs,omitempty"`
+	Job        Job        `yaml:"job,omitempty" json:"job,omitempty"`
+	Recipe     Recipe     `yaml:"recipe,omitempty" json:"recipe,omitempty"`
+	Spec       Spec       `yaml:"spec,omitempty" json:"spec,omitempty"`
+
+	// Minio describes the configuration for corrdinating objects for builds
+	Minio Minio `yaml:"minio,omitempty" json:"minio,omitempty"`
+
+	// PublishOscontainer is a list of push locations for the oscontainer
+	PublishOscontainer PublishOscontainer `yaml:"publish_oscontainer,omitempty" json:"publish_oscontainer,omitempty"`
 
 	// Stages are specific stages to be run. Stages are
 	// only supported by Gangplank; they do not appear in the
@@ -108,12 +113,27 @@ func (c *CloudsCfgs) GetCloudCfg(cloud string) (Cloud, error) {
 //   StrictMode: only run explicitly defined stages
 //   VersionSuffix: name to append, ie. devel
 type Job struct {
-	BuildName        string `yaml:"build_name,omitempty" json:"build_name,omitempty"`
-	IsProduction     bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
-	StrictMode       bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
-	VersionSuffix    string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
-	DisableTLSVerify bool   `yaml:"disable_tls_verification" json:"disable_tls_verification"`
-	MinioCfgFile     string // not exported
+	BuildName     string `yaml:"build_name,omitempty" json:"build_name,omitempty"`
+	IsProduction  bool   `yaml:"is_production,omitempty" json:"is_production,omitempty"`
+	StrictMode    bool   `yaml:"strict,omitempty" json:"strict,omitempty"`
+	VersionSuffix string `yaml:"version_suffix,omitempty" json:"version_suffix,omitempty"`
+	// ForceArch forces a specific architecutre.
+	ForceArch string `yaml:"force_arch,omitempty" json:"force_arch,omitempty"`
+	// Unexported minio valued (run-time options)
+	MinioCfgFile string // not exported
+}
+
+type Minio struct {
+	// Bucket is the bucket to put all the bits
+	Bucket string `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+	// MinioKeyPrefix is the root path in the bucket to start looking for paths.
+	// The prefix is treated as a path prefix
+	KeyPrefix string `yaml:"key_prefix,omitempty" json:"key_prefix,omitempty"`
+	// Unexported minio valued (run-time options)
+	ConfigFile string `yaml:",omitempty" json:",omitempty"`
+	SSHForward string `yaml:",omitempty" json:",omitempty"`
+	SSHUser    string `yaml:",omitempty" json:",omitempty"`
+	SSHKey     string `yaml:",omitempty" json:",omitempty"`
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config
@@ -128,19 +148,30 @@ type Recipe struct {
 // Repo is a yum/dnf repositories to use as an installation source.
 type Repo struct {
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
-	URL  string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// URL indicates that the repo file is remote
+	URL *string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// Inline indicates that the repo file is inline
+	Inline *string `yaml:"inline,omitempty" json:"inline,omitempty"`
 }
 
 // Writer places the remote repo file into path. If the repo has no name,
 // then a SHA256 of the URL will be used. Returns path of the file and err.
 func (r *Repo) Writer(path string) (string, error) {
-	if r.URL == "" {
-		return "", errors.New("URL is undefined")
+	if r.URL == nil && r.Inline == nil {
+		return "", errors.New("repo must be a URL or inline data")
 	}
 	rname := r.Name
+	var data string
+	if r.URL != nil {
+		data = *r.URL
+	} else {
+		data = *r.Inline
+	}
 	if rname == "" {
 		h := sha256.New()
-		if _, err := h.Write([]byte(r.URL)); err != nil {
+		if _, err := h.Write([]byte(data)); err != nil {
 			return "", fmt.Errorf("failed to calculate name: %v", err)
 		}
 		rname = fmt.Sprintf("%x", h.Sum(nil))
@@ -153,13 +184,22 @@ func (r *Repo) Writer(path string) (string, error) {
 	}
 	defer out.Close()
 
-	resp, err := http.Get(r.URL)
-	if err != nil {
-		return f, err
+	closer := func() error { return nil }
+	var dataR io.Reader
+	if r.URL != nil && *r.URL != "" {
+		resp, err := http.Get(*r.URL)
+		if err != nil {
+			return f, err
+		}
+		dataR = resp.Body
+		closer = resp.Body.Close
+	} else {
+		dataR = strings.NewReader(*r.Inline)
 	}
-	defer resp.Body.Close()
 
-	n, err := io.Copy(out, resp.Body)
+	defer closer() //nolint
+
+	n, err := io.Copy(out, dataR)
 	if n == 0 {
 		return f, errors.New("No remote content fetched")
 	}
@@ -184,10 +224,46 @@ type Spec struct {
 	GitURL string `yaml:"git_url,omitempty" json:"git_url,omitempty"`
 }
 
-// Oscontainer describes the location to push the OS Container to.
-type Oscontainer struct {
-	PushURL string `yaml:"push_url,omitempty" json:"push_url,omitempty"`
+// PublishOscontainer describes where to push the OSContainer to.
+type PublishOscontainer struct {
+	// BuildStrategyTLSVerify indicates whether to verify TLS certificates when pushing as part of a OCP Build Strategy.
+	// By default, TLS verification is turned on.
+	BuildStrategyTLSVerify *bool `yaml:"buildstrategy_tls_verify" json:"buildstrategy_tls_verify"`
+
+	// Registries is a list of locations to push to.
+	Registries []Registry `yaml:"registries" json:"regristries"`
 }
+
+// Registry describes the push locations.
+type Registry struct {
+	// URL is the location that should be used to push the secret.
+	URL string `yaml:"url" json:"url"`
+
+	// TLSVerify tells when to verify TLS. By default, its true
+	TLSVerify *bool `yaml:"tls_verify,omitempty" json:"tls_verify,omitempty"`
+
+	// SecretType is name the secret to expect, should PushSecretType*s
+	SecretType PushSecretType `yaml:"secret_type,omitempty" json:"secret_type,omitempty"`
+
+	// If the secret is inline, the string data, else, the cluster secret name
+	Secret string `yaml:"secret,omitempty" json:"secret,omitempty"`
+}
+
+// PushSecretType describes the type of push secret.
+type PushSecretType string
+
+// Supported push secret types.
+const (
+	// PushSecretTypeInline means that the secret string is a string literal
+	// of the docker auth.json.
+	PushSecretTypeInline = "inline"
+	// PushSecretTypeCluster indicates that the named secret in PushRegistry should be
+	// fetched via the service account from the cluster.
+	PushSecretTypeCluster = "cluster"
+	// PushSecretTypeToken indicates that the service account associated with the token
+	// has access to the push repository.
+	PushSecretTypeToken = "token"
+)
 
 // JobSpecReader takes and io.Reader and returns a ptr to the JobSpec and err
 func JobSpecReader(in io.Reader) (j JobSpec, err error) {

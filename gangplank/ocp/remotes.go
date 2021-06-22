@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/gangplank/cosa"
+	"github.com/coreos/gangplank/spec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -98,8 +99,11 @@ func (r *RemoteFile) Extract(ctx context.Context, path string) error {
 	return decompress(tmpf, path)
 }
 
-// decompress takes an open file and extracts its to directory.
-func decompress(in *os.File, dir string) error {
+// decompress is a spec TarDecompressorFunc
+var _ spec.TarDecompressorFunc = decompress
+
+// decompress takes an io.ReadCloser extracts its to directory.
+func decompress(in io.ReadCloser, dir string) error {
 	log.Info("Receiving binary source from STDIN as archive ...")
 	args := []string{"-x", "-v", "-o", "-m", "-f", "-", "-C", dir}
 	cmd := exec.Command("bsdtar", args...)
