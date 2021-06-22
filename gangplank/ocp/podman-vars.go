@@ -1,3 +1,5 @@
+// +build !gangway
+
 package ocp
 
 var (

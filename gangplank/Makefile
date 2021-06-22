@@ -3,7 +3,7 @@ state = $(shell test -n "`git status -s`" && echo dirty || echo clean)
 version = $(shell cd .. && git log -n 1 --date=short --pretty=format:%cs.%h~${state} -- gangplank)
 cosa_dir = $(shell test -d /usr/lib/coreos-assembler && echo /usr/lib/coreos-assembler)
 ldflags=-X main.version=${version} -X main.cosaDir=${cosa_dir}
-
+buildtags=containers_image_openpgp
 export PATH := $(my_dir)/bin:$(shell readlink -f ../tools/bin):$(PATH)
 
 PREFIX ?= /usr
@@ -13,7 +13,10 @@ ARCH:=$(shell uname -m)
 pkgs := $(shell go list -mod=vendor ./...)
 .PHONY: build
 build:
-	cd cmd && go build  -i -ldflags "${ldflags}" -mod vendor -v -o ../bin/gangplank .
+	cd "${my_dir}/cmd/gangway" && go build -ldflags "${ldflags}" -tags ${buildtags},gangway -mod vendor -v -o ${my_dir}/bin/gangway
+	cd "${my_dir}/cmd/gangplank" && env CGO_ENABLED=0 \
+		go build -ldflags "${ldflags}" -tags ${buildtags} -mod vendor -v -o ${my_dir}/bin/gangplank .
+
 .PHONY: docs
 docs:
 	for i in ocp cosa spec; do cd ${my_dir}/$$i; pwd; gomarkdoc \
@@ -25,12 +28,13 @@ fmt:
 
 .PHONY: staticanalysis
 staticanalysis:
-	golangci-lint run -v ./...
+	golangci-lint run -v --build-tags ${buildtags},gangway ./...
+	env CGO_ENABLED=0 golangci-lint run -v --build-tags ${buildtags},gangway ./...
 
 .PHONY: test
 test: fmt
-	go test -mod=vendor -tags ${test_tags} -v  -i ${pkgs} && \
-	go test -mod=vendor -tags ${test_tags} -v -cover ${pkgs}
+	go test -mod=vendor -tags ${buildtags},gangway -v ${pkgs} && \
+	env CGO_ENABLED=0 go test -mod=vendor -tags ${buildtags},!gangway -v -cover ${pkgs}
 
 .PHONY: clean
 clean:
@@ -44,6 +48,7 @@ schema:
 .PHONY: install
 install: bin/gangplank
 	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/gangplank
+	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/gangway
 
 .PHONY: go-deps
 go-deps:

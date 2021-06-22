@@ -14,8 +14,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"reflect"
@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/gangplank/cosa"
 	"github.com/coreos/gangplank/spec"
+	"github.com/minio/minio-go/v7"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 )
@@ -153,13 +154,20 @@ func (bc *buildConfig) Exec(ctx ClusterContext) (err error) {
 	}
 
 	// Define, but do not start minio.
-	m := newMinioServer(bc.JobSpec.Job.MinioCfgFile)
+	m := newMinioServer(bc.JobSpec.Minio.ConfigFile)
 	m.dir = cosaSrvDir
+	if !m.ExternalServer {
+		if mf := getSshMinioForwarder(&bc.JobSpec); mf != nil {
+			m.overSSH = mf
+			m.Host = "127.0.0.1"
+		}
+	}
 
 	// returnTo informs the workers where to send their bits
 	returnTo := &Return{
-		Minio:  m,
-		Bucket: "builds",
+		Minio:     m,
+		Bucket:    bc.JobSpec.Minio.Bucket,
+		KeyPrefix: bc.JobSpec.Minio.KeyPrefix,
 	}
 
 	// Prepare the remote files.
@@ -197,28 +205,38 @@ binary build interface.`)
 	}
 	defer m.Kill()
 
-	if err := m.ensureBucketExists(ctx, "builds"); err != nil {
-		return fmt.Errorf("failed to ensure 'builds' bucket exists on minio: %v", err)
+	// Set the cosa builds IO Backend to minio.
+	mc, err := m.client()
+	if err != nil {
+		return fmt.Errorf("failed to get minio client")
+	}
+	if err := m.ensureBucketExists(ctx, bc.JobSpec.Minio.Bucket); err != nil {
+		return fmt.Errorf("failed to ensure '%s' bucket exists: %v", bc.JobSpec.Minio.Bucket, err)
 	}
 
-	// Get the latest build that might have happened
-	lastBuild, lastPath, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	// Set the cosa backend to minio. This allows for Gangplank to use
+	// either a local directory (via minio) or remote object store (AWS or minio)
+	// as the artifact store.
+	if err := cosa.SetIOBackendMinio(ctx, mc, bc.JobSpec.Minio.Bucket, bc.JobSpec.Minio.KeyPrefix); err != nil {
+		return err
+	}
+
+	// Find the last build, if any.
+	lastBuild, _, err := cosa.ReadBuild("", "", cosa.BuilderArch())
 	if err == nil {
 		keyPath := filepath.Join(lastBuild.BuildID, cosa.BuilderArch())
 		l := log.WithFields(log.Fields{
 			"prior build": lastBuild.BuildID,
-			"path":        lastPath,
-			"to path":     filepath.Join("srv", "builds", keyPath),
 		})
 		l.Info("found prior build")
 		remoteFiles = append(
 			remoteFiles,
-			getBuildMeta(lastPath, keyPath, m, l)...,
+			getBuildMeta(lastBuild.BuildID, keyPath, m, l, &bc.JobSpec.Minio)...,
 		)
 
 	} else {
 		lastBuild = new(cosa.Build)
-		log.Debug("no prior build found")
+		log.Info("no prior build found")
 	}
 
 	// Dump the jobspec
@@ -272,7 +290,7 @@ binary build interface.`)
 			go func(out chan<- bool) {
 				check := func() bool {
 
-					build, foundRemoteFiles, err := getStageFiles(buildID, l, m, lastBuild, &s)
+					build, foundRemoteFiles, err := getStageFiles(buildID, l, m, lastBuild, &s, &bc.JobSpec.Minio)
 					if build != nil && buildID != build.BuildID && !foundNewBuild {
 						l.WithField("build ID", build.BuildID).Info("Using new buildID for lifetime of this build")
 						buildID = build.BuildID
@@ -370,6 +388,12 @@ binary build interface.`)
 	// Terminate is used to tell all go-routines to end
 	terminate := make(chan bool)
 
+	// If defined, startup SSH before any work begins
+	if m.overSSH != nil {
+		if err := m.fowardOverSSH(terminate, errorCh); err != nil {
+			return err
+		}
+	}
 	// Watch the channels for signals to terminate
 	errored := false
 	go func() {
@@ -433,13 +457,6 @@ binary build interface.`)
 	}
 
 	close(terminate)
-
-	// Yeah, this is lazy...
-	args := []string{"find", "/srv/builds", "-type", "f"}
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
 
 	if errored {
 		return fmt.Errorf("process failed")
@@ -567,7 +584,7 @@ func (bc *buildConfig) ocpBinaryInput(m *minioServer) ([]*RemoteFile, error) {
 			Compressed: true,
 		}
 		remoteFiles = append(remoteFiles, r)
-		log.Info("Binary input will be served to remote mos.")
+		log.Info("Binary input will be served to remote workers")
 	}
 
 	// Look for a jobspec in the binary payload.
@@ -606,43 +623,60 @@ func (bc *buildConfig) ocpBinaryInput(m *minioServer) ([]*RemoteFile, error) {
 
 // getBuildMeta searches a path for all build meta files and creates remoteFiles
 // for them. The keyPathBase is the relative path for the object.
-func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []*RemoteFile {
+func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry, mcfg *spec.Minio) []*RemoteFile {
 	var metas []*RemoteFile
 
-	_ = filepath.Walk(jsonPath, func(path string, info os.FileInfo, err error) error {
-		if info == nil || info.IsDir() {
-			return nil
-		}
-		n := filepath.Base(info.Name())
+	mc, err := m.client()
+	if err != nil {
+		log.WithError(err).Warn("failed to get client")
+		return nil
+	}
 
+	bucket, searchPath := getBucketObjectPath(mcfg, jsonPath)
+
+	v := mc.ListObjects(context.Background(), bucket,
+		minio.ListObjectsOptions{
+			Recursive: true,
+			Prefix:    searchPath,
+		},
+	)
+	for {
+		info, ok := <-v
+		if !ok {
+			break
+		}
+		if strings.HasSuffix(info.Key, "/") {
+			continue
+		}
+
+		n := filepath.Base(info.Key)
 		if !isKnownBuildMeta(n) {
-			return nil
+			continue
 		}
 
-		key := filepath.Join(keyPathBase, n)
 		metas = append(
 			metas,
 			&RemoteFile{
-				Bucket: "builds",
-				Minio:  m,
-				Object: key,
+				Bucket:    bucket,
+				Minio:     m,
+				Object:    info.Key,
+				ForcePath: filepath.Join("/srv/", "builds", getKeyLocalPath(mcfg, info.Key)),
 			},
 		)
 		l.WithFields(log.Fields{
-			"file":   info.Name(),
-			"bucket": "builds",
-			"key":    key,
+			"bucket": bucket,
+			"key":    info.Key,
 		}).Info("Included metadata")
-		return nil
-	})
+	}
 
-	if _, err := os.Stat(filepath.Join(cosaSrvDir, "builds", "builds.json")); err == nil {
+	bucket, obj := getBucketObjectPath(mcfg, "builds.json")
+	if _, err := mc.StatObject(context.Background(), bucket, obj, minio.StatObjectOptions{}); err == nil {
 		metas = append(
 			metas,
 			&RemoteFile{
 				Minio:     m,
-				Bucket:    "builds",
-				Object:    "builds.json",
+				Bucket:    bucket,
+				Object:    obj,
 				ForcePath: "/srv/builds/builds.json",
 			},
 		)
@@ -656,7 +690,7 @@ func getBuildMeta(jsonPath, keyPathBase string, m *minioServer, l *log.Entry) []
 // and artifacts are send. If the stage requires/requests the caches,  it will be
 // included in the RemoteFiles.
 func getStageFiles(buildID string,
-	l *log.Entry, m *minioServer, lastBuild *cosa.Build, s *spec.Stage) (*cosa.Build, []*RemoteFile, error) {
+	l *log.Entry, m *minioServer, lastBuild *cosa.Build, s *spec.Stage, mcfg *spec.Minio) (*cosa.Build, []*RemoteFile, error) {
 	var remoteFiles []*RemoteFile
 	var keyPathBase string
 
@@ -664,10 +698,9 @@ func getStageFiles(buildID string,
 
 	// For _each_ stage, we need to check if a meta.json exists.
 	// mBuild - *cosa.Build representing meta.json
-	buildPath := filepath.Join(cosaSrvDir, "builds")
-	mBuild, _, err := cosa.ReadBuild(cosaSrvDir, buildID, "")
+	mBuild, _, err := cosa.ReadBuild("", buildID, "")
 	if err != nil {
-		l.WithField("build dir", buildPath).WithError(err).Warningf("No builds found")
+		l.Info("No build history found")
 	}
 
 	// Handle {Require,Request}{Cache,CacheRepo}
@@ -676,7 +709,8 @@ func getStageFiles(buildID string,
 			return nil
 		}
 
-		cacheFound := m.Exists("cache", tarball)
+		bucket, obj := getBucketObjectPath(mcfg, "cache", tarball)
+		cacheFound := m.Exists(bucket, obj)
 		if !cacheFound {
 			if required {
 				l.WithField("cache", tarball).Debug("Does not exists yet")
@@ -688,11 +722,11 @@ func getStageFiles(buildID string,
 		remoteFiles = append(
 			remoteFiles,
 			&RemoteFile{
-				Bucket:           cacheBucket,
+				Bucket:           bucket,
 				Compressed:       true,
 				ForceExtractPath: "/", // will extract to /srv/cache
 				Minio:            m,
-				Object:           tarball,
+				Object:           obj,
 			})
 		return nil
 	}
@@ -716,11 +750,10 @@ func getStageFiles(buildID string,
 		keyPathBase = filepath.Join(buildID, cosa.BuilderArch())
 
 		// Locate build meta data
-		jsonPath := filepath.Join(buildPath, buildID)
 		if lastBuild.BuildID != mBuild.BuildID {
 			remoteFiles = append(
 				remoteFiles,
-				getBuildMeta(jsonPath, keyPathBase, m, l)...,
+				getBuildMeta(buildID, keyPathBase, m, l, mcfg)...,
 			)
 		}
 	}
@@ -731,9 +764,6 @@ func getStageFiles(buildID string,
 			l.Debug("Waiting for build to appear")
 			return nil, nil, errMissingArtifactDependency
 		}
-
-		l.Info("Didn't find a prior build")
-		return nil, remoteFiles, nil
 	}
 
 	// addArtifact is a helper function for adding artifacts
@@ -745,18 +775,19 @@ func getStageFiles(buildID string,
 
 		// get the Minio relative path for the object
 		// the full path needs to be broken in to <BUILDID>/<ARCH>/<FILE>
-		keyPath := filepath.Join(keyPathBase, filepath.Base(bArtifact.Path))
+		bucket, key := getBucketObjectPath(mcfg, keyPathBase, filepath.Base(bArtifact.Path))
 
 		// Check if the remote server has this
-		if !m.Exists("builds", keyPath) {
+		if !m.Exists(bucket, key) {
 			return errMissingArtifactDependency
 		}
 
 		r := &RemoteFile{
-			Artifact: bArtifact,
-			Bucket:   "builds",
-			Minio:    m,
-			Object:   keyPath,
+			Artifact:  bArtifact,
+			Bucket:    bucket,
+			Minio:     m,
+			Object:    key,
+			ForcePath: filepath.Join("/srv", "builds", getKeyLocalPath(mcfg, key)),
 		}
 		remoteFiles = append(remoteFiles, r)
 		return nil
@@ -779,14 +810,67 @@ func getStageFiles(buildID string,
 		foundCount++
 	}
 
-	if len(s.RequireArtifacts) == foundCount {
-		for _, rf := range remoteFiles {
-			l.WithFields(log.Fields{
-				"bucket": rf.Bucket,
-				"object": rf.Object,
-			}).Debug("will request")
-		}
-		return mBuild, remoteFiles, nil
+	if len(s.RequireArtifacts) != foundCount {
+		return mBuild, nil, errMissingArtifactDependency
 	}
-	return mBuild, nil, errMissingArtifactDependency
+
+	// Create a single tarball of from all the arbitrary overrides, then place in the cache directory.
+	if len(s.Overrides) > 0 {
+		overrideToken, _ := randomString(10)
+		tmpD, err := ioutil.TempDir("", "override")
+		if err != nil {
+			return nil, nil, err
+		}
+		defer os.RemoveAll(tmpD) //nolint
+
+		for _, override := range s.Overrides {
+			l.WithField("override", override.URI).Info("Processing Override")
+			if err := override.Fetch(l, tmpD, decompress); err != nil {
+				return nil, nil, fmt.Errorf("failed to write remote file: %v", err)
+			}
+		}
+
+		bucket, key := getBucketObjectPath(mcfg, "cache", fmt.Sprintf("overrides-%s.tar.gz", overrideToken))
+		if err := uploadPathAsTarBall(
+			context.Background(), bucket, key, ".", tmpD, false,
+			&Return{Minio: m}); err != nil {
+			return nil, nil, err
+		}
+		remoteFiles = append(
+			remoteFiles,
+			&RemoteFile{
+				Bucket:           mcfg.Bucket,
+				Compressed:       true,
+				ForceExtractPath: "/srv",
+				Minio:            m,
+				Object:           key,
+			},
+		)
+	}
+
+	for _, rf := range remoteFiles {
+		l.WithFields(log.Fields{
+			"bucket": rf.Bucket,
+			"object": rf.Object,
+		}).Debug("will request")
+	}
+
+	return mBuild, remoteFiles, nil
+
+}
+
+// getBucketObjectPath returns the bucket and the approriate path much like
+// filepath.Join does, but for remote objects
+func getBucketObjectPath(m *spec.Minio, parts ...string) (string, string) {
+	path := filepath.Join(parts...)
+	bucket := m.Bucket
+	if m.KeyPrefix != "" {
+		path = filepath.Join(m.KeyPrefix, path)
+	}
+	return bucket, path
+}
+
+// getKeyLocalPath strips off the
+func getKeyLocalPath(m *spec.Minio, key string) string {
+	return strings.TrimPrefix(key, m.KeyPrefix)
 }

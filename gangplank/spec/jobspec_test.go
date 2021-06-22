@@ -23,20 +23,33 @@ func TestURL(t *testing.T) {
 	}{
 		{
 			desc:    "good repo",
-			repo:    Repo{URL: "http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo"},
+			repo:    Repo{URL: strPtr("http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo")},
 			wantErr: false,
 		},
 		{
 			desc: "named repo",
 			repo: Repo{
 				Name: "test",
-				URL:  "http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo"},
+				URL:  strPtr("http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo")},
 			wantErr: false,
 		},
 		{
 			desc:    "bad repo",
-			repo:    Repo{URL: "http://fedora.com/this/will/not/exist/no/really/it/shouldnt"},
+			repo:    Repo{URL: strPtr("http://fedora.com/this/will/not/exist/no/really/it/shouldnt")},
 			wantErr: true,
+		},
+		{
+			desc:    "inline repo",
+			repo:    Repo{Inline: strPtr("meh this is a repo")},
+			wantErr: false,
+		},
+		{
+			desc: "named inline repo",
+			repo: Repo{
+				Name:   "named inline repo",
+				Inline: strPtr("meh this is a repo"),
+			},
+			wantErr: false,
 		},
 	}
 
@@ -50,7 +63,13 @@ func TestURL(t *testing.T) {
 			wantPath := filepath.Join(tmpd, fmt.Sprintf("%s.repo", c.repo.Name))
 			if c.repo.Name == "" {
 				h := sha256.New()
-				_, _ = h.Write([]byte(c.repo.URL))
+				var data []byte
+				if c.repo.URL != nil {
+					data = []byte(*c.repo.URL)
+				} else {
+					data = []byte(*c.repo.Inline)
+				}
+				_, _ = h.Write(data)
 				wantPath = filepath.Join(tmpd, fmt.Sprintf("%x.repo", h.Sum(nil)))
 			}
 			if wantPath != path {

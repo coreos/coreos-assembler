@@ -306,6 +306,11 @@ var (
 			procFn: processHGROUP,
 		},
 		{
+			normal: "rss",
+			header: "RSS",
+			procFn: processRSS,
+		},
+		{
 			normal: "state",
 			header: "STATE",
 			procFn: processState,
@@ -477,7 +482,7 @@ func JoinNamespaceAndProcessInfoByPidsWithOptions(pids []string, descriptors []s
 				// catch race conditions
 				continue
 			}
-			return nil, errors.Wrapf(err, "error extracing PID namespace")
+			return nil, errors.Wrapf(err, "error extracting PID namespace")
 		}
 		if _, exists := nsMap[ns]; !exists {
 			nsMap[ns] = true
@@ -663,12 +668,7 @@ func processARGS(p *process.Process, ctx *psContext) (string, error) {
 
 // processCOMM returns the command name (i.e., executable name) of process p.
 func processCOMM(p *process.Process, ctx *psContext) (string, error) {
-	// ps (1) returns "[$name]" if command/args are empty
-	if p.CmdLine[0] == "" {
-		return processName(p, ctx)
-	}
-	spl := strings.Split(p.CmdLine[0], "/")
-	return spl[len(spl)-1], nil
+	return p.Stat.Comm, nil
 }
 
 // processNICE returns the nice value of process p.
@@ -759,7 +759,7 @@ func processVSZ(p *process.Process, ctx *psContext) (string, error) {
 }
 
 // parseCAP parses cap (a string bit mask) and returns the associated set of
-// capabilities.  If all capabilties are set, "full" is returned.  If no
+// capabilities.  If all capabilities are set, "full" is returned.  If no
 // capability is enabled, "none" is returned.
 func parseCAP(cap string) (string, error) {
 	mask, err := strconv.ParseUint(cap, 16, 64)
@@ -777,36 +777,36 @@ func parseCAP(cap string) (string, error) {
 	return strings.Join(caps, ","), nil
 }
 
-// processCAPAMB returns the set of ambient capabilties associated with
-// process p.  If all capabilties are set, "full" is returned.  If no
+// processCAPAMB returns the set of ambient capabilities associated with
+// process p.  If all capabilities are set, "full" is returned.  If no
 // capability is enabled, "none" is returned.
 func processCAPAMB(p *process.Process, ctx *psContext) (string, error) {
 	return parseCAP(p.Status.CapAmb)
 }
 
-// processCAPINH returns the set of inheritable capabilties associated with
-// process p.  If all capabilties are set, "full" is returned.  If no
+// processCAPINH returns the set of inheritable capabilities associated with
+// process p.  If all capabilities are set, "full" is returned.  If no
 // capability is enabled, "none" is returned.
 func processCAPINH(p *process.Process, ctx *psContext) (string, error) {
 	return parseCAP(p.Status.CapInh)
 }
 
-// processCAPPRM returns the set of permitted capabilties associated with
-// process p.  If all capabilties are set, "full" is returned.  If no
+// processCAPPRM returns the set of permitted capabilities associated with
+// process p.  If all capabilities are set, "full" is returned.  If no
 // capability is enabled, "none" is returned.
 func processCAPPRM(p *process.Process, ctx *psContext) (string, error) {
 	return parseCAP(p.Status.CapPrm)
 }
 
-// processCAPEFF returns the set of effective capabilties associated with
-// process p.  If all capabilties are set, "full" is returned.  If no
+// processCAPEFF returns the set of effective capabilities associated with
+// process p.  If all capabilities are set, "full" is returned.  If no
 // capability is enabled, "none" is returned.
 func processCAPEFF(p *process.Process, ctx *psContext) (string, error) {
 	return parseCAP(p.Status.CapEff)
 }
 
-// processCAPBND returns the set of bounding capabilties associated with
-// process p.  If all capabilties are set, "full" is returned.  If no
+// processCAPBND returns the set of bounding capabilities associated with
+// process p.  If all capabilities are set, "full" is returned.  If no
 // capability is enabled, "none" is returned.
 func processCAPBND(p *process.Process, ctx *psContext) (string, error) {
 	return parseCAP(p.Status.CapBnd)
@@ -847,7 +847,7 @@ func processHPID(p *process.Process, ctx *psContext) (string, error) {
 func processHUSER(p *process.Process, ctx *psContext) (string, error) {
 	if hp := findHostProcess(p, ctx); hp != nil {
 		if ctx.opts != nil && len(ctx.opts.UIDMap) > 0 {
-			return findID(p.Status.Uids[1], ctx.opts.UIDMap, process.LookupUID, "/proc/sys/fs/overflowuid")
+			return findID(hp.Status.Uids[1], ctx.opts.UIDMap, process.LookupUID, "/proc/sys/fs/overflowuid")
 		}
 		return hp.Huser, nil
 	}
@@ -860,11 +860,21 @@ func processHUSER(p *process.Process, ctx *psContext) (string, error) {
 func processHGROUP(p *process.Process, ctx *psContext) (string, error) {
 	if hp := findHostProcess(p, ctx); hp != nil {
 		if ctx.opts != nil && len(ctx.opts.GIDMap) > 0 {
-			return findID(p.Status.Gids[1], ctx.opts.GIDMap, process.LookupGID, "/proc/sys/fs/overflowgid")
+			return findID(hp.Status.Gids[1], ctx.opts.GIDMap, process.LookupGID, "/proc/sys/fs/overflowgid")
 		}
 		return hp.Hgroup, nil
 	}
 	return "?", nil
+}
+
+// processRSS returns the resident set size of process p in KiB (1024-byte
+// units).
+func processRSS(p *process.Process, ctx *psContext) (string, error) {
+	if p.Status.VMRSS == "" {
+		// probably a kernel thread
+		return "0", nil
+	}
+	return p.Status.VMRSS, nil
 }
 
 // processState returns the process state of process p.

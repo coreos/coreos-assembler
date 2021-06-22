@@ -205,7 +205,7 @@ func TestMergeMeta(t *testing.T) {
 	// m represents the merger of b and c
 	// where b is the starting meta.json
 	// m.BuildID should be c.Build
-	m, _, err := ReadBuild(tmpd, "", BuilderArch())
+	m, _, err := ReadBuild(filepath.Join(tmpd, "builds"), "", BuilderArch())
 	if err != nil {
 		t.Fatal("failed to find build")
 	}

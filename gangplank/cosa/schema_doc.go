@@ -164,7 +164,7 @@ var generatedSchemaJSON = `{
       }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
- "$id":"http://github.com/coreos/coreos-assembler/blob/master/schema/v1.json",
+ "$id":"http://github.com/coreos/coreos-assembler/blob/main/schema/v1.json",
  "type":"object",
  "title":"CoreOS Assember v1 meta.json schema",
  "required": [

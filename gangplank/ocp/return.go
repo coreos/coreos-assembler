@@ -20,6 +20,7 @@ var _ Returner = &Return{}
 type Return struct {
 	Minio     *minioServer `json:"remote"`
 	Bucket    string       `json:"bucket"`
+	KeyPrefix string       `json:"key_prefix"`
 	Overwrite bool         `json:"overwrite"`
 
 	// ArtifactTypes will return only artifacts that known and defined
@@ -40,7 +41,8 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 	if r.Minio == nil {
 		return nil
 	}
-	b, path, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	baseBuildDir := filepath.Join(cosaSrvDir, "builds")
+	b, path, err := cosa.ReadBuild(baseBuildDir, "", cosa.BuilderArch())
 	if err != nil {
 		return err
 	}
@@ -104,6 +106,10 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 
 	var e error = nil
 	for k, v := range upload {
+		if r.KeyPrefix != "" {
+			k = filepath.Join(r.KeyPrefix, k)
+		}
+
 		l := log.WithFields(log.Fields{
 			"host":          r.Minio.Host,
 			"file":          v,
@@ -130,7 +136,6 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 				continue
 			}
 		}
-
 		if err := r.Minio.putter(ctx, r.Bucket, k, v); err != nil {
 			l.WithField("err", err).Error("failed upload, tainting build")
 			e = fmt.Errorf("upload failed with at least one error: %w", err)
@@ -160,31 +165,58 @@ func isKnownBuildMeta(n string) bool {
 	return false
 }
 
-// tarballCreatePrefix prepends the command for creating a tarball.
-// We have to use a package scope variable in order to allow for root-less
-// testing.
-var tarballCreatePrefix = []string{"sudo", "bash"}
+var (
+	// sudoBashCmd is used for shelling out to comamnds.
+	sudoBashCmd = []string{"sudo", "bash", "-c"}
 
-// returnPathTarBall returns a path as a tarball to minio server. This uses a shell call out
+	// bashCmd is used for shelling out to commands
+	bashCmd = []string{"bash", "-c"}
+)
+
+// uploadPathAsTarBall returns a path as a tarball to minio server. This uses a shell call out
 // since we need to elevate permissions via sudo (bug in Golang <1.16 prevents elevating privs).
 // Gangplank runs as the builder user normally and since some files are written by root, Gangplank
 // will get permission denied.
-func returnPathTarBall(ctx context.Context, bucket, object, path string, r *Return) error {
-	tmpD, err := ioutil.TempDir("", "tarball-XXXXX")
+//
+// The tarball creation will be done relative to workDir. If workDir is an empty string, it will default
+// to the current working directory.
+func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir string, sudo bool, r *Return) error {
+	tmpD, err := ioutil.TempDir("", "tarball")
 	if err != nil {
 		return err
 	}
-	rand, _ := randomString(10)
-	tmpf := filepath.Join(tmpD, fmt.Sprintf("cosa-%s.tar", rand))
-	tmpfgz := fmt.Sprintf("%s.gz", tmpf)
 
-	defer os.Remove(tmpD) //nolint
+	tmpf, err := ioutil.TempFile("", "")
+	if err != nil {
+		return err
+	}
+	tmpf.Close()
+	_ = os.Remove(tmpf.Name()) // we just want the file name
+	tmpfgz := fmt.Sprintf("%s.gz", tmpf.Name())
+
+	defer func() {
+		_ = os.RemoveAll(tmpD)
+		_ = os.Remove(tmpf.Name())
+		_ = os.Remove(tmpfgz)
+	}()
+
+	if workDir == "" {
+		workDir, _ = os.Getwd()
+	}
+
+	prefix := bashCmd
+	if sudo {
+		prefix = sudoBashCmd
+	}
 
 	// Here be hacks: we set the tarball to be world-read writeable so that the
 	// defer above can clean-up without requiring root.
-	args := append(tarballCreatePrefix, "-c",
-		fmt.Sprintf("umask 000; tar -cf %s %s; stat %s; gzip --fast %s;", tmpf, tmpf, path, tmpf))
+	args := append(
+		prefix,
+		fmt.Sprintf("umask 000; tar -cf %s %s; stat %s; gzip --fast %s;",
+			tmpf.Name(), path, tmpf.Name(), tmpf.Name()))
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.Dir = workDir
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	l := log.WithFields(log.Fields{
@@ -193,7 +225,7 @@ func returnPathTarBall(ctx context.Context, bucket, object, path string, r *Retu
 		"dest url": fmt.Sprintf("http://%s:%d/%s/%s", r.Minio.Host, r.Minio.Port, bucket, object),
 	})
 
-	l.WithField("shell command", args).Info("creating tartbal")
+	l.WithField("shell command", args).Info("creating tarball")
 	if err := cmd.Run(); err != nil {
 		l.WithError(err).Error("failed to create tarball")
 		return err

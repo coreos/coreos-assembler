@@ -2,10 +2,12 @@ package ocp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -14,10 +16,15 @@ import (
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // workSpec is a Builder.
 var _ Builder = &workSpec{}
+
+// workerBuild Dir is hard coded. Workers always read builds relative to their
+// local paths and assume the build location is on /srv
+var workerBuildDir string = filepath.Join("/srv", "builds")
 
 // workSpec define job for remote worker to do
 // A workSpec is dispatched by a builder and is tightly coupled to
@@ -168,7 +175,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			log.WithError(err).Info("Processed Uploads")
 		}
 
-		b, _, err := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+		b, _, err := cosa.ReadBuild(workerBuildDir, "", cosa.BuilderArch())
 		if err != nil && b != nil {
 			_ = b.WriteMeta(os.Stdout.Name(), false)
 
@@ -182,7 +189,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 	}()
 
 	// Expose the jobspec and meta.json (if its available) for templating.
-	mBuild, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+	mBuild, _, _ := cosa.ReadBuild(workerBuildDir, "", cosa.BuilderArch())
 	if mBuild == nil {
 		mBuild = new(cosa.Build)
 	}
@@ -237,24 +244,35 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			return err
 		}
 
-		next, _, _ := cosa.ReadBuild(cosaSrvDir, "", cosa.BuilderArch())
+		next, _, _ := cosa.ReadBuild(workerBuildDir, "", cosa.BuilderArch())
 		if next != nil && next.BuildArtifacts != nil && (mBuild.BuildArtifacts == nil || mBuild.BuildArtifacts.Ostree.Sha256 != next.BuildArtifacts.Ostree.Sha256) {
 			log.Debug("Stage produced a new OStree")
-			if err := uploadCustomBuildContainer(ctx, ws.APIBuild, next.BuildID); err != nil {
+
+			// push for other defined registries
+			for _, v := range ws.JobSpec.PublishOscontainer.Registries {
+				if err := pushOstreeToRegistry(ctx, &v, next); err != nil {
+					log.WithError(err).Warningf("Push to registry %s failed", v.URL)
+					return err
+				}
+			}
+
+			// push for custom build strategy
+			if err := uploadCustomBuildContainer(ctx, ws.JobSpec.PublishOscontainer.BuildStrategyTLSVerify, ws.APIBuild, next); err != nil {
+				log.WithError(err).Warning("Push to BuildSpec registry failed")
 				return err
 			}
 		}
 
 		if stage.ReturnCache {
 			l.WithField("tarball", cacheTarballName).Infof("Sending %s back as a tarball", cosaSrvCache)
-			if err := returnPathTarBall(ctx, cacheBucket, cacheTarballName, cosaSrvCache, ws.Return); err != nil {
+			if err := uploadPathAsTarBall(ctx, cacheBucket, cacheTarballName, cosaSrvCache, "", true, ws.Return); err != nil {
 				return err
 			}
 		}
 
 		if stage.ReturnCacheRepo {
 			l.WithField("tarball", cacheRepoTarballName).Infof("Sending %s back as a tarball", cosaSrvTmpRepo)
-			if err := returnPathTarBall(ctx, cacheBucket, cacheRepoTarballName, cosaSrvTmpRepo, ws.Return); err != nil {
+			if err := uploadPathAsTarBall(ctx, cacheBucket, cacheRepoTarballName, cosaSrvTmpRepo, "", true, ws.Return); err != nil {
 				return err
 			}
 		}
@@ -278,15 +296,165 @@ func (ws *workSpec) getEnvVars() ([]v1.EnvVar, error) {
 			Name:  CosaWorkPodEnvVarName,
 			Value: string(d),
 		},
+		{
+			Name:  "XDG_RUNTIME_DIR",
+			Value: cosaSrvDir,
+		},
+		{
+			Name:  "COSA_FORCE_ARCH",
+			Value: cosa.BuilderArch(),
+		},
 	}
-
-	if ws.JobSpec.Job.DisableTLSVerify {
-		evars = append(evars,
-			v1.EnvVar{
-				Name:  "DISABLE_TLS_VERIFICATION",
-				Value: "1",
-			})
-	}
-
 	return evars, nil
+}
+
+// pushOstreetoRegistry pushes the OStree to the defined registry location.
+func pushOstreeToRegistry(ctx ClusterContext, push *spec.Registry, build *cosa.Build) error {
+	if push == nil {
+		return errors.New("unable to push to nil registry")
+	}
+	if build == nil {
+		return errors.New("unable to push to registry: cosa build is nil")
+	}
+
+	// TODO: move this to a common validator
+	if push.URL == "" {
+		return errors.New("push registry URL is emtpy")
+	}
+
+	cluster, _ := GetCluster(ctx)
+
+	registry, registryPath := getPushTagless(push.URL)
+	pushPath := fmt.Sprintf("%s/%s", registry, registryPath)
+
+	authPath := filepath.Join("/", cosaSrvDir, ".docker", "config.json")
+	authDir := filepath.Dir(authPath)
+	if err := os.MkdirAll(authDir, 0755); err != nil {
+		return fmt.Errorf("failed to directory path for push secret")
+	}
+
+	switch v := strings.ToLower(string(push.SecretType)); v {
+	case spec.PushSecretTypeInline:
+		if err := ioutil.WriteFile(authPath, []byte(push.Secret), 0644); err != nil {
+			return fmt.Errorf("failed to write the inline secret to auth.json: %v", err)
+		}
+	case spec.PushSecretTypeCluster:
+		if !cluster.inCluster {
+			return errors.New("cluster secrets pushes are invalid out-of-cluster")
+		}
+		if err := writeDockerSecret(ctx, push.Secret, authPath); err != nil {
+			return fmt.Errorf("failed to locate the secret %s: %v", push.Secret, err)
+		}
+	case spec.PushSecretTypeToken:
+		if err := tokenRegistryLogin(ctx, push.TLSVerify, registry); err != nil {
+			return fmt.Errorf("failed to login into registry: %v", err)
+		}
+		// container XDG_RUNTIME_DIR is set to cosaSrvDir
+		authPath = filepath.Join(cosaSrvDir, "containers", "auth.json")
+	default:
+		return fmt.Errorf("secret type %s is unknown for push registries", push.SecretType)
+	}
+
+	defer func() {
+		// Remove any logins that could interfere later with subsequent pushes.
+		_ = os.RemoveAll(filepath.Join(cosaSrvDir, "containers"))
+		_ = os.RemoveAll(filepath.Join(cosaSrvDir, ".docker"))
+	}()
+
+	baseEnv := append(
+		os.Environ(),
+		"FORCE_UNPRIVILEGED=1",
+		fmt.Sprintf("REGISTRY_AUTH_FILE=%s", authPath),
+		// Tell the tools where to find the home directory
+		fmt.Sprintf("HOME=%s", cosaSrvDir),
+	)
+
+	tlsVerify := true
+	if push.TLSVerify != nil && !*push.TLSVerify {
+		tlsVerify = false
+	}
+
+	l := log.WithFields(
+		log.Fields{
+			"auth json":        authPath,
+			"final push":       push.URL,
+			"push path":        pushPath,
+			"registry":         registry,
+			"tls verification": tlsVerify,
+			"push definition":  push,
+		})
+	l.Info("Pushing to remote registry")
+
+	// pushArgs invokes cosa upload code which creates a named tag
+	pushArgs := []string{
+		"/usr/bin/coreos-assembler", "upload-oscontainer",
+		fmt.Sprintf("--name=%s", pushPath),
+	}
+	// copy the pushed image to the expected tag
+	copyArgs := []string{
+		"skopeo", "copy",
+		fmt.Sprintf("docker://%s:%s", pushPath, build.BuildID),
+		fmt.Sprintf("docker://%s", push.URL),
+	}
+
+	if !tlsVerify {
+		log.Warnf("TLS Verification has been disable for push to %s", push.URL)
+		copyArgs = append(copyArgs, "--src-tls-verify=false", "--dest-tls-verify=false")
+		baseEnv = append(baseEnv, "DISABLE_TLS_VERIFICATION=1")
+	}
+
+	for _, args := range [][]string{pushArgs, copyArgs} {
+		l.WithField("cmd", args).Debug("Calling external tool ")
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Env = baseEnv
+		if err := cmd.Run(); err != nil {
+			return errors.New("upload to registry failed")
+		}
+	}
+	return nil
+}
+
+// writeDockerSecret writes the .dockerCfg or .dockerconfig to the correct path.
+// It accepts the cluster context, the name of the secret and the location to write to.
+func writeDockerSecret(ctx ClusterContext, clusterSecretName, authPath string) error {
+	ac, ns, err := GetClient(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to fetch cluster client: %v", err)
+	}
+	secret, err := ac.CoreV1().Secrets(ns).Get(clusterSecretName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to query for secret %s: %v", apiBuild.Spec.Output.PushSecret.Name, err)
+	}
+	if secret == nil {
+		return fmt.Errorf("secret is empty")
+	}
+
+	var key string
+	switch secret.Type {
+	case v1.SecretTypeDockerConfigJson:
+		key = v1.DockerConfigJsonKey
+	case v1.SecretTypeDockercfg:
+		key = v1.DockerConfigKey
+	default:
+		return fmt.Errorf("writeDockerSecret is not supported for secret type %s", secret.Type)
+	}
+
+	data, ok := secret.Data[key]
+	if !ok {
+		return fmt.Errorf("secret %s of type %s is malformed: missing %s", secret.Name, secret.Type, key)
+	}
+
+	log.WithFields(log.Fields{
+		"local path": authPath,
+		"type":       string(secret.Type),
+		"secret key": key,
+		"name":       secret.Name,
+	}).Info("Writing push secret")
+
+	if err := ioutil.WriteFile(authPath, data, 0444); err != nil {
+		return fmt.Errorf("failed writing secret %s to %s", secret.Name, authPath)
+	}
+	return nil
 }
