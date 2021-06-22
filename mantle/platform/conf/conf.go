@@ -73,7 +73,7 @@ type Conf struct {
 }
 
 // Empty creates a completely empty configuration. Any configuration addition
-// applied to an empty config triggers a panic.
+// applied to an empty config is ignored.
 func Empty() *UserData {
 	return &UserData{
 		kind: kindEmpty,
@@ -387,8 +387,6 @@ func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
 		c.addFileV32(path, filesystem, contents, mode)
 	} else if c.ignitionV33exp != nil {
 		c.addFileV33exp(path, filesystem, contents, mode)
-	} else {
-		panic("Could not find a supported Ignition config version")
 	}
 }
 
@@ -484,8 +482,6 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 		c.addSystemdUnitV32(name, contents, enable, mask)
 	} else if c.ignitionV33exp != nil {
 		c.addSystemdUnitV33exp(name, contents, enable, mask)
-	} else {
-		panic("Could not find a supported Ignition config version")
 	}
 }
 
@@ -586,8 +582,6 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 		c.addSystemdDropinV32(service, name, contents)
 	} else if c.ignitionV33exp != nil {
 		c.addSystemdDropinV33exp(service, name, contents)
-	} else {
-		panic("Could not find a supported Ignition config version")
 	}
 }
 
@@ -686,8 +680,6 @@ func (c *Conf) AddAuthorizedKeys(user string, keys []string) {
 		c.addAuthorizedKeysV32(user, keys)
 	} else if c.ignitionV33exp != nil {
 		c.addAuthorizedKeysV33exp(user, keys)
-	} else {
-		panic("Could not find a supported Ignition config version")
 	}
 }
 
@@ -794,8 +786,6 @@ func (c *Conf) AddConfigSource(source string) {
 		c.addConfigSourceV32(source)
 	} else if c.ignitionV33exp != nil {
 		c.addConfigSourceV33exp(source)
-	} else {
-		panic("Could not find a supported Ignition config version")
 	}
 }
 
