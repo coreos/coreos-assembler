@@ -1,4 +1,4 @@
-FROM quay.io/coreos-assembler/coreos-assembler:latest
+FROM quay.io/coreos-assembler/coreos-assembler:rhcos-4.8
 WORKDIR /root/containerbuild
 
 USER root

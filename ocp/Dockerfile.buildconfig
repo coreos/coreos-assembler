@@ -1,6 +1,6 @@
 FROM quay.io/openshift/origin-cli AS openshift-origin
 
-FROM quay.io/coreos-assembler/coreos-assembler:latest
+FROM quay.io/coreos-assembler/coreos-assembler:rhcos-4.8
 
 COPY --from=openshift-origin /usr/bin/oc /usr/bin
 
