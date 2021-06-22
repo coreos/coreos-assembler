@@ -28,7 +28,7 @@ func init() {
 		Name:             "fcos.ignition.misc.empty",
 		Run:              empty,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"qemu", "esx"},
+		ExcludePlatforms: []string{"qemu", "esx", "aws"},
 		Distros:          []string{"fcos"},
 		UserData:         conf.Empty(),
 		Tags:             []string{"ignition"},

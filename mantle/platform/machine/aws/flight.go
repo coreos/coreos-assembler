@@ -63,7 +63,7 @@ func NewFlight(opts *aws.Options) (platform.Flight, error) {
 	// network/ssh.go. However, AWS requires an rsa key. For now
 	// (until we get an updated golang library) we'll just satisfy
 	// the requirement by using a fake key and disabling the
-	// fcos.ignition.v3.noop test on AWS.
+	// fcos.ignition.misc.empty and fcos.ignition.v3.noop tests on AWS.
 	// https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#how-to-generate-your-own-key-and-import-it-to-aws
 	key, err := platform.GenerateFakeKey()
 	if err != nil {
