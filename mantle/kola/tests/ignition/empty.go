@@ -45,5 +45,9 @@ func init() {
 	})
 }
 
-func empty(_ cluster.TestCluster) {
+func empty(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	// check that the test harness correctly skipped passing SSH keys
+	// via Ignition
+	c.MustSSH(m, "[ ! -e ~/.ssh/authorized_keys.d/ignition ]")
 }
