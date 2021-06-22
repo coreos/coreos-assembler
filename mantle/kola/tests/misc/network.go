@@ -52,7 +52,7 @@ func init() {
 	register.RegisterTest(&register.Test{
 		Run:         NetworkSecondaryNics,
 		ClusterSize: 0,
-		Name:        "rhcos.network.multipleNics",
+		Name:        "rhcos.network.multiple-nics",
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
 	})
@@ -62,7 +62,7 @@ func init() {
 	register.RegisterTest(&register.Test{
 		Run:         NetworkBondWithDhcp,
 		ClusterSize: 0,
-		Name:        "rhcos.network.bondWithDhcp",
+		Name:        "rhcos.network.bond-with-dhcp",
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
 	})
