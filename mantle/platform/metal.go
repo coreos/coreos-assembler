@@ -91,7 +91,7 @@ var (
 // NewMetalQemuBuilderDefault returns a QEMU builder instance with some
 // defaults set up for bare metal.
 func NewMetalQemuBuilderDefault() *QemuBuilder {
-	builder := NewBuilder()
+	builder := NewQemuBuilder()
 	// https://github.com/coreos/fedora-coreos-tracker/issues/388
 	// https://github.com/coreos/fedora-coreos-docs/pull/46
 	builder.Memory = 4096

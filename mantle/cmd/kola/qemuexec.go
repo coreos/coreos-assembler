@@ -196,7 +196,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Cannot use --bind-rw with --ignition-direct")
 	}
 
-	builder := platform.NewBuilder()
+	builder := platform.NewQemuBuilder()
 	defer builder.Close()
 
 	if butane != "" {

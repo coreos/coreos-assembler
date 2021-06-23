@@ -419,8 +419,8 @@ type QemuBuilder struct {
 	fds []*os.File
 }
 
-// NewBuilder creates a new build for QEMU with default settings.
-func NewBuilder() *QemuBuilder {
+// NewQemuBuilder creates a new build for QEMU with default settings.
+func NewQemuBuilder() *QemuBuilder {
 	ret := QemuBuilder{
 		Firmware:      "bios",
 		Swtpm:         true,
