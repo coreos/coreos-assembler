@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -733,11 +732,11 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			}
 			userdata = conf.Ignition(string(v))
 		} else if isreg && (c.Name() == "config.bu" || c.Name() == "config.fcc") {
-			b, err := exec.Command("fcct", fpath).Output()
+			v, err := ioutil.ReadFile(filepath.Join(dir, c.Name()))
 			if err != nil {
-				return errors.Wrapf(err, "failed to fcct %s", fpath)
+				return errors.Wrapf(err, "reading %s", c.Name())
 			}
-			userdata = conf.Ignition(string(b))
+			userdata = conf.Butane(string(v))
 		} else if isreg && c.Name() == "kola.json" {
 			f, err := os.Open(fpath)
 			if err != nil {
