@@ -34,6 +34,7 @@ func TestConfCopyKey(t *testing.T) {
 	}
 
 	tests := []*UserData{
+		Butane(""),
 		Ignition(`{ "ignitionVersion": 1 }`),
 		Ignition(`{ "ignition": { "version": "2.0.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.1.0" } }`),
@@ -51,6 +52,7 @@ func TestConfCopyKey(t *testing.T) {
 	}
 
 	tests = []*UserData{
+		Butane("variant: fcos\nversion: 1.3.0"),
 		Ignition(`{ "ignition": { "version": "3.0.0" } }`),
 		Ignition(`{ "ignition": { "version": "3.1.0" } }`),
 		Ignition(`{ "ignition": { "version": "3.2.0" } }`),
