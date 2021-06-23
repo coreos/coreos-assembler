@@ -141,10 +141,11 @@ func (u *UserData) AddKey(key agent.Key) *UserData {
 func (u *UserData) Render() (*Conf, error) {
 	c := &Conf{}
 
-	renderIgnition := func() error {
-		// Try each known version in turn.  Newer parsers will
-		// fall back to older ones, so try older versions first.
-		ignc3, report3, err := v3.Parse([]byte(u.data))
+	renderIgnition := func(data []byte) error {
+		// Try each known version in turn.  We can't use
+		// ParseCompatibleVersion because that'll upconvert older
+		// configs.
+		ignc3, report3, err := v3.Parse(data)
 		if err == nil {
 			c.ignitionV3 = &ignc3
 			return nil
@@ -153,7 +154,7 @@ func (u *UserData) Render() (*Conf, error) {
 			return err
 		}
 
-		ignc31, report31, err := v31.Parse([]byte(u.data))
+		ignc31, report31, err := v31.Parse(data)
 		if err == nil {
 			c.ignitionV31 = &ignc31
 			return nil
@@ -162,7 +163,7 @@ func (u *UserData) Render() (*Conf, error) {
 			return err
 		}
 
-		ignc32, report32, err := v32.Parse([]byte(u.data))
+		ignc32, report32, err := v32.Parse(data)
 		if err == nil {
 			c.ignitionV32 = &ignc32
 			return nil
@@ -171,7 +172,7 @@ func (u *UserData) Render() (*Conf, error) {
 			return err
 		}
 
-		ignc33exp, report33exp, err := v33exp.Parse([]byte(u.data))
+		ignc33exp, report33exp, err := v33exp.Parse(data)
 		if err == nil {
 			c.ignitionV33exp = &ignc33exp
 			return nil
@@ -188,7 +189,7 @@ func (u *UserData) Render() (*Conf, error) {
 	case kindEmpty:
 		// empty, noop
 	case kindIgnition:
-		err := renderIgnition()
+		err := renderIgnition([]byte(u.data))
 		if err != nil {
 			return nil, err
 		}
