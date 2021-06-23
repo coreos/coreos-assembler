@@ -157,6 +157,28 @@ github.com/aws/aws-sdk-go/service/s3/s3iface
 github.com/aws/aws-sdk-go/service/s3/s3manager
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
+# github.com/clarketm/json v1.14.1
+github.com/clarketm/json
+# github.com/coreos/butane v0.12.1
+github.com/coreos/butane/base/util
+github.com/coreos/butane/base/v0_1
+github.com/coreos/butane/base/v0_2
+github.com/coreos/butane/base/v0_3
+github.com/coreos/butane/base/v0_4_exp
+github.com/coreos/butane/config
+github.com/coreos/butane/config/common
+github.com/coreos/butane/config/fcos/v1_0
+github.com/coreos/butane/config/fcos/v1_1
+github.com/coreos/butane/config/fcos/v1_2
+github.com/coreos/butane/config/fcos/v1_3
+github.com/coreos/butane/config/fcos/v1_4_exp
+github.com/coreos/butane/config/openshift/v4_8
+github.com/coreos/butane/config/openshift/v4_8/result
+github.com/coreos/butane/config/openshift/v4_9_exp
+github.com/coreos/butane/config/openshift/v4_9_exp/result
+github.com/coreos/butane/config/rhcos/v0_1
+github.com/coreos/butane/config/util
+github.com/coreos/butane/translate
 # github.com/coreos/go-json v0.0.0-20170920214419-6a2fe990e083
 github.com/coreos/go-json
 # github.com/coreos/go-semver v0.3.0
@@ -201,6 +223,9 @@ github.com/coreos/vcontext/path
 github.com/coreos/vcontext/report
 github.com/coreos/vcontext/tree
 github.com/coreos/vcontext/validate
+github.com/coreos/vcontext/yaml
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
 # github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7
@@ -284,10 +309,14 @@ github.com/pin/tftp
 github.com/pin/tftp/netascii
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/spf13/cobra v0.0.6
 github.com/spf13/cobra
-# github.com/spf13/pflag v1.0.3
+# github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
+# github.com/stretchr/testify v1.7.0
+github.com/stretchr/testify/assert
 # github.com/ulikunitz/xz v0.5.4
 github.com/ulikunitz/xz
 github.com/ulikunitz/xz/internal/hash
@@ -503,3 +532,5 @@ google.golang.org/protobuf/types/known/timestamppb
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c
+gopkg.in/yaml.v3
