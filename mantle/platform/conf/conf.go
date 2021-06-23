@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	butane "github.com/coreos/butane/config"
+	butaneCommon "github.com/coreos/butane/config/common"
 	systemdunit "github.com/coreos/go-systemd/unit"
 	ignerr "github.com/coreos/ignition/v2/config/shared/errors"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
@@ -42,6 +44,7 @@ type kind int
 const (
 	kindEmpty kind = iota
 	kindIgnition
+	kindButane
 )
 
 type systemdUnitState int
@@ -99,6 +102,14 @@ func Ignition(data string) *UserData {
 	}
 }
 
+// Butane returns a Butane UserData struct from the provided string.
+func Butane(data string) *UserData {
+	return &UserData{
+		kind: kindButane,
+		data: data,
+	}
+}
+
 func Unknown(data string) *UserData {
 	u := &UserData{
 		data: data,
@@ -110,8 +121,16 @@ func Unknown(data string) *UserData {
 	case ignerr.ErrEmpty:
 		u.kind = kindEmpty
 	default:
-		// We only support Ignition configs now, thus assume that
-		u.kind = kindIgnition
+		// Guess whether this is an Ignition or Butane config.
+		// This treats an invalid Ignition config as a Butane
+		// config, and a Butane config in the JSON subset of YAML as
+		// an Ignition config.
+		var decoded interface{}
+		if err := json.Unmarshal([]byte(data), &decoded); err != nil {
+			u.kind = kindButane
+		} else {
+			u.kind = kindIgnition
+		}
 	}
 
 	return u
@@ -190,6 +209,21 @@ func (u *UserData) Render() (*Conf, error) {
 		// empty, noop
 	case kindIgnition:
 		err := renderIgnition([]byte(u.data))
+		if err != nil {
+			return nil, err
+		}
+	case kindButane:
+		ignc, report, err := butane.TranslateBytes([]byte(u.data), butaneCommon.TranslateBytesOptions{
+			// allow variant: openshift but don't generate a MachineConfig
+			Raw: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(report.Entries) > 0 {
+			plog.Warningf("translating Butane config: %s", report)
+		}
+		err = renderIgnition(ignc)
 		if err != nil {
 			return nil, err
 		}
