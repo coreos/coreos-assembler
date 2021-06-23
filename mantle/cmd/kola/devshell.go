@@ -19,48 +19,26 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"syscall"
 	"time"
 
-	"golang.org/x/crypto/ssh/terminal"
-
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
-
-	"github.com/coreos/mantle/platform"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const devshellHostname = "cosa-devsh"
-
-func devshellSSH(configPath, keyPath string, args ...string) exec.Cmd {
-	sshArgs := append([]string{"-i", keyPath, "-F", configPath, devshellHostname}, args...)
-	sshCmd := exec.Command("ssh", sshArgs...)
-	sshCmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGTERM,
-	}
-
-	return *sshCmd
-}
-
-func readTrimmedLine(r *bufio.Reader) (string, error) {
-	l, err := r.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(l), nil
-}
 
 func stripControlCharacters(s string) string {
 	s = strings.ToValidUTF8(s, "")
@@ -72,8 +50,8 @@ func stripControlCharacters(s string) string {
 	}, s)
 }
 
-func displaySerialMsg(serialMsg string) {
-	s := strings.TrimSpace(serialMsg)
+func displayStatusMsg(status, msg string) {
+	s := strings.TrimSpace(msg)
 	if s == "" {
 		return
 	}
@@ -81,40 +59,39 @@ func displaySerialMsg(serialMsg string) {
 	if len(s) > max {
 		s = s[:max]
 	}
-	fmt.Printf("\033[2K\r%s", stripControlCharacters(s))
+	fmt.Printf("\033[2K\r[%s] %s", status, stripControlCharacters(s))
 }
 
 func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf) error {
 	if !terminal.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
 	}
+
 	tmpd, err := ioutil.TempDir("", "kola-devshell")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpd)
+
+	// Define SSH key
 	sshPubKeyBuf, sshKeyPath, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
 		return err
 	}
-
-	// Await sshd startup;
-	// src/systemd/sd-messages.h
-	// 89:#define SD_MESSAGE_UNIT_STARTED           SD_ID128_MAKE(39,f5,34,79,d3,a0,45,ac,8e,11,78,62,48,23,1f,bf)
-	journalPipe, err := builder.VirtioJournal(conf, "-u sshd MESSAGE_ID=39f53479d3a045ac8e11786248231fbf")
-	if err != nil {
-		return err
-	}
-
-	var keys []string
-	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
+	keys := []string{strings.TrimSpace(string(sshPubKeyBuf))}
 	conf.AddAuthorizedKeys("core", keys)
-
-	readyReader := bufio.NewReader(journalPipe)
-
 	builder.SetConfig(conf)
 
-	serialChan := make(chan string)
+	// errChan communicates errors from go routines
+	errChan := make(chan error)
+	// serialChan is used to send serial messages from the console
+	serialChan := make(chan string, 2048)
+	// stateChan reports in-instance state such as shutdown, reboot, etc.
+	stateChan := make(chan guestState)
+
+	watchJournal(builder, conf, stateChan, errChan)
+
+	// SerialPipe is the pipe output from the serial console.
 	serialPipe, err := builder.SerialPipe()
 	if err != nil {
 		return err
@@ -123,19 +100,6 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	if err != nil {
 		return err
 	}
-	go func() {
-		bufr := bufio.NewReader(serialPipe)
-		for {
-			buf, err := bufr.ReadString('\n')
-			if err != nil {
-				if err != io.EOF {
-					fmt.Fprintf(os.Stderr, "devshell reading serial console: %v\n", err)
-				}
-				break
-			}
-			serialChan <- string(buf)
-		}
-	}()
 
 	builder.InheritConsole = false
 	inst, err := builder.Exec()
@@ -144,195 +108,428 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	}
 	defer inst.Destroy()
 
-	qemuWaitChan := make(chan error)
-	errchan := make(chan error)
-	readychan := make(chan struct{})
+	// Monitor for Inition error
 	go func() {
 		buf, err := inst.WaitIgnitionError(ctx)
 		if err != nil {
-			errchan <- err
-		} else {
-			// TODO parse buf and try to nicely render something
-			if buf != "" {
-				errchan <- platform.ErrInitramfsEmergency
-			}
+			errChan <- err
+		} else if buf != "" {
+			errChan <- platform.ErrInitramfsEmergency
 		}
 	}()
+
+	// Monitor the serial console for ready and power state events.
+	go func() {
+		serialScanner := bufio.NewScanner(serialPipe)
+		for serialScanner.Scan() {
+			msg := serialScanner.Text()
+			if serialScanner.Err() != nil {
+				errChan <- err
+			}
+
+			serialChan <- msg
+			checkWriteState(msg, stateChan)
+		}
+	}()
+
+	qemuWaitChan := make(chan error)
 	go func() {
 		qemuWaitChan <- inst.Wait()
 	}()
-	go func() {
-		for {
-			readyMsg, err := readTrimmedLine(readyReader)
-			if err != nil {
-				if err != io.EOF {
-					errchan <- err
-				}
-				break
-			}
-			if !strings.Contains(readyMsg, "Started OpenSSH server daemon") {
-				errchan <- fmt.Errorf("Unexpected journal message: %s", readyMsg)
-				break
-			}
-			var s struct{}
-			readychan <- s
-			break
-		}
-	}()
+
 	sigintChan := make(chan os.Signal, 1)
 	signal.Notify(sigintChan, os.Interrupt)
 
-loop:
-	for {
-		select {
-		case err := <-errchan:
-			if err == platform.ErrInitramfsEmergency {
-				return fmt.Errorf("instance failed in initramfs; try rerunning with --devshell-console")
-			}
-			return err
-		case err := <-qemuWaitChan:
-			return errors.Wrapf(err, "qemu exited before setup")
-		case serialMsg := <-serialChan:
-			displaySerialMsg(serialMsg)
-			if _, err := serialLog.Write([]byte(serialMsg)); err != nil {
-				return err
-			}
-		case <-sigintChan:
-			_, err := serialLog.Seek(0, io.SeekStart)
-			if err != nil {
-				return err
-			}
-			_, err = io.Copy(os.Stderr, serialLog)
-			if err != nil {
-				return err
-			}
-			// Caught SIGINT, we're done
-			return fmt.Errorf("Caught SIGINT before successful login")
-		case <-readychan:
-			fmt.Printf("\033[2K\rvirtio journal connected - sshd started\n")
-			break loop
-		}
-	}
-
-	// Later Ctrl-c after this should just kill us
-	signal.Reset(os.Interrupt)
-
-	var poweroffStarted int32
-	go func() {
-		msg, _ := readTrimmedLine(readyReader)
-		if msg == "poweroff" {
-			atomic.StoreInt32(&poweroffStarted, 1)
-		}
-	}()
-
-	// Ignore other status messages, and just print errors for now
-	go func() {
-		for {
-			select {
-			case <-serialChan:
-			case <-readychan:
-			case err := <-errchan:
-				fmt.Fprintf(os.Stderr, "errchan: %v", err)
-			}
-		}
-	}()
-
 	var ip string
-	err = util.Retry(6, 5*time.Second, func() error {
-		var err error
-		ip, err = inst.SSHAddress()
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
+	if err = util.Retry(6, 5*time.Second,
+		func() error {
+			var err error
+			ip, err = inst.SSHAddress()
+			if err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
 		return errors.Wrapf(err, "awaiting ssh address")
 	}
 
-	sshConfigPath := filepath.Join(tmpd, "ssh-config")
-	sshConfig, err := os.OpenFile(sshConfigPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return errors.Wrapf(err, "creating ssh config")
-	}
-	defer sshConfig.Close()
-	sshBuf := bufio.NewWriter(sshConfig)
+	defer func() { fmt.Printf("\n\n") }() // make the console pretty again
 
-	_, err = fmt.Fprintf(sshBuf, "Host %s\n", devshellHostname)
-	if err != nil {
-		return err
-	}
-	host, port, err := net.SplitHostPort(ip)
-	if err != nil {
-		// Yeah this is hacky, surprising there's not a stdlib API for this
-		host = ip
-		port = ""
-	}
-	if port != "" {
-		if _, err := fmt.Fprintf(sshBuf, "  Port %s\n", port); err != nil {
-			return err
+	// Start the SSH client
+	sc := newSshClient("core", ip, sshKeyPath)
+	go sc.alwaysRun()
+
+	ready := false
+	statusMsg := "STARTUP"
+	for {
+		select {
+		// handle ctrl-c. Note: the 'ssh' binary will take over the keyboard and pass
+		// it directly to the instance. The intercept of ctrl-c will only happen when
+		// ssh is not in the foreground.
+		case <-sigintChan:
+			inst.Kill()
+
+		// handle console messages. If SSH is not ready, then display a
+		// a status message on the conole.
+		case serialMsg := <-serialChan:
+			if !ready {
+				displayStatusMsg(statusMsg, serialMsg)
+			}
+			_, _ = serialLog.Write([]byte(serialMsg))
+
+		// monitor the err channel
+		case err := <-errChan:
+			if err == platform.ErrInitramfsEmergency {
+				return fmt.Errorf("instance failed in initramfs; try rerunning with --devshell-console")
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "errchan: %v", err)
+			}
+
+		// monitor the instance state
+		case <-qemuWaitChan:
+			displayStatusMsg("DONE", "QEMU instance terminated")
+			return nil
+
+		// monitor the machine state events from console/serial logs
+		case state := <-stateChan:
+			if state == guestStateOpenSshStarted {
+				ready = true
+				sc.controlChan <- sshStart //signal that SSH is ready
+				statusMsg = "QEMU guest is ready for SSH"
+			} else {
+				ready = false
+				sc.controlChan <- sshNotReady // signal that SSH should be terminated
+
+				switch state {
+				case guestStateInShutdown:
+					statusMsg = "QEMU guest is shutting down"
+				case guestStateHalted:
+					statusMsg = "QEMU guest is halted"
+					inst.Kill()
+				case guestStateInReboot:
+					statusMsg = "QEMU guest initiated reboot"
+				case guestStateOpenSshStopped:
+					statusMsg = "QEMU openssh is not listening"
+				case guestStateSshDisconnected:
+					statusMsg = "SSH Client disconnected"
+				case guestStateStopHang:
+					statusMsg = "QEMU guest waiting for a systemd unit to stop"
+				case guestStateBooting:
+					statusMsg = "QEMU guest is booting"
+				}
+			}
+			displayStatusMsg("EVENT", statusMsg)
+
+		// monitor the SSH connection
+		case err := <-sc.errChan:
+			if err == nil {
+				sc.kill()
+				displayStatusMsg("SESSION", "Clean exit from SSH, terminating instance")
+				return nil
+			}
+			displayStatusMsg("SSH Terminated", fmt.Sprintf("Error: %v", err))
 		}
 	}
-	if _, err := fmt.Fprintf(sshBuf, `  HostName %s
-	  StrictHostKeyChecking no
-	  UserKnownHostsFile /dev/null
-	  User core
-	  PasswordAuthentication no
-	  KbdInteractiveAuthentication no
-	  GSSAPIAuthentication no
-	  IdentitiesOnly yes
-	  ForwardAgent no
-	  ForwardX11 no
-	`, host); err != nil {
-		return err
+}
+
+type guestState int
+
+// guestStates are uses to report guests events internal to the host.
+const (
+	// guestStateOpenSshStarted indicates that the guest has started SSH and
+	// is ready for an SSH connection.
+	guestStateOpenSshStarted = iota
+	// guestStateOpenSshStopped indicates that the SSH server has transitioned
+	// from running to stopped.
+	guestStateOpenSshStopped
+	// guestStateSshDisconnected indicates the SSH client has disconnected
+	guestStateSshDisconnected
+	// guestStateInShutdown indicates that the guest is shutdown
+	guestStateInShutdown
+	// guestStateInReboot indicates that the guest has started a reboot
+	guestStateInReboot
+	// guestStateHalted indicates that the guest has halted or shutdown
+	guestStateHalted
+	// guestStateBooting indicates that the instance is in early boot
+	guestStateBooting
+	// guestStateStopHang indicates a job is being slow to shutdown
+	guestStateStopHang
+)
+
+// checkWriteState checks magical (shutter) strings for state. This is imprecise at best,
+// but a whole lot better than nothing.
+// TOOO: use the QMP port to query for power-state events
+func checkWriteState(msg string, c chan<- guestState) {
+	if strings.Contains(msg, "Starting Power-Of") ||
+		strings.Contains(msg, "reboot: System halted") ||
+		strings.Contains(msg, "ACPI: Preparing to enter system sleep state S5") ||
+		strings.Contains(msg, "Starting Halt...") {
+		c <- guestStateHalted
+	}
+	if strings.Contains(msg, "pam_unix(sshd:session): session closed for user core") {
+		c <- guestStateSshDisconnected
+	}
+	if strings.Contains(msg, "The selected entry will be started automatically in 1s.") {
+		c <- guestStateBooting
+	}
+	if strings.Contains(msg, "A stop job is running for User Manager for UID ") {
+		c <- guestStateStopHang
 	}
 
-	if err := sshBuf.Flush(); err != nil {
-		return err
+	// Fallback in case the journal is stopped
+	if strings.Contains(msg, "Stopped OpenSSH server daemon") ||
+		strings.Contains(msg, "Stopped Login Service") {
+		c <- guestStateOpenSshStopped
+	}
+	if strings.Contains(msg, "Reached target Shutdown") {
+		c <- guestStateInShutdown
+	}
+	if strings.Contains(msg, "Starting Reboot...") {
+		c <- guestStateInReboot
+	}
+}
+
+type systemdEventMessage struct {
+	Unit      string `json:"UNIT"`
+	MessageID string `json:"MESSAGE_ID"`
+	Message   string `json:"MESSAGE"`
+	JobResult string `json:"JOB_RESULT"`
+	JobType   string `json:"JOB_TYPE"`
+}
+
+type systemdMessageCheck struct {
+	unit       string
+	messageID  string
+	message    string
+	jobResult  string
+	guestState guestState
+}
+
+func (sc *systemdMessageCheck) mustMatch(se *systemdEventMessage) bool {
+	if sc.unit != se.Unit {
+		return false
+	}
+	if sc.messageID != "" && sc.messageID != se.MessageID {
+		return false
+	}
+	if sc.message != "" && sc.message != se.Message {
+		return false
+	}
+	if sc.jobResult != "" && sc.jobResult != se.JobResult {
+		return false
+	}
+	return true
+}
+
+// Systemd monitoring
+// src/systemd/sd-messages.h
+const (
+	// 89:#define SD_MESSAGE_UNIT_STARTED           SD_ID128_MAKE(39,f5,34,79,d3,a0,45,ac,8e,11,78,62,48,23,1f,bf)
+	systemdUnitStarted = "39f53479d3a045ac8e11786248231fbf"
+
+	// 93:#define SD_MESSAGE_UNIT_STOPPING          SD_ID128_MAKE(de,5b,42,6a,63,be,47,a7,b6,ac,3e,aa,c8,2e,2f,6f)
+	systemdUnitStopping = "de5b426a63be47a7b6ac3eaac82e2f6f"
+
+	// 95:#define SD_MESSAGE_UNIT_STOPPED           SD_ID128_MAKE(9d,1a,aa,27,d6,01,40,bd,96,36,54,38,aa,d2,02,86)
+	systemdUnitStopped = "9d1aaa27d60140bd96365438aad20286"
+)
+
+// watchJournal watches the virtio journal to monitor for events. This method is NOT 100%
+// reliable as the journal may not have started or stopped in time.
+func watchJournal(builder *platform.QemuBuilder, conf *conf.Conf, stateChan chan<- guestState, errChan chan<- error) error {
+	checkList := []systemdMessageCheck{
+		{
+			unit:       "sshd.service",
+			messageID:  systemdUnitStarted,
+			guestState: guestStateOpenSshStarted,
+		},
+		{
+			unit:       "sshd.service",
+			messageID:  systemdUnitStopping,
+			guestState: guestStateOpenSshStopped,
+		},
+		{
+			unit:       "sshd.service",
+			messageID:  systemdUnitStopped,
+			guestState: guestStateOpenSshStopped,
+		},
+
+		// monitor power events, these are unlikely to be seen unless
+		// there is a hang in a unit that's stopping.
+		{
+			unit:       "systemd-reboot.service",
+			messageID:  "7d4958e842da4a758f6c1cdc7b36dcc5",
+			guestState: guestStateInReboot,
+		},
+		{
+			unit:       "systemd-halt.service",
+			messageID:  "7d4958e842da4a758f6c1cdc7b36dcc5",
+			guestState: guestStateHalted,
+		},
+		{
+			unit:       "systemd-poweroff.service",
+			messageID:  "7d4958e842da4a758f6c1cdc7b36dcc5",
+			guestState: guestStateInShutdown,
+		},
 	}
 
-	err = util.Retry(10, 1*time.Second, func() error {
-		cmd := devshellSSH(sshConfigPath, sshKeyPath, "true")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("ssh failed: %w\n%s", err, out)
-		}
-		return nil
-	})
+	r, err := builder.VirtioJournal(conf, "--system")
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		for {
-			// FIXME figure out how to differentiate between reboot/shutdown
-			// if poweroffStarted {
-			// 	break
-			// }
-			cmd := devshellSSH(sshConfigPath, sshKeyPath)
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Println("Disconnected, attempting to reconnect (Ctrl-C to exit)")
-				time.Sleep(1 * time.Second)
-			} else {
-				proc := os.Process{
-					Pid: inst.Pid(),
+		s := bufio.NewScanner(r)
+		for s.Scan() {
+			msg := s.Text()
+
+			var se systemdEventMessage
+			if err := json.Unmarshal([]byte(msg), &se); err != nil {
+				errChan <- err
+			}
+			for _, rule := range checkList {
+				if rule.mustMatch(&se) {
+					stateChan <- rule.guestState
 				}
-				atomic.StoreInt32(&poweroffStarted, 1)
-				if err := proc.Signal(os.Interrupt); err != nil {
-					fmt.Println("Failed to power off")
-				}
-				break
 			}
 		}
 	}()
-	err = <-qemuWaitChan
-	if err == nil {
-		if atomic.LoadInt32(&poweroffStarted) == 0 {
-			fmt.Println("QEMU powered off unexpectedly")
+
+	return nil
+}
+
+type sshControlMessage int
+
+// ssh* are control mesages
+const (
+	// sshStart indicates that the ssh client can/should start.
+	sshStart = iota
+	// sshNotReady means that the SSH server is not running or has stopped.
+	sshNotReady
+	// sshDisconnect means that an SSH disconnect has been observed
+	// and the client should be termed.
+	sshDisconnect
+)
+
+// sshClient represents a single SSH session.
+type sshClient struct {
+	mu          sync.Mutex
+	user        string
+	host        string
+	port        string
+	privKey     string
+	controlChan chan sshControlMessage
+	errChan     chan error
+	sshCmd      *exec.Cmd
+	active      chan bool
+}
+
+// newSshClient creates a new sshClient.
+func newSshClient(user, host, privKey string) *sshClient {
+	parts := strings.Split(host, ":")
+	host = parts[0]
+	port := parts[1]
+	if port == "" {
+		port = "22"
+	}
+
+	return &sshClient{
+		mu:          sync.Mutex{},
+		user:        user,
+		host:        host,
+		port:        port,
+		privKey:     privKey,
+		controlChan: make(chan sshControlMessage, 2),
+		errChan:     make(chan error, 2),
+	}
+}
+
+// start starts the SSH session and returns the error over the errChan.
+// While the pure-go SSH client would be nicer, the golang SSH client
+// doesn't handle some keyboard keys well (arrows, home, end, etc).
+func (sc *sshClient) start() {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	if sc.sshCmd != nil {
+		return
+	}
+	sshArgs := []string{
+		"ssh", "-t",
+		"-i", sc.privKey,
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "CheckHostIP=no",
+		"-o", "IdentityFile=/dev/null",
+		"-p", sc.port,
+		fmt.Sprintf("%s@%s", sc.user, sc.host),
+	}
+	fmt.Println("") // line break for prettier output
+	sshCmd := exec.Command(sshArgs[0], sshArgs[1:]...)
+	sshCmd.Stdin = os.Stdin
+	sshCmd.Stdout = os.Stdout
+	sshCmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGTERM,
+	}
+
+	stdErrPipe, err := sshCmd.StderrPipe()
+	if err != nil {
+		sc.errChan <- err
+		return
+	}
+
+	go func() {
+		scanner := bufio.NewScanner(stdErrPipe)
+		for scanner.Scan() {
+			msg := scanner.Text()
+			if strings.Contains(msg, "Connection to 127.0.0.1 closed") {
+				displayStatusMsg("SSH", "connection closed")
+			}
+		}
+	}()
+
+	sc.sshCmd = sshCmd
+	if err = sc.sshCmd.Run(); err != nil {
+		if sc.sshCmd.ProcessState != nil {
+			switch sc.sshCmd.ProcessState.ExitCode() {
+			// 130 means a ctrl-c happened in the instance
+			case 0, 130:
+				sc.errChan <- nil
+			case 255:
+				sc.errChan <- fmt.Errorf("generic ssh failure")
+			}
+		} else {
+			sc.errChan <- err
+		}
+	} else {
+		sc.errChan <- nil
+	}
+
+}
+
+// kill terminates the SSH session.
+func (sc *sshClient) kill() {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	if sc.sshCmd == nil {
+		return
+	}
+	if sc.sshCmd.ProcessState == nil {
+		return
+	}
+	_ = syscall.Kill(-sc.sshCmd.Process.Pid, syscall.SIGKILL)
+	sc.sshCmd = nil
+}
+
+// alwaysRun runs an interactive SSH session until its interrrupted.
+// Callers should monitor the errChan for updates. alwaysRun ensures that only
+// one instance of SSH runs at a time.
+func (sc *sshClient) alwaysRun() {
+	for {
+		switch msg := <-sc.controlChan; msg {
+		case sshStart:
+			sc.start()
+		case sshDisconnect, sshNotReady:
+			sc.kill()
 		}
 	}
-	return err
 }

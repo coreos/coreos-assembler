@@ -1254,7 +1254,7 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 	# https://bugzilla.redhat.com/show_bug.cgi?id=1942198
 	ExecStart=/usr/bin/bash -c "journalctl -q -b -f -o json --no-tail %s"
 	[Install]
-	RequiredBy=multi-user.target
+	RequiredBy=basic.target
 	`, queryArguments)
 
 	config.AddSystemdUnit("mantle-virtio-journal-stream.service", streamJournalUnit, conf.Enable)
