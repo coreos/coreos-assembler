@@ -75,7 +75,9 @@ func init() {
 		Name:        "docker.userns",
 		Distros:     []string{"cl"},
 		// TODO: Update for Fedora CoreOS
-		UserData: conf.Ignition(`
+		UserData: conf.Butane(`
+variant: fcos
+version: 1.3.0
 systemd:
   units:
   - name: docker.service
@@ -127,7 +129,9 @@ passwd:
 		Name:        "docker.btrfs-storage",
 		// Note: copied verbatim from https://github.com/coreos/docs/blob/master/os/mounting-storage.md#creating-and-mounting-a-btrfs-volume-file
 		// TODO: Update for Fedora CoreOS
-		UserData: conf.Ignition(`
+		UserData: conf.Butane(`
+variant: fcos
+version: 1.3.0
 systemd:
   units:
     - name: format-var-lib-docker.service
@@ -169,7 +173,9 @@ systemd:
 		ClusterSize: 1,
 		Distros:     []string{"cl"},
 		// TODO: Update for Fedora CoreOS
-		UserData: conf.Ignition(`
+		UserData: conf.Butane(`
+variant: fcos
+version: 1.3.0
 systemd:
   units:
   - name: docker.service
@@ -211,7 +217,9 @@ systemd:
 		ClusterSize: 1,
 		Distros:     []string{"cl"},
 		// TODO: Update for Fedora CoreOS
-		UserData: conf.Ignition(`
+		UserData: conf.Butane(`
+variant: fcos
+version: 1.3.0
 systemd:
   units:
    - name: docker.service

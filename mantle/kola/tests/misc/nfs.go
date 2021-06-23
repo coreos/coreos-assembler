@@ -27,7 +27,10 @@ import (
 
 var (
 	// TODO: Needs to be update for Fedora CoreOS support
-	nfsserverconf = conf.Ignition(`storage:
+	nfsserverconf = conf.Butane(`
+variant: fcos
+version: 1.3.0
+storage:
   files:
     - filesystem: "root"
       path: "/etc/hostname"
@@ -49,7 +52,7 @@ systemd:
 )
 
 func init() {
-	// TODO: enable FCOS when FCCT exists
+	// TODO: enable FCOS
 	register.RegisterTest(&register.Test{
 		Run:            NFSv4,
 		ClusterSize:    0,
@@ -84,7 +87,10 @@ func testNFS(c cluster.TestCluster, nfsversion int, remotePath string) {
 	}
 
 	// TODO: Needs to be update for Fedora CoreOS support
-	c2 := conf.Ignition(fmt.Sprintf(`storage:
+	c2 := conf.Butane(fmt.Sprintf(`
+variant: fcos
+version: 1.3.0
+storage:
   files:
     - filesystem: "root"
       path: "/etc/hostname"
