@@ -28,274 +28,28 @@ import (
 )
 
 var (
-	/* The FCCT config used for generating this ignition config:
-	variant: fcos
-	version: 1.3.0
-	boot_device:
-	  mirror:
-	    devices:
-	      - /dev/sda
-	      - /dev/sdb
-	      - /dev/sdc
-	*/
-	bootmirror = conf.Ignition(`{
-		"ignition": {
-			"version": "3.2.0"
-		},
-		"storage": {
-			"disks": [
-			  {
-				"device": "/dev/vda",
-				"partitions": [
-				  {
-					"label": "bios-1",
-					"sizeMiB": 1,
-					"typeGuid": "21686148-6449-6E6F-744E-656564454649"
-				  },
-				  {
-					"label": "esp-1",
-					"sizeMiB": 127,
-					"typeGuid": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-				  },
-				  {
-					"label": "boot-1",
-					"sizeMiB": 384
-				  },
-				  {
-					"label": "root-1"
-				  }
-				],
-				"wipeTable": true
-			  },
-			  {
-				"device": "/dev/vdb",
-				"partitions": [
-				  {
-					"label": "bios-2",
-					"sizeMiB": 1,
-					"typeGuid": "21686148-6449-6E6F-744E-656564454649"
-				  },
-				  {
-					"label": "esp-2",
-					"sizeMiB": 127,
-					"typeGuid": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-				  },
-				  {
-					"label": "boot-2",
-					"sizeMiB": 384
-				  },
-				  {
-					"label": "root-2"
-				  }
-				],
-				"wipeTable": true
-			  },
-			  {
-				"device": "/dev/vdc",
-				"partitions": [
-				  {
-					"label": "bios-3",
-					"sizeMiB": 1,
-					"typeGuid": "21686148-6449-6E6F-744E-656564454649"
-				  },
-				  {
-					"label": "esp-3",
-					"sizeMiB": 127,
-					"typeGuid": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-				  },
-				  {
-					"label": "boot-3",
-					"sizeMiB": 384
-				  },
-				  {
-					"label": "root-3"
-				  }
-				],
-				"wipeTable": true
-			  }
-			],
-			"filesystems": [
-			 { 
-				"device": "/dev/disk/by-partlabel/esp-1",
-				"format": "vfat",
-				"label": "esp-1",
-				"wipeFilesystem": true
-			  },
-			  {
-				"device": "/dev/disk/by-partlabel/esp-2",
-				"format": "vfat",
-				"label": "esp-2",
-				"wipeFilesystem": true
-			  },
-			  {
-				"device": "/dev/disk/by-partlabel/esp-3",
-				"format": "vfat",
-				"label": "esp-3",
-				"wipeFilesystem": true
-			  },
-			  {
-				"device": "/dev/md/md-boot",
-				"format": "ext4",
-				"label": "boot",
-				"wipeFilesystem": true
-			  },
-			  {
-				"device": "/dev/md/md-root",
-				"format": "xfs",
-				"label": "root",
-				"wipeFilesystem": true
-			  }
-			],
-			"raid": [
-			  {
-				"devices": [
-				  "/dev/disk/by-partlabel/boot-1",
-				  "/dev/disk/by-partlabel/boot-2",
-				  "/dev/disk/by-partlabel/boot-3"
-				],
-				"level": "raid1",
-				"name": "md-boot",
-				"options": [
-				  "--metadata=1.0"
-				]
-			  },
-			  {
-				"devices": [
-				  "/dev/disk/by-partlabel/root-1",
-				  "/dev/disk/by-partlabel/root-2",
-				  "/dev/disk/by-partlabel/root-3"
-				],
-				"level": "raid1",
-				"name": "md-root"
-			  }
-			]
-		  }
-	}`)
+	bootmirror = conf.Butane(`
+variant: fcos
+version: 1.3.0
+boot_device:
+  layout: LAYOUT
+  mirror:
+    devices:
+      - /dev/vda
+      - /dev/vdb
+      - /dev/vdc`)
 
-	/* The FCCT config used for generating this ignition config:
-		variant: fcos
-		version: 1.3.0
-		boot_device:
-		  luks:
-	            tpm2: true
-		  mirror:
-		    devices:
-		      - /dev/sda
-		      - /dev/sdb
-	*/
-	bootmirrorluks = conf.Ignition(`{
-			"ignition": {
-			  "version": "3.2.0"
-			},
-			"storage": {
-			  "disks": [
-				{
-				  "device": "/dev/vda",
-				  "partitions": [
-					{
-					  "label": "bios-1",
-					  "sizeMiB": 1,
-					  "typeGuid": "21686148-6449-6E6F-744E-656564454649"
-					},
-					{
-					  "label": "esp-1",
-					  "sizeMiB": 127,
-					  "typeGuid": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-					},
-					{
-					  "label": "boot-1",
-					  "sizeMiB": 384
-					},
-					{
-					  "label": "root-1"
-					}
-				  ],
-				  "wipeTable": true
-				},
-				{
-				  "device": "/dev/vdb",
-				  "partitions": [
-					{
-					  "label": "bios-2",
-					  "sizeMiB": 1,
-					  "typeGuid": "21686148-6449-6E6F-744E-656564454649"
-					},
-					{
-					  "label": "esp-2",
-					  "sizeMiB": 127,
-					  "typeGuid": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-					},
-					{
-					  "label": "boot-2",
-					  "sizeMiB": 384
-					},
-					{
-					  "label": "root-2"
-					}
-				  ],
-				  "wipeTable": true
-				}
-			  ],
-			  "filesystems": [
-				{
-				  "device": "/dev/disk/by-partlabel/esp-1",
-				  "format": "vfat",
-				  "label": "esp1",
-				  "wipeFilesystem": true
-				},
-				{
-					"device": "/dev/disk/by-partlabel/esp-2",
-					"format": "vfat",
-					"label": "esp2",
-					"wipeFilesystem": true
-				},
-				{
-				  "device": "/dev/md/md-boot",
-				  "format": "ext4",
-				  "label": "boot",
-				  "wipeFilesystem": true
-				},
-				{
-				  "device": "/dev/mapper/root",
-				  "format": "xfs",
-				  "label": "root",
-				  "wipeFilesystem": true
-				}
-			  ],
-			  "luks": [
-				{
-				  "clevis": {
-					"tpm2": true
-				  },
-				  "device": "/dev/md/md-root",
-				  "label": "luks-root",
-				  "name": "root",
-				  "wipeVolume": true
-				}
-			  ],
-			  "raid": [
-				{
-				  "devices": [
-					"/dev/disk/by-partlabel/boot-1",
-					"/dev/disk/by-partlabel/boot-2"
-				  ],
-				  "level": "raid1",
-				  "name": "md-boot",
-				  "options": [
-					"--metadata=1.0"
-				  ]
-				},
-				{
-				  "devices": [
-					"/dev/disk/by-partlabel/root-1",
-					"/dev/disk/by-partlabel/root-2"
-				  ],
-				  "level": "raid1",
-				  "name": "md-root"
-				}
-			  ]
-			}
-		  }`)
+	bootmirrorluks = conf.Butane(`
+variant: fcos
+version: 1.3.0
+boot_device:
+  layout: LAYOUT
+  luks:
+    tpm2: true
+  mirror:
+    devices:
+      - /dev/vda
+      - /dev/vdb`)
 )
 
 func init() {
@@ -304,10 +58,8 @@ func init() {
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror`,
 		Platforms:   []string{"qemu-unpriv"},
-		// aarch64 and ppc64le are added temporarily to avoid test failure until
-		// we support specifying FCC directly in kola. For more information:
-		// https://github.com/coreos/coreos-assembler/issues/2035
-		ExcludeArchitectures: []string{"aarch64", "ppc64le", "s390x"},
+		// Can't mirror boot disk on s390x
+		ExcludeArchitectures: []string{"s390x"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
@@ -319,11 +71,9 @@ func init() {
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror.luks`,
 		Platforms:   []string{"qemu-unpriv"},
-		// aarch64 and ppc64le are added temporarily to avoid test failure until
-		// we support specifying FCC directly in kola. For more information:
-		// https://github.com/coreos/coreos-assembler/issues/2035
-		// Also, TPM doesn't support s390x in qemu.
-		ExcludeArchitectures: []string{"aarch64", "ppc64le", "s390x"},
+		// Can't mirror boot disk on s390x, and qemu s390x doesn't
+		// support TPM
+		ExcludeArchitectures: []string{"s390x"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
@@ -343,7 +93,10 @@ func runBootMirrorTest(c cluster.TestCluster) {
 			MinMemory:       4096,
 		},
 	}
-	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(bootmirror, options)
+	// FIXME: kola currently assumes the host CPU architecture matches
+	// the one under test
+	userdata := bootmirror.Subst("LAYOUT", system.RpmArch())
+	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -387,7 +140,10 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 			MinMemory:       4096,
 		},
 	}
-	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(bootmirrorluks, options)
+	// FIXME: kola currently assumes the host CPU architecture matches
+	// the one under test
+	userdata := bootmirrorluks.Subst("LAYOUT", system.RpmArch())
+	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}
