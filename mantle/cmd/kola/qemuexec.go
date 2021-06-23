@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -117,7 +116,6 @@ func parseBindOpt(s string) (string, string, error) {
 
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
-	var config *conf.Conf
 
 	/// Qemu allows passing disk images directly, but this bypasses all of our snapshot
 	/// infrastructure and it's too easy to accidentally do `cosa run foo.qcow2` instead of
@@ -199,21 +197,17 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder := platform.NewQemuBuilder()
 	defer builder.Close()
 
+	var config *conf.Conf
 	if butane != "" {
-		tmpf, err := builder.TempFile("ignition")
+		buf, err := ioutil.ReadFile(butane)
 		if err != nil {
 			return err
 		}
-		defer tmpf.Close()
-		cmd := exec.Command("fcct", butane)
-		cmd.Stdout = tmpf
-		if err = cmd.Run(); err != nil {
-			return err
+		config, err = conf.Butane(string(buf)).Render()
+		if err != nil {
+			return errors.Wrapf(err, "parsing %s", butane)
 		}
-		ignition = tmpf.Name()
-	}
-
-	if !directIgnition && ignition != "" {
+	} else if !directIgnition && ignition != "" {
 		buf, err := ioutil.ReadFile(ignition)
 		if err != nil {
 			return err
