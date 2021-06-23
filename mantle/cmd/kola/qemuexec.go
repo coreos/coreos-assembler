@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/util"
 )
 
 var (
@@ -205,11 +205,15 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		defer tmpf.Close()
-		cmd := exec.Command("fcct", butane)
-		cmd.Stdout = tmpf
-		if err = cmd.Run(); err != nil {
+
+		out, err := util.ButaneFileToIgnition(butane)
+		if err != nil {
 			return err
 		}
+		if _, err := tmpf.Write(out); err != nil {
+			return err
+		}
+
 		ignition = tmpf.Name()
 	}
 
