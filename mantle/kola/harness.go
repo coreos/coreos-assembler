@@ -732,7 +732,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 				return errors.Wrapf(err, "reading %s", c.Name())
 			}
 			ignition = string(v)
-		} else if isreg && c.Name() == "config.fcc" {
+		} else if isreg && (c.Name() == "config.bu" || c.Name() == "config.fcc") {
 			b, err := exec.Command("fcct", fpath).Output()
 			if err != nil {
 				return errors.Wrapf(err, "failed to fcct %s", fpath)
