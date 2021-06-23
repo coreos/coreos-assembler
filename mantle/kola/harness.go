@@ -595,8 +595,8 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 	}
 }
 
-func registerExternalTest(testname, executable, dependencydir, ignition string, baseMeta externalTestMeta) error {
-	config, err := conf.Ignition(ignition).Render()
+func registerExternalTest(testname, executable, dependencydir string, userdata *conf.UserData, baseMeta externalTestMeta) error {
+	config, err := userdata.Render()
 	if err != nil {
 		return errors.Wrapf(err, "Parsing config.ign")
 	}
@@ -712,7 +712,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 	var dependencydir string
 	var meta externalTestMeta
 	var err error
-	ignition := `{ "ignition": { "version": "3.0.0" } }`
+	userdata := conf.EmptyIgnition()
 	executables := []string{}
 	for _, c := range children {
 		fpath := filepath.Join(dir, c.Name())
@@ -731,13 +731,13 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			if err != nil {
 				return errors.Wrapf(err, "reading %s", c.Name())
 			}
-			ignition = string(v)
+			userdata = conf.Ignition(string(v))
 		} else if isreg && (c.Name() == "config.bu" || c.Name() == "config.fcc") {
 			b, err := exec.Command("fcct", fpath).Output()
 			if err != nil {
 				return errors.Wrapf(err, "failed to fcct %s", fpath)
 			}
-			ignition = string(b)
+			userdata = conf.Ignition(string(b))
 		} else if isreg && c.Name() == "kola.json" {
 			f, err := os.Open(fpath)
 			if err != nil {
@@ -795,7 +795,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			continue
 		}
 
-		err := registerExternalTest(testname, executable, dependencydir, ignition, meta)
+		err := registerExternalTest(testname, executable, dependencydir, userdata, meta)
 		if err != nil {
 			return err
 		}
