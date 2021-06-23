@@ -53,7 +53,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 	}
 	failConfig.AddFile("/notwritable.txt", "/", "Hello world", 0644)
 
-	builder := platform.NewBuilder()
+	builder := platform.NewQemuBuilder()
 	defer builder.Close()
 	builder.SetConfig(failConfig)
 	err = builder.AddBootDisk(&platform.Disk{

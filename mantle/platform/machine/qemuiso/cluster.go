@@ -94,7 +94,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		consolePath: filepath.Join(dir, "console.txt"),
 	}
 
-	builder := platform.NewBuilder()
+	builder := platform.NewQemuBuilder()
 	builder.ConfigFile = confPath
 	defer builder.Close()
 	builder.UUID = qm.id
