@@ -158,7 +158,9 @@ The `base` short-hand corresponds to `cosa build --delay-meta-merge`, while `fin
 
 The JobSpec (or Job Specification) is simply YAML that instruct Gangplank on the steps and dependencies for starting a build.
 
-To get started with a JobSpec, you can generate one using Gangplank.:
+To get started with a JobSpec, you can generate one using Gangplank via `gangplank generate -A base`
+
+Example spec:
 ```
 $ bin/gangplank generate -A base
 INFO[0000] Gangplank: COSA OpenShift job runner, 2021-03-02.9dce8136~dirty
@@ -167,12 +169,20 @@ INFO[0000] Gangplank: COSA OpenShift job runner, 2021-03-02.9dce8136~dirty
 job:
   strict: true
 
+minio:
+  bucket: builder
+
 recipe:
-  git_ref: testing-devel
-  git_url: https://github.com/coreos/fedora-coreos-config
+  git_ref: "release-4.8"
+  git_url: https://github.com/openshift/os
   repos:
-   # URLs point to remote endpoint that contains the repo file
-   - <URL>
+   # Inline repos are defined in the jobspec
+   - name: repos
+     inline: |
+        <INLINE DEFINITION>
+   # URL should reference a file with repository definition(s)
+   - name: repo1
+     url: https://example.com/repo/repo.file
 
 # publish_ocontainer describes locations to push the oscontainer to.
 publish_oscontainer:
@@ -201,12 +211,27 @@ publish_oscontainer:
         secret_type: cluster
         secret: builder-secret
 
-stages:
-- id: Generated Base Stage
+- id: ExecOrder 1 Stage
+  description: Stage 1 execution base
   build_artifacts: [base]
-- id: Generated Finalize Stage
-  build_artifacts: [finalize]
+  execution_order: 1
+  request_cache: true
+  request_cache_repo: true
+
+- id: ExecOrder 5 Stage
+  description: Stage 5 execution aws
+  require_artifacts: [qemu]
+  build_artifacts: [aws]
+  execution_order: 5
+
+- id: ExecOrder 5 Stage
+  description: Stage 5 execution gcp
+  require_artifacts: [qemu]
+  build_artifacts: [gcp]
+  execution_order: 5
+
 delay_meta_merge: true
+
 ```
 
 The JobSpec defines discrete, units of work as a "stage". Each stage supports few options:
@@ -225,40 +250,39 @@ The JobSpec defines discrete, units of work as a "stage". Each stage supports fe
 
 To illustrate this, consider:
 ```yaml
-- id: base Stage
-  build_artifacts:
-  - base
-  post_commands:
-  - cosa kola run --basic-qemu-scenarios
-  request_artifacts:
-  - oscontainer
-  request_cache_repo: true
+
+- id: ExecOrder 1 Stage
+  description: Stage 1 execution base
+  build_artifacts: [base]
+  execution_order: 1
   request_cache: true
-  return_cache: true
-  return_cache_repo: true
-- id: oscontainer
-  build_artifacts:
-  - ostree
-  require_cache: true
-  require_cache_repo: true
-- id: clouds
-  concurrent: true
-  build_artifacts:
-  - aws
-  - gcp
-  required_artifacts:
-  - qemu
-- id: finalize
-  build_artifacts:
-  - finalize
+  request_cache_repo: true
+
+- id: ExecOrder 5 Stage
+  description: Stage 5 execution aws
+  require_artifacts: [qemu]
+  build_artifacts: [aws]
+  execution_order: 5
+
+- id: ExecOrder 5 Stage
+  description: Stage 5 execution gcp
+  require_artifacts: [qemu]
+  build_artifacts: [gcp]
+  execution_order: 5
+
+- id: ExecOrder 999 Stage
+  description: Stage 999 execution finalize
+  build_artifacts: [finalize]
+  execution_order: 999
+
 ```
 
 In this example, Gangplank will:
 
 1. In the base stage, Gangplank will provide `/srv/cache` and `/srv/tmp/repo` from `cache/*` if the tarballs exist, and optionally provide the latest `oscontainer`. Gangplank will return the build artifacts and new cache tarballs.
 1. In the oscontainer stage, Ganglank will require the caches,
-1. In the `clouds` stage, a new pod will concurrently build AWS and GCP but only after the QEMU artifact is found.
-1. The final `finalize` stage will combine `meta.*.json` to produce a final `meta.json`
+1. In the `ExecOrder 5` stages, two new pods will concurrently build AWS and GCP but only after the QEMU artifact is found.
+1. The final `ExecOrder 999` stage will combine `meta.*.json` to produce a final `meta.json`
 
 ### Meta Data and JobSpec Templating
 
@@ -337,7 +361,7 @@ The choice of Minio was deliberate: its an open source S3-comptabile object stor
 
 ### Standalone mode
 
-If an external Minio/S3 server is not defined, Gangplank run Minio from directory defined as `--srvDir`. "Buckets" like `builds` and `cache` will be seen after a successful run.
+If an external Minio/S3 server is not defined, Gangplank run Minio from directory defined as `--srvDir`. A new directory of "builder" (or whatever bucket you've chosen) will be created under the `--srvDir` parameter.
 
 ### External mode
 
@@ -365,5 +389,16 @@ Gangplank understands how to use an external minio host via `-m config.json`. Wh
   "external_server": true,
   "region": ""
 }
+```
 
+Example of AWS Config:
+```
+{
+  "accesskey": "<ACCESS KEY>",
+  "secretkey": "<SECRET ACCESS KEY>",
+  "host": "us-west-1.s3.amazonaws.com",
+  "port": 443
+  "external_server": true,
+  "region": "us-west-1"
+}
 ```
