@@ -83,8 +83,7 @@ objects:
       lookupPolicy:
         local: true
       tags:
-        # import the `main` image just in-case
-        - name: main
+        - name: ${REPO_REF}
           from:
             kind: DockerImage
             name: quay.io/coreos-assembler/coreos-assembler:${REPO_REF}
@@ -97,7 +96,7 @@ objects:
     metadata:
       labels:
         app: ${IMAGE}
-      name: ${IMAGE}-bc
+      name: ${IMAGE}-bc-${REPO_REF}
     spec:
       # kill the build after 3hrs
       completionDeadlineSeconds: 13200
