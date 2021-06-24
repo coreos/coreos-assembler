@@ -1164,17 +1164,22 @@ func (builder *QemuBuilder) setupIso() error {
 		if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
 			return err
 		} else if kargsSupported {
-			consoleArg := fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()])
-			instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", consoleArg, isoEmbeddedPath)
+			allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[system.RpmArch()], builder.AppendKernelArguments)
+			instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
 			var stderrb bytes.Buffer
 			instCmdKargs.Stderr = &stderrb
 			if err := instCmdKargs.Run(); err != nil {
-				// Don't make this a hard error yet; we may be operating on an old
-				// live ISO
+				// Don't make this a hard error if it's just for console; we
+				// may be operating on an old live ISO
+				if len(builder.AppendKernelArguments) > 0 {
+					return errors.Wrapf(err, "running `coreos-installer iso kargs modify`; old CoreOS ISO?")
+				}
 				stderr := stderrb.String()
 				plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
 				plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
 			}
+		} else if len(builder.AppendKernelArguments) > 0 {
+			return fmt.Errorf("coreos-installer does not support appending kernel args")
 		}
 		builder.iso.path = isoEmbeddedPath
 	}
