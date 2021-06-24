@@ -12,4 +12,5 @@ RUN cd /root/containerbuild/gangplank && \
 WORKDIR /srv/
 
 USER builder
-ENTRYPOINT ["/usr/bin/gangplank", "builder"]
+ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/gangway"]
+
