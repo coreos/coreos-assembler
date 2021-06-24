@@ -75,6 +75,12 @@ def cmd_upload_s3(args):
         # assume it's metadata
         s3_copy(f'builds/{args.build}/{f}', bucket, f'{prefix}/{args.build}/{f}',
                 CACHE_MAX_AGE_METADATA, args.acl)
+    
+    # Copy build logs to S3
+    if os.path.exists('job.log'):
+        s3_copy('job.log', bucket, f'{prefix}/{args.build}/build.log',
+                    CACHE_MAX_AGE_METADATA, args.acl)
+
     if not args.skip_builds_json:
         s3_copy(BUILDFILES['list'], bucket, f'{prefix}/builds.json',
                 CACHE_MAX_AGE_METADATA, args.acl, extra_args={}, dry_run=args.dry_run)
