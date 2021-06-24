@@ -194,11 +194,6 @@ func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 }
 
 var (
-	defaultLinkConfig = `[Link]
-          NamePolicy=mac
-          MACAddressPolicy=persistent
-`
-
 	dhcpClientConfig = `[main]
           dhcp=dhclient
 `
@@ -410,11 +405,6 @@ func setupBondWithDhcpTest(c cluster.TestCluster, primaryMac, secondaryMac, prim
 		"storage": {
 			"files": [
 				{
-					"path": "/etc/systemd/network/99-default.link",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 420
-				},
-				{
 					"path": "/etc/NetworkManager/conf.d/10-dhcp-config.conf",
 					"contents": { "source": "data:text/plain;base64,%s" },
 					"mode": 420
@@ -455,7 +445,6 @@ func setupBondWithDhcpTest(c cluster.TestCluster, primaryMac, secondaryMac, prim
 			]
 		}
 	}`,
-		base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)),
 		base64.StdEncoding.EncodeToString([]byte(dhcpClientConfig)),
 		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
 		base64.StdEncoding.EncodeToString([]byte(setupVethPairs)),
@@ -571,16 +560,6 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 		"storage": {
 			"files": [
 				{
-					"path": "/etc/systemd/network/99-default.link",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 420
-				},
-				{
-					"path": "/etc/NetworkManager/conf.d/10-dhcp-config.conf",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 420
-				},
-				{
 					"path": "/usr/local/bin/capture-macs",
 					"contents": { "source": "data:text/plain;base64,%s" },
 					"mode": 755
@@ -612,8 +591,6 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 			]
 		}
 	}`,
-		base64.StdEncoding.EncodeToString([]byte(defaultLinkConfig)),
-		base64.StdEncoding.EncodeToString([]byte(dhcpClientConfig)),
 		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
 		base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
 
