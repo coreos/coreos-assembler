@@ -34,8 +34,13 @@ func init() {
 	specCommonFlags.StringVarP(&cosaSrvDir, "srvDir", "S", "", "directory for /srv; in pod mount this will be bind mounted")
 	jobspec.AddKolaTestFlags(&cosaKolaTests, specCommonFlags)
 
-	user, _ := user.Current()
+	username := ""
+	user, err := user.Current()
+	if err != nil && user != nil {
+		username = user.Username
+	}
+
 	sshFlags.StringVar(&minioSshRemoteHost, "forwardMinioSSH", containerHost(), "forward and use minio to ssh host")
-	sshFlags.StringVar(&minioSshRemoteUser, "sshUser", user.Username, "name of SSH; used with forwardMinioSSH")
+	sshFlags.StringVar(&minioSshRemoteUser, "sshUser", username, "name of SSH; used with forwardMinioSSH")
 	sshFlags.StringVar(&minioSshRemoteKey, "sshKey", "", "path to SSH key; used with forwardMinioSSH")
 }
