@@ -116,7 +116,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 
 	// Only setup secrets for in-cluster use
 	if ac != nil {
-		ks, err := kubernetesSecretsSetup(ac, pn, cosaSrvDir)
+		ks, err := kubernetesSecretsSetup(ctx, ac, pn, cosaSrvDir)
 		if err != nil {
 			log.Errorf("Failed to setup Service Account Secrets: %v", err)
 		}
@@ -423,7 +423,7 @@ func writeDockerSecret(ctx ClusterContext, clusterSecretName, authPath string) e
 	if err != nil {
 		return fmt.Errorf("unable to fetch cluster client: %v", err)
 	}
-	secret, err := ac.CoreV1().Secrets(ns).Get(clusterSecretName, metav1.GetOptions{})
+	secret, err := ac.CoreV1().Secrets(ns).Get(ctx, clusterSecretName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to query for secret %s: %v", apiBuild.Spec.Output.PushSecret.Name, err)
 	}

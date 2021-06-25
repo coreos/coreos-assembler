@@ -168,7 +168,7 @@ func (pb *podBuild) setInCluster() error {
 	}
 	pb.projectNamespace = pn
 
-	myIP, err := getPodIP(ac, pn, hostname)
+	myIP, err := getPodIP(pb.clusterCtx, ac, pn, hostname)
 	if err != nil {
 		log.WithError(err).Error("failed to query my hostname")
 		if myIP, err := getNetIP(); err != nil {
@@ -178,7 +178,7 @@ func (pb *podBuild) setInCluster() error {
 	pb.ipaddr = myIP
 
 	// Discover where this running
-	myPod, err := ac.CoreV1().Pods(pn).Get(hostname, metav1.GetOptions{})
+	myPod, err := ac.CoreV1().Pods(pn).Get(pb.clusterCtx, hostname, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

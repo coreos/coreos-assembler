@@ -179,8 +179,9 @@ func k8sInClusterClient() (*kubernetes.Clientset, string, error) {
 }
 
 // getPodIP returns the IP of a pod. getPodIP blocks pending until the podIP is recieved.
-func getPodIP(cs *kubernetes.Clientset, podNamespace, podName string) (string, error) {
+func getPodIP(ctx ClusterContext, cs *kubernetes.Clientset, podNamespace, podName string) (string, error) {
 	w, err := cs.CoreV1().Pods(podNamespace).Watch(
+		ctx,
 		metav1.ListOptions{
 			Watch:         true,
 			FieldSelector: fields.Set{"metadata.name": podName}.AsSelector().String(),

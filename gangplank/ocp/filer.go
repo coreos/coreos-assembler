@@ -106,7 +106,8 @@ func newMinioServer(cfgFile string) *minioServer {
 	host := getHostname()
 	ac, ns, err := k8sInClusterClient()
 	if err == nil && ac != nil {
-		ip, err := getPodIP(ac, ns, host)
+		var ctx ClusterContext = context.Background()
+		ip, err := getPodIP(ctx, ac, ns, host)
 		if err == nil {
 			host = ip
 		}

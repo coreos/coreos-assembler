@@ -1,6 +1,7 @@
 package ocp
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -191,7 +192,7 @@ func (sm *secretMap) writeSecretFiles(toDir, name string, d map[string][]byte, r
 // 'coreos-assembler.coreos.com/secret=k' and then maps the secret
 // automatically in. "k" must be in the "known" secrets type to be mapped
 // automatically.
-func kubernetesSecretsSetup(ac *kubernetes.Clientset, ns, toDir string) ([]string, error) {
+func kubernetesSecretsSetup(ctx context.Context, ac *kubernetes.Clientset, ns, toDir string) ([]string, error) {
 	lo := metav1.ListOptions{
 		LabelSelector: secretLabelName,
 		Limit:         100,
@@ -199,7 +200,7 @@ func kubernetesSecretsSetup(ac *kubernetes.Clientset, ns, toDir string) ([]strin
 
 	var ret []string
 
-	secrets, err := ac.CoreV1().Secrets(ns).List(lo)
+	secrets, err := ac.CoreV1().Secrets(ns).List(ctx, lo)
 	if err != nil {
 		return ret, nil
 	}
