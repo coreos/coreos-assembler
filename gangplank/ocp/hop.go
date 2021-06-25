@@ -85,7 +85,7 @@ cat > jobspec.yaml <<EOM
 ${JOBSPEC}
 EOM
 cat jobspec.yaml
-gangplank pod --spec jobspec.yaml 
+gangplank pod --spec jobspec.yaml || { sleep 30; exit $?; }
 `
 	pod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{

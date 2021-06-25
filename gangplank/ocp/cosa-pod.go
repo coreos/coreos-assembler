@@ -269,6 +269,7 @@ func (cp *cosaPod) getPodSpec(envVars []v1.EnvVar) (*v1.Pod, error) {
 		WorkingDir:      "/srv",
 		VolumeMounts:    cp.volumeMounts,
 		SecurityContext: cp.ocpSecContext,
+		ImagePullPolicy: v1.PullAlways,
 		Resources: v1.ResourceRequirements{
 			Limits:   cp.ocpRequirements,
 			Requests: cp.ocpRequirements,
