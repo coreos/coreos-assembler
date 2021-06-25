@@ -102,7 +102,7 @@ func newBC(ctx context.Context, c *Cluster) (*buildConfig, error) {
 
 		log.Info("Querying for host IP")
 		var e error
-		v.HostIP, e = getPodIP(ac, ns, getHostname())
+		v.HostIP, e = getPodIP(v.ClusterCtx, ac, ns, getHostname())
 		if e != nil {
 			log.WithError(e).Info("failed to query for hostname")
 		}

@@ -2,6 +2,7 @@ package ocp
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -337,7 +338,8 @@ func (cp *cosaPod) WorkerRunner(term termChan, envVars []v1.EnvVar) error {
 // clusterRunner creates an OpenShift/Kubernetes pod for the work to be done.
 // The output of the pod is streamed and captured on the console.
 func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
-	cs, ns, err := GetClient(cp.GetClusterCtx())
+	ctx := cp.GetClusterCtx()
+	cs, ns, err := GetClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -350,7 +352,7 @@ func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 
 	// start the pod
 	ac := cs.CoreV1()
-	createResp, err := ac.Pods(ns).Create(pod)
+	createResp, err := ac.Pods(ns).Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create pod %s: %w", pod.Name, err)
 	}
@@ -358,12 +360,12 @@ func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 
 	// Ensure that the pod is always deleted
 	defer func() {
-		termOpts := &metav1.DeleteOptions{
+		termOpts := metav1.DeleteOptions{
 			// the default grace period on OCP 3.x is 5min and OCP 4.x is 1min
 			// If the pod is in an error state it will appear to be hang.
 			GracePeriodSeconds: ptrInt(0),
 		}
-		if err := ac.Pods(ns).Delete(pod.Name, termOpts); err != nil {
+		if err := ac.Pods(ns).Delete(ctx, pod.Name, termOpts); err != nil {
 			l.WithError(err).Error("Failed delete on pod, yolo.")
 		}
 	}()
@@ -379,7 +381,7 @@ func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 				LabelSelector:   labels.Everything().String(),
 				TimeoutSeconds:  ptrInt(7200), // set a hard timeout to 2hrs
 			}
-			w, err := ac.Pods(ns).Watch(watchOpts)
+			w, err := ac.Pods(ns).Watch(ctx, watchOpts)
 			if err != nil {
 				retCh <- err
 				return
@@ -553,6 +555,7 @@ func writeToWriters(l *log.Entry, in io.ReadCloser, outs ...io.Writer) <-chan er
 // To make streamPodLogs thread safe and non-blocking, it expects
 // a pointer to a bool. If that pointer is nil or true, then we return.
 func streamPodLogs(client *kubernetes.Clientset, namespace string, pod *v1.Pod, term termChan) error {
+	ctx := context.Background()
 	for _, pC := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 		container := pC.Name
 		podLogOpts := v1.PodLogOptions{
@@ -562,7 +565,7 @@ func streamPodLogs(client *kubernetes.Clientset, namespace string, pod *v1.Pod, 
 		}
 
 		req := client.CoreV1().Pods(namespace).GetLogs(pod.Name, &podLogOpts)
-		streamer, err := req.Stream()
+		streamer, err := req.Stream(ctx)
 		if err != nil {
 			return err
 		}

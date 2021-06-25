@@ -169,7 +169,7 @@ func (cp *cosaPod) addVolumesFromConfigMapLabels() error {
 		Limit:         100,
 	}
 
-	cfgMaps, err := ac.CoreV1().ConfigMaps(ns).List(lo)
+	cfgMaps, err := ac.CoreV1().ConfigMaps(ns).List(cp.clusterCtx, lo)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (cp *cosaPod) addVolumesFromSecretLabels() error {
 		Limit:         100,
 	}
 
-	secrets, err := ac.CoreV1().Secrets(ns).List(lo)
+	secrets, err := ac.CoreV1().Secrets(ns).List(cp.clusterCtx, lo)
 	if err != nil {
 		return err
 	}
