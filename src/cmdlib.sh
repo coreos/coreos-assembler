@@ -500,6 +500,9 @@ runvm() {
     # then add all the base deps
     # for syntax see: https://github.com/koalaman/shellcheck/wiki/SC2031
     rpms=$(grep -v '^#' < "${DIR}"/vmdeps.txt)
+    # There seems to be some false positives in shellcheck
+    # https://github.com/koalaman/shellcheck/issues/2217
+    # shellcheck disable=2031
     archrpms=$(grep -v '^#' < "${DIR}/vmdeps-${arch}.txt")
 
     # shellcheck disable=SC2086
@@ -552,6 +555,9 @@ EOF
 
     touch "${runvm_console}"
 
+    # There seems to be some false positives in shellcheck
+    # https://github.com/koalaman/shellcheck/issues/2217
+    # shellcheck disable=2031
     case $arch in
     "x86_64")  memory=2048 ;;
     # Power 8 page faults with 2G of memory in rpm-ostree
