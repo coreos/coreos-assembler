@@ -96,7 +96,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	if err != nil {
 		return err
 	}
-	serialLog, err := ioutil.TempFile("", "cosa-run-serial")
+	serialLog, err := ioutil.TempFile(tmpd, "cosa-run-serial")
 	if err != nil {
 		return err
 	}
@@ -127,6 +127,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 				errChan <- err
 			}
 
+			_, _ = serialLog.WriteString(fmt.Sprintf("%s\n", msg))
 			serialChan <- msg
 			checkWriteState(msg, stateChan)
 		}
@@ -157,10 +158,11 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 
 	// Start the SSH client
 	sc := newSshClient("core", ip, sshKeyPath)
-	go sc.alwaysRun()
+	go sc.controlStartStop()
 
 	ready := false
 	statusMsg := "STARTUP"
+	lastMsg := ""
 	for {
 		select {
 		// handle ctrl-c. Note: the 'ssh' binary will take over the keyboard and pass
@@ -175,8 +177,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 			if !ready {
 				displayStatusMsg(statusMsg, serialMsg)
 			}
-			_, _ = serialLog.Write([]byte(serialMsg))
-
+			lastMsg = serialMsg
 		// monitor the err channel
 		case err := <-errChan:
 			if err == platform.ErrInitramfsEmergency {
@@ -214,21 +215,23 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 				case guestStateSshDisconnected:
 					statusMsg = "SSH Client disconnected"
 				case guestStateStopHang:
-					statusMsg = "QEMU guest waiting for a systemd unit to stop"
+					statusMsg = "QEMU guest waiting for a login service unit to stop"
 				case guestStateBooting:
 					statusMsg = "QEMU guest is booting"
 				}
 			}
-			displayStatusMsg("EVENT", statusMsg)
+			displayStatusMsg(fmt.Sprintf("EVENT | %s", statusMsg), lastMsg)
 
 		// monitor the SSH connection
 		case err := <-sc.errChan:
 			if err == nil {
-				sc.kill()
+				sc.controlChan <- sshNotReady
 				displayStatusMsg("SESSION", "Clean exit from SSH, terminating instance")
 				return nil
 			}
-			displayStatusMsg("SSH Terminated", fmt.Sprintf("Error: %v", err))
+			if ready {
+				sc.controlChan <- sshStart
+			}
 		}
 	}
 }
@@ -273,7 +276,8 @@ func checkWriteState(msg string, c chan<- guestState) {
 	if strings.Contains(msg, "The selected entry will be started automatically in 1s.") {
 		c <- guestStateBooting
 	}
-	if strings.Contains(msg, "A stop job is running for User Manager for UID ") {
+	if strings.Contains(msg, "A stop job is running for User Manager for UID ") ||
+		strings.Contains(msg, "Stopped Login Service.") {
 		c <- guestStateStopHang
 	}
 
@@ -407,9 +411,6 @@ const (
 	sshStart = iota
 	// sshNotReady means that the SSH server is not running or has stopped.
 	sshNotReady
-	// sshDisconnect means that an SSH disconnect has been observed
-	// and the client should be termed.
-	sshDisconnect
 )
 
 // sshClient represents a single SSH session.
@@ -422,7 +423,6 @@ type sshClient struct {
 	controlChan chan sshControlMessage
 	errChan     chan error
 	sshCmd      *exec.Cmd
-	active      chan bool
 }
 
 // newSshClient creates a new sshClient.
@@ -440,8 +440,8 @@ func newSshClient(user, host, privKey string) *sshClient {
 		host:        host,
 		port:        port,
 		privKey:     privKey,
-		controlChan: make(chan sshControlMessage, 2),
-		errChan:     make(chan error, 2),
+		controlChan: make(chan sshControlMessage),
+		errChan:     make(chan error),
 	}
 }
 
@@ -449,11 +449,20 @@ func newSshClient(user, host, privKey string) *sshClient {
 // While the pure-go SSH client would be nicer, the golang SSH client
 // doesn't handle some keyboard keys well (arrows, home, end, etc).
 func (sc *sshClient) start() {
+
+	// Ensure that only one SSH command is running
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if sc.sshCmd != nil {
 		return
 	}
+
+	// On exit clear the SSH command
+	defer func() {
+		sc.sshCmd = nil
+		time.Sleep(1 * time.Second)
+	}()
+
 	sshArgs := []string{
 		"ssh", "-t",
 		"-i", sc.privKey,
@@ -488,22 +497,7 @@ func (sc *sshClient) start() {
 	}()
 
 	sc.sshCmd = sshCmd
-	if err = sc.sshCmd.Run(); err != nil {
-		if sc.sshCmd.ProcessState != nil {
-			switch sc.sshCmd.ProcessState.ExitCode() {
-			// 130 means a ctrl-c happened in the instance
-			case 0, 130:
-				sc.errChan <- nil
-			case 255:
-				sc.errChan <- fmt.Errorf("generic ssh failure")
-			}
-		} else {
-			sc.errChan <- err
-		}
-	} else {
-		sc.errChan <- nil
-	}
-
+	sc.errChan <- sc.sshCmd.Run()
 }
 
 // kill terminates the SSH session.
@@ -520,16 +514,17 @@ func (sc *sshClient) kill() {
 	sc.sshCmd = nil
 }
 
-// alwaysRun runs an interactive SSH session until its interrrupted.
-// Callers should monitor the errChan for updates. alwaysRun ensures that only
+// controlStartStop runs an interactive SSH session until its interrrupted.
+// Callers should monitor the errChan for updates. controlStartStop ensures that only
 // one instance of SSH runs at a time.
-func (sc *sshClient) alwaysRun() {
+func (sc *sshClient) controlStartStop() {
 	for {
-		switch msg := <-sc.controlChan; msg {
-		case sshStart:
-			sc.start()
-		case sshDisconnect, sshNotReady:
-			sc.kill()
+		msg := <-sc.controlChan
+		if msg == sshNotReady {
+			go sc.kill()
+		}
+		if msg == sshStart {
+			go sc.start()
 		}
 	}
 }
