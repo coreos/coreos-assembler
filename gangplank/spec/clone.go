@@ -48,5 +48,6 @@ func JobSpecFromRepo(url, ref, specFile string) (JobSpec, error) {
 		return j, err
 	}
 	log.Infof("found jobspec for %q", ns.Job.BuildName)
+
 	return ns, nil
 }

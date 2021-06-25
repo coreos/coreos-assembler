@@ -140,6 +140,11 @@ func newBC(ctx context.Context, c *Cluster) (*buildConfig, error) {
 		}
 	}
 
+	// Set default bucket if not defined
+	if v.JobSpec.Minio.Bucket == "" && !v.JobSpec.Job.StrictMode {
+		v.JobSpec.Minio.Bucket = "builder"
+	}
+
 	log.Info("Running Pod in buildconfig mode.")
 	return &v, nil
 }
