@@ -15,6 +15,7 @@
 package ignition
 
 import (
+	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
 )
@@ -24,11 +25,18 @@ func init() {
 	// without injecting via platform metadata
 	register.RegisterTest(&register.Test{
 		Name:             "coreos.ignition.ssh.key",
-		Run:              empty,
+		Run:              noAfterburnSSHKey,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "openstack"}, // redundant on qemu
 		Flags:            []register.Flag{register.NoSSHKeyInMetadata},
 		UserData:         conf.Ignition(`{"ignition":{"version":"3.0.0"}}`),
 		Tags:             []string{"ignition"},
 	})
+}
+
+func noAfterburnSSHKey(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	// check that the test harness correctly skipped passing SSH keys
+	// via Afterburn
+	c.MustSSH(m, "[ ! -e ~/.ssh/authorized_keys.d/afterburn ]")
 }
