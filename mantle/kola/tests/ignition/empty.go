@@ -26,7 +26,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.misc.empty",
-		Run:              empty,
+		Run:              noIgnitionSSHKey,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx", "aws"},
 		Distros:          []string{"fcos"},
@@ -35,7 +35,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.v3.noop",
-		Run:              empty,
+		Run:              noIgnitionSSHKey,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx", "aws"},
 		Distros:          []string{"fcos"},
@@ -45,7 +45,7 @@ func init() {
 	})
 }
 
-func empty(c cluster.TestCluster) {
+func noIgnitionSSHKey(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	// check that the test harness correctly skipped passing SSH keys
 	// via Ignition
