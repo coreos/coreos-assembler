@@ -73,8 +73,8 @@ github.com/clarketm/json v1.14.1/go.mod h1:ynr2LRfb0fQU34l07csRNBTcivjySLLiY1YzQ
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
-github.com/coreos/butane v0.12.1 h1:4uduf/gc5DipckUSwELJqx7uCWOQ5SA69/kjG85A49U=
-github.com/coreos/butane v0.12.1/go.mod h1:fAqzyWXtVz8mOSQswZtcpeRovsEiA6VV89jYI354AvI=
+github.com/coreos/butane v0.12.2-0.20210627053514-4f5d9fd58a38 h1:virX5RN8i/Z/L6GD/FqbBO848AZicOzcqHz+dp5FW+4=
+github.com/coreos/butane v0.12.2-0.20210627053514-4f5d9fd58a38/go.mod h1:gWJ6CrrO55hOkaIdpPfLykfZPqJcHb4QlFwPb0WWQRA=
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/go-json v0.0.0-20170920214419-6a2fe990e083 h1:iLYct0QOZLUuTbFBf+PDiKvpG1xPicwkcgnKaGCeTgc=
 github.com/coreos/go-json v0.0.0-20170920214419-6a2fe990e083/go.mod h1:FmxyHfvrCFfCsXRylD4QQRlQmvzl+DG6iTHyEEykPfU=
@@ -85,9 +85,8 @@ github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e h1:Wf6HqHfScWJN9
 github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/go-systemd/v22 v22.0.0 h1:XJIw/+VlJ+87J+doOxznsAWIdmWuViOVhkQamW5YV28=
 github.com/coreos/go-systemd/v22 v22.0.0/go.mod h1:xO0FLkIi5MaZafQlIrOotqXZ90ih+1atmu1JpKERPPk=
-github.com/coreos/ignition/v2 v2.9.1-0.20210429055457-20d5d693f79a/go.mod h1:a8C/cdb3l3zhKke3zSdqYRChKm+iCSrf4Mk3UeZPpT0=
-github.com/coreos/ignition/v2 v2.10.1 h1:T8vH2bZZvfUNmuyOqAdAb+iBEgjhkuue4LFwVvEupdw=
-github.com/coreos/ignition/v2 v2.10.1/go.mod h1:a8C/cdb3l3zhKke3zSdqYRChKm+iCSrf4Mk3UeZPpT0=
+github.com/coreos/ignition/v2 v2.11.0 h1:2JPhtVidNtQ4VGegv0fb/3wfICvYUleYIXfk4y0oo8s=
+github.com/coreos/ignition/v2 v2.11.0/go.mod h1:uFhfdmeUfzT/8MqBvazzrLdzR3DvMCWR78GUYFRwPrs=
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b h1:mpeSDqY0vMUyJmazX0p62MrHtgwlmOf7Y8rqOYL1cmc=
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b/go.mod h1:JIWRG8HSwVYUrjdR/JsFg7DEby0nhQcWFPIQvXJyih8=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbpBpLoyyu8B6e44T7hJy6potg=

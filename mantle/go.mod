@@ -11,11 +11,11 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
-	github.com/coreos/butane v0.12.1
+	github.com/coreos/butane v0.12.2-0.20210627053514-4f5d9fd58a38
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/go-systemd/v22 v22.0.0
-	github.com/coreos/ignition/v2 v2.10.1
+	github.com/coreos/ignition/v2 v2.11.0
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/stream-metadata-go v0.0.0-20210326184633-63bc4d14529f

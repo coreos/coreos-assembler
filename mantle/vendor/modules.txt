@@ -159,12 +159,12 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.14.1
 github.com/clarketm/json
-# github.com/coreos/butane v0.12.1
+# github.com/coreos/butane v0.12.2-0.20210627053514-4f5d9fd58a38
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
 github.com/coreos/butane/base/v0_3
-github.com/coreos/butane/base/v0_4_exp
+github.com/coreos/butane/base/v0_4
 github.com/coreos/butane/config
 github.com/coreos/butane/config/common
 github.com/coreos/butane/config/fcos/v1_0
@@ -190,19 +190,26 @@ github.com/coreos/go-systemd/unit
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/unit
-# github.com/coreos/ignition/v2 v2.10.1
+# github.com/coreos/ignition/v2 v2.11.0
 github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/shared/errors
 github.com/coreos/ignition/v2/config/shared/validations
+github.com/coreos/ignition/v2/config/translate
 github.com/coreos/ignition/v2/config/util
 github.com/coreos/ignition/v2/config/v3_0
 github.com/coreos/ignition/v2/config/v3_0/types
 github.com/coreos/ignition/v2/config/v3_1
+github.com/coreos/ignition/v2/config/v3_1/translate
 github.com/coreos/ignition/v2/config/v3_1/types
 github.com/coreos/ignition/v2/config/v3_2
+github.com/coreos/ignition/v2/config/v3_2/translate
 github.com/coreos/ignition/v2/config/v3_2/types
-github.com/coreos/ignition/v2/config/v3_3_experimental
-github.com/coreos/ignition/v2/config/v3_3_experimental/types
+github.com/coreos/ignition/v2/config/v3_3
+github.com/coreos/ignition/v2/config/v3_3/translate
+github.com/coreos/ignition/v2/config/v3_3/types
+github.com/coreos/ignition/v2/config/v3_4_experimental
+github.com/coreos/ignition/v2/config/v3_4_experimental/translate
+github.com/coreos/ignition/v2/config/v3_4_experimental/types
 github.com/coreos/ignition/v2/config/validate
 # github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 github.com/coreos/ioprogress

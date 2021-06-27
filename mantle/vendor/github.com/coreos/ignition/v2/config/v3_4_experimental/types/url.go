@@ -15,31 +15,43 @@
 package types
 
 import (
+	"net/url"
+
+	"github.com/vincent-petithory/dataurl"
+
 	"github.com/coreos/ignition/v2/config/shared/errors"
 	"github.com/coreos/ignition/v2/config/util"
-
-	"github.com/coreos/vcontext/path"
-	"github.com/coreos/vcontext/report"
 )
 
-func (c Clevis) IsPresent() bool {
-	return c.Custom.Pin != "" ||
-		len(c.Tang) > 0 ||
-		util.IsTrue(c.Tpm2) ||
-		c.Threshold != nil && *c.Threshold != 0
+func validateURL(s string) error {
+	u, err := url.Parse(s)
+	if err != nil {
+		return errors.ErrInvalidUrl
+	}
+
+	switch u.Scheme {
+	case "http", "https", "tftp", "gs":
+		return nil
+	case "s3":
+		if v, ok := u.Query()["versionId"]; ok {
+			if len(v) == 0 || v[0] == "" {
+				return errors.ErrInvalidS3ObjectVersionId
+			}
+		}
+		return nil
+	case "data":
+		if _, err := dataurl.DecodeString(s); err != nil {
+			return err
+		}
+		return nil
+	default:
+		return errors.ErrInvalidScheme
+	}
 }
 
-func (cu ClevisCustom) Validate(c path.ContextPath) (r report.Report) {
-	if cu.Pin == "" && cu.Config == "" && !util.IsTrue(cu.NeedsNetwork) {
-		return
+func validateURLNilOK(s *string) error {
+	if util.NilOrEmpty(s) {
+		return nil
 	}
-	switch cu.Pin {
-	case "tpm2", "tang", "sss":
-	default:
-		r.AddOnError(c.Append("pin"), errors.ErrUnknownClevisPin)
-	}
-	if cu.Config == "" {
-		r.AddOnError(c.Append("config"), errors.ErrClevisConfigRequired)
-	}
-	return
+	return validateURL(*s)
 }

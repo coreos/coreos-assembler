@@ -1,4 +1,4 @@
-// Copyright 2019 Red Hat, Inc.
+// Copyright 2020 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v3_1
+package v3_4_experimental
 
 import (
 	"github.com/coreos/ignition/v2/config/merge"
 	"github.com/coreos/ignition/v2/config/shared/errors"
 	"github.com/coreos/ignition/v2/config/util"
-	prev "github.com/coreos/ignition/v2/config/v3_0"
-	"github.com/coreos/ignition/v2/config/v3_1/translate"
-	"github.com/coreos/ignition/v2/config/v3_1/types"
+	prev "github.com/coreos/ignition/v2/config/v3_3"
+	"github.com/coreos/ignition/v2/config/v3_4_experimental/translate"
+	"github.com/coreos/ignition/v2/config/v3_4_experimental/types"
 	"github.com/coreos/ignition/v2/config/validate"
 
 	"github.com/coreos/go-semver/semver"
@@ -58,9 +58,9 @@ func Parse(rawConfig []byte) (types.Config, report.Report, error) {
 	return config, rpt, nil
 }
 
-// ParseCompatibleVersion parses the raw config of version 3.1.0 or lesser
-// into a 3.1 types.Config struct and generates a report of any errors, warnings,
-// info, and deprecations it encountered
+// ParseCompatibleVersion parses the raw config of version 3.3.0-experimental or
+// lesser into a 3.3-exp types.Config struct and generates a report of any errors,
+// warnings, info, and deprecations it encountered
 func ParseCompatibleVersion(raw []byte) (types.Config, report.Report, error) {
 	version, rpt, err := util.GetConfigVersion(raw)
 	if err != nil {

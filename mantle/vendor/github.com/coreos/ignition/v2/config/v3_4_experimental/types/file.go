@@ -16,43 +16,28 @@ package types
 
 import (
 	"github.com/coreos/ignition/v2/config/shared/errors"
+	"github.com/coreos/ignition/v2/config/util"
 
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
 
-func (r Raid) Key() string {
-	return r.Name
-}
-
-func (r Raid) IgnoreDuplicates() map[string]struct{} {
-	return map[string]struct{}{
-		"Options": {},
-	}
-}
-
-func (ra Raid) Validate(c path.ContextPath) (r report.Report) {
-	r.AddOnError(c.Append("level"), ra.validateLevel())
-	if len(ra.Devices) == 0 {
-		r.AddOnError(c.Append("devices"), errors.ErrRaidDevicesRequired)
-	}
+func (f File) Validate(c path.ContextPath) (r report.Report) {
+	r.Merge(f.Node.Validate(c))
+	r.AddOnError(c.Append("mode"), validateMode(f.Mode))
+	r.AddOnError(c.Append("overwrite"), f.validateOverwrite())
 	return
 }
 
-func (r Raid) validateLevel() error {
-	switch r.Level {
-	case "linear", "raid0", "0", "stripe":
-		if r.Spares != nil && *r.Spares != 0 {
-			return errors.ErrSparesUnsupportedForLevel
-		}
-	case "raid1", "1", "mirror":
-	case "raid4", "4":
-	case "raid5", "5":
-	case "raid6", "6":
-	case "raid10", "10":
-	default:
-		return errors.ErrUnrecognizedRaidLevel
+func (f File) validateOverwrite() error {
+	if util.IsTrue(f.Overwrite) && f.Contents.Source == nil {
+		return errors.ErrOverwriteAndNilSource
 	}
-
 	return nil
+}
+
+func (f FileEmbedded1) IgnoreDuplicates() map[string]struct{} {
+	return map[string]struct{}{
+		"Append": {},
+	}
 }

@@ -15,44 +15,35 @@
 package types
 
 import (
+	"net/url"
+
 	"github.com/coreos/ignition/v2/config/shared/errors"
 
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
 
-func (r Raid) Key() string {
-	return r.Name
-}
-
-func (r Raid) IgnoreDuplicates() map[string]struct{} {
-	return map[string]struct{}{
-		"Options": {},
-	}
-}
-
-func (ra Raid) Validate(c path.ContextPath) (r report.Report) {
-	r.AddOnError(c.Append("level"), ra.validateLevel())
-	if len(ra.Devices) == 0 {
-		r.AddOnError(c.Append("devices"), errors.ErrRaidDevicesRequired)
-	}
+func (p Proxy) Validate(c path.ContextPath) (r report.Report) {
+	validateProxyURL(p.HTTPProxy, c.Append("httpProxy"), &r, true)
+	validateProxyURL(p.HTTPSProxy, c.Append("httpsProxy"), &r, false)
 	return
 }
 
-func (r Raid) validateLevel() error {
-	switch r.Level {
-	case "linear", "raid0", "0", "stripe":
-		if r.Spares != nil && *r.Spares != 0 {
-			return errors.ErrSparesUnsupportedForLevel
-		}
-	case "raid1", "1", "mirror":
-	case "raid4", "4":
-	case "raid5", "5":
-	case "raid6", "6":
-	case "raid10", "10":
-	default:
-		return errors.ErrUnrecognizedRaidLevel
+func validateProxyURL(s *string, p path.ContextPath, r *report.Report, httpOk bool) {
+	if s == nil {
+		return
+	}
+	u, err := url.Parse(*s)
+	if err != nil {
+		r.AddOnError(p, errors.ErrInvalidUrl)
+		return
 	}
 
-	return nil
+	if u.Scheme != "https" && u.Scheme != "http" {
+		r.AddOnError(p, errors.ErrInvalidProxy)
+		return
+	}
+	if u.Scheme == "http" && !httpOk {
+		r.AddOnWarn(p, errors.ErrInsecureProxy)
+	}
 }
