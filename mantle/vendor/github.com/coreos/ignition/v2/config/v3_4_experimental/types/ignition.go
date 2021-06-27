@@ -15,41 +15,35 @@
 package types
 
 import (
+	"github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/ignition/v2/config/shared/errors"
 
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
 
-func (r Raid) Key() string {
-	return r.Name
+func (v Ignition) Semver() (*semver.Version, error) {
+	return semver.NewVersion(v.Version)
 }
 
-func (r Raid) IgnoreDuplicates() map[string]struct{} {
-	return map[string]struct{}{
-		"Options": {},
+func (ic IgnitionConfig) Validate(c path.ContextPath) (r report.Report) {
+	for i, res := range ic.Merge {
+		r.AddOnError(c.Append("merge", i), res.validateRequiredSource())
 	}
-}
-
-func (ra Raid) Validate(c path.ContextPath) (r report.Report) {
-	r.AddOnError(c.Append("level"), ra.validateLevel())
 	return
 }
 
-func (r Raid) validateLevel() error {
-	switch r.Level {
-	case "linear", "raid0", "0", "stripe":
-		if r.Spares != nil && *r.Spares != 0 {
-			return errors.ErrSparesUnsupportedForLevel
-		}
-	case "raid1", "1", "mirror":
-	case "raid4", "4":
-	case "raid5", "5":
-	case "raid6", "6":
-	case "raid10", "10":
-	default:
-		return errors.ErrUnrecognizedRaidLevel
+func (v Ignition) Validate(c path.ContextPath) (r report.Report) {
+	c = c.Append("version")
+	tv, err := v.Semver()
+	if err != nil {
+		r.AddOnError(c, errors.ErrInvalidVersion)
+		return
 	}
 
-	return nil
+	if MaxVersion != *tv {
+		r.AddOnError(c, errors.ErrUnknownVersion)
+	}
+	return
 }

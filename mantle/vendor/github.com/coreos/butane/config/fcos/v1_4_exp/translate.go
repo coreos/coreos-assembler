@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/butane/translate"
 
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_3_experimental/types"
+	"github.com/coreos/ignition/v2/config/v3_3/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -180,7 +180,7 @@ func (c Config) processBootDevice(config *types.Config, ts *translate.Translatio
 		}
 		rendered.Storage.Raid = []types.Raid{{
 			Devices: raidDevices("boot"),
-			Level:   "raid1",
+			Level:   util.StrToPtr("raid1"),
 			Name:    "md-boot",
 			// put the RAID superblock at the end of the
 			// partition so BIOS GRUB doesn't need to
@@ -188,7 +188,7 @@ func (c Config) processBootDevice(config *types.Config, ts *translate.Translatio
 			Options: []types.RaidOption{"--metadata=1.0"},
 		}, {
 			Devices: raidDevices("root"),
-			Level:   "raid1",
+			Level:   util.StrToPtr("raid1"),
 			Name:    "md-root",
 		}}
 		renderedTranslations.AddFromCommonSource(path.New("yaml", "boot_device", "mirror"), path.New("json", "storage", "raid"), rendered.Storage.Raid)

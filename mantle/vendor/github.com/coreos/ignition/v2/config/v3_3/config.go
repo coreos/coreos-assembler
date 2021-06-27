@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v3_3_experimental
+package v3_3
 
 import (
 	"github.com/coreos/ignition/v2/config/merge"
 	"github.com/coreos/ignition/v2/config/shared/errors"
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_3_experimental/types"
+	prev "github.com/coreos/ignition/v2/config/v3_2"
+	"github.com/coreos/ignition/v2/config/v3_3/translate"
+	"github.com/coreos/ignition/v2/config/v3_3/types"
 	"github.com/coreos/ignition/v2/config/validate"
 
 	"github.com/coreos/go-semver/semver"
@@ -33,7 +35,7 @@ func Merge(parent, child types.Config) types.Config {
 // Parse parses the raw config into a types.Config struct and generates a report of any
 // errors, warnings, info, and deprecations it encountered
 func Parse(rawConfig []byte) (types.Config, report.Report, error) {
-	if isEmpty(rawConfig) {
+	if len(rawConfig) == 0 {
 		return types.Config{}, report.Report{}, errors.ErrEmpty
 	}
 
@@ -56,6 +58,21 @@ func Parse(rawConfig []byte) (types.Config, report.Report, error) {
 	return config, rpt, nil
 }
 
-func isEmpty(userdata []byte) bool {
-	return len(userdata) == 0
+// ParseCompatibleVersion parses the raw config of version 3.3.0-experimental or
+// lesser into a 3.3-exp types.Config struct and generates a report of any errors,
+// warnings, info, and deprecations it encountered
+func ParseCompatibleVersion(raw []byte) (types.Config, report.Report, error) {
+	version, rpt, err := util.GetConfigVersion(raw)
+	if err != nil {
+		return types.Config{}, rpt, err
+	}
+
+	if version == types.MaxVersion {
+		return Parse(raw)
+	}
+	prevCfg, r, err := prev.ParseCompatibleVersion(raw)
+	if err != nil {
+		return types.Config{}, r, err
+	}
+	return translate.Translate(prevCfg), r, nil
 }

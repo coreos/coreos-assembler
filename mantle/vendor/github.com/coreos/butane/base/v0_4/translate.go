@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v0_4_exp
+package v0_4
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 
 	"github.com/coreos/go-systemd/unit"
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_3_experimental/types"
+	"github.com/coreos/ignition/v2/config/v3_3/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -326,7 +326,7 @@ func walkTree(yamlPath path.ContextPath, tree Tree, ts *translate.TranslationSet
 		} else if info.Mode()&os.ModeType == os.ModeSymlink {
 			i, link := t.GetLink(destPath)
 			if link != nil {
-				if link.Target != "" {
+				if util.NotEmpty(link.Target) {
 					r.AddOnError(yamlPath, common.ErrNodeExists)
 					return nil
 				}
@@ -345,11 +345,12 @@ func walkTree(yamlPath path.ContextPath, tree Tree, ts *translate.TranslationSet
 					ts.AddTranslation(yamlPath, path.New("json", "storage", "links"))
 				}
 			}
-			link.Target, err = os.Readlink(srcPath)
+			target, err := os.Readlink(srcPath)
 			if err != nil {
 				r.AddOnError(yamlPath, err)
 				return nil
 			}
+			link.Target = &target
 			ts.AddTranslation(yamlPath, path.New("json", "storage", "links", i, "target"))
 		} else {
 			r.AddOnError(yamlPath, common.ErrFileType)
