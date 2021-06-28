@@ -13,11 +13,12 @@ import cosalib.qemuvariants as QVariants
 import cosalib.vmware as VmwareOVA
 
 
-def get_builder(imgtype, build_root, build="latest", force=False, schema=None):
+def get_builder(imgtype, build_root, build="latest", force=False, compress=False, schema=None):
     kargs = {
         "build": build,
         "buildroot": build_root,
         "force": force,
+        "compress": compress,
         "schema": schema,
         "variant": imgtype
     }
@@ -48,6 +49,8 @@ def artifact_cli():
     # Options for finding the build.
     parser.add_argument("--force", action='store_true',
                         help="Force rebuild of existing disk")
+    parser.add_argument("--compress", action='store_true',
+                        help="Compress generated image")
 
     # Support for legacy cmd-buildextend-* targets
     symlink = None
@@ -90,7 +93,7 @@ def artifact_cli():
 
     if build_target:
         builder = get_builder(build_target, args.buildroot, args.build,
-                              force=args.force, schema=args.schema)
+                              force=args.force, compress=args.compress, schema=args.schema)
     elif args.command == "manual":
         kwargs = {
             'force': args.force,

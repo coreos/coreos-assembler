@@ -75,6 +75,8 @@ Each target has its own sub options. To access them us:
                         help="ore configuration")
     parser.add_argument("--force", action='store_true',
                         help="Force the operation if it has already happened")
+    parser.add_argument("--compress", action='store_true',
+                        help="Compress generated image")
     parser.add_argument("--help", action='store_true',
                         help="Print this message")
     parser.add_argument("--upload", action='store_true',

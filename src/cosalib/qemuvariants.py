@@ -4,6 +4,7 @@ Provides a base abstration for building images.
 
 import logging as log
 import os.path
+import subprocess
 import shutil
 import sys
 
@@ -158,6 +159,7 @@ class QemuVariantImage(_Build):
         self.mutate_callback = kwargs.pop("mutate-callback", None)
         self.platform = kwargs.pop("platform", "qemu")
         self.force = kwargs.get("force", False)
+        self.compress = kwargs.get("compress", False)
         self.tar_members = kwargs.pop("tar_members", None)
         self.tar_flags = kwargs.pop("tar_flags", [DEFAULT_TAR_FLAGS])
         self.gzip = kwargs.pop("gzip", False)
@@ -309,3 +311,5 @@ class QemuVariantImage(_Build):
         self._found_files[self.image_name] = img_meta
         imgs[self.platform] = img_meta
         self.meta_write(artifact_name=self.platform_image_name)
+        if self.compress:
+            subprocess.check_call(['cosa', 'compress', '--artifact=' + self.platform])
