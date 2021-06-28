@@ -41,6 +41,8 @@ func TestConfCopyKey(t *testing.T) {
 		Ignition(`{ "ignition": { "version": "2.2.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.3.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.4.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.4.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.5.0" } }`),
 	}
 
 	for _, tt := range tests {
@@ -56,6 +58,8 @@ func TestConfCopyKey(t *testing.T) {
 		Ignition(`{ "ignition": { "version": "3.0.0" } }`),
 		Ignition(`{ "ignition": { "version": "3.1.0" } }`),
 		Ignition(`{ "ignition": { "version": "3.2.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.3.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.4.0-experimental" } }`),
 	}
 
 	for i, tt := range tests {
