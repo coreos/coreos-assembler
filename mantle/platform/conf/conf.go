@@ -15,6 +15,9 @@
 package conf
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,6 +212,33 @@ func (u *UserData) Render() (*Conf, error) {
 				return err
 			}
 			c.ignitionV34exp = &ignc
+		// Special case for the next stable version: wrap it in a
+		// config of the current stable version, so we can still add
+		// our config fragments without understanding the specified
+		// config.  This path makes it easier to get a spec
+		// stabilization through CI in the presence of external
+		// tests using the experimental spec, since CI only needs to
+		// ensure that the installed Ignition can parse the config,
+		// not that Mantle can also parse it.
+		case semver.Version{Major: 3, Minor: 4}:
+			plog.Warningf("Generating wrapper for unsupported config spec")
+			url, err := makeGzipDataUrl(data)
+			if err != nil {
+				return fmt.Errorf("generating data URL: %w", err)
+			}
+			c.ignitionV33 = &v33types.Config{
+				Ignition: v33types.Ignition{
+					Version: "3.3.0",
+					Config: v33types.IgnitionConfig{
+						Merge: []v33types.Resource{
+							{
+								Source:      ignutil.StrToPtr(url),
+								Compression: ignutil.StrToPtr("gzip"),
+							},
+						},
+					},
+				},
+			}
 		default:
 			return ignerr.ErrUnknownVersion
 		}
@@ -1008,4 +1038,22 @@ Options=trans=virtio,version=9p2000.L%s
 WantedBy=multi-user.target
 `, dest, dest, readonlyStr)
 	c.AddSystemdUnit(fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])), content, Enable)
+}
+
+func makeGzipDataUrl(data []byte) (string, error) {
+	var buf bytes.Buffer
+	gz, err := gzip.NewWriterLevel(&buf, 9)
+	if err != nil {
+		return "", err
+	}
+	_, err = gz.Write(data)
+	if err != nil {
+		return "", err
+	}
+	err = gz.Close()
+	if err != nil {
+		return "", err
+	}
+	url := "data:;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+	return url, nil
 }
