@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/docker/go-connections/tlsconfig"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/tags"
@@ -258,15 +259,53 @@ func (m *minioServer) exec(ctx context.Context) error {
 	}
 
 	// Ensure the process gets terminated on shutdown
+	sigs := make(chan os.Signal, 64)
 	go func() {
-		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 		<-sigs
 		m.Kill()
 	}()
 
+	readyFn := func() <-chan bool {
+		readyChan := make(chan bool)
+		go func() {
+			for {
+				c, _ := m.client()
+				client := http.Client{}
+
+				if m.Secure {
+					client.Transport = &http.Transport{
+						TLSClientConfig: tlsconfig.ClientDefault(),
+					}
+				}
+
+				urlS := c.EndpointURL().String()
+				resp, err := client.Head(urlS)
+
+				if err != nil || resp == nil {
+					continue
+				}
+				fmt.Println(resp.StatusCode)
+				// Ping the minio server to wait for it to come up. Accept any response.
+				if resp.StatusCode >= 200 && resp.StatusCode < 500 {
+					readyChan <- true
+					return
+				}
+			}
+
+		}()
+		return readyChan
+	}
+
 	m.cmd = cmd
-	return err
+	select {
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("minio failed to become ready")
+	case <-sigs:
+		return fmt.Errorf("minio startup was interrupted")
+	case <-readyFn():
+		return nil
+	}
 }
 
 // Wait blocks until Minio is finished.
