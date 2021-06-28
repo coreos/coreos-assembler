@@ -23,8 +23,10 @@ import (
 
 	butane "github.com/coreos/butane/config"
 	butaneCommon "github.com/coreos/butane/config/common"
+	"github.com/coreos/go-semver/semver"
 	systemdunit "github.com/coreos/go-systemd/unit"
 	ignerr "github.com/coreos/ignition/v2/config/shared/errors"
+	ignutil "github.com/coreos/ignition/v2/config/util"
 	v3 "github.com/coreos/ignition/v2/config/v3_0"
 	v3types "github.com/coreos/ignition/v2/config/v3_0/types"
 	v31 "github.com/coreos/ignition/v2/config/v3_1"
@@ -164,56 +166,53 @@ func (u *UserData) Render() (*Conf, error) {
 	c := &Conf{}
 
 	renderIgnition := func(data []byte) error {
-		// Try each known version in turn.  We can't use
-		// ParseCompatibleVersion because that'll upconvert older
-		// configs.
-		ignc3, report3, err := v3.Parse(data)
-		if err == nil {
-			c.ignitionV3 = &ignc3
-			return nil
-		} else if err != ignerr.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report3)
+		ver, report, err := ignutil.GetConfigVersion(data)
+		if err != nil {
+			plog.Errorf("invalid userdata: %v", report)
 			return err
 		}
-
-		ignc31, report31, err := v31.Parse(data)
-		if err == nil {
-			c.ignitionV31 = &ignc31
-			return nil
-		} else if err != ignerr.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report31)
-			return err
+		// We can't use ParseCompatibleVersion because that'll
+		// upconvert older configs.
+		switch ver {
+		case semver.Version{Major: 3, Minor: 0}:
+			ignc, report, err := v3.Parse(data)
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return err
+			}
+			c.ignitionV3 = &ignc
+		case semver.Version{Major: 3, Minor: 1}:
+			ignc, report, err := v31.Parse(data)
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return err
+			}
+			c.ignitionV31 = &ignc
+		case semver.Version{Major: 3, Minor: 2}:
+			ignc, report, err := v32.Parse(data)
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return err
+			}
+			c.ignitionV32 = &ignc
+		case semver.Version{Major: 3, Minor: 3}:
+			ignc, report, err := v33.Parse(data)
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return err
+			}
+			c.ignitionV33 = &ignc
+		case semver.Version{Major: 3, Minor: 4, PreRelease: "experimental"}:
+			ignc, report, err := v34exp.Parse(data)
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return err
+			}
+			c.ignitionV34exp = &ignc
+		default:
+			return ignerr.ErrUnknownVersion
 		}
-
-		ignc32, report32, err := v32.Parse(data)
-		if err == nil {
-			c.ignitionV32 = &ignc32
-			return nil
-		} else if err != ignerr.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report32)
-			return err
-		}
-
-		ignc33, report33, err := v33.Parse(data)
-		if err == nil {
-			c.ignitionV33 = &ignc33
-			return nil
-		} else if err != ignerr.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report33)
-			return err
-		}
-
-		ignc34exp, report34exp, err := v34exp.Parse(data)
-		if err == nil {
-			c.ignitionV34exp = &ignc34exp
-			return nil
-		} else if err != ignerr.ErrUnknownVersion {
-			plog.Errorf("invalid userdata: %v", report34exp)
-			return err
-		}
-
-		// give up
-		return err
+		return nil
 	}
 
 	switch u.kind {
