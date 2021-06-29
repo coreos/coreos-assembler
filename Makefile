@@ -30,7 +30,7 @@ endif
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-check gangplank-check
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-check
 	echo OK
 
 pycheck:
