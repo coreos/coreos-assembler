@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+
+# Used to encrypt files before upload (such as build.log)
+
+import subprocess
+import argparse
+import os
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("cert", help="X.509 Certificate")
+parser.add_argument("input", help="Path to file to encrypt into PKCS7 structure")
+parser.add_argument("output", help="Path to encrypted PKCS7 structure")
+args = parser.parse_args()
+
+files = [args.cert, args.input]
+for path in files:
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+
+subprocess.check_call(["openssl", "smime", "-encrypt", "-aes-256-cbc", "-in", args.input,
+                     "-out", args.output, "-outform", "PEM", args.cert])
