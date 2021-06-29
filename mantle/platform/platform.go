@@ -392,12 +392,15 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int, options MachineOptio
 	return machs, nil
 }
 
-// checkSystemdUnitFailures make sure no system unit is in failed state.
+// checkSystemdUnitFailures ensures that no system unit is in a failed state,
+// temporarily ignoring some non-fatal flakes on RHCOS.
+// See: https://bugzilla.redhat.com/show_bug.cgi?id=1914362
 func checkSystemdUnitFailures(output string, distribution string) error {
-	var ignoredUnits []string
+	if len(output) == 0 {
+		return nil
+	}
 
-	// Temporarily ignore some non-fatal flakes on RHCOS. See:
-	// https://bugzilla.redhat.com/show_bug.cgi?id=1914362
+	var ignoredUnits []string
 	if distribution == "rhcos" {
 		ignoredUnits = append(ignoredUnits, "user@1000.service")
 		ignoredUnits = append(ignoredUnits, "user-runtime-dir@1000.service")
@@ -405,17 +408,16 @@ func checkSystemdUnitFailures(output string, distribution string) error {
 
 	var failedUnits []string
 	for _, unit := range strings.Split(output, "\n") {
-		u := strings.Fields(unit)[0]
-		ignore := false
+		// Filter ignored units
+		ignored := false
 		for _, i := range ignoredUnits {
-			if u == i {
-				// Ignoring this unit
-				ignore = true
+			if unit == i {
+				ignored = true
 				break
 			}
 		}
-		if !ignore {
-			failedUnits = append(failedUnits, u)
+		if !ignored {
+			failedUnits = append(failedUnits, unit)
 		}
 	}
 	if len(failedUnits) > 0 {
@@ -429,8 +431,6 @@ func checkSystemdUnitFailures(output string, distribution string) error {
 // being available and no systemd units failing at the time ssh is reachable.
 // It also ensures the remote system is running Container Linux by CoreOS or
 // Red Hat CoreOS.
-//
-// TODO(mischief): better error messages.
 func CheckMachine(ctx context.Context, m Machine) error {
 	// ensure ssh works and the system is ready
 	sshChecker := func() error {
@@ -468,13 +468,14 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	}
 
 	if !m.RuntimeConf().AllowFailedUnits {
-		// ensure no systemd units failed during boot
-		out, stderr, err = m.SSH("systemctl --no-legend --state failed list-units")
+		// Ensure no systemd units failed during boot
+		out, stderr, err = m.SSH("busctl --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager ListUnitsFiltered as 2 state failed | jq -r '.data[][][0]'")
 		if err != nil {
-			return fmt.Errorf("systemctl: %s: %v: %s", out, err, stderr)
+			return fmt.Errorf("failed to query systemd for failed units: %s: %v: %s", out, err, stderr)
 		}
-		if len(out) > 0 {
-			return checkSystemdUnitFailures(string(out), distribution)
+		err = checkSystemdUnitFailures(string(out), distribution)
+		if err != nil {
+			return err
 		}
 	}
 

@@ -17,40 +17,39 @@ package platform
 import "testing"
 
 func TestSystemUnitFiltering(t *testing.T) {
-	// Output from: `systemctl --no-legend --state failed list-units`
+	// Output from:
+	// $ busctl --json=short call \
+	//       org.freedesktop.systemd1 \
+	//       /org/freedesktop/systemd1 \
+	//       org.freedesktop.systemd1.Manager \
+	//       ListUnitsFiltered as 2 state failed \
+	//       | jq -r '.data[][][0]'
 	var output string
 
-	output = `● abrt-oops.service         loaded failed failed ABRT kernel log watcher
-● systemd-timesyncd.service loaded failed failed Network Time Synchronization`
+	output = `abrt-oops.service
+systemd-timesyncd.service`
 	if checkSystemdUnitFailures(output, "fcos") == nil {
 		t.Errorf("Should have failed")
 	}
-	output = `abrt-oops.service         loaded failed failed ABRT kernel log watcher
-systemd-timesyncd.service loaded failed failed Network Time Synchronization`
 	if checkSystemdUnitFailures(output, "rhcos") == nil {
 		t.Errorf("Should have failed")
 	}
 
-	output = `● user@1000.service             loaded failed failed Foo
-● user-runtime-dir@1000.service loaded failed failed Bar`
+	output = `user@1000.service
+user-runtime-dir@1000.service`
 	if checkSystemdUnitFailures(output, "fcos") == nil {
 		t.Errorf("Should have failed")
 	}
-	output = `user@1000.service             loaded failed failed Foo
-user-runtime-dir@1000.service loaded failed failed Bar`
 	if checkSystemdUnitFailures(output, "rhcos") != nil {
 		t.Errorf("Should have passed")
 	}
 
-	output = `● abrt-oops.service         loaded failed failed ABRT kernel log watcher
-● user@1000.service             loaded failed failed Foo
-● user-runtime-dir@1000.service loaded failed failed Bar`
+	output = `abrt-oops.service
+user@1000.service
+user-runtime-dir@1000.service`
 	if checkSystemdUnitFailures(output, "fcos") == nil {
 		t.Errorf("Should have failed")
 	}
-	output = `abrt-oops.service         loaded failed failed ABRT kernel log watcher
-user@1000.service             loaded failed failed Foo
-user-runtime-dir@1000.service loaded failed failed Bar`
 	if checkSystemdUnitFailures(output, "rhcos") == nil {
 		t.Errorf("Should have failed")
 	}
