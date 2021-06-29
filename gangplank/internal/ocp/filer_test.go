@@ -36,7 +36,7 @@ func TestFiler(t *testing.T) {
 
 	mc, err := m.client()
 	if err != nil {
-		t.Errorf("Failed to create test minio client")
+		t.Errorf("Failed to create test minio client: %v", err)
 	}
 	defer m.Kill()
 
@@ -46,7 +46,7 @@ func TestFiler(t *testing.T) {
 
 	r := strings.NewReader(testFileContents)
 	if _, err := mc.PutObject(c, testBucket, "test", r, -1, minio.PutObjectOptions{}); err != nil {
-		t.Errorf("Failed to place test file")
+		t.Errorf("Failed to place test file: %v", err)
 	}
 
 	tfp := filepath.Join(tmpd, testBucket, "test")
@@ -79,13 +79,13 @@ func TestMultipleStandAlones(t *testing.T) {
 	ctx := context.Background()
 	one, err := StartStandaloneMinioServer(ctx, srvOne, oneCfg, nil)
 	if err != nil {
-		t.Fatalf("failed to start first minio server")
+		t.Fatalf("%v: failed to start first minio server", err)
 	}
 	defer one.Kill()
 
 	two, err := StartStandaloneMinioServer(ctx, srvTwo, twoCfg, nil)
 	if err != nil {
-		t.Fatalf("failed to start first minio server")
+		t.Fatalf("%v: failed to start first minio server", err)
 	}
 	defer two.Kill()
 
@@ -93,11 +93,11 @@ func TestMultipleStandAlones(t *testing.T) {
 	// This tests using a minio from CFG
 	oneUser := newMinioServer(oneCfg)
 	if err := oneUser.start(ctx); err != nil {
-		t.Errorf("failed to use first minio")
+		t.Errorf("%v: failed to start first minio", err)
 	}
 	twoUser := newMinioServer(twoCfg)
 	if err := twoUser.start(ctx); err != nil {
-		t.Errorf("failed ot use second minio")
+		t.Errorf("%v: failed to start second minior", err)
 	}
 
 	// Connect and make sure that the servers serve different content
@@ -106,10 +106,10 @@ func TestMultipleStandAlones(t *testing.T) {
 	//   - that a new minio server is not started
 	//   - each server is using a different set of keys.
 	if err := oneUser.ensureBucketExists(ctx, "test1"); err != nil {
-		t.Errorf("failed to create bucket on first minio")
+		t.Errorf("%v: failed to create bucket on first minio", err)
 	}
 	if err := twoUser.ensureBucketExists(ctx, "test2"); err != nil {
-		t.Errorf("failed to create bucket on first minio")
+		t.Errorf("%v: failed to create bucket on first minio", err)
 	}
 
 	oneClient, _ := oneUser.client()
@@ -119,7 +119,7 @@ func TestMultipleStandAlones(t *testing.T) {
 	twoBuckets, twoErr := twoClient.ListBuckets(ctx)
 
 	if oneErr != nil || twoErr != nil {
-		t.Fatalf("failed to list buckets")
+		t.Fatalf("failed to list buckets:\none: %v\ntwo: %v\n", oneErr, twoErr)
 	}
 
 	for _, oneV := range oneBuckets {

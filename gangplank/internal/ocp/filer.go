@@ -166,34 +166,16 @@ func (m *minioServer) client() (*minio.Client, error) {
 
 // start executes the minio server and returns an error if not ready.
 func (m *minioServer) start(ctx context.Context) error {
-	started := false
 	if m.ExternalServer {
-		started = true
+		return <-m.waitReadyChan(90 * time.Second)
 	}
 
-	check := func() error {
-		if !started {
-			if err := m.exec(ctx); err != nil {
-				log.WithError(err).Warn("failed to start minio")
-				defer m.Kill() // throw this server away
-				return err
-			}
-			started = true
-		}
-		return nil
+	if err := m.exec(ctx); err != nil {
+		log.WithError(err).Warn("failed to start minio")
+		return err
 	}
 
-	for x := 0; x <= 6; x++ {
-		if err := check(); err == nil {
-			return nil
-		}
-
-		sleep := time.Duration(x ^ 2)
-		log.WithField("time", sleep).Info("minio server is not ready, sleeping")
-		time.Sleep(sleep * time.Second)
-	}
-
-	return errors.New("minio serve failed to become ready")
+	return nil
 }
 
 // exec runs the minio command
@@ -245,18 +227,20 @@ func (m *minioServer) exec(ctx context.Context) error {
 		}).Error("Failed to start minio")
 	}
 
-	time.Sleep(1 * time.Second)
-	if cmd == nil || (cmd.ProcessState != nil && cmd.ProcessState.Exited()) {
-		return fmt.Errorf("minio started but exited")
-	}
+	startChan := make(chan error, 1)
+	go func() {
+		for {
+			if cmd == nil || (cmd.ProcessState != nil && cmd.ProcessState.Exited()) {
+				startChan <- fmt.Errorf("minio started but exited")
+				return
 
-	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
-		stdoutStderr, _ := cmd.CombinedOutput()
-		l.WithFields(log.Fields{
-			"err": err,
-			"out": stdoutStderr,
-		}).Error("Failed to start minio")
-	}
+			}
+			if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+				startChan <- fmt.Errorf("failed to start minio")
+				return
+			}
+		}
+	}()
 
 	// Ensure the process gets terminated on shutdown
 	sigs := make(chan os.Signal, 64)
@@ -266,45 +250,21 @@ func (m *minioServer) exec(ctx context.Context) error {
 		m.Kill()
 	}()
 
-	readyFn := func() <-chan bool {
-		readyChan := make(chan bool)
-		go func() {
-			for {
-				c, _ := m.client()
-				client := http.Client{}
-
-				if m.Secure {
-					client.Transport = &http.Transport{
-						TLSClientConfig: tlsconfig.ClientDefault(),
-					}
-				}
-
-				urlS := c.EndpointURL().String()
-				resp, err := client.Head(urlS)
-
-				if err != nil || resp == nil {
-					continue
-				}
-				fmt.Println(resp.StatusCode)
-				// Ping the minio server to wait for it to come up. Accept any response.
-				if resp.StatusCode >= 200 && resp.StatusCode < 500 {
-					readyChan <- true
-					return
-				}
-			}
-
-		}()
-		return readyChan
-	}
-
 	m.cmd = cmd
 	select {
-	case <-time.After(10 * time.Second):
-		return fmt.Errorf("minio failed to become ready")
+	case err := <-startChan:
+		if cmd != nil {
+			stdoutStderr, _ := cmd.CombinedOutput()
+			l.WithFields(log.Fields{
+				"err": err,
+				"out": stdoutStderr,
+			}).Errorf("minio start failure")
+		}
+		return err
 	case <-sigs:
 		return fmt.Errorf("minio startup was interrupted")
-	case <-readyFn():
-		return nil
+	case err := <-m.waitReadyChan(90 * time.Second):
+		return err
 	}
 }
 
@@ -376,86 +336,95 @@ func (m *minioServer) ensureBucketExists(ctx context.Context, bucket string) err
 
 // fetcher retrieves an object from a Minio server
 func (m *minioServer) fetcher(ctx context.Context, bucket, object string, dest io.Writer) error {
-	if m.Host == "" {
-		return errors.New("host is undefined")
-	}
-	// Set the attributes
-	f, isFile := dest.(*os.File)
-	l := log.WithFields(log.Fields{
-		"bucket": bucket,
-		"host":   m.Host,
-		"object": object,
-	})
+	return retry(
+		3,
+		(3 * time.Second),
+		func() error {
+			if m.Host == "" {
+				return errors.New("host is undefined")
+			}
+			// Set the attributes
+			f, isFile := dest.(*os.File)
+			l := log.WithFields(log.Fields{
+				"bucket": bucket,
+				"host":   m.Host,
+				"object": object,
+			})
 
-	l.Info("Requesting remote object")
+			l.Info("Requesting remote object")
 
-	mc, err := m.client()
-	if err != nil {
-		return err
-	}
+			mc, err := m.client()
+			if err != nil {
+				return err
+			}
 
-	src, err := mc.GetObject(ctx, bucket, object, minio.GetObjectOptions{})
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-	n, err := io.Copy(dest, src)
-	if err != nil {
-		l.WithError(err).Error("failed to write the file")
-		return err
-	}
-	l.WithField("bytes", n).Info("Wrote file")
+			src, err := mc.GetObject(ctx, bucket, object, minio.GetObjectOptions{})
+			if err != nil {
+				return err
+			}
+			defer src.Close()
+			n, err := io.Copy(dest, src)
+			if err != nil {
+				l.WithError(err).Error("failed to write the file")
+				return err
+			}
+			l.WithField("bytes", n).Info("Wrote file")
 
-	if isFile {
-		info, err := src.Stat()
-		if err != nil {
-			return err
-		}
-		if err := os.Chtimes(f.Name(), info.LastModified, info.LastModified); err != nil {
-			return err
-		}
-	}
-
-	return err
+			if isFile {
+				info, err := src.Stat()
+				if err != nil {
+					return err
+				}
+				if err := os.Chtimes(f.Name(), info.LastModified, info.LastModified); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 }
 
 // putter uploads the contents of an io.Reader to a remote MinioServer
 func (m *minioServer) putter(ctx context.Context, bucket, object, fpath string) error {
-	if err := m.ensureBucketExists(ctx, bucket); err != nil {
-		return fmt.Errorf("unable to validate %s bucket exists: %w", bucket, err)
-	}
-	fi, err := os.Stat(fpath)
-	if err != nil {
-		return err
-	}
-	l := log.WithFields(log.Fields{
-		"bucket": bucket,
-		"from":   fpath,
-		"func":   "putter",
-		"object": object,
-		"size":   fmt.Sprintf("%d", fi.Size()),
-	})
+	return retry(
+		3,
+		(3 * time.Second),
+		func() error {
+			if err := m.ensureBucketExists(ctx, bucket); err != nil {
+				return fmt.Errorf("unable to validate %s bucket exists: %w", bucket, err)
+			}
+			fi, err := os.Stat(fpath)
+			if err != nil {
+				return err
+			}
+			l := log.WithFields(log.Fields{
+				"bucket": bucket,
+				"from":   fpath,
+				"func":   "putter",
+				"object": object,
+				"size":   fmt.Sprintf("%d", fi.Size()),
+			})
 
-	mC, err := m.client()
-	if err != nil {
-		return err
-	}
+			mC, err := m.client()
+			if err != nil {
+				return err
+			}
 
-	i, err := mC.FPutObject(ctx, bucket, object, fpath, minio.PutObjectOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to upload to %s/%s: %w", bucket, object, err)
-	}
-	if err := m.stampFile(bucket, object); err != nil {
-		return fmt.Errorf("failed to stamp uploaded file %s/%s: %w", bucket, object, err)
-	}
-	stamp, _ := m.getStamp(bucket, object)
-	l.WithFields(log.Fields{
-		fileStampName: stamp,
-		"etag":        i.ETag,
-		"remote size": i.Size,
-	}).Info("Uploaded")
+			i, err := mC.FPutObject(ctx, bucket, object, fpath, minio.PutObjectOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to upload to %s/%s: %w", bucket, object, err)
+			}
+			if err := m.stampFile(bucket, object); err != nil {
+				return fmt.Errorf("failed to stamp uploaded file %s/%s: %w", bucket, object, err)
+			}
+			stamp, _ := m.getStamp(bucket, object)
+			l.WithFields(log.Fields{
+				fileStampName: stamp,
+				"etag":        i.ETag,
+				"remote size": i.Size,
+			}).Info("Uploaded")
 
-	return nil
+			return nil
+		})
 }
 
 // checkPort checks if a port is open
@@ -633,4 +602,60 @@ func (m *minioServer) getStamp(bucket, object string) (int64, error) {
 	}
 
 	return 0, err
+}
+
+// retry tries the func upto n "tries" with a sleep between.
+func retry(tries int, sleep time.Duration, fn func() error) error {
+	var err error
+	for i := 0; i <= tries; i++ {
+		newErr := fn()
+		if newErr == nil {
+			return nil
+		}
+		err = fmt.Errorf("error %d: %w", i, newErr)
+		if sleep < 0 {
+			time.Sleep(sleep)
+		}
+	}
+	return err
+}
+
+// waitReadyChan returns a chan that emits true when the endpoint responds
+// with HTTP codes between 200 and 499.
+func (m *minioServer) waitReadyChan(timeout time.Duration) <-chan error {
+	readyChan := make(chan error)
+	go func() {
+		startTime := time.Now()
+		for {
+			// set a timeout
+			if time.Since(startTime) > timeout {
+				readyChan <- errors.New("timeout waiting for minio to be ready")
+				return
+			}
+
+			// connect
+			c, _ := m.client()
+			client := http.Client{
+				Timeout: 5 * time.Second,
+			}
+			if m.Secure {
+				client.Transport = &http.Transport{
+					TLSClientConfig: tlsconfig.ClientDefault(),
+				}
+			}
+			urlS := c.EndpointURL().String()
+			resp, err := client.Head(urlS)
+
+			if err != nil || resp == nil {
+				continue
+			}
+
+			// Ping the minio server to wait for it to come up. Accept any response.
+			if resp.StatusCode >= 200 && resp.StatusCode < 500 {
+				readyChan <- nil
+				return
+			}
+		}
+	}()
+	return readyChan
 }
