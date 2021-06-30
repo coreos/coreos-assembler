@@ -103,7 +103,9 @@ def aws_run_ore_replicate(build, args):
 
 @retry(reraise=True, stop=stop_after_attempt(3))
 def aws_run_ore(build, args):
-    ore_args = ['ore']
+    # First add the ore command to run before any options
+    ore_args = ['ore', 'aws', 'upload']
+
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
 
@@ -115,7 +117,6 @@ def aws_run_ore(build, args):
         region = args.region[0]
 
     ore_args.extend([
-        'aws', 'upload',
         '--region', f"{region}",
         '--bucket', f"{args.bucket}",
         '--ami-name', f"{build.build_name}-{build.build_id}",
