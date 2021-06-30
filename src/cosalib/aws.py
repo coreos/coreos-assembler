@@ -125,6 +125,8 @@ def aws_run_ore(build, args):
         '--disk-size-inspect',
         '--delete-object'
     ])
+    if args.arch:
+        ore_args.extend(['--arch', f"{args.arch}"])
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
     for user in args.grant_user_snapshot:

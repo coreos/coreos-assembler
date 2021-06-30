@@ -260,7 +260,7 @@ class GenericBuildMeta(GenericMeta):
     """
 
     def __init__(self, workdir=None, build='latest',
-                 schema=SCHEMA_PATH):
+                 basearch=None, schema=SCHEMA_PATH):
         builds = Builds(workdir)
         if build != "latest":
             if not builds.has(build):
@@ -268,7 +268,9 @@ class GenericBuildMeta(GenericMeta):
         else:
             build = builds.get_latest()
 
-        self._build_dir = builds.get_build_dir(build)
+        self._build_dir = \
+            builds.get_build_dir(build,
+                                 basearch=basearch)
         path = os.path.join(self._build_dir, 'meta.json')
         super().__init__(schema=schema, path=path)
 
