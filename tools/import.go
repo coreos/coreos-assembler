@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/cheggaaa/pb"
 	_ "github.com/gedex/inflector"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/idubinskiy/schematyper"
