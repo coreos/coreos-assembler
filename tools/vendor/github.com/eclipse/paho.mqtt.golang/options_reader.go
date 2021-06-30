@@ -133,6 +133,18 @@ func (r *ClientOptionsReader) AutoReconnect() bool {
 	return s
 }
 
+//ConnectRetryInterval returns the delay between retries on the initial connection (if ConnectRetry true)
+func (r *ClientOptionsReader) ConnectRetryInterval() time.Duration {
+	s := r.options.ConnectRetryInterval
+	return s
+}
+
+//ConnectRetry returns whether the initial connection request will be retried until connection established
+func (r *ClientOptionsReader) ConnectRetry() bool {
+	s := r.options.ConnectRetry
+	return s
+}
+
 func (r *ClientOptionsReader) WriteTimeout() time.Duration {
 	s := r.options.WriteTimeout
 	return s
@@ -146,4 +158,10 @@ func (r *ClientOptionsReader) MessageChannelDepth() uint {
 func (r *ClientOptionsReader) HTTPHeaders() http.Header {
 	h := r.options.HTTPHeaders
 	return h
+}
+
+// WebsocketOptions returns the currently configured WebSocket options
+func (r *ClientOptionsReader) WebsocketOptions() *WebsocketOptions {
+	s := r.options.WebsocketOptions
+	return s
 }

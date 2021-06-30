@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2019,2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -22,23 +23,46 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/minio/minio/cmd/config/cache"
-	"github.com/minio/minio/cmd/logger"
-	objectlock "github.com/minio/minio/pkg/bucket/object/lock"
-	"github.com/minio/minio/pkg/color"
-	"github.com/minio/minio/pkg/sync/errgroup"
-	"github.com/minio/minio/pkg/wildcard"
+	objectlock "github.com/minio/minio/internal/bucket/object/lock"
+	"github.com/minio/minio/internal/color"
+	"github.com/minio/minio/internal/config/cache"
+	"github.com/minio/minio/internal/hash"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
+	"github.com/minio/minio/internal/sync/errgroup"
+	"github.com/minio/pkg/wildcard"
 )
 
 const (
-	cacheBlkSize    = int64(1 * 1024 * 1024)
-	cacheGCInterval = time.Minute * 30
+	cacheBlkSize          = 1 << 20
+	cacheGCInterval       = time.Minute * 30
+	writeBackStatusHeader = ReservedMetadataPrefixLower + "write-back-status"
+	writeBackRetryHeader  = ReservedMetadataPrefixLower + "write-back-retry"
 )
+
+type cacheCommitStatus string
+
+const (
+	// CommitPending - cache writeback with backend is pending.
+	CommitPending cacheCommitStatus = "pending"
+
+	// CommitComplete - cache writeback completed ok.
+	CommitComplete cacheCommitStatus = "complete"
+
+	// CommitFailed - cache writeback needs a retry.
+	CommitFailed cacheCommitStatus = "failed"
+)
+
+// String returns string representation of status
+func (s cacheCommitStatus) String() string {
+	return string(s)
+}
 
 // CacheStorageInfo - represents total, free capacity of
 // underlying cache storage.
@@ -69,11 +93,14 @@ type cacheObjects struct {
 	exclude []string
 	// number of accesses after which to cache an object
 	after int
+	// commit objects in async manner
+	commitWriteback bool
 	// if true migration is in progress from v1 to v2
 	migrating bool
 	// mutex to protect migration bool
 	migMutex sync.Mutex
-
+	// retry queue for writeback cache mode to reattempt upload to backend
+	wbRetryCh chan ObjectInfo
 	// Cache stats
 	cacheStats *CacheStats
 
@@ -174,6 +201,7 @@ func getMetadata(objInfo ObjectInfo) map[string]string {
 	if !objInfo.Expires.Equal(timeSentinel) {
 		metadata["expires"] = objInfo.Expires.Format(http.TimeFormat)
 	}
+	metadata["last-modified"] = objInfo.ModTime.Format(http.TimeFormat)
 	for k, v := range objInfo.UserDefined {
 		metadata[k] = v
 	}
@@ -329,22 +357,27 @@ func (c *cacheObjects) GetObjectNInfo(ctx context.Context, bucket, object string
 	}
 
 	// Initialize pipe.
-	pipeReader, pipeWriter := io.Pipe()
-	teeReader := io.TeeReader(bkReader, pipeWriter)
+	pr, pw := io.Pipe()
+	var wg sync.WaitGroup
+	teeReader := io.TeeReader(bkReader, pw)
 	userDefined := getMetadata(bkReader.ObjInfo)
+	wg.Add(1)
 	go func() {
-		putErr := dcache.Put(ctx, bucket, object,
-			io.LimitReader(pipeReader, bkReader.ObjInfo.Size),
+		_, putErr := dcache.Put(ctx, bucket, object,
+			io.LimitReader(pr, bkReader.ObjInfo.Size),
 			bkReader.ObjInfo.Size, rs, ObjectOptions{
 				UserDefined: userDefined,
 			}, false)
-		// close the write end of the pipe, so the error gets
-		// propagated to getObjReader
-		pipeWriter.CloseWithError(putErr)
+		// close the read end of the pipe, so the error gets
+		// propagated to teeReader
+		pr.CloseWithError(putErr)
+		wg.Done()
 	}()
-	cleanupBackend := func() { bkReader.Close() }
-	cleanupPipe := func() { pipeWriter.Close() }
-	return NewGetObjectReaderFromReader(teeReader, bkReader.ObjInfo, opts, cleanupBackend, cleanupPipe)
+	cleanupBackend := func() {
+		pw.CloseWithError(bkReader.Close())
+		wg.Wait()
+	}
+	return NewGetObjectReaderFromReader(teeReader, bkReader.ObjInfo, opts, cleanupBackend)
 }
 
 // Returns ObjectInfo from cache if available.
@@ -629,7 +662,14 @@ func (c *cacheObjects) PutObject(ctx context.Context, bucket, object string, r *
 		dcache.Delete(ctx, bucket, object)
 		return putObjectFn(ctx, bucket, object, r, opts)
 	}
-
+	if c.commitWriteback {
+		oi, err := dcache.Put(ctx, bucket, object, r, r.Size(), nil, opts, false)
+		if err != nil {
+			return ObjectInfo{}, err
+		}
+		go c.uploadObject(GlobalContext, oi)
+		return oi, nil
+	}
 	objInfo, err = putObjectFn(ctx, bucket, object, r, opts)
 
 	if err == nil {
@@ -647,9 +687,68 @@ func (c *cacheObjects) PutObject(ctx context.Context, bucket, object string, r *
 			}
 		}()
 	}
-
 	return objInfo, err
+}
 
+// upload cached object to backend in async commit mode.
+func (c *cacheObjects) uploadObject(ctx context.Context, oi ObjectInfo) {
+	dcache, err := c.getCacheToLoc(ctx, oi.Bucket, oi.Name)
+	if err != nil {
+		// disk cache could not be located.
+		logger.LogIf(ctx, fmt.Errorf("Could not upload %s/%s to backend: %w", oi.Bucket, oi.Name, err))
+		return
+	}
+	cReader, _, bErr := dcache.Get(ctx, oi.Bucket, oi.Name, nil, http.Header{}, ObjectOptions{})
+	if bErr != nil {
+		return
+	}
+	defer cReader.Close()
+
+	if cReader.ObjInfo.ETag != oi.ETag {
+		return
+	}
+	st := cacheCommitStatus(oi.UserDefined[writeBackStatusHeader])
+	if st == CommitComplete || st.String() == "" {
+		return
+	}
+	hashReader, err := hash.NewReader(cReader, oi.Size, "", "", oi.Size)
+	if err != nil {
+		return
+	}
+	var opts ObjectOptions
+	opts.UserDefined = make(map[string]string)
+	opts.UserDefined[xhttp.ContentMD5] = oi.UserDefined["content-md5"]
+	objInfo, err := c.InnerPutObjectFn(ctx, oi.Bucket, oi.Name, NewPutObjReader(hashReader), opts)
+	wbCommitStatus := CommitComplete
+	if err != nil {
+		wbCommitStatus = CommitFailed
+	}
+
+	meta := cloneMSS(cReader.ObjInfo.UserDefined)
+	retryCnt := 0
+	if wbCommitStatus == CommitFailed {
+		retryCnt, _ = strconv.Atoi(meta[writeBackRetryHeader])
+		retryCnt++
+		meta[writeBackRetryHeader] = strconv.Itoa(retryCnt)
+	} else {
+		delete(meta, writeBackRetryHeader)
+	}
+	meta[writeBackStatusHeader] = wbCommitStatus.String()
+	meta["etag"] = oi.ETag
+	dcache.SaveMetadata(ctx, oi.Bucket, oi.Name, meta, objInfo.Size, nil, "", false)
+	if retryCnt > 0 {
+		// slow down retries
+		time.Sleep(time.Second * time.Duration(retryCnt%10+1))
+		c.queueWritebackRetry(oi)
+	}
+}
+
+func (c *cacheObjects) queueWritebackRetry(oi ObjectInfo) {
+	select {
+	case c.wbRetryCh <- oi:
+		c.uploadObject(GlobalContext, oi)
+	default:
+	}
 }
 
 // Returns cacheObjects for use by Server.
@@ -660,12 +759,13 @@ func newServerCacheObjects(ctx context.Context, config cache.Config) (CacheObjec
 		return nil, err
 	}
 	c := &cacheObjects{
-		cache:      cache,
-		exclude:    config.Exclude,
-		after:      config.After,
-		migrating:  migrateSw,
-		migMutex:   sync.Mutex{},
-		cacheStats: newCacheStats(),
+		cache:           cache,
+		exclude:         config.Exclude,
+		after:           config.After,
+		migrating:       migrateSw,
+		migMutex:        sync.Mutex{},
+		commitWriteback: config.CommitWriteback,
+		cacheStats:      newCacheStats(),
 		InnerGetObjectInfoFn: func(ctx context.Context, bucket, object string, opts ObjectOptions) (ObjectInfo, error) {
 			return newObjectLayerFn().GetObjectInfo(ctx, bucket, object, opts)
 		},
@@ -688,6 +788,10 @@ func newServerCacheObjects(ctx context.Context, config cache.Config) (CacheObjec
 			dcache := c.cache[i]
 			cacheDiskStats[i] = CacheDiskStats{}
 			if dcache != nil {
+				info, err := getDiskInfo(dcache.dir)
+				logger.LogIf(ctx, err)
+				cacheDiskStats[i].UsageSize = info.Used
+				cacheDiskStats[i].TotalCapacity = info.Total
 				cacheDiskStats[i].Dir = dcache.stats.Dir
 				atomic.StoreInt32(&cacheDiskStats[i].UsageState, atomic.LoadInt32(&dcache.stats.UsageState))
 				atomic.StoreUint64(&cacheDiskStats[i].UsagePercent, atomic.LoadUint64(&dcache.stats.UsagePercent))
@@ -699,6 +803,15 @@ func newServerCacheObjects(ctx context.Context, config cache.Config) (CacheObjec
 		go c.migrateCacheFromV1toV2(ctx)
 	}
 	go c.gc(ctx)
+	if c.commitWriteback {
+		c.wbRetryCh = make(chan ObjectInfo, 10000)
+		go func() {
+			<-GlobalContext.Done()
+			close(c.wbRetryCh)
+		}()
+		go c.queuePendingWriteback(ctx)
+	}
+
 	return c, nil
 }
 
@@ -721,6 +834,28 @@ func (c *cacheObjects) gc(ctx context.Context) {
 					dcache.diskSpaceAvailable(0)
 				}
 			}
+		}
+	}
+}
+
+// queues any pending or failed async commits when server restarts
+func (c *cacheObjects) queuePendingWriteback(ctx context.Context) {
+	for _, dcache := range c.cache {
+		if dcache != nil {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case oi, ok := <-dcache.retryWritebackCh:
+					if !ok {
+						goto next
+					}
+					c.queueWritebackRetry(oi)
+				default:
+					time.Sleep(time.Second * 1)
+				}
+			}
+		next:
 		}
 	}
 }

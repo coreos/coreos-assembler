@@ -115,3 +115,70 @@ func (r *decReader) Read(p []byte) (n int, err error) {
 	}
 	return r.src.Read(p)
 }
+
+// decryptBuffer detects the DARE version and decrypts the appropriate version.
+// DARE 1.0 or 2.0 encrypted data and decrypts it using the correct DARE version.
+func decryptBuffer(dst, src []byte, config *Config) ([]byte, error) {
+	if len(src) < headerSize {
+		return nil, errUnexpectedEOF
+	}
+	// First byte is version
+	switch src[0] {
+	default:
+		return nil, errUnsupportedVersion
+	case Version10:
+		buf := bytes.NewBuffer(dst)
+		if _, err := Decrypt(buf, bytes.NewBuffer(src), *config); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	case Version20:
+		return decryptBufferV20(dst, src, config)
+	}
+}
+
+type decReaderAt struct {
+	config Config
+	src    io.ReaderAt
+
+	firstRead bool
+}
+
+// decryptReader returns an io.Reader wrapping the given io.Reader.
+// The returned io.Reader detects whether the underlying io.Reader returns
+// DARE 1.0 or 2.0 encrypted data and decrypts it using the correct DARE version.
+func decryptReaderAt(r io.ReaderAt, config *Config) *decReaderAt {
+	return &decReaderAt{
+		config:    *config,
+		src:       r,
+		firstRead: true,
+	}
+}
+
+func (r *decReaderAt) ReadAt(p []byte, offset int64) (n int, err error) {
+	if r.firstRead {
+		if len(p) == 0 {
+			return 0, nil
+		}
+		var version [1]byte
+		if _, err = r.src.ReadAt(version[:], 0); err != nil {
+			return 0, err
+		}
+		r.firstRead = false
+		switch version[0] {
+		default:
+			return 0, errUnsupportedVersion
+		case Version10:
+			r.src, err = decryptReaderAtV10(r.src, &r.config)
+			if err != nil {
+				return 0, err
+			}
+		case Version20:
+			r.src, err = decryptReaderAtV20(r.src, &r.config)
+			if err != nil {
+				return 0, err
+			}
+		}
+	}
+	return r.src.ReadAt(p, offset)
+}

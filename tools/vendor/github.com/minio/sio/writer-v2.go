@@ -22,8 +22,9 @@ type encWriterV20 struct {
 	authEncV20
 	dst io.Writer
 
-	buffer packageV20
-	offset int
+	buffer   packageV20
+	offset   int
+	closeErr error
 }
 
 // encryptWriterV20 returns an io.WriteCloser wrapping the given io.Writer.
@@ -40,7 +41,7 @@ func encryptWriterV20(dst io.Writer, config *Config) (*encWriterV20, error) {
 	return &encWriterV20{
 		authEncV20: ae,
 		dst:        dst,
-		buffer:     make(packageV20, maxPackageSize),
+		buffer:     packageBufferPool.Get().([]byte)[:maxPackageSize],
 	}, nil
 }
 
@@ -79,10 +80,19 @@ func (w *encWriterV20) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func (w *encWriterV20) Close() error {
+func (w *encWriterV20) Close() (err error) {
+	if w.buffer == nil {
+		return w.closeErr
+	}
+	defer func() {
+		w.closeErr = err
+		recyclePackageBufferPool(w.buffer)
+		w.buffer = nil
+	}()
+
 	if w.offset > 0 { // true if at least one Write call happened
 		w.SealFinal(w.buffer, w.buffer[headerSize:headerSize+w.offset])
-		if err := flush(w.dst, w.buffer[:headerSize+w.offset+tagSize]); err != nil { // write to underlying io.Writer
+		if err = flush(w.dst, w.buffer[:headerSize+w.offset+tagSize]); err != nil { // write to underlying io.Writer
 			return err
 		}
 		w.offset = 0
@@ -97,8 +107,9 @@ type decWriterV20 struct {
 	authDecV20
 	dst io.Writer
 
-	buffer packageV20
-	offset int
+	buffer   packageV20
+	offset   int
+	closeErr error
 }
 
 // decryptWriterV20 returns an io.WriteCloser wrapping the given io.Writer.
@@ -114,7 +125,7 @@ func decryptWriterV20(dst io.Writer, config *Config) (*decWriterV20, error) {
 	return &decWriterV20{
 		authDecV20: ad,
 		dst:        dst,
-		buffer:     make(packageV20, maxPackageSize),
+		buffer:     packageBufferPool.Get().([]byte)[:maxPackageSize],
 	}, nil
 }
 
@@ -157,19 +168,28 @@ func (w *decWriterV20) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func (w *decWriterV20) Close() error {
+func (w *decWriterV20) Close() (err error) {
+	if w.buffer == nil {
+		return w.closeErr
+	}
+	defer func() {
+		w.closeErr = err
+		recyclePackageBufferPool(w.buffer)
+		w.buffer = nil
+	}()
 	if w.offset > 0 {
 		if w.offset <= headerSize+tagSize { // the payload is always > 0
 			return errInvalidPayloadSize
 		}
-		if err := w.Open(w.buffer[headerSize:w.offset-tagSize], w.buffer[:w.offset]); err != nil {
+		if err = w.Open(w.buffer[headerSize:w.offset-tagSize], w.buffer[:w.offset]); err != nil {
 			return err
 		}
-		if err := flush(w.dst, w.buffer[headerSize:w.offset-tagSize]); err != nil { // write to underlying io.Writer
+		if err = flush(w.dst, w.buffer[headerSize:w.offset-tagSize]); err != nil { // write to underlying io.Writer
 			return err
 		}
 		w.offset = 0
 	}
+
 	if closer, ok := w.dst.(io.Closer); ok {
 		return closer.Close()
 	}

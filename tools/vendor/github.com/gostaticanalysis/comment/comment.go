@@ -55,7 +55,7 @@ func (maps Maps) Annotated(n ast.Node, annotation string) bool {
 //   //lint:ignore Check1[,Check2,...,CheckN] reason
 func (maps Maps) Ignore(n ast.Node, check string) bool {
 	for _, cg := range maps.Comments(n) {
-		if hasIgnoreCheck(cg.Text(), check) {
+		if hasIgnoreCheck(cg, check) {
 			return true
 		}
 	}
@@ -67,13 +67,16 @@ func (maps Maps) Ignore(n ast.Node, check string) bool {
 //   //lint:ignore Check1[,Check2,...,CheckN] reason
 func (maps Maps) IgnorePos(pos token.Pos, check string) bool {
 	for _, cg := range maps.CommentsByPos(pos) {
-		if hasIgnoreCheck(cg.Text(), check) {
+		if hasIgnoreCheck(cg, check) {
 			return true
 		}
 	}
 	return false
 }
 
+// Deprecated: This function does not work with multiple files.
+// CommentsByPosLine can be used instead of CommentsByLine.
+//
 // CommentsByLine returns correspond a CommentGroup slice to specified line.
 func (maps Maps) CommentsByLine(fset *token.FileSet, line int) []*ast.CommentGroup {
 	for i := range maps {
@@ -87,21 +90,50 @@ func (maps Maps) CommentsByLine(fset *token.FileSet, line int) []*ast.CommentGro
 	return nil
 }
 
+// CommentsByPosLine returns correspond a CommentGroup slice to specified line.
+func (maps Maps) CommentsByPosLine(fset *token.FileSet, pos token.Pos) []*ast.CommentGroup {
+	f1 := fset.File(pos)
+	for i := range maps {
+		for n, cgs := range maps[i] {
+			f2 := fset.File(n.Pos())
+			if f1 != f2 {
+				// different file
+				continue
+			}
+
+			if f1.Line(pos) == f2.Line(n.Pos()) {
+				return cgs
+			}
+		}
+	}
+	return nil
+}
+
 // IgnoreLine checks either specified lineof AST node is ignored by the check.
 // It follows staticcheck style as the below.
 //   //lint:ignore Check1[,Check2,...,CheckN] reason
 func (maps Maps) IgnoreLine(fset *token.FileSet, line int, check string) bool {
 	for _, cg := range maps.CommentsByLine(fset, line) {
-		if hasIgnoreCheck(cg.Text(), check) {
+		if hasIgnoreCheck(cg, check) {
 			return true
 		}
 	}
 	return false
 }
 
-func hasIgnoreCheck(s, check string) bool {
+// hasIgnoreCheck returns true if the provided CommentGroup starts with a comment
+// of the form "//lint:ignore Check1[,Check2,...,CheckN] reason" and one of the
+// checks matches the provided check. The *ast.CommentGroup is checked directly
+// rather than using "cg.Text()" because, starting in Go 1.15, the "cg.Text()" call
+// no longer returns directive-style comments (see https://github.com/golang/go/issues/37974).
+func hasIgnoreCheck(cg *ast.CommentGroup, check string) bool {
+	if !strings.HasPrefix(cg.List[0].Text, "//") {
+		return false
+	}
+
+	s := strings.TrimSpace(cg.List[0].Text[2:])
 	txt := strings.Split(s, " ")
-	if len(txt) < 3 && txt[0] != "lint:ignore" {
+	if len(txt) < 3 || txt[0] != "lint:ignore" {
 		return false
 	}
 

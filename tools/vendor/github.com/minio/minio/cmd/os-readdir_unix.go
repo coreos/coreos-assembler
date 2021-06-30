@@ -1,20 +1,21 @@
 // +build linux,!appengine darwin freebsd netbsd openbsd
 
-/*
- * MinIO Cloud Storage, (C) 2016-2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -25,19 +26,37 @@ import (
 	"sync"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
+
+func access(name string) error {
+	if err := unix.Access(name, unix.R_OK|unix.W_OK); err != nil {
+		return &os.PathError{Op: "lstat", Path: name, Err: err}
+	}
+	return nil
+}
 
 // The buffer must be at least a block long.
 // refer https://github.com/golang/go/issues/24015
 const blockSize = 8 << 10 // 8192
 
-// By default atleast 20 entries in single getdents call
-var direntPool = sync.Pool{
-	New: func() interface{} {
-		buf := make([]byte, blockSize*20)
-		return &buf
-	},
-}
+// By default atleast 128 entries in single getdents call (1MiB buffer)
+var (
+	direntPool = sync.Pool{
+		New: func() interface{} {
+			buf := make([]byte, blockSize*128)
+			return &buf
+		},
+	}
+
+	direntNamePool = sync.Pool{
+		New: func() interface{} {
+			buf := make([]byte, blockSize)
+			return &buf
+		},
+	}
+)
 
 // unexpectedFileMode is a sentinel (and bogus) os.FileMode
 // value used to represent a syscall.DT_UNKNOWN Dirent.Type.
@@ -84,16 +103,23 @@ func readDir(dirPath string) (entries []string, err error) {
 	return readDirN(dirPath, -1)
 }
 
-// readDir applies the filter function on each entries at dirPath, doesn't recurse into
-// the directory itself.
-func readDirFilterFn(dirPath string, filter func(name string, typ os.FileMode) error) error {
-	f, err := os.Open(dirPath)
+// readDirFn applies the fn() function on each entries at dirPath, doesn't recurse into
+// the directory itself, if the dirPath doesn't exist this function doesn't return
+// an error.
+func readDirFn(dirPath string, fn func(name string, typ os.FileMode) error) error {
+	f, err := Open(dirPath)
 	if err != nil {
+		if osErrToFileErr(err) == errFileNotFound {
+			return nil
+		}
 		return osErrToFileErr(err)
 	}
 	defer f.Close()
 
-	buf := make([]byte, blockSize)
+	bufp := direntPool.Get().(*[]byte)
+	defer direntPool.Put(bufp)
+	buf := *bufp
+
 	boff := 0 // starting read position in buf
 	nbuf := 0 // end valid data in buf
 
@@ -103,7 +129,11 @@ func readDirFilterFn(dirPath string, filter func(name string, typ os.FileMode) e
 			nbuf, err = syscall.ReadDirent(int(f.Fd()), buf)
 			if err != nil {
 				if isSysErrNotDir(err) {
-					return errFileNotFound
+					return nil
+				}
+				err = osErrToFileErr(err)
+				if err == errFileNotFound {
+					return nil
 				}
 				return err
 			}
@@ -119,11 +149,32 @@ func readDirFilterFn(dirPath string, filter func(name string, typ os.FileMode) e
 		if len(name) == 0 || bytes.Equal(name, []byte{'.'}) || bytes.Equal(name, []byte{'.', '.'}) {
 			continue
 		}
-		if typ&os.ModeSymlink == os.ModeSymlink {
-			continue
+
+		// Fallback for filesystems (like old XFS) that don't
+		// support Dirent.Type and have DT_UNKNOWN (0) there
+		// instead.
+		if typ == unexpectedFileMode || typ&os.ModeSymlink == os.ModeSymlink {
+			fi, err := os.Stat(pathJoin(dirPath, string(name)))
+			if err != nil {
+				// It got deleted in the meantime, not found
+				// or returns too many symlinks ignore this
+				// file/directory.
+				if osIsNotExist(err) || isSysErrPathNotFound(err) ||
+					isSysErrTooManySymlinks(err) {
+					continue
+				}
+				return err
+			}
+
+			// Ignore symlinked directories.
+			if typ&os.ModeSymlink == os.ModeSymlink && fi.IsDir() {
+				continue
+			}
+
+			typ = fi.Mode() & os.ModeType
 		}
-		if err = filter(string(name), typ); err == errDoneForNow {
-			// filtering requested to return by caller.
+		if err = fn(string(name), typ); err == errDoneForNow {
+			// fn() requested to return by caller.
 			return nil
 		}
 	}
@@ -134,7 +185,7 @@ func readDirFilterFn(dirPath string, filter func(name string, typ os.FileMode) e
 // Return count entries at the directory dirPath and all entries
 // if count is set to -1
 func readDirN(dirPath string, count int) (entries []string, err error) {
-	f, err := os.Open(dirPath)
+	f, err := Open(dirPath)
 	if err != nil {
 		return nil, osErrToFileErr(err)
 	}
@@ -142,9 +193,10 @@ func readDirN(dirPath string, count int) (entries []string, err error) {
 
 	bufp := direntPool.Get().(*[]byte)
 	defer direntPool.Put(bufp)
+	buf := *bufp
 
-	nameTmp := direntPool.Get().(*[]byte)
-	defer direntPool.Put(nameTmp)
+	nameTmp := direntNamePool.Get().(*[]byte)
+	defer direntNamePool.Put(nameTmp)
 	tmp := *nameTmp
 
 	boff := 0 // starting read position in buf
@@ -153,18 +205,18 @@ func readDirN(dirPath string, count int) (entries []string, err error) {
 	for count != 0 {
 		if boff >= nbuf {
 			boff = 0
-			nbuf, err = syscall.ReadDirent(int(f.Fd()), *bufp)
+			nbuf, err = syscall.ReadDirent(int(f.Fd()), buf)
 			if err != nil {
 				if isSysErrNotDir(err) {
 					return nil, errFileNotFound
 				}
-				return nil, err
+				return nil, osErrToFileErr(err)
 			}
 			if nbuf <= 0 {
 				break
 			}
 		}
-		consumed, name, typ, err := parseDirEnt((*bufp)[boff:nbuf])
+		consumed, name, typ, err := parseDirEnt(buf[boff:nbuf])
 		if err != nil {
 			return nil, err
 		}
@@ -172,37 +224,46 @@ func readDirN(dirPath string, count int) (entries []string, err error) {
 		if len(name) == 0 || bytes.Equal(name, []byte{'.'}) || bytes.Equal(name, []byte{'.', '.'}) {
 			continue
 		}
+
 		// Fallback for filesystems (like old XFS) that don't
 		// support Dirent.Type and have DT_UNKNOWN (0) there
 		// instead.
-		if typ == unexpectedFileMode {
-			fi, err := os.Lstat(pathJoin(dirPath, string(name)))
+		if typ == unexpectedFileMode || typ&os.ModeSymlink == os.ModeSymlink {
+			fi, err := Stat(pathJoin(dirPath, string(name)))
 			if err != nil {
 				// It got deleted in the meantime, not found
 				// or returns too many symlinks ignore this
 				// file/directory.
-				if os.IsNotExist(err) || isSysErrPathNotFound(err) ||
+				if osIsNotExist(err) || isSysErrPathNotFound(err) ||
 					isSysErrTooManySymlinks(err) {
 					continue
 				}
 				return nil, err
 			}
+
+			// Ignore symlinked directories.
+			if typ&os.ModeSymlink == os.ModeSymlink && fi.IsDir() {
+				continue
+			}
+
 			typ = fi.Mode() & os.ModeType
 		}
-		if typ&os.ModeSymlink == os.ModeSymlink {
-			continue
-		}
+
+		var nameStr string
 		if typ.IsRegular() {
-			entries = append(entries, string(name))
+			nameStr = string(name)
 		} else if typ.IsDir() {
 			// Use temp buffer to append a slash to avoid string concat.
 			tmp = tmp[:len(name)+1]
 			copy(tmp, name)
 			tmp[len(tmp)-1] = '/' // SlashSeparator
-			entries = append(entries, string(tmp))
+			nameStr = string(tmp)
 		}
+
 		count--
+		entries = append(entries, nameStr)
 	}
+
 	return
 }
 

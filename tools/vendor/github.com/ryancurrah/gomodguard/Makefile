@@ -1,5 +1,4 @@
 current_dir = $(shell pwd)
-version = $(shell printf '%s' $$(cat VERSION))
 
 .PHONEY: lint
 lint:
@@ -9,10 +8,6 @@ lint:
 build:
 	go build -o gomodguard cmd/gomodguard/main.go
 
-.PHONEY: dockerbuild
-dockerbuild:
-	docker build --build-arg GOMODGUARD_VERSION=${version} --tag ryancurrah/gomodguard:${version} .
- 
 .PHONEY: run
 run: build
 	./gomodguard
@@ -31,9 +26,7 @@ dockerrun: dockerbuild
 
 .PHONEY: release
 release:
-	git tag ${version}
-	git push --tags
-	goreleaser --skip-validate --rm-dist
+	goreleaser --rm-dist
 
 .PHONEY: clean
 clean:

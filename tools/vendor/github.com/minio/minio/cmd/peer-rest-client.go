@@ -1,25 +1,25 @@
-/*
- * MinIO Cloud Storage, (C) 2019 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -33,15 +33,13 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/minio/minio/cmd/http"
-	xhttp "github.com/minio/minio/cmd/http"
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/cmd/rest"
-	"github.com/minio/minio/pkg/bandwidth"
-	"github.com/minio/minio/pkg/event"
-	"github.com/minio/minio/pkg/madmin"
-	xnet "github.com/minio/minio/pkg/net"
-	"github.com/minio/minio/pkg/trace"
+	"github.com/minio/madmin-go"
+	"github.com/minio/minio/internal/event"
+	"github.com/minio/minio/internal/http"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
+	"github.com/minio/minio/internal/rest"
+	xnet "github.com/minio/pkg/net"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -79,24 +77,27 @@ func (client *peerRESTClient) String() string {
 	return client.host.String()
 }
 
+// IsOnline returns true if the peer client is online.
+func (client *peerRESTClient) IsOnline() bool {
+	return client.restClient.IsOnline()
+}
+
 // Close - marks the client as closed.
 func (client *peerRESTClient) Close() error {
 	client.restClient.Close()
 	return nil
 }
 
-// GetLocksResp stores various info from the client for each lock that is requested.
-type GetLocksResp []map[string][]lockRequesterInfo
-
 // GetLocks - fetch older locks for a remote node.
-func (client *peerRESTClient) GetLocks() (locks GetLocksResp, err error) {
+func (client *peerRESTClient) GetLocks() (lockMap map[string][]lockRequesterInfo, err error) {
 	respBody, err := client.call(peerRESTMethodGetLocks, nil, nil, -1)
 	if err != nil {
 		return
 	}
+	lockMap = map[string][]lockRequesterInfo{}
 	defer http.DrainBody(respBody)
-	err = gob.NewDecoder(respBody).Decode(&locks)
-	return locks, err
+	err = gob.NewDecoder(respBody).Decode(&lockMap)
+	return lockMap, err
 }
 
 // ServerInfo - fetch server information for a remote node.
@@ -124,7 +125,7 @@ func (r *nullReader) Read(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (client *peerRESTClient) doNetOBDTest(ctx context.Context, dataSize int64, threadCount uint) (info madmin.NetOBDInfo, err error) {
+func (client *peerRESTClient) doNetTest(ctx context.Context, dataSize int64, threadCount uint) (info madmin.PeerNetPerfInfo, err error) {
 	var mu sync.Mutex // mutex used to protect these slices in go-routines
 	latencies := []float64{}
 	throughputs := []float64{}
@@ -179,11 +180,11 @@ func (client *peerRESTClient) doNetOBDTest(ctx context.Context, dataSize int64, 
 
 				progress := io.LimitReader(&nullReader{}, dataSize)
 
-				// Turn off healthCheckFn for OBD tests to cater for higher load on the peers.
+				// Turn off healthCheckFn for health tests to cater for higher load on the peers.
 				clnt := newPeerRESTClient(client.host)
 				clnt.restClient.HealthCheckFn = nil
 
-				respBody, err := clnt.callWithContext(ctx, peerRESTMethodNetOBDInfo, nil, progress, dataSize)
+				respBody, err := clnt.callWithContext(ctx, peerRESTMethodNetInfo, nil, progress, dataSize)
 				if err != nil {
 					if errors.Is(err, context.DeadlineExceeded) {
 						slowSample()
@@ -226,13 +227,25 @@ func (client *peerRESTClient) doNetOBDTest(ctx context.Context, dataSize int64, 
 		return info, err
 	}
 
-	latency, throughput, err := xnet.ComputeOBDStats(latencies, throughputs)
-	info = madmin.NetOBDInfo{
-		Latency:    latency,
-		Throughput: throughput,
-	}
-	return info, err
-
+	latency, throughput, err := xnet.ComputePerfStats(latencies, throughputs)
+	return madmin.PeerNetPerfInfo{
+		Latency: madmin.Latency{
+			Avg:          round(latency.Avg, 3),
+			Max:          round(latency.Max, 3),
+			Min:          round(latency.Min, 3),
+			Percentile50: round(latency.Percentile50, 3),
+			Percentile90: round(latency.Percentile90, 3),
+			Percentile99: round(latency.Percentile99, 3),
+		},
+		Throughput: madmin.Throughput{
+			Avg:          uint64(round(throughput.Avg, 0)),
+			Max:          uint64(round(throughput.Max, 0)),
+			Min:          uint64(round(throughput.Min, 0)),
+			Percentile50: uint64(round(throughput.Percentile50, 0)),
+			Percentile90: uint64(round(throughput.Percentile90, 0)),
+			Percentile99: uint64(round(throughput.Percentile99, 0)),
+		},
+	}, nil
 }
 
 func maxLatencyForSizeThreads(size int64, threadCount uint) float64 {
@@ -274,8 +287,8 @@ func maxLatencyForSizeThreads(size int64, threadCount uint) float64 {
 	return math.MaxFloat64
 }
 
-// NetOBDInfo - fetch Net OBD information for a remote node.
-func (client *peerRESTClient) NetOBDInfo(ctx context.Context) (info madmin.NetOBDInfo, err error) {
+// GetNetPerfInfo - fetch network information for a remote node.
+func (client *peerRESTClient) GetNetPerfInfo(ctx context.Context) (info madmin.PeerNetPerfInfo, err error) {
 
 	// 100 Gbit ->  256 MiB  *  50 threads
 	// 40 Gbit  ->  256 MiB  *  20 threads
@@ -314,7 +327,7 @@ func (client *peerRESTClient) NetOBDInfo(ctx context.Context) (info madmin.NetOB
 		size := steps[i].size
 		threads := steps[i].threads
 
-		if info, err = client.doNetOBDTest(ctx, size, threads); err != nil {
+		if info, err = client.doNetTest(ctx, size, threads); err != nil {
 			if err == networkOverloaded {
 				continue
 			}
@@ -328,9 +341,9 @@ func (client *peerRESTClient) NetOBDInfo(ctx context.Context) (info madmin.NetOB
 	return info, err
 }
 
-// DispatchNetOBDInfo - dispatch other nodes to run Net OBD.
-func (client *peerRESTClient) DispatchNetOBDInfo(ctx context.Context) (info madmin.ServerNetOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodDispatchNetOBDInfo, nil, nil, -1)
+// DispatchNetInfo - dispatch other nodes to run Net info.
+func (client *peerRESTClient) DispatchNetInfo(ctx context.Context) (info madmin.NetPerfInfo, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodDispatchNetInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -343,9 +356,9 @@ func (client *peerRESTClient) DispatchNetOBDInfo(ctx context.Context) (info madm
 	return
 }
 
-// DriveOBDInfo - fetch Drive OBD information for a remote node.
-func (client *peerRESTClient) DriveOBDInfo(ctx context.Context) (info madmin.ServerDrivesOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodDriveOBDInfo, nil, nil, -1)
+// GetDrivePerfInfos - fetch all disk's serial/parallal performance information for a remote node.
+func (client *peerRESTClient) GetDrivePerfInfos(ctx context.Context) (info madmin.DrivePerfInfos, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodDriveInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -354,9 +367,9 @@ func (client *peerRESTClient) DriveOBDInfo(ctx context.Context) (info madmin.Ser
 	return info, err
 }
 
-// CPUOBDInfo - fetch CPU OBD information for a remote node.
-func (client *peerRESTClient) CPUOBDInfo(ctx context.Context) (info madmin.ServerCPUOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodCPUOBDInfo, nil, nil, -1)
+// GetCPUs - fetch CPU information for a remote node.
+func (client *peerRESTClient) GetCPUs(ctx context.Context) (info madmin.CPUs, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodCPUInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -365,9 +378,9 @@ func (client *peerRESTClient) CPUOBDInfo(ctx context.Context) (info madmin.Serve
 	return info, err
 }
 
-// DiskHwOBDInfo - fetch Disk HW OBD information for a remote node.
-func (client *peerRESTClient) DiskHwOBDInfo(ctx context.Context) (info madmin.ServerDiskHwOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodDiskHwOBDInfo, nil, nil, -1)
+// GetPartitions - fetch disk partition information for a remote node.
+func (client *peerRESTClient) GetPartitions(ctx context.Context) (info madmin.Partitions, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodDiskHwInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -376,9 +389,9 @@ func (client *peerRESTClient) DiskHwOBDInfo(ctx context.Context) (info madmin.Se
 	return info, err
 }
 
-// OsOBDInfo - fetch OsInfo OBD information for a remote node.
-func (client *peerRESTClient) OsOBDInfo(ctx context.Context) (info madmin.ServerOsOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodOsInfoOBDInfo, nil, nil, -1)
+// GetOSInfo - fetch OS information for a remote node.
+func (client *peerRESTClient) GetOSInfo(ctx context.Context) (info madmin.OSInfo, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodOsInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -387,9 +400,9 @@ func (client *peerRESTClient) OsOBDInfo(ctx context.Context) (info madmin.Server
 	return info, err
 }
 
-// MemOBDInfo - fetch MemInfo OBD information for a remote node.
-func (client *peerRESTClient) MemOBDInfo(ctx context.Context) (info madmin.ServerMemOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodMemOBDInfo, nil, nil, -1)
+// GetMemInfo - fetch memory information for a remote node.
+func (client *peerRESTClient) GetMemInfo(ctx context.Context) (info madmin.MemInfo, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodMemInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -398,9 +411,9 @@ func (client *peerRESTClient) MemOBDInfo(ctx context.Context) (info madmin.Serve
 	return info, err
 }
 
-// ProcOBDInfo - fetch ProcInfo OBD information for a remote node.
-func (client *peerRESTClient) ProcOBDInfo(ctx context.Context) (info madmin.ServerProcOBDInfo, err error) {
-	respBody, err := client.callWithContext(ctx, peerRESTMethodProcOBDInfo, nil, nil, -1)
+// GetProcInfo - fetch MinIO process information for a remote node.
+func (client *peerRESTClient) GetProcInfo(ctx context.Context) (info madmin.ProcInfo, err error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodProcInfo, nil, nil, -1)
 	if err != nil {
 		return
 	}
@@ -432,6 +445,20 @@ func (client *peerRESTClient) DownloadProfileData() (data map[string][]byte, err
 	return data, err
 }
 
+// GetBucketStats - load bucket statistics
+func (client *peerRESTClient) GetBucketStats(bucket string) (BucketStats, error) {
+	values := make(url.Values)
+	values.Set(peerRESTBucket, bucket)
+	respBody, err := client.call(peerRESTMethodGetBucketStats, values, nil, -1)
+	if err != nil {
+		return BucketStats{}, err
+	}
+
+	var bs BucketStats
+	defer http.DrainBody(respBody)
+	return bs, msgp.Decode(respBody, &bs)
+}
+
 // LoadBucketMetadata - load bucket metadata
 func (client *peerRESTClient) LoadBucketMetadata(bucket string) error {
 	values := make(url.Values)
@@ -449,19 +476,6 @@ func (client *peerRESTClient) DeleteBucketMetadata(bucket string) error {
 	values := make(url.Values)
 	values.Set(peerRESTBucket, bucket)
 	respBody, err := client.call(peerRESTMethodDeleteBucketMetadata, values, nil, -1)
-	if err != nil {
-		return err
-	}
-	defer http.DrainBody(respBody)
-	return nil
-}
-
-// ReloadFormat - reload format on the peer node.
-func (client *peerRESTClient) ReloadFormat(dryRun bool) error {
-	values := make(url.Values)
-	values.Set(peerRESTDryRun, strconv.FormatBool(dryRun))
-
-	respBody, err := client.call(peerRESTMethodReloadFormat, values, nil, -1)
 	if err != nil {
 		return err
 	}
@@ -596,19 +610,21 @@ func (client *peerRESTClient) LoadGroup(group string) error {
 }
 
 type serverUpdateInfo struct {
-	URL       *url.URL
-	Sha256Sum []byte
-	Time      time.Time
+	URL         *url.URL
+	Sha256Sum   []byte
+	Time        time.Time
+	ReleaseInfo string
 }
 
 // ServerUpdate - sends server update message to remote peers.
-func (client *peerRESTClient) ServerUpdate(ctx context.Context, u *url.URL, sha256Sum []byte, lrTime time.Time) error {
+func (client *peerRESTClient) ServerUpdate(ctx context.Context, u *url.URL, sha256Sum []byte, lrTime time.Time, releaseInfo string) error {
 	values := make(url.Values)
 	var reader bytes.Buffer
 	if err := gob.NewEncoder(&reader).Encode(serverUpdateInfo{
-		URL:       u,
-		Sha256Sum: sha256Sum,
-		Time:      lrTime,
+		URL:         u,
+		Sha256Sum:   sha256Sum,
+		Time:        lrTime,
+		ReleaseInfo: releaseInfo,
 	}); err != nil {
 		return err
 	}
@@ -693,10 +709,24 @@ func (client *peerRESTClient) UpdateMetacacheListing(ctx context.Context, m meta
 
 }
 
-func (client *peerRESTClient) doTrace(traceCh chan interface{}, doneCh <-chan struct{}, trcAll, trcErr bool) {
+func (client *peerRESTClient) LoadTransitionTierConfig(ctx context.Context) error {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodLoadTransitionTierConfig, nil, nil, 0)
+	if err != nil {
+		logger.LogIf(ctx, err)
+		return err
+	}
+	defer http.DrainBody(respBody)
+	return nil
+}
+
+func (client *peerRESTClient) doTrace(traceCh chan interface{}, doneCh <-chan struct{}, traceOpts madmin.ServiceTraceOpts) {
 	values := make(url.Values)
-	values.Set(peerRESTTraceAll, strconv.FormatBool(trcAll))
-	values.Set(peerRESTTraceErr, strconv.FormatBool(trcErr))
+	values.Set(peerRESTTraceErr, strconv.FormatBool(traceOpts.OnlyErrors))
+	values.Set(peerRESTTraceS3, strconv.FormatBool(traceOpts.S3))
+	values.Set(peerRESTTraceStorage, strconv.FormatBool(traceOpts.Storage))
+	values.Set(peerRESTTraceOS, strconv.FormatBool(traceOpts.OS))
+	values.Set(peerRESTTraceInternal, strconv.FormatBool(traceOpts.Internal))
+	values.Set(peerRESTTraceThreshold, traceOpts.Threshold.String())
 
 	// To cancel the REST request in case doneCh gets closed.
 	ctx, cancel := context.WithCancel(GlobalContext)
@@ -721,7 +751,7 @@ func (client *peerRESTClient) doTrace(traceCh chan interface{}, doneCh <-chan st
 
 	dec := gob.NewDecoder(respBody)
 	for {
-		var info trace.Info
+		var info madmin.TraceInfo
 		if err = dec.Decode(&info); err != nil {
 			return
 		}
@@ -760,7 +790,7 @@ func (client *peerRESTClient) doListen(listenCh chan interface{}, doneCh <-chan 
 	dec := gob.NewDecoder(respBody)
 	for {
 		var ev event.Event
-		if err = dec.Decode(&ev); err != nil {
+		if err := dec.Decode(&ev); err != nil {
 			return
 		}
 		if len(ev.EventVersion) > 0 {
@@ -790,10 +820,10 @@ func (client *peerRESTClient) Listen(listenCh chan interface{}, doneCh <-chan st
 }
 
 // Trace - send http trace request to peer nodes
-func (client *peerRESTClient) Trace(traceCh chan interface{}, doneCh <-chan struct{}, trcAll, trcErr bool) {
+func (client *peerRESTClient) Trace(traceCh chan interface{}, doneCh <-chan struct{}, traceOpts madmin.ServiceTraceOpts) {
 	go func() {
 		for {
-			client.doTrace(traceCh, doneCh, trcAll, trcErr)
+			client.doTrace(traceCh, doneCh, traceOpts)
 			select {
 			case <-doneCh:
 				return
@@ -851,7 +881,11 @@ func (client *peerRESTClient) ConsoleLog(logCh chan interface{}, doneCh <-chan s
 // The two slices will point to the same clients,
 // but 'all' will contain nil entry for local client.
 // The 'all' slice will be in the same order across the cluster.
-func newPeerRestClients(endpoints EndpointServerSets) (remote, all []*peerRESTClient) {
+func newPeerRestClients(endpoints EndpointServerPools) (remote, all []*peerRESTClient) {
+	if !globalIsDistErasure {
+		// Only useful in distributed setups
+		return nil, nil
+	}
 	hosts := endpoints.hostsSorted()
 	remote = make([]*peerRESTClient, 0, len(hosts))
 	all = make([]*peerRESTClient, len(hosts))
@@ -871,7 +905,7 @@ func newPeerRestClients(endpoints EndpointServerSets) (remote, all []*peerRESTCl
 // Returns a peer rest client.
 func newPeerRESTClient(peer *xnet.Host) *peerRESTClient {
 	scheme := "http"
-	if globalIsSSL {
+	if globalIsTLS {
 		scheme = "https"
 	}
 
@@ -881,34 +915,26 @@ func newPeerRESTClient(peer *xnet.Host) *peerRESTClient {
 		Path:   peerRESTPath,
 	}
 
-	var tlsConfig *tls.Config
-	if globalIsSSL {
-		tlsConfig = &tls.Config{
-			ServerName: peer.Name,
-			RootCAs:    globalRootCAs,
-		}
-	}
-
-	trFn := newInternodeHTTPTransport(tlsConfig, rest.DefaultTimeout)
-	restClient := rest.NewClient(serverURL, trFn, newAuthToken)
+	restClient := rest.NewClient(serverURL, globalInternodeTransport, newAuthToken)
+	// Use a separate client to avoid recursive calls.
+	healthClient := rest.NewClient(serverURL, globalInternodeTransport, newAuthToken)
+	healthClient.ExpectTimeouts = true
+	healthClient.NoMetrics = true
 
 	// Construct a new health function.
 	restClient.HealthCheckFn = func() bool {
-		ctx, cancel := context.WithTimeout(GlobalContext, restClient.HealthCheckTimeout)
-		// Instantiate a new rest client for healthcheck
-		// to avoid recursive healthCheckFn()
-		respBody, err := rest.NewClient(serverURL, trFn, newAuthToken).Call(ctx, peerRESTMethodHealth, nil, nil, -1)
+		ctx, cancel := context.WithTimeout(context.Background(), restClient.HealthCheckTimeout)
+		defer cancel()
+		respBody, err := healthClient.Call(ctx, peerRESTMethodHealth, nil, nil, -1)
 		xhttp.DrainBody(respBody)
-		cancel()
-		var ne *rest.NetworkError
-		return !errors.Is(err, context.DeadlineExceeded) && !errors.As(err, &ne)
+		return !isNetworkError(err)
 	}
 
 	return &peerRESTClient{host: peer, restClient: restClient}
 }
 
 // MonitorBandwidth - send http trace request to peer nodes
-func (client *peerRESTClient) MonitorBandwidth(ctx context.Context, buckets []string) (*bandwidth.Report, error) {
+func (client *peerRESTClient) MonitorBandwidth(ctx context.Context, buckets []string) (*madmin.BucketBandwidthReport, error) {
 	values := make(url.Values)
 	values.Set(peerRESTBuckets, strings.Join(buckets, ","))
 	respBody, err := client.callWithContext(ctx, peerRESTMethodGetBandwidth, values, nil, -1)
@@ -918,7 +944,28 @@ func (client *peerRESTClient) MonitorBandwidth(ctx context.Context, buckets []st
 	defer http.DrainBody(respBody)
 
 	dec := gob.NewDecoder(respBody)
-	var bandwidthReport bandwidth.Report
+	var bandwidthReport madmin.BucketBandwidthReport
 	err = dec.Decode(&bandwidthReport)
 	return &bandwidthReport, err
+}
+
+func (client *peerRESTClient) GetPeerMetrics(ctx context.Context) (<-chan Metric, error) {
+	respBody, err := client.callWithContext(ctx, peerRESTMethodGetPeerMetrics, nil, nil, -1)
+	if err != nil {
+		return nil, err
+	}
+	dec := gob.NewDecoder(respBody)
+	ch := make(chan Metric)
+	go func(ch chan<- Metric) {
+		for {
+			var metric Metric
+			if err := dec.Decode(&metric); err != nil {
+				http.DrainBody(respBody)
+				close(ch)
+				return
+			}
+			ch <- metric
+		}
+	}(ch)
+	return ch, nil
 }

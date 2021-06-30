@@ -10,9 +10,10 @@
 //
 package lz4
 
-import "math/bits"
-
-import "sync"
+import (
+	"math/bits"
+	"sync"
+)
 
 const (
 	// Extension is the LZ4 frame file name extension
@@ -20,8 +21,9 @@ const (
 	// Version is the LZ4 frame format version
 	Version = 1
 
-	frameMagic     uint32 = 0x184D2204
-	frameSkipMagic uint32 = 0x184D2A50
+	frameMagic       uint32 = 0x184D2204
+	frameSkipMagic   uint32 = 0x184D2A50
+	frameMagicLegacy uint32 = 0x184C2102
 
 	// The following constants are used to setup the compression algorithm.
 	minMatch            = 4  // the minimum size of the match sequence size (4 bytes)
@@ -38,7 +40,7 @@ const (
 	hashLog = 16
 	htSize  = 1 << hashLog
 
-	mfLimit = 8 + minMatch // The last match cannot start within the last 12 bytes.
+	mfLimit = 10 + minMatch // The last match cannot start within the last 14 bytes.
 )
 
 // map the block max size id with its value in bytes: 64Kb, 256Kb, 1Mb and 4Mb.
@@ -98,7 +100,7 @@ func blockSizeValueToIndex(size int) byte {
 // (http://fastcompression.blogspot.com/2013/04/lz4-streaming-format-final.html).
 //
 // NB. in a Reader, in case of concatenated frames, the Header values may change between Read() calls.
-// It is the caller responsibility to check them if necessary.
+// It is the caller's responsibility to check them if necessary.
 type Header struct {
 	BlockChecksum    bool   // Compressed blocks checksum flag.
 	NoChecksum       bool   // Frame checksum flag.
@@ -108,6 +110,7 @@ type Header struct {
 	done             bool   // Header processed flag (Read or Write and checked).
 }
 
+// Reset reset internal status
 func (h *Header) Reset() {
 	h.done = false
 }

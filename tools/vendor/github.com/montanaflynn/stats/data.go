@@ -87,7 +87,7 @@ func (f Float64Data) Correlation(d Float64Data) (float64, error) {
 	return Correlation(f, d)
 }
 
-// Autocorrelation is the correlation of a signal with a delayed copy of itself as a function of delay
+// AutoCorrelation is the correlation of a signal with a delayed copy of itself as a function of delay
 func (f Float64Data) AutoCorrelation(lags int) (float64, error) {
 	return AutoCorrelation(f, lags)
 }
@@ -142,7 +142,28 @@ func (f Float64Data) Covariance(d Float64Data) (float64, error) {
 	return Covariance(f, d)
 }
 
-// CovariancePopulation computes covariance for entire population between two variables.
+// CovariancePopulation computes covariance for entire population between two variables
 func (f Float64Data) CovariancePopulation(d Float64Data) (float64, error) {
 	return CovariancePopulation(f, d)
+}
+
+// Sigmoid returns the input values along the sigmoid or s-shaped curve
+func (f Float64Data) Sigmoid() ([]float64, error) {
+	return Sigmoid(f)
+}
+
+// SoftMax returns the input values in the range of 0 to 1
+// with sum of all the probabilities being equal to one.
+func (f Float64Data) SoftMax() ([]float64, error) {
+	return SoftMax(f)
+}
+
+// Entropy provides calculation of the entropy
+func (f Float64Data) Entropy() (float64, error) {
+	return Entropy(f)
+}
+
+// Quartiles returns the three quartile points from instance of Float64Data
+func (f Float64Data) Quartiles() (Quartiles, error) {
+	return Quartile(f)
 }

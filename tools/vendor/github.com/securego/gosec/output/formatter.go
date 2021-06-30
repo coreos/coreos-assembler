@@ -18,6 +18,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	htmlTemplate "html/template"
 	"io"
 	"strconv"
@@ -56,7 +57,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }}: {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
 
 {{ end }}
@@ -98,6 +99,8 @@ func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gose
 		err = reportFromPlaintextTemplate(w, text, data)
 	case "sonarqube":
 		err = reportSonarqube(rootPaths, w, data)
+	case "golint":
+		err = reportGolint(w, data)
 	default:
 		err = reportFromPlaintextTemplate(w, text, data)
 	}
@@ -126,6 +129,7 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 				sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
 			}
 		}
+
 		if sonarFilePath == "" {
 			continue
 		}
@@ -154,6 +158,7 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 			Type:          "VULNERABILITY",
 			Severity:      getSonarSeverity(issue.Severity.String()),
 			EffortMinutes: SonarqubeEffortMinutes,
+			Cwe:           issue.Cwe,
 		}
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
@@ -190,7 +195,38 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 			issue.Severity.String(),
 			issue.Confidence.String(),
 			issue.Code,
+			fmt.Sprintf("CWE-%s", issue.Cwe.ID),
 		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func reportGolint(w io.Writer, data *reportInfo) error {
+	// Output Sample:
+	// /tmp/main.go:11:14: [CWE-310] RSA keys should be at least 2048 bits (Rule:G403, Severity:MEDIUM, Confidence:HIGH)
+
+	for _, issue := range data.Issues {
+		what := issue.What
+		if issue.Cwe.ID != "" {
+			what = fmt.Sprintf("[CWE-%s] %s", issue.Cwe.ID, issue.What)
+		}
+
+		// issue.Line uses "start-end" format for multiple line detection.
+		lines := strings.Split(issue.Line, "-")
+		start := lines[0]
+
+		_, err := fmt.Fprintf(w, "%s:%s:%s: %s (Rule:%s, Severity:%s, Confidence:%s)\n",
+			issue.File,
+			start,
+			issue.Col,
+			what,
+			issue.RuleID,
+			issue.Severity.String(),
+			issue.Confidence.String(),
+		)
 		if err != nil {
 			return err
 		}

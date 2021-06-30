@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2018-2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -23,9 +24,9 @@ import (
 	"strings"
 
 	"github.com/minio/minio-go/v7/pkg/set"
-	"github.com/minio/minio/cmd/config"
-	"github.com/minio/minio/pkg/ellipses"
-	"github.com/minio/minio/pkg/env"
+	"github.com/minio/minio/internal/config"
+	"github.com/minio/pkg/ellipses"
+	"github.com/minio/pkg/env"
 )
 
 // This file implements and supports ellipses pattern for
@@ -276,7 +277,16 @@ func parseEndpointSet(customSetDriveCount uint64, args ...string) (ep endpointSe
 // specific set size.
 // For example: {1...64} is divided into 4 sets each of size 16.
 // This applies to even distributed setup syntax as well.
-func GetAllSets(customSetDriveCount uint64, args ...string) ([][]string, error) {
+func GetAllSets(args ...string) ([][]string, error) {
+	var customSetDriveCount uint64
+	if v := env.Get(EnvErasureSetDriveCount, ""); v != "" {
+		driveCount, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, config.ErrInvalidErasureSetSize(err)
+		}
+		customSetDriveCount = uint64(driveCount)
+	}
+
 	var setArgs [][]string
 	if !ellipses.HasEllipses(args...) {
 		var setIndexes [][]uint64
@@ -329,22 +339,14 @@ var (
 // CreateServerEndpoints - validates and creates new endpoints from input args, supports
 // both ellipses and without ellipses transparently.
 func createServerEndpoints(serverAddr string, args ...string) (
-	endpointServerSets EndpointServerSets, setupType SetupType, err error) {
+	endpointServerPools EndpointServerPools, setupType SetupType, err error) {
 
 	if len(args) == 0 {
 		return nil, -1, errInvalidArgument
 	}
 
-	var setDriveCount int
-	if v := env.Get(EnvErasureSetDriveCount, ""); v != "" {
-		setDriveCount, err = strconv.Atoi(v)
-		if err != nil {
-			return nil, -1, config.ErrInvalidErasureSetSize(err)
-		}
-	}
-
 	if !ellipses.HasEllipses(args...) {
-		setArgs, err := GetAllSets(uint64(setDriveCount), args...)
+		setArgs, err := GetAllSets(args...)
 		if err != nil {
 			return nil, -1, err
 		}
@@ -352,34 +354,27 @@ func createServerEndpoints(serverAddr string, args ...string) (
 		if err != nil {
 			return nil, -1, err
 		}
-		endpointServerSets = append(endpointServerSets, ZoneEndpoints{
+		endpointServerPools = append(endpointServerPools, PoolEndpoints{
 			SetCount:     len(setArgs),
 			DrivesPerSet: len(setArgs[0]),
 			Endpoints:    endpointList,
 		})
 		setupType = newSetupType
-		return endpointServerSets, setupType, nil
+		return endpointServerPools, setupType, nil
 	}
 
-	var prevSetupType SetupType
 	var foundPrevLocal bool
 	for _, arg := range args {
-		setArgs, err := GetAllSets(uint64(setDriveCount), arg)
+		setArgs, err := GetAllSets(arg)
 		if err != nil {
 			return nil, -1, err
 		}
-		var endpointList Endpoints
-		endpointList, setupType, err = CreateEndpoints(serverAddr, foundPrevLocal, setArgs...)
+
+		endpointList, gotSetupType, err := CreateEndpoints(serverAddr, foundPrevLocal, setArgs...)
 		if err != nil {
 			return nil, -1, err
 		}
-		if setDriveCount != 0 && setDriveCount != len(setArgs[0]) {
-			return nil, -1, fmt.Errorf("All serverSets should have same drive per set ratio - expected %d, got %d", setDriveCount, len(setArgs[0]))
-		}
-		if prevSetupType != UnknownSetupType && prevSetupType != setupType {
-			return nil, -1, fmt.Errorf("All serverSets should be of the same setup-type to maintain the original SLA expectations - expected %s, got %s", prevSetupType, setupType)
-		}
-		if err = endpointServerSets.Add(ZoneEndpoints{
+		if err = endpointServerPools.Add(PoolEndpoints{
 			SetCount:     len(setArgs),
 			DrivesPerSet: len(setArgs[0]),
 			Endpoints:    endpointList,
@@ -387,11 +382,13 @@ func createServerEndpoints(serverAddr string, args ...string) (
 			return nil, -1, err
 		}
 		foundPrevLocal = endpointList.atleastOneEndpointLocal()
-		if setDriveCount == 0 {
-			setDriveCount = len(setArgs[0])
+		if setupType == UnknownSetupType {
+			setupType = gotSetupType
 		}
-		prevSetupType = setupType
+		if setupType == ErasureSetupType && gotSetupType == DistErasureSetupType {
+			setupType = DistErasureSetupType
+		}
 	}
 
-	return endpointServerSets, setupType, nil
+	return endpointServerPools, setupType, nil
 }

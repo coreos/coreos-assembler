@@ -1,6 +1,8 @@
 module github.com/minio/sio
 
 require (
-	golang.org/x/crypto v0.0.0-20181106171534-e4dc69e5b2fd
-	golang.org/x/sys v0.0.0-20181107165924-66b7b1311ac8
+	golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f
+	golang.org/x/sys v0.0.0-20190412213103-97732733099d
 )
+
+go 1.13

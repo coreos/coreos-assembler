@@ -11,7 +11,7 @@ import (
 	hadoop "github.com/colinmarc/hdfs/v2/internal/protocol/hadoop_common"
 	hdfs "github.com/colinmarc/hdfs/v2/internal/protocol/hadoop_hdfs"
 	"github.com/golang/protobuf/proto"
-	krb "gopkg.in/jcmturner/gokrb5.v7/client"
+	krb "github.com/jcmturner/gokrb5/v8/client"
 )
 
 const (
@@ -61,7 +61,7 @@ type NamenodeConnectionOptions struct {
 	// unless kerberos authentication is enabled, in which case it will be
 	// determined from the provided credentials if empty.
 	User string
-	// DialFunc is used to connect to the datanodes. If nil, then
+	// DialFunc is used to connect to the namenodes. If nil, then
 	// (&net.Dialer{}).DialContext is used.
 	DialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
 	// KerberosClient is used to connect to kerberized HDFS clusters. If provided,

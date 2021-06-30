@@ -1,24 +1,24 @@
-/*
- * MinIO Cloud Storage, (C) 2019 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,9 +29,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7/pkg/set"
-	xhttp "github.com/minio/minio/cmd/http"
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/cmd/rest"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
+	"github.com/minio/minio/internal/rest"
 )
 
 const (
@@ -53,7 +53,7 @@ type bootstrapRESTServer struct{}
 type ServerSystemConfig struct {
 	MinioPlatform  string
 	MinioRuntime   string
-	MinioEndpoints EndpointServerSets
+	MinioEndpoints EndpointServerPools
 }
 
 // Diff - returns error on first difference found in two configs.
@@ -160,9 +160,9 @@ func (client *bootstrapRESTClient) Verify(ctx context.Context, srcCfg ServerSyst
 	return srcCfg.Diff(recvCfg)
 }
 
-func verifyServerSystemConfig(ctx context.Context, endpointServerSets EndpointServerSets) error {
+func verifyServerSystemConfig(ctx context.Context, endpointServerPools EndpointServerPools) error {
 	srcCfg := getServerSystemCfg()
-	clnts := newBootstrapRESTClients(endpointServerSets)
+	clnts := newBootstrapRESTClients(endpointServerPools)
 	var onlineServers int
 	var offlineEndpoints []string
 	var retries int
@@ -197,10 +197,10 @@ func verifyServerSystemConfig(ctx context.Context, endpointServerSets EndpointSe
 	return nil
 }
 
-func newBootstrapRESTClients(endpointServerSets EndpointServerSets) []*bootstrapRESTClient {
+func newBootstrapRESTClients(endpointServerPools EndpointServerPools) []*bootstrapRESTClient {
 	seenHosts := set.NewStringSet()
 	var clnts []*bootstrapRESTClient
-	for _, ep := range endpointServerSets {
+	for _, ep := range endpointServerPools {
 		for _, endpoint := range ep.Endpoints {
 			if seenHosts.Contains(endpoint.Host) {
 				continue
@@ -224,16 +224,7 @@ func newBootstrapRESTClient(endpoint Endpoint) *bootstrapRESTClient {
 		Path:   bootstrapRESTPath,
 	}
 
-	var tlsConfig *tls.Config
-	if globalIsSSL {
-		tlsConfig = &tls.Config{
-			ServerName: endpoint.Hostname(),
-			RootCAs:    globalRootCAs,
-		}
-	}
-
-	trFn := newInternodeHTTPTransport(tlsConfig, rest.DefaultTimeout)
-	restClient := rest.NewClient(serverURL, trFn, newAuthToken)
+	restClient := rest.NewClient(serverURL, globalInternodeTransport, newAuthToken)
 	restClient.HealthCheckFn = nil
 
 	return &bootstrapRESTClient{endpoint: endpoint, restClient: restClient}

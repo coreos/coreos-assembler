@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2018-2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -20,17 +21,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/minio/minio/cmd/config/identity/openid"
-	xhttp "github.com/minio/minio/cmd/http"
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/pkg/auth"
-	iampolicy "github.com/minio/minio/pkg/iam/policy"
-	"github.com/minio/minio/pkg/wildcard"
+	"github.com/minio/minio/internal/auth"
+	"github.com/minio/minio/internal/config/identity/openid"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
+	iampolicy "github.com/minio/pkg/iam/policy"
+	"github.com/minio/pkg/wildcard"
 )
 
 const (
@@ -56,12 +58,14 @@ const (
 	// JWT claim keys
 	expClaim = "exp"
 	subClaim = "sub"
+	issClaim = "iss"
 
 	// JWT claim to check the parent user
 	parentClaim = "parent"
 
 	// LDAP claim keys
-	ldapUser = "ldapUser"
+	ldapUser     = "ldapUser"
+	ldapUsername = "ldapUsername"
 )
 
 // stsAPIHandlers implements and provides http handlers for AWS STS API.
@@ -116,27 +120,23 @@ func checkAssumeRoleAuth(ctx context.Context, r *http.Request) (user auth.Creden
 		return user, true, ErrSTSAccessDenied
 	case authTypeSigned:
 		s3Err := isReqAuthenticated(ctx, r, globalServerRegion, serviceSTS)
-		if APIErrorCode(s3Err) != ErrNone {
+		if s3Err != ErrNone {
 			return user, false, STSErrorCode(s3Err)
 		}
-		var owner bool
-		user, owner, s3Err = getReqAccessKeyV4(r, globalServerRegion, serviceSTS)
-		if APIErrorCode(s3Err) != ErrNone {
+
+		user, _, s3Err = getReqAccessKeyV4(r, globalServerRegion, serviceSTS)
+		if s3Err != ErrNone {
 			return user, false, STSErrorCode(s3Err)
 		}
-		// Root credentials are not allowed to use STS API
-		if owner {
+
+		// Temporary credentials or Service accounts cannot generate further temporary credentials.
+		if user.IsTemp() || user.IsServiceAccount() {
 			return user, true, ErrSTSAccessDenied
 		}
 	}
 
 	// Session tokens are not allowed in STS AssumeRole requests.
 	if getSessionToken(r) != "" {
-		return user, true, ErrSTSAccessDenied
-	}
-
-	// Temporary credentials or Service accounts cannot generate further temporary credentials.
-	if user.IsTemp() || user.IsServiceAccount() {
 		return user, true, ErrSTSAccessDenied
 	}
 
@@ -154,6 +154,7 @@ func (sts *stsAPIHandlers) AssumeRole(w http.ResponseWriter, r *http.Request) {
 		writeSTSErrorResponse(ctx, w, isErrCodeSTS, stsErr, nil)
 		return
 	}
+
 	if err := r.ParseForm(); err != nil {
 		writeSTSErrorResponse(ctx, w, true, ErrSTSInvalidParameterValue, err)
 		return
@@ -173,7 +174,7 @@ func (sts *stsAPIHandlers) AssumeRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx = newContext(r, w, action)
-	defer logger.AuditLog(w, r, action, nil)
+	defer logger.AuditLog(ctx, w, r, nil)
 
 	sessionPolicyStr := r.Form.Get(stsPolicy)
 	// https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html
@@ -284,7 +285,7 @@ func (sts *stsAPIHandlers) AssumeRoleWithSSO(w http.ResponseWriter, r *http.Requ
 	}
 
 	ctx = newContext(r, w, action)
-	defer logger.AuditLog(w, r, action, nil)
+	defer logger.AuditLog(ctx, w, r, nil)
 
 	if globalOpenIDValidators == nil {
 		writeSTSErrorResponse(ctx, w, true, ErrSTSNotInitialized, errServerNotInitialized)
@@ -321,6 +322,21 @@ func (sts *stsAPIHandlers) AssumeRoleWithSSO(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	var subFromToken string
+	if v, ok := m[subClaim]; ok {
+		subFromToken, _ = v.(string)
+	}
+
+	if subFromToken == "" {
+		writeSTSErrorResponse(ctx, w, true, ErrSTSInvalidParameterValue, errors.New("STS JWT Token has `sub` claim missing, `sub` claim is mandatory"))
+		return
+	}
+
+	var issFromToken string
+	if v, ok := m[issClaim]; ok {
+		issFromToken, _ = v.(string)
+	}
+
 	// JWT has requested a custom claim with policy value set.
 	// This is a MinIO STS API specific value, this value should
 	// be set and configured on your identity provider as part of
@@ -328,11 +344,12 @@ func (sts *stsAPIHandlers) AssumeRoleWithSSO(w http.ResponseWriter, r *http.Requ
 	var policyName string
 	policySet, ok := iampolicy.GetPoliciesFromClaims(m, iamPolicyClaimNameOpenID())
 	if ok {
-		policyName = globalIAMSys.currentPolicies(strings.Join(policySet.ToSlice(), ","))
+		policyName = globalIAMSys.CurrentPolicies(strings.Join(policySet.ToSlice(), ","))
 	}
 
 	if policyName == "" && globalPolicyOPA == nil {
-		writeSTSErrorResponse(ctx, w, true, ErrSTSInvalidParameterValue, fmt.Errorf("%s claim missing from the JWT token, credentials will not be generated", iamPolicyClaimNameOpenID()))
+		writeSTSErrorResponse(ctx, w, true, ErrSTSInvalidParameterValue,
+			fmt.Errorf("%s claim missing from the JWT token, credentials will not be generated", iamPolicyClaimNameOpenID()))
 		return
 	}
 	m[iamPolicyClaimNameOpenID()] = policyName
@@ -369,10 +386,12 @@ func (sts *stsAPIHandlers) AssumeRoleWithSSO(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var subFromToken string
-	if v, ok := m[subClaim]; ok {
-		subFromToken, _ = v.(string)
-	}
+	// https://openid.net/specs/openid-connect-core-1_0.html#ClaimStability
+	// claim is only considered stable when subject and iss are used together
+	// this is to ensure that ParentUser doesn't change and we get to use
+	// parentUser as per the requirements for service accounts for OpenID
+	// based logins.
+	cred.ParentUser = "jwt:" + subFromToken + ":" + issFromToken
 
 	// Set the newly generated credentials.
 	if err = globalIAMSys.SetTempUser(cred.AccessKey, cred, policyName); err != nil {
@@ -436,7 +455,7 @@ func (sts *stsAPIHandlers) AssumeRoleWithClientGrants(w http.ResponseWriter, r *
 func (sts *stsAPIHandlers) AssumeRoleWithLDAPIdentity(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "AssumeRoleWithLDAPIdentity")
 
-	defer logger.AuditLog(w, r, "AssumeRoleWithLDAPIdentity", nil, stsLDAPPassword)
+	defer logger.AuditLog(ctx, w, r, nil, stsLDAPPassword)
 
 	// Parse the incoming form data.
 	if err := r.ParseForm(); err != nil {
@@ -489,17 +508,27 @@ func (sts *stsAPIHandlers) AssumeRoleWithLDAPIdentity(w http.ResponseWriter, r *
 		}
 	}
 
-	groups, err := globalLDAPConfig.Bind(ldapUsername, ldapPassword)
+	ldapUserDN, groupDistNames, err := globalLDAPConfig.Bind(ldapUsername, ldapPassword)
 	if err != nil {
-		err = fmt.Errorf("LDAP server connection failure: %w", err)
+		err = fmt.Errorf("LDAP server error: %w", err)
 		writeSTSErrorResponse(ctx, w, true, ErrSTSInvalidParameterValue, err)
+		return
+	}
+
+	// Check if this user or their groups have a policy applied.
+	ldapPolicies, _ := globalIAMSys.PolicyDBGet(ldapUserDN, false, groupDistNames...)
+	if len(ldapPolicies) == 0 && globalPolicyOPA == nil {
+		writeSTSErrorResponse(ctx, w, true, ErrSTSInvalidParameterValue,
+			fmt.Errorf("expecting a policy to be set for user `%s` or one of their groups: `%s` - rejecting this request",
+				ldapUserDN, strings.Join(groupDistNames, "`,`")))
 		return
 	}
 
 	expiryDur := globalLDAPConfig.GetExpiryDuration()
 	m := map[string]interface{}{
-		expClaim: UTCNow().Add(expiryDur).Unix(),
-		ldapUser: ldapUsername,
+		expClaim:     UTCNow().Add(expiryDur).Unix(),
+		ldapUsername: ldapUsername,
+		ldapUser:     ldapUserDN,
 	}
 
 	if len(sessionPolicyStr) > 0 {
@@ -515,11 +544,11 @@ func (sts *stsAPIHandlers) AssumeRoleWithLDAPIdentity(w http.ResponseWriter, r *
 
 	// Set the parent of the temporary access key, this is useful
 	// in obtaining service accounts by this cred.
-	cred.ParentUser = ldapUsername
+	cred.ParentUser = ldapUserDN
 
 	// Set this value to LDAP groups, LDAP user can be part
 	// of large number of groups
-	cred.Groups = groups
+	cred.Groups = groupDistNames
 
 	// Set the newly generated credentials, policyName is empty on purpose
 	// LDAP policies are applied automatically using their ldapUser, ldapGroups

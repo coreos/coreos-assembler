@@ -3,7 +3,7 @@ package reedsolomon
 import (
 	"runtime"
 
-	"github.com/klauspost/cpuid"
+	"github.com/klauspost/cpuid/v2"
 )
 
 // Option allows to override processing parameters.
@@ -19,6 +19,7 @@ type options struct {
 	usePAR1Matrix                         bool
 	useCauchy                             bool
 	fastOneParity                         bool
+	inversionCache                        bool
 
 	// stream options
 	concReads  bool
@@ -27,15 +28,16 @@ type options struct {
 }
 
 var defaultOptions = options{
-	maxGoroutines: 384,
-	minSplitSize:  -1,
-	fastOneParity: false,
+	maxGoroutines:  384,
+	minSplitSize:   -1,
+	fastOneParity:  false,
+	inversionCache: true,
 
 	// Detect CPU capabilities.
-	useSSSE3:  cpuid.CPU.SSSE3(),
-	useSSE2:   cpuid.CPU.SSE2(),
-	useAVX2:   cpuid.CPU.AVX2(),
-	useAVX512: cpuid.CPU.AVX512F() && cpuid.CPU.AVX512BW(),
+	useSSSE3:  cpuid.CPU.Supports(cpuid.SSSE3),
+	useSSE2:   cpuid.CPU.Supports(cpuid.SSE2),
+	useAVX2:   cpuid.CPU.Supports(cpuid.AVX2),
+	useAVX512: cpuid.CPU.Supports(cpuid.AVX512F, cpuid.AVX512BW),
 }
 
 func init() {
@@ -106,6 +108,15 @@ func WithConcurrentStreamReads(enabled bool) Option {
 func WithConcurrentStreamWrites(enabled bool) Option {
 	return func(o *options) {
 		o.concWrites = enabled
+	}
+}
+
+// WithInversionCache allows to control the inversion cache.
+// This will cache reconstruction matrices so they can be reused.
+// Enabled by default.
+func WithInversionCache(enabled bool) Option {
+	return func(o *options) {
+		o.inversionCache = enabled
 	}
 }
 

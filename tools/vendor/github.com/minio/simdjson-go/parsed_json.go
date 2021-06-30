@@ -27,36 +27,46 @@ import (
 )
 
 //
-// The current parse_number() code has some precision issues
-// (see PR "Exact float parsing", https://github.com/lemire/simdjson/pull/333)
-//
-// An example of this (from canada.json):
-//     "-65.619720000000029" --> -65.61972000000004
-// instead of
-//     "-65.619720000000029" --> -65.61972000000003
-//
-// There is a slower code path that uses Golang's Atoi() and ParseFloat()
-//
-// For **benchmarking** both GOLANG_NUMBER_PARSING and ALWAYS_COPY_STRINGS are set to false
-//
-const GOLANG_NUMBER_PARSING = true
-
-//
-//
 // For enhanced performance, simdjson-go can point back into the original JSON buffer for strings,
 // however this can lead to issues in streaming use cases scenarios, or scenarios in which
 // the underlying JSON buffer is reused. So the default behaviour is to create copies of all
-// strings (not just those transformed anyway for unicode escape charactes) into the separate
+// strings (not just those transformed anyway for unicode escape characters) into the separate
 // Strings buffer (at the expense of using more memory and less performance).
 //
-const ALWAYS_COPY_STRINGS = true
+const alwaysCopyStrings = true
 
 const JSONVALUEMASK = 0xffffffffffffff
 const JSONTAGMASK = 0xff << 56
 const STRINGBUFBIT = 0x80000000000000
 const STRINGBUFMASK = 0x7fffffffffffff
 
-const DEFAULTDEPTH = 128
+const maxdepth = 128
+
+// FloatFlags are flags recorded when converting floats.
+type FloatFlags uint64
+
+// FloatFlag is a flag recorded when parsing floats.
+type FloatFlag uint64
+
+const (
+	// FloatOverflowedInteger is set when number in JSON was in integer notation,
+	// but under/overflowed both int64 and uint64 and therefore was parsed as float.
+	FloatOverflowedInteger FloatFlag = 1 << iota
+)
+
+// Contains returns whether f contains the specified flag.
+func (f FloatFlags) Contains(flag FloatFlag) bool {
+	return FloatFlag(f)&flag == flag
+}
+
+// Flags converts the flag to FloatFlags and optionally merges more flags.
+func (f FloatFlag) Flags(more ...FloatFlag) FloatFlags {
+	// We operate on a copy, so we can modify f.
+	for _, v := range more {
+		f |= v
+	}
+	return FloatFlags(f)
+}
 
 type ParsedJson struct {
 	Message []byte
@@ -67,25 +77,25 @@ type ParsedJson struct {
 	internal *internalParsedJson
 }
 
-const INDEX_SLOTS = 16
-const INDEX_SIZE = 1536                                // Seems to be a good size for the index buffering
-const INDEX_SIZE_WITH_SAFETY_BUFFER = INDEX_SIZE - 128 // Make sure we never write beyond buffer
+const indexSlots = 16
+const indexSize = 1536                            // Seems to be a good size for the index buffering
+const indexSizeWithSafetyBuffer = indexSize - 128 // Make sure we never write beyond buffer
 
 type indexChan struct {
 	index   int
 	length  int
-	indexes *[INDEX_SIZE]uint32
+	indexes *[indexSize]uint32
 }
 
 type internalParsedJson struct {
 	ParsedJson
-	containing_scope_offset []uint64
-	isvalid                 bool
-	index_chan              chan indexChan
-	indexesChan             indexChan
-	buffers                 [INDEX_SLOTS][INDEX_SIZE]uint32
-	buffers_offset          uint64
-	ndjson                  uint64
+	containingScopeOffset []uint64
+	isvalid               bool
+	indexChans            chan indexChan
+	indexesChan           indexChan
+	buffers               [indexSlots][indexSize]uint32
+	buffersOffset         uint64
+	ndjson                uint64
 }
 
 // Iter returns a new Iter.
@@ -495,6 +505,34 @@ func (i *Iter) Float() (float64, error) {
 	}
 }
 
+// FloatFlags returns the float value of the next element.
+// This will include flags from parsing.
+// Integers are automatically converted to float.
+func (i *Iter) FloatFlags() (float64, FloatFlags, error) {
+	switch i.t {
+	case TagFloat:
+		if i.off >= len(i.tape.Tape) {
+			return 0, 0, errors.New("corrupt input: expected float, but no more values on tape")
+		}
+		v := math.Float64frombits(i.tape.Tape[i.off])
+		return v, 0, nil
+	case TagInteger:
+		if i.off >= len(i.tape.Tape) {
+			return 0, 0, errors.New("corrupt input: expected integer, but no more values on tape")
+		}
+		v := int64(i.tape.Tape[i.off])
+		return float64(v), 0, nil
+	case TagUint:
+		if i.off >= len(i.tape.Tape) {
+			return 0, 0, errors.New("corrupt input: expected integer, but no more values on tape")
+		}
+		v := i.tape.Tape[i.off]
+		return float64(v), FloatFlags(i.cur), nil
+	default:
+		return 0, 0, fmt.Errorf("unable to convert type %v to float", i.t)
+	}
+}
+
 // Int returns the integer value of the next element.
 // Integers and floats within range are automatically converted.
 func (i *Iter) Int() (int64, error) {
@@ -782,14 +820,21 @@ func (pj *ParsedJson) write_tape(val uint64, c byte) {
 	pj.Tape = append(pj.Tape, val|(uint64(c)<<56))
 }
 
+// writeTapeTagVal will write a tag with no embedded value and a value to the tape.
+func (pj *ParsedJson) writeTapeTagVal(tag Tag, val uint64) {
+	pj.Tape = append(pj.Tape, uint64(tag)<<56, val)
+}
+
+func (pj *ParsedJson) writeTapeTagValFlags(tag Tag, val, flags uint64) {
+	pj.Tape = append(pj.Tape, uint64(tag)<<56|flags, val)
+}
+
 func (pj *ParsedJson) write_tape_s64(val int64) {
-	pj.write_tape(0, 'l')
-	pj.Tape = append(pj.Tape, uint64(val))
+	pj.writeTapeTagVal(TagInteger, uint64(val))
 }
 
 func (pj *ParsedJson) write_tape_double(d float64) {
-	pj.write_tape(0, 'd')
-	pj.Tape = append(pj.Tape, math.Float64bits(d))
+	pj.writeTapeTagVal(TagFloat, math.Float64bits(d))
 }
 
 func (pj *ParsedJson) annotate_previousloc(saved_loc uint64, val uint64) {
@@ -899,8 +944,8 @@ func (pj *internalParsedJson) dump_raw_tape() bool {
 	for tapeidx := uint64(0); tapeidx < uint64(len(pj.Tape)); tapeidx++ {
 		howmany := uint64(0)
 		tape_val := pj.Tape[tapeidx]
-		ntype := tape_val >> 56
-		fmt.Printf("%d : %s", tapeidx, string(ntype))
+		ntype := byte(tape_val >> 56)
+		fmt.Printf("%d : %c", tapeidx, ntype)
 
 		if ntype == 'r' {
 			howmany = tape_val & JSONVALUEMASK
@@ -981,8 +1026,8 @@ func (pj *internalParsedJson) dump_raw_tape() bool {
 
 		tape_val = pj.Tape[tapeidx]
 		payload := tape_val & JSONVALUEMASK
-		ntype = tape_val >> 56
-		fmt.Printf("%d : %s\t// pointing to %d (start root)\n", tapeidx, string(ntype), payload)
+		ntype = byte(tape_val >> 56)
+		fmt.Printf("%d : %c\t// pointing to %d (start root)\n", tapeidx, ntype, payload)
 	}
 
 	return true

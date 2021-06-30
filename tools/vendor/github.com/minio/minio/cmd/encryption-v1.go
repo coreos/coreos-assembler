@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2017-2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -20,20 +21,23 @@ import (
 	"bufio"
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"path"
 	"strconv"
 	"strings"
 
-	"github.com/minio/minio/cmd/crypto"
-	xhttp "github.com/minio/minio/cmd/http"
-	"github.com/minio/minio/cmd/logger"
-	sha256 "github.com/minio/sha256-simd"
+	"github.com/minio/minio/internal/crypto"
+	"github.com/minio/minio/internal/fips"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/kms"
+	"github.com/minio/minio/internal/logger"
 	"github.com/minio/sio"
 )
 
@@ -67,14 +71,14 @@ const (
 // isEncryptedMultipart returns true if the current object is
 // uploaded by the user using multipart mechanism:
 // initiate new multipart, upload part, complete upload
-func isEncryptedMultipart(objInfo ObjectInfo) bool {
-	if len(objInfo.Parts) == 0 {
+func (o *ObjectInfo) isEncryptedMultipart() bool {
+	if len(o.Parts) == 0 {
 		return false
 	}
-	if !crypto.IsMultiPart(objInfo.UserDefined) {
+	if !crypto.IsMultiPart(o.UserDefined) {
 		return false
 	}
-	for _, part := range objInfo.Parts {
+	for _, part := range o.Parts {
 		_, err := sio.DecryptedSize(uint64(part.Size))
 		if err != nil {
 			return false
@@ -83,7 +87,7 @@ func isEncryptedMultipart(objInfo ObjectInfo) bool {
 	// Further check if this object is uploaded using multipart mechanism
 	// by the user and it is not about Erasure internally splitting the
 	// object into parts in PutObject()
-	return !(objInfo.backendType == BackendErasure && len(objInfo.ETag) == 32)
+	return !(o.backendType == BackendErasure && len(o.ETag) == 32)
 }
 
 // ParseSSECopyCustomerRequest parses the SSE-C header fields of the provided request.
@@ -114,20 +118,78 @@ func ParseSSECustomerHeader(header http.Header) (key []byte, err error) {
 }
 
 // This function rotates old to new key.
-func rotateKey(oldKey []byte, newKey []byte, bucket, object string, metadata map[string]string) error {
-	switch {
-	default:
-		return errObjectTampered
-	case crypto.SSEC.IsEncrypted(metadata):
+func rotateKey(oldKey []byte, newKeyID string, newKey []byte, bucket, object string, metadata map[string]string, ctx kms.Context) error {
+	kind, _ := crypto.IsEncrypted(metadata)
+	switch kind {
+	case crypto.S3:
+		if GlobalKMS == nil {
+			return errKMSNotConfigured
+		}
+		keyID, kmsKey, sealedKey, err := crypto.S3.ParseMetadata(metadata)
+		if err != nil {
+			return err
+		}
+		oldKey, err := GlobalKMS.DecryptKey(keyID, kmsKey, kms.Context{bucket: path.Join(bucket, object)})
+		if err != nil {
+			return err
+		}
+		var objectKey crypto.ObjectKey
+		if err = objectKey.Unseal(oldKey, sealedKey, crypto.S3.String(), bucket, object); err != nil {
+			return err
+		}
+
+		newKey, err := GlobalKMS.GenerateKey("", kms.Context{bucket: path.Join(bucket, object)})
+		if err != nil {
+			return err
+		}
+		sealedKey = objectKey.Seal(newKey.Plaintext, crypto.GenerateIV(rand.Reader), crypto.S3.String(), bucket, object)
+		crypto.S3.CreateMetadata(metadata, newKey.KeyID, newKey.Ciphertext, sealedKey)
+		return nil
+	case crypto.S3KMS:
+		if GlobalKMS == nil {
+			return errKMSNotConfigured
+		}
+		objectKey, err := crypto.S3KMS.UnsealObjectKey(GlobalKMS, metadata, bucket, object)
+		if err != nil {
+			return err
+		}
+
+		if len(ctx) == 0 {
+			_, _, _, ctx, err = crypto.S3KMS.ParseMetadata(metadata)
+			if err != nil {
+				return err
+			}
+		}
+
+		// If the context does not contain the bucket key
+		// we must add it for key generation. However,
+		// the context must be stored exactly like the
+		// client provided it. Therefore, we create a copy
+		// of the client provided context and add the bucket
+		// key, if not present.
+		var kmsCtx = kms.Context{}
+		for k, v := range ctx {
+			kmsCtx[k] = v
+		}
+		if _, ok := kmsCtx[bucket]; !ok {
+			kmsCtx[bucket] = path.Join(bucket, object)
+		}
+		newKey, err := GlobalKMS.GenerateKey(newKeyID, kmsCtx)
+		if err != nil {
+			return err
+		}
+
+		sealedKey := objectKey.Seal(newKey.Plaintext, crypto.GenerateIV(rand.Reader), crypto.S3KMS.String(), bucket, object)
+		crypto.S3KMS.CreateMetadata(metadata, newKey.KeyID, newKey.Ciphertext, sealedKey, ctx)
+		return nil
+	case crypto.SSEC:
 		sealedKey, err := crypto.SSEC.ParseMetadata(metadata)
 		if err != nil {
 			return err
 		}
 
 		var objectKey crypto.ObjectKey
-		var extKey [32]byte
-		copy(extKey[:], oldKey)
-		if err = objectKey.Unseal(extKey, sealedKey, crypto.SSEC.String(), bucket, object); err != nil {
+		if err = objectKey.Unseal(oldKey, sealedKey, crypto.SSEC.String(), bucket, object); err != nil {
 			if subtle.ConstantTimeCompare(oldKey, newKey) == 1 {
 				return errInvalidSSEParameters // AWS returns special error for equal but invalid keys.
 			}
@@ -137,68 +199,74 @@ func rotateKey(oldKey []byte, newKey []byte, bucket, object string, metadata map
 		if subtle.ConstantTimeCompare(oldKey, newKey) == 1 && sealedKey.Algorithm == crypto.SealAlgorithm {
 			return nil // don't rotate on equal keys if seal algorithm is latest
 		}
-		copy(extKey[:], newKey)
-		sealedKey = objectKey.Seal(extKey, sealedKey.IV, crypto.SSEC.String(), bucket, object)
+		sealedKey = objectKey.Seal(newKey, sealedKey.IV, crypto.SSEC.String(), bucket, object)
 		crypto.SSEC.CreateMetadata(metadata, sealedKey)
 		return nil
-	case crypto.S3.IsEncrypted(metadata):
-		if GlobalKMS == nil {
-			return errKMSNotConfigured
-		}
-		keyID, kmsKey, sealedKey, err := crypto.S3.ParseMetadata(metadata)
-		if err != nil {
-			return err
-		}
-		oldKey, err := GlobalKMS.UnsealKey(keyID, kmsKey, crypto.Context{bucket: path.Join(bucket, object)})
-		if err != nil {
-			return err
-		}
-		var objectKey crypto.ObjectKey
-		if err = objectKey.Unseal(oldKey, sealedKey, crypto.S3.String(), bucket, object); err != nil {
-			return err
-		}
-
-		newKey, encKey, err := GlobalKMS.GenerateKey(GlobalKMS.DefaultKeyID(), crypto.Context{bucket: path.Join(bucket, object)})
-		if err != nil {
-			return err
-		}
-		sealedKey = objectKey.Seal(newKey, crypto.GenerateIV(rand.Reader), crypto.S3.String(), bucket, object)
-		crypto.S3.CreateMetadata(metadata, GlobalKMS.DefaultKeyID(), encKey, sealedKey)
-		return nil
+	default:
+		return errObjectTampered
 	}
 }
 
-func newEncryptMetadata(key []byte, bucket, object string, metadata map[string]string, sseS3 bool) (crypto.ObjectKey, error) {
+func newEncryptMetadata(kind crypto.Type, keyID string, key []byte, bucket, object string, metadata map[string]string, ctx kms.Context) (crypto.ObjectKey, error) {
 	var sealedKey crypto.SealedKey
-	if sseS3 {
+	switch kind {
+	case crypto.S3:
 		if GlobalKMS == nil {
 			return crypto.ObjectKey{}, errKMSNotConfigured
 		}
-		key, encKey, err := GlobalKMS.GenerateKey(GlobalKMS.DefaultKeyID(), crypto.Context{bucket: path.Join(bucket, object)})
+		key, err := GlobalKMS.GenerateKey("", kms.Context{bucket: path.Join(bucket, object)})
 		if err != nil {
 			return crypto.ObjectKey{}, err
 		}
 
-		objectKey := crypto.GenerateKey(key, rand.Reader)
-		sealedKey = objectKey.Seal(key, crypto.GenerateIV(rand.Reader), crypto.S3.String(), bucket, object)
-		crypto.S3.CreateMetadata(metadata, GlobalKMS.DefaultKeyID(), encKey, sealedKey)
+		objectKey := crypto.GenerateKey(key.Plaintext, rand.Reader)
+		sealedKey = objectKey.Seal(key.Plaintext, crypto.GenerateIV(rand.Reader), crypto.S3.String(), bucket, object)
+		crypto.S3.CreateMetadata(metadata, key.KeyID, key.Ciphertext, sealedKey)
 		return objectKey, nil
+	case crypto.S3KMS:
+		if GlobalKMS == nil {
+			return crypto.ObjectKey{}, errKMSNotConfigured
+		}
+
+		// If the context does not contain the bucket key
+		// we must add it for key generation. However,
+		// the context must be stored exactly like the
+		// client provided it. Therefore, we create a copy
+		// of the client provided context and add the bucket
+		// key, if not present.
+		var kmsCtx = kms.Context{}
+		for k, v := range ctx {
+			kmsCtx[k] = v
+		}
+		if _, ok := kmsCtx[bucket]; !ok {
+			kmsCtx[bucket] = path.Join(bucket, object)
+		}
+		key, err := GlobalKMS.GenerateKey(keyID, kmsCtx)
+		if err != nil {
+			return crypto.ObjectKey{}, err
+		}
+
+		objectKey := crypto.GenerateKey(key.Plaintext, rand.Reader)
+		sealedKey = objectKey.Seal(key.Plaintext, crypto.GenerateIV(rand.Reader), crypto.S3KMS.String(), bucket, object)
+		crypto.S3KMS.CreateMetadata(metadata, key.KeyID, key.Ciphertext, sealedKey, ctx)
+		return objectKey, nil
+	case crypto.SSEC:
+		objectKey := crypto.GenerateKey(key, rand.Reader)
+		sealedKey = objectKey.Seal(key, crypto.GenerateIV(rand.Reader), crypto.SSEC.String(), bucket, object)
+		crypto.SSEC.CreateMetadata(metadata, sealedKey)
+		return objectKey, nil
+	default:
+		return crypto.ObjectKey{}, fmt.Errorf("encryption type '%v' not supported", kind)
 	}
-	var extKey [32]byte
-	copy(extKey[:], key)
-	objectKey := crypto.GenerateKey(extKey, rand.Reader)
-	sealedKey = objectKey.Seal(extKey, crypto.GenerateIV(rand.Reader), crypto.SSEC.String(), bucket, object)
-	crypto.SSEC.CreateMetadata(metadata, sealedKey)
-	return objectKey, nil
 }
 
-func newEncryptReader(content io.Reader, key []byte, bucket, object string, metadata map[string]string, sseS3 bool) (io.Reader, crypto.ObjectKey, error) {
-	objectEncryptionKey, err := newEncryptMetadata(key, bucket, object, metadata, sseS3)
+func newEncryptReader(content io.Reader, kind crypto.Type, keyID string, key []byte, bucket, object string, metadata map[string]string, ctx kms.Context) (io.Reader, crypto.ObjectKey, error) {
+	objectEncryptionKey, err := newEncryptMetadata(kind, keyID, key, bucket, object, metadata, ctx)
 	if err != nil {
 		return nil, crypto.ObjectKey{}, err
 	}
 
-	reader, err := sio.EncryptReader(content, sio.Config{Key: objectEncryptionKey[:], MinVersion: sio.Version20})
+	reader, err := sio.EncryptReader(content, sio.Config{Key: objectEncryptionKey[:], MinVersion: sio.Version20, CipherSuites: fips.CipherSuitesDARE()})
 	if err != nil {
 		return nil, crypto.ObjectKey{}, crypto.ErrInvalidCustomerKey
 	}
@@ -210,15 +278,24 @@ func newEncryptReader(content io.Reader, key []byte, bucket, object string, meta
 // SSE-S3
 func setEncryptionMetadata(r *http.Request, bucket, object string, metadata map[string]string) (err error) {
 	var (
-		key []byte
+		key   []byte
+		keyID string
+		ctx   kms.Context
 	)
-	if crypto.SSEC.IsRequested(r.Header) {
+	kind, _ := crypto.IsRequested(r.Header)
+	switch kind {
+	case crypto.SSEC:
 		key, err = ParseSSECustomerRequest(r)
 		if err != nil {
-			return
+			return err
+		}
+	case crypto.S3KMS:
+		keyID, ctx, err = crypto.S3KMS.ParseHTTP(r.Header)
+		if err != nil {
+			return err
 		}
 	}
-	_, err = newEncryptMetadata(key, bucket, object, metadata, crypto.S3.IsRequested(r.Header))
+	_, err = newEncryptMetadata(kind, keyID, key, bucket, object, metadata, ctx)
 	return
 }
 
@@ -226,77 +303,70 @@ func setEncryptionMetadata(r *http.Request, bucket, object string, metadata map[
 // with the client provided key. It also marks the object as client-side-encrypted
 // and sets the correct headers.
 func EncryptRequest(content io.Reader, r *http.Request, bucket, object string, metadata map[string]string) (io.Reader, crypto.ObjectKey, error) {
-	if crypto.S3.IsRequested(r.Header) && crypto.SSEC.IsRequested(r.Header) {
-		return nil, crypto.ObjectKey{}, crypto.ErrIncompatibleEncryptionMethod
-	}
 	if r.ContentLength > encryptBufferThreshold {
 		// The encryption reads in blocks of 64KB.
 		// We add a buffer on bigger files to reduce the number of syscalls upstream.
 		content = bufio.NewReaderSize(content, encryptBufferSize)
 	}
 
-	var key []byte
-	if crypto.SSEC.IsRequested(r.Header) {
-		var err error
+	var (
+		key   []byte
+		keyID string
+		ctx   kms.Context
+		err   error
+	)
+	kind, _ := crypto.IsRequested(r.Header)
+	if kind == crypto.SSEC {
 		key, err = ParseSSECustomerRequest(r)
 		if err != nil {
 			return nil, crypto.ObjectKey{}, err
 		}
 	}
-	return newEncryptReader(content, key, bucket, object, metadata, crypto.S3.IsRequested(r.Header))
+	if kind == crypto.S3KMS {
+		keyID, ctx, err = crypto.S3KMS.ParseHTTP(r.Header)
+		if err != nil {
+			return nil, crypto.ObjectKey{}, err
+		}
+	}
+	return newEncryptReader(content, kind, keyID, key, bucket, object, metadata, ctx)
 }
 
 func decryptObjectInfo(key []byte, bucket, object string, metadata map[string]string) ([]byte, error) {
-	switch {
-	default:
-		return nil, errObjectTampered
-	case crypto.S3.IsEncrypted(metadata) && isCacheEncrypted(metadata):
-		if globalCacheKMS == nil {
+	switch kind, _ := crypto.IsEncrypted(metadata); kind {
+	case crypto.S3:
+		var KMS kms.KMS = GlobalKMS
+		if isCacheEncrypted(metadata) {
+			KMS = globalCacheKMS
+		}
+		if KMS == nil {
 			return nil, errKMSNotConfigured
 		}
-		keyID, kmsKey, sealedKey, err := crypto.S3.ParseMetadata(metadata)
+		objectKey, err := crypto.S3.UnsealObjectKey(KMS, metadata, bucket, object)
 		if err != nil {
-			return nil, err
-		}
-		extKey, err := globalCacheKMS.UnsealKey(keyID, kmsKey, crypto.Context{bucket: path.Join(bucket, object)})
-		if err != nil {
-			return nil, err
-		}
-		var objectKey crypto.ObjectKey
-		if err = objectKey.Unseal(extKey, sealedKey, crypto.S3.String(), bucket, object); err != nil {
 			return nil, err
 		}
 		return objectKey[:], nil
-	case crypto.S3.IsEncrypted(metadata):
+	case crypto.S3KMS:
 		if GlobalKMS == nil {
 			return nil, errKMSNotConfigured
 		}
-		keyID, kmsKey, sealedKey, err := crypto.S3.ParseMetadata(metadata)
-
+		objectKey, err := crypto.S3KMS.UnsealObjectKey(GlobalKMS, metadata, bucket, object)
 		if err != nil {
-			return nil, err
-		}
-		extKey, err := GlobalKMS.UnsealKey(keyID, kmsKey, crypto.Context{bucket: path.Join(bucket, object)})
-		if err != nil {
-			return nil, err
-		}
-		var objectKey crypto.ObjectKey
-		if err = objectKey.Unseal(extKey, sealedKey, crypto.S3.String(), bucket, object); err != nil {
 			return nil, err
 		}
 		return objectKey[:], nil
-	case crypto.SSEC.IsEncrypted(metadata):
-		var extKey [32]byte
-		copy(extKey[:], key)
+	case crypto.SSEC:
 		sealedKey, err := crypto.SSEC.ParseMetadata(metadata)
 		if err != nil {
 			return nil, err
 		}
 		var objectKey crypto.ObjectKey
-		if err = objectKey.Unseal(extKey, sealedKey, crypto.SSEC.String(), bucket, object); err != nil {
+		if err = objectKey.Unseal(key, sealedKey, crypto.SSEC.String(), bucket, object); err != nil {
 			return nil, err
 		}
 		return objectKey[:], nil
+	default:
+		return nil, errObjectTampered
 	}
 }
 
@@ -305,15 +375,14 @@ func decryptObjectInfo(key []byte, bucket, object string, metadata map[string]st
 // DecryptRequestWithSequenceNumberR - same as
 // DecryptRequestWithSequenceNumber but with a reader
 func DecryptRequestWithSequenceNumberR(client io.Reader, h http.Header, bucket, object string, seqNumber uint32, metadata map[string]string) (io.Reader, error) {
-	if crypto.S3.IsEncrypted(metadata) {
-		return newDecryptReader(client, nil, bucket, object, seqNumber, metadata)
+	if crypto.SSEC.IsEncrypted(metadata) {
+		key, err := ParseSSECustomerHeader(h)
+		if err != nil {
+			return nil, err
+		}
+		return newDecryptReader(client, key, bucket, object, seqNumber, metadata)
 	}
-
-	key, err := ParseSSECustomerHeader(h)
-	if err != nil {
-		return nil, err
-	}
-	return newDecryptReader(client, key, bucket, object, seqNumber, metadata)
+	return newDecryptReader(client, nil, bucket, object, seqNumber, metadata)
 }
 
 // DecryptCopyRequestR - same as DecryptCopyRequest, but with a
@@ -344,6 +413,7 @@ func newDecryptReaderWithObjectKey(client io.Reader, objectEncryptionKey []byte,
 	reader, err := sio.DecryptReader(client, sio.Config{
 		Key:            objectEncryptionKey,
 		SequenceNumber: seqNumber,
+		CipherSuites:   fips.CipherSuitesDARE(),
 	})
 	if err != nil {
 		return nil, crypto.ErrInvalidCustomerKey
@@ -353,13 +423,11 @@ func newDecryptReaderWithObjectKey(client io.Reader, objectEncryptionKey []byte,
 
 // DecryptBlocksRequestR - same as DecryptBlocksRequest but with a
 // reader
-func DecryptBlocksRequestR(inputReader io.Reader, h http.Header, offset,
-	length int64, seqNumber uint32, partStart int, oi ObjectInfo, copySource bool) (
-	io.Reader, error) {
+func DecryptBlocksRequestR(inputReader io.Reader, h http.Header, seqNumber uint32, partStart int, oi ObjectInfo, copySource bool) (io.Reader, error) {
 
 	bucket, object := oi.Bucket, oi.Name
 	// Single part case
-	if !isEncryptedMultipart(oi) {
+	if !oi.isEncryptedMultipart() {
 		var reader io.Reader
 		var err error
 		if copySource {
@@ -386,13 +454,13 @@ func DecryptBlocksRequestR(inputReader io.Reader, h http.Header, offset,
 		header:            h,
 		bucket:            bucket,
 		object:            object,
-		customerKeyHeader: h.Get(crypto.SSECKey),
+		customerKeyHeader: h.Get(xhttp.AmzServerSideEncryptionCustomerKey),
 		copySource:        copySource,
 		metadata:          cloneMSS(oi.UserDefined),
 	}
 
 	if w.copySource {
-		w.customerKeyHeader = h.Get(crypto.SSECopyKey)
+		w.customerKeyHeader = h.Get(xhttp.AmzServerSideEncryptionCopyCustomerKey)
 	}
 
 	if err := w.buildDecrypter(w.parts[w.partIndex].Number); err != nil {
@@ -434,12 +502,12 @@ func (d *DecryptBlocksReader) buildDecrypter(partID int) error {
 	var err error
 	if d.copySource {
 		if crypto.SSEC.IsEncrypted(d.metadata) {
-			d.header.Set(crypto.SSECopyKey, d.customerKeyHeader)
+			d.header.Set(xhttp.AmzServerSideEncryptionCopyCustomerKey, d.customerKeyHeader)
 			key, err = ParseSSECopyCustomerRequest(d.header, d.metadata)
 		}
 	} else {
 		if crypto.SSEC.IsEncrypted(d.metadata) {
-			d.header.Set(crypto.SSECKey, d.customerKeyHeader)
+			d.header.Set(xhttp.AmzServerSideEncryptionCustomerKey, d.customerKeyHeader)
 			key, err = ParseSSECustomerHeader(d.header)
 		}
 	}
@@ -518,10 +586,10 @@ func (d *DecryptBlocksReader) Read(p []byte) (int, error) {
 // It returns an error if the object is not encrypted or marked as encrypted
 // but has an invalid size.
 func (o *ObjectInfo) DecryptedSize() (int64, error) {
-	if !crypto.IsEncrypted(o.UserDefined) {
+	if _, ok := crypto.IsEncrypted(o.UserDefined); !ok {
 		return 0, errors.New("Cannot compute decrypted size of an unencrypted object")
 	}
-	if !isEncryptedMultipart(*o) {
+	if !o.isEncryptedMultipart() {
 		size, err := sio.DecryptedSize(uint64(o.Size))
 		if err != nil {
 			err = errObjectTampered // assign correct error type
@@ -609,7 +677,7 @@ func getDecryptedETag(headers http.Header, objInfo ObjectInfo, copySource bool) 
 	// Since server side copy with same source and dest just replaces the ETag, we save
 	// encrypted content MD5Sum as ETag for both SSE-C and SSE-S3, we standardize the ETag
 	// encryption across SSE-C and SSE-S3, and only return last 32 bytes for SSE-C
-	if crypto.SSEC.IsEncrypted(objInfo.UserDefined) && !copySource {
+	if (crypto.SSEC.IsEncrypted(objInfo.UserDefined) || crypto.S3KMS.IsEncrypted(objInfo.UserDefined)) && !copySource {
 		return objInfo.ETag[len(objInfo.ETag)-32:]
 	}
 
@@ -651,7 +719,7 @@ func tryDecryptETag(key []byte, encryptedETag string, ssec bool) string {
 // requested range starts, along with the DARE sequence number within
 // that part. For single part objects, the partStart will be 0.
 func (o *ObjectInfo) GetDecryptedRange(rs *HTTPRangeSpec) (encOff, encLength, skipLen int64, seqNumber uint32, partStart int, err error) {
-	if !crypto.IsEncrypted(o.UserDefined) {
+	if _, ok := crypto.IsEncrypted(o.UserDefined); !ok {
 		err = errors.New("Object is not encrypted")
 		return
 	}
@@ -664,7 +732,7 @@ func (o *ObjectInfo) GetDecryptedRange(rs *HTTPRangeSpec) (encOff, encLength, sk
 	// Assemble slice of (decrypted) part sizes in `sizes`
 	var sizes []int64
 	var decObjSize int64 // decrypted total object size
-	if isEncryptedMultipart(*o) {
+	if o.isEncryptedMultipart() {
 		sizes = make([]int64, len(o.Parts))
 		for i, part := range o.Parts {
 			var partSize uint64
@@ -793,12 +861,12 @@ func DecryptObjectInfo(info *ObjectInfo, r *http.Request) (encrypted bool, err e
 	// disallow X-Amz-Server-Side-Encryption header on HEAD and GET
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
-		if crypto.S3.IsRequested(headers) {
+		if crypto.S3.IsRequested(headers) || crypto.S3KMS.IsRequested(headers) {
 			return false, errInvalidEncryptionParameters
 		}
 	}
 
-	encrypted = crypto.IsEncrypted(info.UserDefined)
+	_, encrypted = crypto.IsEncrypted(info.UserDefined)
 	if !encrypted && crypto.SSEC.IsRequested(headers) && r.Header.Get(xhttp.AmzCopySource) == "" {
 		return false, errInvalidEncryptionParameters
 	}
@@ -816,11 +884,17 @@ func DecryptObjectInfo(info *ObjectInfo, r *http.Request) (encrypted bool, err e
 			}
 		}
 
+		if crypto.S3KMS.IsEncrypted(info.UserDefined) && r.Header.Get(xhttp.AmzCopySource) == "" {
+			if crypto.SSEC.IsRequested(headers) || crypto.SSECopy.IsRequested(headers) {
+				return encrypted, errEncryptedObject
+			}
+		}
+
 		if _, err = info.DecryptedSize(); err != nil {
 			return encrypted, err
 		}
 
-		if crypto.IsEncrypted(info.UserDefined) && !crypto.IsMultiPart(info.UserDefined) {
+		if _, ok := crypto.IsEncrypted(info.UserDefined); ok && !crypto.IsMultiPart(info.UserDefined) {
 			info.ETag = getDecryptedETag(headers, *info, false)
 		}
 	}

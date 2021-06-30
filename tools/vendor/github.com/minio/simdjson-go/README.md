@@ -20,8 +20,241 @@ Additionally `simdjson-go` has the following features:
 
 - No 4 GB object limit
 - Support for [ndjson](http://ndjson.org/) (newline delimited json)
-- Proper memory management
 - Pure Go (no need for cgo)
+
+## Requirements
+
+`simdjson-go` has the following requirements for parsing:
+
+A CPU with both AVX2 and CLMUL is required (Haswell from 2013 onwards should do for Intel, for AMD a Ryzen/EPYC CPU (Q1 2017) should be sufficient).
+This can be checked using the provided [`SupportedCPU()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#SupportedCPU`) function.
+
+The package does not provide fallback for unsupported CPUs, but serialized data can be deserialized on an unsupported CPU.
+
+Using the `gccgo` will also always return unsupported CPU since it cannot compile assembly. 
+
+## Usage 
+
+Run the following command in order to install `simdjson-go`
+
+```bash
+go get -u github.com/minio/simdjson-go
+```
+
+In order to parse a JSON byte stream, you either call [`simdjson.Parse()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#Parse)
+or [`simdjson.ParseND()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#ParseND) for newline delimited JSON files. 
+Both of these functions return a [`ParsedJson`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#ParsedJson) 
+struct that can be used to navigate the JSON object by calling [`Iter()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#ParsedJson.Iter). 
+
+Using the type [`Iter`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#Iter) you can call 
+[`Advance()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#Iter.Advance) to iterate over the tape, like so:
+
+```Go
+for {
+    typ := iter.Advance()
+
+    switch typ {
+    case simdjson.TypeRoot:
+        if typ, tmp, err = iter.Root(tmp); err != nil {
+            return
+        }
+
+        if typ == simdjson.TypeObject {
+            if obj, err = tmp.Object(obj); err != nil {
+                return
+            }
+
+            e := obj.FindKey(key, &elem)
+            if e != nil && elem.Type == simdjson.TypeString {
+                v, _ := elem.Iter.StringBytes()
+                fmt.Println(string(v))
+            }
+        }
+
+    default:
+        return
+    }
+}
+```
+
+When you advance the Iter you get the next type currently queued.
+
+Each type then has helpers to access the data. When you get a type you can use these to access the data:
+
+| Type       | Action on Iter             |
+|------------|----------------------------|
+| TypeNone   | Nothing follows. Iter done |
+| TypeNull   | Null value                 |
+| TypeString | `String()`/`StringBytes()` |
+| TypeInt    | `Int()`/`Float()`          |
+| TypeUint   | `Uint()`/`Float()`         |
+| TypeFloat  | `Float()`                  |
+| TypeBool   | `Bool()`                   |
+| TypeObject | `Object()`                 |
+| TypeArray  | `Array()`                  |
+| TypeRoot   | `Root()`                   |
+
+You can also get the next value as an `interface{}` using the [Interface()](https://pkg.go.dev/github.com/minio/simdjson-go#Iter.Interface) method.
+
+Note that arrays and objects that are null are always returned as `TypeNull`.
+
+The complex types returns helpers that will help parse each of the underlying structures.
+
+It is up to you to keep track of the nesting level you are operating at.
+
+For any `Iter` it is possible to marshal the recursive content of the Iter using
+[`MarshalJSON()`](https://pkg.go.dev/github.com/minio/simdjson-go#Iter.MarshalJSON) or
+[`MarshalJSONBuffer(...)`](https://pkg.go.dev/github.com/minio/simdjson-go#Iter.MarshalJSONBuffer).
+
+Currently, it is not possible to unmarshal into structs.
+
+## Parsing Objects
+
+If you are only interested in one key in an object you can use `FindKey` to quickly select it.
+
+An object kan be traversed manually by using `NextElement(dst *Iter) (name string, t Type, err error)`.
+The key of the element will be returned as a string and the type of the value will be returned
+and the provided `Iter` will contain an iterator which will allow access to the content.
+
+There is a `NextElementBytes` which provides the same, but without the need to allocate a string.
+
+All elements of the object can be retrieved using a pretty lightweight [`Parse`](https://pkg.go.dev/github.com/minio/simdjson-go#Object.Parse)
+which provides a map of all keys and all elements an a slide.
+
+All elements of the object can be returned as `map[string]interface{}` using the `Map` method on the object.
+This will naturally perform allocations for all elements.
+
+## Parsing Arrays
+
+[Arrays](https://pkg.go.dev/github.com/minio/simdjson-go#Array) in JSON can have mixed types. 
+To iterate over the array with mixed types use the [`Iter`](https://pkg.go.dev/github.com/minio/simdjson-go#Array.Iter) 
+method to get an iterator.
+
+There are methods that allow you to retrieve all elements as a single type, 
+[]int64, []uint64, float64 and strings.  
+
+## Number parsing
+
+Numbers in JSON are untyped and are returned by the following rules in order:
+
+* If there is any float point notation, like exponents, or a dot notation, it is always returned as float.
+* If number is a pure integer and it fits within an int64 it is returned as such.
+* If number is a pure positive integer and fits within a uint64 it is returned as such.
+* If the number is valid number it is returned as float64.
+
+If the number was converted from integer notation to a float due to not fitting inside int64/uint64
+the `FloatOverflowedInteger` flag is set, which can be retrieved using `(Iter).FloatFlags()` method.  
+
+JSON numbers follow JavaScript’s double-precision floating-point format.
+
+* Represented in base 10 with no superfluous leading zeros (e.g. 67, 1, 100).
+* Include digits between 0 and 9.
+* Can be a negative number (e.g. -10).
+* Can be a fraction (e.g. .5).
+* Can also have an exponent of 10, prefixed by e or E with a plus or minus sign to indicate positive or negative exponentiation.
+* Octal and hexadecimal formats are not supported.
+* Can not have a value of NaN (Not A Number) or Infinity.
+
+## Parsing NDSJON stream
+
+Newline delimited json is sent as packets with each line being a root element.
+
+Here is an example that counts the number of `"Make": "HOND"` in NDSJON similar to this:
+
+```
+{"Age":20, "Make": "HOND"}
+{"Age":22, "Make": "TLSA"}
+```
+
+```Go
+func findHondas(r io.Reader) {
+	// Temp values.
+	var tmpO simdjson.Object{}
+	var tmpE simdjson.Element{}
+	var tmpI simdjson.Iter
+	var nFound int
+	
+	// Communication
+	reuse := make(chan *simdjson.ParsedJson, 10)
+	res := make(chan simdjson.Stream, 10)
+
+	simdjson.ParseNDStream(r, res, reuse)
+	// Read results in blocks...
+	for got := range res {
+		if got.Error != nil {
+			if got.Error == io.EOF {
+				break
+			}
+			log.Fatal(got.Error)
+		}
+
+		all := got.Value.Iter()
+		// NDJSON is a separated by root objects.
+		for all.Advance() == simdjson.TypeRoot {
+			// Read inside root.
+			t, i, err := all.Root(&tmpI)
+			if t != simdjson.TypeObject {
+				log.Println("got type", t.String())
+				continue
+			}
+
+			// Prepare object.
+			obj, err := i.Object(&tmpO)
+			if err != nil {
+				log.Println("got err", err)
+				continue
+			}
+
+			// Find Make key.
+			elem := obj.FindKey("Make", &tmpE)
+			if elem.Type != TypeString {
+				log.Println("got type", err)
+				continue
+			}
+			
+			// Get value as bytes.
+			asB, err := elem.Iter.StringBytes()
+			if err != nil {
+				log.Println("got err", err)
+				continue
+			}
+			if bytes.Equal(asB, []byte("HOND")) {
+				nFound++
+			}
+		}
+		reuse <- got.Value
+	}
+	fmt.Println("Found", nFound, "Hondas")
+}
+```
+
+More examples can be found in the examples subdirectory and further documentation can be found at [godoc](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc). 
+
+## Serializing parsed json
+
+It is possible to serialize parsed JSON for more compact storage and faster load time.
+
+To create a new serialized use [NewSerializer](https://pkg.go.dev/github.com/minio/simdjson-go#NewSerializer).
+This serializer can be reused for several JSON blocks.
+
+The serializer will provide string deduplication and compression of elements. 
+This can be finetuned using the [`CompressMode`](https://pkg.go.dev/github.com/minio/simdjson-go#Serializer.CompressMode) setting.
+
+To serialize a block of parsed data use the [`Serialize`](https://pkg.go.dev/github.com/minio/simdjson-go#Serializer.Serialize) method.
+
+To read back use the [`Deserialize`](https://pkg.go.dev/github.com/minio/simdjson-go#Serializer.Deserialize) method.
+For deserializing the compression mode does not need to match since it is read from the stream. 
+
+Example of speed for serializer/deserializer on [`parking-citations-1M`](https://files.klauspost.com/compress/parking-citations-1M.json.zst).
+
+| Compress Mode | % of JSON size | Serialize Speed | Deserialize Speed |
+|---------------|----------------|-----------------|-------------------|
+| None          | 177.26%        | 425.70 MB/s     | 2334.33 MB/s      |
+| Fast          | 17.20%         | 412.75 MB/s     | 1234.76 MB/s      |
+| Default       | 16.85%         | 411.59 MB/s     | 1242.09 MB/s      |
+| Best          | 10.91%         | 337.17 MB/s     | 806.23 MB/s       |
+
+In some cases the speed difference and compression difference will be bigger.
 
 ## Performance vs simdjson
 
@@ -29,12 +262,12 @@ Based on the same set of JSON test files, the graph below shows a comparison bet
 
 ![simdjson-vs-go-comparison](chart/simdjson-vs-simdjson-go.png)
 
-These numbers were measured on a MacBook Pro equipped with a 3.1 GHz Intel Core i7. 
-Also, to make it a fair comparison, the constant `GOLANG_NUMBER_PARSING` was set to `false` (default is `true`) 
+These numbers were measured on a MacBook Pro equipped with a 3.1 GHz Intel Core i7.
+Also, to make it a fair comparison, the constant `GOLANG_NUMBER_PARSING` was set to `false` (default is `true`)
 in order to use the same number parsing function (which is faster at the expense of some precision; see more below).
 
 In addition the constant `ALWAYS_COPY_STRINGS` was set to `false` (default is `true`) for non-streaming use case
- scenarios where the full JSON message is kept in memory (similar to the `simdjson` behaviour).
+scenarios where the full JSON message is kept in memory (similar to the `simdjson` behaviour).
 
 ## Performance vs `encoding/json` and `json-iterator/go`
 
@@ -84,7 +317,7 @@ BenchmarkUpdate_center-8      101.41                  860.52           8.49x
 
 ## AVX512 Acceleration
 
-Stage 1 has been optimized using AVX512 instructions. Under full CPU load (8 threads) the AVX512 code is about 1 GB/sec (15%) faster as compared to the AVX2 code. 
+Stage 1 has been optimized using AVX512 instructions. Under full CPU load (8 threads) the AVX512 code is about 1 GB/sec (15%) faster as compared to the AVX2 code.
 
 ```
 benchmark                                   AVX2 MB/s    AVX512 MB/s     speedup
@@ -92,59 +325,6 @@ BenchmarkFindStructuralBitsParallelLoop      7225.24      8302.96         1.15x
 ```
 
 These benchmarks were generated on a c5.2xlarge EC2 instance with a Xeon Platinum 8124M CPU at 3.0 GHz.
-
-## Usage 
-
-Run the following command in order to install `simdjson-go`
-
-```
-$ go get github.com/minio/simdjson-go
-```
-
-In order to parse a JSON byte stream, you either call [`simdjson.Parse()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#Parse)
-or [`simdjson.ParseND()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#ParseND) for newline delimited JSON files. 
-Both of these functions return a [`ParsedJson`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#ParsedJson) 
-struct that can be used to navigate the JSON object by calling [`Iter()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#ParsedJson.Iter). 
-
-Using the type [`Iter`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#Iter) you can call 
-[`Advance()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#Iter.Advance) to iterate over the tape, like so:
-
-```
-for {
-    typ := iter.Advance()
-
-    switch typ {
-    case simdjson.TypeRoot:
-        if typ, tmp, err = iter.Root(tmp); err != nil {
-            return
-        }
-
-        if typ == simdjson.TypeObject {
-            if obj, err = tmp.Object(obj); err != nil {
-                return
-            }
-
-            e := obj.FindKey(key, &elem)
-            if e != nil && elem.Type == simdjson.TypeString {
-                v, _ := elem.Iter.StringBytes()
-                fmt.Println(string(v))
-            }
-        }
-
-    default:
-        return
-    }
-}
-```
-
-More examples can be found in the examples subdirectory and further documentation can be found at [godoc](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc). 
-
-## Requirements
-
-`simdjson-go` has the following requirements:
-
-- A CPU with both AVX2 and CLMUL is required (Haswell from 2013 onwards should do for Intel, for AMD a Ryzen/EPIC CPU (Q1 2017) should be sufficient). 
-This can be checked using the provided [`SupportedCPU()`](https://pkg.go.dev/github.com/minio/simdjson-go?tab=doc#SupportedCPU`) function.
 
 ## Design
 
@@ -206,13 +386,6 @@ For string values without special characters the tape's payload points directly 
   - In case `ALWAYS_COPY_STRINGS` is `true` (default): Strings are always copied to the String buffer.
 
 For more information, see `TestStage2BuildTape` in `stage2_build_tape_test.go`.
-
-## Minor number inprecisions
-
-The number parser has minor inprecisions compared to Golang's standard number parsing. 
-There is constant `GOLANG_NUMBER_PARSING` (on by default) that uses Go's 
-parsing functionality at the expense of giving up some performance. 
-Note that the performance metrics mentioned above have been measured by setting the `GOLANG_NUMBER_PARSING` to `false`.
 
 ## Non streaming use cases
 

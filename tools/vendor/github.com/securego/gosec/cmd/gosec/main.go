@@ -73,7 +73,7 @@ var (
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 	// format output
-	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, or text")
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, golint or text")
 
 	// #nosec alternative tag
 	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")
@@ -153,7 +153,7 @@ func loadConfig(configFile string) (gosec.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close()
+		defer file.Close() // #nosec G307
 		if _, err := config.ReadFrom(file); err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func saveOutput(filename, format string, paths []string, issues []*gosec.Issue, 
 		if err != nil {
 			return err
 		}
-		defer outfile.Close()
+		defer outfile.Close() // #nosec G307
 		err = output.CreateReport(outfile, format, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err

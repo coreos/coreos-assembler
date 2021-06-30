@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2019, 2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -23,11 +24,23 @@ import (
 // CacheDiskStats represents cache disk statistics
 // such as current disk usage and available.
 type CacheDiskStats struct {
+	// used cache size
+	UsageSize uint64
+	// total cache disk capacity
+	TotalCapacity uint64
 	// indicates if usage is high or low, if high value is '1', if low its '0'
 	UsageState int32
 	// indicates the current usage percentage of this cache disk
 	UsagePercent uint64
 	Dir          string
+}
+
+// GetUsageLevelString gets the string representation for the usage level.
+func (c *CacheDiskStats) GetUsageLevelString() (u string) {
+	if atomic.LoadInt32(&c.UsageState) == 0 {
+		return "low"
+	}
+	return "high"
 }
 
 // CacheStats - represents bytes served from cache,

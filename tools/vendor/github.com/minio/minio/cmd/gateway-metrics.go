@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2019 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -29,36 +30,28 @@ type RequestStats struct {
 	Post uint64 `json:"Post"`
 }
 
-// Metrics - represents bytes served from backend
-// only implemented for S3 Gateway
-type Metrics struct {
-	bytesReceived uint64
-	bytesSent     uint64
-	requestStats  RequestStats
-}
-
 // IncBytesReceived - Increase total bytes received from gateway backend
-func (s *Metrics) IncBytesReceived(n uint64) {
+func (s *BackendMetrics) IncBytesReceived(n uint64) {
 	atomic.AddUint64(&s.bytesReceived, n)
 }
 
 // GetBytesReceived - Get total bytes received from gateway backend
-func (s *Metrics) GetBytesReceived() uint64 {
+func (s *BackendMetrics) GetBytesReceived() uint64 {
 	return atomic.LoadUint64(&s.bytesReceived)
 }
 
 // IncBytesSent - Increase total bytes sent to gateway backend
-func (s *Metrics) IncBytesSent(n uint64) {
+func (s *BackendMetrics) IncBytesSent(n uint64) {
 	atomic.AddUint64(&s.bytesSent, n)
 }
 
 // GetBytesSent - Get total bytes received from gateway backend
-func (s *Metrics) GetBytesSent() uint64 {
+func (s *BackendMetrics) GetBytesSent() uint64 {
 	return atomic.LoadUint64(&s.bytesSent)
 }
 
 // IncRequests - Increase request count sent to gateway backend by 1
-func (s *Metrics) IncRequests(method string) {
+func (s *BackendMetrics) IncRequests(method string) {
 	// Only increment for Head & Get requests, else no op
 	if method == http.MethodGet {
 		atomic.AddUint64(&s.requestStats.Get, 1)
@@ -72,11 +65,11 @@ func (s *Metrics) IncRequests(method string) {
 }
 
 // GetRequests - Get total number of Get & Headrequests sent to gateway backend
-func (s *Metrics) GetRequests() RequestStats {
+func (s *BackendMetrics) GetRequests() RequestStats {
 	return s.requestStats
 }
 
-// NewMetrics - Prepare new Metrics structure
-func NewMetrics() *Metrics {
-	return &Metrics{}
+// NewMetrics - Prepare new BackendMetrics structure
+func NewMetrics() *BackendMetrics {
+	return &BackendMetrics{}
 }

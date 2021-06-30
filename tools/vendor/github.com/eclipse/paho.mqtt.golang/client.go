@@ -18,6 +18,7 @@
 package mqtt
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -58,7 +59,7 @@ type Client interface {
 	// IsConnected returns a bool signifying whether
 	// the client is connected or not.
 	IsConnected() bool
-	// IsConnectionOpen return a bool signifying wether the client has an active
+	// IsConnectionOpen return a bool signifying whether the client has an active
 	// connection to mqtt broker, i.e not in disconnected or reconnect mode
 	IsConnectionOpen() bool
 	// Connect will create a connection to the message broker, by default
@@ -95,24 +96,28 @@ type Client interface {
 
 // client implements the Client interface
 type client struct {
-	lastSent        atomic.Value
-	lastReceived    atomic.Value
-	pingOutstanding int32
-	status          uint32
-	sync.RWMutex
-	messageIds
-	conn            net.Conn
-	ibound          chan packets.ControlPacket
-	obound          chan *PacketAndToken
-	oboundP         chan *PacketAndToken
-	msgRouter       *router
-	stopRouter      chan bool
-	incomingPubChan chan *packets.PublishPacket
-	errors          chan error
-	stop            chan struct{}
-	persist         Store
-	options         ClientOptions
-	workers         sync.WaitGroup
+	lastSent        atomic.Value // time.Time - the last time a packet was successfully sent to network
+	lastReceived    atomic.Value // time.Time - the last time a packet was successfully received from network
+	pingOutstanding int32        // set to 1 if a ping has been sent but response not ret received
+
+	status       uint32 // see consts at top of file for possible values
+	sync.RWMutex        // Protects the above two variables (note: atomic writes are also used somewhat inconsistently)
+
+	messageIds // effectively a map from message id to token completor
+
+	obound    chan *PacketAndToken // outgoing publish packet
+	oboundP   chan *PacketAndToken // outgoing 'priotity' packet (anything other than publish)
+	msgRouter *router              // routes topics to handlers
+	persist   Store
+	options   ClientOptions
+	optionsMu sync.Mutex // Protects the options in a few limited cases where needed for testing
+
+	conn   net.Conn   // the network connection, must only be set with connMu locked (only used when starting/stopping workers)
+	connMu sync.Mutex // mutex for the connection (again only used in two functions)
+
+	stop         chan struct{}  // Closed to request that workers stop
+	workers      sync.WaitGroup // used to wait for workers to complete (ping, keepalive, errwatch, resume)
+	commsStopped chan struct{}  // closed when the comms routines have stopped (kept running until after workers have closed to avoid deadlocks)
 }
 
 // NewClient will create an MQTT v3.1.1 client with all of the options specified
@@ -138,11 +143,10 @@ func NewClient(o *ClientOptions) Client {
 	c.persist = c.options.Store
 	c.status = disconnected
 	c.messageIds = messageIds{index: make(map[uint16]tokenCompletor)}
-	c.msgRouter, c.stopRouter = newRouter()
+	c.msgRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
-	if !c.options.AutoReconnect {
-		c.options.MessageChannelDepth = 0
-	}
+	c.obound = make(chan *PacketAndToken)
+	c.oboundP = make(chan *PacketAndToken)
 	return c
 }
 
@@ -157,6 +161,8 @@ func (c *client) AddRoute(topic string, callback MessageHandler) {
 
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
+// connected means that the connection is up now OR it will
+// be established/reestablished automatically when possible
 func (c *client) IsConnected() bool {
 	c.RLock()
 	defer c.RUnlock()
@@ -165,6 +171,8 @@ func (c *client) IsConnected() bool {
 	case status == connected:
 		return true
 	case c.options.AutoReconnect && status > connecting:
+		return true
+	case c.options.ConnectRetry && status == connecting:
 		return true
 	default:
 		return false
@@ -195,141 +203,81 @@ func (c *client) connectionStatus() uint32 {
 func (c *client) setConnected(status uint32) {
 	c.Lock()
 	defer c.Unlock()
-	atomic.StoreUint32(&c.status, uint32(status))
+	atomic.StoreUint32(&c.status, status)
 }
 
 //ErrNotConnected is the error returned from function calls that are
 //made when the client is not connected to a broker
-var ErrNotConnected = errors.New("Not Connected")
+var ErrNotConnected = errors.New("not Connected")
 
 // Connect will create a connection to the message broker, by default
 // it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
 // fails
+// Note: If using QOS1+ and CleanSession=false it is advisable to add
+// routes (or a DefaultPublishHandler) prior to calling Connect()
+// because queued messages may be delivered immediatly post connection
 func (c *client) Connect() Token {
-	var err error
 	t := newToken(packets.Connect).(*ConnectToken)
 	DEBUG.Println(CLI, "Connect()")
 
-	c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
-	c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
-	c.ibound = make(chan packets.ControlPacket)
+	if c.options.ConnectRetry && atomic.LoadUint32(&c.status) != disconnected {
+		// if in any state other than disconnected and ConnectRetry is
+		// enabled then the connection will come up automatically
+		// client can assume connection is up
+		WARN.Println(CLI, "Connect() called but not disconnected")
+		t.returnCode = packets.Accepted
+		t.flowComplete()
+		return t
+	}
+
+	c.persist.Open()
+	if c.options.ConnectRetry {
+		c.reserveStoredPublishIDs() // Reserve IDs to allow publish before connect complete
+	}
+	c.setConnected(connecting)
 
 	go func() {
-		c.persist.Open()
-
-		c.setConnected(connecting)
-		c.errors = make(chan error, 1)
-		c.stop = make(chan struct{})
-
-		var rc byte
-		protocolVersion := c.options.ProtocolVersion
-
 		if len(c.options.Servers) == 0 {
-			t.setError(fmt.Errorf("No servers defined to connect to"))
+			t.setError(fmt.Errorf("no servers defined to connect to"))
 			return
 		}
 
-		for _, broker := range c.options.Servers {
-			cm := newConnectMsgFromOptions(&c.options, broker)
-			c.options.ProtocolVersion = protocolVersion
-		CONN:
-			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
-			if err == nil {
-				DEBUG.Println(CLI, "socket connected to broker")
-				switch c.options.ProtocolVersion {
-				case 3:
-					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
-					cm.ProtocolName = "MQIsdp"
-					cm.ProtocolVersion = 3
-				case 0x83:
-					DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
-					cm.ProtocolName = "MQIsdp"
-					cm.ProtocolVersion = 0x83
-				case 0x84:
-					DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
-					cm.ProtocolName = "MQTT"
-					cm.ProtocolVersion = 0x84
-				default:
-					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
-					c.options.ProtocolVersion = 4
-					cm.ProtocolName = "MQTT"
-					cm.ProtocolVersion = 4
-				}
-				cm.Write(c.conn)
+	RETRYCONN:
+		var conn net.Conn
+		var rc byte
+		var err error
+		conn, rc, t.sessionPresent, err = c.attemptConnection()
+		if err != nil {
+			if c.options.ConnectRetry {
+				DEBUG.Println(CLI, "Connect failed, sleeping for", int(c.options.ConnectRetryInterval.Seconds()), "seconds and will then retry")
+				time.Sleep(c.options.ConnectRetryInterval)
 
-				rc, t.sessionPresent = c.connect()
-				if rc != packets.Accepted {
-					if c.conn != nil {
-						c.conn.Close()
-						c.conn = nil
-					}
-					//if the protocol version was explicitly set don't do any fallback
-					if c.options.protocolVersionExplicit {
-						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", packets.ConnackReturnCodes[rc])
-						continue
-					}
-					if c.options.ProtocolVersion == 4 {
-						DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
-						c.options.ProtocolVersion = 3
-						goto CONN
-					}
+				if atomic.LoadUint32(&c.status) == connecting {
+					goto RETRYCONN
 				}
-				break
-			} else {
-				ERROR.Println(CLI, err.Error())
-				WARN.Println(CLI, "failed to connect to broker, trying next")
-				rc = packets.ErrNetworkError
 			}
-		}
-
-		if c.conn == nil {
 			ERROR.Println(CLI, "Failed to connect to a broker")
 			c.setConnected(disconnected)
 			c.persist.Close()
 			t.returnCode = rc
-			if rc != packets.ErrNetworkError {
-				t.setError(packets.ConnErrors[rc])
-			} else {
-				t.setError(fmt.Errorf("%s : %s", packets.ConnErrors[rc], err))
-			}
+			t.setError(err)
 			return
 		}
-
-		c.options.protocolVersionExplicit = true
-
-		if c.options.KeepAlive != 0 {
-			atomic.StoreInt32(&c.pingOutstanding, 0)
-			c.lastReceived.Store(time.Now())
-			c.lastSent.Store(time.Now())
-			c.workers.Add(1)
-			go keepalive(c)
-		}
-
-		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
-		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
-
-		c.setConnected(connected)
-		DEBUG.Println(CLI, "client is connected")
-		if c.options.OnConnect != nil {
-			go c.options.OnConnect(c)
-		}
-
-		c.workers.Add(4)
-		go errorWatch(c)
-		go alllogic(c)
-		go outgoing(c)
-		go incoming(c)
-
-		// Take care of any messages in the store
-		if c.options.CleanSession == false {
-			c.resume(c.options.ResumeSubs)
+		inboundFromStore := make(chan packets.ControlPacket) // there may be some inbound comms packets in the store that are awaitring processing
+		if c.startCommsWorkers(conn, inboundFromStore) {
+			// Take care of any messages in the store
+			if !c.options.CleanSession {
+				c.resume(c.options.ResumeSubs, inboundFromStore)
+			} else {
+				c.persist.Reset()
+			}
 		} else {
-			c.persist.Reset()
+			WARN.Println(CLI, "Connect() called but connection established in another goroutine")
 		}
 
-		DEBUG.Println(CLI, "exit startClient")
+		close(inboundFromStore)
 		t.flowComplete()
+		DEBUG.Println(CLI, "exit startClient")
 	}()
 	return t
 }
@@ -338,126 +286,116 @@ func (c *client) Connect() Token {
 func (c *client) reconnect() {
 	DEBUG.Println(CLI, "enter reconnect")
 	var (
-		err error
-
-		rc    = byte(1)
 		sleep = time.Duration(1 * time.Second)
+		conn  net.Conn
 	)
 
-	for rc != 0 && atomic.LoadUint32(&c.status) != disconnected {
-		for _, broker := range c.options.Servers {
-			cm := newConnectMsgFromOptions(&c.options, broker)
-			DEBUG.Println(CLI, "about to write new connect msg")
-			c.Lock()
-			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
-			c.Unlock()
-			if err == nil {
-				DEBUG.Println(CLI, "socket connected to broker")
-				switch c.options.ProtocolVersion {
-				case 0x83:
-					DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
-					cm.ProtocolName = "MQIsdp"
-					cm.ProtocolVersion = 0x83
-				case 0x84:
-					DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
-					cm.ProtocolName = "MQTT"
-					cm.ProtocolVersion = 0x84
-				case 3:
-					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
-					cm.ProtocolName = "MQIsdp"
-					cm.ProtocolVersion = 3
-				default:
-					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
-					cm.ProtocolName = "MQTT"
-					cm.ProtocolVersion = 4
-				}
-				cm.Write(c.conn)
-
-				rc, _ = c.connect()
-				if rc != packets.Accepted {
-					c.conn.Close()
-					c.conn = nil
-					//if the protocol version was explicitly set don't do any fallback
-					if c.options.protocolVersionExplicit {
-						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not Accepted, but rather", packets.ConnackReturnCodes[rc])
-						continue
-					}
-				}
-				break
-			} else {
-				ERROR.Println(CLI, err.Error())
-				WARN.Println(CLI, "failed to connect to broker, trying next")
-				rc = packets.ErrNetworkError
-			}
+	for {
+		if nil != c.options.OnReconnecting {
+			c.options.OnReconnecting(c, &c.options)
 		}
-		if rc != 0 {
-			DEBUG.Println(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds")
-			time.Sleep(sleep)
-			if sleep < c.options.MaxReconnectInterval {
-				sleep *= 2
-			}
+		var err error
+		conn, _, _, err = c.attemptConnection()
+		if err == nil {
+			break
+		}
+		DEBUG.Println(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds:", err)
+		time.Sleep(sleep)
+		if sleep < c.options.MaxReconnectInterval {
+			sleep *= 2
+		}
 
-			if sleep > c.options.MaxReconnectInterval {
-				sleep = c.options.MaxReconnectInterval
-			}
+		if sleep > c.options.MaxReconnectInterval {
+			sleep = c.options.MaxReconnectInterval
+		}
+		// Disconnect may have been called
+		if atomic.LoadUint32(&c.status) == disconnected {
+			break
 		}
 	}
+
 	// Disconnect() must have been called while we were trying to reconnect.
 	if c.connectionStatus() == disconnected {
+		if conn != nil {
+			conn.Close()
+		}
 		DEBUG.Println(CLI, "Client moved to disconnected state while reconnecting, abandoning reconnect")
 		return
 	}
 
-	c.stop = make(chan struct{})
-
-	if c.options.KeepAlive != 0 {
-		atomic.StoreInt32(&c.pingOutstanding, 0)
-		c.lastReceived.Store(time.Now())
-		c.lastSent.Store(time.Now())
-		c.workers.Add(1)
-		go keepalive(c)
+	inboundFromStore := make(chan packets.ControlPacket) // there may be some inbound comms packets in the store that are awaitring processing
+	if c.startCommsWorkers(conn, inboundFromStore) {
+		c.resume(c.options.ResumeSubs, inboundFromStore)
 	}
-
-	c.setConnected(connected)
-	DEBUG.Println(CLI, "client is reconnected")
-	if c.options.OnConnect != nil {
-		go c.options.OnConnect(c)
-	}
-
-	c.workers.Add(4)
-	go errorWatch(c)
-	go alllogic(c)
-	go outgoing(c)
-	go incoming(c)
-
-	c.resume(false)
+	close(inboundFromStore)
 }
 
-// This function is only used for receiving a connack
-// when the connection is first started.
-// This prevents receiving incoming data while resume
-// is in progress if clean session is false.
-func (c *client) connect() (byte, bool) {
-	DEBUG.Println(NET, "connect started")
+// attemptConnection makes a single attempt to connect to each of the brokers
+// the protocol version to use is passed in (as c.options.ProtocolVersion)
+// Note: Does not set c.conn in order to minimise race conditions
+// Returns:
+// net.Conn - Connected network connection
+// byte - Return code (packets.Accepted indicates a successful connection).
+// bool - SessionPresent flag from the connect ack (only valid if packets.Accepted)
+// err - Error (err != nil guarantees that conn has been set to active connection).
+func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
+	protocolVersion := c.options.ProtocolVersion
+	var (
+		sessionPresent bool
+		conn           net.Conn
+		err            error
+		rc             byte
+	)
 
-	ca, err := packets.ReadPacket(c.conn)
-	if err != nil {
-		ERROR.Println(NET, "connect got error", err)
-		return packets.ErrNetworkError, false
-	}
-	if ca == nil {
-		ERROR.Println(NET, "received nil packet")
-		return packets.ErrNetworkError, false
-	}
+	c.optionsMu.Lock() // Protect c.options.Servers so that servers can be added in test cases
+	brokers := c.options.Servers
+	c.optionsMu.Unlock()
+	for _, broker := range brokers {
+		cm := newConnectMsgFromOptions(&c.options, broker)
+		DEBUG.Println(CLI, "about to write new connect msg")
+	CONN:
+		// Start by opening the network connection (tcp, tls, ws) etc
+		conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions)
+		if err != nil {
+			ERROR.Println(CLI, err.Error())
+			WARN.Println(CLI, "failed to connect to broker, trying next")
+			rc = packets.ErrNetworkError
+			continue
+		}
+		DEBUG.Println(CLI, "socket connected to broker")
 
-	msg, ok := ca.(*packets.ConnackPacket)
-	if !ok {
-		ERROR.Println(NET, "received msg that was not CONNACK")
-		return packets.ErrNetworkError, false
-	}
+		// Now we send the perform the MQTT connection handshake
+		rc, sessionPresent, err = connectMQTT(conn, cm, protocolVersion)
+		if rc == packets.Accepted {
+			break // successfully connected
+		}
 
-	DEBUG.Println(NET, "received connack")
-	return msg.ReturnCode, msg.SessionPresent
+		// We may be have to attempt the connection with MQTT 3.1
+		if conn != nil {
+			conn.Close()
+		}
+		if !c.options.protocolVersionExplicit && protocolVersion == 4 { // try falling back to 3.1?
+			DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
+			protocolVersion = 3
+			goto CONN
+		}
+		if c.options.protocolVersionExplicit { // to maintain logging from previous version
+			ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", packets.ConnackReturnCodes[rc])
+		}
+	}
+	// If the connection was successful we set member variable and lock in the protocol version for future connection attempts (and users)
+	if rc == packets.Accepted {
+		c.options.ProtocolVersion = protocolVersion
+		c.options.protocolVersionExplicit = true
+	} else {
+		// Maintain same error format as used previously
+		if rc != packets.ErrNetworkError { // mqtt error
+			err = packets.ConnErrors[rc]
+		} else { // network error (if this occured in ConnectMQTT then err will be nil)
+			err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
+		}
+	}
+	return conn, rc, sessionPresent, err
 }
 
 // Disconnect will end the connection with the server, but not before waiting
@@ -474,7 +412,9 @@ func (c *client) Disconnect(quiesce uint) {
 		c.oboundP <- &PacketAndToken{p: dm, t: dt}
 
 		// wait for work to finish, or quiesce time consumed
+		DEBUG.Println(CLI, "calling WaitTimeout")
 		dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
+		DEBUG.Println(CLI, "WaitTimeout done")
 	} else {
 		WARN.Println(CLI, "Disconnect() called but not connected (disconnected/reconnecting)")
 		c.setConnected(disconnected)
@@ -483,83 +423,190 @@ func (c *client) Disconnect(quiesce uint) {
 	c.disconnect()
 }
 
-// ForceDisconnect will end the connection with the mqtt broker immediately.
+// forceDisconnect will end the connection with the mqtt broker immediately (used for tests only)
 func (c *client) forceDisconnect() {
 	if !c.IsConnected() {
 		WARN.Println(CLI, "already disconnected")
 		return
 	}
 	c.setConnected(disconnected)
-	c.conn.Close()
 	DEBUG.Println(CLI, "forcefully disconnecting")
 	c.disconnect()
 }
 
-func (c *client) internalConnLost(err error) {
-	// Only do anything if this was called and we are still "connected"
-	// forceDisconnect can cause incoming/outgoing/alllogic to end with
-	// error from closing the socket but state will be "disconnected"
-	if c.IsConnected() {
-		c.closeStop()
-		c.conn.Close()
-		c.workers.Wait()
-		if c.options.CleanSession && !c.options.AutoReconnect {
-			c.messageIds.cleanUp()
-		}
-		if c.options.AutoReconnect {
-			c.setConnected(reconnecting)
-			go c.reconnect()
-		} else {
-			c.setConnected(disconnected)
-		}
-		if c.options.OnConnectionLost != nil {
-			go c.options.OnConnectionLost(c, err)
-		}
-	}
-}
-
-func (c *client) closeStop() {
-	c.Lock()
-	defer c.Unlock()
-	select {
-	case <-c.stop:
-		DEBUG.Println("In disconnect and stop channel is already closed")
-	default:
-		if c.stop != nil {
-			close(c.stop)
-		}
-	}
-}
-
-func (c *client) closeStopRouter() {
-	c.Lock()
-	defer c.Unlock()
-	select {
-	case <-c.stopRouter:
-		DEBUG.Println("In disconnect and stop channel is already closed")
-	default:
-		if c.stopRouter != nil {
-			close(c.stopRouter)
-		}
-	}
-}
-
-func (c *client) closeConn() {
-	c.Lock()
-	defer c.Unlock()
-	if c.conn != nil {
-		c.conn.Close()
-	}
-}
-
+// disconnect cleans up after a final disconnection (user requested so no auto reconnection)
 func (c *client) disconnect() {
-	c.closeStop()
-	c.closeConn()
-	c.workers.Wait()
-	c.messageIds.cleanUp()
-	c.closeStopRouter()
-	DEBUG.Println(CLI, "disconnected")
-	c.persist.Close()
+	done := c.stopCommsWorkers()
+	if done != nil {
+		<-done // Wait until the disconect is complete (to limit chance that another connection will be started)
+		c.messageIds.cleanUp()
+		DEBUG.Println(CLI, "disconnected")
+		c.persist.Close()
+	}
+}
+
+// internalConnLost cleanup when connection is lost or an error occurs
+// Note: This function will not block
+func (c *client) internalConnLost(err error) {
+	// It is possible that internalConnLost will be called multiple times simultaneously
+	// (including after sending a DisconnectPacket) as such we only do cleanup etc if the
+	// routines were actually running and are not being disconnected at users request
+	DEBUG.Println(CLI, "internalConnLost called")
+	stopDone := c.stopCommsWorkers()
+	if stopDone != nil { // stopDone will be nil if workers already in the process of stopping or stopped
+		go func() {
+			DEBUG.Println(CLI, "internalConnLost waiting on workers")
+			<-stopDone
+			DEBUG.Println(CLI, "internalConnLost workers stopped")
+			if c.options.CleanSession && !c.options.AutoReconnect {
+				c.messageIds.cleanUp()
+			}
+			if c.options.AutoReconnect {
+				c.setConnected(reconnecting)
+				go c.reconnect()
+			} else {
+				c.setConnected(disconnected)
+			}
+			if c.options.OnConnectionLost != nil {
+				go c.options.OnConnectionLost(c, err)
+			}
+			DEBUG.Println(CLI, "internalConnLost complete")
+		}()
+	}
+}
+
+// startCommsWorkers is called when the connection is up. It starts off all of the routines needed to process incomming and
+// outgoing messages.
+// Returns true if the comms workers were started (i.e. they were not already running)
+func (c *client) startCommsWorkers(conn net.Conn, inboundFromStore <-chan packets.ControlPacket) bool {
+	DEBUG.Println(CLI, "startCommsWorkers called")
+	c.connMu.Lock()
+	defer c.connMu.Unlock()
+	if c.conn != nil {
+		WARN.Println(CLI, "startCommsWorkers called when commsworkers already running")
+		conn.Close() // No use for the new network connection
+		return false
+	}
+	c.conn = conn // Store the connection
+
+	c.stop = make(chan struct{})
+	if c.options.KeepAlive != 0 {
+		atomic.StoreInt32(&c.pingOutstanding, 0)
+		c.lastReceived.Store(time.Now())
+		c.lastSent.Store(time.Now())
+		c.workers.Add(1)
+		go keepalive(c, conn)
+	}
+
+	incomingPubChan := make(chan *packets.PublishPacket)
+	c.workers.Add(1)
+	go func() {
+		c.msgRouter.matchAndDispatch(incomingPubChan, c.options.Order, c)
+		c.workers.Done()
+	}()
+
+	c.setConnected(connected)
+	DEBUG.Println(CLI, "client is connected/reconnected")
+	if c.options.OnConnect != nil {
+		go c.options.OnConnect(c)
+	}
+
+	// c.oboundP and c.obound need to stay active for the life of the client because, depending upon the options,
+	// messages may be published while the client is disconnected (they will block unless in a goroutine). However
+	// to keep the comms routines clean we want to shutdown the input messages it uses so create out own channels
+	// and copy data accross.
+	commsobound := make(chan *PacketAndToken)  // outgoing publish packets
+	commsoboundP := make(chan *PacketAndToken) // outgoing 'priotity' packet
+	c.workers.Add(1)
+	go func() {
+		defer c.workers.Done()
+		for {
+			select {
+			case msg := <-c.oboundP:
+				commsoboundP <- msg
+			case msg := <-c.obound:
+				commsobound <- msg
+			case <-c.stop:
+				close(commsoboundP) // Nothing sending to these channels anymore so close them and allow comms routines to exit
+				close(commsobound)
+				DEBUG.Println(CLI, "startCommsWorkers output redirector finnished")
+				return
+			}
+		}
+	}()
+
+	commsIncommingPub, commsErrors := startComms(c.conn, c, inboundFromStore, commsoboundP, commsobound)
+	c.commsStopped = make(chan struct{})
+	go func() {
+		for {
+			if commsIncommingPub == nil && commsErrors == nil {
+				break
+			}
+			select {
+			case pub, ok := <-commsIncommingPub:
+				if !ok {
+					// Incomming comms has shutdown
+					close(incomingPubChan) // stop the router
+					commsIncommingPub = nil
+					continue
+				}
+				incomingPubChan <- pub
+			case err, ok := <-commsErrors:
+				if !ok {
+					commsErrors = nil
+					continue
+				}
+				ERROR.Println(CLI, "Connect comms goroutine - error triggered", err)
+				c.internalConnLost(err) // no harm in calling this if the connection is already down (or shutdown is in progress)
+				continue
+			}
+		}
+		DEBUG.Println(CLI, "comms goroutine done")
+		close(c.commsStopped)
+	}()
+	DEBUG.Println(CLI, "startCommsWorkers done")
+	return true
+}
+
+// stopWorkersAndComms - Cleanly shuts down worker go routines (including the comms routines) and waits until everything has stopped
+// Returns nil it workers did not need to be stopped; otherwise returns a channel which will be closed when the stop is complete
+// Note: This may block so run as a go routine if calling from any of the comms routines
+func (c *client) stopCommsWorkers() chan struct{} {
+	DEBUG.Println(CLI, "stopCommsWorkers called")
+	// It is possible that this function will be called multiple times simultaneously due to the way things get shutdown
+	c.connMu.Lock()
+	if c.conn == nil {
+		DEBUG.Println(CLI, "stopCommsWorkers done (not running)")
+		c.connMu.Unlock()
+		return nil
+	}
+
+	// It is important that everything is stopped in the correct order to avoid deadlocks. The main issue here is
+	// the router because it both receives incomming publish messages and also sends outgoing acknowledgements. To
+	// avoid issues we signal the workers to stop and close the connection (it is probably already closed but
+	// there is no harm in being sure). We can then wait for the workers to finnish before closing outbound comms
+	// channels which will allow the comms routines to exit.
+
+	// We stop all non-comms related workers first (ping, keepalive, errwatch, resume etc) so they don't get blocked waiting on comms
+	close(c.stop)     // Signal for workers to stop
+	c.conn.Close()    // Possible that this is already closed but no harm in closing again
+	c.conn = nil      // Important that this is the only place that this is set to nil
+	c.connMu.Unlock() // As the conection is now nil we can unlock the mu (allowing subsequent calls to exit immediately)
+
+	doneChan := make(chan struct{})
+
+	go func() {
+		DEBUG.Println(CLI, "stopCommsWorkers waiting for workers")
+		c.workers.Wait()
+
+		// Stopping the workers will allow the comms routines to exit; we wait for these to complete
+		DEBUG.Println(CLI, "stopCommsWorkers waiting for comms")
+		<-c.commsStopped // wait for comms routine to stop
+
+		DEBUG.Println(CLI, "stopCommsWorkers done")
+		close(doneChan)
+	}()
+	return doneChan
 }
 
 // Publish will publish a message with the specified QoS and content
@@ -580,38 +627,73 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	pub.Qos = qos
 	pub.TopicName = topic
 	pub.Retain = retained
-	switch payload.(type) {
+	switch p := payload.(type) {
 	case string:
-		pub.Payload = []byte(payload.(string))
+		pub.Payload = []byte(p)
 	case []byte:
-		pub.Payload = payload.([]byte)
+		pub.Payload = p
+	case bytes.Buffer:
+		pub.Payload = p.Bytes()
 	default:
-		token.setError(fmt.Errorf("Unknown payload type"))
+		token.setError(fmt.Errorf("unknown payload type"))
 		return token
 	}
 
 	if pub.Qos != 0 && pub.MessageID == 0 {
-		pub.MessageID = c.getID(token)
-		token.messageID = pub.MessageID
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		pub.MessageID = mID
+		token.messageID = mID
 	}
 	persistOutbound(c.persist, pub)
-	if c.connectionStatus() == reconnecting {
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing publish message (connecting), topic:", topic)
+	case reconnecting:
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
-	} else {
+	default:
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
-		c.obound <- &PacketAndToken{p: pub, t: token}
+		publishWaitTimeout := c.options.WriteTimeout
+		if publishWaitTimeout == 0 {
+			publishWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.obound <- &PacketAndToken{p: pub, t: token}:
+		case <-time.After(publishWaitTimeout):
+			token.setError(errors.New("publish was broken by timeout"))
+		}
 	}
 	return token
 }
 
 // Subscribe starts a new subscription. Provide a MessageHandler to be executed when
 // a message is published on the topic provided.
+//
+// Please note: you should try to keep the execution time of the callback to be
+// as low as possible, especially when SetOrderMatters(true) (the default) is in
+// place. Blocking calls in message handlers might otherwise delay delivery to
+// other message handlers.
 func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
 		token.setError(ErrNotConnected)
 		return token
+	}
+	if !c.IsConnectionOpen() {
+		switch {
+		case !c.options.ResumeSubs:
+			// if not connected and resumesubs not set this sub will be thrown away
+			token.setError(fmt.Errorf("not currently connected and ResumeSubs not set"))
+			return token
+		case c.options.CleanSession && c.connectionStatus() == reconnecting:
+			// if reconnecting and cleansession is true this sub will be thrown away
+			token.setError(fmt.Errorf("reconnecting state and cleansession is true"))
+			return token
+		}
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if err := validateTopicAndQos(topic, qos); err != nil {
@@ -620,10 +702,13 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	}
 	sub.Topics = append(sub.Topics, topic)
 	sub.Qoss = append(sub.Qoss, qos)
-	DEBUG.Println(CLI, sub.String())
 
-	if strings.HasPrefix(topic, "$share") {
+	if strings.HasPrefix(topic, "$share/") {
 		topic = strings.Join(strings.Split(topic, "/")[2:], "/")
+	}
+
+	if strings.HasPrefix(topic, "$queue/") {
+		topic = strings.TrimPrefix(topic, "$queue/")
 	}
 
 	if callback != nil {
@@ -631,7 +716,36 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	}
 
 	token.subs = append(token.subs, topic)
-	c.oboundP <- &PacketAndToken{p: sub, t: token}
+
+	if sub.MessageID == 0 {
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		sub.MessageID = mID
+		token.messageID = mID
+	}
+	DEBUG.Println(CLI, sub.String())
+
+	persistOutbound(c.persist, sub)
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing subscribe message (connecting), topic:", topic)
+	case reconnecting:
+		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topic:", topic)
+	default:
+		DEBUG.Println(CLI, "sending subscribe message, topic:", topic)
+		subscribeWaitTimeout := c.options.WriteTimeout
+		if subscribeWaitTimeout == 0 {
+			subscribeWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
+		case <-time.After(subscribeWaitTimeout):
+			token.setError(errors.New("subscribe was broken by timeout"))
+		}
+	}
 	DEBUG.Println(CLI, "exit Subscribe")
 	return token
 }
@@ -646,6 +760,18 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 		token.setError(ErrNotConnected)
 		return token
 	}
+	if !c.IsConnectionOpen() {
+		switch {
+		case !c.options.ResumeSubs:
+			// if not connected and resumesubs not set this sub will be thrown away
+			token.setError(fmt.Errorf("not currently connected and ResumeSubs not set"))
+			return token
+		case c.options.CleanSession && c.connectionStatus() == reconnecting:
+			// if reconnecting and cleansession is true this sub will be thrown away
+			token.setError(fmt.Errorf("reconnecting state and cleansession is true"))
+			return token
+		}
+	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if sub.Topics, sub.Qoss, err = validateSubscribeMap(filters); err != nil {
 		token.setError(err)
@@ -659,19 +785,72 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	}
 	token.subs = make([]string, len(sub.Topics))
 	copy(token.subs, sub.Topics)
-	c.oboundP <- &PacketAndToken{p: sub, t: token}
+
+	if sub.MessageID == 0 {
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		sub.MessageID = mID
+		token.messageID = mID
+	}
+	persistOutbound(c.persist, sub)
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing subscribe message (connecting), topics:", sub.Topics)
+	case reconnecting:
+		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topics:", sub.Topics)
+	default:
+		DEBUG.Println(CLI, "sending subscribe message, topics:", sub.Topics)
+		subscribeWaitTimeout := c.options.WriteTimeout
+		if subscribeWaitTimeout == 0 {
+			subscribeWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
+		case <-time.After(subscribeWaitTimeout):
+			token.setError(errors.New("subscribe was broken by timeout"))
+		}
+	}
 	DEBUG.Println(CLI, "exit SubscribeMultiple")
 	return token
 }
 
+// reserveStoredPublishIDs reserves the ids for publish packets in the persistent store to ensure these are not duplicated
+func (c *client) reserveStoredPublishIDs() {
+	// The resume function sets the stored id for publish packets only (some other packets
+	// will get new ids in net code). This means that the only keys we need to ensure are
+	// unique are the publish ones (and these will completed/replaced in resume() )
+	if !c.options.CleanSession {
+		storedKeys := c.persist.All()
+		for _, key := range storedKeys {
+			packet := c.persist.Get(key)
+			if packet == nil {
+				continue
+			}
+			switch packet.(type) {
+			case *packets.PublishPacket:
+				details := packet.Details()
+				token := &PlaceHolderToken{id: details.MessageID}
+				c.claimID(token, details.MessageID)
+			}
+		}
+	}
+}
+
 // Load all stored messages and resend them
 // Call this to ensure QOS > 1,2 even after an application crash
-func (c *client) resume(subscription bool) {
+// Note: This function will exit if c.stop is closed (this allows the shutdown to proceed avoiding a potential deadlock)
+//
+func (c *client) resume(subscription bool, ibound chan packets.ControlPacket) {
+	DEBUG.Println(STR, "enter Resume")
 
 	storedKeys := c.persist.All()
 	for _, key := range storedKeys {
 		packet := c.persist.Get(key)
 		if packet == nil {
+			DEBUG.Println(STR, fmt.Sprintf("resume found NIL packet (%s)", key))
 			continue
 		}
 		details := packet.Details()
@@ -680,20 +859,40 @@ func (c *client) resume(subscription bool) {
 			case *packets.SubscribePacket:
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending subscribe (%d)", details.MessageID))
+					subPacket := packet.(*packets.SubscribePacket)
 					token := newToken(packets.Subscribe).(*SubscribeToken)
-					c.oboundP <- &PacketAndToken{p: packet, t: token}
+					token.messageID = details.MessageID
+					token.subs = append(token.subs, subPacket.Topics...)
+					c.claimID(token, details.MessageID)
+					select {
+					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
+					case <-c.stop:
+						DEBUG.Println(STR, "resume exiting due to stop")
+						return
+					}
+				} else {
+					c.persist.Del(key) // Unsubscribe packets should not be retained following a reconnect
 				}
 			case *packets.UnsubscribePacket:
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending unsubscribe (%d)", details.MessageID))
 					token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
-					c.oboundP <- &PacketAndToken{p: packet, t: token}
+					select {
+					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
+					case <-c.stop:
+						DEBUG.Println(STR, "resume exiting due to stop")
+						return
+					}
+				} else {
+					c.persist.Del(key) // Unsubscribe packets should not be retained following a reconnect
 				}
 			case *packets.PubrelPacket:
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending pubrel (%d)", details.MessageID))
 				select {
 				case c.oboundP <- &PacketAndToken{p: packet, t: nil}:
 				case <-c.stop:
+					DEBUG.Println(STR, "resume exiting due to stop")
+					return
 				}
 			case *packets.PublishPacket:
 				token := newToken(packets.Publish).(*PublishToken)
@@ -701,18 +900,25 @@ func (c *client) resume(subscription bool) {
 				c.claimID(token, details.MessageID)
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending publish (%d)", details.MessageID))
 				DEBUG.Println(STR, details)
-				c.obound <- &PacketAndToken{p: packet, t: token}
+				select {
+				case c.obound <- &PacketAndToken{p: packet, t: token}:
+				case <-c.stop:
+					DEBUG.Println(STR, "resume exiting due to stop")
+					return
+				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
 				c.persist.Del(key)
 			}
 		} else {
 			switch packet.(type) {
-			case *packets.PubrelPacket, *packets.PublishPacket:
+			case *packets.PubrelPacket:
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending incomming (%d)", details.MessageID))
 				select {
-				case c.ibound <- packet:
+				case ibound <- packet:
 				case <-c.stop:
+					DEBUG.Println(STR, "resume exiting due to stop (ibound <- packet)")
+					return
 				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
@@ -720,6 +926,7 @@ func (c *client) resume(subscription bool) {
 			}
 		}
 	}
+	DEBUG.Println(STR, "exit resume")
 }
 
 // Unsubscribe will end the subscription from each of the topics provided.
@@ -732,13 +939,53 @@ func (c *client) Unsubscribe(topics ...string) Token {
 		token.setError(ErrNotConnected)
 		return token
 	}
+	if !c.IsConnectionOpen() {
+		switch {
+		case !c.options.ResumeSubs:
+			// if not connected and resumesubs not set this unsub will be thrown away
+			token.setError(fmt.Errorf("not currently connected and ResumeSubs not set"))
+			return token
+		case c.options.CleanSession && c.connectionStatus() == reconnecting:
+			// if reconnecting and cleansession is true this unsub will be thrown away
+			token.setError(fmt.Errorf("reconnecting state and cleansession is true"))
+			return token
+		}
+	}
 	unsub := packets.NewControlPacket(packets.Unsubscribe).(*packets.UnsubscribePacket)
 	unsub.Topics = make([]string, len(topics))
 	copy(unsub.Topics, topics)
 
-	c.oboundP <- &PacketAndToken{p: unsub, t: token}
-	for _, topic := range topics {
-		c.msgRouter.deleteRoute(topic)
+	if unsub.MessageID == 0 {
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		unsub.MessageID = mID
+		token.messageID = mID
+	}
+
+	persistOutbound(c.persist, unsub)
+
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing unsubscribe message (connecting), topics:", topics)
+	case reconnecting:
+		DEBUG.Println(CLI, "storing unsubscribe message (reconnecting), topics:", topics)
+	default:
+		DEBUG.Println(CLI, "sending unsubscribe message, topics:", topics)
+		subscribeWaitTimeout := c.options.WriteTimeout
+		if subscribeWaitTimeout == 0 {
+			subscribeWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.oboundP <- &PacketAndToken{p: unsub, t: token}:
+			for _, topic := range topics {
+				c.msgRouter.deleteRoute(topic)
+			}
+		case <-time.After(subscribeWaitTimeout):
+			token.setError(errors.New("unsubscribe was broken by timeout"))
+		}
 	}
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
@@ -756,4 +1003,39 @@ func (c *client) OptionsReader() ClientOptionsReader {
 //reports to the DEBUG log the reason for the client losing a connection.
 func DefaultConnectionLostHandler(client Client, reason error) {
 	DEBUG.Println("Connection lost:", reason.Error())
+}
+
+// UpdateLastReceived - Will be called whenever a packet is received off the network
+// This is used by the keepalive routine to
+func (c *client) UpdateLastReceived() {
+	if c.options.KeepAlive != 0 {
+		c.lastReceived.Store(time.Now())
+	}
+}
+
+// UpdateLastReceived - Will be called whenever a packet is successfully transmitted to the network
+func (c *client) UpdateLastSent() {
+	if c.options.KeepAlive != 0 {
+		c.lastSent.Store(time.Now())
+	}
+}
+
+// getWriteTimeOut returns the writetimeout (duration to wait when writing to the connection) or 0 if none
+func (c *client) getWriteTimeOut() time.Duration {
+	return c.options.WriteTimeout
+}
+
+// persistOutbound adds the packet to the outbound store
+func (c *client) persistOutbound(m packets.ControlPacket) {
+	persistOutbound(c.persist, m)
+}
+
+// persistInbound adds the packet to the inbound store
+func (c *client) persistInbound(m packets.ControlPacket) {
+	persistInbound(c.persist, m)
+}
+
+// pingRespReceived will be called by the network routines when a ping response is received
+func (c *client) pingRespReceived() {
+	atomic.StoreInt32(&c.pingOutstanding, 0)
 }

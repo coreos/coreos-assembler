@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2016-2019 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -26,25 +27,25 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/minio/minio/cmd/config"
-	"github.com/minio/minio/cmd/config/cache"
-	"github.com/minio/minio/cmd/config/compress"
-	xldap "github.com/minio/minio/cmd/config/identity/ldap"
-	"github.com/minio/minio/cmd/config/identity/openid"
-	"github.com/minio/minio/cmd/config/notify"
-	"github.com/minio/minio/cmd/config/policy/opa"
-	"github.com/minio/minio/cmd/config/storageclass"
-	"github.com/minio/minio/cmd/crypto"
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/pkg/auth"
-	"github.com/minio/minio/pkg/event"
-	"github.com/minio/minio/pkg/event/target"
-	"github.com/minio/minio/pkg/madmin"
-	xnet "github.com/minio/minio/pkg/net"
-	"github.com/minio/minio/pkg/quick"
+	"github.com/minio/madmin-go"
+	"github.com/minio/minio/internal/auth"
+	"github.com/minio/minio/internal/config"
+	"github.com/minio/minio/internal/config/cache"
+	"github.com/minio/minio/internal/config/compress"
+	xldap "github.com/minio/minio/internal/config/identity/ldap"
+	"github.com/minio/minio/internal/config/identity/openid"
+	"github.com/minio/minio/internal/config/notify"
+	"github.com/minio/minio/internal/config/policy/opa"
+	"github.com/minio/minio/internal/config/storageclass"
+	"github.com/minio/minio/internal/event"
+	"github.com/minio/minio/internal/event/target"
+	"github.com/minio/minio/internal/kms"
+	"github.com/minio/minio/internal/logger"
+	xnet "github.com/minio/pkg/net"
+	"github.com/minio/pkg/quick"
 )
 
-// DO NOT EDIT following message template, please open a github issue to discuss instead.
+// DO NOT EDIT following message template, please open a GitHub issue to discuss instead.
 var configMigrateMSGTemplate = "Configuration file %s migrated from version '%s' to '%s' successfully."
 
 // Save config file to corresponding backend
@@ -74,7 +75,7 @@ func migrateConfig() error {
 	// Load only config version information.
 	version, err := GetVersion(getConfigFile())
 	if err != nil {
-		if os.IsNotExist(err) || os.IsPermission(err) {
+		if osIsNotExist(err) || osIsPermission(err) {
 			return nil
 		}
 		return err
@@ -243,7 +244,7 @@ func purgeV1() error {
 
 	cv1 := &configV1{}
 	_, err := Load(configFile, cv1)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘1’. %w", err)
@@ -264,7 +265,7 @@ func migrateV2ToV3() error {
 
 	cv2 := &configV2{}
 	_, err := Load(configFile, cv2)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘2’. %w", err)
@@ -323,7 +324,7 @@ func migrateV3ToV4() error {
 
 	cv3 := &configV3{}
 	_, err := Load(configFile, cv3)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘3’. %w", err)
@@ -361,7 +362,7 @@ func migrateV4ToV5() error {
 
 	cv4 := &configV4{}
 	_, err := Load(configFile, cv4)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘4’. %w", err)
@@ -402,7 +403,7 @@ func migrateV5ToV6() error {
 
 	cv5 := &configV5{}
 	_, err := Load(configFile, cv5)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘5’. %w", err)
@@ -491,7 +492,7 @@ func migrateV6ToV7() error {
 
 	cv6 := &configV6{}
 	_, err := Load(configFile, cv6)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘6’. %w", err)
@@ -547,7 +548,7 @@ func migrateV7ToV8() error {
 
 	cv7 := &serverConfigV7{}
 	_, err := Load(configFile, cv7)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘7’. %w", err)
@@ -609,7 +610,7 @@ func migrateV8ToV9() error {
 
 	cv8 := &serverConfigV8{}
 	_, err := Load(configFile, cv8)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘8’. %w", err)
@@ -679,7 +680,7 @@ func migrateV9ToV10() error {
 
 	cv9 := &serverConfigV9{}
 	_, err := Load(configFile, cv9)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘9’. %w", err)
@@ -747,7 +748,7 @@ func migrateV10ToV11() error {
 
 	cv10 := &serverConfigV10{}
 	_, err := Load(configFile, cv10)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘10’. %w", err)
@@ -818,7 +819,7 @@ func migrateV11ToV12() error {
 
 	cv11 := &serverConfigV11{}
 	_, err := Load(configFile, cv11)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘11’. %w", err)
@@ -915,7 +916,7 @@ func migrateV12ToV13() error {
 
 	cv12 := &serverConfigV12{}
 	_, err := Load(configFile, cv12)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘12’. %w", err)
@@ -995,7 +996,7 @@ func migrateV13ToV14() error {
 
 	cv13 := &serverConfigV13{}
 	_, err := Load(configFile, cv13)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘13’. %w", err)
@@ -1080,7 +1081,7 @@ func migrateV14ToV15() error {
 
 	cv14 := &serverConfigV14{}
 	_, err := Load(configFile, cv14)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘14’. %w", err)
@@ -1170,7 +1171,7 @@ func migrateV15ToV16() error {
 
 	cv15 := &serverConfigV15{}
 	_, err := Load(configFile, cv15)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘15’. %w", err)
@@ -1260,7 +1261,7 @@ func migrateV16ToV17() error {
 
 	cv16 := &serverConfigV16{}
 	_, err := Load(configFile, cv16)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘16’. %w", err)
@@ -1381,7 +1382,7 @@ func migrateV17ToV18() error {
 
 	cv17 := &serverConfigV17{}
 	_, err := Load(configFile, cv17)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘17’. %w", err)
@@ -1483,7 +1484,7 @@ func migrateV18ToV19() error {
 
 	cv18 := &serverConfigV18{}
 	_, err := Load(configFile, cv18)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘18’. %w", err)
@@ -1589,7 +1590,7 @@ func migrateV19ToV20() error {
 
 	cv19 := &serverConfigV19{}
 	_, err := Load(configFile, cv19)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘18’. %w", err)
@@ -1694,7 +1695,7 @@ func migrateV20ToV21() error {
 
 	cv20 := &serverConfigV20{}
 	_, err := Load(configFile, cv20)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘20’. %w", err)
@@ -1798,7 +1799,7 @@ func migrateV21ToV22() error {
 
 	cv21 := &serverConfigV21{}
 	_, err := Load(configFile, cv21)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘21’. %w", err)
@@ -1902,7 +1903,7 @@ func migrateV22ToV23() error {
 
 	cv22 := &serverConfigV22{}
 	_, err := Load(configFile, cv22)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘22’. %w", err)
@@ -2015,7 +2016,7 @@ func migrateV23ToV24() error {
 
 	cv23 := &serverConfigV23{}
 	_, err := quick.LoadConfig(configFile, globalEtcdClient, cv23)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘23’. %w", err)
@@ -2128,7 +2129,7 @@ func migrateV24ToV25() error {
 
 	cv24 := &serverConfigV24{}
 	_, err := quick.LoadConfig(configFile, globalEtcdClient, cv24)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘24’. %w", err)
@@ -2246,7 +2247,7 @@ func migrateV25ToV26() error {
 
 	cv25 := &serverConfigV25{}
 	_, err := quick.LoadConfig(configFile, globalEtcdClient, cv25)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config version ‘25’. %w", err)
@@ -2368,7 +2369,7 @@ func migrateV26ToV27() error {
 	// in the new `logger` field
 	srvConfig := &serverConfigV27{}
 	_, err := quick.LoadConfig(configFile, globalEtcdClient, srvConfig)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config file. %w", err)
@@ -2401,7 +2402,7 @@ func migrateV27ToV28() error {
 
 	srvConfig := &serverConfigV28{}
 	_, err := quick.LoadConfig(configFile, globalEtcdClient, srvConfig)
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("Unable to load config file. %w", err)
@@ -2412,7 +2413,6 @@ func migrateV27ToV28() error {
 	}
 
 	srvConfig.Version = "28"
-	srvConfig.KMS = crypto.KMSConfig{}
 	if err = quick.SaveConfig(srvConfig, configFile, globalEtcdClient); err != nil {
 		return fmt.Errorf("Failed to migrate config from ‘27’ to ‘28’. %w", err)
 	}
@@ -2452,17 +2452,17 @@ func migrateConfigToMinioSys(objAPI ObjectLayer) (err error) {
 	var config = &serverConfigV27{}
 	for _, cfgFile := range configFiles {
 		if _, err = Load(cfgFile, config); err != nil {
-			if !os.IsNotExist(err) && !os.IsPermission(err) {
+			if !osIsNotExist(err) && !osIsPermission(err) {
 				return err
 			}
 			continue
 		}
 		break
 	}
-	if os.IsPermission(err) {
+	if osIsPermission(err) {
 		logger.Info("Older config found but not readable %s, proceeding to initialize new config anyways", err)
 	}
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	if osIsNotExist(err) || osIsPermission(err) {
 		// Initialize the server config, if no config exists.
 		return newSrvConfig(objAPI)
 	}
@@ -2507,13 +2507,28 @@ func checkConfigVersion(objAPI ObjectLayer, configFile string, version string) (
 		return false, nil, err
 	}
 
-	if globalConfigEncrypted && !utf8.Valid(data) {
-		data, err = madmin.DecryptData(globalActiveCred.String(), bytes.NewReader(data))
-		if err != nil {
-			if err == madmin.ErrMaliciousData {
-				return false, nil, config.ErrInvalidCredentialsBackendEncrypted(nil)
+	if !utf8.Valid(data) {
+		if GlobalKMS != nil {
+			data, err = config.DecryptBytes(GlobalKMS, data, kms.Context{
+				minioMetaBucket: path.Join(minioMetaBucket, configFile),
+			})
+			if err != nil {
+				data, err = madmin.DecryptData(globalActiveCred.String(), bytes.NewReader(data))
+				if err != nil {
+					if err == madmin.ErrMaliciousData {
+						return false, nil, config.ErrInvalidCredentialsBackendEncrypted(nil)
+					}
+					return false, nil, err
+				}
 			}
-			return false, nil, err
+		} else {
+			data, err = madmin.DecryptData(globalActiveCred.String(), bytes.NewReader(data))
+			if err != nil {
+				if err == madmin.ErrMaliciousData {
+					return false, nil, config.ErrInvalidCredentialsBackendEncrypted(nil)
+				}
+				return false, nil, err
+			}
 		}
 	}
 
@@ -2546,8 +2561,6 @@ func migrateV27ToV28MinioSys(objAPI ObjectLayer) error {
 	}
 
 	cfg.Version = "28"
-	cfg.KMS = crypto.KMSConfig{}
-
 	if err = saveServerConfig(GlobalContext, objAPI, cfg); err != nil {
 		return fmt.Errorf("Failed to migrate config from ‘27’ to ‘28’. %w", err)
 	}
@@ -2739,7 +2752,6 @@ func migrateMinioSysConfigToKV(objAPI ObjectLayer) error {
 		logger.SetLoggerHTTPAudit(newCfg, k, auditArgs)
 	}
 
-	crypto.SetKMSConfig(newCfg, cfg.KMS)
 	xldap.SetIdentityLDAP(newCfg, cfg.LDAPServerConfig)
 	openid.SetIdentityOpenID(newCfg, cfg.OpenID)
 	opa.SetPolicyOPAConfig(newCfg, cfg.Policy.OPA)
