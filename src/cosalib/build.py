@@ -88,10 +88,12 @@ class _Build:
         else:
             build = builds.get_latest()
 
+        self._basearch = kwargs.get("arch", None) or BASEARCH
+        log.info("Targeting architecture: %s", self.basearch)
         log.info("Targeting build: %s", build)
         self._build_dir = builds.get_build_dir(
             build,
-            basearch=kwargs.get("arch", BASEARCH)
+            basearch=self.basearch
         )
 
         # This is a bit subtle; but essentially, we want to verify that the
@@ -115,7 +117,8 @@ class _Build:
             "commit": None,
             "config": None,
             "image": None,
-            "meta": Meta(self.workdir, build, schema=schema)
+            "meta": Meta(self.workdir, build,
+                         basearch=self.basearch, schema=schema)
         }
 
         os.environ['workdir'] = self._workdir
@@ -252,7 +255,8 @@ class _Build:
 
     @property
     def basearch(self):
-        return self.meta.get("coreos-assembler.basearch", BASEARCH)
+        """ get the target architecture """
+        return self._basearch
 
     def ensure_built(self):
         if not self.have_artifact:

@@ -329,15 +329,18 @@ func (a *API) CreateImportRole(bucket string) error {
 	return nil
 }
 
-func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string) (string, error) {
+func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string) (string, error) {
 	var awsArch string
-	switch runtime.GOARCH {
-	case "amd64":
+	if architecture == "" {
+		architecture = runtime.GOARCH
+	}
+	switch architecture {
+	case "amd64", "x86_64":
 		awsArch = ec2.ArchitectureTypeX8664
-	case "arm64":
+	case "arm64", "aarch64":
 		awsArch = ec2.ArchitectureTypeArm64
 	default:
-		return "", fmt.Errorf("unsupported ec2 architecture %q", runtime.GOARCH)
+		return "", fmt.Errorf("unsupported ec2 architecture %q", architecture)
 	}
 
 	return a.createImage(&ec2.RegisterImageInput{
@@ -431,6 +434,7 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	var imageID string
 	if err == nil {
 		imageID = *res.ImageId
+		plog.Infof("created image %v", imageID)
 	} else if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
 		// The AMI already exists. Get its ID. Due to races, this
 		// may take several attempts.

@@ -50,7 +50,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadSourceObject       string
 	uploadBucket             string
 	uploadImageName          string
-	uploadBoard              string
+	uploadImageArchitecture  string
 	uploadFile               string
 	uploadDiskSizeGiB        uint
 	uploadDiskSizeInspect    bool
@@ -70,7 +70,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadSourceObject, "source-object", "", "'s3://' URI pointing to image data (default: same as upload)")
 	cmdUpload.Flags().StringVar(&uploadBucket, "bucket", "", "s3://bucket/prefix/ (defaults to a regional bucket and prefix defaults to $USER/board/name)")
 	cmdUpload.Flags().StringVar(&uploadImageName, "name", "", "name of uploaded image")
-	cmdUpload.Flags().StringVar(&uploadBoard, "board", "amd64-usr", "board used for naming with default prefix only")
+	cmdUpload.Flags().StringVar(&uploadImageArchitecture, "arch", "", "The target architecture for the AMI")
 	cmdUpload.Flags().StringVar(&uploadFile, "file", "", "path to CoreOS image")
 	cmdUpload.Flags().UintVarP(&uploadDiskSizeGiB, "disk-size-gib", "", aws.ContainerLinuxDiskSizeGiB, "AMI disk size in GiB")
 	cmdUpload.Flags().BoolVar(&uploadDiskSizeInspect, "disk-size-inspect", false, "set AMI disk size to size of local file")
@@ -92,7 +92,7 @@ func defaultBucketNameForRegion(region string) string {
 // defaultBucketURL determines the location the tool should upload to.
 // The 'urlPrefix' parameter, if it contains a path, will override all other
 // arguments
-func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.URL, error) {
+func defaultBucketURL(urlPrefix, file, region string) (*url.URL, error) {
 	if urlPrefix == "" {
 		urlPrefix = fmt.Sprintf("s3://%s", defaultBucketNameForRegion(region))
 	}
@@ -108,9 +108,9 @@ func defaultBucketURL(urlPrefix, imageName, board, file, region string) (*url.UR
 		return nil, fmt.Errorf("URL missing bucket name %v\n", urlPrefix)
 	}
 
-	// if prefix not specified, default to /$USER/$BOARD/$VERSION
+	// if prefix not specified, default to 'ami-import'
 	if s3URL.Path == "" {
-		s3URL.Path = fmt.Sprintf("/%s/%s/%s", os.Getenv("USER"), board, imageName)
+		s3URL.Path = "/ami-import"
 	}
 
 	if s3URL.Path[len(s3URL.Path)-1] != '/' {
@@ -171,7 +171,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 	} else {
-		s3URL, err = defaultBucketURL(uploadBucket, uploadImageName, uploadBoard, uploadFile, region)
+		s3URL, err = defaultBucketURL(uploadBucket, uploadFile, region)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
@@ -241,7 +241,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription)
+	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)
