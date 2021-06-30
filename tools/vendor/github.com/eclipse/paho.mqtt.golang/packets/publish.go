@@ -16,12 +16,7 @@ type PublishPacket struct {
 }
 
 func (p *PublishPacket) String() string {
-	str := fmt.Sprintf("%s", p.FixedHeader)
-	str += " "
-	str += fmt.Sprintf("topicName: %s MessageID: %d", p.TopicName, p.MessageID)
-	str += " "
-	str += fmt.Sprintf("payload: %s", string(p.Payload))
-	return str
+	return fmt.Sprintf("%s topicName: %s MessageID: %d payload: %s", p.FixedHeader, p.TopicName, p.MessageID, string(p.Payload))
 }
 
 func (p *PublishPacket) Write(w io.Writer) error {
@@ -61,7 +56,7 @@ func (p *PublishPacket) Unpack(b io.Reader) error {
 		payloadLength -= len(p.TopicName) + 2
 	}
 	if payloadLength < 0 {
-		return fmt.Errorf("Error unpacking publish, payload length < 0")
+		return fmt.Errorf("error unpacking publish, payload length < 0")
 	}
 	p.Payload = make([]byte, payloadLength)
 	_, err = b.Read(p.Payload)

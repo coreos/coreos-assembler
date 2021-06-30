@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2016-2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -23,10 +24,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/minio/minio/cmd/logger"
+	"github.com/minio/minio/internal/logger"
 )
-
-var errHealRequired = errors.New("heal required")
 
 // Reads in parallel from readers.
 type parallelReader struct {
@@ -118,12 +117,15 @@ func (p *parallelReader) Read(dst [][]byte) ([][]byte, error) {
 	}
 
 	readTriggerCh := make(chan bool, len(p.readers))
+	defer close(readTriggerCh) // close the channel upon return
+
 	for i := 0; i < p.dataBlocks; i++ {
 		// Setup read triggers for p.dataBlocks number of reads so that it reads in parallel.
 		readTriggerCh <- true
 	}
 
-	healRequired := int32(0) // Atomic bool flag.
+	bitrotHeal := int32(0)       // Atomic bool flag.
+	missingPartsHeal := int32(0) // Atomic bool flag.
 	readerIndex := 0
 	var wg sync.WaitGroup
 	// if readTrigger is true, it implies next disk.ReadAt() should be tried
@@ -160,21 +162,24 @@ func (p *parallelReader) Read(dst [][]byte) ([][]byte, error) {
 			// For the last shard, the shardsize might be less than previous shard sizes.
 			// Hence the following statement ensures that the buffer size is reset to the right size.
 			p.buf[bufIdx] = p.buf[bufIdx][:p.shardSize]
-			_, err := rr.ReadAt(p.buf[bufIdx], p.offset)
+			n, err := rr.ReadAt(p.buf[bufIdx], p.offset)
 			if err != nil {
-				if _, ok := err.(*errHashMismatch); ok {
-					atomic.StoreInt32(&healRequired, 1)
+				if errors.Is(err, errFileNotFound) {
+					atomic.StoreInt32(&missingPartsHeal, 1)
+				} else if errors.Is(err, errFileCorrupt) {
+					atomic.StoreInt32(&bitrotHeal, 1)
 				}
 
 				// This will be communicated upstream.
 				p.orgReaders[bufIdx] = nil
 				p.readers[i] = nil
+
 				// Since ReadAt returned error, trigger another read.
 				readTriggerCh <- true
 				return
 			}
 			newBufLK.Lock()
-			newBuf[bufIdx] = p.buf[bufIdx]
+			newBuf[bufIdx] = p.buf[bufIdx][:n]
 			newBufLK.Unlock()
 			// Since ReadAt returned success, there is no need to trigger another read.
 			readTriggerCh <- false
@@ -182,53 +187,34 @@ func (p *parallelReader) Read(dst [][]byte) ([][]byte, error) {
 		readerIndex++
 	}
 	wg.Wait()
-
 	if p.canDecode(newBuf) {
 		p.offset += p.shardSize
-		if healRequired != 0 {
-			return newBuf, errHealRequired
+		if atomic.LoadInt32(&missingPartsHeal) == 1 {
+			return newBuf, errFileNotFound
+		} else if atomic.LoadInt32(&bitrotHeal) == 1 {
+			return newBuf, errFileCorrupt
 		}
 		return newBuf, nil
 	}
 
+	// If we cannot decode, just return read quorum error.
 	return nil, errErasureReadQuorum
-}
-
-type errDecodeHealRequired struct {
-	err error
-}
-
-func (err *errDecodeHealRequired) Error() string {
-	return err.err.Error()
-}
-
-func (err *errDecodeHealRequired) Unwrap() error {
-	return err.err
 }
 
 // Decode reads from readers, reconstructs data if needed and writes the data to the writer.
 // A set of preferred drives can be supplied. In that case they will be used and the data reconstructed.
-func (e Erasure) Decode(ctx context.Context, writer io.Writer, readers []io.ReaderAt, offset, length, totalLength int64, prefer []bool) error {
-	healRequired, err := e.decode(ctx, writer, readers, offset, length, totalLength, prefer)
-	if healRequired {
-		return &errDecodeHealRequired{err}
-	}
-
-	return err
-}
-
-// Decode reads from readers, reconstructs data if needed and writes the data to the writer.
-func (e Erasure) decode(ctx context.Context, writer io.Writer, readers []io.ReaderAt, offset, length, totalLength int64, prefer []bool) (bool, error) {
+func (e Erasure) Decode(ctx context.Context, writer io.Writer, readers []io.ReaderAt, offset, length, totalLength int64, prefer []bool) (written int64, derr error) {
 	if offset < 0 || length < 0 {
 		logger.LogIf(ctx, errInvalidArgument)
-		return false, errInvalidArgument
+		return -1, errInvalidArgument
 	}
 	if offset+length > totalLength {
 		logger.LogIf(ctx, errInvalidArgument)
-		return false, errInvalidArgument
+		return -1, errInvalidArgument
 	}
+
 	if length == 0 {
-		return false, nil
+		return 0, nil
 	}
 
 	reader := newParallelReader(readers, e, offset, totalLength)
@@ -239,7 +225,6 @@ func (e Erasure) decode(ctx context.Context, writer io.Writer, readers []io.Read
 	startBlock := offset / e.blockSize
 	endBlock := (offset + length) / e.blockSize
 
-	var healRequired bool
 	var bytesWritten int64
 	var bufs [][]byte
 	for block := startBlock; block <= endBlock; block++ {
@@ -261,30 +246,39 @@ func (e Erasure) decode(ctx context.Context, writer io.Writer, readers []io.Read
 		if blockLength == 0 {
 			break
 		}
+
 		var err error
 		bufs, err = reader.Read(bufs)
-		if err != nil {
-			if errors.Is(err, errHealRequired) {
-				// errHealRequired is only returned if there are be enough data for reconstruction.
-				healRequired = true
-			} else {
-				return healRequired, err
+		if len(bufs) > 0 {
+			// Set only if there are be enough data for reconstruction.
+			// and only for expected errors, also set once.
+			if errors.Is(err, errFileNotFound) || errors.Is(err, errFileCorrupt) {
+				if derr == nil {
+					derr = err
+				}
 			}
+		} else if err != nil {
+			// For all errors that cannot be reconstructed fail the read operation.
+			return -1, err
 		}
+
 		if err = e.DecodeDataBlocks(bufs); err != nil {
 			logger.LogIf(ctx, err)
-			return healRequired, err
+			return -1, err
 		}
+
 		n, err := writeDataBlocks(ctx, writer, bufs, e.dataBlocks, blockOffset, blockLength)
 		if err != nil {
-			return healRequired, err
+			return -1, err
 		}
+
 		bytesWritten += n
 	}
+
 	if bytesWritten != length {
 		logger.LogIf(ctx, errLessData)
-		return healRequired, errLessData
+		return bytesWritten, errLessData
 	}
 
-	return healRequired, nil
+	return bytesWritten, derr
 }

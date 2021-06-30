@@ -9,7 +9,7 @@ import (
 	"time"
 
 	hdfs "github.com/colinmarc/hdfs/v2/internal/protocol/hadoop_hdfs"
-	"github.com/colinmarc/hdfs/v2/internal/rpc"
+	"github.com/colinmarc/hdfs/v2/internal/transfer"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -22,7 +22,7 @@ type FileReader struct {
 	info   os.FileInfo
 
 	blocks      []*hdfs.LocatedBlockProto
-	blockReader *rpc.BlockReader
+	blockReader *transfer.BlockReader
 	deadline    time.Time
 	offset      int64
 
@@ -97,14 +97,21 @@ func (f *FileReader) Checksum() ([]byte, error) {
 	paddedLength := 32
 	totalLength := 0
 	checksum := md5.New()
+
 	for _, block := range f.blocks {
-		cr := &rpc.ChecksumReader{
-			Block:               block,
-			UseDatanodeHostname: f.client.options.UseDatanodeHostname,
-			DialFunc:            f.client.options.DatanodeDialFunc,
+		d, err := f.client.wrapDatanodeDial(f.client.options.DatanodeDialFunc,
+			block.GetBlockToken())
+		if err != nil {
+			return nil, err
 		}
 
-		err := cr.SetDeadline(f.deadline)
+		cr := &transfer.ChecksumReader{
+			Block:               block,
+			UseDatanodeHostname: f.client.options.UseDatanodeHostname,
+			DialFunc:            d,
+		}
+
+		err = cr.SetDeadline(f.deadline)
 		if err != nil {
 			return nil, err
 		}
@@ -187,14 +194,14 @@ func (f *FileReader) Read(b []byte) (int, error) {
 		}
 	}
 
-	if f.blockReader == nil {
-		err := f.getNewBlockReader()
-		if err != nil {
-			return 0, err
-		}
-	}
-
 	for {
+		if f.blockReader == nil {
+			err := f.getNewBlockReader()
+			if err != nil {
+				return 0, err
+			}
+		}
+
 		n, err := f.blockReader.Read(b)
 		f.offset += int64(n)
 
@@ -204,9 +211,12 @@ func (f *FileReader) Read(b []byte) (int, error) {
 			return n, err
 		} else if n > 0 {
 			return n, nil
-		} else {
-			f.blockReader.Close()
-			f.getNewBlockReader()
+		}
+
+		err = f.blockReader.Close()
+		f.blockReader = nil
+		if err != nil {
+			return n, err
 		}
 	}
 }
@@ -397,12 +407,19 @@ func (f *FileReader) getNewBlockReader() error {
 		end := start + block.GetB().GetNumBytes()
 
 		if start <= off && off < end {
-			f.blockReader = &rpc.BlockReader{
+			dialFunc, err := f.client.wrapDatanodeDial(
+				f.client.options.DatanodeDialFunc,
+				block.GetBlockToken())
+			if err != nil {
+				return err
+			}
+
+			f.blockReader = &transfer.BlockReader{
 				ClientName:          f.client.namenode.ClientName,
 				Block:               block,
 				Offset:              int64(off - start),
 				UseDatanodeHostname: f.client.options.UseDatanodeHostname,
-				DialFunc:            f.client.options.DatanodeDialFunc,
+				DialFunc:            dialFunc,
 			}
 
 			return f.SetDeadline(f.deadline)

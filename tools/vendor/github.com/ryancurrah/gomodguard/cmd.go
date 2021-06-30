@@ -82,10 +82,15 @@ func Run() int {
 
 	filteredFiles := GetFilteredFiles(cwd, noTest, args)
 
-	processor, err := NewProcessor(*config, logger)
+	processor, err := NewProcessor(config)
 	if err != nil {
 		logger.Fatalf("error: %s", err)
 	}
+
+	logger.Printf("info: allowed modules, %+v", config.Allowed.Modules)
+	logger.Printf("info: allowed module domains, %+v", config.Allowed.Domains)
+	logger.Printf("info: blocked modules, %+v", config.Blocked.Modules.Get())
+	logger.Printf("info: blocked modules with version constraints, %+v", config.Blocked.Versions.Get())
 
 	results := processor.ProcessFiles(filteredFiles)
 
@@ -192,7 +197,7 @@ Flags:`
 }
 
 // WriteCheckstyle takes the results and writes them to a checkstyle formated file.
-func WriteCheckstyle(checkstyleFilePath string, results []Result) error {
+func WriteCheckstyle(checkstyleFilePath string, results []Issue) error {
 	check := checkstyle.New()
 
 	for i := range results {

@@ -41,19 +41,31 @@ func LintFmtErrorfCalls(fset *token.FileSet, info types.Info) []Lint {
 		if !ok {
 			continue
 		}
-		// For all arguments that are errors, check whether the wrapping verb
-		// is used.
-		for i, arg := range call.Args[1:] {
-			if info.Types[arg].Type.String() != "error" && !isErrorStringCall(info, arg) {
+
+		// For any arguments that are errors, check whether the wrapping verb
+		// is used. Only one %w verb may be used in a single format string at a
+		// time, so we stop after finding a correct %w.
+		var lintArg ast.Expr
+		args := call.Args[1:]
+		for i := 0; i < len(args) && i < len(formatVerbs); i++ {
+			if info.Types[args[i]].Type.String() != "error" && !isErrorStringCall(info, args[i]) {
 				continue
 			}
 
-			if len(formatVerbs) >= i && formatVerbs[i] != "%w" {
-				lints = append(lints, Lint{
-					Message: "non-wrapping format verb for fmt.Errorf. Use `%w` to format errors",
-					Pos:     arg.Pos(),
-				})
+			if formatVerbs[i] == "%w" {
+				lintArg = nil
+				break
 			}
+
+			if lintArg == nil {
+				lintArg = args[i]
+			}
+		}
+		if lintArg != nil {
+			lints = append(lints, Lint{
+				Message: "non-wrapping format verb for fmt.Errorf. Use `%w` to format errors",
+				Pos:     lintArg.Pos(),
+			})
 		}
 	}
 	return lints
@@ -127,6 +139,10 @@ func LintErrorComparisons(fset *token.FileSet, info types.Info) []Lint {
 		}
 		// Find comparisons of which one side is a of type error.
 		if !isErrorComparison(info, binExpr) {
+			continue
+		}
+
+		if isAllowedErrorComparison(info, binExpr) {
 			continue
 		}
 

@@ -42,6 +42,17 @@ func NativeAES() bool {
 		return true
 	}
 
+	// Go 1.14 introduces an AES-GCM asm implementation
+	// for PPC64le. Therefore, we have to use build tags
+	// to determine whether we're compiling for PPC64 and
+	// use Go 1.14 (or newer).
+	// TODO(aead): Once we drop Go 1.13 support
+	// (bump go version in go.mod) we can remove
+	// pcc64-related build tags again.
+	if ppcHasAES {
+		return true
+	}
+
 	// On s390x, aes.NewCipher(...) returns a type
 	// that provides AES asm implementations only
 	// if all (CBC, CTR and GCM) AES hardware

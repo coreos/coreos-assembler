@@ -64,6 +64,7 @@ type AdvancedRemoveOptions struct {
 	ReplicationDeleteMarker bool
 	ReplicationStatus       ReplicationStatus
 	ReplicationMTime        time.Time
+	ReplicationRequest      bool
 }
 
 // RemoveObjectOptions represents options specified by user for RemoveObject call
@@ -107,10 +108,13 @@ func (c Client) removeObject(ctx context.Context, bucketName, objectName string,
 		headers.Set(minIOBucketReplicationDeleteMarker, "true")
 	}
 	if !opts.Internal.ReplicationMTime.IsZero() {
-		headers.Set(minIOBucketSourceMTime, opts.Internal.ReplicationMTime.Format(time.RFC3339))
+		headers.Set(minIOBucketSourceMTime, opts.Internal.ReplicationMTime.Format(time.RFC3339Nano))
 	}
 	if !opts.Internal.ReplicationStatus.Empty() {
 		headers.Set(amzBucketReplicationStatus, string(opts.Internal.ReplicationStatus))
+	}
+	if opts.Internal.ReplicationRequest {
+		headers.Set(minIOBucketReplicationRequest, "")
 	}
 	// Execute DELETE on objectName.
 	resp, err := c.executeMethod(ctx, http.MethodDelete, requestMetadata{
@@ -170,8 +174,14 @@ func processRemoveMultiObjectsResponse(body io.Reader, objects []ObjectInfo, err
 
 	// Fill deletion that returned an error.
 	for _, obj := range rmResult.UnDeletedObjects {
+		// Version does not exist is not an error ignore and continue.
+		switch obj.Code {
+		case "InvalidArgument", "NoSuchVersion":
+			continue
+		}
 		errorCh <- RemoveObjectError{
 			ObjectName: obj.Key,
+			VersionID:  obj.VersionID,
 			Err: ErrorResponse{
 				Code:    obj.Code,
 				Message: obj.Message,
@@ -254,9 +264,21 @@ func (c Client) removeObjects(ctx context.Context, bucketName string, objectsCh 
 		for object := range objectsCh {
 			if hasInvalidXMLChar(object.Key) {
 				// Use single DELETE so the object name will be in the request URL instead of the multi-delete XML document.
-				err := c.removeObject(ctx, bucketName, object.Key, RemoveObjectOptions{GovernanceBypass: opts.GovernanceBypass})
+				err := c.removeObject(ctx, bucketName, object.Key, RemoveObjectOptions{
+					VersionID:        object.VersionID,
+					GovernanceBypass: opts.GovernanceBypass,
+				})
 				if err != nil {
-					errorCh <- RemoveObjectError{ObjectName: object.Key, Err: err}
+					// Version does not exist is not an error ignore and continue.
+					switch ToErrorResponse(err).Code {
+					case "InvalidArgument", "NoSuchVersion":
+						continue
+					}
+					errorCh <- RemoveObjectError{
+						ObjectName: object.Key,
+						VersionID:  object.VersionID,
+						Err:        err,
+					}
 				}
 				continue
 			}

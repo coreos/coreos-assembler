@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2019-2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -21,10 +22,12 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/pkg/auth"
-	objectlock "github.com/minio/minio/pkg/bucket/object/lock"
-	"github.com/minio/minio/pkg/bucket/policy"
+	"github.com/minio/minio/internal/auth"
+	objectlock "github.com/minio/minio/internal/bucket/object/lock"
+	"github.com/minio/minio/internal/bucket/replication"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
+	"github.com/minio/pkg/bucket/policy"
 )
 
 // BucketObjectLockSys - map of bucket and retention configuration.
@@ -80,24 +83,25 @@ func enforceRetentionForDeletion(ctx context.Context, objInfo ObjectInfo) (locke
 // For objects in "Governance" mode, overwrite is allowed if a) object retention date is past OR
 // governance bypass headers are set and user has governance bypass permissions.
 // Objects in "Compliance" mode can be overwritten only if retention date is past.
-func enforceRetentionBypassForDelete(ctx context.Context, r *http.Request, bucket string, object ObjectToDelete, getObjectInfoFn GetObjectInfoFn) APIErrorCode {
+func enforceRetentionBypassForDelete(ctx context.Context, r *http.Request, bucket string, object ObjectToDelete, oi ObjectInfo, gerr error) APIErrorCode {
 	opts, err := getOpts(ctx, r, bucket, object.ObjectName)
 	if err != nil {
 		return toAPIErrorCode(ctx, err)
 	}
 
 	opts.VersionID = object.VersionID
-
-	oi, err := getObjectInfoFn(ctx, bucket, object.ObjectName, opts)
-	if err != nil {
-		switch err.(type) {
+	if gerr != nil { // error from GetObjectInfo
+		switch gerr.(type) {
 		case MethodNotAllowed: // This happens usually for a delete marker
 			if oi.DeleteMarker {
 				// Delete marker should be present and valid.
 				return ErrNone
 			}
 		}
-		return toAPIErrorCode(ctx, err)
+		if isErrObjectNotFound(gerr) || isErrVersionNotFound(gerr) {
+			return ErrNone
+		}
+		return toAPIErrorCode(ctx, gerr)
 	}
 
 	lhold := objectlock.GetObjectLegalHoldMeta(oi.UserDefined)
@@ -245,13 +249,13 @@ func enforceRetentionBypassForPut(ctx context.Context, r *http.Request, bucket, 
 // For objects in "Compliance" mode, retention date cannot be shortened, and mode cannot be altered.
 // For objects with legal hold header set, the s3:PutObjectLegalHold permission is expected to be set
 // Both legal hold and retention can be applied independently on an object
-func checkPutObjectLockAllowed(ctx context.Context, r *http.Request, bucket, object string, getObjectInfoFn GetObjectInfoFn, retentionPermErr, legalHoldPermErr APIErrorCode) (objectlock.RetMode, objectlock.RetentionDate, objectlock.ObjectLegalHold, APIErrorCode) {
+func checkPutObjectLockAllowed(ctx context.Context, rq *http.Request, bucket, object string, getObjectInfoFn GetObjectInfoFn, retentionPermErr, legalHoldPermErr APIErrorCode) (objectlock.RetMode, objectlock.RetentionDate, objectlock.ObjectLegalHold, APIErrorCode) {
 	var mode objectlock.RetMode
 	var retainDate objectlock.RetentionDate
 	var legalHold objectlock.ObjectLegalHold
 
-	retentionRequested := objectlock.IsObjectLockRetentionRequested(r.Header)
-	legalHoldRequested := objectlock.IsObjectLockLegalHoldRequested(r.Header)
+	retentionRequested := objectlock.IsObjectLockRetentionRequested(rq.Header)
+	legalHoldRequested := objectlock.IsObjectLockLegalHoldRequested(rq.Header)
 
 	retentionCfg, err := globalBucketObjectLockSys.Get(bucket)
 	if err != nil {
@@ -267,25 +271,24 @@ func checkPutObjectLockAllowed(ctx context.Context, r *http.Request, bucket, obj
 		return mode, retainDate, legalHold, ErrNone
 	}
 
-	opts, err := getOpts(ctx, r, bucket, object)
+	opts, err := getOpts(ctx, rq, bucket, object)
 	if err != nil {
 		return mode, retainDate, legalHold, toAPIErrorCode(ctx, err)
 	}
 
-	if opts.VersionID != "" {
+	replica := rq.Header.Get(xhttp.AmzBucketReplicationStatus) == replication.Replica.String()
+
+	if opts.VersionID != "" && !replica {
 		if objInfo, err := getObjectInfoFn(ctx, bucket, object, opts); err == nil {
 			r := objectlock.GetObjectRetentionMeta(objInfo.UserDefined)
-
 			t, err := objectlock.UTCNowNTP()
 			if err != nil {
 				logger.LogIf(ctx, err)
 				return mode, retainDate, legalHold, ErrObjectLocked
 			}
-
 			if r.Mode == objectlock.RetCompliance && r.RetainUntilDate.After(t) {
 				return mode, retainDate, legalHold, ErrObjectLocked
 			}
-
 			mode = r.Mode
 			retainDate = r.RetainUntilDate
 			legalHold = objectlock.GetObjectLegalHoldMeta(objInfo.UserDefined)
@@ -298,17 +301,17 @@ func checkPutObjectLockAllowed(ctx context.Context, r *http.Request, bucket, obj
 
 	if legalHoldRequested {
 		var lerr error
-		if legalHold, lerr = objectlock.ParseObjectLockLegalHoldHeaders(r.Header); lerr != nil {
+		if legalHold, lerr = objectlock.ParseObjectLockLegalHoldHeaders(rq.Header); lerr != nil {
 			return mode, retainDate, legalHold, toAPIErrorCode(ctx, err)
 		}
 	}
 
 	if retentionRequested {
-		legalHold, err := objectlock.ParseObjectLockLegalHoldHeaders(r.Header)
+		legalHold, err := objectlock.ParseObjectLockLegalHoldHeaders(rq.Header)
 		if err != nil {
 			return mode, retainDate, legalHold, toAPIErrorCode(ctx, err)
 		}
-		rMode, rDate, err := objectlock.ParseObjectLockRetentionHeaders(r.Header)
+		rMode, rDate, err := objectlock.ParseObjectLockRetentionHeaders(rq.Header)
 		if err != nil {
 			return mode, retainDate, legalHold, toAPIErrorCode(ctx, err)
 		}
@@ -317,7 +320,9 @@ func checkPutObjectLockAllowed(ctx context.Context, r *http.Request, bucket, obj
 		}
 		return rMode, rDate, legalHold, ErrNone
 	}
-
+	if replica { // replica inherits retention metadata only from source
+		return "", objectlock.RetentionDate{}, legalHold, ErrNone
+	}
 	if !retentionRequested && retentionCfg.Validity > 0 {
 		if retentionPermErr != ErrNone {
 			return mode, retainDate, legalHold, retentionPermErr

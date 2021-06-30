@@ -17,24 +17,32 @@ func NewAnalyzer() *analysis.Analyzer {
 }
 
 var (
-	flagSet     flag.FlagSet
-	checkErrorf bool
+	flagSet         flag.FlagSet
+	checkComparison bool
+	checkAsserts    bool
+	checkErrorf     bool
 )
 
 func init() {
+	flagSet.BoolVar(&checkComparison, "comparison", true, "Check for plain error comparisons")
+	flagSet.BoolVar(&checkAsserts, "asserts", true, "Check for plain type assertions and type switches")
 	flagSet.BoolVar(&checkErrorf, "errorf", false, "Check whether fmt.Errorf uses the %w verb for formatting errors. See the readme for caveats")
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	lints := []Lint{}
+	if checkComparison {
+		l := LintErrorComparisons(pass.Fset, *pass.TypesInfo)
+		lints = append(lints, l...)
+	}
+	if checkAsserts {
+		l := LintErrorTypeAssertions(pass.Fset, *pass.TypesInfo)
+		lints = append(lints, l...)
+	}
 	if checkErrorf {
 		l := LintFmtErrorfCalls(pass.Fset, *pass.TypesInfo)
 		lints = append(lints, l...)
 	}
-	l := LintErrorComparisons(pass.Fset, *pass.TypesInfo)
-	lints = append(lints, l...)
-	l = LintErrorTypeAssertions(pass.Fset, *pass.TypesInfo)
-	lints = append(lints, l...)
 	sort.Sort(ByPosition(lints))
 
 	for _, l := range lints {

@@ -1,33 +1,35 @@
-/*
- * MinIO Cloud Storage, (C) 2017-2019 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/minio/minio/cmd/config"
-	xhttp "github.com/minio/minio/cmd/http"
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/pkg/env"
-	"github.com/minio/minio/pkg/hash"
-	xnet "github.com/minio/minio/pkg/net"
+	"github.com/minio/minio/internal/config"
+	"github.com/minio/minio/internal/hash"
+	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
+	"github.com/minio/pkg/env"
+	xnet "github.com/minio/pkg/net"
 
 	minio "github.com/minio/minio-go/v7"
 )
@@ -254,25 +256,18 @@ func ToMinioClientCompleteParts(parts []CompletePart) []minio.CompletePart {
 // IsBackendOnline - verifies if the backend is reachable
 // by performing a GET request on the URL. returns 'true'
 // if backend is reachable.
-func IsBackendOnline(ctx context.Context, clnt *http.Client, urlStr string) bool {
+func IsBackendOnline(ctx context.Context, host string) bool {
+	var d net.Dialer
+
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 
-	// never follow redirects
-	clnt.CheckRedirect = func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
+	conn, err := d.DialContext(ctx, "tcp", host)
 	if err != nil {
 		return false
 	}
-	resp, err := clnt.Do(req)
-	if err != nil {
-		clnt.CloseIdleConnections()
-		return !xnet.IsNetworkOrHostDown(err)
-	}
-	xhttp.DrainBody(resp.Body)
+
+	conn.Close()
 	return true
 }
 
@@ -291,7 +286,7 @@ func ErrorRespToObjectError(err error, params ...string) error {
 		object = params[1]
 	}
 
-	if xnet.IsNetworkOrHostDown(err) {
+	if xnet.IsNetworkOrHostDown(err, false) {
 		return BackendDown{}
 	}
 
@@ -395,7 +390,7 @@ func shouldMeterRequest(req *http.Request) bool {
 // MetricsTransport is a custom wrapper around Transport to track metrics
 type MetricsTransport struct {
 	Transport *http.Transport
-	Metrics   *Metrics
+	Metrics   *BackendMetrics
 }
 
 // RoundTrip implements the RoundTrip method for MetricsTransport

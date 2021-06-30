@@ -144,6 +144,12 @@ type Config struct {
 	// the build system's query tool.
 	BuildFlags []string
 
+	// modFile will be used for -modfile in go command invocations.
+	modFile string
+
+	// modFlag will be used for -modfile in go command invocations.
+	modFlag string
+
 	// Fset provides source position information for syntax trees and types.
 	// If Fset is nil, Load will use a new fileset, but preserve Fset's value.
 	Fset *token.FileSet
@@ -333,6 +339,9 @@ type Package struct {
 	// forTest is the package under test, if any.
 	forTest string
 
+	// depsErrors is the DepsErrors field from the go list response, if any.
+	depsErrors []*packagesinternal.PackageError
+
 	// module is the module information for the package if it exists.
 	Module *Module
 }
@@ -360,11 +369,20 @@ func init() {
 	packagesinternal.GetForTest = func(p interface{}) string {
 		return p.(*Package).forTest
 	}
+	packagesinternal.GetDepsErrors = func(p interface{}) []*packagesinternal.PackageError {
+		return p.(*Package).depsErrors
+	}
 	packagesinternal.GetGoCmdRunner = func(config interface{}) *gocommand.Runner {
 		return config.(*Config).gocmdRunner
 	}
 	packagesinternal.SetGoCmdRunner = func(config interface{}, runner *gocommand.Runner) {
 		config.(*Config).gocmdRunner = runner
+	}
+	packagesinternal.SetModFile = func(config interface{}, value string) {
+		config.(*Config).modFile = value
+	}
+	packagesinternal.SetModFlag = func(config interface{}, value string) {
+		config.(*Config).modFlag = value
 	}
 	packagesinternal.TypecheckCgo = int(typecheckCgo)
 }

@@ -1,11 +1,11 @@
 /*
- * MinIO Cloud Storage, (C) 2017-2020 MinIO, Inc.
+ * MinIO Object Storage (c) 2021 MinIO, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -35,46 +36,32 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/minio/pkg/env"
-
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/minio/cli"
+	"github.com/minio/madmin-go"
 	miniogopolicy "github.com/minio/minio-go/v7/pkg/policy"
-	"github.com/minio/minio/cmd/logger"
-	"github.com/minio/minio/pkg/auth"
-	"github.com/minio/minio/pkg/bucket/policy"
-	"github.com/minio/minio/pkg/bucket/policy/condition"
-	sha256 "github.com/minio/sha256-simd"
-
 	minio "github.com/minio/minio/cmd"
-)
-
-var (
-	azureUploadChunkSize   = getUploadChunkSizeFromEnv(azureChunkSizeEnvVar, strconv.Itoa(azureDefaultUploadChunkSize/humanize.MiByte))
-	azureSdkTimeout        = time.Duration(azureUploadChunkSize/humanize.MiByte) * azureSdkTimeoutPerMb
-	azureUploadConcurrency = azureUploadMaxMemoryUsage / azureUploadChunkSize
+	"github.com/minio/minio/internal/logger"
+	"github.com/minio/pkg/bucket/policy"
+	"github.com/minio/pkg/bucket/policy/condition"
+	"github.com/minio/pkg/env"
 )
 
 const (
-	// The defaultDialTimeout for communicating with the cloud backends is set
-	// to 30 seconds in utils.go; the Azure SDK recommends to set a timeout of 60
-	// seconds per MB of data a client expects to upload so we must transfer less
-	// than 0.5 MB per chunk to stay within the defaultDialTimeout tolerance.
-	// See https://github.com/Azure/azure-storage-blob-go/blob/fc70003/azblob/zc_policy_retry.go#L39-L44 for more details.
-	// To change the upload chunk size, set the environmental variable MINIO_AZURE_CHUNK_SIZE_MB with a (float) value between 0 and 100
-	azureDefaultUploadChunkSize = 25 * humanize.MiByte
-	azureSdkTimeoutPerMb        = 60 * time.Second
-	azureUploadMaxMemoryUsage   = 100 * humanize.MiByte
-	azureChunkSizeEnvVar        = "MINIO_AZURE_CHUNK_SIZE_MB"
+	azureDefaultUploadChunkSizeMB = 25
+	azureDownloadRetryAttempts    = 5
+	azureS3MinPartSize            = 5 * humanize.MiByte
+	metadataObjectNameTemplate    = minio.GatewayMinioSysTmp + "multipart/v1/%s.%x/azure.json"
+	azureMarkerPrefix             = "{minio}"
+	metadataPartNamePrefix        = minio.GatewayMinioSysTmp + "multipart/v1/%s.%x"
+	maxPartsCount                 = 10000
+)
 
-	azureDownloadRetryAttempts = 5
-	azureS3MinPartSize         = 5 * humanize.MiByte
-	metadataObjectNameTemplate = minio.GatewayMinioSysTmp + "multipart/v1/%s.%x/azure.json"
-	azureMarkerPrefix          = "{minio}"
-	metadataPartNamePrefix     = minio.GatewayMinioSysTmp + "multipart/v1/%s.%x"
-	maxPartsCount              = 10000
+var (
+	azureUploadChunkSize   int
+	azureUploadConcurrency int
 )
 
 func init() {
@@ -92,22 +79,21 @@ ENDPOINT:
 
 EXAMPLES:
   1. Start minio gateway server for Azure Blob Storage backend on custom endpoint.
-     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_ACCESS_KEY{{.AssignmentOperator}}azureaccountname
-     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_SECRET_KEY{{.AssignmentOperator}}azureaccountkey
-     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_AZURE_CHUNK_SIZE_MB {{.AssignmentOperator}}0.25
+     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_ROOT_USER{{.AssignmentOperator}}azureaccountname
+     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_ROOT_PASSWORD{{.AssignmentOperator}}azureaccountkey
      {{.Prompt}} {{.HelpName}} https://azureaccountname.blob.custom.azure.endpoint
 
   2. Start minio gateway server for Azure Blob Storage backend with edge caching enabled.
-     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_ACCESS_KEY{{.AssignmentOperator}}azureaccountname
-     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_SECRET_KEY{{.AssignmentOperator}}azureaccountkey
+     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_ROOT_USER{{.AssignmentOperator}}azureaccountname
+     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_ROOT_PASSWORD{{.AssignmentOperator}}azureaccountkey
      {{.Prompt}} {{.EnvVarSetCommand}} MINIO_CACHE_DRIVES{{.AssignmentOperator}}"/mnt/drive1,/mnt/drive2,/mnt/drive3,/mnt/drive4"
      {{.Prompt}} {{.EnvVarSetCommand}} MINIO_CACHE_EXCLUDE{{.AssignmentOperator}}"bucket1/*,*.png"
      {{.Prompt}} {{.EnvVarSetCommand}} MINIO_CACHE_QUOTA{{.AssignmentOperator}}90
      {{.Prompt}} {{.EnvVarSetCommand}} MINIO_CACHE_AFTER{{.AssignmentOperator}}3
      {{.Prompt}} {{.EnvVarSetCommand}} MINIO_CACHE_WATERMARK_LOW{{.AssignmentOperator}}75
      {{.Prompt}} {{.EnvVarSetCommand}} MINIO_CACHE_WATERMARK_HIGH{{.AssignmentOperator}}85
-     {{.Prompt}} {{.EnvVarSetCommand}} MINIO_AZURE_CHUNK_SIZE_MB {{.AssignmentOperator}}25
      {{.Prompt}} {{.HelpName}}
+
 `
 
 	minio.RegisterGatewayCommand(cli.Command{
@@ -140,27 +126,6 @@ func azureGatewayMain(ctx *cli.Context) {
 	minio.StartGateway(ctx, &Azure{host})
 }
 
-// getUploadChunkSizeFromEnv returns the parsed chunk size from the environmental variable 'MINIO_AZURE_CHUNK_SIZE_MB'
-// The environmental variable should be a floating point number between 0 and 100 representing the MegaBytes
-// The returned value is an int representing the size in bytes
-func getUploadChunkSizeFromEnv(envvar string, defaultValue string) int {
-	envChunkSize := env.Get(envvar, defaultValue)
-
-	i, err := strconv.ParseFloat(envChunkSize, 64)
-	if err != nil {
-		logger.LogIf(context.Background(), err)
-		return azureDefaultUploadChunkSize
-	}
-
-	if i <= 0 || i > 100 {
-		logger.LogIf(context.Background(), fmt.Errorf("ENV '%v' should be a floating point value between 0 and 100.\n"+
-			"The upload chunk size is set to its default: %s\n", azureChunkSizeEnvVar, defaultValue))
-		return azureDefaultUploadChunkSize
-	}
-
-	return int(i * humanize.MiByte)
-}
-
 // Azure implements Gateway.
 type Azure struct {
 	host string
@@ -172,8 +137,32 @@ func (g *Azure) Name() string {
 }
 
 // NewGatewayLayer initializes azure blob storage client and returns AzureObjects.
-func (g *Azure) NewGatewayLayer(creds auth.Credentials) (minio.ObjectLayer, error) {
+func (g *Azure) NewGatewayLayer(creds madmin.Credentials) (minio.ObjectLayer, error) {
+	var err error
+
+	// Override credentials from the Azure storage environment variables if specified
+	if acc, key := env.Get("AZURE_STORAGE_ACCOUNT", creds.AccessKey), env.Get("AZURE_STORAGE_KEY", creds.SecretKey); acc != "" && key != "" {
+		creds = madmin.Credentials{
+			AccessKey: acc,
+			SecretKey: key,
+		}
+	}
+
 	endpointURL, err := parseStorageEndpoint(g.host, creds.AccessKey)
+	if err != nil {
+		return nil, err
+	}
+
+	azureUploadChunkSize, err = env.GetInt("MINIO_AZURE_CHUNK_SIZE_MB", azureDefaultUploadChunkSizeMB)
+	if err != nil {
+		return nil, err
+	}
+	azureUploadChunkSize *= humanize.MiByte
+	if azureUploadChunkSize <= 0 || azureUploadChunkSize > 100*humanize.MiByte {
+		return nil, fmt.Errorf("MINIO_AZURE_CHUNK_SIZE_MB should be an integer value between 0 and 100")
+	}
+
+	azureUploadConcurrency, err = env.GetInt("MINIO_AZURE_UPLOAD_CONCURRENCY", 4)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +187,9 @@ func (g *Azure) NewGatewayLayer(creds auth.Credentials) (minio.ObjectLayer, erro
 
 	pipeline := azblob.NewPipeline(credential, azblob.PipelineOptions{
 		Retry: azblob.RetryOptions{
-			TryTimeout: azureSdkTimeout,
+			// Azure SDK recommends to set a timeout of 60 seconds per MB of data so we
+			// calculate here the timeout for the configured upload chunck size.
+			TryTimeout: time.Duration(azureUploadChunkSize/humanize.MiByte) * 60 * time.Second,
 		},
 		HTTPSender: pipeline.FactoryFunc(func(next pipeline.Policy, po *pipeline.PolicyOptions) pipeline.PolicyFunc {
 			return func(ctx context.Context, request pipeline.Request) (pipeline.Response, error) {
@@ -212,7 +203,7 @@ func (g *Azure) NewGatewayLayer(creds auth.Credentials) (minio.ObjectLayer, erro
 	client := azblob.NewServiceURL(*endpointURL, pipeline)
 
 	return &azureObjects{
-		endpoint:   endpointURL.String(),
+		endpoint:   endpointURL,
 		httpClient: httpClient,
 		client:     client,
 		metrics:    metrics,
@@ -250,11 +241,6 @@ func parseStorageEndpoint(host string, accountName string) (*url.URL, error) {
 	}
 
 	return url.Parse(endpoint)
-}
-
-// Production - Azure gateway is production ready.
-func (g *Azure) Production() bool {
-	return true
 }
 
 // s3MetaToAzureProperties converts metadata meant for S3 PUT/COPY
@@ -424,9 +410,9 @@ func azurePropertiesToS3Meta(meta azblob.Metadata, props azblob.BlobHTTPHeaders,
 // azureObjects - Implements Object layer for Azure blob storage.
 type azureObjects struct {
 	minio.GatewayUnsupported
-	endpoint   string
+	endpoint   *url.URL
 	httpClient *http.Client
-	metrics    *minio.Metrics
+	metrics    *minio.BackendMetrics
 	client     azblob.ServiceURL // Azure sdk client
 }
 
@@ -540,7 +526,7 @@ func parseAzurePart(metaPartFileName, prefix string) (partID int, err error) {
 }
 
 // GetMetrics returns this gateway's metrics
-func (a *azureObjects) GetMetrics(ctx context.Context) (*minio.Metrics, error) {
+func (a *azureObjects) GetMetrics(ctx context.Context) (*minio.BackendMetrics, error) {
 	return a.metrics, nil
 }
 
@@ -551,9 +537,13 @@ func (a *azureObjects) Shutdown(ctx context.Context) error {
 }
 
 // StorageInfo - Not relevant to Azure backend.
-func (a *azureObjects) StorageInfo(ctx context.Context, _ bool) (si minio.StorageInfo, _ []error) {
-	si.Backend.Type = minio.BackendGateway
-	si.Backend.GatewayOnline = minio.IsBackendOnline(ctx, a.httpClient, a.endpoint)
+func (a *azureObjects) StorageInfo(ctx context.Context) (si minio.StorageInfo, _ []error) {
+	si.Backend.Type = madmin.Gateway
+	host := a.endpoint.Host
+	if a.endpoint.Port() == "" {
+		host = a.endpoint.Host + ":" + a.endpoint.Scheme
+	}
+	si.Backend.GatewayOnline = minio.IsBackendOnline(ctx, host)
 	return si, nil
 }
 
@@ -796,9 +786,13 @@ func (a *azureObjects) GetObjectNInfo(ctx context.Context, bucket, object string
 		return nil, err
 	}
 
+	if startOffset != 0 || length != objInfo.Size {
+		delete(objInfo.UserDefined, "Content-MD5")
+	}
+
 	pr, pw := io.Pipe()
 	go func() {
-		err := a.GetObject(ctx, bucket, object, startOffset, length, pw, objInfo.ETag, opts)
+		err := a.getObject(ctx, bucket, object, startOffset, length, pw, objInfo.InnerETag, opts)
 		pw.CloseWithError(err)
 	}()
 	// Setup cleanup function to cause the above go-routine to
@@ -813,14 +807,19 @@ func (a *azureObjects) GetObjectNInfo(ctx context.Context, bucket, object string
 //
 // startOffset indicates the starting read location of the object.
 // length indicates the total length of the object.
-func (a *azureObjects) GetObject(ctx context.Context, bucket, object string, startOffset int64, length int64, writer io.Writer, etag string, opts minio.ObjectOptions) error {
+func (a *azureObjects) getObject(ctx context.Context, bucket, object string, startOffset int64, length int64, writer io.Writer, etag string, opts minio.ObjectOptions) error {
 	// startOffset cannot be negative.
 	if startOffset < 0 {
 		return azureToObjectError(minio.InvalidRange{}, bucket, object)
 	}
 
+	accessCond := azblob.BlobAccessConditions{}
+	if etag != "" {
+		accessCond.ModifiedAccessConditions.IfMatch = azblob.ETag(etag)
+	}
+
 	blobURL := a.client.NewContainerURL(bucket).NewBlobURL(object)
-	blob, err := blobURL.Download(ctx, startOffset, length, azblob.BlobAccessConditions{}, false)
+	blob, err := blobURL.Download(ctx, startOffset, length, accessCond, false)
 	if err != nil {
 		return azureToObjectError(err, bucket, object)
 	}
@@ -841,6 +840,8 @@ func (a *azureObjects) GetObjectInfo(ctx context.Context, bucket, object string,
 		return objInfo, azureToObjectError(err, bucket, object)
 	}
 
+	realETag := string(blob.ETag())
+
 	// Populate correct ETag's if possible, this code primarily exists
 	// because AWS S3 indicates that
 	//
@@ -852,7 +853,7 @@ func (a *azureObjects) GetObjectInfo(ctx context.Context, bucket, object string,
 	//
 	// Some applications depend on this behavior refer https://github.com/minio/minio/issues/6550
 	// So we handle it here and make this consistent.
-	etag := minio.ToS3ETag(string(blob.ETag()))
+	etag := minio.ToS3ETag(realETag)
 	metadata := blob.NewMetadata()
 	contentMD5 := blob.ContentMD5()
 	switch {
@@ -867,6 +868,7 @@ func (a *azureObjects) GetObjectInfo(ctx context.Context, bucket, object string,
 		Bucket:          bucket,
 		UserDefined:     azurePropertiesToS3Meta(metadata, blob.NewHTTPHeaders(), blob.ContentLength()),
 		ETag:            etag,
+		InnerETag:       realETag,
 		ModTime:         blob.LastModified(),
 		Name:            object,
 		Size:            blob.ContentLength(),
@@ -892,7 +894,6 @@ func (a *azureObjects) PutObject(ctx context.Context, bucket, object string, r *
 	blobURL := a.client.NewContainerURL(bucket).NewBlockBlobURL(object)
 
 	_, err = azblob.UploadStreamToBlockBlob(ctx, data, blobURL, azblob.UploadStreamToBlockBlobOptions{
-		BufferSize:      azureUploadChunkSize,
 		MaxBuffers:      azureUploadConcurrency,
 		BlobHTTPHeaders: properties,
 		Metadata:        metadata,

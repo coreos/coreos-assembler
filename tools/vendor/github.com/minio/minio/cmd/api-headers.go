@@ -1,18 +1,19 @@
-/*
- * MinIO Cloud Storage, (C) 2015, 2016, 2017 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
@@ -27,9 +28,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/minio/cmd/crypto"
-	xhttp "github.com/minio/minio/cmd/http"
-	"github.com/minio/minio/pkg/bucket/lifecycle"
+	"github.com/minio/minio/internal/bucket/lifecycle"
+	"github.com/minio/minio/internal/crypto"
+	xhttp "github.com/minio/minio/internal/http"
 )
 
 // Returns a hexadecimal representation of time at the
@@ -47,7 +48,9 @@ func setEventStreamHeaders(w http.ResponseWriter) {
 
 // Write http common headers
 func setCommonHeaders(w http.ResponseWriter) {
-	w.Header().Set(xhttp.ServerInfo, "MinIO/"+ReleaseTag)
+	// Set the "Server" http header.
+	w.Header().Set(xhttp.ServerInfo, "MinIO")
+
 	// Set `x-amz-bucket-region` only if region is set on the server
 	// by default minio uses an empty region.
 	if region := globalServerRegion; region != "" {
@@ -115,10 +118,11 @@ func setObjectHeaders(w http.ResponseWriter, objInfo ObjectInfo, rs *HTTPRangeSp
 	}
 
 	// Set tag count if object has tags
-	tags, _ := url.ParseQuery(objInfo.UserTags)
-	tagCount := len(tags)
-	if tagCount > 0 {
-		w.Header()[xhttp.AmzTagCount] = []string{strconv.Itoa(tagCount)}
+	if len(objInfo.UserTags) > 0 {
+		tags, _ := url.ParseQuery(objInfo.UserTags)
+		if len(tags) > 0 {
+			w.Header()[xhttp.AmzTagCount] = []string{strconv.Itoa(len(tags))}
+		}
 	}
 
 	// Set all other user defined metadata.
@@ -130,18 +134,20 @@ func setObjectHeaders(w http.ResponseWriter, objInfo ObjectInfo, rs *HTTPRangeSp
 		}
 
 		// https://github.com/google/security-research/security/advisories/GHSA-76wf-9vgp-pj7w
-		if strings.EqualFold(k, xhttp.AmzMetaUnencryptedContentLength) || strings.EqualFold(k, xhttp.AmzMetaUnencryptedContentMD5) {
+		if equals(k, xhttp.AmzMetaUnencryptedContentLength, xhttp.AmzMetaUnencryptedContentMD5) {
 			continue
 		}
+
 		var isSet bool
 		for _, userMetadataPrefix := range userMetadataKeyPrefixes {
-			if !strings.HasPrefix(k, userMetadataPrefix) {
+			if !strings.HasPrefix(strings.ToLower(k), strings.ToLower(userMetadataPrefix)) {
 				continue
 			}
 			w.Header()[strings.ToLower(k)] = []string{v}
 			isSet = true
 			break
 		}
+
 		if !isSet {
 			w.Header().Set(k, v)
 		}
@@ -153,20 +159,14 @@ func setObjectHeaders(w http.ResponseWriter, objInfo ObjectInfo, rs *HTTPRangeSp
 		return err
 	}
 
-	if opts.PartNumber > 0 {
-		var start, end int64
-		for i := 0; i < len(objInfo.Parts) && i < opts.PartNumber; i++ {
-			start = end
-			end = start + objInfo.Parts[i].ActualSize - 1
-		}
-		rs = &HTTPRangeSpec{Start: start, End: end}
-		rangeLen = end - start + 1
-	} else {
-		// for providing ranged content
-		start, rangeLen, err = rs.GetOffsetLength(totalObjectSize)
-		if err != nil {
-			return err
-		}
+	if rs == nil && opts.PartNumber > 0 {
+		rs = partNumberToRangeSpec(objInfo, opts.PartNumber)
+	}
+
+	// For providing ranged content
+	start, rangeLen, err = rs.GetOffsetLength(totalObjectSize)
+	if err != nil {
+		return err
 	}
 
 	// Set content length.
@@ -180,23 +180,48 @@ func setObjectHeaders(w http.ResponseWriter, objInfo ObjectInfo, rs *HTTPRangeSp
 	if objInfo.VersionID != "" {
 		w.Header()[xhttp.AmzVersionID] = []string{objInfo.VersionID}
 	}
+
 	if objInfo.ReplicationStatus.String() != "" {
 		w.Header()[xhttp.AmzBucketReplicationStatus] = []string{objInfo.ReplicationStatus.String()}
 	}
+
 	if lc, err := globalLifecycleSys.Get(objInfo.Bucket); err == nil {
-		ruleID, expiryTime := lc.PredictExpiryTime(lifecycle.ObjectOpts{
-			Name:         objInfo.Name,
-			UserTags:     objInfo.UserTags,
-			VersionID:    objInfo.VersionID,
-			ModTime:      objInfo.ModTime,
-			IsLatest:     objInfo.IsLatest,
-			DeleteMarker: objInfo.DeleteMarker,
-		})
-		if !expiryTime.IsZero() {
-			w.Header()[xhttp.AmzExpiration] = []string{
-				fmt.Sprintf(`expiry-date="%s", rule-id="%s"`, expiryTime.Format(http.TimeFormat), ruleID),
+		if opts.VersionID == "" {
+			if ruleID, expiryTime := lc.PredictExpiryTime(lifecycle.ObjectOpts{
+				Name:             objInfo.Name,
+				UserTags:         objInfo.UserTags,
+				VersionID:        objInfo.VersionID,
+				ModTime:          objInfo.ModTime,
+				IsLatest:         objInfo.IsLatest,
+				DeleteMarker:     objInfo.DeleteMarker,
+				SuccessorModTime: objInfo.SuccessorModTime,
+			}); !expiryTime.IsZero() {
+				w.Header()[xhttp.AmzExpiration] = []string{
+					fmt.Sprintf(`expiry-date="%s", rule-id="%s"`, expiryTime.Format(http.TimeFormat), ruleID),
+				}
 			}
 		}
+		if objInfo.IsRemote() {
+			// Check if object is being restored. For more information on x-amz-restore header see
+			// https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html#API_HeadObject_ResponseSyntax
+			w.Header()[xhttp.AmzStorageClass] = []string{objInfo.TransitionTier}
+		}
+		ruleID, transitionTime := lc.PredictTransitionTime(lifecycle.ObjectOpts{
+			Name:             objInfo.Name,
+			UserTags:         objInfo.UserTags,
+			VersionID:        objInfo.VersionID,
+			ModTime:          objInfo.ModTime,
+			IsLatest:         objInfo.IsLatest,
+			DeleteMarker:     objInfo.DeleteMarker,
+			TransitionStatus: objInfo.TransitionStatus,
+		})
+		if !transitionTime.IsZero() {
+			// This header is a MinIO centric extension to show expected transition date in a similar spirit as x-amz-expiration
+			w.Header()[xhttp.MinIOTransition] = []string{
+				fmt.Sprintf(`transition-date="%s", rule-id="%s"`, transitionTime.Format(http.TimeFormat), ruleID),
+			}
+		}
+
 	}
 
 	return nil

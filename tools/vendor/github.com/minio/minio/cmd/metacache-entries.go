@@ -1,24 +1,24 @@
-/*
- * MinIO Cloud Storage, (C) 2020 MinIO, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2015-2021 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package cmd
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"sort"
 	"strings"
@@ -73,11 +73,19 @@ func (e *metaCacheEntry) matches(other *metaCacheEntry, bucket string) bool {
 	if len(e.metadata) != len(other.metadata) || e.name != other.name {
 		return false
 	}
+
 	eFi, eErr := e.fileInfo(bucket)
-	oFi, oErr := e.fileInfo(bucket)
+	oFi, oErr := other.fileInfo(bucket)
 	if eErr != nil || oErr != nil {
 		return eErr == oErr
 	}
+
+	// check both fileInfo's have same number of versions, if not skip
+	// the `other` entry.
+	if eFi.NumVersions != oFi.NumVersions {
+		return false
+	}
+
 	return eFi.ModTime.Equal(oFi.ModTime) && eFi.Size == oFi.Size && eFi.VersionID == oFi.VersionID
 }
 
@@ -122,11 +130,11 @@ func (e *metaCacheEntry) fileInfo(bucket string) (*FileInfo, error) {
 		return &FileInfo{
 			Volume: bucket,
 			Name:   e.name,
-			Mode:   os.ModeDir,
+			Mode:   uint32(os.ModeDir),
 		}, nil
 	}
 	if e.cached == nil {
-		fi, err := getFileInfo(e.metadata, bucket, e.name, "")
+		fi, err := getFileInfo(e.metadata, bucket, e.name, "", false)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +154,7 @@ func (e *metaCacheEntry) fileInfoVersions(bucket string) (FileInfoVersions, erro
 				{
 					Volume: bucket,
 					Name:   e.name,
-					Mode:   os.ModeDir,
+					Mode:   uint32(os.ModeDir),
 				},
 			},
 		}, nil
@@ -200,12 +208,12 @@ func (m metaCacheEntries) resolve(r *metadataResolutionParams) (selected *metaCa
 
 	dirExists := 0
 	objExists := 0
-	var selFIV *FileInfo
 	for i := range m {
 		entry := &m[i]
 		if entry.name == "" {
 			continue
 		}
+
 		if entry.isDir() {
 			dirExists++
 			selected = entry
@@ -213,37 +221,45 @@ func (m metaCacheEntries) resolve(r *metadataResolutionParams) (selected *metaCa
 		}
 
 		// Get new entry metadata
-		objExists++
-		fiv, err := entry.fileInfo(r.bucket)
-		if err != nil {
+		if _, err := entry.fileInfo(r.bucket); err != nil {
 			continue
 		}
-		if selFIV == nil {
+
+		if selected == nil {
+			objExists++
 			selected = entry
-			selFIV = fiv
 			continue
 		}
 
 		if selected.matches(entry, r.bucket) {
+			objExists++
 			continue
 		}
+	}
 
-		// Select latest modtime.
-		if fiv.ModTime.After(selFIV.ModTime) {
-			selected = entry
-			selFIV = fiv
-			continue
+	if selected == nil {
+		return nil, false
+	}
+
+	if selected.isDir() && dirExists < r.dirQuorum {
+		return nil, false
+	} else if !selected.isDir() && objExists < r.objQuorum {
+		return nil, false
+	}
+	return selected, true
+}
+
+// firstFound returns the first found and the number of set entries.
+func (m metaCacheEntries) firstFound() (first *metaCacheEntry, n int) {
+	for _, entry := range m {
+		if entry.name != "" {
+			n++
+			if first == nil {
+				first = &entry
+			}
 		}
 	}
-	// If directory, we need quorum.
-	if dirExists > 0 && dirExists < r.dirQuorum {
-		return nil, false
-	}
-	if objExists < r.objQuorum {
-		return nil, false
-	}
-	// Take the latest selected.
-	return selected, selected != nil
+	return first, n
 }
 
 // names will return all names in order.
@@ -263,16 +279,6 @@ type metaCacheEntriesSorted struct {
 	listID string
 }
 
-// writeTo will write all objects to the provided output.
-func (m metaCacheEntriesSorted) writeTo(writer io.Writer) error {
-	w := newMetacacheWriter(writer, 1<<20)
-	if err := w.write(m.o...); err != nil {
-		w.Close()
-		return err
-	}
-	return w.Close()
-}
-
 // shallowClone will create a shallow clone of the array objects,
 // but object metadata will not be cloned.
 func (m metaCacheEntriesSorted) shallowClone() metaCacheEntriesSorted {
@@ -281,39 +287,52 @@ func (m metaCacheEntriesSorted) shallowClone() metaCacheEntriesSorted {
 	return m
 }
 
-// iterate the entries in order.
-// If the iterator function returns iterating stops.
-func (m *metaCacheEntriesSorted) iterate(fn func(entry metaCacheEntry) (cont bool)) {
-	if m == nil {
-		return
-	}
-	for _, o := range m.o {
-		if !fn(o) {
-			return
-		}
-	}
-}
-
 // fileInfoVersions converts the metadata to FileInfoVersions where possible.
 // Metadata that cannot be decoded is skipped.
-func (m *metaCacheEntriesSorted) fileInfoVersions(bucket, prefix, delimiter, afterV string) (versions []ObjectInfo, commonPrefixes []string) {
+func (m *metaCacheEntriesSorted) fileInfoVersions(bucket, prefix, delimiter, afterV string) (versions []ObjectInfo) {
 	versions = make([]ObjectInfo, 0, m.len())
 	prevPrefix := ""
 	for _, entry := range m.o {
 		if entry.isObject() {
-			fiv, err := entry.fileInfoVersions(bucket)
-			if afterV != "" {
-				// Forward first entry to specified version
-				fiv.forwardPastVersion(afterV)
-				afterV = ""
-			}
-			if err == nil {
-				for _, version := range fiv.Versions {
-					versions = append(versions, version.ToObjectInfo(bucket, entry.name))
+			if delimiter != "" {
+				idx := strings.Index(strings.TrimPrefix(entry.name, prefix), delimiter)
+				if idx >= 0 {
+					idx = len(prefix) + idx + len(delimiter)
+					currPrefix := entry.name[:idx]
+					if currPrefix == prevPrefix {
+						continue
+					}
+					prevPrefix = currPrefix
+					versions = append(versions, ObjectInfo{
+						IsDir:  true,
+						Bucket: bucket,
+						Name:   currPrefix,
+					})
+					continue
 				}
 			}
+
+			fiv, err := entry.fileInfoVersions(bucket)
+			if err != nil {
+				continue
+			}
+
+			fiVersions := fiv.Versions
+			if afterV != "" {
+				vidMarkerIdx := fiv.findVersionIndex(afterV)
+				if vidMarkerIdx >= 0 {
+					fiVersions = fiVersions[vidMarkerIdx+1:]
+				}
+				afterV = ""
+			}
+
+			for _, version := range fiVersions {
+				versions = append(versions, version.ToObjectInfo(bucket, entry.name))
+			}
+
 			continue
 		}
+
 		if entry.isDir() {
 			if delimiter == "" {
 				continue
@@ -328,21 +347,42 @@ func (m *metaCacheEntriesSorted) fileInfoVersions(bucket, prefix, delimiter, aft
 				continue
 			}
 			prevPrefix = currPrefix
-			commonPrefixes = append(commonPrefixes, currPrefix)
-			continue
+			versions = append(versions, ObjectInfo{
+				IsDir:  true,
+				Bucket: bucket,
+				Name:   currPrefix,
+			})
 		}
 	}
 
-	return versions, commonPrefixes
+	return versions
 }
 
 // fileInfoVersions converts the metadata to FileInfoVersions where possible.
 // Metadata that cannot be decoded is skipped.
-func (m *metaCacheEntriesSorted) fileInfos(bucket, prefix, delimiter string) (objects []ObjectInfo, commonPrefixes []string) {
+func (m *metaCacheEntriesSorted) fileInfos(bucket, prefix, delimiter string) (objects []ObjectInfo) {
 	objects = make([]ObjectInfo, 0, m.len())
 	prevPrefix := ""
 	for _, entry := range m.o {
 		if entry.isObject() {
+			if delimiter != "" {
+				idx := strings.Index(strings.TrimPrefix(entry.name, prefix), delimiter)
+				if idx >= 0 {
+					idx = len(prefix) + idx + len(delimiter)
+					currPrefix := entry.name[:idx]
+					if currPrefix == prevPrefix {
+						continue
+					}
+					prevPrefix = currPrefix
+					objects = append(objects, ObjectInfo{
+						IsDir:  true,
+						Bucket: bucket,
+						Name:   currPrefix,
+					})
+					continue
+				}
+			}
+
 			fi, err := entry.fileInfo(bucket)
 			if err == nil {
 				objects = append(objects, fi.ToObjectInfo(bucket, entry.name))
@@ -363,12 +403,15 @@ func (m *metaCacheEntriesSorted) fileInfos(bucket, prefix, delimiter string) (ob
 				continue
 			}
 			prevPrefix = currPrefix
-			commonPrefixes = append(commonPrefixes, currPrefix)
-			continue
+			objects = append(objects, ObjectInfo{
+				IsDir:  true,
+				Bucket: bucket,
+				Name:   currPrefix,
+			})
 		}
 	}
 
-	return objects, commonPrefixes
+	return objects
 }
 
 // forwardTo will truncate m so only entries that are s or after is in the list.
@@ -378,6 +421,17 @@ func (m *metaCacheEntriesSorted) forwardTo(s string) {
 	}
 	idx := sort.Search(len(m.o), func(i int) bool {
 		return m.o[i].name >= s
+	})
+	m.o = m.o[idx:]
+}
+
+// forwardPast will truncate m so only entries that are after s is in the list.
+func (m *metaCacheEntriesSorted) forwardPast(s string) {
+	if s == "" {
+		return
+	}
+	idx := sort.Search(len(m.o), func(i int) bool {
+		return m.o[i].name > s
 	})
 	m.o = m.o[idx:]
 }
@@ -413,17 +467,6 @@ func (m *metaCacheEntriesSorted) merge(other metaCacheEntriesSorted, limit int) 
 		merged = append(merged, b...)
 	}
 	m.o = merged
-}
-
-// filter allows selective filtering with the provided function.
-func (m *metaCacheEntriesSorted) filter(fn func(entry *metaCacheEntry) bool) {
-	dst := m.o[:0]
-	for _, o := range m.o {
-		if fn(&o) {
-			dst = append(dst, o)
-		}
-	}
-	m.o = dst
 }
 
 // filterPrefix will filter m to only contain entries with the specified prefix.
