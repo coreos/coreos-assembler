@@ -139,6 +139,9 @@ def aws_run_ore(build, args):
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
     ami_data = build.meta.get("amis", [])
+    # filter out (remove) existing entries (can happen if --force is used) from the
+    # ami list that match this region.
+    ami_data = [ami for ami in ami_data if ami.get('name') != region]
     ami_data.append({
         'name': region,
         'hvm': ore_data.get('HVM'),
