@@ -23,6 +23,7 @@ def new_cli():
     parser.add_argument('--artifact', help="when merging name of the artifact")
     parser.add_argument('--workdir', default=os.getcwd())
     parser.add_argument('--build', default='latest')
+    parser.add_argument('--arch', default=None)
     parser.add_argument('--skip-validation',
                         help='do not validate meta.json',
                         action='store_true')
@@ -59,7 +60,7 @@ def new_cli():
     schema = args.schema
     if args.skip_validation:
         schema = None
-    meta = GenericBuildMeta(args.workdir, args.build, schema=schema)
+    meta = GenericBuildMeta(args.workdir, args.build, basearch=args.arch, schema=schema)
     old_ts = meta.get(COSA_VER_STAMP)
 
     def pather(val):
