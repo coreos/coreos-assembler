@@ -119,15 +119,14 @@ def aws_run_ore(build, args):
     ore_args.extend([
         '--region', f"{region}",
         '--bucket', f"{args.bucket}",
-        '--ami-name', f"{build.build_name}-{build.build_id}",
-        '--name', f"{build.build_name}-{build.build_id}",
-        '--ami-description', f'{build.summary} {build.build_id}',
+        '--ami-name', f"{build.build_name}-{build.build_id}-{build.basearch}",
+        '--name', f"{build.build_name}-{build.build_id}-{build.basearch}",
+        '--ami-description', f"{build.summary} {build.build_id} {build.basearch}",
         '--file', f"{build.image_path}",
+        '--arch', f"{build.basearch}",
         '--disk-size-inspect',
         '--delete-object'
     ])
-    if args.arch:
-        ore_args.extend(['--arch', f"{args.arch}"])
     for user in args.grant_user:
         ore_args.extend(['--grant-user', user])
     for user in args.grant_user_snapshot:
