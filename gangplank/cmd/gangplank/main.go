@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/gangplank/cosa"
-	jobspec "github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/cosa"
+	jobspec "github.com/coreos/gangplank/internal/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

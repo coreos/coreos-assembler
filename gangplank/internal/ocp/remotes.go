@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/coreos/gangplank/cosa"
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/gangplank/internal/spec"
 	log "github.com/sirupsen/logrus"
 )
 

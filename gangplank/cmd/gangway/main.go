@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 
-	"github.com/coreos/gangplank/ocp"
+	"github.com/coreos/gangplank/internal/ocp"
 	log "github.com/sirupsen/logrus"
 )
 

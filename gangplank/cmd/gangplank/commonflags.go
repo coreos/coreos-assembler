@@ -3,7 +3,7 @@ package main
 import (
 	"os/user"
 
-	jobspec "github.com/coreos/gangplank/spec"
+	jobspec "github.com/coreos/gangplank/internal/spec"
 	flag "github.com/spf13/pflag"
 )
 

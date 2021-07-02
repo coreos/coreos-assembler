@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/spec"
 	"github.com/opencontainers/runc/libcontainer/user"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"

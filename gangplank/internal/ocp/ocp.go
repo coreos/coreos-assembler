@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/gangplank/cosa"
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/gangplank/internal/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
