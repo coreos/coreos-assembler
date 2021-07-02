@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/containers/podman/v3/pkg/terminal"
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/spec"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"

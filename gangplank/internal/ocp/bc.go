@@ -25,8 +25,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/gangplank/cosa"
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/gangplank/internal/spec"
 	"github.com/minio/minio-go/v7"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"

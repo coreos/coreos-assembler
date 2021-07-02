@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	jobspec "github.com/coreos/gangplank/spec"
+	jobspec "github.com/coreos/gangplank/internal/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/gangplank/ocp"
+	"github.com/coreos/gangplank/internal/ocp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

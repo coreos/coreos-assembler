@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/gangplank/cosa"
+	"github.com/coreos/gangplank/internal/cosa"
 	"gopkg.in/yaml.v2"
 )
 

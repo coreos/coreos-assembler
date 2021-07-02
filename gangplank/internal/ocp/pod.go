@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/spec"
 	"github.com/google/uuid"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"

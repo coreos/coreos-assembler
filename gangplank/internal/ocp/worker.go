@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/gangplank/cosa"
-	"github.com/coreos/gangplank/spec"
+	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/gangplank/internal/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
