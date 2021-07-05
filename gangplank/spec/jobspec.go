@@ -186,6 +186,7 @@ func (r *Repo) Writer(path string) (string, error) {
 
 	closer := func() error { return nil }
 	var dataR io.Reader
+	var respStatusCode int
 	if r.URL != nil && *r.URL != "" {
 		resp, err := http.Get(*r.URL)
 		if err != nil {
@@ -193,6 +194,7 @@ func (r *Repo) Writer(path string) (string, error) {
 		}
 		dataR = resp.Body
 		closer = resp.Body.Close
+		respStatusCode = resp.StatusCode
 	} else {
 		dataR = strings.NewReader(*r.Inline)
 	}
@@ -200,7 +202,7 @@ func (r *Repo) Writer(path string) (string, error) {
 	defer closer() //nolint
 
 	n, err := io.Copy(out, dataR)
-	if n == 0 {
+	if n == 0 || respStatusCode >= 400 {
 		return f, errors.New("No remote content fetched")
 	}
 	return f, err

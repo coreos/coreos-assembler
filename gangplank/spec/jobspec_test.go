@@ -35,7 +35,7 @@ func TestURL(t *testing.T) {
 		},
 		{
 			desc:    "bad repo",
-			repo:    Repo{URL: strPtr("http://fedora.com/this/will/not/exist/no/really/it/shouldnt")},
+			repo:    Repo{URL: strPtr("http://mirrors.kernel.org/this/will/not/exist/no/really/it/shouldnt")},
 			wantErr: true,
 		},
 		{
