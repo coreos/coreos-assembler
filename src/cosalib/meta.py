@@ -138,7 +138,8 @@ class GenericMeta(dict):
         # detect conflicts
         with open(self.path) as f:
             self._initial_timestamp = os.fstat(f.fileno()).st_mtime
-            self.update(json.load(f))
+        # Read under a lock to prevent race conditions
+        self.update(load_json(self.path))
         self.validate()
 
     def write(self, artifact_name=None, merge_func=merge_meta, final=False):

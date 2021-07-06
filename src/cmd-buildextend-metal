@@ -228,8 +228,7 @@ runvm "${target_drive[@]}" -- \
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
 
 sha256=$(sha256sum_str < "${img}")
-# there's probably a jq one-liner for this...
-python3 -c "
+cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['${image_type}'] = {
@@ -238,7 +237,7 @@ j['images']['${image_type}'] = {
     'size': $(stat -c '%s' "${img}")
 }
 json.dump(j, sys.stdout, indent=4)
-" < "${builddir}/meta.json" | jq -s add > "meta.json.new"
+" | jq -s add > "meta.json.new"
 
 # and now the crucial bits
 cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
