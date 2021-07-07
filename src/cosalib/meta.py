@@ -134,10 +134,6 @@ class GenericMeta(dict):
         """
         # Remove any current data
         self.clear()
-        # Load the file and record the initial timestamp to
-        # detect conflicts
-        with open(self.path) as f:
-            self._initial_timestamp = os.fstat(f.fileno()).st_mtime
         # Read under a lock to prevent race conditions
         self.update(load_json(self.path))
         self.validate()
