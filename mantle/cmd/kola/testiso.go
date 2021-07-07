@@ -138,6 +138,20 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 RequiredBy=multi-user.target
 `, signalCompleteString)
 
+var checkNoIgnition = fmt.Sprintf(`[Unit]
+Description=TestISO Verify No Ignition Config
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+Before=coreos-test-installer.service
+After=coreos-ignition-firstboot-complete.service
+RequiresMountsFor=/boot
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '[ ! -e /boot/ignition ]'
+[Install]
+RequiredBy=multi-user.target`)
+
 var multipathedRoot = fmt.Sprintf(`[Unit]
 Description=TestISO Verify Multipathed Root
 OnFailure=emergency.target
@@ -470,6 +484,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
+	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
 
 	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig, offline)
 	if err != nil {
@@ -515,6 +530,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
+	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
 	if inst.MultiPathDisk {
 		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
 	}
