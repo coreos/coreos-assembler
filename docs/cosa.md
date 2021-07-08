@@ -37,7 +37,7 @@ not produce an image with your changes):
 ## buildextend commands
 
 By default, the `build` command will build an OSTree and a QEMU image as base
-artifcats. Those commands extend those artifacts to make them functionnal on
+artifacts. Those commands extend those artifacts to make them functional on
 other platforms or cloud providers:
 
 | Name | Description |
