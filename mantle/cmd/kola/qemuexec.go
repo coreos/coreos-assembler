@@ -56,6 +56,7 @@ var (
 	bindro            []string
 	bindrw            []string
 
+	noIgnition                bool
 	directIgnition            bool
 	forceConfigInjection      bool
 	propagateInitramfsFailure bool
@@ -81,6 +82,7 @@ func init() {
 	cmdQemuExec.Flags().StringArrayVarP(&addDisks, "add-disk", "D", []string{}, "Additional disk, human readable size (repeatable)")
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
 	cmdQemuExec.Flags().BoolVar(&directIgnition, "ignition-direct", false, "Do not parse Ignition, pass directly to instance")
+	cmdQemuExec.Flags().BoolVar(&noIgnition, "no-ignition", false, "Do not pass any Ignition config to instance")
 	cmdQemuExec.Flags().BoolVar(&devshell, "devshell", false, "Enable development shell")
 	cmdQemuExec.Flags().BoolVarP(&devshellConsole, "devshell-console", "c", false, "Connect directly to serial console in devshell mode")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to Ignition config")
@@ -156,8 +158,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if devshell {
-		if directIgnition {
-			return fmt.Errorf("Cannot use devshell with --ignition-direct")
+		if directIgnition || noIgnition {
+			return fmt.Errorf("Cannot use devshell with --ignition-direct or --no-ignition")
 		}
 		if kola.QEMUOptions.DiskImage == "" && kolaPlatform == "qemu" {
 			return fmt.Errorf("No disk image provided")
@@ -178,20 +180,26 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if directIgnition && noIgnition {
+		return fmt.Errorf("Cannot use --ignition-direct and --no-ignition")
+	}
+	if noIgnition && (ignition != "" || butane != "") {
+		return fmt.Errorf("Cannot use --no-ignition with --ignition or --butane")
+	}
 	if ignition != "" && butane != "" {
 		return fmt.Errorf("Cannot use both --ignition and --butane")
 	}
 	if directIgnition && ignition == "" && butane == "" {
 		return fmt.Errorf("Cannot use --ignition-direct without --ignition or --butane")
 	}
-	if len(ignitionFragments) > 0 && directIgnition {
-		return fmt.Errorf("Cannot use --add-ignition with --ignition-direct")
+	if len(ignitionFragments) > 0 && (directIgnition || noIgnition) {
+		return fmt.Errorf("Cannot use --add-ignition with --ignition-direct or --no-ignition")
 	}
-	if len(bindro) > 0 && directIgnition {
-		return fmt.Errorf("Cannot use --bind-ro with --ignition-direct")
+	if len(bindro) > 0 && (directIgnition || noIgnition) {
+		return fmt.Errorf("Cannot use --bind-ro with --ignition-direct or --no-ignition")
 	}
-	if len(bindrw) > 0 && directIgnition {
-		return fmt.Errorf("Cannot use --bind-rw with --ignition-direct")
+	if len(bindrw) > 0 && (directIgnition || noIgnition) {
+		return fmt.Errorf("Cannot use --bind-rw with --ignition-direct or --no-ignition")
 	}
 
 	builder := platform.NewQemuBuilder()
@@ -207,7 +215,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return errors.Wrapf(err, "parsing %s", butane)
 		}
-	} else if !directIgnition && ignition != "" {
+	} else if !directIgnition && !noIgnition && ignition != "" {
 		buf, err := ioutil.ReadFile(ignition)
 		if err != nil {
 			return err
@@ -323,9 +331,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		return runDevShellSSH(ctx, builder, config)
 	}
 	if config != nil {
-		if directIgnition {
+		if directIgnition || noIgnition {
 			// this shouldn't happen since we ruled out cases which trigger parsing earlier
-			panic("--ignition-direct requested, but we have a parsed config")
+			panic("--ignition-direct or --no-ignition requested, but we have a parsed config")
 		}
 		builder.SetConfig(config)
 	} else if directIgnition {
