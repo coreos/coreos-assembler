@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	fcosJSON   = "../../fixtures/fcos.json"
-	rhcosJSON  = "../../fixtures/rhcos.json"
-	cosaSchema = "../../src/schema/v1.json"
+	fcosJSON   = "../../../fixtures/fcos.json"
+	rhcosJSON  = "../../../fixtures/rhcos.json"
+	cosaSchema = "../../../src/schema/v1.json"
 )
 
 var testMeta = []string{fcosJSON, rhcosJSON}

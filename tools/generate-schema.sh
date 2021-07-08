@@ -39,6 +39,6 @@ var generatedSchemaJSON = \`$(< ${schema_json})
 \`
 EOM
 
-cp -av ${out} ${pdir}/gangplank/cosa/
+cp -av ${out} ${pdir}/gangplank/internal/cosa/
 cp -av ${tdir}/*go ${pdir}/mantle/cosa/
 
