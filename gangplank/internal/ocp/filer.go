@@ -23,7 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/go-connections/tlsconfig"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/tags"
@@ -170,7 +169,7 @@ func (m *minioServer) start(ctx context.Context) error {
 		return <-m.waitReadyChan(90 * time.Second)
 	}
 
-	if err := m.exec(ctx); err != nil {
+	if err := retry(5, 1*time.Second, func() error { return m.exec(ctx) }); err != nil {
 		log.WithError(err).Warn("failed to start minio")
 		return err
 	}
@@ -203,8 +202,21 @@ func (m *minioServer) exec(ctx context.Context) error {
 		return errors.New("failed to find minio")
 	}
 
+	absPath, err := filepath.Abs(m.dir)
+	if err != nil {
+		return err
+	}
+
+	cport := getPortOrNext(4747)
+
 	addr := fmt.Sprintf(":%d", m.Port)
-	args := []string{mpath, "server", "--address", addr, m.dir}
+	args := []string{
+		mpath, "server",
+		"--quiet", "--anonymous",
+		"--console-address", fmt.Sprintf(":%d", cport),
+		"--address", addr,
+		absPath,
+	}
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Foreground: false,           // Background the process
@@ -212,20 +224,33 @@ func (m *minioServer) exec(ctx context.Context) error {
 		Pgid:       0,               // Use the pid of the minio as the pgroup id
 		Setpgid:    true,            // Set the pgroup
 	}
+	cmd.Dir = absPath
 	cmd.Env = append(
 		os.Environ(),
 		fmt.Sprintf("MINIO_ACCESS_KEY=%s", m.AccessKey),
 		fmt.Sprintf("MINIO_SECRET_KEY=%s", m.SecretKey),
 	)
 
-	err = cmd.Start()
-	if err != nil {
-		stdoutStderr, _ := cmd.CombinedOutput()
+	outPipe, _ := cmd.StdoutPipe()
+	errPipe, sErr := cmd.StderrPipe()
+	if sErr != nil {
+		return fmt.Errorf("failed to start get output pipe: %v", sErr)
+	}
+
+	if err := cmd.Start(); err != nil {
 		l.WithFields(log.Fields{
 			"err": err,
-			"out": stdoutStderr,
 		}).Error("Failed to start minio")
+		return err
 	}
+
+	minioMsgChan := make(chan string, 1)
+	go func() {
+		s := bufio.NewScanner(io.MultiReader(outPipe, errPipe))
+		for s.Scan() {
+			minioMsgChan <- s.Text()
+		}
+	}()
 
 	startChan := make(chan error, 1)
 	go func() {
@@ -251,26 +276,32 @@ func (m *minioServer) exec(ctx context.Context) error {
 	}()
 
 	m.cmd = cmd
-	select {
-	case err := <-startChan:
-		if cmd != nil {
-			stdoutStderr, _ := cmd.CombinedOutput()
-			l.WithFields(log.Fields{
-				"err": err,
-				"out": stdoutStderr,
-			}).Errorf("minio start failure")
+	for {
+		select {
+		case err := <-startChan:
+			if cmd != nil {
+				stdoutStderr, _ := cmd.CombinedOutput()
+				l.WithFields(log.Fields{
+					"err": err,
+					"out": stdoutStderr,
+				}).Errorf("minio start failure")
+			}
+			return err
+		case msg := <-minioMsgChan:
+			fmt.Printf("MINIO: %s\n", msg)
+		case <-sigs:
+			return fmt.Errorf("minio startup was interrupted")
+		case err := <-m.waitReadyChan(90 * time.Second):
+			return err
 		}
-		return err
-	case <-sigs:
-		return fmt.Errorf("minio startup was interrupted")
-	case err := <-m.waitReadyChan(90 * time.Second):
-		return err
 	}
 }
 
 // Wait blocks until Minio is finished.
 func (m *minioServer) Wait() {
-	_ = m.cmd.Wait()
+	if m.cmd != nil {
+		_ = m.cmd.Wait()
+	}
 }
 
 // Kill terminates the minio server.
@@ -290,9 +321,7 @@ func (m *minioServer) Kill() {
 	_ = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGTERM)
 
 	// Wait for the command to end.
-	if m.cmd != nil {
-		_ = m.cmd.Wait()
-	}
+	m.Wait()
 
 	// Purge the minio files since they are used per-session.
 	if err := os.RemoveAll(filepath.Join(m.dir, ".minio.sys")); err != nil {
@@ -319,11 +348,9 @@ func (m *minioServer) ensureBucketExists(ctx context.Context, bucket string) err
 		return err
 	}
 
-	be, err := mc.BucketExists(ctx, bucket)
-	if err != nil {
+	if be, err := mc.BucketExists(ctx, bucket); err != nil {
 		return err
-	}
-	if be {
+	} else if be {
 		return nil
 	}
 
@@ -621,7 +648,6 @@ func retry(tries int, sleep time.Duration, fn func() error) error {
 }
 
 // waitReadyChan returns a chan that emits true when the endpoint responds
-// with HTTP codes between 200 and 499.
 func (m *minioServer) waitReadyChan(timeout time.Duration) <-chan error {
 	readyChan := make(chan error)
 	go func() {
@@ -633,28 +659,23 @@ func (m *minioServer) waitReadyChan(timeout time.Duration) <-chan error {
 				return
 			}
 
-			// connect
-			c, _ := m.client()
-			client := http.Client{
-				Timeout: 5 * time.Second,
+			mc, err := m.client()
+			if err != nil {
+				readyChan <- err
 			}
-			if m.Secure {
-				client.Transport = &http.Transport{
-					TLSClientConfig: tlsconfig.ClientDefault(),
+
+			// Test if the remote bucket exists and that the error code does not
+			// match a magic string.
+			if _, err := mc.BucketExists(context.Background(), "testBucket"); err != nil {
+				if strings.Contains(err.Error(), "Server not initialized, please try again.") ||
+					strings.Contains(err.Error(), "connection refused") {
+					time.Sleep(1 * time.Second)
+					continue
 				}
+				readyChan <- err
 			}
-			urlS := c.EndpointURL().String()
-			resp, err := client.Head(urlS)
+			readyChan <- nil
 
-			if err != nil || resp == nil {
-				continue
-			}
-
-			// Ping the minio server to wait for it to come up. Accept any response.
-			if resp.StatusCode >= 200 && resp.StatusCode < 500 {
-				readyChan <- nil
-				return
-			}
 		}
 	}()
 	return readyChan
