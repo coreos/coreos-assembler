@@ -156,6 +156,12 @@ type Repo struct {
 	Inline *string `yaml:"inline,omitempty" json:"inline,omitempty"`
 }
 
+// httpGetFunc describes a func that returns an http.Response and error
+type httpGetFunc func(string) (*http.Response, error)
+
+// httpGet defaults to http.Get
+var httpGet httpGetFunc = http.Get
+
 // Writer places the remote repo file into path. If the repo has no name,
 // then a SHA256 of the URL will be used. Returns path of the file and err.
 func (r *Repo) Writer(path string) (string, error) {
@@ -187,10 +193,20 @@ func (r *Repo) Writer(path string) (string, error) {
 	closer := func() error { return nil }
 	var dataR io.Reader
 	if r.URL != nil && *r.URL != "" {
-		resp, err := http.Get(*r.URL)
+		resp, err := httpGet(*r.URL)
 		if err != nil {
 			return f, err
 		}
+
+		switch code := resp.StatusCode; {
+		case code == 204:
+			return f, fmt.Errorf("http response code 204: repo content is empty")
+		case code == 206:
+			return f, errors.New("http response code 206: repo context was truncated")
+		case code > 400:
+			return f, fmt.Errorf("server responded with %d", code)
+		}
+
 		dataR = resp.Body
 		closer = resp.Body.Close
 	} else {
