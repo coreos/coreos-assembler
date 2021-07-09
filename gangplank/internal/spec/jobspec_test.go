@@ -1,13 +1,29 @@
 package spec
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// setMockHttpGet sets the httpGet func to a single-use mocking func for returing
+// an HTTP tests.
+func setMockHttpGet(data []byte, status int, err error) {
+	httpGet = func(string) (*http.Response, error) {
+		defer func() {
+			httpGet = http.Get
+		}()
+		return &http.Response{
+			Body:       ioutil.NopCloser(bytes.NewReader(data)),
+			StatusCode: status,
+		}, err
+	}
+}
 
 func TestURL(t *testing.T) {
 	tmpd, err := ioutil.TempDir("", "")
@@ -17,26 +33,34 @@ func TestURL(t *testing.T) {
 	defer os.RemoveAll(tmpd) //nolint
 
 	cases := []struct {
-		repo    Repo
-		desc    string
-		wantErr bool
+		repo       Repo
+		desc       string
+		data       []byte
+		statusCode int
+		wantErr    bool
 	}{
 		{
-			desc:    "good repo",
-			repo:    Repo{URL: strPtr("http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo")},
-			wantErr: false,
+			desc:       "good repo",
+			data:       []byte("good repo"),
+			repo:       Repo{URL: strPtr("http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo")},
+			statusCode: 200,
+			wantErr:    false,
 		},
 		{
-			desc: "named repo",
+			desc:       "named repo",
+			data:       []byte("named repo"),
+			statusCode: 200,
 			repo: Repo{
 				Name: "test",
 				URL:  strPtr("http://mirrors.kernel.org/fedora-buffet/archive/fedora/linux/releases/30/Everything/source/tree/media.repo")},
 			wantErr: false,
 		},
 		{
-			desc:    "bad repo",
-			repo:    Repo{URL: strPtr("http://fedora.com/this/will/not/exist/no/really/it/shouldnt")},
-			wantErr: true,
+			desc:       "bad repo",
+			data:       nil,
+			statusCode: 404,
+			repo:       Repo{URL: strPtr("http://mirrors.kernel.org/this/will/not/exist/no/really/it/shouldnt")},
+			wantErr:    true,
 		},
 		{
 			desc:    "inline repo",
@@ -55,6 +79,9 @@ func TestURL(t *testing.T) {
 
 	for idx, c := range cases {
 		t.Run(fmt.Sprintf("%s case %d", t.Name(), idx), func(t *testing.T) {
+
+			setMockHttpGet(c.data, c.statusCode, nil)
+
 			path, err := c.repo.Writer(tmpd)
 			if c.wantErr && err == nil {
 				t.Fatalf("%s: wanted error, got none", c.desc)
