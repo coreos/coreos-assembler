@@ -202,7 +202,7 @@ func (r *Repo) Writer(path string) (string, error) {
 		case code == 204:
 			return f, fmt.Errorf("http response code 204: repo content is empty")
 		case code == 206:
-			return f, errors.New("http response code 206: repo context was truncated")
+			return f, errors.New("http response code 206: repo content was truncated")
 		case code > 400:
 			return f, fmt.Errorf("server responded with %d", code)
 		}
