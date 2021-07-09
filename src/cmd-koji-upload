@@ -661,6 +661,14 @@ class Upload(_KojiBase):
         if not taginfo:
             raise RuntimeError(f"tag {tag} is not present in Koji")
 
+    def tag_build(self, nvr, tag):
+        """ Tag build in Koji """
+        log.info('tagging %s into %s' % (nvr, tag))
+        task_id = self.session.tagBuild(tag, nvr)
+        task_result = klib.watch_tasks(self.session, [task_id], poll_interval=15)
+        if task_result != 0:
+            raise Exception('failed to tag builds')
+
     def upload(self):
         """
         Upload all files to a remote directory in Koji. Content generators
@@ -701,6 +709,12 @@ class Upload(_KojiBase):
 
         log.info(json.dumps(cginfo, sort_keys=True, indent=3))
         log.info(f"recorded build {cginfo['nvr']}")
+
+        if self.session.hasPerm('tag'):
+            self.tag_build(cginfo['nvr'], self._tag)
+        else:
+            log.info("Principle does not have tagging permissions.  Not tagging build")
+
         return cginfo
 
 
