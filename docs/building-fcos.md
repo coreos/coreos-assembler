@@ -82,6 +82,9 @@ here need to change for that.
 ```sh
 cosa() {
    env | grep COREOS_ASSEMBLER
+   if [ -n "$ZSH_VERSION" ]; then
+      setopt SH_WORD_SPLIT
+   fi
    set -x
    podman run --rm -ti --security-opt label=disable --privileged                                    \
               --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536                          \
