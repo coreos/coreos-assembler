@@ -150,6 +150,9 @@ def ibmcloud_run_ore(build, args):
         '--file', f"{build.image_path}",
     ])
 
+    if args.credentials_file is not None:
+        ore_args.extend(['--credentials-file', f"{args.credentials_file}"])
+
     run_verbose(ore_args)
     url_path = urllib.parse.quote((
         f"s3.{region}.cloud-object-storage.appdomain.cloud/"
@@ -172,6 +175,7 @@ def ibmcloud_run_ore_replicate(build, args):
 def ibmcloud_cli(parser):
     parser.add_argument("--bucket", help="S3 Bucket")
     parser.add_argument("--cloud-object-storage", help="IBMCloud cloud object storage to upload to")
+    parser.add_argument("--credentials-file", help="Path to IBMCloud auth file")
     return parser
 
 
