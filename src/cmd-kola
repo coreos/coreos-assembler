@@ -6,7 +6,6 @@ import subprocess
 import os
 import platform
 import sys
-import yaml
 
 # Just test these boot to start with.  In the future we should at least
 # do ostree upgrades with uefi etc.  But we don't really need the *full*
@@ -41,25 +40,6 @@ else:
 # XXX: teach to kola to auto-detect based on prefix; see discussions in
 # https://github.com/coreos/coreos-assembler/pull/85
 kolaargs = ['kola']
-
-# automatically add tests from denylist specified in the src config
-try:
-    with open("src/config/kola-denylist.yaml") as f:
-        denylist = yaml.safe_load(f)
-        # also load the FCOS stream name if applicable in case we need it below
-        with open("src/config/manifest.yaml") as g:
-            manifest = yaml.safe_load(g)
-            stream = manifest.get('add-commit-metadata', {}).get('fedora-coreos.stream')
-        for obj in (denylist or []):
-            if basearch not in obj.get('arches', [basearch]):
-                continue
-            if stream is not None and stream not in obj.get('streams', [stream]):
-                continue
-            print(f"⚠️  Skipping kola test pattern \"{obj['pattern']}\":")
-            print(f"⚠️  {obj['tracker']}")
-            kolaargs.extend(['--denylist-test', obj['pattern']])
-except FileNotFoundError:
-    pass
 
 r = re.compile("-p(=.+)?|--platform(=.+)?")
 platformargs = list(filter(r.match, unknown_args))
