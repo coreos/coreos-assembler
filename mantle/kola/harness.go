@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/harness/reporters"
@@ -272,6 +273,76 @@ func testRequiresInternet(test *register.Test) bool {
 	return false
 }
 
+type DenyListObj struct {
+	Pattern string   `yaml:"pattern"`
+	Tracker string   `yaml:"tracker"`
+	Streams []string `yaml:"streams"`
+	Arches  []string `yaml:"arches"`
+}
+
+type ManifestData struct {
+	AddCommitMetadata struct {
+		FcosStream string `yaml:"fedora-coreos.stream"`
+	} `yaml:"add-commit-metadata"`
+}
+
+func parseDenyListYaml() error {
+	var objs []DenyListObj
+
+	// Parse kola-denylist into structs
+	pathToDenyList := filepath.Join(Options.CosaWorkdir, "src/config/kola-denylist.yaml")
+	denyListFile, err := ioutil.ReadFile(pathToDenyList)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	plog.Debug("Found kola-denylist.yaml. Processing listed denials.")
+	err = yaml.Unmarshal(denyListFile, &objs)
+	if err != nil {
+		return err
+	}
+
+	plog.Debug("Parsed kola-denylist.yaml")
+
+	// Get stream and arch
+	pathToManifest := filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
+	manifestFile, err := ioutil.ReadFile(pathToManifest)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	var manifest ManifestData
+	err = yaml.Unmarshal(manifestFile, &manifest)
+	if err != nil {
+		return err
+	}
+
+	stream := manifest.AddCommitMetadata.FcosStream
+	arch := system.RpmArch()
+
+	// Accumulate patterns filtering by stream and arch
+	plog.Debug("Processing denial patterns from yaml...")
+	for _, obj := range objs {
+		if len(obj.Arches) > 0 && !hasString(arch, obj.Arches) {
+			continue
+		}
+
+		if len(stream) > 0 && len(obj.Streams) > 0 && !hasString(stream, obj.Streams) {
+			continue
+		}
+
+		fmt.Printf("⚠️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
+		fmt.Printf("  👉 %s\n", obj.Tracker)
+		DenylistedTests = append(DenylistedTests, obj.Pattern)
+	}
+
+	return nil
+}
+
 func filterTests(tests map[string]*register.Test, patterns []string, pltfrm string) (map[string]*register.Test, error) {
 	r := make(map[string]*register.Test)
 
@@ -420,7 +491,14 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 	// 1) none of the selected tests care about the version
 	// 2) glob is an exact match which means minVersion will be ignored
 	//    either way
-	tests, err := filterTests(tests, patterns, pltfrm)
+
+	// Add denylisted tests in kola-denylist.yaml to DenylistedTests
+	err := parseDenyListYaml()
+	if err != nil {
+		plog.Fatal(err)
+	}
+
+	tests, err = filterTests(tests, patterns, pltfrm)
 	if err != nil {
 		plog.Fatal(err)
 	}
