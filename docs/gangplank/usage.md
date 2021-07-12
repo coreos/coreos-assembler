@@ -1,6 +1,6 @@
 # Using Gangplank
 
-Ganplank sole purpouse in life is to codify the knowledge of running building CoreOS variants and CoreOS-like operating systems using CoreOS Assembler. Gangplank knows how to create the environment for running, corrdinate artifacts from, and how to execute CoreOS Assembler.
+Ganplank's sole purpose in life is to codify the knowledge of building CoreOS variants and CoreOS-like operating systems using CoreOS Assembler. Gangplank knows how to create the environment, execute CoreOS Assembler, and coordinate artifacts.
 
 ## Terms
 
@@ -21,7 +21,7 @@ Ganplank only knows _how to run COSA_, but running COSA does not require Gangpla
 
 ### Menu vs Buffet
 
-Gangplank, with the exception of local podman mode, is intended to run as in the CoreOS Assembler container. Prior to Gangaplnk, a considerable amount of time was spend keeping pipelines, JobSpecs and COSA code-bases in sync. Gangplank seeks to eliminate the mismatch by being part of CoreOS Assembler. Once started, Gangplank will be re-executed as a new pod that has suitable permissions and resources to build a CoreOS variant. When running on OpenShift or Kubernetes, Gangplank will use its pod specification to create worker pods. In other words, Gangplank is tightly coupled to its corresponding COSA container.
+Gangplank, with the exception of local podman mode, is intended to run in the CoreOS Assembler container. Prior to Gangaplnk, a considerable amount of time was spend keeping pipelines, JobSpecs and COSA code-bases in sync. Gangplank seeks to eliminate the mismatch by being part of CoreOS Assembler. Once started, Gangplank will be re-executed as a new pod that has suitable permissions and resources to build a CoreOS variant. When running on OpenShift or Kubernetes, Gangplank will use its pod specification to create worker pods. In other words, Gangplank is tightly coupled to its corresponding COSA container.
 
 The origin pod (the first instance of Gangplank) handles the orchestration of workers by:
 - parsing the environment
@@ -38,7 +38,7 @@ Gangplank, therefore, evaulates its environment to determine the mode of the bui
 
 ## Execution Choices
 
-Gangplank has three execution modes each targeted at a different use-case.
+Gangplank has three execution modes, each targeted at a different use-case.
 
 ### OpenShift BuildConfig
 
@@ -134,7 +134,7 @@ At start, Gangplank will decode the envVar of `COSA_WORK_POD_JSON`, which is def
 
 Once the required artifacts, if any, are found, Gangplank will then start the worker pod. The worker pod will always run `cosa init` before running any other command. Then, the worker pod, will request dependencies over Minio from the orgin Gangplank, process the work, and then return _known_ files back.
 
-If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows to use an shared or external minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands. Gangplank further, support the use of S3-compatible object stores (i.e. AWS) via the `-m` directive. Gangplank uses the object store backend for reading files and discovery of requirements.
+If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows to use a shared or external minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands. Gangplank further, support the use of S3-compatible object stores (i.e. AWS) via the `-m` directive. Gangplank uses the object store backend for reading files and discovery of requirements.
 
 Regardless of where the pod is being run, Gangplank will stream logs from the worker pods. If the supervising Gangplank is terminated, the workers are terminated.
 
@@ -156,7 +156,7 @@ The `base` short-hand corresponds to `cosa build --delay-meta-merge`, while `fin
 
 ### JobSpec
 
-The JobSpec (or Job Specification) is simply YAML that instruct Gangplank on the steps and dependencies for starting a build.
+The JobSpec (or Job Specification) is simply YAML that instructs Gangplank on the steps and dependencies for starting a build.
 
 To get started with a JobSpec, you can generate one using Gangplank via `gangplank generate -A base`
 
@@ -234,7 +234,7 @@ delay_meta_merge: true
 
 ```
 
-The JobSpec defines discrete, units of work as a "stage". Each stage supports few options:
+The JobSpec defines discrete units of work as a "stage". Each stage supports few options:
 
 - id: the name of the stage; must be unique
 - command: a list of commands to execute
@@ -288,7 +288,7 @@ In this example, Gangplank will:
 
 Gangplank was initially started after belately realizing that the Jenkins Pipelines are, in fact, complicated templating engines. That is, a considerable amount of time, energy and development was put into translating data from YAML/JSON into execution rules.
 
-Gangplank supports rendering commands from the `meta.json` in CoreOS Assembler and the JobSpec via Golang templates. The caveat, however, is that `meta.json` variables appears _after_ the base build. Generally speaking, this means to a base build are defined in the Jobspec while artifacts generated from a base build may use both `meta.json` and the Jobspec.
+Gangplank supports rendering commands from the `meta.json` in CoreOS Assembler and the JobSpec via Golang templates. The caveat, however, is that `meta.json` variables appear _after_ the base build. Generally speaking, this means inputs to a base build are defined in the Jobspec while artifacts generated from a base build may use both `meta.json` and the Jobspec.
 
 #### JobSpec Example
 
@@ -325,7 +325,7 @@ stages:
 
 With the availability of GoLang templating, the possibility exists to do loops and to dynamically create commands. The following example, publishes an AMI to all AWS regions.
 
-NOTE: It may be tempting to turn Ganglank into a complicated templating engine. Users would well be advised to consider whether the added complexity helps. In most cases, using simple, clear, and easy to understand templating logic is the better choice.
+NOTE: It may be tempting to turn Ganglank into a complicated templating engine. Users would well be advised to consider whether the added complexity helps. In most cases, using simple, clear, and easy-to-understand templating logic is the better choice.
 
 ```
 archives:
@@ -347,7 +347,7 @@ stages:
 
 ### The Schema
 
-CoreOS Assembler and Mantle (publication and testing for CoreOS-like operating sytems) share a schema that understands `meta.json`. Gangplank only understands a few commands does understand the location of artifacts. When artifacts are added to, or removed from, the [CoreOS Assembler schema](../../src/schema/v1.json) Gangplank's support will change.
+CoreOS Assembler and Mantle (publication and testing for CoreOS-like operating sytems) share a schema that understands `meta.json`. Gangplank only understands a few commands regarding the location of artifacts. When artifacts are added to, or removed from, the [CoreOS Assembler schema](../../src/schema/v1.json) Gangplank's support will change.
 
 Gangplank used the schema for:
 
@@ -361,7 +361,7 @@ The choice of Minio was deliberate: its an open source S3-comptabile object stor
 
 ### Standalone mode
 
-If an external Minio/S3 server is not defined, Gangplank run Minio from directory defined as `--srvDir`. A new directory of "builder" (or whatever bucket you've chosen) will be created under the `--srvDir` parameter.
+If an external Minio/S3 server is not defined, Gangplank runs Minio from the directory defined as `--srvDir`. A new directory of "builder" (or whatever bucket you've chosen) will be created under the `--srvDir` parameter.
 
 ### External mode
 
