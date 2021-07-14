@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v0_4
+package v0_5_exp
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 
 	"github.com/coreos/go-systemd/unit"
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_3/types"
+	"github.com/coreos/ignition/v2/config/v3_4_experimental/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -79,10 +79,10 @@ RequiredBy=local-fs.target
 {{- end }}`))
 )
 
-// ToIgn3_3Unvalidated translates the config to an Ignition config. It also returns the set of translations
+// ToIgn3_4Unvalidated translates the config to an Ignition config. It also returns the set of translations
 // it did so paths in the resultant config can be tracked back to their source in the source config.
 // No config validation is performed on input or output.
-func (c Config) ToIgn3_3Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
+func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
 	ret := types.Config{}
 
 	tr := translate.NewTranslator("yaml", "json", options)

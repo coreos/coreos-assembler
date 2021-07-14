@@ -12,29 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v1_4_exp
+package v4_10_exp
 
 import (
-	base "github.com/coreos/butane/base/v0_4"
+	fcos "github.com/coreos/butane/config/fcos/v1_5_exp"
 )
 
+const ROLE_LABEL_KEY = "machineconfiguration.openshift.io/role"
+
 type Config struct {
-	base.Config `yaml:",inline"`
-	BootDevice  BootDevice `yaml:"boot_device"`
+	fcos.Config `yaml:",inline"`
+	Metadata    Metadata  `yaml:"metadata"`
+	OpenShift   OpenShift `yaml:"openshift"`
 }
 
-type BootDevice struct {
-	Layout *string          `yaml:"layout"`
-	Luks   BootDeviceLuks   `yaml:"luks"`
-	Mirror BootDeviceMirror `yaml:"mirror"`
+type Metadata struct {
+	Name   string            `yaml:"name"`
+	Labels map[string]string `yaml:"labels,omitempty"`
 }
 
-type BootDeviceLuks struct {
-	Tang      []base.Tang `yaml:"tang"`
-	Threshold *int        `yaml:"threshold"`
-	Tpm2      *bool       `yaml:"tpm2"`
-}
-
-type BootDeviceMirror struct {
-	Devices []string `yaml:"devices"`
+type OpenShift struct {
+	KernelArguments []string `yaml:"kernel_arguments"`
+	Extensions      []string `yaml:"extensions"`
+	FIPS            *bool    `yaml:"fips"`
+	KernelType      *string  `yaml:"kernel_type"`
 }

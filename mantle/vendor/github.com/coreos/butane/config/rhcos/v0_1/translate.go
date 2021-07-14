@@ -31,7 +31,7 @@ func (c Config) ToIgn3_2(options common.TranslateOptions) (types.Config, report.
 	return cfg.(types.Config), r, err
 }
 
-// ToIgn3_2Bytes translates from a v0.1 rcc to a v3.2.0 Ignition config. It returns a report of any errors or
+// ToIgn3_2Bytes translates from a v0.1 Butane config to a v3.2.0 Ignition config. It returns a report of any errors or
 // warnings in the source and resultant config. If the report has fatal errors or it encounters other problems
 // translating, an error is returned.
 func ToIgn3_2Bytes(input []byte, options common.TranslateBytesOptions) ([]byte, report.Report, error) {
