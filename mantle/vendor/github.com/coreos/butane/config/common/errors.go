@@ -53,6 +53,7 @@ var (
 	ErrRoleRequired           = errors.New("machineconfiguration.openshift.io/role label is required")
 	ErrInvalidKernelType      = errors.New("must be empty, \"default\", or \"realtime\"")
 	ErrBtrfsSupport           = errors.New("btrfs is not supported in this spec version")
+	ErrFilesystemNoneSupport  = errors.New("format \"none\" is not supported in this spec version")
 	ErrDirectorySupport       = errors.New("directories are not supported in this spec version")
 	ErrFileAppendSupport      = errors.New("appending to files is not supported in this spec version")
 	ErrFileCompressionSupport = errors.New("file compression is not supported in this spec version")
@@ -60,4 +61,5 @@ var (
 	ErrGroupSupport           = errors.New("groups are not supported in this spec version")
 	ErrUserFieldSupport       = errors.New("fields other than \"name\" and \"ssh_authorized_keys\" are not supported in this spec version")
 	ErrUserNameSupport        = errors.New("users other than \"core\" are not supported in this spec version")
+	ErrKernelArgumentSupport  = errors.New("this field cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
 )

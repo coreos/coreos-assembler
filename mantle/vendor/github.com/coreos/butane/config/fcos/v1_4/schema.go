@@ -12,30 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v1_4_exp
+package v1_4
 
 import (
-	"github.com/coreos/butane/config/common"
-
-	"github.com/coreos/vcontext/path"
-	"github.com/coreos/vcontext/report"
+	base "github.com/coreos/butane/base/v0_4"
 )
 
-func (d BootDevice) Validate(c path.ContextPath) (r report.Report) {
-	if d.Layout != nil {
-		switch *d.Layout {
-		case "aarch64", "ppc64le", "x86_64":
-		default:
-			r.AddOnError(c.Append("layout"), common.ErrUnknownBootDeviceLayout)
-		}
-	}
-	r.Merge(d.Mirror.Validate(c.Append("mirror")))
-	return
+type Config struct {
+	base.Config `yaml:",inline"`
+	BootDevice  BootDevice `yaml:"boot_device"`
 }
 
-func (m BootDeviceMirror) Validate(c path.ContextPath) (r report.Report) {
-	if len(m.Devices) == 1 {
-		r.AddOnError(c.Append("devices"), common.ErrTooFewMirrorDevices)
-	}
-	return
+type BootDevice struct {
+	Layout *string          `yaml:"layout"`
+	Luks   BootDeviceLuks   `yaml:"luks"`
+	Mirror BootDeviceMirror `yaml:"mirror"`
+}
+
+type BootDeviceLuks struct {
+	Tang      []base.Tang `yaml:"tang"`
+	Threshold *int        `yaml:"threshold"`
+	Tpm2      *bool       `yaml:"tpm2"`
+}
+
+type BootDeviceMirror struct {
+	Devices []string `yaml:"devices"`
 }

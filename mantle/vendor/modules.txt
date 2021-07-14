@@ -159,23 +159,27 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.14.1
 github.com/clarketm/json
-# github.com/coreos/butane v0.12.2-0.20210627053514-4f5d9fd58a38
+# github.com/coreos/butane v0.13.0
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
 github.com/coreos/butane/base/v0_3
 github.com/coreos/butane/base/v0_4
+github.com/coreos/butane/base/v0_5_exp
 github.com/coreos/butane/config
 github.com/coreos/butane/config/common
 github.com/coreos/butane/config/fcos/v1_0
 github.com/coreos/butane/config/fcos/v1_1
 github.com/coreos/butane/config/fcos/v1_2
 github.com/coreos/butane/config/fcos/v1_3
-github.com/coreos/butane/config/fcos/v1_4_exp
+github.com/coreos/butane/config/fcos/v1_4
+github.com/coreos/butane/config/fcos/v1_5_exp
+github.com/coreos/butane/config/openshift/v4_10_exp
+github.com/coreos/butane/config/openshift/v4_10_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
-github.com/coreos/butane/config/openshift/v4_9_exp
-github.com/coreos/butane/config/openshift/v4_9_exp/result
+github.com/coreos/butane/config/openshift/v4_9
+github.com/coreos/butane/config/openshift/v4_9/result
 github.com/coreos/butane/config/rhcos/v0_1
 github.com/coreos/butane/config/util
 github.com/coreos/butane/translate

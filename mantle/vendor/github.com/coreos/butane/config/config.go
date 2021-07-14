@@ -22,9 +22,11 @@ import (
 	fcos1_1 "github.com/coreos/butane/config/fcos/v1_1"
 	fcos1_2 "github.com/coreos/butane/config/fcos/v1_2"
 	fcos1_3 "github.com/coreos/butane/config/fcos/v1_3"
-	fcos1_4_exp "github.com/coreos/butane/config/fcos/v1_4_exp"
+	fcos1_4 "github.com/coreos/butane/config/fcos/v1_4"
+	fcos1_5_exp "github.com/coreos/butane/config/fcos/v1_5_exp"
+	openshift4_10_exp "github.com/coreos/butane/config/openshift/v4_10_exp"
 	openshift4_8 "github.com/coreos/butane/config/openshift/v4_8"
-	openshift4_9_exp "github.com/coreos/butane/config/openshift/v4_9_exp"
+	openshift4_9 "github.com/coreos/butane/config/openshift/v4_9"
 	rhcos0_1 "github.com/coreos/butane/config/rhcos/v0_1"
 
 	"github.com/coreos/go-semver/semver"
@@ -47,9 +49,11 @@ func init() {
 	RegisterTranslator("fcos", "1.1.0", fcos1_1.ToIgn3_1Bytes)
 	RegisterTranslator("fcos", "1.2.0", fcos1_2.ToIgn3_2Bytes)
 	RegisterTranslator("fcos", "1.3.0", fcos1_3.ToIgn3_2Bytes)
-	RegisterTranslator("fcos", "1.4.0-experimental", fcos1_4_exp.ToIgn3_3Bytes)
+	RegisterTranslator("fcos", "1.4.0", fcos1_4.ToIgn3_3Bytes)
+	RegisterTranslator("fcos", "1.5.0-experimental", fcos1_5_exp.ToIgn3_4Bytes)
 	RegisterTranslator("openshift", "4.8.0", openshift4_8.ToConfigBytes)
-	RegisterTranslator("openshift", "4.9.0-experimental", openshift4_9_exp.ToConfigBytes)
+	RegisterTranslator("openshift", "4.9.0", openshift4_9.ToConfigBytes)
+	RegisterTranslator("openshift", "4.10.0-experimental", openshift4_10_exp.ToConfigBytes)
 	RegisterTranslator("rhcos", "0.1.0", rhcos0_1.ToIgn3_2Bytes)
 }
 
