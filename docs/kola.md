@@ -53,6 +53,26 @@ and can also be used with glob patterns:
 
 `kola --denylist-test linux.nfs* --denylist-test crio.* run`
 
+Tests specified in `src/config/kola-denylist.yaml` will also be skipped
+regardless of whether the switch `--denylist-test` was provided.
+
+Example format of the file:
+
+```yaml
+- pattern: test1.blobpattern.*
+  tracker: https://github.com/coreos/coreos-assembler/pull/123
+  streams:
+    # This test will be skipped in these streams
+    # If no streams are specified, test will be skipped on all streams
+    - stream1
+    - stream2
+  arches:
+    # This test will be skipped on these arches
+    # If no arches are specified, test will be skipped on all arches
+    - s390x
+- pattern: test2.test
+  ...
+```
 ## kola list
 
 The list command lists all of the available tests.
