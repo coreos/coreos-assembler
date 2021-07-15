@@ -254,14 +254,26 @@ prepare_build() {
 }
 
 commit_overlay() {
-    local name path respath
+    local name path respath ovrsrc ovrrelsrc
     name=$1
     path=$2
     respath=$(realpath "${path}")
+    # Apply statoverrides from a file in the root of the overlay, which may
+    # or may not exist.  ostree doesn't support comments in statoverride
+    # files, but we do.
+    if [ -e "${respath}/statoverride" ]; then
+        ovrsrc="${respath}/statoverride"
+        ovrrelsrc=/statoverride
+    else
+        ovrsrc=/dev/null
+        ovrrelsrc=
+    fi
     echo -n "Committing ${name}: ${path} ... "
     ostree commit --repo="${tmprepo}" --tree=dir="${respath}" -b "${name}" \
         --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
-        --mode-ro-executables --timestamp "${git_timestamp}"
+        --mode-ro-executables --timestamp "${git_timestamp}" \
+        --statoverride <(sed -e '/^#/d' "$ovrsrc") \
+        --skip-list <(echo "$ovrrelsrc")
 }
 
 # Implement support for automatic local overrides:
