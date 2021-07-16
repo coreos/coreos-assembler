@@ -141,14 +141,14 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// remounting in libostree forcing a cache flush and blocking D-Bus.
 		// Should drop this once we fix it more properly in {rpm-,}ostree.
 		// https://github.com/coreos/coreos-assembler/issues/1301
-		c.MustSSHf(m, "tar -xf %s -C %s && sync", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
+		c.RunCmdSyncf(m, "tar -xf %s -C %s && sync", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
 
 		// disable zincati; from now on, we'll start it manually whenenever we
 		// want to upgrade via Zincati
-		c.MustSSH(m, "sudo systemctl disable --now --quiet zincati.service")
-		c.MustSSH(m, "sudo rm /etc/zincati/config.d/99-updates.toml")
+		c.RunCmdSync(m, "sudo systemctl disable --now --quiet zincati.service")
+		c.RunCmdSync(m, "sudo rm /etc/zincati/config.d/99-updates.toml")
 		// delete what mantle adds (XXX: should just opt out of this upfront)
-		c.MustSSH(m, "sudo rm /etc/zincati/config.d/90-disable-auto-updates.toml")
+		c.RunCmdSync(m, "sudo rm /etc/zincati/config.d/90-disable-auto-updates.toml")
 
 	})
 
