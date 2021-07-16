@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/coreos-assembler-schema/cosa"
 	log "github.com/sirupsen/logrus"
 )
 

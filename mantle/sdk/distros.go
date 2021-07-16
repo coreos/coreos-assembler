@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/mantle/cosa"
+	"github.com/coreos/coreos-assembler-schema/cosa"
 )
 
 // TargetDistroFromName returns the distribution given

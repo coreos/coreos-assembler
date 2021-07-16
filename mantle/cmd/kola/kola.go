@@ -30,8 +30,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/coreos/coreos-assembler-schema/cosa"
 	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/cosa"
 	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
