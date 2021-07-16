@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kballard/go-shellquote"
+
 	"github.com/coreos/mantle/harness"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/pkg/capnslog"
@@ -166,4 +168,27 @@ func (t *TestCluster) MustSSH(m platform.Machine, cmd string) []byte {
 
 func (t *TestCluster) MustSSHf(m platform.Machine, f string, args ...interface{}) []byte {
 	return t.MustSSH(m, fmt.Sprintf(f, args...))
+}
+
+// RunCmdSync is like MustSSH, but logs the command to the target journal before executing.
+func (t *TestCluster) RunCmdSync(m platform.Machine, cmd string) []byte {
+	t.LogJournal(m, cmd)
+	return t.MustSSH(m, cmd)
+}
+
+// RunCmdSyncf is like MustSSHf, but logs the command to the target journal before executing.
+func (t *TestCluster) RunCmdSyncf(m platform.Machine, f string, args ...interface{}) []byte {
+	return t.RunCmdSync(m, fmt.Sprintf(f, args...))
+}
+
+// Synchronously write a log message from the syslog identifier `kola` into the target
+// machine's journal (via ssh) as well as at a debug log level to the current process.
+// This is useful for debugging test failures, as we always capture the target
+// system journal.
+func (t *TestCluster) LogJournal(m platform.Machine, msg string) {
+	t.MustSSH(m, fmt.Sprintf("logger -t kola %s", shellquote.Join(msg)))
+}
+
+func (t *TestCluster) LogJournalf(m platform.Machine, f string, args ...interface{}) {
+	t.LogJournal(m, fmt.Sprintf(f, args...))
 }
