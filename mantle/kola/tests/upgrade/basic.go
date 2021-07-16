@@ -35,7 +35,8 @@ import (
 	mantleUtil "github.com/coreos/mantle/util"
 )
 
-const ostreeRepo = "/srv/ostree"
+const workdir = "/var/srv/upgrade"
+const ostreeRepo = workdir + "/repo"
 const zincatiMetricsSocket = "/run/zincati/public/metrics.promsock"
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/upgrade")
@@ -114,7 +115,7 @@ func init() {
     ],
     "directories": [
       {
-        "path": "OSTREE_REPO",
+        "path": "WORKDIR",
         "mode": 493,
         "user": {
           "name": "core"
@@ -122,7 +123,7 @@ func init() {
       }
     ]
   }
-}`, "OSTREE_REPO", ostreeRepo, -1)),
+}`, "WORKDIR", workdir, -1)),
 	})
 }
 
@@ -133,20 +134,34 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 	graph := new(Graph)
 
 	c.Run("setup", func(c cluster.TestCluster) {
+		ostreeblob := kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path
+		ostreeref := kola.CosaBuild.Meta.BuildRef
 		// this is the only heavy-weight part, though remember this test is
 		// optimized for qemu testing locally where this won't leave localhost at
 		// all. cloud testing should mostly be a pipeline thing, where the infra
 		// connection should be much faster
-		ostreeTarPath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path)
+		ostreeTarPath := filepath.Join(kola.CosaBuild.Dir, ostreeblob)
 		if err := cluster.DropFile(c.Machines(), ostreeTarPath); err != nil {
 			c.Fatal(err)
 		}
 
-		// XXX: Note the '&& sync' here; this is to work around sysroot
+		// See https://github.com/coreos/fedora-coreos-tracker/issues/812
+		if strings.HasSuffix(ostreeblob, ".ociarchive") {
+			tmprepo := workdir + "/repo-bare"
+			// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
+			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
+			c.RunCmdSyncf(m, "rpm-ostree ex-container import --repo=%s --write-ref %s oci-archive:%s", tmprepo, ostreeref, ostreeblob)
+			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
+			c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
+		} else {
+			c.RunCmdSyncf(m, "mkdir -p %s && tar -xf %s -C %s", ostreeRepo, ostreeblob, ostreeRepo)
+		}
+
+		// XXX: This is to work around sysroot
 		// remounting in libostree forcing a cache flush and blocking D-Bus.
 		// Should drop this once we fix it more properly in {rpm-,}ostree.
 		// https://github.com/coreos/coreos-assembler/issues/1301
-		c.RunCmdSyncf(m, "tar -xf %s -C %s && sync", kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path, ostreeRepo)
+		c.RunCmdSync(m, "time sudo sync")
 
 		// disable zincati; from now on, we'll start it manually whenenever we
 		// want to upgrade via Zincati
