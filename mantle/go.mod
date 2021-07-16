@@ -12,6 +12,7 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
 	github.com/coreos/butane v0.13.0
+	github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/go-systemd/v22 v22.0.0
@@ -40,7 +41,7 @@ require (
 	github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
 	github.com/vmware/govmomi v0.15.0
-	github.com/xeipuuv/gojsonschema v1.2.0
+	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
@@ -50,4 +51,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d
+replace (
+	github.com/coreos/coreos-assembler-schema => ../schema
+	google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d
+)
