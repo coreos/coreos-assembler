@@ -73,8 +73,9 @@ staticanalysis:
 tools:
 	cd tools && $(MAKE)
 
+.PHONY: schema
 schema:
-	$(MAKE) -C tools schema
+	$(MAKE) -C schema
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
