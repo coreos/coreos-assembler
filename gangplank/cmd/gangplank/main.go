@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/coreos-assembler-schema/cosa"
 	jobspec "github.com/coreos/gangplank/internal/spec"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

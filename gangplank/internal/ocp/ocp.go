@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/gangplank/internal/cosa"
+	"github.com/coreos/coreos-assembler-schema/cosa"
 	"github.com/coreos/gangplank/internal/spec"
 	buildapiv1 "github.com/openshift/api/build/v1"
 	log "github.com/sirupsen/logrus"

@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/coreos/mantle/cosa"
+	"github.com/coreos/coreos-assembler-schema/cosa"
 	"github.com/coreos/mantle/system"
 )
 
