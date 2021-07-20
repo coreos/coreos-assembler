@@ -66,6 +66,9 @@ Example format of the file:
     # If no streams are specified, test will be skipped on all streams
     - stream1
     - stream2
+  # The test will only be skipped until this date (will resume on the date)
+  # Format: YYYY-MM-DD
+  snooze: 2021-07-20
   arches:
     # This test will be skipped on these arches
     # If no arches are specified, test will be skipped on all arches
