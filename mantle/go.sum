@@ -93,6 +93,10 @@ github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbp
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/coreos/stream-metadata-go v0.0.0-20210326184633-63bc4d14529f h1:ZeS5fEC1A+LNi0zpslA6i7R+yIktlQ7Ab/mCDaqWj0U=
 github.com/coreos/stream-metadata-go v0.0.0-20210326184633-63bc4d14529f/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
+github.com/coreos/stream-metadata-go v0.1.0 h1://X8eXFEwmhSbQbag3S05AlcyXpzmChDqd/xypve5ig=
+github.com/coreos/stream-metadata-go v0.1.0/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
+github.com/coreos/stream-metadata-go v0.1.1 h1:97r4UsLPjx6rwavgcoho5sd4N4+Dtgc81h8xCGE3bkY=
+github.com/coreos/stream-metadata-go v0.1.1/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
 github.com/coreos/vcontext v0.0.0-20210407161507-4ee6c745c8bd h1:iHdPNrKIKSSlAy6nCmBliwn7xFTDu+OoFkArqMTr6Zc=
 github.com/coreos/vcontext v0.0.0-20210407161507-4ee6c745c8bd/go.mod h1:z4pMVvaUrxs98RROlIYdAQCKhEicjnTirOaVyDRH5h8=
 github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
@@ -212,6 +216,8 @@ github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99/go.mod h1:ZgVRPoUq/hf
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/renameio v1.0.0 h1:xhp2CnJmgQmpJU4RY8chagahUq5mbPPAbiSQstKpVMA=
 github.com/google/renameio v1.0.0/go.mod h1:t/HQoYBZSsWSNK35C6CO/TpPLDVWvxOHboWUAweKUpk=
+github.com/google/renameio v1.0.1 h1:Lh/jXZmvZxb0BBeSY5VKEfidcbcbenKjZFzM/q0fSeU=
+github.com/google/renameio v1.0.1/go.mod h1:t/HQoYBZSsWSNK35C6CO/TpPLDVWvxOHboWUAweKUpk=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=

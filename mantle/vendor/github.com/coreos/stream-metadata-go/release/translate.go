@@ -76,6 +76,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		// See https://github.com/coreos/stream-metadata-go/issues/13
 	}
 
+	if releaseArch.Media.AzureStack != nil {
+		artifacts["azurestack"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.AzureStack.Artifacts),
+		}
+	}
+
 	if releaseArch.Media.Aliyun != nil {
 		artifacts["aliyun"] = stream.PlatformArtifacts{
 			Release: rel.Release,
