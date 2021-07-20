@@ -76,6 +76,9 @@ const NeedsInternetTag = "needs-internet"
 // Don't e.g. check console for kernel errors, SELinux AVCs, etc.
 const SkipBaseChecksTag = "skip-base-checks"
 
+// Date format for snooze date specified in kola-denylist.yaml (YYYY-MM-DD)
+const snoozeFormat = "2006-01-02"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
 
@@ -274,10 +277,11 @@ func testRequiresInternet(test *register.Test) bool {
 }
 
 type DenyListObj struct {
-	Pattern string   `yaml:"pattern"`
-	Tracker string   `yaml:"tracker"`
-	Streams []string `yaml:"streams"`
-	Arches  []string `yaml:"arches"`
+	Pattern    string   `yaml:"pattern"`
+	Tracker    string   `yaml:"tracker"`
+	Streams    []string `yaml:"streams"`
+	Arches     []string `yaml:"arches"`
+	SnoozeDate string   `yaml:"snooze"`
 }
 
 type ManifestData struct {
@@ -323,8 +327,9 @@ func parseDenyListYaml() error {
 
 	stream := manifest.AddCommitMetadata.FcosStream
 	arch := system.RpmArch()
+	today := time.Now()
 
-	// Accumulate patterns filtering by stream and arch
+	// Accumulate patterns filtering by stream, arch and skipping tests until snooze date
 	plog.Debug("Processing denial patterns from yaml...")
 	for _, obj := range objs {
 		if len(obj.Arches) > 0 && !hasString(arch, obj.Arches) {
@@ -335,7 +340,19 @@ func parseDenyListYaml() error {
 			continue
 		}
 
-		fmt.Printf("⚠️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
+		if obj.SnoozeDate != "" {
+			snoozeDate, err := time.Parse(snoozeFormat, obj.SnoozeDate)
+			if err != nil {
+				return err
+			} else if today.After(snoozeDate) {
+				continue
+			}
+
+			fmt.Printf("🕒 Snoozing kola test pattern \"%s\" until %s:\n", obj.Pattern, snoozeDate.Format("Jan 02 2006"))
+		} else {
+			fmt.Printf("⚠️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
+		}
+
 		fmt.Printf("  👉 %s\n", obj.Tracker)
 		DenylistedTests = append(DenylistedTests, obj.Pattern)
 	}
