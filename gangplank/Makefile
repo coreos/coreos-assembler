@@ -32,9 +32,13 @@ staticanalysis:
 	env CGO_ENABLED=0 golangci-lint run -v --build-tags ${buildtags},gangway ./...
 
 .PHONY: test
+test: miniotag ?= ",!minio"
 test: fmt
-	go test -mod=vendor -tags ${buildtags},gangway -v ${pkgs} && \
-	env CGO_ENABLED=0 go test -mod=vendor -tags ${buildtags},!gangway -v -cover ${pkgs}
+	go test -mod=vendor -cover=1 -tags ${buildtags},gangway,!minio -v ${pkgs} && \
+	env CGO_ENABLED=0 go test -cover=1 -mod=vendor -tags ${buildtags},!gangway${miniotags} -v -cover ${pkgs}
+.PHONY: test-full
+test-full:
+	$(MAKE) test miniotags=",minio"
 
 .PHONY: clean
 clean:
