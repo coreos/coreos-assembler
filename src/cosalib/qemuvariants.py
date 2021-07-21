@@ -133,6 +133,7 @@ def get_qemu_variant(variant, parser, kwargs={}):
         variant=variant,
         force=parser.force,
         arch=parser.arch,
+        compress=parser.compress,
         **kwargs)
 
 
