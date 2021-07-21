@@ -152,5 +152,5 @@ class BuildCli(Cli):
             help='Dump the manfiest and exit')
         self.add_argument(
             '--schema', env_var="META_SCHEMA",
-            default='/usr/lib/coreos-assembler/schema/v1.json',
+            default='/usr/lib/coreos-assembler/v1.json',
             help='Schema to use. Set to NONE to skip all validation')

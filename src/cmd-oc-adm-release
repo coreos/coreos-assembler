@@ -111,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('--build', default='latest')
     parser.add_argument('--schema', help='location of meta.json schema',
                         default=os.environ.get("COSA_META_SCHEMA",
-                                               f'{COSA_PATH}/schema/v1.json'))
+                                               f'{COSA_PATH}/v1.json.json'))
     parser.add_argument("--authfile", action="store", required=True,
                         help="Pull secret")
     parser.add_argument("--arch", action='store',
