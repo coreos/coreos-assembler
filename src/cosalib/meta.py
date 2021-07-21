@@ -14,7 +14,7 @@ COSA_DELAYED_MERGE = "coreos-assembler.delayed-meta-merge"
 COSA_VER_STAMP = "coreos-assembler.meta-stamp"
 
 SCHEMA_PATH = os.environ.get("COSA_META_SCHEMA",
-                             "/usr/lib/coreos-assembler/schema/v1.json")
+                             "/usr/lib/coreos-assembler/v1.json")
 
 
 class COSAMergeError(Exception):

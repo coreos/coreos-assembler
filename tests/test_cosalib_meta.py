@@ -16,7 +16,7 @@ from jsonschema import ValidationError
 TEST_META_PATH = os.environ.get(
     "COSA_TEST_META_PATH", "/usr/lib/coreos-assembler/fixtures")
 TEST_SCHEMA = os.environ.get(
-    "COSA_META_SCHEMA", "/usr/lib/coreos-assembler/cosalib/schema/v1.json")
+    "COSA_META_SCHEMA", "/usr/lib/coreos-assembler/cosalib/v1.json")
 
 
 def _create_test_files(tmpdir, meta_data=None):

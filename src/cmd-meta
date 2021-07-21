@@ -29,7 +29,7 @@ def new_cli():
                         action='store_true')
     parser.add_argument('--schema', help='location of meta.json schema',
                         default=os.environ.get("COSA_META_SCHEMA",
-                                               f'{COSA_PATH}/schema/v1.json'))
+                                               f'{COSA_PATH}/v1.json.json'))
     parser.add_argument('--true', dest='bool', default=None,
                         help='set a field', action='store_true')
     parser.add_argument('--false', dest='bool', default=None,
