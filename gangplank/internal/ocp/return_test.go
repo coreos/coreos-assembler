@@ -1,3 +1,4 @@
+// +minio
 package ocp
 
 import (
