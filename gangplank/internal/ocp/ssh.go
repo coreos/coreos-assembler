@@ -33,6 +33,7 @@ func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort {
 		Host: j.Minio.SSHForward,
 		User: j.Minio.SSHUser,
 		Key:  j.Minio.SSHKey,
+		SSHPort: j.Minio.SSHPort,
 	}
 }
 
@@ -128,7 +129,7 @@ func (m *minioServer) fowardOverSSH(termCh termChan, errCh chan<- error) error {
 	l := log.WithFields(log.Fields{
 		"remote host": m.overSSH.Host,
 		"remote user": m.overSSH.User,
-		"port":        m.Port,
+		"port":        sshport,
 	})
 
 	l.Info("Forwarding local port over SSH to remote host")

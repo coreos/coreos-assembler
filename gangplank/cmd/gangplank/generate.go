@@ -85,6 +85,7 @@ func setCliSpec() {
 			spec.Minio.SSHForward = minioSshRemoteHost
 			spec.Minio.SSHUser = minioSshRemoteUser
 			spec.Minio.SSHKey = minioSshRemoteKey
+			spec.Minio.SSHPort = minioSshRemotePort
 		}
 		if minioCfgFile != "" {
 			spec.Minio.ConfigFile = minioCfgFile

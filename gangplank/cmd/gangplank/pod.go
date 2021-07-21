@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -103,6 +104,15 @@ func runPod(c *cobra.Command, args []string) {
 				minioSshRemoteHost = containerHost()
 				if strings.Contains(minioSshRemoteHost, "@") {
 					parts := strings.Split(minioSshRemoteHost, "@")
+					if strings.Contains(parts[1], ":"){
+						hostparts := strings.Split(parts[1], ":")
+						port, err := strconv.Atoi(hostparts[1])
+						if err != nil {
+							log.WithError(err).Fatalf("failed to define minio port %s", hostparts[1])
+						}
+						parts[1] = hostparts[0]
+						minioSshRemotePort = port
+					}
 					minioSshRemoteHost = parts[1]
 					minioSshRemoteUser = parts[0]
 					minioSshRemoteKey = cosaPodmanRemoteSshKey
@@ -111,6 +121,7 @@ func runPod(c *cobra.Command, args []string) {
 					"remote user": minioSshRemoteUser,
 					"remote key":  cosaPodmanRemoteSshKey,
 					"remote host": minioSshRemoteHost,
+					"remote port": minioSshRemotePort,
 				}).Info("Minio will be forwarded to remote host")
 			}
 

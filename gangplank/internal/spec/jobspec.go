@@ -134,6 +134,7 @@ type Minio struct {
 	SSHForward string `yaml:",omitempty" json:",omitempty"`
 	SSHUser    string `yaml:",omitempty" json:",omitempty"`
 	SSHKey     string `yaml:",omitempty" json:",omitempty"`
+	SSHPort    int    `yaml:",omitempty" json:",omitempty"`
 }
 
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config
