@@ -30,9 +30,9 @@ func getSshMinioForwarder(j *spec.JobSpec) *SSHForwardPort {
 		return nil
 	}
 	return &SSHForwardPort{
-		Host: j.Minio.SSHForward,
-		User: j.Minio.SSHUser,
-		Key:  j.Minio.SSHKey,
+		Host:    j.Minio.SSHForward,
+		User:    j.Minio.SSHUser,
+		Key:     j.Minio.SSHKey,
 		SSHPort: j.Minio.SSHPort,
 	}
 }
