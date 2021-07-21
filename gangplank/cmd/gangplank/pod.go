@@ -104,7 +104,7 @@ func runPod(c *cobra.Command, args []string) {
 				minioSshRemoteHost = containerHost()
 				if strings.Contains(minioSshRemoteHost, "@") {
 					parts := strings.Split(minioSshRemoteHost, "@")
-					if strings.Contains(parts[1], ":"){
+					if strings.Contains(parts[1], ":") {
 						hostparts := strings.Split(parts[1], ":")
 						port, err := strconv.Atoi(hostparts[1])
 						if err != nil {
