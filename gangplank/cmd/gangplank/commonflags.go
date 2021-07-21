@@ -23,6 +23,9 @@ var (
 
 	// minioSshRemoteKey is the SSH key to use with minioSshRemoteHost
 	minioSshRemoteKey string
+
+	// minioSshRemotePort is the SSH port to use with minioSshRemotePort
+	minioSshRemotePort int
 )
 
 // cosaKolaTests are used to generate automatic Kola stages.
