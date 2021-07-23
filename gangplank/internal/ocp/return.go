@@ -41,66 +41,81 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 	if r.Minio == nil {
 		return nil
 	}
-	baseBuildDir := filepath.Join(cosaSrvDir, "builds")
-	b, path, err := cosa.ReadBuild(baseBuildDir, "", cosa.BuilderArch())
-	if err != nil {
-		return err
-	}
-	if b == nil {
-		return nil
-	}
 	upload := make(map[string]string)
 
-	// Capture /srv/builds/builds.json
+	// Grab any files that were explicitly placed here for us to
+	// upload denoted by having a .minioupload suffix. These get
+	// placed in the bucket under the minioupload/ prefix.
+	path := filepath.Join(cosaSrvDir, "tmp")
+	tmpFiles, _ := ioutil.ReadDir(path)
+	for _, f := range tmpFiles {
+		if strings.HasSuffix(f.Name(), "minioupload") {
+			upKey := filepath.Join("minioupload", f.Name())
+			srcPath := filepath.Join(path, f.Name())
+			upload[upKey] = srcPath
+		}
+	}
+
+	// Read and process the uploads for the builds. If there are no
+	// builds, ignore.
 	bJSONpath := filepath.Join(cosaSrvDir, "builds", cosa.CosaBuildsJSON)
 	if _, err := os.Stat(bJSONpath); err == nil {
 		upload["builds.json"] = bJSONpath
-	}
 
-	// Get all the builds files
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return fmt.Errorf("failed to read build dir %s: %w", path, err)
-	}
-
-	// Get the builds
-	keyPath := filepath.Join(b.BuildID, cosa.BuilderArch())
-	for _, f := range files {
-		if f.IsDir() {
-			continue
+		baseBuildDir := filepath.Join(cosaSrvDir, "builds")
+		b, path, err := cosa.ReadBuild(baseBuildDir, "", cosa.BuilderArch())
+		if err != nil {
+			return err
+		}
+		if b == nil {
+			return nil
 		}
 
-		upKey := filepath.Join(keyPath, f.Name())
-		srcPath := filepath.Join(path, f.Name())
-
-		// Check if this a meta type
-		if isKnownBuildMeta(f.Name()) {
-			upload[upKey] = srcPath
+		// Get all the builds files
+		files, err := ioutil.ReadDir(path)
+		if err != nil {
+			return fmt.Errorf("failed to read build dir %s: %w", path, err)
 		}
 
-		// Check if this a known build artifact that was not fetched
-		if _, ok := b.IsArtifact(filepath.Base(f.Name())); ok {
-			fetched := false
-			for _, v := range ws.RemoteFiles {
-				if upKey == v.Object {
-					log.WithField("local path", f.Name()).Debug("skipping upload of file that was fetched")
-					fetched = true
-					continue
-				}
+		// Get the builds
+		keyPath := filepath.Join(b.BuildID, cosa.BuilderArch())
+		for _, f := range files {
+			if f.IsDir() {
+				continue
 			}
-			if !fetched {
+
+			upKey := filepath.Join(keyPath, f.Name())
+			srcPath := filepath.Join(path, f.Name())
+
+			// Check if this a meta type
+			if isKnownBuildMeta(f.Name()) {
 				upload[upKey] = srcPath
 			}
-		}
-	}
 
-	// Now any kola logs.
-	tmpFiles, _ := ioutil.ReadDir(filepath.Join(cosaSrvDir, "tmp"))
-	for _, f := range tmpFiles {
-		upKey := filepath.Join(keyPath, "logs", f.Name())
-		srcPath := filepath.Join(path, f.Name())
-		if strings.Contains(f.Name(), "kola") && strings.HasSuffix(f.Name(), "tar.xz") {
-			upload[upKey] = srcPath
+			// Check if this a known build artifact that was not fetched
+			if _, ok := b.IsArtifact(filepath.Base(f.Name())); ok {
+				fetched := false
+				for _, v := range ws.RemoteFiles {
+					if upKey == v.Object {
+						log.WithField("local path", f.Name()).Debug("skipping upload of file that was fetched")
+						fetched = true
+						continue
+					}
+				}
+				if !fetched {
+					upload[upKey] = srcPath
+				}
+			}
+		}
+
+		// Now any kola logs.
+		tmpFiles, _ := ioutil.ReadDir(filepath.Join(cosaSrvDir, "tmp"))
+		for _, f := range tmpFiles {
+			upKey := filepath.Join(keyPath, "logs", f.Name())
+			srcPath := filepath.Join(path, f.Name())
+			if strings.Contains(f.Name(), "kola") && strings.HasSuffix(f.Name(), "tar.xz") {
+				upload[upKey] = srcPath
+			}
 		}
 	}
 
@@ -122,7 +137,7 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 			base := filepath.Base(v)
 			if isKnownBuildMeta(base) {
 				if newer {
-					l.WithField("overrite", true).Info("overwrite meta-data with newer version")
+					l.WithField("overwrite", true).Info("overwrite meta-data with newer version")
 					r.Overwrite = true
 				} else {
 					l.Debug("meta-data is not newer than source, skipping")
