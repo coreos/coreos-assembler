@@ -76,12 +76,10 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 
 	// If a URI for the container API server has been specified
 	// by the user then let's honor that. Else construct one.
-	podmanRemote := false
 	socket := os.Getenv(podmanContainerHostEnvVar)
 	if strings.HasPrefix(socket, "ssh://") {
 		l = l.WithField("podman socket", socket)
 		l.Info("Lauching remote pod")
-		podmanRemote = true
 	} else {
 		// Once podman 3.2.0 is released use this instead:
 		//      import "github.com/containers/podman/v3/pkg/util"
@@ -161,7 +159,7 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	}
 
 	var srvVol *entities.VolumeConfigResponse = nil
-	if podmanRemote || clusterCtx.podmanSrvDir == "" {
+	if clusterCtx.podmanSrvDir == "" {
 		// If running podman remotely or the srvDir is undefined, create and use an ephemeral
 		// volume. The volume will be removed via ender()
 		srvVol, err = podVolumes.Create(connText, entities.VolumeCreateOptions{Name: podSpec.Name}, nil)
