@@ -35,6 +35,7 @@ func init() {
 	specCommonFlags.StringSliceVar(&generateCommands, "singleCmd", []string{}, "commands to run in stage")
 	specCommonFlags.StringSliceVar(&generateSingleRequires, "singleReq", []string{}, "artifacts to require")
 	specCommonFlags.StringVarP(&cosaSrvDir, "srvDir", "S", "", "directory for /srv; in pod mount this will be bind mounted")
+	specCommonFlags.StringSliceVar(&generateReturnFiles, "returnFiles", []string{}, "Extra files to upload to the minio server")
 	jobspec.AddKolaTestFlags(&cosaKolaTests, specCommonFlags)
 
 	username := ""

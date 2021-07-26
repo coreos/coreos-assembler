@@ -240,3 +240,39 @@ func uploadPathAsTarBall(ctx context.Context, bucket, object, path, workDir stri
 
 	return nil
 }
+
+// uploadReturnFiles uploads requested files to the minio server.
+func uploadReturnFiles(ctx context.Context, bucket string, files []string, r *Return) error {
+	if r.Minio == nil {
+		return nil
+	}
+	upload := make(map[string]string)
+
+	// Grab any files that were requested to be returned and upload
+	// them.
+	for _, f := range files {
+		upKey := filepath.Join(bucket, f)
+		srcPath := filepath.Join(cosaSrvDir, f)
+		upload[upKey] = srcPath
+	}
+
+	var e error = nil
+	for k, v := range upload {
+		if r.KeyPrefix != "" {
+			k = filepath.Join(r.KeyPrefix, k)
+		}
+
+		l := log.WithFields(log.Fields{
+			"host":          r.Minio.Host,
+			"file":          v,
+			"remote/bucket": r.Bucket,
+			"remote/key":    k,
+		})
+
+		if err := r.Minio.putter(ctx, r.Bucket, k, v); err != nil {
+			l.WithField("err", err).Error("failed upload of requested file")
+			e = fmt.Errorf("upload failed with at least one error: %w", err)
+		}
+	}
+	return e
+}

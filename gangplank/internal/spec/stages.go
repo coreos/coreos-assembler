@@ -90,6 +90,9 @@ type Stage struct {
 	RequireCacheRepo bool `yaml:"require_cache_repo,omitempty" json:"require_cache_repo_repo,omitempty"`
 	RequestCacheRepo bool `yaml:"request_cache_repo,omitempty" json:"request_cache_repo_repo,omitempty"`
 
+	// ReturnFiles returns a list of files that were requested to be returned.
+	ReturnFiles []string `yaml:"return_files,omitempty" json:"return_files,omitempty"`
+
 	// KolaTests are shorthands for testing.
 	KolaTests []string `yaml:"kola_tests,omitempty" json:"kola_tests,omitempty"`
 

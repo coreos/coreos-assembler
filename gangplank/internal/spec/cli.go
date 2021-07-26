@@ -89,6 +89,11 @@ func (s *Stage) AddCommands(args []string) {
 	s.Commands = append(s.Commands, args...)
 }
 
+// AddReturnFiles adds return files to a stage
+func (s *Stage) AddReturnFiles(args []string) {
+	s.ReturnFiles = append(s.ReturnFiles, args...)
+}
+
 // AddRequires adds in requires based on the arifacts that a stage requires
 // inconsideration of what the stage builds
 func (s *Stage) AddRequires(args []string) {
