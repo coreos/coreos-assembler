@@ -608,6 +608,9 @@ EOF
 
     rm -rf "${tmp_builddir}/supermin.out" "${vmpreparedir}" "${vmbuilddir}"
 
+    if test -n "${ARTIFACT_DIR:-}"; then
+        cp "${runvm_console}" "${ARTIFACT_DIR}"
+    fi
     if [ ! -f "${rc_file}" ]; then
         cat "${runvm_console}"
         fatal "Couldn't find rc file; failure inside supermin init?"
