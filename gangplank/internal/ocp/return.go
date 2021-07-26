@@ -43,7 +43,10 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 	}
 	baseBuildDir := filepath.Join(cosaSrvDir, "builds")
 	b, path, err := cosa.ReadBuild(baseBuildDir, "", cosa.BuilderArch())
-	if err != nil {
+	if err == cosa.ErrNoBuildsFound {
+		// If there are no builds, ignore
+		return nil
+	} else if err != nil {
 		return err
 	}
 	if b == nil {
