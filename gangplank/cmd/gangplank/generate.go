@@ -18,6 +18,9 @@ var (
 	// generateSingleCommands is a list of command that will be run in the stage
 	generateCommands []string
 
+	// generateReturnFiles defines a list of extra files to upload to minio server
+	generateReturnFiles []string
+
 	// generateSingleStage indicates that all commands/artfiacts should be in the same stage
 	generateSingleStage bool
 
@@ -71,6 +74,7 @@ func init() {
 	cmdGenerateSingle.Flags().StringVar(&generateFileName, "yaml-out", "", "write YAML to file")
 	cmdGenerateSingle.Flags().StringSliceVar(&generateCommands, "cmd", []string{}, "commands to run in stage")
 	cmdGenerateSingle.Flags().StringSliceVar(&generateSingleRequires, "req", []string{}, "artifacts to require")
+	cmdGenerateSingle.Flags().StringSliceVar(&generateReturnFiles, "returnFiles", []string{}, "Extra files to upload to the minio server")
 	jobspec.AddKolaTestFlags(&cosaKolaTests, cmdGenerateSingle.Flags())
 }
 
@@ -135,6 +139,7 @@ func setCliSpec() {
 
 	spec.Stages[0].AddCommands(generateCommands)
 	spec.Stages[0].AddRequires(generateSingleRequires)
+	spec.Stages[0].AddReturnFiles(generateReturnFiles)
 }
 
 // generateCLICommand is the full spec generator command

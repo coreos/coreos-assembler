@@ -231,6 +231,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 			"required artifacts": stage.RequireArtifacts,
 			"optional artifacts": stage.RequestArtifacts,
 			"commands":           stage.Commands,
+			"return files":       stage.ReturnFiles,
 		})
 		l.Info("Executing Stage")
 
@@ -273,6 +274,12 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		if stage.ReturnCacheRepo {
 			l.WithField("tarball", cacheRepoTarballName).Infof("Sending %s back as a tarball", cosaSrvTmpRepo)
 			if err := uploadPathAsTarBall(ctx, cacheBucket, cacheRepoTarballName, cosaSrvTmpRepo, "", true, ws.Return); err != nil {
+				return err
+			}
+		}
+		if len(stage.ReturnFiles) != 0 {
+			l.WithField("files", stage.ReturnFiles).Infof("Sending requested files back to remote")
+			if err := uploadReturnFiles(ctx, cacheBucket, stage.ReturnFiles, ws.Return); err != nil {
 				return err
 			}
 		}
