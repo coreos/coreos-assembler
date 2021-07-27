@@ -19,13 +19,14 @@ dn=$(dirname "$0")
 
 print_help() {
     cat 1>&2 <<'EOF'
-Usage: coreos-assembler build-fast
+Usage: coreos-assembler build-fast [--undeploy]
 EOF
 }
 
 # Parse options
+NO_UNDEPLOY=0
 rc=0
-options=$(getopt --options h --longoptions help -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,no-undeploy -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -36,6 +37,9 @@ while true; do
         -h | --help)
             print_help
             exit 0
+            ;;
+        --no-undeploy)
+            NO_UNDEPLOY=1
             ;;
         --)
             shift
@@ -144,7 +148,7 @@ imgname="${fastref}-${version}-qemu.qcow2"
 rm -vf "${outdir}"/*.qcow2
 qemu-img create -f qcow2 -o backing_fmt=qcow2,backing_file="${previous_builddir}/${previous_qemu}" "${imgname}.tmp" 20G
 RUNVM_NONET=1 runvm -drive if=virtio,id=target,format=qcow2,file="${imgname}.tmp",cache=unsafe -- \
-    /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
+    /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}" "${NO_UNDEPLOY}"
 mv "${imgname}.tmp" "${imgname}"
 mv "${imgname}" "${outdir}/${imgname}"
 rm "${tmp_builddir}" -rf
