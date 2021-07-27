@@ -97,4 +97,4 @@ commit=$(json_key ostree-commit)
 fi
 
 runvm -drive if=virtio,id=target,format=qcow2,file="${disk}" -- \
-    /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}"
+    /usr/lib/coreos-assembler/offline-update-impl "${workdir}/tmp/repo" "${commit}" "1"

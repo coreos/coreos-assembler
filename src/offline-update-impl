@@ -15,6 +15,8 @@ repo=$1
 shift
 ref=$1
 shift
+no_undeploy=$1
+shift
 
 set -x
 ostree pull-local --repo="${sysroot}"/ostree/repo "${repo}" "${ref}"
@@ -40,6 +42,9 @@ EOF
     chmod a+x /usr/bin/dummy-mkconfig
 fi
 env OSTREE_DEBUG_GRUB2=1 OSTREE_GRUB2_EXEC=/usr/bin/dummy-mkconfig ostree admin --sysroot="${sysroot}" --os="${stateroot}" deploy "${ref}"
+if [ "${no_undeploy}" = 0 ]; then
+    env OSTREE_DEBUG_GRUB2=1 OSTREE_GRUB2_EXEC=/usr/bin/dummy-mkconfig ostree admin --sysroot="${sysroot}" undeploy 1
+fi
 # EVEN MORE tremendous hackery for old systems that use grub2-mkconfig or zipl
 if [ "${bootloader}" != "none" ]; then
     # shellcheck disable=SC2010
