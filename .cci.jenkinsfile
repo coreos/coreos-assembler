@@ -7,6 +7,11 @@ def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1"])
 pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     checkout scm
 
+    stage("Unit tests") {
+        shwrap("make check")
+        shwrap("make unittest")
+    }
+
     shwrap("rpm -qa | sort > rpmdb.txt")
     archiveArtifacts artifacts: 'rpmdb.txt'
 

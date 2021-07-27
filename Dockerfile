@@ -12,10 +12,6 @@ RUN ./build.sh write_archive_info
 RUN ./build.sh make_and_makeinstall
 RUN ./build.sh configure_user
 
-RUN make check
-RUN make unittest
-RUN make clean
-
 # clean up scripts (it will get cached in layers, but oh well)
 WORKDIR /srv/
 RUN chown builder: /srv
