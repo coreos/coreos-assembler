@@ -35,10 +35,11 @@ staticanalysis:
 test: miniotag ?= ",!minio"
 test: fmt
 	go test -mod=vendor -cover=1 -tags ${buildtags},gangway,!minio -v ${pkgs} && \
-	env CGO_ENABLED=0 go test -cover=1 -mod=vendor -tags ${buildtags},!gangway${miniotags} -v -cover ${pkgs}
+	env CGO_ENABLED=0 go test -cover=1 -mod=vendor -tags ${buildtags},!gangway${miniotag} -v -cover ${pkgs}
+
 .PHONY: test-full
 test-full:
-	$(MAKE) test miniotags=",minio"
+	$(MAKE) test miniotag=",minio"
 
 .PHONY: clean
 clean:
