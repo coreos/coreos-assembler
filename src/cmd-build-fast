@@ -17,6 +17,41 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler build-fast
+EOF
+}
+
+# Parse options
+rc=0
+options=$(getopt --options h --longoptions help -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
+    print_help
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+        -h | --help)
+            print_help
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            fatal "$0: unrecognized option: $1"
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+
 
 # Detect the case that we're in a git repo without COSA_DIR
 # Note we use -e and not -d here so it also works in git worktrees.
