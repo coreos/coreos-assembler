@@ -73,6 +73,11 @@ Example format of the file:
     # This test will be skipped on these arches
     # If no arches are specified, test will be skipped on all arches
     - s390x
+  platforms:
+    # This test will be skipped on these platforms
+    # If no platforms are specified, test will be skipped on all platforms
+    - openstack
+    - aws
 - pattern: test2.test
   ...
 ```
