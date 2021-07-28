@@ -565,18 +565,15 @@ EOF
 
     # There seems to be some false positives in shellcheck
     # https://github.com/koalaman/shellcheck/issues/2217
+    memory_default=2048
     # shellcheck disable=2031
     case $arch in
-    "x86_64")  memory=2048 ;;
     # Power 8 page faults with 2G of memory in rpm-ostree
     # Most probably due to radix and 64k overhead.
-    "ppc64le") memory=4096 ;;
-    "aarch64") memory=2048 ;;
-    "s390x")   memory=2048 ;;
-    *)         fatal "Architecture ${arch} not supported"
+    "ppc64le") memory_default=4096 ;;
     esac
 
-    kola_args=(kola qemuexec -m "${memory}" --auto-cpus -U --workdir none \
+    kola_args=(kola qemuexec -m "${COSA_SUPERMIN_MEMORY:-${memory_default}}" --auto-cpus -U --workdir none \
                --console-to-file "${runvm_console}")
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
