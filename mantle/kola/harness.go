@@ -281,6 +281,7 @@ type DenyListObj struct {
 	Tracker    string   `yaml:"tracker"`
 	Streams    []string `yaml:"streams"`
 	Arches     []string `yaml:"arches"`
+	Platforms  []string `yaml:"platforms"`
 	SnoozeDate string   `yaml:"snooze"`
 }
 
@@ -290,7 +291,7 @@ type ManifestData struct {
 	} `yaml:"add-commit-metadata"`
 }
 
-func parseDenyListYaml() error {
+func parseDenyListYaml(pltfrm string) error {
 	var objs []DenyListObj
 
 	// Parse kola-denylist into structs
@@ -329,10 +330,14 @@ func parseDenyListYaml() error {
 	arch := system.RpmArch()
 	today := time.Now()
 
-	// Accumulate patterns filtering by stream, arch and skipping tests until snooze date
+	// Accumulate patterns filtering by set policies
 	plog.Debug("Processing denial patterns from yaml...")
 	for _, obj := range objs {
 		if len(obj.Arches) > 0 && !hasString(arch, obj.Arches) {
+			continue
+		}
+
+		if len(obj.Platforms) > 0 && !hasString(pltfrm, obj.Platforms) {
 			continue
 		}
 
@@ -510,7 +515,7 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 	//    either way
 
 	// Add denylisted tests in kola-denylist.yaml to DenylistedTests
-	err := parseDenyListYaml()
+	err := parseDenyListYaml(pltfrm)
 	if err != nil {
 		plog.Fatal(err)
 	}
