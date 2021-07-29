@@ -121,9 +121,6 @@ def ibmcloud_run_ore(build, args):
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
 
-    if args.force:
-        ore_args.extend(['--force'])
-
     region = "us-east"
     if args.region is not None and len(args.region) > 0:
         region = args.region[0]
@@ -152,6 +149,9 @@ def ibmcloud_run_ore(build, args):
 
     if args.credentials_file is not None:
         ore_args.extend(['--credentials-file', f"{args.credentials_file}"])
+
+    if args.force:
+        ore_args.extend(['--force'])
 
     run_verbose(ore_args)
     url_path = urllib.parse.quote((
