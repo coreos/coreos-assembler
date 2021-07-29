@@ -1,22 +1,24 @@
 # TODO list
 
+## Release v0.5.x
+
+1. Support check flag in gxz command.
+
 ## Release v0.6
 
 1. Review encoder and check for lzma improvements under xz.
 2. Fix binary tree matcher.
-3. Compare compression ratio with xz tool using comparable parameters
-   and optimize parameters
-4. Do some optimizations
-    - rename operation action and make it a simple type of size 8
-    - make maxMatches, wordSize parameters
-    - stop searching after a certain length is found (parameter sweetLen)
+3. Compare compression ratio with xz tool using comparable parameters and optimize parameters
+4. rename operation action and make it a simple type of size 8
+5. make maxMatches, wordSize parameters
+6. stop searching after a certain length is found (parameter sweetLen)
 
 ## Release v0.7
 
 1. Optimize code
 2. Do statistical analysis to get linear presets.
 3. Test sync.Pool compatability for xz and lzma Writer and Reader
-3. Fuzz optimized code.
+4. Fuzz optimized code.
 
 ## Release v0.8
 
@@ -40,51 +42,97 @@
 
 ## Package lzma
 
-### Release v0.6
+### v0.6
 
-- Rewrite Encoder into a simple greedy one-op-at-a-time encoder
-  including
-    + simple scan at the dictionary head for the same byte
-    + use the killer byte (requiring matches to get longer, the first
-      test should be the byte that would make the match longer)
-
+* Rewrite Encoder into a simple greedy one-op-at-a-time encoder including
+  * simple scan at the dictionary head for the same byte
+  * use the killer byte (requiring matches to get longer, the first test should be the byte that would make the match longer)
 
 ## Optimizations
 
-- There may be a lot of false sharing in lzma.State; check whether this
-  can be improved by reorganizing the internal structure of it.
-- Check whether batching encoding and decoding improves speed.
+* There may be a lot of false sharing in lzma. State; check whether this  can be improved by reorganizing the internal structure of it.
+
+* Check whether batching encoding and decoding improves speed.
 
 ### DAG optimizations
 
-- Use full buffer to create minimal bit-length above range encoder.
-- Might be too slow (see v0.4)
+* Use full buffer to create minimal bit-length above range encoder.
+* Might be too slow (see v0.4)
 
 ### Different match finders
 
-- hashes with 2, 3 characters additional to 4 characters
-- binary trees with 2-7 characters (uint64 as key, use uint32 as
+* hashes with 2, 3 characters additional to 4 characters
+* binary trees with 2-7 characters (uint64 as key, use uint32 as
+
   pointers into a an array)
-- rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
+
+* rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
+
   into an array with bit-steeling for the colors)
 
 ## Release Procedure
 
-- execute goch -l for all packages; probably with lower param like 0.5.
-- check orthography with gospell
-- Write release notes in doc/relnotes.
-- Update README.md
-- xb copyright . in xz directory to ensure all new files have Copyright
-  header
-- VERSION=<version> go generate github.com/ulikunitz/xz/... to update
-  version files
-- Execute test for Linux/amd64, Linux/x86 and Windows/amd64.
-- Update TODO.md - write short log entry
-- git checkout master && git merge dev
-- git tag -a <version>
-- git push
+* execute goch -l for all packages; probably with lower param like 0.5.
+* check orthography with gospell
+* Write release notes in doc/relnotes.
+* Update README.md
+* xb copyright . in xz directory to ensure all new files have Copyright header
+* `VERSION=<version> go generate github.com/ulikunitz/xz/...` to update version files
+* Execute test for Linux/amd64, Linux/x86 and Windows/amd64.
+* Update TODO.md - write short log entry
+* `git checkout master && git merge dev`
+* `git tag -a <version>`
+* `git push`
 
 ## Log
+
+### 2021-02-02
+
+Mituo Heijo has fuzzed xz and found a bug in the function readIndexBody. The
+function allocated a slice of records immediately after reading the value
+without further checks. Since the number has been too large the make function
+did panic. The fix is to check the number against the expected number of records
+before allocating the records.
+
+### 2020-12-17
+
+Release v0.5.9 fixes warnings, a typo and adds SECURITY.md.
+
+One fix is interesting.
+
+```go
+const (
+  a byte = 0x1
+  b      = 0x2
+)
+```
+
+The constants a and b don't have the same type. Correct is
+
+```go
+const (
+  a byte = 0x1
+  b byte = 0x2
+)
+```
+
+### 2020-08-19
+
+Release v0.5.8 fixes issue
+[issue #35](https://github.com/ulikunitz/xz/issues/35).
+
+### 2020-02-24
+
+Release v0.5.7 supports the check-ID None and fixes
+[issue #27](https://github.com/ulikunitz/xz/issues/27).
+
+### 2019-02-20
+
+Release v0.5.6 supports the go.mod file.
+
+### 2018-10-28
+
+Release v0.5.5 fixes issues #19 observing ErrLimit outputs.
 
 ### 2017-06-05
 
@@ -102,7 +150,7 @@ Release v0.5.2 became necessary to allow the decoding of xz files with
 4-byte padding in the block header. Many thanks to Greg, who reported
 the issue.
 
-### 2016-07-23 
+### 2016-07-23
 
 Release v0.5.1 became necessary to fix problems with 32-bit platforms.
 Many thanks to Bruno Brigas, who reported the issue.
@@ -186,15 +234,15 @@ MININT.
 
 ### 2015-06-04
 
-It has been a productive day. I improved the interface of lzma.Reader
-and lzma.Writer and fixed the error handling.
+It has been a productive day. I improved the interface of lzma. Reader
+and lzma. Writer and fixed the error handling.
 
 ### 2015-06-01
 
 By computing the bit length of the LZMA operations I was able to
 improve the greedy algorithm implementation. By using an 8 MByte buffer
 the compression rate was not as good as for xz but already better then
-gzip default. 
+gzip default.
 
 Compression is currently slow, but this is something we will be able to
 improve over time.
@@ -213,7 +261,7 @@ The package lzb contains now the basic implementation for creating or
 reading LZMA byte streams. It allows the support for the implementation
 of the DAG-shortest-path algorithm for the compression function.
 
-### 2015-04-23 
+### 2015-04-23
 
 Completed yesterday the lzbase classes. I'm a little bit concerned that
 using the components may require too much code, but on the other hand
@@ -238,11 +286,11 @@ needed anymore.
 
 However I will implement a ReaderState and WriterState type to use
 static typing to ensure the right State object is combined with the
-right lzbase.Reader and lzbase.Writer.
+right lzbase. Reader and lzbase. Writer.
 
 As a start I have implemented ReaderState and WriterState to ensure
 that the state for reading is only used by readers and WriterState only
-used by Writers. 
+used by Writers.
 
 ### 2015-04-20
 
@@ -260,11 +308,11 @@ old lzma package has been completely removed.
 
 ### 2015-04-05
 
-Implemented lzma.Reader and tested it.
+Implemented lzma. Reader and tested it.
 
 ### 2015-04-04
 
-Implemented baseReader by adapting code form lzma.Reader.
+Implemented baseReader by adapting code form lzma. Reader.
 
 ### 2015-04-03
 
@@ -274,13 +322,13 @@ almost all files from lzma.
 
 ### 2015-03-31
 
-Removed only a TODO item. 
+Removed only a TODO item.
 
 However in Francesco Campoy's presentation "Go for Javaneros
 (Javaïstes?)" is the the idea that using an embedded field E, all the
 methods of E will be defined on T. If E is an interface T satisfies E.
 
-https://talks.golang.org/2014/go4java.slide#51
+<https://talks.golang.org/2014/go4java.slide#51>
 
 I have never used this, but it seems to be a cool idea.
 
@@ -305,11 +353,11 @@ and the opCodec.
 
 1. Implemented simple lzmago tool
 2. Tested tool against large 4.4G file
-    - compression worked correctly; tested decompression with lzma
-    - decompression hits a full buffer condition
+   * compression worked correctly; tested decompression with lzma
+   * decompression hits a full buffer condition
 3. Fixed a bug in the compressor and wrote a test for it
 4. Executed full cycle for 4.4 GB file; performance can be improved ;-)
 
 ### 2015-01-11
 
-- Release v0.2 because of the working LZMA encoder and decoder
+* Release v0.2 because of the working LZMA encoder and decoder
