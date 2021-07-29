@@ -36,7 +36,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
-	github.com/ulikunitz/xz v0.5.4
+	github.com/ulikunitz/xz v0.5.10
 	github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
 	github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
