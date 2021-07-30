@@ -219,9 +219,8 @@ var (
           fi
           export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
           export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount "/dev/disk/by-label/boot" /var/mnt
-          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /var/mnt/mac_addresses
-          umount /var/mnt
+          mount -o rw,remount /boot
+          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
 	`
 
 	setupVethPairsTemplate = `#!/usr/bin/env bash
@@ -433,7 +432,7 @@ func setupBondWithDhcpTest(c cluster.TestCluster, primaryMac, secondaryMac, prim
 					"name": "openvswitch.service"
 				},
 				{
-					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nAfter=network-online.target\nAfter=openvswitch.service\nConditionKernelCommandLine=macAddressList\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nAfter=network-online.target\nAfter=openvswitch.service\nConditionKernelCommandLine=macAddressList\nRequiresMountsFor=/boot\n\n[Service]\nType=oneshot\nMountFlags=slave\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
 					"enabled": true,
 					"name": "capture-macs.service"
 				},
@@ -578,7 +577,7 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 					"name": "openvswitch.service"
 				},
 				{
-					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nAfter=network-online.target\nAfter=openvswitch.service\nConditionKernelCommandLine=macAddressList\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nAfter=network-online.target\nAfter=openvswitch.service\nConditionKernelCommandLine=macAddressList\nRequiresMountsFor=/boot\n\n[Service]\nType=oneshot\nMountFlags=slave\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
 					"enabled": true,
 					"name": "capture-macs.service"
 				},
