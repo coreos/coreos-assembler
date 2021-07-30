@@ -45,6 +45,7 @@ type Build struct {
 	GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
 	ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
 	InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
+	Koji                      *Koji                 `json:"koji,omitempty"`
 	MetaStamp                 float64               `json:"coreos-assembler.meta-stamp,omitempty"`
 	Name                      string                `json:"name"`
 	Oscontainer               *Image                `json:"oscontainer,omitempty"`
@@ -116,5 +117,11 @@ type Image struct {
 }
 
 type Items interface{}
+
+type Koji struct {
+	BuildRelease string  `json:"release,omitempty"`
+	KojiBuildID  float64 `json:"build_id,omitempty"`
+	KojiToken    string  `json:"token,omitempty"`
+}
 
 type PackageSetDifferences []Items
