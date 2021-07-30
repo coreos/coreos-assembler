@@ -65,6 +65,8 @@ def parse_args():
     robosig.add_argument("--gpgkeypath", help="path to directory containing "
                          "public keys to use for signature verification",
                          default="/etc/pki/rpm-gpg")
+    robosig.add_argument("--arch", default=get_basearch(),
+                         help="the target architecture")
     robosig.set_defaults(func=cmd_robosignatory)
 
     return parser.parse_args()
@@ -102,7 +104,7 @@ def cmd_robosignatory(args):
 
 def robosign_ostree(args, s3, build, gpgkey):
     builds = Builds()
-    builddir = builds.get_build_dir(args.build)
+    builddir = builds.get_build_dir(args.build, args.arch)
     checksum = build['ostree-commit']
 
     # Copy commit object to a temporary location. A preferred approach here is
@@ -112,8 +114,8 @@ def robosign_ostree(args, s3, build, gpgkey):
     # so we at least GC on failure. For now, just use a stable path so we
     # clobber previous runs.
     build_dir_commit_obj = os.path.join(builddir, 'ostree-commit-object')
-    commit_key = f'{args.prefix}/tmp/ostree-commit-object'
-    commitmeta_key = f'{args.prefix}/tmp/ostree-commitmeta-object'
+    commit_key = f'{args.prefix}/tmp-{args.arch}/ostree-commit-object'
+    commitmeta_key = f'{args.prefix}/tmp-{args.arch}/ostree-commitmeta-object'
     print(f"Uploading s3://{args.bucket}/{commit_key}")
     s3.upload_file(build_dir_commit_obj, args.bucket, commit_key)
     s3.delete_object(Bucket=args.bucket, Key=commitmeta_key)
@@ -125,7 +127,7 @@ def robosign_ostree(args, s3, build, gpgkey):
         environment=fedenv,
         body={
             'build_id': args.build,
-            'basearch': get_basearch(),
+            'basearch': args.arch,
             'commit_object': f's3://{args.bucket}/{commit_key}',
             'checksum': f'sha256:{checksum}',
             **args.extra_keys
@@ -200,10 +202,9 @@ def robosign_ostree(args, s3, build, gpgkey):
 
 def robosign_images(args, s3, build, gpgkey):
     builds = Builds()
-    builddir = builds.get_build_dir(args.build)
+    builddir = builds.get_build_dir(args.build, args.arch)
 
-    # NB: we just handle the current basearch for now
-    full_prefix = f'{args.prefix}/{args.build}/{get_basearch()}'
+    full_prefix = f'{args.prefix}/{args.build}/{args.arch}'
 
     # collect all the image paths to sign
     artifacts = [{
@@ -218,7 +219,7 @@ def robosign_images(args, s3, build, gpgkey):
         environment=fedenv,
         body={
             'build_id': args.build,
-            'basearch': get_basearch(),
+            'basearch': args.arch,
             'artifacts': artifacts,
             **args.extra_keys
         }
