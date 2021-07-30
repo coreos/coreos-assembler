@@ -277,12 +277,13 @@ func testRequiresInternet(test *register.Test) bool {
 }
 
 type DenyListObj struct {
-	Pattern    string   `yaml:"pattern"`
-	Tracker    string   `yaml:"tracker"`
-	Streams    []string `yaml:"streams"`
-	Arches     []string `yaml:"arches"`
-	Platforms  []string `yaml:"platforms"`
-	SnoozeDate string   `yaml:"snooze"`
+	Pattern     string   `yaml:"pattern"`
+	Tracker     string   `yaml:"tracker"`
+	TrackerList []string `yaml:"tracker_list"`
+	Streams     []string `yaml:"streams"`
+	Arches      []string `yaml:"arches"`
+	Platforms   []string `yaml:"platforms"`
+	SnoozeDate  string   `yaml:"snooze"`
 }
 
 type ManifestData struct {
@@ -358,7 +359,13 @@ func parseDenyListYaml(pltfrm string) error {
 			fmt.Printf("⚠️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
 		}
 
-		fmt.Printf("  👉 %s\n", obj.Tracker)
+		if obj.Tracker != "" {
+			fmt.Printf("  👉 %s\n", obj.Tracker)
+		} else if len(obj.TrackerList) > 0 {
+			for _, tracker := range obj.TrackerList {
+				fmt.Printf("  👉 %s\n", tracker)
+			}
+		}
 		DenylistedTests = append(DenylistedTests, obj.Pattern)
 	}
 
