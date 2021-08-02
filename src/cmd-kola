@@ -30,12 +30,14 @@ parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
                     default=[])
 args, unknown_args = parser.parse_known_args()
 
+default_output_dir_base = os.environ.get('ARTIFACT_DIR', 'tmp')
+
 if args.upgrades:
     default_cmd = 'run-upgrade'
-    default_output_dir = "tmp/kola-upgrade"
+    default_output_dir = os.path.join(default_output_dir_base, "kola-upgrade")
 else:
     default_cmd = 'run'
-    default_output_dir = "tmp/kola"
+    default_output_dir = os.path.join(default_output_dir_base, "kola")
 
 # XXX: teach to kola to auto-detect based on prefix; see discussions in
 # https://github.com/coreos/coreos-assembler/pull/85
