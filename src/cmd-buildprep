@@ -15,7 +15,12 @@ from tenacity import retry, retry_if_exception_type
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from cosalib.builds import Builds, BUILDFILES
-from cosalib.cmdlib import load_json, rm_allow_noent, retry_stop, retry_callback
+from cosalib.cmdlib import (
+    get_basearch,
+    load_json,
+    retry_callback,
+    retry_stop,
+    rm_allow_noent)
 from cosalib.s3 import download_file, head_bucket, head_object
 
 retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
@@ -60,11 +65,8 @@ def main():
         print("Remote has no builds!")
         return
 
-    # NB: We only buildprep for the arch we're on for now. Could probably make
-    # this a switch in the future.
-
     buildid = args.build or builds.get_latest()
-    builddir = builds.get_build_dir(buildid)
+    builddir = builds.get_build_dir(buildid, args.arch)
     os.makedirs(builddir, exist_ok=True)
 
     # trim out the leading builds/
@@ -104,6 +106,8 @@ def parse_args():
                         help="Also download full OSTree commit")
     parser.add_argument("--refresh", action='store_true',
                         help="Assuming local changes, only update {BUILDFILES['sourcedata']}")
+    parser.add_argument("--arch", default=get_basearch(),
+                        help="the target architecture")
     return parser.parse_args()
 
 
