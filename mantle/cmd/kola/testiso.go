@@ -300,6 +300,14 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 
 	if instInsecure {
 		baseInst.Insecure = true
+		fmt.Printf("Ignoring verification of signature on metal image")
+	}
+
+	// Ignore signing verification by default when running with development build
+	// https://github.com/coreos/fedora-coreos-tracker/issues/908
+	if strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
+		baseInst.Insecure = true
+		fmt.Printf("Detected development build; disabling signature verification")
 	}
 
 	ranTest := false
