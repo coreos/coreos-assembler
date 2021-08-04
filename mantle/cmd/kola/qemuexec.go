@@ -65,6 +65,8 @@ var (
 
 	consoleFile string
 
+	sshCommand string
+
 	secondaryNics int
 )
 
@@ -91,6 +93,7 @@ func init() {
 	cmdQemuExec.Flags().BoolVar(&propagateInitramfsFailure, "propagate-initramfs-failure", false, "Error out if the system fails in the initramfs")
 	cmdQemuExec.Flags().StringVarP(&consoleFile, "console-to-file", "", "", "Filepath in which to save serial console logs")
 	cmdQemuExec.Flags().IntVarP(&secondaryNics, "secondary-nics", "", 0, "Number of secondary NICs to add")
+	cmdQemuExec.Flags().StringVarP(&sshCommand, "ssh-command", "x", "", "Command to execute instead of spawning a shell")
 
 }
 
@@ -320,7 +323,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder.Append(args...)
 
 	if devshell && !devshellConsole {
-		return runDevShellSSH(ctx, builder, config)
+		return runDevShellSSH(ctx, builder, config, sshCommand)
 	}
 	if config != nil {
 		if directIgnition {

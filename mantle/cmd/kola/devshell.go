@@ -62,7 +62,7 @@ func displayStatusMsg(status, msg string) {
 	fmt.Printf("\033[2K\r[%s] %s", status, stripControlCharacters(s))
 }
 
-func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf) error {
+func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf, sshCommand string) error {
 	if !terminal.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
 	}
@@ -157,7 +157,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	defer func() { fmt.Printf("\n\n") }() // make the console pretty again
 
 	// Start the SSH client
-	sc := newSshClient("core", ip, sshKeyPath)
+	sc := newSshClient("core", ip, sshKeyPath, sshCommand)
 	go sc.controlStartStop()
 
 	ready := false
@@ -420,13 +420,14 @@ type sshClient struct {
 	host        string
 	port        string
 	privKey     string
+	cmd         string
 	controlChan chan sshControlMessage
 	errChan     chan error
 	sshCmd      *exec.Cmd
 }
 
 // newSshClient creates a new sshClient.
-func newSshClient(user, host, privKey string) *sshClient {
+func newSshClient(user, host, privKey, cmd string) *sshClient {
 	parts := strings.Split(host, ":")
 	host = parts[0]
 	port := parts[1]
@@ -442,6 +443,8 @@ func newSshClient(user, host, privKey string) *sshClient {
 		privKey:     privKey,
 		controlChan: make(chan sshControlMessage),
 		errChan:     make(chan error),
+		// this could be a []string, but ssh sends it over as a string anyway, so meh...
+		cmd: cmd,
 	}
 }
 
@@ -471,6 +474,9 @@ func (sc *sshClient) start() {
 		"-o", "IdentityFile=/dev/null",
 		"-p", sc.port,
 		fmt.Sprintf("%s@%s", sc.user, sc.host),
+	}
+	if sc.cmd != "" {
+		sshArgs = append(sshArgs, "--", sc.cmd)
 	}
 	fmt.Println("") // line break for prettier output
 	sshCmd := exec.Command(sshArgs[0], sshArgs[1:]...)
