@@ -37,6 +37,8 @@ def parse_args():
                         action='store_true')
     parser.add_argument('--force', action='store_true',
                         help='Force upload even for pre-existing images')
+    parser.add_argument("--artifact", default=[], action='append',
+                        help="Only upload given image artifact(s)", metavar="ARTIFACT")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--skip-builds-json", help="Don't push builds.json",
                        action='store_true')
@@ -108,6 +110,13 @@ def s3_upload_build(args, builddir, bucket, prefix):
             img['path'] = nogz
             s3_path = f'{prefix}/{nogz}'
             set_content_disposition = True
+
+        # Mark artifacts that we don't want to upload as already uploaded
+        # so they'll get ignored later.
+        if len(args.artifact) > 0 and imgname not in args.artifact:
+            print(f"Skipping upload of artifact {bn} upon user request")
+            uploaded.add(bn)
+            continue
 
         s3_target_exists = s3_check_exists(bucket, s3_path, args.dry_run)
 
