@@ -10,7 +10,7 @@ import sys
 import tempfile
 import subprocess
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError
 from tenacity import retry
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,6 +35,8 @@ def parse_args():
     parser.add_argument("--build", help="Build ID", default='latest')
     parser.add_argument("--dry-run", help="Just print and exit",
                         action='store_true')
+    parser.add_argument('--force', action='store_true',
+                        help='Force upload even for pre-existing images')
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--skip-builds-json", help="Don't push builds.json",
                        action='store_true')
@@ -107,11 +109,18 @@ def s3_upload_build(args, builddir, bucket, prefix):
             s3_path = f'{prefix}/{nogz}'
             set_content_disposition = True
 
-        if not os.path.exists(path):
-            if s3_check_exists(bucket, s3_path):
-                continue
+        s3_target_exists = s3_check_exists(bucket, s3_path, args.dry_run)
+
+        if not os.path.exists(path) and not s3_target_exists:
+            raise Exception(f"{path} not found locally or in the s3 destination!")
+
+        if s3_target_exists:
+            if args.force:
+                print(f"Forcing upload of existing artifact {bn}")
             else:
-                raise Exception(f"{path} not found locally or in the s3 destination!")
+                print(f"Target exists in s3 and no --force. Skipping upload of {bn}")
+                uploaded.add(bn)
+                continue
 
         extra_args = {}
         if set_content_disposition:
@@ -146,13 +155,18 @@ def s3_upload_build(args, builddir, bucket, prefix):
 
 
 @retry(stop=retry_stop, retry=retry_boto_exception, before_sleep=retry_callback)
-def s3_check_exists(bucket, key):
+def s3_check_exists(bucket, key, dry_run=False):
     print(f"Checking if bucket '{bucket}' has key '{key}'")
     s3 = boto3.client('s3')
     try:
         s3.head_object(Bucket=bucket, Key=key)
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
+            return False
+        raise e
+    except NoCredentialsError as e:
+        # It's reasonable to run without creds if doing a dry-run
+        if dry_run:
             return False
         raise e
     return True
