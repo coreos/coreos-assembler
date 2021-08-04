@@ -137,20 +137,18 @@ def append_build(out, input_):
                     }
                 }
             }
-
-    # AMI specific additions
-    if input_.get("amis", None) is not None:
-        arch_dict["media"]["aws"] = arch_dict["media"].get("aws", {})
-        arch_dict["media"]["aws"]["images"] = arch_dict["media"]["aws"].get("images", {})
-        for ami_dict in input_.get("amis"):
-            arch_dict["media"]["aws"]["images"][ami_dict["name"]] = {
-                "image": ami_dict["hvm"]
-            }
+    # Aliyun/AWS specific additions
+    for meta_key, cloud, image_field in ("aliyun", "aliyun", "id"), ("amis", "aws", "hvm"):
+        if input_.get(meta_key, None) is not None:
+            arch_dict["media"].setdefault(cloud, {}).setdefault("images", {})
+            for cloud_dict in input_.get(meta_key):
+                arch_dict["media"][cloud]["images"][cloud_dict["name"]] = {
+                    "image": cloud_dict[image_field]
+                }
 
     # GCP specific additions
     if input_.get("gcp", None) is not None:
-        arch_dict["media"]["gcp"] = arch_dict["media"].get("gcp", {})
-        arch_dict["media"]["gcp"]["image"] = arch_dict["media"]["gcp"].get("image", {})
+        arch_dict["media"].setdefault("gcp", {}).setdefault("image", {})
         arch_dict["media"]["gcp"]["image"].update(input_.get("gcp", {}))
         arch_dict["media"]["gcp"]["image"]["name"] = arch_dict["media"]["gcp"]["image"].pop("image")
         # remove the url as we haven't decided to expose that information publicly yet
