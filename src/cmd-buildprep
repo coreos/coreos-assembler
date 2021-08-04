@@ -66,6 +66,9 @@ def main():
         return
 
     buildid = args.build or builds.get_latest()
+    if args.arch not in builds.get_build_arches(buildid):
+        print(f"No {args.arch} artifacts for build {buildid}")
+        return
     builddir = builds.get_build_dir(buildid, args.arch)
     os.makedirs(builddir, exist_ok=True)
 
