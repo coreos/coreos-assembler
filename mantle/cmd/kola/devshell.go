@@ -172,7 +172,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 			inst.Kill()
 
 		// handle console messages. If SSH is not ready, then display a
-		// a status message on the conole.
+		// a status message on the console.
 		case serialMsg := <-serialChan:
 			if !ready {
 				displayStatusMsg(statusMsg, serialMsg)
@@ -228,6 +228,10 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 				sc.controlChan <- sshNotReady
 				displayStatusMsg("SESSION", "Clean exit from SSH, terminating instance")
 				return nil
+			} else if sshCommand != "" {
+				sc.controlChan <- sshNotReady
+				displayStatusMsg("SESSION", "SSH command exited, terminating instance")
+				return err
 			}
 			if ready {
 				sc.controlChan <- sshStart
