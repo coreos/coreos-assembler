@@ -15,7 +15,7 @@
 package v4_9
 
 import (
-	fcos "github.com/coreos/butane/config/fcos/v1_4"
+	fcos "github.com/coreos/butane/config/fcos/v1_3"
 )
 
 const ROLE_LABEL_KEY = "machineconfiguration.openshift.io/role"

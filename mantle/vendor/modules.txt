@@ -159,7 +159,7 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.14.1
 github.com/clarketm/json
-# github.com/coreos/butane v0.13.0
+# github.com/coreos/butane v0.13.1
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
@@ -350,7 +350,7 @@ github.com/rs/xid
 github.com/sirupsen/logrus
 # github.com/spf13/cobra v0.0.6
 github.com/spf13/cobra
-# github.com/spf13/pflag v1.0.5
+# github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 github.com/spf13/pflag
 # github.com/stretchr/testify v1.7.0
 github.com/stretchr/testify/assert
