@@ -6,7 +6,7 @@ set -xeuo pipefail
 BRANCH=${PULL_BASE_REF:-main}
 case ${BRANCH} in
     # For now; OpenShift hasn't done the master->main transition
-    main) RHCOS_BRANCH=master;;
+    main|master) RHCOS_BRANCH=master;;
     rhcos-*) RHCOS_BRANCH=release-${BRANCH#rhcos-};;
     *) echo "Unhandled base ref: ${BRANCH}" 1>&2 && exit 1;;
 esac
