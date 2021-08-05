@@ -793,7 +793,7 @@ get_latest_qemu() {
 
 insert_build() {
     local buildid=$1; shift
-    local dir=$1; shift
+    local workdir=$1; shift
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
