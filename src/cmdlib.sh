@@ -794,14 +794,15 @@ get_latest_qemu() {
 insert_build() {
     local buildid=$1; shift
     local workdir=$1; shift
+    local arch=${1:-}
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
 from cosalib.builds import Builds
 builds = Builds('${workdir:-$(pwd)}')
-builds.insert_build('${buildid}')
+builds.insert_build('${buildid}', basearch='${arch:-}')
 builds.bump_timestamp()
-print('Build ${buildid} was inserted')")
+print('Build ${buildid} was inserted ${arch:+for $arch}')")
 }
 
 flatten_image_yaml_to_file() {

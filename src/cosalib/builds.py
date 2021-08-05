@@ -102,7 +102,7 @@ class Builds:  # pragma: nocover
         for build in self._data['builds']:
             if build['id'] == build_id:
                 if basearch in build['arches']:
-                    raise "Build {build_id} for {basearch} already exists"
+                    raise Exception(f"Build {build_id} for {basearch} already exists")
                 build['arches'] += [basearch]
                 break
         else:
