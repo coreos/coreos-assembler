@@ -91,8 +91,8 @@ github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b h1:mpeSDqY0vMUyJ
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b/go.mod h1:JIWRG8HSwVYUrjdR/JsFg7DEby0nhQcWFPIQvXJyih8=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbpBpLoyyu8B6e44T7hJy6potg=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
-github.com/coreos/stream-metadata-go v0.1.1 h1:97r4UsLPjx6rwavgcoho5sd4N4+Dtgc81h8xCGE3bkY=
-github.com/coreos/stream-metadata-go v0.1.1/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
+github.com/coreos/stream-metadata-go v0.1.2-0.20210805210749-ef7e9dabff95 h1:mFmE40SpA//BRV/zotY2XJ8cV+7EdIjiVpu9nuSBiyA=
+github.com/coreos/stream-metadata-go v0.1.2-0.20210805210749-ef7e9dabff95/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
 github.com/coreos/vcontext v0.0.0-20210407161507-4ee6c745c8bd h1:iHdPNrKIKSSlAy6nCmBliwn7xFTDu+OoFkArqMTr6Zc=
 github.com/coreos/vcontext v0.0.0-20210407161507-4ee6c745c8bd/go.mod h1:z4pMVvaUrxs98RROlIYdAQCKhEicjnTirOaVyDRH5h8=
 github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
