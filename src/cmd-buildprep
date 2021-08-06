@@ -66,25 +66,41 @@ def main():
         return
 
     buildid = args.build or builds.get_latest()
-    if args.arch not in builds.get_build_arches(buildid):
-        print(f"No {args.arch} artifacts for build {buildid}")
-        return
-    builddir = builds.get_build_dir(buildid, args.arch)
-    os.makedirs(builddir, exist_ok=True)
+    # Let's handle args.arch. If the user didn't specify an arch
+    # then operate on the current arch of the system. If the user
+    # gave us the special value of --arch=all then download the
+    # build metadata for all architectures related to this build.
+    if len(args.arch) == 0:
+        arches = [get_basearch()]
+    elif args.arch == ['all']:
+        arches = builds.get_build_arches(buildid)
+    else:
+        arches = args.arch
 
-    # trim out the leading builds/
-    assert builddir.startswith("builds/")
-    builddir = builddir[len("builds/"):]
+    for arch in arches:
+        # If the architecture doesn't exist then assume there were
+        # no builds for this architecture yet, which can only happen
+        # if someone passed in the architecture value. return early
+        if arch not in builds.get_build_arches(buildid):
+            print(f"No {arch} artifacts for build {buildid}")
+            return
 
-    objects = ['meta.json', 'ostree-commit-object']
-    for f in objects:
-        fetcher.fetch(f'{builddir}/{f}')
+        builddir = builds.get_build_dir(buildid, arch)
+        os.makedirs(builddir, exist_ok=True)
 
-    buildmeta = load_json(f'builds/{builddir}/meta.json')
+        # trim out the leading builds/
+        assert builddir.startswith("builds/")
+        builddir = builddir[len("builds/"):]
 
-    if args.ostree:
-        f = buildmeta['images']['ostree']['path']
-        fetcher.fetch(f'{builddir}/{f}')
+        objects = ['meta.json', 'ostree-commit-object']
+        for f in objects:
+            fetcher.fetch(f'{builddir}/{f}')
+
+        buildmeta = load_json(f'builds/{builddir}/meta.json')
+
+        if args.ostree:
+            f = buildmeta['images']['ostree']['path']
+            fetcher.fetch(f'{builddir}/{f}')
 
     # and finally the symlink
     if args.build is None:
@@ -109,8 +125,8 @@ def parse_args():
                         help="Also download full OSTree commit")
     parser.add_argument("--refresh", action='store_true',
                         help="Assuming local changes, only update {BUILDFILES['sourcedata']}")
-    parser.add_argument("--arch", default=get_basearch(),
-                        help="the target architecture")
+    parser.add_argument("--arch", default=[], action='append',
+                        help="the target architecture(s)")
     return parser.parse_args()
 
 
