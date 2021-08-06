@@ -52,24 +52,30 @@ type Arch struct {
 
 // Media contains release details for various platforms
 type Media struct {
-	Aliyun       *PlatformBase `json:"aliyun"`
-	Aws          *PlatformAws  `json:"aws"`
-	Azure        *PlatformBase `json:"azure"`
-	AzureStack   *PlatformBase `json:"azurestack"`
-	Digitalocean *PlatformBase `json:"digitalocean"`
-	Exoscale     *PlatformBase `json:"exoscale"`
-	Gcp          *PlatformGcp  `json:"gcp"`
-	Ibmcloud     *PlatformBase `json:"ibmcloud"`
-	Metal        *PlatformBase `json:"metal"`
-	Openstack    *PlatformBase `json:"openstack"`
-	Qemu         *PlatformBase `json:"qemu"`
-	Vmware       *PlatformBase `json:"vmware"`
-	Vultr        *PlatformBase `json:"vultr"`
+	Aliyun       *PlatformAliyun `json:"aliyun"`
+	Aws          *PlatformAws    `json:"aws"`
+	Azure        *PlatformBase   `json:"azure"`
+	AzureStack   *PlatformBase   `json:"azurestack"`
+	Digitalocean *PlatformBase   `json:"digitalocean"`
+	Exoscale     *PlatformBase   `json:"exoscale"`
+	Gcp          *PlatformGcp    `json:"gcp"`
+	Ibmcloud     *PlatformBase   `json:"ibmcloud"`
+	Metal        *PlatformBase   `json:"metal"`
+	Openstack    *PlatformBase   `json:"openstack"`
+	Qemu         *PlatformBase   `json:"qemu"`
+	Vmware       *PlatformBase   `json:"vmware"`
+	Vultr        *PlatformBase   `json:"vultr"`
 }
 
 // PlatformBase with no cloud images
 type PlatformBase struct {
 	Artifacts map[string]ImageFormat `json:"artifacts"`
+}
+
+// PlatformAliyun contains Aliyun image information
+type PlatformAliyun struct {
+	PlatformBase
+	Images map[string]CloudImage `json:"images"`
 }
 
 // PlatformAws contains AWS image information

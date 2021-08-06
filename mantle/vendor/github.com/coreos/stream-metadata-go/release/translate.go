@@ -39,6 +39,25 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 	if relRHCOSExt != nil {
 		rhcosExt = &rhcos.Extensions{}
 	}
+
+	if releaseArch.Media.Aliyun != nil {
+		artifacts["aliyun"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.Aliyun.Artifacts),
+		}
+		aliyunImages := stream.ReplicatedImage{
+			Regions: make(map[string]stream.RegionImage),
+		}
+		if releaseArch.Media.Aliyun.Images != nil {
+			for region, image := range releaseArch.Media.Aliyun.Images {
+				ri := stream.RegionImage{Release: rel.Release, Image: image.Image}
+				aliyunImages.Regions[region] = ri
+
+			}
+			cloudImages.Aliyun = &aliyunImages
+		}
+	}
+
 	if releaseArch.Media.Aws != nil {
 		artifacts["aws"] = stream.PlatformArtifacts{
 			Release: rel.Release,
@@ -80,13 +99,6 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		artifacts["azurestack"] = stream.PlatformArtifacts{
 			Release: rel.Release,
 			Formats: mapFormats(releaseArch.Media.AzureStack.Artifacts),
-		}
-	}
-
-	if releaseArch.Media.Aliyun != nil {
-		artifacts["aliyun"] = stream.PlatformArtifacts{
-			Release: rel.Release,
-			Formats: mapFormats(releaseArch.Media.Aliyun.Artifacts),
 		}
 	}
 
