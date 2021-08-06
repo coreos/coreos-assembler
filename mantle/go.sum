@@ -87,6 +87,8 @@ github.com/coreos/go-systemd/v22 v22.0.0 h1:XJIw/+VlJ+87J+doOxznsAWIdmWuViOVhkQa
 github.com/coreos/go-systemd/v22 v22.0.0/go.mod h1:xO0FLkIi5MaZafQlIrOotqXZ90ih+1atmu1JpKERPPk=
 github.com/coreos/ignition/v2 v2.11.0 h1:2JPhtVidNtQ4VGegv0fb/3wfICvYUleYIXfk4y0oo8s=
 github.com/coreos/ignition/v2 v2.11.0/go.mod h1:uFhfdmeUfzT/8MqBvazzrLdzR3DvMCWR78GUYFRwPrs=
+github.com/coreos/ignition/v2 v2.12.0 h1:JK9SI80URnoMah7m5oZndBoyED2TWr5ntrwxRItl1zY=
+github.com/coreos/ignition/v2 v2.12.0/go.mod h1:PEKv4yQSfWLya4y6vY1K+7+2lOf9t7O7gGljmp0hLIg=
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b h1:mpeSDqY0vMUyJmazX0p62MrHtgwlmOf7Y8rqOYL1cmc=
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b/go.mod h1:JIWRG8HSwVYUrjdR/JsFg7DEby0nhQcWFPIQvXJyih8=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbpBpLoyyu8B6e44T7hJy6potg=
