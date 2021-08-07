@@ -358,7 +358,7 @@ fi
 
 image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
 echo "New image input checksum: ${image_input_checksum}"
-init_build_meta_json "${commit}" tmp/
+init_build_meta_json "${commit}" "${PARENT_BUILD:-}" tmp/
 buildid=$(jq -r '.["buildid"]' < tmp/meta.json)
 echo "New build ID: ${buildid}"
 # Also write out a ref with the build ID

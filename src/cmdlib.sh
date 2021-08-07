@@ -773,12 +773,13 @@ print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
 
 init_build_meta_json() {
     local ostree_commit=$1; shift
+    local parent_build=$1; shift
     local dir=$1; shift
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
 from cosalib.builds import Builds
-print(Builds('${workdir:-$(pwd)}').init_build_meta_json('${ostree_commit}', '${dir}'))")
+print(Builds('${workdir:-$(pwd)}').init_build_meta_json('${ostree_commit}', '${parent_build}', '${dir}'))")
 }
 
 get_latest_qemu() {
