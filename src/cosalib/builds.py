@@ -113,7 +113,7 @@ class Builds:  # pragma: nocover
                 ]
             })
 
-    def init_build_meta_json(self, ostree_commit, destdir):
+    def init_build_meta_json(self, ostree_commit, parent_build, destdir):
         """
         Given a new ostree version, initialize a new coreos-assembler
         build by writing a `meta.json` in destdir.
@@ -129,7 +129,7 @@ class Builds:  # pragma: nocover
         buildid = version
         genver_key = 'coreos-assembler.image-genver'
         if not self.is_empty():
-            previous_buildid = self.get_latest()
+            previous_buildid = parent_build or self.get_latest()
             metapath = self.get_build_dir(previous_buildid) + '/meta.json'
             with open(metapath) as f:
                 previous_buildmeta = json.load(f)
