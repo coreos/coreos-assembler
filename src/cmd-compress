@@ -80,6 +80,12 @@ def xz_threads():
 def compress_one_builddir(builddir):
     print(f"Compressing: {builddir}")
     buildmeta_path = os.path.join(builddir, 'meta.json')
+    # In the case where we are doing builds for different architectures
+    # it's likely not all builds for this arch are local. If the meta.json
+    # doesn't exist then return early.
+    if not os.path.exists(buildmeta_path):
+        print(f"No meta.json exists for {builddir}.. Skipping")
+        return False
     with open(buildmeta_path) as f:
         buildmeta = json.load(f)
 
