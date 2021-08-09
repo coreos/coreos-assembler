@@ -89,6 +89,12 @@ def cmd_upload_s3(args):
 
 
 def s3_upload_build(args, builddir, bucket, prefix):
+    # In the case where we are doing builds for different architectures
+    # it's likely not all builds for this arch are local. If the meta.json
+    # doesn't exist then return early.
+    if not os.path.exists(f'{builddir}/meta.json'):
+        print(f"No meta.json exists for {builddir}.. Skipping")
+        return
     build = load_json(f'{builddir}/meta.json')
 
     # Upload images with special handling for gzipped data.
