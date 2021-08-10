@@ -77,7 +77,7 @@ func init() {
 	sv(&kola.AWSOptions.Profile, "aws-profile", "default", "AWS profile name")
 	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
 	// See https://github.com/openshift/installer/issues/2919 for example
-	sv(&kola.AWSOptions.InstanceType, "aws-type", "m5.large", "AWS instance type")
+	sv(&kola.AWSOptions.InstanceType, "aws-type", "", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
 	sv(&kola.AWSOptions.IAMInstanceProfile, "aws-iam-profile", "kola", "AWS IAM instance profile name")
 
@@ -175,6 +175,16 @@ func syncOptionsImpl(useCosa bool) error {
 	// Alias qemu to qemu-unpriv.
 	if kolaPlatform == "qemu" {
 		kolaPlatform = "qemu-unpriv"
+	}
+
+	// Choose an appropriate AWS instance type for the target architecture
+	if kola.AWSOptions.InstanceType == "" {
+		switch kola.Options.CosaBuildArch {
+		case "x86_64":
+			kola.AWSOptions.InstanceType = "m5.large"
+		case "aarch64":
+			kola.AWSOptions.InstanceType = "a1.metal"
+		}
 	}
 
 	// native 4k requires a UEFI bootloader
