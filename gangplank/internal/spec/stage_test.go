@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/coreos/coreos-assembler-schema/cosa"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
 
@@ -250,6 +251,165 @@ func TestIsArtifactValid(t *testing.T) {
 			if got != tc.want {
 				t.Errorf("artifact %s should return %v but got %v", tc.artifact, tc.want, got)
 			}
+		})
+	}
+}
+
+func TestBuildCommandOrders(t *testing.T) {
+	type testCase struct {
+		desc       string
+		shorthands []string
+		stage      *Stage
+		want       *Stage
+		testFn     func(t *testing.T)
+	}
+
+	testCases := []testCase{}
+	testCases = append(testCases,
+		func() testCase {
+			// Test that base returns base
+			tc := testCase{
+				desc:       "base shorthand is understood",
+				shorthands: []string{"base"},
+				stage: &Stage{
+					BuildArtifacts: []string{"base"},
+				},
+				want: &Stage{
+					BuildArtifacts: []string{"base"},
+				},
+			}
+			tc.testFn = func(t *testing.T) {
+				addAllShorthandsToStage(tc.stage, tc.shorthands...)
+				assert.Len(t, tc.stage.BuildArtifacts, 1)
+				for _, v := range tc.want.BuildArtifacts {
+					assert.Contains(t, tc.stage.BuildArtifacts, v)
+				}
+			}
+			return tc
+		}(),
+
+		// Ensure that base implies qemu for aws
+		func() testCase {
+			tc := testCase{
+				desc:       "base should build before aws",
+				shorthands: []string{"aws"},
+				stage: &Stage{
+					BuildArtifacts: []string{"base"},
+				},
+				want: &Stage{
+					BuildArtifacts: []string{"base", "aws"},
+				},
+			}
+
+			tc.testFn = func(t *testing.T) {
+				addAllShorthandsToStage(tc.stage, tc.shorthands...)
+				assert.Equal(t, tc.want.BuildArtifacts, tc.stage.BuildArtifacts)
+				for idx, v := range tc.stage.BuildArtifacts {
+					if idx == 0 {
+						assert.Equal(t, "base", v, "base should be ordered before aws")
+					}
+					if idx == 1 {
+						assert.Equal(t, "aws", v, "aws should be ordered after base")
+					}
+				}
+			}
+			return tc
+		}(),
+
+		// Base implies ostree and qemu
+		func() testCase {
+			tc := testCase{
+				desc:       "base implies ostree and qemu",
+				shorthands: []string{"ostree", "qemu"},
+				stage: &Stage{
+					BuildArtifacts: []string{"base"},
+				},
+				want: &Stage{
+					BuildArtifacts: []string{"base"},
+				},
+			}
+			tc.testFn = func(t *testing.T) {
+				addAllShorthandsToStage(tc.stage, tc.shorthands...)
+				assert.Equal(t, tc.want.BuildArtifacts, tc.stage.BuildArtifacts)
+			}
+			return tc
+		}(),
+		/*
+			func() testCase {
+				tc := testCase{}
+				tc.testFn = func(t *testing.T) {
+					addAllShorthandsToStage(tc.stage, tc.shorthands...)
+				}
+				return tc
+			}(),
+		*/
+	)
+
+	for idx, tc := range testCases {
+		t.Run(fmt.Sprintf("test-%d-%v", idx, tc.desc), tc.testFn)
+	}
+}
+
+func TestBuildCommands(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		artifact string
+		want     []string
+		js       *JobSpec
+	}{
+		// Ensure that `cosa build X` commands are rendered properly.
+		{
+			desc:     "base command should be 'cosa build'",
+			artifact: "base",
+			want:     []string{fmt.Sprintf(defaultBaseCommand, "")},
+			js:       &JobSpec{DelayedMetaMerge: false},
+		},
+		{
+			desc:     "ostree command should be 'cosa build ostree'",
+			artifact: "ostree",
+			want:     []string{fmt.Sprintf(defaultBaseCommand, "ostree")},
+			js:       &JobSpec{DelayedMetaMerge: false},
+		},
+		{
+			desc:     "qemu command should be 'cosa build qemu'",
+			artifact: "qemu",
+			want:     []string{fmt.Sprintf(defaultBaseCommand, "qemu")},
+			js:       &JobSpec{DelayedMetaMerge: false},
+		},
+
+		// Ensure that `cosa build --delay-merge X` commands are rendered properly.
+		{
+			desc:     "base command should be 'cosa build --delay-merge'",
+			artifact: "base",
+			want:     []string{fmt.Sprintf(defaultBaseDelayMergeCommand, "")},
+			js:       &JobSpec{DelayedMetaMerge: true},
+		},
+		{
+			desc:     "ostree command should be 'cosa build --delay-merge ostree'",
+			artifact: "ostree",
+			want:     []string{fmt.Sprintf(defaultBaseDelayMergeCommand, "ostree")},
+			js:       &JobSpec{DelayedMetaMerge: true},
+		},
+		{
+			desc:     "qemu command should be 'cosa build --delay-merge qemu'",
+			artifact: "qemu",
+			want:     []string{fmt.Sprintf(defaultBaseDelayMergeCommand, "qemu")},
+			js:       &JobSpec{DelayedMetaMerge: true},
+		},
+
+		// Check finalize
+		{
+			desc:     "finalize command should match",
+			artifact: "finalize",
+			want:     []string{defaultFinalizeCommand},
+			js:       &JobSpec{DelayedMetaMerge: true},
+		},
+	}
+
+	for idx, tc := range testCases {
+		t.Run(fmt.Sprintf("test-%d-%s", idx, tc.desc), func(t *testing.T) {
+			cmd, _ := cosaBuildCmd(tc.artifact, tc.js)
+			assert.EqualValues(t, tc.want, cmd)
 		})
 	}
 }

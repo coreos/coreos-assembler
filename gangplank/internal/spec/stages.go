@@ -103,10 +103,10 @@ type Stage struct {
 // These are the only hard-coded commands that Gangplank understand.
 const (
 	// defaultBaseCommand is the basic build command
-	defaultBaseCommand = "cosa fetch; cosa build;"
+	defaultBaseCommand = "cosa fetch; cosa build %s;"
 	// defaultBaseDelayMergeCommand is used for distributed build using
 	// parallel workers pods.
-	defaultBaseDelayMergeCommand = "cosa fetch; cosa build --delay-meta-merge;"
+	defaultBaseDelayMergeCommand = "cosa fetch; cosa build %s --delay-meta-merge;"
 
 	// defaultFinalizeComamnd ensures that the meta.json is merged.
 	defaultFinalizeCommand = "cosa meta --finalize;"
@@ -116,12 +116,15 @@ const (
 // returns it.
 func cosaBuildCmd(b string, js *JobSpec) ([]string, error) {
 	log.WithField("command", b).Info("checking shorthand")
-	switch strings.ToLower(b) {
-	case "base":
-		if js.DelayedMetaMerge {
-			return []string{defaultBaseDelayMergeCommand}, nil
+	switch v := strings.ToLower(b); v {
+	case "base", "ostree", "qemu":
+		if v == "base" {
+			v = ""
 		}
-		return []string{defaultBaseCommand}, nil
+		if js.DelayedMetaMerge {
+			return []string{fmt.Sprintf(defaultBaseDelayMergeCommand, v)}, nil
+		}
+		return []string{fmt.Sprintf(defaultBaseCommand, v)}, nil
 	case "finalize":
 		return []string{defaultFinalizeCommand}, nil
 	case "live":
@@ -532,8 +535,11 @@ func addShorthandToStage(artifact string, stage *Stage) {
 	}
 	stage.BuildArtifacts = unique(newOrder)
 
+	// Base implies building ostree and qemu
 	buildArtifacts, buildsBase := remove(unique(newOrder), "base")
 	if buildsBase {
+		buildArtifacts, _ = remove(buildArtifacts, "ostree")
+		buildArtifacts, _ = remove(buildArtifacts, "qemu")
 		stage.BuildArtifacts = append([]string{"base"}, buildArtifacts...)
 	}
 
@@ -629,4 +635,11 @@ func (s *Stage) DeepCopy() (Stage, error) {
 	}
 	err = json.Unmarshal(out, &ns)
 	return ns, err
+}
+
+// addAllShortandsToStage adds all the shorthands
+func addAllShorthandsToStage(stage *Stage, shorthands ...string) {
+	for _, short := range shorthands {
+		addShorthandToStage(short, stage)
+	}
 }
