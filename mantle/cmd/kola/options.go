@@ -75,7 +75,7 @@ func init() {
 	sv(&kola.AWSOptions.CredentialsFile, "aws-credentials-file", "", "AWS credentials file (default \"~/.aws/credentials\")")
 	sv(&kola.AWSOptions.Region, "aws-region", defaultRegion, "AWS region")
 	sv(&kola.AWSOptions.Profile, "aws-profile", "default", "AWS profile name")
-	sv(&kola.AWSOptions.AMI, "aws-ami", "alpha", `AWS AMI ID, or (alpha|beta|stable) to use the latest image`)
+	sv(&kola.AWSOptions.AMI, "aws-ami", "", `AWS AMI ID`)
 	// See https://github.com/openshift/installer/issues/2919 for example
 	sv(&kola.AWSOptions.InstanceType, "aws-type", "", "AWS instance type")
 	sv(&kola.AWSOptions.SecurityGroup, "aws-sg", "kola", "AWS security group name")
@@ -175,16 +175,6 @@ func syncOptionsImpl(useCosa bool) error {
 	// Alias qemu to qemu-unpriv.
 	if kolaPlatform == "qemu" {
 		kolaPlatform = "qemu-unpriv"
-	}
-
-	// Choose an appropriate AWS instance type for the target architecture
-	if kola.AWSOptions.InstanceType == "" {
-		switch kola.Options.CosaBuildArch {
-		case "x86_64":
-			kola.AWSOptions.InstanceType = "m5.large"
-		case "aarch64":
-			kola.AWSOptions.InstanceType = "a1.metal"
-		}
 	}
 
 	// native 4k requires a UEFI bootloader
@@ -313,6 +303,26 @@ func syncCosaOptions() error {
 	case "qemu-iso":
 		if kola.QEMUIsoOptions.IsoPath == "" && kola.CosaBuild.Meta.BuildArtifacts.LiveIso != nil {
 			kola.QEMUIsoOptions.IsoPath = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+		}
+	case "aws":
+		// Pick up the AMI from the build metadata
+		if kola.AWSOptions.AMI == "" {
+			for _, ami := range kola.CosaBuild.Meta.Amis {
+				if ami.Region == kola.AWSOptions.Region {
+					kola.AWSOptions.AMI = ami.Hvm
+					fmt.Printf("Using AMI %s from Region %s\n", kola.AWSOptions.AMI, kola.AWSOptions.Region)
+				}
+			}
+		}
+		// Choose an appropriate AWS instance type for the target architecture
+		if kola.AWSOptions.InstanceType == "" {
+			switch kola.Options.CosaBuildArch {
+			case "x86_64":
+				kola.AWSOptions.InstanceType = "m5.large"
+			case "aarch64":
+				kola.AWSOptions.InstanceType = "a1.metal"
+			}
+			fmt.Printf("Using %s instance type\n", kola.AWSOptions.InstanceType)
 		}
 	}
 
