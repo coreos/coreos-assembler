@@ -62,6 +62,7 @@ func init() {
 	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
 	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")
+	sv(&kola.Options.CosaBuildArch, "arch", system.RpmArch(), "The target architecture of the build")
 	// rhcos-specific options
 	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
 
@@ -182,9 +183,9 @@ func syncOptionsImpl(useCosa bool) error {
 	}
 	// default to BIOS, UEFI for aarch64 and x86(only for 4k)
 	if kola.QEMUOptions.Firmware == "" {
-		if system.RpmArch() == "aarch64" {
+		if kola.Options.CosaBuildArch == "aarch64" {
 			kola.QEMUOptions.Firmware = "uefi"
-		} else if system.RpmArch() == "x86_64" && kola.QEMUOptions.Native4k {
+		} else if kola.Options.CosaBuildArch == "x86_64" && kola.QEMUOptions.Native4k {
 			kola.QEMUOptions.Firmware = "uefi"
 		} else {
 			kola.QEMUOptions.Firmware = "bios"
@@ -210,7 +211,9 @@ func syncOptionsImpl(useCosa bool) error {
 			kola.Options.CosaWorkdir = "."
 		}
 
-		localbuild, err := sdk.GetLocalBuild(kola.Options.CosaWorkdir, kola.Options.CosaBuildId)
+		localbuild, err := sdk.GetLocalBuild(kola.Options.CosaWorkdir,
+			kola.Options.CosaBuildId,
+			kola.Options.CosaBuildArch)
 		if err != nil {
 			return err
 		}
@@ -234,7 +237,8 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 
 		if kola.Options.CosaWorkdir != "" && kola.Options.CosaWorkdir != "none" {
-			localbuild, err := sdk.GetLatestLocalBuild(kola.Options.CosaWorkdir)
+			localbuild, err := sdk.GetLatestLocalBuild(kola.Options.CosaWorkdir,
+				kola.Options.CosaBuildArch)
 			if err != nil {
 				if !os.IsNotExist(errors.Cause(err)) {
 					return err

@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/coreos/coreos-assembler-schema/cosa"
-	"github.com/coreos/mantle/system"
 )
 
 const (
@@ -80,16 +79,15 @@ func GetLocalFastBuildQemu() (string, error) {
 	return "", nil
 }
 
-func GetLatestLocalBuild(root string) (*LocalBuild, error) {
-	return GetLocalBuild(root, "latest")
+func GetLatestLocalBuild(root, arch string) (*LocalBuild, error) {
+	return GetLocalBuild(root, "latest", arch)
 }
 
-func GetLocalBuild(root, buildid string) (*LocalBuild, error) {
+func GetLocalBuild(root, buildid, arch string) (*LocalBuild, error) {
 	if err := RequireCosaRoot(root); err != nil {
 		return nil, err
 	}
 
-	arch := system.RpmArch()
 	builddir := filepath.Join(root, "builds", buildid, arch)
 	metapath := filepath.Join(builddir, "meta.json")
 	cosameta, err := cosa.ParseBuild(metapath)

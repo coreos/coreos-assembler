@@ -170,8 +170,9 @@ type Options struct {
 	SystemdDropins []SystemdDropin
 	Stream         string
 
-	CosaWorkdir string
-	CosaBuildId string
+	CosaWorkdir   string
+	CosaBuildId   string
+	CosaBuildArch string
 
 	NoTestExitError bool
 
