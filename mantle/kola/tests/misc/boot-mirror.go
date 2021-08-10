@@ -58,8 +58,10 @@ func init() {
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror`,
 		Platforms:   []string{"qemu-unpriv"},
+		// aarch64 and ppc64le have buggy partition layouts
+		// https://github.com/coreos/fedora-coreos-tracker/issues/855#issuecomment-896387343
 		// Can't mirror boot disk on s390x
-		ExcludeArchitectures: []string{"s390x"},
+		ExcludeArchitectures: []string{"aarch64", "ppc64le", "s390x"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
@@ -71,9 +73,11 @@ func init() {
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror.luks`,
 		Platforms:   []string{"qemu-unpriv"},
+		// aarch64 and ppc64le have buggy partition layouts
+		// https://github.com/coreos/fedora-coreos-tracker/issues/855#issuecomment-896387343
 		// Can't mirror boot disk on s390x, and qemu s390x doesn't
 		// support TPM
-		ExcludeArchitectures: []string{"s390x"},
+		ExcludeArchitectures: []string{"aarch64", "ppc64le", "s390x"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
