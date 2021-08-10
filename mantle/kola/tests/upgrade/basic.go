@@ -198,8 +198,11 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 	// + new content set can update.
 	c.Run("upgrade-from-current", func(c cluster.TestCluster) {
 		newVersion := kola.CosaBuild.Meta.OstreeVersion + ".kola"
-		newCommit := c.MustSSHf(m, "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s",
-			ostreeRepo, kola.CosaBuild.Meta.BuildRef, kola.CosaBuild.Meta.OstreeCommit, newVersion)
+		ostree_command := "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s " +
+			"--keep-metadata='fedora-coreos.stream' --keep-metadata='coreos-assembler.basearch' --parent=%s"
+		newCommit := c.MustSSHf(m,
+			ostree_command,
+			ostreeRepo, kola.CosaBuild.Meta.BuildRef, kola.CosaBuild.Meta.OstreeCommit, newVersion, kola.CosaBuild.Meta.OstreeCommit)
 
 		graph.addUpdate(c, m, newVersion, string(newCommit))
 
