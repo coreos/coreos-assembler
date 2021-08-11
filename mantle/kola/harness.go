@@ -102,6 +102,8 @@ var (
 	DenylistedTests []string // tests which are on the denylist
 	Tags            []string // tags to be ran
 
+	extTestNum = 1 // Assigns a unique number to each non-exclusive external test
+
 	consoleChecks = []struct {
 		desc     string
 		match    *regexp.Regexp
@@ -203,7 +205,7 @@ type KoletResult struct {
 	Reboot string
 }
 
-const KoletExtTestUnit = "kola-runext.service"
+const KoletExtTestUnit = "kola-runext"
 const KoletRebootAckFifo = "/run/kolet-reboot-ack"
 
 // NativeRunner is a closure passed to all kola test functions and used
@@ -637,7 +639,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 // runExternalTest is an implementation of the "external" test framework.
 // See README-kola-ext.md as well as the comments in kolet.go for reboot
 // handling.
-func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
+func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) error {
 	var previousRebootState string
 	var stdout []byte
 	var stderr []byte
@@ -655,7 +657,15 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine) error {
 				return err
 			}
 		}
-		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(KoletExtTestUnit)))
+
+		var unit string
+		if testNum != 0 {
+			// This is a non-exclusive test
+			unit = fmt.Sprintf("%s-%d.service", KoletExtTestUnit, testNum)
+		} else {
+			unit = fmt.Sprintf("%s.service", KoletExtTestUnit)
+		}
+		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unit)))
 		if err != nil {
 			return errors.Wrapf(err, "kolet run-test-unit failed: %s", stderr)
 		}
@@ -705,7 +715,17 @@ func registerExternalTest(testname, executable, dependencydir string, userdata *
 		targetMeta = &metaCopy
 	}
 
+	// Services that are exclusive will be marked by a 0 at the end of the name
+	num := 0
+	unitName := fmt.Sprintf("%s.service", KoletExtTestUnit)
+	if !targetMeta.Exclusive {
+		num = extTestNum
+		extTestNum += 1
+		unitName = fmt.Sprintf("%s-%d.service", KoletExtTestUnit, num)
+	}
+
 	remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", filepath.Base(executable))
+
 	// Note this isn't Type=oneshot because it's cleaner to support self-SIGTERM that way
 	unit := fmt.Sprintf(`[Unit]
 [Service]
@@ -714,8 +734,8 @@ EnvironmentFile=-/run/kola-runext-env
 Environment=KOLA_UNIT=%s
 Environment=%s=%s
 ExecStart=%s
-`, KoletExtTestUnit, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
-	config.AddSystemdUnit(KoletExtTestUnit, unit, conf.NoState)
+`, unitName, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
+	config.AddSystemdUnit(unitName, unit, conf.NoState)
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
 	// to make sure that we don't run out of it. Currently ppc64le and aarch64 use 64k pages.
@@ -741,11 +761,11 @@ ExecStart=%s
 			mach := c.Machines()[0]
 			plog.Debugf("Running kolet")
 
-			err := runExternalTest(c, mach)
+			err := runExternalTest(c, mach, num)
 			if err != nil {
-				out, stderr, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status --lines=40 %s", shellquote.Join(KoletExtTestUnit)))
+				out, stderr, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status --lines=40 %s", shellquote.Join(unitName)))
 				if len(out) > 0 {
-					fmt.Printf("systemctl status %s:\n%s\n", KoletExtTestUnit, string(out))
+					fmt.Printf("systemctl status %s:\n%s\n", unitName, string(out))
 				} else {
 					fmt.Printf("Fetching status failed: %v\n", suberr)
 				}
