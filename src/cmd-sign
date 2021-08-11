@@ -17,6 +17,7 @@ import tempfile
 import boto3
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.meta import GenericBuildMeta as Meta
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
     get_basearch,
@@ -72,8 +73,6 @@ def parse_args():
 
 
 def cmd_robosignatory(args):
-    builds = Builds()
-
     s3 = boto3.client('s3')
     args.bucket, args.prefix = get_bucket_and_prefix(args.s3)
 
@@ -82,7 +81,7 @@ def cmd_robosignatory(args):
         key, val = keyval.split('=', 1)  # will throw exception if there's no =
         args.extra_keys[key] = val
 
-    build = builds.get_build_meta(args.build, args.arch)
+    build = Meta(build=args.build, basearch=args.arch)
     version = build['ostree-version']
 
     # 32.20200615.2.0 -> 32
