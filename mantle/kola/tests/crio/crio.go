@@ -127,6 +127,9 @@ var crioContainerTemplate = `{
 			"memory_limit_in_bytes": 268435456
 		},
 		"security_context": {
+			"namespace_options": {
+				"pid": 1
+			},
 			"readonly_rootfs": false,
 			"selinux_options": {
 				"user": "system_u",
