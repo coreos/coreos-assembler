@@ -1049,10 +1049,14 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 // scpKolet searches for a kolet binary and copies it to the machine.
 func scpKolet(machines []platform.Machine) error {
 	mArch := system.RpmArch()
+	exePath, err := os.Executable()
+	if err != nil {
+		return errors.Wrapf(err, "finding path of executable")
+	}
 	for _, d := range []string{
 		".",
-		filepath.Dir(os.Args[0]),
-		filepath.Join(filepath.Dir(os.Args[0]), mArch),
+		filepath.Dir(exePath),
+		filepath.Join(filepath.Dir(exePath), mArch),
 		filepath.Join("/usr/lib/kola", mArch),
 	} {
 		kolet := filepath.Join(d, "kolet")
