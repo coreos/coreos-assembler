@@ -50,7 +50,7 @@ type Build struct {
 	FedoraCoreOsParentVersion string                `json:"fedora-coreos.parent-version,omitempty"`
 	Gcp                       *Gcp                  `json:"gcp,omitempty"`
 	GitDirty                  string                `json:"coreos-assembler.config-dirty,omitempty"`
-	IbmCloud                  *Cloudartifact        `json:"ibmcloud,omitempty"`
+	IbmCloud                  []Cloudartifact       `json:"ibmcloud,omitempty"`
 	ImageInputChecksum        string                `json:"coreos-assembler.image-input-checksum,omitempty"`
 	InputHasOfTheRpmOstree    string                `json:"rpm-ostree-inputhash"`
 	Koji                      *Koji                 `json:"koji,omitempty"`
@@ -70,7 +70,7 @@ type Build struct {
 	OverridesActive           bool                  `json:"coreos-assembler.overrides-active,omitempty"`
 	PkgdiffAgainstParent      PackageSetDifferences `json:"parent-pkgdiff,omitempty"`
 	PkgdiffBetweenBuilds      PackageSetDifferences `json:"pkgdiff,omitempty"`
-	PowerVirtualServer        *Cloudartifact        `json:"powervs,omitempty"`
+	PowerVirtualServer        []Cloudartifact       `json:"powervs,omitempty"`
 	ReleasePayload            *Image                `json:"release-payload,omitempty"`
 }
 
@@ -103,7 +103,8 @@ type BuildArtifacts struct {
 
 type Cloudartifact struct {
 	Bucket string `json:"bucket,omitempty"`
-	Image  string `json:"image"`
+	Image  string `json:"image,omitempty"`
+	Object string `json:"object,omitempty"`
 	Region string `json:"region,omitempty"`
 	URL    string `json:"url"`
 }

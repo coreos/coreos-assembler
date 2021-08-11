@@ -10,7 +10,7 @@ if [ ! -x "${GOBIN}/schematyper" ]; then
 fi
 
 schema_version="v1"
-schema_json="../src/schema/${schema_version}.json"
+schema_json="../schema/${schema_version}.json"
 echo "Generating COSA Schema ${schema_version}"
 
 out="${tdir}/cosa_${schema_version}.go"

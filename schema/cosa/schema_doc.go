@@ -74,10 +74,11 @@ var generatedSchemaJSON = `{
       "cloudartifact": {
          "type": "object",
          "required": [
-             "image",
              "url"
          ],
          "optional": [
+             "image",
+             "object",
              "bucket",
              "region"
          ],
@@ -101,6 +102,11 @@ var generatedSchemaJSON = `{
              "$id":"#/cloudartifact/region",
              "type":"string",
              "title":"Region"
+            },
+            "object": {
+             "$id":"#/cloudartifact/object",
+             "type":"string",
+             "title":"Object"
             }
           }
      },
@@ -178,7 +184,7 @@ var generatedSchemaJSON = `{
       }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
- "$id":"http://github.com/coreos/coreos-assembler/blob/main/schema/v1.json",
+ "$id":"http://github.com/coreos/coreos-assembler/blob/main/v1.json.json",
  "type":"object",
  "title":"CoreOS Assember v1 meta.json schema",
  "required": [
@@ -820,16 +826,22 @@ var generatedSchemaJSON = `{
       }
     },
    "ibmcloud": {
-      "$id":"#/properties/ibmcloud",
-      "type":"object",
-      "title":"IBM Cloud",
-      "$ref": "#/definitions/cloudartifact"
+     "$id":"#/properties/ibmcloud",
+     "type":"array",
+     "title":"IBM Cloud",
+     "items": {
+       "type":"object",
+       "$ref": "#/definitions/cloudartifact"
+      }
     },
    "powervs": {
-      "$id":"#/properties/powervs",
-      "type":"object",
-      "title":"Power Virtual Server",
-      "$ref": "#/definitions/cloudartifact"
+     "$id":"#/properties/powervs",
+     "type":"array",
+     "title":"Power Virtual Server",
+     "items": {
+       "type":"object",
+       "$ref": "#/definitions/cloudartifact"
+      }
     },
     "release-payload": {
       "$id":"#/properties/release-payload",
