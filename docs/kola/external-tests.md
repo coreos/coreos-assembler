@@ -183,7 +183,8 @@ Here's an example `kola.json`:
     "platforms": "qemu-unpriv",
     "tags": "sometagname needs-internet skip-base-checks othertag",
     "additionalDisks": [ "5G" ],
-    "minMemory": 4096
+    "minMemory": 4096,
+    "exclusive": true
 }
 ```
 
@@ -211,6 +212,13 @@ The `minMemory` key takes a size in MB and ensures that an instance type with
 at least the specified amount of memory is used. On QEMU, this is equivalent to
 the `--memory` argument to `qemuexec`. This is currently only enforced on
 `qemu-unpriv`.
+
+The `exclusive` key takes a boolean value. If `true`, the test will be run by 
+itself in its own VM such that other tests do not conflict with it. If this key 
+is marked `false`, the test is run with other "non-exclusive" tests. If a test 
+is simple and is not expected to conflict with other tests, it should be marked 
+`exclusive: false`. When the `exclusive` key is not provided, tests are marked 
+`exclusive: true` by default.
 
 More recently, you can also (useful for shell scripts) include the JSON file
 inline per test, like this:

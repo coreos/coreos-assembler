@@ -79,6 +79,10 @@ type Test struct {
 	// FailFast skips any sub-test that occurs after a sub-test has
 	// failed.
 	FailFast bool
+
+	// If true, this test will be run along with other NonExclusive tests in one VM
+	// Otherwise, it is run in its own VM
+	NonExclusive bool
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names
