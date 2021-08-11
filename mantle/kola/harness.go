@@ -556,10 +556,27 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 			reporters.NewJSONReporter("report.json", pltfrm, versionStr),
 		},
 	}
+
+	var nonExclusiveTests []*register.Test
+	for _, test := range tests {
+		if test.NonExclusive {
+			nonExclusiveTests = append(nonExclusiveTests, test)
+			delete(tests, test.Name)
+		}
+	}
+
+	if len(nonExclusiveTests) > 0 {
+		nonExclusiveWrapper := makeNonExclusiveTest(nonExclusiveTests, flight)
+		tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
+		register.RegisterTest(&nonExclusiveWrapper)
+	}
+
 	var htests harness.Tests
 	for _, test := range tests {
 		test := test // for the closure
 		run := func(h *harness.H) {
+			// We launch a seperate cluster for each kola test
+			// At the end of the test, its cluster is destroyed
 			runTest(h, test, pltfrm, flight)
 		}
 		htests.Add(test.Name, run)
@@ -667,10 +684,12 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 		if testNum != 0 {
 			// This is a non-exclusive test
 			unit = fmt.Sprintf("%s-%d.service", KoletExtTestUnit, testNum)
+			// Reboot requests are disabled for non-exclusive tests
+			stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit --deny-reboots %s", shellquote.Join(unit)))
 		} else {
 			unit = fmt.Sprintf("%s.service", KoletExtTestUnit)
+			stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unit)))
 		}
-		stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unit)))
 		if err != nil {
 			return errors.Wrapf(err, "kolet run-test-unit failed: %s", stderr)
 		}
@@ -951,6 +970,108 @@ func RegisterExternalTests(dir string) error {
 	return RegisterExternalTestsWithPrefix(dir, basename)
 }
 
+func setupExternalTest(h *harness.H, t *register.Test, tcluster cluster.TestCluster) {
+	in, err := os.Open(t.ExternalTest)
+	if err != nil {
+		h.Fatal(err)
+	}
+	defer in.Close()
+	for _, mach := range tcluster.Machines() {
+		unit := fmt.Sprintf("kola-runext-%s", filepath.Base(t.ExternalTest))
+		remotepath := fmt.Sprintf("/usr/local/bin/%s", unit)
+		if err := platform.InstallFile(in, mach, remotepath); err != nil {
+			h.Fatal(errors.Wrapf(err, "uploading %s", t.ExternalTest))
+		}
+	}
+}
+
+func collectLogsExternalTest(h *harness.H, t *register.Test, tcluster cluster.TestCluster) {
+	for _, mach := range tcluster.Machines() {
+		unit := fmt.Sprintf("kola-runext-%s", filepath.Base(t.ExternalTest))
+		tcluster := tcluster
+		// We will collect the logs in a file named according to the test name instead of the executable
+		// This way if there are two executables with the same name on one machine, we avoid conflicts
+		path := filepath.Join(mach.RuntimeConf().OutputDir, mach.ID(), fmt.Sprintf("%s.txt", t.Name))
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			h.Fatal(errors.Wrapf(err, "opening %s", path))
+			return
+		}
+		defer f.Close()
+		out := tcluster.MustSSHf(mach, "journalctl -t %s", unit)
+		if _, err = f.WriteString(string(out)); err != nil {
+			h.Errorf("failed to write journal: %v", err)
+		}
+	}
+}
+
+// Create a parent test that runs non-exclusive tests as subtests
+func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) register.Test {
+	// Parse test flags and gather configs
+	var (
+		internetAccess     bool
+		noSSHKeyInMetadata bool
+		noSSHKeyInUserdata bool
+	)
+	var flags []register.Flag
+	var nonExclusiveTestConfs []*conf.Conf
+	for _, test := range tests {
+		if !noSSHKeyInMetadata && test.HasFlag(register.NoSSHKeyInMetadata) {
+			flags = append(flags, register.NoSSHKeyInMetadata)
+			noSSHKeyInMetadata = true
+		}
+		if !noSSHKeyInUserdata && test.HasFlag(register.NoSSHKeyInUserData) {
+			flags = append(flags, register.NoSSHKeyInUserData)
+			noSSHKeyInUserdata = true
+		}
+		if !internetAccess && testRequiresInternet(test) {
+			flags = append(flags, register.RequiresInternetAccess)
+			internetAccess = true
+		}
+
+		// We upgrade each config to V3.4exp so they can be merged into one config
+		conf, err := test.UserData.RenderToV34exp()
+		if err != nil {
+			plog.Fatal(err)
+		}
+		nonExclusiveTestConfs = append(nonExclusiveTestConfs, conf)
+	}
+
+	// Merge configs together
+	mergedConfig, err := conf.MergeAllV34exp(nonExclusiveTestConfs)
+	if err != nil {
+		plog.Fatalf("Error merging configs: %v", err)
+	}
+
+	nonExclusiveWrapper := register.Test{
+		Name: "non-exclusive-tests",
+		Run: func(tcluster cluster.TestCluster) {
+			for _, t := range tests {
+				t := t
+				run := func(h *harness.H) {
+					// Install external test executable
+					if t.ExternalTest != "" {
+						setupExternalTest(h, t, tcluster)
+						// Collect the journal logs after execution is finished
+						defer collectLogsExternalTest(h, t, tcluster)
+					}
+
+					t.Run(tcluster)
+				}
+				// Each non-exclusive test is run as a subtest of this wrapper test
+				tcluster.H.Run(t.Name, run)
+			}
+		},
+		UserData: mergedConfig,
+		// This will allow runTest to copy kolet to machine
+		NativeFuncs: make(map[string]register.NativeFuncWrap),
+		ClusterSize: 1,
+		Flags:       flags,
+	}
+
+	return nonExclusiveWrapper
+}
+
 // runTest is a harness for running a single test.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
@@ -1022,33 +1143,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 
 	if t.ExternalTest != "" {
-		in, err := os.Open(t.ExternalTest)
-		if err != nil {
-			h.Fatal(err)
-		}
-		defer in.Close()
-		for _, mach := range tcluster.Machines() {
-			unit := fmt.Sprintf("kola-runext-%s", filepath.Base(t.ExternalTest))
-			remotepath := fmt.Sprintf("/usr/local/bin/%s", unit)
-			if err := platform.InstallFile(in, mach, remotepath); err != nil {
-				h.Fatal(errors.Wrapf(err, "uploading %s", t.ExternalTest))
-			}
-			defer func(mach platform.Machine) {
-				unit := unit
-				tcluster := tcluster
-				path := filepath.Join(mach.RuntimeConf().OutputDir, mach.ID(), fmt.Sprintf("%s.txt", unit))
-				f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
-				if err != nil {
-					h.Fatal(errors.Wrapf(err, "opening %s", path))
-					return
-				}
-				defer f.Close()
-				out := tcluster.MustSSHf(mach, "journalctl -t %s", unit)
-				if _, err = f.WriteString(string(out)); err != nil {
-					h.Errorf("failed to write journal: %v", err)
-				}
-			}(mach)
-		}
+		setupExternalTest(h, t, tcluster)
+		// Collect the journal logs after execution is finished
+		defer collectLogsExternalTest(h, t, tcluster)
 	}
 
 	if t.DependencyDir != "" {

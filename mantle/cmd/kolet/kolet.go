@@ -259,6 +259,7 @@ func initiateReboot(mark string) error {
 }
 
 func runExtUnit(cmd *cobra.Command, args []string) error {
+	rebootOff, _ := cmd.Flags().GetBool("deny-reboots")
 	// Write the autopkgtest wrappers
 	if err := ioutil.WriteFile(autopkgTestRebootPath, []byte(autopkgtestRebootScript), 0755); err != nil {
 		return err
@@ -271,23 +272,27 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	// proxy it into a channel
 	rebootChan := make(chan string)
 	errChan := make(chan error)
-	err := exec.Command("mkfifo", rebootRequestFifo).Run()
-	if err != nil {
-		return err
+
+	// We want to prevent certain tests (like non-exclusive tests) from rebooting
+	if !rebootOff {
+		err := exec.Command("mkfifo", rebootRequestFifo).Run()
+		if err != nil {
+			return err
+		}
+		go func() {
+			rebootReader, err := os.Open(rebootRequestFifo)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			defer rebootReader.Close()
+			buf, err := ioutil.ReadAll(rebootReader)
+			if err != nil {
+				errChan <- err
+			}
+			rebootChan <- string(buf)
+		}()
 	}
-	go func() {
-		rebootReader, err := os.Open(rebootRequestFifo)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		defer rebootReader.Close()
-		buf, err := ioutil.ReadAll(rebootReader)
-		if err != nil {
-			errChan <- err
-		}
-		rebootChan <- string(buf)
-	}()
 
 	unitname := args[0]
 	// Restrict this to services, don't need to support anything else right now
@@ -353,6 +358,10 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 // API as defined by Debian autopkgtests:
 // https://salsa.debian.org/ci-team/autopkgtest/raw/master/doc/README.package-tests.rst
 func runReboot(cmd *cobra.Command, args []string) error {
+	if _, err := os.Stat(rebootRequestFifo); os.IsNotExist(err) {
+		return errors.New("Reboots are not supported for this test, rebootRequestFifo does not exist.")
+	}
+
 	mark := args[0]
 	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
 	err := exec.Command("mkfifo", kola.KoletRebootAckFifo).Run()
@@ -388,6 +397,7 @@ func main() {
 	registerTestMap(register.Tests)
 	registerTestMap(register.UpgradeTests)
 	root.AddCommand(cmdRun)
+	cmdRunExtUnit.Flags().Bool("deny-reboots", false, "disable reboot requests")
 	root.AddCommand(cmdRunExtUnit)
 	cmdReboot.Args = cobra.ExactArgs(1)
 	root.AddCommand(cmdReboot)
