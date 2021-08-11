@@ -20,10 +20,12 @@ package ibmcloud
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/IBM-Cloud/bluemix-go/api/resource/resourcev2/controllerv2"
 	"github.com/IBM/ibm-cos-sdk-go/aws"
+	"github.com/IBM/ibm-cos-sdk-go/aws/awserr"
 	"github.com/IBM/ibm-cos-sdk-go/aws/credentials/ibmiam"
 	"github.com/IBM/ibm-cos-sdk-go/aws/session"
 	"github.com/IBM/ibm-cos-sdk-go/service/s3"
@@ -162,5 +164,30 @@ func (a *API) UploadObject(r io.Reader, objectName, bucketName string, force boo
 		return err
 	}
 	plog.Infof("Upload completed successfully in %f seconds to location %s\n", time.Since(startTime).Seconds(), result.Location)
+	return err
+}
+
+// CopyObject - Copy an Object to a new location
+func (a *API) CopyObject(srcBucket, srcName, destBucket string) error {
+	_, err := a.s3client.s3Session.CopyObject(&s3.CopyObjectInput{
+		CopySource: aws.String(url.QueryEscape(fmt.Sprintf("%s/%s", srcBucket, srcName))),
+		Bucket:     aws.String(destBucket),
+		Key:        aws.String(srcName),
+	})
+	if err != nil {
+		if awserr, ok := err.(awserr.Error); ok {
+			if awserr.Code() == "BucketAlreadyOwnedByYou" {
+				return nil
+			}
+		}
+	}
+
+	// Wait to see if the item got copied
+	err = a.s3client.s3Session.WaitUntilObjectExists(&s3.HeadObjectInput{Bucket: aws.String(destBucket), Key: aws.String(srcName)})
+	if err != nil {
+		return fmt.Errorf("Error occurred while waiting for item %q to be copied to bucket %q, %v", srcName, destBucket, err)
+	}
+
+	plog.Infof("Item %q successfully copied from bucket %q to bucket %q\n", srcName, srcBucket, destBucket)
 	return err
 }
