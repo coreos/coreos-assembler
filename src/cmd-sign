@@ -17,7 +17,6 @@ import tempfile
 import boto3
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cosalib.meta import GenericBuildMeta as Meta
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
     get_basearch,
@@ -45,6 +44,8 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--build", help="Build ID", default='latest')
+    parser.add_argument("--arch", default=get_basearch(),
+                        help="the target architecture")
     subparsers = parser.add_subparsers(dest='cmd', title='subcommands')
     subparsers.required = True
 
@@ -65,8 +66,6 @@ def parse_args():
     robosig.add_argument("--gpgkeypath", help="path to directory containing "
                          "public keys to use for signature verification",
                          default="/etc/pki/rpm-gpg")
-    robosig.add_argument("--arch", default=get_basearch(),
-                         help="the target architecture")
     robosig.set_defaults(func=cmd_robosignatory)
 
     return parser.parse_args()
@@ -85,7 +84,7 @@ def cmd_robosignatory(args):
         key, val = keyval.split('=', 1)  # will throw exception if there's no =
         args.extra_keys[key] = val
 
-    build = Meta(build=args.build)
+    build = builds.get_build_meta(args.build, args.arch)
     version = build['ostree-version']
 
     # 32.20200615.2.0 -> 32
