@@ -602,6 +602,7 @@ type externalTestMeta struct {
 	Tags            string   `json:"tags,omitempty"`
 	AdditionalDisks []string `json:"additionalDisks,omitempty"`
 	MinMemory       int      `json:"minMemory,omitempty"`
+	Exclusive       bool     `json:"exclusive"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -615,7 +616,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	}
 	defer f.Close()
 	r := bufio.NewReader(io.LimitReader(f, 8192))
-	var meta *externalTestMeta
+	meta := &externalTestMeta{Exclusive: true}
 	for {
 		line, err := r.ReadString('\n')
 		if err == io.EOF {
@@ -629,7 +630,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 		buf := strings.TrimSpace(line[len(InstalledTestMetaPrefix):])
 		dec := json.NewDecoder(strings.NewReader(buf))
 		dec.DisallowUnknownFields()
-		meta = &externalTestMeta{}
+		meta = &externalTestMeta{Exclusive: true}
 		if err := dec.Decode(meta); err != nil {
 			return nil, errors.Wrapf(err, "parsing %s", line)
 		}
@@ -739,6 +740,7 @@ ExecStart=%s
 
 		AdditionalDisks: targetMeta.AdditionalDisks,
 		MinMemory:       targetMeta.MinMemory,
+		NonExclusive:    !targetMeta.Exclusive,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
