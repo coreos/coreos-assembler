@@ -69,10 +69,11 @@
       "cloudartifact": {
          "type": "object",
          "required": [
-             "image",
              "url"
          ],
          "optional": [
+             "image",
+             "object",
              "bucket",
              "region"
          ],
@@ -96,6 +97,11 @@
              "$id":"#/cloudartifact/region",
              "type":"string",
              "title":"Region"
+            },
+            "object": {
+             "$id":"#/cloudartifact/object",
+             "type":"string",
+             "title":"Object"
             }
           }
      },
@@ -815,16 +821,22 @@
       }
     },
    "ibmcloud": {
-      "$id":"#/properties/ibmcloud",
-      "type":"object",
-      "title":"IBM Cloud",
-      "$ref": "#/definitions/cloudartifact"
+     "$id":"#/properties/ibmcloud",
+     "type":"array",
+     "title":"IBM Cloud",
+     "items": {
+       "type":"object",
+       "$ref": "#/definitions/cloudartifact"
+      }
     },
    "powervs": {
-      "$id":"#/properties/powervs",
-      "type":"object",
-      "title":"Power Virtual Server",
-      "$ref": "#/definitions/cloudartifact"
+     "$id":"#/properties/powervs",
+     "type":"array",
+     "title":"Power Virtual Server",
+     "items": {
+       "type":"object",
+       "$ref": "#/definitions/cloudartifact"
+      }
     },
     "release-payload": {
       "$id":"#/properties/release-payload",
