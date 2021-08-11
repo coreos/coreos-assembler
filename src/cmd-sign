@@ -43,7 +43,7 @@ def main():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--build", help="Build ID", default='latest')
+    parser.add_argument("--build", help="Build ID", required=True)
     parser.add_argument("--arch", default=get_basearch(),
                         help="the target architecture")
     subparsers = parser.add_subparsers(dest='cmd', title='subcommands')
@@ -73,8 +73,6 @@ def parse_args():
 
 def cmd_robosignatory(args):
     builds = Builds()
-    if args.build == 'latest':
-        args.build = builds.get_latest()
 
     s3 = boto3.client('s3')
     args.bucket, args.prefix = get_bucket_and_prefix(args.s3)
