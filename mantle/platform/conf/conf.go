@@ -280,6 +280,46 @@ func (u *UserData) Render() (*Conf, error) {
 	return c, nil
 }
 
+// Parse userdata into a V3.4 config
+func (u *UserData) RenderToV34exp() (*Conf, error) {
+
+	parseCompatible := func(raw []byte) (*Conf, error) {
+		config, report, err := v34exp.ParseCompatibleVersion(raw)
+		if err != nil {
+			return nil, err
+		}
+		if len(report.Entries) > 0 {
+			plog.Warningf("parsing ignition config to V3.4: %s", report)
+		}
+		return &Conf{ignitionV34exp: &config}, nil
+	}
+
+	var config *Conf
+	switch u.kind {
+	case kindEmpty:
+		// empty, noop
+	case kindIgnition:
+		config, err := parseCompatible([]byte(u.data))
+		return config, err
+	case kindButane:
+		ignc, report, err := butane.TranslateBytes([]byte(u.data), butaneCommon.TranslateBytesOptions{
+			Raw: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(report.Entries) > 0 {
+			plog.Warningf("translating Butane config: %s", report)
+		}
+		config, err := parseCompatible(ignc)
+		return config, err
+	default:
+		return nil, errors.New("invalid kind")
+	}
+
+	return config, nil
+}
+
 // String returns the string representation of the userdata in Conf.
 func (c *Conf) String() string {
 	if c.ignitionV3 != nil {
@@ -330,6 +370,27 @@ func (c *Conf) MergeV33(newConfig v33types.Config) {
 func (c *Conf) MergeV34exp(newConfig v34exptypes.Config) {
 	mergeConfig := v34exp.Merge(*c.ignitionV34exp, newConfig)
 	c.ignitionV34exp = &mergeConfig
+}
+
+// Merge all configs into a V3.4 config
+// configs must be of type V34exp to merge
+func MergeAllV34exp(confObjs []*Conf) (*UserData, error) {
+	config := Conf{}
+	config.ignitionV34exp = &v34exptypes.Config{
+		Ignition: v34exptypes.Ignition{
+			Version: "3.4.0-experimental",
+		},
+	}
+	for _, conf := range confObjs {
+		if conf.ignitionV34exp == nil {
+			return nil, fmt.Errorf("configs must be V34exp to merge")
+		}
+		mergedConfig := v34exp.Merge(*config.ignitionV34exp, *conf.ignitionV34exp)
+		config.ignitionV34exp = &mergedConfig
+	}
+
+	userData := Ignition(config.String())
+	return userData, nil
 }
 
 func (c *Conf) ValidConfig() bool {
