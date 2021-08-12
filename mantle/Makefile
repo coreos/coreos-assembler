@@ -11,9 +11,11 @@ schema-update:
 	$(MAKE) -C ../tools schema
 
 .PHONY: install
-install: bin/ore bin/kola bin/plume bin/kolet
+install: build
 	install -D -t $(DESTDIR)$(PREFIX)/bin bin/{ore,kola,plume}
-	install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$(ARCH) bin/kolet
+	for arch in s390x x86_64 aarch64 ppc64le; do \
+		install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$${arch} bin/$${arch}/kolet; \
+	done
 
 test:
 	./test
