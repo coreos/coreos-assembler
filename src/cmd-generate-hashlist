@@ -19,6 +19,7 @@ sys.path.insert(0, cosa_dir)
 
 from cosalib import meta
 from cosalib.cmdlib import (
+    get_basearch,
     sha256sum_file,
     import_ostree_commit)
 
@@ -164,6 +165,9 @@ def main():
     parser.add_argument(
         '-r', '--release', help='Override the release')
     parser.add_argument(
+        '-a', '--arch', default=get_basearch(),
+        help='Target Architecture')
+    parser.add_argument(
         '-o', '--output',
         help='Where the output should be written', default='hashlist.json')
 
@@ -171,7 +175,7 @@ def main():
     args = parser.parse_args()
 
     # Load metadata
-    metadata = meta.GenericBuildMeta(schema=None)
+    metadata = meta.GenericBuildMeta(schema=None, basearch=args.arch)
 
     # Step 0: Initialize the HashList instance
     hashlist = HashListV1(
