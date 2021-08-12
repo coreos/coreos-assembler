@@ -97,8 +97,8 @@ func runBootMirrorTest(c cluster.TestCluster) {
 			MinMemory:       4096,
 		},
 	}
-	// FIXME: kola currently assumes the host CPU architecture matches
-	// the one under test
+	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
+	// matches the one under test
 	userdata := bootmirror.Subst("LAYOUT", system.RpmArch())
 	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
@@ -144,8 +144,8 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 			MinMemory:       4096,
 		},
 	}
-	// FIXME: kola currently assumes the host CPU architecture matches
-	// the one under test
+	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
+	// matches the one under test
 	userdata := bootmirrorluks.Subst("LAYOUT", system.RpmArch())
 	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
