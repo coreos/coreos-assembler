@@ -31,36 +31,30 @@ host_build() {
         "$@" "${REPO_PATH}/cmd/$cmd"
 }
 
-host_static_build() {
+cross_static_build() {
     local cmd=$1; shift
-    echo "Building $cmd (static)"
-    go build \
-        -ldflags "${ldflags} -extldflags=-static" \
-        -mod vendor \
-        -o "bin/$cmd" \
-        -tags osusergo,netgo \
-        ${race} \
-        "${REPO_PATH}/cmd/$cmd"
-}
-
-# Unused now, but kept in case we want it in the future
-cross_build() {
     local a
     local r
-    for a in amd64 arm64 s390x ppc64le; do
-        ( [[ "${a}" =~ s390x ]] || [ -z "${ENABLE_GO_RACE_DETECTOR:-}" ] ) && r= || r="-race"
-        echo "Building $a/$1"
+	declare -A arches=([s390x]=s390x [x86_64]=amd64 [aarch64]=arm64 [ppc64le]=ppc64le)
+	for a in "${!arches[@]}"; do \
+        [[ "${a}" =~ s390x ]] && r= || r=$race
         mkdir -p "bin/$a"
-        CGO_ENABLED=0 GOARCH=$a \
-            go build -mod=vendor -ldflags "${ldflags}" ${r} \
-            -o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
+        echo "Building $a/$cmd (static)"
+        GOARCH=${arches[$a]} \
+        go build \
+            -ldflags "${ldflags} -extldflags=-static" \
+            -mod vendor \
+            -o "bin/$a/$cmd" \
+            -tags osusergo,netgo \
+            ${r} \
+            "${REPO_PATH}/cmd/$cmd"
     done
 }
 
 for arg in "$@"; do
     cmd=$(basename "${arg}")
     if [ "${cmd}" = "kolet" ]; then
-        host_static_build kolet
+        cross_static_build kolet
     else
         host_build "${cmd}"
     fi
