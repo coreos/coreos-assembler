@@ -7,7 +7,7 @@ cd $(dirname $0)
 source ./env
 
 if [[ $# -eq 0 ]]; then
-	set -- cmd/* schema
+    set -- cmd/* schema
 fi
 
 race=
@@ -21,40 +21,40 @@ version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 
 host_build() {
-	local cmd=$1; shift
-	echo "Building $cmd"
-	go build \
-		-ldflags "${ldflags}" \
-		-mod vendor \
-		-o "bin/$cmd" \
-		${race} \
-		"$@" "${REPO_PATH}/cmd/$cmd"
+    local cmd=$1; shift
+    echo "Building $cmd"
+    go build \
+        -ldflags "${ldflags}" \
+        -mod vendor \
+        -o "bin/$cmd" \
+        ${race} \
+        "$@" "${REPO_PATH}/cmd/$cmd"
 }
 
 host_static_build() {
-	local cmd=$1; shift
-	echo "Building $cmd (static)"
-	go build \
-		-ldflags "${ldflags} -extldflags=-static" \
-		-mod vendor \
-		-o "bin/$cmd" \
-		-tags osusergo,netgo \
-		${race} \
-		"${REPO_PATH}/cmd/$cmd"
+    local cmd=$1; shift
+    echo "Building $cmd (static)"
+    go build \
+        -ldflags "${ldflags} -extldflags=-static" \
+        -mod vendor \
+        -o "bin/$cmd" \
+        -tags osusergo,netgo \
+        ${race} \
+        "${REPO_PATH}/cmd/$cmd"
 }
 
 # Unused now, but kept in case we want it in the future
 cross_build() {
-	local a
-	local r
-	for a in amd64 arm64 s390x ppc64le; do
-		( [[ "${a}" =~ s390x ]] || [ -z "${ENABLE_GO_RACE_DETECTOR:-}" ] ) && r= || r="-race"
-		echo "Building $a/$1"
-		mkdir -p "bin/$a"
-		CGO_ENABLED=0 GOARCH=$a \
-			go build -mod=vendor -ldflags "${ldflags}" ${r} \
-			-o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
-	done
+    local a
+    local r
+    for a in amd64 arm64 s390x ppc64le; do
+        ( [[ "${a}" =~ s390x ]] || [ -z "${ENABLE_GO_RACE_DETECTOR:-}" ] ) && r= || r="-race"
+        echo "Building $a/$1"
+        mkdir -p "bin/$a"
+        CGO_ENABLED=0 GOARCH=$a \
+            go build -mod=vendor -ldflags "${ldflags}" ${r} \
+            -o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
+    done
 }
 
 for arg in "$@"; do
