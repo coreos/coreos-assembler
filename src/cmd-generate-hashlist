@@ -58,10 +58,8 @@ class HashListV1(dict):
         if timestamp is None:
             timestamp = datetime.datetime.utcnow().isoformat()
         self['meta']['timestamp'] = timestamp
-        self['meta']['image'] = os.path.sep.join([
-            'builds', self._metadata['ostree-version'],
-            self._metadata['coreos-assembler.basearch'],
-            self._metadata['images']['qemu']['path']])
+        self['meta']['ostree'] = self._metadata['images']['ostree']['path']
+        self['meta']['arch'] = self._metadata['coreos-assembler.basearch']
 
         self['hashes'] = {}
 
