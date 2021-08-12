@@ -34,19 +34,16 @@ host_build() {
 cross_static_build() {
     local cmd=$1; shift
     local a
-    local r
 	declare -A arches=([s390x]=s390x [x86_64]=amd64 [aarch64]=arm64 [ppc64le]=ppc64le)
 	for a in "${!arches[@]}"; do \
-        [[ "${a}" =~ s390x ]] && r= || r=$race
         mkdir -p "bin/$a"
         echo "Building $a/$cmd (static)"
-        GOARCH=${arches[$a]} \
+        CGO_ENABLED=0 GOARCH=${arches[$a]} \
         go build \
             -ldflags "${ldflags} -extldflags=-static" \
             -mod vendor \
             -o "bin/$a/$cmd" \
             -tags osusergo,netgo \
-            ${r} \
             "${REPO_PATH}/cmd/$cmd"
     done
 }
