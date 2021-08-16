@@ -196,6 +196,17 @@ func syncOptionsImpl(useCosa bool) error {
 		return err
 	}
 
+	// Choose an appropriate AWS instance type for the target architecture
+	if kolaPlatform == "aws" && kola.AWSOptions.InstanceType == "" {
+		switch kola.Options.CosaBuildArch {
+		case "x86_64":
+			kola.AWSOptions.InstanceType = "m5.large"
+		case "aarch64":
+			kola.AWSOptions.InstanceType = "a1.metal"
+		}
+		fmt.Printf("Using %s instance type\n", kola.AWSOptions.InstanceType)
+	}
+
 	// if no external dirs were given, automatically add the working directory;
 	// does nothing if ./tests/kola/ doesn't exist
 	if len(runExternals) == 0 {
@@ -313,16 +324,6 @@ func syncCosaOptions() error {
 					fmt.Printf("Using AMI %s from Region %s\n", kola.AWSOptions.AMI, kola.AWSOptions.Region)
 				}
 			}
-		}
-		// Choose an appropriate AWS instance type for the target architecture
-		if kola.AWSOptions.InstanceType == "" {
-			switch kola.Options.CosaBuildArch {
-			case "x86_64":
-				kola.AWSOptions.InstanceType = "m5.large"
-			case "aarch64":
-				kola.AWSOptions.InstanceType = "a1.metal"
-			}
-			fmt.Printf("Using %s instance type\n", kola.AWSOptions.InstanceType)
 		}
 	}
 
