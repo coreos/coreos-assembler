@@ -66,6 +66,16 @@ func init() {
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
 	})
+	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
+	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.
+	// and we're using veth pairs instead of real nic when setting the bond
+	register.RegisterTest(&register.Test{
+		Run:         NetworkBondWithRestart,
+		ClusterSize: 0,
+		Name:        "rhcos.network.bond-with-restart",
+		Distros:     []string{"rhcos"},
+		Platforms:   []string{"qemu-unpriv"},
+	})
 }
 
 type listener struct {
@@ -372,6 +382,55 @@ var (
 `
 )
 
+func NetworkBondWithRestart(c cluster.TestCluster) {
+	primaryMac := "52:55:00:d1:56:00"
+	secondaryMac := "52:55:00:d1:56:01"
+	primaryIp := "192.168.0.55"
+	secondaryIp := "192.168.0.56"
+
+	setupBondWithDhcpTest(c, primaryMac, secondaryMac, primaryIp, secondaryIp)
+
+	m := c.Machines()[0]
+	expectedUpConnections := getOvsRelatedConnections(c, m)
+	err := checkConnectionsUp(c, m, expectedUpConnections)
+	if err != nil {
+		c.Fatalf("connections check failed before reboot: %v", err)
+	}
+
+	err = m.Reboot()
+	if err != nil {
+		c.Fatalf("failed to reboot the machine: %v", err)
+	}
+
+	err = checkConnectionsUp(c, m, expectedUpConnections)
+	if err != nil {
+		c.Fatalf("connections check failed post reboot: %v", err)
+	}
+}
+
+func getOvsRelatedConnections(c cluster.TestCluster, m platform.Machine) []string {
+	subString := "ovs"
+	connectionList := getConnectionsList(c, m)
+	ovsRelatedConnectionList := []string{}
+
+	for _, connectionName := range connectionList {
+		if strings.Contains(connectionName, subString) {
+			ovsRelatedConnectionList = append(ovsRelatedConnectionList, connectionName)
+		}
+	}
+	return ovsRelatedConnectionList
+}
+
+func getConnectionsList(c cluster.TestCluster, m platform.Machine) []string {
+	output := string(c.MustSSH(m, "nmcli -t -g NAME con show"))
+	return strings.Split(output, "\n")
+}
+
+func getActiveConnectionsList(c cluster.TestCluster, m platform.Machine) []string {
+	output := string(c.MustSSH(m, "nmcli -t -g NAME con show --active"))
+	return strings.Split(output, "\n")
+}
+
 func NetworkBondWithDhcp(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
@@ -488,6 +547,30 @@ func checkExpectedMAC(c cluster.TestCluster, m platform.Machine, interfaceName, 
 	if interfaceMACAddress != expectedMac {
 		c.Fatalf("interface %s MAC %s does not match expected MAC %s", interfaceName, interfaceMACAddress, expectedMac)
 	}
+}
+
+func checkConnectionsUp(c cluster.TestCluster, m platform.Machine, expectedUpConnections []string) error {
+	failedConnections := []string{}
+	activeConnections := getActiveConnectionsList(c, m)
+
+	for _, connection := range expectedUpConnections {
+		if !isStringInSlice(activeConnections, connection) {
+			failedConnections = append(failedConnections, connection)
+		}
+	}
+	if len(failedConnections) != 0 {
+		return fmt.Errorf("connections not in expected status up: %v", failedConnections)
+	}
+	return nil
+}
+
+func isStringInSlice(stringList []string, val string) bool {
+	for _, str := range stringList {
+		if str == val {
+			return true
+		}
+	}
+	return false
 }
 
 func getInterfaceMAC(c cluster.TestCluster, m platform.Machine, interfaceName string) (string, error) {
