@@ -107,7 +107,7 @@ func init() {
 	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
 
 	// gce-specific options
-	sv(&kola.GCEOptions.Image, "gce-image", "projects/fedora-coreos-cloud/global/images/family/fedora-coreos-testing", "GCE image, full api endpoints names are accepted if resource is in a different project")
+	sv(&kola.GCEOptions.Image, "gce-image", "", "GCE image, full api endpoints names are accepted if resource is in a different project")
 	sv(&kola.GCEOptions.Project, "gce-project", "coreos-gce-testing", "GCE project name")
 	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
 	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
@@ -324,6 +324,16 @@ func syncCosaOptions() error {
 					fmt.Printf("Using AMI %s from Region %s\n", kola.AWSOptions.AMI, kola.AWSOptions.Region)
 				}
 			}
+		}
+	case "gce":
+		// Pick up the GCP image from the build metadata
+		if kola.GCEOptions.Image == "" {
+			kola.GCEOptions.Image =
+				fmt.Sprintf("projects/%s/global/images/%s",
+					kola.CosaBuild.Meta.Gcp.ImageProject,
+					kola.CosaBuild.Meta.Gcp.ImageName)
+
+			fmt.Printf("Using GCP image %s\n", kola.GCEOptions.Image)
 		}
 	}
 
