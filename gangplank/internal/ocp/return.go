@@ -98,10 +98,11 @@ func (r *Return) Run(ctx context.Context, ws *workSpec) error {
 	}
 
 	// Now any kola logs.
-	tmpFiles, _ := ioutil.ReadDir(filepath.Join(cosaSrvDir, "tmp"))
+	tmpDir := filepath.Join(cosaSrvDir, "tmp")
+	tmpFiles, _ := ioutil.ReadDir(tmpDir)
 	for _, f := range tmpFiles {
 		upKey := filepath.Join(keyPath, "logs", f.Name())
-		srcPath := filepath.Join(path, f.Name())
+		srcPath := filepath.Join(tmpDir, f.Name())
 		if strings.Contains(f.Name(), "kola") && strings.HasSuffix(f.Name(), "tar.xz") {
 			upload[upKey] = srcPath
 		}
