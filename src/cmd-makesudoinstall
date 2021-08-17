@@ -1,0 +1,13 @@
+#!/bin/bash
+# This is better than `sudo make install` in that
+# just like most package managers, it avoids running
+# the Makefile as root, which can cause problems with
+# things being *built* as root.
+# It operates more how e.g. dpkg/rpm overlay a complete
+# filesystem tree.
+set -euo pipefail
+chrt --idle 0 make -j "$(getconf _NPROCESSORS_ONLN)" "$@"
+rm _install -rf
+make install DESTDIR="$(pwd)"/_install "$@"
+sudo rsync -rlv _install/ /
+rm _install -rf
