@@ -1,6 +1,8 @@
 PREFIX ?= /usr
 DESTDIR ?=
 
+MANTLE_BINARIES := ore kola plume
+KOLET_ARCHES := aarch64 ppc64le s390x x86_64
 
 .PHONY: build
 build:
@@ -12,8 +14,8 @@ schema-update:
 
 .PHONY: install
 install: build
-	install -D -t $(DESTDIR)$(PREFIX)/bin bin/{ore,kola,plume}
-	for arch in s390x x86_64 aarch64 ppc64le; do \
+	cd bin && install -D -t $(DESTDIR)$(PREFIX)/bin $(MANTLE_BINARIES)
+	for arch in $(KOLET_ARCHES); do \
 		install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$${arch} bin/$${arch}/kolet; \
 	done
 
