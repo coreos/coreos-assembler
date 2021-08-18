@@ -3,10 +3,11 @@ DESTDIR ?=
 
 ARCH:=$(shell uname -m)
 
-.PHONY: build test vendor clean
+.PHONY: build
 build:
 	./build cmd/*
 
+.PHONY: schema-update
 schema-update:
 	$(MAKE) -C ../tools schema
 
@@ -17,14 +18,18 @@ install: build
 		install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$${arch} bin/$${arch}/kolet; \
 	done
 
+.PHONY: test
 test:
 	./test
 
+.PHONY: check
 check:
 	./test
 
+.PHONY: vendor
 vendor:
 	@go mod vendor
 
+.PHONY: clean
 clean:
 	@rm -rfv bin
