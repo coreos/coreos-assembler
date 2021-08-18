@@ -175,6 +175,8 @@ func syncOptionsImpl(useCosa bool) error {
 	// Alias qemu to qemu-unpriv.
 	if kolaPlatform == "qemu" {
 		kolaPlatform = "qemu-unpriv"
+	} else if kolaPlatform == "iso" {
+		kolaPlatform = "qemu-iso"
 	}
 
 	// native 4k requires a UEFI bootloader
