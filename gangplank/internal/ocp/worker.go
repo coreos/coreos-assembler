@@ -444,6 +444,12 @@ func writeDockerSecret(ctx ClusterContext, clusterSecretName, authPath string) e
 		key = v1.DockerConfigJsonKey
 	case v1.SecretTypeDockercfg:
 		key = v1.DockerConfigKey
+	case v1.SecretTypeOpaque:
+		if _, ok := secret.Data["docker.json"]; ok {
+			key = v1.DockerConfigJsonKey
+		} else if _, ok := secret.Data["docker.cfg"]; ok {
+			key = v1.DockerConfigKey
+		}
 	default:
 		return fmt.Errorf("writeDockerSecret is not supported for secret type %s", secret.Type)
 	}
