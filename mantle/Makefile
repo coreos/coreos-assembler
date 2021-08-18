@@ -1,7 +1,6 @@
 PREFIX ?= /usr
 DESTDIR ?=
 
-ARCH:=$(shell uname -m)
 
 .PHONY: build
 build:
