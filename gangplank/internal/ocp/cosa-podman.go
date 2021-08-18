@@ -3,9 +3,7 @@
 package ocp
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -31,19 +29,6 @@ const podmanContainerHostEnvVar = "CONTAINER_HOST"
 
 func init() {
 	podmanFunc = podmanRunner
-}
-
-// outWriteCloser is a noop closer
-type outWriteCloser struct {
-	*os.File
-}
-
-func (o *outWriteCloser) Close() error {
-	return nil
-}
-
-func newNoopFileWriterCloser(f *os.File) *outWriteCloser {
-	return &outWriteCloser{f}
 }
 
 // podmanRunner runs the work in a Podman container using workDir as `/srv`
@@ -203,10 +188,10 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		return fmt.Errorf("failed to create container: %w", err)
 	}
 
+	// channels for logging
+	consoleOutChan := make(chan string, 1024)
+
 	// Manually terminate the pod to ensure that we get all the logs first.
-	// Here be hacks: the API is dreadful for streaming logs. Podman,
-	// in this case, is a better UX. There likely is a much better way, but meh,
-	// this works.
 	ender := func() {
 		time.Sleep(1 * time.Second)
 		_ = containers.Remove(connText, r.ID, new(containers.RemoveOptions).WithForce(true).WithVolumes(true))
@@ -230,23 +215,34 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 		}
 	}()
 
-	l.WithFields(log.Fields{
-		"stdIn":  stdIn.Name(),
-		"stdOut": stdOut.Name(),
-		"stdErr": stdErr.Name(),
-	}).Info("binding stdio to continater")
-
+	// Watch the logs.
 	go func() {
-		_ = containers.Attach(connText, r.ID,
-			bufio.NewReader(stdIn),
-			newNoopFileWriterCloser(stdOut),
-			newNoopFileWriterCloser(stdErr), nil, nil)
+		for {
+			v, ok := <-consoleOutChan
+			if !ok {
+				return
+			}
+			os.Stdout.Write([]byte(v))
+			os.Stdout.Write([]byte("\n"))
+		}
 	}()
 
-	if rc, _ := containers.Wait(connText, r.ID, nil); rc != 0 {
-		return errors.New("work pod failed")
+	// Get the Logs. This will block until all logs are streamed.
+	if err := containers.Logs(
+		connText, r.ID,
+		&containers.LogOptions{
+			Follow: ptrBool(true),
+		},
+		consoleOutChan, consoleOutChan); err != nil {
+		return fmt.Errorf("Failed setting up console monitoring: %v", err)
 	}
-	return nil
+
+	// Get the exit code of the container.
+	rc, err := containers.Wait(connText, r.ID, nil)
+	if rc != 0 {
+		return fmt.Errorf("work pod failed: return code %d", rc)
+	}
+	return err
 }
 
 // mustHaveImage pulls the image if it is not found
