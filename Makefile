@@ -11,6 +11,8 @@ PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
 .PHONY: all check flake8 pycheck unittest clean mantle mantle-check install gangplank gangplank-check tools
 
+MANTLE_BINARIES := ore kola plume
+
 all: tools mantle gangplank
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
@@ -57,6 +59,10 @@ clean:
 
 mantle:
 	cd mantle && $(MAKE)
+
+.PHONY: $(MANTLE_BINARIES) kolet
+$(MANTLE_BINARIES) kolet:
+	cd mantle && $(MAKE) $@
 
 mantle-check:
 	cd mantle && $(MAKE) test
