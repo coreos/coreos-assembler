@@ -13,7 +13,7 @@ schema-update:
 	$(MAKE) -C ../tools schema
 
 .PHONY: install
-install: build
+install:
 	cd bin && install -D -t $(DESTDIR)$(PREFIX)/bin $(MANTLE_BINARIES)
 	for arch in $(KOLET_ARCHES); do \
 		install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$${arch} bin/$${arch}/kolet; \
