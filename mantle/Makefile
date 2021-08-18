@@ -5,8 +5,11 @@ MANTLE_BINARIES := ore kola plume
 KOLET_ARCHES := aarch64 ppc64le s390x x86_64
 
 .PHONY: build
-build:
-	./build cmd/*
+build: $(MANTLE_BINARIES) kolet
+
+.PHONY: $(MANTLE_BINARIES) kolet
+$(MANTLE_BINARIES) kolet:
+	./build cmd/$(basename $@)
 
 .PHONY: schema-update
 schema-update:
