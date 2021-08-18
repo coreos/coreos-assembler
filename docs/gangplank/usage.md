@@ -1,6 +1,6 @@
 # Using Gangplank
 
-Ganplank's sole purpose in life is to codify the knowledge of building CoreOS variants and CoreOS-like operating systems using CoreOS Assembler. Gangplank knows how to create the environment, execute CoreOS Assembler, and coordinate artifacts.
+Gangplank's sole purpose in life is to codify the knowledge of building CoreOS variants and CoreOS-like operating systems using CoreOS Assembler. Gangplank knows how to create the environment, execute CoreOS Assembler, and coordinate artifacts.
 
 ## Terms
 
@@ -12,7 +12,7 @@ Ganplank's sole purpose in life is to codify the knowledge of building CoreOS va
 
 Gangplank's core design principle is that containers are the most suitable modern method of orchestrating builds. Gangplank grew out of the various Jenkins libraries and scripts codifying the execution of various versions of COSA.
 
-Ganplank only knows _how to run COSA_, but running COSA does not require Gangplank. Today it understands how to:
+Gangplank only knows _how to run COSA_, but running COSA does not require Gangplank. Today it understands how to:
 
 - Run on generic Kubernetes version 1.17+ and OpenShift version 3.11 and 4.x. as an "unbound pod"
 - Be used as an OpenShift BuildConfig
@@ -56,7 +56,7 @@ Unbounded mode is targeted at Jenkins and other CI build systems.
 
 ### Podman mode (for Developers)
 
-For the developer use-case or even building on virtual machine, Gangplank supports running as a `podman` privileged pod. In podman, Ganplank will create worker pods.
+For the developer use-case or even building on virtual machine, Gangplank supports running as a `podman` privileged pod. In podman, Gangplank will create worker pods.
 
 This requires the `podman-remote` package installed and enabled (enabled, via `systemctl --now enable podman.socket`).
 
@@ -75,7 +75,7 @@ The following are optional commands:
 
 If `--workDir` is defined, the build output will be emited to `<workDir>/builds`.
 
-*btrfs warning*: Ganplank can run multiple pods at a single time. When done on a `btrfs`, the clean-up can be are ridiciously slow/hang. If you are building on `btrfs` (default for Fedora Workstation 33+), it is recommended that you turn off copy-on-write (COW) and use a `--workDir` with that directory if using parallel stages. Example:
+*btrfs warning*: Gangplank can run multiple pods at a single time. When done on a `btrfs`, the clean-up can be are ridiciously slow/hang. If you are building on `btrfs` (default for Fedora Workstation 33+), it is recommended that you turn off copy-on-write (COW) and use a `--workDir` with that directory if using parallel stages. Example:
 ```
 mkdir ~/workdir
 chattr +C file ~/workdir
@@ -101,7 +101,7 @@ $ export CONTAINER_SSHKEY='/path/to/sskkey'
 $ gangplank pod --podman -A base
 ```
 
-Unless an external Minio Server has been defined, Ganglank will forward Minio over SSH for return of the artifacts.
+Unless an external Minio Server has been defined, Gangplank will forward Minio over SSH for return of the artifacts.
 
 #### Secret Discovery (Kubernetes/OCP)
 
@@ -128,13 +128,13 @@ In the above example, Gangplank will expose `AWS_DEFAULT_REGION` to be `us-east-
 
 ### Workers and their Work
 
-The difference between an origin pod and worker is determinted by a single environment variable. If an envVar of `COSA_WORK_POD_JSON` is defined, then Gangplank will execute as a worker; if the OpenShift Build API envVar of `BUILD` is defined, then Gangplank will attempt to be an origin pod.
+The difference between an origin pod and worker is determined by a single environment variable. If an envVar of `COSA_WORK_POD_JSON` is defined, then Gangplank will execute as a worker; if the OpenShift Build API envVar of `BUILD` is defined, then Gangplank will attempt to be an origin pod.
 
-At start, Gangplank will decode the envVar of `COSA_WORK_POD_JSON`, which is defined by the origin pod when constructing the pod definition of the worker. When the origin pod is ready to start work, a Minio instance will be started using a random access/secret keys that will be added to the `COSA_WORK_POD_JSON`.
+At start, Gangplank will decode the envVar `COSA_WORK_POD_JSON`, which is defined by the origin pod when constructing the pod definition of the worker. When the origin pod is ready to start work, a Minio instance will be started using a random access/secret keys that will be added to the `COSA_WORK_POD_JSON` envVar.
 
-Once the required artifacts, if any, are found, Gangplank will then start the worker pod. The worker pod will always run `cosa init` before running any other command. Then, the worker pod, will request dependencies over Minio from the orgin Gangplank, process the work, and then return _known_ files back.
+Once the required artifacts, if any, are found, Gangplank will then start the worker pod. The worker pod will always run `cosa init` before running any other command. Then, the worker pod will request dependencies over Minio from the origin Gangplank, process the work, and then return _known_ files back.
 
-If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows to use a shared or external minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands. Gangplank further, support the use of S3-compatible object stores (i.e. AWS) via the `-m` directive. Gangplank uses the object store backend for reading files and discovery of requirements.
+If you are running Gangplank via a CI/CD runner, and you want to visualize the stages better, Gangplank allows to use a shared or external minio instance. To use a shared instance, start a background instance of Gangplank via `(gangplank minio --minioSrvDir <path> -m minio.cfg`), then add `-m minio.cfg` to all other Gangplank commands. Gangplank further supports the use of S3-compatible object stores (i.e. AWS) via the `-m` directive. Gangplank uses the object store backend for reading files and discovery of requirements.
 
 Regardless of where the pod is being run, Gangplank will stream logs from the worker pods. If the supervising Gangplank is terminated, the workers are terminated.
 
@@ -277,12 +277,12 @@ To illustrate this, consider:
 
 ```
 
-In this example, Gangplank will:
+In this example:
 
 1. In the base stage, Gangplank will provide `/srv/cache` and `/srv/tmp/repo` from `cache/*` if the tarballs exist, and optionally provide the latest `oscontainer`. Gangplank will return the build artifacts and new cache tarballs.
-1. In the oscontainer stage, Ganglank will require the caches,
+1. In the oscontainer stage, Gangplank will require the caches.
 1. In the `ExecOrder 5` stages, two new pods will concurrently build AWS and GCP but only after the QEMU artifact is found.
-1. The final `ExecOrder 999` stage will combine `meta.*.json` to produce a final `meta.json`
+1. The final `ExecOrder 999` stage will combine `meta.*.json` to produce a final `meta.json`.
 
 ### Meta Data and JobSpec Templating
 
@@ -323,9 +323,9 @@ stages:
 
 ### Templating Logic
 
-With the availability of GoLang templating, the possibility exists to do loops and to dynamically create commands. The following example, publishes an AMI to all AWS regions.
+With the availability of GoLang templating, the possibility exists to do loops and to dynamically create commands. The following example publishes an AMI to all AWS regions.
 
-NOTE: It may be tempting to turn Ganglank into a complicated templating engine. Users would well be advised to consider whether the added complexity helps. In most cases, using simple, clear, and easy-to-understand templating logic is the better choice.
+NOTE: It may be tempting to turn Gangplank into a complicated templating engine. Users would well be advised to consider whether the added complexity helps. In most cases, using simple, clear, and easy-to-understand templating logic is the better choice.
 
 ```
 archives:
@@ -349,7 +349,7 @@ stages:
 
 CoreOS Assembler and Mantle (publication and testing for CoreOS-like operating sytems) share a schema that understands `meta.json`. Gangplank only understands a few commands regarding the location of artifacts. When artifacts are added to, or removed from, the [CoreOS Assembler schema](../../src/schema/v1.json) Gangplank's support will change.
 
-Gangplank used the schema for:
+Gangplank uses the schema for:
 
 - locating artifacts via their top level name (i.e. `qemu` or `metal4k`)
 - creating `cosa buildextend-*` commands
