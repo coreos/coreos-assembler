@@ -295,10 +295,27 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if memory != 0 {
 		builder.Memory = memory
 	}
-	for _, size := range addDisks {
+	for _, spec := range addDisks {
+		split := strings.Split(spec, ":")
+		var size string
+		multipathed := false
+		if len(split) == 1 {
+			size = split[0]
+		} else if len(split) == 2 {
+			size = split[0]
+			for _, opt := range strings.Split(split[1], ",") {
+				if opt == "mpath" {
+					multipathed = true
+				} else {
+					return fmt.Errorf("unknown disk option %s", opt)
+				}
+			}
+		} else {
+			return fmt.Errorf("invalid disk spec %s", spec)
+		}
 		if err := builder.AddDisk(&platform.Disk{
 			Size:          size,
-			MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
+			MultiPathDisk: multipathed,
 		}); err != nil {
 			return errors.Wrapf(err, "adding additional disk")
 		}
