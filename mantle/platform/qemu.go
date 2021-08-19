@@ -393,8 +393,6 @@ type QemuBuilder struct {
 	// primaryIsBoot is true if the only boot media should be the primary disk
 	primaryIsBoot bool
 
-	MultiPathDisk bool
-
 	// tempdir holds our temporary files
 	tempdir string
 
@@ -422,11 +420,10 @@ type QemuBuilder struct {
 // NewQemuBuilder creates a new build for QEMU with default settings.
 func NewQemuBuilder() *QemuBuilder {
 	ret := QemuBuilder{
-		Firmware:      "bios",
-		Swtpm:         true,
-		Pdeathsig:     true,
-		MultiPathDisk: false,
-		Argv:          []string{},
+		Firmware:  "bios",
+		Swtpm:     true,
+		Pdeathsig: true,
+		Argv:      []string{},
 	}
 	return &ret
 }
