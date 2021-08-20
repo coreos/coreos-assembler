@@ -395,7 +395,7 @@ binary build interface.`)
 
 	// If defined, startup SSH before any work begins
 	if m.overSSH != nil {
-		if err := m.fowardOverSSH(terminate, errorCh); err != nil {
+		if err := m.forwardOverSSH(terminate, errorCh); err != nil {
 			return err
 		}
 	}
