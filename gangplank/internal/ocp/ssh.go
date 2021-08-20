@@ -1,6 +1,7 @@
 package ocp
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -119,8 +120,8 @@ func sshClient(user, host, port string, secure bool, identity string) (*ssh.Clie
 	)
 }
 
-// forwardOverSSH forwards the minio connection over SSH.
-func (m *minioServer) forwardOverSSH(termCh termChan, errCh chan<- error) error {
+// startMinioAndForwardOverSSH starts minio and forwards the connection over SSH.
+func (m *minioServer) startMinioAndForwardOverSSH(ctx context.Context, termCh termChan, errCh chan<- error) error {
 	sshPort := 22
 	if m.overSSH.SSHPort != 0 {
 		sshPort = m.overSSH.SSHPort
@@ -132,12 +133,6 @@ func (m *minioServer) forwardOverSSH(termCh termChan, errCh chan<- error) error 
 		"remote user": m.overSSH.User,
 		"port":        sshport,
 	})
-	// Set the port to use for the proxied connection *once* here so
-	// it won't change during the course of the run. This is because
-	// below we change the m.Port to match the dynamically chosen
-	// remote port for the ssh forward but the server listening port
-	// will remain whatever the original value of m.Port is.
-	minioServerPort := m.Port
 
 	l.Info("Forwarding local port over SSH to remote host")
 
@@ -150,22 +145,43 @@ func (m *minioServer) forwardOverSSH(termCh termChan, errCh chan<- error) error 
 	// dynamically chosen based on port availabilty on the remote. If
 	// we don't do this then multiple concurrent gangplank runs will fail
 	// because they'll try to use the same port.
-	remoteConn, err := client.Listen("tcp4", "127.0.0.1:")
-	if err != nil {
-		err = fmt.Errorf("%w: failed to open remote port over ssh for proxy", err)
-		return err
+	var remoteConn net.Listener
+	var remoteSSHport int
+	// Loop until we've found a common port available locally and remote
+	for {
+		remoteConn, err = client.Listen("tcp4", "127.0.0.1:")
+		if err != nil {
+			err = fmt.Errorf("%w: failed to open remote port over ssh for proxy", err)
+			return err
+		}
+		remoteSSHport, err := strconv.Atoi(strings.Split(remoteConn.Addr().String(), ":")[1])
+		if err != nil {
+			err = fmt.Errorf("%w: failed to parse remote ssh port from connection", err)
+			return err
+		}
+		log.Infof("The SSH forwarding chose port %d on the remote host", remoteSSHport)
+
+		if getPortOrNext(remoteSSHport) == remoteSSHport {
+			break
+		}
+
+		log.Infof("Local Port %d is not available, selecting another port", remoteSSHport)
+		remoteConn.Close()
 	}
-	remoteSSHport, err := strconv.Atoi(strings.Split(remoteConn.Addr().String(), ":")[1])
-	if err != nil {
-		err = fmt.Errorf("%w: failed to parse remote ssh port from connection", err)
-		return err
-	}
-	log.Infof("The SSH forwarding chose port %v on the remote host", remoteSSHport)
 	// Update m.Port in the minioServer definition so the miniocfg
 	// that gets passed to the remote specifies the correct port for
 	// the local connection there.
-	log.Infof("Changing remote local port (forward) from %v to %v", m.Port, remoteSSHport)
+	log.Infof("Changing minio port for local and remote (forward) from %v to %v",
+		m.Port, remoteSSHport)
 	m.Port = remoteSSHport
+
+	// Now that we know the port let's start the minio server. It's
+	// highly unlikely to have a port conflict here because we are
+	// running inside the cosa container where no other services are
+	// running/listening.
+	if err := m.start(ctx); err != nil {
+		return err
+	}
 
 	// copyIO is a blind copier that copies between source and destination
 	copyIO := func(src, dest net.Conn) {
@@ -176,7 +192,7 @@ func (m *minioServer) forwardOverSSH(termCh termChan, errCh chan<- error) error 
 
 	// proxy is a helper function that connects the local port to the remoteClient
 	proxy := func(conn net.Conn) {
-		proxy, err := net.Dial("tcp4", fmt.Sprintf("127.0.0.1:%d", minioServerPort))
+		proxy, err := net.Dial("tcp4", fmt.Sprintf("127.0.0.1:%d", m.Port))
 		if err != nil {
 			err = fmt.Errorf("%w: failed to open local port for proxy", err)
 			errCh <- err

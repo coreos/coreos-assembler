@@ -69,14 +69,18 @@ func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string, ove
 	m.overSSH = overSSH
 	m.dir = srvDir
 
-	if err := m.start(ctx); err != nil {
-		return nil, err
-	}
-
-	if m.overSSH != nil {
+	// Start the minio server. If we're forwarding over SSH we'll call
+	// startMinioAndForwardOverSSH to start the minio server. because
+	// the port we use will be dynamically chosen based on the SSH
+	// connection.
+	if m.overSSH == nil {
+		if err := m.start(ctx); err != nil {
+			return nil, err
+		}
+	} else {
 		m.sshStopCh = make(chan bool, 1)
 		m.sshErrCh = make(chan error, 256)
-		if err := m.forwardOverSSH(m.sshStopCh, m.sshErrCh); err != nil {
+		if err := m.startMinioAndForwardOverSSH(ctx, m.sshStopCh, m.sshErrCh); err != nil {
 			return nil, err
 		}
 	}

@@ -205,8 +205,26 @@ binary build interface.`)
 
 	// Start minio after all the setup. Each directory is an implicit
 	// bucket and files, are implicit keys.
-	if err := m.start(ctx); err != nil {
-		return fmt.Errorf("failed to start Minio: %w", err)
+	//
+	//  Job Control:
+	//  	terminate channel: uses to tell workFunctions to ceases
+	//  	errorCh channel: workFunctions report errors through this channel
+	//  		when a error is recieved over the channel, a terminate is signaled
+	//  	sig channel: this watches for sigterm and interrupts, which will
+	//  		signal a terminate. (i.e. sigterm or crtl-c)
+	//
+	//  	The go-routine will run until it recieves a terminate itself.
+	//
+	errorCh := make(chan error)
+	terminate := make(chan bool)
+	if m.overSSH == nil {
+		if err := m.start(ctx); err != nil {
+			return fmt.Errorf("failed to start Minio: %w", err)
+		}
+	} else {
+		if err := m.startMinioAndForwardOverSSH(ctx, terminate, errorCh); err != nil {
+			return fmt.Errorf("failed to start Minio: %w", err)
+		}
 	}
 	defer m.Kill()
 
@@ -377,28 +395,6 @@ binary build interface.`)
 	}
 	sort.Ints(order)
 
-	/*
-		Job Control:
-			terminate channel: uses to tell workFunctions to ceases
-			errorCh channel: workFunctions report errors through this channel
-				when a error is recieved over the channel, a terminate is signaled
-			sig channel: this watches for sigterm and interrupts, which will
-				signal a terminate. (i.e. sigterm or crtl-c)
-
-			The go-routine will run until it recieves a terminate itself.
-	*/
-
-	errorCh := make(chan error)
-
-	// Terminate is used to tell all go-routines to end
-	terminate := make(chan bool)
-
-	// If defined, startup SSH before any work begins
-	if m.overSSH != nil {
-		if err := m.forwardOverSSH(terminate, errorCh); err != nil {
-			return err
-		}
-	}
 	// Watch the channels for signals to terminate
 	errored := false
 	go func() {
