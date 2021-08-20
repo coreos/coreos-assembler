@@ -76,7 +76,7 @@ func StartStandaloneMinioServer(ctx context.Context, srvDir, cfgFile string, ove
 	if m.overSSH != nil {
 		m.sshStopCh = make(chan bool, 1)
 		m.sshErrCh = make(chan error, 256)
-		if err := m.fowardOverSSH(m.sshStopCh, m.sshErrCh); err != nil {
+		if err := m.forwardOverSSH(m.sshStopCh, m.sshErrCh); err != nil {
 			return nil, err
 		}
 	}

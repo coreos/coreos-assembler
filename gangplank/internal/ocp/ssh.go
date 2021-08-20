@@ -119,8 +119,8 @@ func sshClient(user, host, port string, secure bool, identity string) (*ssh.Clie
 	)
 }
 
-// fowardOverSSH forwards the minio connection over SSH.
-func (m *minioServer) fowardOverSSH(termCh termChan, errCh chan<- error) error {
+// forwardOverSSH forwards the minio connection over SSH.
+func (m *minioServer) forwardOverSSH(termCh termChan, errCh chan<- error) error {
 	sshPort := 22
 	if m.overSSH.SSHPort != 0 {
 		sshPort = m.overSSH.SSHPort

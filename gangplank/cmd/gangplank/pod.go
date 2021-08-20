@@ -108,7 +108,7 @@ func runPod(c *cobra.Command, args []string) {
 						hostparts := strings.Split(parts[1], ":")
 						port, err := strconv.Atoi(hostparts[1])
 						if err != nil {
-							log.WithError(err).Fatalf("failed to define minio port %s", hostparts[1])
+							log.WithError(err).Fatalf("failed to define minio ssh port %s", hostparts[1])
 						}
 						parts[1] = hostparts[0]
 						minioSshRemotePort = port
