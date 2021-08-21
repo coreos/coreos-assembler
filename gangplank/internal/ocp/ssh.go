@@ -154,7 +154,7 @@ func (m *minioServer) startMinioAndForwardOverSSH(ctx context.Context, termCh te
 			err = fmt.Errorf("%w: failed to open remote port over ssh for proxy", err)
 			return err
 		}
-		remoteSSHport, err := strconv.Atoi(strings.Split(remoteConn.Addr().String(), ":")[1])
+		remoteSSHport, err = strconv.Atoi(strings.Split(remoteConn.Addr().String(), ":")[1])
 		if err != nil {
 			err = fmt.Errorf("%w: failed to parse remote ssh port from connection", err)
 			return err
