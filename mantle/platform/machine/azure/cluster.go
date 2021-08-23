@@ -88,6 +88,9 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform azure does not yet support additional disks")
 	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform azure does not support multipathed disks")
+	}
 	return ac.NewMachine(userdata)
 }
 

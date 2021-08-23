@@ -69,7 +69,6 @@ type QemuMachineOptions struct {
 	MachineOptions
 	HostForwardPorts []HostForwardPort
 	DisablePDeathSig bool
-	MultiPathDisk    bool
 	SecondaryNics    int
 }
 
