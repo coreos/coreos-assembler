@@ -20,12 +20,32 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
+)
+
+var (
+	mpath_on_boot_day1 = conf.Butane(`
+variant: fcos
+version: 1.4.0
+kernel_arguments:
+  should_exist:
+    - rd.multipath=default
+    - root=/dev/disk/by-label/dm-mpath-root
+    - rw`)
 )
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Name:          "multipath",
-		Run:           runMultipath,
+		Name:          "multipath.day1",
+		Run:           runMultipathDay1,
+		ClusterSize:   1,
+		Platforms:     []string{"qemu-unpriv"},
+		UserData:      mpath_on_boot_day1,
+		MultiPathDisk: true,
+	})
+	register.RegisterTest(&register.Test{
+		Name:          "multipath.day2",
+		Run:           runMultipathDay2,
 		ClusterSize:   1,
 		Platforms:     []string{"qemu-unpriv"},
 		MultiPathDisk: true,
@@ -45,7 +65,16 @@ func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
 	}
 }
 
-func runMultipath(c cluster.TestCluster) {
+func runMultipathDay1(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	verifyMultipathBoot(c, m)
+	if err := m.Reboot(); err != nil {
+		c.Fatalf("Failed to reboot the machine: %v", err)
+	}
+	verifyMultipathBoot(c, m)
+}
+
+func runMultipathDay2(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	c.MustSSH(m, "sudo rpm-ostree kargs --append rd.multipath=default --append root=/dev/disk/by-label/dm-mpath-root")
 	if err := m.Reboot(); err != nil {
