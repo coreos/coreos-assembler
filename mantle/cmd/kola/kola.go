@@ -605,7 +605,7 @@ func getParentFcosBuildBase(stream string) (string, error) {
 		parentVersion = index.Releases[n-1].Version
 	}
 
-	return fcos.GetCosaBuildURL(stream, parentVersion), nil
+	return fcos.GetCosaBuildURL(stream, parentVersion, kola.Options.CosaBuildArch), nil
 }
 
 func runRunUpgrade(cmd *cobra.Command, args []string) error {
