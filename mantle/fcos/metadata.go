@@ -96,7 +96,7 @@ func FetchStreamThisArchitecture(stream string) (*stream.Arch, error) {
 }
 
 // GetCosaBuildURL returns a URL prefix for the coreos-assembler build.
-func GetCosaBuildURL(stream, buildid string) string {
-	u := fcosinternals.GetCosaBuild(stream, buildid, system.RpmArch())
+func GetCosaBuildURL(stream, buildid, arch string) string {
+	u := fcosinternals.GetCosaBuild(stream, buildid, arch)
 	return u.String()
 }
