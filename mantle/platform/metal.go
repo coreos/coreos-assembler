@@ -553,7 +553,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	if inst.MultiPathDisk {
 		// we only have one multipath device so it has to be that
 		targetDevice = "/dev/mapper/mpatha"
-		appendMultipathKargs = "--append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root"
+		appendMultipathKargs = "--append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw"
 	}
 
 	inst.kargs = kargs
