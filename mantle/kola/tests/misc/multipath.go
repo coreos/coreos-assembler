@@ -32,6 +32,59 @@ kernel_arguments:
     - rd.multipath=default
     - root=/dev/disk/by-label/dm-mpath-root
     - rw`)
+	mpath_on_var_lib_containers = conf.Butane(`
+variant: fcos
+version: 1.4.0
+systemd:
+  units:
+    - name: mpath-configure.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Configure Multipath
+        ConditionFirstBoot=true
+        ConditionPathExists=!/etc/multipath.conf
+        Before=multipathd.service
+        DefaultDependencies=no
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/sbin/mpathconf --enable
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: mpath-var-lib-containers.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Set Up Multipath On /var/lib/containers
+        ConditionFirstBoot=true
+        Requires=dev-mapper-mpatha.device
+        After=dev-mapper-mpatha.device
+        Before=kubelet.service
+        DefaultDependencies=no
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/sbin/mkfs.xfs -L containers -m reflink=1 /dev/mapper/mpatha
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: var-lib-containers.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount /var/lib/containers
+        After=mpath-var-lib-containers.service
+        Before=kubelet.service
+
+        [Mount]
+        What=/dev/disk/by-label/dm-mpath-containers
+        Where=/var/lib/containers
+        Type=xfs
+
+        [Install]
+        WantedBy=multi-user.target`)
 )
 
 func init() {
@@ -49,6 +102,14 @@ func init() {
 		ClusterSize:   1,
 		Platforms:     []string{"qemu-unpriv"},
 		MultiPathDisk: true,
+	})
+	register.RegisterTest(&register.Test{
+		Name:            "multipath.partition",
+		Run:             runMultipathPartition,
+		ClusterSize:     1,
+		Platforms:       []string{"qemu-unpriv"},
+		UserData:        mpath_on_var_lib_containers,
+		AdditionalDisks: []string{"1G:mpath"},
 	})
 }
 
@@ -81,4 +142,13 @@ func runMultipathDay2(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
 	verifyMultipathBoot(c, m)
+}
+
+func runMultipathPartition(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	verifyMultipath(c, m, "/var/lib/containers")
+	if err := m.Reboot(); err != nil {
+		c.Fatalf("Failed to reboot the machine: %v", err)
+	}
+	verifyMultipath(c, m, "/var/lib/containers")
 }
