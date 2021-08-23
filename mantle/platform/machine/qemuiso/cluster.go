@@ -116,13 +116,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		return nil, errors.Wrapf(err, "adding ISO image")
 	}
 
-	for _, disk := range options.AdditionalDisks {
-		if err = builder.AddDisk(&platform.Disk{
-			Size: disk,
-		}); err != nil {
-			return nil, errors.Wrapf(err, "adding additional disk")
-		}
-	}
+	builder.AddDisksFromSpecs(options.AdditionalDisks)
 
 	if len(options.HostForwardPorts) > 0 {
 		builder.EnableUsermodeNetworking(options.HostForwardPorts)

@@ -99,6 +99,13 @@ type Disk struct {
 	nbdServCmd     exec.Cmd // command to serve the disk
 }
 
+// ParseDiskSpec converts a disk specification into a Disk. The format is: <size>
+func ParseDiskSpec(spec string) (*Disk, error) {
+	return &Disk{
+		Size:          spec,
+	}, nil
+}
+
 // bootIso is an internal struct used by AddIso() and setupIso()
 type bootIso struct {
 	path      string
@@ -974,6 +981,18 @@ func (builder *QemuBuilder) AddBootDisk(disk *Disk) error {
 // AddDisk adds a secondary disk for the instance.
 func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 	return builder.addDiskImpl(disk, false)
+}
+
+// AddDisksFromSpecs adds multiple secondary disks from their specs.
+func (builder *QemuBuilder) AddDisksFromSpecs(specs []string) error {
+	for _, spec := range specs {
+		if disk, err := ParseDiskSpec(spec); err != nil {
+			return errors.Wrapf(err, "parsing additional disk spec '%s'", spec)
+		} else if err = builder.AddDisk(disk); err != nil {
+			return errors.Wrapf(err, "adding additional disk '%s'", spec)
+		}
+	}
+	return nil
 }
 
 // AddIso adds an ISO image, optionally configuring its boot index
