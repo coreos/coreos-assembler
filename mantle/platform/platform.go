@@ -152,6 +152,7 @@ type Flight interface {
 }
 
 type MachineOptions struct {
+	MultiPathDisk   bool
 	AdditionalDisks []string
 	MinMemory       int
 }

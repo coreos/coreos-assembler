@@ -20,15 +20,15 @@ import (
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/machine/unprivqemu"
 )
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Name:        "multipath",
-		Run:         runMultipath,
-		ClusterSize: 0,
-		Platforms:   []string{"qemu-unpriv"},
+		Name:          "multipath",
+		Run:           runMultipath,
+		ClusterSize:   1,
+		Platforms:     []string{"qemu-unpriv"},
+		MultiPathDisk: true,
 	})
 }
 
@@ -46,32 +46,10 @@ func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
 }
 
 func runMultipath(c cluster.TestCluster) {
-	var m platform.Machine
-	var err error
-
-	options := platform.QemuMachineOptions{
-		MultiPathDisk: true,
-	}
-
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *unprivqemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(nil, options)
-	default:
-		panic("unreachable")
-	}
-	if err != nil {
-		c.Fatal(err)
-	}
-
+	m := c.Machines()[0]
 	c.MustSSH(m, "sudo rpm-ostree kargs --append rd.multipath=default --append root=/dev/disk/by-label/dm-mpath-root")
-	err = m.Reboot()
-	if err != nil {
+	if err := m.Reboot(); err != nil {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
-
 	verifyMultipathBoot(c, m)
 }

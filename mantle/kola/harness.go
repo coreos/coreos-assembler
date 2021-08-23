@@ -969,6 +969,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		var userdata *conf.UserData = t.UserData
 
 		options := platform.MachineOptions{
+			MultiPathDisk:   t.MultiPathDisk,
 			AdditionalDisks: t.AdditionalDisks,
 			MinMemory:       t.MinMemory,
 		}

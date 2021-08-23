@@ -95,6 +95,9 @@ func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, option
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform esx does not yet support additional disks")
 	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform esx does not support multipathed disks")
+	}
 	return ec.NewMachine(userdata)
 }
 

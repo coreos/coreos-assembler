@@ -95,6 +95,9 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform gce does not yet support additional disks")
 	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform gce does not support multipathed disks")
+	}
 	return gc.NewMachine(userdata)
 }
 

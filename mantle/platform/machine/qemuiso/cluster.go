@@ -53,6 +53,9 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 }
 
 func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options platform.QemuMachineOptions) (platform.Machine, error) {
+	if options.MultiPathDisk {
+		return nil, errors.New("platform qemu-iso does not support multipathed primary disks")
+	}
 	id := uuid.New()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)

@@ -64,6 +64,9 @@ type Test struct {
 	Flags                []Flag   // special-case options for this test
 	Tags                 []string // list of tags that can be matched against -- defaults to none
 
+	// Whether the primary disk is multipathed.
+	MultiPathDisk bool
+
 	// Sizes of additional empty disks to attach to the node (e.g. ["1G",
 	// "5G"]) -- defaults to none.
 	AdditionalDisks []string

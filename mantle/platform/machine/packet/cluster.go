@@ -116,6 +116,9 @@ func (pc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform packet does not yet support additional disks")
 	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform packet does not support multipathed disks")
+	}
 	return pc.NewMachine(userdata)
 }
 
