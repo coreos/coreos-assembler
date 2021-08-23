@@ -67,8 +67,9 @@ type Test struct {
 	// Whether the primary disk is multipathed.
 	MultiPathDisk bool
 
-	// Sizes of additional empty disks to attach to the node (e.g. ["1G",
-	// "5G"]) -- defaults to none.
+	// Sizes of additional empty disks to attach to the node, followed by
+	// comma-separated list of optional options (e.g. ["1G",
+	// "5G:foo,bar"]) -- defaults to none.
 	AdditionalDisks []string
 
 	// Minimum amount of memory required for test.

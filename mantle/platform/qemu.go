@@ -98,10 +98,25 @@ type Disk struct {
 	nbdServCmd     exec.Cmd // command to serve the disk
 }
 
-// ParseDiskSpec converts a disk specification into a Disk. The format is: <size>
+// ParseDiskSpec converts a disk specification into a Disk. The format is:
+// <size>[:<opt1>,<opt2>,...].
 func ParseDiskSpec(spec string) (*Disk, error) {
+	split := strings.Split(spec, ":")
+	var size string
+	if len(split) == 1 {
+		size = split[0]
+	} else if len(split) == 2 {
+		size = split[0]
+		for _, opt := range strings.Split(split[1], ",") {
+			if true { // no supported options yet
+				return nil, fmt.Errorf("unknown disk option %s", opt)
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("invalid disk spec %s", spec)
+	}
 	return &Disk{
-		Size:          spec,
+		Size:          size,
 	}, nil
 }
 
