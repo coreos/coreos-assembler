@@ -32,6 +32,19 @@ func init() {
 	})
 }
 
+func verifyMultipathBoot(c cluster.TestCluster, m platform.Machine) {
+	for _, mnt := range []string{"/sysroot", "/boot"} {
+		verifyMultipath(c, m, mnt)
+	}
+}
+
+func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
+	srcdev := string(c.MustSSHf(m, "findmnt -nvr %s -o SOURCE", path))
+	if !strings.HasPrefix(srcdev, "/dev/mapper/mpath") {
+		c.Fatalf("mount %s has non-multipath source %s", path, srcdev)
+	}
+}
+
 func runMultipath(c cluster.TestCluster) {
 	var m platform.Machine
 	var err error
@@ -60,10 +73,5 @@ func runMultipath(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
 
-	for _, mnt := range []string{"/sysroot", "/boot"} {
-		srcdev := string(c.MustSSHf(m, "findmnt -nvr %s -o SOURCE", mnt))
-		if !strings.HasPrefix(srcdev, "/dev/mapper/mpath") {
-			c.Fatalf("mount %s has non-multipath source %s", mnt, srcdev)
-		}
-	}
+	verifyMultipathBoot(c, m)
 }
