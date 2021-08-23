@@ -103,12 +103,15 @@ type Disk struct {
 func ParseDiskSpec(spec string) (*Disk, error) {
 	split := strings.Split(spec, ":")
 	var size string
+	multipathed := false
 	if len(split) == 1 {
 		size = split[0]
 	} else if len(split) == 2 {
 		size = split[0]
 		for _, opt := range strings.Split(split[1], ",") {
-			if true { // no supported options yet
+			if opt == "mpath" {
+				multipathed = true
+			} else {
 				return nil, fmt.Errorf("unknown disk option %s", opt)
 			}
 		}
@@ -117,6 +120,7 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 	}
 	return &Disk{
 		Size:          size,
+		MultiPathDisk: multipathed,
 	}, nil
 }
 
