@@ -60,9 +60,12 @@ def main():
             f.write(args.url + '\n')
         subprocess.check_call(['cp-reflink', BUILDFILES['list'], BUILDFILES['sourcedata']])
         builds = Builds()
+    else:
+        print("No builds.json found")
+        return
 
-    if not builds or builds.is_empty():
-        print("Remote has no builds!")
+    if builds.is_empty():
+        print("Remote has empty build list!")
         return
 
     buildid = args.build or builds.get_latest()
