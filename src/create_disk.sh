@@ -299,7 +299,7 @@ if [ -e (md/md-boot) ]; then
   # the main grub.cfg.
   set prefix=md/md-boot
 else
-  search --label boot --set prefix
+  search --label boot --set prefix --no-floppy
 fi
 set prefix=($prefix)/grub2
 configfile $prefix/grub.cfg
