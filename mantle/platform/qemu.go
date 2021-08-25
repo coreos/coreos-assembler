@@ -1364,6 +1364,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// We never want a popup window
 	argv = append(argv, "-nographic")
 
+	// We want to customize everything from scratch, so avoid defaults
+	argv = append(argv, "-nodefaults")
+
 	// We only render Ignition lazily, because we want to support calling
 	// SetConfig() after AddPrimaryDisk() or AddInstallIso().
 	if builder.iso != nil {
