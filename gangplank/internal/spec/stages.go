@@ -279,8 +279,12 @@ func (s *Stage) Execute(ctx context.Context, rd *RenderData, envVars []string) e
 		// Non-concurrent commands are run serially. Any failure will immediately
 		// break the run.
 		log.Infof("Executing %d stage commands serially", len(scripts))
-		for _, v := range scripts {
-			if err := rd.RendererExecuter(ctx, envVars, v); err != nil {
+		// Don't use `range scripts` here because the map is unordered
+		// and we want to execute the commands in order. We know the map
+		// was populated in order with index[i] so just use the length
+		// here and count from 0 to len(scripts).
+		for i := 0; i < len(scripts); i++ {
+			if err := rd.RendererExecuter(ctx, envVars, scripts[i]); err != nil {
 				return err
 			}
 		}
