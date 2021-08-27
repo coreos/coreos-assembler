@@ -4,3 +4,6 @@ bootupd
 
 # For creating bootable UEFI media on x86_64
 shim-x64 grub2-efi-x64
+
+# For pxe install kola testing (uses grub2-mknetdir)
+grub2-tools-extra
