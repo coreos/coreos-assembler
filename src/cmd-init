@@ -5,14 +5,16 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-# Initialize FORCE to 0 and BRANCH to an empty string
+# Initialize FORCE to 0 and BRANCH/COMMIT to an empty string
 FORCE=0
 BRANCH=""
+COMMIT=""
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
-       coreos-assembler init [--force] [--branch BRANCH] GITCONFIG [SUBDIR]
+       coreos-assembler init [--force] [--branch BRANCH] 
+                             [--commit COMMIT] GITCONFIG [SUBDIR]
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
@@ -27,7 +29,7 @@ EOF
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb: --longoptions help,force,branch: -- "$@") || rc=$?
+options=$(getopt --options hfb:c: --longoptions help,force,branch:,commit: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -48,6 +50,15 @@ while true; do
                 shift ;;
             *)
                 BRANCH="$2"
+                shift ;;
+        esac
+        ;;
+    -c | --commit)
+        case "$2" in
+            "")
+                shift ;;
+            *)
+                COMMIT="$2"
                 shift ;;
         esac
         ;;
@@ -96,6 +107,16 @@ mkdir -p src
      case "${source}" in
          /*) ln -s "${source}/${subdir}" config;;
          *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
+            # If a commit was specified then we'll fetch and reset
+            # the specified branch to that commit. This is useful when
+            # doing pipeline builds and targetting a specific commit
+            # (i.e.) subordinate multi-arch build pipelines running
+            # cosa init later in time than the x86_64 pipeline; new
+            # commits could have come in.
+            if [ -n "${COMMIT}" ]; then
+                git -C ./config fetch origin "$COMMIT"
+                git -C ./config reset --hard "$COMMIT"
+            fi
             if [ -n "${subdir}" ]; then
                 mv config config-git
                 ln -sr config-git/"${subdir}" config
