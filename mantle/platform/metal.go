@@ -697,8 +697,10 @@ After=dev-mapper-mpatha.device`)
 		return nil, err
 	}
 
-	if offline {
-		qemubuilder.Append("-nic", "none")
+	// With the recent change to use qemu -nodefaults (bc68d7c) we need to
+	// request network. Otherwise we get no network devices.
+	if !offline {
+		qemubuilder.UsermodeNetworking = true
 	}
 
 	qinst, err := qemubuilder.Exec()
