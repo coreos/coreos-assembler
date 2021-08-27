@@ -273,9 +273,18 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	pxe.tftpipaddr = "192.168.76.2"
 	switch system.RpmArch() {
 	case "x86_64":
-		pxe.boottype = "pxe"
 		pxe.networkdevice = "e1000"
-		pxe.pxeimagepath = "/usr/share/syslinux/"
+		if builder.Firmware == "uefi" {
+			pxe.boottype = "grub"
+			pxe.bootfile = "/boot/grub2/grubx64.efi"
+			pxe.pxeimagepath = "/boot/efi/EFI/fedora/grubx64.efi"
+			// Choose bootindex=2. First boot the hard drive won't
+			// have an OS and will fall through to bootindex 2 (net)
+			pxe.bootindex = "2"
+		} else {
+			pxe.boottype = "pxe"
+			pxe.pxeimagepath = "/usr/share/syslinux/"
+		}
 	case "aarch64":
 		pxe.boottype = "grub"
 		pxe.networkdevice = "virtio-net-pci"
