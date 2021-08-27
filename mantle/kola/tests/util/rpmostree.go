@@ -53,6 +53,7 @@ type simplifiedRpmOstreeStatus struct {
 // a limited representation of the output of `rpm-ostree status --json`
 func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifiedRpmOstreeStatus, error) {
 	target := simplifiedRpmOstreeStatus{}
+	c.LogJournal(m, "Running rpm-ostree status --json")
 	rpmOstreeJSON, err := c.SSH(m, "rpm-ostree status --json")
 	if err != nil {
 		return target, fmt.Errorf("Could not get rpm-ostree status: %v", err)
