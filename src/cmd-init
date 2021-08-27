@@ -5,7 +5,7 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-# Initialize FORCE to 0 and BRANCH/INSTALLER_DIR to an empty string
+# Initialize FORCE to 0 and BRANCH to an empty string
 FORCE=0
 BRANCH=""
 
@@ -27,7 +27,7 @@ EOF
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb:i: --longoptions help,force,branch: -- "$@") || rc=$?
+options=$(getopt --options hfb: --longoptions help,force,branch: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
