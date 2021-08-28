@@ -68,6 +68,7 @@ func (js *JobSpec) AddCliFlags(cmd *pflag.FlagSet) {
 	// Define the recipe
 	cmd.StringVar(&js.Recipe.GitRef, "git-ref", js.Recipe.GitRef, "Git ref for recipe")
 	cmd.StringVar(&js.Recipe.GitURL, "git-url", js.Recipe.GitURL, "Git URL for recipe")
+	cmd.StringVar(&js.Recipe.GitCommit, "git-commit", "", "Optional Git commit to reset repo to for recipe")
 }
 
 // AddRepos adds an repositories from the CLI
