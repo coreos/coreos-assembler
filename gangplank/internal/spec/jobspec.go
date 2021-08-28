@@ -140,10 +140,12 @@ type Minio struct {
 // Recipe describes where to get the build recipe/config, i.e fedora-coreos-config
 //   GitRef: branch/ref to fetch from
 //   GitUrl: url of the repo
+//   GitCommit: a specific commit in the branch to build from
 type Recipe struct {
-	GitRef string  `yaml:"git_ref,omitempty" json:"git_ref,omitempty"`
-	GitURL string  `yaml:"git_url,omitempty" json:"git_url,omitempty"`
-	Repos  []*Repo `yaml:"repos,omitempty" json:"repos,omitempty"`
+	GitRef    string  `yaml:"git_ref,omitempty" json:"git_ref,omitempty"`
+	GitURL    string  `yaml:"git_url,omitempty" json:"git_url,omitempty"`
+	GitCommit string  `yaml:"git_commit,omitempty" json:"git_commit,omitempty"`
+	Repos     []*Repo `yaml:"repos,omitempty" json:"repos,omitempty"`
 }
 
 // Repo is a yum/dnf repositories to use as an installation source.

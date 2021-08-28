@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/coreos/gangplank/internal/spec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,10 +19,14 @@ const (
 // based builds, first check the API client, then check envVars. The use of envVars
 // in this case is *safe*; `SOURCE_{URI,REF} == apiBuild.Spec.Source.Git.{URI,REF}`. That
 // is, SOURCE_* envVars will always match the apiBuild.Spec.Source.Git.* values.
-func cosaInit() error {
+func cosaInit(js spec.JobSpec) error {
 	_ = os.Chdir(cosaSrvDir)
-	var gitURI, gitRef string
-	if apiBuild != nil && apiBuild.Spec.Source.Git != nil {
+	var gitURI, gitRef, gitCommit string
+	if js.Recipe.GitURL != "" {
+		gitURI = js.Recipe.GitURL
+		gitRef = js.Recipe.GitRef
+		gitCommit = js.Recipe.GitCommit
+	} else if apiBuild != nil && apiBuild.Spec.Source.Git != nil {
 		gitURI = apiBuild.Spec.Source.Git.URI
 		gitRef = apiBuild.Spec.Source.Git.Ref
 	} else {
@@ -36,6 +41,9 @@ func cosaInit() error {
 	args := []string{"cosa", "init"}
 	if gitRef != "" {
 		args = append(args, "--force", "--branch", gitRef)
+	}
+	if gitCommit != "" {
+		args = append(args, "--commit", gitCommit)
 	}
 	args = append(args, gitURI)
 	log.Infof("running '%v'", strings.Join(args, " "))

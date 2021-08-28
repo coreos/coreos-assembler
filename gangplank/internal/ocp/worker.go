@@ -128,7 +128,7 @@ func (ws *workSpec) Exec(ctx ClusterContext) error {
 		bc := apiBuild.Annotations[buildapiv1.BuildConfigAnnotation]
 		bn := apiBuild.Annotations[buildapiv1.BuildNumberAnnotation]
 		log.Infof("Worker is part of buildconfig.openshift.io/%s-%s", bc, bn)
-		if err := cosaInit(); err != nil && err != ErrNoSourceInput {
+		if err := cosaInit(ws.JobSpec); err != nil && err != ErrNoSourceInput {
 			return fmt.Errorf("failed to clone recipe: %w", err)
 		}
 	} else {
