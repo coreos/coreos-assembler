@@ -42,6 +42,6 @@ func TestTLSFetchURLs(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	for _, url := range urlsToFetch {
-		c.MustSSH(m, fmt.Sprintf("curl -s -S -m 30 --retry 2 %s", url))
+		c.RunCmdSync(m, fmt.Sprintf("curl -s -S -m 30 --retry 2 %s", url))
 	}
 }

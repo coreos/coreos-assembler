@@ -196,7 +196,7 @@ func bootMirrorSanityTest(c cluster.TestCluster, m platform.Machine) {
 			c.Fatalf("didn't match fstype for boot")
 		}
 		// Check that growpart didn't run
-		c.MustSSH(m, "if [ -e /run/coreos-growpart.stamp ]; then exit 1; fi")
+		c.RunCmdSync(m, "if [ -e /run/coreos-growpart.stamp ]; then exit 1; fi")
 	})
 }
 
@@ -224,8 +224,8 @@ func verifyBootMirrorAfterReboot(c cluster.TestCluster, m platform.Machine) {
 		if !strings.Contains(string(bootOutput), "degraded") {
 			c.Fatalf("didn't match the state of boot raid device; expected degraded, found: %v", string(bootOutput))
 		}
-		c.MustSSH(m, "grep root=UUID= /proc/cmdline")
-		c.MustSSH(m, "grep rd.md.uuid= /proc/cmdline")
+		c.RunCmdSync(m, "grep root=UUID= /proc/cmdline")
+		c.RunCmdSync(m, "grep rd.md.uuid= /proc/cmdline")
 	})
 }
 

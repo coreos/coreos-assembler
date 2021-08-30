@@ -99,14 +99,14 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		// create a local branch to act as our upgrade target
 		originalCsum := originalStatus.Deployments[0].Checksum
 		createBranch := "sudo ostree refs --create " + newBranch + " " + originalCsum
-		c.MustSSH(m, createBranch)
+		c.RunCmdSync(m, createBranch)
 
 		// make a commit to the new branch
 		createCommit := "sudo ostree commit -b " + newBranch + " --tree ref=" + originalCsum + " --add-metadata-string version=" + newVersion
 		newCommit := c.MustSSH(m, createCommit)
 
 		// use "rpm-ostree rebase" to get to the "new" commit
-		c.MustSSH(m, "sudo rpm-ostree rebase :"+newBranch)
+		c.RunCmdSync(m, "sudo rpm-ostree rebase :"+newBranch)
 
 		// get latest rpm-ostree status output to check validity
 		postUpgradeStatus, err := util.GetRpmOstreeStatusJSON(c, m)
@@ -159,7 +159,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 
 	c.Run("rollback", func(c cluster.TestCluster) {
 		// rollback to original deployment
-		c.MustSSH(m, "sudo rpm-ostree rollback")
+		c.RunCmdSync(m, "sudo rpm-ostree rollback")
 
 		newRebootErr := m.Reboot()
 		if newRebootErr != nil {
@@ -225,7 +225,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 	c.Run("install", func(c cluster.TestCluster) {
 		// install package and reboot
-		c.MustSSH(m, "sudo rpm-ostree install "+installPkgName)
+		c.RunCmdSync(m, "sudo rpm-ostree install "+installPkgName)
 
 		installRebootErr := m.Reboot()
 		if installRebootErr != nil {
@@ -285,7 +285,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 	// uninstall the package
 	c.Run("uninstall", func(c cluster.TestCluster) {
-		c.MustSSH(m, "sudo rpm-ostree uninstall "+installPkgName)
+		c.RunCmdSync(m, "sudo rpm-ostree uninstall "+installPkgName)
 
 		uninstallRebootErr := m.Reboot()
 		if uninstallRebootErr != nil {

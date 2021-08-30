@@ -47,7 +47,7 @@ func runsOnce(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// remove file created by Ignition; fail if it doesn't exist
-	c.MustSSH(m, "sudo rm /etc/ignition-ran")
+	c.RunCmdSync(m, "sudo rm /etc/ignition-ran")
 
 	err := m.Reboot()
 	if err != nil {
@@ -55,5 +55,5 @@ func runsOnce(c cluster.TestCluster) {
 	}
 
 	// make sure file hasn't been recreated
-	c.MustSSH(m, "test ! -e /etc/ignition-ran")
+	c.RunCmdSync(m, "test ! -e /etc/ignition-ran")
 }

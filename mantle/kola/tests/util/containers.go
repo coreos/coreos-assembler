@@ -28,5 +28,5 @@ func GenPodmanScratchContainer(c cluster.TestCluster, m platform.Machine, name s
 	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
 			sudo rsync -av --relative --copy-links $b $libs ./;
 			sudo podman build --network host --layers=false -t localhost/%s .`
-	c.MustSSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
+	c.RunCmdSync(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
 }

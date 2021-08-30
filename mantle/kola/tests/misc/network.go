@@ -536,7 +536,7 @@ func addKernelArgs(c cluster.TestCluster, m platform.Machine, args []string) {
 		rpmOstreeCommand = fmt.Sprintf("%s --append %s", rpmOstreeCommand, arg)
 	}
 
-	c.MustSSH(m, rpmOstreeCommand)
+	c.RunCmdSync(m, rpmOstreeCommand)
 
 	err := m.Reboot()
 	if err != nil {

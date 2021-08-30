@@ -204,7 +204,7 @@ func ostreeRemoteTest(c cluster.TestCluster) {
 	// verify `ostree remote add` is successful
 	c.Run("add", func(c cluster.TestCluster) {
 		osRemoteAddCmd := "sudo ostree remote add --no-gpg-verify " + remoteName + " " + remoteUrl
-		c.MustSSH(m, osRemoteAddCmd)
+		c.RunCmdSync(m, osRemoteAddCmd)
 	})
 
 	// verify `ostree remote list`
@@ -300,7 +300,7 @@ func ostreeRemoteTest(c cluster.TestCluster) {
 			c.Fatalf(`No remotes configured on host: %q`, string(preRemotesOut))
 		}
 
-		c.MustSSH(m, ("sudo ostree remote delete " + remoteName))
+		c.RunCmdSync(m, ("sudo ostree remote delete " + remoteName))
 
 		delNumRemotes, delRemoteListOut := getOstreeRemotes(c, m)
 		if delNumRemotes >= preNumRemotes {

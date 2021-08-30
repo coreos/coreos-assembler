@@ -137,7 +137,7 @@ func runMultipathDay1(c cluster.TestCluster) {
 
 func runMultipathDay2(c cluster.TestCluster) {
 	m := c.Machines()[0]
-	c.MustSSH(m, "sudo rpm-ostree kargs --append rd.multipath=default --append root=/dev/disk/by-label/dm-mpath-root")
+	c.RunCmdSync(m, "sudo rpm-ostree kargs --append rd.multipath=default --append root=/dev/disk/by-label/dm-mpath-root")
 	if err := m.Reboot(); err != nil {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}

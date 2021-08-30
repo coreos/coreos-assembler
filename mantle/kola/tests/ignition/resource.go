@@ -182,7 +182,7 @@ func init() {
 func resourceLocal(c cluster.TestCluster) {
 	server := c.Machines()[0]
 
-	c.MustSSH(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s Serve", c.H.Name()))
+	c.RunCmdSync(server, fmt.Sprintf("sudo systemd-run --quiet ./kolet run %s Serve", c.H.Name()))
 
 	ip := server.PrivateIP()
 	if c.Platform() == packet.Platform {
@@ -234,7 +234,7 @@ func resourceS3(c cluster.TestCluster) {
 	}
 
 	// ...but that the anonymous object is accessible
-	c.MustSSH(m, "curl -sf https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous")
+	c.RunCmdSync(m, "curl -sf https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous")
 }
 
 func resourceS3Versioned(c cluster.TestCluster) {
