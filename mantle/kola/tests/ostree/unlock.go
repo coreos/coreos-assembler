@@ -55,10 +55,7 @@ func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) e
 		unlockCmd = "sudo ostree admin unlock --hotfix"
 	}
 
-	_, unlockCmdErr := c.SSH(m, unlockCmd)
-	if unlockCmdErr != nil {
-		return fmt.Errorf(`Failed to unlock deployment: %v`, unlockCmdErr)
-	}
+	c.RunCmdSync(m, unlockCmd)
 
 	status, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {

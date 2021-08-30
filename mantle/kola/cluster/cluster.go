@@ -172,15 +172,29 @@ func (t *TestCluster) MustSSHf(m platform.Machine, f string, args ...interface{}
 	return t.MustSSH(m, fmt.Sprintf(f, args...))
 }
 
-// RunCmdSync is like MustSSH, but logs the command to the target journal before executing.
-func (t *TestCluster) RunCmdSync(m platform.Machine, cmd string) []byte {
-	t.LogJournal(m, cmd)
-	return t.MustSSH(m, cmd)
+// RunCmdSync synchronously exectues a command, logging the output to the journal
+func (t *TestCluster) RunCmdSync(m platform.Machine, cmd string) {
+	t.LogJournal(m, "+ "+cmd)
+	// Pipe stdout/stderr into the systemd journal
+	_, err := t.SSH(m, "set -o pipefail; "+cmd+" |& logger -t kola")
+	if err != nil {
+		if t.SSHOnTestFailure() {
+			plog.Errorf("dropping to shell: %q failed: %v", cmd, err)
+			if err := platform.Manhole(m); err != nil {
+				plog.Error(err)
+			}
+		}
+		journalout, journalErr := t.SSH(m, "journalctl -q --no-pager -n 20 -o cat -t kola")
+		if journalErr != nil {
+			journalout = []byte(fmt.Sprintf("<failed to gather journal for kola: %v", journalErr))
+		}
+		t.Fatalf("%q failed: %v; logs from journalctl -t kola:\n%s", cmd, err, string(journalout))
+	}
 }
 
-// RunCmdSyncf is like MustSSHf, but logs the command to the target journal before executing.
-func (t *TestCluster) RunCmdSyncf(m platform.Machine, f string, args ...interface{}) []byte {
-	return t.RunCmdSync(m, fmt.Sprintf(f, args...))
+// RunCmdSyncf is like RunCmdSync but accepts formatted arguments.
+func (t *TestCluster) RunCmdSyncf(m platform.Machine, f string, args ...interface{}) {
+	t.RunCmdSync(m, fmt.Sprintf(f, args...))
 }
 
 // Synchronously write a log message from the syslog identifier `kola` into the target
