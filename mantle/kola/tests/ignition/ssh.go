@@ -38,5 +38,5 @@ func noAfterburnSSHKey(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	// check that the test harness correctly skipped passing SSH keys
 	// via Afterburn
-	c.MustSSH(m, "[ ! -e ~/.ssh/authorized_keys.d/afterburn ]")
+	c.RunCmdSync(m, "[ ! -e ~/.ssh/authorized_keys.d/afterburn ]")
 }

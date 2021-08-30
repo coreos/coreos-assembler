@@ -132,7 +132,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 	c.Run("run", func(c cluster.TestCluster) {
 		dir := c.MustSSH(m, `mktemp -d`)
 		cmd := fmt.Sprintf("echo TEST PAGE > %s/index.html", string(dir))
-		c.MustSSH(m, cmd)
+		c.RunCmdSync(m, cmd)
 
 		cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s", string(dir), wwwRoot, image)
 		out := c.MustSSH(m, cmd)
@@ -167,7 +167,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 	// Test: Stop container
 	c.Run("stop", func(c cluster.TestCluster) {
 		cmd := fmt.Sprintf("sudo podman stop %s", id)
-		c.MustSSH(m, cmd)
+		c.RunCmdSync(m, cmd)
 		psInfo, err := getSimplifiedPsInfo(c, m)
 		if err != nil {
 			c.Fatal(err)
@@ -194,7 +194,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 	// Test: Remove container
 	c.Run("remove", func(c cluster.TestCluster) {
 		cmd := fmt.Sprintf("sudo podman rm %s", id)
-		c.MustSSH(m, cmd)
+		c.RunCmdSync(m, cmd)
 		psInfo, err := getSimplifiedPsInfo(c, m)
 		if err != nil {
 			c.Fatal(err)

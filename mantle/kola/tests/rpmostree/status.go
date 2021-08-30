@@ -42,7 +42,7 @@ var (
 // rpmOstreeCleanup calls 'rpm-ostree cleanup -rpmb' on a host and verifies
 // that only one deployment remains
 func rpmOstreeCleanup(c cluster.TestCluster, m platform.Machine) error {
-	c.MustSSH(m, "sudo rpm-ostree cleanup -rpmb")
+	c.RunCmdSync(m, "sudo rpm-ostree cleanup -rpmb")
 
 	// one last check to make sure we are back to the original state
 	cleanupStatus, err := util.GetRpmOstreeStatusJSON(c, m)

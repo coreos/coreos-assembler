@@ -63,10 +63,10 @@ func enableSystemdInstantiatedService(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	// MustSSH function will throw an error if the exit code
 	// of the command is anything other than 0.
-	c.MustSSH(m, "systemctl -q is-active echo@foo.service")
-	c.MustSSH(m, "systemctl -q is-active echo@bar.service")
-	c.MustSSH(m, "systemctl -q is-enabled echo@foo.service")
-	c.MustSSH(m, "systemctl -q is-enabled echo@bar.service")
-	c.MustSSH(m, "systemctl -q is-active echo@foo.timer")
-	c.MustSSH(m, "systemctl -q is-enabled echo@foo.timer")
+	c.RunCmdSync(m, "systemctl -q is-active echo@foo.service")
+	c.RunCmdSync(m, "systemctl -q is-active echo@bar.service")
+	c.RunCmdSync(m, "systemctl -q is-enabled echo@foo.service")
+	c.RunCmdSync(m, "systemctl -q is-enabled echo@bar.service")
+	c.RunCmdSync(m, "systemctl -q is-active echo@foo.timer")
+	c.RunCmdSync(m, "systemctl -q is-enabled echo@foo.timer")
 }

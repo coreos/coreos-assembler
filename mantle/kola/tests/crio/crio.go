@@ -447,9 +447,9 @@ func crioPodContinuesDuringServiceRestart(c cluster.TestCluster) {
 		podID, crioConfigContainer, crioConfigPod))
 
 	cmd := fmt.Sprintf("sudo crictl exec %s bash -c \"sleep 25 && echo PASS > /tmp/test/restart-test\"", containerID)
-	c.MustSSH(m, cmd)
+	c.RunCmdSync(m, cmd)
 	time.Sleep(3 * time.Second)
-	c.MustSSH(m, "sudo systemctl restart crio")
+	c.RunCmdSync(m, "sudo systemctl restart crio")
 	time.Sleep(25 * time.Second)
 	output := strings.TrimSuffix(string(c.MustSSH(m, "cat /tmp/test/restart-test")), "\n")
 

@@ -35,5 +35,5 @@ func init() {
 
 func awsVerifyDiskFriendlyName(c cluster.TestCluster) {
 	friendlyName := "/dev/xvda"
-	c.MustSSH(c.Machines()[0], fmt.Sprintf("stat %s", friendlyName))
+	c.RunCmdSync(c.Machines()[0], fmt.Sprintf("stat %s", friendlyName))
 }

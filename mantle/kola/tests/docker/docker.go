@@ -240,7 +240,7 @@ func genDockerContainer(c cluster.TestCluster, m platform.Machine, name string, 
 	        sudo rsync -av --relative --copy-links $b $libs ./;
 	        sudo docker build -t %s .`
 
-	c.MustSSH(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
+	c.RunCmdSync(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
 }
 
 func dockerBaseTests(c cluster.TestCluster) {
@@ -413,14 +413,14 @@ func dockerUserns(c cluster.TestCluster) {
 
 	genDockerContainer(c, m, "userns-test", []string{"echo", "sleep"})
 
-	c.MustSSH(m, `sudo setenforce 1`)
+	c.RunCmdSync(m, `sudo setenforce 1`)
 	output := c.MustSSH(m, `docker run userns-test echo fj.fj`)
 	if !bytes.Equal(output, []byte("fj.fj")) {
 		c.Fatalf("expected fj.fj, got %s", string(output))
 	}
 
 	// And just in case, verify that a container really is userns remapped
-	c.MustSSH(m, `docker run -d --name=sleepy userns-test sleep 10000`)
+	c.RunCmdSync(m, `docker run -d --name=sleepy userns-test sleep 10000`)
 	uid_map := c.MustSSH(m, `until [[ "$(docker inspect -f {{.State.Running}} sleepy)" == "true" ]]; do sleep 0.1; done;
 		pid=$(docker inspect -f {{.State.Pid}} sleepy);
 		cat /proc/$pid/uid_map; docker kill sleepy &>/dev/null`)
@@ -505,7 +505,7 @@ func dockerContainerdRestart(c cluster.TestCluster) {
 	testContainerdUp(c)
 
 	// kill it
-	c.MustSSH(m, "sudo kill "+string(pid))
+	c.RunCmdSync(m, "sudo kill "+string(pid))
 
 	// retry polling its state
 	if err := util.Retry(12, 6*time.Second, func() error {

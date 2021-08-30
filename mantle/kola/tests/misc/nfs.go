@@ -141,7 +141,7 @@ systemd:
 		c.Fatal(err)
 	}
 
-	c.MustSSH(m2, fmt.Sprintf("stat /var/mnt/%s", path.Base(string(tmp))))
+	c.RunCmdSync(m2, fmt.Sprintf("stat /var/mnt/%s", path.Base(string(tmp))))
 }
 
 // Test that NFSv4 without security works.

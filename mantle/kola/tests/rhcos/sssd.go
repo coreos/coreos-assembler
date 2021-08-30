@@ -44,14 +44,14 @@ func init() {
 func verifyNssAltfiles(c cluster.TestCluster, m platform.Machine) {
 	// MustSSH will panic if exit status is non-zero
 	// Use -q option to indicate that we only care about the exit status
-	c.MustSSH(m, "grep -q altfiles /etc/nsswitch.conf")
+	c.RunCmdSync(m, "grep -q altfiles /etc/nsswitch.conf")
 }
 
 func verifyPamConfigs(c cluster.TestCluster, m platform.Machine) {
 	// MustSSH will panic if exit status is non-zero
 	// Use -q option to indicate that we only care about the exit status
-	c.MustSSH(m, "grep -q pam_sss.so /etc/pam.d/password-auth")
-	c.MustSSH(m, "grep -q pam_sss.so /etc/pam.d/system-auth")
+	c.RunCmdSync(m, "grep -q pam_sss.so /etc/pam.d/password-auth")
+	c.RunCmdSync(m, "grep -q pam_sss.so /etc/pam.d/system-auth")
 }
 
 func verifySSSD(c cluster.TestCluster) {

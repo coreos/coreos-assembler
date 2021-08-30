@@ -288,11 +288,11 @@ func undoZincatiDisablement(c cluster.TestCluster, m platform.Machine) {
 	}
 
 	if !onProdStream(c, d) {
-		c.MustSSH(m, "sudo rm -f /etc/zincati/config.d/90-disable-on-non-production-stream.toml")
+		c.RunCmdSync(m, "sudo rm -f /etc/zincati/config.d/90-disable-on-non-production-stream.toml")
 	}
 
 	if isDevBuild(c, d) {
-		c.MustSSH(m, "sudo rm -f /etc/zincati/config.d/95-disable-on-dev.toml")
+		c.RunCmdSync(m, "sudo rm -f /etc/zincati/config.d/95-disable-on-dev.toml")
 	}
 }
 
@@ -357,7 +357,7 @@ func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version 
 
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
 		// XXX: update to use https://github.com/coreos/zincati/issues/203
-		c.MustSSH(m, "sudo systemctl start zincati.service")
+		c.RunCmdSync(m, "sudo systemctl start zincati.service")
 
 		// sanity-check that Zincati has updates enabled
 		if err := ensureZincatiUpdatesEnabled(c, m); err != nil {
@@ -368,10 +368,10 @@ func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version 
 
 func rebaseToStream(c cluster.TestCluster, m platform.Machine, ref, version string) {
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
-		c.MustSSHf(m, "sudo systemctl stop zincati")
+		c.RunCmdSyncf(m, "sudo systemctl stop zincati")
 		// we use systemd-run here so that we can test the --reboot path
 		// without having SSH not exit cleanly, which would cause an error
-		c.MustSSHf(m, "sudo systemd-run rpm-ostree rebase --reboot %s", ref)
+		c.RunCmdSyncf(m, "sudo systemd-run rpm-ostree rebase --reboot %s", ref)
 	})
 }
 

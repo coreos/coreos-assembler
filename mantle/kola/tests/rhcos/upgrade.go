@@ -89,12 +89,12 @@ func rhcosUpgrade(c cluster.TestCluster) {
 		// Should drop this once we fix it more properly in {rpm-,}ostree.
 		// https://github.com/coreos/coreos-assembler/issues/1301
 		// Also we should really add a streaming import for this
-		c.MustSSHf(m, "sudo tar -xf %s -C /var/srv && sudo rm %s", ostreeTarName, ostreeTarName)
-		c.MustSSHf(m, "sudo ostree --repo=/sysroot/ostree/repo pull-local /var/srv %s && sudo rm -rf /var/srv/* && sudo sync", ostreeCommit)
+		c.RunCmdSyncf(m, "sudo tar -xf %s -C /var/srv && sudo rm %s", ostreeTarName, ostreeTarName)
+		c.RunCmdSyncf(m, "sudo ostree --repo=/sysroot/ostree/repo pull-local /var/srv %s && sudo rm -rf /var/srv/* && sudo sync", ostreeCommit)
 	})
 
 	c.Run("upgrade-from-previous", func(c cluster.TestCluster) {
-		c.MustSSHf(m, "sudo rpm-ostree rebase :%s", ostreeCommit)
+		c.RunCmdSyncf(m, "sudo rpm-ostree rebase :%s", ostreeCommit)
 		err := m.Reboot()
 		if err != nil {
 			c.Fatalf("Failed to reboot machine: %v", err)
@@ -125,6 +125,6 @@ func rhcosUpgradeBasic(c cluster.TestCluster) {
 	})
 
 	c.Run("verify-rootfs-migration", func(c cluster.TestCluster) {
-		c.MustSSH(m, "ls /dev/disk/by-label/root")
+		c.RunCmdSync(m, "ls /dev/disk/by-label/root")
 	})
 }
