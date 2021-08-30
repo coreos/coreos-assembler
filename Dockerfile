@@ -2,9 +2,11 @@
 FROM quay.io/coreos-assembler/cosa-buildroot:latest
 WORKDIR /root/containerbuild
 
-# Only need a few of our scripts for the first few steps
+# We semi-support skipping the buildroot and just using e.g. `FROM fedora:34` as a base image,
+# so keep this in sync with `ci/Dockerfile`.
 COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
 COPY ./build.sh /root/containerbuild/
+RUN ./build.sh configure_yum_repos
 RUN ./build.sh install_rpms
 
 COPY ./ /root/containerbuild/
