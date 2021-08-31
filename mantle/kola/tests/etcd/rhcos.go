@@ -106,7 +106,7 @@ func rhcosClusterInsecure(c cluster.TestCluster) {
 
 	// Configure the cluster nodes, and start them.
 	for index, machine := range machines {
-		c.RunCmdSync(machine, fmt.Sprintf(`set -e ; exec 2>&1
+		c.RunCmdSyncf(machine, `set -e ; exec 2>&1
 sudo tee /etc/systemd/system/etcd.service.d/cluster.conf << 'EOF' > /dev/null
 [Service]
 Environment="NODE_NAME=etcd%d"
@@ -115,7 +115,7 @@ Environment="CLUSTER=%s"
 Environment="TOKEN=etcd-cluster-token"
 EOF
 sudo systemctl daemon-reload
-sudo systemctl enable --now etcd`, index, machine.PrivateIP(), cluster))
+sudo systemctl enable --now etcd`, index, machine.PrivateIP(), cluster)
 	}
 
 	// Test the reported cluster health.
@@ -158,7 +158,7 @@ func rhcosClusterTLS(c cluster.TestCluster) {
 
 	// Configure the cluster nodes, and start them.
 	for index, machine := range machines {
-		c.RunCmdSync(machine, fmt.Sprintf(`set -e ; exec 2>&1
+		c.RunCmdSyncf(machine, `set -e ; exec 2>&1
 echo -e 'DNS.2=etcd%d\nIP.2=%s' | sudo tee -a /etc/ssl/etcd.cnf > /dev/null
 sudo openssl req -config /etc/ssl/etcd.cnf -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_server -subj '/CN=etcd%d' -out /etc/ssl/certs/etcd-cert-self.pem -keyout /etc/ssl/certs/etcd-key.pem
 sudo openssl req -config /etc/ssl/etcd.cnf -x509 -nodes -newkey rsa:4096 -sha512 -days 3 -extensions etcd_peer -subj '/CN=etcd%d peer' -out /etc/ssl/certs/peer-cert-self.pem -keyout /etc/ssl/certs/peer-key.pem
@@ -172,7 +172,7 @@ Environment="CLUSTER=%s"
 Environment="TOKEN=etcd-cluster-token"
 EOF
 sudo systemctl daemon-reload
-sudo systemctl enable --now etcd`, index, machine.PrivateIP(), index, index, index, machine.PrivateIP(), cluster))
+sudo systemctl enable --now etcd`, index, machine.PrivateIP(), index, index, index, machine.PrivateIP(), cluster)
 	}
 
 	// Test the reported cluster health.
@@ -181,8 +181,8 @@ sudo systemctl enable --now etcd`, index, machine.PrivateIP(), index, index, ind
 	}
 
 	// Verify writing and reading keys over TLS.
-	c.RunCmdSync(machines[1], fmt.Sprintf("curl -sk https://%s:2379/v2/keys/kolavar -XPUT -d value=kolavalue", machines[1].PrivateIP()))
-	c.RunCmdSync(machines[2], fmt.Sprintf("curl -sk https://%s:2379/v2/keys/kolavar?quorum=true | grep -Fq kolavalue", machines[2].PrivateIP()))
+	c.RunCmdSyncf(machines[1], "curl -sk https://%s:2379/v2/keys/kolavar -XPUT -d value=kolavalue", machines[1].PrivateIP())
+	c.RunCmdSyncf(machines[2], "curl -sk https://%s:2379/v2/keys/kolavar?quorum=true | grep -Fq kolavalue", machines[2].PrivateIP())
 
 	// Test writing keys with curl over local HTTP.
 	var keyMap map[string]string

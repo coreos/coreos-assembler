@@ -15,7 +15,6 @@
 package util
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -28,5 +27,5 @@ func GenPodmanScratchContainer(c cluster.TestCluster, m platform.Machine, name s
 	        b=$(which %s); libs=$(sudo ldd $b | grep -o /lib'[^ ]*' | sort -u);
 			sudo rsync -av --relative --copy-links $b $libs ./;
 			sudo podman build --network host --layers=false -t localhost/%s .`
-	c.RunCmdSync(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
+	c.RunCmdSyncf(m, cmd, strings.Join(binnames, " "), name)
 }

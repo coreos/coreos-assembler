@@ -15,8 +15,6 @@
 package misc
 
 import (
-	"fmt"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -35,5 +33,5 @@ func init() {
 
 func awsVerifyDiskFriendlyName(c cluster.TestCluster) {
 	friendlyName := "/dev/xvda"
-	c.RunCmdSync(c.Machines()[0], fmt.Sprintf("stat %s", friendlyName))
+	c.RunCmdSyncf(c.Machines()[0], "stat %s", friendlyName)
 }

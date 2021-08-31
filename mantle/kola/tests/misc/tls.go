@@ -15,8 +15,6 @@
 package misc
 
 import (
-	"fmt"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 )
@@ -42,6 +40,6 @@ func TestTLSFetchURLs(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	for _, url := range urlsToFetch {
-		c.RunCmdSync(m, fmt.Sprintf("curl -s -S -m 30 --retry 2 %s", url))
+		c.RunCmdSyncf(m, "curl -s -S -m 30 --retry 2 %s", url)
 	}
 }
