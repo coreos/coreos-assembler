@@ -4,7 +4,7 @@
 // an imageStream for it
 def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1"])
 
-pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
+pod(image: imageName + ":latest", kvm: true, memory: "10Gi", serviceAccount: "jenkins") {
     checkout scm
 
     stage("Unit tests") {
@@ -34,8 +34,9 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     fcosKolaTestIso(cosaDir: "/srv", extraArgs4k: "--no-pxe")
 
     stage("Build Cloud Images") {
-        cosaParallelCmds(cosaDir: "/srv", commands: ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP",
-                                                     "IBMCloud", "OpenStack", "VMware", "Vultr"])
+        gangplank.buildParallelArtifacts(image: imageName,
+            artifacts: ["aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp",
+            "ibmcloud", "openstack", "vmware", "vultr"], cosaDir: "/srv", bucket: "builds")
 
         // quick schema validation
         utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
