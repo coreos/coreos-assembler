@@ -240,7 +240,7 @@ func genDockerContainer(c cluster.TestCluster, m platform.Machine, name string, 
 	        sudo rsync -av --relative --copy-links $b $libs ./;
 	        sudo docker build -t %s .`
 
-	c.RunCmdSync(m, fmt.Sprintf(cmd, strings.Join(binnames, " "), name))
+	c.RunCmdSyncf(m, cmd, strings.Join(binnames, " "), name)
 }
 
 func dockerBaseTests(c cluster.TestCluster) {
