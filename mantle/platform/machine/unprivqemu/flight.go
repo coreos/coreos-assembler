@@ -34,8 +34,6 @@ type Options struct {
 	Firmware string
 	Memory   string
 
-	ForceConfigInjection bool
-
 	NbdDisk       bool
 	MultiPathDisk bool
 	Native4k      bool
