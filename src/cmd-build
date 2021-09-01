@@ -405,7 +405,7 @@ else
             ;;
         oci)
             ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
-            rpm-ostree ex-container 'export' --repo="${tmprepo}" "${buildid}" oci-archive:"${ostree_tarfile_path}".tmp
+            rpm-ostree ex-container 'export' --repo="${tmprepo}" "${buildid}" oci-archive:"${ostree_tarfile_path}".tmp:latest
             ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
