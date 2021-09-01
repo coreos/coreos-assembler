@@ -29,6 +29,8 @@ Options:
     --disk: disk device to use
     --help: show this help
     --kargs: kernel CLI args
+    --platform: Ignition platform ID
+    --platforms-json: platforms.yaml in JSON format
     --no-x86-bios-bootloader: don't install BIOS bootloader on x86_64
 
 You probably don't want to run this script by hand. This script is
@@ -38,6 +40,8 @@ EOC
 
 config=
 disk=
+platform=metal
+platforms_json=
 x86_bios_bootloader=1
 extrakargs=""
 
@@ -50,6 +54,8 @@ do
         --help)                  usage; exit;;
         --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
         --no-x86-bios-bootloader) x86_bios_bootloader=0;;
+        --platform)              platform="${1}"; shift;;
+        --platforms-json)        platforms_json="${1}"; shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -61,6 +67,27 @@ udevtrig() {
 
 export PATH=$PATH:/sbin:/usr/sbin
 arch="$(uname -m)"
+
+if [ -n "$platforms_json" ]; then
+    platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
+    platform_kargs=$(jq -r ".${arch}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
+else
+    # Add legacy kargs and console settings
+    platform_grub_cmds='serial --speed=115200\nterminal_input serial console\nterminal_output serial console'
+    DEFAULT_TERMINAL=$(. $(dirname "$0")/cmdlib.sh; echo $DEFAULT_TERMINAL)
+    # On each s390x hypervisor, a tty would be automatically detected by the
+    # kernel and systemd, there is no need to specify one.  However, we keep
+    # DEFAULT_TERMINAL as ttysclp0, which is helpful for building/testing
+    # with KVM+virtio (cmd-run).  For aarch64, ttyAMA0 is used as the
+    # default console
+    case "$arch" in
+        "aarch64"|"s390x") platform_kargs= ;;
+        *) platform_kargs="console=tty0 console=${DEFAULT_TERMINAL},115200n8" ;;
+    esac
+fi
+if [ -n "${platform_kargs}" ]; then
+    extrakargs="${extrakargs} ${platform_kargs}"
+fi
 
 disk=$(realpath /dev/disk/by-id/virtio-target)
 
@@ -367,7 +394,16 @@ install_grub_cfg() {
     # 0700 to match the RPM permissions which I think are mainly in case someone has
     # manually set a grub password
     mkdir -p -m 0700 $rootfs/boot/grub2
-    printf "%s\n" "$grub_script" > $rootfs/boot/grub2/grub.cfg
+    printf "%s\n" "$grub_script" | \
+        sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${platform_grub_cmds:+\\n${platform_grub_cmds}}"'@' \
+        > $rootfs/boot/grub2/grub.cfg
+    if [ -n "$platforms_json" ]; then
+        # Copy platforms table if it's non-empty for this arch
+        if jq -e ".$arch" < "$platforms_json" > /dev/null; then
+            mkdir -p "$rootfs/boot/coreos"
+            jq ".$arch" < "$platforms_json" > "$rootfs/boot/coreos/platforms.json"
+        fi
+    fi
 }
 
 # Other arch-specific bootloader changes
