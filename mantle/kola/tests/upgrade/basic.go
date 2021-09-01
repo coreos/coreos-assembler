@@ -145,12 +145,14 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 			c.Fatal(err)
 		}
 
+		// Keep any changes around here in sync with tests/rhcos/upgrade.go too!
+
 		// See https://github.com/coreos/fedora-coreos-tracker/issues/812
 		if strings.HasSuffix(ostreeblob, ".ociarchive") {
 			tmprepo := workdir + "/repo-bare"
 			// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
 			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
-			c.RunCmdSyncf(m, "rpm-ostree ex-container import --repo=%s --write-ref %s oci-archive:%s", tmprepo, ostreeref, ostreeblob)
+			c.RunCmdSyncf(m, "rpm-ostree ex-container import --repo=%s --write-ref %s oci-archive:%s:latest", tmprepo, ostreeref, ostreeblob)
 			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
 			c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
 		} else {
