@@ -41,13 +41,42 @@ coreos_gf_run_mount ro "${tmp_dest}"
 # We just mount the boot partition writable
 coreos_gf remount /boot rw:true
 
+# Look up platform-specific configuration
+rewrite_grub_cmds=
+extra_grub_cmds=
+extra_kargs=
+remove_kargs=
+if [ "$(coreos_gf exists /boot/coreos/platforms.json)" = "true" ]; then
+    coreos_gf download /boot/coreos/platforms.json "${tmpd}"/platforms.json
+    rewrite_grub_cmds=1
+    extra_grub_cmds=$(jq -r ".${platformid}.grub_commands // [] | join(\"\\\\n\")" < "${tmpd}/platforms.json")
+    extra_kargs=$(jq -r ".${platformid}.kernel_arguments // [] | join(\" \")" < "${tmpd}/platforms.json")
+    remove_kargs=$(jq -r ".qemu.kernel_arguments // [] | join(\" \")" < "${tmpd}/platforms.json")
+fi
+
 # Inject PLATFORM label in BLS config (for subsequent config regeneration)
 blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download "${blscfg_path}" "${tmpd}"/bls.conf
 # Remove any platformid currently there
 sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
 sed -i -e '/^options / s,$, ignition.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
+if [ -n "$remove_kargs" ]; then
+    # Remove existing qemu-specific kargs
+    sed -i -e '/^options / s@ '"${remove_kargs}"'@@' "${tmpd}"/bls.conf
+fi
+if [ -n "$extra_kargs" ]; then
+    sed -i -e '/^options / s@$@ '"${extra_kargs}"'@' "${tmpd}"/bls.conf
+fi
 coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
+
+if [ -n "$rewrite_grub_cmds" ]; then
+    # Remove qemu-specific grub.cfg commands and inject any new ones
+    coreos_gf download /boot/grub2/grub.cfg "${tmpd}"/grub-orig.cfg
+    awk '/^# CONSOLE-SETTINGS-START$/ {suspend=1; print} {if (!suspend) print} /^# CONSOLE-SETTINGS-END$/ {suspend=0; print}' "${tmpd}"/grub-orig.cfg | \
+        sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${extra_grub_cmds:+\\n${extra_grub_cmds}}"'@' \
+        > "${tmpd}"/grub.cfg
+    coreos_gf upload "${tmpd}"/grub.cfg /boot/grub2/grub.cfg
+fi
 
 if [ "$basearch" = "s390x" ] ; then
     # Before we re-run zipl make sure we have the firstboot options
