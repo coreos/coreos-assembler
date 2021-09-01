@@ -21,12 +21,13 @@ rootfs_uuid="910678ff-f77e-4a7d-8d53-86f2ac47a823"
 
 usage() {
     cat <<EOC
-${0} create a supermin virtual machinge to create a
-Fedora CoreOS style disk image from an OS Tree.
+${0} creates a supermin virtual machine to create a
+Fedora CoreOS style disk image from an OSTree.
 
 Options:
+    --config: JSON-formatted image.yaml
     --disk: disk device to use
-    --help: show this helper
+    --help: show this help
     --kargs: kernel CLI args
     --no-x86-bios-bootloader: don't install BIOS bootloader on x86_64
 
