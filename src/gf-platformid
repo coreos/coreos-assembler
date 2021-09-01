@@ -46,7 +46,7 @@ blscfg_path=$(coreos_gf glob-expand /boot/loader/entries/ostree-*.conf)
 coreos_gf download "${blscfg_path}" "${tmpd}"/bls.conf
 # Remove any platformid currently there
 sed -i -e 's, ignition.platform.id=[a-zA-Z0-9]*,,g' "${tmpd}"/bls.conf
-sed -i -e 's,^\(options .*\),\1 ignition.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
+sed -i -e '/^options / s,$, ignition.platform.id='"${platformid}"',' "${tmpd}"/bls.conf
 coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
 if [ "$basearch" = "s390x" ] ; then
