@@ -489,6 +489,7 @@ def generate_iso():
             with open(os.path.join(tmpimageefidir, vendor_ids[0], "grub.cfg"), "w") as fh:
                 fh.write(f'''search --label "{volid}" --set root --no-floppy
 set prefix=($root)/EFI/{vendor_ids[0]}
+echo "Booting via ESP..."
 configfile $prefix/grub.cfg
 boot
 ''')
