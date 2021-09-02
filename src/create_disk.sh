@@ -103,7 +103,11 @@ set -x
 # Partition and create fs's. The 0...4...a...1 uuid is a sentinal used by coreos-gpt-setup
 # in ignition-dracut. It signals that the disk needs to have it's uuid randomized and the
 # backup header moved to the end of the disk.
-# Pin /boot and / to the partition number 3 and 4 respectively
+# Pin /boot and / to the partition number 3 and 4 respectively. Also insert reserved
+# partitions on aarch64/ppc64le to keep the 1,2,3,4 partition numbers aligned across
+# x86_64/aarch64/ppc64le. We decided not to try to achieve partition parity on s390x
+# because a bare metal install onto an s390x DASD translates the GPT to DASD partitions
+# and we only get three of those. https://github.com/coreos/fedora-coreos-tracker/issues/855
 BOOTPN=3
 ROOTPN=4
 # Make the size relative
@@ -122,9 +126,11 @@ case "$arch" in
         sgdisk -p "$disk"
         ;;
     aarch64)
+        RESERVEDPN=1
         EFIPN=2
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
+        -n ${RESERVEDPN}:0:+1M -c ${RESERVEDPN}:reserved -t ${RESERVEDPN}:8DA63339-0007-60C0-C436-083AC8230908 \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
@@ -143,10 +149,12 @@ case "$arch" in
         ;;
     ppc64le)
         PREPPN=1
+        RESERVEDPN=2
         # ppc64le doesn't use special uuid for root partition
         sgdisk -Z $disk \
         -U "${uninitialized_gpt_uuid}" \
         -n ${PREPPN}:0:+4M -c ${PREPPN}:PowerPC-PReP-boot -t ${PREPPN}:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
+        -n ${RESERVEDPN}:0:+1M -c ${RESERVEDPN}:reserved -t ${RESERVEDPN}:8DA63339-0007-60C0-C436-083AC8230908 \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
