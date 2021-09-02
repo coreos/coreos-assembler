@@ -481,6 +481,30 @@ def generate_iso():
             tmpimageefidir = os.path.join(tmpdir, "efi")
             ostree_extract_efi(repo, buildmeta_commit, tmpimageefidir)
 
+            # Inject a stub grub.cfg pointing to the one in the main ISO image.
+            #
+            # When booting via El Torito, this stub is not used; GRUB reads
+            # the ISO image directly using its own ISO support.  This
+            # happens when booting from a CD device, or when the ISO is
+            # copied to a USB stick and booted on EFI firmware which prefers
+            # to boot a hard disk from an El Torito image if it has one.
+            # EDK II in QEMU behaves this way.
+            #
+            # This stub is used with EFI firmware which prefers to boot a
+            # hard disk from an ESP, or which cannot boot a hard disk via El
+            # Torito at all.  In that case, GRUB thinks it booted from a
+            # partition of the disk (a fake ESP created by isohybrid,
+            # pointing to efiboot.img) and needs a grub.cfg there.
+            vendor_ids = [n for n in os.listdir(tmpimageefidir) if n != "BOOT"]
+            if len(vendor_ids) != 1:
+                raise Exception(f"did not find exactly one EFI vendor ID: {vendor_ids}")
+            with open(os.path.join(tmpimageefidir, vendor_ids[0], "grub.cfg"), "w") as fh:
+                fh.write(f'''search --label "{volid}" --set root --no-floppy
+set prefix=($root)/EFI/{vendor_ids[0]}
+configfile $prefix/grub.cfg
+boot
+''')
+
             # Install binaries from boot partition
             # Manually construct the tarball to ensure proper permissions and ownership
             efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
