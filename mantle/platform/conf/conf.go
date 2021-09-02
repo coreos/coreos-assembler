@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	butane "github.com/coreos/butane/config"
@@ -102,7 +103,11 @@ func EmptyIgnition() *UserData {
 // stable supported Ignition spec.
 func Ignition(data string) *UserData {
 	if data == "" {
-		data = `{"ignition": {"version": "3.2.0"}}`
+		ignver, ok := os.LookupEnv("COSA_IGNITION_DEFAULT_VERSION")
+		if !ok {
+			ignver = "3.2.0"
+		}
+		data = fmt.Sprintf(`{"ignition": {"version": "%s"}}`, ignver)
 	}
 	return &UserData{
 		kind: kindIgnition,
