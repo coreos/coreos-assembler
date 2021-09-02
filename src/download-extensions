@@ -28,6 +28,22 @@ dependenciesdir = f'{edestdir}/dependencies'
 os.mkdir(dependenciesdir)
 
 
+# Recursively remove all user.* xattrs from files and directories
+# https://bugzilla.redhat.com/show_bug.cgi?id=2000195
+def strip_user_xattrs_recurse(path):
+    removed = 0
+    for root, subdirs, files in os.walk(path):
+        for name in files + subdirs:
+            path = os.path.join(root, name)
+            for xname in os.listxattr(path):
+                if not xname.startswith('user.'):
+                    continue
+                os.removexattr(path, xname)
+                removed += 1
+    if removed > 0:
+        print(f"Removed {removed} user.* xattrs")
+
+
 # Downloads packages from specified repos
 def yumdownload(destdir, pkgs):
     # FIXME eventually use rpm-ostree for this
@@ -65,3 +81,5 @@ for (name, ext) in extensions['extensions'].items():
 
 # Create the yum/dnf repo
 cmdlib.run_verbose(['createrepo_c', '--no-database', '.'], cwd=edestdir)
+
+strip_user_xattrs_recurse(edestdir)
