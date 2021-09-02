@@ -7,8 +7,8 @@ dn=$(dirname "$0")
 # shellcheck source=src/libguestfish.sh
 . "${dn}"/libguestfish.sh
 
-# Usage: gf-platformid <input image> <output image> PLATFORMID
-# Example: gf-platformid fedora-coreos.qcow2 fedora-coreos-aws.qcow2 aws
+# Usage: gf-set-platform <input image> <output image> PLATFORMID
+# Example: gf-set-platform fedora-coreos.qcow2 fedora-coreos-aws.qcow2 aws
 #
 # This will add ignition.platform.id=aws to the bootloader arguments. Intended to
 # be used for Ignition. It's much faster to do this than generate a fresh image
@@ -30,7 +30,7 @@ set -x
 # See also:
 # https://github.com/coreos/coreos-assembler/issues/292
 # https://github.com/coreos/coreos-assembler/pull/394
-tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-platformid.XXXXXX)
+tmpd=$(mktemp -tdp "$(dirname "${dest}")" gf-set-platform.XXXXXX)
 tmp_dest=${tmpd}/box.img
 
 /usr/lib/coreos-assembler/cp-reflink "${src}" "${tmp_dest}"

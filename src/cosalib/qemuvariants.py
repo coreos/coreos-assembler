@@ -221,7 +221,7 @@ class QemuVariantImage(_Build):
             return None
 
     def set_platform(self):
-        run_verbose(['/usr/lib/coreos-assembler/gf-platformid',
+        run_verbose(['/usr/lib/coreos-assembler/gf-set-platform',
                      self.image_qemu, self.tmp_image, self.platform])
 
     def mutate_image(self):
