@@ -1056,7 +1056,11 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 						defer collectLogsExternalTest(h, t, tcluster)
 					}
 
-					t.Run(tcluster)
+					newTC := cluster.TestCluster{
+						H:       h,
+						Cluster: tcluster.Cluster,
+					}
+					t.Run(newTC)
 				}
 				// Each non-exclusive test is run as a subtest of this wrapper test
 				tcluster.H.Run(t.Name, run)
