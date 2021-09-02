@@ -702,7 +702,7 @@ After=dev-mapper-mpatha.device`)
 		return nil, err
 	}
 
-	if err := qemubuilder.AddIso(srcisopath, "bootindex=3"); err != nil {
+	if err := qemubuilder.AddIso(srcisopath, "bootindex=3", false); err != nil {
 		return nil, err
 	}
 

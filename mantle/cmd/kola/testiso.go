@@ -367,7 +367,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
 		ranTest = true
-		if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin)); err != nil {
+		if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin), false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
 		}
 		printSuccess(scenarioISOLiveLogin)
@@ -556,7 +556,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveLogin(ctx context.Context, outdir string) error {
+func testLiveLogin(ctx context.Context, outdir string, asDisk bool) error {
 	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return err
 	}
@@ -565,7 +565,7 @@ func testLiveLogin(ctx context.Context, outdir string) error {
 	builder := newBaseQemuBuilder()
 	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-	if err := builder.AddIso(isopath, ""); err != nil {
+	if err := builder.AddIso(isopath, "", asDisk); err != nil {
 		return err
 	}
 

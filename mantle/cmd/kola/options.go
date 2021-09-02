@@ -149,6 +149,7 @@ func init() {
 	bv(&kola.QEMUOptions.Swtpm, "qemu-swtpm", true, "Create temporary software TPM")
 
 	sv(&kola.QEMUIsoOptions.IsoPath, "qemu-iso", "", "path to CoreOS ISO image")
+	bv(&kola.QEMUIsoOptions.AsDisk, "qemu-iso-as-disk", false, "attach ISO image as regular disk")
 }
 
 // Sync up the command line options if there is dependency

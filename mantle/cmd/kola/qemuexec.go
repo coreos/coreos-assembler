@@ -286,7 +286,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if kola.QEMUIsoOptions.IsoPath != "" {
-		err := builder.AddIso(kola.QEMUIsoOptions.IsoPath, "")
+		err := builder.AddIso(kola.QEMUIsoOptions.IsoPath, "", kola.QEMUIsoOptions.AsDisk)
 		if err != nil {
 			return err
 		}
