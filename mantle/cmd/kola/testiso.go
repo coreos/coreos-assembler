@@ -72,7 +72,9 @@ const (
 
 	scenarioPXEOfflineInstall = "pxe-offline-install"
 	scenarioISOOfflineInstall = "iso-offline-install"
-	scenarioISOLiveLogin      = "iso-live-login"
+
+	scenarioISOLiveLogin = "iso-live-login"
+	scenarioISOAsDisk    = "iso-as-disk"
 )
 
 var allScenarios = map[string]bool{
@@ -81,6 +83,7 @@ var allScenarios = map[string]bool{
 	scenarioISOInstall:        true,
 	scenarioISOOfflineInstall: true,
 	scenarioISOLiveLogin:      true,
+	scenarioISOAsDisk:         true,
 }
 
 var liveOKSignal = "live-test-OK"
@@ -171,7 +174,7 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
 	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall}))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin, scenarioISOAsDisk}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
@@ -370,6 +373,22 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
 		}
 		printSuccess(scenarioISOLiveLogin)
+	}
+	if _, ok := targetScenarios[scenarioISOAsDisk]; ok {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
+		}
+		switch system.RpmArch() {
+		case "x86_64":
+			ranTest = true
+			if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOAsDisk), true); err != nil {
+				return errors.Wrapf(err, "scenario %s", scenarioISOAsDisk)
+			}
+			printSuccess(scenarioISOAsDisk)
+		default:
+			// no hybrid partition table to boot from
+			fmt.Printf("%s unsupported on %s; skipping\n", scenarioISOAsDisk, system.RpmArch())
+		}
 	}
 
 	if !ranTest {
