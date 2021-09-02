@@ -113,14 +113,11 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
     else:
         ostree_version = None
 
-    podman_base_argv = ['podman']
     buildah_base_argv = ['buildah']
     if containers_storage is not None:
-        podman_base_argv.append(f"--root={containers_storage}")
         buildah_base_argv.append(f"--root={containers_storage}")
         if os.environ.get('container') is not None:
             print("Using nested container mode due to container environment variable")
-            podman_base_argv.extend(NESTED_BUILD_ARGS)
             buildah_base_argv.extend(NESTED_BUILD_ARGS)
         else:
             print("Skipping nested container mode")
@@ -223,7 +220,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
 
     if push:
         print("Pushing container")
-        podCmd = podman_base_argv + ['push']
+        podCmd = buildah_base_argv + ['push']
         if not tls_verify:
             tls_arg = '--tls-verify=false'
         else:
@@ -235,14 +232,15 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
 
         if cert_dir != "":
             podCmd.append("--cert-dir={}".format(cert_dir))
-        podCmd.append(image_name_and_tag)
 
         if digestfile is not None:
             podCmd.append(f'--digestfile={digestfile}')
 
+        podCmd.append(image_name_and_tag)
+
         run_verbose(podCmd)
     elif digestfile is not None:
-        inspect = run_get_json(podman_base_argv + ['inspect', image_name_and_tag])[0]
+        inspect = run_get_json(buildah_base_argv + ['inspect', image_name_and_tag])[0]
         with open(digestfile, 'w') as f:
             f.write(inspect['Digest'])
 
