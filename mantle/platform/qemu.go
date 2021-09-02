@@ -1167,21 +1167,21 @@ func coreosInstallerSupportsISOKargs() (bool, error) {
 }
 
 func (builder *QemuBuilder) setupIso() error {
+	if err := builder.ensureTempdir(); err != nil {
+		return err
+	}
+	// TODO change to use something like an unlinked tempfile (or O_TMPFILE)
+	// in the same filesystem as the source so that reflinks (if available)
+	// will work
+	isoEmbeddedPath := filepath.Join(builder.tempdir, "install.iso")
+	cpcmd := exec.Command("cp", "--reflink=auto", builder.iso.path, isoEmbeddedPath)
+	cpcmd.Stderr = os.Stderr
+	if err := cpcmd.Run(); err != nil {
+		return errors.Wrapf(err, "copying iso")
+	}
 	if builder.ConfigFile != "" {
 		if builder.configInjected {
 			panic("config already injected?")
-		}
-		if err := builder.ensureTempdir(); err != nil {
-			return err
-		}
-		// TODO change to use something like an unlinked tempfile (or O_TMPFILE)
-		// in the same filesystem as the source so that reflinks (if available)
-		// will work
-		isoEmbeddedPath := filepath.Join(builder.tempdir, "install.iso")
-		cpcmd := exec.Command("cp", "--reflink=auto", builder.iso.path, isoEmbeddedPath)
-		cpcmd.Stderr = os.Stderr
-		if err := cpcmd.Run(); err != nil {
-			return errors.Wrapf(err, "copying iso")
 		}
 		configf, err := os.Open(builder.ConfigFile)
 		if err != nil {
@@ -1194,29 +1194,29 @@ func (builder *QemuBuilder) setupIso() error {
 			return errors.Wrapf(err, "running coreos-installer iso embed")
 		}
 		builder.configInjected = true
-
-		if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
-			return err
-		} else if kargsSupported {
-			allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[system.RpmArch()], builder.AppendKernelArguments)
-			instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
-			var stderrb bytes.Buffer
-			instCmdKargs.Stderr = &stderrb
-			if err := instCmdKargs.Run(); err != nil {
-				// Don't make this a hard error if it's just for console; we
-				// may be operating on an old live ISO
-				if len(builder.AppendKernelArguments) > 0 {
-					return errors.Wrapf(err, "running `coreos-installer iso kargs modify`; old CoreOS ISO?")
-				}
-				stderr := stderrb.String()
-				plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
-				plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
-			}
-		} else if len(builder.AppendKernelArguments) > 0 {
-			return fmt.Errorf("coreos-installer does not support appending kernel args")
-		}
-		builder.iso.path = isoEmbeddedPath
 	}
+
+	if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
+		return err
+	} else if kargsSupported {
+		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[system.RpmArch()], builder.AppendKernelArguments)
+		instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
+		var stderrb bytes.Buffer
+		instCmdKargs.Stderr = &stderrb
+		if err := instCmdKargs.Run(); err != nil {
+			// Don't make this a hard error if it's just for console; we
+			// may be operating on an old live ISO
+			if len(builder.AppendKernelArguments) > 0 {
+				return errors.Wrapf(err, "running `coreos-installer iso kargs modify`; old CoreOS ISO?")
+			}
+			stderr := stderrb.String()
+			plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
+			plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
+		}
+	} else if len(builder.AppendKernelArguments) > 0 {
+		return fmt.Errorf("coreos-installer does not support appending kernel args")
+	}
+	builder.iso.path = isoEmbeddedPath
 
 	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
 	// For all other arches we use ide-cd device with bootindex=2 here: the idea is
