@@ -414,6 +414,7 @@ type QemuBuilder struct {
 	InheritConsole bool
 
 	iso         *bootIso
+	isoAsDisk   bool
 	primaryDisk *Disk
 	// primaryIsBoot is true if the only boot media should be the primary disk
 	primaryIsBoot bool
@@ -1014,11 +1015,15 @@ func (builder *QemuBuilder) AddDisksFromSpecs(specs []string) error {
 }
 
 // AddIso adds an ISO image, optionally configuring its boot index
-func (builder *QemuBuilder) AddIso(path string, bootindexStr string) error {
+// If asDisk is set, attach the ISO as a disk drive (as though it was copied
+// to a USB stick) and overwrite the El Torito signature in the image
+// (to force QEMU's UEFI firmware to boot via the hybrid ESP).
+func (builder *QemuBuilder) AddIso(path string, bootindexStr string, asDisk bool) error {
 	builder.iso = &bootIso{
 		path:      path,
 		bootindex: bootindexStr,
 	}
+	builder.isoAsDisk = asDisk
 	return nil
 }
 
@@ -1216,6 +1221,23 @@ func (builder *QemuBuilder) setupIso() error {
 	} else if len(builder.AppendKernelArguments) > 0 {
 		return fmt.Errorf("coreos-installer does not support appending kernel args")
 	}
+
+	if builder.isoAsDisk {
+		f, err := os.OpenFile(isoEmbeddedPath, os.O_WRONLY, 0)
+		if err != nil {
+			return errors.Wrapf(err, "opening ISO image for writing")
+		}
+		defer f.Close()
+		// Invalidate Boot System Identifier in the El Torito Boot
+		// Record Volume Descriptor so the system must boot via the
+		// MBR or ESP.  If we don't do this, QEMU's UEFI firmware
+		// will boot via El Torito anyway, which doesn't match what
+		// a lot of UEFI firmware does.
+		_, err = f.WriteAt([]byte("NO"), 34823)
+		if err != nil {
+			return errors.Wrapf(err, "overwriting El Torito signature")
+		}
+	}
 	builder.iso.path = isoEmbeddedPath
 
 	// Arches s390x and ppc64le don't support UEFI and use the cdrom option to boot the ISO.
@@ -1226,13 +1248,22 @@ func (builder *QemuBuilder) setupIso() error {
 	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
 	switch system.RpmArch() {
 	case "s390x", "ppc64le", "aarch64":
+		if builder.isoAsDisk {
+			// we could do it, but boot would fail
+			return errors.New("cannot attach ISO as disk; no hybrid ISO on this arch")
+		}
 		builder.Append("-drive", "file="+builder.iso.path+",id=installiso,index=2,media=cdrom")
 	default:
 		bootindexStr := ""
 		if builder.iso.bootindex != "" {
 			bootindexStr = "," + builder.iso.bootindex
 		}
-		builder.Append("-drive", "file="+builder.iso.path+",format=raw,if=none,readonly=on,id=installiso", "-device", "ide-cd,drive=installiso"+bootindexStr)
+		builder.Append("-drive", "file="+builder.iso.path+",format=raw,if=none,readonly=on,id=installiso")
+		if builder.isoAsDisk {
+			builder.Append("-device", virtio("blk", "drive=installiso"+bootindexStr))
+		} else {
+			builder.Append("-device", "ide-cd,drive=installiso"+bootindexStr)
+		}
 	}
 
 	return nil

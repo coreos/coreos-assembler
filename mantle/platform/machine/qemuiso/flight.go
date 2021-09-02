@@ -30,6 +30,7 @@ type Options struct {
 	IsoPath  string
 	Firmware string
 	Memory   string
+	AsDisk   bool
 
 	*platform.Options
 }
