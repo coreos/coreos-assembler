@@ -204,7 +204,7 @@ func syncOptionsImpl(useCosa bool) error {
 		case "x86_64":
 			kola.AWSOptions.InstanceType = "m5.large"
 		case "aarch64":
-			kola.AWSOptions.InstanceType = "a1.metal"
+			kola.AWSOptions.InstanceType = "c6g.xlarge"
 		}
 		fmt.Printf("Using %s instance type\n", kola.AWSOptions.InstanceType)
 	}
