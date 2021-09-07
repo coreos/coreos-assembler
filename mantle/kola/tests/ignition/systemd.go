@@ -15,8 +15,6 @@
 package ignition
 
 import (
-	"strings"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -58,8 +56,5 @@ func init() {
 func enableSystemdService(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	out := c.MustSSH(m, "systemctl status nfs-server.service")
-	if strings.Contains(string(out), "inactive") {
-		c.Fatalf("service was not enabled or systemd-presets did not run")
-	}
+	c.AssertCmdOutputContains(m, "systemctl status nfs-server.service", "inactive")
 }
