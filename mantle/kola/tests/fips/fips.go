@@ -212,12 +212,6 @@ func init() {
 // Test: Run basic FIPS test
 func fipsEnableTest(c cluster.TestCluster) {
 	m := c.Machines()[0]
-	status := c.MustSSH(m, `cat /proc/sys/crypto/fips_enabled`)
-	if string(status) != "1" {
-		c.Fatal("/proc/sys/crypto/fips_enabled is not set to 1")
-	}
-	policy := c.MustSSH(m, `update-crypto-policies --show`)
-	if string(policy) != "FIPS" {
-		c.Fatal("update-crypto-policies is not in FIPS mode")
-	}
+	c.AssertCmdOutputContains(m, `cat /proc/sys/crypto/fips_enabled`, "1")
+	c.AssertCmdOutputContains(m, `update-crypto-policies --show`, "FIPS")
 }
