@@ -15,8 +15,6 @@
 package ignition
 
 import (
-	"strings"
-
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform/conf"
@@ -75,10 +73,5 @@ func init() {
 
 func setHostname(c cluster.TestCluster) {
 	m := c.Machines()[0]
-
-	out := c.MustSSH(m, "hostnamectl")
-
-	if !strings.Contains(string(out), "Static hostname: core1") {
-		c.Fatalf("hostname wasn't set correctly:\n%s", out)
-	}
+	c.AssertCmdOutputContains(m, "hostnamectl", "Static hostname: core1")
 }

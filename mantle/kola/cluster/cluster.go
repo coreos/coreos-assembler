@@ -181,6 +181,16 @@ func (t *TestCluster) RunCmdSyncf(m platform.Machine, f string, args ...interfac
 	return t.RunCmdSync(m, fmt.Sprintf(f, args...))
 }
 
+// AssertCmdOutputContains runs cmd via SSH and panics if stdout does not contain expected
+func (t *TestCluster) AssertCmdOutputContains(m platform.Machine, cmd string, expected string) {
+	t.LogJournal(m, "+ "+cmd)
+	outputBuf := t.MustSSH(m, cmd)
+	output := string(outputBuf)
+	if !strings.Contains(output, expected) {
+		t.Fatalf("cmd %s did not output %s", cmd, expected)
+	}
+}
+
 // Synchronously write a log message from the syslog identifier `kola` into the target
 // machine's journal (via ssh) as well as at a debug log level to the current process.
 // This is useful for debugging test failures, as we always capture the target
