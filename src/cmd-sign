@@ -26,7 +26,7 @@ from cosalib.cmdlib import (
 from cosalib.fedora_messaging_request import send_request_and_wait_for_response
 
 gi.require_version('OSTree', '1.0')
-from gi.repository import Gio, OSTree
+from gi.repository import GLib, Gio, OSTree
 
 # this is really the worst case scenario, it's usually pretty fast otherwise
 ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 60
@@ -132,20 +132,22 @@ def robosign_ostree(args, s3, build, gpgkey):
 
     validate_response(response)
 
-    # download back sig and verify it in a throwaway repo
+    # Ensure we have an unpacked repo with the ostree content
+    if not os.path.exists('tmp/repo'):
+        subprocess.check_call(['ostree', '--repo=tmp/repo', 'init', '--mode=archive'])
+    import_ostree_commit('tmp/repo', builddir, build, force=True)
+    repo = OSTree.Repo.new(Gio.File.new_for_path('tmp/repo'))
+    repo.open(None)
+
     print("Verifying OSTree signature")
     with tempfile.TemporaryDirectory(prefix="cosa-sign", dir="tmp") as d:
-        repo = OSTree.Repo.new(Gio.File.new_for_path(d))
-        repo.create(OSTree.RepoMode.ARCHIVE)
-
-        commit_obj_relpath = f'objects/{checksum[:2]}/{checksum[2:]}.commit'
-        commit_obj_path = os.path.join(d, commit_obj_relpath)
-        commitmeta_obj_relpath = f'{commit_obj_relpath}meta'
-        commitmeta_obj_path = os.path.join(d, commitmeta_obj_relpath)
-
-        os.makedirs(os.path.dirname(commit_obj_path), exist_ok=True)
-        shutil.copyfile(build_dir_commit_obj, commit_obj_path)
-        s3.download_file(args.bucket, commitmeta_key, commitmeta_obj_path)
+        metapath = os.path.join(d, "commitmeta")
+        # Emplace the new commit metadata
+        s3.download_file(args.bucket, commitmeta_key, metapath)
+        with open(metapath, "rb") as f:
+            metadata = GLib.Bytes.new(f.read())
+            commitmeta_data = GLib.Variant.new_from_bytes(GLib.VariantType.new('a{sv}'), metadata, False)
+            repo.write_commit_detached_metadata(checksum, commitmeta_data, None)
 
         # this is a bit awkward though the remote API is the only way to point
         # libostree at armored GPG keys
@@ -174,27 +176,25 @@ def robosign_ostree(args, s3, build, gpgkey):
             raise Exception(msg)
         print(msg)
 
-        # ok, it's valid -- add it to the tarfile
+        # We've validated the commit, now re-export the repo
         ostree_image = build['images']['ostree']
-        commit_tarfile = os.path.join(builddir, ostree_image['path'])
-        commit_tarfile_new = os.path.join(d, ostree_image['path'])
-        subprocess.check_call(['cp-reflink', commit_tarfile,
-                               commit_tarfile_new])
-        os.chmod(commit_tarfile_new, 0o660)
-        with tarfile.open(commit_tarfile_new, 'a:') as t:
-            t.add(commitmeta_obj_path, arcname=commitmeta_obj_relpath)
-        ostree_image['size'] = os.path.getsize(commit_tarfile_new)
-        ostree_image['sha256'] = sha256sum_file(commit_tarfile_new)
-        # and the critical bits
-        shutil.copymode(commit_tarfile, commit_tarfile_new)
-        shutil.move(commit_tarfile_new, commit_tarfile)
+        exported_ostree_path = os.path.join(builddir, ostree_image['path'])
+        if exported_ostree_path.endswith('.ociarchive'):
+            subprocess.check_call(['rpm-ostree', 'ex-container', 'export', '--repo=tmp/repo', checksum, f'oci-archive:{exported_ostree_path}:latest'])
+        else:
+            tmp_tar = os.path.join(d, ostree_image['path'])
+            # To make things a bit more efficient, append the commitmeta at
+            # the end of the archive after reflinking.
+            subprocess.check_call(['cp-reflink', exported_ostree_path, tmp_tar])
+            os.chmod(tmp_tar, 0o660)
+            with tarfile.open(tmp_tar, 'a:') as t:
+                t.add(metapath, arcname=f'objects/{checksum[:2]}/{checksum[2:]}.commitmeta')
+            shutil.move(tmp_tar, exported_ostree_path)
+        # Finalize the export
+        os.chmod(exported_ostree_path, 0o660)
+        ostree_image['size'] = os.path.getsize(exported_ostree_path)
+        ostree_image['sha256'] = sha256sum_file(exported_ostree_path)
         build.write()
-
-    # and finally add it to the tmprepo too so that buildextend-(qemu|metal)
-    # will pull it: we could just nuke the repo to force a re-untar, but it
-    # might nuke a more recent commit if we're not operating on the latest
-    if os.path.exists('tmp/repo'):
-        import_ostree_commit('tmp/repo', builddir, build, force=True)
 
 
 def robosign_images(args, s3, build, gpgkey):
