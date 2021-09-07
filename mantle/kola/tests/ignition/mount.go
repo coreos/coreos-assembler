@@ -253,8 +253,5 @@ func mountValidate(c cluster.TestCluster, m platform.Machine, mountContents, pat
 	}
 
 	fPath := filepath.Join(path, "/hello.txt")
-	fileContents := c.MustSSH(m, "cat "+fPath)
-	if string(fileContents) != "hello world" {
-		c.Fatalf("Failed to write content to %s", fPath)
-	}
+	c.AssertCmdOutputContains(m, "cat "+fPath, "hello world")
 }
