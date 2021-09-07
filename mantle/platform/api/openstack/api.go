@@ -304,7 +304,7 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 
 	serverID := server.ID
 
-	err = util.WaitUntilReady(5*time.Minute, 10*time.Second, func() (bool, error) {
+	err = util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
 		var err error
 		server, err = servers.Get(a.computeClient, serverID).Extract()
 		if err != nil {
