@@ -124,7 +124,7 @@ def append_build(out, input_):
     # build the architectures dict
     arch_dict = {"media": {}}
     ensure_dup(input_, arch_dict, "ostree-commit", "commit")
-    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "openstack", "qemu", "vmware", "vultr"]
+    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "openstack", "powervs", "qemu", "vmware", "vultr"]
     for platform in platforms:
         if input_.get("images", {}).get(platform, None) is not None:
             print(f"   - {platform}")
@@ -144,6 +144,19 @@ def append_build(out, input_):
             for cloud_dict in input_.get(meta_key):
                 arch_dict["media"][cloud]["images"][cloud_dict["name"]] = {
                     "image": cloud_dict[image_field]
+                }
+
+    # IBMCloud/PowerVS specific additions
+    for meta_key, cloud, object_field, bucket_field, url_field in \
+        ("ibmcloud", "ibmcloud", "object", "bucket", "url"), \
+            ("powervs", "powervs", "object", "bucket", "url"):
+        if input_.get(meta_key, None) is not None:
+            arch_dict["media"].setdefault(cloud, {}).setdefault("images", {})
+            for cloud_dict in input_.get(meta_key):
+                arch_dict["media"][cloud]["images"][cloud_dict["region"]] = {
+                    "object": cloud_dict[object_field],
+                    "bucket": cloud_dict[bucket_field],
+                    "url": cloud_dict[url_field]
                 }
 
     # GCP specific additions
