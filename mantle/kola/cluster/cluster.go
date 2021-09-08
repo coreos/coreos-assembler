@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/kballard/go-shellquote"
@@ -204,6 +205,15 @@ func (t *TestCluster) AssertCmdOutputContains(m platform.Machine, cmd string, ex
 	output := string(outputBuf)
 	if !strings.Contains(output, expected) {
 		t.Fatalf("cmd %s did not output %s", cmd, expected)
+	}
+}
+
+// AssertCmdOutputContains runs cmd via SSH and panics if stdout does not contain expected
+func (t *TestCluster) AssertCmdOutputMatches(m platform.Machine, cmd string, expected *regexp.Regexp) {
+	t.LogJournal(m, "+ "+cmd)
+	output := t.MustSSH(m, cmd)
+	if !expected.Match(output) {
+		t.Fatalf("cmd %s output did not match regexp %s: %s", cmd, expected, string(output))
 	}
 }
 
