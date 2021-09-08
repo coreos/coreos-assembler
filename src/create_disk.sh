@@ -313,6 +313,10 @@ set prefix=($prefix)/grub2
 configfile $prefix/grub.cfg
 boot
 EOF
+    # Disable shim fallback; install grub as second-stage bootloader for
+    # fallback path instead
+    rm "${target_efi}"/EFI/BOOT/fb*.efi
+    cp "${target_efi}/EFI/${vendor_id}"/grub*.efi "${target_efi}"/EFI/BOOT/
     install_grub_cfg
 }
 

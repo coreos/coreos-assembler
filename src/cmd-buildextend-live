@@ -506,6 +506,13 @@ configfile $prefix/grub.cfg
 boot
 ''')
 
+            # Disable shim fallback; install grub as second-stage bootloader
+            # for fallback path
+            for fbpath in glob.glob(os.path.join(tmpimageefidir, "BOOT", "fb*.efi")):
+                os.unlink(fbpath)
+            for grubpath in glob.glob(os.path.join(tmpimageefidir, vendor_ids[0], "grub*.efi")):
+                shutil.copy(grubpath, os.path.join(tmpimageefidir, "BOOT"))
+
             # Install binaries from boot partition
             # Manually construct the tarball to ensure proper permissions and ownership
             efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
