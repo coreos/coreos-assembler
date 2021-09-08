@@ -14,12 +14,11 @@ import sys
 import tarfile
 import tempfile
 import time
-import glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
 from cosalib.cmdlib import run_verbose, sha256sum_file, flatten_image_yaml
-from cosalib.cmdlib import import_ostree_commit, get_basearch
+from cosalib.cmdlib import import_ostree_commit, get_basearch, ensure_glob
 from cosalib.meta import GenericBuildMeta
 
 
@@ -405,7 +404,7 @@ def generate_iso():
     elif basearch == "ppc64le":
         os.makedirs(os.path.join(tmpisoroot, 'boot/grub'))
         # can be EFI/fedora or EFI/redhat
-        grubpath = glob.glob(os.path.join(tmpisoroot, 'EFI/*/grub.cfg'))
+        grubpath = ensure_glob(os.path.join(tmpisoroot, 'EFI/*/grub.cfg'))
         shutil.move(grubpath[0], os.path.join(tmpisoroot, 'boot/grub/grub.cfg'))
 
         # safely remove things we don't need in the final ISO tree

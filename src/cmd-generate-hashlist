@@ -7,7 +7,6 @@ See: https://keylime.dev/
 
 import argparse
 import datetime
-import glob
 import json
 import os
 import subprocess
@@ -19,6 +18,7 @@ sys.path.insert(0, cosa_dir)
 
 from cosalib import meta
 from cosalib.cmdlib import (
+    ensure_glob,
     get_basearch,
     sha256sum_file,
     import_ostree_commit)
@@ -91,7 +91,7 @@ class HashListV1(dict):
         self.hash_from_path(checkout)
 
         # Extract initramfs contents
-        initramfs_path = glob.glob(
+        initramfs_path = ensure_glob(
             os.path.join(
                 checkout, 'usr/lib/modules/*/initramfs.img'))[0]
         initramfs_path = os.path.realpath(initramfs_path)
