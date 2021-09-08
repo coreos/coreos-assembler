@@ -62,10 +62,7 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// check that rpm-ostreed is static?
-	enabledOut := c.MustSSH(m, "systemctl is-enabled rpm-ostreed")
-	if string(enabledOut) != "static" {
-		c.Fatalf(`The "rpm-ostreed" service is not "static": got %v`, string(enabledOut))
-	}
+	c.AssertCmdOutputContains(m, "systemctl is-enabled rpm-ostreed", "static")
 
 	status, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
@@ -73,10 +70,7 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	}
 
 	// after running an 'rpm-ostree' command the daemon should be active
-	statusOut := c.MustSSH(m, "systemctl is-active rpm-ostreed")
-	if string(statusOut) != "active" {
-		c.Fatalf(`The "rpm-ostreed" service is not active: got %v`, string(statusOut))
-	}
+	c.AssertCmdOutputContains(m, "systemctl is-active rpm-ostreed", "active")
 
 	// a deployment should be booted (duh!)
 	if _, err := util.GetBootedDeployment(c, m); err != nil {

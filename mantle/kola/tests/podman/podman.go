@@ -157,11 +157,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 	// Test: Execute command in container
 	c.Run("exec", func(c cluster.TestCluster) {
 		cmd := fmt.Sprintf("sudo podman exec %s echo hello", id)
-		out := c.MustSSH(m, cmd)
-
-		if string(out) != "hello" {
-			c.Fatal("Could not exec command in container")
-		}
+		c.AssertCmdOutputContains(m, cmd, "hello")
 	})
 
 	// Test: Stop container
