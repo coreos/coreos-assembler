@@ -242,17 +242,8 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		}
 
 		// check the command is present, in the rpmdb, and usable
-		cmdOut := c.MustSSH(m, "command -v "+installPkgName)
-		if string(cmdOut) != installPkgBin {
-			c.Fatalf(`%q binary in unexpected location. expectd %q, got %q`, installPkgName, installPkgBin, string(cmdOut))
-		}
-
-		rpmOut := c.MustSSH(m, "rpm -q "+installPkgName)
-		rpmRegex := "^" + installPkgName
-		rpmMatch := regexp.MustCompile(rpmRegex).MatchString(string(rpmOut))
-		if !rpmMatch {
-			c.Fatalf(`Output from "rpm -q" was unexpected: %q`, string(rpmOut))
-		}
+		c.AssertCmdOutputContains(m, "command -v "+installPkgName, installPkgBin)
+		c.AssertCmdOutputMatches(m, "rpm -q "+installPkgName, regexp.MustCompile("^"+installPkgName))
 
 		// package should be in the metadata
 		var reqPkg bool = false
