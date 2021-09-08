@@ -149,11 +149,7 @@ func ostreeBasicTest(c cluster.TestCluster) {
 	// the checksum now
 	c.Run("rev-parse", func(c cluster.TestCluster) {
 		// check the output of `ostree rev-parse`
-		oRevParseOut := c.MustSSH(m, ("ostree rev-parse " + oas.Origin))
-
-		if string(oRevParseOut) != oas.Checksum {
-			c.Fatalf(`Checksum from "ostree rev-parse" does not match; expected %q, got %q`, oas.Checksum, string(oRevParseOut))
-		}
+		c.AssertCmdOutputContains(m, ("ostree rev-parse " + oas.Origin), oas.Checksum)
 	})
 
 	// verify the output of 'ostree show'
@@ -234,10 +230,7 @@ func ostreeRemoteTest(c cluster.TestCluster) {
 
 	// verify `ostree remote show-url`
 	c.Run("show-url", func(c cluster.TestCluster) {
-		osRemoteShowUrlOut := c.MustSSH(m, ("ostree remote show-url " + remoteName))
-		if string(osRemoteShowUrlOut) != remoteUrl {
-			c.Fatalf(`URLs don't match; expected %q, got %q`, remoteName, string(osRemoteShowUrlOut))
-		}
+		c.AssertCmdOutputContains(m, ("ostree remote show-url " + remoteName), remoteUrl)
 	})
 
 	// verify `ostree remote refs`

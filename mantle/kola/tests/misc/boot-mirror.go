@@ -191,10 +191,7 @@ func bootMirrorSanityTest(c cluster.TestCluster, m platform.Machine) {
 	c.Run("sanity-check", func(c cluster.TestCluster) {
 		// Check for boot
 		checkIfMountpointIsRaid(c, m, "/boot")
-		fsTypeForBoot := c.MustSSH(m, "findmnt -nvr /boot -o FSTYPE")
-		if strings.Compare(string(fsTypeForBoot), "ext4") != 0 {
-			c.Fatalf("didn't match fstype for boot")
-		}
+		c.AssertCmdOutputContains(m, "findmnt -nvr /boot -o FSTYPE", "ext4")
 		// Check that growpart didn't run
 		c.RunCmdSync(m, "if [ -e /run/coreos-growpart.stamp ]; then exit 1; fi")
 	})
@@ -216,14 +213,8 @@ func detachPrimaryBlockDevice(c cluster.TestCluster, m platform.Machine) {
 func verifyBootMirrorAfterReboot(c cluster.TestCluster, m platform.Machine) {
 	c.Run("verify-fallback", func(c cluster.TestCluster) {
 		// Check if the RAIDs are in degraded state
-		rootOutput := c.MustSSH(m, "sudo mdadm -Q --detail /dev/md/md-root")
-		if !strings.Contains(string(rootOutput), "degraded") {
-			c.Fatalf("didn't match the state of root raid device; expected degraded, found: %v", string(rootOutput))
-		}
-		bootOutput := c.MustSSH(m, "sudo mdadm -Q --detail /dev/md/md-boot")
-		if !strings.Contains(string(bootOutput), "degraded") {
-			c.Fatalf("didn't match the state of boot raid device; expected degraded, found: %v", string(bootOutput))
-		}
+		c.AssertCmdOutputContains(m, "sudo mdadm -Q --detail /dev/md/md-root", "degraded")
+		c.AssertCmdOutputContains(m, "sudo mdadm -Q --detail /dev/md/md-boot", "degraded")
 		c.RunCmdSync(m, "grep root=UUID= /proc/cmdline")
 		c.RunCmdSync(m, "grep rd.md.uuid= /proc/cmdline")
 	})
