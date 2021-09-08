@@ -135,11 +135,7 @@ func SelinuxEnforce(c cluster.TestCluster) {
 
 	testSelinuxCmds(c, m, cmdList)
 
-	output := c.MustSSH(m, "getenforce")
-
-	if string(output) != "Enforcing" {
-		c.Fatalf(`command "getenforce" has unexpected output: want %q, got %q`, "Enforcing", string(output))
-	}
+	c.AssertCmdOutputMatches(m, "getenforce", regexp.MustCompile("^Enforcing$"))
 }
 
 // SelinuxBoolean checks that you can tweak a boolean in the current session
@@ -216,11 +212,5 @@ func SelinuxManage(c cluster.TestCluster) {
 	testSelinuxCmds(c, m, cmdList)
 
 	// the change should be persisted after a reboot
-	output := c.MustSSH(m, "sudo semanage fcontext -l | grep vasd")
-
-	s := ".*system_u:object_r:httpd_log_t:s0"
-	match := regexp.MustCompile(s).MatchString(string(output))
-	if !match {
-		c.Fatalf(`The SELinux file context "/var/opt/quest/vas/vasd(/.*)?" is incorrectly configured.  Tried to match regexp %q, output was %q`, s, string(output))
-	}
+	c.AssertCmdOutputMatches(m, "sudo semanage fcontext -l | grep vasd", regexp.MustCompile(".*system_u:object_r:httpd_log_t:s0"))
 }
