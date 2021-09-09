@@ -56,6 +56,7 @@ func init() {
 			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
 			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
 			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+			"NoEFIBootEntry": register.CreateNativeFuncWrap(TestEFIBootEntry),
 		},
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
@@ -378,6 +379,25 @@ func checkFilesystemSize(size int) error {
 	}
 	if filesystemSize < size {
 		return fmt.Errorf("Filesystem size is less than %d bytes, size in bytes: %d", size, filesystemSize)
+	}
+	return nil
+}
+
+func TestEFIBootEntry() error {
+	if _, err := os.Stat("/sys/firmware/efi"); os.IsNotExist(err) {
+		// booted via BIOS; ignore
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("Checking for /sys/firmware/efi: %w", err)
+	}
+
+	c := exec.Command("efibootmgr", "-v")
+	out, err := c.Output()
+	if err != nil {
+		return fmt.Errorf("efibootmgr: %w", err)
+	}
+	if strings.Contains(string(out), "HD(") || strings.Contains(string(out), "CDROM(") {
+		return fmt.Errorf("Found HD boot entry in UEFI variables:\n%s", out)
 	}
 	return nil
 }
