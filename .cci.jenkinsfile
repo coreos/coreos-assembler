@@ -19,7 +19,7 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     fcosBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
 
     // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
-    fcosKola(basicScenarios: true, cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
+    fcosKola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Build Metal") {
         cosaParallelCmds(cosaDir: "/srv", commands: ["metal", "metal4k"])
