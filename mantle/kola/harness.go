@@ -596,7 +596,7 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 			// At the end of the test, its cluster is destroyed
 			runTest(h, test, pltfrm, flight)
 		}
-		htests.Add(test.Name, run)
+		htests.Add(test.Name, run, test.Timeout)
 	}
 
 	handleSuiteErrors := func(outputDir string, suiteErr error) error {
@@ -652,7 +652,7 @@ func rerunFailedTests(flight platform.Flight, outputDir string, pltfrm string, v
 		run := func(h *harness.H) {
 			runTest(h, test, pltfrm, flight)
 		}
-		htests.Add(test.Name, run)
+		htests.Add(test.Name, run, test.Timeout)
 	}
 
 	suite := harness.NewSuite(opts, htests)
@@ -679,6 +679,7 @@ type externalTestMeta struct {
 	AdditionalDisks []string `json:"additionalDisks,omitempty"`
 	MinMemory       int      `json:"minMemory,omitempty"`
 	Exclusive       bool     `json:"exclusive"`
+	TimeoutMin      int      `json:"timeoutMin"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -864,6 +865,7 @@ ExecStart=%s
 		},
 
 		UserData: conf.Ignition(config.String()),
+		Timeout:  time.Duration(targetMeta.TimeoutMin) * time.Minute,
 	}
 
 	// To avoid doubling the duplication here with register.Test, we support
@@ -1132,7 +1134,11 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 					t.Run(newTC)
 				}
 				// Each non-exclusive test is run as a subtest of this wrapper test
-				tcluster.H.Run(t.Name, run)
+				if t.Timeout == harness.DefaultTimeoutFlag {
+					tcluster.H.RunTimeout(t.Name, run, time.Duration(1)*time.Minute)
+				} else {
+					tcluster.H.RunTimeout(t.Name, run, t.Timeout)
+				}
 			}
 		},
 		UserData: mergedConfig,
@@ -1157,6 +1163,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
 		InternetAccess:     testRequiresInternet(t),
 	}
+
+	var c platform.Cluster
 	c, err := flight.NewCluster(rconf)
 	if err != nil {
 		h.Fatalf("Cluster failed: %v", err)
@@ -1189,7 +1197,19 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AdditionalDisks: t.AdditionalDisks,
 			MinMemory:       t.MinMemory,
 		}
-		if _, err := platform.NewMachines(c, userdata, t.ClusterSize, options); err != nil {
+		ioCompleted := make(chan bool)
+		go func() {
+			_, err = platform.NewMachines(c, userdata, t.ClusterSize, options)
+			ioCompleted <- true
+		}()
+
+		select {
+		case <-h.TimeoutContext.Done():
+			h.FailNow()
+		case <-ioCompleted:
+			// Finish the test
+		}
+		if err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}

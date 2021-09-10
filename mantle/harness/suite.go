@@ -283,10 +283,13 @@ func (s *Suite) runTests(out, tap io.Writer) error {
 		tap:       tap,
 		suite:     s,
 		reporters: s.opts.Reporters,
+		// we set an initial non-zero timeout, this will
+		// be overriden since the suite will run tests as subtests
+		timeout: defaultTimeout,
 	}
 	tRunner(t, func(t *H) {
-		for name, test := range s.tests {
-			t.Run(name, test)
+		for name, htest := range s.tests {
+			t.RunTimeout(name, htest.run, htest.timeout)
 		}
 		// Run catching the signal rather than the tRunner as a separate
 		// goroutine to avoid adding a goroutine during the sequential

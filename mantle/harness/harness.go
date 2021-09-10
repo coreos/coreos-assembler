@@ -34,6 +34,9 @@ import (
 	"github.com/coreos/mantle/harness/testresult"
 )
 
+const DefaultTimeoutFlag = 0
+const defaultTimeout = 10 * time.Minute
+
 // H is a type passed to Test functions to manage test state and support formatted test logs.
 // Logs are accumulated during execution and dumped to standard output when done.
 //
@@ -70,6 +73,11 @@ type H struct {
 	sub      []*H      // Queue of subtests to be run in parallel.
 
 	isParallel bool
+
+	timeout time.Duration // Duration for which the test will be allowed to run
+	timer   *time.Timer   // Used to interrupt the test after timeout
+	// To signal that a timeout has occured to observers
+	TimeoutContext context.Context
 
 	reporters reporters.Reporters
 }
@@ -374,8 +382,10 @@ func (t *H) Parallel() {
 
 	// We don't want to include the time we spend waiting for serial tests
 	// in the test duration. Record the elapsed time thus far and reset the
-	// timer afterwards.
+	// timer afterwards. We will also reset any timeouts.
 	t.duration += time.Since(t.start)
+	t.timer.Stop()
+	defer t.timer.Reset(t.timeout)
 
 	// Add to the list of tests to be released by the parent.
 	t.parent.sub = append(t.parent.sub, t)
@@ -398,13 +408,18 @@ func tRunner(t *H, fn func(t *H)) {
 		t.duration += time.Since(t.start)
 		// If the test panicked, print any test output before dying.
 		err := recover()
-		if !t.finished && err == nil {
-			err = fmt.Errorf("test executed panic(nil) or runtime.Goexit")
-		}
-		if err != nil {
-			t.Fail()
-			t.report()
-			panic(err)
+		select {
+		case <-t.TimeoutContext.Done():
+			t.Errorf("TIMEOUT[%v]\n", t.timeout)
+		default:
+			if !t.finished && err == nil {
+				err = fmt.Errorf("test executed panic(nil) or runtime.Goexit")
+			}
+			if err != nil {
+				t.Fail()
+				t.report()
+				panic(err)
+			}
 		}
 
 		if len(t.sub) > 0 {
@@ -437,19 +452,32 @@ func tRunner(t *H, fn func(t *H)) {
 		t.signal <- true
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	t.TimeoutContext = ctx
+	t.timer = time.AfterFunc(t.timeout, func() {
+		if !t.hasSub {
+			cancel()
+		}
+	})
+	defer t.timer.Stop()
+
 	t.start = time.Now()
 	fn(t)
 	t.finished = true
+
 }
 
-// Run runs f as a subtest of t called name. It reports whether f succeeded.
-// Run will block until all its parallel subtests have completed.
-func (t *H) Run(name string, f func(t *H)) bool {
+func (t *H) RunTimeout(name string, f func(t *H), timeout time.Duration) bool {
 	t.hasSub = true
 	testName, ok := t.suite.match.fullName(t, name)
 	if !ok {
 		return true
 	}
+
+	if timeout == DefaultTimeoutFlag {
+		timeout = defaultTimeout
+	}
+
 	t = &H{
 		barrier:   make(chan bool),
 		signal:    make(chan bool),
@@ -458,6 +486,7 @@ func (t *H) Run(name string, f func(t *H)) bool {
 		parent:    t,
 		level:     t.level + 1,
 		reporters: t.reporters,
+		timeout:   timeout,
 	}
 	t.w = indenter{t}
 	// Indent logs 8 spaces to distinguish them from sub-test headers.
@@ -479,6 +508,12 @@ func (t *H) Run(name string, f func(t *H)) bool {
 	go tRunner(t, f)
 	<-t.signal
 	return !t.failed
+}
+
+// Run runs f as a subtest of t called name. It reports whether f succeeded.
+// Run will block until all its parallel subtests have completed.
+func (t *H) Run(name string, f func(t *H)) bool {
+	return t.RunTimeout(name, f, DefaultTimeoutFlag)
 }
 
 func (t *H) report() {
