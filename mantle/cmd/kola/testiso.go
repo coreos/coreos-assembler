@@ -180,17 +180,28 @@ func init() {
 	root.AddCommand(cmdTestIso)
 }
 
-func newBaseQemuBuilder() *platform.QemuBuilder {
+func newBaseQemuBuilder(outdir string) (*platform.QemuBuilder, error) {
 	builder := platform.NewMetalQemuBuilderDefault()
 	builder.Firmware = kola.QEMUOptions.Firmware
 
-	builder.InheritConsole = console
+	if err := os.MkdirAll(outdir, 0755); err != nil {
+		return nil, err
+	}
 
-	return builder
+	builder.InheritConsole = console
+	if !console {
+		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
+	}
+
+	return builder, nil
 }
 
 func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
-	builder := newBaseQemuBuilder()
+	builder, err := newBaseQemuBuilder(outdir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
 		sectorSize = 4096
@@ -214,13 +225,7 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 			return nil, nil, err
 		}
 	}
-	if err := os.MkdirAll(outdir, 0755); err != nil {
-		return nil, nil, err
-	}
 
-	if !builder.InheritConsole {
-		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
-	}
 	config, err := conf.EmptyIgnition().Render()
 	if err != nil {
 		return nil, nil, err
@@ -575,12 +580,12 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 }
 
 func testLiveLogin(ctx context.Context, outdir string, asDisk bool) error {
-	if err := os.MkdirAll(outdir, 0755); err != nil {
-		return err
-	}
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder := newBaseQemuBuilder()
+	builder, err := newBaseQemuBuilder(outdir)
+	if err != nil {
+		return nil
+	}
 	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
 	if err := builder.AddIso(isopath, "", asDisk); err != nil {
