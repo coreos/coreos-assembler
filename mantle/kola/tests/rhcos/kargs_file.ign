@@ -1,0 +1,21 @@
+{
+  "ignition": {
+    "version": "3.3.0"
+  },
+  "kernelArguments": {
+    "shouldExist": [
+      "foobar"
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/etc/testfile",
+        "contents": {
+          "source": "data:,test"
+        },
+        "mode": 420
+      }
+    ]
+  }
+}
