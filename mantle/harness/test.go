@@ -16,6 +16,7 @@ package harness
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/coreos/mantle/lang/maps"
 )
@@ -23,18 +24,24 @@ import (
 // Test is a single test function.
 type Test func(*H)
 
-// Tests is a set of test functions that can be given to a Suite.
-type Tests map[string]Test
+type HarnessTest struct {
+	run Test
+	// time after which test will timeout in minutes
+	timeout time.Duration
+}
+
+// Tests is a set of test functions and timeouts that can be given to a Suite.
+type Tests map[string]*HarnessTest
 
 // Add inserts the given Test into the set, initializing Tests if needed.
 // If a test with the given name already exists Add will panic.
-func (ts *Tests) Add(name string, test Test) {
+func (ts *Tests) Add(name string, test Test, timeout time.Duration) {
 	if *ts == nil {
 		*ts = make(Tests)
 	} else if _, ok := (*ts)[name]; ok {
 		panic(fmt.Errorf("harness: duplicate test %q", name))
 	}
-	(*ts)[name] = test
+	(*ts)[name] = &HarnessTest{run: test, timeout: timeout}
 }
 
 // List returns a sorted list of test names.

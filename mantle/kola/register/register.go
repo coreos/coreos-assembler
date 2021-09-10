@@ -16,6 +16,7 @@ package register
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/platform/conf"
@@ -53,17 +54,18 @@ type Test struct {
 	NativeFuncs          map[string]NativeFuncWrap
 	UserData             *conf.UserData
 	ClusterSize          int
-	Platforms            []string // allowlist of platforms to run test against -- defaults to all
-	Firmwares            []string // allowlist of firmwares to run test against -- defaults to all
-	ExcludePlatforms     []string // denylist of platforms to ignore -- defaults to none
-	ExcludeFirmwares     []string // denylist of firmwares to ignore -- defaults to none
-	Distros              []string // allowlist of distributions to run test against -- defaults to all
-	ExcludeDistros       []string // denylist of distributions to ignore -- defaults to none
-	Architectures        []string // allowlist of machine architectures supported -- defaults to all
-	ExcludeArchitectures []string // denylist of architectures to ignore -- defaults to none
-	Flags                []Flag   // special-case options for this test
-	Tags                 []string // list of tags that can be matched against -- defaults to none
-	RequiredTag          string   // if specified, test is filtered by default unless tag is provided -- defaults to none
+	Platforms            []string      // allowlist of platforms to run test against -- defaults to all
+	Firmwares            []string      // allowlist of firmwares to run test against -- defaults to all
+	ExcludePlatforms     []string      // denylist of platforms to ignore -- defaults to none
+	ExcludeFirmwares     []string      // denylist of firmwares to ignore -- defaults to none
+	Distros              []string      // allowlist of distributions to run test against -- defaults to all
+	ExcludeDistros       []string      // denylist of distributions to ignore -- defaults to none
+	Architectures        []string      // allowlist of machine architectures supported -- defaults to all
+	ExcludeArchitectures []string      // denylist of architectures to ignore -- defaults to none
+	Flags                []Flag        // special-case options for this test
+	Tags                 []string      // list of tags that can be matched against -- defaults to none
+	Timeout              time.Duration // the duration for which a test will be allowed to run
+	RequiredTag          string        // if specified, test is filtered by default unless tag is provided -- defaults to none
 
 	// Whether the primary disk is multipathed.
 	MultiPathDisk bool
