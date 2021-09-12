@@ -88,7 +88,7 @@ var allScenarios = map[string]bool{
 
 var liveOKSignal = "live-test-OK"
 var liveSignalOKUnit = fmt.Sprintf(`[Unit]
-Description=TestISO Signal Install Completion
+Description=TestISO Signal Live ISO Completion
 Requires=dev-virtio\\x2dports-testisocompletion.device
 OnFailure=emergency.target
 OnFailureJobMode=isolate
@@ -180,17 +180,57 @@ func init() {
 	root.AddCommand(cmdTestIso)
 }
 
-func newBaseQemuBuilder() *platform.QemuBuilder {
+func newBaseQemuBuilder(outdir string) (*platform.QemuBuilder, error) {
 	builder := platform.NewMetalQemuBuilderDefault()
 	builder.Firmware = kola.QEMUOptions.Firmware
 
-	builder.InheritConsole = console
+	if err := os.MkdirAll(outdir, 0755); err != nil {
+		return nil, err
+	}
 
-	return builder
+	builder.InheritConsole = console
+	if !console {
+		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
+	}
+
+	return builder, nil
 }
 
 func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
-	builder := newBaseQemuBuilder()
+	builder, err := newBaseQemuBuilder(outdir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	config, err := conf.EmptyIgnition().Render()
+	if err != nil {
+		return nil, nil, err
+	}
+	journalPipe, err := builder.VirtioJournal(config, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	journalOut, err := os.OpenFile(filepath.Join(outdir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
+		_, err := io.Copy(journalOut, journalPipe)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+	}()
+
+	return builder, config, nil
+}
+
+func newQemuBuilderWithDisk(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
+	builder, config, err := newQemuBuilder(outdir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	sectorSize := 0
 	if kola.QEMUOptions.Native4k {
 		sectorSize = 4096
@@ -214,32 +254,6 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 			return nil, nil, err
 		}
 	}
-	if err := os.MkdirAll(outdir, 0755); err != nil {
-		return nil, nil, err
-	}
-
-	if !builder.InheritConsole {
-		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
-	}
-	config, err := conf.EmptyIgnition().Render()
-	if err != nil {
-		return nil, nil, err
-	}
-	journalPipe, err := builder.VirtioJournal(config, "")
-	if err != nil {
-		return nil, nil, err
-	}
-	journalOut, err := os.OpenFile(filepath.Join(outdir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	go func() {
-		_, err := io.Copy(journalOut, journalPipe)
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-	}()
 
 	return builder, config, nil
 }
@@ -369,7 +383,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
 		ranTest = true
-		if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin), false); err != nil {
+		if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin)); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
 		}
 		printSuccess(scenarioISOLiveLogin)
@@ -381,7 +395,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		switch system.RpmArch() {
 		case "x86_64":
 			ranTest = true
-			if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOAsDisk), true); err != nil {
+			if err := testAsDisk(ctx, filepath.Join(outputDir, scenarioISOAsDisk)); err != nil {
 				return errors.Wrapf(err, "scenario %s", scenarioISOAsDisk)
 			}
 			printSuccess(scenarioISOAsDisk)
@@ -486,7 +500,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 		return err
 	}
 
-	builder, virtioJournalConfig, err := newQemuBuilder(outdir)
+	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
 	if err != nil {
 		return err
 	}
@@ -537,7 +551,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 		return err
 	}
 
-	builder, virtioJournalConfig, err := newQemuBuilder(outdir)
+	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
 	if err != nil {
 		return err
 	}
@@ -574,16 +588,16 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveLogin(ctx context.Context, outdir string, asDisk bool) error {
-	if err := os.MkdirAll(outdir, 0755); err != nil {
-		return err
-	}
+func testLiveLogin(ctx context.Context, outdir string) error {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder := newBaseQemuBuilder()
+	builder, err := newBaseQemuBuilder(outdir)
+	if err != nil {
+		return nil
+	}
 	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-	if err := builder.AddIso(isopath, "", asDisk); err != nil {
+	if err := builder.AddIso(isopath, "", false); err != nil {
 		return err
 	}
 
@@ -602,4 +616,34 @@ func testLiveLogin(ctx context.Context, outdir string, asDisk bool) error {
 	defer mach.Destroy()
 
 	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"coreos-liveiso-success"})
+}
+
+func testAsDisk(ctx context.Context, outdir string) error {
+	builddir := kola.CosaBuild.Dir
+	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+	builder, config, err := newQemuBuilder(outdir)
+	if err != nil {
+		return nil
+	}
+	defer builder.Close()
+	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
+	if err := builder.AddIso(isopath, "", true); err != nil {
+		return err
+	}
+
+	completionChannel, err := builder.VirtioChannelRead("testisocompletion")
+	if err != nil {
+		return err
+	}
+
+	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
+	builder.SetConfig(config)
+
+	mach, err := builder.Exec()
+	if err != nil {
+		return errors.Wrapf(err, "running iso")
+	}
+	defer mach.Destroy()
+
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
 }
