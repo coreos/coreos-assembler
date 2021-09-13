@@ -56,14 +56,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestContextCancel(t *testing.T) {
-	suite := NewSuite(Options{}, Tests{
-		"ContextCancel": func(h *H) {
+	htest := &HarnessTest{
+		run: func(h *H) {
 			ctx := h.Context()
 			// Tests we don't leak this goroutine:
 			go func() {
 				<-ctx.Done()
 			}()
-		}})
+		},
+		timeout: DefaultTimeoutFlag,
+	}
+	suite := NewSuite(Options{}, Tests{
+		"ContextCancel": htest,
+	})
 	buf := &bytes.Buffer{}
 	if err := suite.runTests(buf, nil); err != nil {
 		t.Log("\n" + buf.String())
@@ -291,10 +296,14 @@ func TestSubTests(t *testing.T) {
 		},
 	}}
 	for _, tc := range testCases {
+		htest := &HarnessTest{
+			run:     tc.f,
+			timeout: DefaultTimeoutFlag,
+		}
 		suite := NewSuite(Options{
 			Verbose:  tc.chatty,
 			Parallel: tc.maxPar,
-		}, Tests{tc.desc: tc.f})
+		}, Tests{tc.desc: htest})
 		buf := &bytes.Buffer{}
 		err := suite.runTests(buf, nil)
 		suite.release()
@@ -334,12 +343,16 @@ func TestOutputDir(t *testing.T) {
 		testdirs = append(testdirs, h.OutputDir())
 	}
 
+	htest := &HarnessTest{
+		run:     adddir,
+		timeout: DefaultTimeoutFlag,
+	}
 	opts := Options{
 		OutputDir: suitedir,
 		Verbose:   true,
 	}
 	suite := NewSuite(opts, Tests{
-		"OutputDir": adddir,
+		"OutputDir": htest,
 	})
 
 	buf := &bytes.Buffer{}
@@ -370,12 +383,16 @@ func TestSubDirs(t *testing.T) {
 		testdirs = append(testdirs, h.OutputDir())
 	}
 
+	htest := &HarnessTest{
+		run:     adddir,
+		timeout: DefaultTimeoutFlag,
+	}
 	opts := Options{
 		OutputDir: suitedir,
 		Verbose:   true,
 	}
 	suite := NewSuite(opts, Tests{
-		"OutputDir": adddir,
+		"OutputDir": htest,
 	})
 
 	buf := &bytes.Buffer{}
@@ -406,11 +423,15 @@ func TestTempDir(t *testing.T) {
 		OutputDir: suitedir,
 		Verbose:   true,
 	}
-	suite := NewSuite(opts, Tests{
-		"TempDir": func(h *H) {
+	htest := &HarnessTest{
+		run: func(h *H) {
 			testdirs = append(testdirs, h.TempDir("first"))
 			testdirs = append(testdirs, h.TempDir("second"))
 		},
+		timeout: DefaultTimeoutFlag,
+	}
+	suite := NewSuite(opts, Tests{
+		"TempDir": htest,
 	})
 
 	buf := &bytes.Buffer{}
@@ -452,8 +473,8 @@ func TestTempFile(t *testing.T) {
 		OutputDir: suitedir,
 		Verbose:   true,
 	}
-	suite := NewSuite(opts, Tests{
-		"TempFile": func(h *H) {
+	htest := &HarnessTest{
+		run: func(h *H) {
 			f := h.TempFile("first")
 			testfiles = append(testfiles, f.Name())
 			f.Close()
@@ -461,6 +482,10 @@ func TestTempFile(t *testing.T) {
 			testfiles = append(testfiles, f.Name())
 			f.Close()
 		},
+		timeout: DefaultTimeoutFlag,
+	}
+	suite := NewSuite(opts, Tests{
+		"TempFile": htest,
 	})
 
 	buf := &bytes.Buffer{}

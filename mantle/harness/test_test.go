@@ -21,9 +21,12 @@ import (
 
 func TestTestsAdd(t *testing.T) {
 	var ts Tests
-	ts.Add("test1", nil)
-	ts.Add("test2", nil)
-	expect := Tests(map[string]Test{"test1": nil, "test2": nil})
+
+	ht1 := &HarnessTest{run: nil, timeout: 0}
+	ht2 := &HarnessTest{run: nil, timeout: 2}
+	ts.Add("test1", nil, 0)
+	ts.Add("test2", nil, 2)
+	expect := Tests(map[string]*HarnessTest{"test1": ht1, "test2": ht2})
 	if !reflect.DeepEqual(ts, expect) {
 		t.Errorf("got %v wanted %v", ts, expect)
 	}
@@ -31,17 +34,17 @@ func TestTestsAdd(t *testing.T) {
 
 func TestTestsAddDup(t *testing.T) {
 	var ts Tests
-	ts.Add("test1", nil)
+	ts.Add("test1", nil, 0)
 	defer func() {
 		if recover() == nil {
 			t.Errorf("Add did not panic")
 		}
 	}()
-	ts.Add("test1", nil)
+	ts.Add("test1", nil, 0)
 }
 
 func TestTestsList(t *testing.T) {
-	ts := Tests(map[string]Test{"test01": nil, "test2": nil})
+	ts := Tests(map[string]*HarnessTest{"test01": nil, "test2": nil})
 	list := ts.List()
 	expect := []string{"test01", "test2"}
 	if !reflect.DeepEqual(list, expect) {
