@@ -35,7 +35,7 @@ func init() {
 		// config file to include remote kargsfile.ign
 		UserData: conf.Ignition(`{
 			"ignition": {
-				"version": "3.0.0",
+				"version": "3.3.0",
 				"config": {
 					"merge": [
 						{
