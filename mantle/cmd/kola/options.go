@@ -366,12 +366,12 @@ func syncStreamOptions() error {
 	case "":
 		return fmt.Errorf("Must specify -b/--distro with --stream")
 	case "fcos":
-		artifacts, err = fcos.FetchStreamThisArchitecture(kola.Options.Stream)
+		artifacts, err = fcos.FetchCanonicalStreamArtifacts(kola.Options.Stream, kola.Options.CosaBuildArch)
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch stream")
 		}
 	case "rhcos":
-		artifacts, err = rhcos.FetchStreamThisArchitecture(kola.Options.Stream)
+		artifacts, err = rhcos.FetchStreamArtifacts(kola.Options.Stream, kola.Options.CosaBuildArch)
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch stream")
 		}
@@ -393,7 +393,9 @@ func syncStreamOptions() error {
 		return fmt.Errorf("Unhandled platform %s for stream", kolaPlatform)
 	}
 
-	fmt.Printf("Resolved distro=%s stream=%s platform=%s to release=%s %s\n", kola.Options.Distribution, kola.Options.Stream, kolaPlatform, release, extra)
+	fmt.Printf("Resolved distro=%s stream=%s platform=%s arch=%s to release=%s %s\n",
+		kola.Options.Distribution, kola.Options.Stream,
+		kolaPlatform, kola.Options.CosaBuildArch, release, extra)
 
 	return nil
 }
