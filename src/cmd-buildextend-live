@@ -5,6 +5,7 @@
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -103,6 +104,7 @@ if os.path.isdir(tmpdir):
     shutil.rmtree(tmpdir)
 
 tmpisoroot = os.path.join(tmpdir, 'live')
+tmpisocoreos = os.path.join(tmpisoroot, 'coreos')
 tmpisoimages = os.path.join(tmpisoroot, 'images')
 tmpisoimagespxe = os.path.join(tmpisoimages, 'pxeboot')
 tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
@@ -111,8 +113,8 @@ tmpinitrd_base = os.path.join(tmpdir, 'initrd')
 # contents of rootfs image
 tmpinitrd_rootfs = os.path.join(tmpdir, 'initrd-rootfs')
 
-for d in (tmpdir, tmpisoroot, tmpisoimages, tmpisoimagespxe, tmpisoisolinux,
-        tmpinitrd_base, tmpinitrd_rootfs):
+for d in (tmpdir, tmpisoroot, tmpisocoreos, tmpisoimages, tmpisoimagespxe,
+        tmpisoisolinux, tmpinitrd_base, tmpinitrd_rootfs):
     os.mkdir(d)
 
 # Number of padding bytes at the end of the ISO initramfs for embedding
@@ -207,6 +209,7 @@ def generate_iso():
     # other files
     rootfs_img = 'rootfs.img'
     ignition_img = 'ignition.img'
+    kargs_file = 'kargs.json'
 
     tmpisofile = os.path.join(tmpdir, iso_name)
 
@@ -321,6 +324,7 @@ def generate_iso():
     print(f'Substituting ISO kernel arguments: {kargs}')
 
     files_with_karg_embed_areas = {}
+    kargs_json = {'files': []}
     cmdline = ''
     karg_embed_area_length = 0
     # Grab all the contents from the live dir from the configs
@@ -353,6 +357,10 @@ def generate_iso():
 
                     length = karg_area_end.start() + len(karg_area_end[1]) - karg_area_start.start()
                     files_with_karg_embed_areas[dstfile] = karg_area_start.start()
+                    kargs_json['files'].append({
+                        'path': os.path.join(dir_suffix, filename),
+                        'offset': karg_area_start.start(),
+                    })
                     if karg_embed_area_length == 0:
                         karg_embed_area_length = length
                     elif length != karg_embed_area_length:
@@ -368,6 +376,14 @@ def generate_iso():
             fh.write('#' * karg_embed_area_length)
             fh.seek(0)
             fh.write(cmdline)
+        kargs_json['files'].sort(key=lambda f: f['path'])
+        kargs_json.update(
+            size=karg_embed_area_length,
+            default=cmdline.strip(),
+        )
+        with open(os.path.join(tmpisocoreos, kargs_file), 'w') as fh:
+            json.dump(kargs_json, fh, indent=2, sort_keys=True)
+            fh.write('\n')
 
     # These sections are based on lorax templates
     # see https://github.com/weldr/lorax/tree/master/share/templates.d/99-generic
