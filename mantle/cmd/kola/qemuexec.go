@@ -49,7 +49,7 @@ var (
 	hostname string
 	ignition string
 	butane   string
-	kargs    string
+	kargs    []string
 	knetargs string
 
 	ignitionFragments []string
@@ -75,7 +75,7 @@ const maxSecondaryNics = 16
 func init() {
 	root.AddCommand(cmdQemuExec)
 	cmdQemuExec.Flags().StringVarP(&knetargs, "knetargs", "", "", "Arguments for Ignition networking on kernel commandline")
-	cmdQemuExec.Flags().StringVarP(&kargs, "kargs", "", "", "Additional kernel arguments applied")
+	cmdQemuExec.Flags().StringArrayVar(&kargs, "kargs", nil, "Additional kernel arguments applied")
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
@@ -262,7 +262,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}
-	builder.AppendKernelArguments = kargs
+	builder.AppendKernelArguments = strings.Join(kargs, " ")
 	builder.Firmware = kola.QEMUOptions.Firmware
 	if kola.QEMUOptions.DiskImage != "" {
 		channel := "virtio"
