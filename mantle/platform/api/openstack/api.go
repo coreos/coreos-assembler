@@ -545,7 +545,22 @@ func (a *API) GetConsoleOutput(id string) (string, error) {
 	return servers.ShowConsoleOutput(a.computeClient, id, servers.ShowConsoleOutputOpts{}).Extract()
 }
 
-func (a *API) UploadImage(name, path, arch string) (string, error) {
+func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
+	// Get images.ImageVisibility from given visibility string.
+	// https://github.com/gophercloud/gophercloud/blob/9cf6777318713a51fbdb1238c19d1213712fd8b4/openstack/imageservice/v2/images/types.go#L52-L68
+	var imageVisibility images.ImageVisibility
+	switch visibility {
+	case "public":
+		imageVisibility = images.ImageVisibilityPublic
+	case "private":
+		imageVisibility = images.ImageVisibilityPrivate
+	case "shared":
+		imageVisibility = images.ImageVisibilityShared
+	case "community":
+		imageVisibility = images.ImageVisibilityCommunity
+	default:
+		return "", fmt.Errorf("Invalid given image visibility: %v", visibility)
+	}
 	image, err := images.Create(a.imageClient, images.CreateOpts{
 		Name:            name,
 		ContainerFormat: "bare",
@@ -553,6 +568,7 @@ func (a *API) UploadImage(name, path, arch string) (string, error) {
 		Tags:            []string{"mantle"},
 		// https://docs.openstack.org/glance/latest/admin/useful-image-properties.html#image-property-keys-and-values
 		Properties: map[string]string{"architecture": arch},
+		Visibility: &imageVisibility,
 	}).Extract()
 	if err != nil {
 		return "", fmt.Errorf("creating image: %v", err)
