@@ -38,6 +38,14 @@ def ostree_extract_efi(repo, commit, destdir):
                  commit, destdir])
 
 
+def ensure_glob(pathname, **kwargs):
+    '''Call glob.glob(), and fail if there are no results.'''
+    ret = glob.glob(pathname, **kwargs)
+    if not ret:
+        raise Exception(f'No matches for {pathname}')
+    return ret
+
+
 live_exclude_kargs = set([
     '$ignition_firstboot',   # unsubstituted variable in grub config
     'console',               # no serial console by default on ISO
@@ -493,6 +501,20 @@ echo "Booting via ESP..."
 configfile $prefix/grub.cfg
 boot
 ''')
+
+            # Delete fallback and its CSV file.  Its purpose is to create
+            # EFI boot variables, which we don't want when booting from
+            # removable media.  Replace it with a copy of GRUB.
+            #
+            # A future shim release will merge fallback.efi into the main
+            # shim binary and enable the fallback behavior when the CSV
+            # exists.  But for now, fail if fallback.efi is missing.
+            for path in ensure_glob(os.path.join(tmpimageefidir, "BOOT", "fb*.efi")):
+                os.unlink(path)
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "BOOT*.CSV")):
+                os.unlink(path)
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "grub*.efi")):
+                shutil.copy(path, os.path.join(tmpimageefidir, "BOOT"))
 
             # Install binaries from boot partition
             # Manually construct the tarball to ensure proper permissions and ownership
