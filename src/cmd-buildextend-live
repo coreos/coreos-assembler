@@ -480,6 +480,34 @@ def generate_iso():
             tmpimageefidir = os.path.join(tmpdir, "efi")
             ostree_extract_efi(repo, buildmeta_commit, tmpimageefidir)
 
+            # Find name of vendor directory
+            vendor_ids = [n for n in os.listdir(tmpimageefidir) if n != "BOOT"]
+            if len(vendor_ids) != 1:
+                raise Exception(f"did not find exactly one EFI vendor ID: {vendor_ids}")
+
+            # Delete fallback and its CSV file.  Its purpose is to create
+            # EFI boot variables, which we don't want when booting from
+            # removable media.
+            #
+            # A future shim release will merge fallback.efi into the main
+            # shim binary and enable the fallback behavior when the CSV
+            # exists.  But for now, fail if fallback.efi is missing.
+            for path in ensure_glob(os.path.join(tmpimageefidir, "BOOT", "fb*.efi")):
+                os.unlink(path)
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "BOOT*.CSV")):
+                os.unlink(path)
+
+            # Drop vendor copies of shim; we already have it in BOOT*.EFI in
+            # BOOT
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "shim*.efi")):
+                os.unlink(path)
+
+            # Consolidate remaining files into BOOT.  shim needs GRUB to be
+            # there, and the rest doesn't hurt.
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "*")):
+                shutil.move(path, os.path.join(tmpimageefidir, "BOOT"))
+            os.rmdir(os.path.join(tmpimageefidir, vendor_ids[0]))
+
             # Inject a stub grub.cfg pointing to the one in the main ISO image.
             #
             # When booting via El Torito, this stub is not used; GRUB reads
@@ -494,10 +522,7 @@ def generate_iso():
             # Torito at all.  In that case, GRUB thinks it booted from a
             # partition of the disk (a fake ESP created by isohybrid,
             # pointing to efiboot.img) and needs a grub.cfg there.
-            vendor_ids = [n for n in os.listdir(tmpimageefidir) if n != "BOOT"]
-            if len(vendor_ids) != 1:
-                raise Exception(f"did not find exactly one EFI vendor ID: {vendor_ids}")
-            with open(os.path.join(tmpimageefidir, vendor_ids[0], "grub.cfg"), "w") as fh:
+            with open(os.path.join(tmpimageefidir, "BOOT", "grub.cfg"), "w") as fh:
                 fh.write(f'''search --label "{volid}" --set root --no-floppy
 set prefix=($root)/EFI/{vendor_ids[0]}
 echo "Booting via ESP..."
