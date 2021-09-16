@@ -545,12 +545,14 @@ func (a *API) GetConsoleOutput(id string) (string, error) {
 	return servers.ShowConsoleOutput(a.computeClient, id, servers.ShowConsoleOutputOpts{}).Extract()
 }
 
-func (a *API) UploadImage(name, path string) (string, error) {
+func (a *API) UploadImage(name, path, arch string) (string, error) {
 	image, err := images.Create(a.imageClient, images.CreateOpts{
 		Name:            name,
 		ContainerFormat: "bare",
 		DiskFormat:      "qcow2",
 		Tags:            []string{"mantle"},
+		// https://docs.openstack.org/glance/latest/admin/useful-image-properties.html#image-property-keys-and-values
+		Properties: map[string]string{"architecture": arch},
 	}).Extract()
 	if err != nil {
 		return "", fmt.Errorf("creating image: %v", err)
