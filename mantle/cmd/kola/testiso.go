@@ -167,6 +167,19 @@ ExecStart=/bin/bash -c '[[ $(findmnt -nvro SOURCE /sysroot) == /dev/mapper/mpath
 [Install]
 RequiredBy=multi-user.target`)
 
+var verifyNoEFIBootEntry = fmt.Sprintf(`[Unit]
+Description=TestISO Verify No EFI Boot Entry
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+ConditionPathExists=/sys/firmware/efi
+Before=live-signal-ok.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
+[Install]
+RequiredBy=multi-user.target`)
+
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
@@ -567,6 +580,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 
 	liveConfig := *virtioJournalConfig
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
+	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
@@ -637,6 +651,7 @@ func testAsDisk(ctx context.Context, outdir string) error {
 	}
 
 	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
+	config.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 	builder.SetConfig(config)
 
 	mach, err := builder.Exec()

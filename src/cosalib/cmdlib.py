@@ -2,6 +2,7 @@
 """
 Houses helper code for python based coreos-assembler commands.
 """
+import glob
 import hashlib
 import json
 import os
@@ -378,3 +379,11 @@ def flatten_image_yaml(srcfile, base=None):
     fn = os.path.join(os.path.dirname(srcfile), srcyaml['include'])
     del base['include']
     return flatten_image_yaml(fn, base)
+
+
+def ensure_glob(pathname, **kwargs):
+    '''Call glob.glob(), and fail if there are no results.'''
+    ret = glob.glob(pathname, **kwargs)
+    if not ret:
+        raise Exception(f'No matches for {pathname}')
+    return ret

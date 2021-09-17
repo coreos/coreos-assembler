@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
@@ -159,11 +160,11 @@ func New(opts *Options) (*API, error) {
 	}
 
 	if a.opts.Image != "" {
-		tmp, err := a.ResolveImage(a.opts.Image)
+		uuid, err := a.ResolveImage(a.opts.Image)
 		if err != nil {
 			return nil, fmt.Errorf("resolving image: %v", err)
 		}
-		a.opts.Image = tmp
+		a.opts.Image = uuid
 	}
 
 	if a.opts.Network != "" {
@@ -280,11 +281,12 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		return nil, fmt.Errorf("retrieving security group: %v", err)
 	}
 
-	server, err := servers.Create(a.computeClient, keypairs.CreateOptsExt{
+	// Define options for the new instance. Use keypairs.CreateOptsExt
+	// to add our SSH key to the instance that way.
+	serverCreateOpts := keypairs.CreateOptsExt{
 		CreateOptsBuilder: servers.CreateOpts{
 			Name:      name,
 			FlavorRef: a.opts.Flavor,
-			ImageRef:  a.opts.Image,
 			Metadata: map[string]string{
 				"CreatedBy": "mantle",
 			},
@@ -297,6 +299,23 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 			UserData: []byte(userdata),
 		},
 		KeyName: sshKeyID,
+	}
+	// Create a boot device volume and create an instance from that by
+	// using "boot-from-volume". This means the instances boot a bit faster.
+	// Previously we were timing out because it was taking 10+ minutes for
+	// instances to come up in VexxHost. This helps with that.
+	bootVolume := []bootfromvolume.BlockDevice{
+		bootfromvolume.BlockDevice{
+			UUID:                a.opts.Image,
+			VolumeSize:          10,
+			DeleteOnTermination: true,
+			SourceType:          bootfromvolume.SourceImage,
+			DestinationType:     bootfromvolume.DestinationVolume,
+		},
+	}
+	server, err := bootfromvolume.Create(a.computeClient, bootfromvolume.CreateOptsExt{
+		CreateOptsBuilder: serverCreateOpts,
+		BlockDevice:       bootVolume,
 	}).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("creating server: %v", err)
@@ -526,12 +545,30 @@ func (a *API) GetConsoleOutput(id string) (string, error) {
 	return servers.ShowConsoleOutput(a.computeClient, id, servers.ShowConsoleOutputOpts{}).Extract()
 }
 
-func (a *API) UploadImage(name, path string) (string, error) {
+func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
+	// Get images.ImageVisibility from given visibility string.
+	// https://github.com/gophercloud/gophercloud/blob/9cf6777318713a51fbdb1238c19d1213712fd8b4/openstack/imageservice/v2/images/types.go#L52-L68
+	var imageVisibility images.ImageVisibility
+	switch visibility {
+	case "public":
+		imageVisibility = images.ImageVisibilityPublic
+	case "private":
+		imageVisibility = images.ImageVisibilityPrivate
+	case "shared":
+		imageVisibility = images.ImageVisibilityShared
+	case "community":
+		imageVisibility = images.ImageVisibilityCommunity
+	default:
+		return "", fmt.Errorf("Invalid given image visibility: %v", visibility)
+	}
 	image, err := images.Create(a.imageClient, images.CreateOpts{
 		Name:            name,
 		ContainerFormat: "bare",
 		DiskFormat:      "qcow2",
 		Tags:            []string{"mantle"},
+		// https://docs.openstack.org/glance/latest/admin/useful-image-properties.html#image-property-keys-and-values
+		Properties: map[string]string{"architecture": arch},
+		Visibility: &imageVisibility,
 	}).Extract()
 	if err != nil {
 		return "", fmt.Errorf("creating image: %v", err)
