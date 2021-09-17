@@ -1560,8 +1560,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.tempdir = ""
 	cleanupInst = false
 
-	// create the qmp.SocketMonitor
-	if err := util.Retry(10, 1*time.Second,
+	// Connect to the QMP socket which allows us to control qemu.  We wait up to 30s
+	// to avoid flakes on loaded CI systems.  But, probably rather than bumping this
+	// any higher it'd be better to try to reduce parallelism.
+	if err := util.Retry(30, 1*time.Second,
 		func() error {
 			sockMonitor, err := qmp.NewSocketMonitor("unix", inst.qmpSocketPath, 2*time.Second)
 			if err != nil {
