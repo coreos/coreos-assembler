@@ -93,3 +93,6 @@ python3-flufl-lock
 
 # entrypoint uses bsdtar for automatic compression detection
 bsdtar
+
+# For pulling from the prod OSTree repo, e.g. during release jobs
+fedora-repos-ostree
