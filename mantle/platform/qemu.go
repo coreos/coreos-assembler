@@ -1504,7 +1504,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	// The qmp socket path must be unique to the instance.
 	inst.qmpSocketPath = filepath.Join(builder.tempdir, fmt.Sprintf("qmp-%d.sock", time.Now().UnixNano()))
 	qmpID := "qemu-qmp"
-	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server,nowait", qmpID, inst.qmpSocketPath))
+	builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s,server=on,wait=off", qmpID, inst.qmpSocketPath))
 	builder.Append("-mon", fmt.Sprintf("chardev=%s,mode=control", qmpID))
 
 	// Set up the virtio channel to get Ignition failures by default
