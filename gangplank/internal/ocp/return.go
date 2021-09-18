@@ -154,7 +154,8 @@ func isKnownBuildMeta(n string) bool {
 	// check for specially named files
 	if strings.HasPrefix(n, "manifest-lock.generated") ||
 		n == "ostree-commit-object" ||
-		n == "commitmeta.json" {
+		n == "commitmeta.json" ||
+		n == "coreos-assembler-config-git.json" {
 		return true
 	}
 	// check for meta*json files
