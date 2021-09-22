@@ -75,6 +75,8 @@ systemd:
       contents: |
         [Unit]
         Description=Mount /var/lib/containers
+        # See https://github.com/coreos/coreos-assembler/pull/2457
+        After=ostree-remount.service
         After=mpath-var-lib-containers.service
         Before=kubelet.service
 
