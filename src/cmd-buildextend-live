@@ -417,7 +417,12 @@ def generate_iso():
         os.makedirs(os.path.join(tmpisoroot, 'boot/grub'))
         # can be EFI/fedora or EFI/redhat
         grubpath = ensure_glob(os.path.join(tmpisoroot, 'EFI/*/grub.cfg'))
+        if len(grubpath) != 1:
+            raise Exception(f'Found != 1 grub.cfg files: {grubpath}')
         shutil.move(grubpath[0], os.path.join(tmpisoroot, 'boot/grub/grub.cfg'))
+        for f in kargs_json['files']:
+            if re.match('^EFI/.*/grub.cfg$', f['path']):
+                f['path'] = 'boot/grub/grub.cfg'
 
         # safely remove things we don't need in the final ISO tree
         for d in ['EFI', 'isolinux', 'zipl.prm']:
