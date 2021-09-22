@@ -210,17 +210,6 @@ def make_stream_hash(src, dest):
                 outf.write(hashlib.sha256(buf).hexdigest() + '\n')
 
 
-def file_offset_in_iso(isoinfo, filename):
-    # -rw-rw-r--   1 1750 1750       553961457 Sep 18 2019 [   4733 00]  filename
-    #                           match the logical block number ^^^^ ||
-    #                                          file type, always 00 ^^
-    matches = list(re.finditer(r'\[\s*([0-9]+) 00\]\s+{}\s*$'.format(filename),
-                   isoinfo, re.MULTILINE))
-    if len(matches) != 1:
-        raise Exception('Found {} copies of {}'.format(len(matches), filename))
-    return int(matches[0].group(1)) * 2048  # assume 2 KB per logical block
-
-
 def generate_iso():
     # convention for kernel and initramfs names
     kernel_img = 'vmlinuz'
@@ -284,7 +273,13 @@ def generate_iso():
     with open(stamppath, 'w') as fh:
         fh.write(args.build + '\n')
 
-    # Add placeholder for Ignition CPIO file
+    # Add placeholder for Ignition CPIO file.  This allows an external tool,
+    # `coreos-installer iso ignition embed`, to modify an existing ISO image
+    # to embed a user's custom Ignition config.  The tool wraps the Ignition
+    # config in a cpio.xz and write it directly into this file in the ISO
+    # image.  The cpio.xz will be read into the initramfs filesystem at
+    # runtime and the Ignition Dracut module will ensure that the config is
+    # moved where Ignition will see it.
     with open(os.path.join(tmpisoimages, ignition_img), 'wb') as fdst:
         fdst.write(bytes(ignition_img_size))
 
@@ -353,7 +348,6 @@ def generate_iso():
     kargs = ' '.join(kargs_array)
     print(f'Substituting ISO kernel arguments: {kargs}')
 
-    files_with_karg_embed_areas = {}
     kargs_json = {'files': []}
     cmdline = ''
     karg_embed_area_length = 0
@@ -386,7 +380,6 @@ def generate_iso():
                         raise Exception(f'Default cmdline is different: "{cmdline}" != "{file_kargs}"')
 
                     length = karg_area_end.start() + len(karg_area_end[1]) - karg_area_start.start()
-                    files_with_karg_embed_areas[dstfile] = karg_area_start.start()
                     kargs_json['files'].append({
                         'path': os.path.join(dir_suffix, filename),
                         'offset': karg_area_start.start(),
@@ -394,18 +387,14 @@ def generate_iso():
                     if karg_embed_area_length == 0:
                         karg_embed_area_length = length
                     elif length != karg_embed_area_length:
-                        raise Exception(f"Karg embed areas of varying length {list(files_with_karg_embed_areas)}")
+                        raise Exception(f"Karg embed areas of varying length {kargs_json['files']}")
             with open(dstfile, 'w') as fh:
                 fh.write(buf)
             shutil.copystat(srcfile, dstfile)
             print(f'{srcfile} -> {dstfile}')
 
-    if len(files_with_karg_embed_areas) > 0:
+    if karg_embed_area_length > 0:
         assert(karg_embed_area_length > len(cmdline))
-        with open(os.path.join(tmpisoroot, '.cmdline'), 'w') as fh:
-            fh.write('#' * karg_embed_area_length)
-            fh.seek(0)
-            fh.write(cmdline)
         kargs_json.update(
             size=karg_embed_area_length,
             default=cmdline.strip(),
@@ -610,6 +599,8 @@ boot
             if os.path.exists(os.path.join(tmpisoroot, f['path']))]
     kargs_json['files'].sort(key=lambda f: f['path'])
     if kargs_json['files']:
+        # Store the location of "karg embed areas" for use by
+        # `coreos-installer iso kargs modify`
         with open(os.path.join(tmpisocoreos, kargs_file), 'w') as fh:
             json.dump(kargs_json, fh, indent=2, sort_keys=True)
             fh.write('\n')
@@ -661,77 +652,6 @@ boot
     run_verbose(genisoargs_minimal)
     if basearch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
-
-    isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
-                          stdout=subprocess.PIPE, text=True).stdout
-
-    # We've already created a file in the ISO with ignition_img_size
-    # bytes of zeroes.  Find the byte offset of that file within the ISO
-    # image and write it into a custom header at the end of the ISO 9660
-    # System Area, which is 32 KB at the start of the image "reserved for
-    # system use".  The System Area usually contains partition tables and
-    # the like, and we're assuming that none of our platforms use the last
-    # 24 bytes of it.
-    #
-    # This allows an external tool, `coreos-installer iso embed`, to modify
-    # an existing ISO image to embed a user's custom Ignition config.
-    # The tool wraps the Ignition config in a cpio.gz and uses our header
-    # to write it directly into the ISO image.  The cpio.gz will be read
-    # into the initramfs filesystem at runtime and the Ignition Dracut module
-    # will ensure that the config is moved where Ignition will see it.
-    #
-    # Skip on s390x because that platform uses an embedded El Torito image
-    # with its own copy of the initramfs.
-    #
-    # Recently, we also play a similar trick for injecting kernel arguments: we
-    # store the location of "karg embed areas" at the end of the System Area
-    # (in the 72 bytes before the 24 bytes for the initrd info). This is then
-    # picked up by `coreos-installer iso embed-kargs`.
-    if basearch != "s390x":
-        # size of System Area section at start of ISO9660 images
-        ISO_SYSTEM_AREA_SIZE = 32768
-
-        # number of karg files we allow for in the format
-        MAX_KARG_FILES = 6
-
-        # prune out karg files which don't exist anymore
-        files_with_karg_embed_areas = {k: v for (k, v) in
-                                       files_with_karg_embed_areas.items() if
-                                       os.path.exists(k)}
-
-        assert len(files_with_karg_embed_areas) <= MAX_KARG_FILES
-
-        # these can really never change without ratcheting on the
-        # coreos-installer side first
-        INITRDFMT = '<8s2Q'
-        assert struct.calcsize(INITRDFMT) == 24
-        KARGSFMT = f"<8s{MAX_KARG_FILES+1+1}Q"  # +1 for area length and +1 for offset to default read-only '.cmdline'
-        assert struct.calcsize(KARGSFMT) == 72
-
-        # Start of the Ignition padding within the ISO
-        offset = file_offset_in_iso(isoinfo, ignition_img)
-        with open(tmpisofile, 'r+b') as isofh:
-            # Verify that the calculated byte range is empty
-            isofh.seek(offset)
-            if isofh.read(ignition_img_size) != bytes(ignition_img_size):
-                raise Exception(f'ISO image {ignition_img_size} bytes at {offset} are not zero')
-
-            # Write header at the end of the System Area
-            isofh.seek(ISO_SYSTEM_AREA_SIZE - (struct.calcsize(INITRDFMT) +
-                                               struct.calcsize(KARGSFMT)))
-
-            offsets = [0] * (MAX_KARG_FILES + 1)  # +1 for offset to default
-            # This is ours default read-only '.cmdline' file, which is used for `coreos-installer iso kargs reset ISO`
-            offsets[0] = file_offset_in_iso(isoinfo, '.cmdline')
-
-            for i, fn in enumerate(files_with_karg_embed_areas):
-                offset_in_file = files_with_karg_embed_areas[fn]
-                offsets[i + 1] = file_offset_in_iso(isoinfo, os.path.basename(fn)) + offset_in_file
-            isofh.write(struct.pack(KARGSFMT, b'coreKarg', karg_embed_area_length, *offsets))
-            # Magic number + offset + length
-            isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, ignition_img_size))
-            print(f'Embedded {ignition_img_size} bytes Ignition config space at {offset}')
-
     # this consumes the minimal image
     run_verbose(['coreos-installer', 'pack', 'minimal-iso',
                  tmpisofile, f'{tmpisofile}.minimal', "--consume"])
