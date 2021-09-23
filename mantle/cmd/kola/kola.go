@@ -20,10 +20,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/coreos/pkg/capnslog"
@@ -526,7 +524,7 @@ func syncFindParentImageOptions() error {
 		}
 		qcowURL := parentBaseURL + parentCosaBuild.BuildArtifacts.Qemu.Path
 		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.BuildArtifacts.Qemu.Path)
-		decompressedQcowLocal, err := downloadImageAndDecompress(qcowURL, qcowLocal, skipSignature)
+		decompressedQcowLocal, err := util.DownloadImageAndDecompress(qcowURL, qcowLocal, skipSignature)
 		if err != nil {
 			return err
 		}
@@ -546,28 +544,6 @@ func syncFindParentImageOptions() error {
 	}
 
 	return nil
-}
-
-// Note this is a no-op if the decompressed dest already exists.
-func downloadImageAndDecompress(url, compressedDest string, skipSignature bool) (string, error) {
-	var decompressedDest = strings.TrimSuffix(strings.TrimSuffix(compressedDest, ".xz"), ".gz")
-	if exists, err := util.PathExists(decompressedDest); err != nil {
-		return "", err
-	} else if !exists {
-		targetdir := filepath.Dir(decompressedDest)
-		downloadArgs := []string{"download", "--decompress", "-C", targetdir}
-		if skipSignature {
-			downloadArgs = append(downloadArgs, "--insecure")
-		}
-		downloadArgs = append(downloadArgs, []string{"-u", url}...)
-		cmd := exec.Command("coreos-installer", downloadArgs...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", err
-		}
-	}
-	return decompressedDest, nil
 }
 
 // Returns the URL to a parent build that can be used as a base for upgrade
