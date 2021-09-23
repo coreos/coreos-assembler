@@ -133,6 +133,10 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		MultiPathDisk: multiPathDisk,
 	}
 
+	if options.OverrideBackingFile != "" {
+		primaryDisk.BackingFile = options.OverrideBackingFile
+	}
+
 	err = builder.AddBootDisk(&primaryDisk)
 	if err != nil {
 		return nil, err
