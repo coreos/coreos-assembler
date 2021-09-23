@@ -31,12 +31,14 @@ var (
 		SilenceUsage: true,
 	}
 
-	id string
+	id    string
+	force bool
 )
 
 func init() {
 	OpenStack.AddCommand(cmdDelete)
 	cmdDelete.Flags().StringVar(&id, "id", "", "image ID")
+	cmdDelete.Flags().BoolVar(&force, "force", false, "Force deletion even if protected")
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
@@ -45,7 +47,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Couldn't find image: %v\n", err)
 		os.Exit(1)
 	}
-	err = API.DeleteImage(img)
+	err = API.DeleteImage(img, force)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't delete image: %v\n", err)
 		os.Exit(1)

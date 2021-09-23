@@ -545,7 +545,7 @@ func (a *API) GetConsoleOutput(id string) (string, error) {
 	return servers.ShowConsoleOutput(a.computeClient, id, servers.ShowConsoleOutputOpts{}).Extract()
 }
 
-func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
+func (a *API) UploadImage(name, path, arch, visibility string, protected bool) (string, error) {
 	// Get images.ImageVisibility from given visibility string.
 	// https://github.com/gophercloud/gophercloud/blob/9cf6777318713a51fbdb1238c19d1213712fd8b4/openstack/imageservice/v2/images/types.go#L52-L68
 	var imageVisibility images.ImageVisibility
@@ -569,6 +569,7 @@ func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
 		// https://docs.openstack.org/glance/latest/admin/useful-image-properties.html#image-property-keys-and-values
 		Properties: map[string]string{"architecture": arch},
 		Visibility: &imageVisibility,
+		Protected:  &protected,
 	}).Extract()
 	if err != nil {
 		return "", fmt.Errorf("creating image: %v", err)
@@ -576,7 +577,7 @@ func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
 
 	data, err := os.Open(path)
 	if err != nil {
-		if errDelete := a.DeleteImage(image.ID); errDelete != nil {
+		if errDelete := a.DeleteImage(image.ID, true); errDelete != nil {
 			return "", fmt.Errorf("deleting image: %v after opening image file: %v", errDelete, err)
 		}
 		return "", fmt.Errorf("opening image file: %v", err)
@@ -585,7 +586,7 @@ func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
 
 	err = imagedata.Upload(a.imageClient, image.ID, data).ExtractErr()
 	if err != nil {
-		if errDelete := a.DeleteImage(image.ID); errDelete != nil {
+		if errDelete := a.DeleteImage(image.ID, true); errDelete != nil {
 			return "", fmt.Errorf("deleting image: %v after uploading image data: %v", errDelete, err)
 		}
 		return "", fmt.Errorf("uploading image data: %v", err)
@@ -594,7 +595,45 @@ func (a *API) UploadImage(name, path, arch, visibility string) (string, error) {
 	return image.ID, nil
 }
 
-func (a *API) DeleteImage(imageID string) error {
+// TODO: We can remove this block when the follow PR lands:
+//       https://github.com/gophercloud/gophercloud/pull/2221
+type ReplaceImageProtected struct {
+	NewProtected bool
+}
+
+func (r ReplaceImageProtected) ToImagePatchMap() map[string]interface{} {
+	return map[string]interface{}{
+		"op":    "replace",
+		"path":  "/protected",
+		"value": r.NewProtected,
+	}
+}
+
+func (a *API) DeleteImage(imageID string, force bool) error {
+	// Detect if the image is protected from deletion. If protected
+	// and force=true then change protection status and delete it.
+	image, err := images.Get(a.imageClient, imageID).Extract()
+	if err != nil {
+		return err
+	}
+	if image.Protected {
+		if force {
+			updateOpts := images.UpdateOpts{
+				ReplaceImageProtected{
+					NewProtected: false,
+				},
+			}
+			image, err = images.Update(a.imageClient, imageID, updateOpts).Extract()
+			if err != nil {
+				return fmt.Errorf(
+					"Error removing protection from image %s: %v", imageID, err)
+			}
+		} else {
+			return fmt.Errorf(
+				"Image %s is protected from deletion and force is not enabled", imageID)
+		}
+	}
+	// Finally, delete the image.
 	return images.Delete(a.imageClient, imageID).ExtractErr()
 }
 

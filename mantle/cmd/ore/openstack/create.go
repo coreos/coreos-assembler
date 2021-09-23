@@ -40,6 +40,7 @@ After a successful run, the final line of output will be the ID of the image.
 	name       string
 	arch       string
 	visibility string
+	protected  bool
 )
 
 func init() {
@@ -50,10 +51,11 @@ func init() {
 		"path to CoreOS image (build with: ./image_to_vm.sh --format=openstack ...)")
 	cmdCreate.Flags().StringVar(&name, "name", "", "image name")
 	cmdCreate.Flags().StringVar(&visibility, "visibility", "private", "Image visibility within OpenStack")
+	cmdCreate.Flags().BoolVar(&protected, "protected", false, "Image deletion protection")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	id, err := API.UploadImage(name, path, arch, visibility)
+	id, err := API.UploadImage(name, path, arch, visibility, protected)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create image: %v\n", err)
 		os.Exit(1)
