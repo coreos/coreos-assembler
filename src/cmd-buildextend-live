@@ -526,8 +526,15 @@ boot
             # Note: virt-make-fs lets us do this as non-root
             efibootfile = os.path.join(tmpisoimages, 'efiboot.img')
             os.environ["LIBGUESTFS_BACKEND"] = "direct"
-            run_verbose(['virt-make-fs', '--type=vfat', efitarfile.name,
-                         efibootfile])
+            # On RHEL 8, when booting from a disk device (rather than a CD),
+            # https://github.com/systemd/systemd/issues/14408 causes the
+            # hybrid ESP to race with the ISO9660 filesystem for the
+            # /dev/disk/by-label symlink unless the ESP has its own label,
+            # so set EFI-SYSTEM for consistency with the metal image.
+            # This should not be needed on Fedora or RHEL 9, but seems like
+            # a good thing to do anyway.
+            run_verbose(['virt-make-fs', '--type=vfat', '--label=EFI-SYSTEM',
+                         efitarfile.name, efibootfile])
 
         genisoargs += ['-eltorito-alt-boot',
                        '-efi-boot', 'images/efiboot.img',
