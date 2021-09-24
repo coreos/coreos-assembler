@@ -541,7 +541,7 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	return &instmachine, nil
 }
 
-func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline bool) (*InstalledMachine, error) {
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*InstalledMachine, error) {
 	if !inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
 	} else if inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative == nil {
@@ -549,6 +549,9 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	}
 	if inst.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
 		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Meta.Name)
+	}
+	if minimal && offline { // ideally this'd be one enum parameter
+		panic("Can't run minimal install offline")
 	}
 
 	// XXX: we do support this now, via `coreos-installer iso kargs`
@@ -623,7 +626,34 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 			http.Serve(listener, mux)
 		}()
 		baseurl := fmt.Sprintf("http://%s:%d", defaultQemuHostIPv4, port)
-		srcOpt = fmt.Sprintf("--image-url %s/%s", baseurl, metalname)
+
+		// This is subtle but: for the minimal case, while we need networking to fetch the
+		// rootfs, the primary install flow will still rely on osmet. So let's keep srcOpt
+		// as "" to exercise that path. In the future, this could be a separate scenario
+		// (likely we should drop the "offline" naming and have a "remote" tag on the
+		// opposite scenarios instead which fetch the metal image, so then we'd have
+		// "[min]iso-install" and "[min]iso-remote-install").
+		if !minimal {
+			srcOpt = fmt.Sprintf("--image-url %s/%s", baseurl, metalname)
+		}
+
+		if minimal {
+			minisopath := filepath.Join(tempdir, "minimal.iso")
+			// This is obviously also available in the build dir, but to be realistic,
+			// let's take it from --rootfs-output
+			rootfs_path := filepath.Join(tempdir, "rootfs.img")
+			// Ideally we'd use the coreos-installer of the target build here, because it's part
+			// of the test workflow, but that's complex... Sadly, probably easiest is to spin up
+			// a VM just to get the minimal ISO.
+			cmd := exec.Command("coreos-installer", "iso", "extract", "minimal-iso", srcisopath,
+				"--output", minisopath, "--rootfs-output", rootfs_path,
+				"--rootfs-url", baseurl+"/rootfs.img")
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				return nil, errors.Wrapf(err, "running coreos-installer iso extract minimal")
+			}
+			srcisopath = minisopath
+		}
 
 		// In this case; the target config is jut a tiny wrapper that wants to
 		// fetch our hosted target.ign config
