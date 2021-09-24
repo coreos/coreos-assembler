@@ -70,6 +70,8 @@ const (
 	scenarioPXEInstall = "pxe-install"
 	scenarioISOInstall = "iso-install"
 
+	scenarioMinISOInstall = "miniso-install"
+
 	scenarioPXEOfflineInstall = "pxe-offline-install"
 	scenarioISOOfflineInstall = "iso-offline-install"
 
@@ -82,6 +84,7 @@ var allScenarios = map[string]bool{
 	scenarioPXEOfflineInstall: true,
 	scenarioISOInstall:        true,
 	scenarioISOOfflineInstall: true,
+	scenarioMinISOInstall:     true,
 	scenarioISOLiveLogin:      true,
 	scenarioISOAsDisk:         true,
 }
@@ -187,7 +190,8 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
 	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin, scenarioISOAsDisk}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall}))
+	// XXX: add scenarioMinISOInstall to the default set once the feature is stable
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin, scenarioISOAsDisk}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall, scenarioMinISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
@@ -299,6 +303,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	if noiso {
 		delete(targetScenarios, scenarioISOInstall)
 		delete(targetScenarios, scenarioISOOfflineInstall)
+		delete(targetScenarios, scenarioMinISOInstall)
 		delete(targetScenarios, scenarioISOLiveLogin)
 	}
 
@@ -375,7 +380,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false); err != nil {
+		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false, false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOInstall)
 		}
 		printSuccess(scenarioISOInstall)
@@ -386,7 +391,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true); err != nil {
+		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true, false); err != nil {
 			return errors.Wrapf(err, "scenario %s", scenarioISOOfflineInstall)
 		}
 		printSuccess(scenarioISOOfflineInstall)
@@ -416,6 +421,17 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			// no hybrid partition table to boot from
 			fmt.Printf("%s unsupported on %s; skipping\n", scenarioISOAsDisk, system.RpmArch())
 		}
+	}
+	if _, ok := targetScenarios[scenarioMinISOInstall]; ok {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
+		}
+		ranTest = true
+		instIso := baseInst // Pretend this is Rust and I wrote .copy()
+		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstall), false, true); err != nil {
+			return errors.Wrapf(err, "scenario %s", scenarioMinISOInstall)
+		}
+		printSuccess(scenarioMinISOInstall)
 	}
 
 	if !ranTest {
@@ -552,7 +568,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
+func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offline, minimal bool) error {
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
@@ -589,7 +605,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
 	}
 
-	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, offline)
+	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, offline, minimal)
 	if err != nil {
 		return errors.Wrapf(err, "running iso install")
 	}
