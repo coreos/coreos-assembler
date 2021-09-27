@@ -330,7 +330,7 @@ func syncCosaOptions() error {
 		}
 	case "gce":
 		// Pick up the GCP image from the build metadata
-		if kola.GCEOptions.Image == "" {
+		if kola.GCEOptions.Image == "" && kola.CosaBuild.Meta.Gcp != nil {
 			kola.GCEOptions.Image =
 				fmt.Sprintf("projects/%s/global/images/%s",
 					kola.CosaBuild.Meta.Gcp.ImageProject,
