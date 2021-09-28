@@ -117,9 +117,8 @@ for d in (tmpdir, tmpisoroot, tmpisocoreos, tmpisoimages, tmpisoimagespxe,
         tmpisoisolinux, tmpinitrd_base, tmpinitrd_rootfs):
     os.mkdir(d)
 
-# Number of padding bytes at the end of the ISO initramfs for embedding
-# an Ignition config
-initrd_ignition_padding = 256 * 1024
+# Size of file used to embed an Ignition config within a CPIO.
+ignition_img_size = 256 * 1024
 
 
 # The kernel requires that uncompressed cpio archives appended to an initrd
@@ -265,9 +264,9 @@ def generate_iso():
     with open(stamppath, 'w') as fh:
         fh.write(args.build + '\n')
 
-    # Add Ignition padding file to ISO image
+    # Add placeholder for Ignition CPIO file
     with open(os.path.join(tmpisoimages, ignition_img), 'wb') as fdst:
-        fdst.write(bytes(initrd_ignition_padding))
+        fdst.write(bytes(ignition_img_size))
 
     # Add osmet files
     tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
@@ -594,7 +593,7 @@ boot
     isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
                           stdout=subprocess.PIPE, text=True).stdout
 
-    # We've already created a file in the ISO with initrd_ignition_padding
+    # We've already created a file in the ISO with ignition_img_size
     # bytes of zeroes.  Find the byte offset of that file within the ISO
     # image and write it into a custom header at the end of the ISO 9660
     # System Area, which is 32 KB at the start of the image "reserved for
@@ -642,8 +641,8 @@ boot
         with open(tmpisofile, 'r+b') as isofh:
             # Verify that the calculated byte range is empty
             isofh.seek(offset)
-            if isofh.read(initrd_ignition_padding) != bytes(initrd_ignition_padding):
-                raise Exception(f'ISO image {initrd_ignition_padding} bytes at {offset} are not zero')
+            if isofh.read(ignition_img_size) != bytes(ignition_img_size):
+                raise Exception(f'ISO image {ignition_img_size} bytes at {offset} are not zero')
 
             # Write header at the end of the System Area
             isofh.seek(ISO_SYSTEM_AREA_SIZE - (struct.calcsize(INITRDFMT) +
@@ -658,8 +657,8 @@ boot
                 offsets[i + 1] = file_offset_in_iso(isoinfo, os.path.basename(fn)) + offset_in_file
             isofh.write(struct.pack(KARGSFMT, b'coreKarg', karg_embed_area_length, *offsets))
             # Magic number + offset + length
-            isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, initrd_ignition_padding))
-            print(f'Embedded {initrd_ignition_padding} bytes Ignition config space at {offset}')
+            isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, ignition_img_size))
+            print(f'Embedded {ignition_img_size} bytes Ignition config space at {offset}')
 
     buildmeta['images'].update({
         'live-iso': {
