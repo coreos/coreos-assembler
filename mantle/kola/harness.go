@@ -102,7 +102,8 @@ var (
 	DenylistedTests []string // tests which are on the denylist
 	Tags            []string // tags to be ran
 
-	extTestNum = 1 // Assigns a unique number to each non-exclusive external test
+	extTestNum  = 1 // Assigns a unique number to each non-exclusive external test
+	failedTests []*register.Test
 
 	consoleChecks = []struct {
 		desc     string
@@ -579,6 +580,14 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 	for _, test := range tests {
 		test := test // for the closure
 		run := func(h *harness.H) {
+			defer func() {
+				// Keep track of failed tests for a rerun
+				// Non-exclusive test wrapper is not rerun since each non-exclusive
+				// test is run in its own VM during the rerun
+				if h.Failed() && test.Name != "non-exclusive-tests" {
+					failedTests = append(failedTests, test)
+				}
+			}()
 			// We launch a seperate cluster for each kola test
 			// At the end of the test, its cluster is destroyed
 			runTest(h, test, pltfrm, flight)
@@ -586,26 +595,65 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 		htests.Add(test.Name, run)
 	}
 
-	suite := harness.NewSuite(opts, htests)
-	err = suite.Run()
-	caughtTestError := err != nil
-	if !propagateTestErrors {
-		err = nil
-	}
+	handleSuiteErrors := func(outputDir string, suiteErr error) error {
+		caughtTestError := suiteErr != nil
 
-	if TAPFile != "" {
-		src := filepath.Join(outputDir, "test.tap")
-		if err2 := system.CopyRegularFile(src, TAPFile); err == nil && err2 != nil {
-			err = err2
+		if !propagateTestErrors {
+			suiteErr = nil
 		}
+
+		if TAPFile != "" {
+			src := filepath.Join(outputDir, "test.tap")
+			err := system.CopyRegularFile(src, TAPFile)
+			if suiteErr == nil && err != nil {
+				return err
+			}
+		}
+
+		if caughtTestError {
+			fmt.Printf("FAIL, output in %v\n", outputDir)
+		} else {
+			fmt.Printf("PASS, output in %v\n", outputDir)
+		}
+		return suiteErr
 	}
 
-	if caughtTestError {
-		fmt.Printf("FAIL, output in %v\n", outputDir)
-	} else {
-		fmt.Printf("PASS, output in %v\n", outputDir)
+	suite := harness.NewSuite(opts, htests)
+	firstRunErr := suite.Run()
+	firstRunErr = handleSuiteErrors(outputDir, firstRunErr)
+
+	if len(failedTests) > 0 {
+		newOutputDir := filepath.Join(outputDir, "rerun")
+		err = rerunFailedTests(flight, newOutputDir, pltfrm, versionStr)
+		handleSuiteErrors(newOutputDir, err)
 	}
 
+	// If the intial run failed and the rerun passed, we still return an error
+	return firstRunErr
+}
+
+func rerunFailedTests(flight platform.Flight, outputDir string, pltfrm string, versionStr string) error {
+	opts := harness.Options{
+		OutputDir: outputDir,
+		Parallel:  TestParallelism,
+		Verbose:   true,
+		Reporters: reporters.Reporters{
+			reporters.NewJSONReporter("rerun-report.json", pltfrm, versionStr),
+		},
+	}
+
+	var htests harness.Tests
+	for _, test := range failedTests {
+		test := test // for the closure
+		run := func(h *harness.H) {
+			runTest(h, test, pltfrm, flight)
+		}
+		htests.Add(test.Name, run)
+	}
+
+	suite := harness.NewSuite(opts, htests)
+	fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
+	err := suite.Run()
 	return err
 }
 
@@ -1055,6 +1103,12 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 			for _, t := range tests {
 				t := t
 				run := func(h *harness.H) {
+					defer func() {
+						if h.Failed() {
+							failedTests = append(failedTests, t)
+						}
+					}()
+
 					// Install external test executable
 					if t.ExternalTest != "" {
 						setupExternalTest(h, t, tcluster)
