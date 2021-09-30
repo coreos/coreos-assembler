@@ -192,6 +192,7 @@ Here's an example `kola.json`:
     "requiredTag": "special",
     "additionalDisks": [ "5G" ],
     "minMemory": 4096,
+    "timeoutMin": 8,
     "exclusive": true
 }
 ```
@@ -223,6 +224,9 @@ The `minMemory` key takes a size in MB and ensures that an instance type with
 at least the specified amount of memory is used. On QEMU, this is equivalent to
 the `--memory` argument to `qemuexec`. This is currently only enforced on
 `qemu-unpriv`.
+
+The `timeoutMin` key takes a positive integer and specifies a timeout for the test 
+in minutes. After the specified amount of time, the test will be interrupted.
 
 The `exclusive` key takes a boolean value. If `true`, the test will be run by 
 itself in its own VM such that other tests do not conflict with it. If this key 
