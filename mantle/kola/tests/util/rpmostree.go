@@ -53,13 +53,9 @@ type simplifiedRpmOstreeStatus struct {
 // a limited representation of the output of `rpm-ostree status --json`
 func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifiedRpmOstreeStatus, error) {
 	target := simplifiedRpmOstreeStatus{}
-	rpmOstreeJSON, err := c.SSH(m, "rpm-ostree status --json")
-	if err != nil {
-		return target, fmt.Errorf("Could not get rpm-ostree status: %v", err)
-	}
+	rpmOstreeJSON := c.MustSSH(m, "rpm-ostree status --json")
 
-	err = json.Unmarshal(rpmOstreeJSON, &target)
-	if err != nil {
+	if err := json.Unmarshal(rpmOstreeJSON, &target); err != nil {
 		return target, fmt.Errorf("Couldn't umarshal the rpm-ostree status JSON data: %v", err)
 	}
 
