@@ -872,7 +872,9 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 				return errors.Wrapf(err, "reading %s", c.Name())
 			}
 			userdata = conf.Ignition(string(v))
-		} else if isreg && (c.Name() == "config.bu" || c.Name() == "config.fcc") {
+		} else if isreg && c.Name() == "config.fcc" {
+			return errors.Wrapf(err, "%s is not supported anymore; rename it to config.bu", c.Name())
+		} else if isreg && (c.Name() == "config.bu") {
 			v, err := ioutil.ReadFile(filepath.Join(dir, c.Name()))
 			if err != nil {
 				return errors.Wrapf(err, "reading %s", c.Name())
