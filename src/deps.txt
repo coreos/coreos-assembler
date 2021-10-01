@@ -85,8 +85,8 @@ python3-jsonschema
 # automatically
 coreos-installer
 
-# For the ability to easily pass in an fcc to kola
-fcct
+# For the ability to easily pass in a Butane config to kola
+butane
 
 # Support for meta.json file locking
 python3-flufl-lock
