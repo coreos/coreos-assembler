@@ -94,7 +94,7 @@ if [ -n "${projectdir}" ]; then
     rm _install -rf
     make
     make install DESTDIR="$(pwd)/_install"
-    fastref="$(basename "${projectdir}")"
+    fastref=cosa/fastbuild/"$(basename "${projectdir}")"
     version="$(git describe --tags --abbrev=10)"
     if ! git diff --quiet; then
         version="${version}+dirty"
@@ -102,7 +102,7 @@ if [ -n "${projectdir}" ]; then
     outdir=${projectdir}/.cosa
     rootfsoverrides="${projectdir}/_install"
 else
-    fastref=fastbuild
+    fastref=cosa/fastbuild/${name}
     version="$(date +"%s")"
     outdir="${workdir}/tmp"
     rootfsoverrides="${workdir}/overrides/rootfs"
@@ -143,7 +143,7 @@ commit=$(ostree --repo="${tmprepo}" rev-parse "${fastref}")
 if [ -z "${projectdir}" ]; then
     restore_etc
 fi
-imgname="${fastref}-${version}-qemu.qcow2"
+imgname="$(basename "${fastref}")-${version}-qemu.qcow2"
 # Prune previous images
 rm -vf "${outdir}"/*.qcow2
 qemu-img create -f qcow2 -o backing_fmt=qcow2,backing_file="${previous_builddir}/${previous_qemu}" "${imgname}.tmp" 20G
