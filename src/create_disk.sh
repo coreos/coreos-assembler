@@ -247,6 +247,8 @@ fi
 # Now that we have the basic disk layout, initialize the basic
 # OSTree layout, load in the ostree commit and deploy it.
 ostree admin init-fs --modern $rootfs
+# Initialize the "stateroot"
+ostree admin os-init "$os_name" --sysroot $rootfs
 if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
@@ -257,7 +259,6 @@ if test -n "${remote_name}"; then
 else
     deploy_ref=$commit
 fi
-ostree admin os-init "$os_name" --sysroot $rootfs
 # Note that $ignition_firstboot is interpreted by grub at boot time,
 # *not* the shell here.  Hence the backslash escape.
 allkargs="$extrakargs \$ignition_firstboot"
