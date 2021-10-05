@@ -28,10 +28,11 @@ $ cosa fetch && cosa build
 
 ### `manifest.yaml`
 
-For generating OSTree commits, cosa uses `manifest.yaml`: An rpm-ostree "manifest" or "treefile", which mostly boils
-down to a list of RPMs and a set of rpm-md repositories
-they come from.  It also supports `postprocess` to make
-arbitrary changes.  See the [upstream docs](https://github.com/projectatomic/rpm-ostree/blob/master/docs/manual/treefile.md).
+For generating OSTree commits, cosa uses `manifest.yaml`: An rpm-ostree
+"manifest" or "treefile", which mostly boils down to a list of RPMs and a set
+of rpm-md repositories they come from. It also supports `postprocess` to make
+arbitrary changes. See the rpm-ostree documentation for the [Treefile format
+reference](https://coreos.github.io/rpm-ostree/treefile/).
 
 ### `overlay.d/`
 
