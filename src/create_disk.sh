@@ -66,6 +66,12 @@ disk=$(realpath /dev/disk/by-id/virtio-target)
 
 config="${config:?--config must be defined}"
 
+# https://github.com/coreos/coreos-assembler/pull/2480
+dump_err_info () {
+    lsblk -f || true
+}
+trap dump_err_info ERR
+
 # Parse the passed config JSON and extract a mandatory value
 getconfig() {
     k=$1
