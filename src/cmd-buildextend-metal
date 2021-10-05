@@ -139,6 +139,12 @@ cat image-default.json "${image_json}" | jq -s add > image-configured.json
 # We do some extra handling of the rootfs here; it feeds into size estimation.
 rootfs_type=$(jq -re .rootfs < image-configured.json)
 
+deploy_container=
+container_imgref=$(jq -r '.["container-imgref"]//""' < image-configured.json)
+if test -n "${container_imgref}" || jq -re '.["deploy-via-container"]' < image-configured.json >/dev/null; then
+    deploy_container=ostree-unverified-image:oci-archive:$builddir/$(meta_key images.ostree.path)
+fi
+
 # fs-verity requires block size = page size. We need to take that into account
 # in the disk size estimation due to higher fragmentation on larger blocks.
 BLKSIZE=""
@@ -204,6 +210,8 @@ cat >image-dynamic.json << EOF
     "osname": "${name}",
     "buildid": "${build}",
     "imgid": "${img}",
+    "deploy-container": "${deploy_container}",
+    "container-imgref": "${container_imgref}",
     "ostree-commit": "${commit}",
     "ostree-ref": "${ref}",
     "ostree-repo": "${ostree_repo}"
