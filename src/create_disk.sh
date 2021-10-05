@@ -99,6 +99,8 @@ commit=$(getconfig "ostree-commit")
 ref=$(getconfig "ostree-ref")
 # We support not setting a remote name (used by RHCOS)
 remote_name=$(getconfig_def "ostree-remote" "")
+deploy_container=$(getconfig "deploy-container" "")
+container_imgref=$(getconfig "container-imgref" "")
 os_name=$(getconfig "osname")
 rootfs_size=$(getconfig "rootfs-size")
 buildid=$(getconfig "buildid")
@@ -249,26 +251,45 @@ fi
 ostree admin init-fs --modern $rootfs
 # Initialize the "stateroot"
 ostree admin os-init "$os_name" --sysroot $rootfs
+
+# Propagate flags into target repository
 if [ "${rootfs_type}" = "ext4verity" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
-time ostree pull-local --repo $rootfs/ostree/repo "$ostree" "$commit"
-if test -n "${remote_name}"; then
-    deploy_ref="${remote_name}:${ref}"
-    ostree refs --repo $rootfs/ostree/repo --create "${deploy_ref}" "${commit}"
-else
-    deploy_ref=$commit
-fi
+
+# Compute kargs
 # Note that $ignition_firstboot is interpreted by grub at boot time,
 # *not* the shell here.  Hence the backslash escape.
 allkargs="$extrakargs \$ignition_firstboot"
-kargsargs=""
-for karg in $allkargs
-do
-	kargsargs+="--karg-append=$karg "
-done
-ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
 
+if test -n "${deploy_container}"; then
+    kargsargs=""
+    for karg in $allkargs
+    do
+        kargsargs+="--karg=$karg "
+    done
+    rpm-ostree ex-container image deploy --imgref "${deploy_container}" \
+        ${container_imgref:+--target-imgref $container_imgref} \
+        --stateroot "$os_name" --sysroot $rootfs $kargsargs
+else
+    # Pull the commit
+    time ostree pull-local --repo $rootfs/ostree/repo "$ostree" "$commit"
+    # Deploy it, using an optional remote prefix
+    if test -n "${remote_name}"; then
+        deploy_ref="${remote_name}:${ref}"
+        ostree refs --repo $rootfs/ostree/repo --create "${deploy_ref}" "${commit}"
+    else
+        deploy_ref=$commit
+    fi
+    kargsargs=""
+    for karg in $allkargs
+    do
+        kargsargs+="--karg-append=$karg "
+    done
+    ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
+fi
+# Note that at the current time, this only supports deploying non-layered
+# container images; xref https://github.com/ostreedev/ostree-rs-ext/issues/143
 deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${commit}.0"
 test -d "${deploy_root}"
 
