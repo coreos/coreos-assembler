@@ -18,12 +18,11 @@ coreos-assembler operates on a "build directory", which can contain multiple
 builds. A build is a pairing of an OSTree commit (stored as `*-ostree.tar`) as
 well as an optional set of disk images.
 
-This is in contrast to
-[rpm-ostree](https://github.com/projectatomic/rpm-ostree/) which just generates
-OSTree commits, and doesn't have anything to do with disk images.  Another way
-to say this is that coreos-assembler ties together OSTree commits with disk
-images under a single build schema, and gives them the same version numbering
-for example.
+This is in contrast to [rpm-ostree](https://coreos.github.io/rpm-ostree/) which
+just generates OSTree commits, and doesn't have anything to do with disk
+images. Another way to say this is that coreos-assembler ties together OSTree
+commits with disk images under a single build schema, and gives them the same
+version numbering for example.
 
 The default for `cosa build` is to generate a new OSTree commit and a `qemu`
 image. This supports e.g. `cosa run`.
@@ -47,7 +46,7 @@ By default, builds are pruned (as is the OSTree repository), although one can
 use `build --no-prune` to prevent this.
 
 For more information on OSTree and build systems, see [the libostree
-docs](https://ostree.readthedocs.io/en/latest/manual/buildsystem-and-repos/).
+docs](https://ostreedev.github.io/ostree/buildsystem-and-repos/).
 
 ## Change detection
 
