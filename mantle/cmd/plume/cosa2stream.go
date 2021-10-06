@@ -28,6 +28,8 @@ import (
 	"github.com/coreos/stream-metadata-go/release"
 	"github.com/coreos/stream-metadata-go/stream"
 	"github.com/spf13/cobra"
+
+	"github.com/coreos/mantle/version"
 )
 
 const (
@@ -83,7 +85,10 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 	}
 	streamArches := outStream.Architectures
 
-	outStream.Metadata = stream.Metadata{LastModified: time.Now().UTC().Format(time.RFC3339)}
+	outStream.Metadata = stream.Metadata{
+		LastModified: time.Now().UTC().Format(time.RFC3339),
+		Generator:    "plume cosa2stream " + version.Version,
+	}
 
 	childArgs := []string{"generate-release-meta"}
 	if distro != "" {
