@@ -198,7 +198,7 @@ def robosign_ostree(args, s3, build, gpgkey):
                 t.add(metapath, arcname=f'objects/{checksum[:2]}/{checksum[2:]}.commitmeta')
             shutil.move(tmp_tar, exported_ostree_path)
         # Finalize the export by making it not writable.
-        os.chmod(exported_ostree_path, 0o660)
+        os.chmod(exported_ostree_path, 0o400)
         ostree_image['size'] = os.path.getsize(exported_ostree_path)
         ostree_image['sha256'] = sha256sum_file(exported_ostree_path)
         build.write()
