@@ -233,6 +233,14 @@ def rm_allow_noent(path):
         pass
 
 
+# In coreos-assembler, we are strongly oriented towards the concept of a single
+# versioned "build" object that has artifacts.  But rpm-ostree (among other things)
+# really natively wants to operate on unpacked ostree repositories.  So, we maintain
+# a `tmp/repo` (along with `cache/repo-build`) that are treated as caches.
+# In some cases, such as building a qemu image, then later trying to generate
+# a metal image, we may not have preserved that cache.
+#
+# Call this function to ensure that the ostree commit for a given build is in tmp/repo.
 def import_ostree_commit(repo, buildpath, buildmeta, force=False):
     commit = buildmeta['ostree-commit']
     tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
@@ -249,6 +257,7 @@ def import_ostree_commit(repo, buildpath, buildmeta, force=False):
             and not force):
         return
 
+    print(f"Extracting {commit}")
     # extract in a new tmpdir inside the repo itself so we can still hardlink
     if tarfile.endswith('.tar'):
         with tempfile.TemporaryDirectory(dir=repo) as d:
