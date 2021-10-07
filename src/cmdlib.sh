@@ -815,3 +815,18 @@ sys.path.insert(0, '${DIR}')
 from cosalib import cmdlib
 cmdlib.flatten_image_yaml_to_file('${srcfile}', '${outfile}')")
 }
+
+# Shell wrapper for the Python import_ostree_commit
+import_ostree_commit_for_build() {
+    local buildid=$1; shift
+    (python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cosalib import cmdlib
+from cosalib.builds import Builds
+builds = Builds('${workdir:-$(pwd)}')
+builddir = builds.get_build_dir('${buildid}')
+buildmeta = builds.get_build_meta('${buildid}')
+cmdlib.import_ostree_commit('${workdir:-$(pwd)}/tmp/repo', builddir, buildmeta)
+")
+}

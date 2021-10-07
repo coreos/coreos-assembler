@@ -161,10 +161,7 @@ if [ -n "${previous_commit}" ]; then
     commitpartial=${tmprepo}/state/${previous_commit}.commitpartial
     if [ ! -f "${commitpath}" ] || [ -f "${commitpartial}" ]; then
         if [ -f "${previous_builddir}/${previous_ostree_tarfile_path}" ]; then
-            mkdir tmp/prev_repo
-            tar -C tmp/prev_repo -xf "${previous_builddir}/${previous_ostree_tarfile_path}"
-            ostree pull-local --repo="${tmprepo}" tmp/prev_repo "${previous_commit}"
-            rm -rf tmp/prev_repo
+            import_ostree_commit_for_build "${previous_build}"
         else
             # ok, just fallback to importing the commit object only
             mkdir -p "$(dirname "${commitpath}")"

@@ -115,18 +115,8 @@ fi
 commit=$(meta_key ostree-commit)
 
 ostree_repo=${tmprepo}
-rev_parsed=$(ostree rev-parse --repo="${ostree_repo}" "${build}" 2>/dev/null || :)
-if [ "${rev_parsed}" != "${commit}" ]; then
-    # Probably an older commit or tmp/ was wiped. Let's extract it to a separate
-    # temporary repo (not to be confused with ${tmprepo}...) so we can feed it
-    # as a ref (if not temp) to create_disk.
-    echo "Cache for build ${build} is gone"
-    echo "Importing commit ${commit} into temporary OSTree repo"
-    mkdir -p tmp/repo
-    commit_tar_name=$(jq -re .images.ostree.path < "${builddir}/meta.json")
-    tar -C tmp/repo -xf "${builddir}/${commit_tar_name}"
-    ostree_repo=$PWD/tmp/repo
-fi
+# Ensure that we have the cached unpacked commit
+import_ostree_commit_for_build "${build}"
 
 image_format=raw
 if [[ $image_type == qemu ]]; then
