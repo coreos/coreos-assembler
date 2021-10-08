@@ -118,7 +118,8 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 			arch := parts[0]
 			ver := parts[1]
 			// Convert e.g. 48.82.<timestamp> to rhcos-4.8
-			archStreamName = fmt.Sprintf("rhcos-%s.%s", ver[0:1], ver[1:2])
+			verSplit := strings.Split(ver, ".")
+			archStreamName = fmt.Sprintf("rhcos-%s.%s", verSplit[0][0:1], verSplit[0][1:])
 			if arch != "x86_64" {
 				archStreamName += "-" + arch
 			}
