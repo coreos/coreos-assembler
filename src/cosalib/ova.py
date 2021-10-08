@@ -14,7 +14,7 @@ from cosalib.cmdlib import image_info
 from cosalib.qemuvariants import QemuVariantImage
 
 
-OVA_TEMPLATE_FILE = '/usr/lib/coreos-assembler/vmware-template.xml'
+OVA_TEMPLATE_DIR = '/usr/lib/coreos-assembler'
 
 
 # Variant are OVA types that are derived from qemu images.
@@ -22,6 +22,7 @@ OVA_TEMPLATE_FILE = '/usr/lib/coreos-assembler/vmware-template.xml'
 # add its definition below:
 VARIANTS = {
     "vmware": {
+        'template': 'vmware-template.xml',
         "image_format": "vmdk",
         "image_suffix": "ova",
         "platform": "vmware",
@@ -41,9 +42,9 @@ VARIANTS = {
 }
 
 
-class VmwareOVA(QemuVariantImage):
+class OVA(QemuVariantImage):
     """
-    VmwareOVA's are based on the QemuVariant Image. This Class tries to do
+    OVA's are based on the QemuVariant Image. This Class tries to do
     the absolute bare minium, and is effectively a wrapper around the
     QemuVariantImage Class. The only added functionality is the generation
     of the OVF paramters.
@@ -55,6 +56,7 @@ class VmwareOVA(QemuVariantImage):
     def __init__(self, **kwargs):
         variant = kwargs.pop("variant", "vmware")
         kwargs.update(VARIANTS.get(variant, {}))
+        self.template_name = kwargs.pop('template')
         QemuVariantImage.__init__(self, **kwargs)
         # Set the QemuVariant mutate_callback so that OVA is called.
         self.mutate_callback = self.write_ova
@@ -102,7 +104,7 @@ class VmwareOVA(QemuVariantImage):
         """
         ovf_params = self.generate_ovf_parameters(image_name)
 
-        with open(OVA_TEMPLATE_FILE) as f:
+        with open(os.path.join(OVA_TEMPLATE_DIR, self.template_name)) as f:
             template = f.read()
         ovf_xml = template.format(**ovf_params)
 
