@@ -21,6 +21,24 @@ OVA_TEMPLATE_DIR = '/usr/lib/coreos-assembler'
 # To define new variants that use the QCOW2 disk image, simply,
 # add its definition below:
 VARIANTS = {
+    "virtualbox": {
+        'template': 'virtualbox-template.xml',
+        "image_format": "vmdk",
+        "image_suffix": "ova",
+        "platform": "virtualbox",
+        "convert_options":  {
+            '-o': 'subformat=streamOptimized'
+        },
+        "tar_members": [
+            "disk.vmdk"
+        ],
+        "tar_flags": [
+            # DEFAULT_TAR_FLAGS has -S, which isn't suppported by ustar
+            '-ch',
+            # Required by OVF spec
+            "--format=ustar"
+        ]
+    },
     "vmware": {
         'template': 'vmware-template.xml',
         "image_format": "vmdk",
