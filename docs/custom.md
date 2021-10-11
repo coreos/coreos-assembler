@@ -1,5 +1,4 @@
 ---
-layout: default
 title: Building a custom OS with CoreOS Assembler
 nav_order: 3
 ---
