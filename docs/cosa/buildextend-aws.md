@@ -1,5 +1,4 @@
 ---
-layout: default
 parent: CoreOS Assembler Command Line Reference
 nav_order: 1
 ---

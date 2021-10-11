@@ -1,5 +1,4 @@
 ---
-layout: default
 parent: Mantle
 nav_order: 1
 ---

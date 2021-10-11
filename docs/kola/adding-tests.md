@@ -1,5 +1,4 @@
 ---
-layout: default
 parent: Testing with Kola
 nav_order: 1
 ---
