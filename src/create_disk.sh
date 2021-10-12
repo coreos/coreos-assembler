@@ -194,9 +194,10 @@ mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot -U "${bootfs_uuid}"
 udevtrig
 
 if [ ${EFIPN:+x} ]; then
-       mkfs.fat "${disk}${EFIPN}" -n EFI-SYSTEM
-       # BIOS boot partition has no FS; it's for BIOS GRUB
-       # partition $PREPPN has no FS; it's for PowerPC PReP Boot
+    # Make the ESP FAT32 per UEFI spec, e.g. spec 2.9 section 13.3
+    mkfs.fat "${disk}${EFIPN}" -n EFI-SYSTEM -F 32
+    # BIOS boot partition has no FS; it's for BIOS GRUB
+    # partition $PREPPN has no FS; it's for PowerPC PReP Boot
 fi
 case "${rootfs_type}" in
     ext4verity)
