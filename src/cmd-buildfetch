@@ -28,16 +28,19 @@ retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
                             retry_if_exception_type(requests.ConnectTimeout) |
                             retry_if_exception_type(requests.ConnectionError))
 
+FCOS_STREAMS_URL = "https://builds.coreos.fedoraproject.org/prod/streams"
+
 
 def main():
     args = parse_args()
 
-    if args.url.startswith("s3://"):
-        fetcher = S3Fetcher(args.url)
-    elif args.url.startswith("http://") or args.url.startswith("https://"):
-        fetcher = HTTPFetcher(args.url)
-    elif args.url.startswith("file://") or args.url.startswith("/"):
-        fetcher = LocalFetcher(args.url)
+    url = args.url or f'{FCOS_STREAMS_URL}/{args.stream}/builds'
+    if url.startswith("s3://"):
+        fetcher = S3Fetcher(url)
+    elif url.startswith("http://") or url.startswith("https://"):
+        fetcher = HTTPFetcher(url)
+    elif url.startswith("file://") or url.startswith("/"):
+        fetcher = LocalFetcher(url)
     else:
         raise Exception("Invalid scheme: only file://, s3://, and http(s):// supported")
 
@@ -120,8 +123,10 @@ def main():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("url", metavar='URL',
+    parser.add_argument("--url", metavar='URL', default="",
                         help="URL from which to fetch metadata")
+    parser.add_argument("--stream", metavar='STREAM', default="testing-devel",
+                        help="stream from which to fetch metadata")
     parser.add_argument("-b", "--build", action='store',
                         help="Fetch specified build instead of latest")
     parser.add_argument("--ostree", action='store_true',
