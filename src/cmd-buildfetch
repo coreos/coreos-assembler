@@ -20,7 +20,8 @@ from cosalib.cmdlib import (
     load_json,
     retry_callback,
     retry_stop,
-    rm_allow_noent)
+    rm_allow_noent,
+    sha256sum_file)
 from cosalib.s3 import download_file, head_bucket, head_object
 
 retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
@@ -104,9 +105,17 @@ def main():
 
         buildmeta = load_json(f'builds/{builddir}/meta.json')
 
-        if args.ostree:
-            f = buildmeta['images']['ostree']['path']
-            fetcher.fetch(f'{builddir}/{f}')
+        for imgname in args.artifact:
+            if imgname not in buildmeta['images']:
+                raise Exception(f"Requested artifact {imgname} not available in build")
+            img = buildmeta['images'][imgname]
+            imgpath = img['path']
+            fetcher.fetch(f'{builddir}/{imgpath}')
+            sha256sum = sha256sum_file(f'builds/{builddir}/{imgpath}')
+            if img['sha256'] != sha256sum:
+                print(f"Calcluated sha256sum: {sha256sum}")
+                print(f"Expected  sha256sum: {img['sha256']}")
+                raise Exception(f"Downloaded checksum for {imgpath} does not match expected")
 
     # and finally the symlink
     if args.build is None:
@@ -129,12 +138,12 @@ def parse_args():
                         help="stream from which to fetch metadata")
     parser.add_argument("-b", "--build", action='store',
                         help="Fetch specified build instead of latest")
-    parser.add_argument("--ostree", action='store_true',
-                        help="Also download full OSTree commit")
     parser.add_argument("--refresh", action='store_true',
                         help="Assuming local changes, only update {BUILDFILES['sourcedata']}")
     parser.add_argument("--arch", default=[], action='append',
                         help="the target architecture(s)")
+    parser.add_argument("--artifact", default=[], action='append',
+                        help="Fetch given image artifact(s)", metavar="ARTIFACT")
     return parser.parse_args()
 
 
