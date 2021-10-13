@@ -49,6 +49,9 @@ type JobSpec struct {
 	// DelayedMetaMerge ensures that 'cosa build' is called with
 	// --delayed-meta-merge
 	DelayedMetaMerge bool `yaml:"delay_meta_merge" json:"delay_meta_meta,omitempty"`
+
+	// CopyBuild defines an extra build to copy the build metadata for
+	CopyBuild string `yaml:"copy-build,omitempty" json:"copy-build",omitempty"`
 }
 
 // Artifacts describe the expect build outputs.

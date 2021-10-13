@@ -249,7 +249,7 @@ binary build interface.`)
 	if err == nil {
 		keyPath := filepath.Join(lastBuild.BuildID, cosa.BuilderArch())
 		l := log.WithFields(log.Fields{
-			"prior build": lastBuild.BuildID,
+			"build": lastBuild.BuildID,
 		})
 		l.Info("found prior build")
 		remoteFiles = append(
@@ -259,7 +259,24 @@ binary build interface.`)
 
 	} else {
 		lastBuild = new(cosa.Build)
-		log.Info("no prior build found")
+		log.Infof("no prior build found for arch: %s", cosa.BuilderArch())
+	}
+
+	// Copy any other builds requested by the user.
+	if bc.JobSpec.CopyBuild != "" {
+		copyBuild, _, err := cosa.ReadBuild("", bc.JobSpec.CopyBuild, cosa.BuilderArch())
+		if err != nil {
+			return fmt.Errorf("Failed to find build specified by CopyBuild: %v", bc.JobSpec.CopyBuild)
+		}
+		l := log.WithFields(log.Fields{
+			"build": copyBuild.BuildID,
+		})
+		l.Info("copying requested build")
+		keyPath := filepath.Join(copyBuild.BuildID, cosa.BuilderArch())
+		remoteFiles = append(
+			remoteFiles,
+			getBuildMeta(copyBuild.BuildID, keyPath, m, l, &bc.JobSpec.Minio)...,
+		)
 	}
 
 	// Dump the jobspec
