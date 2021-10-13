@@ -85,6 +85,8 @@ func setCliSpec() {
 		if spec.Recipe.Repos == nil {
 			spec.AddRepos()
 		}
+		// Override CopyBuild from the CLI
+		spec.AddCopyBuild()
 		if minioSshRemoteHost != "" && minioCfgFile == "" {
 			spec.Minio.SSHForward = minioSshRemoteHost
 			spec.Minio.SSHUser = minioSshRemoteUser

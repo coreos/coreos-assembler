@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
 
@@ -26,6 +27,9 @@ var (
 
 	// repos is a list a URLs that is added to the Repos.
 	repos []string
+
+	// copy-build is an extra build to copy build metadata for
+	copyBuild string
 )
 
 func init() {
@@ -69,6 +73,9 @@ func (js *JobSpec) AddCliFlags(cmd *pflag.FlagSet) {
 	cmd.StringVar(&js.Recipe.GitRef, "git-ref", js.Recipe.GitRef, "Git ref for recipe")
 	cmd.StringVar(&js.Recipe.GitURL, "git-url", js.Recipe.GitURL, "Git URL for recipe")
 	cmd.StringVar(&js.Recipe.GitCommit, "git-commit", "", "Optional Git commit to reset repo to for recipe")
+
+	// Define any extra builds that we want to copy build metadata for
+	cmd.StringVar(&copyBuild, "copy-build", "", "Optional: extra build to copy build metadata for")
 }
 
 // AddRepos adds an repositories from the CLI
@@ -82,6 +89,14 @@ func (js *JobSpec) AddRepos() {
 					URL: &r,
 				})
 		}
+	}
+}
+
+// AddCopyBuild adds --copy-build from the CLI
+func (js *JobSpec) AddCopyBuild() {
+	if copyBuild != "" {
+		log.Infof("Adding copy build meta for %s from the CLI", copyBuild)
+		js.CopyBuild = copyBuild
 	}
 }
 
