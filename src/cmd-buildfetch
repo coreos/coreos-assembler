@@ -48,7 +48,8 @@ def main():
     builds = None
     if fetcher.exists('builds.json'):
         if not args.refresh:
-            if os.path.isfile(BUILDFILES['sourcedata']):
+            if os.path.isfile(BUILDFILES['sourcedata']) \
+               and os.path.isfile(BUILDFILES['list']):
                 # If we have local builds, don't overwrite that by default.
                 if subprocess.call(['cmp', BUILDFILES['sourcedata'], BUILDFILES['list']],
                                    stdout=subprocess.DEVNULL,
