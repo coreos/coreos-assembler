@@ -20,7 +20,7 @@ RUN chown builder: /srv
 RUN rm -rf /root/containerbuild /go
 
 # allow writing to /etc/passwd from arbitrary UID
-# https://docs.openshift.com/container-platform/3.10/creating_images/guidelines.html
+# https://docs.openshift.com/container-platform/4.8/openshift_images/create-images.html
 RUN chmod g=u /etc/passwd
 
 # run as `builder` user
