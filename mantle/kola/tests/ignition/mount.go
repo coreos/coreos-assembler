@@ -28,8 +28,6 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-var config types.Config
-
 func init() {
 	// mount disks to `/var/log` and `/var/lib/containers`
 	register.RegisterTest(&register.Test{
@@ -52,7 +50,7 @@ func init() {
 // Mount two disks with id `virtio-secondary-disk` and `virtio-tertiary-disk`
 // and make sure we can write files to the mount points
 func testMountDisks(c cluster.TestCluster) {
-	setupIgnitionConfig()
+	config := setupIgnitionConfig()
 
 	options := platform.MachineOptions{
 		AdditionalDisks: []string{"1024M", "1024M"},
@@ -82,11 +80,11 @@ func testMountDisks(c cluster.TestCluster) {
 			WipeTable: util.BoolToPtr(true),
 		},
 	}
-	createClusterValidate(c, options, ignDisks, 1048576, 512)
+	createClusterValidate(c, config, options, ignDisks, 1048576, 512)
 }
 
 func testMountPartitions(c cluster.TestCluster) {
-	setupIgnitionConfig()
+	config := setupIgnitionConfig()
 
 	ignDisks := []types.Disk{
 		{
@@ -106,10 +104,10 @@ func testMountPartitions(c cluster.TestCluster) {
 			WipeTable: util.BoolToPtr(false),
 		},
 	}
-	createClusterValidate(c, platform.MachineOptions{}, ignDisks, 2097152, 1024)
+	createClusterValidate(c, config, platform.MachineOptions{}, ignDisks, 2097152, 1024)
 }
 
-func createClusterValidate(c cluster.TestCluster, options platform.MachineOptions, ignDisks []types.Disk, v2size int, v3sizeMiB int) {
+func createClusterValidate(c cluster.TestCluster, config types.Config, options platform.MachineOptions, ignDisks []types.Disk, v2size int, v3sizeMiB int) {
 	var m platform.Machine
 	var err error
 	config.Storage.Disks = ignDisks
@@ -143,7 +141,7 @@ func createClusterValidate(c cluster.TestCluster, options platform.MachineOption
 	mountValidateAll(c, m)
 }
 
-func setupIgnitionConfig() {
+func setupIgnitionConfig() types.Config {
 	containerpartdeviceid := "by-partlabel/CONTR"
 	logpartdeviceid := "by-partlabel/LOG"
 	if system.RpmArch() == "s390x" {
@@ -151,7 +149,7 @@ func setupIgnitionConfig() {
 		logpartdeviceid = "by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8"
 	}
 
-	config = types.Config{
+	config := types.Config{
 		Ignition: types.Ignition{
 			Version: "3.0.0",
 		},
@@ -212,6 +210,8 @@ func setupIgnitionConfig() {
 			},
 		},
 	}
+
+	return config
 }
 
 // Check volume correctly mounted to `/var/lib/containers` and `/var/log`
