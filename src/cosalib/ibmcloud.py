@@ -41,8 +41,9 @@ VARIANTS = {
     },
     "powervs": {
         "image_format": "raw",
-        "image_suffix": "ova",
+        "image_suffix": "ova.gz",
         "platform": "powervs",
+        "gzip": True,
         "tar_members": [
             "disk.raw"
         ]
@@ -137,7 +138,7 @@ def ibmcloud_run_ore(build, args):
         # powervs requires the image name to have an extension and also does not
         # tolerate dots in the name. It affects the internal import from IBMCloud
         # to the PowerVS systems
-        ibmcloud_object_name = ibmcloud_object_name.replace(".", "-") + ".ova"
+        ibmcloud_object_name = ibmcloud_object_name.replace(".", "-") + ".ova.gz"
 
     ore_args.extend([
         'ibmcloud', 'upload',
