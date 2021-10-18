@@ -68,6 +68,14 @@ example, one can have the binary drive a container runtime.
 A test is considered failed if the unit exits with any non-zero exit status or
 dies from any signal other than `SIGTERM`.
 
+## Environment variables
+
+The following environment variables are accessible to the test:
+- `KOLA_EXT_DATA`: path to test data; see above
+- `KOLA_UNIT`: name of systemd unit running the test itself
+- `KOLA_TEST`: name of the kola test
+- `KOLA_TEST_EXE`: basename of the test executable as found by kola
+
 ## Support for rebooting
 
 An important feature of exttests is support for rebooting the host system.

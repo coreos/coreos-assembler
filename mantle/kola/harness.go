@@ -800,7 +800,8 @@ func registerExternalTest(testname, executable, dependencydir string, userdata *
 		unitName = fmt.Sprintf("%s-%d.service", KoletExtTestUnit, num)
 	}
 
-	remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", filepath.Base(executable))
+	base := filepath.Base(executable)
+	remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", base)
 
 	// Note this isn't Type=oneshot because it's cleaner to support self-SIGTERM that way
 	unit := fmt.Sprintf(`[Unit]
@@ -808,9 +809,11 @@ func registerExternalTest(testname, executable, dependencydir string, userdata *
 RemainAfterExit=yes
 EnvironmentFile=-/run/kola-runext-env
 Environment=KOLA_UNIT=%s
+Environment=KOLA_TEST=%s
+Environment=KOLA_TEST_EXE=%s
 Environment=%s=%s
 ExecStart=%s
-`, unitName, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
+`, unitName, testname, base, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
 	config.AddSystemdUnit(unitName, unit, conf.NoState)
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
