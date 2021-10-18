@@ -1099,7 +1099,7 @@ Before=basic.target
 What=%s
 Where=%s
 Type=9p
-Options=trans=virtio,version=9p2000.L%s
+Options=trans=virtio,version=9p2000.L%s,msize=10485760
 [Install]
 WantedBy=multi-user.target
 `, dest, dest, readonlyStr)
