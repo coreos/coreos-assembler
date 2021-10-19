@@ -22,21 +22,6 @@ from cosalib.cmdlib import run_verbose, sha256sum_file, flatten_image_yaml
 from cosalib.cmdlib import import_ostree_commit, get_basearch, ensure_glob
 from cosalib.meta import GenericBuildMeta
 
-
-def ostree_extract_efi(repo, commit, destdir):
-    """Given an OSTree commit, extract the EFI parts"""
-    efidir = "/usr/lib/ostree-boot/efi/EFI"
-    # Handle both "with bootupd" and without.
-    # https://github.com/coreos/bootupd/
-    # See also create_disk.py
-    if subprocess.run(['ostree', f'--repo={repo}', 'ls', commit, '/usr/lib/bootupd'],
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
-        efidir = "/usr/lib/bootupd/updates/EFI"
-    run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
-                 '--user-mode', '--subpath', efidir,
-                 commit, destdir])
-
-
 live_exclude_kargs = set([
     '$ignition_firstboot',   # unsubstituted variable in grub config
     'console',               # no serial console by default on ISO
@@ -499,7 +484,10 @@ def generate_iso():
                 return tarinfo
 
             tmpimageefidir = os.path.join(tmpdir, "efi")
-            ostree_extract_efi(repo, buildmeta_commit, tmpimageefidir)
+            run_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
+                         '--user-mode', '--subpath',
+                         "/usr/lib/bootupd/updates/EFI",
+                         buildmeta_commit, tmpimageefidir])
 
             # Find name of vendor directory
             vendor_ids = [n for n in os.listdir(tmpimageefidir) if n != "BOOT"]
