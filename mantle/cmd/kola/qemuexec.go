@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -292,8 +293,15 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 	builder.Hostname = hostname
+	// for historical reasons, both --memory and --qemu-memory are supported
 	if memory != 0 {
 		builder.Memory = memory
+	} else if kola.QEMUOptions.Memory != "" {
+		parsedMem, err := strconv.ParseInt(kola.QEMUOptions.Memory, 10, 32)
+		if err != nil {
+			return errors.Wrapf(err, "parsing memory option")
+		}
+		builder.Memory = int(parsedMem)
 	}
 	builder.AddDisksFromSpecs(addDisks)
 	if cpuCountHost {
