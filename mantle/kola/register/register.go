@@ -63,6 +63,7 @@ type Test struct {
 	ExcludeArchitectures []string // denylist of architectures to ignore -- defaults to none
 	Flags                []Flag   // special-case options for this test
 	Tags                 []string // list of tags that can be matched against -- defaults to none
+	RequiredTag          string   // if specified, test is filtered by default unless tag is provided -- defaults to none
 
 	// Whether the primary disk is multipathed.
 	MultiPathDisk bool

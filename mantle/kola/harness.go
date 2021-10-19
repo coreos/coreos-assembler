@@ -440,6 +440,10 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			}
 		}
 
+		if t.RequiredTag != "" && !hasString(t.RequiredTag, Tags) {
+			continue
+		}
+
 		if (!noPattern && !match && !tagMatch) || (!tagMatch && noPattern && len(Tags) > 0) {
 			continue
 		}
@@ -671,6 +675,7 @@ type externalTestMeta struct {
 	Platforms       string   `json:"platforms,omitempty"`
 	Distros         string   `json:"distros,omitempty"`
 	Tags            string   `json:"tags,omitempty"`
+	RequiredTag     string   `json:"requiredTag,omitempty"`
 	AdditionalDisks []string `json:"additionalDisks,omitempty"`
 	MinMemory       int      `json:"minMemory,omitempty"`
 	Exclusive       bool     `json:"exclusive"`
@@ -883,6 +888,7 @@ ExecStart=%s
 	}
 	t.Tags = append(t.Tags, strings.Fields(targetMeta.Tags)...)
 	// TODO validate tags here
+	t.RequiredTag = targetMeta.RequiredTag
 
 	register.RegisterTest(t)
 
