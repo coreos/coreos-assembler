@@ -103,12 +103,14 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 
 	runExternals []string
 	runMultiply  int
+	runRerunFlag bool
 )
 
 func init() {
 	root.AddCommand(cmdRun)
 	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
 	cmdRun.Flags().IntVar(&runMultiply, "multiply", 0, "Run the provided tests N times (useful to find race conditions)")
+	cmdRun.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
@@ -122,6 +124,7 @@ func init() {
 	root.AddCommand(cmdRunUpgrade)
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
 	cmdRunUpgrade.Flags().StringVar(&qemuImageDir, "qemu-image-dir", "", "directory in which to cache QEMU images if --fetch-parent-image is enabled")
+	cmdRunUpgrade.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
 }
 
 func main() {
@@ -183,7 +186,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, runMultiply, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, runMultiply, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
@@ -599,7 +602,7 @@ func runRunUpgrade(cmd *cobra.Command, args []string) error {
 		patterns = args
 	}
 
-	runErr := kola.RunUpgradeTests(patterns, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
