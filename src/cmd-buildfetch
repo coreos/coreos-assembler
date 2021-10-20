@@ -47,22 +47,29 @@ def main():
 
     builds = None
     if fetcher.exists('builds.json'):
-        if not args.refresh:
-            if os.path.isfile(BUILDFILES['sourcedata']) \
-               and os.path.isfile(BUILDFILES['list']):
-                # If we have local builds, don't overwrite that by default.
-                if subprocess.call(['cmp', BUILDFILES['sourcedata'], BUILDFILES['list']],
-                                   stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL) != 0:
-                    raise SystemExit(f"{BUILDFILES['list']} modified locally, run with --refresh")
-            fetcher.fetch_json('builds.json')
-        else:
-            fetcher.fetch('builds.json', dest=BUILDFILES['sourcedata'])
-            print(f"Updated {BUILDFILES['sourcedata']}")
-            return
+        # Check to see if local builds.json has been modified with local builds
+        if os.path.isfile(BUILDFILES['sourcedata']) \
+           and os.path.isfile(BUILDFILES['list']):
+            # If we have local builds, don't overwrite that by default.
+            havelocalchanges = subprocess.call(['cmp', BUILDFILES['sourcedata'], BUILDFILES['list']],
+                                               stdout=subprocess.DEVNULL,
+                                               stderr=subprocess.DEVNULL) != 0
+            if havelocalchanges:
+                if args.force:
+                    print(f"Detected local modifications to {BUILDFILES['list']}")
+                    print("Forcing update as requested by --force")
+                else:
+                    raise SystemExit(f"{BUILDFILES['list']} modified locally. "
+                                     "Run with --force to overwrite local changes")
+
+        # Download builds.json to local builds.json
+        fetcher.fetch('builds.json', dest=BUILDFILES['list'])
+        print(f"Updated {BUILDFILES['list']}")
         # Record the origin and original state
         with open(BUILDFILES['sourceurl'], 'w') as f:
             f.write(args.url + '\n')
+        # Copy the builds.json to the local sourcedata file so we can
+        # detect local modifications.
         subprocess.check_call(['cp-reflink', BUILDFILES['list'], BUILDFILES['sourcedata']])
         builds = Builds()
     else:
@@ -139,8 +146,8 @@ def parse_args():
                         help="stream from which to fetch metadata")
     parser.add_argument("-b", "--build", action='store',
                         help="Fetch specified build instead of latest")
-    parser.add_argument("--refresh", action='store_true',
-                        help="Assuming local changes, only update {BUILDFILES['sourcedata']}")
+    parser.add_argument("--force", action='store_true',
+                        help="Assuming local changes, force update {BUILDFILES['list']}")
     parser.add_argument("--arch", default=[], action='append',
                         help="the target architecture(s)")
     parser.add_argument("--artifact", default=[], action='append',
