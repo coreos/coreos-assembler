@@ -107,7 +107,7 @@ def main():
         assert builddir.startswith("builds/")
         builddir = builddir[len("builds/"):]
 
-        objects = ['meta.json', 'ostree-commit-object']
+        objects = ['meta.json', 'commitmeta.json', 'ostree-commit-object']
         for f in objects:
             fetcher.fetch(f'{builddir}/{f}')
 
