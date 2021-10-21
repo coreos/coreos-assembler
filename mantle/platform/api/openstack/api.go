@@ -595,20 +595,6 @@ func (a *API) UploadImage(name, path, arch, visibility string, protected bool) (
 	return image.ID, nil
 }
 
-// TODO: We can remove this block when the follow PR lands:
-//       https://github.com/gophercloud/gophercloud/pull/2221
-type ReplaceImageProtected struct {
-	NewProtected bool
-}
-
-func (r ReplaceImageProtected) ToImagePatchMap() map[string]interface{} {
-	return map[string]interface{}{
-		"op":    "replace",
-		"path":  "/protected",
-		"value": r.NewProtected,
-	}
-}
-
 func (a *API) DeleteImage(imageID string, force bool) error {
 	// Detect if the image is protected from deletion. If protected
 	// and force=true then change protection status and delete it.
@@ -619,7 +605,7 @@ func (a *API) DeleteImage(imageID string, force bool) error {
 	if image.Protected {
 		if force {
 			updateOpts := images.UpdateOpts{
-				ReplaceImageProtected{
+				images.ReplaceImageProtected{
 					NewProtected: false,
 				},
 			}
