@@ -18,7 +18,9 @@ dnf-utils
 
 # We don't actually use this right now but we intend to share
 # code in the future.
-osbuild-composer
+# XXX: temporarily disabled until we fix
+# https://github.com/osbuild/osbuild-composer/issues/1915
+# osbuild-composer
 
 # For generating ISO images
 genisoimage
