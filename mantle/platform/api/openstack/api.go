@@ -646,7 +646,7 @@ func (a *API) AddKey(name, key string) error {
 }
 
 func (a *API) DeleteKey(name string) error {
-	return keypairs.Delete(a.computeClient, name).ExtractErr()
+	return keypairs.Delete(a.computeClient, name, nil).ExtractErr()
 }
 
 func (a *API) listServersWithMetadata(metadata map[string]string) ([]servers.Server, error) {
