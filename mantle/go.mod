@@ -25,7 +25,7 @@ require (
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/google/renameio v1.0.1 // indirect
-	github.com/gophercloud/gophercloud v0.17.0
+	github.com/gophercloud/gophercloud v0.22.0
 	github.com/gophercloud/utils v0.0.0-20210323225332-7b186010c04f
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 	github.com/kylelemons/godebug v0.0.0-20150519154555-21cb3784d9bd
