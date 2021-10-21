@@ -25,7 +25,7 @@ BUILDFILES = {
     'list': 'builds/builds.json',
     # This copy of builds.json tracks what we last downloaded from the source
     'sourcedata': 'tmp/builds-source.json',
-    # This tracks the URL passed to buildprep
+    # This tracks the URL passed to buildfetch
     'sourceurl': 'tmp/builds-source.txt',
 }
 
