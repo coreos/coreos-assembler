@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-# The inverse of cmd-buildprep (i.e. we upload a build which later can be
-# partially re-downloaded with cmd-buildprep).
+# The inverse of cmd-buildfetch (i.e. we upload a build which later can be
+# partially re-downloaded with cmd-buildfetch).
 
 import argparse
 import json
@@ -63,7 +63,7 @@ def cmd_upload_s3(args):
     builds = Builds()
     # This can't be an error for backcompat reasons, but let's print something
     if not os.path.isfile(BUILDFILES['sourceurl']):
-        print(f"NOTICE: No {BUILDFILES['sourceurl']} file; uploading without buildprep?")
+        print(f"NOTICE: No {BUILDFILES['sourceurl']} file; uploading without buildfetch?")
     if args.build == 'latest':
         args.build = builds.get_latest()
     print(f"Targeting build: {args.build}")

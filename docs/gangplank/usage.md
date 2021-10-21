@@ -302,10 +302,10 @@ archives:
 stages:
   - id: prep
     command:
-    - cosa buildprep s3://{{.JobSpec.Archives.S3.Bucket}}/{{.JobSpec.Archives.S3.Path}}
+    - cosa buildfetch --url=s3://{{.JobSpec.Archives.S3.Bucket}}/{{.JobSpec.Archives.S3.Path}}
 ```
 
-The above example will run the CoreOS Assembler command `cosa buildprep s3://darkarts/magicalmysteries`.
+The above example will run the CoreOS Assembler command `cosa buildfetch --url=s3://darkarts/magicalmysteries`.
 
 #### meta.json
 

@@ -68,6 +68,6 @@ that change.
 
 ## Managing data
 
-cosa offers `buildprep` which downloads builds from `https://` or `s3://`, as
+cosa offers `buildfetch` which downloads builds from `https://` or `s3://`, as
 well as a `buildupload` which is oriented around S3 today. However, there are
 a wide variety of S3-compatible storage systems, so you are not tied to AWS.
