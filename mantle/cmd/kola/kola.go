@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/coreos/pkg/capnslog"
@@ -200,15 +199,9 @@ func runRerun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	for _, test := range data.Tests {
-		if test.Result == testresult.Fail {
-			if strings.HasPrefix(test.Name, "non-exclusive-tests") && test.Name != "non-exclusive-tests" {
-				// Extract name of non-exclusive test
-				name := strings.TrimPrefix(test.Name, "non-exclusive-tests/")
-				patterns = append(patterns, name)
-			} else if !strings.Contains(test.Name, "/") {
-				// We don't add subtests to list of patterns
-				patterns = append(patterns, test.Name)
-			}
+		name, isRerunnable := kola.GetRerunnableTestName(test.Name)
+		if test.Result == testresult.Fail && isRerunnable {
+			patterns = append(patterns, name)
 		}
 	}
 

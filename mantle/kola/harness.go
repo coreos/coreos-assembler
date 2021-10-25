@@ -106,6 +106,9 @@ var (
 	extTestNum  = 1 // Assigns a unique number to each non-exclusive external test
 	testResults protectedTestResults
 
+	nonexclusivePrefixMatch  = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]/`)
+	nonexclusiveWrapperMatch = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]$`)
+
 	consoleChecks = []struct {
 		desc     string
 		match    *regexp.Regexp
@@ -587,10 +590,13 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	}
 
 	if len(nonExclusiveTests) > 0 {
-		// This test does not need to be registered since it is temporarily
-		// created to be used as a wrapper
-		nonExclusiveWrapper := makeNonExclusiveTest(nonExclusiveTests, flight)
-		tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
+		buckets := createTestBuckets(nonExclusiveTests)
+		for i, bucket := range buckets {
+			// This test does not need to be registered since it is temporarily
+			// created to be used as a wrapper
+			nonExclusiveWrapper := makeNonExclusiveTest(i, bucket, flight)
+			tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
+		}
 	}
 
 	if multiply > 1 {
@@ -670,17 +676,36 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	return firstRunErr
 }
 
+func GetRerunnableTestName(testName string) (string, bool) {
+	// The current nonexclusive test wrapper would rerun all non-exclusive tests.
+	// Instead, we only want to rerun the one(s) that failed, so we will not consider
+	// the wrapper as "rerunnable".
+	if nonexclusiveWrapperMatch.MatchString(testName) {
+		// Test is not rerunnable if the test name matches the wrapper pattern
+		return "", false
+	} else {
+		// Failed non-exclusive tests will have a prefix in the name
+		// since they are run as subtests of a wrapper test, we need to
+		// remove this prefix to match the true name of the test
+		substrings := nonexclusivePrefixMatch.Split(testName, 2)
+		name := substrings[len(substrings)-1]
+
+		if strings.Contains(name, "/") {
+			// In the case that a test is exclusive, we may
+			// be adding a subtest. We don't want to do this
+			return "", false
+		}
+		// The test is not a nonexclusive wrapper, and its not a
+		// subtest of an exclusive test
+		return name, true
+	}
+}
+
 func getRerunnable(tests []*harness.H) []string {
 	var testsToRerun []string
 	for _, h := range tests {
-		// The current nonexclusive test wrapper would rerun all non-exclusive tests.
-		// Instead, we only want to rerun the one(s) that failed, so we will not consider
-		// the wrapper as "rerunnable".
-		if h.Failed() && h.Name() != "non-exclusive-tests" {
-			// Failed non-exclusive tests will have a prefix in the name
-			// since they are run as subtests of a wrapper tests, we need to
-			// remove this prefix to match the true name of the test
-			name := strings.TrimPrefix(h.Name(), "non-exclusive-tests/")
+		name, isRerunnable := GetRerunnableTestName(h.Name())
+		if h.Failed() && isRerunnable {
 			testsToRerun = append(testsToRerun, name)
 		}
 	}
@@ -709,6 +734,7 @@ type externalTestMeta struct {
 	AppendKernelArgs string   `json:"appendKernelArgs,omitempty"`
 	Exclusive        bool     `json:"exclusive"`
 	TimeoutMin       int      `json:"timeoutMin"`
+	Conflicts        []string `json:"conflicts"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -878,6 +904,7 @@ ExecStart=%s
 		AdditionalNics:   targetMeta.AdditionalNics,
 		AppendKernelArgs: targetMeta.AppendKernelArgs,
 		NonExclusive:     !targetMeta.Exclusive,
+		Conflicts:        targetMeta.Conflicts,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -1107,8 +1134,73 @@ func collectLogsExternalTest(h *harness.H, t *register.Test, tcluster cluster.Te
 	}
 }
 
+func createTestBuckets(tests []*register.Test) [][]*register.Test {
+
+	// Make an array of maps. Each entry in the array represents a
+	// test bucket. Each corresponding map is the test.Name -> *register.Test
+	// mapping for tests to be executed
+	var bucketInfo []map[string]*register.Test
+
+	// Get a Map of test.Name -> *register.Test
+	testMap := make(map[string]*register.Test)
+	for _, test := range tests {
+		testMap[test.Name] = test
+	}
+
+	// Update all test's conflict lists to be complete
+	// FYI: it is possible that test.Conflicts contain duplicates
+	// this should not affect the creation of the buckets
+	for _, test := range tests {
+		for _, conflict := range test.Conflicts {
+			if _, found := testMap[conflict]; found {
+				testMap[conflict].Conflicts = append(testMap[conflict].Conflicts, test.Name)
+			} else {
+				plog.Fatalf("%v specified %v as a conflict but %v was not found. Double-check that it is marked as non-exclusive.",
+					test.Name, conflict, conflict)
+			}
+		}
+	}
+
+	// Distribute into buckets. Start by creating a bucket with the
+	// first test in it and then going from there.
+	bucketInfo = append(bucketInfo, map[string]*register.Test{tests[0].Name: tests[0]})
+mainloop:
+	for _, test := range tests[1:] {
+		for _, bucket := range bucketInfo {
+			// Check if this bucket is being used by a conflicting test
+			foundConflict := false
+			for _, conflict := range test.Conflicts {
+				if _, found := bucket[conflict]; found {
+					foundConflict = true
+				}
+			}
+			if !foundConflict {
+				// No Conflict here. Assign the test and continue.
+				bucket[test.Name] = test
+				continue mainloop
+			}
+		}
+		// No eligible buckets found for test. Create a new bucket.
+		bucketInfo = append(bucketInfo, map[string]*register.Test{test.Name: test})
+	}
+
+	// Convert the bucketInfo array of maps into an two dimensional
+	// array of register.Test objects. This is the format the caller
+	// is expecting the data in.
+	var buckets [][]*register.Test
+	for _, bucket := range bucketInfo {
+		var bucketTests []*register.Test
+		for _, test := range bucket {
+			bucketTests = append(bucketTests, test)
+		}
+		buckets = append(buckets, bucketTests)
+	}
+
+	return buckets
+}
+
 // Create a parent test that runs non-exclusive tests as subtests
-func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) register.Test {
+func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Flight) register.Test {
 	// Parse test flags and gather configs
 	var (
 		internetAccess     bool
@@ -1154,7 +1246,7 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 	}
 
 	nonExclusiveWrapper := register.Test{
-		Name: "non-exclusive-tests",
+		Name: fmt.Sprintf("non-exclusive-test-bucket-%v", bucket),
 		Run: func(tcluster cluster.TestCluster) {
 			for _, t := range tests {
 				t := t
