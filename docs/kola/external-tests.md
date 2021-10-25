@@ -197,7 +197,8 @@ Here's an example `kola.json`:
     "additionalNics": 2,
     "appendKernelArgs": "ip=bond0:dhcp bond=bond0:ens5,ens6:mode=active-backup,miimon=100"
     "timeoutMin": 8,
-    "exclusive": true
+    "exclusive": true,
+    "conflicts": ["ext.config.some-test", "podman.some-other-test"]
 }
 ```
 
@@ -252,6 +253,11 @@ is marked `false`, the test is run with other "non-exclusive" tests. If a test
 is simple and is not expected to conflict with other tests, it should be marked
 `exclusive: false`. When the `exclusive` key is not provided, tests are marked
 `exclusive: true` by default.
+
+The `conflicts` key takes a list of test names that conflict with this test.
+This key can only be specified if `exclusive` is marked `false` since
+`exclusive: true` tests are run exclusively in their own VM.  At runtime,
+this test will be separated from the tests it is conflicting with.
 
 More recently, you can also (useful for shell scripts) include the JSON file
 inline per test, like this:
