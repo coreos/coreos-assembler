@@ -99,6 +99,10 @@ type Test struct {
 	// If true, this test will be run along with other NonExclusive tests in one VM
 	// Otherwise, it is run in its own VM
 	NonExclusive bool
+
+	// Conflicts is non-empty iff nonexclusive is true
+	// Contains the tests that conflict with this particular test
+	Conflicts []string
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names
@@ -113,6 +117,9 @@ var UpgradeTests = map[string]*Test{}
 // harnesses knows which tests it can choose from. Panics if existing name is
 // registered
 func Register(m map[string]*Test, t *Test) {
+	if len(t.Conflicts) > 0 && !t.NonExclusive {
+		panic("exclusive test cannot have non-empty conflicts entry")
+	}
 	_, ok := m[t.Name]
 	if ok {
 		panic(fmt.Sprintf("test %v already registered", t.Name))
