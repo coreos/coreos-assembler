@@ -28,6 +28,14 @@ def main():
         # chop off the microseconds in the delta; don't need that precise
         print(f"   Timestamp: {ts} ({str(delta).split('.')[0]} ago)")
         print(f"   Artifacts: {' '.join(list(m['images']))}")
+        git = m.get('coreos-assembler.container-config-git')
+        if git:
+            config = git['commit']
+            if 'branch' in git:
+                config = f"{git['branch']} ({config[:12]})"
+            if git['dirty'] != "false":
+                config += " (dirty)"
+            print(f"      Config: {config}")
         if build['id'] in tags:
             print(f"   Tags: {' '.join(tags[build['id']])}")
         print()
