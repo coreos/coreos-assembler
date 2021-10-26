@@ -55,6 +55,7 @@ func init() {
 			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
 			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
 			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+			"StableRoot":     register.CreateNativeFuncWrap(TestStableRoot),
 		},
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
@@ -90,6 +91,29 @@ func init() {
 		},
 		Distros: []string{"rhcos"},
 	})
+}
+
+func TestStableRoot() error {
+	unit := "coreos-root-symlink.service"
+	link := "/dev/disk/by-label/coreos-root-disk"
+
+	if err := checkService(unit); err != nil {
+		return err
+	}
+
+	c := exec.Command("journalctl", "-o", "cat", "-u", unit)
+	out, err := c.Output()
+	if err != nil {
+		return fmt.Errorf("journalctl: %s", err)
+	}
+	if !strings.Contains(string(out), link) {
+		return fmt.Errorf("Symlink '%s' wasn't created", link)
+	}
+
+	if _, err := os.Stat(link); err == nil {
+		return fmt.Errorf("Symlink '%s' wasn't removed", link)
+	}
+	return nil
 }
 
 func TestPortSsh() error {
