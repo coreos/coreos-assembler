@@ -590,6 +590,11 @@ boot
 
     if args.miniso:
         genisoargs_minimal = genisoargs + ['-o', f'{tmpisofile}.minimal', tmpisoroot]
+        # The only difference with the miniso is that we drop these two files.
+        # Keep everything else the same to maximize file matching between the
+        # two versions so we can get the smallest delta. E.g. we keep the
+        # `coreos.liveiso` karg, even though the miniso doesn't need it.
+        # coreos-installer takes care of removing it.
         os.unlink(iso_rootfs)
         os.unlink(miniso_data)
         run_verbose(genisoargs_minimal)
