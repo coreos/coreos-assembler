@@ -123,6 +123,7 @@ var (
 			label: "push-secret",
 			fileVarMap: varMap{
 				"docker.cfg": "PUSH_AUTH_JSON",
+				"docker.json": "PUSH_AUTH_JSON",
 			},
 		},
 		// Pull Secret
@@ -130,6 +131,7 @@ var (
 			label: "pull-secret",
 			fileVarMap: varMap{
 				"docker.cfg": "PULL_AUTH_JSON",
+				"docker.json": "PULL_AUTH_JSON",
 			},
 		},
 		// Koji Keytab
