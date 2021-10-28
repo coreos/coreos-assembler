@@ -37,6 +37,10 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+	}
+
 	var keyname string
 	if !ac.RuntimeConf().NoSSHKeyInMetadata {
 		keyname = ac.flight.Name()
@@ -69,7 +73,9 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	if err := platform.StartMachine(mach, mach.journal); err != nil {
-		mach.Destroy()
+		if !platform.LeakOnFail(mach) {
+			mach.Destroy()
+		}
 		return nil, err
 	}
 
@@ -91,4 +97,8 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 func (ac *cluster) Destroy() {
 	ac.BaseCluster.Destroy()
 	ac.flight.DelCluster(ac)
+}
+
+func (ac *cluster) Leak(m platform.Machine) {
+	ac.BaseCluster.DelMach(m)
 }

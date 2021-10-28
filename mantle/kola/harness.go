@@ -1156,7 +1156,14 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		h.Fatalf("Cluster failed: %v", err)
 	}
 	defer func() {
-		c.Destroy()
+		if h.Failed() && os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+			for _, m := range c.Machines() {
+				platform.LeakOnFail(m)
+				c.Leak(m)
+			}
+		} else {
+			c.Destroy()
+		}
 		for _, k := range t.Tags {
 			if k == SkipBaseChecksTag {
 				plog.Debugf("Skipping base checks for %s", t.Name)

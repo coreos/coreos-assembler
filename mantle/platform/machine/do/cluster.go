@@ -41,6 +41,10 @@ func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+	}
+
 	droplet, err := dc.flight.api.CreateDroplet(context.TODO(), dc.vmname(), dc.sshKeyID, conf.String())
 	if err != nil {
 		return nil, err
@@ -79,7 +83,9 @@ func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	if err := platform.StartMachine(mach, mach.journal); err != nil {
-		mach.Destroy()
+		if !platform.LeakOnFail(mach) {
+			mach.Destroy()
+		}
 		return nil, err
 	}
 
@@ -109,4 +115,8 @@ func (dc *cluster) vmname() string {
 func (dc *cluster) Destroy() {
 	dc.BaseCluster.Destroy()
 	dc.flight.DelCluster(dc)
+}
+
+func (dc *cluster) Leak(m platform.Machine) {
+	dc.BaseCluster.DelMach(m)
 }

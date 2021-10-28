@@ -41,6 +41,10 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+	}
+
 	vmname := pc.vmname()
 	// Stream the console somewhere temporary until we have a machine ID
 	consolePath := filepath.Join(pc.RuntimeConf().OutputDir, "console-"+vmname+".txt")
@@ -103,7 +107,9 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	if err := platform.StartMachine(mach, mach.journal); err != nil {
-		mach.Destroy()
+		if !platform.LeakOnFail(mach) {
+			mach.Destroy()
+		}
 		return nil, err
 	}
 
@@ -133,4 +139,8 @@ func (pc *cluster) vmname() string {
 func (pc *cluster) Destroy() {
 	pc.BaseCluster.Destroy()
 	pc.flight.DelCluster(pc)
+}
+
+func (pc *cluster) Leak(m platform.Machine) {
+	pc.BaseCluster.DelMach(m)
 }

@@ -72,6 +72,11 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		qc.mu.Unlock()
 		return nil, err
 	}
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+		options.DisablePDeathSig = true
+	}
+
 	qc.mu.Unlock()
 
 	var confPath string
@@ -98,6 +103,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 
 	builder := platform.NewQemuBuilder()
+	if options.DisablePDeathSig {
+		builder.Pdeathsig = false
+	}
 	builder.ConfigFile = confPath
 	defer builder.Close()
 	builder.UUID = qm.id
@@ -149,7 +157,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 
 	if err := platform.StartMachine(qm, qm.journal); err != nil {
-		qm.Destroy()
+		if !platform.LeakOnFail(qm) {
+			qm.Destroy()
+		}
 		return nil, err
 	}
 
@@ -161,4 +171,8 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 func (qc *Cluster) Destroy() {
 	qc.BaseCluster.Destroy()
 	qc.flight.DelCluster(qc)
+}
+
+func (qc *Cluster) Leak(m platform.Machine) {
+	qc.BaseCluster.DelMach(m)
 }

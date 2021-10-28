@@ -50,6 +50,10 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		}
 	}
 
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+	}
+
 	instance, err := gc.flight.api.CreateInstance(conf.String(), keys)
 	if err != nil {
 		return nil, err
@@ -82,7 +86,9 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	if err := platform.StartMachine(gm, gm.journal); err != nil {
-		gm.Destroy()
+		if !platform.LeakOnFail(gm) {
+			gm.Destroy()
+		}
 		return nil, err
 	}
 
@@ -104,4 +110,8 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 func (gc *cluster) Destroy() {
 	gc.BaseCluster.Destroy()
 	gc.flight.DelCluster(gc)
+}
+
+func (gc *cluster) Leak(m platform.Machine) {
+	gc.BaseCluster.DelMach(m)
 }

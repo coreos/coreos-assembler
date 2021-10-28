@@ -47,6 +47,10 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+	}
+
 	instance, err := ac.flight.api.CreateInstance(ac.vmname(), conf.String(), ac.sshKey, ac.ResourceGroup, ac.StorageAccount)
 	if err != nil {
 		return nil, err
@@ -75,7 +79,9 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	}
 
 	if err := platform.StartMachine(mach, mach.journal); err != nil {
-		mach.Destroy()
+		if !platform.LeakOnFail(mach) {
+			mach.Destroy()
+		}
 		return nil, err
 	}
 
@@ -100,4 +106,8 @@ func (ac *cluster) Destroy() {
 		plog.Errorf("Deleting resource group %v: %v", ac.ResourceGroup, e)
 	}
 	ac.flight.DelCluster(ac)
+}
+
+func (ac *cluster) Leak(m platform.Machine) {
+	ac.BaseCluster.DelMach(m)
 }

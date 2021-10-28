@@ -167,6 +167,31 @@ be used to inspect a machine during a test.
 The `--ssh-on-test-failure` flag can be specified to have the kola runner
 automatically SSH into a machine when any `MustSSH` calls fail.
 
+## KOLA_LEAK_ON_FAIL
+
+Sometimes `--ssh-on-test-failure` is not good enough to debug a test. For
+example, if the failure happens during provisioning, or if it isn't an SSH
+command that fails, but something else.
+
+You can use the `KOLA_LEAK_ON_FAIL` environment variable to force kola to leak
+machines when a test fails so that you can debug manually. Specifically, this
+does a few things:
+- It enables serial console auto-login.
+- It injects the SSH public key pointed at by `KOLA_LEAK_ON_FAIL` into all test
+  instances.
+- It suppresses VM teardown if a test failed.
+
+Example usage:
+
+```
+$ while true; do KOLA_LEAK_ON_FAIL=~/.ssh/id_rsa.pub kola run my-flaky-test || break; done
+...
+KOLA_LEAK_ON_FAIL set; not tearing down node:
+{"id":"1cee7ac8-1ffb-470f-a0a5-2294ad76301d","public_ip":"127.0.0.1:45973","output_dir":"tmp/kola/qemu-unpriv-2021-11-01-1503-162948/basic/1cee7ac8-1ffb-470f-a0a5-2294ad76301d"}
+$ ssh -l core -p 45973 localhost
+$ # or if SSH is down, try using the logged in serial console in the cloud UI
+```
+
 ## kolet
 
 kolet is run on kola instances to run native functions in tests. Generally kolet

@@ -45,6 +45,10 @@ func (ec *cluster) NewMachine(userdata *platformConf.UserData) (platform.Machine
 		return nil, err
 	}
 
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		conf.AddAutoLogin()
+	}
+
 	conf.AddSystemdUnit("coreos-metadata.service", `[Unit]
 Description=VMware metadata agent
 
@@ -82,7 +86,9 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 	}
 
 	if err := platform.StartMachine(mach, mach.journal); err != nil {
-		mach.Destroy()
+		if !platform.LeakOnFail(mach) {
+			mach.Destroy()
+		}
 		return nil, err
 	}
 
@@ -104,4 +110,8 @@ func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, option
 func (ec *cluster) Destroy() {
 	ec.BaseCluster.Destroy()
 	ec.flight.DelCluster(ec)
+}
+
+func (ec *cluster) Leak(m platform.Machine) {
+	ec.BaseCluster.DelMach(m)
 }

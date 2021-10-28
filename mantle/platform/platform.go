@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -114,6 +115,9 @@ type Cluster interface {
 	// associated resources. It should log any failures; since they are not
 	// actionable, it does not return an error
 	Destroy()
+
+	// Leak removes the machine from the cluster without deprovisioning it.
+	Leak(m Machine)
 
 	// ConsoleOutput returns a map of console output from destroyed
 	// cluster machines.
@@ -500,4 +504,13 @@ func WriteJSONInfo(m Machine, w io.Writer) error {
 	// disable pretty printing, so we emit newline-delimited streaming JSON objects
 	e.SetIndent("", "")
 	return e.Encode(info)
+}
+
+func LeakOnFail(m Machine) bool {
+	if os.Getenv("KOLA_LEAK_ON_FAIL") != "" {
+		fmt.Printf("KOLA_LEAK_ON_FAIL set; not tearing down node: ")
+		WriteJSONInfo(m, os.Stdout)
+		return true
+	}
+	return false
 }

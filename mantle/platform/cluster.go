@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -202,6 +203,14 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		keys, err := bc.bf.Keys()
 		if err != nil {
 			return nil, err
+		}
+
+		if keyfile := os.Getenv("KOLA_LEAK_ON_FAIL"); keyfile != "" {
+			key, err := ioutil.ReadFile(keyfile)
+			if err != nil {
+				return nil, err
+			}
+			conf.AddAuthorizedKeys("core", []string{string(key)})
 		}
 
 		conf.CopyKeys(keys)
