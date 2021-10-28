@@ -334,7 +334,7 @@ func pushOstreeToRegistry(ctx ClusterContext, push *spec.Registry, build *cosa.B
 	registry, registryPath := getPushTagless(push.URL)
 	pushPath := fmt.Sprintf("%s/%s", registry, registryPath)
 
-	authPath := filepath.Join("/", cosaSrvDir, ".docker", "config.json")
+	authPath := filepath.Join(cosaSrvDir, ".docker", "config.json")
 	authDir := filepath.Dir(authPath)
 	if err := os.MkdirAll(authDir, 0755); err != nil {
 		return fmt.Errorf("failed to directory path for push secret")
@@ -446,9 +446,9 @@ func writeDockerSecret(ctx ClusterContext, clusterSecretName, authPath string) e
 		key = v1.DockerConfigKey
 	case v1.SecretTypeOpaque:
 		if _, ok := secret.Data["docker.json"]; ok {
-			key = v1.DockerConfigJsonKey
+			key = "docker.json"
 		} else if _, ok := secret.Data["docker.cfg"]; ok {
-			key = v1.DockerConfigKey
+			key = "docker.cfg"
 		}
 	default:
 		return fmt.Errorf("writeDockerSecret is not supported for secret type %s", secret.Type)
