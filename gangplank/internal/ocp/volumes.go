@@ -53,7 +53,7 @@ var (
 		"docker.json": {
 			volumes: []v1.Volume{
 				{
-					Name: "docker.json",
+					Name: "docker-json",
 					VolumeSource: v1.VolumeSource{
 						Secret: &v1.SecretVolumeSource{
 							DefaultMode: ptrInt32(444),
@@ -64,11 +64,10 @@ var (
 			},
 			volumeMounts: []v1.VolumeMount{
 				{
-					Name:      "docker.json",
+					Name:      "docker-json",
 					MountPath: filepath.Join(cosaSrvDir, "secrets", "auths"),
 				},
 			},
-			requireData: []string{"docker.json"},
 		},
 
 		// Koji ConfigMap
