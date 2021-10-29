@@ -339,7 +339,14 @@ if [ -e (md/md-boot) ]; then
   # the main grub.cfg.
   set prefix=md/md-boot
 else
-  search --label boot --set prefix --no-floppy
+  if [ -f ${config_directory}/bootuuid.cfg ]; then
+    source ${config_directory}/bootuuid.cfg
+  fi
+  if [ -n "${BOOT_UUID}" ]; then
+    search --fs-uuid "${BOOT_UUID}" --set prefix --no-floppy
+  else
+    search --label boot --set prefix --no-floppy
+  fi
 fi
 set prefix=($prefix)/grub2
 configfile $prefix/grub.cfg
