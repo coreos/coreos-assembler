@@ -8,8 +8,7 @@ import urllib
 import os.path
 import sys
 from cosalib.cmdlib import (
-    run_verbose,
-    get_basearch
+    run_verbose
 )
 from tenacity import (
     retry,
@@ -24,11 +23,6 @@ from cosalib.qemuvariants import QemuVariantImage
 
 
 OVA_TEMPLATE_FILE = '/usr/lib/coreos-assembler/powervs-template.xml'
-
-template_meta = """os-type = {os}
-architecture = {basearch}
-vol1-file = {image}
-vol1-type = boot"""
 
 # Variant are OVA types that are derived from qemu images.
 # To define new variants that use the QCOW2/raw disk image, simply,
@@ -68,8 +62,6 @@ class IBMCloudImage(QemuVariantImage):
             self.mutate_callback = self.write_ova
             # Ensure that coreos.ovf is included in the tar
             self.ovf_path = os.path.join(self._tmpdir, "coreos.ovf")
-            # Ensure that coreos.meta is included in the tar
-            self.meta_path = os.path.join(self._tmpdir, "coreos.meta")
 
     def generate_ovf_parameters(self, raw):
         """
@@ -81,8 +73,6 @@ class IBMCloudImage(QemuVariantImage):
         image_description = f'{self.meta["name"]} {self.meta["summary"]} {self.meta["ostree-version"]}'
 
         params = {
-            'os':                  os.path.basename(raw).split("-")[0],
-            'basearch':            get_basearch(),
             'image_description':   image_description,
             'image':               image,
             'image_size':          str(image_size),
@@ -103,18 +93,12 @@ class IBMCloudImage(QemuVariantImage):
             template = f.read()
         ovf_xml = template.format(**ovf_params)
 
-        meta_text = template_meta.format(**ovf_params)
-
         with open(self.ovf_path, "w") as ovf:
             ovf.write(ovf_xml)
-
-        with open(self.meta_path, "w") as meta:
-            meta.write(meta_text)
 
         log.debug(ovf_xml)
         # OVF descriptor must come first, then the manifest, then the meta file
         self.tar_members.append(self.ovf_path)
-        self.tar_members.append(self.meta_path)
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
