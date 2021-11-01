@@ -516,7 +516,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 // register tests in their init() function.  outputDir is where various test
 // logs and data will be written for analysis after the test run. If it already
 // exists it will be erased!
-func runProvidedTests(tests map[string]*register.Test, patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
+func runProvidedTests(tests map[string]*register.Test, patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool, disableNonExclusive bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -544,7 +544,7 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 	// Generate non-exclusive test wrapper (run multiple tests in one VM)
 	var nonExclusiveTests []*register.Test
 	for _, test := range tests {
-		if test.NonExclusive {
+		if test.NonExclusive && !disableNonExclusive {
 			nonExclusiveTests = append(nonExclusiveTests, test)
 			delete(tests, test.Name)
 		}
@@ -661,12 +661,12 @@ func rerunFailedTests(flight platform.Flight, outputDir string, pltfrm string, v
 	return err
 }
 
-func RunTests(patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.Tests, patterns, multiply, rerun, pltfrm, outputDir, propagateTestErrors)
+func RunTests(patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool, disableNonExclusive bool) error {
+	return runProvidedTests(register.Tests, patterns, multiply, rerun, pltfrm, outputDir, propagateTestErrors, disableNonExclusive)
 }
 
-func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, pltfrm, outputDir, propagateTestErrors)
+func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string, propagateTestErrors bool, disableNonExclusive bool) error {
+	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, pltfrm, outputDir, propagateTestErrors, disableNonExclusive)
 }
 
 // externalTestMeta is parsed from kola.json in external tests
