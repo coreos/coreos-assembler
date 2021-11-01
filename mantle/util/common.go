@@ -15,10 +15,12 @@
 package util
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -87,4 +89,33 @@ func CreateSSHAuthorizedKey(tmpd string) ([]byte, string, error) {
 		return nil, "", errors.Wrapf(err, "reading pubkey")
 	}
 	return sshPubKeyBuf, sshKeyPath, nil
+}
+
+// RunCmdTimeout runs a command but returns an error if it doesn't complete
+// before the given duration.
+func RunCmdTimeout(timeout time.Duration, cmd string, args ...string) error {
+	c := exec.Command(cmd, args...)
+	err := c.Start()
+	if err != nil {
+		return err
+	}
+
+	errc := make(chan error, 1)
+	go func() {
+		errc <- c.Wait()
+	}()
+
+	select {
+	case err := <-errc:
+		if err != nil {
+			return fmt.Errorf("%s: %v", cmd, err)
+		}
+		return nil
+	case <-time.After(timeout):
+		// this uses the waitid(WNOWAIT) trick to avoid racing:
+		// https://github.com/golang/go/commit/cea29c4a358004d84d8711a07628c2f856b381e8
+		c.Process.Kill()
+		<-errc
+		return fmt.Errorf("%s timed out after %s", cmd, timeout)
+	}
 }

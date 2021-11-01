@@ -14,6 +14,7 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -103,97 +104,27 @@ func TestPortSsh() error {
 
 func TestDockerEcho() error {
 	//t.Parallel()
-	errc := make(chan error, 1)
-	go func() {
-		c := exec.Command("docker", "run", "busybox", "echo")
-		err := c.Run()
-		errc <- err
-	}()
-	select {
-	case <-time.After(DockerTimeout):
-		return fmt.Errorf("DockerEcho timed out after %s.", DockerTimeout)
-	case err := <-errc:
-		if err != nil {
-			return fmt.Errorf("DockerEcho: %v", err)
-		}
-		return nil
-	}
+	return util.RunCmdTimeout(DockerTimeout, "docker", "run", "busybox", "echo")
 }
 
 func TestDockerPing() error {
 	//t.Parallel()
-	errc := make(chan error, 1)
-	go func() {
-		c := exec.Command("docker", "run", "busybox", "ping", "-c4", "coreos.com")
-		err := c.Run()
-		errc <- err
-	}()
-	select {
-	case <-time.After(DockerTimeout):
-		return fmt.Errorf("DockerPing timed out after %s.", DockerTimeout)
-	case err := <-errc:
-		if err != nil {
-			return err
-		}
-		return nil
-	}
+	return util.RunCmdTimeout(DockerTimeout, "docker", "run", "busybox", "ping", "-c4", "coreos.com")
 }
 
 func TestPodmanEcho() error {
 	//t.Parallel()
-	errc := make(chan error, 1)
-	go func() {
-		c := exec.Command("podman", "run", "busybox", "echo")
-		err := c.Run()
-		errc <- err
-	}()
-	select {
-	case <-time.After(DockerTimeout):
-		return fmt.Errorf("PodmanEcho timed out after %s.", DockerTimeout)
-	case err := <-errc:
-		if err != nil {
-			return fmt.Errorf("PodmanEcho: %v", err)
-		}
-		return nil
-	}
+	return util.RunCmdTimeout(DockerTimeout, "podman", "run", "busybox", "echo")
 }
 
 func TestPodmanPing() error {
 	//t.Parallel()
-	errc := make(chan error, 1)
-	go func() {
-		c := exec.Command("podman", "run", "busybox", "ping", "-c4", "coreos.com")
-		err := c.Run()
-		errc <- err
-	}()
-	select {
-	case <-time.After(DockerTimeout):
-		return fmt.Errorf("PodmanPing timed out after %s.", DockerTimeout)
-	case err := <-errc:
-		if err != nil {
-			return err
-		}
-		return nil
-	}
+	return util.RunCmdTimeout(DockerTimeout, "podman", "run", "busybox", "ping", "-c4", "coreos.com")
 }
 
 func TestPodmanWgetHead() error {
 	//t.Parallel()
-	errc := make(chan error, 1)
-	go func() {
-		c := exec.Command("podman", "run", "busybox", "wget", "--spider", "http://fedoraproject.org/static/hotspot.txt")
-		err := c.Run()
-		errc <- err
-	}()
-	select {
-	case <-time.After(DockerTimeout):
-		return fmt.Errorf("PodmanWgetHead timed out after %s.", DockerTimeout)
-	case err := <-errc:
-		if err != nil {
-			return err
-		}
-		return nil
-	}
+	return util.RunCmdTimeout(DockerTimeout, "podman", "run", "busybox", "wget", "--spider", "http://fedoraproject.org/static/hotspot.txt")
 }
 
 // This execs gdbus, because we need to change uses to test perms.
