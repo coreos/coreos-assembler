@@ -10,6 +10,8 @@ if [[ $# -eq 0 ]]; then
     set -- cmd/* schema
 fi
 
+declare -A BASEARCH_TO_GOARCH=([s390x]=s390x [x86_64]=amd64 [aarch64]=arm64 [ppc64le]=ppc64le)
+
 race=
 if [ -n "${ENABLE_GO_RACE_DETECTOR:-}" ] && [[ ! "$(uname -m)" =~ "s390" ]]; then
     race="-race"
@@ -34,11 +36,10 @@ host_build() {
 cross_static_build() {
     local cmd=$1; shift
     local a
-	declare -A arches=([s390x]=s390x [x86_64]=amd64 [aarch64]=arm64 [ppc64le]=ppc64le)
-	for a in "${!arches[@]}"; do \
+	for a in "${!BASEARCH_TO_GOARCH[@]}"; do \
         mkdir -p "bin/$a"
         echo "Building $a/$cmd (static)"
-        CGO_ENABLED=0 GOARCH=${arches[$a]} \
+        CGO_ENABLED=0 GOARCH=${BASEARCH_TO_GOARCH[$a]} \
         go build \
             -ldflags "${ldflags} -extldflags=-static" \
             -mod vendor \
