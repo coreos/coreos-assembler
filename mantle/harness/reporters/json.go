@@ -16,6 +16,7 @@ package reporters
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -41,6 +42,23 @@ type jsonTest struct {
 	Result   testresult.TestResult `json:"result"`
 	Duration time.Duration         `json:"duration"`
 	Output   string                `json:"output"`
+}
+
+func DeserialiseReport(filename string) (*jsonReporter, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	var data jsonReporter
+	if err = json.Unmarshal(bytes, &data); err != nil {
+		return nil, err
+	}
+	return &data, err
 }
 
 func NewJSONReporter(filename, platform, version string) *jsonReporter {

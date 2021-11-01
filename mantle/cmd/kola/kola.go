@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/coreos/pkg/capnslog"
@@ -31,6 +32,8 @@ import (
 	"github.com/coreos/coreos-assembler-schema/cosa"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/fcos"
+	"github.com/coreos/mantle/harness/reporters"
+	"github.com/coreos/mantle/harness/testresult"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/system"
@@ -93,6 +96,15 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		SilenceUsage: true,
 	}
 
+	cmdRerun = &cobra.Command{
+		Use:     "rerun",
+		Short:   "Rerun tests that failed in the last run",
+		PreRunE: preRun,
+		RunE:    runRerun,
+
+		SilenceUsage: true,
+	}
+
 	listJSON           bool
 	listPlatform       string
 	listDistro         string
@@ -125,6 +137,8 @@ func init() {
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
 	cmdRunUpgrade.Flags().StringVar(&qemuImageDir, "qemu-image-dir", "", "directory in which to cache QEMU images if --fetch-parent-image is enabled")
 	cmdRunUpgrade.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
+
+	root.AddCommand(cmdRerun)
 }
 
 func main() {
@@ -176,6 +190,32 @@ func runRun(cmd *cobra.Command, args []string) error {
 		patterns = args
 	}
 
+	return kolaRunPatterns(patterns, runRerunFlag, false)
+}
+
+func runRerun(cmd *cobra.Command, args []string) error {
+	var patterns []string
+	data, err := reporters.DeserialiseReport(filepath.Join(kola.Options.CosaWorkdir, "tmp/kola/reports/report.json"))
+	if err != nil {
+		return err
+	}
+	for _, test := range data.Tests {
+		if test.Result == testresult.Fail {
+			if strings.HasPrefix(test.Name, "non-exclusive-tests") && test.Name != "non-exclusive-tests" {
+				// Extract name of non-exclusive test
+				name := strings.TrimPrefix(test.Name, "non-exclusive-tests/")
+				patterns = append(patterns, name)
+			} else if !strings.Contains(test.Name, "/") {
+				// We don't add subtests to list of patterns
+				patterns = append(patterns, test.Name)
+			}
+		}
+	}
+
+	return kolaRunPatterns(patterns, false, true)
+}
+
+func kolaRunPatterns(patterns []string, rerun bool, disableNonExclusive bool) error {
 	var err error
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
@@ -186,7 +226,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, runMultiply, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, runMultiply, rerun, kolaPlatform, outputDir, !kola.Options.NoTestExitError, disableNonExclusive)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
@@ -602,7 +642,7 @@ func runRunUpgrade(cmd *cobra.Command, args []string) error {
 		patterns = args
 	}
 
-	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError, false)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
