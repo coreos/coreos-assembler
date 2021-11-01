@@ -11,6 +11,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 declare -A BASEARCH_TO_GOARCH=([s390x]=s390x [x86_64]=amd64 [aarch64]=arm64 [ppc64le]=ppc64le)
+KOLET_ARCHES="${KOLET_ARCHES:-s390x x86_64 aarch64 ppc64le}"
 
 race=
 if [ -n "${ENABLE_GO_RACE_DETECTOR:-}" ] && [[ ! "$(uname -m)" =~ "s390" ]]; then
@@ -36,7 +37,7 @@ host_build() {
 cross_static_build() {
     local cmd=$1; shift
     local a
-	for a in "${!BASEARCH_TO_GOARCH[@]}"; do \
+	for a in ${KOLET_ARCHES}; do \
         mkdir -p "bin/$a"
         echo "Building $a/$cmd (static)"
         CGO_ENABLED=0 GOARCH=${BASEARCH_TO_GOARCH[$a]} \
