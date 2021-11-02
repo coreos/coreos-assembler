@@ -32,21 +32,10 @@ configure_yum_repos() {
 }
 
 install_rpms() {
-    local builddeps
-    local frozendeps
-
-    # Pin to 5.13 until https://github.com/openshift/os/issues/646 is root caused
-    # (May be related to https://bugzilla.redhat.com/show_bug.cgi?id=2008401)
-    frozendeps=$(echo kernel{,-core,-modules}-5.13.19-200.fc34)
-
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
-    #
-    # In order to prevent the `distro-sync` operation from installing a newer
-    # version of the kernel in addition to what we want to freeze, exclude the
-    # kernel packages from the operation.
-    yum -y distro-sync -x kernel -x kernel-core -x kernel-modules
+    yum -y distro-sync
 
     # xargs is part of findutils, which may not be installed
     yum -y install /usr/bin/xargs
@@ -59,7 +48,7 @@ install_rpms() {
     builddeps=$(grep -v '^#' "${srcdir}"/src/build-deps.txt)
 
     # Process our base dependencies + build dependencies and install
-    (echo "${frozendeps}" && echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
+    (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
