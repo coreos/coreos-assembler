@@ -124,6 +124,7 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 
 		if releaseArch.Media.Gcp.Image != nil {
 			cloudImages.Gcp = &stream.GcpImage{
+				Release: rel.Release,
 				Name:    releaseArch.Media.Gcp.Image.Name,
 				Family:  releaseArch.Media.Gcp.Image.Family,
 				Project: releaseArch.Media.Gcp.Image.Project,
@@ -149,6 +150,22 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Release: rel.Release,
 			Formats: mapFormats(releaseArch.Media.Ibmcloud.Artifacts),
 		}
+		ibmcloudObjects := stream.ReplicatedObject{
+			Regions: make(map[string]stream.RegionObject),
+		}
+		if releaseArch.Media.Ibmcloud.Images != nil {
+			for region, object := range releaseArch.Media.Ibmcloud.Images {
+				ri := stream.RegionObject{
+					Release: rel.Release,
+					Object:  object.Object,
+					Bucket:  object.Bucket,
+					Url:     object.Url,
+				}
+				ibmcloudObjects.Regions[region] = ri
+
+			}
+			cloudImages.Ibmcloud = &ibmcloudObjects
+		}
 	}
 
 	// if releaseArch.Media.Packet != nil {
@@ -166,6 +183,29 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		artifacts["openstack"] = stream.PlatformArtifacts{
 			Release: rel.Release,
 			Formats: mapFormats(releaseArch.Media.Openstack.Artifacts),
+		}
+	}
+
+	if releaseArch.Media.PowerVS != nil {
+		artifacts["powervs"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.PowerVS.Artifacts),
+		}
+		powervsObjects := stream.ReplicatedObject{
+			Regions: make(map[string]stream.RegionObject),
+		}
+		if releaseArch.Media.PowerVS.Images != nil {
+			for region, object := range releaseArch.Media.PowerVS.Images {
+				ri := stream.RegionObject{
+					Release: rel.Release,
+					Object:  object.Object,
+					Bucket:  object.Bucket,
+					Url:     object.Url,
+				}
+				powervsObjects.Regions[region] = ri
+
+			}
+			cloudImages.PowerVS = &powervsObjects
 		}
 	}
 
