@@ -273,6 +273,9 @@ commit_overlay() {
     # using ostree's --statoverride when dealing with executable files. See:
     # https://github.com/ostreedev/ostree/issues/2368
     rm -rf "${TMPDIR}/overlay" && (umask 0022 && cp -r "${respath}" "${TMPDIR}/overlay")
+    # Make sure there are no setgid/setuid bits in the overlays.
+    # See e.g. https://github.com/coreos/fedora-coreos-tracker/issues/1003.
+    chmod -R gu-s "${TMPDIR}/overlay"
     # Apply statoverrides from a file in the root of the overlay, which may
     # or may not exist.  ostree doesn't support comments in statoverride
     # files, but we do.
