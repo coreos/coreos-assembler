@@ -52,19 +52,20 @@ type Arch struct {
 
 // Media contains release details for various platforms
 type Media struct {
-	Aliyun       *PlatformAliyun `json:"aliyun"`
-	Aws          *PlatformAws    `json:"aws"`
-	Azure        *PlatformBase   `json:"azure"`
-	AzureStack   *PlatformBase   `json:"azurestack"`
-	Digitalocean *PlatformBase   `json:"digitalocean"`
-	Exoscale     *PlatformBase   `json:"exoscale"`
-	Gcp          *PlatformGcp    `json:"gcp"`
-	Ibmcloud     *PlatformBase   `json:"ibmcloud"`
-	Metal        *PlatformBase   `json:"metal"`
-	Openstack    *PlatformBase   `json:"openstack"`
-	Qemu         *PlatformBase   `json:"qemu"`
-	Vmware       *PlatformBase   `json:"vmware"`
-	Vultr        *PlatformBase   `json:"vultr"`
+	Aliyun       *PlatformAliyun   `json:"aliyun"`
+	Aws          *PlatformAws      `json:"aws"`
+	Azure        *PlatformBase     `json:"azure"`
+	AzureStack   *PlatformBase     `json:"azurestack"`
+	Digitalocean *PlatformBase     `json:"digitalocean"`
+	Exoscale     *PlatformBase     `json:"exoscale"`
+	Gcp          *PlatformGcp      `json:"gcp"`
+	Ibmcloud     *PlatformIBMCloud `json:"ibmcloud"`
+	Metal        *PlatformBase     `json:"metal"`
+	Openstack    *PlatformBase     `json:"openstack"`
+	PowerVS      *PlatformIBMCloud `json:"powervs"`
+	Qemu         *PlatformBase     `json:"qemu"`
+	Vmware       *PlatformBase     `json:"vmware"`
+	Vultr        *PlatformBase     `json:"vultr"`
 }
 
 // PlatformBase with no cloud images
@@ -90,6 +91,12 @@ type PlatformGcp struct {
 	Image *GcpImage `json:"image"`
 }
 
+// PlatformIBMCloud IBMCloud/PowerVS image detail
+type PlatformIBMCloud struct {
+	PlatformBase
+	Images map[string]IBMCloudImage `json:"images"`
+}
+
 // ImageFormat contains all artifacts for a single OS image
 type ImageFormat struct {
 	Disk      *Artifact `json:"disk,omitempty"`
@@ -113,7 +120,14 @@ type CloudImage struct {
 
 // GcpImage represents a GCP cloud image
 type GcpImage struct {
-	Project string `json:"project,omitempty"`
+	Project string `json:"project"`
 	Family  string `json:"family,omitempty"`
-	Name    string `json:"name,omitempty"`
+	Name    string `json:"name"`
+}
+
+// IBMCloudImage represents an IBMCloud/PowerVS cloud object - which is an ova image for PowerVS and a qcow for IBMCloud in the cloud object storage bucket
+type IBMCloudImage struct {
+	Object string `json:"object"`
+	Bucket string `json:"bucket"`
+	Url    string `json:"url"`
 }
