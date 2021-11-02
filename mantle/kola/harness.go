@@ -532,6 +532,26 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 		plog.Fatal(err)
 	}
 
+	flight, err := NewFlight(pltfrm)
+	if err != nil {
+		plog.Fatalf("Flight failed: %v", err)
+	}
+	defer flight.Destroy()
+	// Generate non-exclusive test wrapper (run multiple tests in one VM)
+	var nonExclusiveTests []*register.Test
+	for _, test := range tests {
+		if test.NonExclusive {
+			nonExclusiveTests = append(nonExclusiveTests, test)
+			delete(tests, test.Name)
+		}
+	}
+
+	if len(nonExclusiveTests) > 0 {
+		nonExclusiveWrapper := makeNonExclusiveTest(nonExclusiveTests, flight)
+		tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
+		register.RegisterTest(&nonExclusiveWrapper)
+	}
+
 	if multiply > 1 {
 		newTests := make(map[string]*register.Test)
 		for name, t := range tests {
@@ -547,12 +567,6 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 		tests = newTests
 	}
 
-	flight, err := NewFlight(pltfrm)
-	if err != nil {
-		plog.Fatalf("Flight failed: %v", err)
-	}
-	defer flight.Destroy()
-
 	opts := harness.Options{
 		OutputDir: outputDir,
 		Parallel:  TestParallelism,
@@ -560,20 +574,6 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 		Reporters: reporters.Reporters{
 			reporters.NewJSONReporter("report.json", pltfrm, versionStr),
 		},
-	}
-
-	var nonExclusiveTests []*register.Test
-	for _, test := range tests {
-		if test.NonExclusive {
-			nonExclusiveTests = append(nonExclusiveTests, test)
-			delete(tests, test.Name)
-		}
-	}
-
-	if len(nonExclusiveTests) > 0 {
-		nonExclusiveWrapper := makeNonExclusiveTest(nonExclusiveTests, flight)
-		tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
-		register.RegisterTest(&nonExclusiveWrapper)
 	}
 
 	var htests harness.Tests
