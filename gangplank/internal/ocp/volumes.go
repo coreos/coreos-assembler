@@ -13,6 +13,7 @@ import (
 	mountReferance describes secrets or configMaps that are mounted
 	as volumes. In general, these volumes contain data that is used by
 	systems level tooling use as Kerberos, CA certs, etc.
+	The label coreos-assembler.coreos.com/mount-ref is needed in this case
 */
 
 // mountReferance is mapping of secrets or a configmap
@@ -69,7 +70,6 @@ var (
 				},
 			},
 		},
-
 		// Koji ConfigMap
 		"koji-ca": {
 			volumes: []v1.Volume{
@@ -114,7 +114,7 @@ var (
 			},
 		},
 
-		// Kerberos Configuration: usually used by the brew code.
+		// Kerberos Configuration ConfigMap: usually used by the brew code.
 		"krb5.conf": {
 			volumes: []v1.Volume{
 				{
