@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
 
@@ -144,10 +143,6 @@ func createClusterValidate(c cluster.TestCluster, config types.Config, options p
 func setupIgnitionConfig() types.Config {
 	containerpartdeviceid := "by-partlabel/CONTR"
 	logpartdeviceid := "by-partlabel/LOG"
-	if system.RpmArch() == "s390x" {
-		containerpartdeviceid = "by-partuuid/63194b49-e4b7-43f9-9a8b-df0fd8279bb7"
-		logpartdeviceid = "by-partuuid/6385b84e-2c7b-4488-a870-667c565e01a8"
-	}
 
 	config := types.Config{
 		Ignition: types.Ignition{
