@@ -103,8 +103,7 @@ $ gangplank pod --podman -A base
 
 Unless an external Minio Server has been defined, Gangplank will forward Minio over SSH for return of the artifacts.
 
-#### Secret Discovery (Kubernetes/OCP)
-
+#### Secret/Config Map Discovery (Kubernetes/OCP)
 Gangplank has first-class secret discovery, but does not require them. To find secrets, Gangplank will iterate over all secrets that have been annotated using `coreos-assembler.coreos.com/secret` and check the value against known secrets (i.e. AWS, GCP, etc.). If the secret is known, then the _workers_ will have the secret exposed via envVar or with an envVar pointer to the files.
 
 For example:
@@ -125,6 +124,27 @@ For example:
 Gangplank tries to follow the upstream tooling convention regarding secrets; if the most popular tool uses an envVar secret then Gangplank will too.
 
 In the above example, Gangplank will expose `AWS_DEFAULT_REGION` to be `us-east-1` and set `AWS_CONFIG_FILE` to the in-pod location of config file.
+
+
+Gangplank also uses Volume Mounts defined by Config Maps. Gangplank will look for known Config Maps (internal-ca, Push/Pull secrets, Koji secrets, etc) using the label `coreos-assembler.coreos.com/mount-ref` and mount them as defined.
+
+For example:
+```yaml
+        apiVersion: v1
+          data:
+            config..
+          kind: ConfigMap
+          metadata:
+            annotations:
+            labels:
+              coreos-assembler.coreos.com/mount-ref: krb5.conf
+              type: config
+            name: brew-krb-config
+```
+In this case Gangplank checks the configuration done for krbr.conf and  mounts it as define in [volumes.go](https://github.com/coreos/coreos-assembler/blob/327d2f4a2764b1a5cd5c2b5a01eff1421615c614/gangplank/internal/ocp/volumes.go#L118-L139).
+
+The Push/Pull secrets are a different type of secret, and need a verification against the registry to be mounted as a docker config under the cosaDir.
+
 
 ### Workers and their Work
 

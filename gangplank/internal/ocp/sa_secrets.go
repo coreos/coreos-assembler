@@ -14,7 +14,7 @@ import (
 )
 
 /*
-	To support automagically presenting secrets, this provides support
+	To support automatically presenting secrets, this provides support
 	secret discovery.
 
 	For this to work properly a service account with access to get secrets
