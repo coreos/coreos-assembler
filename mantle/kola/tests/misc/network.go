@@ -219,8 +219,7 @@ var (
           fi
           export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
           export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount -o rw,remount /boot
-          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
+          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /var/mac_addresses
 	`
 
 	setupVethPairsTemplate = `#!/usr/bin/env bash
@@ -300,15 +299,15 @@ var (
 
 	setupOvsScript = `#!/usr/bin/env bash
           set -ex
-          if [[ ! -f /boot/mac_addresses ]] ; then
+          if [[ ! -f /var/mac_addresses ]] ; then
             echo "no mac address configuration file found .. skipping setup-ovs"
             exit 0
           fi
           
           if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
             echo "configure ovs bonding"
-            primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
-            secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
+            primary_mac=$(cat /var/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
+            secondary_mac=$(cat /var/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
             
             default_device=""
             secondary_device=""
