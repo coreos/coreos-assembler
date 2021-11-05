@@ -646,8 +646,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 			// of the test workflow, but that's complex... Sadly, probably easiest is to spin up
 			// a VM just to get the minimal ISO.
 			cmd := exec.Command("coreos-installer", "iso", "extract", "minimal-iso", srcisopath,
-				"--output", minisopath, "--rootfs-output", rootfs_path,
-				"--rootfs-url", baseurl+"/rootfs.img")
+				minisopath, "--output-rootfs", rootfs_path, "--rootfs-url", baseurl+"/rootfs.img")
 			cmd.Stderr = os.Stderr
 			if err := cmd.Run(); err != nil {
 				return nil, errors.Wrapf(err, "running coreos-installer iso extract minimal")
