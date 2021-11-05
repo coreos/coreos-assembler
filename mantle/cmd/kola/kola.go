@@ -190,7 +190,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		patterns = args
 	}
 
-	return kolaRunPatterns(patterns, runRerunFlag, false)
+	return kolaRunPatterns(patterns, runRerunFlag)
 }
 
 func runRerun(cmd *cobra.Command, args []string) error {
@@ -212,10 +212,10 @@ func runRerun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return kolaRunPatterns(patterns, false, true)
+	return kolaRunPatterns(patterns, false)
 }
 
-func kolaRunPatterns(patterns []string, rerun bool, disableNonExclusive bool) error {
+func kolaRunPatterns(patterns []string, rerun bool) error {
 	var err error
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
 	if err != nil {
@@ -226,7 +226,7 @@ func kolaRunPatterns(patterns []string, rerun bool, disableNonExclusive bool) er
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, runMultiply, rerun, kolaPlatform, outputDir, !kola.Options.NoTestExitError, disableNonExclusive)
+	runErr := kola.RunTests(patterns, runMultiply, rerun, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
@@ -642,7 +642,7 @@ func runRunUpgrade(cmd *cobra.Command, args []string) error {
 		patterns = args
 	}
 
-	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError, false)
+	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
