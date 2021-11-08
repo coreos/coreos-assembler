@@ -4,7 +4,7 @@
 #
 # Published as quay.io/coreos-assembler/cosa-buildroot
 
-FROM registry.fedoraproject.org/fedora:34
+FROM registry.fedoraproject.org/fedora:35
 WORKDIR /root/containerbuild
 
 # Keep this section in sync with `Dockerfile.
