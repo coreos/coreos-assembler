@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/vincent-petithory/dataurl"
 
@@ -63,6 +64,7 @@ func init() {
 		// DO: https://github.com/coreos/bugs/issues/2205
 		// Packet & QEMU: https://github.com/coreos/ignition/issues/645
 		ExcludePlatforms: []string{"do", "packet", "qemu"},
+		Timeout:          20 * time.Minute,
 	})
 }
 

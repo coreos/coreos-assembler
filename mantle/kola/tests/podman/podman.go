@@ -53,6 +53,7 @@ func init() {
 		// Not really but podman blows up if there's no /etc/resolv.conf
 		Tags:    []string{kola.NeedsInternetTag},
 		Distros: []string{"fcos"},
+		Timeout: 20 * time.Minute,
 	})
 	// https://github.com/coreos/mantle/pull/1080
 	// register.RegisterTest(&register.Test{
