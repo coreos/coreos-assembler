@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/pin/tftp"
 
@@ -73,6 +74,7 @@ func init() {
 		Tags: []string{"ignition"},
 		// https://github.com/coreos/bugs/issues/2205
 		ExcludePlatforms: []string{"do", "qemu-unpriv"},
+		Timeout:          20 * time.Minute,
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.resource.remote",
