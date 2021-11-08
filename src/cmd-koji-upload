@@ -698,14 +698,13 @@ class Upload(_KojiBase):
         """ If the final Import fails retry it """
         for attempt in range(0, self._retry_attempts):
             try:
+                log.info(f"Finishing Koji Upload - Try {attempt}/{self._retry_attempts}")
                 cginfo = self.session.CGImport(self.manifest, serverdir, token=self._token)
             except Exception as e:
                 if attempt < self._retry_attempts - 1:
                     continue
                 else:
-                    print(e)
-                    sys.exit()
-            break
+                    raise Exception("Koji upload failed with:", e)
 
         log.info(json.dumps(cginfo, sort_keys=True, indent=3))
         log.info(f"recorded build {cginfo['nvr']}")
