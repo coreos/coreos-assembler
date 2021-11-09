@@ -25,15 +25,16 @@ import (
 
 // RpmOstreeDeployment represents some of the data of an rpm-ostree deployment
 type RpmOstreeDeployment struct {
-	Booted            bool     `json:"booted"`
-	Checksum          string   `json:"checksum"`
-	Origin            string   `json:"origin"`
-	Osname            string   `json:"osname"`
-	Packages          []string `json:"packages"`
-	RequestedPackages []string `json:"requested-packages"`
-	Timestamp         int64    `json:"timestamp"`
-	Unlocked          string   `json:"unlocked"`
-	Version           string   `json:"version"`
+	Booted                 bool     `json:"booted"`
+	Checksum               string   `json:"checksum"`
+	Origin                 string   `json:"origin"`
+	Osname                 string   `json:"osname"`
+	Packages               []string `json:"packages"`
+	RequestedPackages      []string `json:"requested-packages"`
+	RequestedLocalPackages []string `json:"requested-local-packages"`
+	Timestamp              int64    `json:"timestamp"`
+	Unlocked               string   `json:"unlocked"`
+	Version                string   `json:"version"`
 
 	// instead of making it a generic map of strings to "value", we just
 	// special-case the keys we're interested in for now
