@@ -49,6 +49,8 @@ type Options struct {
 	Size string
 	// Numeric image ID, {alpha, beta, stable}, or user image name
 	Image string
+	// Whether to allocate an IPv6 address to the droplet.
+	DisableIPv6 bool
 }
 
 type API struct {
@@ -113,6 +115,10 @@ func (a *API) resolveImage(ctx context.Context, imageSpec string) (godo.DropletC
 	// resolve to user image ID
 	image, err := a.GetUserImage(ctx, imageSpec, true)
 	if err == nil {
+		// Custom images don't support IPv6
+		if image.Type == "custom" {
+			a.opts.DisableIPv6 = true
+		}
 		return godo.DropletCreateImage{ID: image.ID}, nil
 	}
 
@@ -139,7 +145,7 @@ func (a *API) CreateDroplet(ctx context.Context, name string, sshKeyID int, user
 			Size:              a.opts.Size,
 			Image:             a.image,
 			SSHKeys:           []godo.DropletCreateSSHKey{{ID: sshKeyID}},
-			IPv6:              true,
+			IPv6:              !a.opts.DisableIPv6,
 			PrivateNetworking: true,
 			UserData:          userdata,
 			Tags:              []string{"mantle"},
