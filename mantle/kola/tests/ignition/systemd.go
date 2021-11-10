@@ -56,5 +56,5 @@ func init() {
 func enableSystemdService(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
-	c.AssertCmdOutputContains(m, "systemctl status nfs-server.service", "inactive")
+	c.AssertCmdOutputContains(m, "systemctl status nfs-server.service", "active")
 }
