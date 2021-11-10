@@ -87,7 +87,17 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	}
 
 	if !rconf.NoSSHKeyInMetadata {
-		ac.sshKey = af.SSHKey
+		// We have worked around the golang library limitation for
+		// keyexchange algorithm by switching to an ecdsa key in
+		// network/ssh.go.  However, Azure requires an RSA key.  For
+		// now (until we get an updated golang library) we'll just
+		// satisfy the requirement by using a fake key and disabling
+		// the fcos.ignition.misc.empty and fcos.ignition.v3.noop
+		// tests on Azure.
+		// https://github.com/coreos/coreos-assembler/issues/1772
+		// https://docs.microsoft.com/en-us/azure/virtual-machines/linux/mac-create-ssh-keys#supported-ssh-key-formats
+		ac.sshKey = af.FakeSSHKey
+		//ac.sshKey = af.SSHKey
 	} else {
 		ac.sshKey = af.FakeSSHKey
 	}
