@@ -61,9 +61,8 @@ func init() {
 			"TLSServe": register.CreateNativeFuncWrap(TLSServe),
 		},
 		Tags: []string{"ignition"},
-		// DO: https://github.com/coreos/bugs/issues/2205
-		// Packet & QEMU: https://github.com/coreos/ignition/issues/645
-		ExcludePlatforms: []string{"do", "packet", "qemu"},
+		// QEMU unprivileged doesn't support multiple VMs communicating with each other.
+		ExcludePlatforms: []string{"qemu"},
 		Timeout:          20 * time.Minute,
 	})
 }
