@@ -324,7 +324,7 @@ func CopyDirToMachine(inputdir string, m Machine, destdir string) error {
 	defer session.Close()
 
 	// Use compression level 1 for speed
-	compressArgv := []string{"-c", "tar cf - . | gzip -1"}
+	compressArgv := []string{"-c", "tar chf - . | gzip -1"}
 
 	clientCmd := exec.Command("/bin/sh", compressArgv...)
 	clientCmd.Dir = inputdir
