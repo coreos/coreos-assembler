@@ -39,7 +39,7 @@ func init() {
 		Name:        "rpmostree.install-uninstall",
 		Tags:        []string{"rpm-ostree"},
 		// this Ignition config lands the dummy RPM
-		UserData: conf.Ignition(`{
+		UserDataV3: conf.Ignition(`{
 			"ignition": {
 			  "version": "3.1.0"
 			},
