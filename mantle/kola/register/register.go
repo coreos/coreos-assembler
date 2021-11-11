@@ -81,7 +81,7 @@ type Test struct {
 	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string
 	// DependencyDir is a path to directory that will be uploaded, normally used by external tests
-	DependencyDir string
+	DependencyDir DepDirMap
 
 	// FailFast skips any sub-test that occurs after a sub-test has
 	// failed.

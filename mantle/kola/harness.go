@@ -800,12 +800,17 @@ func registerExternalTest(testname, executable, dependencydir string, userdata *
 	// Services that are exclusive will be marked by a 0 at the end of the name
 	num := 0
 	unitName := fmt.Sprintf("%s.service", KoletExtTestUnit)
+	destDataDir := kolaExtBinDataDir
 	if !targetMeta.Exclusive {
 		num = extTestNum
 		extTestNum += 1
 		unitName = fmt.Sprintf("%s-%d.service", KoletExtTestUnit, num)
+		destDataDir = fmt.Sprintf("%s-%d", kolaExtBinDataDir, num)
 	}
-
+	destDirs := make(register.DepDirMap)
+	if dependencydir != "" {
+		destDirs.Add(testname, dependencydir, destDataDir)
+	}
 	base := filepath.Base(executable)
 	remotepath := fmt.Sprintf("/usr/local/bin/kola-runext-%s", base)
 
@@ -819,7 +824,7 @@ Environment=KOLA_TEST=%s
 Environment=KOLA_TEST_EXE=%s
 Environment=%s=%s
 ExecStart=%s
-`, unitName, testname, base, kolaExtBinDataEnv, kolaExtBinDataDir, remotepath)
+`, unitName, testname, base, kolaExtBinDataEnv, destDataDir, remotepath)
 	config.AddSystemdUnit(unitName, unit, conf.NoState)
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
@@ -835,7 +840,7 @@ ExecStart=%s
 		Name:          testname,
 		ClusterSize:   1, // Hardcoded for now
 		ExternalTest:  executable,
-		DependencyDir: dependencydir,
+		DependencyDir: destDirs,
 		Tags:          []string{"external"},
 
 		AdditionalDisks: targetMeta.AdditionalDisks,
@@ -1080,6 +1085,8 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 	)
 	var flags []register.Flag
 	var nonExclusiveTestConfs []*conf.Conf
+	dependencyDirs := make(register.DepDirMap)
+	// hasExternalTestDataDir := false
 	for _, test := range tests {
 		if !noSSHKeyInMetadata && test.HasFlag(register.NoSSHKeyInMetadata) {
 			flags = append(flags, register.NoSSHKeyInMetadata)
@@ -1092,6 +1099,12 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 		if !internetAccess && testRequiresInternet(test) {
 			flags = append(flags, register.RequiresInternetAccess)
 			internetAccess = true
+		}
+
+		if len(test.DependencyDir) > 0 {
+			for k, v := range test.DependencyDir {
+				dependencyDirs[k] = v
+			}
 		}
 
 		// We upgrade each config to V3.4exp so they can be merged into one config
@@ -1146,6 +1159,8 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 		NativeFuncs: make(map[string]register.NativeFuncWrap),
 		ClusterSize: 1,
 		Flags:       flags,
+
+		DependencyDir: dependencyDirs,
 	}
 
 	return nonExclusiveWrapper
@@ -1241,10 +1256,13 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		defer collectLogsExternalTest(h, t, tcluster)
 	}
 
-	if t.DependencyDir != "" {
-		for _, mach := range tcluster.Machines() {
-			if err := platform.CopyDirToMachine(t.DependencyDir, mach, kolaExtBinDataDir); err != nil {
-				h.Fatal(errors.Wrapf(err, "copying dependencies %s to %s", t.DependencyDir, mach.ID()))
+	if len(t.DependencyDir) > 0 {
+		for key, dest := range t.DependencyDir {
+			dir := t.DependencyDir.DirFromKey(key)
+			for _, mach := range tcluster.Machines() {
+				if err := platform.CopyDirToMachine(dir, mach, dest); err != nil {
+					h.Fatal(errors.Wrapf(err, "copying dependencies %s to %s", dir, mach.ID()))
+				}
 			}
 		}
 	}
