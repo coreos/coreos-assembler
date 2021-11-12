@@ -187,6 +187,7 @@ Here's an example `kola.json`:
 ```json
 {
     "architectures": "!s390x ppc64le",
+    "distros": "fcos",
     "platforms": "qemu-unpriv",
     "tags": "sometagname needs-internet skip-base-checks othertag",
     "requiredTag": "special",
@@ -204,14 +205,17 @@ string (instead of a native JSON list) is twofold.  First, it's easier to type
 than a JSON list, and we don't need to support values with whitespace.  Second,
 for `architectures` and `platforms` by providing `!` at the front of the
 string, the value instead declares exclusions i.e. `ExclusiveArchitectures`
-instead  of `Architectures` in reference to kola internals.
+instead of `Architectures` in reference to kola internals.  The `distros` tag
+can be used to restrict a test to run on just one distribution, either `fcos` or
+`rhcos`. By default, tests will run on all distributions. (Typically, the
+`distros` key is used to restrict a test to just `fcos`.)
 
 In this example, `sometagname` and `othertag` are arbitrary tags one can use
 with `kola run --tag`, but some tags have semantic meaning.
 
 Tags with semantic meaning:
 
- - `needs-internet`: Taken from the Autopkgtest (linked above).  Currently only the `qemu` platform enforces this restriction.   
+ - `needs-internet`: Taken from the Autopkgtest (linked above).  Currently only the `qemu` platform enforces this restriction.
  - `skip-base-checks`: Skip built-in checks for e.g. kernel warnings on the console.
 
 If a test has a `requiredTag`, it is run only if the required tag is specified.
@@ -225,14 +229,14 @@ at least the specified amount of memory is used. On QEMU, this is equivalent to
 the `--memory` argument to `qemuexec`. This is currently only enforced on
 `qemu-unpriv`.
 
-The `timeoutMin` key takes a positive integer and specifies a timeout for the test 
+The `timeoutMin` key takes a positive integer and specifies a timeout for the test
 in minutes. After the specified amount of time, the test will be interrupted.
 
-The `exclusive` key takes a boolean value. If `true`, the test will be run by 
-itself in its own VM such that other tests do not conflict with it. If this key 
-is marked `false`, the test is run with other "non-exclusive" tests. If a test 
-is simple and is not expected to conflict with other tests, it should be marked 
-`exclusive: false`. When the `exclusive` key is not provided, tests are marked 
+The `exclusive` key takes a boolean value. If `true`, the test will be run by
+itself in its own VM such that other tests do not conflict with it. If this key
+is marked `false`, the test is run with other "non-exclusive" tests. If a test
+is simple and is not expected to conflict with other tests, it should be marked
+`exclusive: false`. When the `exclusive` key is not provided, tests are marked
 `exclusive: true` by default.
 
 More recently, you can also (useful for shell scripts) include the JSON file
