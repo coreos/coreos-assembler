@@ -39,6 +39,7 @@ var (
 func init() {
 	OpenStack.PersistentFlags().StringVar(&options.ConfigPath, "config-file", "", "Path to a clouds.yaml formatted OpenStack config file. The underlying library defaults to ./clouds.yaml")
 	OpenStack.PersistentFlags().StringVar(&options.Profile, "profile", "", "OpenStack profile within clouds.yaml (default \"openstack\")")
+	OpenStack.PersistentFlags().StringVar(&options.Region, "region", "", "Override the OpenStack region from the config.")
 	cli.WrapPreRun(OpenStack, preflightCheck)
 }
 
