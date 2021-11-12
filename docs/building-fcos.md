@@ -78,6 +78,7 @@ Note: *You should run this command as non-root*
 It's also fully supported to use `podman` as root, but some of the arguments
 here need to change for that.
 
+{% raw %}
 ```sh
 cosa() {
    env | grep COREOS_ASSEMBLER
@@ -106,6 +107,7 @@ cosa() {
    rc=$?; set +x; return $rc
 }
 ```
+{% endraw %}
 
 This is a bit more complicated than a simple alias, but it allows for
 hacking on the assembler or the configs and prints out the environment and

@@ -312,6 +312,7 @@ Gangplank supports rendering commands from the `meta.json` in CoreOS Assembler a
 
 #### JobSpec Example
 
+{% raw %}
 Any JobSpec variable is exposed using the GoLang templating `{{.JobSpec.<VAR>}}`
 
 ```
@@ -324,6 +325,7 @@ stages:
     command:
     - cosa buildfetch --url=s3://{{.JobSpec.Archives.S3.Bucket}}/{{.JobSpec.Archives.S3.Path}}
 ```
+{% endraw %}
 
 The above example will run the CoreOS Assembler command `cosa buildfetch --url=s3://darkarts/magicalmysteries`.
 
@@ -331,6 +333,7 @@ The above example will run the CoreOS Assembler command `cosa buildfetch --url=s
 
 `meta.json` fields become available for any stage that is executed after Gangplank detects a new `meta.json`. Data for a `meta.json` is prefixed using `.Meta`. `meta.json` is always read immediately before a stage is executed (if `meta.json` exists).
 
+{% raw %}
 ```
 stages:
  - id: build
@@ -340,6 +343,7 @@ stages:
    command:
    - touch {{ .Meta.BuildID }}
 ```
+{% endraw %}
 
 ### Templating Logic
 
@@ -347,6 +351,7 @@ With the availability of GoLang templating, the possibility exists to do loops a
 
 NOTE: It may be tempting to turn Gangplank into a complicated templating engine. Users would well be advised to consider whether the added complexity helps. In most cases, using simple, clear, and easy-to-understand templating logic is the better choice.
 
+{% raw %}
 ```
 archives:
   s3:
@@ -364,6 +369,7 @@ stages:
    -  upload-ami --build {{.Meta.BuildID}} --region {{.JobSpec.CloudsCfgs.Aws.Regions[0]}} --bucket=s3://{{.JobSpec.Archives.S3.Bucket}}/{{.JobSpec.Archives.S3.Path}}
    - cosa aws-replicate --build {{.Meta.BuildID}} --regions {{for _, $y := range .JobsSpec.CloudsCfgs.Aws.Regions}}{{$y}}{{end.}}
 ```
+{% endraw %}
 
 ### The Schema
 
