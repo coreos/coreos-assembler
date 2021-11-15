@@ -299,11 +299,25 @@ func checkWriteState(msg string, c chan<- guestState) {
 }
 
 type systemdEventMessage struct {
-	Unit      string `json:"UNIT"`
-	MessageID string `json:"MESSAGE_ID"`
-	Message   string `json:"MESSAGE"`
-	JobResult string `json:"JOB_RESULT"`
-	JobType   string `json:"JOB_TYPE"`
+	Unit      string      `json:"UNIT"`
+	MessageID string      `json:"MESSAGE_ID"`
+	Message   interface{} `json:"MESSAGE"`
+	JobResult string      `json:"JOB_RESULT"`
+	JobType   string      `json:"JOB_TYPE"`
+}
+
+func (se systemdEventMessage) message() (string, error) {
+	if a, ok := se.Message.([]float64); ok {
+		r := make([]byte, len(a))
+		for i, v := range a {
+			r[i] = byte(v)
+		}
+		return string(r), nil
+	} else if s, ok := se.Message.(string); ok {
+		return s, nil
+	} else {
+		return "", fmt.Errorf("Unhandled systemd json message of type %T", se.Message)
+	}
 }
 
 type systemdMessageCheck struct {
@@ -321,7 +335,12 @@ func (sc *systemdMessageCheck) mustMatch(se *systemdEventMessage) bool {
 	if sc.messageID != "" && sc.messageID != se.MessageID {
 		return false
 	}
-	if sc.message != "" && sc.message != se.Message {
+	msg, err := se.message()
+	// For now let's panic, this is a "shouldn't happen" situation
+	if err != nil {
+		panic(err)
+	}
+	if sc.message != "" && sc.message != msg {
 		return false
 	}
 	if sc.jobResult != "" && sc.jobResult != se.JobResult {
@@ -394,7 +413,7 @@ func watchJournal(builder *platform.QemuBuilder, conf *conf.Conf, stateChan chan
 
 			var se systemdEventMessage
 			if err := json.Unmarshal([]byte(msg), &se); err != nil {
-				errChan <- err
+				errChan <- fmt.Errorf("failed to parse systemd event %s: %w", msg, err)
 			}
 			for _, rule := range checkList {
 				if rule.mustMatch(&se) {
