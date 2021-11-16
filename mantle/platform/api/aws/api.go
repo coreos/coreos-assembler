@@ -115,8 +115,16 @@ func (a *API) PreflightCheck() error {
 	return err
 }
 
-func (a *API) tagCreatedByMantle(resources []string) error {
-	return a.CreateTags(resources, map[string]string{
-		"CreatedBy": "mantle",
-	})
+func tagSpecCreatedByMantle(resourceType string) []*ec2.TagSpecification {
+	return []*ec2.TagSpecification{
+		{
+			ResourceType: aws.String(resourceType),
+			Tags: []*ec2.Tag{
+				&ec2.Tag{
+					Key:   aws.String("CreatedBy"),
+					Value: aws.String("mantle"),
+				},
+			},
+		},
+	}
 }
