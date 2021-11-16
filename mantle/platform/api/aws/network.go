@@ -138,17 +138,14 @@ func (a *API) createSecurityGroup(name string) (string, error) {
 // createVPC creates a VPC with an IPV4 CidrBlock of 172.31.0.0/16
 func (a *API) createVPC() (string, error) {
 	vpc, err := a.ec2.CreateVpc(&ec2.CreateVpcInput{
-		CidrBlock: aws.String("172.31.0.0/16"),
+		CidrBlock:         aws.String("172.31.0.0/16"),
+		TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeVpc),
 	})
 	if err != nil {
 		return "", fmt.Errorf("creating VPC: %v", err)
 	}
 	if vpc.Vpc == nil || vpc.Vpc.VpcId == nil {
 		return "", fmt.Errorf("vpc was nil after creation")
-	}
-	err = a.tagCreatedByMantle([]string{*vpc.Vpc.VpcId})
-	if err != nil {
-		return "", err
 	}
 
 	_, err = a.ec2.ModifyVpcAttribute(&ec2.ModifyVpcAttributeInput{
@@ -187,18 +184,14 @@ func (a *API) createVPC() (string, error) {
 // 172.31.0.0/16 as well as an InternetGateway for destination 0.0.0.0/0
 func (a *API) createRouteTable(vpcId string) (string, error) {
 	rt, err := a.ec2.CreateRouteTable(&ec2.CreateRouteTableInput{
-		VpcId: &vpcId,
+		VpcId:             &vpcId,
+		TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeRouteTable),
 	})
 	if err != nil {
 		return "", err
 	}
 	if rt.RouteTable == nil || rt.RouteTable.RouteTableId == nil {
 		return "", fmt.Errorf("route table was nil after creation")
-	}
-
-	err = a.tagCreatedByMantle([]string{*rt.RouteTable.RouteTableId})
-	if err != nil {
-		return "", err
 	}
 
 	igw, err := a.createInternetGateway(vpcId)
@@ -220,16 +213,14 @@ func (a *API) createRouteTable(vpcId string) (string, error) {
 
 // creates an InternetGateway and attaches it to the given VPC
 func (a *API) createInternetGateway(vpcId string) (string, error) {
-	igw, err := a.ec2.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
+	igw, err := a.ec2.CreateInternetGateway(&ec2.CreateInternetGatewayInput{
+		TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeInternetGateway),
+	})
 	if err != nil {
 		return "", err
 	}
 	if igw.InternetGateway == nil || igw.InternetGateway.InternetGatewayId == nil {
 		return "", fmt.Errorf("internet gateway was nil")
-	}
-	err = a.tagCreatedByMantle([]string{*igw.InternetGateway.InternetGatewayId})
-	if err != nil {
-		return "", err
 	}
 	_, err = a.ec2.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
 		InternetGatewayId: igw.InternetGateway.InternetGatewayId,
@@ -265,7 +256,8 @@ func (a *API) createSubnets(vpcId, routeTableId string) error {
 			AvailabilityZone: aws.String(name),
 			VpcId:            &vpcId,
 			// Increment the CIDR block by 16 every time
-			CidrBlock: aws.String(fmt.Sprintf("172.31.%d.0/20", i*16)),
+			CidrBlock:         aws.String(fmt.Sprintf("172.31.%d.0/20", i*16)),
+			TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeSubnet),
 		})
 		if err != nil {
 			// Some availability zones get returned but cannot have subnets
@@ -277,10 +269,6 @@ func (a *API) createSubnets(vpcId, routeTableId string) error {
 		}
 		if sub.Subnet == nil || sub.Subnet.SubnetId == nil {
 			return fmt.Errorf("subnet was nil after creation")
-		}
-		err = a.tagCreatedByMantle([]string{*sub.Subnet.SubnetId})
-		if err != nil {
-			return err
 		}
 		_, err = a.ec2.ModifySubnetAttribute(&ec2.ModifySubnetAttributeInput{
 			SubnetId: sub.Subnet.SubnetId,
