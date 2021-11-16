@@ -33,9 +33,8 @@ var (
 
 type flight struct {
 	*platform.BaseFlight
-	api        *azure.API
-	SSHKey     string
-	FakeSSHKey string
+	api    *azure.API
+	SSHKey string
 }
 
 // NewFlight creates an instance of a Flight suitable for spawning
@@ -66,10 +65,6 @@ func NewFlight(opts *azure.Options) (platform.Flight, error) {
 		return nil, err
 	}
 	af.SSHKey = keys[0].String()
-	af.FakeSSHKey, err = platform.GenerateFakeKey()
-	if err != nil {
-		return nil, err
-	}
 
 	return af, nil
 }
@@ -87,18 +82,8 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 		flight:      af,
 	}
 
-	// We have worked around the golang library limitation for
-	// keyexchange algorithm by switching to an ecdsa key in
-	// network/ssh.go.  However, Azure requires an RSA key.  For
-	// now (until we get an updated golang library) we'll just
-	// satisfy the requirement by using a fake key and disabling
-	// the fcos.ignition.misc.empty and fcos.ignition.v3.noop
-	// tests on Azure.
-	// https://github.com/coreos/coreos-assembler/issues/1772
-	// https://docs.microsoft.com/en-us/azure/virtual-machines/linux/mac-create-ssh-keys#supported-ssh-key-formats
 	if !rconf.NoSSHKeyInMetadata {
-		ac.sshKey = af.FakeSSHKey
-		//ac.sshKey = af.SSHKey
+		ac.sshKey = af.SSHKey
 	}
 
 	ac.ResourceGroup, err = af.api.CreateResourceGroup("kola-cluster")

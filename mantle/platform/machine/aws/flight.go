@@ -61,19 +61,12 @@ func NewFlight(opts *aws.Options) (platform.Flight, error) {
 		api:        api,
 	}
 
-	// We have worked around the golang library limitation for
-	// keyexchange algorithm by switching to an ecdsa key in
-	// network/ssh.go. However, AWS requires an rsa key. For now
-	// (until we get an updated golang library) we'll just satisfy
-	// the requirement by using a fake key and disabling the
-	// fcos.ignition.misc.empty and fcos.ignition.v3.noop tests on AWS.
-	// https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#how-to-generate-your-own-key-and-import-it-to-aws
-	key, err := platform.GenerateFakeKey()
+	keys, err := af.Keys()
 	if err != nil {
 		af.Destroy()
 		return nil, err
 	}
-	if err := api.AddKey(af.Name(), key); err != nil {
+	if err := api.AddKey(af.Name(), keys[0].String()); err != nil {
 		af.Destroy()
 		return nil, err
 	}
