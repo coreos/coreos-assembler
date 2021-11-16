@@ -1195,6 +1195,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		h.Fatalf("Cluster failed: %v", err)
 	}
 	defer func() {
+		h.StopExecTimer()
 		c.Destroy()
 		for _, k := range t.Tags {
 			if k == SkipBaseChecksTag {
@@ -1222,22 +1223,18 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AdditionalDisks: t.AdditionalDisks,
 			MinMemory:       t.MinMemory,
 		}
-		ioCompleted := make(chan bool)
-		go func() {
-			_, err = platform.NewMachines(c, userdata, t.ClusterSize, options)
-			ioCompleted <- true
-		}()
 
-		select {
-		case <-h.TimeoutContext.Done():
-			h.FailNow()
-		case <-ioCompleted:
-			// Finish the test
-		}
+		_, err = platform.NewMachines(c, userdata, t.ClusterSize, options)
 		if err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
+	// Machines should now be up. Let's start the test execution timer.
+	// Each test is run via RunWithExecTimeoutCheck() in SSH() which
+	// will interrupt this function/goroutine if the timeout expires.
+	// In the case of early return h.StopExecTimer can be called even
+	// if h.StartExecTimer has not been called
+	h.StartExecTimer()
 
 	// pass along all registered native functions
 	var names []string

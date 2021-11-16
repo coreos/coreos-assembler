@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/mantle/util"
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
 )
@@ -123,7 +124,14 @@ func (a *API) CreateInstance(userdata string, keys []*agent.Key) (*compute.Insta
 		return nil, err
 	}
 
-	inst, err = a.compute.Instances.Get(a.options.Project, a.options.Zone, name).Do()
+	err = util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
+		var err error
+		inst, err = a.compute.Instances.Get(a.options.Project, a.options.Zone, name).Do()
+		if err != nil {
+			return false, err
+		}
+		return inst.Status == "RUNNING", nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed getting instance %s details after creation: %v", name, err)
 	}

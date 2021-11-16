@@ -139,20 +139,17 @@ func DropFile(machines []platform.Machine, localPath string) error {
 func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
 	var stdout, stderr []byte
 	var err error
-	sshCompleted := make(chan bool)
-	go func() {
+	f := func() {
 		stdout, stderr, err = m.SSH(cmd)
-		sshCompleted <- true
-	}()
+	}
 
-	select {
-	case <-t.H.TimeoutContext.Done():
-		t.H.FailNow()
-	case <-sshCompleted:
-		if len(stderr) > 0 {
-			for _, line := range strings.Split(string(stderr), "\n") {
-				t.Log(line)
-			}
+	errMsg := fmt.Sprintf("ssh: %s", cmd)
+	// If f does not before the test timeout, the RunWithExecTimeoutCheck
+	// will end this goroutine and mark the test as failed
+	t.H.RunWithExecTimeoutCheck(f, errMsg)
+	if len(stderr) > 0 {
+		for _, line := range strings.Split(string(stderr), "\n") {
+			t.Log(line)
 		}
 	}
 	return stdout, err

@@ -61,6 +61,7 @@ type H struct {
 	finished bool // Test function has completed.
 	done     bool // Test is finished and all subtests have completed.
 	hasSub   bool
+	subLock  sync.RWMutex // guards hasSub
 
 	suite    *Suite
 	parent   *H
@@ -74,12 +75,65 @@ type H struct {
 
 	isParallel bool
 
-	timeout time.Duration // Duration for which the test will be allowed to run
-	timer   *time.Timer   // Used to interrupt the test after timeout
+	timeout   time.Duration // Duration for which the test will be allowed to run
+	execTimer *time.Timer   // Used to interrupt the test after timeout
 	// To signal that a timeout has occured to observers
-	TimeoutContext context.Context
+	timeoutContext context.Context
 
 	reporters reporters.Reporters
+}
+
+// Run f so that it times out if needed, output errMsg in case of timeout
+func (t *H) runTimeoutCheck(ctx context.Context, timeout time.Duration, f func(), errMsg string) {
+	if ctx == nil || timeout == 0 {
+		panic("context not initialized (was StartExecTimer called?)")
+	}
+
+	ioCompleted := make(chan bool)
+	go func() {
+		f()
+		ioCompleted <- true
+	}()
+
+	// Timeout if call to function f takes too long
+	select {
+	case <-ctx.Done():
+		t.Fatalf("TIMEOUT[%v]: %s\n", timeout, errMsg)
+	case <-ioCompleted:
+		// Finish the test
+		return
+	}
+}
+
+func (t *H) StartExecTimer() {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.timeoutContext = ctx
+	t.execTimer = time.AfterFunc(t.timeout, func() {
+		// If the test is currently running subtests, we will ignore
+		// the timeout (the timeout of the subtest will be taken instead)
+		t.subLock.RLock()
+		defer t.subLock.RUnlock()
+		if !t.hasSub {
+			cancel()
+		}
+	})
+}
+
+func (t *H) RunWithExecTimeoutCheck(f func(), errMsg string) {
+	if t.execTimer == nil {
+		// Some subtests do not explcitly start timer, since timer is started in
+		// kola/harness.go: runTest. So we will assign a timer in that case.
+		t.StartExecTimer()
+	}
+	t.runTimeoutCheck(t.timeoutContext, t.timeout, f, errMsg)
+}
+
+func (t *H) StopExecTimer() {
+	if t.execTimer == nil {
+		return
+	}
+	t.execTimer.Stop()
+	t.execTimer = nil
 }
 
 func (c *H) parentContext() context.Context {
@@ -384,8 +438,6 @@ func (t *H) Parallel() {
 	// in the test duration. Record the elapsed time thus far and reset the
 	// timer afterwards. We will also reset any timeouts.
 	t.duration += time.Since(t.start)
-	t.timer.Stop()
-	defer t.timer.Reset(t.timeout)
 
 	// Add to the list of tests to be released by the parent.
 	t.parent.sub = append(t.parent.sub, t)
@@ -408,18 +460,20 @@ func tRunner(t *H, fn func(t *H)) {
 		t.duration += time.Since(t.start)
 		// If the test panicked, print any test output before dying.
 		err := recover()
-		select {
-		case <-t.TimeoutContext.Done():
-			t.Errorf("TIMEOUT[%v]\n", t.timeout)
-		default:
-			if !t.finished && err == nil {
-				err = fmt.Errorf("test executed panic(nil) or runtime.Goexit")
-			}
-			if err != nil {
-				t.Fail()
-				t.report()
-				panic(err)
-			}
+
+		if !t.finished && err == nil {
+			err = fmt.Errorf("test executed panic(nil) or runtime.Goexit")
+		}
+		if err != nil {
+			t.Fail()
+			t.report()
+			panic(err)
+		}
+
+		// Clean up execution timer (some subtests do not clean it
+		// so it must be done here)
+		if t.execTimer != nil {
+			t.StopExecTimer()
 		}
 
 		if len(t.sub) > 0 {
@@ -446,20 +500,13 @@ func tRunner(t *H, fn func(t *H)) {
 		// Do not lock t.done to allow race detector to detect race in case
 		// the user does not appropriately synchronize a goroutine.
 		t.done = true
+		t.subLock.RLock()
 		if t.parent != nil && !t.hasSub {
 			t.setRan()
 		}
+		t.subLock.RUnlock()
 		t.signal <- true
 	}()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.TimeoutContext = ctx
-	t.timer = time.AfterFunc(t.timeout, func() {
-		if !t.hasSub {
-			cancel()
-		}
-	})
-	defer t.timer.Stop()
 
 	t.start = time.Now()
 	fn(t)
@@ -468,7 +515,9 @@ func tRunner(t *H, fn func(t *H)) {
 }
 
 func (t *H) RunTimeout(name string, f func(t *H), timeout time.Duration) bool {
+	t.subLock.Lock()
 	t.hasSub = true
+	t.subLock.Unlock()
 	testName, ok := t.suite.match.fullName(t, name)
 	if !ok {
 		return true
