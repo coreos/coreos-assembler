@@ -27,11 +27,12 @@ func TestTimeoutBasic(t *testing.T) {
 
 	tests := make(Tests)
 	tests.Add("test-1", func(h *H) {
-		_ = h
+		h.StartExecTimer()
+		defer h.StopExecTimer()
 		select {
 		case <-time.After(3 * time.Second):
 			return
-		case <-h.TimeoutContext.Done():
+		case <-h.timeoutContext.Done():
 			return
 		}
 	}, timeToRun)
@@ -60,11 +61,12 @@ func TestTimeoutNoInterrupt(t *testing.T) {
 
 	tests := make(Tests)
 	tests.Add("test-1", func(h *H) {
-		_ = h
+		h.StartExecTimer()
+		defer h.StopExecTimer()
 		select {
 		case <-time.After(timeToRun):
 			return
-		case <-h.TimeoutContext.Done():
+		case <-h.timeoutContext.Done():
 			return
 		}
 	}, time.Duration(5)*time.Second)
@@ -89,22 +91,24 @@ func TestTimeoutMultipleTests(t *testing.T) {
 	tests := make(Tests)
 	// Will finish after 1s
 	tests.Add("test-1", func(h *H) {
-		_ = h
+		h.StartExecTimer()
+		defer h.StopExecTimer()
 		select {
 		case <-time.After(1 * time.Second):
 			return
-		case <-h.TimeoutContext.Done():
+		case <-h.timeoutContext.Done():
 			return
 		}
 	}, time.Duration(5)*time.Second)
 
 	// Will timeout after 1s
 	tests.Add("test-2", func(h *H) {
-		_ = h
+		h.StartExecTimer()
+		defer h.StopExecTimer()
 		select {
 		case <-time.After(2 * time.Second):
 			return
-		case <-h.TimeoutContext.Done():
+		case <-h.timeoutContext.Done():
 			return
 		}
 	}, time.Duration(1)*time.Second)
