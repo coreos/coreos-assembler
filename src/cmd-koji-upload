@@ -396,7 +396,7 @@ class Reserve(_KojiBase):
 
         See: https://docs.pagure.org/koji/content_generators/#api
         """
-        log.debug("reserving a unique koji id")
+        log.info("Reserving a unique koji id")
 
         release = datetime.datetime.utcnow().strftime("%H%M%S")
 
@@ -409,6 +409,7 @@ class Reserve(_KojiBase):
 
         log.debug(f"reserve payload {data}")
         koji_reservation = self.session.CGInitBuild(data['cg'], data)
+        log.info(f"Koji reservation id created: {koji_reservation['build_id']}")
 
         if create_file is not None:
             state_file = build._state_file_tpl.format(
@@ -682,32 +683,58 @@ class Upload(_KojiBase):
         """
         serverdir = klib.unique_path(f"{self.build.build_id}-cosa")
         log.debug(f"uploading files to {serverdir}")
+        meta_path = ""
+        meta_remote_path = ""
+        callback = klib._progress_callback
+
         for _, meta in (self.build).get_artifacts():
             local_path = meta['local_path']    # the local file to upload
             remote_path = meta['upload_path']  # the name of the file to upload
             log.info(f"Uploading {local_path} to {serverdir}/{remote_path}")
-            callback = klib._progress_callback
+            if ("meta.json" in local_path) and ("commitmeta.json" not in local_path):
+                # Keep location for meta.json
+                meta_path = local_path
+                meta_remote_path = remote_path
             self.session.uploadWrapper(local_path, serverdir, name=remote_path,
                                        callback=callback)
             if callback:
-                print('')
+                pass
 
         self._uploaded = True
         self._remote_directory = serverdir
+        cginfo = ""
 
-        """ If the final Import fails retry it """
-        for attempt in range(0, self._retry_attempts):
+        # If the final Import fails retry it
+        for attempt in range(1, self._retry_attempts + 1):
+            self.manifest
             try:
                 log.info(f"Finishing Koji Upload - Try {attempt}/{self._retry_attempts}")
                 cginfo = self.session.CGImport(self.manifest, serverdir, token=self._token)
+                log.info(json.dumps(cginfo, sort_keys=True, indent=3))
+                # Koji has some flakes here, confirm the nvr to make sure the upload worked
+                if cginfo['nvr']:
+                    log.info(f"Recorded build {cginfo['nvr']}")
+                    break
             except Exception as e:
-                if attempt < self._retry_attempts - 1:
-                    continue
+                if attempt < self._retry_attempts:
+                    if (self._token):
+                        log.info(f"Koji upload failed with: {e}. Canceling koji reservation \
+                        {self._build_id} and retrying")
+                        self.session.CGRefundBuild("coreos-assembler", self._build_id, self._token, state=4)
+                        log.info(f"Koji id reservation canceled: {self._build_id}")
+                        Reserve(self._profile).reserve_id(self.build)
+                        # Force manifest and checksum/size update for the new meta generated
+                        self._manifest = None
+                        self._image_files = None
+                        self.build._found_files[meta_path]['md5'] = md5sum_file(meta_path)
+                        self.build._found_files[meta_path]['size'] = os.stat(meta_path).st_size
+                        # Update the meta.json with the new id/token into serverdir
+                        self.session.uploadWrapper(meta_path, serverdir, name=meta_remote_path,
+                                                   callback=callback)
+                        if callback:
+                            pass
                 else:
                     raise Exception("Koji upload failed with:", e)
-
-        log.info(json.dumps(cginfo, sort_keys=True, indent=3))
-        log.info(f"recorded build {cginfo['nvr']}")
 
         if self.session.hasPerm('tag'):
             self.tag_build(cginfo['nvr'], self._tag)
