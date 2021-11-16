@@ -59,6 +59,12 @@ builddir = builds.get_build_dir(args.build)
 buildmeta_path = os.path.join(builddir, 'meta.json')
 buildmeta = GenericBuildMeta(workdir=workdir, build=args.build)
 
+base_name = buildmeta['name']
+if base_name == "rhcos" and args.fast:
+    print("'--fast' requires LZ4 compressed squashfs support in the kernel. This is \
+currently only available for FCOS")
+    sys.exit(1)
+
 # used to lock
 build_semaphore = os.path.join(buildmeta.build_dir, ".live.building")
 if os.path.exists(build_semaphore):
@@ -78,7 +84,6 @@ if 'live-iso' in buildmeta['images'] and not args.force:
     sys.exit(0)
 
 basearch = get_basearch()
-base_name = buildmeta['name']
 iso_name = f'{base_name}-{args.build}-live.{basearch}.iso'
 name_version = f'{base_name}-{args.build}'
 # The short volume ID can only be 32 characters (bytes probably).  We may in the future want
