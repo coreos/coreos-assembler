@@ -113,7 +113,12 @@ def main():
 
         buildmeta = load_json(f'builds/{builddir}/meta.json')
 
-        for imgname in args.artifact:
+        if args.artifact == ['all']:
+            artifacts = buildmeta['images']
+        else:
+            artifacts = args.artifact
+
+        for imgname in artifacts:
             if imgname not in buildmeta['images']:
                 raise Exception(f"Requested artifact {imgname} not available in build")
             img = buildmeta['images'][imgname]
