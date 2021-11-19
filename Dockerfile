@@ -1,3 +1,5 @@
+# When rebasing to new Fedora, also update openshift/release:
+# https://github.com/openshift/release/tree/master/ci-operator/config/coreos/coreos-assembler/coreos-coreos-assembler-main.yaml
 FROM registry.fedoraproject.org/fedora:35
 WORKDIR /root/containerbuild
 
@@ -6,8 +8,10 @@ COPY ./build.sh /root/containerbuild/
 RUN ./build.sh configure_yum_repos
 RUN ./build.sh install_rpms  # nocache 20211102
 
-# Allow Prow to work
-RUN mkdir -p /go && chown 0777 /go
+# This allows Prow jobs for other projects to use our cosa image as their
+# buildroot image (so clonerefs can copy the repo into `/go`). For cosa itself,
+# this same hack is inlined in the YAML (see openshift/release link above).
+RUN mkdir -p /go && chmod 777 /go
 
 COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info
