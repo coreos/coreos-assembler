@@ -95,6 +95,10 @@ VARIANTS = {
         "image_format": "qcow2",
         "platform": "openstack",
     },
+    "nutanix": {
+        "image_format": "qcow2",
+        "platform": "nutanix",
+    },
     "vmware_vmdk": {
         "image_format": "vmdk",
         "image_suffix": "vmdk",
