@@ -44,7 +44,7 @@ cmd=${1:-}
 build_commands="init fetch build run prune clean list"
 # commands more likely to be used in a prod pipeline only
 advanced_build_commands="buildfetch buildupload oc-adm-release upload-oscontainer"
-buildextend_commands="aliyun aws azure digitalocean exoscale gcp ibmcloud live metal metal4k openstack qemu vmware vultr"
+buildextend_commands="aliyun aws azure digitalocean exoscale gcp ibmcloud live metal metal4k nutanix openstack qemu vmware vultr"
 utility_commands="aws-replicate compress generate-hashlist koji-upload kola remote-prune sign tag"
 other_commands="shell meta"
 if [ -z "${cmd}" ]; then
