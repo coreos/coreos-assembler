@@ -93,6 +93,7 @@ type BuildArtifacts struct {
 	LiveRootfs         *Artifact `json:"live-rootfs,omitempty"`
 	Metal              *Artifact `json:"metal,omitempty"`
 	Metal4KNative      *Artifact `json:"metal4k,omitempty"`
+	Nutanix            *Artifact `json:"nutanix,omitempty"`
 	OpenStack          *Artifact `json:"openstack,omitempty"`
 	Ostree             Artifact  `json:"ostree"`
 	PowerVirtualServer *Artifact `json:"powervs,omitempty"`
