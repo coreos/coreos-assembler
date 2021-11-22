@@ -594,7 +594,7 @@ func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
 	builder.fs9pID++
 	readonlyStr := ""
 	if readonly {
-		readonlyStr = ",readonly"
+		readonlyStr = ",readonly=on"
 	}
 	builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", builder.fs9pID, source, readonlyStr))
 	builder.Append("-device", virtio("9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pID, destHint)))
