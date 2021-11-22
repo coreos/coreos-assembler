@@ -53,6 +53,7 @@ func init() {
 		Run:         NetworkSecondaryNics,
 		ClusterSize: 0,
 		Name:        "rhcos.network.multiple-nics",
+		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
 	})
@@ -63,6 +64,7 @@ func init() {
 		Run:         NetworkBondWithDhcp,
 		ClusterSize: 0,
 		Name:        "rhcos.network.bond-with-dhcp",
+		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
 	})
@@ -73,6 +75,7 @@ func init() {
 		Run:         NetworkBondWithRestart,
 		ClusterSize: 0,
 		Name:        "rhcos.network.bond-with-restart",
+		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
 	})
