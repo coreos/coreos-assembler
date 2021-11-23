@@ -124,7 +124,7 @@ def append_build(out, input_):
     # build the architectures dict
     arch_dict = {"media": {}}
     ensure_dup(input_, arch_dict, "ostree-commit", "commit")
-    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "openstack", "powervs", "qemu", "vmware", "vultr"]
+    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "nutnaix", "openstack", "powervs", "qemu", "vmware", "vultr"]
     for platform in platforms:
         if input_.get("images", {}).get(platform, None) is not None:
             print(f"   - {platform}")
