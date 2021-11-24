@@ -6,7 +6,7 @@ WORKDIR /root/containerbuild
 COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
 COPY ./build.sh /root/containerbuild/
 RUN ./build.sh configure_yum_repos
-RUN ./build.sh install_rpms  # nocache 20211102
+RUN ./build.sh install_rpms  # nocache 20211124
 
 # This allows Prow jobs for other projects to use our cosa image as their
 # buildroot image (so clonerefs can copy the repo into `/go`). For cosa itself,
