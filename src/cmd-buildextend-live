@@ -36,8 +36,6 @@ parser.add_argument("--fast", action='store_true', default=False,
                     help="Reduce compression for development (FCOS only)")
 parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
-parser.add_argument("--miniso", action='store_true', default=False,
-                    help="Enable minimal ISO packing (temporary)")
 args = parser.parse_args()
 
 # Identify the builds and target the latest build if none provided
@@ -581,10 +579,9 @@ boot
     # Define inputs and outputs
     genisoargs_final = genisoargs + ['-o', tmpisofile, tmpisoroot]
 
-    if args.miniso:
-        miniso_data = os.path.join(tmpisocoreos, "miniso.dat")
-        with open(miniso_data, 'wb') as f:
-            f.truncate(miniso_data_file_size)
+    miniso_data = os.path.join(tmpisocoreos, "miniso.dat")
+    with open(miniso_data, 'wb') as f:
+        f.truncate(miniso_data_file_size)
 
     run_verbose(genisoargs_final)
 
@@ -593,18 +590,17 @@ boot
     if basearch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', '--uefi', tmpisofile])
 
-    if args.miniso:
-        genisoargs_minimal = genisoargs + ['-o', f'{tmpisofile}.minimal', tmpisoroot]
-        # The only difference with the miniso is that we drop these two files.
-        # Keep everything else the same to maximize file matching between the
-        # two versions so we can get the smallest delta. E.g. we keep the
-        # `coreos.liveiso` karg, even though the miniso doesn't need it.
-        # coreos-installer takes care of removing it.
-        os.unlink(iso_rootfs)
-        os.unlink(miniso_data)
-        run_verbose(genisoargs_minimal)
-        if basearch == "x86_64":
-            run_verbose(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
+    genisoargs_minimal = genisoargs + ['-o', f'{tmpisofile}.minimal', tmpisoroot]
+    # The only difference with the miniso is that we drop these two files.
+    # Keep everything else the same to maximize file matching between the
+    # two versions so we can get the smallest delta. E.g. we keep the
+    # `coreos.liveiso` karg, even though the miniso doesn't need it.
+    # coreos-installer takes care of removing it.
+    os.unlink(iso_rootfs)
+    os.unlink(miniso_data)
+    run_verbose(genisoargs_minimal)
+    if basearch == "x86_64":
+        run_verbose(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
 
     isoinfo = run_verbose(['isoinfo', '-lR', '-i', tmpisofile],
                           stdout=subprocess.PIPE, text=True).stdout
@@ -676,10 +672,9 @@ boot
             isofh.write(struct.pack(INITRDFMT, b'coreiso+', offset, ignition_img_size))
             print(f'Embedded {ignition_img_size} bytes Ignition config space at {offset}')
 
-    if args.miniso:
-        # this consumes the minimal image
-        run_verbose(['coreos-installer', 'iso', 'extract', 'pack-minimal-iso',
-                     tmpisofile, f'{tmpisofile}.minimal', "--consume"])
+    # this consumes the minimal image
+    run_verbose(['coreos-installer', 'iso', 'extract', 'pack-minimal-iso',
+                 tmpisofile, f'{tmpisofile}.minimal', "--consume"])
 
     buildmeta['images'].update({
         'live-iso': {
