@@ -1,5 +1,4 @@
-# When rebasing to new Fedora, also update openshift/release:
-# https://github.com/openshift/release/tree/master/ci-operator/config/coreos/coreos-assembler/coreos-coreos-assembler-main.yaml
+# When rebasing to new Fedora, also update `.ci-operator.yml`.
 FROM registry.fedoraproject.org/fedora:35
 WORKDIR /root/containerbuild
 

@@ -1,0 +1,8 @@
+# This file is used by OpenShift to know the base image to use when building the
+# Dockerfile. It should always match the Fedora version there. When changing
+# this, ensure that the Fedora tag is defined in:
+# https://github.com/openshift/release/blob/master/clusters/app.ci/supplemental-ci-images/coreos/fedora-is.yaml
+build_root_image:
+  name: fedora
+  namespace: coreos
+  tag: "35"
