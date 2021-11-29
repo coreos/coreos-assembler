@@ -61,6 +61,7 @@ type Media struct {
 	Gcp          *PlatformGcp      `json:"gcp"`
 	Ibmcloud     *PlatformIBMCloud `json:"ibmcloud"`
 	Metal        *PlatformBase     `json:"metal"`
+	Nutanix      *PlatformBase     `json:"nutanix"`
 	Openstack    *PlatformBase     `json:"openstack"`
 	PowerVS      *PlatformIBMCloud `json:"powervs"`
 	Qemu         *PlatformBase     `json:"qemu"`
