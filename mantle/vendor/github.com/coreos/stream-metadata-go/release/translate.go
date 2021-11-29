@@ -179,6 +179,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 	// 	cloudImages.Packet = &packetImage
 	// }
 
+	if releaseArch.Media.Nutanix != nil {
+		artifacts["nutanix"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.Nutanix.Artifacts),
+		}
+	}
+
 	if releaseArch.Media.Openstack != nil {
 		artifacts["openstack"] = stream.PlatformArtifacts{
 			Release: rel.Release,
