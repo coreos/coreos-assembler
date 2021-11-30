@@ -59,7 +59,7 @@ test -f "${initramfs}" || fatal "missing ${initramfs}"
                 -D . | gzip -1) >>"${initramfs}"
 
 fastbuild_qemu="fastbuildinitrd-${name}-qemu.qcow2"
-qemu-img create -f qcow2 -o backing_file="${previous_builddir}/${previous_qemu}" "${fastbuild_qemu}" 20G
+qemu-img create -F qcow2 -f qcow2 -o backing_file="${previous_builddir}/${previous_qemu}" "${fastbuild_qemu}" 20G
 
 coreos_gf_run_mount ro "${fastbuild_qemu}"
 coreos_gf remount /boot rw:true
