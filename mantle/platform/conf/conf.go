@@ -398,6 +398,48 @@ func MergeAllV34exp(confObjs []*Conf) (*UserData, error) {
 	return userData, nil
 }
 
+// Config is compressed and added to another via data url
+func (c *Conf) MaybeCompress() (string, error) {
+	// Compress config
+	var buff bytes.Buffer
+	config := c.String()
+	writer, err := gzip.NewWriterLevel(&buff, gzip.BestCompression)
+	defer writer.Close()
+	if _, err := writer.Write([]byte(config)); err != nil {
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+	// Encode as data url and add to replace clause in new config
+	url := dataurl.EncodeBytes(buff.Bytes())
+	compressionAlgo := "gzip"
+	newConfigToReplace := v33types.Config{
+		Ignition: v33types.Ignition{
+			Version: "3.3.0",
+			Config: v33types.IgnitionConfig{
+				Replace: v33types.Resource{
+					Source:      &url,
+					Compression: &compressionAlgo,
+				},
+			},
+		},
+	}
+
+	wrapperConf := Conf{ignitionV33: &newConfigToReplace}
+	// sanity checks
+	if !wrapperConf.ValidConfig() {
+		err = errors.New("MaybeCompress: new config not valid")
+	}
+	// Verify that the new config is smaller than the old one
+	newConfig := wrapperConf.String()
+	if len(newConfig) < len(config) {
+		return newConfig, err
+	}
+
+	return config, err
+}
+
 func (c *Conf) ValidConfig() bool {
 	if !c.IsIgnition() {
 		return false
