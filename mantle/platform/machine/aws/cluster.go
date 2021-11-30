@@ -15,7 +15,9 @@
 package aws
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -27,6 +29,8 @@ type cluster struct {
 	*platform.BaseCluster
 	flight *flight
 }
+
+const maxUserDataSize = 16384
 
 func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	conf, err := ac.RenderUserData(userdata, map[string]string{
@@ -41,7 +45,21 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	if !ac.RuntimeConf().NoSSHKeyInMetadata {
 		keyname = ac.flight.Name()
 	}
-	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, conf.String(), 1)
+	// Compress via gzip if needed
+	ud := conf.String()
+	encoding := base64.StdEncoding.EncodeToString([]byte(ud))
+	if len([]byte(encoding)) > maxUserDataSize {
+		ud, err = conf.MaybeCompress()
+		if err != nil {
+			return nil, err
+		}
+		// Check if config is still too large
+		encoding = base64.StdEncoding.EncodeToString([]byte(ud))
+		if len([]byte(encoding)) > maxUserDataSize {
+			fmt.Printf("WARNING: compressed userdata exceeds expected limit of %d\n", maxUserDataSize)
+		}
+	}
+	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, ud, 1)
 	if err != nil {
 		return nil, err
 	}
