@@ -185,7 +185,7 @@ github.com/coreos/butane/config/util
 github.com/coreos/butane/translate
 # github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000 => ../schema
 github.com/coreos/coreos-assembler-schema/cosa
-# github.com/coreos/go-json v0.0.0-20170920214419-6a2fe990e083
+# github.com/coreos/go-json v0.0.0-20211020211907-c63f628265de
 github.com/coreos/go-json
 # github.com/coreos/go-semver v0.3.0
 github.com/coreos/go-semver/semver
@@ -196,7 +196,7 @@ github.com/coreos/go-systemd/unit
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/unit
-# github.com/coreos/ignition/v2 v2.12.0
+# github.com/coreos/ignition/v2 v2.13.0
 github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/shared/errors
 github.com/coreos/ignition/v2/config/shared/validations
@@ -230,7 +230,7 @@ github.com/coreos/stream-metadata-go/release
 github.com/coreos/stream-metadata-go/release/rhcos
 github.com/coreos/stream-metadata-go/stream
 github.com/coreos/stream-metadata-go/stream/rhcos
-# github.com/coreos/vcontext v0.0.0-20210407161507-4ee6c745c8bd
+# github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4
 github.com/coreos/vcontext/json
 github.com/coreos/vcontext/path
 github.com/coreos/vcontext/report
@@ -360,7 +360,7 @@ github.com/ulikunitz/xz
 github.com/ulikunitz/xz/internal/hash
 github.com/ulikunitz/xz/internal/xlog
 github.com/ulikunitz/xz/lzma
-# github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
+# github.com/vincent-petithory/dataurl v1.0.0
 github.com/vincent-petithory/dataurl
 # github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 github.com/vishvananda/netlink
@@ -573,5 +573,5 @@ google.golang.org/protobuf/types/known/timestamppb
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c
+# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 gopkg.in/yaml.v3
