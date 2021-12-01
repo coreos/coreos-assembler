@@ -440,7 +440,9 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			}
 		}
 
-		if t.RequiredTag != "" && !tagMatch {
+		// default to skipping tests with required tags unless the tag was given *or* a
+		// matching non-empty name pattern matches
+		if t.RequiredTag != "" && !tagMatch && (noPattern || !match) {
 			continue
 		}
 
