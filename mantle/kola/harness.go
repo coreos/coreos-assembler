@@ -434,13 +434,13 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 		tagMatch := false
 		for _, tag := range Tags {
-			tagMatch = hasString(tag, t.Tags)
+			tagMatch = hasString(tag, t.Tags) || tag == t.RequiredTag
 			if tagMatch {
 				break
 			}
 		}
 
-		if t.RequiredTag != "" && !hasString(t.RequiredTag, Tags) {
+		if t.RequiredTag != "" && !tagMatch {
 			continue
 		}
 
