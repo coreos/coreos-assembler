@@ -392,12 +392,12 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		var denylisted bool
 		// Drop anything which is denylisted directly or by pattern
 		for _, bl := range DenylistedTests {
-			match, err := filepath.Match(bl, t.Name)
+			nameMatch, err := filepath.Match(bl, t.Name)
 			if err != nil {
 				return nil, err
 			}
 			// If it matched the pattern this test is denylisted
-			if match {
+			if nameMatch {
 				denylisted = true
 				break
 			}
@@ -411,11 +411,11 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			if nativedenylistindex > -1 {
 				// Check native tests for arch specific exclusion
 				for nativetestname := range t.NativeFuncs {
-					match, err := filepath.Match(bl[nativedenylistindex+1:], nativetestname)
+					nameMatch, err := filepath.Match(bl[nativedenylistindex+1:], nativetestname)
 					if err != nil {
 						return nil, err
 					}
-					if match {
+					if nameMatch {
 						delete(t.NativeFuncs, nativetestname)
 					}
 				}
@@ -427,7 +427,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			continue
 		}
 
-		match, err := matchesPatterns(t.Name, patterns)
+		nameMatch, err := matchesPatterns(t.Name, patterns)
 		if err != nil {
 			return nil, err
 		}
@@ -442,11 +442,11 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 		// default to skipping tests with required tags unless the tag was given *or* a
 		// matching non-empty name pattern matches
-		if t.RequiredTag != "" && !tagMatch && (noPattern || !match) {
+		if t.RequiredTag != "" && !tagMatch && (noPattern || !nameMatch) {
 			continue
 		}
 
-		if (!noPattern && !match && !tagMatch) || (!tagMatch && noPattern && len(Tags) > 0) {
+		if (!noPattern && !nameMatch && !tagMatch) || (!tagMatch && noPattern && len(Tags) > 0) {
 			continue
 		}
 
