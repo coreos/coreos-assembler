@@ -443,18 +443,25 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			}
 		}
 
-		// default to skipping tests with required tags unless the tag was given *or* a
-		// matching non-empty name pattern matches
-		if t.RequiredTag != "" && !tagMatch && (!userTypedPattern || !nameMatch) {
-			continue
+		if t.RequiredTag != "" && // if the test has a required tag...
+			!tagMatch && // and that tag was not provided by the user...
+			(!userTypedPattern || !nameMatch) { // and the user didn't request it by name...
+			continue // then skip it
 		}
 
-		if userTypedPattern && !nameMatch && !tagMatch {
-			continue
-		}
-
-		if !tagMatch && !userTypedPattern && len(Tags) > 0 {
-			continue
+		if userTypedPattern {
+			// If the user explicitly typed a pattern, then the test *must*
+			// match by name or by tag. Otherwise, we skip it.
+			if !nameMatch && !tagMatch {
+				continue
+			}
+		} else {
+			// If the user didn't explicitly type a pattern, then normally we
+			// accept all tests, but if they *did* specify tags, then we only
+			// accept tests which match those tags.
+			if len(Tags) > 0 && !tagMatch {
+				continue
+			}
 		}
 
 		isAllowed := func(item string, include, exclude []string) (bool, bool) {
