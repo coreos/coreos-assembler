@@ -124,6 +124,17 @@ func verifyMultipathBoot(c cluster.TestCluster, m platform.Machine) {
 	c.MustSSH(m, "test -f /etc/multipath.conf")
 }
 
+func verifyBootDropins(c cluster.TestCluster, m platform.Machine, checkBootuuid bool) {
+	c.RunCmdSync(m, "sudo test -f /boot/.root_uuid")
+	if checkBootuuid {
+		c.RunCmdSync(m, "sudo test -f /boot/grub2/bootuuid.cfg")
+		c.RunCmdSync(m, `
+			sudo mount -o ro /dev/disk/by-label/EFI-SYSTEM /boot/efi
+			sudo sh -c 'test -f /boot/efi/EFI/*/bootuuid.cfg'
+			sudo umount /boot/efi`)
+	}
+}
+
 func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
 	srcdev := string(c.MustSSHf(m, "findmnt -nvr %s -o SOURCE", path))
 	if !strings.HasPrefix(srcdev, "/dev/mapper/mpath") {
@@ -138,6 +149,7 @@ func runMultipathDay1(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
 	verifyMultipathBoot(c, m)
+	verifyBootDropins(c, m, true)
 }
 
 func runMultipathDay2(c cluster.TestCluster) {
@@ -147,6 +159,7 @@ func runMultipathDay2(c cluster.TestCluster) {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
 	verifyMultipathBoot(c, m)
+	verifyBootDropins(c, m, false)
 }
 
 func runMultipathPartition(c cluster.TestCluster) {
