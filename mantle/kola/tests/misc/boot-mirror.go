@@ -14,6 +14,7 @@
 package misc
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -117,7 +118,7 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	if strings.Compare(string(fsTypeForRoot), "xfs") != 0 {
 		c.Fatalf("didn't match fstype for root")
 	}
-	bootMirrorSanityTest(c, m)
+	bootMirrorSanityTest(c, m, []string{"/dev/vda", "/dev/vdb", "/dev/vdc"})
 
 	detachPrimaryBlockDevice(c, m)
 	// Check if there are two devices with the active raid
@@ -158,7 +159,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	if !strings.Contains(string(bootOutput), "/dev/vda3") || !strings.Contains(string(bootOutput), "/dev/vdb3") {
 		c.Fatalf("boot raid device missing; found devices: %v", string(bootOutput))
 	}
-	bootMirrorSanityTest(c, m)
+	bootMirrorSanityTest(c, m, []string{"/dev/vda", "/dev/vdb"})
 	luksTPMTest(c, m, true)
 
 	detachPrimaryBlockDevice(c, m)
@@ -186,13 +187,22 @@ func luksTPMTest(c cluster.TestCluster, m platform.Machine, tpm2 bool) {
 	util.LUKSSanityTest(c, tangd, m, true, false, rootPart)
 }
 
-func bootMirrorSanityTest(c cluster.TestCluster, m platform.Machine) {
+func bootMirrorSanityTest(c cluster.TestCluster, m platform.Machine, devices []string) {
 	c.Run("sanity-check", func(c cluster.TestCluster) {
 		// Check for boot
 		checkIfMountpointIsRaid(c, m, "/boot")
 		c.AssertCmdOutputContains(m, "findmnt -nvr /boot -o FSTYPE", "ext4")
 		// Check that growpart didn't run
 		c.RunCmdSync(m, "if [ -e /run/coreos-growpart.stamp ]; then exit 1; fi")
+		// Check for binding dropins
+		c.RunCmdSync(m, "sudo test -f /boot/.root_uuid")
+		c.RunCmdSync(m, "sudo test -f /boot/grub2/bootuuid.cfg")
+		for _, dev := range devices {
+			c.RunCmdSync(m, fmt.Sprintf(`
+				sudo mount -o ro %s2 /boot/efi
+				sudo sh -c 'test -f /boot/efi/EFI/*/bootuuid.cfg'
+				sudo umount /boot/efi`, dev))
+		}
 	})
 }
 
