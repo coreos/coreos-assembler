@@ -382,7 +382,10 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		checkPlatforms = append(checkPlatforms, "qemu")
 	}
 
-	noPattern := hasString("*", patterns)
+	// Higher-level functions default to '*' if the user didn't pass anything.
+	// Notice this. (This totally ignores the corner case where the user
+	// actually typed '*').
+	userTypedPattern := !hasString("*", patterns)
 	for name, t := range tests {
 		if NoNet && testRequiresInternet(t) {
 			plog.Debugf("Skipping test that requires network: %s", t.Name)
@@ -442,15 +445,15 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 		// default to skipping tests with required tags unless the tag was given *or* a
 		// matching non-empty name pattern matches
-		if t.RequiredTag != "" && !tagMatch && (noPattern || !nameMatch) {
+		if t.RequiredTag != "" && !tagMatch && (!userTypedPattern || !nameMatch) {
 			continue
 		}
 
-		if !noPattern && !nameMatch && !tagMatch {
+		if userTypedPattern && !nameMatch && !tagMatch {
 			continue
 		}
 
-		if !tagMatch && noPattern && len(Tags) > 0 {
+		if !tagMatch && !userTypedPattern && len(Tags) > 0 {
 			continue
 		}
 
