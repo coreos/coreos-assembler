@@ -113,8 +113,6 @@ var downloadCheck = `[Unit]
 Description=TestISO Verify CoreOS Installer Download
 After=coreos-installer.service
 Before=coreos-installer.target
-# Can be dropped with coreos-installer v0.5.1
-Before=coreos-installer-reboot.service
 [Service]
 Type=oneshot
 StandardOutput=kmsg+console
@@ -126,8 +124,6 @@ ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"build\"] == \"%s\"' /mnt/.coreos-alep
 ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"ostree-commit\"] == \"%s\"' /mnt/.coreos-aleph-version.json"
 [Install]
 RequiredBy=coreos-installer.target
-# Can be dropped when the target is fixed to not trigger reboot when a new unit is added to the target and fails
-RequiredBy=coreos-installer-reboot.service
 `
 
 var signalCompleteString = "coreos-installer-test-OK"
