@@ -474,7 +474,7 @@ func (c *Conf) Bytes() []byte {
 	return []byte(c.String())
 }
 
-func (c *Conf) addFileV3(path, filesystem, contents string, mode int) {
+func (c *Conf) addFileV3(path, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v3types.Config{
 		Ignition: v3types.Ignition{
@@ -499,7 +499,7 @@ func (c *Conf) addFileV3(path, filesystem, contents string, mode int) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) addFileV31(path, filesystem, contents string, mode int) {
+func (c *Conf) addFileV31(path, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v31types.Config{
 		Ignition: v31types.Ignition{
@@ -524,7 +524,7 @@ func (c *Conf) addFileV31(path, filesystem, contents string, mode int) {
 	c.MergeV31(newConfig)
 }
 
-func (c *Conf) addFileV32(path, filesystem, contents string, mode int) {
+func (c *Conf) addFileV32(path, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v32types.Config{
 		Ignition: v32types.Ignition{
@@ -549,7 +549,7 @@ func (c *Conf) addFileV32(path, filesystem, contents string, mode int) {
 	c.MergeV32(newConfig)
 }
 
-func (c *Conf) addFileV33(path, filesystem, contents string, mode int) {
+func (c *Conf) addFileV33(path, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v33types.Config{
 		Ignition: v33types.Ignition{
@@ -574,7 +574,7 @@ func (c *Conf) addFileV33(path, filesystem, contents string, mode int) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addFileV34exp(path, filesystem, contents string, mode int) {
+func (c *Conf) addFileV34exp(path, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
 	newConfig := v34exptypes.Config{
 		Ignition: v34exptypes.Ignition{
@@ -599,17 +599,17 @@ func (c *Conf) addFileV34exp(path, filesystem, contents string, mode int) {
 	c.MergeV34exp(newConfig)
 }
 
-func (c *Conf) AddFile(path, filesystem, contents string, mode int) {
+func (c *Conf) AddFile(path, contents string, mode int) {
 	if c.ignitionV3 != nil {
-		c.addFileV3(path, filesystem, contents, mode)
+		c.addFileV3(path, contents, mode)
 	} else if c.ignitionV31 != nil {
-		c.addFileV31(path, filesystem, contents, mode)
+		c.addFileV31(path, contents, mode)
 	} else if c.ignitionV32 != nil {
-		c.addFileV32(path, filesystem, contents, mode)
+		c.addFileV32(path, contents, mode)
 	} else if c.ignitionV33 != nil {
-		c.addFileV33(path, filesystem, contents, mode)
+		c.addFileV33(path, contents, mode)
 	} else if c.ignitionV34exp != nil {
-		c.addFileV34exp(path, filesystem, contents, mode)
+		c.addFileV34exp(path, contents, mode)
 	}
 }
 

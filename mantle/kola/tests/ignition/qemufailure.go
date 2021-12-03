@@ -51,7 +51,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 	if err != nil {
 		return errors.Wrapf(err, "creating empty config")
 	}
-	failConfig.AddFile("/notwritable.txt", "/", "Hello world", 0644)
+	failConfig.AddFile("/notwritable.txt", "Hello world", 0644)
 
 	builder := platform.NewQemuBuilder()
 	defer builder.Close()

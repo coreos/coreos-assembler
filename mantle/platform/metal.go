@@ -698,7 +698,7 @@ WantedBy=multi-user.target
 	inst.liveIgnition.AddSystemdUnit("coreos-installer.service", installerUnit, conf.Enable)
 	inst.liveIgnition.AddSystemdUnit("coreos-installer-reboot.service", rebootUnitP, conf.Enable)
 	inst.liveIgnition.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
-	inst.liveIgnition.AddFile(pointerIgnitionPath, "/", serializedTargetConfig, mode)
+	inst.liveIgnition.AddFile(pointerIgnitionPath, serializedTargetConfig, mode)
 	inst.liveIgnition.AddAutoLogin()
 
 	if inst.MultiPathDisk {
