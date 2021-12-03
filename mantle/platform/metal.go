@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/sdk"
@@ -38,23 +39,6 @@ const (
 	defaultQemuHostIPv4 = "10.0.2.2"
 
 	bootStartedSignal = "boot-started-OK"
-
-	// rebootUnit is a copy of the system one without the ConditionPathExists
-	rebootUnit = `[Unit]
-	Description=Reboot after CoreOS Installer
-	After=coreos-installer.service
-	Requires=coreos-installer.service
-	OnFailure=emergency.target
-	OnFailureJobMode=replace-irreversibly
-	
-	[Service]
-	Type=simple
-	ExecStart=/usr/bin/systemctl --no-block reboot
-	StandardOutput=kmsg+console
-	StandardError=kmsg+console
-	[Install]
-	WantedBy=multi-user.target
-`
 )
 
 // TODO derive this from docs, or perhaps include kargs in cosa metadata?
@@ -79,11 +63,6 @@ var (
 	RemainAfterExit=yes
 	ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/bootstarted'
 	[Install]
-	# In the embedded ISO scenario we're using the default multi-user.target
-	# because we write out and enable our own coreos-installer service units
-	RequiredBy=multi-user.target
-	# In the PXE case we are passing kargs and the coreos-installer-generator
-	# will switch us to target coreos-installer.target
 	RequiredBy=coreos-installer.target
 	`, bootStartedSignal)
 )
@@ -542,6 +521,15 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	return &instmachine, nil
 }
 
+type installerConfig struct {
+	ImageURL     string   `yaml:"image-url,omitempty"`
+	IgnitionFile string   `yaml:"ignition-file,omitempty"`
+	Insecure     bool     `yaml:",omitempty"`
+	AppendKargs  []string `yaml:"append-karg,omitempty"`
+	CopyNetwork  bool     `yaml:"copy-network,omitempty"`
+	DestDevice   string   `yaml:"dest-device"`
+}
+
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*InstalledMachine, error) {
 	if !inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
 		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
@@ -563,13 +551,15 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		return nil, errors.New("injecting kargs is not supported yet, see https://github.com/coreos/coreos-installer/issues/164")
 	}
 
-	targetDevice := "/dev/vda"
-	appendMultipathKargs := ""
+	installerConfig := installerConfig{
+		IgnitionFile: "/var/opt/pointer.ign",
+		DestDevice:   "/dev/vda",
+	}
 
 	if inst.MultiPathDisk {
 		// we only have one multipath device so it has to be that
-		targetDevice = "/dev/mapper/mpatha"
-		appendMultipathKargs = "--append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw"
+		installerConfig.DestDevice = "/dev/mapper/mpatha"
+		installerConfig.AppendKargs = append(installerConfig.AppendKargs, "rd.multipath=default", "root=/dev/disk/by-label/dm-mpath-root", "rw")
 	}
 
 	inst.kargs = kargs
@@ -608,10 +598,9 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		return nil, errors.Wrapf(err, "setting up metal image")
 	}
 
-	var srcOpt string
 	var serializedTargetConfig string
 	if offline {
-		// note we leave srcOpt as "" here; offline installs should now be the
+		// note we leave ImageURL empty here; offline installs should now be the
 		// default!
 
 		// we want to test that a full offline install works; that includes the
@@ -632,13 +621,13 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		baseurl := fmt.Sprintf("http://%s:%d", defaultQemuHostIPv4, port)
 
 		// This is subtle but: for the minimal case, while we need networking to fetch the
-		// rootfs, the primary install flow will still rely on osmet. So let's keep srcOpt
-		// as "" to exercise that path. In the future, this could be a separate scenario
+		// rootfs, the primary install flow will still rely on osmet. So let's keep ImageURL
+		// empty to exercise that path. In the future, this could be a separate scenario
 		// (likely we should drop the "offline" naming and have a "remote" tag on the
 		// opposite scenarios instead which fetch the metal image, so then we'd have
 		// "[min]iso-install" and "[min]iso-remote-install").
 		if !minimal {
-			srcOpt = fmt.Sprintf("--image-url %s/%s", baseurl, metalname)
+			installerConfig.ImageURL = fmt.Sprintf("%s/%s", baseurl, metalname)
 		}
 
 		if minimal {
@@ -684,8 +673,6 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		}
 		keyfileArgs = append(keyfileArgs, "--keyfile", path)
 	}
-
-	var copyNetworkArg = ""
 	if len(keyfileArgs) > 0 {
 		// This is a bit awkward; we copy here, but QemuBuilder will also copy
 		// again (in `setupIso()`). I didn't want to lower the NM keyfile stuff
@@ -713,36 +700,22 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 			return nil, errors.Wrapf(err, "running coreos-installer iso kargs modify")
 		}
 		srcisopath = newIso
-		copyNetworkArg = "--copy-network"
+		installerConfig.CopyNetwork = true
 	}
 
-	insecureOpt := ""
 	if inst.Insecure {
-		insecureOpt = "--insecure"
+		installerConfig.Insecure = true
 	}
-	pointerIgnitionPath := "/var/opt/pointer.ign"
 
-	installerUnit := fmt.Sprintf(`
-[Unit]
-Description=TestISO CoreOS Installer
-After=network-online.target
-Wants=network-online.target
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-[Service]
-RemainAfterExit=yes
-Type=oneshot
-ExecStart=/usr/bin/coreos-installer install %s --ignition %s %s %s %s %s
-[Install]
-WantedBy=multi-user.target
-`, srcOpt, pointerIgnitionPath, insecureOpt, targetDevice, appendMultipathKargs, copyNetworkArg)
+	installerConfigData, err := yaml.Marshal(installerConfig)
+	if err != nil {
+		return nil, err
+	}
 	mode := 0644
-	rebootUnitP := string(rebootUnit)
 
-	inst.liveIgnition.AddSystemdUnit("coreos-installer.service", installerUnit, conf.Enable)
-	inst.liveIgnition.AddSystemdUnit("coreos-installer-reboot.service", rebootUnitP, conf.Enable)
 	inst.liveIgnition.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
-	inst.liveIgnition.AddFile(pointerIgnitionPath, serializedTargetConfig, mode)
+	inst.liveIgnition.AddFile(installerConfig.IgnitionFile, serializedTargetConfig, mode)
+	inst.liveIgnition.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
 	inst.liveIgnition.AddAutoLogin()
 
 	if inst.MultiPathDisk {
@@ -755,7 +728,7 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/mpathconf --enable
 [Install]
-WantedBy=multi-user.target`, conf.Enable)
+WantedBy=coreos-installer.target`, conf.Enable)
 		inst.liveIgnition.AddSystemdUnitDropin("coreos-installer.service", "wait-for-mpath-target.conf", `[Unit]
 Requires=dev-mapper-mpatha.device
 After=dev-mapper-mpatha.device`)

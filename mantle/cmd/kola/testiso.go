@@ -103,12 +103,10 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion'
 [Install]
-# In the embedded ISO scenario we're using the default multi-user.target
-# because we write out and enable our own coreos-installer service units
-RequiredBy=multi-user.target
-# In the PXE case we are passing kargs and the coreos-installer-generator
-# will switch us to target coreos-installer.target
+# for install scenarios
 RequiredBy=coreos-installer.target
+# for iso-as-disk
+RequiredBy=multi-user.target
 `, liveOKSignal)
 
 var downloadCheck = `[Unit]
@@ -179,6 +177,9 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
 [Install]
+# for install scenarios
+RequiredBy=coreos-installer.target
+# for iso-as-disk
 RequiredBy=multi-user.target`)
 
 var nmConnectionId = "CoreOS DHCP"
@@ -207,6 +208,9 @@ ExecStart=/usr/bin/journalctl -u nm-initrd --no-pager --grep "policy: set '%[1]s
 ExecStart=/usr/bin/journalctl -u NetworkManager --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
 ExecStart=/usr/bin/grep "%[1]s" /etc/NetworkManager/system-connections/%[2]s
 [Install]
+# for live system
+RequiredBy=coreos-installer.target
+# for target system
 RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
 
 func init() {
