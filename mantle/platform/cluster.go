@@ -209,9 +209,9 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 
 	// disable Zincati & Pinger by default
 	if bc.Distribution() == "fcos" {
-		conf.AddFile("/etc/fedora-coreos-pinger/config.d/90-disable-reporting.toml", "root", `[reporting]
+		conf.AddFile("/etc/fedora-coreos-pinger/config.d/90-disable-reporting.toml", `[reporting]
 enabled = false`, 0644)
-		conf.AddFile("/etc/zincati/config.d/90-disable-auto-updates.toml", "root", `[updates]
+		conf.AddFile("/etc/zincati/config.d/90-disable-auto-updates.toml", `[updates]
 enabled = false`, 0644)
 	}
 
@@ -234,7 +234,7 @@ ExecStart=/usr/bin/touch /run/pivot/reboot-needed
 [Install]
 WantedBy=multi-user.target
 `, platformConf.Enable)
-		conf.AddFile("/etc/pivot/image-pullspec", "root", bc.bf.baseopts.OSContainer, 0644)
+		conf.AddFile("/etc/pivot/image-pullspec", bc.bf.baseopts.OSContainer, 0644)
 	}
 
 	if conf.IsIgnition() {
