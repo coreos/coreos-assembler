@@ -2,8 +2,10 @@
 # Entrypoint run via OpenShift Prow (https://docs.ci.openshift.org/)
 # that tests RHCOS (openshift/os).
 set -xeuo pipefail
-# https://github.com/kubernetes/test-infra/blob/master/prow/jobs.md
-BRANCH=${PULL_BASE_REF:-main}
+# PULL_BASE_REF: https://github.com/kubernetes/test-infra/blob/master/prow/jobs.md
+# But prefer OPENSHIFT_BUILD_REFERENCE if available, which is more correct in
+# rehearsal jobs: https://github.com/coreos/coreos-assembler/pull/2598
+BRANCH=${OPENSHIFT_BUILD_REFERENCE:-${PULL_BASE_REF:-main}}
 case ${BRANCH} in
     # For now; OpenShift hasn't done the master->main transition
     main|master) RHCOS_BRANCH=master;;
