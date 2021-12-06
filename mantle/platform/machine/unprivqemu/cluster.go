@@ -125,10 +125,16 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		sectorSize = 4096
 	}
 	multiPathDisk := options.MultiPathDisk || qc.flight.opts.MultiPathDisk
+	var diskSize string
+	if options.MinDiskSize > 0 {
+		diskSize = fmt.Sprintf("%dG", options.MinDiskSize)
+	} else {
+		diskSize = qc.flight.opts.DiskSize
+	}
 	primaryDisk := platform.Disk{
 		BackingFile:   qc.flight.opts.DiskImage,
 		Channel:       channel,
-		Size:          qc.flight.opts.DiskSize,
+		Size:          diskSize,
 		SectorSize:    sectorSize,
 		MultiPathDisk: multiPathDisk,
 	}

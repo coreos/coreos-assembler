@@ -155,6 +155,7 @@ type MachineOptions struct {
 	MultiPathDisk   bool
 	AdditionalDisks []string
 	MinMemory       int
+	MinDiskSize     int
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

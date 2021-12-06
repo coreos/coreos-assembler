@@ -78,6 +78,9 @@ type Test struct {
 	// Minimum amount of memory in MB required for test.
 	MinMemory int
 
+	// Minimum amount of primary disk in GB required for test.
+	MinDiskSize int
+
 	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string
 	// DependencyDir is a path to directory that will be uploaded, normally used by external tests
