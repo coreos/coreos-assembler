@@ -193,6 +193,7 @@ Here's an example `kola.json`:
     "requiredTag": "special",
     "additionalDisks": [ "5G" ],
     "minMemory": 4096,
+    "minDisk": 15,
     "timeoutMin": 8,
     "exclusive": true
 }
@@ -223,6 +224,11 @@ In the example above, the test would only run if `--tag special` was provided.
 
 The `additionalDisks` key has the same semantics as the `--add-disk` argument
 to `qemuexec`. It is currently only supported on `qemu-unpriv`.
+
+The `minDisk` key takes a size in GB and ensures that an instance type with at
+least the specified amount of primary disk space is used. On QEMU, this is
+equivalent to the `--qemu-size` argument to `qemuexec`. This is currently only
+enforced on `qemu-unpriv` and `aws`.
 
 The `minMemory` key takes a size in MB and ensures that an instance type with
 at least the specified amount of memory is used. On QEMU, this is equivalent to

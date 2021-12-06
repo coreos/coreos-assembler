@@ -82,7 +82,7 @@ func (a *API) DeleteKey(name string) error {
 }
 
 // CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are running and have an IP address.
-func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*ec2.Instance, error) {
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minDiskSize int64) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -120,6 +120,16 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 	if keyname == "" {
 		key = nil
 	}
+
+	var rootBlockDev []*ec2.BlockDeviceMapping
+	if minDiskSize > 0 {
+		rootBlockDev = append(rootBlockDev, &ec2.BlockDeviceMapping{
+			DeviceName: aws.String("/dev/xvda"),
+			Ebs: &ec2.EbsBlockDevice{
+				VolumeSize: &minDiskSize,
+			},
+		})
+	}
 	inst := ec2.RunInstancesInput{
 		ImageId:          &a.opts.AMI,
 		MinCount:         &cnt,
@@ -132,6 +142,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64) ([]*
 		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
 			Name: &a.opts.IAMInstanceProfile,
 		},
+		BlockDeviceMappings: rootBlockDev,
 		TagSpecifications: []*ec2.TagSpecification{
 			&ec2.TagSpecification{
 				ResourceType: aws.String(ec2.ResourceTypeInstance),

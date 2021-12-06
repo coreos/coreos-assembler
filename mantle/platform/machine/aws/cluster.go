@@ -71,7 +71,7 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 			fmt.Printf("WARNING: compressed userdata exceeds expected limit of %d\n", maxUserDataSize)
 		}
 	}
-	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, ud, 1)
+	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, ud, 1, int64(options.MinDiskSize))
 	if err != nil {
 		return nil, err
 	}
