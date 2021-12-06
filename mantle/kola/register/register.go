@@ -75,7 +75,7 @@ type Test struct {
 	// "5G:mpath,foo,bar"]) -- defaults to none.
 	AdditionalDisks []string
 
-	// Minimum amount of memory required for test.
+	// Minimum amount of memory in MB required for test.
 	MinMemory int
 
 	// ExternalTest is a path to a binary that will be uploaded
