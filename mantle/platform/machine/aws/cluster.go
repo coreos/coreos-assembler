@@ -33,6 +33,18 @@ type cluster struct {
 const maxUserDataSize = 16384
 
 func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	return ac.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform aws does not yet support additional disks")
+	}
+
+	if options.MultiPathDisk {
+		return nil, errors.New("platform aws does not support multipathed disks")
+	}
+
 	conf, err := ac.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_EC2_IPV4_PUBLIC}",
 		"$private_ipv4": "${COREOS_EC2_IPV4_LOCAL}",
@@ -94,16 +106,6 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	ac.AddMach(mach)
 
 	return mach, nil
-}
-
-func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform aws does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform aws does not support multipathed disks")
-	}
-	return ac.NewMachine(userdata)
 }
 
 func (ac *cluster) Destroy() {
