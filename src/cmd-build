@@ -385,7 +385,7 @@ if [ "${commit}" == "${previous_commit}" ] && \
 else
     ostree_format=$(jq -r '.["ostree-format"]' < "${image_json}")
     case "${ostree_format}" in
-        null|tar)
+        tar)
             ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
             ostree init --repo=repo --mode=archive
             # Pass the ref if it's set
@@ -400,7 +400,7 @@ else
             tar -cf "${ostree_tarfile_path}".tmp -C repo .
             rm -rf repo
             ;;
-        oci)
+        null|oci)
             ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
             rpm-ostree ex-container 'export' --cmd /usr/bin/bash --repo="${tmprepo}" "${buildid}" oci-archive:"${ostree_tarfile_path}".tmp:latest
             ;;
