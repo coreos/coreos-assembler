@@ -69,7 +69,6 @@ type QemuMachineOptions struct {
 	MachineOptions
 	HostForwardPorts    []HostForwardPort
 	DisablePDeathSig    bool
-	SecondaryNics       int
 	OverrideBackingFile string
 }
 

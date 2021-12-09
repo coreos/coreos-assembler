@@ -156,6 +156,7 @@ type MachineOptions struct {
 	AdditionalDisks []string
 	MinMemory       int
 	MinDiskSize     int
+	AdditionalNics  int
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

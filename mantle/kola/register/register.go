@@ -81,6 +81,9 @@ type Test struct {
 	// Minimum amount of primary disk in GB required for test.
 	MinDiskSize int
 
+	// Additional amount of NICs required for test.
+	AdditionalNics int
+
 	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string
 	// DependencyDir is a path to directory that will be uploaded, normally used by external tests
