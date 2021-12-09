@@ -663,7 +663,9 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 	var err error
 
 	options := platform.QemuMachineOptions{
-		SecondaryNics: 2,
+		MachineOptions: platform.MachineOptions{
+			AdditionalNics: 2,
+		},
 	}
 
 	var userdata *conf.UserData = conf.Ignition(fmt.Sprintf(`{

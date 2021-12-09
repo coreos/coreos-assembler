@@ -98,6 +98,9 @@ func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, option
 	if options.MultiPathDisk {
 		return nil, errors.New("platform esx does not support multipathed disks")
 	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform esx does not support additional nics")
+	}
 	return ec.NewMachine(userdata)
 }
 

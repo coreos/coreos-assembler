@@ -157,8 +157,8 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		}
 		builder.EnableUsermodeNetworking(h)
 	}
-	if options.SecondaryNics > 0 {
-		builder.AddSecondaryNics(options.SecondaryNics)
+	if options.AdditionalNics > 0 {
+		builder.AddSecondaryNics(options.AdditionalNics)
 	}
 	if !qc.RuntimeConf().InternetAccess {
 		builder.RestrictNetworking = true

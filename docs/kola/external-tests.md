@@ -194,6 +194,7 @@ Here's an example `kola.json`:
     "additionalDisks": [ "5G" ],
     "minMemory": 4096,
     "minDisk": 15,
+    "additionalNics": 2,
     "timeoutMin": 8,
     "exclusive": true
 }
@@ -234,6 +235,9 @@ The `minMemory` key takes a size in MB and ensures that an instance type with
 at least the specified amount of memory is used. On QEMU, this is equivalent to
 the `--memory` argument to `qemuexec`. This is currently only enforced on
 `qemu-unpriv`.
+
+The `additionalNics` key has the same semantics as the `--secondary-nics` argument
+to `qemuexec`. It is currently only supported on `qemu-unpriv`.
 
 The `timeoutMin` key takes a positive integer and specifies a timeout for the test
 in minutes. After the specified amount of time, the test will be interrupted.

@@ -87,6 +87,9 @@ func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.MultiPathDisk {
 		return nil, errors.New("platform openstack does not support multipathed disks")
 	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform openstack does not support additional nics")
+	}
 	return oc.NewMachine(userdata)
 }
 

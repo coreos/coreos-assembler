@@ -695,6 +695,7 @@ type externalTestMeta struct {
 	AdditionalDisks []string `json:"additionalDisks,omitempty"`
 	MinMemory       int      `json:"minMemory,omitempty"`
 	MinDiskSize     int      `json:"minDisk,omitempty"`
+	AdditionalNics  int      `json:"additionalNics,omitempty"`
 	Exclusive       bool     `json:"exclusive"`
 	TimeoutMin      int      `json:"timeoutMin"`
 }
@@ -863,6 +864,7 @@ ExecStart=%s
 		AdditionalDisks: targetMeta.AdditionalDisks,
 		MinMemory:       targetMeta.MinMemory,
 		MinDiskSize:     targetMeta.MinDiskSize,
+		AdditionalNics:  targetMeta.AdditionalNics,
 		NonExclusive:    !targetMeta.Exclusive,
 
 		Run: func(c cluster.TestCluster) {
@@ -1224,6 +1226,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AdditionalDisks: t.AdditionalDisks,
 			MinMemory:       t.MinMemory,
 			MinDiskSize:     t.MinDiskSize,
+			AdditionalNics:  t.AdditionalNics,
 		}
 		ioCompleted := make(chan bool)
 		go func() {
