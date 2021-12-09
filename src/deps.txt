@@ -43,8 +43,8 @@ podman buildah skopeo
 # Miscellaneous tools
 jq
 
-# For interacting with AWS/HTTP
-awscli python3-boto3 python3-requests
+# For interacting with AWS/Aliyun/HTTP
+awscli golang-github-aliyun-cli python3-boto3 python3-requests
 
 # For metadata versioning
 python3-semver
