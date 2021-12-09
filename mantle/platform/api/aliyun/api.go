@@ -32,6 +32,9 @@ import (
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/aliyun")
 
+var defaultConnectTimeout = 15 * time.Second
+var defaultReadTimeout = 30 * time.Second
+
 type Options struct {
 	*platform.Options
 	// The aliyun region regional api calls should use
@@ -110,6 +113,8 @@ func getOSSEndpoint(region string) string {
 // CopyImage replicates an image to a new region
 func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms_key_id string, encrypted bool) (string, error) {
 	request := ecs.CreateCopyImageRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.ImageId = source_id
 	request.DestinationImageName = dest_name
@@ -157,6 +162,8 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 	}
 
 	request := ecs.CreateImportImageRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.DiskDeviceMapping = &[]ecs.ImportImageDiskDeviceMapping{
 		{
@@ -185,6 +192,8 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 func (a *API) finishImportImageTask(importImageResponse *ecs.ImportImageResponse) (string, error) {
 	importDone := func(taskId string) (bool, error) {
 		request := ecs.CreateDescribeTasksRequest()
+		request.SetConnectTimeout(defaultConnectTimeout)
+		request.SetReadTimeout(defaultReadTimeout)
 		request.TaskIds = taskId
 		res, err := a.ecs.DescribeTasks(request)
 		if err != nil {
@@ -230,6 +239,8 @@ func (a *API) finishImportImageTask(importImageResponse *ecs.ImportImageResponse
 // GetImages retrieves a list of images by ImageName
 func (a *API) GetImages(name string) (*ecs.DescribeImagesResponse, error) {
 	request := ecs.CreateDescribeImagesRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.ImageName = name
 	return a.ecs.DescribeImages(request)
@@ -238,6 +249,8 @@ func (a *API) GetImages(name string) (*ecs.DescribeImagesResponse, error) {
 // GetImagesByID retrieves a list of images by ImageId
 func (a *API) GetImagesByID(id string) (*ecs.DescribeImagesResponse, error) {
 	request := ecs.CreateDescribeImagesRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.ImageId = id
 	return a.ecs.DescribeImages(request)
@@ -246,6 +259,8 @@ func (a *API) GetImagesByID(id string) (*ecs.DescribeImagesResponse, error) {
 // DeleteImage deletes an image and it's underlying snapshots
 func (a *API) DeleteImage(id string, force bool) error {
 	request := ecs.CreateDeleteImageRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.ImageId = id
 	request.Force = requests.NewBoolean(force)
@@ -275,6 +290,8 @@ func (a *API) DeleteImage(id string, force bool) error {
 // DeleteSnapshot deletes a snapshot
 func (a *API) DeleteSnapshot(id string, force bool) error {
 	request := ecs.CreateDeleteSnapshotRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.SnapshotId = id
 	request.Force = requests.NewBoolean(force)
@@ -353,6 +370,8 @@ func (a *API) PutObject(r io.Reader, bucket, path string, force bool) error {
 // by the Profile and Region options.
 func (a *API) ListRegions() ([]string, error) {
 	request := ecs.CreateDescribeRegionsRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 
 	response, err := a.ecs.DescribeRegions(request)
