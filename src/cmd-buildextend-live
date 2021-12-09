@@ -261,6 +261,22 @@ def generate_iso():
     with open(os.path.join(tmpisoimages, ignition_img), 'wb') as fdst:
         fdst.write(bytes(ignition_img_size))
 
+    # Generate initramfs JSON file that lists OS features available to
+    # coreos-installer {iso|pxe} customize
+    features = {}
+    svc = run_verbose(['/usr/bin/ostree', 'cat', '--repo', repo,
+            buildmeta_commit, '/usr/libexec/coreos-installer-service'],
+            capture_output=True).stdout.decode()
+    # eventually we can assume coreos-installer >= 0.12.0, delete this check,
+    # and hardcode the feature flag
+    if '--config-file' in svc:
+        features['installer-config'] = True
+    featurespath = os.path.join(tmpinitrd_base, 'etc/coreos/features.json')
+    os.makedirs(os.path.dirname(featurespath), exist_ok=True)
+    with open(featurespath, 'w') as fh:
+        json.dump(features, fh, indent=2, sort_keys=True)
+        fh.write('\n')
+
     # Add osmet files
     tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
     print('Generating osmet file for 512b metal image')
