@@ -69,7 +69,6 @@ if os.path.exists(build_semaphore):
     raise Exception(
         f"{build_semaphore} exists: another process is building live")
 
-
 # Grab the commit hash for this build
 buildmeta_commit = buildmeta['ostree-commit']
 
@@ -113,7 +112,6 @@ ignition_img_size = 256 * 1024
 # Size of the file used to embed miniso data.
 miniso_data_file_size = 16 * 1024
 
-
 # The kernel requires that uncompressed cpio archives appended to an initrd
 # start on a 4-byte boundary.  If there's misalignment, it stops unpacking
 # and says:
@@ -128,7 +126,6 @@ def align_initrd_for_uncompressed_append(destf):
     offset = destf.tell()
     if offset % 4:
         destf.write(b'\0' * (4 - offset % 4))
-
 
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html#compressed-cpio-images
 def mkinitrd_pipe(tmproot, destf, compress=True):
@@ -159,15 +156,12 @@ def mkinitrd_pipe(tmproot, destf, compress=True):
     # Fix up padding so the user can append the rootfs afterward
     align_initrd_for_uncompressed_append(destf)
 
-
 def extend_initrd(initramfs, tmproot, compress=True):
     with open(initramfs, 'ab') as fdst:
         mkinitrd_pipe(tmproot, fdst, compress=compress)
 
-
 def cp_reflink(src, dest):
     subprocess.check_call(['cp', '--reflink=auto', src, dest])
-
 
 # Make stream hash for `rdcore stream-hash`
 # https://github.com/coreos/coreos-installer/blob/a8d6f50dea6e/src/bin/rdcore/stream_hash.rs#L26-L41
@@ -182,7 +176,6 @@ def make_stream_hash(src, dest):
                     break
                 outf.write(hashlib.sha256(buf).hexdigest() + '\n')
 
-
 def file_offset_in_iso(isoinfo, filename):
     # -rw-rw-r--   1 1750 1750       553961457 Sep 18 2019 [   4733 00]  filename
     #                           match the logical block number ^^^^ ||
@@ -192,7 +185,6 @@ def file_offset_in_iso(isoinfo, filename):
     if len(matches) != 1:
         raise Exception('Found {} copies of {}'.format(len(matches), filename))
     return int(matches[0].group(1)) * 2048  # assume 2 KB per logical block
-
 
 def generate_iso():
     # convention for kernel and initramfs names
@@ -710,7 +702,6 @@ boot
 
     buildmeta.write(artifact_name='live')
     print(f"Updated: {buildmeta_path}")
-
 
 import_ostree_commit(repo, builddir, buildmeta)
 
