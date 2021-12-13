@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Keep this script idempotent for local development rebuild use cases:
+# any consecutive runs should produce the same result.
+
 # Detect what platform we are on
 if ! grep -q '^Fedora' /etc/redhat-release; then
     echo 1>&2 "should be on either Fedora"
@@ -83,16 +86,16 @@ configure_user(){
     # Adding the user to the kvm group should always work.
 
     # fedora uses gid 36 for kvm
-    groupadd -g 78 -o -r kvm78   # arch, gentoo
-    groupadd -g 124 -o -r kvm124 # debian
-    groupadd -g 232 -o -r kvm232 # ubuntu
+    getent group kvm78  || groupadd -g 78 -o -r kvm78   # arch, gentoo
+    getent group kvm124 || groupadd -g 124 -o -r kvm124 # debian
+    getent group kvm232 || groupadd -g 232 -o -r kvm232 # ubuntu
 
     # We want to run what builds we can as an unprivileged user;
     # running as non-root is much better for the libvirt stack in particular
     # for the cases where we have --privileged in the container run for other reasons.
     # At some point we may make this the default.
-    useradd builder --uid 1000 -G wheel,kvm,kvm78,kvm124,kvm232
-    echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
+    getent passwd builder || useradd builder --uid 1000 -G wheel,kvm,kvm78,kvm124,kvm232
+    echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd
     # Contents of /etc/sudoers.d need not to be world writable
     chmod 600 /etc/sudoers.d/wheel-nopasswd
 }
