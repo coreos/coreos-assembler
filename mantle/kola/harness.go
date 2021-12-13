@@ -103,7 +103,7 @@ var (
 	Tags            []string // tags to be ran
 
 	extTestNum  = 1 // Assigns a unique number to each non-exclusive external test
-	failedTests []*register.Test
+	failedTests []string
 
 	consoleChecks = []struct {
 		desc     string
@@ -532,7 +532,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 // register tests in their init() function.  outputDir is where various test
 // logs and data will be written for analysis after the test run. If it already
 // exists it will be erased!
-func runProvidedTests(tests map[string]*register.Test, patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
+func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -547,7 +547,7 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 		plog.Fatal(err)
 	}
 
-	tests, err = filterTests(tests, patterns, pltfrm)
+	tests, err := filterTests(testsBank, patterns, pltfrm)
 	if err != nil {
 		plog.Fatal(err)
 	}
@@ -567,9 +567,10 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 	}
 
 	if len(nonExclusiveTests) > 0 {
+		// This test does not need to be registered since it is temporarily
+		// created to be used as a wrapper
 		nonExclusiveWrapper := makeNonExclusiveTest(nonExclusiveTests, flight)
 		tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
-		register.RegisterTest(&nonExclusiveWrapper)
 	}
 
 	if multiply > 1 {
@@ -604,8 +605,8 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 				// Keep track of failed tests for a rerun
 				// Non-exclusive test wrapper is not rerun since each non-exclusive
 				// test is run in its own VM during the rerun
-				if h.Failed() {
-					failedTests = append(failedTests, test)
+				if h.Failed() && test.Name != "non-exclusive-tests" {
+					failedTests = append(failedTests, test.Name)
 				}
 			}()
 			// We launch a seperate cluster for each kola test
@@ -644,37 +645,12 @@ func runProvidedTests(tests map[string]*register.Test, patterns []string, multip
 
 	if len(failedTests) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
-		err = rerunFailedTests(flight, newOutputDir, pltfrm, versionStr)
-		handleSuiteErrors(newOutputDir, err)
+		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
+		runProvidedTests(testsBank, failedTests, multiply, false, pltfrm, newOutputDir, propagateTestErrors)
 	}
 
 	// If the intial run failed and the rerun passed, we still return an error
 	return firstRunErr
-}
-
-func rerunFailedTests(flight platform.Flight, outputDir string, pltfrm string, versionStr string) error {
-	opts := harness.Options{
-		OutputDir: outputDir,
-		Parallel:  TestParallelism,
-		Verbose:   true,
-		Reporters: reporters.Reporters{
-			reporters.NewJSONReporter("rerun-report.json", pltfrm, versionStr),
-		},
-	}
-
-	var htests harness.Tests
-	for _, test := range failedTests {
-		test := test // for the closure
-		run := func(h *harness.H) {
-			runTest(h, test, pltfrm, flight)
-		}
-		htests.Add(test.Name, run, test.Timeout)
-	}
-
-	suite := harness.NewSuite(opts, htests)
-	fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
-	err := suite.Run()
-	return err
 }
 
 func RunTests(patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
@@ -1147,6 +1123,11 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 			for _, t := range tests {
 				t := t
 				run := func(h *harness.H) {
+					defer func() {
+						if h.Failed() {
+							failedTests = append(failedTests, t.Name)
+						}
+					}()
 					// Install external test executable
 					if t.ExternalTest != "" {
 						setupExternalTest(h, t, tcluster)
