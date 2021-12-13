@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
@@ -103,7 +104,7 @@ var (
 	Tags            []string // tags to be ran
 
 	extTestNum  = 1 // Assigns a unique number to each non-exclusive external test
-	failedTests []string
+	testResults protectedTestResults
 
 	consoleChecks = []struct {
 		desc     string
@@ -212,6 +213,25 @@ type KoletResult struct {
 
 const KoletExtTestUnit = "kola-runext"
 const KoletRebootAckFifo = "/run/kolet-reboot-ack"
+
+// Records failed tests for reruns
+type protectedTestResults struct {
+	results []*harness.H
+	mu      sync.RWMutex
+}
+
+func (p *protectedTestResults) add(h *harness.H) {
+	p.mu.Lock()
+	p.results = append(p.results, h)
+	p.mu.Unlock()
+}
+
+func (p *protectedTestResults) getResults() []*harness.H {
+	p.mu.RLock()
+	temp := p.results
+	p.mu.RUnlock()
+	return temp
+}
 
 // NativeRunner is a closure passed to all kola test functions and used
 // to run native go functions directly on kola machines. It is necessary
@@ -603,11 +623,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		run := func(h *harness.H) {
 			defer func() {
 				// Keep track of failed tests for a rerun
-				// Non-exclusive test wrapper is not rerun since each non-exclusive
-				// test is run in its own VM during the rerun
-				if h.Failed() && test.Name != "non-exclusive-tests" {
-					failedTests = append(failedTests, test.Name)
-				}
+				testResults.add(h)
 			}()
 			// We launch a seperate cluster for each kola test
 			// At the end of the test, its cluster is destroyed
@@ -643,14 +659,32 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	firstRunErr := suite.Run()
 	firstRunErr = handleSuiteErrors(outputDir, firstRunErr)
 
-	if len(failedTests) > 0 && rerun {
+	testsToRerun := getRerunnable(testResults.getResults())
+	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
 		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
-		runProvidedTests(testsBank, failedTests, multiply, false, pltfrm, newOutputDir, propagateTestErrors)
+		runProvidedTests(testsBank, testsToRerun, multiply, false, pltfrm, newOutputDir, propagateTestErrors)
 	}
 
 	// If the intial run failed and the rerun passed, we still return an error
 	return firstRunErr
+}
+
+func getRerunnable(tests []*harness.H) []string {
+	var testsToRerun []string
+	for _, h := range tests {
+		// The current nonexclusive test wrapper would rerun all non-exclusive tests.
+		// Instead, we only want to rerun the one(s) that failed, so we will not consider
+		// the wrapper as "rerunnable".
+		if h.Failed() && h.Name() != "non-exclusive-tests" {
+			// Failed non-exclusive tests will have a prefix in the name
+			// since they are run as subtests of a wrapper tests, we need to
+			// remove this prefix to match the true name of the test
+			name := strings.TrimPrefix(h.Name(), "non-exclusive-tests/")
+			testsToRerun = append(testsToRerun, name)
+		}
+	}
+	return testsToRerun
 }
 
 func RunTests(patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
@@ -1121,11 +1155,7 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 			for _, t := range tests {
 				t := t
 				run := func(h *harness.H) {
-					defer func() {
-						if h.Failed() {
-							failedTests = append(failedTests, t.Name)
-						}
-					}()
+					testResults.add(h)
 					// Install external test executable
 					if t.ExternalTest != "" {
 						setupExternalTest(h, t, tcluster)
