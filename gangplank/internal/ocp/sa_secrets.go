@@ -136,12 +136,11 @@ var (
 		},
 		// Koji Keytab
 		{
-			label: "koji-keytab",
+			label: "keytab",
 			fileVarMap: varMap{
 				"keytab": "KOJI_KEYTAB",
-			},
-			envVarMap: varMap{
-				"principal": "KOJI_PRINCIPAL",
+				"principle": "KOJI_PRINCIPAL",
+				"config": "KOJI_CONFIG",
 			},
 		},
 	}
