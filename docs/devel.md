@@ -60,12 +60,15 @@ $ export COREOS_ASSEMBLER_CONTAINER=localhost/coreos-assembler
 $ cosa ...
 ```
 
-You can also use `Dockerfile.dev` to create a new container image based on the
-official one with your local cahnges:
+You can also re-use the official COSA container image as a base to quickly
+create a new container image with your local changes:
 
 ```
-$ podman build -f Dockerfile.dev -t localhost/coreos-assembler
+$ podman build -t localhost/coreos-assembler . --from quay.io/coreos-assembler/coreos-assembler:latest
 ```
+
+This is especially useful for changes to dependencies or for final verification
+of COSA code.
 
 ## Developing on coreos-assembler remotely
 

@@ -3,6 +3,10 @@
 FROM registry.fedoraproject.org/fedora:35
 WORKDIR /root/containerbuild
 
+# Keep this Dockerfile idempotent for local development rebuild use cases.
+USER root
+RUN rm -rfv /usr/lib/coreos-assembler /usr/bin/coreos-assembler
+
 COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
 COPY ./build.sh /root/containerbuild/
 RUN ./build.sh configure_yum_repos
