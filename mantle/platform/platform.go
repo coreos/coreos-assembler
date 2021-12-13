@@ -465,7 +465,7 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	switch string(out) {
 	case `fedora-coreos`:
 		distribution = "fcos"
-	case `rhcos-`:
+	case `centos-coreos`, `rhcos-`:
 		distribution = "rhcos"
 	default:
 		return fmt.Errorf("not a supported instance: %v", string(out))
