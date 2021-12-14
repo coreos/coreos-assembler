@@ -220,24 +220,24 @@ prepare_build() {
     fi
     export configdir_gitrepo
 
-    manifest_tmp_json=${tmp_builddir}/manifest.json
-    rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${manifest_tmp_json}"
+    flattened_manifest=${tmp_builddir}/manifest.json
+    rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${flattened_manifest}"
+    export flattened_manifest
 
     # Abuse the rojig/name as the name of the VM images
     # Also grab rojig summary for image upload descriptions
-    name=$(jq -r '.rojig.name' < "${manifest_tmp_json}")
-    summary=$(jq -r '.rojig.summary' < "${manifest_tmp_json}")
-    ref=$(jq -r '.ref//""' < "${manifest_tmp_json}")
+    name=$(jq -r '.rojig.name' < "${flattened_manifest}")
+    summary=$(jq -r '.rojig.summary' < "${flattened_manifest}")
+    ref=$(jq -r '.ref//""' < "${flattened_manifest}")
     export name ref summary
     # And validate fields coreos-assembler requires, but not rpm-ostree
     required_fields=("automatic-version-prefix")
     for field in "${required_fields[@]}"; do
-        if ! jq -re '."'"${field}"'"' < "${manifest_tmp_json}" >/dev/null; then
+        if ! jq -re '."'"${field}"'"' < "${flattened_manifest}" >/dev/null; then
             echo "Missing required field in src/config/manifest.yaml: ${field}" 1>&2
             exit 1
         fi
     done
-    rm -f "${manifest_tmp_json}"
 
     # This dir is no longer used
     rm builds/work -rf
@@ -286,6 +286,48 @@ commit_overlay() {
         --mode-ro-executables --timestamp "${git_timestamp}" \
         --statoverride <(sed -e '/^#/d' "${TMPDIR}/overlay/statoverride") \
         --skip-list <(echo /statoverride)
+}
+
+create_content_manifest(){
+    local source_file=$1
+    local destination=$2
+    mkdir -p "${workdir}"/tmp/buildinfo
+    base_repos=$(jq .repos "${flattened_manifest}")
+
+    # Get the data form content_sets.yaml and map the repo names given in '$base_repos' to their corresponding
+    # pulp repository IDs provided in https://www.redhat.com/security/data/metrics/repository-to-cpe.json
+    python3 -c "
+import json, yaml;
+
+# Open the yaml and load the data
+f = open('$source_file')
+data = yaml.safe_load(f);
+f.close();
+repos=[];
+
+for base_repo in $base_repos:
+    if base_repo in data['repo_mapping']:
+        if data['repo_mapping'][base_repo]['name'] != '':
+            repo_name = data['repo_mapping'][base_repo]['name'].replace('\$ARCH', '$(arch)');
+            repos.append(repo_name)
+        else:
+            print('Warning: No corresponding repo in repository-to-cpe.json for ' + base_repo)
+    else:
+        # Warning message for repositories with no entry in content_sets.yaml
+        print('Warning: No corresponding entry in content_sets.yaml for ' + base_repo)
+
+content_manifest_data = json.dumps({
+    'metadata': {
+        'icm_version': 1,
+        'icm_spec': 'https://raw.githubusercontent.com/containerbuildsystem/atomic-reactor/master/atomic_reactor/schemas/content_manifest.json',
+        'image_layer_index': 1
+    },
+    'content_sets': repos,
+    'image_contents': []
+    });
+with open('$destination', 'w') as outfile:
+    outfile.write(content_manifest_data)
+    "
 }
 
 # Implement support for automatic local overrides:
@@ -345,13 +387,6 @@ EOF
         done
     fi
 
-    if [ -n "${layers}" ]; then
-        echo "ostree-layers:" >> "${override_manifest}"
-        for layer in ${layers}; do
-            echo "  - ${layer}" >> "${override_manifest}"
-        done
-    fi
-
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
     if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
@@ -384,6 +419,25 @@ EOF
     else
         rm -vf "${local_overrides_lockfile}"
     fi
+    if [ -e "${configdir}/content_sets.yaml" ]; then
+        mkdir -p "${tmp_overridesdir}"/contentsetrootfs/usr/share/buildinfo/
+        # create_content_manifest takes in the base repos and maps them to their pulp repository IDs
+        # available in content_sets.yaml. The mapped repos are then available in content_manifest.json
+        # Feature: https://issues.redhat.com/browse/GRPA-3731
+        create_content_manifest "$configdir"/content_sets.yaml "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
+        
+        echo -n "Committing ${tmp_overridesdir}/contentsetrootfs... "
+        ostree commit --repo="$tmprepo" --tree=dir="${tmp_overridesdir}"/contentsetrootfs -b contentset 
+        layers="${layers} contentset"
+    fi
+
+    if [ -n "${layers}" ]; then
+        echo "ostree-layers:" >> "${override_manifest}"
+        for layer in ${layers}; do
+            echo "  - ${layer}" >> "${override_manifest}"
+        done
+    fi
+
     rootfs_overrides="${overridesdir}/rootfs"
     if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
         echo -n "Committing ${rootfs_overrides}... "
