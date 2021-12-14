@@ -130,6 +130,31 @@ def align_initrd_for_uncompressed_append(destf):
         destf.write(b'\0' * (4 - offset % 4))
 
 
+# Return OS features table for features.json, which is added to the initrd
+# for coreos-installer {iso|pxe} customize
+def get_os_features():
+    features = {}
+
+    f = run_verbose(['/usr/bin/ostree', 'cat', '--repo', repo,
+            buildmeta_commit, '/usr/libexec/coreos-installer-service'],
+            capture_output=True).stdout.decode()
+    # eventually we can assume coreos-installer >= 0.12.0, delete this check,
+    # and hardcode the feature flag
+    if '--config-file' in f:
+        features['installer-config'] = True
+
+    f = run_verbose(['/usr/bin/ostree', 'cat', '--repo', repo,
+            buildmeta_commit,
+            '/usr/lib/dracut/modules.d/35coreos-network/coreos-copy-firstboot-network.sh'],
+            capture_output=True).stdout.decode()
+    # eventually we can assume /etc/coreos-firstboot-network support and
+    # hardcode the feature flag
+    if 'etc_firstboot_network_dir' in f:
+        features['live-initrd-network'] = True
+
+    return features
+
+
 # https://www.kernel.org/doc/html/latest/admin-guide/initrd.html#compressed-cpio-images
 def mkinitrd_pipe(tmproot, destf, compress=True):
     if not compress:
@@ -263,18 +288,10 @@ def generate_iso():
 
     # Generate initramfs JSON file that lists OS features available to
     # coreos-installer {iso|pxe} customize
-    features = {}
-    svc = run_verbose(['/usr/bin/ostree', 'cat', '--repo', repo,
-            buildmeta_commit, '/usr/libexec/coreos-installer-service'],
-            capture_output=True).stdout.decode()
-    # eventually we can assume coreos-installer >= 0.12.0, delete this check,
-    # and hardcode the feature flag
-    if '--config-file' in svc:
-        features['installer-config'] = True
     featurespath = os.path.join(tmpinitrd_base, 'etc/coreos/features.json')
     os.makedirs(os.path.dirname(featurespath), exist_ok=True)
     with open(featurespath, 'w') as fh:
-        json.dump(features, fh, indent=2, sort_keys=True)
+        json.dump(get_os_features(), fh, indent=2, sort_keys=True)
         fh.write('\n')
 
     # Add osmet files
