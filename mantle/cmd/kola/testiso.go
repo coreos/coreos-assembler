@@ -62,6 +62,8 @@ var (
 	pxeKernelArgs   []string
 
 	console bool
+
+	addNmKeyfile bool
 )
 
 const (
@@ -179,6 +181,35 @@ ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
 [Install]
 RequiredBy=multi-user.target`)
 
+var nmConnectionId = "CoreOS DHCP"
+var nmConnectionFile = "coreos-dhcp.nmconnection"
+var nmConnection = fmt.Sprintf(`[Unit]
+[connection]
+id=%s
+type=ethernet
+
+[ipv4]
+method=auto
+`, nmConnectionId)
+
+// This is used to verify *both* the live and the target system in the `--add-nm-keyfile` path.
+var verifyNmKeyfile = fmt.Sprintf(`[Unit]
+Description=TestISO Verify NM Keyfile Propagation
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+Wants=network-online.target
+After=network-online.target
+Before=live-signal-ok.service
+Before=coreos-test-installer.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/journalctl -u nm-initrd --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
+ExecStart=/usr/bin/journalctl -u NetworkManager --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
+ExecStart=/usr/bin/grep "%[1]s" /etc/NetworkManager/system-connections/%[2]s
+[Install]
+RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
+
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVarP(&nopxe, "no-pxe", "P", false, "Skip testing live installer PXE")
@@ -186,6 +217,7 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
 	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
+	cmdTestIso.Flags().BoolVar(&addNmKeyfile, "add-nm-keyfile", false, "Add NetworkManager connection keyfile")
 	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin, scenarioISOAsDisk, scenarioMinISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
@@ -325,6 +357,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		Native4k:        kola.QEMUOptions.Native4k,
 		MultiPathDisk:   kola.QEMUOptions.MultiPathDisk,
 		PxeAppendRootfs: pxeAppendRootfs,
+		NmKeyfiles:      make(map[string]string),
 	}
 
 	if instInsecure {
@@ -509,10 +542,17 @@ func printSuccess(mode string) {
 	if kola.QEMUOptions.MultiPathDisk {
 		onMultipath = " on multipath"
 	}
-	fmt.Printf("Successfully tested scenario %s for %s on %s (%s%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype, onMultipath)
+	withNmKeyfile := ""
+	if addNmKeyfile {
+		withNmKeyfile = " with NM keyfile"
+	}
+	fmt.Printf("Successfully tested scenario %s for %s on %s (%s%s%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype, onMultipath, withNmKeyfile)
 }
 
 func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
+	if addNmKeyfile {
+		return errors.New("--add-nm-keyfile not yet supported for PXE")
+	}
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
 		return err
@@ -598,6 +638,12 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
 	if inst.MultiPathDisk {
 		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
+	}
+
+	if addNmKeyfile {
+		liveConfig.AddSystemdUnit("coreos-test-nm-keyfile.service", verifyNmKeyfile, conf.Enable)
+		targetConfig.AddSystemdUnit("coreos-test-nm-keyfile.service", verifyNmKeyfile, conf.Enable)
+		inst.NmKeyfiles[nmConnectionFile] = nmConnection
 	}
 
 	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, offline, minimal)
