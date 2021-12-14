@@ -44,6 +44,21 @@ You can also reuse a `cosa shell` to test changes from other git repositories.
 You'll likely want to do this for e.g. things like testing out changes to
 `ostree`/`rpm-ostree` that are run as part of `cosa build`.
 
+## Hacking on kola, ore and plume
+
+Similarly, if you are only working on kola, ore or plume, you can build, test
+and use them directly with:
+
+```
+$ cd mantle
+$ ./build kola ore plume
+$ ./test
+$ ./bin/kola ...
+```
+
+You will need the required build tools (golang toolchain, etc.) and may either
+reuse a `cosa shell` to get them or install them inside a toolbx container.
+
 ## Building the cosa container image locally
 
 To completely rebuild the COSA container image locally, use:
