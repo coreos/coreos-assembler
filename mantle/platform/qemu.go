@@ -431,7 +431,7 @@ type QemuBuilder struct {
 	UsermodeNetworking        bool
 	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
-	secondaryNics             int
+	additionalNics            int
 
 	finalized bool
 	diskID    uint
@@ -538,8 +538,8 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort) {
 	builder.requestedHostForwardPorts = h
 }
 
-func (builder *QemuBuilder) AddSecondaryNics(secondaryNics int) {
-	builder.secondaryNics = secondaryNics
+func (builder *QemuBuilder) AddAdditionalNics(additionalNics int) {
+	builder.additionalNics = additionalNics
 }
 
 func (builder *QemuBuilder) setupNetworking() error {
@@ -570,10 +570,10 @@ func (builder *QemuBuilder) setupNetworking() error {
 	return nil
 }
 
-func (builder *QemuBuilder) setupSecondaryNetworking() error {
+func (builder *QemuBuilder) setupAdditionalNetworking() error {
 	macCounter := 0
 	netOffset := 30
-	for i := 1; i <= builder.secondaryNics; i++ {
+	for i := 1; i <= builder.additionalNics; i++ {
 		idSuffix := fmt.Sprintf("%d", i)
 		netSuffix := fmt.Sprintf("%d", netOffset+i)
 		macSuffix := fmt.Sprintf("%02x", macCounter)
@@ -1446,9 +1446,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		inst.hostForwardedPorts = builder.requestedHostForwardPorts
 	}
 
-	// Handle Secondary NICs networking
-	if builder.secondaryNics > 0 {
-		if err := builder.setupSecondaryNetworking(); err != nil {
+	// Handle Additional NICs networking
+	if builder.additionalNics > 0 {
+		if err := builder.setupAdditionalNetworking(); err != nil {
 			return nil, err
 		}
 	}
