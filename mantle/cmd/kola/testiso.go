@@ -183,8 +183,7 @@ RequiredBy=multi-user.target`)
 
 var nmConnectionId = "CoreOS DHCP"
 var nmConnectionFile = "coreos-dhcp.nmconnection"
-var nmConnection = fmt.Sprintf(`[Unit]
-[connection]
+var nmConnection = fmt.Sprintf(`[connection]
 id=%s
 type=ethernet
 
