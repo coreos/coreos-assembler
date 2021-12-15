@@ -50,7 +50,7 @@ func init() {
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.
 	register.RegisterTest(&register.Test{
-		Run:         NetworkSecondaryNics,
+		Run:         NetworkAdditionalNics,
 		ClusterSize: 0,
 		Name:        "rhcos.network.multiple-nics",
 		Timeout:     20 * time.Minute,
@@ -557,8 +557,8 @@ func setupBondWithDhcpTest(c cluster.TestCluster, primaryMac, secondaryMac, prim
 	addKernelArgs(c, m, []string{fmt.Sprintf("macAddressList=%s,%s", primaryMac, secondaryMac)})
 }
 
-// NetworkSecondaryNics verifies that secondary NICs are created on the node
-func NetworkSecondaryNics(c cluster.TestCluster) {
+// NetworkAdditionalNics verifies that additional NICs are created on the node
+func NetworkAdditionalNics(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
 	ovsBridgeInterface := "ovs-brcnv-iface"

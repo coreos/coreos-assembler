@@ -68,10 +68,10 @@ var (
 
 	sshCommand string
 
-	secondaryNics int
+	additionalNics int
 )
 
-const maxSecondaryNics = 16
+const maxAdditionalNics = 16
 
 func init() {
 	root.AddCommand(cmdQemuExec)
@@ -93,7 +93,7 @@ func init() {
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
 	cmdQemuExec.Flags().BoolVar(&propagateInitramfsFailure, "propagate-initramfs-failure", false, "Error out if the system fails in the initramfs")
 	cmdQemuExec.Flags().StringVarP(&consoleFile, "console-to-file", "", "", "Filepath in which to save serial console logs")
-	cmdQemuExec.Flags().IntVarP(&secondaryNics, "secondary-nics", "", 0, "Number of secondary NICs to add")
+	cmdQemuExec.Flags().IntVarP(&additionalNics, "additional-nics", "", 0, "Number of additional NICs to add")
 	cmdQemuExec.Flags().StringVarP(&sshCommand, "ssh-command", "x", "", "Command to execute instead of spawning a shell")
 
 }
@@ -313,11 +313,11 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 		builder.EnableUsermodeNetworking(h)
 	}
-	if secondaryNics != 0 {
-		if secondaryNics < 0 || secondaryNics > maxSecondaryNics {
-			return errors.Wrapf(nil, "secondary-nics value cannot be negative or greater than %d", maxSecondaryNics)
+	if additionalNics != 0 {
+		if additionalNics < 0 || additionalNics > maxAdditionalNics {
+			return errors.Wrapf(nil, "additional-nics value cannot be negative or greater than %d", maxAdditionalNics)
 		}
-		builder.AddSecondaryNics(secondaryNics)
+		builder.AddAdditionalNics(additionalNics)
 	}
 	builder.InheritConsole = true
 	builder.ConsoleFile = consoleFile
