@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/arm/compute"
@@ -37,10 +39,31 @@ type Machine struct {
 }
 
 func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, ip *network.PublicIPAddress, nic *network.Interface) compute.VirtualMachine {
+
+	// Azure requires that either a username/password be set or an SSH key.
+	//
+	//    Message="Authentication using either SSH or by user name and
+	//             password must be enabled in Linux profile."
+	//
+	// Since we don't ship their agent setting a username and password here
+	// is harmless. We set the username and password because some tests explicitly
+	// don't want to pass an SSH key via the API and this allows us to do that.
+	//
+	// The password requirements are:
+	//    Message="The supplied password must be between 6-72 characters long
+	//             and must satisfy at least 3 of password complexity requirements
+	//             from the following: Contains an uppercase character, Contains a
+	//             lowercase character, Contains a numeric digit, Contains a special
+	//             character) Control characters are not allowed"
+	password := fmt.Sprintf("%s%s%s", "ABC&", strconv.Itoa(rand.Int()), "xyz")
+
 	osProfile := compute.OSProfile{
-		AdminUsername: util.StrToPtr("core"),
+		AdminUsername: util.StrToPtr("core"),   // unused
+		AdminPassword: util.StrToPtr(password), // unused
 		ComputerName:  &name,
-		LinuxConfiguration: &compute.LinuxConfiguration{
+	}
+	if sshkey != "" {
+		osProfile.LinuxConfiguration = &compute.LinuxConfiguration{
 			SSH: &compute.SSHConfiguration{
 				PublicKeys: &[]compute.SSHPublicKey{
 					{
@@ -49,7 +72,7 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 					},
 				},
 			},
-		},
+		}
 	}
 	if userdata != "" {
 		ud := base64.StdEncoding.EncodeToString([]byte(userdata))
