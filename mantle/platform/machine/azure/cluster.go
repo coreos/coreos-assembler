@@ -47,7 +47,12 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 		return nil, err
 	}
 
-	instance, err := ac.flight.api.CreateInstance(ac.vmname(), conf.String(), ac.sshKey, ac.ResourceGroup, ac.StorageAccount)
+	sshkey := ""
+	if !ac.RuntimeConf().NoSSHKeyInMetadata {
+		sshkey = ac.sshKey
+	}
+
+	instance, err := ac.flight.api.CreateInstance(ac.vmname(), conf.String(), sshkey, ac.ResourceGroup, ac.StorageAccount)
 	if err != nil {
 		return nil, err
 	}
