@@ -36,6 +36,8 @@ parser.add_argument("--fast", action='store_true', default=False,
                     help="Reduce compression for development (FCOS only)")
 parser.add_argument("--force", action='store_true', default=False,
                     help="Overwrite previously generated installer")
+parser.add_argument("--fixture", action='store_true', default=False,
+                    help="Create non-functional ISO as coreos-installer test fixture")
 args = parser.parse_args()
 
 # Identify the builds and target the latest build if none provided
@@ -618,6 +620,28 @@ boot
     miniso_data = os.path.join(tmpisocoreos, "miniso.dat")
     with open(miniso_data, 'wb') as f:
         f.truncate(miniso_data_file_size)
+
+    if args.fixture:
+        # Replace or delete anything irrelevant to coreos-installer
+        with open(os.path.join(tmpisoimages, 'efiboot.img'), 'w') as fh:
+            fh.write('efiboot.img\n')
+        with open(os.path.join(tmpisoimagespxe, 'rootfs.img'), 'w') as fh:
+            fh.write('rootfs data\n')
+        with open(os.path.join(tmpisoimagespxe, 'initrd.img'), 'w') as fh:
+            fh.write('initrd data\n')
+        with open(os.path.join(tmpisoimagespxe, 'vmlinuz'), 'w') as fh:
+            fh.write('the kernel\n')
+        with open(os.path.join(tmpisoisolinux, 'isolinux.bin'), 'rb+') as fh:
+            flen = fh.seek(0, 2)
+            fh.truncate(0)
+            fh.truncate(flen)
+            fh.seek(64)
+            # isohybrid checks for this magic
+            fh.write(b'\xfb\xc0\x78\x70')
+        for f in ensure_glob(os.path.join(tmpisoisolinux, '*.c32')):
+            os.unlink(f)
+        for f in ensure_glob(os.path.join(tmpisoisolinux, '*.msg')):
+            os.unlink(f)
 
     run_verbose(genisoargs_final)
 
