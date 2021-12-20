@@ -128,7 +128,6 @@ func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms
 			Value: "mantle",
 		},
 	}
-
 	response, err := a.ecs.CopyImage(request)
 	if err != nil {
 		return "", fmt.Errorf("copying image: %v", err)
@@ -247,12 +246,13 @@ func (a *API) GetImages(name string) (*ecs.DescribeImagesResponse, error) {
 }
 
 // GetImagesByID retrieves a list of images by ImageId
-func (a *API) GetImagesByID(id string) (*ecs.DescribeImagesResponse, error) {
+func (a *API) GetImagesByID(id string, region string) (*ecs.DescribeImagesResponse, error) {
 	request := ecs.CreateDescribeImagesRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
 	request.Scheme = "https"
 	request.ImageId = id
+	request.RegionId = region
 	return a.ecs.DescribeImages(request)
 }
 
@@ -265,7 +265,8 @@ func (a *API) DeleteImage(id string, force bool) error {
 	request.ImageId = id
 	request.Force = requests.NewBoolean(force)
 
-	images, err := a.GetImagesByID(id)
+	// use the region from the profile for this call
+	images, err := a.GetImagesByID(id, a.opts.Region)
 	if err != nil {
 		return fmt.Errorf("getting image: %v", err)
 	}
@@ -384,4 +385,42 @@ func (a *API) ListRegions() ([]string, error) {
 	}
 	sort.Strings(ret)
 	return ret, nil
+}
+
+// ChangeVisibility modifies an image uploaded to Aliyun as either public or
+// private.
+// NOTE: only us-east-1 and us-west-1 support making images public unless
+// your account has been allowlisted by Aliyun to operate on all regions
+func (a *API) ChangeVisibility(region string, id string, public bool) error {
+	var visibilityStr = "private"
+	if public {
+		visibilityStr = "public"
+	}
+
+	// Need to check the visibility of an image
+	images, err := a.GetImagesByID(id, region)
+	if err != nil {
+		return fmt.Errorf("getting image id %v: %v", id, err)
+	}
+	if images.TotalCount == 0 {
+		return fmt.Errorf("no image found with id %v", id)
+	}
+
+	for _, img := range images.Images.Image {
+		if img.ImageId == id && img.IsPublic != public {
+			request := ecs.CreateModifyImageSharePermissionRequest()
+			request.SetConnectTimeout(defaultConnectTimeout)
+			request.SetReadTimeout(defaultReadTimeout)
+			request.Scheme = "https"
+			request.ImageId = id
+			request.RegionId = region
+			request.IsPublic = requests.NewBoolean(public)
+
+			_, err := a.ecs.ModifyImageSharePermission(request)
+			return err
+		} else {
+			plog.Infof("image %v already at requested visibility of %v", id, visibilityStr)
+		}
+	}
+	return nil
 }
