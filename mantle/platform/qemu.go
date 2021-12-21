@@ -403,8 +403,8 @@ type QemuBuilder struct {
 	Pdeathsig  bool
 	Argv       []string
 
-	// AppendKernelArguments are appended to the bootloader config
-	AppendKernelArguments string
+	// AppendKernelArgs are appended to the bootloader config
+	AppendKernelArgs string
 
 	// IgnitionNetworkKargs are written to /boot/ignition
 	IgnitionNetworkKargs string
@@ -874,8 +874,8 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			return errors.Wrapf(err, "rendering ignition")
 		}
 		requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
-		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArguments != "" {
-			if err := setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArguments,
+		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArgs != "" {
+			if err := setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArgs,
 				disk.dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
@@ -1204,21 +1204,21 @@ func (builder *QemuBuilder) setupIso() error {
 	if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
 		return err
 	} else if kargsSupported {
-		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[system.RpmArch()], builder.AppendKernelArguments)
+		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[system.RpmArch()], builder.AppendKernelArgs)
 		instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
 		var stderrb bytes.Buffer
 		instCmdKargs.Stderr = &stderrb
 		if err := instCmdKargs.Run(); err != nil {
 			// Don't make this a hard error if it's just for console; we
 			// may be operating on an old live ISO
-			if len(builder.AppendKernelArguments) > 0 {
+			if len(builder.AppendKernelArgs) > 0 {
 				return errors.Wrapf(err, "running `coreos-installer iso kargs modify`; old CoreOS ISO?")
 			}
 			stderr := stderrb.String()
 			plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
 			plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
 		}
-	} else if len(builder.AppendKernelArguments) > 0 {
+	} else if len(builder.AppendKernelArgs) > 0 {
 		return fmt.Errorf("coreos-installer does not support appending kernel args")
 	}
 

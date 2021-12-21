@@ -263,7 +263,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if len(knetargs) > 0 {
 		builder.IgnitionNetworkKargs = knetargs
 	}
-	builder.AppendKernelArguments = strings.Join(kargs, " ")
+	builder.AppendKernelArgs = strings.Join(kargs, " ")
 	builder.Firmware = kola.QEMUOptions.Firmware
 	if kola.QEMUOptions.DiskImage != "" {
 		channel := "virtio"
