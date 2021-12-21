@@ -160,6 +160,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	if options.AdditionalNics > 0 {
 		builder.AddAdditionalNics(options.AdditionalNics)
 	}
+	if options.AppendKernelArgs != "" {
+		builder.AppendKernelArgs = options.AppendKernelArgs
+	}
 	if !qc.RuntimeConf().InternetAccess {
 		builder.RestrictNetworking = true
 	}

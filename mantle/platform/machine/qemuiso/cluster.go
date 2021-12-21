@@ -133,6 +133,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	if options.AdditionalNics > 0 {
 		builder.AddAdditionalNics(options.AdditionalNics)
 	}
+	if options.AppendKernelArgs != "" {
+		builder.AppendKernelArgs = options.AppendKernelArgs
+	}
 
 	inst, err := builder.Exec()
 	if err != nil {

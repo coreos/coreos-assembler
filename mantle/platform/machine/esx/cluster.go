@@ -101,6 +101,9 @@ func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, option
 	if options.AdditionalNics > 0 {
 		return nil, errors.New("platform esx does not support additional nics")
 	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform esx does not support appending kernel arguments")
+	}
 	return ec.NewMachine(userdata)
 }
 
