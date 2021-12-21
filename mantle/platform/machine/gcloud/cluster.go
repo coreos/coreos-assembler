@@ -101,6 +101,9 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.AdditionalNics > 0 {
 		return nil, errors.New("platform gce does not support additional nics")
 	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform gce does not support appending kernel arguments")
+	}
 	return gc.NewMachine(userdata)
 }
 

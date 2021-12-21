@@ -49,6 +49,10 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		return nil, errors.New("platform aws does not support additional nics")
 	}
 
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform aws does not support appending kernel arguments")
+	}
+
 	conf, err := ac.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_EC2_IPV4_PUBLIC}",
 		"$private_ipv4": "${COREOS_EC2_IPV4_LOCAL}",
