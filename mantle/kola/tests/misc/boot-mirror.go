@@ -16,6 +16,7 @@ package misc
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
@@ -67,6 +68,7 @@ func init() {
 		ExcludeFirmwares: []string{"uefi"},
 		Tags:             []string{"boot-mirror", "raid1"},
 		FailFast:         true,
+		Timeout:          15 * time.Minute,
 	})
 	register.RegisterTest(&register.Test{
 		Run:         runBootMirrorLUKSTest,
@@ -83,6 +85,7 @@ func init() {
 		ExcludeFirmwares: []string{"uefi"},
 		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag},
 		FailFast:         true,
+		Timeout:          15 * time.Minute,
 	})
 }
 
